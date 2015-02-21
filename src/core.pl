@@ -1,16 +1,15 @@
 #!/usr/bin/env perl
-BEGIN {eval($ni::bootcode = <<'end')}
-use B::Deparse;
-$ni::deparser = B::Deparse->new;
-@ni::code = ();
+eval($ni::bootcode = <<'end');
+$ni::selfdata = join '', <DATA>;
 sub ni::self {
   join "\n", "#!/usr/bin/env perl",
-             "BEGIN {eval \$ni::bootcode = <<'end'}\n${ni::bootcode}end",
-             @ni::code;
+             "eval(\$ni::bootcode = <<'end');\n${ni::bootcode}end",
+             'die $@ if $@;',
+             "__DATA__",
+             $ni::selfdata;
 }
-sub ni::extend(&) {
-  my $s = $ni::deparser->coderef2text($_[0]);
-  push @ni::code, "BEGIN {ni::extend $s}";
-  $_[0]->();
-}
+eval $ni::selfdata;
+die $@ if $@;
 end
+die $@ if $@;
+__DATA__

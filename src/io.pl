@@ -1,38 +1,30 @@
-=head1 ni::io
+@ni::io_types        = ();
+%ni::io_detectors    = ();
+%ni::io_constructors = ();
 
-Lazy, functional IO streams with transformation operators. This class gets
-extended dynamically by other ni extensions, and its methods are exposed as ni
-command-line options.
-
-=cut
-
-BEGIN {ni::extend {
-  @ni::io_types        = ();
-  %ni::io_detectors    = ();
-  %ni::io_constructors = ();
-
-  sub ni {
-    my ($thing, @args) = @_;
-    return $thing if ref $thing && $thing->isa(ni::io);
-    for (@ni::io_types) {
-      return $ni::io_constructors{$_}->("ni::io::$_", $thing, @args)
-        if $ni::io_detectors{$_}->($thing, @args);
-    }
-    die "ni: don't know how to construct instance for $thing @args";
+sub ::ni {
+  my ($thing, @args) = @_;
+  return $thing if ref $thing && $thing->isa(ni::io);
+  for (@ni::io_types) {
+    return $ni::io_constructors{$_}->("ni::io::$_", $thing, @args)
+      if $ni::io_detectors{$_}->($thing, @args);
   }
+  die "ni: don't know how to construct instance for $thing @args";
+}
 
-  sub ni::defio {
-    my ($name, $detector, $constructor, $methods) = @_;
-    push @ni::io_types, $name;
-    $ni::io_detectors{$name} = $detector;
-    *{"ni::io::${name}::new"} = $ni::io_constructors{$name} = sub {
-      my ($class, @args) = @_;
-      bless $constructor->(ni::io->new, @args), $class;
-    };
-    *{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
-    push @{"ni::io::${name}::ISA"}, 'ni::io';
-  }
+sub defio {
+  my ($name, $detector, $constructor, $methods) = @_;
+  push @ni::io_types, $name;
+  $ni::io_detectors{$name} = $detector;
+  *{"ni::io::${name}::new"} = $ni::io_constructors{$name} = sub {
+    my ($class, @args) = @_;
+    bless $constructor->(ni::io->new, @args), $class;
+  };
+  *{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
+  push @{"ni::io::${name}::ISA"}, 'ni::io';
+}
 
+{
   package ni::io;
   use overload qw# +  plus  * map  / reduce  % grep
                    <> next  0+ avail  "" name  ! eof
@@ -138,4 +130,4 @@ BEGIN {ni::extend {
     my ($self, $f, $init, @xs) = @_;
     ni::io::reduce->new($self, $f, $init // {}, @xs);
   }
-}}
+}
