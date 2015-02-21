@@ -11,9 +11,12 @@ defio 'sum',
   _avail => sub { 0 },
   _next  => sub {
     my ($self) = @_;
-    shift $self->{sources} while @{$self->{sources}}
-                              && $self->{sources}->[0]->eof;
-    @{$self->{sources}} ? ($self->{sources}->[0]->next) : ();
+    my $n;
+    until (!@{$self->{sources}} || defined $n) {
+      $n = $self->{sources}->[0]->next;
+      shift $self->{sources} unless defined $n;
+    }
+    defined $n ? ($n) : ();
   },
 };
 
@@ -91,6 +94,7 @@ defio 'fh',
           open $self->{fh}, $open_expr
             or die "failed to open $open_expr: $!";
         }
+        hot $self->{fh};
         $self;
       },
 {
@@ -127,6 +131,8 @@ defio 'process',
           dup2 fileno($out_w), 1 or die "failed to connect stdout: $!";
           exec @args;
         }
+        hot $self->{stdin};
+        hot $self->{stdout};
         $self;
       },
 {

@@ -12,6 +12,12 @@ sub ::ni {
   die "ni: don't know how to construct instance for $thing @args";
 }
 
+sub hot {
+  my ($fh) = @_;
+  select((select($fh), $|++)[0]);
+  $fh;
+}
+
 sub defio {
   my ($name, $detector, $constructor, $methods) = @_;
   push @ni::io_types, $name;
@@ -26,7 +32,7 @@ sub defio {
 
 {
   package ni::io;
-  use overload qw# +  plus  * map  / reduce  % grep
+  use overload qw# +  plus_op  * map_op  / reduce_op  % grep_op
                    <> next  0+ avail  "" name  ! eof
                    |  pipe
                    >  into  >> copy
@@ -123,11 +129,13 @@ sub defio {
     $process;
   }
 
-  sub plus { ni::io::sum->new(grep $_, @_) }
-  sub map  { ni::io::map->new(grep $_, @_) }
-  sub grep { ni::io::grep->new(grep $_, @_) }
-  sub reduce {
-    my ($self, $f, $init, @xs) = @_;
-    ni::io::reduce->new($self, $f, $init // {}, @xs);
-  }
+  sub plus_op   { ni::io::sum   ->new(@_[0, 1]) }
+  sub map_op    { ni::io::map   ->new(@_[0, 1]) }
+  sub grep_op   { ni::io::grep  ->new(@_[0, 1]) }
+  sub reduce_op { ni::io::reduce->new(@_[0, 1], {}) }
+
+  sub plus   { ni::io::sum   ->new(@_) }
+  sub map    { ni::io::map   ->new(@_) }
+  sub grep   { ni::io::grep  ->new(@_) }
+  sub reduce { ni::io::reduce->new(@_) }
 }
