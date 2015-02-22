@@ -27,6 +27,8 @@ testcase 'perl 3'    'perl pair-with-length-3.pl < testdata'
 testcase 'perl 4'    'perl pair-with-length-4.pl < testdata'
 testcase 'perl 5'    'perl pair-with-length-5.pl < testdata'
 testcase 'perl 6'    'perl pair-with-length-6.pl < testdata'
+testcase 'perl 7'    'perl pair-with-length-7.pl < testdata'
+testcase 'perl 8'    'perl pair-with-length-8.pl < testdata'
 testcase 'nfu 1'     'nfu testdata -m "row %0, length %0"'
 testcase 'nfu 2'     "nfu testdata -m '\"%0\t\" . length(%0)'"
 
