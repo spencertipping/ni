@@ -39,111 +39,83 @@ sub reduce_binding;
 sub grep_binding;
 sub pipe_binding;
 
-our $gensym_id  = 0;
-our $randomness = join '', map sprintf("%04x", rand(65536)), 0..8;
-sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
-
 # Internally we're using these IO objects to generate imperative code, so it's
 # going to be source-driven. This means we can't do much until we know where
 # the values need to go (though we can defer that by fork/piping).
 
 {
-  package ni::io;
-  use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
-                   >>= bind_op
-                   > into
-                   < from #;
 
-  use POSIX qw/dup2/;
+package ni::io;
+use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 >>= bind_op
+                 > into
+                 < from #;
 
-  # Methods implemented by children
-  sub quoted_into { ... }
-  sub quoted_from { ... }
+BEGIN { *gen = \&{ni::gen} }
 
-  sub flatten { ($_[0]) }
+use POSIX qw/dup2/;
 
-  # Transforms
-  sub plus_op   { $_[0]->plus($_[1]) }
-  sub bind_op   { $_[0]->bind($_[1]) }
-  sub mapone_op { $_[0]->mapone($_[1]) }
-  sub reduce_op { $_[0]->reduce($_[1], {}) }
-  sub grep_op   { $_[0]->grep($_[1]) }
-  sub pipe_op   { $_[0]->pipe($_[1]) }
+# Methods implemented by children
+sub source_gen { ... }     # gen to source from this thing
+sub sink_gen   { ... }     # gen to sink into this thing
 
-  sub plus    { ::ni_sum(@_) }
-  sub bind    { ::ni_bind(@_) }
-  sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
-  sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-  sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
-  sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
-  sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
+sub flatten { ($_[0]) }
 
-  # Utility functions
-  sub free_refs_after {
-    # Breaks cycles that would prevent Perl from freeing the refs hash
-    my $refs = shift @_;
-    delete ${$refs}{$_} for keys %$refs;
-    @_;
-  }
+# Transforms
+sub plus_op   { $_[0]->plus($_[1]) }
+sub bind_op   { $_[0]->bind($_[1]) }
+sub mapone_op { $_[0]->mapone($_[1]) }
+sub reduce_op { $_[0]->reduce($_[1], {}) }
+sub grep_op   { $_[0]->grep($_[1]) }
+sub pipe_op   { $_[0]->pipe($_[1]) }
 
-  # User-facing methods
-  sub from {
-    my ($self, $source_fh) = @_;
-    my $fh_gensym = ni::gensym 'fh';
-    my $code      = $self->quoted_from("while (<\$$fh_gensym>)",
-                                       my $refs = {});
-    $refs->{$fh_gensym} = $source_fh;
+sub plus    { ::ni_sum(@_) }
+sub bind    { ::ni_bind(@_) }
+sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
+sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
+sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
+sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
+sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
 
-    my $f = eval($code = qq{
-    package main;
-    sub {
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $code
-    }});
-    die "$@ evaluating\n$code" if $@;
-    free_refs_after $refs, $f->($refs);
-  }
+# User-facing methods
+sub from {
+  my ($self, $source_fh) = @_;
+  gen('from:fh', {fh => $source_fh},
+    q{ while (<%fh>) {
+         %<<body
+       } })->subst({body => $self->sink_gen})->run;
+}
 
-  sub from_fh {
-    my ($self) = @_;
-    pipe my $out, my $in or die "pipe failed: $!";
-    unless (fork) {
-      close $in;
-      $self->from($out);
-      close $out;
-      exit;
-    }
-    close $out;
-    $in;
-  }
-
-  sub into {
-    my ($self, $dest_fh) = @_;
-    my $fh_gensym = ni::gensym 'fh';
-    my $code      = $self->quoted_into("print \$$fh_gensym \$_;",
-                                       my $refs = {});
-    $refs->{$fh_gensym} = $dest_fh;
-
-    my $f = eval($code = qq{
-    package main;
-    sub {
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $code
-    }});
-    die "$@ evaluating\n$code" if $@;
-    free_refs_after $refs, $f->($refs);
-  }
-
-  sub into_fh {
-    my ($self) = @_;
-    pipe my $out, my $in or die "pipe failed: $!";
-    unless (fork) {
-      close $out;
-      $self->into($in);
-      close $in;
-      exit;
-    }
+sub from_fh {
+  my ($self) = @_;
+  pipe my $out, my $in or die "pipe failed: $!";
+  unless (fork) {
     close $in;
-    $out;
+    $self->from($out);
+    close $out;
+    exit;
   }
+  close $out;
+  $in;
+}
+
+sub into {
+  my ($self, $dest_fh) = @_;
+  $self->source_gen(gen 'into:fh', {fh => $dest_fh},
+    q{ print %fh $_; })->run;
+}
+
+sub into_fh {
+  my ($self) = @_;
+  pipe my $out, my $in or die "pipe failed: $!";
+  unless (fork) {
+    close $out;
+    $self->into($in);
+    close $in;
+    exit;
+  }
+  close $in;
+  $out;
+}
+
 }

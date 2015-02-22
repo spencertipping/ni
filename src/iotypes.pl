@@ -1,60 +1,45 @@
+BEGIN {
+
 # Bidirectional file IO
 defio 'file',
-sub {
-  my ($read, $write) = @_;
-
-  open my $read_new, $read or die "failed to open $read: $!"
-    if !ref $read and defined $read;
-  $read_new //= $read;
-
-  open my $write_new, $write or die "failed to open $write: $!"
-    if !ref $write and defined $write;
-  $write_new //= $write;
-
-  die "must specify at least one end (read, write) of the file"
-    unless defined $read_new || defined $write_new;
-  [$read_new, $write_new];
-},
+sub { [@_] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $fh_gensym = gensym 'fh';
-    die "cannot read from file (opened write-only)"
-      unless defined($refs->{$fh_gensym} = $self->[0]);
-    qq{
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      while (<\$$fh_gensym>) {
-        $code
-      }
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    unless (ref $$self[0] eq 'GLOB') {
+      open my $fh, $$self[0] or die "failed to open $$self[0]: $!";
+      $$self[0] = $fh;
+    }
+    gen('from:file', {fh => $$self[0]},
+      q{ while (<%fh>) {
+           %<<body
+         } }) % {body => $destination};
   },
 
-  quoted_from => sub {
-    my ($self, $prefix, $refs) = @_;
-    my $fh_gensym = gensym 'fh';
-    die "cannot write into file (opened read-only)"
-      unless defined($refs->{$fh_gensym} = $self->[1]);
-    qq{
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $prefix {
-        print \$$fh_gensym \$_;
-      }
-    };
+  sink_gen => sub {
+    my ($self) = @_;
+    unless (ref $$self[1] eq 'GLOB') {
+      open my $fh, $$self[1] or die "failed to open $$self[1]: $!";
+      $$self[1] = $fh;
+    }
+    gen('into:file', {fh => $$self[1]}, q{ print %fh $_; });
   },
 };
 
-defio 'const',
+defio 'memory',
 sub { [@_] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $gensym = gensym 'const';
-    $refs->{$gensym} = $self;
-    qq{
-      for (\@{\$_[0]->{'$gensym'}}) {
-        $code
-      }
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    gen('from:memory', {xs => $self},
+      q{ for (@{%xs}) {
+           %<<body
+         } }) % {body => $destination};
+  },
+
+  sink_gen => sub {
+    my ($self) = @_;
+    gen('into:memory', {xs => $self}, q{ push @{%xs}, $_; });
   },
 };
 
@@ -62,10 +47,16 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
-  flatten     => sub { @{$_[0]} },
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    join "\n;\n", map $_->quoted_into($code, $refs), @$self;
+  flatten    => sub { @{$_[0]} },
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    return gen('empty', {}, '') unless @$self;
+    my ($first, @others) = @$self;
+    my $gen = $first->source_gen($destination);
+    $gen = gen('+', {}, q{ %<<x; %<<y }) %
+      {x => $gen,
+       y => $_->source_gen($destination)} for @others;
+    $gen;
   },
 };
 
@@ -73,23 +64,10 @@ sub { [map $_->flatten, @_] },
 defio 'cat',
 sub { \$_[0] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $refs_gensym = gensym 'refs';
-    my $code_gensym = gensym 'code';
-    $refs->{$refs_gensym} = $refs;
-    $refs->{$code_gensym} = $code;
-
-    my $loop = $$self->quoted_into(qq{
-      eval \$_->quoted_into(\$$code_gensym, \$$refs_gensym);
-      die \$@ if \$@;
-    }, $refs);
-
-    qq{
-      my \$$refs_gensym = \$_[0]->{'$refs_gensym'};
-      my \$$code_gensym = \$_[0]->{'$code_gensym'};
-      $loop
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    $$self->source_gen(gen('cat:transform', {dest => $destination},
+      q{ $_->source_gen(%dest)->run; }));
   },
 };
 
@@ -97,76 +75,79 @@ sub { \$_[0] },
 defio 'bind',
 sub { +{ base => $_[0], code_transform => $_[1] } },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $transformed = $self->{code_transform}->($code, $refs);
-    $self->{base}->quoted_into($transformed, $refs);
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    $$self{base}->source_gen($$self{code_transform}($destination));
   },
 };
 
+sub into_form {
+  # TODO
+  ...
+}
+
+sub invocation {
+  my ($f, @args) = @_;
+  if (@args || ref $f eq 'CODE' || $f =~ s/^#//) {
+    # We need to generate a function call.
+    gen('fn:AA', {f => $f, args => [@args]},
+      q{ @_ = %f->(@_, @{%args}); });
+  } else {
+    # We can inline the expression to avoid any function call overhead.
+    gen('fn:AA', {}, qq{ \@_ = (%<<f); }) % {f => $f};
+  }
+}
+
 # Bindings for common transformations
 sub flatmap_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ for (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
-            $code
-          } };
-    } else {
-      qq{ for ($f) {
-            $code;
-          } };
-    }
+    my ($into) = @_;
+    gen('flatmap:AV', {},
+      q{ %<<invocation
+         for (@_) {
+           %<<body
+         } }) % {invocation => into_form('AL', $i), body => $into};
   };
 }
 
 sub mapone_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (1 || ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ if (defined(\$_ = \$_[0]->{'$f_gensym'}->(
-                \$_,
-                \@{\$_[0]->{'$args_gensym'}}))) {
-            $code
-          } };
-    } else {
-      qq{ if (defined(\$_ = $f)) {;
-            $code
-          } };
-    }
+    my ($into) = @_;
+    alternatives(
+      gen('mapone:AA', {},
+        q{ %<<invocation
+           if (@_) {
+             %<<body
+           } }) % {invocation => $i, body => $into},
+
+      gen('mapone:AL', {},
+        q{ %<<invocation
+           if (defined $_) {
+             %<<body
+           } }) % {invocation => $i, body => $into}
+    );
   };
 }
 
 sub grep_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ if (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
-            $code
-          } };
-    } else {
-      qq{ if ($f) {
-            $code
-          } };
-    }
+    my ($into) = @_;
+    alternatives(
+      gen('grep:AA', {},
+        q{ %<<invocation
+           if ($_) {
+             %<<body
+           } }) % {invocation => $i, body => $into},
+
+      gen('grep:AL', {},
+        q{ %<<invocation
+           if ($_[0]) {
+             %<<body
+           } }) % {invocation => $i, body => $into}
+    );
   };
 }
 
@@ -199,4 +180,6 @@ sub reduce_binding {
           } };
     }
   };
+}
+
 }

@@ -41,6 +41,127 @@ sub compile {
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
 }
+# Code generator
+# This exists because I want gensyms and external references to be easier to
+# deal with. It also supports some nice stuff like insertion points and
+# peephole optimizations.
+
+BEGIN {
+
+sub ni::gen::new;
+sub gen { ni::gen->new(@_) }
+
+package ni::gen;
+
+use overload qw# % subst  * map  @{} inserted_code_keys  "" compile #;
+
+our $gensym_id  = 0;
+our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
+sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
+
+# Language definitions
+our $perl = {
+  use_ref => sub { "\$_[0]->{'$_[0]'}" },
+  comment => sub { "#$_[0]\n" },
+};
+
+sub parse_code;
+sub new {
+  my ($class, $sig, $refs, $code, $language) = @_;
+  my ($fragments, $gensyms, $insertions) =
+    parse_code($code, $language //= $perl);
+
+  exists $$gensyms{$_} or die "undefined ref $_ in $code" for keys %$refs;
+  exists $$refs{$_}    or die "unused ref $_ in $code"    for keys %$gensyms;
+
+  bless { sig               => $sig,
+          fragments         => $fragments,
+          gensym_names      => $gensyms,
+          insertion_indexes => $insertions,
+          inserted_code     => {},
+          refs              => $refs // {},
+          language          => $language },
+        $class;
+}
+
+sub build_ref_hash {
+  my ($self, $refs) = @_;
+  $refs //= {};
+  $$refs{$_} = $$self{refs}{$_} for keys $$self{refs};
+  $$self{inserted_code}{$_}->build_ref_hash($refs) for @$self;
+  $refs;
+}
+
+sub inserted_code_keys {
+  my ($self) = @_;
+  sort keys %{$$self{inserted_code}};
+}
+
+sub subst {
+  my ($self, $vars) = @_;
+  for (keys %$vars) {
+    die "unknown subst var: $_"
+      unless exists $$self{insertion_indexes}{$_};
+    $$self{inserted_code}{$_} =
+      $$self{fragments}[$$self{insertion_indexes}{$_}] = $$vars{$_};
+  }
+  $self;
+}
+
+sub map {
+  my ($self, $f) = @_;
+  $f = ni::compile $f;
+  my $y = &$f($self);
+  return $y unless $y eq $self;
+
+  # If we haven't changed, then operate independently on the
+  # already-substituted code fragments and build a new instance.
+  my $new = bless {}, ref $self;
+  $$new{$_} = $$self{$_} for keys %$self;
+  $$new{fragments}     = [@{$$new{fragments}}];
+  $$new{inserted_code} = {%{$$new{inserted_code}}};
+
+  $new % {map {$_, $$new{inserted_code}{$_} * $f} @$new};
+}
+
+sub compile {
+  my ($self) = @_;
+  join '', @{$$self{fragments}};
+}
+
+sub run {
+  my ($self) = @_;
+  my $code = $self->compile;
+  my $f = eval "package main; sub {\n$code\n}";
+  die "$@ compiling\n$code" if $@;
+
+  my $refs   = $self->build_ref_hash;
+  my @result = &$f($refs);
+  delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
+  @result;
+}
+
+sub parse_code {
+  # Returns ([@code_fragments], {gensym_mapping}, {insertion_indexes})
+  my ($code, $language) = @_;
+  my @pieces = split /(\%\w+|\%\<\<\w+)/, $code;
+  my @fragments;
+  my %gensyms;
+  my %insertion_points;
+  for (0..$#pieces) {
+    if (/^\%(\w+)$/) {
+      push(@fragments, $$language{use_ref}($gensyms{$1} = gensym $1));
+    } elsif (/^\%\<\<(\w+)$/) {
+      $insertion_points{$1} = $_;
+      push @fragments, $$language{comment}("%<< $1");
+    } else {
+      push @fragments, $_;
+    }
+  }
+  ([@fragments], {%gensyms}, {%insertion_points});
+}
+
+}
 # Extensible IO stream abstraction
 # Streams are defined by the Perl code that runs in order to put their values
 # somewhere. This abstraction ends up getting completely erased at runtime,
@@ -82,144 +203,118 @@ sub reduce_binding;
 sub grep_binding;
 sub pipe_binding;
 
-our $gensym_id  = 0;
-our $randomness = join '', map sprintf("%04x", rand(65536)), 0..8;
-sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
-
 # Internally we're using these IO objects to generate imperative code, so it's
 # going to be source-driven. This means we can't do much until we know where
 # the values need to go (though we can defer that by fork/piping).
 
 {
-  package ni::io;
-  use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
-                   >>= bind_op
-                   > into
-                   < from #;
 
-  use POSIX qw/dup2/;
+package ni::io;
+use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 >>= bind_op
+                 > into
+                 < from #;
 
-  # Methods implemented by children
-  sub quoted_into { ... }
-  sub quoted_from { ... }
+BEGIN { *gen = \&{ni::gen} }
 
-  sub flatten { ($_[0]) }
+use POSIX qw/dup2/;
 
-  # Transforms
-  sub plus_op   { $_[0]->plus($_[1]) }
-  sub bind_op   { $_[0]->bind($_[1]) }
-  sub mapone_op { $_[0]->mapone($_[1]) }
-  sub reduce_op { $_[0]->reduce($_[1], {}) }
-  sub grep_op   { $_[0]->grep($_[1]) }
-  sub pipe_op   { $_[0]->pipe($_[1]) }
+# Methods implemented by children
+sub source_gen { ... }     # gen to source from this thing
+sub sink_gen   { ... }     # gen to sink into this thing
 
-  sub plus    { ::ni_sum(@_) }
-  sub bind    { ::ni_bind(@_) }
-  sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
-  sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-  sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
-  sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
-  sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
+sub flatten { ($_[0]) }
 
-  # Utility functions
-  sub free_refs_after {
-    # Breaks cycles that would prevent Perl from freeing the refs hash
-    my $refs = shift @_;
-    delete ${$refs}{$_} for keys %$refs;
-    @_;
-  }
+# Transforms
+sub plus_op   { $_[0]->plus($_[1]) }
+sub bind_op   { $_[0]->bind($_[1]) }
+sub mapone_op { $_[0]->mapone($_[1]) }
+sub reduce_op { $_[0]->reduce($_[1], {}) }
+sub grep_op   { $_[0]->grep($_[1]) }
+sub pipe_op   { $_[0]->pipe($_[1]) }
 
-  # User-facing methods
-  sub from {
-    my ($self, $source_fh) = @_;
-    my $fh_gensym = ni::gensym 'fh';
-    my $code      = $self->quoted_from("while (<\$$fh_gensym>)",
-                                       my $refs = {});
-    $refs->{$fh_gensym} = $source_fh;
+sub plus    { ::ni_sum(@_) }
+sub bind    { ::ni_bind(@_) }
+sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
+sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
+sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
+sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
+sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
 
-    my $f = eval($code = qq{
-    package main;
-    sub {
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $code
-    }});
-    die "$@ evaluating\n$code" if $@;
-    free_refs_after $refs, $f->($refs);
-  }
+# User-facing methods
+sub from {
+  my ($self, $source_fh) = @_;
+  gen('from:fh', {fh => $source_fh},
+    q{ while (<%fh>) {
+         %<<body
+       } })->subst({body => $self->sink_gen})->run;
+}
 
-  sub from_fh {
-    my ($self) = @_;
-    pipe my $out, my $in or die "pipe failed: $!";
-    unless (fork) {
-      close $in;
-      $self->from($out);
-      close $out;
-      exit;
-    }
-    close $out;
-    $in;
-  }
-
-  sub into {
-    my ($self, $dest_fh) = @_;
-    my $fh_gensym = ni::gensym 'fh';
-    my $code      = $self->quoted_into("print \$$fh_gensym \$_;",
-                                       my $refs = {});
-    $refs->{$fh_gensym} = $dest_fh;
-
-    my $f = eval($code = qq{
-    package main;
-    sub {
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $code
-    }});
-    die "$@ evaluating\n$code" if $@;
-    free_refs_after $refs, $f->($refs);
-  }
-
-  sub into_fh {
-    my ($self) = @_;
-    pipe my $out, my $in or die "pipe failed: $!";
-    unless (fork) {
-      close $out;
-      $self->into($in);
-      close $in;
-      exit;
-    }
+sub from_fh {
+  my ($self) = @_;
+  pipe my $out, my $in or die "pipe failed: $!";
+  unless (fork) {
     close $in;
-    $out;
+    $self->from($out);
+    close $out;
+    exit;
   }
+  close $out;
+  $in;
+}
+
+sub into {
+  my ($self, $dest_fh) = @_;
+  $self->source_gen(gen 'into:fh', {fh => $dest_fh},
+    q{ print %fh $_; })->run;
+}
+
+sub into_fh {
+  my ($self) = @_;
+  pipe my $out, my $in or die "pipe failed: $!";
+  unless (fork) {
+    close $out;
+    $self->into($in);
+    close $in;
+    exit;
+  }
+  close $in;
+  $out;
+}
+
 }
 # Data source definitions
-our @data_names;
-our %data_matchers;
-our %data_transformers;
+BEGIN {
+  our @data_names;
+  our %data_matchers;
+  our %data_transformers;
 
-sub defdata {
-  my ($name, $matcher, $transfomer) = @_;
-  die "data type $name is already defined" if exists $data_matchers{$name};
-  push @data_names, $name;
-  $data_matchers{$name}     = $matcher;
-  $data_transformers{$name} = $transfomer;
-}
-
-sub ni_io_for {
-  my ($f, @args) = @_;
-  for my $n (@data_names) {
-    return $data_transformers{$n}->($f, @args)
-      if $data_matchers{$n}->($f, @args);
+  sub defdata {
+    my ($name, $matcher, $transfomer) = @_;
+    die "data type $name is already defined" if exists $data_matchers{$name};
+    push @data_names, $name;
+    $data_matchers{$name}     = $matcher;
+    $data_transformers{$name} = $transfomer;
   }
-  die "$f does not match any known ni::io constructor";
-}
 
-sub ::ni {
-  my ($f, @args) = @_;
-  return undef unless defined $f;
-  return $f if ref $f && $f->isa('ni::io');
-  return ni_io_for($f, @args);
-}
+  sub ni_io_for {
+    my ($f, @args) = @_;
+    for my $n (@data_names) {
+      return $data_transformers{$n}->($f, @args)
+        if $data_matchers{$n}->($f, @args);
+    }
+    die "$f does not match any known ni::io constructor";
+  }
 
-*{"ni::ni"} = *{"::ni"};
+  sub ::ni {
+    my ($f, @args) = @_;
+    return undef unless defined $f;
+    return $f if ref $f && $f->isa('ni::io');
+    return ni_io_for($f, @args);
+  }
+
+  *{"ni::ni"} = *{"::ni"};
+}
 # Data source/sink implementations
 
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' }, sub { ni_file($_[0]) };
@@ -242,63 +337,48 @@ deffilter 'bz2', 'bzip2 -d', 'bzip2';
 =cut
 
 defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// }, sub { ni_file($_[0]) };
+BEGIN {
+
 # Bidirectional file IO
 defio 'file',
-sub {
-  my ($read, $write) = @_;
-
-  open my $read_new, $read or die "failed to open $read: $!"
-    if !ref $read and defined $read;
-  $read_new //= $read;
-
-  open my $write_new, $write or die "failed to open $write: $!"
-    if !ref $write and defined $write;
-  $write_new //= $write;
-
-  die "must specify at least one end (read, write) of the file"
-    unless defined $read_new || defined $write_new;
-  [$read_new, $write_new];
-},
+sub { [@_] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $fh_gensym = gensym 'fh';
-    die "cannot read from file (opened write-only)"
-      unless defined($refs->{$fh_gensym} = $self->[0]);
-    qq{
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      while (<\$$fh_gensym>) {
-        $code
-      }
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    unless (ref $$self[0] eq 'GLOB') {
+      open my $fh, $$self[0] or die "failed to open $$self[0]: $!";
+      $$self[0] = $fh;
+    }
+    gen('from:file', {fh => $$self[0]},
+      q{ while (<%fh>) {
+           %<<body
+         } }) % {body => $destination};
   },
 
-  quoted_from => sub {
-    my ($self, $prefix, $refs) = @_;
-    my $fh_gensym = gensym 'fh';
-    die "cannot write into file (opened read-only)"
-      unless defined($refs->{$fh_gensym} = $self->[1]);
-    qq{
-      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
-      $prefix {
-        print \$$fh_gensym \$_;
-      }
-    };
+  sink_gen => sub {
+    my ($self) = @_;
+    unless (ref $$self[1] eq 'GLOB') {
+      open my $fh, $$self[1] or die "failed to open $$self[1]: $!";
+      $$self[1] = $fh;
+    }
+    gen('into:file', {fh => $$self[1]}, q{ print %fh $_; });
   },
 };
 
-defio 'const',
+defio 'memory',
 sub { [@_] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $gensym = gensym 'const';
-    $refs->{$gensym} = $self;
-    qq{
-      for (\@{\$_[0]->{'$gensym'}}) {
-        $code
-      }
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    gen('from:memory', {xs => $self},
+      q{ for (@{%xs}) {
+           %<<body
+         } }) % {body => $destination};
+  },
+
+  sink_gen => sub {
+    my ($self) = @_;
+    gen('into:memory', {xs => $self}, q{ push @{%xs}, $_; });
   },
 };
 
@@ -306,10 +386,16 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
-  flatten     => sub { @{$_[0]} },
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    join "\n;\n", map $_->quoted_into($code, $refs), @$self;
+  flatten    => sub { @{$_[0]} },
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    return gen('empty', {}, '') unless @$self;
+    my ($first, @others) = @$self;
+    my $gen = $first->source_gen($destination);
+    $gen = gen('+', {}, q{ %<<x; %<<y }) %
+      {x => $gen,
+       y => $_->source_gen($destination)} for @others;
+    $gen;
   },
 };
 
@@ -317,23 +403,10 @@ sub { [map $_->flatten, @_] },
 defio 'cat',
 sub { \$_[0] },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $refs_gensym = gensym 'refs';
-    my $code_gensym = gensym 'code';
-    $refs->{$refs_gensym} = $refs;
-    $refs->{$code_gensym} = $code;
-
-    my $loop = $$self->quoted_into(qq{
-      eval \$_->quoted_into(\$$code_gensym, \$$refs_gensym);
-      die \$@ if \$@;
-    }, $refs);
-
-    qq{
-      my \$$refs_gensym = \$_[0]->{'$refs_gensym'};
-      my \$$code_gensym = \$_[0]->{'$code_gensym'};
-      $loop
-    };
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    $$self->source_gen(gen('cat:transform', {dest => $destination},
+      q{ $_->source_gen(%dest)->run; }));
   },
 };
 
@@ -341,76 +414,79 @@ sub { \$_[0] },
 defio 'bind',
 sub { +{ base => $_[0], code_transform => $_[1] } },
 {
-  quoted_into => sub {
-    my ($self, $code, $refs) = @_;
-    my $transformed = $self->{code_transform}->($code, $refs);
-    $self->{base}->quoted_into($transformed, $refs);
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    $$self{base}->source_gen($$self{code_transform}($destination));
   },
 };
 
+sub into_form {
+  # TODO
+  ...
+}
+
+sub invocation {
+  my ($f, @args) = @_;
+  if (@args || ref $f eq 'CODE' || $f =~ s/^#//) {
+    # We need to generate a function call.
+    gen('fn:AA', {f => $f, args => [@args]},
+      q{ @_ = %f->(@_, @{%args}); });
+  } else {
+    # We can inline the expression to avoid any function call overhead.
+    gen('fn:AA', {}, qq{ \@_ = (%<<f); }) % {f => $f};
+  }
+}
+
 # Bindings for common transformations
 sub flatmap_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ for (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
-            $code
-          } };
-    } else {
-      qq{ for ($f) {
-            $code;
-          } };
-    }
+    my ($into) = @_;
+    gen('flatmap:AV', {},
+      q{ %<<invocation
+         for (@_) {
+           %<<body
+         } }) % {invocation => into_form('AL', $i), body => $into};
   };
 }
 
 sub mapone_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (1 || ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ if (defined(\$_ = \$_[0]->{'$f_gensym'}->(
-                \$_,
-                \@{\$_[0]->{'$args_gensym'}}))) {
-            $code
-          } };
-    } else {
-      qq{ if (defined(\$_ = $f)) {;
-            $code
-          } };
-    }
+    my ($into) = @_;
+    alternatives(
+      gen('mapone:AA', {},
+        q{ %<<invocation
+           if (@_) {
+             %<<body
+           } }) % {invocation => $i, body => $into},
+
+      gen('mapone:AL', {},
+        q{ %<<invocation
+           if (defined $_) {
+             %<<body
+           } }) % {invocation => $i, body => $into}
+    );
   };
 }
 
 sub grep_binding {
-  my ($f, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation @_;
   sub {
-    my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ if (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
-            $code
-          } };
-    } else {
-      qq{ if ($f) {
-            $code
-          } };
-    }
+    my ($into) = @_;
+    alternatives(
+      gen('grep:AA', {},
+        q{ %<<invocation
+           if ($_) {
+             %<<body
+           } }) % {invocation => $i, body => $into},
+
+      gen('grep:AL', {},
+        q{ %<<invocation
+           if ($_[0]) {
+             %<<body
+           } }) % {invocation => $i, body => $into}
+    );
   };
 }
 
@@ -443,6 +519,8 @@ sub reduce_binding {
           } };
     }
   };
+}
+
 }
 # High-level pipe operations, each of which corresponds to a command-line
 # option. They can also be used from compiled code.
