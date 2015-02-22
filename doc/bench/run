@@ -11,16 +11,19 @@ wc testdata
 
 testcase() {
   echo -e "\n\n$1"
-  for i in $(seq 2); do
+  for i in $(seq 4); do
     eval "time $2 > /dev/null"
   done
 }
 
-testcase 'C program' './pair-with-length < testdata'
+if false; then
 testcase '/bin/cut'  'cut -f1 < testdata'
 testcase '/bin/wc'   'wc -l < testdata'
 testcase '/bin/sort' 'sort < testdata'
 testcase 'fast sort' 'sort -S 256M --parallel=4 < testdata'
+fi
+
+testcase 'C program' './pair-with-length < testdata'
 testcase 'perl 1'    'perl pair-with-length-1.pl < testdata'
 testcase 'perl 2'    'perl pair-with-length-2.pl < testdata'
 testcase 'perl 3'    'perl pair-with-length-3.pl < testdata'
@@ -29,6 +32,10 @@ testcase 'perl 5'    'perl pair-with-length-5.pl < testdata'
 testcase 'perl 6'    'perl pair-with-length-6.pl < testdata'
 testcase 'perl 7'    'perl pair-with-length-7.pl < testdata'
 testcase 'perl 8'    'perl pair-with-length-8.pl < testdata'
+testcase 'perl 9'    'perl pair-with-length-9.pl < testdata'
+testcase 'perl 10'   'perl pair-with-length-a.pl < testdata'
+testcase 'perl 11'   'perl pair-with-length-b.pl < testdata'
+testcase 'perl 12'   'perl pair-with-length-c.pl < testdata'
 testcase 'nfu 1'     'nfu testdata -m "row %0, length %0"'
 testcase 'nfu 2'     "nfu testdata -m '\"%0\t\" . length(%0)'"
 

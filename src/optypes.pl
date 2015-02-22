@@ -5,11 +5,11 @@ use File::Temp qw/tmpnam/;
 # Meta
 defop 'self', undef, '',
   'adds the source code of ni',
-  sub { $_[0] + ni::io::array->new(self) };
+  sub { $_[0] + ni_const(self) };
 
 defop 'explain', undef, '',
   'explains the current pipeline to stderr',
-  sub { print STDERR $_[0]->name, "\n"; $_[0] };
+  sub { print STDERR $_[0]->quoted_into('print $_;', {}); $_[0] };
 
 # Functional transforms
 defop 'map', 'm', 's',

@@ -1,243 +1,116 @@
-use POSIX qw/dup2/;
-use B::Deparse;
+# Bidirectional file IO
+defio 'file',
+sub {
+  my ($read, $write) = @_;
 
-our $deparser = B::Deparse->new;
+  open my $read_new, $read or die "failed to open $read: $!"
+    if !ref $read and defined $read;
+  $read_new //= $read;
 
-sub next_or_empty {
-  my ($fh) = @_;
-  my $r = <$fh>;
-  defined $r ? ($r) : ();
-}
+  open my $write_new, $write or die "failed to open $write: $!"
+    if !ref $write and defined $write;
+  $write_new //= $write;
 
-defio 'array',
-      sub {
-        my ($self, @xs) = @_;
-        push @{$self->{peek_buffer}}, @xs;
-        $self;
-      },
+  die "must specify at least one end (read, write) of the file"
+    unless defined $read_new || defined $write_new;
+  [$read_new, $write_new];
+},
 {
-  name  => sub { "<array [@{$_[0]->{peek_buffer}}]>" },
-  _next => sub { () },
+  quoted_into => sub {
+    my ($self, $code, $refs) = @_;
+    my $fh_gensym = gensym 'fh';
+    die "cannot read from file (opened write-only)"
+      unless defined($refs->{$fh_gensym} = $self->[0]);
+    qq{
+      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
+      while (<\$$fh_gensym>) {
+        $code
+      }
+    };
+  },
+
+  quoted_from => sub {
+    my ($self, $prefix, $refs) = @_;
+    my $fh_gensym = gensym 'fh';
+    die "cannot write into file (opened read-only)"
+      unless defined($refs->{$fh_gensym} = $self->[1]);
+    qq{
+      my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
+      $prefix {
+        print \$$fh_gensym \$_;
+      }
+    };
+  },
 };
 
-defio 'fifo',
-      sub {
-        my ($self) = @_;
-        pipe $self->{out}, $self->{in};
-        $self;
-      },
+defio 'const',
+sub { [@_] },
 {
-  name    => sub { "<fifo>" },
-  _next   => sub { next_or_empty $_[0]->{out} },
-  enqueue => sub { $_[0]->{in}->print($_[1]); $_[0] },
-  close   => sub { close $_[0]->{in};         $_[0] },
+  quoted_into => sub {
+    my ($self, $code, $refs) = @_;
+    my $gensym = gensym 'const';
+    $refs->{$gensym} = $self;
+    qq{
+      for (\@{\$_[0]->{'$gensym'}}) {
+        $code
+      }
+    };
+  },
 };
 
+# Sum of multiple IOs
 defio 'sum',
-      sub {
-        my ($self, $sources) = @_;
-        $self->{sources} =
-          ref $sources && $sources->isa('ni::io')
-            ? $sources
-            : ni::io::array->new(@$sources);
-        $self->{current} = ni $sources->next;
-        $self;
-      },
+sub { [map $_->flatten, @_] },
 {
-  name  => sub { "<sum " . ($_[0]->{current} ? $_[0]->{current}->name : '')
-                         . join(' ', $_[0]->{sources}->peek(
-                                       $_[0]->{sources}->avail))
-                         . " ...>" },
-  _next => sub {
-    my ($self, $n) = @_;
-    my @result;
-    until (@result >= $n) {
-      return () unless defined $self->{current};
-      push @result, $self->{current}->next($n - @result);
-      $self->{current} = ni $self->{sources}->next if $self->{current}->eof;
-    }
-    @result;
+  flatten     => sub { @{$_[0]} },
+  quoted_into => sub {
+    my ($self, $code, $refs) = @_;
+    join "\n;\n", map $_->quoted_into($code, $refs), @$self;
   },
 };
 
-defio 'map',
-      sub {
-        my ($self, $source, $f, @args) = @_;
-        $self->{source} = $source;
-        $self->{f}      = compile $f;
-        $self->{args}   = [@args];
-        $self;
-      },
+# Concatenation of an IO of IOs
+defio 'cat',
+sub { \$_[0] },
 {
-  name  => sub { "<map " . $deparser->coderef2str($_[0]->{f})
-                         . " [@{$_[0]->{args}}]"
-                         . " " . $_[0]->{source}->name . ">" },
-  _next => sub {
-    my ($self, $n) = @_;
-    map $self->{f}->($_, @{$self->{args}}), $self->{source}->next($n);
+  quoted_into => sub {
+    my ($self, $code, $refs) = @_;
+    my $refs_gensym = gensym 'refs';
+    my $code_gensym = gensym 'code';
+    $refs->{$refs_gensym} = $refs;
+    $refs->{$code_gensym} = $code;
+
+    my $loop = $$self->quoted_into(qq{
+      eval \$_->quoted_into(\$$code_gensym, \$$refs_gensym);
+      die \$@ if \$@;
+    }, $refs);
+
+    qq{
+      my \$$refs_gensym = \$_[0]->{'$refs_gensym'};
+      my \$$code_gensym = \$_[0]->{'$code_gensym'};
+      $loop
+    };
   },
 };
 
-defio 'reduce',
-      sub {
-        my ($self, $source, $f, $init, @args) = @_;
-        $self->{source} = $source;
-        $self->{f}      = compile $f;
-        $self->{init}   = $init;
-        $self->{args}   = [@args];
-        $self;
-      },
+# Introduces arbitrary indirection into an IO's code stream.
+defio 'bind',
+sub { +{ base => $_[0], code_transform => $_[1] } },
 {
-  name  => sub { "<reduce " . $deparser->coderef2str($_[0]->{f})
-                            . " $_[0]->{init}"
-                            . " [@{$_[0]->{args}}]"
-                            . " " . $_[0]->{source}->name . ">" },
-  _next => sub {
-    my ($self) = @_;
-    my @result;
-    ($self->{init}, @result) = $self->{f}->($self->{init},
-                                            $self->{source}->next,
-                                            @{$self->{args}})
-      until $self->{source}->eof || @result;
-    @result;
+  quoted_into => sub {
+    my ($self, $code, $refs) = @_;
+    my $transformed = $self->{code_transform}->($code, $refs);
+    $self->{base}->quoted_into($transformed, $refs);
   },
 };
 
-defio 'grep',
-      sub {
-        my ($self, $source, $f, @args) = @_;
-        $self->{source} = $source;
-        $self->{f}      = compile $f;
-        $self->{args}   = [@args];
-        $self;
-      },
-{
-  name  => sub { "<grep " . $deparser->coderef2str($_[0]->{f})
-                          . " [@{$_[0]->{args}}]"
-                          . " " . $_[0]->{source}->name . ">" },
-  _next => sub {
-    my ($self) = @_;
-    my $next;
-    my $accept = 0;
-    1 until $self->{source}->eof
-         or $accept = $self->{f}->($next = $self->{source}->next,
-                                   @{$self->{args}});
-    $accept ? ($next) : ();
-  },
-};
-
-defio 'fh',
-      sub {
-        my ($self, $open_expr) = @_;
-        $self->{open_expr} = $open_expr;
-        if (ref $open_expr eq 'GLOB') {
-          $self->{fh} = $open_expr;
-        } else {
-          open $self->{fh}, $open_expr
-            or die "failed to open $open_expr: $!";
-        }
-        hot $self->{fh};
-        $self;
-      },
-{
-  name    => sub { "<fh " . $_[0]->{open_expr} . ">" },
-  enqueue => sub {
-    $_[0]->{fh}->print($_[1]);
-    $_[0];
-  },
-
-  close => sub {
-    close $_[0]->{fh};
-    $_[0];
-  },
-
-  _next => sub { next_or_empty $_[0]->{fh} },
-};
-
-defio 'process',
-      sub {
-        my ($self, @args) = @_;
-        pipe my $in_r,        $self->{stdin};
-        pipe $self->{stdout}, my $out_w;
-
-        $self->{exec_args} = [@args];
-
-        # Go ahead and start the process.
-        unless ($self->{pid} = fork) {
-          close STDIN;
-          dup2 fileno($in_r),  0 or die "failed to connect stdin: $!";
-          dup2 fileno($out_w), 1 or die "failed to connect stdout: $!";
-          exec @args;
-        }
-        hot $self->{stdin};
-        hot $self->{stdout};
-        $self;
-      },
-{
-  name => sub { "<process " . $_[0]->{pid}
-                            . " [" . join(' ', @{$_[0]->{exec_args}}) . "]"
-                            . ">" },
-
-  enqueue => sub {
-    $_[0]->{stdin}->print($_[1]);
-    $_[0];
-  },
-
-  close => sub {
-    close $_[0]->{stdin};
-    $_[0];
-  },
-
-  _next => sub {
-    my ($self) = @_;
-    my $fh = $self->{stdout};
-    my $v  = <$fh>;           # force scalar context
-    defined $v ? ($v) : ();
-  },
-};
-
-# Bidirectional filtered file thing
-defio 'filter',
-      sub {
-        my ($self, $base, $read, $write) = @_;
-        $self->{base}      = $base;
-        $self->{read_cmd}  = $read;
-        $self->{write_cmd} = $write;
-        $self->{reader}    = undef;
-        $self->{writer}    = undef;
-        $self;
-      },
-{
-  name => sub { "<filter [" . ($_[0]->{in_cmd}  // '') . "] "
-                      . "[" . ($_[0]->{out_cmd} // '') . "] "
-                      . $_[0]->{base}->name . ">" },
-
-  reader => sub {
-    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{read_cmd}
-      // die "filter object " . $_[0]->name . " created without a reader");
-  },
-
-  writer => sub {
-    unless (defined $_[0]->{writer}) {
-      $_[0]->{writer} = ni_process($_[0]->{write_cmd}
-        // die "filter object " . $_[0]->name . " created without a writer");
-      $_[0]->{base}->from($_[0]->{writer});
-    }
-    $_[0]->{writer};
-  },
-
-  enqueue => sub {
-    $_[0]->writer->enqueue($_[1]);
-    $_[0];
-  },
-
-  close => sub {
-    close $_[0]->writer;
-    $_[0];
-  },
-
-  _next => sub {
-    my $v = $_[0]->reader->next;
-    defined $v ? ($v) : ();
-  },
-};
+# Bindings for common transformations
+sub flatmap_binding {
+  my ($base, $f, @args) = @_;
+  my $args_ref = [@args];
+  sub {
+    my ($code, $refs) = @_;
+    $refs->{$args_ref} = $args_ref;
+    # TODO
+  };
+}

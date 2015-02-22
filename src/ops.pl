@@ -63,7 +63,7 @@ sub parse_commands {
       unshift @_, map $op_shorthand_lookups{$_} // $_,
                       $o =~ /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/g;
     } else {
-      push @parsed, ['plus', $o];
+      push @parsed, ['plus', ni $o];
     }
   }
   @parsed;

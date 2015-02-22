@@ -30,22 +30,10 @@ sub preprocess_cli {
 }
 
 $|++;
-my $data = -t STDIN ? ni::io::empty : ni::io::fh->new(\*STDIN);
+my $data = -t STDIN ? ni_sum() : ni_file(\*STDIN);
 for (parse_commands preprocess_cli @ARGV) {
   my ($command, @args) = @$_;
   $data = $ni::io::{$command}($data, @args);
 }
 
-if (-t STDOUT) {
-  # Preview using a pager
-  my $fifo = ni_fifo();
-  if (fork) {
-    close STDIN;
-    dup2 fileno $fifo->{out}, 0 or die "failed to redirect stdin for pager: $!";
-    exec $ENV{NI_PAGER} // 'less';
-  } else {
-    $data->into($fifo);
-  }
-} else {
-  $data->into(\*STDOUT);
-}
+$data->into(\*STDOUT);
