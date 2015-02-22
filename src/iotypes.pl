@@ -12,7 +12,7 @@ sub next_or_empty {
 defio 'array',
       sub {
         my ($self, @xs) = @_;
-        push $self->{peek_buffer}, @xs;
+        push @{$self->{peek_buffer}}, @xs;
         $self;
       },
 {
@@ -36,8 +36,11 @@ defio 'fifo',
 defio 'sum',
       sub {
         my ($self, $sources) = @_;
-        $self->{sources} = $sources;
-        $self->{current} = $sources->next;
+        $self->{sources} =
+          ref $sources && $sources->isa('ni::io')
+            ? $sources
+            : ni::io::array->new(@$sources);
+        $self->{current} = ni $sources->next;
         $self;
       },
 {
@@ -46,14 +49,14 @@ defio 'sum',
                                        $_[0]->{sources}->avail))
                          . " ...>" },
   _next => sub {
-    my ($self) = @_;
-    return () unless defined $self->{current};
-    my $n = $self->{current}->next;
-    until (defined $n) {
-      return () unless defined($self->{current} = ni $self->{sources}->next);
-      $n = $self->{current}->next;
+    my ($self, $n) = @_;
+    my @result;
+    until (@result >= $n) {
+      return () unless defined $self->{current};
+      push @result, $self->{current}->next($n - @result);
+      $self->{current} = ni $self->{sources}->next if $self->{current}->eof;
     }
-    ($n);
+    @result;
   },
 };
 
@@ -70,10 +73,8 @@ defio 'map',
                          . " [@{$_[0]->{args}}]"
                          . " " . $_[0]->{source}->name . ">" },
   _next => sub {
-    my ($self) = @_;
-    my $next = $self->{source}->next;
-    return () unless defined $next;
-    $self->{f}->($next, @{$self->{args}});
+    my ($self, $n) = @_;
+    map $self->{f}->($_, @{$self->{args}}), $self->{source}->next($n);
   },
 };
 

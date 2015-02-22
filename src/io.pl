@@ -52,18 +52,49 @@ sub defio {
   sub not_eof { !$_[0]->{eof} }
 
   sub next {
-    my ($self) = @_;
-    return undef if $self->{eof};
-    push $self->{peek_buffer}, $self->_next
-      unless @{$self->{peek_buffer}};
-    my $next = shift $self->{peek_buffer};
-    if (defined $next) {
-      $_->enqueue($next) for @{$self->{listeners}};
-      return $next;
+    my ($self, $n) = @_;
+    if (defined $n) {
+      # Return some number of things, preferably the greater of $n or whatever
+      # we have buffered.
+      return () if $self->{eof};
+      until (@{$self->{peek_buffer}} >= $n) {
+        # Slow case: augment the peek buffer with requested elements from the
+        # underlying reader.
+        my $l = @{$self->{peek_buffer}};
+        last if $self->{eof} =
+          $l == push @{$self->{peek_buffer}},
+                     $self->_next($n - @{$self->{peek_buffer}});
+      }
+
+      # Return everything we have
+      my @result = @{$self->{peek_buffer}};
+      @{$self->{peek_buffer}} = ();
+      for my $l (@{$self->{listeners}}) {
+        $l->enqueue($_) for @result;
+      }
+      return @result;
     } else {
-      $_->close for @{$self->{listeners}};
-      $self->{eof} = 1;
-      return undef;
+      # Much slower single-read case
+      return undef if $self->{eof};
+      if (@{$self->{peek_buffer}}) {
+        # Fast(-ish) case
+        my $n = shift @{$self->{peek_buffer}};
+        $_->enqueue($n) for @{$self->{listeners}};
+        return $n;
+      } else {
+        # Quite egregiously slow case
+        push @{$self->{peek_buffer}}, $self->_next
+          unless @{$self->{peek_buffer}};
+        my $next = shift $self->{peek_buffer};
+        if (defined $next) {
+          $_->enqueue($next) for @{$self->{listeners}};
+          return $next;
+        } else {
+          $_->close for @{$self->{listeners}};
+          $self->{eof} = 1;
+          return undef;
+        }
+      }
     }
   }
 
@@ -71,8 +102,9 @@ sub defio {
     my ($self, $n) = @_;
     my @xs;
     return () if $n <= 0;
-    push $self->{peek_buffer}, @xs
-      while (@xs = $self->_next) && @{$self->{peek_buffer}} < $n;
+    push @{$self->{peek_buffer}}, @xs
+      while @{$self->{peek_buffer}} < $n
+        and @xs = $self->_next($n - @{$self->{peek_buffer}});
     @{$self->{peek_buffer}}[0..($n - 1)];
   }
 
@@ -97,9 +129,10 @@ sub defio {
     # Forwards all contents into the given io, blocking until complete.
     # WARNING: this function leaves the destination open afterwards.
     my ($self, $dest) = @_;
-    $dest = ::ni($dest);
-    my $x;
-    $dest->enqueue($x) while defined($x = $self->next);
+    $dest = ::ni $dest;
+    until ($self->eof) {
+      $dest->enqueue($_) for $self->next(64);
+    }
     $dest;
   }
 
@@ -108,7 +141,7 @@ sub defio {
     my ($self, @sources) = @_;
     for (@sources) {
       unless (fork) {
-        ni($_)->into($self);
+        ::ni($_)->into($self);
         $self->close;
         exit;
       }

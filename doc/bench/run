@@ -1,0 +1,26 @@
+#!/bin/bash
+
+gcc -o pair-with-length pair-with-length.c
+
+rm -f testdata
+for i in $(seq 10); do
+  cat /usr/share/dict/words >> testdata
+done
+
+testcase() {
+  echo "$1"
+  for i in $(seq 2); do
+    eval "time $2 > /dev/null"
+  done
+}
+
+testcase 'C program' './pair-with-length < testdata'
+testcase 'perl 1'    'perl pair-with-length-1.pl < testdata'
+testcase 'perl 2'    'perl pair-with-length-2.pl < testdata'
+testcase 'perl 3'    'perl pair-with-length-3.pl < testdata'
+testcase 'perl 4'    'perl pair-with-length-4.pl < testdata'
+testcase 'perl 5'    'perl pair-with-length-5.pl < testdata'
+testcase 'nfu 1'     'nfu testdata -m "row %0, length %0"'
+testcase 'nfu 2'     "nfu testdata -m '\"%0\t\" . length(%0)'"
+
+rm testdata pair-with-length
