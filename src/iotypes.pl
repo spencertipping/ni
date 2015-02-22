@@ -1,4 +1,7 @@
 use POSIX qw/dup2/;
+use B::Deparse;
+
+our $deparser = B::Deparse->new;
 
 sub next_or_empty {
   my ($fh) = @_;
@@ -9,10 +12,11 @@ sub next_or_empty {
 defio 'array',
       sub {
         my ($self, @xs) = @_;
-        $self->{peek_buffer} = [@xs];
+        push $self->{peek_buffer}, @xs;
         $self;
       },
 {
+  name  => sub { "<array [@{$_[0]->{peek_buffer}}]>" },
   _next => sub { () },
 };
 
@@ -23,10 +27,11 @@ defio 'fifo',
         $self;
       },
 {
-  _next   => sub { next_or_empty $self->{out} },
-  enqueue => sub { $self->{in}->print($_[1]); $self },
-  close   => sub { close $self->{in};         $self },
-}
+  name    => sub { "<fifo>" },
+  _next   => sub { next_or_empty $_[0]->{out} },
+  enqueue => sub { $_[0]->{in}->print($_[1]); $_[0] },
+  close   => sub { close $_[0]->{in};         $_[0] },
+};
 
 defio 'sum',
       sub {
@@ -36,13 +41,17 @@ defio 'sum',
         $self;
       },
 {
+  name  => sub { "<sum " . ($_[0]->{current} ? $_[0]->{current}->name : '')
+                         . join(' ', map $_->name,
+                                         $_[0]->{sources}->peek(
+                                           $_[0]->{sources}->avail))
+                         . " ...>" },
   _next => sub {
     my ($self) = @_;
     my $n;
     until ($self->{sources}->eof || defined $n) {
-      $self->{current} //= ni $self->{sources}->next;
-      $n = $self->{current}->next;
-      shift $self->{sources} unless defined $n;
+      last if defined $self->{current} && defined($n = $self->{current}->next);
+      $self->{current} = $self->{sources}->next unless $self->{current};
     }
     defined $n ? ($n) : ();
   },
@@ -57,6 +66,9 @@ defio 'map',
         $self;
       },
 {
+  name  => sub { "<map " . $deparser->coderef2str($_[0]->{f})
+                         . " [@{$_[0]->{args}}]"
+                         . " " . $_[0]->{source}->name . ">" },
   _next => sub {
     my ($self) = @_;
     my $next = $self->{source}->next;
@@ -75,6 +87,10 @@ defio 'reduce',
         $self;
       },
 {
+  name  => sub { "<reduce " . $deparser->coderef2str($_[0]->{f})
+                            . " $_[0]->{init}"
+                            . " [@{$_[0]->{args}}]"
+                            . " " . $_[0]->{source}->name . ">" },
   _next => sub {
     my ($self) = @_;
     my @result;
@@ -95,6 +111,9 @@ defio 'grep',
         $self;
       },
 {
+  name  => sub { "<grep " . $deparser->coderef2str($_[0]->{f})
+                          . " [@{$_[0]->{args}}]"
+                          . " " . $_[0]->{source}->name . ">" },
   _next => sub {
     my ($self) = @_;
     my $next;
@@ -109,6 +128,7 @@ defio 'grep',
 defio 'fh',
       sub {
         my ($self, $open_expr) = @_;
+        $self->{open_expr} = $open_expr;
         if (ref $open_expr eq 'GLOB') {
           $self->{fh} = $open_expr;
         } else {
@@ -119,6 +139,7 @@ defio 'fh',
         $self;
       },
 {
+  name    => sub { "<fh " . $_[0]->{open_expr} . ">" },
   enqueue => sub {
     $_[0]->{fh}->print($_[1]);
     $_[0];
@@ -138,6 +159,8 @@ defio 'process',
         pipe my $in_r,        $self->{stdin};
         pipe $self->{stdout}, my $out_w;
 
+        $self->{exec_args} = [@args];
+
         # Go ahead and start the process.
         unless ($self->{pid} = fork) {
           close STDIN;
@@ -150,6 +173,10 @@ defio 'process',
         $self;
       },
 {
+  name => sub { "<process " . $_[0]->{pid}
+                            . " [" . join(' ', @{$_[0]->{exec_args}}) . "]"
+                            . ">" },
+
   enqueue => sub {
     $_[0]->{stdin}->print($_[1]);
     $_[0];
@@ -180,9 +207,13 @@ defio 'filter',
         $self;
       },
 {
+  name => sub { "<filter [" . ($_[0]->{in_cmd}  // '') . "] "
+                      . "[" . ($_[0]->{out_cmd} // '') . "] "
+                      . $_[0]->{base}->name . ">" },
+
   reader => sub {
     die "filter object " . $_[0]->name . " created without a reader"
-      unless defined $self->{in_cmd};
+      unless defined $_[0]->{in_cmd};
     $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{in_cmd});
   },
 

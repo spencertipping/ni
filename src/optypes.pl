@@ -2,6 +2,11 @@
 
 use File::Temp qw/tmpnam/;
 
+# Meta
+defop 'self', undef, '',
+  'adds the source code of ni',
+  sub { $_[0] + ni::io::array->new(self) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -51,5 +56,3 @@ defop 'order', 'o', 'aD',
     my ($in, $flags, $fields) = @_;
     $in | 'sort';
   };
-
-

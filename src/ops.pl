@@ -1,11 +1,11 @@
 # High-level pipe operations, each of which corresponds to a command-line
 # option. They can also be used from compiled code.
 
-%ni::op_shorthand_lookups = ();     # keyed by short
-%ni::op_shorthands        = ();     # keyed by long
-%ni::op_formats           = ();     # ditto
-%ni::op_usage             = ();     # ditto
-%ni::op_fns               = ();     # ditto
+our %op_shorthand_lookups;      # keyed by short
+our %op_shorthands;             # keyed by long
+our %op_formats;                # ditto
+our %op_usage;                  # ditto
+our %op_fns;                    # ditto
 
 sub defop {
   my ($long, $short, $format, $usage, $fn) = @_;
@@ -15,11 +15,15 @@ sub defop {
   }
   $op_formats{$long} = $format;
   $op_usage{$long}   = $usage;
-  $op_fn{$long}      = $fn;
-  *{"ni::io::$long"} = $fn;
+  $op_fns{$long}     = $fn;
+
+  die "operator $long already exists (possibly as a method rather than an op)"
+    if exists $ni::io::{$long};
+
+  *{"ni::io::$long"} = $fn;     # programmatic access
 }
 
-%ni::format_matchers = (
+our %format_matchers = (
   a => qr/^[a-zA-Z]+$/,
   d => qr/^[-+\.0-9]+$/,
   s => qr/^.*$/,

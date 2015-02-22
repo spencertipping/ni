@@ -1,4 +1,4 @@
-%io_constructors = ();
+our %io_constructors;
 
 sub hot {
   my ($fh) = @_;
@@ -7,8 +7,8 @@ sub hot {
 }
 
 sub defio {
-  my ($name, $detector, $constructor, $methods) = @_;
-  *{"ni::io::${name}::new"} = $ni::io_constructors{$name} = sub {
+  my ($name, $constructor, $methods) = @_;
+  *{"ni::io::${name}::new"} = $io_constructors{$name} = sub {
     my ($class, @args) = @_;
     bless $constructor->(ni::io->new, @args), $class;
   };
@@ -18,7 +18,9 @@ sub defio {
 
 {
   package ni::io;
-  use overload qw# +  plus_op  * map_op  / reduce_op  % grep_op
+  use overload qw# +  plus_op  * bind_op  / reduce_op  % grep_op
+                             >>= bind_op
+
                    <> next  0+ avail  "" name  ! eof
                    |  pipe
                    >  into     >> copy
@@ -40,10 +42,9 @@ sub defio {
   # implemented by subclasses
   sub _avail  { 0 }
   sub _next   { ... }
-  sub enqueue { die "ni::io object " . $self->name . " cannot be written to" }
-  sub close   { die "ni::io object " . $self->name . " cannot be closed" }
-
-  sub name { ref $_[0] }
+  sub name    { '[]' }
+  sub enqueue { die "ni::io object " . $_[0]->name . " cannot be written to" }
+  sub close   { die "ni::io object " . $_[0]->name . " cannot be closed" }
 
   sub eof { $_[0]->{eof} }
 
@@ -65,10 +66,11 @@ sub defio {
 
   sub peek {
     my ($self, $n) = @_;
-    my $x;
-    push $self->{peek_buffer}, $x
-      while defined($x = $self->next) && @{$self->{peek_buffer}} < $n;
-    @{$self->{peek_buffer}}[0..$n];
+    my @xs;
+    return () if $n <= 0;
+    push $self->{peek_buffer}, @xs
+      while (@xs = $self->_next) && @{$self->{peek_buffer}} < $n;
+    @{$self->{peek_buffer}}[0..($n - 1)];
   }
 
   sub slice {
@@ -92,7 +94,7 @@ sub defio {
     # Forwards all contents into the given io, blocking until complete.
     # WARNING: this function leaves the destination open afterwards.
     my ($self, $dest) = @_;
-    $dest = ::ni $dest;
+    $dest = ::ni($dest);
     my $x;
     $dest->enqueue($x) while defined($x = $self->next);
     $dest;
@@ -126,13 +128,13 @@ sub defio {
     $process;
   }
 
-  sub plus_op   { ni::io::sum   ->new(@_[0, 1]) }
-  sub map_op    { ni::io::map   ->new(@_[0, 1]) }
+  sub plus_op   { ni::io::sum   ->new(ni::io::array->new(@_[0, 1])) }
+  sub bind_op   { ni::io::map   ->new(@_[0, 1]) }
   sub grep_op   { ni::io::grep  ->new(@_[0, 1]) }
   sub reduce_op { ni::io::reduce->new(@_[0, 1], {}) }
 
-  sub plus   { ni::io::sum   ->new(@_) }
-  sub map    { ni::io::map   ->new(@_) }
+  sub plus   { ni::io::sum   ->new(ni::io::array->new(@_)) }
+  sub bind   { ni::io::map   ->new(@_) }
   sub grep   { ni::io::grep  ->new(@_) }
   sub reduce { ni::io::reduce->new(@_) }
 }

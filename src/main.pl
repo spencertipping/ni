@@ -29,9 +29,10 @@ sub preprocess_cli {
   @preprocessed;
 }
 
-my $initial = -t STDIN ? ni::io::empty : ni::io::fh->new(\*STDIN);
+$|++;
+my $data = -t STDIN ? ni::io::empty : ni::io::fh->new(\*STDIN);
 for (parse_commands preprocess_cli @ARGV) {
   my ($command, @args) = @$_;
-  $initial = ${"ni::io::$command"}->($initial, @args);
+  $data = $ni::io::{$command}($data, @args);
 }
-$initial > \*STDOUT;
+$data->into(\*STDOUT);
