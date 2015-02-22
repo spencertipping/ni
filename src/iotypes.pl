@@ -91,10 +91,10 @@ sub invocation {
   if (@args || ref $f eq 'CODE' || $f =~ s/^#//) {
     # We need to generate a function call.
     gen('fn:AA', {f => $f, args => [@args]},
-      q{ @_ = %f->(@_, @{%args}); });
+      q{ %f->(@_, @{%args}); });
   } else {
     # We can inline the expression to avoid any function call overhead.
-    gen('fn:AA', {}, qq{ \@_ = (%<<f); }) % {f => $f};
+    gen('fn:AA', {}, q{ (%<<f); }) % {f => $f};
   }
 }
 
@@ -103,9 +103,8 @@ sub flatmap_binding {
   my $i = invocation @_;
   sub {
     my ($into) = @_;
-    gen('flatmap:AV', {},
-      q{ %<<invocation
-         for (@_) {
+    gen('flatmap:AL', {},
+      q{ for (%<<invocation) {
            %<<body
          } }) % {invocation => into_form('AL', $i), body => $into};
   };
@@ -116,13 +115,12 @@ sub mapone_binding {
   sub {
     my ($into) = @_;
     alternatives(
-      gen('mapone:AA', {},
-        q{ %<<invocation
-           if (@_) {
+      gen('mapone:A', {},
+        q{ if (@_ = %<<invocation) {
              %<<body
            } }) % {invocation => $i, body => $into},
 
-      gen('mapone:AL', {},
+      gen('mapone:L', {},
         q{ %<<invocation
            if (defined $_) {
              %<<body
@@ -137,8 +135,7 @@ sub grep_binding {
     my ($into) = @_;
     alternatives(
       gen('grep:AA', {},
-        q{ %<<invocation
-           if ($_) {
+        q{ if (%<<invocation) {
              %<<body
            } }) % {invocation => $i, body => $into},
 
@@ -153,32 +150,13 @@ sub grep_binding {
 
 sub reduce_binding {
   my ($f, $init, @args) = @_;
-  my $args_ref = [@args];
-  my $args_gensym = gensym 'args';
-  my $init_gensym = gensym 'init';
-  my $f_gensym    = gensym 'f';
+  my $i = invocation $f, $init, @args;
   sub {
-    my ($code, $refs) = @_;
-    $refs->{$init_gensym} = $init;
-    my $out_gensym = gensym 'results';
-    if (ref $f eq 'CODE' || @args) {
-      $refs->{$args_gensym} = $args_ref;
-      $refs->{$f_gensym}    = compile $f;
-      qq{ (\$$init_gensym, \@$out_gensym) =
-          \$_[0]->{'$f_gensym'}->(\$$init_gensym, \$_,
-                                  \@{\$_[0]->{'$args_gensym'}});
-          for (\@$out_gensym) {
-            $code
-          } };
-    } else {
-      # Replace the custom symbol '%init' with the accumulator so the function
-      # has a way to refer to it.
-      $f =~ s/%init/\$$init_gensym/g;
-      qq{ (\$$init_gensym, \@$out_gensym) = $f;
-          for (\@$out_gensym) {
-            $code;
-          } };
-    }
+    my ($into) = @_;
+    gen('reduce:AA', {},
+      q{ for (%<<invocation) {
+           %<<body
+         } }) % {invocation => $i, body => $into};
   };
 }
 

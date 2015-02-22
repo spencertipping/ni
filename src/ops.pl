@@ -69,20 +69,3 @@ sub parse_commands {
   }
   @parsed;
 }
-
-# Record transformation
-# Most of the transforms within ni are in-process, so it's possible for one
-# operator to append a data element that would be interpreted differently if we
-# later added an external command like a sort. We want to avoid this issue as
-# much as possible, which we can do by using some default idioms.
-
-sub ::row {
-  my $s = join "\t", @_;
-  $s =~ s/\n//g;
-  "$s\n";
-}
-
-sub with_fields {
-  my ($code) = @_;
-  compile "chomp; \@_ = split /\\t/; \$_ = $code";
-}

@@ -14,44 +14,37 @@ use overload qw# % subst  * map  @{} inserted_code_keys  "" compile #;
 
 our $gensym_id  = 0;
 our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
-sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
-
-# Language definitions
-our $perl = {
-  use_ref => sub { "\$_[0]->{'$_[0]'}" },
-  comment => sub { "#$_[0]\n" },
-};
+sub gensym { '$' . ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
 
 sub parse_code;
 sub new {
-  my ($class, $sig, $refs, $code, $language) = @_;
-  my ($fragments, $gensyms, $insertions) =
-    parse_code($code, $language //= $perl);
+  my ($class, $sig, $refs, $code) = @_;
+  my ($fragments, $gensyms, $insertions) = parse_code $code;
 
   exists $$gensyms{$_} or die "undefined ref $_ in $code" for keys %$refs;
-  exists $$refs{$_}    or die "unused ref $_ in $code"    for keys %$gensyms;
+  exists $$refs{$_}    or die    "unused ref $_ in $code" for keys %$gensyms;
 
+  # NB: always copy the fragments because parse_code returns cached results
   bless { sig               => $sig,
-          fragments         => $fragments,
+          fragments         => [@$fragments],
           gensym_names      => $gensyms,
           insertion_indexes => $insertions,
           inserted_code     => {},
-          refs              => $refs // {},
-          language          => $language },
+          refs              => $refs // {} },
         $class;
 }
 
 sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
-  $$refs{$_} = $$self{refs}{$_} for keys $$self{refs};
+  $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
   $$self{inserted_code}{$_}->build_ref_hash($refs) for @$self;
   $refs;
 }
 
 sub inserted_code_keys {
   my ($self) = @_;
-  sort keys %{$$self{inserted_code}};
+  [sort keys %{$$self{inserted_code}}];
 }
 
 sub subst {
@@ -88,34 +81,41 @@ sub compile {
 
 sub run {
   my ($self) = @_;
-  my $code = $self->compile;
-  my $f = eval "package main; sub {\n$code\n}";
+  my $code     = $self->compile;
+  my $refs     = $self->build_ref_hash;
+  my $bindings = join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_),
+                                keys %$refs;
+  my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
   die "$@ compiling\n$code" if $@;
 
-  my $refs   = $self->build_ref_hash;
   my @result = &$f($refs);
   delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
   @result;
 }
 
+our %parsed_code_cache;
 sub parse_code {
   # Returns ([@code_fragments], {gensym_mapping}, {insertion_indexes})
-  my ($code, $language) = @_;
-  my @pieces = split /(\%\w+|\%\<\<\w+)/, $code;
+  my ($code) = @_;
+  return @$_ if defined($_ = $parsed_code_cache{$code});
+
+  my @pieces = split /(%\w+|%<<\w+)/, $code;
   my @fragments;
   my %gensyms;
   my %insertion_points;
   for (0..$#pieces) {
-    if (/^\%(\w+)$/) {
-      push(@fragments, $$language{use_ref}($gensyms{$1} = gensym $1));
-    } elsif (/^\%\<\<(\w+)$/) {
+    if ($pieces[$_] =~ /^%(\w+)$/) {
+      push(@fragments, $gensyms{$1} = gensym $1);
+    } elsif ($pieces[$_] =~ /^%<<(\w+)$/) {
       $insertion_points{$1} = $_;
-      push @fragments, $$language{comment}("%<< $1");
+      push @fragments, "# %<<$1\n";
     } else {
-      push @fragments, $_;
+      push @fragments, $pieces[$_];
     }
   }
-  ([@fragments], {%gensyms}, {%insertion_points});
+  @{$parsed_code_cache{$code} = [[@fragments],
+                                 {%gensyms},
+                                 {%insertion_points}]};
 }
 
 }

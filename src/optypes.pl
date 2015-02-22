@@ -5,20 +5,16 @@ use File::Temp qw/tmpnam/;
 # Meta
 defop 'self', undef, '',
   'adds the source code of ni',
-  sub { $_[0] + ni_const(self) };
-
-defop 'explain-pipeline', undef, '',
-  'explains the current pipeline',
-  sub { ni_const($_[0]->quoted_into('print $_;', {})) };
+  sub { $_[0] + ni_memory(self) };
 
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
-  sub { $_[0] * with_fields $_[1] };
+  sub { $_[0] * $_[1] };
 
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
-  sub { $_[0] % with_fields $_[1] };
+  sub { $_[0] % $_[1] };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
@@ -28,7 +24,7 @@ defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',
   sub { my $f = $_[1] // tmpnam;
         $_[0]->into(ni $_[1]);
-        ni::io::array->new($f) };
+        ni_memory($f) };
 
 defop 'branch', 'b', 's',
   'splits input by its first field, forwarding to subprocesses',
