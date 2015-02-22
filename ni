@@ -25,7 +25,7 @@ our %compiled_functions;
 
 sub expand_function_shorthands {
   my ($code) = @_;
-  $code =~ s/%(\d+)/\$_[$1]/g;
+  $code =~ s/%(\d+)/F($1)/g;    # FIXME
 
   # JSON shortcuts
   1 while $code =~ s/([a-zA-Z0-9_\)\}\]\?\$])
@@ -76,6 +76,7 @@ sub defio {
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
+sub mapone_binding;
 sub flatmap_binding;
 sub reduce_binding;
 sub grep_binding;
@@ -91,7 +92,8 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
 
 {
   package ni::io;
-  use overload qw# + plus_op  * bind_op  / reduce_op  % grep_op  | pipe_op
+  use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                   >>= bind_op
                    > into
                    < from #;
 
@@ -106,16 +108,18 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
   # Transforms
   sub plus_op   { $_[0]->plus($_[1]) }
   sub bind_op   { $_[0]->bind($_[1]) }
+  sub mapone_op { $_[0]->mapone($_[1]) }
   sub reduce_op { $_[0]->reduce($_[1], {}) }
   sub grep_op   { $_[0]->grep($_[1]) }
   sub pipe_op   { $_[0]->pipe($_[1]) }
 
   sub plus    { ::ni_sum(@_) }
   sub bind    { ::ni_bind(@_) }
+  sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
   sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-  sub reduce  { ::ni_bind($_[0], ni::reduce_binding @_[1..$#_]) }
-  sub grep    { ::ni_bind($_[0], ni::grep_binding @_[1..$#_]) }
-  sub pipe    { ::ni_bind($_[0], ni::pipe_binding @_[1..$#_]) }
+  sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
+  sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
+  sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
 
   # Utility functions
   sub free_refs_after {
@@ -133,11 +137,13 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
                                        my $refs = {});
     $refs->{$fh_gensym} = $source_fh;
 
-    my $f = eval qq{sub {
+    my $f = eval($code = qq{
+    package main;
+    sub {
       my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
       $code
-    }};
-    die $@ if $@;
+    }});
+    die "$@ evaluating\n$code" if $@;
     free_refs_after $refs, $f->($refs);
   }
 
@@ -161,11 +167,13 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
                                        my $refs = {});
     $refs->{$fh_gensym} = $dest_fh;
 
-    my $f = eval qq{sub {
+    my $f = eval($code = qq{
+    package main;
+    sub {
       my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
       $code
-    }};
-    die $@ if $@;
+    }});
+    die "$@ evaluating\n$code" if $@;
     free_refs_after $refs, $f->($refs);
   }
 
@@ -342,12 +350,94 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 
 # Bindings for common transformations
 sub flatmap_binding {
-  my ($base, $f, @args) = @_;
+  my ($f, @args) = @_;
   my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
   sub {
     my ($code, $refs) = @_;
-    $refs->{$args_ref} = $args_ref;
-    # TODO
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ for (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
+            $code
+          } };
+    } else {
+      qq{ for ($f) {
+            $code;
+          } };
+    }
+  };
+}
+
+sub mapone_binding {
+  my ($f, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ \$_ = \$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}});
+          $code };
+    } else {
+      qq{ \$_ = $f;
+          $code };
+    }
+  };
+}
+
+sub grep_binding {
+  my ($f, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ if (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
+            $code
+          } };
+    } else {
+      qq{ if ($f) {
+            $code
+          } };
+    }
+  };
+}
+
+sub reduce_binding {
+  my ($f, $init, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $init_gensym = gensym 'init';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    $refs->{$init_gensym} = $init;
+    my $out_gensym = gensym 'results';
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ (\$$init_gensym, \@$out_gensym) =
+          \$_[0]->{'$f_gensym'}->(\$$init_gensym, \$_,
+                                  \@{\$_[0]->{'$args_gensym'}});
+          for (\@$out_gensym) {
+            $code
+          } };
+    } else {
+      # Replace the custom symbol '%init' with the accumulator so the function
+      # has a way to refer to it.
+      $f =~ s/%init/\$$init_gensym/g;
+      qq{ (\$$init_gensym, \@$out_gensym) = $f;
+          for (\@$out_gensym) {
+            $code;
+          } };
+    }
   };
 }
 # High-level pipe operations, each of which corresponds to a command-line
@@ -430,36 +520,10 @@ sub parse_commands {
 sub ::row {
   my $s = join "\t", @_;
   $s =~ s/\n//g;
-  $s;
+  "$s\n";
 }
 
-sub record_transformer {
-  # Look at the function and figure out what we need. If the function refers to
-  # @_ as an array, then we'll need to parse into columns. Otherwise we may be
-  # able to just get away with providing $_ as the un-chomped line.
-  my ($code) = @_;
-  my $parse_prefix = $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /\%\d+/
-    ? 'chomp; @_ = split /\t/, $_;'
-    : '';
-
-  my $f = compile qq{
-    local \$_ = \$_[0];
-    $parse_prefix;
-    $code;
-  };
-
-  sub {
-    my @result;
-    for ($f->(@_)) {
-      if (/^[^\n]*\n$/) {
-        push @result, $_;
-      } else {
-        push @result, map "$_\n", split /\n/;
-      }
-    }
-    @result;
-  };
-}
+sub ::F { (split /\t/)[@_] }
 # Operator implementations
 
 use File::Temp qw/tmpnam/;
@@ -476,11 +540,11 @@ defop 'explain', undef, '',
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
-  sub { $_[0] * record_transformer $_[1] };
+  sub { $_[0] * expand_function_shorthands $_[1] };
 
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
-  sub { $_[0] % record_transformer $_[1] };
+  sub { $_[0] % expand_function_shorthands $_[1] };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',

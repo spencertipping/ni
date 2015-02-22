@@ -106,11 +106,93 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 
 # Bindings for common transformations
 sub flatmap_binding {
-  my ($base, $f, @args) = @_;
+  my ($f, @args) = @_;
   my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
   sub {
     my ($code, $refs) = @_;
-    $refs->{$args_ref} = $args_ref;
-    # TODO
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ for (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
+            $code
+          } };
+    } else {
+      qq{ for ($f) {
+            $code;
+          } };
+    }
+  };
+}
+
+sub mapone_binding {
+  my ($f, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ \$_ = \$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}});
+          $code };
+    } else {
+      qq{ \$_ = $f;
+          $code };
+    }
+  };
+}
+
+sub grep_binding {
+  my ($f, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ if (\$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}})) {
+            $code
+          } };
+    } else {
+      qq{ if ($f) {
+            $code
+          } };
+    }
+  };
+}
+
+sub reduce_binding {
+  my ($f, $init, @args) = @_;
+  my $args_ref = [@args];
+  my $args_gensym = gensym 'args';
+  my $init_gensym = gensym 'init';
+  my $f_gensym    = gensym 'f';
+  sub {
+    my ($code, $refs) = @_;
+    $refs->{$init_gensym} = $init;
+    my $out_gensym = gensym 'results';
+    if (ref $f eq 'CODE' || @args) {
+      $refs->{$args_gensym} = $args_ref;
+      $refs->{$f_gensym}    = compile $f;
+      qq{ (\$$init_gensym, \@$out_gensym) =
+          \$_[0]->{'$f_gensym'}->(\$$init_gensym, \$_,
+                                  \@{\$_[0]->{'$args_gensym'}});
+          for (\@$out_gensym) {
+            $code
+          } };
+    } else {
+      # Replace the custom symbol '%init' with the accumulator so the function
+      # has a way to refer to it.
+      $f =~ s/%init/\$$init_gensym/g;
+      qq{ (\$$init_gensym, \@$out_gensym) = $f;
+          for (\@$out_gensym) {
+            $code;
+          } };
+    }
   };
 }

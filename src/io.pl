@@ -33,6 +33,7 @@ sub defio {
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
+sub mapone_binding;
 sub flatmap_binding;
 sub reduce_binding;
 sub grep_binding;
@@ -48,7 +49,8 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
 
 {
   package ni::io;
-  use overload qw# + plus_op  * bind_op  / reduce_op  % grep_op  | pipe_op
+  use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                   >>= bind_op
                    > into
                    < from #;
 
@@ -63,16 +65,18 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
   # Transforms
   sub plus_op   { $_[0]->plus($_[1]) }
   sub bind_op   { $_[0]->bind($_[1]) }
+  sub mapone_op { $_[0]->mapone($_[1]) }
   sub reduce_op { $_[0]->reduce($_[1], {}) }
   sub grep_op   { $_[0]->grep($_[1]) }
   sub pipe_op   { $_[0]->pipe($_[1]) }
 
   sub plus    { ::ni_sum(@_) }
   sub bind    { ::ni_bind(@_) }
+  sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
   sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-  sub reduce  { ::ni_bind($_[0], ni::reduce_binding @_[1..$#_]) }
-  sub grep    { ::ni_bind($_[0], ni::grep_binding @_[1..$#_]) }
-  sub pipe    { ::ni_bind($_[0], ni::pipe_binding @_[1..$#_]) }
+  sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
+  sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
+  sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
 
   # Utility functions
   sub free_refs_after {
@@ -90,11 +94,13 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
                                        my $refs = {});
     $refs->{$fh_gensym} = $source_fh;
 
-    my $f = eval qq{sub {
+    my $f = eval($code = qq{
+    package main;
+    sub {
       my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
       $code
-    }};
-    die $@ if $@;
+    }});
+    die "$@ evaluating\n$code" if $@;
     free_refs_after $refs, $f->($refs);
   }
 
@@ -118,11 +124,13 @@ sub gensym { ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
                                        my $refs = {});
     $refs->{$fh_gensym} = $dest_fh;
 
-    my $f = eval qq{sub {
+    my $f = eval($code = qq{
+    package main;
+    sub {
       my \$$fh_gensym = \$_[0]->{'$fh_gensym'};
       $code
-    }};
-    die $@ if $@;
+    }});
+    die "$@ evaluating\n$code" if $@;
     free_refs_after $refs, $f->($refs);
   }
 

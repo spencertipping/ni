@@ -14,11 +14,11 @@ defop 'explain', undef, '',
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
-  sub { $_[0] * record_transformer $_[1] };
+  sub { $_[0] * expand_function_shorthands $_[1] };
 
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
-  sub { $_[0] % record_transformer $_[1] };
+  sub { $_[0] % expand_function_shorthands $_[1] };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',

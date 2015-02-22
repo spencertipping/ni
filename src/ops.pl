@@ -78,33 +78,7 @@ sub parse_commands {
 sub ::row {
   my $s = join "\t", @_;
   $s =~ s/\n//g;
-  $s;
+  "$s\n";
 }
 
-sub record_transformer {
-  # Look at the function and figure out what we need. If the function refers to
-  # @_ as an array, then we'll need to parse into columns. Otherwise we may be
-  # able to just get away with providing $_ as the un-chomped line.
-  my ($code) = @_;
-  my $parse_prefix = $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /\%\d+/
-    ? 'chomp; @_ = split /\t/, $_;'
-    : '';
-
-  my $f = compile qq{
-    local \$_ = \$_[0];
-    $parse_prefix;
-    $code;
-  };
-
-  sub {
-    my @result;
-    for ($f->(@_)) {
-      if (/^[^\n]*\n$/) {
-        push @result, $_;
-      } else {
-        push @result, map "$_\n", split /\n/;
-      }
-    }
-    @result;
-  };
-}
+sub ::F { (split /\t/)[@_] }
