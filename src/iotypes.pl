@@ -133,14 +133,18 @@ sub mapone_binding {
   my $f_gensym    = gensym 'f';
   sub {
     my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
+    if (1 || ref $f eq 'CODE' || @args) {
       $refs->{$args_gensym} = $args_ref;
       $refs->{$f_gensym}    = compile $f;
-      qq{ \$_ = \$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}});
-          $code };
+      qq{ if (defined(\$_ = \$_[0]->{'$f_gensym'}->(
+                \$_,
+                \@{\$_[0]->{'$args_gensym'}}))) {
+            $code
+          } };
     } else {
-      qq{ \$_ = $f;
-          $code };
+      qq{ if (defined(\$_ = $f)) {;
+            $code
+          } };
     }
   };
 }

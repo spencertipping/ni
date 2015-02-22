@@ -25,7 +25,7 @@ our %compiled_functions;
 
 sub expand_function_shorthands {
   my ($code) = @_;
-  $code =~ s/%(\d+)/F($1)/g;    # FIXME
+  $code =~ s/%(\d+)/\$_[$1]/g;
 
   # JSON shortcuts
   1 while $code =~ s/([a-zA-Z0-9_\)\}\]\?\$])
@@ -377,14 +377,18 @@ sub mapone_binding {
   my $f_gensym    = gensym 'f';
   sub {
     my ($code, $refs) = @_;
-    if (ref $f eq 'CODE' || @args) {
+    if (1 || ref $f eq 'CODE' || @args) {
       $refs->{$args_gensym} = $args_ref;
       $refs->{$f_gensym}    = compile $f;
-      qq{ \$_ = \$_[0]->{'$f_gensym'}->(\$_, \@{\$_[0]->{'$args_gensym'}});
-          $code };
+      qq{ if (defined(\$_ = \$_[0]->{'$f_gensym'}->(
+                \$_,
+                \@{\$_[0]->{'$args_gensym'}}))) {
+            $code
+          } };
     } else {
-      qq{ \$_ = $f;
-          $code };
+      qq{ if (defined(\$_ = $f)) {;
+            $code
+          } };
     }
   };
 }
@@ -491,10 +495,11 @@ sub apply_format {
   [@parsed], @args;
 }
 
+sub file_opt { ['plus', ni $_[0]] }
 sub parse_commands {
   my @parsed;
   for (my $o; defined($o = shift @_);) {
-    return @parsed, map ['plus', $_], @_ if $o eq '--';
+    return @parsed, map file_opt($_), @_ if $o eq '--';
     if ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};
@@ -505,7 +510,7 @@ sub parse_commands {
       unshift @_, map $op_shorthand_lookups{$_} // $_,
                       $o =~ /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/g;
     } else {
-      push @parsed, ['plus', ni $o];
+      push @parsed, file_opt $o;
     }
   }
   @parsed;
@@ -523,7 +528,10 @@ sub ::row {
   "$s\n";
 }
 
-sub ::F { (split /\t/)[@_] }
+sub with_fields {
+  my ($code) = @_;
+  compile "chomp; \@_ = split /\\t/; \$_ = $code";
+}
 # Operator implementations
 
 use File::Temp qw/tmpnam/;
@@ -533,18 +541,18 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_const(self) };
 
-defop 'explain', undef, '',
-  'explains the current pipeline to stderr',
-  sub { print STDERR $_[0]->quoted_into('print $_;', {}); $_[0] };
+defop 'explain-pipeline', undef, '',
+  'explains the current pipeline',
+  sub { ni_const($_[0]->quoted_into('print $_;', {})) };
 
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
-  sub { $_[0] * expand_function_shorthands $_[1] };
+  sub { $_[0] * with_fields $_[1] };
 
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
-  sub { $_[0] % expand_function_shorthands $_[1] };
+  sub { $_[0] % with_fields $_[1] };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
@@ -594,6 +602,8 @@ defop 'order', 'o', 'AD',
 # Preprocess command line, collapsing stuff into array and hash references as
 # appropriate.
 
+use POSIX qw/dup2/;
+
 sub preprocess_cli {
   my @preprocessed;
   for (my $o; defined($o = shift @_);) {
@@ -629,4 +639,14 @@ for (parse_commands preprocess_cli @ARGV) {
   $data = $ni::io::{$command}($data, @args);
 }
 
-$data->into(\*STDOUT);
+if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
+  # Use a pager rather than writing straight to the terminal
+  close STDIN;
+  dup2 0, fileno $data->into_fh or die "dup2 failed: $!";
+  exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
+  exec 'more';
+  # Ok, we're out of options; just write to the terminal after all
+  print while <>;
+} else {
+  $data > \*STDOUT;
+}

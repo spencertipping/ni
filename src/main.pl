@@ -1,6 +1,8 @@
 # Preprocess command line, collapsing stuff into array and hash references as
 # appropriate.
 
+use POSIX qw/dup2/;
+
 sub preprocess_cli {
   my @preprocessed;
   for (my $o; defined($o = shift @_);) {
@@ -36,4 +38,14 @@ for (parse_commands preprocess_cli @ARGV) {
   $data = $ni::io::{$command}($data, @args);
 }
 
-$data->into(\*STDOUT);
+if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
+  # Use a pager rather than writing straight to the terminal
+  close STDIN;
+  dup2 0, fileno $data->into_fh or die "dup2 failed: $!";
+  exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
+  exec 'more';
+  # Ok, we're out of options; just write to the terminal after all
+  print while <>;
+} else {
+  $data > \*STDOUT;
+}

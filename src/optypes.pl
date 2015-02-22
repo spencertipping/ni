@@ -7,18 +7,18 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_const(self) };
 
-defop 'explain', undef, '',
-  'explains the current pipeline to stderr',
-  sub { print STDERR $_[0]->quoted_into('print $_;', {}); $_[0] };
+defop 'explain-pipeline', undef, '',
+  'explains the current pipeline',
+  sub { ni_const($_[0]->quoted_into('print $_;', {})) };
 
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
-  sub { $_[0] * expand_function_shorthands $_[1] };
+  sub { $_[0] * with_fields $_[1] };
 
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
-  sub { $_[0] % expand_function_shorthands $_[1] };
+  sub { $_[0] % with_fields $_[1] };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',

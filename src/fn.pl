@@ -3,7 +3,7 @@ our %compiled_functions;
 
 sub expand_function_shorthands {
   my ($code) = @_;
-  $code =~ s/%(\d+)/F($1)/g;    # FIXME
+  $code =~ s/%(\d+)/\$_[$1]/g;
 
   # JSON shortcuts
   1 while $code =~ s/([a-zA-Z0-9_\)\}\]\?\$])

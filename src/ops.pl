@@ -49,10 +49,11 @@ sub apply_format {
   [@parsed], @args;
 }
 
+sub file_opt { ['plus', ni $_[0]] }
 sub parse_commands {
   my @parsed;
   for (my $o; defined($o = shift @_);) {
-    return @parsed, map ['plus', $_], @_ if $o eq '--';
+    return @parsed, map file_opt($_), @_ if $o eq '--';
     if ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};
@@ -63,7 +64,7 @@ sub parse_commands {
       unshift @_, map $op_shorthand_lookups{$_} // $_,
                       $o =~ /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/g;
     } else {
-      push @parsed, ['plus', ni $o];
+      push @parsed, file_opt $o;
     }
   }
   @parsed;
@@ -81,4 +82,7 @@ sub ::row {
   "$s\n";
 }
 
-sub ::F { (split /\t/)[@_] }
+sub with_fields {
+  my ($code) = @_;
+  compile "chomp; \@_ = split /\\t/; \$_ = $code";
+}
