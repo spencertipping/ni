@@ -8,7 +8,7 @@ defop 'self', undef, '',
   sub { $_[0] + ni::io::array->new(self) };
 
 defop 'explain', undef, '',
-  'explains the current pipeline',
+  'explains the current pipeline to stderr',
   sub { print STDERR $_[0]->name, "\n"; $_[0] };
 
 # Functional transforms

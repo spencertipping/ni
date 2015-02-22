@@ -68,3 +68,43 @@ sub parse_commands {
   }
   @parsed;
 }
+
+# Record transformation
+# Most of the transforms within ni are in-process, so it's possible for one
+# operator to append a data element that would be interpreted differently if we
+# later added an external command like a sort. We want to avoid this issue as
+# much as possible, which we can do by using some default idioms.
+
+sub ::row {
+  my $s = join "\t", @_;
+  $s =~ s/\n//g;
+  $s;
+}
+
+sub record_transformer {
+  # Look at the function and figure out what we need. If the function refers to
+  # @_ as an array, then we'll need to parse into columns. Otherwise we may be
+  # able to just get away with providing $_ as the un-chomped line.
+  my ($code) = @_;
+  my $parse_prefix = $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /\%\d+/
+    ? 'chomp; @_ = split /\t/, $_;'
+    : '';
+
+  my $f = compile qq{
+    local \$_ = \$_[0];
+    $parse_prefix;
+    $code;
+  };
+
+  sub {
+    my @result;
+    for ($f->(@_)) {
+      if (/^[^\n]*\n$/) {
+        push @result, $_;
+      } else {
+        push @result, map "$_\n", split /\n/;
+      }
+    }
+    @result;
+  };
+}

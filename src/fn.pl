@@ -16,6 +16,6 @@ sub expand_function_shorthands {
 sub compile {
   return $_[0] if ref $_[0] eq 'CODE';
   return $compiled_functions{$_[0]}
-     //= eval "package::; sub {\n" . expand_function_shorthands($_[0])
-                                   . "\n}";
+     //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
+                                      . "\n}";
 }

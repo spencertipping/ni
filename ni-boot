@@ -3,15 +3,23 @@ eval($ni::selfcode = join '', <DATA>); die $@ if $@;
 __DATA__
 use v5.14;
 no strict 'refs';
-sub ni;
 package ni;
 sub ni;
+sub ::ni;
+
 sub self {
   join "\n", "#!/usr/bin/env perl",
              q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;},
              "__DATA__",
              $ni::selfcode;
 }
+
+use POSIX qw/:sys_wait_h/;
+
+$SIG{CHLD} = sub {
+  local ($!, $?);
+  waitpid -1, WNOHANG;
+};
 # Memoized function compilation
 our %compiled_functions;
 
@@ -30,8 +38,8 @@ sub expand_function_shorthands {
 sub compile {
   return $_[0] if ref $_[0] eq 'CODE';
   return $compiled_functions{$_[0]}
-     //= eval "package::; sub {\n" . expand_function_shorthands($_[0])
-                                   . "\n}";
+     //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
+                                      . "\n}";
 }
 our %io_constructors;
 
@@ -206,6 +214,8 @@ sub ::ni {
 }
 
 *{"ni::ni"} = *{"::ni"};
+# Data source/sink implementations
+
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' }, sub { ni_fh($_[0]) };
 
 sub deffilter {
@@ -541,6 +551,46 @@ sub parse_commands {
   }
   @parsed;
 }
+
+# Record transformation
+# Most of the transforms within ni are in-process, so it's possible for one
+# operator to append a data element that would be interpreted differently if we
+# later added an external command like a sort. We want to avoid this issue as
+# much as possible, which we can do by using some default idioms.
+
+sub ::row {
+  my $s = join "\t", @_;
+  $s =~ s/\n//g;
+  $s;
+}
+
+sub record_transformer {
+  # Look at the function and figure out what we need. If the function refers to
+  # @_ as an array, then we'll need to parse into columns. Otherwise we may be
+  # able to just get away with providing $_ as the un-chomped line.
+  my ($code) = @_;
+  my $parse_prefix = $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /\%\d+/
+    ? 'chomp; @_ = split /\t/, $_;'
+    : '';
+
+  my $f = compile qq{
+    local \$_ = \$_[0];
+    $parse_prefix;
+    $code;
+  };
+
+  sub {
+    my @result;
+    for ($f->(@_)) {
+      if (/^[^\n]*\n$/) {
+        push @result, $_;
+      } else {
+        push @result, map "$_\n", split /\n/;
+      }
+    }
+    @result;
+  };
+}
 # Operator implementations
 
 use File::Temp qw/tmpnam/;
@@ -551,7 +601,7 @@ defop 'self', undef, '',
   sub { $_[0] + ni::io::array->new(self) };
 
 defop 'explain', undef, '',
-  'explains the current pipeline',
+  'explains the current pipeline to stderr',
   sub { print STDERR $_[0]->name, "\n"; $_[0] };
 
 # Functional transforms
@@ -645,4 +695,17 @@ for (parse_commands preprocess_cli @ARGV) {
   my ($command, @args) = @$_;
   $data = $ni::io::{$command}($data, @args);
 }
-$data->into(\*STDOUT);
+
+if (-t STDOUT) {
+  # Preview using a pager
+  my $fifo = ni_fifo();
+  if (fork) {
+    close STDIN;
+    dup2 fileno $fifo->{out}, 0 or die "failed to redirect stdin for pager: $!";
+    exec $ENV{NI_PAGER} // 'less';
+  } else {
+    $data->into($fifo);
+  }
+} else {
+  $data->into(\*STDOUT);
+}

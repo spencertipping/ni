@@ -1,3 +1,5 @@
+# Data source/sink implementations
+
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' }, sub { ni_fh($_[0]) };
 
 sub deffilter {
