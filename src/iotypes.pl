@@ -1,19 +1,47 @@
 use POSIX qw/dup2/;
 
-defio 'sum',
-      sub { 0 },
+sub next_or_empty {
+  my ($fh) = @_;
+  my $r = <$fh>;
+  defined $r ? ($r) : ();
+}
+
+defio 'array',
       sub {
-        my ($self, @sources) = @_;
-        $self->{sources} = [map ::ni($_), @sources];
+        my ($self, @xs) = @_;
+        $self->{peek_buffer} = [@xs];
         $self;
       },
 {
-  _avail => sub { 0 },
-  _next  => sub {
+  _next => sub { () },
+};
+
+defio 'fifo',
+      sub {
+        my ($self) = @_;
+        pipe $self->{out}, $self->{in};
+        $self;
+      },
+{
+  _next   => sub { next_or_empty $self->{out} },
+  enqueue => sub { $self->{in}->print($_[1]); $self },
+  close   => sub { close $self->{in};         $self },
+}
+
+defio 'sum',
+      sub {
+        my ($self, $sources) = @_;
+        $self->{sources} = $sources;
+        $self->{current} = undef;
+        $self;
+      },
+{
+  _next => sub {
     my ($self) = @_;
     my $n;
-    until (!@{$self->{sources}} || defined $n) {
-      $n = $self->{sources}->[0]->next;
+    until ($self->{sources}->eof || defined $n) {
+      $self->{current} //= ni $self->{sources}->next;
+      $n = $self->{current}->next;
       shift $self->{sources} unless defined $n;
     }
     defined $n ? ($n) : ();
@@ -21,7 +49,6 @@ defio 'sum',
 };
 
 defio 'map',
-      sub { 0 },
       sub {
         my ($self, $source, $f, @args) = @_;
         $self->{source} = $source;
@@ -30,8 +57,7 @@ defio 'map',
         $self;
       },
 {
-  _avail => sub { 0 },
-  _next  => sub {
+  _next => sub {
     my ($self) = @_;
     my $next = $self->{source}->next;
     return () unless defined $next;
@@ -40,7 +66,6 @@ defio 'map',
 };
 
 defio 'reduce',
-      sub { 0 },
       sub {
         my ($self, $source, $f, $init, @args) = @_;
         $self->{source} = $source;
@@ -50,8 +75,7 @@ defio 'reduce',
         $self;
       },
 {
-  _avail => sub { 0 },
-  _next  => sub {
+  _next => sub {
     my ($self) = @_;
     my @result;
     ($self->{init}, @result) = $self->{f}->($self->{init},
@@ -63,7 +87,6 @@ defio 'reduce',
 };
 
 defio 'grep',
-      sub { 0 },
       sub {
         my ($self, $source, $f, @args) = @_;
         $self->{source} = $source;
@@ -72,8 +95,7 @@ defio 'grep',
         $self;
       },
 {
-  _avail => sub { 0 },
-  _next  => sub {
+  _next => sub {
     my ($self) = @_;
     my $next;
     my $accept = 0;
@@ -85,7 +107,6 @@ defio 'grep',
 };
 
 defio 'fh',
-      sub { ref $_[0] eq 'GLOB' || $_[0] =~ /^[><|]|\|$/},
       sub {
         my ($self, $open_expr) = @_;
         if (ref $open_expr eq 'GLOB') {
@@ -108,17 +129,10 @@ defio 'fh',
     $_[0];
   },
 
-  _next => sub {
-    my $fh = $_[0]->{fh};
-    my $n  = <$fh>;
-    defined $n ? ($n) : ();
-  },
-
-  _avail => sub { 0 },
+  _next => sub { next_or_empty $_[0]->{fh} },
 };
 
 defio 'process',
-      sub { $_[0] =~ s/^sh:// },
       sub {
         my ($self, @args) = @_;
         pipe my $in_r,        $self->{stdin};
@@ -152,6 +166,45 @@ defio 'process',
     my $v  = <$fh>;           # force scalar context
     defined $v ? ($v) : ();
   },
+};
 
-  _avail => sub { 0 },        # FIXME?
+# Bidirectional filtered file thing
+defio 'filter',
+      sub {
+        my ($self, $base, $in, $out) = @_;
+        $self->{base}    = $base;
+        $self->{in_cmd}  = $in;
+        $self->{out_cmd} = $out;
+        $self->{reader}  = undef;
+        $self->{writer}  = undef;
+        $self;
+      },
+{
+  reader => sub {
+    die "filter object " . $_[0]->name . " created without a reader"
+      unless defined $self->{in_cmd};
+    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{in_cmd});
+  },
+
+  writer => sub {
+    die "filter object " . $_[0]->name . " created without a writer"
+      unless defined $_[0]->{out_cmd};
+    $_[0]->{writer} //=
+      ni::io::process->new($_[0]->{out_cmd})->from($_[0]->{base});
+  },
+
+  enqueue => sub {
+    $_[0]->reader->enqueue($_[1]);
+    $_[0];
+  },
+
+  close => sub {
+    close $_[0]->reader;
+    $_[0];
+  },
+
+  _next => sub {
+    my $v = $_[0]->writer->next;
+    defined $v ? ($v) : ();
+  },
 };

@@ -1,5 +1,5 @@
 # Memoized function compilation
-%ni::compiled_functions = ();
+%compiled_functions = ();
 
 sub expand_function_shorthands {
   my ($code) = @_;

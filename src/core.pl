@@ -1,15 +1,12 @@
 #!/usr/bin/env perl
-eval($ni::bootcode = <<'end');
-$ni::selfdata = join '', <DATA>;
-sub ni::self {
+eval($ni::selfcode = join '', <DATA>); die $@ if $@;
+__DATA__
+use v5.14;
+sub ni;
+package ni;
+sub self {
   join "\n", "#!/usr/bin/env perl",
-             "eval(\$ni::bootcode = <<'end');\n${ni::bootcode}end",
-             'die $@ if $@;',
+             q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;}
              "__DATA__",
              $ni::selfdata;
 }
-eval $ni::selfdata;
-die $@ if $@;
-end
-die $@ if $@;
-__DATA__

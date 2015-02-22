@@ -1,9 +1,37 @@
-ni('sh:ls') > \*STDOUT;
-ni('sh:ls') + 'sh:ls' > \*STDOUT;
-ni('sh:ls') + '< ../README.md' + 'sh:ls' > \*STDOUT;
-ni('< ../README.md') + 'sh:echo hi' > \*STDOUT;
+# Preprocess command line, collapsing stuff into array and hash references as
+# appropriate.
 
-ni('sh:ls') * 'length %0' % '%0 & 1' + '< ../README.md'
-  > \*STDOUT;
+sub preprocess_cli {
+  my @preprocessed;
+  for (my $o; defined($o = shift @_);) {
+    if ($o =~ s/\[$//) {
+      my @xs;
+      my $depth = 1;
+      for (@_) {
+        last unless $depth -= /^\]$/;
+        $depth += /\[$/;
+        push @xs, $_;
+      }
+      push @preprocessed, bless [@xs], $o;
+    } elsif ($o =~ s/\{$//) {
+      my @xs;
+      my $depth = 1;
+      for (@_) {
+        last unless $depth -= /^\}$/;
+        $depth += /\{$/;
+        push @xs, $_;
+      }
+      push @preprocessed, bless {@xs}, $o;
+    } else {
+      push @preprocessed, $o;
+    }
+  }
+  @preprocessed;
+}
 
-(ni('< ../README.md') | 'wc -l') + 'sh:echo hi' > '> output';
+my $initial = -t STDIN ? ni::io::empty : ni::io::fh->new(\*STDIN);
+for (parse_commands preprocess_cli @ARGV) {
+  my ($command, @args) = @$_;
+  $initial = ${"ni::io::$command"}->($initial, @args);
+}
+$initial > \*STDOUT;

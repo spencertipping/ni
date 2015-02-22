@@ -1,16 +1,4 @@
-@ni::io_types        = ();
-%ni::io_detectors    = ();
-%ni::io_constructors = ();
-
-sub ::ni {
-  my ($thing, @args) = @_;
-  return $thing if ref $thing && $thing->isa(ni::io);
-  for (@ni::io_types) {
-    return $ni::io_constructors{$_}->("ni::io::$_", $thing, @args)
-      if $ni::io_detectors{$_}->($thing, @args);
-  }
-  die "ni: don't know how to construct instance for $thing @args";
-}
+%io_constructors = ();
 
 sub hot {
   my ($fh) = @_;
@@ -20,8 +8,6 @@ sub hot {
 
 sub defio {
   my ($name, $detector, $constructor, $methods) = @_;
-  push @ni::io_types, $name;
-  $ni::io_detectors{$name} = $detector;
   *{"ni::io::${name}::new"} = $ni::io_constructors{$name} = sub {
     my ($class, @args) = @_;
     bless $constructor->(ni::io->new, @args), $class;
@@ -35,8 +21,8 @@ sub defio {
   use overload qw# +  plus_op  * map_op  / reduce_op  % grep_op
                    <> next  0+ avail  "" name  ! eof
                    |  pipe
-                   >  into  >> copy
-                   <  from  << enqueue #;
+                   >  into     >> copy
+                   <  from_op  << enqueue #;
 
   sub new {
     my ($class) = @_;
@@ -45,12 +31,19 @@ sub defio {
            listeners   => []}, $class;
   }
 
+  sub empty {
+    my $io = ni::io->new;
+    $io->{eof} = 1;
+    $io;
+  }
+
   # implemented by subclasses
-  sub _avail  { ... }   # number of next() calls that will not block
+  sub _avail  { 0 }
   sub _next   { ... }
   sub enqueue { die "ni::io object " . $self->name . " cannot be written to" }
   sub close   { die "ni::io object " . $self->name . " cannot be closed" }
-  sub name    { ref $_[0] }
+
+  sub name { ref $_[0] }
 
   sub eof { $_[0]->{eof} }
 
@@ -106,16 +99,20 @@ sub defio {
   }
 
   sub from {
-    # Sources from the given thing, closing afterwards.
-    my ($self, $source) = @_;
-    unless (fork) {
-      ::ni($source)->into($self);
-      $self->close;
-      exit;
+    # Sources from the given thing(s), closing afterwards.
+    my ($self, @sources) = @_;
+    for (@sources) {
+      unless (fork) {
+        ::ni($_)->into($self);
+        $self->close;
+        exit;
+      }
     }
     $self->close;
     $self;
   }
+
+  sub from_op { $_[0]->from($_[1]) }
 
   sub pipe {
     my ($self, $command) = @_;
