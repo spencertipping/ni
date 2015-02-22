@@ -7,6 +7,8 @@ for i in $(seq 10); do
   cat /usr/share/dict/words >> testdata
 done
 
+wc testdata
+
 testcase() {
   echo -e "\n\n$1"
   for i in $(seq 2); do
@@ -17,6 +19,8 @@ testcase() {
 testcase 'C program' './pair-with-length < testdata'
 testcase '/bin/cut'  'cut -f1 < testdata'
 testcase '/bin/wc'   'wc -l < testdata'
+testcase '/bin/sort' 'sort < testdata'
+testcase 'fast sort' 'sort -S 256M --parallel=4 < testdata'
 testcase 'perl 1'    'perl pair-with-length-1.pl < testdata'
 testcase 'perl 2'    'perl pair-with-length-2.pl < testdata'
 testcase 'perl 3'    'perl pair-with-length-3.pl < testdata'
