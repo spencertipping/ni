@@ -37,23 +37,23 @@ defio 'sum',
       sub {
         my ($self, $sources) = @_;
         $self->{sources} = $sources;
-        $self->{current} = undef;
+        $self->{current} = $sources->next;
         $self;
       },
 {
   name  => sub { "<sum " . ($_[0]->{current} ? $_[0]->{current}->name : '')
-                         . join(' ', map $_->name,
-                                         $_[0]->{sources}->peek(
-                                           $_[0]->{sources}->avail))
+                         . join(' ', $_[0]->{sources}->peek(
+                                       $_[0]->{sources}->avail))
                          . " ...>" },
   _next => sub {
     my ($self) = @_;
-    my $n;
-    until ($self->{sources}->eof || defined $n) {
-      last if defined $self->{current} && defined($n = $self->{current}->next);
-      $self->{current} = $self->{sources}->next unless $self->{current};
+    return () unless defined $self->{current};
+    my $n = $self->{current}->next;
+    until (defined $n) {
+      return () unless defined($self->{current} = ni $self->{sources}->next);
+      $n = $self->{current}->next;
     }
-    defined $n ? ($n) : ();
+    ($n);
   },
 };
 
@@ -198,12 +198,12 @@ defio 'process',
 # Bidirectional filtered file thing
 defio 'filter',
       sub {
-        my ($self, $base, $in, $out) = @_;
-        $self->{base}    = $base;
-        $self->{in_cmd}  = $in;
-        $self->{out_cmd} = $out;
-        $self->{reader}  = undef;
-        $self->{writer}  = undef;
+        my ($self, $base, $read, $write) = @_;
+        $self->{base}      = $base;
+        $self->{read_cmd}  = $read;
+        $self->{write_cmd} = $write;
+        $self->{reader}    = undef;
+        $self->{writer}    = undef;
         $self;
       },
 {
@@ -212,30 +212,31 @@ defio 'filter',
                       . $_[0]->{base}->name . ">" },
 
   reader => sub {
-    die "filter object " . $_[0]->name . " created without a reader"
-      unless defined $_[0]->{in_cmd};
-    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{in_cmd});
+    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{read_cmd}
+      // die "filter object " . $_[0]->name . " created without a reader");
   },
 
   writer => sub {
-    die "filter object " . $_[0]->name . " created without a writer"
-      unless defined $_[0]->{out_cmd};
-    $_[0]->{writer} //=
-      ni::io::process->new($_[0]->{out_cmd})->from($_[0]->{base});
+    unless (defined $_[0]->{writer}) {
+      $_[0]->{writer} = ni_process($_[0]->{write_cmd}
+        // die "filter object " . $_[0]->name . " created without a writer");
+      $_[0]->{base}->from($_[0]->{writer});
+    }
+    $_[0]->{writer};
   },
 
   enqueue => sub {
-    $_[0]->reader->enqueue($_[1]);
+    $_[0]->writer->enqueue($_[1]);
     $_[0];
   },
 
   close => sub {
-    close $_[0]->reader;
+    close $_[0]->writer;
     $_[0];
   },
 
   _next => sub {
-    my $v = $_[0]->writer->next;
+    my $v = $_[0]->reader->next;
     defined $v ? ($v) : ();
   },
 };

@@ -5,6 +5,7 @@ use v5.14;
 no strict 'refs';
 sub ni;
 package ni;
+sub ni;
 sub self {
   join "\n", "#!/usr/bin/env perl",
              q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;},
@@ -46,6 +47,8 @@ sub defio {
     my ($class, @args) = @_;
     bless $constructor->(ni::io->new, @args), $class;
   };
+  *{"::ni_$name"} = *{"ni::ni_$name"} =
+    sub { ${"ni::io::${name}::"}{new}("ni::io::$name", @_) };
   *{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
@@ -55,7 +58,7 @@ sub defio {
   use overload qw# +  plus_op  * bind_op  / reduce_op  % grep_op
                              >>= bind_op
 
-                   <> next  0+ avail  "" name  ! eof
+                   <> next  0+ avail  "" name  ! eof  bool not_eof
                    |  pipe
                    >  into     >> copy
                    <  from_op  << enqueue #;
@@ -80,7 +83,8 @@ sub defio {
   sub enqueue { die "ni::io object " . $_[0]->name . " cannot be written to" }
   sub close   { die "ni::io object " . $_[0]->name . " cannot be closed" }
 
-  sub eof { $_[0]->{eof} }
+  sub eof     {  $_[0]->{eof} }
+  sub not_eof { !$_[0]->{eof} }
 
   sub next {
     my ($self) = @_;
@@ -139,7 +143,7 @@ sub defio {
     my ($self, @sources) = @_;
     for (@sources) {
       unless (fork) {
-        ::ni($_)->into($self);
+        ni($_)->into($self);
         $self->close;
         exit;
       }
@@ -196,11 +200,35 @@ sub ni_io_for {
 
 sub ::ni {
   my ($f, @args) = @_;
+  return undef unless defined $f;
   return $f if ref $f && $f->isa('ni::io');
   return ni_io_for($f, @args);
 }
-defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni::io::fh->new($_[0]) };
+
+*{"ni::ni"} = *{"::ni"};
+defdata 'globfile', sub { ref $_[0] eq 'GLOB' }, sub { ni_fh($_[0]) };
+
+sub deffilter {
+  my ($extension, $read, $write) = @_;
+  $extension = qr/\.$extension$/;
+  defdata $extension,
+    sub { $_[0] =~ /$extension/ },
+    sub { ni_filter(ni_fh("+< $_[0]"), $read, $write) };
+}
+
+deffilter 'gz',  'gzip -d',  'gzip';
+deffilter 'lzo', 'lzop -d',  'lzop';
+deffilter 'xz',  'xz -d',    'xz';
+deffilter 'bz2', 'bzip2 -d', 'bzip2';
+
+sub rw_file {
+  my $fh;
+  open $fh, "+< $_[0]" or open $fh, "< $_[0]"
+    or die "couldn't open $_[0] for reading or r/w: $!";
+  ni $fh;
+}
+
+defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// }, sub { rw_file $_[0] };
 use POSIX qw/dup2/;
 use B::Deparse;
 
@@ -240,23 +268,23 @@ defio 'sum',
       sub {
         my ($self, $sources) = @_;
         $self->{sources} = $sources;
-        $self->{current} = undef;
+        $self->{current} = $sources->next;
         $self;
       },
 {
   name  => sub { "<sum " . ($_[0]->{current} ? $_[0]->{current}->name : '')
-                         . join(' ', map $_->name,
-                                         $_[0]->{sources}->peek(
-                                           $_[0]->{sources}->avail))
+                         . join(' ', $_[0]->{sources}->peek(
+                                       $_[0]->{sources}->avail))
                          . " ...>" },
   _next => sub {
     my ($self) = @_;
-    my $n;
-    until ($self->{sources}->eof || defined $n) {
-      last if defined $self->{current} && defined($n = $self->{current}->next);
-      $self->{current} = $self->{sources}->next unless $self->{current};
+    return () unless defined $self->{current};
+    my $n = $self->{current}->next;
+    until (defined $n) {
+      return () unless defined($self->{current} = ni $self->{sources}->next);
+      $n = $self->{current}->next;
     }
-    defined $n ? ($n) : ();
+    ($n);
   },
 };
 
@@ -401,12 +429,12 @@ defio 'process',
 # Bidirectional filtered file thing
 defio 'filter',
       sub {
-        my ($self, $base, $in, $out) = @_;
-        $self->{base}    = $base;
-        $self->{in_cmd}  = $in;
-        $self->{out_cmd} = $out;
-        $self->{reader}  = undef;
-        $self->{writer}  = undef;
+        my ($self, $base, $read, $write) = @_;
+        $self->{base}      = $base;
+        $self->{read_cmd}  = $read;
+        $self->{write_cmd} = $write;
+        $self->{reader}    = undef;
+        $self->{writer}    = undef;
         $self;
       },
 {
@@ -415,30 +443,31 @@ defio 'filter',
                       . $_[0]->{base}->name . ">" },
 
   reader => sub {
-    die "filter object " . $_[0]->name . " created without a reader"
-      unless defined $_[0]->{in_cmd};
-    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{in_cmd});
+    $_[0]->{reader} //= $_[0]->{base}->pipe($_[0]->{read_cmd}
+      // die "filter object " . $_[0]->name . " created without a reader");
   },
 
   writer => sub {
-    die "filter object " . $_[0]->name . " created without a writer"
-      unless defined $_[0]->{out_cmd};
-    $_[0]->{writer} //=
-      ni::io::process->new($_[0]->{out_cmd})->from($_[0]->{base});
+    unless (defined $_[0]->{writer}) {
+      $_[0]->{writer} = ni_process($_[0]->{write_cmd}
+        // die "filter object " . $_[0]->name . " created without a writer");
+      $_[0]->{base}->from($_[0]->{writer});
+    }
+    $_[0]->{writer};
   },
 
   enqueue => sub {
-    $_[0]->reader->enqueue($_[1]);
+    $_[0]->writer->enqueue($_[1]);
     $_[0];
   },
 
   close => sub {
-    close $_[0]->reader;
+    close $_[0]->writer;
     $_[0];
   },
 
   _next => sub {
-    my $v = $_[0]->writer->next;
+    my $v = $_[0]->reader->next;
     defined $v ? ($v) : ();
   },
 };
@@ -521,6 +550,10 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni::io::array->new(self) };
 
+defop 'explain', undef, '',
+  'explains the current pipeline',
+  sub { print STDERR $_[0]->name, "\n"; $_[0] };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -564,8 +597,13 @@ defop 'branch', 'b', 's',
   };
 
 # Sorting (shells out to command-line sort)
-defop 'order', 'o', 'aD',
-  'orders values using the sort command',
+sub sort_options {
+  my @fieldspec = split //, $_[0] // '';
+  # TODO
+}
+
+defop 'order', 'o', 'AD',
+  'order {n|N|g|G|l|L|u|U|m} [fields]',
   sub {
     my ($in, $flags, $fields) = @_;
     $in | 'sort';

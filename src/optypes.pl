@@ -7,6 +7,10 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni::io::array->new(self) };
 
+defop 'explain', undef, '',
+  'explains the current pipeline',
+  sub { print STDERR $_[0]->name, "\n"; $_[0] };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -50,8 +54,13 @@ defop 'branch', 'b', 's',
   };
 
 # Sorting (shells out to command-line sort)
-defop 'order', 'o', 'aD',
-  'orders values using the sort command',
+sub sort_options {
+  my @fieldspec = split //, $_[0] // '';
+  # TODO
+}
+
+defop 'order', 'o', 'AD',
+  'order {n|N|g|G|l|L|u|U|m} [fields]',
   sub {
     my ($in, $flags, $fields) = @_;
     $in | 'sort';

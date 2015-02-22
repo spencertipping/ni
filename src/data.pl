@@ -22,6 +22,9 @@ sub ni_io_for {
 
 sub ::ni {
   my ($f, @args) = @_;
+  return undef unless defined $f;
   return $f if ref $f && $f->isa('ni::io');
   return ni_io_for($f, @args);
 }
+
+*{"ni::ni"} = *{"::ni"};

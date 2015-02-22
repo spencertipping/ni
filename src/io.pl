@@ -12,6 +12,8 @@ sub defio {
     my ($class, @args) = @_;
     bless $constructor->(ni::io->new, @args), $class;
   };
+  *{"::ni_$name"} = *{"ni::ni_$name"} =
+    sub { ${"ni::io::${name}::"}{new}("ni::io::$name", @_) };
   *{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
@@ -21,7 +23,7 @@ sub defio {
   use overload qw# +  plus_op  * bind_op  / reduce_op  % grep_op
                              >>= bind_op
 
-                   <> next  0+ avail  "" name  ! eof
+                   <> next  0+ avail  "" name  ! eof  bool not_eof
                    |  pipe
                    >  into     >> copy
                    <  from_op  << enqueue #;
@@ -46,7 +48,8 @@ sub defio {
   sub enqueue { die "ni::io object " . $_[0]->name . " cannot be written to" }
   sub close   { die "ni::io object " . $_[0]->name . " cannot be closed" }
 
-  sub eof { $_[0]->{eof} }
+  sub eof     {  $_[0]->{eof} }
+  sub not_eof { !$_[0]->{eof} }
 
   sub next {
     my ($self) = @_;
@@ -105,7 +108,7 @@ sub defio {
     my ($self, @sources) = @_;
     for (@sources) {
       unless (fork) {
-        ::ni($_)->into($self);
+        ni($_)->into($self);
         $self->close;
         exit;
       }
