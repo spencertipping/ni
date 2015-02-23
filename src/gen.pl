@@ -6,7 +6,8 @@
 BEGIN {
 
 sub ni::gen::new;
-sub gen { ni::gen->new(@_) }
+sub gen       { ni::gen->new(@_) }
+sub gen_empty { gen('empty', {}, '') }
 
 package ni::gen;
 
@@ -34,6 +35,11 @@ sub new {
         $class;
 }
 
+sub genify {
+  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
+  return ni::gen('genified', {}, $_[0]);
+}
+
 sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
@@ -53,7 +59,7 @@ sub subst {
     die "unknown subst var: $_"
       unless exists $$self{insertion_indexes}{$_};
     $$self{inserted_code}{$_} =
-      $$self{fragments}[$$self{insertion_indexes}{$_}] = $$vars{$_};
+      $$self{fragments}[$$self{insertion_indexes}{$_}] = genify $$vars{$_};
   }
   $self;
 }
@@ -99,16 +105,16 @@ sub parse_code {
   my ($code) = @_;
   return @$_ if defined($_ = $parsed_code_cache{$code});
 
-  my @pieces = split /(%\w+|%<<\w+)/, $code;
+  my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
   my @fragments;
   my %gensyms;
   my %insertion_points;
   for (0..$#pieces) {
-    if ($pieces[$_] =~ /^%(\w+)$/) {
+    if ($pieces[$_] =~ /^\%:(\w+)$/) {
       push(@fragments, $gensyms{$1} = gensym $1);
-    } elsif ($pieces[$_] =~ /^%<<(\w+)$/) {
+    } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
       $insertion_points{$1} = $_;
-      push @fragments, "\ndie 'unfilled fragment: %<<$1';\n";
+      push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
     } else {
       push @fragments, $pieces[$_];
     }

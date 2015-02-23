@@ -10,10 +10,10 @@ sub { [@_] },
       open my $fh, $$self[0] or die "failed to open $$self[0]: $!";
       $$self[0] = $fh;
     }
-    gen('from:file', {fh => $$self[0]},
-      q{ while (<%fh>) {
-           %<<body
-         } }) % {body => $destination};
+    gen('file_source:VV', {fh => $$self[0]},
+      q{ while (<%:fh>) {
+           %@body
+         } }) % {body => with_input_type('L', $destination)};
   },
 
   sink_gen => sub {
@@ -22,7 +22,7 @@ sub { [@_] },
       open my $fh, $$self[1] or die "failed to open $$self[1]: $!";
       $$self[1] = $fh;
     }
-    gen('into:file', {fh => $$self[1]}, q{ print %fh $_; });
+    gen('file_sink:LV', {fh => $$self[1]}, q{ print %:fh $_; });
   },
 };
 
@@ -31,15 +31,15 @@ sub { [@_] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('from:memory', {xs => $self},
-      q{ for (@{%xs}) {
-           %<<body
-         } }) % {body => $destination};
+    gen('memory_source:VV', {xs => $self},
+      q{ for (@{%:xs}) {
+           %@body
+         } }) % {body => with_input_type('R', $destination)};
   },
 
   sink_gen => sub {
     my ($self) = @_;
-    gen('into:memory', {xs => $self}, q{ push @{%xs}, $_; });
+    gen('memory_sink:RV', {xs => $self}, q{ push @{%:xs}, $_; });
   },
 };
 
@@ -53,7 +53,7 @@ sub { [map $_->flatten, @_] },
     return gen('empty', {}, '') unless @$self;
     my ($first, @others) = @$self;
     my $gen = $first->source_gen($destination);
-    $gen = gen('+', {}, q{ %<<x; %<<y }) %
+    $gen = gen('sum_source:VV', {}, q{ %@x; %@y }) %
       {x => $gen,
        y => $_->source_gen($destination)} for @others;
     $gen;
@@ -66,8 +66,8 @@ sub { \$_[0] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self->source_gen(gen('cat:transform', {dest => $destination},
-      q{ $_->source_gen(%dest)->run; }));
+    $$self->source_gen(gen('cat_source:VV', {dest => $destination},
+      q{ $_->source_gen(%:dest)->run; }));
   },
 };
 
@@ -81,82 +81,65 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
   },
 };
 
-sub into_form {
-  # TODO
-  ...
-}
-
 sub invocation {
   my ($f, @args) = @_;
-  if (@args || ref $f eq 'CODE' || $f =~ s/^#//) {
+  if (@args || ref $f eq 'CODE' || $f =~ s/^;//) {
     # We need to generate a function call.
-    gen('fn:AA', {f => $f, args => [@args]},
-      q{ %f->(@_, @{%args}); });
+    gen('fn:FF', {f => compile($f), args => [@args]},
+      q{ %:f->(@_, @{%:args}); });
   } else {
-    # We can inline the expression to avoid any function call overhead.
-    gen('fn:AA', {}, q{ (%<<f); }) % {f => $f};
+    # We can inline the expression to avoid function call overhead.
+    gen('fn:FF', {}, q{ (%@f); }) % {f => $f};
   }
 }
 
 # Bindings for common transformations
 sub flatmap_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    gen('flatmap:AL', {},
-      q{ for (%<<invocation) {
-           %<<body
-         } }) % {invocation => into_form('AL', $i), body => $into};
+    gen("flatmap:${is}V", {},
+      q{ for (%@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type('R', $into)};
   };
 }
 
 sub mapone_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    alternatives(
-      gen('mapone:A', {},
-        q{ if (@_ = %<<invocation) {
-             %<<body
-           } }) % {invocation => $i, body => $into},
-
-      gen('mapone:L', {},
-        q{ %<<invocation
-           if (defined $_) {
-             %<<body
-           } }) % {invocation => $i, body => $into}
-    );
+    gen("mapone:${is}V", {},
+      q{ if (@_ = %@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type('F', $into)};
   };
 }
 
 sub grep_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    alternatives(
-      gen('grep:AA', {},
-        q{ if (%<<invocation) {
-             %<<body
-           } }) % {invocation => $i, body => $into},
-
-      gen('grep:AL', {},
-        q{ %<<invocation
-           if ($_[0]) {
-             %<<body
-           } }) % {invocation => $i, body => $into}
-    );
+    gen("grep:${is}V", {},
+      q{ if (%@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type($is, $into)};
   };
 }
 
 sub reduce_binding {
-  my ($f, $init, @args) = @_;
-  my $i = invocation $f, $init, @args;
+  my ($f, $init) = @_;
+  $f = compile $f;
   sub {
     my ($into) = @_;
-    gen('reduce:AA', {},
-      q{ for (%<<invocation) {
-           %<<body
-         } }) % {invocation => $i, body => $into};
+    gen('reduce:FV', {f => $f, init => $init},
+      q{ (%:init, @_) = %:f->(%:init, @_);
+         for (@_) {
+           %@body
+         } }) % {body => with_input_type('R', $into)};
   };
 }
 

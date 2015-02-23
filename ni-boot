@@ -49,7 +49,8 @@ sub compile {
 BEGIN {
 
 sub ni::gen::new;
-sub gen { ni::gen->new(@_) }
+sub gen       { ni::gen->new(@_) }
+sub gen_empty { gen('empty', {}, '') }
 
 package ni::gen;
 
@@ -77,6 +78,11 @@ sub new {
         $class;
 }
 
+sub genify {
+  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
+  return ni::gen('genified', {}, $_[0]);
+}
+
 sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
@@ -96,7 +102,7 @@ sub subst {
     die "unknown subst var: $_"
       unless exists $$self{insertion_indexes}{$_};
     $$self{inserted_code}{$_} =
-      $$self{fragments}[$$self{insertion_indexes}{$_}] = $$vars{$_};
+      $$self{fragments}[$$self{insertion_indexes}{$_}] = genify $$vars{$_};
   }
   $self;
 }
@@ -142,16 +148,16 @@ sub parse_code {
   my ($code) = @_;
   return @$_ if defined($_ = $parsed_code_cache{$code});
 
-  my @pieces = split /(%\w+|%<<\w+)/, $code;
+  my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
   my @fragments;
   my %gensyms;
   my %insertion_points;
   for (0..$#pieces) {
-    if ($pieces[$_] =~ /^%(\w+)$/) {
+    if ($pieces[$_] =~ /^\%:(\w+)$/) {
       push(@fragments, $gensyms{$1} = gensym $1);
-    } elsif ($pieces[$_] =~ /^%<<(\w+)$/) {
+    } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
       $insertion_points{$1} = $_;
-      push @fragments, "\ndie 'unfilled fragment: %<<$1';\n";
+      push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
     } else {
       push @fragments, $pieces[$_];
     }
@@ -161,131 +167,6 @@ sub parse_code {
                                  {%insertion_points}]};
 }
 
-}
-# Profile-guided optimization
-# Sometimes we'll be in a situation where we can't (or I'm too lazy to) tell at
-# compile-time which strategy will be fastest. In these cases we can emit
-# multiple alternatives, dispatch randomly, and measure empirically,
-# recompiling when we reach a conclusion.
-#
-# The obvious problem with this approach is how we resume an interrupted
-# computation. It turns out, though, that because we maintain all of the code
-# references it isn't particularly difficult. We just need a few contrivances:
-#
-# 1. When compiling a loop over an array, we need to save the array and index.
-# 2. When resuming within new code, we need a "repair" branch to finish any
-#    incomplete loops.
-
-use constant GENOPT_REFINE_STDDEV => 3;
-use constant GENOPT_REFINE_MIN_MS => 100;
-use constant GENOPT_REFINE_MIN_N  => 5;
-use constant UNREACHABLE          => gen('unreachable',
-                                         {},
-                                         q{ die 'unreachable'; });
-
-use List::Util qw/max min/;
-
-sub profiled_element {
-  my ($body) = @_;
-  my $counters = [0, 0.0];
-  gen('profiled', {counters => $counters},
-    q{ ++$%counters[0];
-       $%counters[1] -= time;
-       %<<body
-       $%counters[1] += time; }) % {body => $body};
-}
-
-sub nth_option;
-sub should_refine;
-sub refinement_signal;
-sub alternatives {
-  return $_[0] if @_ <= 1;
-
-  # Generate the selector structure, which should prefer each alternative
-  # equally but produce random decisions. Randomness matters because it
-  # guarantees expected unbiased sampling wrt data elements.
-  my @options   = @_;
-  my @multiples = map $_ / @options, 1..@options;
-  my $r = \0;           # NB: must be a reference since gensyms differ
-
-  my $decision = UNREACHABLE;
-  for (my $i = $#options; $i >= 0; --$i) {
-    $decision = gen("alternative_branch:$i", {r => $r, m => $multiples[$i]},
-                  q{ if ($%r < %m) {
-                       %<<option
-                     } else {
-                       %<<next
-                     } }) % {option => $options[$i],
-                             next   => $decision};
-  }
-
-  my $counters       = [map $$_{refs}{counters}, @options];
-  my $alternative_id = ni::gen::gensym 'alternative';
-  my $alternative    =
-    gen($alternative_id, {r => $r, counters => $counters, refinement_data => 0},
-      q{ # state gensym: %refinement_data (NB: don't remove this comment)
-         $%r = rand();
-         %<<decision
-         if (ni::should_refine(%counters)) {
-           %<<signal_refinement
-         } })
-    % {decision => $decision};
-
-  $alternative % {signal_refinement => signal_refinement $alternative};
-}
-
-sub nth_option {
-  my ($gen, $n) = @_;
-  die "must be an alternative branch"
-    unless $$gen{sig} =~ /^alternative_branch:(\d+)/;
-
-  $gen = $$gen{inserted_code}{next} while $n--;
-  $$gen{option};
-}
-
-sub should_refine {
-  # The time taken by each branch should follow an exponential distribution, so
-  # the goal is to look for cases where we're unlikely to have gotten it wrong.
-  # In this case we want a 1% error rate; 99% of refinements should result in
-  # us choosing the long-run optimal branch. 3 standard deviations of a normal
-  # distribution can be used to approximate the exponential confidence
-  # interval, which should give us well under 1% error.
-  #
-  # Note that we refine only if each alternative has used at least 100ms;
-  # otherwise the effort isn't really justifiable.
-
-  my ($counters) = @_;
-  $$_[1] * 1000 >= GENOPT_REFINE_MIN_MS or return 0 for @$counters;
-  $$_[0]        >= GENOPT_REFINE_MIN_N  or return 0 for @$counters;
-
-  # Ok, we probably have enough to work with. The goal is to identify a case
-  # where we stand to gain significant performance by eliminating branches. If
-  # we have several high-performance options, it probably doesn't matter much
-  # which one we take.
-  my @ps;
-  my @ls;
-  my @us;
-
-  for (@$counters) {
-    my ($n, $t) = @$_;
-    my $adjust = GENOPT_REFINE_STDDEV / sqrt $n;
-    push @ps, my $p = $t / $n;
-    push @ls, $p * (1 - $adjust);
-    push @us, $p * (1 + $adjust);
-  }
-
-  # Refine if we have a decisive preference. (TODO: weigh the implications of
-  # having a single refinement vs progressive ones in cases of fast-branch
-  # uncertainty.)
-  min(@us) > max(@ls);
-}
-
-sub signal_refinement {
-  my ($alternative) = @_;
-  gen('refinement_signal', {alternative => $alternative},
-    q{ %<<save_iterator_state
-       %<<rewrite_alternative
-       return [%<<alternative_key, %alternative] });
 }
 # Extensible IO stream abstraction
 # Streams are defined by the Perl code that runs in order to put their values
@@ -322,6 +203,57 @@ sub defio {
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
+# Codegen adapters
+# We want to avoid converting between lines and fields as much as possible, so
+# each code element tracks its operand and return types and we convert between
+# them automatically. Types are:
+#
+# F = array of fields stored in @_
+# L = single line with \n, stored in $_
+# R = single row without \n, stored in $_
+# V = void; used as a return type to indicate that values all go to a sink but
+#     are not usable in a post-side-effect state, or as an input type to
+#     indicate that the input is ignored.
+#
+# These types are annotated after a : in a code block's signature.
+
+our %sig_conversions = (
+  FL => q{ $@before chomp @_; $_ = join("\t", @_) . "\n"; $@after },
+  FR => q{ $@before           $_ = join("\t", @_);        $@after },
+  LF => q{ $@before chomp;    @_ = split /\t/;            $@after },
+  LR => q{ $@before chomp;                                $@after },
+  RF => q{ $@before           @_ = split /\t/;            $@after },
+  RL => q{ $@before chomp;    @_ = split /\t/;            $@after },
+
+  FF => q{ $@before $@after },
+  LL => q{ $@before $@after },
+  RR => q{ $@before $@after },
+);
+
+$sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
+  for keys %sig_conversions;
+
+sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
+sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
+
+sub with_input_type {
+  my ($sig, $code) = @_;
+  die "unsigned code block: $code ($$code{sig})"
+    unless my $codesig = input_sig $code;
+  die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
+    unless defined(my $transform = $sig_conversions{"$sig$codesig"});
+  $transform % {before => gen_empty, after => $code};
+}
+
+sub with_output_type {
+  my ($sig, $code) = @_;
+  die "unsigned code block: $code ($$code{sig})"
+    unless my $codesig = output_sig $code;
+  die "unknown code transform $sig$codesig for $$code{sig} ($codesig) > $sig"
+    unless defined(my $transform = $sig_conversions{"$codesig$sig"});
+  $transform % {before => $code, after => gen_empty};
+}
+
 sub mapone_binding;
 sub flatmap_binding;
 sub reduce_binding;
@@ -340,7 +272,7 @@ use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
                  > into
                  < from #;
 
-BEGIN { *gen = \&{ni::gen} }
+BEGIN { *gen = \&ni::gen }
 
 use POSIX qw/dup2/;
 
@@ -360,19 +292,19 @@ sub pipe_op   { $_[0]->pipe($_[1]) }
 
 sub plus    { ::ni_sum(@_) }
 sub bind    { ::ni_bind(@_) }
-sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
-sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
-sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
-sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
+sub mapone  { $_[0] >>= ni::mapone_binding  @_[1..$#_] }
+sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
+sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
+sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
+sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
 
 # User-facing methods
 sub from {
   my ($self, $source_fh) = @_;
-  gen('from:fh', {fh => $source_fh},
-    q{ while (<%fh>) {
-         %<<body
-       } })->subst({body => $self->sink_gen})->run;
+  gen('from_fh:VV', {fh => $source_fh},
+    q{ while (<%:fh>) {
+         %@body
+       } })->subst({body => with_input_type('L', $self->sink_gen)})->run;
 }
 
 sub from_fh {
@@ -390,8 +322,8 @@ sub from_fh {
 
 sub into {
   my ($self, $dest_fh) = @_;
-  $self->source_gen(gen 'into:fh', {fh => $dest_fh},
-    q{ print %fh $_; })->run;
+  $self->source_gen(gen 'into_fh:LV', {fh => $dest_fh},
+    q{ print %:fh $_; })->run;
 }
 
 sub into_fh {
@@ -474,10 +406,10 @@ sub { [@_] },
       open my $fh, $$self[0] or die "failed to open $$self[0]: $!";
       $$self[0] = $fh;
     }
-    gen('from:file', {fh => $$self[0]},
-      q{ while (<%fh>) {
-           %<<body
-         } }) % {body => $destination};
+    gen('file_source:VV', {fh => $$self[0]},
+      q{ while (<%:fh>) {
+           %@body
+         } }) % {body => with_input_type('L', $destination)};
   },
 
   sink_gen => sub {
@@ -486,7 +418,7 @@ sub { [@_] },
       open my $fh, $$self[1] or die "failed to open $$self[1]: $!";
       $$self[1] = $fh;
     }
-    gen('into:file', {fh => $$self[1]}, q{ print %fh $_; });
+    gen('file_sink:LV', {fh => $$self[1]}, q{ print %:fh $_; });
   },
 };
 
@@ -495,15 +427,15 @@ sub { [@_] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('from:memory', {xs => $self},
-      q{ for (@{%xs}) {
-           %<<body
-         } }) % {body => $destination};
+    gen('memory_source:VV', {xs => $self},
+      q{ for (@{%:xs}) {
+           %@body
+         } }) % {body => with_input_type('R', $destination)};
   },
 
   sink_gen => sub {
     my ($self) = @_;
-    gen('into:memory', {xs => $self}, q{ push @{%xs}, $_; });
+    gen('memory_sink:RV', {xs => $self}, q{ push @{%:xs}, $_; });
   },
 };
 
@@ -517,7 +449,7 @@ sub { [map $_->flatten, @_] },
     return gen('empty', {}, '') unless @$self;
     my ($first, @others) = @$self;
     my $gen = $first->source_gen($destination);
-    $gen = gen('+', {}, q{ %<<x; %<<y }) %
+    $gen = gen('sum_source:VV', {}, q{ %@x; %@y }) %
       {x => $gen,
        y => $_->source_gen($destination)} for @others;
     $gen;
@@ -530,8 +462,8 @@ sub { \$_[0] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self->source_gen(gen('cat:transform', {dest => $destination},
-      q{ $_->source_gen(%dest)->run; }));
+    $$self->source_gen(gen('cat_source:VV', {dest => $destination},
+      q{ $_->source_gen(%:dest)->run; }));
   },
 };
 
@@ -545,82 +477,65 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
   },
 };
 
-sub into_form {
-  # TODO
-  ...
-}
-
 sub invocation {
   my ($f, @args) = @_;
-  if (@args || ref $f eq 'CODE' || $f =~ s/^#//) {
+  if (@args || ref $f eq 'CODE' || $f =~ s/^;//) {
     # We need to generate a function call.
-    gen('fn:AA', {f => $f, args => [@args]},
-      q{ %f->(@_, @{%args}); });
+    gen('fn:FF', {f => compile($f), args => [@args]},
+      q{ %:f->(@_, @{%:args}); });
   } else {
-    # We can inline the expression to avoid any function call overhead.
-    gen('fn:AA', {}, q{ (%<<f); }) % {f => $f};
+    # We can inline the expression to avoid function call overhead.
+    gen('fn:FF', {}, q{ (%@f); }) % {f => $f};
   }
 }
 
 # Bindings for common transformations
 sub flatmap_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    gen('flatmap:AL', {},
-      q{ for (%<<invocation) {
-           %<<body
-         } }) % {invocation => into_form('AL', $i), body => $into};
+    gen("flatmap:${is}V", {},
+      q{ for (%@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type('R', $into)};
   };
 }
 
 sub mapone_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    alternatives(
-      gen('mapone:A', {},
-        q{ if (@_ = %<<invocation) {
-             %<<body
-           } }) % {invocation => $i, body => $into},
-
-      gen('mapone:L', {},
-        q{ %<<invocation
-           if (defined $_) {
-             %<<body
-           } }) % {invocation => $i, body => $into}
-    );
+    gen("mapone:${is}V", {},
+      q{ if (@_ = %@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type('F', $into)};
   };
 }
 
 sub grep_binding {
-  my $i = invocation @_;
+  my $i  = invocation @_;
+  my $is = input_sig $i;
   sub {
     my ($into) = @_;
-    alternatives(
-      gen('grep:AA', {},
-        q{ if (%<<invocation) {
-             %<<body
-           } }) % {invocation => $i, body => $into},
-
-      gen('grep:AL', {},
-        q{ %<<invocation
-           if ($_[0]) {
-             %<<body
-           } }) % {invocation => $i, body => $into}
-    );
+    gen("grep:${is}V", {},
+      q{ if (%@invocation) {
+           %@body
+         } }) % {invocation => $i, body => with_input_type($is, $into)};
   };
 }
 
 sub reduce_binding {
-  my ($f, $init, @args) = @_;
-  my $i = invocation $f, $init, @args;
+  my ($f, $init) = @_;
+  $f = compile $f;
   sub {
     my ($into) = @_;
-    gen('reduce:AA', {},
-      q{ for (%<<invocation) {
-           %<<body
-         } }) % {invocation => $i, body => $into};
+    gen('reduce:FV', {f => $f, init => $init},
+      q{ (%:init, @_) = %:f->(%:init, @_);
+         for (@_) {
+           %@body
+         } }) % {body => with_input_type('R', $into)};
   };
 }
 
@@ -705,6 +620,11 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
 
+# Debugging
+defop 'debug-compile', undef, '',
+  'shows the compiled code generated for the given io',
+  sub { ni_memory($_[0]->source_gen(gen('print:LV', {}, 'print $_;'))) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -716,7 +636,7 @@ defop 'keep', 'k', 's',
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
-  sub { ni::io::sum->new($_[0] * \&::ni) };
+  sub { ni_cat($_[0] * \&ni) };
 
 defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',

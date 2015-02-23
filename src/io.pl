@@ -33,6 +33,57 @@ sub defio {
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
+# Codegen adapters
+# We want to avoid converting between lines and fields as much as possible, so
+# each code element tracks its operand and return types and we convert between
+# them automatically. Types are:
+#
+# F = array of fields stored in @_
+# L = single line with \n, stored in $_
+# R = single row without \n, stored in $_
+# V = void; used as a return type to indicate that values all go to a sink but
+#     are not usable in a post-side-effect state, or as an input type to
+#     indicate that the input is ignored.
+#
+# These types are annotated after a : in a code block's signature.
+
+our %sig_conversions = (
+  FL => q{ $@before chomp @_; $_ = join("\t", @_) . "\n"; $@after },
+  FR => q{ $@before           $_ = join("\t", @_);        $@after },
+  LF => q{ $@before chomp;    @_ = split /\t/;            $@after },
+  LR => q{ $@before chomp;                                $@after },
+  RF => q{ $@before           @_ = split /\t/;            $@after },
+  RL => q{ $@before chomp;    @_ = split /\t/;            $@after },
+
+  FF => q{ $@before $@after },
+  LL => q{ $@before $@after },
+  RR => q{ $@before $@after },
+);
+
+$sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
+  for keys %sig_conversions;
+
+sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
+sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
+
+sub with_input_type {
+  my ($sig, $code) = @_;
+  die "unsigned code block: $code ($$code{sig})"
+    unless my $codesig = input_sig $code;
+  die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
+    unless defined(my $transform = $sig_conversions{"$sig$codesig"});
+  $transform % {before => gen_empty, after => $code};
+}
+
+sub with_output_type {
+  my ($sig, $code) = @_;
+  die "unsigned code block: $code ($$code{sig})"
+    unless my $codesig = output_sig $code;
+  die "unknown code transform $sig$codesig for $$code{sig} ($codesig) > $sig"
+    unless defined(my $transform = $sig_conversions{"$codesig$sig"});
+  $transform % {before => $code, after => gen_empty};
+}
+
 sub mapone_binding;
 sub flatmap_binding;
 sub reduce_binding;
@@ -51,7 +102,7 @@ use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
                  > into
                  < from #;
 
-BEGIN { *gen = \&{ni::gen} }
+BEGIN { *gen = \&ni::gen }
 
 use POSIX qw/dup2/;
 
@@ -71,19 +122,19 @@ sub pipe_op   { $_[0]->pipe($_[1]) }
 
 sub plus    { ::ni_sum(@_) }
 sub bind    { ::ni_bind(@_) }
-sub mapone  { ::ni_bind($_[0], ni::mapone_binding  @_[1..$#_]) }
-sub flatmap { ::ni_bind($_[0], ni::flatmap_binding @_[1..$#_]) }
-sub reduce  { ::ni_bind($_[0], ni::reduce_binding  @_[1..$#_]) }
-sub grep    { ::ni_bind($_[0], ni::grep_binding    @_[1..$#_]) }
-sub pipe    { ::ni_bind($_[0], ni::pipe_binding    @_[1..$#_]) }
+sub mapone  { $_[0] >>= ni::mapone_binding  @_[1..$#_] }
+sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
+sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
+sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
+sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
 
 # User-facing methods
 sub from {
   my ($self, $source_fh) = @_;
-  gen('from:fh', {fh => $source_fh},
-    q{ while (<%fh>) {
-         %<<body
-       } })->subst({body => $self->sink_gen})->run;
+  gen('from_fh:VV', {fh => $source_fh},
+    q{ while (<%:fh>) {
+         %@body
+       } })->subst({body => with_input_type('L', $self->sink_gen)})->run;
 }
 
 sub from_fh {
@@ -101,8 +152,8 @@ sub from_fh {
 
 sub into {
   my ($self, $dest_fh) = @_;
-  $self->source_gen(gen 'into:fh', {fh => $dest_fh},
-    q{ print %fh $_; })->run;
+  $self->source_gen(gen 'into_fh:LV', {fh => $dest_fh},
+    q{ print %:fh $_; })->run;
 }
 
 sub into_fh {

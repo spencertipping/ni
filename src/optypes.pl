@@ -7,6 +7,11 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
 
+# Debugging
+defop 'debug-compile', undef, '',
+  'shows the compiled code generated for the given io',
+  sub { ni_memory($_[0]->source_gen(gen('print:LV', {}, 'print $_;'))) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -18,7 +23,7 @@ defop 'keep', 'k', 's',
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
-  sub { ni::io::sum->new($_[0] * \&::ni) };
+  sub { ni_cat($_[0] * \&ni) };
 
 defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',
