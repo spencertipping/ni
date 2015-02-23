@@ -49,7 +49,7 @@ sub compile {
 BEGIN {
 
 sub ni::gen::new;
-sub gen       { ni::gen->new(@_) }
+sub gen       { local $_; ni::gen->new(@_) }
 sub gen_empty { gen('empty', {}, '') }
 
 package ni::gen;
@@ -98,11 +98,10 @@ sub inserted_code_keys {
 
 sub subst {
   my ($self, $vars) = @_;
-  for (keys %$vars) {
-    die "unknown subst var: $_"
-      unless exists $$self{insertion_indexes}{$_};
-    $$self{inserted_code}{$_} =
-      $$self{fragments}[$$self{insertion_indexes}{$_}] = genify $$vars{$_};
+  for my $k (keys %$vars) {
+    die "unknown subst var: $k (code is $self)"
+      unless defined(my $i = $$self{insertion_indexes}{$k});
+    $$self{inserted_code}{$k} = $$self{fragments}[$i] = genify $$vars{$k};
   }
   $self;
 }
@@ -154,7 +153,7 @@ sub parse_code {
   my %insertion_points;
   for (0..$#pieces) {
     if ($pieces[$_] =~ /^\%:(\w+)$/) {
-      push(@fragments, $gensyms{$1} = gensym $1);
+      push @fragments, $gensyms{$1} = gensym $1;
     } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
       $insertion_points{$1} = $_;
       push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
@@ -218,16 +217,16 @@ sub defio {
 # These types are annotated after a : in a code block's signature.
 
 our %sig_conversions = (
-  FL => q{ $@before chomp @_; $_ = join("\t", @_) . "\n"; $@after },
-  FR => q{ $@before           $_ = join("\t", @_);        $@after },
-  LF => q{ $@before chomp;    @_ = split /\t/;            $@after },
-  LR => q{ $@before chomp;                                $@after },
-  RF => q{ $@before           @_ = split /\t/;            $@after },
-  RL => q{ $@before chomp;    @_ = split /\t/;            $@after },
+  FL => q{ %@before chomp @_; $_ = join("\t", @_) . "\n"; %@after },
+  FR => q{ %@before           $_ = join("\t", @_);        %@after },
+  LF => q{ %@before chomp;    @_ = split /\t/;            %@after },
+  LR => q{ %@before chomp;                                %@after },
+  RF => q{ %@before           @_ = split /\t/;            %@after },
+  RL => q{ %@before           $_ .= "\n" unless /\n$/;    %@after },
 
-  FF => q{ $@before $@after },
-  LL => q{ $@before $@after },
-  RR => q{ $@before $@after },
+  FF => q{ %@before %@after },
+  LL => q{ %@before %@after },
+  RR => q{ %@before %@after },
 );
 
 $sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
@@ -482,10 +481,10 @@ sub invocation {
   if (@args || ref $f eq 'CODE' || $f =~ s/^;//) {
     # We need to generate a function call.
     gen('fn:FF', {f => compile($f), args => [@args]},
-      q{ %:f->(@_, @{%:args}); });
+      q{ %:f->(@_, @{%:args}) });
   } else {
     # We can inline the expression to avoid function call overhead.
-    gen('fn:FF', {}, q{ (%@f); }) % {f => $f};
+    gen('fn:FF', {}, q{ (%@f) }) % {f => $f};
   }
 }
 

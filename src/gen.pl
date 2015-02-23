@@ -6,7 +6,7 @@
 BEGIN {
 
 sub ni::gen::new;
-sub gen       { ni::gen->new(@_) }
+sub gen       { local $_; ni::gen->new(@_) }
 sub gen_empty { gen('empty', {}, '') }
 
 package ni::gen;
@@ -55,11 +55,10 @@ sub inserted_code_keys {
 
 sub subst {
   my ($self, $vars) = @_;
-  for (keys %$vars) {
-    die "unknown subst var: $_"
-      unless exists $$self{insertion_indexes}{$_};
-    $$self{inserted_code}{$_} =
-      $$self{fragments}[$$self{insertion_indexes}{$_}] = genify $$vars{$_};
+  for my $k (keys %$vars) {
+    die "unknown subst var: $k (code is $self)"
+      unless defined(my $i = $$self{insertion_indexes}{$k});
+    $$self{inserted_code}{$k} = $$self{fragments}[$i] = genify $$vars{$k};
   }
   $self;
 }
@@ -111,7 +110,7 @@ sub parse_code {
   my %insertion_points;
   for (0..$#pieces) {
     if ($pieces[$_] =~ /^\%:(\w+)$/) {
-      push(@fragments, $gensyms{$1} = gensym $1);
+      push @fragments, $gensyms{$1} = gensym $1;
     } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
       $insertion_points{$1} = $_;
       push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";

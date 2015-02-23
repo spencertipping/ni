@@ -86,10 +86,10 @@ sub invocation {
   if (@args || ref $f eq 'CODE' || $f =~ s/^;//) {
     # We need to generate a function call.
     gen('fn:FF', {f => compile($f), args => [@args]},
-      q{ %:f->(@_, @{%:args}); });
+      q{ %:f->(@_, @{%:args}) });
   } else {
     # We can inline the expression to avoid function call overhead.
-    gen('fn:FF', {}, q{ (%@f); }) % {f => $f};
+    gen('fn:FF', {}, q{ (%@f) }) % {f => $f};
   }
 }
 

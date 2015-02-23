@@ -48,16 +48,16 @@ sub defio {
 # These types are annotated after a : in a code block's signature.
 
 our %sig_conversions = (
-  FL => q{ $@before chomp @_; $_ = join("\t", @_) . "\n"; $@after },
-  FR => q{ $@before           $_ = join("\t", @_);        $@after },
-  LF => q{ $@before chomp;    @_ = split /\t/;            $@after },
-  LR => q{ $@before chomp;                                $@after },
-  RF => q{ $@before           @_ = split /\t/;            $@after },
-  RL => q{ $@before chomp;    @_ = split /\t/;            $@after },
+  FL => q{ %@before chomp @_; $_ = join("\t", @_) . "\n"; %@after },
+  FR => q{ %@before           $_ = join("\t", @_);        %@after },
+  LF => q{ %@before chomp;    @_ = split /\t/;            %@after },
+  LR => q{ %@before chomp;                                %@after },
+  RF => q{ %@before           @_ = split /\t/;            %@after },
+  RL => q{ %@before           $_ .= "\n" unless /\n$/;    %@after },
 
-  FF => q{ $@before $@after },
-  LL => q{ $@before $@after },
-  RR => q{ $@before $@after },
+  FF => q{ %@before %@after },
+  LL => q{ %@before %@after },
+  RR => q{ %@before %@after },
 );
 
 $sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
