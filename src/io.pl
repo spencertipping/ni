@@ -131,10 +131,11 @@ sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
 # User-facing methods
 sub from {
   my ($self, $source_fh) = @_;
-  gen('from_fh:VV', {fh => $source_fh},
+  gen('from_fh:VV', {fh   => $source_fh,
+                     body => with_input_type('L', $self->sink_gen)},
     q{ while (<%:fh>) {
          %@body
-       } })->subst({body => with_input_type('L', $self->sink_gen)})->run;
+       } })->run;
 }
 
 sub from_fh {

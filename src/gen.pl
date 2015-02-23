@@ -22,17 +22,28 @@ sub new {
   my ($class, $sig, $refs, $code) = @_;
   my ($fragments, $gensyms, $insertions) = parse_code $code;
 
+  # Substitutions can be specified as refs, in which case we pull them out and
+  # do a rewrite automatically (this is more notationally expedient than having
+  # to do a % operation right away).
+  my %subst;
+  for (keys %$refs) {
+    if (exists $$insertions{$_}) {
+      $subst{$_} = $$refs{$_};
+      delete $$refs{$_};
+    }
+  }
+
   exists $$gensyms{$_} or die "undefined ref $_ in $code" for keys %$refs;
   exists $$refs{$_}    or die    "unused ref $_ in $code" for keys %$gensyms;
 
   # NB: always copy the fragments because parse_code returns cached results
-  bless { sig               => $sig,
+  bless({ sig               => $sig,
           fragments         => [@$fragments],
           gensym_names      => $gensyms,
           insertion_indexes => $insertions,
           inserted_code     => {},
           refs              => $refs // {} },
-        $class;
+        $class) % {%subst};
 }
 
 sub genify {
