@@ -1,6 +1,7 @@
 #!/bin/bash
 rm -f ni ni-boot
-cat src/{core,prefix,fn,gen,io,data,datatypes,iotypes,ops,optypes,main}.pl \
+cat src/{core,prefix,fn,gen,genopt,io,data,datatypes,iotypes}.pl \
+    src/{ops,optypes,main}.pl \
     > ni-boot \
   && chmod +x ni-boot \
   && ./ni-boot --self > ni \

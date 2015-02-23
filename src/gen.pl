@@ -108,7 +108,7 @@ sub parse_code {
       push(@fragments, $gensyms{$1} = gensym $1);
     } elsif ($pieces[$_] =~ /^%<<(\w+)$/) {
       $insertion_points{$1} = $_;
-      push @fragments, "# %<<$1\n";
+      push @fragments, "\ndie 'unfilled fragment: %<<$1';\n";
     } else {
       push @fragments, $pieces[$_];
     }

@@ -39,4 +39,10 @@ testcase 'perl 12'   'perl pair-with-length-c.pl < testdata'
 testcase 'nfu 1'     'nfu testdata -m "row %0, length %0"'
 testcase 'nfu 2'     "nfu testdata -m '\"%0\t\" . length(%0)'"
 
+testcase 'loop1' 'perl loop1.pl'
+testcase 'loop2' 'perl loop2.pl'
+testcase 'loop3' 'perl loop3.pl'
+testcase 'loop4' 'perl loop4.pl'
+testcase 'loop5' 'perl loop5.pl'
+
 rm testdata pair-with-length
