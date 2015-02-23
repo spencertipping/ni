@@ -80,6 +80,10 @@ sub nth_option {
 }
 
 sub should_refine {
+  # TODO: redo this logic completely. We should be considering expected gain
+  # per refinement cost, which we can estimate by timing the initial
+  # compilation.
+
   # The time taken by each branch should follow an exponential distribution, so
   # the goal is to look for cases where we're unlikely to have gotten it wrong.
   # In this case we want a 1% error rate; 99% of refinements should result in
