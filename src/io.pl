@@ -105,10 +105,13 @@ sub pipe_binding;
 
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 eq compare_refs
                  "" explain
                  >>= bind_op
                  > into  >= into_bg
                  < from  <= from_bg #;
+
+use Scalar::Util qw/refaddr/;
 
 BEGIN { *gen = \&ni::gen }
 
@@ -151,6 +154,8 @@ sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
 sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
 sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
 sub pipe    { ::ni_process($_[1], $_[0], undef) }
+
+sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
 
 # User-facing methods
 sub from {

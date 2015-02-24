@@ -46,6 +46,10 @@ defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
   sub { $_[0] % $_[1] };
 
+defop 'transform', 'M', 's',
+  'transforms the stream as an object using the specified function',
+  sub { compile($_[1])->($_[0]) };
+
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
   sub { ni_cat($_[0] * \&ni) };

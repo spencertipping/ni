@@ -251,10 +251,12 @@ sub pipe_binding;
 {
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 eq compare_refs
                  "" explain
                  >>= bind_op
                  > into  >= into_bg
                  < from  <= from_bg #;
+use Scalar::Util qw/refaddr/;
 BEGIN { *gen = \&ni::gen }
 use POSIX qw/dup2/;
 sub source_gen { ... }          # gen to source from this thing
@@ -285,6 +287,7 @@ sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
 sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
 sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
 sub pipe    { ::ni_process($_[1], $_[0], undef) }
+sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
 sub from {
   my ($self, $source) = @_;
   ::ni($source)->source_gen($self)->run;
@@ -519,7 +522,7 @@ sub {
 };
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
-  ni_file("<pipe in = " . fileno($in) . ", out = " . fileno($out). ">",
+  ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
           $out, $in);
 };
 defioproxy 'process', sub {
@@ -699,8 +702,10 @@ sub parse_commands {
       push @parsed, [$c, @$args];
       @_ = @rest;
     } elsif ($o =~ s/^-//) {
-      unshift @_, map $op_shorthand_lookups{$_} // $_,
-                      $o =~ /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/g;
+      my ($op, @stuff) = grep length,
+                         split /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/, $o;
+      die "undefined short op: $op" unless exists $op_shorthand_lookups{$op};
+      unshift @_, map $op_shorthand_lookups{$_} // $_, $op, @stuff;
     } else {
       push @parsed, file_opt $o;
     }
@@ -729,6 +734,9 @@ defop 'map', 'm', 's',
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
   sub { $_[0] % $_[1] };
+defop 'transform', 'M', 's',
+  'transforms the stream as an object using the specified function',
+  sub { compile($_[1])->($_[0]) };
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
   sub { ni_cat($_[0] * \&ni) };

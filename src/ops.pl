@@ -71,8 +71,10 @@ sub parse_commands {
       push @parsed, [$c, @$args];
       @_ = @rest;
     } elsif ($o =~ s/^-//) {
-      unshift @_, map $op_shorthand_lookups{$_} // $_,
-                      $o =~ /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/g;
+      my ($op, @stuff) = grep length,
+                         split /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/, $o;
+      die "undefined short op: $op" unless exists $op_shorthand_lookups{$op};
+      unshift @_, map $op_shorthand_lookups{$_} // $_, $op, @stuff;
     } else {
       push @parsed, file_opt $o;
     }

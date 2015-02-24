@@ -186,7 +186,7 @@ sub {
 # A file-descriptor pipe
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
-  ni_file("<pipe in = " . fileno($in) . ", out = " . fileno($out). ">",
+  ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
           $out, $in);
 };
 
