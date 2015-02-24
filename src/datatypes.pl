@@ -1,14 +1,28 @@
 # Data source/sink implementations
 
-defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// },
-                sub { ni_file("< $_[0]", "> $_[0]") };
+our %read_filters;
+our %write_filters;
+
+defdata 'file',
+  sub { -e $_[0] || $_[0] =~ s/^file:// },
+  sub {
+    my ($f)       = @_;
+    my $extension = ($f =~ /\.(\w+)$/)[0];
+    my $file      = ni_file("[file $f]", "< $f", "> $f");
+    exists $read_filters{$extension}
+      ? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
+      : $file;
+  };
 
 sub deffilter {
   my ($extension, $read, $write) = @_;
-  $extension = qr/\.$extension$/;
+  $read_filters{$extension}  = $read;
+  $write_filters{$extension} = $write;
+
+  my $prefix_detector = qr/^$extension:/;
   defdata $extension,
-    sub { $_[0] =~ /$extension/ },
-    sub { ni_filter(ni_file("< $_[0]", "> $_[0]"), $read, $write) };
+    sub { $_[0] =~ s/$prefix_detector// },
+    sub { ni_filter(ni($_[0]), $read, $write) };
 }
 
 deffilter 'gz',  'gzip -d',  'gzip';
@@ -24,4 +38,5 @@ defdata 'ssh',
         };
 
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni_file($_[0], $_[0]) };
+                    sub { ni_file("[fh = " . fileno($_[0]) . "]",
+                                  $_[0], $_[0]) };

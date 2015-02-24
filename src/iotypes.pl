@@ -12,36 +12,43 @@ sub to_fh {
 
 # Partial implementations
 defio 'sink_as',
-sub { \$_[0] },
+sub { +{description => $_[0], f => $_[1]} },
 {
+  explain         => sub { "[sink as: " . ${$_[0]}{description} . "]" },
   supports_reads  => sub { 0 },
   supports_writes => sub { 1 },
-  sink_gen        => sub { ${$_[0]}->(@_[1..$#_]) },
+  sink_gen        => sub { ${$_[0]}{f}->(@_[1..$#_]) },
 };
 
 defio 'source_as',
-sub { \$_[0] },
+sub { +{description => $_[0], f => $_[1]} },
 {
+  explain    => sub { "[source as: " . ${$_[0]}{description} . "]" },
   source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
 };
 
-sub sink_as(&)   { ni_sink_as(@_) }
-sub source_as(&) { ni_source_as(@_) }
+sub sink_as(&)   { ni_sink_as("[anonymous sink]", @_) }
+sub source_as(&) { ni_source_as("[anonymous source]", @_) }
 
 # Bidirectional filehandle IO with lazy creation
 defio 'file',
-sub { +{reader => $_[0], writer => $_[1]} },
+sub {
+  die "ni_file() requires three constructor arguments (got @_)" unless @_ == 3;
+  +{description => $_[0], reader => $_[1], writer => $_[2]}
+},
 {
+  explain => sub { ${$_[0]}{description} },
+
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    to_fh $$self{reader};
+    $$self{reader} = to_fh $$self{reader};
   },
 
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    to_fh $$self{writer};
+    $$self{writer} = to_fh $$self{writer};
   },
 
   supports_reads  => sub { defined ${$_[0]}{reader} },
@@ -71,6 +78,12 @@ sub { +{reader => $_[0], writer => $_[1]} },
 defio 'memory',
 sub { [@_] },
 {
+  explain => sub {
+    "[memory io of " . scalar(@{$_[0]}) . " element(s): "
+                     . "[" . join(', ', @{$_[0]}[0..3],
+                                        @{$_[0]} > 4 ? ("...") : ()) . "]]";
+  },
+
   supports_writes => sub { 1 },
 
   source_gen => sub {
@@ -96,6 +109,10 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
+  explain => sub {
+    "[sum: " . join(' + ', @{$_[0]}) . "]";
+  },
+
   transform  => sub {
     my ($self, $f) = @_;
     my $x = $f->($self);
@@ -115,6 +132,10 @@ sub { [map $_->flatten, @_] },
 defio 'cat',
 sub { \$_[0] },
 {
+  explain => sub {
+    "[cat ${$_[0]}]";
+  },
+
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
@@ -126,8 +147,16 @@ sub { \$_[0] },
 
 # Introduces arbitrary indirection into an IO's code stream
 defio 'bind',
-sub { +{ base => $_[0], code_transform => $_[1] } },
+sub {
+  die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
+  +{ base => $_[0], code_transform => $_[1] }
+},
 {
+  explain => sub {
+    my ($self) = @_;
+    "$$self{base} >>= $$self{code_transform}[0]";
+  },
+
   supports_reads  => sub { ${$_[0]}{base}->supports_reads },
   supports_writes => sub { ${$_[0]}{base}->supports_writes },
 
@@ -140,14 +169,14 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 
   sink_gen => sub {
     my ($self, $type) = @_;
-    $$self{code_transform}->($$self{base}, $type);
+    $$self{code_transform}[1]->($$self{base}, $type);
   },
 
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self{base}->source_gen(sink_as {
       my ($type) = @_;
-      $$self{code_transform}->($destination, $type);
+      $$self{code_transform}[1]->($destination, $type);
     });
   },
 
@@ -157,38 +186,51 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 # A file-descriptor pipe
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
-  ni_file($out, $in);
+  ni_file("<pipe in = " . fileno($in) . ", out = " . fileno($out). ">",
+          $out, $in);
 };
 
 # Stdin/stdout of an external process with stdin, stdout, neither, or both
 # redirected to the specified ios. If you don't specify them, this function
-# creates pipes and returns an io wrapping them.
+# creates pipes and returns a lazy io wrapping them.
 defioproxy 'process', sub {
-  my ($command, $stdin, $stdout) = @_;
-  $stdin  = defined $stdin  ? defined $stdin->reader_fh ? $stdin
-                                                        : ni_pipe() <= $stdin
-                            : ni_pipe();
+  my ($command, $stdin_fh, $stdout_fh) = @_;
+  my $stdin  = undef;
+  my $stdout = undef;
 
-  $stdout = defined $stdout ? defined $stdout->reader_fh ? $stdout
-                                                         : ni_pipe() >= $stdout
-                            : ni_pipe();
-  unless (fork) {
-    close STDIN;
-    close STDOUT;
-    close $stdin->writer_fh;
-    close $stdout->reader_fh;
-    dup2 fileno $stdin->reader_fh,  0 or die "dup2 failed: $!";
-    dup2 fileno $stdout->writer_fh, 1 or die "dup2 failed: $!";
-    exec $command or exit;
+  unless (defined $stdin_fh) {
+    $stdin    = ni_pipe();
+    $stdin_fh = $stdin->reader_fh;
   }
 
-  ni_file($stdout->reader_fh, $stdin->writer_fh);
+  unless (defined $stdout_fh) {
+    $stdout    = ni_pipe();
+    $stdout_fh = $stdout->writer_fh;
+  }
+
+  my $pid = undef;
+  my $create_process = sub {
+    return if defined $pid;
+    unless ($pid = fork) {
+      close STDIN;  close $stdin->writer_fh  if defined $stdin;
+      close STDOUT; close $stdout->reader_fh if defined $stdout;
+      dup2 fileno $stdin_fh,  0 or die "dup2 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 failed: $!";
+      exec $command or exit;
+    }
+  };
+
+  ni_file(
+    "[process $command, stdin = $stdin, stdout = $stdout]",
+    sub { $create_process->(); defined $stdout ? $stdout->reader_fh : undef },
+    sub { $create_process->(); defined $stdin  ? $stdin->writer_fh  : undef });
 };
 
 # Filtered through shell processes
 defioproxy 'filter', sub {
   my ($base, $read_filter, $write_filter) = @_;
   ni_file(
+    "[filter $base, read = $read_filter, write = $write_filter]",
     $base->supports_reads && defined $read_filter
       ? sub {ni_process($read_filter, $base->reader_fh, undef)->reader_fh}
       : undef,

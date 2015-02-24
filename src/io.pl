@@ -105,6 +105,7 @@ sub pipe_binding;
 
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 "" explain
                  >>= bind_op
                  > into  >= into_bg
                  < from  <= from_bg #;
@@ -116,6 +117,7 @@ use POSIX qw/dup2/;
 # Methods implemented by children
 sub source_gen { ... }          # gen to source from this thing
 sub sink_gen   { ... }          # gen to sink into this thing
+sub explain    { ... }
 
 sub transform {
   my ($self, $f) = @_;

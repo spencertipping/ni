@@ -7,6 +7,10 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
 
+defop 'explain-stream', undef, '',
+  'explains the current stream',
+  sub { ni_memory($_[0]->explain) };
+
 DEBUG
 defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',

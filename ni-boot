@@ -251,6 +251,7 @@ sub pipe_binding;
 {
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
+                 "" explain
                  >>= bind_op
                  > into  >= into_bg
                  < from  <= from_bg #;
@@ -258,6 +259,7 @@ BEGIN { *gen = \&ni::gen }
 use POSIX qw/dup2/;
 sub source_gen { ... }          # gen to source from this thing
 sub sink_gen   { ... }          # gen to sink into this thing
+sub explain    { ... }
 sub transform {
   my ($self, $f) = @_;
   $f->($self);
@@ -331,14 +333,26 @@ BEGIN {
   }
   *{"ni::ni"} = *{"::ni"};
 }
-defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// },
-                sub { ni_file("< $_[0]", "> $_[0]") };
+our %read_filters;
+our %write_filters;
+defdata 'file',
+  sub { -e $_[0] || $_[0] =~ s/^file:// },
+  sub {
+    my ($f)       = @_;
+    my $extension = ($f =~ /\.(\w+)$/)[0];
+    my $file      = ni_file("[file $f]", "< $f", "> $f");
+    exists $read_filters{$extension}
+      ? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
+      : $file;
+  };
 sub deffilter {
   my ($extension, $read, $write) = @_;
-  $extension = qr/\.$extension$/;
+  $read_filters{$extension}  = $read;
+  $write_filters{$extension} = $write;
+  my $prefix_detector = qr/^$extension:/;
   defdata $extension,
-    sub { $_[0] =~ /$extension/ },
-    sub { ni_filter(ni_file("< $_[0]", "> $_[0]"), $read, $write) };
+    sub { $_[0] =~ s/$prefix_detector// },
+    sub { ni_filter(ni($_[0]), $read, $write) };
 }
 deffilter 'gz',  'gzip -d',  'gzip';
 deffilter 'lzo', 'lzop -d',  'lzop';
@@ -350,7 +364,8 @@ defdata 'ssh',
         my ($user, $host, $file) = ($1, $2, $3);
         };
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni_file($_[0], $_[0]) };
+                    sub { ni_file("[fh = " . fileno($_[0]) . "]",
+                                  $_[0], $_[0]) };
 BEGIN {
 use POSIX qw/dup2/;
 sub to_fh {
@@ -361,31 +376,37 @@ sub to_fh {
   $fh;
 }
 defio 'sink_as',
-sub { \$_[0] },
+sub { +{description => $_[0], f => $_[1]} },
 {
+  explain         => sub { "[sink as: " . ${$_[0]}{description} . "]" },
   supports_reads  => sub { 0 },
   supports_writes => sub { 1 },
-  sink_gen        => sub { ${$_[0]}->(@_[1..$#_]) },
+  sink_gen        => sub { ${$_[0]}{f}->(@_[1..$#_]) },
 };
 defio 'source_as',
-sub { \$_[0] },
+sub { +{description => $_[0], f => $_[1]} },
 {
+  explain    => sub { "[source as: " . ${$_[0]}{description} . "]" },
   source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
 };
-sub sink_as(&)   { ni_sink_as(@_) }
-sub source_as(&) { ni_source_as(@_) }
+sub sink_as(&)   { ni_sink_as("[anonymous sink]", @_) }
+sub source_as(&) { ni_source_as("[anonymous source]", @_) }
 defio 'file',
-sub { +{reader => $_[0], writer => $_[1]} },
+sub {
+  die "ni_file() requires three constructor arguments (got @_)" unless @_ == 3;
+  +{description => $_[0], reader => $_[1], writer => $_[2]}
+},
 {
+  explain => sub { ${$_[0]}{description} },
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    to_fh $$self{reader};
+    $$self{reader} = to_fh $$self{reader};
   },
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    to_fh $$self{writer};
+    $$self{writer} = to_fh $$self{writer};
   },
   supports_reads  => sub { defined ${$_[0]}{reader} },
   supports_writes => sub { defined ${$_[0]}{writer} },
@@ -409,6 +430,11 @@ sub { +{reader => $_[0], writer => $_[1]} },
 defio 'memory',
 sub { [@_] },
 {
+  explain => sub {
+    "[memory io of " . scalar(@{$_[0]}) . " element(s): "
+                     . "[" . join(', ', @{$_[0]}[0..3],
+                                        @{$_[0]} > 4 ? ("...") : ()) . "]]";
+  },
   supports_writes => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -430,6 +456,9 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
+  explain => sub {
+    "[sum: " . join(' + ', @{$_[0]}) . "]";
+  },
   transform  => sub {
     my ($self, $f) = @_;
     my $x = $f->($self);
@@ -446,6 +475,9 @@ sub { [map $_->flatten, @_] },
 defio 'cat',
 sub { \$_[0] },
 {
+  explain => sub {
+    "[cat ${$_[0]}]";
+  },
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
@@ -455,8 +487,15 @@ sub { \$_[0] },
   },
 };
 defio 'bind',
-sub { +{ base => $_[0], code_transform => $_[1] } },
+sub {
+  die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
+  +{ base => $_[0], code_transform => $_[1] }
+},
 {
+  explain => sub {
+    my ($self) = @_;
+    "$$self{base} >>= $$self{code_transform}[0]";
+  },
   supports_reads  => sub { ${$_[0]}{base}->supports_reads },
   supports_writes => sub { ${$_[0]}{base}->supports_writes },
   transform => sub {
@@ -467,43 +506,54 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
   },
   sink_gen => sub {
     my ($self, $type) = @_;
-    $$self{code_transform}->($$self{base}, $type);
+    $$self{code_transform}[1]->($$self{base}, $type);
   },
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self{base}->source_gen(sink_as {
       my ($type) = @_;
-      $$self{code_transform}->($destination, $type);
+      $$self{code_transform}[1]->($destination, $type);
     });
   },
   close => sub { ${$_[0]}{base}->close; $_[0] },
 };
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
-  ni_file($out, $in);
+  ni_file("<pipe in = " . fileno($in) . ", out = " . fileno($out). ">",
+          $out, $in);
 };
 defioproxy 'process', sub {
-  my ($command, $stdin, $stdout) = @_;
-  $stdin  = defined $stdin  ? defined $stdin->reader_fh ? $stdin
-                                                        : ni_pipe() <= $stdin
-                            : ni_pipe();
-  $stdout = defined $stdout ? defined $stdout->reader_fh ? $stdout
-                                                         : ni_pipe() >= $stdout
-                            : ni_pipe();
-  unless (fork) {
-    close STDIN;
-    close STDOUT;
-    close $stdin->writer_fh;
-    close $stdout->reader_fh;
-    dup2 fileno $stdin->reader_fh,  0 or die "dup2 failed: $!";
-    dup2 fileno $stdout->writer_fh, 1 or die "dup2 failed: $!";
-    exec $command or exit;
+  my ($command, $stdin_fh, $stdout_fh) = @_;
+  my $stdin  = undef;
+  my $stdout = undef;
+  unless (defined $stdin_fh) {
+    $stdin    = ni_pipe();
+    $stdin_fh = $stdin->reader_fh;
   }
-  ni_file($stdout->reader_fh, $stdin->writer_fh);
+  unless (defined $stdout_fh) {
+    $stdout    = ni_pipe();
+    $stdout_fh = $stdout->writer_fh;
+  }
+  my $pid = undef;
+  my $create_process = sub {
+    return if defined $pid;
+    unless ($pid = fork) {
+      close STDIN;  close $stdin->writer_fh  if defined $stdin;
+      close STDOUT; close $stdout->reader_fh if defined $stdout;
+      dup2 fileno $stdin_fh,  0 or die "dup2 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 failed: $!";
+      exec $command or exit;
+    }
+  };
+  ni_file(
+    "[process $command, stdin = $stdin, stdout = $stdout]",
+    sub { $create_process->(); defined $stdout ? $stdout->reader_fh : undef },
+    sub { $create_process->(); defined $stdin  ? $stdin->writer_fh  : undef });
 };
 defioproxy 'filter', sub {
   my ($base, $read_filter, $write_filter) = @_;
   ni_file(
+    "[filter $base, read = $read_filter, write = $write_filter]",
     $base->supports_reads && defined $read_filter
       ? sub {ni_process($read_filter, $base->reader_fh, undef)->reader_fh}
       : undef,
@@ -526,7 +576,7 @@ sub invocation {
 sub flatmap_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
-  sub {
+  ["flatmap $i", sub {
     my ($into, $type) = @_;
     with_input_type $type,
       gen "flatmap:${is}V", {invocation => $i,
@@ -534,12 +584,12 @@ sub flatmap_binding {
         q{ for (%@invocation) {
              %@body
            } };
-  };
+  }];
 }
 sub mapone_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
-  sub {
+  ["mapone $i", sub {
     my ($into, $type) = @_;
     with_input_type $type,
       gen "mapone:${is}V", {invocation => $i,
@@ -547,12 +597,12 @@ sub mapone_binding {
         q{ if (@_ = %@invocation) {
              %@body
            } };
-  };
+  }];
 }
 sub grep_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
-  sub {
+  ["grep $i", sub {
     my ($into, $type) = @_;
     with_input_type $type,
       gen "grep:${is}V", {invocation => $i,
@@ -560,12 +610,12 @@ sub grep_binding {
         q{ if (%@invocation) {
              %@body
            } };
-  };
+  }];
 }
 sub reduce_binding {
   my ($f, $init) = @_;
   $f = compile $f;
-  sub {
+  ["reduce $f, $init", sub {
     my ($into, $type) = @_;
     with_input_type $type,
       gen 'reduce:FV', {f    => $f,
@@ -575,11 +625,11 @@ sub reduce_binding {
            for (@_) {
              %@body
            } };
-  };
+  }];
 }
 sub tee_binding {
   my ($tee) = @_;
-  sub {
+  ["tee $tee", sub {
     my ($into, $type) = @_;
     my $init    = gen 'tee_init', {x => []},
                       $type eq 'F' ? q{ @{%:x} = @_ } : q{ %:x = $_ };
@@ -588,7 +638,7 @@ sub tee_binding {
                   ->inherit_gensyms_from($init);
     gen_seq "tee:${type}V", $init,    $tee->sink_gen($type),
                             $recover, $into->sink_gen($type);
-  };
+  }];
 }
 our %op_shorthand_lookups;      # keyed by short
 our %op_shorthands;             # keyed by long
@@ -654,6 +704,9 @@ use File::Temp qw/tmpnam/;
 defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
+defop 'explain-stream', undef, '',
+  'explains the current stream',
+  sub { ni_memory($_[0]->explain) };
 defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
