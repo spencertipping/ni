@@ -645,6 +645,8 @@ our %op_shorthands;             # keyed by long
 our %op_formats;                # ditto
 our %op_usage;                  # ditto
 our %op_fns;                    # ditto
+sub long_op_method  { "--$_[0]" =~ s/-/_/gr }
+sub short_op_method { "_$_[0]" }
 sub defop {
   my ($long, $short, $format, $usage, $fn) = @_;
   if (defined $short) {
@@ -654,9 +656,14 @@ sub defop {
   $op_formats{$long} = $format;
   $op_usage{$long}   = $usage;
   $op_fns{$long}     = $fn;
+  my $long_method_name = long_op_method $long;
+  my $short_method_name =
+    defined $short ? short_op_method $short : undef;
   die "operator $long already exists (possibly as a method rather than an op)"
-    if exists $ni::io::{$long};
-  *{"ni::io::$long"} = $fn;     # programmatic access
+    if exists $ni::io::{$long_method_name}
+    or defined $short_method_name && exists $ni::io::{$short_method_name};
+  *{"ni::io::$short_method_name"} = $fn if defined $short_method_name;
+  *{"ni::io::$long_method_name"}  = $fn;
 }
 our %format_matchers = (
   a => qr/^[a-zA-Z]+$/,
@@ -707,6 +714,12 @@ defop 'self', undef, '',
 defop 'explain-stream', undef, '',
   'explains the current stream',
   sub { ni_memory($_[0]->explain) };
+defop 'defined-methods', undef, '',
+  'lists defined long and short methods on IO objects',
+  sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
+defop 'plus', undef, '',
+  'adds two streams together (implied for files)',
+  sub { $_[0] + $_[1] };
 defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
@@ -787,7 +800,11 @@ sub stream_for {
   $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
   for (parse_commands @options) {
     my ($command, @args) = @$_;
-    $stream = $ni::io::{$command}($stream, @args);
+    eval {
+      $stream = $ni::io::{long_op_method $command}($stream, @args);
+    };
+    die "failed to apply stream command $command [@args] "
+      . "(method: " . long_op_method($command) . "): $@" if $@;
   }
   $stream;
 }

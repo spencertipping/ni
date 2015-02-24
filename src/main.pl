@@ -36,7 +36,11 @@ sub stream_for {
   $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
   for (parse_commands @options) {
     my ($command, @args) = @$_;
-    $stream = $ni::io::{$command}($stream, @args);
+    eval {
+      $stream = $ni::io::{long_op_method $command}($stream, @args);
+    };
+    die "failed to apply stream command $command [@args] "
+      . "(method: " . long_op_method($command) . "): $@" if $@;
   }
   $stream;
 }

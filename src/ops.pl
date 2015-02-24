@@ -7,6 +7,9 @@ our %op_formats;                # ditto
 our %op_usage;                  # ditto
 our %op_fns;                    # ditto
 
+sub long_op_method  { "--$_[0]" =~ s/-/_/gr }
+sub short_op_method { "_$_[0]" }
+
 sub defop {
   my ($long, $short, $format, $usage, $fn) = @_;
   if (defined $short) {
@@ -17,10 +20,17 @@ sub defop {
   $op_usage{$long}   = $usage;
   $op_fns{$long}     = $fn;
 
-  die "operator $long already exists (possibly as a method rather than an op)"
-    if exists $ni::io::{$long};
+  my $long_method_name = long_op_method $long;
+  my $short_method_name =
+    defined $short ? short_op_method $short : undef;
 
-  *{"ni::io::$long"} = $fn;     # programmatic access
+  die "operator $long already exists (possibly as a method rather than an op)"
+    if exists $ni::io::{$long_method_name}
+    or defined $short_method_name && exists $ni::io::{$short_method_name};
+
+  # Enable programmatic access
+  *{"ni::io::$short_method_name"} = $fn if defined $short_method_name;
+  *{"ni::io::$long_method_name"}  = $fn;
 }
 
 our %format_matchers = (

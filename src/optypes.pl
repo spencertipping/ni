@@ -11,6 +11,10 @@ defop 'explain-stream', undef, '',
   'explains the current stream',
   sub { ni_memory($_[0]->explain) };
 
+defop 'defined-methods', undef, '',
+  'lists defined long and short methods on IO objects',
+  sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
+
 DEBUG
 defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
@@ -25,6 +29,10 @@ defop 'debug-compile', undef, '',
 DEBUG_END
 
 # Stream transforms
+defop 'plus', undef, '',
+  'adds two streams together (implied for files)',
+  sub { $_[0] + $_[1] };
+
 defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
