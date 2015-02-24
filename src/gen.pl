@@ -29,10 +29,12 @@ our $gensym_id  = 0;
 our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
 sub gensym { '$' . ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
 
+our $gen_id = 0;
+
 sub parse_code;
 sub new {
   my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensyms, $gensym_indexes, $insertions) = parse_code $code;
+  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
 
   # Substitutions can be specified as refs, in which case we pull them out and
   # do a rewrite automatically (this is more notationally expedient than having
@@ -45,18 +47,41 @@ sub new {
     }
   }
 
-  exists $$gensyms{$_} or die "undefined ref $_ in $code" for keys %$refs;
-  exists $$refs{$_}    or die    "unused ref $_ in $code" for keys %$gensyms;
+  exists $$gensym_indexes{$_} or die "unknown ref $_ in $code" for keys %$refs;
+  exists $$refs{$_}           or die  "unused ref $_ in $code"
+    for keys %$gensym_indexes;
 
   # NB: always copy the fragments because parse_code returns cached results
-  bless({ sig               => $sig,
+  bless({ id                => ++$gen_id,
+          sig               => $sig,
           fragments         => $fragments,
-          gensym_names      => $gensyms,
+          gensym_names      => {map {$_, undef} keys %$gensym_indexes},
           gensym_indexes    => $gensym_indexes,
           insertion_indexes => $insertions,
-          inserted_code     => {},
           refs              => $refs // {} },
         $class) % {%subst};
+}
+
+sub copy {
+  my ($self) = @_;
+  my %new = %$self;
+  $new{id}           = ++$gen_id;
+  $new{fragments}    = [@{$new{fragments}}];
+  $new{gensym_names} = {%{$new{gensym_names}}};
+
+  bless(\%new, ref $self)->replace_gensyms(
+    {map {$_, gensym $_} keys %{$new{gensym_names}}});
+}
+
+sub replace_gensyms {
+  my ($self, $replacements) = @_;
+  for (keys %$replacements) {
+    if (exists $$self{gensym_names}{$_}) {
+      my $i = $$self{gensym_indexes}{$_};
+      $$self{fragments}[$i] = $$self{gensym_names}{$_} = $$replacements{$_};
+    }
+  }
+  $self;
 }
 
 sub genify {
@@ -75,14 +100,7 @@ sub share_gensyms_with {
   # This directionality matters so multiple calls against $self will form a set
   # of mutually gensym-shared fragments.
   my ($self, $g) = @_;
-  for (keys %{$$g{gensym_names}}) {
-    if (exists $$self{gensym_names}{$_}) {
-      $$g{gensym_names}{$_} = $$self{gensym_names}{$_};
-      ${$$g{fragments}}[$$g{gensym_indexes}{$_}] =
-        ${$$self{fragments}}[$$self{gensym_indexes}{$_}];
-    }
-  }
-  $self;
+  $self->replace_gensyms($$g{gensym_names});
 }
 
 sub inherit_gensyms_from {
@@ -94,23 +112,29 @@ sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
   $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
-  $$self{inserted_code}{$_}->build_ref_hash($refs) for @$self;
+  $$self{fragments}[$$self{insertion_indexes}{$_}]->build_ref_hash($refs)
+    for @$self;
   $refs;
 }
 
 sub inserted_code_keys {
   my ($self) = @_;
-  [sort keys %{$$self{inserted_code}}];
+  [sort keys %{$$self{insertion_indexes}}];
 }
 
-sub subst {
+sub subst_in_place {
   my ($self, $vars) = @_;
   for my $k (keys %$vars) {
     die "unknown subst var: $k (code is $self)"
       unless defined(my $i = $$self{insertion_indexes}{$k});
-    $$self{inserted_code}{$k} = $$self{fragments}[$i] = genify $$vars{$k};
+    $$self{fragments}[$i] = genify $$vars{$k};
   }
   $self;
+}
+
+sub subst {
+  my ($self, $vars) = @_;
+  $self->copy->subst_in_place($vars);
 }
 
 sub map {
@@ -123,21 +147,25 @@ sub map {
   # already-substituted code fragments and build a new instance.
   my $new = bless {}, ref $self;
   $$new{$_} = $$self{$_} for keys %$self;
-  $$new{fragments}     = [@{$$new{fragments}}];
-  $$new{inserted_code} = {%{$$new{inserted_code}}};
+  $$new{fragments} = [@{$$new{fragments}}];
 
-  $new % {map {$_, $$new{inserted_code}{$_} * $f} @$new};
+  $new % {map {$_, $$new{fragments}[$$new{insertion_indexes}{$_}] * $f} @$new};
 }
 
 DEBUG
 sub debug_to_string {
   # Don't use this to compile; use ->compile() instead.
   my ($self) = @_;
-  "[$$self{sig}: "
-    . join('', map ref $_ eq 'ARRAY'   ? "<UNBOUND: $$_[0]>"
-                 : ref $_ eq 'ni::gen' ? $_->debug_to_string
-                                       : $_,
-                   @{$$self{fragments}}) . "]";
+  my $refs = $self->build_ref_hash;
+
+  my $code_string = join '',
+    map ref $_ eq 'ARRAY'   ? "<UNBOUND: $$_[0]>"
+      : ref $_ eq 'ni::gen' ? $_->debug_to_string
+                            : $_,
+        @{$$self{fragments}};
+
+  my $ref_string = join ', ', map "$_: $$refs{$_}", sort keys %$refs;
+  "[$$self{id} $$self{sig} {$ref_string}\n$code_string]";
 }
 DEBUG_END
 
@@ -164,8 +192,7 @@ sub run {
 
 our %parsed_code_cache;
 sub parse_code {
-  # Returns ([@code_fragments], {gensym_mapping},
-  #          {gensym_indexes}, {insertion_indexes})
+  # Returns ([@code_fragments], {gensym_indexes}, {insertion_indexes})
   my ($code) = @_;
   my $cached;
   unless (defined($cached = $parsed_code_cache{$code})) {
@@ -173,7 +200,7 @@ sub parse_code {
     my @fragments;
     my %gensym_indexes;
     my %insertion_points;
-    for (0..$#pieces) {
+    for (0 .. $#pieces) {
       if ($pieces[$_] =~ /^\%:(\w+)$/) {
         $gensym_indexes{$1} = $_;
         push @fragments, undef;
@@ -188,13 +215,7 @@ sub parse_code {
                                            {%gensym_indexes},
                                            {%insertion_points}];
   }
-
-  my ($fragments, $gensym_indexes, $insertion_points) = @$cached;
-  my $new_fragments = [@$fragments];
-  my $gensym_names  = {};
-  $$new_fragments[$$gensym_indexes{$_}] = $$gensym_names{$_} = gensym $_
-    for keys %$gensym_indexes;
-  ($new_fragments, $gensym_names, $gensym_indexes, $insertion_points);
+  @$cached;
 }
 
 }
