@@ -1,8 +1,5 @@
 # Data source/sink implementations
 
-defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni_file($_[0], $_[0]) };
-
 defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// },
                 sub { ni_file("< $_[0]", "> $_[0]") };
 
@@ -25,3 +22,6 @@ defdata 'ssh',
         my ($user, $host, $file) = ($1, $2, $3);
 
         };
+
+defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
+                    sub { ni_file($_[0], $_[0]) };

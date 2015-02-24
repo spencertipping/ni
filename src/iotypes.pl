@@ -10,6 +10,24 @@ sub to_fh {
   $fh;
 }
 
+# Partial implementations
+defio 'sink_as',
+sub { \$_[0] },
+{
+  supports_reads  => sub { 0 },
+  supports_writes => sub { 1 },
+  sink_gen        => sub { ${$_[0]}->(@_[1..$#_]) },
+};
+
+defio 'source_as',
+sub { \$_[0] },
+{
+  source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
+};
+
+sub sink_as(&)   { ni_sink_as(@_) }
+sub source_as(&) { ni_source_as(@_) }
+
 # Bidirectional filehandle IO with lazy creation
 defio 'file',
 sub { +{reader => $_[0], writer => $_[1]} },
@@ -17,13 +35,13 @@ sub { +{reader => $_[0], writer => $_[1]} },
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    $$self{reader} = to_fh $$self{reader};
+    $$self{reader} = to_fh($$self{reader});
   },
 
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    $$self{writer} = to_fh $$self{writer};
+    $$self{writer} = to_fh($$self{writer});
   },
 
   supports_reads  => sub { defined ${$_[0]}{reader} },
@@ -31,19 +49,20 @@ sub { +{reader => $_[0], writer => $_[1]} },
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('file_source:VV', {fh   => $self->reader_fh,
-                           body => with_input_type('L', $destination)},
+    gen 'file_source:VV', {fh   => $self->reader_fh,
+                           body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
            %@body
-         } });
+         } };
   },
 
   sink_gen => sub {
-    my ($self) = @_;
-    gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
+    my ($self, $type) = @_;
+    with_input_type $type,
+      gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
   },
 
-  close => sub { close $_[0]->writer; $_[0] },
+  close => sub { close $_[0]->writer_fh; $_[0] },
 };
 
 # An array of stuff in memory
@@ -54,16 +73,20 @@ sub { [@_] },
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('memory_source:VV', {xs   => $self,
-                             body => with_input_type('R', $destination)},
+    gen 'memory_source:VV', {xs   => $self,
+                             body => $destination->sink_gen('L')},
       q{ for (@{%:xs}) {
            %@body
-         } });
+         } };
   },
 
   sink_gen => sub {
-    my ($self) = @_;
-    gen('memory_sink:RV', {xs => $self}, q{ push @{%:xs}, $_; });
+    my ($self, $type) = @_;
+    $type eq 'F' ? gen 'memory_sink:FV', {xs => $self},
+                       q{ push @{%:xs}, [@_]; }
+                 : gen "memory_sink:${type}V",
+                       {xs => $self},
+                       q{ push @{%:xs}, $_; };
   },
 };
 
@@ -74,61 +97,8 @@ sub { [map $_->flatten, @_] },
   flatten    => sub { @{$_[0]} },
   source_gen => sub {
     my ($self, $destination) = @_;
-    return gen('empty', {}, '') unless @$self;
-    gen_seq('sum_source:VV', map $_->source_gen($destination), @$self);
-  },
-};
-
-# Tee: sink an IO into multiple other IOs at once (should probably be a
-# binding, not an io)
-defio 'tee',
-sub { +{source => $_[0], watchers => [@_]} },
-{
-  source_gen => sub {
-    my ($self, $destination) = @_;
-    return $$self{source}->source_gen($destination)
-      unless @{$$self{watchers}};
-
-    # Find all input types we need and generate gensyms for them. This way we
-    # don't need to have each destination do its own conversion.
-    my @sink_gens = map $_->sink_gen, @{$$self{watchers}};
-    my @sink_sigs = map input_sig($_), @sink_gens;
-    my %sink_types;
-    ++$sink_types{$_} for @sink_sigs;
-    $sink_types{L} |= $sink_types{R} |= $sink_types{F};
-
-    # TODO: if all sinks are type F, then just use @_ and don't force anything
-    # back into $_. That way it's possible to pass references around.
-
-    my %type_init = (
-      L => gen('sink_store:LV', {l  => undef}, '%:l = $_'),
-      R => gen('sink_store:RV', {r  => undef}, '%:r = %:l =~ s/\n$//r'),
-      F => gen('sink_store:FV', {xs => []},    '@{%:xs} = split /\t/, %:r'),
-    );
-
-    my %sink_init = (
-      L => gen('sink_init:VL', {l  => undef}, '$_ = %:l'),
-      R => gen('sink_init:VR', {r  => undef}, '$_ = %:r'),
-      F => gen('sink_init:VF', {xs => []},    '@_ = @{%:xs}'),
-    );
-
-    $sink_init{$_}->inherit_gensyms_from($type_init{$_})
-    for keys %sink_init;
-
-    my $init = gen_seq('type_init:LV',
-      map $type_init{$_},
-      grep $sink_types{$_}, qw/L R F/);
-
-    # Now prepend the requisite initialization to each sink invocation. We
-    # can't reuse because sinks might involve loops, etc.
-    $$self{source}->source_gen(
-      gen_seq('tee_sink:LV',
-              $init,
-              $destination,
-              map gen_seq('sink_with_init:VV',
-                          $sink_init{$sink_sigs[$_]},
-                          $sink_gens[$_]),
-                  0 .. $#sink_gens));
+    return gen 'empty', {}, '' unless @$self;
+    gen_seq 'sum_source:VV', map $_->source_gen($destination), @$self;
   },
 };
 
@@ -138,8 +108,10 @@ sub { \$_[0] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self->source_gen(gen('cat_source:VV', {dest => $destination},
-      q{ $_->source_gen(%:dest)->run; }));
+    $$self->source_gen(sink_as {
+      gen 'cat_source:VV',
+          {dest => $destination},
+          q{ $_->source_gen(%:dest)->run; }});
   },
 };
 
@@ -147,10 +119,23 @@ sub { \$_[0] },
 defio 'bind',
 sub { +{ base => $_[0], code_transform => $_[1] } },
 {
+  supports_reads  => sub { ${$_[0]}{base}->supports_reads },
+  supports_writes => sub { ${$_[0]}{base}->supports_writes },
+
+  sink_gen => sub {
+    my ($self, $type) = @_;
+    $$self{code_transform}->($$self{base}, $type);
+  },
+
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self{base}->source_gen($$self{code_transform}($destination));
+    $$self{base}->source_gen(sink_as {
+      my ($type) = @_;
+      $$self{code_transform}->($destination, $type);
+    });
   },
+
+  close => sub { ${$_[0]}{base}->close; $_[0] },
 };
 
 # A file-descriptor pipe
@@ -160,25 +145,27 @@ defioproxy 'pipe', sub {
 };
 
 # Stdin/stdout of an external process with stdin, stdout, neither, or both
-# redirected to the specified fhs. If you don't specify them, this function
+# redirected to the specified ios. If you don't specify them, this function
 # creates pipes and returns an io wrapping them.
 defioproxy 'process', sub {
-  my ($command, $stdin_fh, $stdout_fh) = @_;
-  my $stdin_writer;
-  my $stdout_reader;
-  pipe $stdin_fh, $stdin_writer   or die "pipe: $!" unless defined $stdin_fh;
-  pipe $stdout_reader, $stdout_fh or die "pipe: $!" unless defined $stdout_fh;
+  my ($command, $stdin, $stdout) = @_;
+  $stdin  = defined $stdin  ? defined $stdin->reader_fh ? $stdin
+                                                        : ni_pipe() <= $stdin
+                            : ni_pipe();
 
+  $stdout = defined $stdout ? defined $stdout->reader_fh ? $stdout
+                                                         : ni_pipe() >= $stdout
+                            : ni_pipe();
   unless (fork) {
     close STDIN;
     close STDOUT;
-    close $stdin_writer  if defined $stdin_writer;
-    close $stdout_reader if defined $stdout_reader;
-    dup2 fileno($stdin_fh), 0  or die "dup2 failed: $!";
-    dup2 fileno($stdout_fh), 1 or die "dup2 failed: $!";
-    exec $command or die "failed to exec: $!";
+    close $stdin->writer_fh;
+    close $stdout->reader_fh;
+    dup2 fileno $stdin->reader_fh,  0 or die "dup2 failed: $!";
+    dup2 fileno $stdout->writer_fh, 1 or die "dup2 failed: $!";
+    exec $command or exit;
   }
-  ni_file($stdout_reader, $stdin_writer);
+  ni_file($stdout->reader_fh, $stdin->writer_fh);
 };
 
 # Filtered through shell processes

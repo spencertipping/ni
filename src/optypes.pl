@@ -10,12 +10,13 @@ defop 'self', undef, '',
 # Debugging
 defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
-  sub { ni_memory($_[0]->source_gen(gen('print:LV', {}, 'print $_;'))) };
+  sub { ni_memory($_[0]->source_gen(sink_as {
+    with_input_type $_[0], gen('print:LV', {}, 'print $_;')})) };
 
 # Stream transforms
 defop 'tee', undef, 's',
   'tees current output into the specified io',
-  sub { ni_tee($_[0], ni $_[1]) };
+  sub { $_[0] >>= tee_binding(ni $_[1]) };
 
 # Functional transforms
 defop 'map', 'm', 's',

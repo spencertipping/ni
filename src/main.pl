@@ -41,7 +41,7 @@ for (parse_commands preprocess_cli @ARGV) {
 if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
   # Use a pager rather than writing straight to the terminal
   close STDIN;
-  dup2 0, fileno $data->into_fh or die "dup2 failed: $!";
+  dup2 0, fileno((ni_pipe() <= $data)->writer_fh) or die "dup2 failed: $!";
   exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
   exec 'more';
   # Ok, we're out of options; just write to the terminal after all

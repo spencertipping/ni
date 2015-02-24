@@ -73,6 +73,7 @@ sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
 
 sub with_input_type {
   my ($sig, $code) = @_;
+  return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = input_sig $code;
   die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
@@ -82,6 +83,7 @@ sub with_input_type {
 
 sub with_output_type {
   my ($sig, $code) = @_;
+  return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = output_sig $code;
   die "unknown code transform $sig$codesig for $$code{sig} ($codesig) > $sig"
@@ -104,8 +106,8 @@ sub pipe_binding;
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
                  >>= bind_op
-                 > into
-                 < from #;
+                 > into  >= into_bg
+                 < from  <= from_bg #;
 
 BEGIN { *gen = \&ni::gen }
 
@@ -137,43 +139,31 @@ sub mapone  { $_[0] >>= ni::mapone_binding  @_[1..$#_] }
 sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
 sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
 sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
-sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
+sub pipe    { ::ni_process($_[1], $_[0], undef) }
 
 # User-facing methods
 sub from {
-  my ($self, $source_fh) = @_;
-  ::ni_file($source_fh)->source_gen($self->sink_gen)->run;
+  my ($self, $source) = @_;
+  ::ni($source)->source_gen($self)->run;
+  $self;
 }
 
-sub from_fh {
-  my ($self) = @_;
-  pipe my $out, my $in or die "pipe failed: $!";
-  unless (fork) {
-    close $in;
-    $self->from($out);
-    close $out;
-    exit;
-  }
-  close $out;
-  $in;
+sub from_bg {
+  my ($self, $source) = @_;
+  $self < $source, exit unless fork;
+  $self;
 }
 
 sub into {
-  my ($self, $dest_fh) = @_;
-  $self->source_gen(::ni_file(undef, $dest_fh)->sink_gen)->run;
+  my ($self, $dest) = @_;
+  $self->source_gen(::ni $dest)->run;
+  $self;
 }
 
-sub into_fh {
-  my ($self) = @_;
-  pipe my $out, my $in or die "pipe failed: $!";
-  unless (fork) {
-    close $out;
-    $self->into($in);
-    close $in;
-    exit;
-  }
-  close $in;
-  $out;
+sub into_bg {
+  my ($self, $dest) = @_;
+  $self > $dest, exit unless fork;
+  $self;
 }
 
 }

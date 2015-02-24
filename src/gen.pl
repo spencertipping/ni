@@ -12,10 +12,10 @@ sub gen_empty { gen('empty', {}, '') }
 sub gen_seq {
   # Generates an imperative sequence of statements.
   my ($name, @statements) = @_;
-  my $code_template = join ";\n", map "%\@x$_", 0 .. $#statements;
+  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
   my %subst;
   $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
-  gen($name, \%subst, $code_template);
+  gen $name, {%subst}, $code_template;
 }
 
 {
@@ -50,7 +50,7 @@ sub new {
 
   # NB: always copy the fragments because parse_code returns cached results
   bless({ sig               => $sig,
-          fragments         => [@$fragments],
+          fragments         => $fragments,
           gensym_names      => $gensyms,
           gensym_indexes    => $gensym_indexes,
           insertion_indexes => $insertions,
@@ -75,7 +75,7 @@ sub share_gensyms_with {
   # This directionality matters so multiple calls against $self will form a set
   # of mutually gensym-shared fragments.
   my ($self, $g) = @_;
-  for ($$g{gensym_names}) {
+  for (keys %{$$g{gensym_names}}) {
     if (exists $$self{gensym_names}{$_}) {
       $$g{gensym_names}{$_} = $$self{gensym_names}{$_};
       ${$$g{fragments}}[$$g{gensym_indexes}{$_}] =
@@ -150,30 +150,36 @@ sub run {
 
 our %parsed_code_cache;
 sub parse_code {
-  # Returns ([@code_fragments], {gensym_mapping}, {insertion_indexes})
+  # Returns ([@code_fragments], {gensym_mapping},
+  #          {gensym_indexes}, {insertion_indexes})
   my ($code) = @_;
-  return @$_ if defined($_ = $parsed_code_cache{$code});
-
-  my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
-  my @fragments;
-  my %gensyms;
-  my %gensym_indexes;
-  my %insertion_points;
-  for (0..$#pieces) {
-    if ($pieces[$_] =~ /^\%:(\w+)$/) {
-      $gensym_indexes{$1} = $_;
-      push @fragments, $gensyms{$1} = gensym $1;
-    } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-      $insertion_points{$1} = $_;
-      push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
-    } else {
-      push @fragments, $pieces[$_];
+  unless (defined($_ = $parsed_code_cache{$code})) {
+    my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
+    my @fragments;
+    my %gensym_indexes;
+    my %insertion_points;
+    for (0..$#pieces) {
+      if ($pieces[$_] =~ /^\%:(\w+)$/) {
+        $gensym_indexes{$1} = $_;
+        push @fragments, '';
+      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
+        $insertion_points{$1} = $_;
+        push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
+      } else {
+        push @fragments, $pieces[$_];
+      }
     }
+    $_ = $parsed_code_cache{$code} = [[@fragments],
+                                      {%gensym_indexes},
+                                      {%insertion_points}];
   }
-  @{$parsed_code_cache{$code} = [[@fragments],
-                                 {%gensyms},
-                                 {%gensym_indexes},
-                                 {%insertion_points}]};
+
+  my ($fragments, $gensym_indexes, $insertion_points) = @$_;
+  my $new_fragments = [@$fragments];
+  my $gensym_names  = {};
+  $$new_fragments[$$gensym_indexes{$_}] = $$gensym_names{$_} = gensym $_
+    for keys %$gensym_indexes;
+  ($new_fragments, $gensym_names, $gensym_indexes, $insertion_points);
 }
 
 }

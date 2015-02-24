@@ -39,10 +39,10 @@ sub gen       { local $_; ni::gen->new(@_) }
 sub gen_empty { gen('empty', {}, '') }
 sub gen_seq {
   my ($name, @statements) = @_;
-  my $code_template = join ";\n", map "%\@x$_", 0 .. $#statements;
+  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
   my %subst;
   $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
-  gen($name, \%subst, $code_template);
+  gen $name, {%subst}, $code_template;
 }
 {
 package ni::gen;
@@ -65,7 +65,7 @@ sub new {
   exists $$gensyms{$_} or die "undefined ref $_ in $code" for keys %$refs;
   exists $$refs{$_}    or die    "unused ref $_ in $code" for keys %$gensyms;
   bless({ sig               => $sig,
-          fragments         => [@$fragments],
+          fragments         => $fragments,
           gensym_names      => $gensyms,
           gensym_indexes    => $gensym_indexes,
           insertion_indexes => $insertions,
@@ -84,7 +84,7 @@ sub compile_equals {
 }
 sub share_gensyms_with {
   my ($self, $g) = @_;
-  for ($$g{gensym_names}) {
+  for (keys %{$$g{gensym_names}}) {
     if (exists $$self{gensym_names}{$_}) {
       $$g{gensym_names}{$_} = $$self{gensym_names}{$_};
       ${$$g{fragments}}[$$g{gensym_indexes}{$_}] =
@@ -147,27 +147,33 @@ sub run {
 our %parsed_code_cache;
 sub parse_code {
   my ($code) = @_;
-  return @$_ if defined($_ = $parsed_code_cache{$code});
-  my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
-  my @fragments;
-  my %gensyms;
-  my %gensym_indexes;
-  my %insertion_points;
-  for (0..$#pieces) {
-    if ($pieces[$_] =~ /^\%:(\w+)$/) {
-      $gensym_indexes{$1} = $_;
-      push @fragments, $gensyms{$1} = gensym $1;
-    } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-      $insertion_points{$1} = $_;
-      push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
-    } else {
-      push @fragments, $pieces[$_];
+  unless (defined($_ = $parsed_code_cache{$code})) {
+    my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
+    my @fragments;
+    my %gensym_indexes;
+    my %insertion_points;
+    for (0..$#pieces) {
+      if ($pieces[$_] =~ /^\%:(\w+)$/) {
+        $gensym_indexes{$1} = $_;
+        push @fragments, '';
+      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
+        $insertion_points{$1} = $_;
+        push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
+      } else {
+        push @fragments, $pieces[$_];
+      }
     }
+    $_ = #$parsed_code_cache{$code} =
+      [[@fragments],
+                                      {%gensym_indexes},
+                                      {%insertion_points}];
   }
-  @{$parsed_code_cache{$code} = [[@fragments],
-                                 {%gensyms},
-                                 {%gensym_indexes},
-                                 {%insertion_points}]};
+  my ($fragments, $gensym_indexes, $insertion_points) = @$_;
+  my $new_fragments = [@$fragments];
+  my $gensym_names  = {};
+  $$new_fragments[$$gensym_indexes{$_}] = $$gensym_names{$_} = gensym $_
+    for keys %$gensym_indexes;
+  ($new_fragments, $gensym_names, $gensym_indexes, $insertion_points);
 }
 }
 }
@@ -205,6 +211,7 @@ sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
 sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
 sub with_input_type {
   my ($sig, $code) = @_;
+  return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = input_sig $code;
   die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
@@ -213,6 +220,7 @@ sub with_input_type {
 }
 sub with_output_type {
   my ($sig, $code) = @_;
+  return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = output_sig $code;
   die "unknown code transform $sig$codesig for $$code{sig} ($codesig) > $sig"
@@ -228,8 +236,8 @@ sub pipe_binding;
 package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
                  >>= bind_op
-                 > into
-                 < from #;
+                 > into  >= into_bg
+                 < from  <= from_bg #;
 BEGIN { *gen = \&ni::gen }
 use POSIX qw/dup2/;
 sub source_gen { ... }          # gen to source from this thing
@@ -252,38 +260,26 @@ sub mapone  { $_[0] >>= ni::mapone_binding  @_[1..$#_] }
 sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
 sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
 sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
-sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
+sub pipe    { ::ni_process($_[1], $_[0], undef) }
 sub from {
-  my ($self, $source_fh) = @_;
-  ::ni_file($source_fh)->source_gen($self->sink_gen)->run;
+  my ($self, $source) = @_;
+  ::ni($source)->source_gen($self)->run;
+  $self;
 }
-sub from_fh {
-  my ($self) = @_;
-  pipe my $out, my $in or die "pipe failed: $!";
-  unless (fork) {
-    close $in;
-    $self->from($out);
-    close $out;
-    exit;
-  }
-  close $out;
-  $in;
+sub from_bg {
+  my ($self, $source) = @_;
+  $self < $source, exit unless fork;
+  $self;
 }
 sub into {
-  my ($self, $dest_fh) = @_;
-  $self->source_gen(::ni_file(undef, $dest_fh)->sink_gen)->run;
+  my ($self, $dest) = @_;
+  $self->source_gen(::ni $dest)->run;
+  $self;
 }
-sub into_fh {
-  my ($self) = @_;
-  pipe my $out, my $in or die "pipe failed: $!";
-  unless (fork) {
-    close $out;
-    $self->into($in);
-    close $in;
-    exit;
-  }
-  close $in;
-  $out;
+sub into_bg {
+  my ($self, $dest) = @_;
+  $self > $dest, exit unless fork;
+  $self;
 }
 }
 BEGIN {
@@ -313,8 +309,6 @@ BEGIN {
   }
   *{"ni::ni"} = *{"::ni"};
 }
-defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni_file($_[0], $_[0]) };
 defdata 'file', sub { -e $_[0] || $_[0] =~ s/^file:// },
                 sub { ni_file("< $_[0]", "> $_[0]") };
 sub deffilter {
@@ -333,6 +327,8 @@ defdata 'ssh',
   sub { $_[0] =~ /^([^:@]+)@([^:]+):(.*)$/;
         my ($user, $host, $file) = ($1, $2, $3);
         };
+defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
+                    sub { ni_file($_[0], $_[0]) };
 BEGIN {
 use POSIX qw/dup2/;
 sub to_fh {
@@ -342,34 +338,49 @@ sub to_fh {
   open my $fh, $_[0] or die "failed to open $_[0]: $!";
   $fh;
 }
+defio 'sink_as',
+sub { \$_[0] },
+{
+  supports_reads  => sub { 0 },
+  supports_writes => sub { 1 },
+  sink_gen        => sub { ${$_[0]}->(@_[1..$#_]) },
+};
+defio 'source_as',
+sub { \$_[0] },
+{
+  source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
+};
+sub sink_as(&)   { ni_sink_as(@_) }
+sub source_as(&) { ni_source_as(@_) }
 defio 'file',
 sub { +{reader => $_[0], writer => $_[1]} },
 {
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    $$self{reader} = to_fh $$self{reader};
+    $$self{reader} = to_fh($$self{reader});
   },
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    $$self{writer} = to_fh $$self{writer};
+    $$self{writer} = to_fh($$self{writer});
   },
   supports_reads  => sub { defined ${$_[0]}{reader} },
   supports_writes => sub { defined ${$_[0]}{writer} },
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('file_source:VV', {fh   => $self->reader_fh,
-                           body => with_input_type('L', $destination)},
+    gen 'file_source:VV', {fh   => $self->reader_fh,
+                           body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
            %@body
-         } });
+         } };
   },
   sink_gen => sub {
-    my ($self) = @_;
-    gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
+    my ($self, $type) = @_;
+    with_input_type $type,
+      gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
   },
-  close => sub { close $_[0]->writer; $_[0] },
+  close => sub { close $_[0]->writer_fh; $_[0] },
 };
 defio 'memory',
 sub { [@_] },
@@ -377,15 +388,19 @@ sub { [@_] },
   supports_writes => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen('memory_source:VV', {xs   => $self,
-                             body => with_input_type('R', $destination)},
+    gen 'memory_source:VV', {xs   => $self,
+                             body => $destination->sink_gen('L')},
       q{ for (@{%:xs}) {
            %@body
-         } });
+         } };
   },
   sink_gen => sub {
-    my ($self) = @_;
-    gen('memory_sink:RV', {xs => $self}, q{ push @{%:xs}, $_; });
+    my ($self, $type) = @_;
+    $type eq 'F' ? gen 'memory_sink:FV', {xs => $self},
+                       q{ push @{%:xs}, [@_]; }
+                 : gen "memory_sink:${type}V",
+                       {xs => $self},
+                       q{ push @{%:xs}, $_; };
   },
 };
 defio 'sum',
@@ -394,45 +409,8 @@ sub { [map $_->flatten, @_] },
   flatten    => sub { @{$_[0]} },
   source_gen => sub {
     my ($self, $destination) = @_;
-    return gen('empty', {}, '') unless @$self;
-    gen_seq('sum_source:VV', map $_->source_gen($destination), @$self);
-  },
-};
-defio 'tee',
-sub { +{source => $_[0], watchers => [@_]} },
-{
-  source_gen => sub {
-    my ($self, $destination) = @_;
-    return $$self{source}->source_gen($destination)
-      unless @{$$self{watchers}};
-    my @sink_gens = map $_->sink_gen, @{$$self{watchers}};
-    my @sink_sigs = map input_sig($_), @sink_gens;
-    my %sink_types;
-    ++$sink_types{$_} for @sink_sigs;
-    $sink_types{L} |= $sink_types{R} |= $sink_types{F};
-    my %type_init = (
-      L => gen('sink_store:LV', {l  => undef}, '%:l = $_'),
-      R => gen('sink_store:RV', {r  => undef}, '%:r = %:l =~ s/\n$//r'),
-      F => gen('sink_store:FV', {xs => []},    '@{%:xs} = split /\t/, %:r'),
-    );
-    my %sink_init = (
-      L => gen('sink_init:VL', {l  => undef}, '$_ = %:l'),
-      R => gen('sink_init:VR', {r  => undef}, '$_ = %:r'),
-      F => gen('sink_init:VF', {xs => []},    '@_ = @{%:xs}'),
-    );
-    $sink_init{$_}->inherit_gensyms_from($type_init{$_})
-    for keys %sink_init;
-    my $init = gen_seq('type_init:LV',
-      map $type_init{$_},
-      grep $sink_types{$_}, qw/L R F/);
-    $$self{source}->source_gen(
-      gen_seq('tee_sink:LV',
-              $init,
-              $destination,
-              map gen_seq('sink_with_init:VV',
-                          $sink_init{$sink_sigs[$_]},
-                          $sink_gens[$_]),
-                  0 .. $#sink_gens));
+    return gen 'empty', {}, '' unless @$self;
+    gen_seq 'sum_source:VV', map $_->source_gen($destination), @$self;
   },
 };
 defio 'cat',
@@ -440,38 +418,52 @@ sub { \$_[0] },
 {
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self->source_gen(gen('cat_source:VV', {dest => $destination},
-      q{ $_->source_gen(%:dest)->run; }));
+    $$self->source_gen(sink_as {
+      gen 'cat_source:VV',
+          {dest => $destination},
+          q{ $_->source_gen(%:dest)->run; }});
   },
 };
 defio 'bind',
 sub { +{ base => $_[0], code_transform => $_[1] } },
 {
+  supports_reads  => sub { ${$_[0]}{base}->supports_reads },
+  supports_writes => sub { ${$_[0]}{base}->supports_writes },
+  sink_gen => sub {
+    my ($self, $type) = @_;
+    $$self{code_transform}->($$self{base}, $type);
+  },
   source_gen => sub {
     my ($self, $destination) = @_;
-    $$self{base}->source_gen($$self{code_transform}($destination));
+    $$self{base}->source_gen(sink_as {
+      my ($type) = @_;
+      $$self{code_transform}->($destination, $type);
+    });
   },
+  close => sub { ${$_[0]}{base}->close; $_[0] },
 };
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
   ni_file($out, $in);
 };
 defioproxy 'process', sub {
-  my ($command, $stdin_fh, $stdout_fh) = @_;
-  my $stdin_writer;
-  my $stdout_reader;
-  pipe $stdin_fh, $stdin_writer   or die "pipe: $!" unless defined $stdin_fh;
-  pipe $stdout_reader, $stdout_fh or die "pipe: $!" unless defined $stdout_fh;
+  my ($command, $stdin, $stdout) = @_;
+  $stdin  = defined $stdin  ? defined $stdin->reader_fh ? $stdin
+                                                        : ni_pipe() <= $stdin
+                            : ni_pipe();
+  $stdout = defined $stdout ? defined $stdout->reader_fh ? $stdout
+                                                         : ni_pipe() >= $stdout
+                            : ni_pipe();
   unless (fork) {
     close STDIN;
     close STDOUT;
-    close $stdin_writer  if defined $stdin_writer;
-    close $stdout_reader if defined $stdout_reader;
-    dup2 fileno($stdin_fh), 0  or die "dup2 failed: $!";
-    dup2 fileno($stdout_fh), 1 or die "dup2 failed: $!";
-    exec $command or die "failed to exec: $!";
+    close $stdin->writer_fh;
+    close $stdout->reader_fh;
+    dup2 fileno $stdin->reader_fh,  0 or die "dup2 failed: $!";
+    dup2 fileno $stdout->writer_fh, 1 or die "dup2 failed: $!";
+    exec $command or exit;
   }
-  ni_file($stdout_reader, $stdin_writer);
+  ni_file($stdout->reader_fh, $stdin->writer_fh);
 };
 defioproxy 'filter', sub {
   my ($base, $read_filter, $write_filter) = @_;
@@ -499,50 +491,67 @@ sub flatmap_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
   sub {
-    my ($into) = @_;
-    gen("flatmap:${is}V", {invocation => $i,
-                           body       => with_input_type('R', $into)},
-      q{ for (%@invocation) {
-           %@body
-         } });
+    my ($into, $type) = @_;
+    with_input_type $type,
+      gen "flatmap:${is}V", {invocation => $i,
+                             body       => $into->sink_gen('R')},
+        q{ for (%@invocation) {
+             %@body
+           } };
   };
 }
 sub mapone_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
   sub {
-    my ($into) = @_;
-    gen("mapone:${is}V", {invocation => $i,
-                          body       => with_input_type('F', $into)},
-      q{ if (@_ = %@invocation) {
-           %@body
-         } });
+    my ($into, $type) = @_;
+    with_input_type $type,
+      gen "mapone:${is}V", {invocation => $i,
+                            body       => $into->sink_gen('F')},
+        q{ if (@_ = %@invocation) {
+             %@body
+           } };
   };
 }
 sub grep_binding {
   my $i  = invocation @_;
   my $is = input_sig $i;
   sub {
-    my ($into) = @_;
-    gen("grep:${is}V", {invocation => $i,
-                        body       => with_input_type($is, $into)},
-      q{ if (%@invocation) {
-           %@body
-         } });
+    my ($into, $type) = @_;
+    with_input_type $type,
+      gen "grep:${is}V", {invocation => $i,
+                          body       => $into->sink_gen($is)},
+        q{ if (%@invocation) {
+             %@body
+           } };
   };
 }
 sub reduce_binding {
   my ($f, $init) = @_;
   $f = compile $f;
   sub {
-    my ($into) = @_;
-    gen('reduce:FV', {f    => $f,
-                      init => $init,
-                      body => with_input_type('R', $into)},
-      q{ (%:init, @_) = %:f->(%:init, @_);
-         for (@_) {
-           %@body
-         } });
+    my ($into, $type) = @_;
+    with_input_type $type,
+      gen 'reduce:FV', {f    => $f,
+                        init => $init,
+                        body => $into->sink_gen('R')},
+        q{ (%:init, @_) = %:f->(%:init, @_);
+           for (@_) {
+             %@body
+           } };
+  };
+}
+sub tee_binding {
+  my ($tee) = @_;
+  sub {
+    my ($into, $type) = @_;
+    my $init    = gen 'tee_init', {x => []},
+                      $type eq 'F' ? q{ @{%:x} = @_ } : q{ %:x = $_ };
+    my $recover = gen('tee_recover', {x => []},
+                      $type eq 'F' ? q{ @_ = @{%:x} } : q{ $_ = %:x })
+                  ->inherit_gensyms_from($init);
+    gen_seq "tee:${type}V", $init,    $tee->sink_gen($type),
+                            $recover, $into->sink_gen($type);
   };
 }
 our %op_shorthand_lookups;      # keyed by short
@@ -611,10 +620,11 @@ defop 'self', undef, '',
   sub { $_[0] + ni_memory(self) };
 defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
-  sub { ni_memory($_[0]->source_gen(gen('print:LV', {}, 'print $_;'))) };
+  sub { ni_memory($_[0]->source_gen(sink_as {
+    with_input_type $_[0], gen('print:LV', {}, 'print $_;')})) };
 defop 'tee', undef, 's',
   'tees current output into the specified io',
-  sub { ni_tee($_[0], ni $_[1]) };
+  sub { $_[0] >>= tee_binding(ni $_[1]) };
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
   sub { $_[0] * $_[1] };
@@ -695,7 +705,7 @@ for (parse_commands preprocess_cli @ARGV) {
 }
 if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
   close STDIN;
-  dup2 0, fileno $data->into_fh or die "dup2 failed: $!";
+  dup2 0, fileno((ni_pipe() <= $data)->writer_fh) or die "dup2 failed: $!";
   exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
   exec 'more';
   print while <>;
