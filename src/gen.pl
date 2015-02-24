@@ -9,9 +9,21 @@ sub ni::gen::new;
 sub gen       { local $_; ni::gen->new(@_) }
 sub gen_empty { gen('empty', {}, '') }
 
+sub gen_seq {
+  # Generates an imperative sequence of statements.
+  my ($name, @statements) = @_;
+  my $code_template = join ";\n", map "%\@x$_", 0 .. $#statements;
+  my %subst;
+  $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
+  gen($name, \%subst, $code_template);
+}
+
+{
+
 package ni::gen;
 
-use overload qw# % subst  * map  @{} inserted_code_keys  "" compile #;
+use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
+                 eq compile_equals #;
 
 our $gensym_id  = 0;
 our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
@@ -20,7 +32,7 @@ sub gensym { '$' . ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
 sub parse_code;
 sub new {
   my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensyms, $insertions) = parse_code $code;
+  my ($fragments, $gensyms, $gensym_indexes, $insertions) = parse_code $code;
 
   # Substitutions can be specified as refs, in which case we pull them out and
   # do a rewrite automatically (this is more notationally expedient than having
@@ -40,6 +52,7 @@ sub new {
   bless({ sig               => $sig,
           fragments         => [@$fragments],
           gensym_names      => $gensyms,
+          gensym_indexes    => $gensym_indexes,
           insertion_indexes => $insertions,
           inserted_code     => {},
           refs              => $refs // {} },
@@ -49,6 +62,32 @@ sub new {
 sub genify {
   return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
   return ni::gen('genified', {}, $_[0]);
+}
+
+sub compile_equals {
+  my ($self, $x) = @_;
+  $x = $x->compile if ref $x;
+  $self->compile eq $x;
+}
+
+sub share_gensyms_with {
+  # Any intersecting gensyms from $g will be renamed to align with $self.
+  # This directionality matters so multiple calls against $self will form a set
+  # of mutually gensym-shared fragments.
+  my ($self, $g) = @_;
+  for ($$g{gensym_names}) {
+    if (exists $$self{gensym_names}{$_}) {
+      $$g{gensym_names}{$_} = $$self{gensym_names}{$_};
+      ${$$g{fragments}}[$$g{gensym_indexes}{$_}] =
+        ${$$self{fragments}}[$$self{gensym_indexes}{$_}];
+    }
+  }
+  $self;
+}
+
+sub inherit_gensyms_from {
+  $_[1]->share_gensyms_with($_[0]);
+  $_[0];
 }
 
 sub build_ref_hash {
@@ -118,9 +157,11 @@ sub parse_code {
   my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
   my @fragments;
   my %gensyms;
+  my %gensym_indexes;
   my %insertion_points;
   for (0..$#pieces) {
     if ($pieces[$_] =~ /^\%:(\w+)$/) {
+      $gensym_indexes{$1} = $_;
       push @fragments, $gensyms{$1} = gensym $1;
     } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
       $insertion_points{$1} = $_;
@@ -131,7 +172,10 @@ sub parse_code {
   }
   @{$parsed_code_cache{$code} = [[@fragments],
                                  {%gensyms},
+                                 {%gensym_indexes},
                                  {%insertion_points}]};
+}
+
 }
 
 }

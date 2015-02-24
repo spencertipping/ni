@@ -1,7 +1,8 @@
 #!/bin/bash
 rm -f ni ni-boot
-cat src/{core,prefix,fn,gen,genopt,io,data,datatypes,iotypes}.pl \
+cat src/{core,prefix,fn,gen,io,data,datatypes,iotypes,iobind}.pl \
     src/{ops,optypes,main}.pl \
+    | egrep -v '^\s*(#(\s.+)?)?$' \
     > ni-boot \
   && chmod +x ni-boot \
   && ./ni-boot --self > ni \

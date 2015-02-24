@@ -7,7 +7,7 @@ BEGIN {
   sub defdata {
     my ($name, $matcher, $transfomer) = @_;
     die "data type $name is already defined" if exists $data_matchers{$name};
-    push @data_names, $name;
+    unshift @data_names, $name;
     $data_matchers{$name}     = $matcher;
     $data_transformers{$name} = $transfomer;
   }

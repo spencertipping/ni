@@ -33,6 +33,11 @@ sub defio {
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
+sub defioproxy {
+  my ($name, $f) = @_;
+  *{"::ni_$name"} = *{"ni::ni_$name"} = $f;
+}
+
 # Codegen adapters
 # We want to avoid converting between lines and fields as much as possible, so
 # each code element tracks its operand and return types and we convert between
@@ -107,10 +112,16 @@ BEGIN { *gen = \&ni::gen }
 use POSIX qw/dup2/;
 
 # Methods implemented by children
-sub source_gen { ... }     # gen to source from this thing
-sub sink_gen   { ... }     # gen to sink into this thing
+sub source_gen { ... }          # gen to source from this thing
+sub sink_gen   { ... }          # gen to sink into this thing
+
+sub reader_fh { undef }
+sub writer_fh { undef }
+sub supports_reads  { 1 }
+sub supports_writes { 0 }
 
 sub flatten { ($_[0]) }
+sub close   { $_[0] }
 
 # Transforms
 sub plus_op   { $_[0]->plus($_[1]) }
@@ -131,11 +142,7 @@ sub pipe    { $_[0] >>= ni::pipe_binding    @_[1..$#_] }
 # User-facing methods
 sub from {
   my ($self, $source_fh) = @_;
-  gen('from_fh:VV', {fh   => $source_fh,
-                     body => with_input_type('L', $self->sink_gen)},
-    q{ while (<%:fh>) {
-         %@body
-       } })->run;
+  ::ni_file($source_fh)->source_gen($self->sink_gen)->run;
 }
 
 sub from_fh {
@@ -153,8 +160,7 @@ sub from_fh {
 
 sub into {
   my ($self, $dest_fh) = @_;
-  $self->source_gen(gen 'into_fh:LV', {fh => $dest_fh},
-    q{ print %:fh $_; })->run;
+  $self->source_gen(::ni_file(undef, $dest_fh)->sink_gen)->run;
 }
 
 sub into_fh {

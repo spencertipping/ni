@@ -12,6 +12,11 @@ defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
   sub { ni_memory($_[0]->source_gen(gen('print:LV', {}, 'print $_;'))) };
 
+# Stream transforms
+defop 'tee', undef, 's',
+  'tees current output into the specified io',
+  sub { ni_tee($_[0], ni $_[1]) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
