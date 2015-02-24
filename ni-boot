@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 eval($ni::selfcode = join '', <DATA>); die $@ if $@;
 __DATA__
+{
 use v5.14;
 no strict 'refs';
 package ni;
@@ -130,6 +131,8 @@ sub map {
 }
 sub compile {
   my ($self) = @_;
+  ref $_ eq 'ARRAY' && die "cannot compile underdetermined gen $self"
+    for @{$$self{fragments}};
   join '', @{$$self{fragments}};
 }
 sub run {
@@ -147,7 +150,8 @@ sub run {
 our %parsed_code_cache;
 sub parse_code {
   my ($code) = @_;
-  unless (defined($_ = $parsed_code_cache{$code})) {
+  my $cached;
+  unless (defined($cached = $parsed_code_cache{$code})) {
     my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
     my @fragments;
     my %gensym_indexes;
@@ -155,20 +159,19 @@ sub parse_code {
     for (0..$#pieces) {
       if ($pieces[$_] =~ /^\%:(\w+)$/) {
         $gensym_indexes{$1} = $_;
-        push @fragments, '';
+        push @fragments, undef;
       } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
         $insertion_points{$1} = $_;
-        push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
+        push @fragments, [$1];
       } else {
         push @fragments, $pieces[$_];
       }
     }
-    $_ = #$parsed_code_cache{$code} =
-      [[@fragments],
-                                      {%gensym_indexes},
-                                      {%insertion_points}];
+    $cached = $parsed_code_cache{$code} = [[@fragments],
+                                           {%gensym_indexes},
+                                           {%insertion_points}];
   }
-  my ($fragments, $gensym_indexes, $insertion_points) = @$_;
+  my ($fragments, $gensym_indexes, $insertion_points) = @$cached;
   my $new_fragments = [@$fragments];
   my $gensym_names  = {};
   $$new_fragments[$$gensym_indexes{$_}] = $$gensym_names{$_} = gensym $_
@@ -242,8 +245,14 @@ BEGIN { *gen = \&ni::gen }
 use POSIX qw/dup2/;
 sub source_gen { ... }          # gen to source from this thing
 sub sink_gen   { ... }          # gen to sink into this thing
-sub reader_fh { undef }
-sub writer_fh { undef }
+sub transform {
+  my ($self, $f) = @_;
+  $f->($self);
+}
+sub reader_fh { (::ni_pipe() <= $_[0])->reader_fh }
+sub writer_fh { (::ni_pipe() >= $_[0])->writer_fh }
+sub has_reader_fh { 0 }
+sub has_writer_fh { 0 }
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
 sub flatten { ($_[0]) }
@@ -358,15 +367,17 @@ sub { +{reader => $_[0], writer => $_[1]} },
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    $$self{reader} = to_fh($$self{reader});
+    to_fh $$self{reader};
   },
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    $$self{writer} = to_fh($$self{writer});
+    to_fh $$self{writer};
   },
   supports_reads  => sub { defined ${$_[0]}{reader} },
   supports_writes => sub { defined ${$_[0]}{writer} },
+  has_reader_fh   => sub { ${$_[0]}->supports_reads },
+  has_writer_fh   => sub { ${$_[0]}->supports_writes },
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'file_source:VV', {fh   => $self->reader_fh,
@@ -378,7 +389,7 @@ sub { +{reader => $_[0], writer => $_[1]} },
   sink_gen => sub {
     my ($self, $type) = @_;
     with_input_type $type,
-      gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
+      gen 'file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; };
   },
   close => sub { close $_[0]->writer_fh; $_[0] },
 };
@@ -406,6 +417,12 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
+  transform  => sub {
+    my ($self, $f) = @_;
+    my $x = $f->($self);
+    $x eq $self ? ni_sum(map $_->transform($f), @$self)
+                : $x;
+  },
   flatten    => sub { @{$_[0]} },
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -429,6 +446,12 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 {
   supports_reads  => sub { ${$_[0]}{base}->supports_reads },
   supports_writes => sub { ${$_[0]}{base}->supports_writes },
+  transform => sub {
+    my ($self, $f) = @_;
+    my $x = $f->($self);
+    $x eq $self ? ni_bind($$self{base}->transform($f), $$self{code_transform})
+                : $x;
+  },
   sink_gen => sub {
     my ($self, $type) = @_;
     $$self{code_transform}->($$self{base}, $type);
@@ -618,10 +641,6 @@ use File::Temp qw/tmpnam/;
 defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
-defop 'debug-compile', undef, '',
-  'shows the compiled code generated for the given io',
-  sub { ni_memory($_[0]->source_gen(sink_as {
-    with_input_type $_[0], gen('print:LV', {}, 'print $_;')})) };
 defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
@@ -697,18 +716,34 @@ sub preprocess_cli {
   }
   @preprocessed;
 }
-$|++;
-my $data = -t STDIN ? ni_sum() : ni_file(\*STDIN);
-for (parse_commands preprocess_cli @ARGV) {
-  my ($command, @args) = @$_;
-  $data = $ni::io::{$command}($data, @args);
+sub stream_for {
+  my ($stream, @options) = @_;
+  $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
+  for (parse_commands @options) {
+    my ($command, @args) = @$_;
+    $stream = $ni::io::{$command}($stream, @args);
+  }
+  $stream;
 }
-if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
+sub stream_to_process {
+  my ($stream, @process_alternatives) = @_;
   close STDIN;
-  dup2 0, fileno((ni_pipe() <= $data)->writer_fh) or die "dup2 failed: $!";
-  exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
-  exec 'more';
-  print while <>;
-} else {
-  $data > \*STDOUT;
+  dup2 0, fileno $stream->reader_fh or die "dup2 failed: $!";
+  exec $_ for @process_alternatives;
+}
+sub main {
+  $|++;
+  my $data = stream_for undef, preprocess_cli @_;
+  if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
+    stream_to_process $data, $ENV{NI_PAGER} // $ENV{PAGER} // 'less',
+                             'more';
+    print STDERR "ni: couldn't exec any pagers, writing to the terminal\n";
+    print STDERR "ni: (sorry about this; if you set \$PAGER it should work)\n";
+    print STDERR "\n";
+    print while <>;
+  } else {
+    $data > \*STDOUT;
+  }
+}
+END { main @ARGV }
 }

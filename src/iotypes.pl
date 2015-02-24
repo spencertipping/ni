@@ -35,17 +35,19 @@ sub { +{reader => $_[0], writer => $_[1]} },
   reader_fh => sub {
     my ($self) = @_;
     die "io not configured for reading" unless $self->supports_reads;
-    $$self{reader} = to_fh($$self{reader});
+    to_fh $$self{reader};
   },
 
   writer_fh => sub {
     my ($self) = @_;
     die "io not configured for writing" unless $self->supports_writes;
-    $$self{writer} = to_fh($$self{writer});
+    to_fh $$self{writer};
   },
 
   supports_reads  => sub { defined ${$_[0]}{reader} },
   supports_writes => sub { defined ${$_[0]}{writer} },
+  has_reader_fh   => sub { ${$_[0]}->supports_reads },
+  has_writer_fh   => sub { ${$_[0]}->supports_writes },
 
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -59,7 +61,7 @@ sub { +{reader => $_[0], writer => $_[1]} },
   sink_gen => sub {
     my ($self, $type) = @_;
     with_input_type $type,
-      gen('file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; });
+      gen 'file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -94,6 +96,13 @@ sub { [@_] },
 defio 'sum',
 sub { [map $_->flatten, @_] },
 {
+  transform  => sub {
+    my ($self, $f) = @_;
+    my $x = $f->($self);
+    $x eq $self ? ni_sum(map $_->transform($f), @$self)
+                : $x;
+  },
+
   flatten    => sub { @{$_[0]} },
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -121,6 +130,13 @@ sub { +{ base => $_[0], code_transform => $_[1] } },
 {
   supports_reads  => sub { ${$_[0]}{base}->supports_reads },
   supports_writes => sub { ${$_[0]}{base}->supports_writes },
+
+  transform => sub {
+    my ($self, $f) = @_;
+    my $x = $f->($self);
+    $x eq $self ? ni_bind($$self{base}->transform($f), $$self{code_transform})
+                : $x;
+  },
 
   sink_gen => sub {
     my ($self, $type) = @_;
@@ -165,6 +181,7 @@ defioproxy 'process', sub {
     dup2 fileno $stdout->writer_fh, 1 or die "dup2 failed: $!";
     exec $command or exit;
   }
+
   ni_file($stdout->reader_fh, $stdin->writer_fh);
 };
 

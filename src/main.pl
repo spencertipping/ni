@@ -31,21 +31,41 @@ sub preprocess_cli {
   @preprocessed;
 }
 
-$|++;
-my $data = -t STDIN ? ni_sum() : ni_file(\*STDIN);
-for (parse_commands preprocess_cli @ARGV) {
-  my ($command, @args) = @$_;
-  $data = $ni::io::{$command}($data, @args);
+sub stream_for {
+  my ($stream, @options) = @_;
+  $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
+  for (parse_commands @options) {
+    my ($command, @args) = @$_;
+    $stream = $ni::io::{$command}($stream, @args);
+  }
+  $stream;
 }
 
-if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
-  # Use a pager rather than writing straight to the terminal
+sub stream_to_process {
+  my ($stream, @process_alternatives) = @_;
   close STDIN;
-  dup2 0, fileno((ni_pipe() <= $data)->writer_fh) or die "dup2 failed: $!";
-  exec $ENV{NI_PAGER} // $ENV{PAGER} // 'less';
-  exec 'more';
-  # Ok, we're out of options; just write to the terminal after all
-  print while <>;
-} else {
-  $data > \*STDOUT;
+  dup2 0, fileno $stream->reader_fh or die "dup2 failed: $!";
+  exec $_ for @process_alternatives;
+}
+
+sub main {
+  $|++;
+  my $data = stream_for undef, preprocess_cli @_;
+  if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
+    # Use a pager rather than writing straight to the terminal
+    stream_to_process $data, $ENV{NI_PAGER} // $ENV{PAGER} // 'less',
+                             'more';
+
+    # Ok, we're out of options; just write to the terminal after all
+    print STDERR "ni: couldn't exec any pagers, writing to the terminal\n";
+    print STDERR "ni: (sorry about this; if you set \$PAGER it should work)\n";
+    print STDERR "\n";
+    print while <>;
+  } else {
+    $data > \*STDOUT;
+  }
+}
+
+END { main @ARGV }
+
 }

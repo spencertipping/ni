@@ -129,8 +129,22 @@ sub map {
   $new % {map {$_, $$new{inserted_code}{$_} * $f} @$new};
 }
 
+DEBUG
+sub debug_to_string {
+  # Don't use this to compile; use ->compile() instead.
+  my ($self) = @_;
+  "[$$self{sig}: "
+    . join('', map ref $_ eq 'ARRAY'   ? "<UNBOUND: $$_[0]>"
+                 : ref $_ eq 'ni::gen' ? $_->debug_to_string
+                                       : $_,
+                   @{$$self{fragments}}) . "]";
+}
+DEBUG_END
+
 sub compile {
   my ($self) = @_;
+  ref $_ eq 'ARRAY' && die "cannot compile underdetermined gen $self"
+    for @{$$self{fragments}};
   join '', @{$$self{fragments}};
 }
 
@@ -153,7 +167,8 @@ sub parse_code {
   # Returns ([@code_fragments], {gensym_mapping},
   #          {gensym_indexes}, {insertion_indexes})
   my ($code) = @_;
-  unless (defined($_ = $parsed_code_cache{$code})) {
+  my $cached;
+  unless (defined($cached = $parsed_code_cache{$code})) {
     my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
     my @fragments;
     my %gensym_indexes;
@@ -161,20 +176,20 @@ sub parse_code {
     for (0..$#pieces) {
       if ($pieces[$_] =~ /^\%:(\w+)$/) {
         $gensym_indexes{$1} = $_;
-        push @fragments, '';
+        push @fragments, undef;
       } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
         $insertion_points{$1} = $_;
-        push @fragments, "\ndie 'unfilled fragment: %\@$1';\n";
+        push @fragments, [$1];
       } else {
         push @fragments, $pieces[$_];
       }
     }
-    $_ = $parsed_code_cache{$code} = [[@fragments],
-                                      {%gensym_indexes},
-                                      {%insertion_points}];
+    $cached = $parsed_code_cache{$code} = [[@fragments],
+                                           {%gensym_indexes},
+                                           {%insertion_points}];
   }
 
-  my ($fragments, $gensym_indexes, $insertion_points) = @$_;
+  my ($fragments, $gensym_indexes, $insertion_points) = @$cached;
   my $new_fragments = [@$fragments];
   my $gensym_names  = {};
   $$new_fragments[$$gensym_indexes{$_}] = $$gensym_names{$_} = gensym $_

@@ -2,9 +2,15 @@
 rm -f ni ni-boot
 cat src/{core,prefix,fn,gen,io,data,datatypes,iotypes,iobind}.pl \
     src/{ops,optypes,main}.pl \
-    | egrep -v '^\s*(#(\s.+)?)?$' \
-    > ni-boot \
-  && chmod +x ni-boot \
+    > ni-boot-debug
+
+perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
+  < ni-boot-debug \
+  | egrep -v '^\s*(#(\s.+)?)?$' \
+  > ni-boot
+
+sed -ri '2,3d; /^\s*DEBUG(_END)?/d' ni-boot-debug
+
+chmod +x ni-boot ni-boot-debug \
   && ./ni-boot --self > ni \
   && chmod +x ni
-

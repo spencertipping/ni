@@ -117,8 +117,17 @@ use POSIX qw/dup2/;
 sub source_gen { ... }          # gen to source from this thing
 sub sink_gen   { ... }          # gen to sink into this thing
 
-sub reader_fh { undef }
-sub writer_fh { undef }
+sub transform {
+  my ($self, $f) = @_;
+  $f->($self);
+}
+
+sub reader_fh { (::ni_pipe() <= $_[0])->reader_fh }
+sub writer_fh { (::ni_pipe() >= $_[0])->writer_fh }
+
+sub has_reader_fh { 0 }
+sub has_writer_fh { 0 }
+
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
 

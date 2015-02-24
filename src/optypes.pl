@@ -7,11 +7,18 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
 
-# Debugging
+DEBUG
 defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
-  sub { ni_memory($_[0]->source_gen(sink_as {
-    with_input_type $_[0], gen('print:LV', {}, 'print $_;')})) };
+  sub {
+    my $gen = $_[0]->source_gen(sink_as {
+                with_input_type $_[0],
+                  gen 'print:LV', {}, "print STDOUT \$_;"});
+    ni_memory("\nCOMPILED\n" . $gen->compile,
+              "\n",
+              "\nDEBUG\n"    . $gen->debug_to_string);
+  };
+DEBUG_END
 
 # Stream transforms
 defop 'tee', undef, 's',

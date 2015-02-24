@@ -1,3 +1,5 @@
+{
+
 use v5.14;
 no strict 'refs';
 package ni;
