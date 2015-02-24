@@ -87,3 +87,27 @@ sub tee_binding {
                             $recover, $into->sink_gen($type);
   }];
 }
+
+sub take_binding {
+  my ($n) = @_;
+  die "must take a positive number of things" unless $n > 0;
+  ["take $n", sub {
+    my ($into, $type) = @_;
+    gen "take:${type}V", {body      => $into->sink_gen($type),
+                          remaining => $n},
+      q{ %@body;
+         return if --%:remaining <= 0; };
+  }];
+}
+
+sub drop_binding {
+  my ($n) = @_;
+  ["drop $n", sub {
+    my ($into, $type) = @_;
+    gen "take:${type}V", {body      => $into->sink_gen($type),
+                          remaining => $n},
+      q{ if (--%:remaining < 0) {
+           %@body
+         }};
+  }];
+}

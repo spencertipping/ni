@@ -45,6 +45,7 @@ sub defioproxy {
 #
 # F = array of fields stored in @_
 # L = single line with \n, stored in $_
+# O = object stored in $_ (convertible from everything and to F)
 # R = single row without \n, stored in $_
 # V = void; used as a return type to indicate that values all go to a sink but
 #     are not usable in a post-side-effect state, or as an input type to
@@ -60,13 +61,24 @@ our %sig_conversions = (
   RF => q{ %@before           @_ = split /\t/;            %@after },
   RL => q{ %@before           $_ .= "\n" unless /\n$/;    %@after },
 
+  OF => q{ %@before @_ = ($_);  %@after },
+  LO => q{ %@before             %@after },
+  RO => q{ %@before             %@after },
+  FO => q{ %@before $_ = $_[0]; %@after },
+
   FF => q{ %@before %@after },
   LL => q{ %@before %@after },
   RR => q{ %@before %@after },
+  OO => q{ %@before %@after },
 );
 
 $sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
   for keys %sig_conversions;
+
+sub invalid_conversion {
+  gen "conv:$_[0]", {},
+    qq{ %\@before; die "invalid conversion: $_[0]"; %\@after };
+}
 
 sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
 sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
@@ -76,8 +88,8 @@ sub with_input_type {
   return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = input_sig $code;
-  die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
-    unless defined(my $transform = $sig_conversions{"$sig$codesig"});
+  my $transform = $sig_conversions{"$sig$codesig"}
+                  // invalid_conversion "$sig$codesig";
   $transform % {before => gen_empty, after => $code};
 }
 

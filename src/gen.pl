@@ -25,9 +25,8 @@ package ni::gen;
 use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
                  eq compile_equals #;
 
-our $gensym_id  = 0;
-our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
-sub gensym { '$' . ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
+our $gensym_id = 0;
+sub gensym { '$GS__' . ($_[0] // '') . '_' . $gensym_id++ }
 
 our $gen_id = 0;
 
@@ -77,8 +76,9 @@ sub replace_gensyms {
   my ($self, $replacements) = @_;
   for (keys %$replacements) {
     if (exists $$self{gensym_names}{$_}) {
-      my $i = $$self{gensym_indexes}{$_};
-      $$self{fragments}[$i] = $$self{gensym_names}{$_} = $$replacements{$_};
+      my $is = $$self{gensym_indexes}{$_};
+      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
+      $$self{fragments}[$_] = $g for @$is;
     }
   }
   $self;
@@ -112,7 +112,7 @@ sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
   $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
-  $$self{fragments}[$$self{insertion_indexes}{$_}]->build_ref_hash($refs)
+  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
     for @$self;
   $refs;
 }
@@ -126,8 +126,9 @@ sub subst_in_place {
   my ($self, $vars) = @_;
   for my $k (keys %$vars) {
     die "unknown subst var: $k (code is $self)"
-      unless defined(my $i = $$self{insertion_indexes}{$k});
-    $$self{fragments}[$i] = genify $$vars{$k};
+      unless defined(my $is = $$self{insertion_indexes}{$k});
+    my $f = genify $$vars{$k};
+    $$self{fragments}[$_] = $f for @$is;
   }
   $self;
 }
@@ -176,15 +177,26 @@ sub compile {
   join '', @{$$self{fragments}};
 }
 
-sub run {
+sub lexical_definitions {
+  my ($self, $refs) = @_;
+  $refs //= $self->build_ref_hash;
+  ni::gen "lexicals", {},
+    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
+}
+
+sub compile_to_sub {
   my ($self) = @_;
   my $code     = $self->compile;
   my $refs     = $self->build_ref_hash;
-  my $bindings = join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_),
-                                keys %$refs;
+  my $bindings = $self->lexical_definitions($refs);
   my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
   die "$@ compiling\n$code" if $@;
+  ($f, $refs);
+}
 
+sub run {
+  my ($self) = @_;
+  my ($f, $refs) = $self->compile_to_sub;
   my @result = &$f($refs);
   delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
   @result;
@@ -199,13 +211,13 @@ sub parse_code {
     my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
     my @fragments;
     my %gensym_indexes;
-    my %insertion_points;
+    my %insertion_indexes;
     for (0 .. $#pieces) {
       if ($pieces[$_] =~ /^\%:(\w+)$/) {
-        $gensym_indexes{$1} = $_;
+        push @{$gensym_indexes{$1} //= []}, $_;
         push @fragments, undef;
       } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-        $insertion_points{$1} = $_;
+        push @{$insertion_indexes{$1} //= []}, $_;
         push @fragments, [$1];
       } else {
         push @fragments, $pieces[$_];
@@ -213,7 +225,7 @@ sub parse_code {
     }
     $cached = $parsed_code_cache{$code} = [[@fragments],
                                            {%gensym_indexes},
-                                           {%insertion_points}];
+                                           {%insertion_indexes}];
   }
   @$cached;
 }

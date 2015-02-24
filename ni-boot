@@ -49,9 +49,8 @@ sub gen_seq {
 package ni::gen;
 use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
                  eq compile_equals #;
-our $gensym_id  = 0;
-our $randomness = join '', map sprintf("%04x", rand(65536)), 0..3;
-sub gensym { '$' . ($_[0] // '') . "_${randomness}_" . $gensym_id++ }
+our $gensym_id = 0;
+sub gensym { '$GS__' . ($_[0] // '') . '_' . $gensym_id++ }
 our $gen_id = 0;
 sub parse_code;
 sub new {
@@ -89,8 +88,9 @@ sub replace_gensyms {
   my ($self, $replacements) = @_;
   for (keys %$replacements) {
     if (exists $$self{gensym_names}{$_}) {
-      my $i = $$self{gensym_indexes}{$_};
-      $$self{fragments}[$i] = $$self{gensym_names}{$_} = $$replacements{$_};
+      my $is = $$self{gensym_indexes}{$_};
+      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
+      $$self{fragments}[$_] = $g for @$is;
     }
   }
   $self;
@@ -116,7 +116,7 @@ sub build_ref_hash {
   my ($self, $refs) = @_;
   $refs //= {};
   $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
-  $$self{fragments}[$$self{insertion_indexes}{$_}]->build_ref_hash($refs)
+  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
     for @$self;
   $refs;
 }
@@ -128,8 +128,9 @@ sub subst_in_place {
   my ($self, $vars) = @_;
   for my $k (keys %$vars) {
     die "unknown subst var: $k (code is $self)"
-      unless defined(my $i = $$self{insertion_indexes}{$k});
-    $$self{fragments}[$i] = genify $$vars{$k};
+      unless defined(my $is = $$self{insertion_indexes}{$k});
+    my $f = genify $$vars{$k};
+    $$self{fragments}[$_] = $f for @$is;
   }
   $self;
 }
@@ -153,14 +154,24 @@ sub compile {
     for @{$$self{fragments}};
   join '', @{$$self{fragments}};
 }
-sub run {
+sub lexical_definitions {
+  my ($self, $refs) = @_;
+  $refs //= $self->build_ref_hash;
+  ni::gen "lexicals", {},
+    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
+}
+sub compile_to_sub {
   my ($self) = @_;
   my $code     = $self->compile;
   my $refs     = $self->build_ref_hash;
-  my $bindings = join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_),
-                                keys %$refs;
+  my $bindings = $self->lexical_definitions($refs);
   my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
   die "$@ compiling\n$code" if $@;
+  ($f, $refs);
+}
+sub run {
+  my ($self) = @_;
+  my ($f, $refs) = $self->compile_to_sub;
   my @result = &$f($refs);
   delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
   @result;
@@ -173,13 +184,13 @@ sub parse_code {
     my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
     my @fragments;
     my %gensym_indexes;
-    my %insertion_points;
+    my %insertion_indexes;
     for (0 .. $#pieces) {
       if ($pieces[$_] =~ /^\%:(\w+)$/) {
-        $gensym_indexes{$1} = $_;
+        push @{$gensym_indexes{$1} //= []}, $_;
         push @fragments, undef;
       } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-        $insertion_points{$1} = $_;
+        push @{$insertion_indexes{$1} //= []}, $_;
         push @fragments, [$1];
       } else {
         push @fragments, $pieces[$_];
@@ -187,7 +198,7 @@ sub parse_code {
     }
     $cached = $parsed_code_cache{$code} = [[@fragments],
                                            {%gensym_indexes},
-                                           {%insertion_points}];
+                                           {%insertion_indexes}];
   }
   @$cached;
 }
@@ -217,12 +228,21 @@ our %sig_conversions = (
   LR => q{ %@before chomp;                                %@after },
   RF => q{ %@before           @_ = split /\t/;            %@after },
   RL => q{ %@before           $_ .= "\n" unless /\n$/;    %@after },
+  OF => q{ %@before @_ = ($_);  %@after },
+  LO => q{ %@before             %@after },
+  RO => q{ %@before             %@after },
+  FO => q{ %@before $_ = $_[0]; %@after },
   FF => q{ %@before %@after },
   LL => q{ %@before %@after },
   RR => q{ %@before %@after },
+  OO => q{ %@before %@after },
 );
 $sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
   for keys %sig_conversions;
+sub invalid_conversion {
+  gen "conv:$_[0]", {},
+    qq{ %\@before; die "invalid conversion: $_[0]"; %\@after };
+}
 sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
 sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
 sub with_input_type {
@@ -230,8 +250,8 @@ sub with_input_type {
   return $code unless $sig;
   die "unsigned code block: $code ($$code{sig})"
     unless my $codesig = input_sig $code;
-  die "unknown code transform $sig$codesig for $sig > $$code{sig} ($codesig)"
-    unless defined(my $transform = $sig_conversions{"$sig$codesig"});
+  my $transform = $sig_conversions{"$sig$codesig"}
+                  // invalid_conversion "$sig$codesig";
   $transform % {before => gen_empty, after => $code};
 }
 sub with_output_type {
@@ -370,6 +390,7 @@ defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
                     sub { ni_file("[fh = " . fileno($_[0]) . "]",
                                   $_[0], $_[0]) };
 BEGIN {
+use List::Util qw/min max/;
 use POSIX qw/dup2/;
 sub to_fh {
   return undef unless defined $_[0];
@@ -390,7 +411,7 @@ defio 'source_as',
 sub { +{description => $_[0], f => $_[1]} },
 {
   explain    => sub { "[source as: " . ${$_[0]}{description} . "]" },
-  source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
+  source_gen => sub { ${$_[0]}{f}->(@_[1..$#_]) },
 };
 sub sink_as(&)   { ni_sink_as("[anonymous sink]", @_) }
 sub source_as(&) { ni_source_as("[anonymous source]", @_) }
@@ -435,14 +456,14 @@ sub { [@_] },
 {
   explain => sub {
     "[memory io of " . scalar(@{$_[0]}) . " element(s): "
-                     . "[" . join(', ', @{$_[0]}[0..3],
+                     . "[" . join(', ', @{$_[0]}[0 .. min(3, $#{$_[0]})],
                                         @{$_[0]} > 4 ? ("...") : ()) . "]]";
   },
   supports_writes => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'memory_source:VV', {xs   => $self,
-                             body => $destination->sink_gen('L')},
+                             body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
            %@body
          } };
@@ -455,6 +476,74 @@ sub { [@_] },
                        {xs => $self},
                        q{ push @{%:xs}, $_; };
   },
+};
+defio 'ring',
+sub { die "ring must contain at least one element" unless $_[0] > 0;
+      my $n = 0;
+      +{xs       => [map undef, 1..$_[0]],
+        overflow => $_[1],
+        n        => \$n} },
+{
+  explain => sub {
+    my ($self) = @_;
+    "[ring io of " . min(${$$self{n}}, scalar @{$$self{xs}})
+                   . " element(s)"
+                   . ($$self{overflow} ? ", > $$self{overflow}]"
+                                       : "]");
+  },
+  supports_writes => sub { 1 },
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    my $i     = ${$$self{n}};
+    my $size  = @{$$self{xs}};
+    my $start = max 0, $i - $size;
+    gen 'ring_source:VV', {xs    => $$self{xs},
+                           n     => $size,
+                           end   => $i % $size,
+                           i     => $start % $size,
+                           body  => $destination->sink_gen('O')},
+      q{ while (%:i < %@n) {
+           $_ = ${%:xs}[%:i++];
+           %@body
+         }
+         %:i = 0;
+         while (%:i < %@end) {
+           $_ = ${%:xs}[%:i++];
+           %@body
+         } };
+  },
+  sink_gen => sub {
+    my ($self, $type) = @_;
+    if (defined $$self{overflow}) {
+      gen "ring_sink:${type}V", {xs   => $$self{xs},
+                                 size => scalar(@{$$self{xs}}),
+                                 body => $$self{overflow}->sink_gen('O'),
+                                 n    => $$self{n},
+                                 e    => $type eq 'F' ? '[@_]' : '$_',
+                                 v    => 0,
+                                 i    => 0},
+        q{ %:v = %@e;
+           %:i = ${%:n} % %@size;
+           if (${%:n}++ >= %@size) {
+             $_ = ${%:xs}[%:i];
+             %@body
+           }
+           ${%:xs}[%:i] = %:v; };
+    } else {
+      gen "ring_sink:${type}V", {xs   => $$self{xs},
+                                 size => scalar(@{$$self{xs}}),
+                                 n    => $$self{n},
+                                 e    => $type eq 'F' ? '[@_]' : '$_'},
+        q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
+    }
+  },
+};
+defio 'null', sub { +{} },
+{
+  explain         => sub { '[null io]' },
+  supports_writes => sub { 1 },
+  source_gen      => sub { gen 'empty', {}, '' },
+  sink_gen        => sub { gen "null_sink:$_[1]V", {}, '' },
 };
 defio 'sum',
 sub { [map $_->flatten, @_] },
@@ -484,9 +573,11 @@ sub { \$_[0] },
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
-      gen 'cat_source:VV',
-          {dest => $destination},
-          q{ $_->source_gen(%:dest)->run; }});
+      my ($type) = @_;
+      with_input_type $type,
+        gen 'cat_source:OV',
+            {dest => $destination},
+            q{ $_ > %:dest; }});
   },
 };
 defio 'bind',
@@ -643,6 +734,33 @@ sub tee_binding {
                             $recover, $into->sink_gen($type);
   }];
 }
+sub take_binding {
+  my ($n) = @_;
+  die "must take a positive number of things" unless $n > 0;
+  ["take $n", sub {
+    my ($into, $type) = @_;
+    gen "take:${type}V", {body      => $into->sink_gen($type),
+                          remaining => $n},
+      q{ %@body;
+         return if --%:remaining <= 0; };
+  }];
+}
+sub drop_binding {
+  my ($n) = @_;
+  ["drop $n", sub {
+    my ($into, $type) = @_;
+    gen "take:${type}V", {body      => $into->sink_gen($type),
+                          remaining => $n},
+      q{ if (--%:remaining < 0) {
+           %@body
+         }};
+  }];
+}
+sub ni::io::peek {
+  my ($self, $n) = @_;
+  my $buffer = ni_memory();
+  ($buffer < $self->bind(take_binding($n)), $self);
+}
 our %op_shorthand_lookups;      # keyed by short
 our %op_shorthands;             # keyed by long
 our %op_formats;                # ditto
@@ -712,6 +830,7 @@ sub parse_commands {
   }
   @parsed;
 }
+use B::Deparse;
 use File::Temp qw/tmpnam/;
 defop 'self', undef, '',
   'adds the source code of ni',
@@ -719,6 +838,17 @@ defop 'self', undef, '',
 defop 'explain-stream', undef, '',
   'explains the current stream',
   sub { ni_memory($_[0]->explain) };
+defop 'explain-compilation', undef, '',
+  'shows the compiled output for the current stream',
+  sub {
+    my $gen = $_[0]->source_gen(sink_as {
+      with_input_type $_[0],
+        gen 'print:LV', {}, "print STDOUT \$_;"});
+    my $deparser = B::Deparse->new;
+    my ($f, $refs) = $gen->compile_to_sub;
+    delete $$refs{$_} for keys %$refs;
+    ni_memory($deparser->coderef2text($f));
+  };
 defop 'defined-methods', undef, '',
   'lists defined long and short methods on IO objects',
   sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
@@ -728,6 +858,21 @@ defop 'plus', undef, '',
 defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
+defop 'take', undef, 'd',
+  'takes the first or last N records from the specified io',
+  sub { $_[1] > 0 ? $_[0] >>= take_binding($_[1])
+                  : ni_ring(-$_[1]) < $_[0] };
+defop 'drop', undef, 'd',
+  'drops the first or last N records from the specified io',
+  sub {
+    my ($self, $n) = @_;
+    $n >= 0
+      ? $self->bind(drop_binding($n))
+      : ni_source_as("$self >>= drop " . -$n . "]", sub {
+          my ($destination) = @_;
+          $self->source_gen(ni_ring(-$n, $destination));
+        });
+  };
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
   sub { $_[0] * $_[1] };
@@ -742,8 +887,8 @@ defop 'deref', 'r', '',
   sub { ni_cat($_[0] * \&ni) };
 defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',
-  sub { my $f = $_[1] // tmpnam;
-        $_[0]->into(ni $_[1]);
+  sub { my ($self, $f) = @_;
+        $self > ni($f //= "file:" . tmpnam);
         ni_memory($f) };
 defop 'branch', 'b', 's',
   'splits input by its first field, forwarding to subprocesses',
@@ -805,12 +950,10 @@ sub preprocess_cli {
 }
 sub stream_for {
   my ($stream, @options) = @_;
-  $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
+  $stream //= -t STDIN ? ni_sum() : ni_file('[stdin]', \*STDIN, undef);
   for (parse_commands @options) {
     my ($command, @args) = @$_;
-    eval {
-      $stream = $ni::io::{long_op_method $command}($stream, @args);
-    };
+    eval {$stream = $ni::io::{long_op_method $command}($stream, @args)};
     die "failed to apply stream command $command [@args] "
       . "(method: " . long_op_method($command) . "): $@" if $@;
   }
@@ -818,8 +961,11 @@ sub stream_for {
 }
 sub stream_to_process {
   my ($stream, @process_alternatives) = @_;
-  close STDIN;
-  dup2 0, fileno $stream->reader_fh or die "dup2 failed: $!";
+  my $fh = $stream->reader_fh;
+  if (fileno $fh) {
+    close STDIN;
+    dup2 fileno $fh, 0 or die "dup2 failed: $!";
+  }
   exec $_ for @process_alternatives;
 }
 sub main {

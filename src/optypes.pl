@@ -1,5 +1,6 @@
 # Operator implementations
 
+use B::Deparse;
 use File::Temp qw/tmpnam/;
 
 # Meta
@@ -10,6 +11,18 @@ defop 'self', undef, '',
 defop 'explain-stream', undef, '',
   'explains the current stream',
   sub { ni_memory($_[0]->explain) };
+
+defop 'explain-compilation', undef, '',
+  'shows the compiled output for the current stream',
+  sub {
+    my $gen = $_[0]->source_gen(sink_as {
+      with_input_type $_[0],
+        gen 'print:LV', {}, "print STDOUT \$_;"});
+    my $deparser = B::Deparse->new;
+    my ($f, $refs) = $gen->compile_to_sub;
+    delete $$refs{$_} for keys %$refs;
+    ni_memory($deparser->coderef2text($f));
+  };
 
 defop 'defined-methods', undef, '',
   'lists defined long and short methods on IO objects',
@@ -37,6 +50,23 @@ defop 'tee', undef, 's',
   'tees current output into the specified io',
   sub { $_[0] >>= tee_binding(ni $_[1]) };
 
+defop 'take', undef, 'd',
+  'takes the first or last N records from the specified io',
+  sub { $_[1] > 0 ? $_[0] >>= take_binding($_[1])
+                  : ni_ring(-$_[1]) < $_[0] };
+
+defop 'drop', undef, 'd',
+  'drops the first or last N records from the specified io',
+  sub {
+    my ($self, $n) = @_;
+    $n >= 0
+      ? $self->bind(drop_binding($n))
+      : ni_source_as("$self >>= drop " . -$n . "]", sub {
+          my ($destination) = @_;
+          $self->source_gen(ni_ring(-$n, $destination));
+        });
+  };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -56,8 +86,8 @@ defop 'deref', 'r', '',
 
 defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',
-  sub { my $f = $_[1] // tmpnam;
-        $_[0]->into(ni $_[1]);
+  sub { my ($self, $f) = @_;
+        $self > ni($f //= "file:" . tmpnam);
         ni_memory($f) };
 
 defop 'branch', 'b', 's',

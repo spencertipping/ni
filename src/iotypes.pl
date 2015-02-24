@@ -1,5 +1,6 @@
 BEGIN {
 
+use List::Util qw/min max/;
 use POSIX qw/dup2/;
 
 sub to_fh {
@@ -24,7 +25,7 @@ defio 'source_as',
 sub { +{description => $_[0], f => $_[1]} },
 {
   explain    => sub { "[source as: " . ${$_[0]}{description} . "]" },
-  source_gen => sub { ${$_[0]}->(@_[1..$#_]) },
+  source_gen => sub { ${$_[0]}{f}->(@_[1..$#_]) },
 };
 
 sub sink_as(&)   { ni_sink_as("[anonymous sink]", @_) }
@@ -80,7 +81,7 @@ sub { [@_] },
 {
   explain => sub {
     "[memory io of " . scalar(@{$_[0]}) . " element(s): "
-                     . "[" . join(', ', @{$_[0]}[0..3],
+                     . "[" . join(', ', @{$_[0]}[0 .. min(3, $#{$_[0]})],
                                         @{$_[0]} > 4 ? ("...") : ()) . "]]";
   },
 
@@ -89,7 +90,7 @@ sub { [@_] },
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'memory_source:VV', {xs   => $self,
-                             body => $destination->sink_gen('L')},
+                             body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
            %@body
          } };
@@ -103,6 +104,84 @@ sub { [@_] },
                        {xs => $self},
                        q{ push @{%:xs}, $_; };
   },
+};
+
+# A ring buffer of a specified size
+defio 'ring',
+sub { die "ring must contain at least one element" unless $_[0] > 0;
+      my $n = 0;
+      +{xs       => [map undef, 1..$_[0]],
+        overflow => $_[1],
+        n        => \$n} },
+{
+  explain => sub {
+    my ($self) = @_;
+    "[ring io of " . min(${$$self{n}}, scalar @{$$self{xs}})
+                   . " element(s)"
+                   . ($$self{overflow} ? ", > $$self{overflow}]"
+                                       : "]");
+  },
+
+  supports_writes => sub { 1 },
+
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    my $i     = ${$$self{n}};
+    my $size  = @{$$self{xs}};
+    my $start = max 0, $i - $size;
+
+    # Emit two loops, one before and one after the break. This way we won't end
+    # up doing a modulus per loop iteration.
+    gen 'ring_source:VV', {xs    => $$self{xs},
+                           n     => $size,
+                           end   => $i % $size,
+                           i     => $start % $size,
+                           body  => $destination->sink_gen('O')},
+      q{ while (%:i < %@n) {
+           $_ = ${%:xs}[%:i++];
+           %@body
+         }
+         %:i = 0;
+         while (%:i < %@end) {
+           $_ = ${%:xs}[%:i++];
+           %@body
+         } };
+  },
+
+  sink_gen => sub {
+    my ($self, $type) = @_;
+    if (defined $$self{overflow}) {
+      gen "ring_sink:${type}V", {xs   => $$self{xs},
+                                 size => scalar(@{$$self{xs}}),
+                                 body => $$self{overflow}->sink_gen('O'),
+                                 n    => $$self{n},
+                                 e    => $type eq 'F' ? '[@_]' : '$_',
+                                 v    => 0,
+                                 i    => 0},
+        q{ %:v = %@e;
+           %:i = ${%:n} % %@size;
+           if (${%:n}++ >= %@size) {
+             $_ = ${%:xs}[%:i];
+             %@body
+           }
+           ${%:xs}[%:i] = %:v; };
+    } else {
+      gen "ring_sink:${type}V", {xs   => $$self{xs},
+                                 size => scalar(@{$$self{xs}}),
+                                 n    => $$self{n},
+                                 e    => $type eq 'F' ? '[@_]' : '$_'},
+        q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
+    }
+  },
+};
+
+# Empty source, null sink
+defio 'null', sub { +{} },
+{
+  explain         => sub { '[null io]' },
+  supports_writes => sub { 1 },
+  source_gen      => sub { gen 'empty', {}, '' },
+  sink_gen        => sub { gen "null_sink:$_[1]V", {}, '' },
 };
 
 # Sum of multiple IOs
@@ -139,9 +218,11 @@ sub { \$_[0] },
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
-      gen 'cat_source:VV',
-          {dest => $destination},
-          q{ $_->source_gen(%:dest)->run; }});
+      my ($type) = @_;
+      with_input_type $type,
+        gen 'cat_source:OV',
+            {dest => $destination},
+            q{ $_ > %:dest; }});
   },
 };
 

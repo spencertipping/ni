@@ -33,12 +33,10 @@ sub preprocess_cli {
 
 sub stream_for {
   my ($stream, @options) = @_;
-  $stream //= -t STDIN ? ni_sum() : ni_file(\*STDIN);
+  $stream //= -t STDIN ? ni_sum() : ni_file('[stdin]', \*STDIN, undef);
   for (parse_commands @options) {
     my ($command, @args) = @$_;
-    eval {
-      $stream = $ni::io::{long_op_method $command}($stream, @args);
-    };
+    eval {$stream = $ni::io::{long_op_method $command}($stream, @args)};
     die "failed to apply stream command $command [@args] "
       . "(method: " . long_op_method($command) . "): $@" if $@;
   }
@@ -47,8 +45,11 @@ sub stream_for {
 
 sub stream_to_process {
   my ($stream, @process_alternatives) = @_;
-  close STDIN;
-  dup2 0, fileno $stream->reader_fh or die "dup2 failed: $!";
+  my $fh = $stream->reader_fh;
+  if (fileno $fh) {
+    close STDIN;
+    dup2 fileno $fh, 0 or die "dup2 failed: $!";
+  }
   exec $_ for @process_alternatives;
 }
 
