@@ -79,6 +79,7 @@ sub writer_fh { (::ni_pipe() >= $_[0])->writer_fh }
 
 sub has_reader_fh { 0 }
 sub has_writer_fh { 0 }
+sub process_local { 0 }
 
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
@@ -113,6 +114,10 @@ sub from {
 
 sub from_bg {
   my ($self, $source) = @_;
+DEBUG
+  die "cannot background-load a process-local io $self"
+    if $self->process_local;
+DEBUG_END
   $self < $source, exit unless fork;
   $self;
 }
@@ -125,6 +130,10 @@ sub into {
 
 sub into_bg {
   my ($self, $dest) = @_;
+DEBUG
+  die "cannot background-load a process-local io $dest"
+    if $dest->process_local;
+DEBUG_END
   $self > $dest, exit unless fork;
   $self;
 }

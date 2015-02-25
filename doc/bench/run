@@ -14,8 +14,10 @@ testcase() {
     system("'"$2"' > /dev/null");
   };
   $::name = "'"$1"'"' \
-    perl:0..99 \
-    -m 'my $s = time; run(); row($::name, time() - $s)' | cat
+    perl:0..3 \
+    -m 'my $s = time; run(); my $e = time;
+        row($::name, sprintf "%.4f",
+                             (-s "testdata") / 1048576 / ($e - $s))' | cat
 }
 
 if [[ $1 != ${1/g/} ]]; then
@@ -23,6 +25,7 @@ if [[ $1 != ${1/g/} ]]; then
   testcase '/bin/wc'   'wc -l < testdata'
   testcase '/bin/sort' 'sort < testdata'
   testcase 'fast sort' 'sort -S 256M --parallel=4 < testdata'
+  testcase '/bin/uniq' 'uniq < testdata'
 fi
 
 if ls $1*.pl >&/dev/null; then

@@ -89,6 +89,7 @@ sub { [@_] },
   },
 
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
 
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -123,6 +124,7 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
   },
 
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
 
   source_gen => sub {
     my ($self, $destination) = @_;
