@@ -23,12 +23,15 @@ sub gen_seq {
 package ni::gen;
 
 use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
+                 << implement_as
                  eq compile_equals #;
 
 our $gensym_id = 0;
 sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
 
+DEBUG
 our $gen_id = 0;
+DEBUG_END
 
 sub parse_signature {
   return $_[0] if ref $_[0];
@@ -44,7 +47,8 @@ sub parse_signature {
 sub parse_code;
 sub new {
   my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
+  my ($fragments, $gensym_indexes, $insertions)
+    = parse_code($code // '%@implementation');
 
   # Substitutions can be specified as refs, in which case we pull them out and
   # do a rewrite automatically (this is more notationally expedient than having
@@ -63,9 +67,12 @@ DEBUG
     for keys %$gensym_indexes;
 DEBUG_END
 
-  # NB: always copy the fragments because parse_code returns cached results
-  bless({ id                => ++$gen_id,
-          sig               => parse_signature $sig,
+  # NB: must use some kind of copying operator like % here, since parse_code is
+  # memoized.
+  bless({ sig               => parse_signature $sig,
+DEBUG
+          id                => ++$gen_id,
+DEBUG_END
           fragments         => $fragments,
           gensym_names      => {map {$_, undef} keys %$gensym_indexes},
           gensym_indexes    => $gensym_indexes,
@@ -77,13 +84,21 @@ DEBUG_END
 sub copy {
   my ($self) = @_;
   my %new = %$self;
+DEBUG
   $new{id}           = ++$gen_id;
+DEBUG_END
   $new{sig}          = {%{$new{sig}}};
   $new{fragments}    = [@{$new{fragments}}];
   $new{gensym_names} = {%{$new{gensym_names}}};
 
   bless(\%new, ref $self)->replace_gensyms(
     {map {$_, gensym $_} keys %{$new{gensym_names}}});
+}
+
+sub implement_as {
+  # Use this when you have an anonymous wrapper gen
+  my ($self, $implementation) = @_;
+  $self->subst_in_place({implementation => $implementation});
 }
 
 sub replace_gensyms {
@@ -226,7 +241,7 @@ sub parse_code {
   my ($code) = @_;
   my $cached;
   unless (defined($cached = $parsed_code_cache{$code})) {
-    my @pieces = split /(\%:\w+|\%\@\w+)/, $code;
+    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
     my @fragments;
     my %gensym_indexes;
     my %insertion_indexes;

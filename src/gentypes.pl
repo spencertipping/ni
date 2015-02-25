@@ -52,5 +52,6 @@
 # 2. In some (known) cases, the function must use some explicit return function
 #    like row() -- and we'll need to be able to rewrite this with our own
 #    custom function.
-
-# TODO
+#
+# This code is used by genopt to solve and compile a specific configuration of
+# alternatives (see genopt.pl for an explanation).

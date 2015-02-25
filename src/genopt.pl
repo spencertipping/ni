@@ -52,7 +52,49 @@
 #
 # This information can all be tracked using gen() signatures.
 #
-# Structures in this file are related to types; see gentypes.pl for a
-# discussion of what we're doing here.
+# Compilation cycle
+# All compiled code is run by a genopt instance, which has the following
+# high-level workflow:
+#
+# 1. Someone creates a genopt around an io's ->source_gen() output. The goal of
+#    doing this is to execute the io transfer using adaptive JIT.
+# 2. The genopt gets the source_gen, which contains just semantic nodes and has
+#    no alternative branching. It then calls the stuff in gentypes.pl to get a
+#    series of type alternatives.
+# 3. genopt then goes through the structure, fixing the type at each choice
+#    point and producing an alternative. (Basically we're lifting the
+#    alternatives from gentypes space into genopt space.)
+# 4. genopt compiles the code with self-profiling and resumable structures. The
+#    code is then run until we decide to recompile something.
+# 5. The code triggers an escape, which genopt catches. It looks at the
+#    profiling data and figures out which alternatives to eliminate, then
+#    recompiles the code and resumes. This is a little interesting because the
+#    recovery branches may have different types than the ones we end up with,
+#    though since the "returns" are all CPS it doesn't actually create any
+#    problems.
+#
+# gentypes tries not to generate very many alternatives in most cases; usually
+# it's fairly obvious which representation makes sense.
 
-# TODO
+# genopt-compatible constructors
+# Anyone who wants to produce genopt-executable code needs to use these
+# constructors rather than writing gens that contain loops or branches.
+
+sub genblock  { ... }
+sub genarray  { ... }
+sub geniter   { ... }
+sub genif     { ... }
+sub gensink   { ... }
+sub genlambda { ... }
+sub genescape { ... }
+
+{
+
+package ni::genopt;
+
+sub new {
+  my ($class, $gen) = @_;
+  bless { gen => $gen }, $class;
+}
+
+}

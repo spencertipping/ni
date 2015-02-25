@@ -7,14 +7,14 @@ for i in $(seq 4); do
   cat /usr/share/dict/words | nfu -m 'row %0, %0, %0' >> testdata
 done
 
-wc testdata
+wc testdata 1>&2
 
 testcase() {
   nfu --run 'use Time::HiRes; sub run {
     system("'"$2"' > /dev/null");
   };
   $::name = "'"$1"'"' \
-    perl:0..7 \
+    perl:0..99 \
     -m 'my $s = time; run(); row($::name, time() - $s)' | cat
 }
 
