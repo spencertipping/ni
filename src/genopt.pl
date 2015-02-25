@@ -11,7 +11,7 @@
 # 1. When compiling a loop over an array, we need to save the array and index.
 # 2. When resuming within new code, we need a "repair" branch to finish any
 #    incomplete loops.
-
+#
 # Resumable control flow structures
 # Computation is resumed in two stages. First we finish out any loops that were
 # happening when we exited. This code is different because a resumable loop is
@@ -51,5 +51,8 @@
 #   }
 #
 # This information can all be tracked using gen() signatures.
+#
+# Structures in this file are related to types; see gentypes.pl for a
+# discussion of what we're doing here.
 
 # TODO

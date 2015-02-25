@@ -78,6 +78,7 @@ sub copy {
   my ($self) = @_;
   my %new = %$self;
   $new{id}           = ++$gen_id;
+  $new{sig}          = {%{$new{sig}}};
   $new{fragments}    = [@{$new{fragments}}];
   $new{gensym_names} = {%{$new{gensym_names}}};
 
