@@ -26,9 +26,20 @@ use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
                  eq compile_equals #;
 
 our $gensym_id = 0;
-sub gensym { '$GS__' . ($_[0] // '') . '_' . $gensym_id++ }
+sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
 
 our $gen_id = 0;
+
+sub parse_signature {
+  return $_[0] if ref $_[0];
+  my ($first, @stuff) = split /\s*;\s*/, $_[0];
+  my ($desc, $type)   = split /\s*:\s*/, $first;
+  my $result = {description => $desc,
+                type        => [split /\s*->\s*/, $type]};
+
+  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
+  $result;
+}
 
 sub parse_code;
 sub new {
@@ -46,13 +57,15 @@ sub new {
     }
   }
 
+DEBUG
   exists $$gensym_indexes{$_} or die "unknown ref $_ in $code" for keys %$refs;
   exists $$refs{$_}           or die  "unused ref $_ in $code"
     for keys %$gensym_indexes;
+DEBUG_END
 
   # NB: always copy the fragments because parse_code returns cached results
   bless({ id                => ++$gen_id,
-          sig               => $sig,
+          sig               => parse_signature $sig,
           fragments         => $fragments,
           gensym_names      => {map {$_, undef} keys %$gensym_indexes},
           gensym_indexes    => $gensym_indexes,
@@ -125,8 +138,10 @@ sub inserted_code_keys {
 sub subst_in_place {
   my ($self, $vars) = @_;
   for my $k (keys %$vars) {
-    die "unknown subst var: $k (code is $self)"
-      unless defined(my $is = $$self{insertion_indexes}{$k});
+    my $is = $$self{insertion_indexes}{$k};
+DEBUG
+    die "unknown subst var: $k (code is $self)" unless defined $is;
+DEBUG_END
     my $f = genify $$vars{$k};
     $$self{fragments}[$_] = $f for @$is;
   }
@@ -172,8 +187,10 @@ DEBUG_END
 
 sub compile {
   my ($self) = @_;
+DEBUG
   ref $_ eq 'ARRAY' && die "cannot compile underdetermined gen $self"
     for @{$$self{fragments}};
+DEBUG_END
   join '', @{$$self{fragments}};
 }
 

@@ -59,9 +59,11 @@ sub {
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'file_source:VV', {fh   => $self->reader_fh,
-                           body => $destination->sink_gen('L')},
+    gen 'file_source:V', {fh   => $self->reader_fh,
+                          body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
+           chomp;
+           @_ = split /\t/;
            %@body
          } };
   },
@@ -69,7 +71,8 @@ sub {
   sink_gen => sub {
     my ($self, $type) = @_;
     with_input_type $type,
-      gen 'file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; };
+      gen 'file_sink:L', {fh => $self->writer_fh},
+        q{ print %:fh join("\t", @_) . "\n"; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -92,17 +95,14 @@ sub { [@_] },
     gen 'memory_source:VV', {xs   => $self,
                              body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
+           @_ = ($_);
            %@body
          } };
   },
 
   sink_gen => sub {
-    my ($self, $type) = @_;
-    $type eq 'F' ? gen 'memory_sink:FV', {xs => $self},
-                       q{ push @{%:xs}, [@_]; }
-                 : gen "memory_sink:${type}V",
-                       {xs => $self},
-                       q{ push @{%:xs}, $_; };
+    my ($self) = @_;
+    gen 'memory_sink:FV', {xs => $self}, q{ push @{%:xs}, @_; };
   },
 };
 
@@ -138,12 +138,12 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                            i     => $start % $size,
                            body  => $destination->sink_gen('O')},
       q{ while (%:i < %@n) {
-           $_ = ${%:xs}[%:i++];
+           @_ = (${%:xs}[%:i++]);
            %@body
          }
          %:i = 0;
          while (%:i < %@end) {
-           $_ = ${%:xs}[%:i++];
+           @_ = (${%:xs}[%:i++]);
            %@body
          } };
   },
@@ -158,7 +158,7 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                                  e    => $type eq 'F' ? '[@_]' : '$_',
                                  v    => 0,
                                  i    => 0},
-        q{ %:v = %@e;
+        q{ %:v = $_;
            %:i = ${%:n} % %@size;
            if (${%:n}++ >= %@size) {
              $_ = ${%:xs}[%:i];

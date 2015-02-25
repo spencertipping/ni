@@ -69,9 +69,20 @@ use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
                  eq compile_equals #;
 
 our $gensym_id = 0;
-sub gensym { '$GS__' . ($_[0] // '') . '_' . $gensym_id++ }
+sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
 
 our $gen_id = 0;
+
+sub parse_signature {
+  return $_[0] if ref $_[0];
+  my ($first, @stuff) = split /\s*;\s*/, $_[0];
+  my ($desc, $type)   = split /\s*:\s*/, $first;
+  my $result = {description => $desc,
+                type        => [split /\s*->\s*/, $type]};
+
+  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
+  $result;
+}
 
 sub parse_code;
 sub new {
@@ -95,7 +106,7 @@ sub new {
 
   # NB: always copy the fragments because parse_code returns cached results
   bless({ id                => ++$gen_id,
-          sig               => $sig,
+          sig               => parse_signature $sig,
           fragments         => $fragments,
           gensym_names      => {map {$_, undef} keys %$gensym_indexes},
           gensym_indexes    => $gensym_indexes,
@@ -168,8 +179,8 @@ sub inserted_code_keys {
 sub subst_in_place {
   my ($self, $vars) = @_;
   for my $k (keys %$vars) {
-    die "unknown subst var: $k (code is $self)"
-      unless defined(my $is = $$self{insertion_indexes}{$k});
+    my $is = $$self{insertion_indexes}{$k};
+    die "unknown subst var: $k (code is $self)" unless defined $is;
     my $f = genify $$vars{$k};
     $$self{fragments}[$_] = $f for @$is;
   }
@@ -312,71 +323,6 @@ sub defio {
 sub defioproxy {
   my ($name, $f) = @_;
   *{"::ni_$name"} = *{"ni::ni_$name"} = $f;
-}
-
-# Codegen adapters
-# We want to avoid converting between lines and fields as much as possible, so
-# each code element tracks its operand and return types and we convert between
-# them automatically. Types are:
-#
-# F = array of fields stored in @_
-# L = single line with \n, stored in $_
-# O = object stored in $_ (convertible from everything and to F)
-# R = single row without \n, stored in $_
-# V = void; used as a return type to indicate that values all go to a sink but
-#     are not usable in a post-side-effect state, or as an input type to
-#     indicate that the input is ignored.
-#
-# These types are annotated after a : in a code block's signature.
-
-our %sig_conversions = (
-  FL => q{ %@before chomp @_; $_ = join("\t", @_) . "\n"; %@after },
-  FR => q{ %@before           $_ = join("\t", @_);        %@after },
-  LF => q{ %@before chomp;    @_ = split /\t/;            %@after },
-  LR => q{ %@before chomp;                                %@after },
-  RF => q{ %@before           @_ = split /\t/;            %@after },
-  RL => q{ %@before           $_ .= "\n" unless /\n$/;    %@after },
-
-  OF => q{ %@before @_ = ($_);  %@after },
-  LO => q{ %@before             %@after },
-  RO => q{ %@before             %@after },
-  FO => q{ %@before $_ = $_[0]; %@after },
-
-  FF => q{ %@before %@after },
-  LL => q{ %@before %@after },
-  RR => q{ %@before %@after },
-  OO => q{ %@before %@after },
-);
-
-$sig_conversions{$_} = gen("conv:$_", {}, $sig_conversions{$_})
-  for keys %sig_conversions;
-
-sub invalid_conversion {
-  gen "conv:$_[0]", {},
-    qq{ %\@before; die "invalid conversion: $_[0]"; %\@after };
-}
-
-sub input_sig  { (${$_[0]}{sig} =~ /:(\w)\w$/)[0] }
-sub output_sig { (${$_[0]}{sig} =~ /:\w(\w)$/)[0] }
-
-sub with_input_type {
-  my ($sig, $code) = @_;
-  return $code unless $sig;
-  die "unsigned code block: $code ($$code{sig})"
-    unless my $codesig = input_sig $code;
-  my $transform = $sig_conversions{"$sig$codesig"}
-                  // invalid_conversion "$sig$codesig";
-  $transform % {before => gen_empty, after => $code};
-}
-
-sub with_output_type {
-  my ($sig, $code) = @_;
-  return $code unless $sig;
-  die "unsigned code block: $code ($$code{sig})"
-    unless my $codesig = output_sig $code;
-  die "unknown code transform $sig$codesig for $$code{sig} ($codesig) > $sig"
-    unless defined(my $transform = $sig_conversions{"$codesig$sig"});
-  $transform % {before => $code, after => gen_empty};
 }
 
 sub mapone_binding;
@@ -606,9 +552,11 @@ sub {
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'file_source:VV', {fh   => $self->reader_fh,
-                           body => $destination->sink_gen('L')},
+    gen 'file_source:V', {fh   => $self->reader_fh,
+                          body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
+           chomp;
+           @_ = split /\t/;
            %@body
          } };
   },
@@ -616,7 +564,8 @@ sub {
   sink_gen => sub {
     my ($self, $type) = @_;
     with_input_type $type,
-      gen 'file_sink:LV', {fh => $self->writer_fh}, q{ print %:fh $_; };
+      gen 'file_sink:L', {fh => $self->writer_fh},
+        q{ print %:fh join("\t", @_) . "\n"; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -639,17 +588,14 @@ sub { [@_] },
     gen 'memory_source:VV', {xs   => $self,
                              body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
+           @_ = ($_);
            %@body
          } };
   },
 
   sink_gen => sub {
-    my ($self, $type) = @_;
-    $type eq 'F' ? gen 'memory_sink:FV', {xs => $self},
-                       q{ push @{%:xs}, [@_]; }
-                 : gen "memory_sink:${type}V",
-                       {xs => $self},
-                       q{ push @{%:xs}, $_; };
+    my ($self) = @_;
+    gen 'memory_sink:FV', {xs => $self}, q{ push @{%:xs}, @_; };
   },
 };
 
@@ -685,12 +631,12 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                            i     => $start % $size,
                            body  => $destination->sink_gen('O')},
       q{ while (%:i < %@n) {
-           $_ = ${%:xs}[%:i++];
+           @_ = (${%:xs}[%:i++]);
            %@body
          }
          %:i = 0;
          while (%:i < %@end) {
-           $_ = ${%:xs}[%:i++];
+           @_ = (${%:xs}[%:i++]);
            %@body
          } };
   },
@@ -705,7 +651,7 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                                  e    => $type eq 'F' ? '[@_]' : '$_',
                                  v    => 0,
                                  i    => 0},
-        q{ %:v = %@e;
+        q{ %:v = $_;
            %:i = ${%:n} % %@size;
            if (${%:n}++ >= %@size) {
              $_ = ${%:xs}[%:i];
