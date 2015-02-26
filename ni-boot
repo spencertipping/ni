@@ -34,183 +34,6 @@ sub compile {
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
 }
-BEGIN {
-sub ni::gen::new;
-sub gen       { local $_; ni::gen->new(@_) }
-sub gen_empty { gen('empty', {}, '') }
-sub gen_seq {
-  my ($name, @statements) = @_;
-  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
-  my %subst;
-  $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
-  gen $name, {%subst}, $code_template;
-}
-{
-package ni::gen;
-use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
-                 << implement_as
-                 eq compile_equals #;
-our $gensym_id = 0;
-sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
-sub parse_signature {
-  return $_[0] if ref $_[0];
-  my ($first, @stuff) = split /\s*;\s*/, $_[0];
-  my ($desc, $type)   = split /\s*:\s*/, $first;
-  my $result = {description => $desc,
-                type        => [split /\s*->\s*/, $type]};
-  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
-  $result;
-}
-sub parse_code;
-sub new {
-  my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensym_indexes, $insertions)
-    = parse_code($code // '%@implementation');
-  my %subst;
-  for (keys %$refs) {
-    if (exists $$insertions{$_}) {
-      $subst{$_} = $$refs{$_};
-      delete $$refs{$_};
-    }
-  }
-  bless({ sig               => parse_signature $sig,
-          fragments         => $fragments,
-          gensym_names      => {map {$_, undef} keys %$gensym_indexes},
-          gensym_indexes    => $gensym_indexes,
-          insertion_indexes => $insertions,
-          refs              => $refs // {} },
-        $class) % {%subst};
-}
-sub copy {
-  my ($self) = @_;
-  my %new = %$self;
-  $new{sig}          = {%{$new{sig}}};
-  $new{fragments}    = [@{$new{fragments}}];
-  $new{gensym_names} = {%{$new{gensym_names}}};
-  bless(\%new, ref $self)->replace_gensyms(
-    {map {$_, gensym $_} keys %{$new{gensym_names}}});
-}
-sub implement_as {
-  my ($self, $implementation) = @_;
-  $self->subst_in_place({implementation => $implementation});
-}
-sub replace_gensyms {
-  my ($self, $replacements) = @_;
-  for (keys %$replacements) {
-    if (exists $$self{gensym_names}{$_}) {
-      my $is = $$self{gensym_indexes}{$_};
-      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
-      $$self{fragments}[$_] = $g for @$is;
-    }
-  }
-  $self;
-}
-sub genify {
-  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
-  return ni::gen('genified', {}, $_[0]);
-}
-sub compile_equals {
-  my ($self, $x) = @_;
-  $x = $x->compile if ref $x;
-  $self->compile eq $x;
-}
-sub share_gensyms_with {
-  my ($self, $g) = @_;
-  $self->replace_gensyms($$g{gensym_names});
-}
-sub inherit_gensyms_from {
-  $_[1]->share_gensyms_with($_[0]);
-  $_[0];
-}
-sub build_ref_hash {
-  my ($self, $refs) = @_;
-  $refs //= {};
-  $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
-  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
-    for @$self;
-  $refs;
-}
-sub inserted_code_keys {
-  my ($self) = @_;
-  [sort keys %{$$self{insertion_indexes}}];
-}
-sub subst_in_place {
-  my ($self, $vars) = @_;
-  for my $k (keys %$vars) {
-    my $is = $$self{insertion_indexes}{$k};
-    my $f = genify $$vars{$k};
-    $$self{fragments}[$_] = $f for @$is;
-  }
-  $self;
-}
-sub subst {
-  my ($self, $vars) = @_;
-  $self->copy->subst_in_place($vars);
-}
-sub map {
-  my ($self, $f) = @_;
-  $f = ni::compile $f;
-  my $y = &$f($self);
-  return $y unless $y eq $self;
-  my $new = bless {}, ref $self;
-  $$new{$_} = $$self{$_} for keys %$self;
-  $$new{fragments} = [@{$$new{fragments}}];
-  $new % {map {$_, $$new{fragments}[$$new{insertion_indexes}{$_}] * $f} @$new};
-}
-sub compile {
-  my ($self) = @_;
-  join '', @{$$self{fragments}};
-}
-sub lexical_definitions {
-  my ($self, $refs) = @_;
-  $refs //= $self->build_ref_hash;
-  ni::gen "lexicals", {},
-    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
-}
-sub compile_to_sub {
-  my ($self) = @_;
-  my $code     = $self->compile;
-  my $refs     = $self->build_ref_hash;
-  my $bindings = $self->lexical_definitions($refs);
-  my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
-  die "$@ compiling\n$code" if $@;
-  ($f, $refs);
-}
-sub run {
-  my ($self) = @_;
-  my ($f, $refs) = $self->compile_to_sub;
-  my @result = &$f($refs);
-  delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
-  @result;
-}
-our %parsed_code_cache;
-sub parse_code {
-  my ($code) = @_;
-  my $cached;
-  unless (defined($cached = $parsed_code_cache{$code})) {
-    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
-    my @fragments;
-    my %gensym_indexes;
-    my %insertion_indexes;
-    for (0 .. $#pieces) {
-      if ($pieces[$_] =~ /^\%:(\w+)$/) {
-        push @{$gensym_indexes{$1} //= []}, $_;
-        push @fragments, undef;
-      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-        push @{$insertion_indexes{$1} //= []}, $_;
-        push @fragments, [$1];
-      } else {
-        push @fragments, $pieces[$_];
-      }
-    }
-    $cached = $parsed_code_cache{$code} = [[@fragments],
-                                           {%gensym_indexes},
-                                           {%insertion_indexes}];
-  }
-  @$cached;
-}
-}
-}
 our %io_constructors;
 sub is_io { ref $_[0] && $_[0]->isa('ni::io') }
 sub defio {
@@ -255,6 +78,7 @@ sub reader_fh { (::ni_pipe() <= $_[0])->reader_fh }
 sub writer_fh { (::ni_pipe() >= $_[0])->writer_fh }
 sub has_reader_fh { 0 }
 sub has_writer_fh { 0 }
+sub process_local { 0 }
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
 sub flatten { ($_[0]) }
@@ -428,6 +252,7 @@ sub { [@_] },
                                         @{$_[0]} > 4 ? ("...") : ()) . "]]";
   },
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'memory_source:VV', {xs   => $self,
@@ -457,6 +282,7 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                                        : "]");
   },
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
     my $i     = ${$$self{n}};

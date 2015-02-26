@@ -41,317 +41,6 @@ sub compile {
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
 }
-# Code generator
-# This exists because I want gensyms and external references to be easier to
-# deal with. It also supports some nice stuff like insertion points and
-# peephole optimizations.
-
-BEGIN {
-
-sub ni::gen::new;
-sub gen       { local $_; ni::gen->new(@_) }
-sub gen_empty { gen('empty', {}, '') }
-
-sub gen_seq {
-  # Generates an imperative sequence of statements.
-  my ($name, @statements) = @_;
-  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
-  my %subst;
-  $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
-  gen $name, {%subst}, $code_template;
-}
-
-{
-
-package ni::gen;
-
-use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
-                 << implement_as
-                 eq compile_equals #;
-
-our $gensym_id = 0;
-sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
-
-our $gen_id = 0;
-
-sub parse_signature {
-  return $_[0] if ref $_[0];
-  my ($first, @stuff) = split /\s*;\s*/, $_[0];
-  my ($desc, $type)   = split /\s*:\s*/, $first;
-  my $result = {description => $desc,
-                type        => [split /\s*->\s*/, $type]};
-
-  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
-  $result;
-}
-
-sub parse_code;
-sub new {
-  my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensym_indexes, $insertions)
-    = parse_code($code // '%@implementation');
-
-  # Substitutions can be specified as refs, in which case we pull them out and
-  # do a rewrite automatically (this is more notationally expedient than having
-  # to do a % operation right away).
-  my %subst;
-  for (keys %$refs) {
-    if (exists $$insertions{$_}) {
-      $subst{$_} = $$refs{$_};
-      delete $$refs{$_};
-    }
-  }
-
-  exists $$gensym_indexes{$_} or die "unknown ref $_ in $code" for keys %$refs;
-  exists $$refs{$_}           or die  "unused ref $_ in $code"
-    for keys %$gensym_indexes;
-
-  # NB: must use some kind of copying operator like % here, since parse_code is
-  # memoized.
-  bless({ sig               => parse_signature $sig,
-          id                => ++$gen_id,
-          fragments         => $fragments,
-          gensym_names      => {map {$_, undef} keys %$gensym_indexes},
-          gensym_indexes    => $gensym_indexes,
-          insertion_indexes => $insertions,
-          refs              => $refs // {} },
-        $class) % {%subst};
-}
-
-sub copy {
-  my ($self) = @_;
-  my %new = %$self;
-  $new{id}           = ++$gen_id;
-  $new{sig}          = {%{$new{sig}}};
-  $new{fragments}    = [@{$new{fragments}}];
-  $new{gensym_names} = {%{$new{gensym_names}}};
-
-  bless(\%new, ref $self)->replace_gensyms(
-    {map {$_, gensym $_} keys %{$new{gensym_names}}});
-}
-
-sub implement_as {
-  # Use this when you have an anonymous wrapper gen
-  my ($self, $implementation) = @_;
-  $self->subst_in_place({implementation => $implementation});
-}
-
-sub replace_gensyms {
-  my ($self, $replacements) = @_;
-  for (keys %$replacements) {
-    if (exists $$self{gensym_names}{$_}) {
-      my $is = $$self{gensym_indexes}{$_};
-      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
-      $$self{fragments}[$_] = $g for @$is;
-    }
-  }
-  $self;
-}
-
-sub genify {
-  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
-  return ni::gen('genified', {}, $_[0]);
-}
-
-sub compile_equals {
-  my ($self, $x) = @_;
-  $x = $x->compile if ref $x;
-  $self->compile eq $x;
-}
-
-sub share_gensyms_with {
-  # Any intersecting gensyms from $g will be renamed to align with $self.
-  # This directionality matters so multiple calls against $self will form a set
-  # of mutually gensym-shared fragments.
-  my ($self, $g) = @_;
-  $self->replace_gensyms($$g{gensym_names});
-}
-
-sub inherit_gensyms_from {
-  $_[1]->share_gensyms_with($_[0]);
-  $_[0];
-}
-
-sub build_ref_hash {
-  my ($self, $refs) = @_;
-  $refs //= {};
-  $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
-  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
-    for @$self;
-  $refs;
-}
-
-sub inserted_code_keys {
-  my ($self) = @_;
-  [sort keys %{$$self{insertion_indexes}}];
-}
-
-sub subst_in_place {
-  my ($self, $vars) = @_;
-  for my $k (keys %$vars) {
-    my $is = $$self{insertion_indexes}{$k};
-    die "unknown subst var: $k (code is $self)" unless defined $is;
-    my $f = genify $$vars{$k};
-    $$self{fragments}[$_] = $f for @$is;
-  }
-  $self;
-}
-
-sub subst {
-  my ($self, $vars) = @_;
-  $self->copy->subst_in_place($vars);
-}
-
-sub map {
-  my ($self, $f) = @_;
-  $f = ni::compile $f;
-  my $y = &$f($self);
-  return $y unless $y eq $self;
-
-  # If we haven't changed, then operate independently on the
-  # already-substituted code fragments and build a new instance.
-  my $new = bless {}, ref $self;
-  $$new{$_} = $$self{$_} for keys %$self;
-  $$new{fragments} = [@{$$new{fragments}}];
-
-  $new % {map {$_, $$new{fragments}[$$new{insertion_indexes}{$_}] * $f} @$new};
-}
-
-sub debug_to_string {
-  # Don't use this to compile; use ->compile() instead.
-  my ($self) = @_;
-  my $refs = $self->build_ref_hash;
-
-  my $code_string = join '',
-    map ref $_ eq 'ARRAY'   ? "<UNBOUND: $$_[0]>"
-      : ref $_ eq 'ni::gen' ? $_->debug_to_string
-                            : $_,
-        @{$$self{fragments}};
-
-  my $ref_string = join ', ', map "$_: $$refs{$_}", sort keys %$refs;
-  "[$$self{id} $$self{sig} {$ref_string}\n$code_string]";
-}
-
-sub compile {
-  my ($self) = @_;
-  ref $_ eq 'ARRAY' && die "cannot compile underdetermined gen $self"
-    for @{$$self{fragments}};
-  join '', @{$$self{fragments}};
-}
-
-sub lexical_definitions {
-  my ($self, $refs) = @_;
-  $refs //= $self->build_ref_hash;
-  ni::gen "lexicals", {},
-    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
-}
-
-sub compile_to_sub {
-  my ($self) = @_;
-  my $code     = $self->compile;
-  my $refs     = $self->build_ref_hash;
-  my $bindings = $self->lexical_definitions($refs);
-  my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
-  die "$@ compiling\n$code" if $@;
-  ($f, $refs);
-}
-
-sub run {
-  my ($self) = @_;
-  my ($f, $refs) = $self->compile_to_sub;
-  my @result = &$f($refs);
-  delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
-  @result;
-}
-
-our %parsed_code_cache;
-sub parse_code {
-  # Returns ([@code_fragments], {gensym_indexes}, {insertion_indexes})
-  my ($code) = @_;
-  my $cached;
-  unless (defined($cached = $parsed_code_cache{$code})) {
-    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
-    my @fragments;
-    my %gensym_indexes;
-    my %insertion_indexes;
-    for (0 .. $#pieces) {
-      if ($pieces[$_] =~ /^\%:(\w+)$/) {
-        push @{$gensym_indexes{$1} //= []}, $_;
-        push @fragments, undef;
-      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
-        push @{$insertion_indexes{$1} //= []}, $_;
-        push @fragments, [$1];
-      } else {
-        push @fragments, $pieces[$_];
-      }
-    }
-    $cached = $parsed_code_cache{$code} = [[@fragments],
-                                           {%gensym_indexes},
-                                           {%insertion_indexes}];
-  }
-  @$cached;
-}
-
-}
-
-}
-# Type-tracked code fragments
-# ni data functions typically receive a list of arguments corresponding to
-# tab-delimited values, but file data is read line by line. We could convert
-# every function's output to a line string and reparse for the next function,
-# but this is quite slow and unnecessary. Instead, we track the type of each
-# code element and do conversions only when appropriate.
-#
-# This model gives us the ability to optimize a bit further: calling
-# split(/\t/) is actually quite slow compared to pulling fields out using
-# index() and relying on substr() to do aliasing. So at this point we have two
-# possible representations:
-#
-# 1. Fields stored in @_, which is what we'll have after a function call
-# 2. Field positions stored in index variables, accessed using substr()
-#
-# We aren't done quite yet. We also sometimes have situations where we're
-# dealing with flatmapped output from a function, and we want to be able to
-# return multiple rows each with multiple columns. Perl references are a
-# performance disaster, so we instead pack everything into a single array with
-# bundles prefixed by length:
-#
-# (3, 'foo', 'bar', 'bif', 1, 'bif')  ->  foo   bar   bif
-#                                         baz
-#
-# This gives us a third representation, packed-arrays.
-#
-# There's still more we can do. In some cases we can tell which fields are
-# accessed by a function. If the function supplying data generates more fields
-# (particularly in the packed-array case), we can sometimes modify it to return
-# fewer values. This matters because Perl copies strings when you move them
-# between arrays. So, for example, if we have a situation like this:
-#
-# flatmap sub { (row(a, b, c), row(d, e, f)) }
-# map     sub { %0 + %1 }
-#
-# we don't actually need to emit a packed array at all; the row() function can
-# contain the map code and the resulting type ends up being a series of single
-# values. The flatmap function must end up calling row() since otherwise it
-# would have no way to emit a packed array in the first place.
-#
-# Perl code can't be type-inferred beyond doing something simple like scanning
-# for various field references. Even if we could use a combination of operator
-# overloading and CORE shadowing to get a symbolic form of some chunk of code
-# (which is tempting), we'd run into problems anytime that code made any call
-# to something external -- particularly native code.
-#
-# Given that, we can make the following assumptions:
-#
-# 1. We can find the set of fields a function uses, though not what it does
-#    with them. Sometimes a function will use the field array, but we'll know
-#    this too.
-# 2. In some (known) cases, the function must use some explicit return function
-#    like row() -- and we'll need to be able to rewrite this with our own
-#    custom function.
-#
-# This code is used by genopt to solve and compile a specific configuration of
-# alternatives (see genopt.pl for an explanation).
 # Extensible IO stream abstraction
 # Streams are defined by the Perl code that runs in order to put their values
 # somewhere. This abstraction ends up getting completely erased at runtime,
@@ -433,6 +122,7 @@ sub writer_fh { (::ni_pipe() >= $_[0])->writer_fh }
 
 sub has_reader_fh { 0 }
 sub has_writer_fh { 0 }
+sub process_local { 0 }
 
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
@@ -467,6 +157,8 @@ sub from {
 
 sub from_bg {
   my ($self, $source) = @_;
+  die "cannot background-load a process-local io $self"
+    if $self->process_local;
   $self < $source, exit unless fork;
   $self;
 }
@@ -479,6 +171,8 @@ sub into {
 
 sub into_bg {
   my ($self, $dest) = @_;
+  die "cannot background-load a process-local io $dest"
+    if $dest->process_local;
   $self > $dest, exit unless fork;
   $self;
 }
@@ -649,6 +343,7 @@ sub { [@_] },
   },
 
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
 
   source_gen => sub {
     my ($self, $destination) = @_;
@@ -683,6 +378,7 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
   },
 
   supports_writes => sub { 1 },
+  process_local   => sub { 1 },
 
   source_gen => sub {
     my ($self, $destination) = @_;
