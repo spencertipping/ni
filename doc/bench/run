@@ -11,7 +11,7 @@ wc testdata 1>&2
 
 testcase() {
   nfu --run 'use Time::HiRes; sub run {
-    system("'"$2"' > /dev/null");
+    system(q{'"$2"' > /dev/null});
   };
   $::name = "'"$1"'"' \
     perl:0..3 \
@@ -20,12 +20,19 @@ testcase() {
                              (-s "testdata") / 1048576 / ($e - $s))' | cat
 }
 
-if [[ $1 != ${1/g/} ]]; then
+if [[ $1 != ${1/+g/} ]]; then
   testcase '/bin/cut'  'cut -f1 < testdata'
   testcase '/bin/wc'   'wc -l < testdata'
   testcase '/bin/sort' 'sort < testdata'
   testcase 'fast sort' 'sort -S 256M --parallel=4 < testdata'
   testcase '/bin/uniq' 'uniq < testdata'
+fi
+
+if [[ $1 != ${1/+a/} ]]; then
+  testcase 'gawk f1' 'gawk '"'"'{print $1"\t"length($1)}'"'"' < testdata'
+  testcase 'gawk f2' 'gawk '"'"'{print $2"\t"length($2)}'"'"' < testdata'
+  testcase 'mawk f1' 'mawk '"'"'{print $1"\t"length($1)}'"'"' < testdata'
+  testcase 'mawk f2' 'mawk '"'"'{print $2"\t"length($2)}'"'"' < testdata'
 fi
 
 if ls $1*.pl >&/dev/null; then
@@ -34,11 +41,11 @@ if ls $1*.pl >&/dev/null; then
   done
 fi
 
-if [[ $1 != ${1/c/} ]]; then
+if [[ $1 != ${1/+c/} ]]; then
   testcase 'C program' './pair-with-length < testdata'
 fi
 
-if [[ $1 != ${1/n/} ]]; then
+if [[ $1 != ${1/+n/} ]]; then
   testcase 'nfu 1' 'nfu testdata -m "row %0, length %0" -m "row %0, sqrt(%1)"'
   testcase 'nfu 2' "nfu testdata -m '\"%0\t\" . length(%0)' -m 'row %0, sqrt(%1)'"
   testcase 'ni 1'  "ni testdata -m '\$_[0], length \$_[0]' -m '\$_[0], sqrt(\$_[1])'"
