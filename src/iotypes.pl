@@ -62,16 +62,15 @@ sub {
     gen 'file_source:V', {fh   => $self->reader_fh,
                           body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
-           chomp;
-           @_ = split /\t/;
            %@body
          } };
   },
 
   sink_gen => sub {
     my ($self, $type) = @_;
-    gen 'file_sink:L', {fh => $self->writer_fh},
-      q{ print %:fh join("\t", @_) . "\n"; };
+    with_type $type,
+      gen 'file_sink:L', {fh => $self->writer_fh},
+        q{ print %:fh $_; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -92,17 +91,18 @@ sub { [@_] },
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'memory_source:VV', {xs   => $self,
-                             body => $destination->sink_gen('O')},
+    gen 'memory_source', {xs   => $self,
+                          body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
-           @_ = ($_);
            %@body
          } };
   },
 
   sink_gen => sub {
-    my ($self) = @_;
-    gen 'memory_sink:FV', {xs => $self}, q{ push @{%:xs}, @_; };
+    my ($self, $type) = @_;
+    gen "memory_sink:$type", {xs => $self},
+      $type eq 'F' ? q{ push @{%:xs}, [@_]; }
+                   : q{ push @{%:xs}, $_; };
   },
 };
 
@@ -138,13 +138,14 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                            end   => $i % $size,
                            i     => $start % $size,
                            body  => $destination->sink_gen('O')},
-      q{ while (%:i < %@n) {
-           @_ = (${%:xs}[%:i++]);
+      q{ %:i = %@i;
+         while (%:i < %@n) {
+           $_ = ${%:xs}[%:i++];
            %@body
          }
          %:i = 0;
          while (%:i < %@end) {
-           @_ = (${%:xs}[%:i++]);
+           $_ = ${%:xs}[%:i++];
            %@body
          } };
   },

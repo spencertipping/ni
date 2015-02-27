@@ -16,8 +16,7 @@ defop 'explain-compilation', undef, '',
   'shows the compiled output for the current stream',
   sub {
     my $gen = $_[0]->source_gen(sink_as {
-      with_input_type $_[0],
-        gen 'print:LV', {}, "print STDOUT \$_;"});
+      with_type $_[0], gen 'print:L', {}, "print \$_;"});
     my $deparser = B::Deparse->new;
     my ($f, $refs) = $gen->compile_to_sub;
     delete $$refs{$_} for keys %$refs;

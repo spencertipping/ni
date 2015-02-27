@@ -1,242 +1,262 @@
-# Code generator, type solver, and adaptive JIT
-# ni executes all IO by emitting pipeline-specific code and running it. This
-# file contains a bunch of definitions to make that possible.
-#
-# At the core of this abstraction is a code-quoting mechanism that lets you
-# drop live references into compiled code. This lowers the barrier between a
-# regular lambda function and a JIT template.
-#
-# Slightly above that is a type solver. The type system isn't very
-# sophisticated; all we have is a very basic description of how to access the
-# inputs to a function. Types are short strings. For example, "L" and "A" refer
-# to data stored in $_; "F" refers to data in @_, etc. See below for a full
-# list.
-#
-# Above all of this is the adaptive JIT, which starts with a series of
-# alternatives from genalt() calls, profiles each one, and recompiles down to
-# whichever one ends up being fastest. Each adaptive branch is fully
-# type-compiled, so this is as much about representational optimization as it
-# is about general optimization. Adaptive JIT on running code imposes some
-# constraints that impact how code must be written; see below for details.
+# Code generator
+# This exists because I want gensyms and external references to be easier to
+# deal with. It also supports some nice stuff like insertion points and
+# peephole optimizations.
 
-# Type representation details
-# ni has a very simple addressing scheme in that there's only one piece of
-# addressable data at a time. This means that type solving is basically linear;
-# each code join point will have two possibilities:
-#
-# 1. An appropriately-typed branch exists, so use that monomorphically.
-# 2. No appropriate branch exists, so generate a polyrmorphic alternative that
-#    will be adaptively optimized.
-#
-# Possible types are:
-#
-# - L: we have an unsplit line in $_; basically a straight read from a file.
-# - A\d+: data is unsplit in $_, but the first N field boundaries are known and
-#   stored in $f0, $f1, ..., $fN-1. If N = 0, then we know all field
-#   boundaries.
-# - F: we have data split into fields and stored in @_.
+BEGIN {
 
-# Adaptive JIT details
-# This is actually a lot easier than it sounds. We need to preserve two
-# invariants:
-#
-# 1. Any monomorphic alternative must contain only monomorphic alternatives.
-# 2. Any code containing a polymorphic alternative must be resumable.
-#
-# (1) is necessary to prevent the JIT from preferring alternatives with only
-# monomorphic descendants (since resumable, profiled, branched code is more
-# expensive). (2) makes it possible to suspend from an inner loop, reduce some
-# polymorphic branches to monomorphic ones (possibly more than just the ones we
-# jumped out of), and pick up where we left off.
+sub ni::gen::new;
+sub gen       { local $_; ni::gen->new(@_) }
+sub gen_empty { gen('empty', {}, '') }
 
-our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id . '__' }
-
-sub analyze_gen_template;
-sub gen {
-  # A piece of type-erased, possibly-resumable code. May or may not contain
-  # polymorphic descendants.
-  my ($refs, $nonresumable_form, $resumable_form, $completion_detector) = @_;
-  my ($nonrefs, $nonsubsts, $nonresumable_code) =
-    analyze_gen_template $refs, $nonresumable_form;
-
-  # If all descendants are monomorphic, then all we need is nonresumable code.
-  # That way we can bypass the resumable analysis altogether.
-  return bless { refs     => $nonrefs,
-                 code     => join('', @$nonresumable_code),
-                 complete => sub { 1 },
-                 poly     => [] }, 'ni::gen::mono'
-    unless @$nonsubsts;
-
-DEBUG
-  die "must provide a resumable alternative for $nonresumable_code"
-    unless defined $resumable_form;
-DEBUG_END
-
-  # Need to use a resumable form, so compile that one instead. Keep the
-  # nonresumable form on hand so we can switch to it as soon as all of the
-  # sub-poly elements have been decided.
-  my ($resumable_refs, $resumable_substs, $resumable_code) =
-    analyze_gen_template $refs, $resumable_form;
-
-  bless { refs              => $rrefs,
-          code              => $resumable_code,
-          complete          => $completion_detector,
-          nonresumable_refs => $nonrefs,
-          nonresumable_code => $nonresumable_code,
-          poly              => $resumable_substs }, 'ni::gen::mono';
+sub gen_seq {
+  # Generates an imperative sequence of statements.
+  my ($name, @statements) = @_;
+  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
+  my %subst;
+  $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
+  gen $name, {%subst}, $code_template;
 }
 
 {
 
-package ni::gen::mono;
-use overload qw/ "" code /;
+package ni::gen;
 
-sub refs { my ($self) = @_; $$self{refs} }
-sub poly { my ($self) = @_; grep $_->poly, @{$$self{poly}} }
+use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
+                 eq compile_equals #;
 
-sub can_become_mono {
-  my ($self) = @_;
-  return 0 unless $$self{complete}->();
-  $_->can_become_mono || return 0 for @{$$self{poly}};
-  return 1;
+our $gensym_id = 0;
+sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
+
+DEBUG
+use Carp;
+our $gen_id = 0;
+DEBUG_END
+
+sub parse_signature {
+  return $_[0] if ref $_[0];
+  my ($first, @stuff) = split /\s*;\s*/, $_[0];
+  my ($desc, $type)   = split /\s*:\s*/, $first;
+  my $result = {description => $desc,
+                type        => $type};
+
+  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
+  $result;
 }
 
-sub code {
-  # NB: can't cache this until all descendants are mono; over time any poly
-  # elements we have will stabilize into mono forms, so we need to re-join our
-  # code snippets accordingly (hence the overload of "").
-  my ($self, $assume_not_suspended) = @_;
-  return $$self{code} unless ref $$self{code};          # all-mono case
+sub parse_code;
+sub new {
+  my ($class, $sig, $refs, $code) = @_;
+  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
 
-  # If we still contain polymorphic descendants, then recompile our resumable
-  # code and keep going.
-  return join '', @{$$self{code}} if $self->poly;
-
-  # Ok, now for the interesting cases. Right now we're in a situation where we
-  # started off with poly descendants but all of them have become monomorphic.
-  # Ordinarily this would be trivial to deal with, but some of the
-  # poly-now-mono descendants might have been suspended. Because of this, we
-  # need to compile two forms in sequence: the (transitively) resumable version
-  # followed by the (transitively) nonresumable version.
-  #
-  # Here's why this works. Let's suppose we jumped out at the point marked
-  # ESCAPE in the following code:
-  #
-  # while (1) {                         # outer resumable loop
-  #   unless ($$fh_retrieved) {         # idempotence-gated side effect
-  #     last unless defined($$x = <$fh>);
-  #     $$fh_retrieved = 1;
-  #   }
-  #   BRANCH {                          # chosen poly alternative
-  #     unless ($$f_called) {           # idempotence-gated side effect
-  #       @$vs = f($$x);                # inner gen, one mono alternative
-  #       $$f_called = 1;
-  #     }
-  #     while ($$i < @$vs) {            # resumable loop
-  #       $_ = $$vs[$$i++] . "\n";      # type conversion to L for inner gen
-  #       print;                        # innermost mono gen
-  #       ESCAPE
-  #     }
-  #     $$f_called = 0;                 # prepare for next iteration
-  #     $$i = 0;                        # resumable loop reset
-  #   }
-  #   BRANCH {                          # discarded poly alternative
-  #     ...
-  #   }
-  #   $$fh_retrieved = 0;
-  # }
-  #
-  # The continuation will be run automatically because of the way we've gated
-  # the various side-effects, so it's fine to re-execute this resumable code.
-  # As soon as all of the inner resumable blocks have completed, we should cut
-  # over to the nonresumable version; this means we'll emit code like this:
-  #
-  # until ($gen->can_become_mono) {     # outer resumable loop
-  #   unless ($$fh_retrieved) {         # idempotence-gated side effect
-  #     last unless defined($$x = <$fh>);
-  #     $$fh_retrieved = 1;
-  #   }
-  #   unless ($$f_called) {             # idempotence-gated side effect
-  #     @$vs = f($$x);                  # inner gen, one mono alternative
-  #     $$f_called = 1;
-  #   }
-  #   while ($$i < @$vs) {              # resumable loop
-  #     $_ = $$vs[$$i++] . "\n";        # type conversion to L for inner gen
-  #     print;                          # innermost mono gen
-  #     ESCAPE
-  #   }
-  #   $$f_called = 0;                   # prepare for next iteration
-  #   $$i = 0;                          # resumable loop reset
-  #   $$fh_retrieved = 0;
-  # }
-  # while (<$fh>) {                     # nonresumable outer gen
-  #   for (f($_)) {                     # nonresumable inner gen
-  #     $_ .= "\n";
-  #     print;
-  #   }
-  # }
-  #
-  # 
-}
-
-}
-
-sub genalt {
-  # Polymorphic code indexed by type. Not always compiled down to a polymorphic
-  # branch; often the container can match its source type with one of the
-  # alternatives here, and that's usually assumed to be faster than an adaptive
-  # JIT branch.
-  my %alternatives = @_;
-  my @branches = sort keys %alternatives;
-
-  bless { alternatives  => \%alternatives,
-          branch_types  => [@branches],
-          branches      => [map $alternatives{$_}, @branches],
-          branch_times  => [map 0, @branches],
-          branch_counts => [map 0, @branches],
-          decided       => 0 },
-        'ni::gen::poly';
-}
-
-sub analyze_gen_template {
-  # Takes ($refs, $code) and returns ($refs, $substs, $code). The $refs
-  # returned are a subset of the originals, since the original contains both
-  # value closures and gen substitutions. $substs contains a hash of unstable
-  # (i.e. poly) code substitutions.
-
-  my ($refs, $code) = @_;
-  my @pieces;
-  my $contains_poly = 0;
-  my %refs;
-  my %gensyms;
+  # Substitutions can be specified as refs, in which case we pull them out and
+  # do a rewrite automatically (this is more notationally expedient than having
+  # to do a % operation right away).
   my %subst;
-
-  for (split /(:\<\w+\>|\:\w+)/, $code) {
-    if (/^:(\w+)$/) {
-      DEBUG
-      die "gen template $code used with undefined gensym ref $1"
-        unless defined $$refs{$1};
-      DEBUG_END
-      push @pieces, $gensyms{$1} //= gensym $1;
-      $refs{$gensyms{$1}} = $$refs{$1};
-    } elsif (/^:\<(\w+)\>$/) {
-      DEBUG
-      die "gen template $code used with undefined subst ref $1"
-        unless defined $$refs{$1};
-      DEBUG_END
-      my $s = $$refs{$1};
-      if (ref $s) {
-        my $s_refs = $s->refs;
-        $refs{$_} = $$s_refs{$_} for keys %$s_refs;
-        push @pieces, $s->poly ? $subst{$1} //= $s : "$s";
-      } else {
-        push @pieces, $s;
-      }
-    } else {
-      push @pieces, $_;
+  for (keys %$refs) {
+    if (exists $$insertions{$_}) {
+      $subst{$_} = $$refs{$_};
+      delete $$refs{$_};
     }
   }
 
-  (\%refs, \%subst, \@pieces);
+DEBUG
+  exists $$gensym_indexes{$_} or confess "unknown ref $_ in $code"
+    for keys %$refs;
+  exists $$refs{$_} or confess "unused ref $_ in $code"
+    for keys %$gensym_indexes;
+DEBUG_END
+
+  # NB: must use some kind of copying operator like % here, since parse_code is
+  # memoized.
+  bless({ sig               => parse_signature($sig),
+DEBUG
+          id                => ++$gen_id,
+DEBUG_END
+          fragments         => $fragments,
+          gensym_names      => {map {$_, undef} keys %$gensym_indexes},
+          gensym_indexes    => $gensym_indexes,
+          insertion_indexes => $insertions,
+          refs              => $refs // {} },
+        $class) % {%subst};
+}
+
+sub copy {
+  my ($self) = @_;
+  my %new = %$self;
+DEBUG
+  $new{id}           = ++$gen_id;
+DEBUG_END
+  $new{sig}          = {%{$new{sig}}};
+  $new{fragments}    = [@{$new{fragments}}];
+  $new{gensym_names} = {%{$new{gensym_names}}};
+
+  bless(\%new, ref $self)->replace_gensyms(
+    {map {$_, gensym $_} keys %{$new{gensym_names}}});
+}
+
+sub replace_gensyms {
+  my ($self, $replacements) = @_;
+  for (keys %$replacements) {
+    if (exists $$self{gensym_names}{$_}) {
+      my $is = $$self{gensym_indexes}{$_};
+      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
+      $$self{fragments}[$_] = $g for @$is;
+    }
+  }
+  $self;
+}
+
+sub genify {
+  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
+  return ni::gen('genified', {}, $_[0]);
+}
+
+sub compile_equals {
+  my ($self, $x) = @_;
+  $x = $x->compile if ref $x;
+  $self->compile eq $x;
+}
+
+sub share_gensyms_with {
+  # Any intersecting gensyms from $g will be renamed to align with $self.
+  # This directionality matters so multiple calls against $self will form a set
+  # of mutually gensym-shared fragments.
+  my ($self, $g) = @_;
+  $self->replace_gensyms($$g{gensym_names});
+}
+
+sub inherit_gensyms_from {
+  $_[1]->share_gensyms_with($_[0]);
+  $_[0];
+}
+
+sub build_ref_hash {
+  my ($self, $refs) = @_;
+  $refs //= {};
+  $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
+  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
+    for @$self;
+  $refs;
+}
+
+sub inserted_code_keys {
+  my ($self) = @_;
+  [sort keys %{$$self{insertion_indexes}}];
+}
+
+sub subst_in_place {
+  my ($self, $vars) = @_;
+  for my $k (keys %$vars) {
+    my $is = $$self{insertion_indexes}{$k};
+DEBUG
+    confess "unknown subst var: $k (code is $self)" unless defined $is;
+DEBUG_END
+    my $f = genify $$vars{$k};
+    $$self{fragments}[$_] = $f for @$is;
+  }
+  $self;
+}
+
+sub subst {
+  my ($self, $vars) = @_;
+  $self->copy->subst_in_place($vars);
+}
+
+sub map {
+  my ($self, $f) = @_;
+  $f = ni::compile $f;
+  my $y = &$f($self);
+  return $y unless $y eq $self;
+
+  # If we haven't changed, then operate independently on the
+  # already-substituted code fragments and build a new instance.
+  my $new = bless {}, ref $self;
+  $$new{$_} = $$self{$_} for keys %$self;
+  $$new{fragments} = [@{$$new{fragments}}];
+
+  $new % {map {$_, $$new{fragments}[$$new{insertion_indexes}{$_}] * $f} @$new};
+}
+
+DEBUG
+sub debug_to_string {
+  # Don't use this to compile; use ->compile() instead.
+  my ($self) = @_;
+  my $refs = $self->build_ref_hash;
+
+  my $code_string = join '',
+    map ref $_ eq 'ARRAY'   ? "<UNBOUND: $$_[0]>"
+      : ref $_ eq 'ni::gen' ? $_->debug_to_string
+                            : $_,
+        @{$$self{fragments}};
+
+  my $ref_string = join ', ', map "$_: $$refs{$_}", sort keys %$refs;
+  "[$$self{id} $$self{sig} {$ref_string}\n$code_string]";
+}
+DEBUG_END
+
+sub compile {
+  my ($self) = @_;
+DEBUG
+  ref $_ eq 'ARRAY' && confess "cannot compile underdetermined gen $self"
+    for @{$$self{fragments}};
+DEBUG_END
+  join '', @{$$self{fragments}};
+}
+
+sub lexical_definitions {
+  my ($self, $refs) = @_;
+  $refs //= $self->build_ref_hash;
+  ni::gen "lexicals", {},
+    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
+}
+
+sub compile_to_sub {
+  my ($self) = @_;
+  my $code     = $self->compile;
+  my $refs     = $self->build_ref_hash;
+  my $bindings = $self->lexical_definitions($refs);
+  my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
+  die "$@ compiling\n$code" if $@;
+  ($f, $refs);
+}
+
+sub run {
+  my ($self) = @_;
+  my ($f, $refs) = $self->compile_to_sub;
+  my @result = &$f($refs);
+  delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
+  @result;
+}
+
+our %parsed_code_cache;
+sub parse_code {
+  # Returns ([@code_fragments], {gensym_indexes}, {insertion_indexes})
+  my ($code) = @_;
+  my $cached;
+  unless (defined($cached = $parsed_code_cache{$code})) {
+    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
+    my @fragments;
+    my %gensym_indexes;
+    my %insertion_indexes;
+    for (0 .. $#pieces) {
+      if ($pieces[$_] =~ /^\%:(\w+)$/) {
+        push @{$gensym_indexes{$1} //= []}, $_;
+        push @fragments, undef;
+      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
+        push @{$insertion_indexes{$1} //= []}, $_;
+        push @fragments, [$1];
+      } else {
+        push @fragments, $pieces[$_];
+      }
+    }
+    $cached = $parsed_code_cache{$code} = [[@fragments],
+                                           {%gensym_indexes},
+                                           {%insertion_indexes}];
+  }
+  @$cached;
+}
+
+}
+
 }

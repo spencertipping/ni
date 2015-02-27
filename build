@@ -1,7 +1,7 @@
 #!/bin/bash
-rm -f ni ni-boot
+rm -f ni ni-boot ni-debug
 {
-  cat src/{core,prefix,fn,gen,io}.pl \
+  cat src/{core,prefix,gen,gentypes,fn,io}.pl \
       src/{data,datatypes,iotypes,iobind,iofns}.pl \
       src/{ops,optypes,main}.pl
   echo __END__
@@ -12,8 +12,10 @@ perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   | egrep -v '^\s*(#(\s.+)?)?$' \
   > ni-boot
 
-sed -ri '2,3d; /^\s*DEBUG(_END)?/d' ni-debug
+sed -ri '2,6d; /^\s*DEBUG(_END)?/d' ni-debug
 
-chmod +x ni-boot ni-debug \
+chmod 0500 ni-boot ni-debug
+
+./ni-debug --self > /dev/null \
   && ./ni-boot --self > ni \
   && chmod +x ni

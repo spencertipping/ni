@@ -6,6 +6,10 @@ package ni;
 sub ni;
 sub ::ni;
 
+DEBUG
+use Carp;
+DEBUG_END
+
 sub self {
   join "\n", "#!/usr/bin/env perl",
              q{$ni::selfcode = '';},
@@ -13,8 +17,7 @@ sub self {
              q{eval $ni::selfcode;},
              q{die $@ if $@;},
              "__DATA__",
-             $ni::selfcode,
-             "__END__";
+             $ni::selfcode;
 }
 
 use POSIX qw/:sys_wait_h/;

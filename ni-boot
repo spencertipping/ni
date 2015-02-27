@@ -17,14 +17,216 @@ sub self {
              q{eval $ni::selfcode;},
              q{die $@ if $@;},
              "__DATA__",
-             $ni::selfcode,
-             "__END__";
+             $ni::selfcode;
 }
 use POSIX qw/:sys_wait_h/;
 $SIG{CHLD} = sub {
   local ($!, $?);
   waitpid -1, WNOHANG;
 };
+BEGIN {
+sub ni::gen::new;
+sub gen       { local $_; ni::gen->new(@_) }
+sub gen_empty { gen('empty', {}, '') }
+sub gen_seq {
+  my ($name, @statements) = @_;
+  my $code_template = join "\n", map "%\@x$_;", 0 .. $#statements;
+  my %subst;
+  $subst{"x$_"} = $statements[$_] for 0 .. $#statements;
+  gen $name, {%subst}, $code_template;
+}
+{
+package ni::gen;
+use overload qw# %  subst  * map  @{} inserted_code_keys  "" compile
+                 eq compile_equals #;
+our $gensym_id = 0;
+sub gensym { '$_' . ($_[0] // '') . '_' . $gensym_id++ . '__gensym' }
+sub parse_signature {
+  return $_[0] if ref $_[0];
+  my ($first, @stuff) = split /\s*;\s*/, $_[0];
+  my ($desc, $type)   = split /\s*:\s*/, $first;
+  my $result = {description => $desc,
+                type        => $type};
+  /^(\S+)\s*=\s*(.*)$/ and $$result{$1} = $2 for @stuff;
+  $result;
+}
+sub parse_code;
+sub new {
+  my ($class, $sig, $refs, $code) = @_;
+  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
+  my %subst;
+  for (keys %$refs) {
+    if (exists $$insertions{$_}) {
+      $subst{$_} = $$refs{$_};
+      delete $$refs{$_};
+    }
+  }
+  bless({ sig               => parse_signature($sig),
+          fragments         => $fragments,
+          gensym_names      => {map {$_, undef} keys %$gensym_indexes},
+          gensym_indexes    => $gensym_indexes,
+          insertion_indexes => $insertions,
+          refs              => $refs // {} },
+        $class) % {%subst};
+}
+sub copy {
+  my ($self) = @_;
+  my %new = %$self;
+  $new{sig}          = {%{$new{sig}}};
+  $new{fragments}    = [@{$new{fragments}}];
+  $new{gensym_names} = {%{$new{gensym_names}}};
+  bless(\%new, ref $self)->replace_gensyms(
+    {map {$_, gensym $_} keys %{$new{gensym_names}}});
+}
+sub replace_gensyms {
+  my ($self, $replacements) = @_;
+  for (keys %$replacements) {
+    if (exists $$self{gensym_names}{$_}) {
+      my $is = $$self{gensym_indexes}{$_};
+      my $g  = $$self{gensym_names}{$_} = $$replacements{$_};
+      $$self{fragments}[$_] = $g for @$is;
+    }
+  }
+  $self;
+}
+sub genify {
+  return $_[0] if ref $_[0] && $_[0]->isa('ni::gen');
+  return ni::gen('genified', {}, $_[0]);
+}
+sub compile_equals {
+  my ($self, $x) = @_;
+  $x = $x->compile if ref $x;
+  $self->compile eq $x;
+}
+sub share_gensyms_with {
+  my ($self, $g) = @_;
+  $self->replace_gensyms($$g{gensym_names});
+}
+sub inherit_gensyms_from {
+  $_[1]->share_gensyms_with($_[0]);
+  $_[0];
+}
+sub build_ref_hash {
+  my ($self, $refs) = @_;
+  $refs //= {};
+  $$refs{$$self{gensym_names}{$_}} = $$self{refs}{$_} for keys %{$$self{refs}};
+  $$self{fragments}[$$self{insertion_indexes}{$_}[0]]->build_ref_hash($refs)
+    for @$self;
+  $refs;
+}
+sub inserted_code_keys {
+  my ($self) = @_;
+  [sort keys %{$$self{insertion_indexes}}];
+}
+sub subst_in_place {
+  my ($self, $vars) = @_;
+  for my $k (keys %$vars) {
+    my $is = $$self{insertion_indexes}{$k};
+    my $f = genify $$vars{$k};
+    $$self{fragments}[$_] = $f for @$is;
+  }
+  $self;
+}
+sub subst {
+  my ($self, $vars) = @_;
+  $self->copy->subst_in_place($vars);
+}
+sub map {
+  my ($self, $f) = @_;
+  $f = ni::compile $f;
+  my $y = &$f($self);
+  return $y unless $y eq $self;
+  my $new = bless {}, ref $self;
+  $$new{$_} = $$self{$_} for keys %$self;
+  $$new{fragments} = [@{$$new{fragments}}];
+  $new % {map {$_, $$new{fragments}[$$new{insertion_indexes}{$_}] * $f} @$new};
+}
+sub compile {
+  my ($self) = @_;
+  join '', @{$$self{fragments}};
+}
+sub lexical_definitions {
+  my ($self, $refs) = @_;
+  $refs //= $self->build_ref_hash;
+  ni::gen "lexicals", {},
+    join "\n", map sprintf("my %s = \$_[0]->{'%s'};", $_, $_), keys %$refs;
+}
+sub compile_to_sub {
+  my ($self) = @_;
+  my $code     = $self->compile;
+  my $refs     = $self->build_ref_hash;
+  my $bindings = $self->lexical_definitions($refs);
+  my $f        = eval($code = "package main; sub {\n$bindings\n$code\n}");
+  die "$@ compiling\n$code" if $@;
+  ($f, $refs);
+}
+sub run {
+  my ($self) = @_;
+  my ($f, $refs) = $self->compile_to_sub;
+  my @result = &$f($refs);
+  delete $$refs{$_} for keys %$refs;    # we create circular refs sometimes
+  @result;
+}
+our %parsed_code_cache;
+sub parse_code {
+  my ($code) = @_;
+  my $cached;
+  unless (defined($cached = $parsed_code_cache{$code})) {
+    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
+    my @fragments;
+    my %gensym_indexes;
+    my %insertion_indexes;
+    for (0 .. $#pieces) {
+      if ($pieces[$_] =~ /^\%:(\w+)$/) {
+        push @{$gensym_indexes{$1} //= []}, $_;
+        push @fragments, undef;
+      } elsif ($pieces[$_] =~ /^\%\@(\w+)$/) {
+        push @{$insertion_indexes{$1} //= []}, $_;
+        push @fragments, [$1];
+      } else {
+        push @fragments, $pieces[$_];
+      }
+    }
+    $cached = $parsed_code_cache{$code} = [[@fragments],
+                                           {%gensym_indexes},
+                                           {%insertion_indexes}];
+  }
+  @$cached;
+}
+}
+}
+our %conversions = (
+  'F:L' => q{ $_ = join("\t", @_) . "\n"; %@body },
+  'F:O' => q{ $_ = join("\t", @_); %@body },
+  'L:O' => q{ chomp; %@body },
+  'L:F' => q{ chomp; @_ = split /\t/; %@body },
+  'O:F' => q{ @_ = split /\t/; %@body },
+  'O:L' => q{ $_ .= "\n"; %@body });
+$conversions{$_} = gen "conversion:$_", {}, $conversions{$_}
+  for keys %conversions;
+sub with_type {
+  my ($type, $gen) = @_;
+  return $gen if $$gen{sig}{type} eq $type;
+  my $k = "$$gen{sig}{type}:$type";
+  $conversions{$k} % {body => $gen};
+}
+sub typed_save_recover {
+  my ($type) = @_;
+  if ($type eq 'F') {
+    my $xs = [];
+    (gen('s:F', {xs => $xs}, q{ @{%:xs} = @_ }),
+     gen('r:F', {xs => $xs}, q{ @_ = @{%:xs} }));
+  } elsif ($type =~ /^I/) {
+    my $xs = [];
+    my $x  = '';
+    (gen("s:$type", {xs => $xs, x => \$x}, q{ @{%:xs} = @_; ${%:x} = $_ }),
+     gen("r:$type", {xs => $xs, x => \$x}, q{ @_ = @{%:xs}; $_ = ${%:x} }));
+  } else {
+    my $x = '';
+    (gen("s:$type", {x => \$x}, q{ ${%:x} = $_ }),
+     gen("r:$type", {x => \$x}, q{ $_ = ${%:x} }));
+  }
+}
 our %compiled_functions;
 sub expand_function_shorthands {
   my ($code) = @_;
@@ -40,65 +242,6 @@ sub compile {
   return $compiled_functions{$_[0]}
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
-}
-our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id . '__' }
-sub analyze_gen_template;
-sub gen {
-  my ($refs, $nonresumable_form, $resumable_form) = @_;
-  my ($nonrefs, $nonresumable_code, $non_contains_poly) =
-    analyze_gen_template $refs, $nonresumable_form;
-  return bless { refs => $nonrefs,
-                 code => $nonresumable_code,
-                 poly => 0 }, 'ni::gen::mono'
-    unless $non_contains_poly;
-  my ($rrefs, $resumable_code, $resumable_contains_poly) =
-    analyze_gen_template $refs, $resumable_form;
-  bless { refs => $rrefs,
-          code => $resumable_code,
-          poly => 1 }, 'ni::gen::mono';
-}
-{
-package ni::gen::mono;
-use overload qw/ "" code /;
-sub code { my ($self) = @_; $$self{code} }
-sub poly { my ($self) = @_; $$self{poly} }
-}
-sub genalt {
-  my %alternatives = @_;
-  my @branches = sort keys %alternatives;
-  bless { alternatives  => \%alternatives,
-          branch_types  => [@branches],
-          branches      => [map $alternatives{$_}, @branches],
-          branch_times  => [map 0, @branches],
-          branch_counts => [map 0, @branches],
-          decided       => 0 },
-        'ni::gen::poly';
-}
-sub analyze_gen_template {
-  my @pieces;
-  my $contains_poly = 0;
-  my %original_refs = %{$_[0]};
-  my %refs;
-  my %gensyms;
-  my %subst;
-  for (split /(:\<\w+\>|\:\w+)/, $_[1]) {
-    if (/^:(\w+)$/) {
-      push @pieces, $gensyms{$1} //= gensym $1;
-      $refs{$gensyms{$1}} = $original_refs{$1};
-    } elsif (/^:\<(\w+)\>$/) {
-      my $r = $original_refs{$1};
-      push @pieces, $subst{$1} //= $r;
-      if (ref $r) {
-        $contains_poly ||= $r->poly;
-        my $r_refs = $r->refs;
-        $refs{$_} = $$r_refs{$_} for keys %$r_refs;
-      }
-    } else {
-      push @pieces, $_;
-    }
-  }
-  (\%refs, join('', @pieces), $contains_poly);
 }
 our %io_constructors;
 sub is_io { ref $_[0] && $_[0]->isa('ni::io') }
@@ -296,15 +439,14 @@ sub {
     gen 'file_source:V', {fh   => $self->reader_fh,
                           body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
-           chomp;
-           @_ = split /\t/;
            %@body
          } };
   },
   sink_gen => sub {
     my ($self, $type) = @_;
-    gen 'file_sink:L', {fh => $self->writer_fh},
-      q{ print %:fh join("\t", @_) . "\n"; };
+    with_type $type,
+      gen 'file_sink:L', {fh => $self->writer_fh},
+        q{ print %:fh $_; };
   },
   close => sub { close $_[0]->writer_fh; $_[0] },
 };
@@ -320,16 +462,17 @@ sub { [@_] },
   process_local   => sub { 1 },
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'memory_source:VV', {xs   => $self,
-                             body => $destination->sink_gen('O')},
+    gen 'memory_source', {xs   => $self,
+                          body => $destination->sink_gen('O')},
       q{ for (@{%:xs}) {
-           @_ = ($_);
            %@body
          } };
   },
   sink_gen => sub {
-    my ($self) = @_;
-    gen 'memory_sink:FV', {xs => $self}, q{ push @{%:xs}, @_; };
+    my ($self, $type) = @_;
+    gen "memory_sink:$type", {xs => $self},
+      $type eq 'F' ? q{ push @{%:xs}, [@_]; }
+                   : q{ push @{%:xs}, $_; };
   },
 };
 defio 'ring',
@@ -358,13 +501,14 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
                            end   => $i % $size,
                            i     => $start % $size,
                            body  => $destination->sink_gen('O')},
-      q{ while (%:i < %@n) {
-           @_ = (${%:xs}[%:i++]);
+      q{ %:i = %@i;
+         while (%:i < %@n) {
+           $_ = ${%:xs}[%:i++];
            %@body
          }
          %:i = 0;
          while (%:i < %@end) {
-           @_ = (${%:xs}[%:i++]);
+           $_ = ${%:xs}[%:i++];
            %@body
          } };
   },
@@ -515,65 +659,51 @@ defioproxy 'filter', sub {
       : undef);
 };
 }
-sub invocation {
-  my ($f, @args) = @_;
-  if (@args || ref $f eq 'CODE' || $f =~ s/^;//) {
-    @args
-      ? gen('fn:FF', {f => compile($f), args => [@args]},
-            q{ %:f->(@_, @{%:args}) })
-      : gen('fn:FF', {f => compile($f)}, q{ %:f->(@_) });
-  } else {
-    gen('fn:FF', {f => $f}, q{ (%@f) });
-  }
-}
 sub flatmap_binding {
-  my $i  = invocation @_;
-  my $is = input_sig $i;
-  ["flatmap $i", sub {
+  my @args = @_;
+  ["flatmap @args", sub {
     my ($into, $type) = @_;
-    with_input_type $type,
-      gen "flatmap:${is}V", {invocation => $i,
-                             body       => $into->sink_gen('R')},
-        q{ for (%@invocation) {
-             %@body
-           } };
+    my $i = invocation $type, @args;
+    gen "flatmap:$type", {invocation => $i,
+                          body       => $into->sink_gen('O')},
+      q{ for (%@invocation) {
+           %@body
+         } };
   }];
 }
 sub mapone_binding {
-  my $i  = invocation @_;
-  my $is = input_sig $i;
-  ["mapone $i", sub {
+  my @args = @_;
+  ["mapone @args", sub {
     my ($into, $type) = @_;
-    with_input_type $type,
-      gen "mapone:${is}V", {invocation => $i,
-                            body       => $into->sink_gen('F')},
-        q{ if (@_ = %@invocation) {
-             %@body
-           } };
+    my $i = invocation $type, @args;
+    gen "mapone:$type", {invocation => $i,
+                         body       => $into->sink_gen('F')},
+      q{ if (@_ = %@invocation) {
+           %@body
+         } };
   }];
 }
 sub grep_binding {
-  my $i  = invocation @_;
-  my $is = input_sig $i;
-  ["grep $i", sub {
+  my @args = @_;
+  ["grep @_", sub {
     my ($into, $type) = @_;
-    with_input_type $type,
-      gen "grep:${is}V", {invocation => $i,
-                          body       => $into->sink_gen($is)},
-        q{ if (%@invocation) {
-             %@body
-           } };
+    my $i = invocation $type, @_;
+    gen "grep:$type", {invocation => $i,
+                       body       => $into->sink_gen($type)},
+      q{ if (%@invocation) {
+           %@body
+         } };
   }];
 }
 sub reduce_binding {
-  my ($f, $init) = @_;
-  $f = compile $f;
-  ["reduce $f, $init", sub {
+  my ($f, $init, @args) = @_;
+  ["reduce $f $init @args", sub {
     my ($into, $type) = @_;
-    with_input_type $type,
-      gen 'reduce:FV', {f    => $f,
-                        init => $init,
-                        body => $into->sink_gen('R')},
+    my $i = invocation $type, $f;
+    with_type $type,
+      gen 'reduce:F', {f    => $f,
+                       init => $init,
+                       body => $into->sink_gen('O')},
         q{ (%:init, @_) = %:f->(%:init, @_);
            for (@_) {
              %@body
@@ -584,22 +714,18 @@ sub tee_binding {
   my ($tee) = @_;
   ["tee $tee", sub {
     my ($into, $type) = @_;
-    my $init    = gen 'tee_init', {x => []},
-                      $type eq 'F' ? q{ @{%:x} = @_ } : q{ %:x = $_ };
-    my $recover = gen('tee_recover', {x => []},
-                      $type eq 'F' ? q{ @_ = @{%:x} } : q{ $_ = %:x })
-                  ->inherit_gensyms_from($init);
-    gen_seq "tee:${type}V", $init,    $tee->sink_gen($type),
-                            $recover, $into->sink_gen($type);
+    my ($save, $recover) = typed_save_recover $type;
+    gen_seq "tee:$type", $save,    $tee->sink_gen($type),
+                         $recover, $into->sink_gen($type);
   }];
 }
 sub take_binding {
   my ($n) = @_;
-  die "must take a positive number of things" unless $n > 0;
+  die "must take a positive number of elements" unless $n > 0;
   ["take $n", sub {
     my ($into, $type) = @_;
-    gen "take:${type}V", {body      => $into->sink_gen($type),
-                          remaining => $n},
+    gen "take:${type}", {body      => $into->sink_gen($type),
+                         remaining => $n},
       q{ %@body;
          return if --%:remaining <= 0; };
   }];
@@ -608,8 +734,8 @@ sub drop_binding {
   my ($n) = @_;
   ["drop $n", sub {
     my ($into, $type) = @_;
-    gen "take:${type}V", {body      => $into->sink_gen($type),
-                          remaining => $n},
+    gen "take:${type}", {body      => $into->sink_gen($type),
+                         remaining => $n},
       q{ if (--%:remaining < 0) {
            %@body
          }};
@@ -701,8 +827,7 @@ defop 'explain-compilation', undef, '',
   'shows the compiled output for the current stream',
   sub {
     my $gen = $_[0]->source_gen(sink_as {
-      with_input_type $_[0],
-        gen 'print:LV', {}, "print STDOUT \$_;"});
+      with_type $_[0], gen 'print:L', {}, "print \$_;"});
     my $deparser = B::Deparse->new;
     my ($f, $refs) = $gen->compile_to_sub;
     delete $$refs{$_} for keys %$refs;
