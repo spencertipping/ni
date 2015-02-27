@@ -6,19 +6,21 @@ use POSIX qw/dup2/;
 sub preprocess_cli {
   my @preprocessed;
   for (my $o; defined($o = shift @_);) {
-    if ($o =~ s/\[$//) {
+    if ($o =~ /\[$/) {
       my @xs;
       my $depth = 1;
-      for (@_) {
+      while (@_) {
+        $_ = shift @_;
         last unless $depth -= /^\]$/;
         $depth += /\[$/;
         push @xs, $_;
       }
       push @preprocessed, bless [@xs], $o;
-    } elsif ($o =~ s/\{$//) {
+    } elsif ($o =~ /\{$/) {
       my @xs;
       my $depth = 1;
-      for (@_) {
+      while (@_) {
+        $_ = shift @_;
         last unless $depth -= /^\}$/;
         $depth += /\{$/;
         push @xs, $_;
@@ -72,5 +74,3 @@ sub main {
 }
 
 END { main @ARGV }
-
-}

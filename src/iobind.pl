@@ -72,3 +72,19 @@ sub drop_binding {
          }};
   }];
 }
+
+sub zip_binding {
+  my ($other) = @_;
+  ["zip $other->explain", sub {
+    my ($into, $type) = @_;
+    my $other_source = $other->reader_fh;
+
+    with_type $type,
+      gen 'zip:F', {body  => $into->sink_gen('F'),
+                    other => $other_source,
+                    l     => ''},
+        q{ chomp(%:l = <%:other>);
+           @_ = (@_, split /\t/, %:l);
+           %@body };
+  }];
+}

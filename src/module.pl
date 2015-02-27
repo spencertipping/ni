@@ -9,14 +9,14 @@ our %short_function_modules;
 sub defshortfn {
   my ($name, $f) = @_;
 
-  # Is this short function already defined? Complain and rename it using a
-  # short module prefix.
+  # Is this short function already defined? Complain and rename it, first using
+  # module mnemonics and then by appending digits.
   if (exists $short_functions{$name}) {
-    my $new_name = "_$name";
+    my $new_name = "${name}_";
     my $i = 0;
     while (exists $short_functions{$new_name}
            && $i < length $ni::current_module) {
-      $new_name = substr($ni::current_module, $i, 1) . $new_name;
+      $new_name .= substr $ni::current_module, $i, 1;
       ++$i;
     }
     $i = 0;
@@ -44,7 +44,7 @@ sub parse_modules {
     if (/^\s*NI_MODULE (\w+)\s*$/) {
       $module_name = $1;
       @module_code = ();
-    } elsif (/^\s*NI_MODULE_END\s*$/) {
+    } elsif (/^\s*NI_MODULE_END\s*$/ || /^\s*NI_END_MODULE\s*$/) {
       push @modules, [$module_name, join '', @module_code];
       $module_name = undef;
     } elsif (defined $module_name) {
@@ -55,6 +55,9 @@ sub parse_modules {
       die "ni: found this stray line not inside a NI_MODULE:\n$_";
     }
   }
+
+  die "ni: missing NI_MODULE_END for module $module_name"
+    if defined $module_name;
   @modules;
 }
 

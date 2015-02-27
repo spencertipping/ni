@@ -177,16 +177,22 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
 };
 
 # Infinite source of repeated function application
-defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
+defio 'iterate', sub { +{x => $_[0], f => $_[1]} },
 {
+  explain => sub {
+    my ($self) = @_;
+    "[iterate $$self{x} $$self{f}]";
+  },
+
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'iterate_source', {f    => fn($$self{f}),
                            x    => $$self{x},
                            body => $destination->sink_gen('O')},
       q{ while (1) {
-           $_ = ${%:x} = %:f->(${%:x});
+           $_ = %:x;
            %@body
+           %:x = %:f->(%:x);
          } };
   },
 };
@@ -311,9 +317,9 @@ defioproxy 'process', sub {
     unless ($pid = fork) {
       close STDIN;  close $stdin->writer_fh  if defined $stdin;
       close STDOUT; close $stdout->reader_fh if defined $stdout;
-      dup2 fileno $stdin_fh,  0 or die "dup2 failed: $!";
-      dup2 fileno $stdout_fh, 1 or die "dup2 failed: $!";
-      exec $command or exit;
+      dup2 fileno $stdin_fh,  0 or die "dup2 $stdin_fh, 0 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 $stdout_fh, 1 failed: $!";
+      exec $command or die "exec $command failed: $!";
     }
   };
 

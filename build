@@ -3,24 +3,35 @@ rm -f ni ni-boot ni-debug
 {
   cat src/{core,prefix,gen,gentypes,fn,io}.pl \
       src/{data,datatypes,iotypes,iobind,iofns}.pl \
-      src/{ops,optypes,module,main}.pl
+      src/{ops,module,main}.pl
+
+  cat ops/*.pl
+  echo \}
   echo __END__
   cat lib/{geohash,sql}.pl
 } > ni-debug
 
 if grep FIXME ni-debug > /dev/null; then
-  echo $(grep FIXME ni-debug | wc -l) "thing(s) to fix"
+  echo $(grep FIXME ni-debug | wc -l) "FIXME comment(s)"
 fi
 
 perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   < ni-debug \
   | egrep -v '^\s*(#(\s.+)?)?$' \
-  | sed -r 's/^\s*//' \
+  | sed -r 's/^\s*//; s/\s+/ /g' \
   > ni-boot
 
-sed -ri '2,6d; /^\s*DEBUG(_END)?/d' ni-debug
+sed -ri '2,7d; /^\s*DEBUG(_END)?/d' ni-debug
 
 chmod 0500 ni-boot ni-debug
+
+# Try to keep load-time down to a reasonable level; anything more than 100ms is
+# a problem.
+echo 'measuring load time...'
+for i in $(seq 4); do
+  time ./ni-debug > /dev/null
+done
+perl -d:NYTProf ni-debug > /dev/null
 
 ./ni-debug --self > /dev/null \
   && ./ni-boot --self > ni \

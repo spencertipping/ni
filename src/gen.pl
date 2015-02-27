@@ -239,7 +239,8 @@ sub parse_code {
   my ($code) = @_;
   my $cached;
   unless (defined($cached = $parsed_code_cache{$code})) {
-    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
+    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/,
+                                    $code =~ s/(\%\@\w+)/\n$1\n/gr;
     my @fragments;
     my %gensym_indexes;
     my %insertion_indexes;

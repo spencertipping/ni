@@ -10,6 +10,14 @@ our %op_fns;                    # ditto
 sub long_op_method  { "--$_[0]" =~ s/-/_/gr }
 sub short_op_method { "_$_[0]" }
 
+sub shell_quote { join ' ', map /[^-\/\w]/ ? "'" . s/(['\\])/'\\$1'/gr . "'"
+                              : length $_  ? $_
+                              :              "''", @_ }
+
+sub self_pipe { ni_process(shell_quote('perl', '-', @_),
+                           ni_memory(self)->reader_fh,
+                           undef) }
+
 sub defop {
   my ($long, $short, $format, $usage, $fn) = @_;
   if (defined $short) {
@@ -64,7 +72,12 @@ sub parse_commands {
   my @parsed;
   for (my $o; defined($o = shift @_);) {
     return @parsed, map file_opt($_), @_ if $o eq '--';
-    if ($o =~ /^--/) {
+
+    # Special cases
+    if (ref($o) =~ /\[$/) {
+      # Lambda-invocation of ni on the specified options.
+      push @parsed, ['plus', self_pipe @$o];
+    } elsif ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};
       my ($args, @rest) = apply_format $op_formats{$c}, @_;

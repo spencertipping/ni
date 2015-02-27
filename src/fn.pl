@@ -16,6 +16,9 @@ our @perl_source_filters;
 sub compile_perl_lambda;
 sub fn {
   my ($code, $type) = @_;
+  return with_type $type, gen('fn:F', {f => $code}, q{ %:f->(@_) })
+    if ref $code eq 'CODE';
+
   my $prefix = substr $code, 0, 1;
   return $fn_namespaces{$prefix}->($code, $type)
     if exists $fn_namespaces{$prefix};

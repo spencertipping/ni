@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-__DATA__
 {
 
 use v5.14;
@@ -255,7 +254,8 @@ sub parse_code {
   my ($code) = @_;
   my $cached;
   unless (defined($cached = $parsed_code_cache{$code})) {
-    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/, $code;
+    my @pieces = grep length, split /(\%:\w+|\%\@\w+)/,
+                                    $code =~ s/(\%\@\w+)/\n$1\n/gr;
     my @fragments;
     my %gensym_indexes;
     my %insertion_indexes;
@@ -395,6 +395,9 @@ our @perl_source_filters;
 sub compile_perl_lambda;
 sub fn {
   my ($code, $type) = @_;
+  return with_type $type, gen('fn:F', {f => $code}, q{ %:f->(@_) })
+    if ref $code eq 'CODE';
+
   my $prefix = substr $code, 0, 1;
   return $fn_namespaces{$prefix}->($code, $type)
     if exists $fn_namespaces{$prefix};
@@ -888,16 +891,22 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
 };
 
 # Infinite source of repeated function application
-defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
+defio 'iterate', sub { +{x => $_[0], f => $_[1]} },
 {
+  explain => sub {
+    my ($self) = @_;
+    "[iterate $$self{x} $$self{f}]";
+  },
+
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'iterate_source', {f    => fn($$self{f}),
                            x    => $$self{x},
                            body => $destination->sink_gen('O')},
       q{ while (1) {
-           $_ = ${%:x} = %:f->(${%:x});
+           $_ = %:x;
            %@body
+           %:x = %:f->(%:x);
          } };
   },
 };
@@ -1022,9 +1031,9 @@ defioproxy 'process', sub {
     unless ($pid = fork) {
       close STDIN;  close $stdin->writer_fh  if defined $stdin;
       close STDOUT; close $stdout->reader_fh if defined $stdout;
-      dup2 fileno $stdin_fh,  0 or die "dup2 failed: $!";
-      dup2 fileno $stdout_fh, 1 or die "dup2 failed: $!";
-      exec $command or exit;
+      dup2 fileno $stdin_fh,  0 or die "dup2 $stdin_fh, 0 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 $stdout_fh, 1 failed: $!";
+      exec $command or die "exec $command failed: $!";
     }
   };
 
@@ -1122,6 +1131,22 @@ sub drop_binding {
          }};
   }];
 }
+
+sub zip_binding {
+  my ($other) = @_;
+  ["zip $other->explain", sub {
+    my ($into, $type) = @_;
+    my $other_source = $other->reader_fh;
+
+    with_type $type,
+      gen 'zip:F', {body  => $into->sink_gen('F'),
+                    other => $other_source,
+                    l     => ''},
+        q{ chomp(%:l = <%:other>);
+           @_ = (@_, split /\t/, %:l);
+           %@body };
+  }];
+}
 # Extra IO functions
 
 # Eagerly reads N items, returning (buffer, rest) both as IOs.
@@ -1141,6 +1166,14 @@ our %op_fns;                    # ditto
 
 sub long_op_method  { "--$_[0]" =~ s/-/_/gr }
 sub short_op_method { "_$_[0]" }
+
+sub shell_quote { join ' ', map /[^-\/\w]/ ? "'" . s/(['\\])/'\\$1'/gr . "'"
+                              : length $_  ? $_
+                              :              "''", @_ }
+
+sub self_pipe { ni_process(shell_quote('perl', '-', @_),
+                           ni_memory(self)->reader_fh,
+                           undef) }
 
 sub defop {
   my ($long, $short, $format, $usage, $fn) = @_;
@@ -1196,7 +1229,12 @@ sub parse_commands {
   my @parsed;
   for (my $o; defined($o = shift @_);) {
     return @parsed, map file_opt($_), @_ if $o eq '--';
-    if ($o =~ /^--/) {
+
+    # Special cases
+    if (ref($o) =~ /\[$/) {
+      # Lambda-invocation of ni on the specified options.
+      push @parsed, ['plus', self_pipe @$o];
+    } elsif ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};
       my ($args, @rest) = apply_format $op_formats{$c}, @_;
@@ -1213,138 +1251,6 @@ sub parse_commands {
   }
   @parsed;
 }
-# Operator implementations
-
-use B::Deparse;
-use File::Temp qw/tmpnam/;
-
-# Meta
-defop 'self', undef, '',
-  'adds the source code of ni',
-  sub { $_[0] + ni_memory(self) };
-
-defop 'modules', undef, '',
-  'lists names of defined modules',
-  sub { $_[0] + ni_memory(map $$_[0], @ni::modules) };
-
-defop 'explain-stream', undef, '',
-  'explains the current stream',
-  sub { ni_memory($_[0]->explain) };
-
-defop 'explain-compilation', undef, '',
-  'shows the compiled output for the current stream',
-  sub {
-    my $gen = $_[0]->source_gen(sink_as {
-      with_type $_[0], gen 'print:L', {}, "print \$_;"});
-    my $deparser = B::Deparse->new;
-    my ($f, $refs) = $gen->compile_to_sub;
-    delete $$refs{$_} for keys %$refs;
-    ni_memory($deparser->coderef2text($f));
-  };
-
-defop 'defined-methods', undef, '',
-  'lists defined long and short methods on IO objects',
-  sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
-
-defop 'debug-compile', undef, '',
-  'shows the compiled code generated for the given io',
-  sub {
-    my $gen = $_[0]->source_gen(sink_as {
-                with_type $_[0],
-                  gen 'print:L', {}, "print STDOUT \$_;"});
-    ni_memory("\nCOMPILED\n" . $gen->compile,
-              "\n",
-              "\nDEBUG\n"    . $gen->debug_to_string);
-  };
-
-# Stream transforms
-defop 'plus', undef, '',
-  'adds two streams together (implied for files)',
-  sub { $_[0] + $_[1] };
-
-defop 'tee', undef, 's',
-  'tees current output into the specified io',
-  sub { $_[0] >>= tee_binding(ni $_[1]) };
-
-defop 'take', undef, 'd',
-  'takes the first or last N records from the specified io',
-  sub { $_[1] > 0 ? $_[0] >>= take_binding($_[1])
-                  : ni_ring(-$_[1]) < $_[0] };
-
-defop 'drop', undef, 'd',
-  'drops the first or last N records from the specified io',
-  sub {
-    my ($self, $n) = @_;
-    $n >= 0
-      ? $self->bind(drop_binding($n))
-      : ni_source_as("$self >>= drop " . -$n . "]", sub {
-          my ($destination) = @_;
-          $self->source_gen(ni_ring(-$n, $destination));
-        });
-  };
-
-defop 'zip', 'z', 's',
-  'zips lines together with those from the specified IO',
-  sub { $_[0] >>= zip_binding(ni $_[1]) };
-
-# Functional transforms
-defop 'map', 'm', 's',
-  'transforms each record using the specified function',
-  sub { $_[0] * $_[1] };
-
-defop 'keep', 'k', 's',
-  'keeps records for which the function returns true',
-  sub { $_[0] % $_[1] };
-
-defop 'transform', 'M', 's',
-  'transforms the stream as an object using the specified function',
-  sub { compile($_[1])->($_[0]) };
-
-defop 'deref', 'r', '',
-  'interprets each record as a data source and emits it',
-  sub { ni_cat($_[0] * \&ni) };
-
-defop 'ref', 'R', 'V',
-  'collects data into a file and emits the filename',
-  sub { my ($self, $f) = @_;
-        $self > ni($f //= "file:" . tmpnam);
-        ni_memory($f) };
-
-defop 'branch', 'b', 's',
-  'splits input by its first field, forwarding to subprocesses',
-  sub {
-    my ($in, $subprocesses) = @_;
-    my @subs = unpack_branch_map $subprocesses;
-    my $fifo = ni::io::fifo->new->from(map ${$_}[1], @subs);
-
-    unless (fork) {
-      my $line;
-      while (defined($line = <$in>)) {
-        my ($k, $v) = split /\t/, $line, 2;
-        for my $s (@subs) {
-          if ($s->[0]->($k)) {
-            $s->[1]->enqueue($line);
-            last;
-          }
-        }
-      }
-      exit;
-    }
-    $fifo;
-  };
-
-# Sorting (shells out to command-line sort)
-sub sort_options {
-  my @fieldspec = split //, $_[0] // '';
-  # TODO
-}
-
-defop 'order', 'o', 'AD',
-  'order {n|N|g|G|l|L|u|U|m} [fields]',
-  sub {
-    my ($in, $flags, $fields) = @_;
-    $in | 'sort';
-  };
 # Module support
 # ni allows you to define modules and cat them onto the end. These will be
 # saved in a --self image, and support some nice stuff like namespacing for
@@ -1356,14 +1262,14 @@ our %short_function_modules;
 sub defshortfn {
   my ($name, $f) = @_;
 
-  # Is this short function already defined? Complain and rename it using a
-  # short module prefix.
+  # Is this short function already defined? Complain and rename it, first using
+  # module mnemonics and then by appending digits.
   if (exists $short_functions{$name}) {
-    my $new_name = "_$name";
+    my $new_name = "${name}_";
     my $i = 0;
     while (exists $short_functions{$new_name}
            && $i < length $ni::current_module) {
-      $new_name = substr($ni::current_module, $i, 1) . $new_name;
+      $new_name .= substr $ni::current_module, $i, 1;
       ++$i;
     }
     $i = 0;
@@ -1391,7 +1297,7 @@ sub parse_modules {
     if (/^\s*NI_MODULE (\w+)\s*$/) {
       $module_name = $1;
       @module_code = ();
-    } elsif (/^\s*NI_MODULE_END\s*$/) {
+    } elsif (/^\s*NI_MODULE_END\s*$/ || /^\s*NI_END_MODULE\s*$/) {
       push @modules, [$module_name, join '', @module_code];
       $module_name = undef;
     } elsif (defined $module_name) {
@@ -1402,6 +1308,9 @@ sub parse_modules {
       die "ni: found this stray line not inside a NI_MODULE:\n$_";
     }
   }
+
+  die "ni: missing NI_MODULE_END for module $module_name"
+    if defined $module_name;
   @modules;
 }
 
@@ -1435,19 +1344,21 @@ use POSIX qw/dup2/;
 sub preprocess_cli {
   my @preprocessed;
   for (my $o; defined($o = shift @_);) {
-    if ($o =~ s/\[$//) {
+    if ($o =~ /\[$/) {
       my @xs;
       my $depth = 1;
-      for (@_) {
+      while (@_) {
+        $_ = shift @_;
         last unless $depth -= /^\]$/;
         $depth += /\[$/;
         push @xs, $_;
       }
       push @preprocessed, bless [@xs], $o;
-    } elsif ($o =~ s/\{$//) {
+    } elsif ($o =~ /\{$/) {
       my @xs;
       my $depth = 1;
-      for (@_) {
+      while (@_) {
+        $_ = shift @_;
         last unless $depth -= /^\}$/;
         $depth += /\{$/;
         push @xs, $_;
@@ -1501,7 +1412,120 @@ sub main {
 }
 
 END { main @ARGV }
+use File::Temp qw/tmpnam/;
 
+defop 'map', 'm', 's',
+  'transforms each record using the specified function',
+  sub { $_[0] * $_[1] };
+
+defop 'keep', 'k', 's',
+  'keeps records for which the function returns true',
+  sub { $_[0] % $_[1] };
+
+defop 'transform', 'M', 's',
+  'transforms the stream as an object using the specified function',
+  sub { compile($_[1])->($_[0]) };
+
+defop 'deref', 'r', '',
+  'interprets each record as a data source and emits it',
+  sub { ni_cat($_[0] * \&ni) };
+
+defop 'ref', 'R', 'V',
+  'collects data into a file and emits the filename',
+  sub { my ($self, $f) = @_;
+        $self > ni($f //= "file:" . tmpnam);
+        ni_memory($f) };
+
+defop 'iterate', undef, 'ss',
+  '(x, f): generates x, f(x), f(f(x)), f(f(f(x))), ...',
+  sub { $_[0] + ni_iterate($_[1], $_[2]) };
+use B::Deparse;
+use List::MoreUtils qw/firstidx/;
+
+defop 'self', undef, '',
+  'adds the source code of ni',
+  sub { $_[0] + ni_memory(self) };
+
+defop 'modules', undef, '',
+  'lists names of defined modules',
+  sub { $_[0] + ni_memory(map $$_[0], @ni::modules) };
+
+defop 'module', undef, 's',
+  'lists the source code of the specified module',
+  sub {
+    my ($self, $name) = @_;
+    my $index = firstidx {$$_[0] eq $name} @ni::modules;
+    $_[0] + ni_memory($index >= 0 ? $ni::modules[$index][1] : '');
+  };
+
+defop 'ops', undef, '',
+  'lists short and long stream operations',
+  sub {
+    $_[0] + ni_memory(map sprintf("%s\t--%s\t%s", exists $op_shorthands{$_}
+                                                    ? "-$op_shorthands{$_}"
+                                                    : '',
+                                                  $_,
+                                                  $op_usage{$_}),
+                          sort keys %op_usage);
+  };
+
+defop 'explain-stream', undef, '',
+  'explains the current stream',
+  sub { ni_memory($_[0]->explain) };
+
+defop 'explain-compilation', undef, '',
+  'shows the compiled output for the current stream',
+  sub {
+    my $gen = $_[0]->source_gen(sink_as {
+      with_type $_[0], gen 'print:L', {}, "print \$_;"});
+    my $deparser = B::Deparse->new;
+    my ($f, $refs) = $gen->compile_to_sub;
+    delete $$refs{$_} for keys %$refs;
+    ni_memory($deparser->coderef2text($f));
+  };
+
+defop 'defined-methods', undef, '',
+  'lists defined long and short methods on IO objects',
+  sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
+
+defop 'debug-compile', undef, '',
+  'shows the compiled code generated for the given io',
+  sub {
+    my $gen = $_[0]->source_gen(sink_as {
+                with_type $_[0],
+                  gen 'print:L', {}, "print STDOUT \$_;"});
+    ni_memory("\nCOMPILED\n" . $gen->compile,
+              "\n",
+              "\nDEBUG\n"    . $gen->debug_to_string);
+  };
+defop 'plus', undef, '',
+  'adds two streams together (implied for files)',
+  sub { $_[0] + $_[1] };
+
+defop 'tee', undef, 's',
+  'tees current output into the specified io',
+  sub { $_[0] >>= tee_binding(ni $_[1]) };
+
+defop 'take', undef, 'd',
+  'takes the first or last N records from the specified io',
+  sub { $_[1] > 0 ? $_[0] >>= take_binding($_[1])
+                  : ni_ring(-$_[1]) < $_[0] };
+
+defop 'drop', undef, 'd',
+  'drops the first or last N records from the specified io',
+  sub {
+    my ($self, $n) = @_;
+    $n >= 0
+      ? $self->bind(drop_binding($n))
+      : ni_source_as("$self >>= drop " . -$n . "]", sub {
+          my ($destination) = @_;
+          $self->source_gen(ni_ring(-$n, $destination));
+        });
+  };
+
+defop 'zip', 'z', 's',
+  'zips lines together with those from the specified IO',
+  sub { $_[0] >>= zip_binding(ni $_[1]) };
 }
 __END__
 NI_MODULE geohash
