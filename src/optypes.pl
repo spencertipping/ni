@@ -8,6 +8,10 @@ defop 'self', undef, '',
   'adds the source code of ni',
   sub { $_[0] + ni_memory(self) };
 
+defop 'modules', undef, '',
+  'lists names of defined modules',
+  sub { $_[0] + ni_memory(map $$_[0], @ni::modules) };
+
 defop 'explain-stream', undef, '',
   'explains the current stream',
   sub { ni_memory($_[0]->explain) };

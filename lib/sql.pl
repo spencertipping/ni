@@ -1,6 +1,4 @@
-{
-
-package ni;
+NI_MODULE sql
 
 our %sql_databases;
 
@@ -49,4 +47,4 @@ defsqldb 'sqlite3', 's',
     }
   };
 
-}
+NI_MODULE_END

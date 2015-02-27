@@ -3,8 +3,9 @@ rm -f ni ni-boot ni-debug
 {
   cat src/{core,prefix,gen,gentypes,fn,io}.pl \
       src/{data,datatypes,iotypes,iobind,iofns}.pl \
-      src/{ops,optypes,main}.pl
+      src/{ops,optypes,module,main}.pl
   echo __END__
+  cat lib/{geohash,sql}.pl
 } > ni-debug
 
 if grep FIXME ni-debug > /dev/null; then

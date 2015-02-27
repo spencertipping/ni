@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 $ni::selfcode = '';
 $ni::selfcode .= ($_ = <DATA>) until /^__END__$/;
+$ni::data_fh = \*DATA;
 eval $ni::selfcode;
 die $@ if $@;
 __DATA__
@@ -14,10 +15,12 @@ sub self {
 join "\n", "#!/usr/bin/env perl",
 q{$ni::selfcode = '';},
 q{$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;},
+q{$ni::data_fh = \*DATA;},
 q{eval $ni::selfcode;},
 q{die $@ if $@;},
 "__DATA__",
-$ni::selfcode;
+$ni::selfcode,
+map "NI_MODULE $$_[0]\n$$_[1]\nNI_MODULE_END", @ni::modules;
 }
 use POSIX qw/:sys_wait_h/;
 $SIG{CHLD} = sub {
@@ -920,6 +923,9 @@ use File::Temp qw/tmpnam/;
 defop 'self', undef, '',
 'adds the source code of ni',
 sub { $_[0] + ni_memory(self) };
+defop 'modules', undef, '',
+'lists names of defined modules',
+sub { $_[0] + ni_memory(map $$_[0], @ni::modules) };
 defop 'explain-stream', undef, '',
 'explains the current stream',
 sub { ni_memory($_[0]->explain) };
@@ -1007,6 +1013,68 @@ sub {
 my ($in, $flags, $fields) = @_;
 $in | 'sort';
 };
+our %short_functions;
+our %short_function_modules;
+sub defshortfn {
+my ($name, $f) = @_;
+if (exists $short_functions{$name}) {
+my $new_name = "_$name";
+my $i = 0;
+while (exists $short_functions{$new_name}
+&& $i < length $ni::current_module) {
+$new_name = substr($ni::current_module, $i, 1) . $new_name;
+++$i;
+}
+$i = 0;
+$new_name = ($new_name =~ s/\d+$//r) . $i++
+while exists $short_functions{$new_name};
+print STDERR "defshortfn: $name from module $ni::current_module is "
+. "already defined by module '$short_function_modules{$name}', "
+. "so defining it as $new_name instead\n";
+$name = $new_name;
+}
+$short_functions{$name}        = $f;
+$short_function_modules{$name} = $ni::current_module;
+*{"ni::$name"} = $f;
+}
+sub parse_modules {
+my ($fh) = @_;
+my @modules;
+my $module_name;
+my @module_code;
+while (!/^NI_END_OF_MODULES$/ && defined($_ = <$fh>)) {
+if (/^\s*NI_MODULE (\w+)\s*$/) {
+$module_name = $1;
+@module_code = ();
+} elsif (/^\s*NI_MODULE_END\s*$/) {
+push @modules, [$module_name, join '', @module_code];
+$module_name = undef;
+} elsif (defined $module_name) {
+push @module_code, $_;
+} elsif (/^\s*$/) {
+} else {
+die "ni: found this stray line not inside a NI_MODULE:\n$_";
+}
+}
+@modules;
+}
+@ni::modules = parse_modules $ni::data_fh;
+sub run_module {
+my ($name, $code) = @{$_[0]};
+$ni::current_module = $name;
+my @result = eval qq{
+package ni::$name;
+BEGIN {
+*{"ni::${name}::\$_"} = *{"ni::\$_"} for keys %{ni::};
+}
+$code};
+undef $ni::current_module;
+die "ni: failed to execute module $name: $@" if $@;
+@result;
+}
+BEGIN {
+run_module $_ for @ni::modules;
+}
 use POSIX qw/dup2/;
 sub preprocess_cli {
 my @preprocessed;
@@ -1072,3 +1140,87 @@ $data > \*STDOUT;
 END { main @ARGV }
 }
 __END__
+NI_MODULE geohash
+no warnings 'portable';
+our @gh_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
+our %gh_decode   = map(($gh_alphabet[$_], $_), 0..$#gh_alphabet);
+sub gap_bits {
+my ($x) = @_;
+$x |= $x << 16; $x &= 0x0000ffff0000ffff;
+$x |= $x << 8;  $x &= 0x00ff00ff00ff00ff;
+$x |= $x << 4;  $x &= 0x0f0f0f0f0f0f0f0f;
+$x |= $x << 2;  $x &= 0x3333333333333333;
+return ($x | $x << 1) & 0x5555555555555555;
+}
+sub ungap_bits {
+my ($x) = @_;  $x &= 0x5555555555555555;
+$x ^= $x >> 1; $x &= 0x3333333333333333;
+$x ^= $x >> 2; $x &= 0x0f0f0f0f0f0f0f0f;
+$x ^= $x >> 4; $x &= 0x00ff00ff00ff00ff;
+$x ^= $x >> 8; $x &= 0x0000ffff0000ffff;
+return ($x ^ $x >> 16) & 0x00000000ffffffff;
+}
+sub geohash_encode {
+my ($lat, $lng, $precision) = @_;
+$precision //= 12;
+my $bits = $precision > 0 ? $precision * 5 : -$precision;
+my $gh   = (gap_bits(int(($lat +  90) / 180 * 0x40000000)) |
+gap_bits(int(($lng + 180) / 360 * 0x40000000)) << 1)
+>> 60 - $bits;
+$precision > 0 ? join '', reverse map $gh_alphabet[$gh >> $_ * 5 & 31],
+0 .. $precision - 1
+: $gh;
+}
+sub geohash_decode {
+my ($gh, $bits) = @_;
+unless (defined $bits) {
+$bits = length($gh) * 5;
+my $n = 0;
+$n = $n << 5 | $gh_decode{lc $_} for split //, $gh;
+$gh = $n;
+}
+$gh <<= 60 - $bits;
+return (ungap_bits($gh)      / 0x40000000 * 180 -  90,
+ungap_bits($gh >> 1) / 0x40000000 * 360 - 180);
+}
+defshortfn 'ghe', \&geohash_encode;
+defshortfn 'ghd', \&geohash_decode;
+NI_MODULE_END
+NI_MODULE sql
+our %sql_databases;
+sub defsqldb {
+my ($name, $prefix, $io_fn) = @_;
+$sql_databases{$prefix} = {name => $name, io => $io_fn};
+}
+our %sql_shorthands = (
+'%\*' => 'select * from',
+'%c'  => 'select count(1) from',
+'%d'  => 'select distinct',
+'%g'  => 'group by',
+'%j'  => 'inner join',
+'%l'  => 'outer left join',
+'%r'  => 'outer right join',
+'%w'  => 'where',
+);
+sub expand_sql_shorthands {
+my ($sql) = @_;
+$sql =~ s/$_/" $sql_shorthands{$_} "/eg for keys %sql_shorthands;
+$sql;
+}
+defdata 'sql',
+sub { $_[0] =~ s/^sql:// },
+sub {
+my ($prefix, $db, $x) = $_[0] =~ /^(.)([^\/]*)\/(.*)$/;
+die "invalid sql: syntax: sql:$_[0]"
+if grep !defined, $prefix, $db, $x;
+die "unknown sql db prefix: $prefix" unless exists $sql_databases{$prefix};
+$sql_databases{$prefix}{io}->($db, $x);
+};
+defsqldb 'sqlite3', 's',
+sub {
+my ($db, $x) = @_;
+$db = "/tmp/ni-$ENV{USER}-sqlite.db" unless length $db;
+if ($x =~ /^\S+$/) {
+}
+};
+NI_MODULE_END
