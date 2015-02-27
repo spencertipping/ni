@@ -67,6 +67,10 @@ defop 'drop', undef, 'd',
         });
   };
 
+defop 'zip', 'z', 's',
+  'zips lines together with those from the specified IO',
+  sub { $_[0] >>= zip_binding(ni $_[1]) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',

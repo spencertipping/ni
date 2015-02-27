@@ -1,3 +1,6 @@
 #!/usr/bin/env perl
-eval($ni::selfcode = join '', <DATA>); die $@ if $@;
+$ni::selfcode = '';
+$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;
+eval $ni::selfcode;
+die $@ if $@;
 __DATA__

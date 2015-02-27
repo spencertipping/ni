@@ -70,9 +70,8 @@ sub {
 
   sink_gen => sub {
     my ($self, $type) = @_;
-    with_input_type $type,
-      gen 'file_sink:L', {fh => $self->writer_fh},
-        q{ print %:fh join("\t", @_) . "\n"; };
+    gen 'file_sink:L', {fh => $self->writer_fh},
+      q{ print %:fh join("\t", @_) . "\n"; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -175,6 +174,12 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
         q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
     }
   },
+};
+
+# Infinite source of repeated function application
+defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
+{
+  # TODO
 };
 
 # Empty source, null sink

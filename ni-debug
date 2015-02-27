@@ -1,4 +1,7 @@
 #!/usr/bin/env perl
+eval $ni::selfcode;
+die $@ if $@;
+__DATA__
 {
 
 use v5.14;
@@ -9,9 +12,13 @@ sub ::ni;
 
 sub self {
   join "\n", "#!/usr/bin/env perl",
-             q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;},
+             q{$ni::selfcode = '';},
+             q{$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;},
+             q{eval $ni::selfcode;},
+             q{die $@ if $@;},
              "__DATA__",
-             $ni::selfcode;
+             $ni::selfcode,
+             "__END__";
 }
 
 use POSIX qw/:sys_wait_h/;
@@ -40,6 +47,149 @@ sub compile {
   return $compiled_functions{$_[0]}
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
+}
+# Code generator, type solver, and adaptive JIT
+# ni executes all IO by emitting pipeline-specific code and running it. This
+# file contains a bunch of definitions to make that possible.
+#
+# At the core of this abstraction is a code-quoting mechanism that lets you
+# drop live references into compiled code. This lowers the barrier between a
+# regular lambda function and a JIT template.
+#
+# Slightly above that is a type solver. The type system isn't very
+# sophisticated; all we have is a very basic description of how to access the
+# inputs to a function. Types are short strings. For example, "L" and "A" refer
+# to data stored in $_; "F" refers to data in @_, etc. See below for a full
+# list.
+#
+# Above all of this is the adaptive JIT, which starts with a series of
+# alternatives from genalt() calls, profiles each one, and recompiles down to
+# whichever one ends up being fastest. Each adaptive branch is fully
+# type-compiled, so this is as much about representational optimization as it
+# is about general optimization. Adaptive JIT on running code imposes some
+# constraints that impact how code must be written; see below for details.
+
+# Type representation details
+# ni has a very simple addressing scheme in that there's only one piece of
+# addressable data at a time. This means that type solving is basically linear;
+# each code join point will have two possibilities:
+#
+# 1. An appropriately-typed branch exists, so use that monomorphically.
+# 2. No appropriate branch exists, so generate a polyrmorphic alternative that
+#    will be adaptively optimized.
+#
+# Possible types are:
+#
+# - L: we have an unsplit line in $_; basically a straight read from a file.
+# - A\d+: data is unsplit in $_, but the first N field boundaries are known and
+#   stored in $f0, $f1, ..., $fN-1. If N = 0, then we know all field
+#   boundaries.
+# - F: we have data split into fields and stored in @_.
+
+# Adaptive JIT details
+# This is actually a lot easier than it sounds. We need to preserve two
+# invariants:
+#
+# 1. Any monomorphic alternative must contain only monomorphic alternatives.
+# 2. Any code containing a polymorphic alternative must be resumable.
+#
+# (1) is necessary to prevent the JIT from preferring alternatives with only
+# monomorphic descendants (since resumable, profiled, branched code is more
+# expensive). (2) makes it possible to suspend from an inner loop, reduce some
+# polymorphic branches to monomorphic ones (possibly more than just the ones we
+# jumped out of), and pick up where we left off.
+
+our $gensym_id = 0;
+sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id . '__' }
+
+sub analyze_gen_template;
+sub gen {
+  # Monomorphic code that has been type-erased. Optionally resumable. Code
+  # generators should never return one of these directly; they should wrap
+  # within a genalt() instead. Instances of this class are semantically
+  # immutable.
+  my ($refs, $nonresumable_form, $resumable_form) = @_;
+
+  # Try to use the nonresumable form since it's faster.
+  my ($nonrefs, $nonresumable_code, $non_contains_poly) =
+    analyze_gen_template $refs, $nonresumable_form;
+  return bless { refs => $nonrefs,
+                 code => $nonresumable_code,
+                 poly => 0 }, 'ni::gen::mono'
+    unless $non_contains_poly;
+
+  die "must provide a resumable alternative for $nonresumable_code"
+    unless defined $resumable_form;
+
+  # Need to use a resumable form, so compile that one instead.
+  my ($rrefs, $resumable_code, $resumable_contains_poly) =
+    analyze_gen_template $refs, $resumable_form;
+  bless { refs => $rrefs,
+          code => $resumable_code,
+          poly => 1 }, 'ni::gen::mono';
+}
+
+{
+
+package ni::gen::mono;
+use overload qw/ "" code /;
+
+sub code { my ($self) = @_; $$self{code} }
+sub poly { my ($self) = @_; $$self{poly} }
+
+}
+
+
+sub genalt {
+  # Polymorphic code indexed by type. Not always compiled down to a polymorphic
+  # branch; often the container can match its source type with one of the
+  # alternatives here, and that's usually assumed to be faster than an adaptive
+  # JIT branch.
+  my %alternatives = @_;
+  my @branches = sort keys %alternatives;
+
+  bless { alternatives  => \%alternatives,
+          branch_types  => [@branches],
+          branches      => [map $alternatives{$_}, @branches],
+          branch_times  => [map 0, @branches],
+          branch_counts => [map 0, @branches],
+          decided       => 0 },
+        'ni::gen::poly';
+}
+
+sub analyze_gen_template {
+  # Takes ($refs, $code) and returns ($refs, $code, $contains_poly). The $refs
+  # returned are a subset of the originals, since the original contains both
+  # value closures and gen substitutions.
+  my @pieces;
+  my $contains_poly = 0;
+  my %original_refs = %{$_[0]};
+  my %refs;
+  my %gensyms;
+  my %subst;
+
+  for (split /(:\<\w+\>|\:\w+)/, $_[1]) {
+    if (/^:(\w+)$/) {
+      die "gen template $_[1] used with undefined gensym ref $1"
+        unless defined $original_refs{$1};
+      push @pieces, $gensyms{$1} //= gensym $1;
+      $refs{$gensyms{$1}} = $original_refs{$1};
+    } elsif (/^:\<(\w+)\>$/) {
+      die "gen template $_[1] used with undefined subst ref $1"
+        unless defined $original_refs{$1};
+      my $r = $original_refs{$1};
+      push @pieces, $subst{$1} //= $r;
+      if (ref $r) {
+        $contains_poly ||= $r->poly;
+        my $r_refs = $r->refs;
+        $refs{$_} = $$r_refs{$_} for keys %$r_refs;
+      }
+    } else {
+      push @pieces, $_;
+    }
+  }
+
+  (\%refs, join('', @pieces), $contains_poly);
 }
 # Extensible IO stream abstraction
 # Streams are defined by the Perl code that runs in order to put their values
@@ -324,9 +474,8 @@ sub {
 
   sink_gen => sub {
     my ($self, $type) = @_;
-    with_input_type $type,
-      gen 'file_sink:L', {fh => $self->writer_fh},
-        q{ print %:fh join("\t", @_) . "\n"; };
+    gen 'file_sink:L', {fh => $self->writer_fh},
+      q{ print %:fh join("\t", @_) . "\n"; };
   },
 
   close => sub { close $_[0]->writer_fh; $_[0] },
@@ -429,6 +578,12 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
         q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
     }
   },
+};
+
+# Infinite source of repeated function application
+defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
+{
+  # TODO
 };
 
 # Empty source, null sink
@@ -848,6 +1003,10 @@ defop 'drop', undef, 'd',
         });
   };
 
+defop 'zip', 'z', 's',
+  'zips lines together with those from the specified IO',
+  sub { $_[0] >>= zip_binding(ni $_[1]) };
+
 # Functional transforms
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
@@ -982,3 +1141,4 @@ sub main {
 END { main @ARGV }
 
 }
+__END__

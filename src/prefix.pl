@@ -8,9 +8,13 @@ sub ::ni;
 
 sub self {
   join "\n", "#!/usr/bin/env perl",
-             q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;},
+             q{$ni::selfcode = '';},
+             q{$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;},
+             q{eval $ni::selfcode;},
+             q{die $@ if $@;},
              "__DATA__",
-             $ni::selfcode;
+             $ni::selfcode,
+             "__END__";
 }
 
 use POSIX qw/:sys_wait_h/;

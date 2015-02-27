@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
-eval($ni::selfcode = join '', <DATA>); die $@ if $@;
+$ni::selfcode = '';
+$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;
+eval $ni::selfcode;
+die $@ if $@;
 __DATA__
 {
 use v5.14;
@@ -9,9 +12,13 @@ sub ni;
 sub ::ni;
 sub self {
   join "\n", "#!/usr/bin/env perl",
-             q{eval($ni::selfcode = join '', <DATA>); die $@ if $@;},
+             q{$ni::selfcode = '';},
+             q{$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;},
+             q{eval $ni::selfcode;},
+             q{die $@ if $@;},
              "__DATA__",
-             $ni::selfcode;
+             $ni::selfcode,
+             "__END__";
 }
 use POSIX qw/:sys_wait_h/;
 $SIG{CHLD} = sub {
@@ -33,6 +40,65 @@ sub compile {
   return $compiled_functions{$_[0]}
      //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
                                       . "\n}";
+}
+our $gensym_id = 0;
+sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id . '__' }
+sub analyze_gen_template;
+sub gen {
+  my ($refs, $nonresumable_form, $resumable_form) = @_;
+  my ($nonrefs, $nonresumable_code, $non_contains_poly) =
+    analyze_gen_template $refs, $nonresumable_form;
+  return bless { refs => $nonrefs,
+                 code => $nonresumable_code,
+                 poly => 0 }, 'ni::gen::mono'
+    unless $non_contains_poly;
+  my ($rrefs, $resumable_code, $resumable_contains_poly) =
+    analyze_gen_template $refs, $resumable_form;
+  bless { refs => $rrefs,
+          code => $resumable_code,
+          poly => 1 }, 'ni::gen::mono';
+}
+{
+package ni::gen::mono;
+use overload qw/ "" code /;
+sub code { my ($self) = @_; $$self{code} }
+sub poly { my ($self) = @_; $$self{poly} }
+}
+sub genalt {
+  my %alternatives = @_;
+  my @branches = sort keys %alternatives;
+  bless { alternatives  => \%alternatives,
+          branch_types  => [@branches],
+          branches      => [map $alternatives{$_}, @branches],
+          branch_times  => [map 0, @branches],
+          branch_counts => [map 0, @branches],
+          decided       => 0 },
+        'ni::gen::poly';
+}
+sub analyze_gen_template {
+  my @pieces;
+  my $contains_poly = 0;
+  my %original_refs = %{$_[0]};
+  my %refs;
+  my %gensyms;
+  my %subst;
+  for (split /(:\<\w+\>|\:\w+)/, $_[1]) {
+    if (/^:(\w+)$/) {
+      push @pieces, $gensyms{$1} //= gensym $1;
+      $refs{$gensyms{$1}} = $original_refs{$1};
+    } elsif (/^:\<(\w+)\>$/) {
+      my $r = $original_refs{$1};
+      push @pieces, $subst{$1} //= $r;
+      if (ref $r) {
+        $contains_poly ||= $r->poly;
+        my $r_refs = $r->refs;
+        $refs{$_} = $$r_refs{$_} for keys %$r_refs;
+      }
+    } else {
+      push @pieces, $_;
+    }
+  }
+  (\%refs, join('', @pieces), $contains_poly);
 }
 our %io_constructors;
 sub is_io { ref $_[0] && $_[0]->isa('ni::io') }
@@ -237,9 +303,8 @@ sub {
   },
   sink_gen => sub {
     my ($self, $type) = @_;
-    with_input_type $type,
-      gen 'file_sink:L', {fh => $self->writer_fh},
-        q{ print %:fh join("\t", @_) . "\n"; };
+    gen 'file_sink:L', {fh => $self->writer_fh},
+      q{ print %:fh join("\t", @_) . "\n"; };
   },
   close => sub { close $_[0]->writer_fh; $_[0] },
 };
@@ -328,6 +393,9 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
         q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
     }
   },
+};
+defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
+{
 };
 defio 'null', sub { +{} },
 {
@@ -664,6 +732,9 @@ defop 'drop', undef, 'd',
           $self->source_gen(ni_ring(-$n, $destination));
         });
   };
+defop 'zip', 'z', 's',
+  'zips lines together with those from the specified IO',
+  sub { $_[0] >>= zip_binding(ni $_[1]) };
 defop 'map', 'm', 's',
   'transforms each record using the specified function',
   sub { $_[0] * $_[1] };
@@ -775,3 +846,4 @@ sub main {
 }
 END { main @ARGV }
 }
+__END__

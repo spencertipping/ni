@@ -1,9 +1,11 @@
 #!/bin/bash
 rm -f ni ni-boot
-cat src/{core,prefix,fn,gen,io}.pl \
-    src/{data,datatypes,iotypes,iobind,iofns}.pl \
-    src/{ops,optypes,main}.pl \
-    > ni-debug
+{
+  cat src/{core,prefix,fn,gen,io}.pl \
+      src/{data,datatypes,iotypes,iobind,iofns}.pl \
+      src/{ops,optypes,main}.pl
+  echo __END__
+} > ni-debug
 
 perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   < ni-debug \
