@@ -18,7 +18,7 @@ defop 'transform', 'M', 's',
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
-  sub { ni_cat($_[0] * \&ni) };
+  sub { ni_cat($_[0] * 'ni %0') };
 
 defop 'ref', 'R', 'V',
   'collects data into a file and emits the filename',
@@ -34,5 +34,5 @@ defop 'iota', 'i', 'D',
   'generates numbers from 0 to n-1',
   sub {
     my $source = ni_iterate 0, '%0 + 1';
-    $_[0] + (defined $_[1] ? $source->bind(take_binding $_[1]) : $source);
+    $_[0] + (defined $_[1] ? $source >> take_binding $_[1] : $source);
   };

@@ -34,16 +34,75 @@ defdata 'sql',
     $sql_databases{$prefix}{io}->($db, $x);
   };
 
+sub transpose_tsv_lines {
+  my $n       = max map scalar(split /\t/), @_;
+  my @columns = map [], 1 .. $n;
+  for (@_) {
+    my @vs = split /\t/;
+    push $columns[$_], $vs[$_] for 0 .. $#vs;
+  }
+  @columns;
+}
+
+sub infer_column_type {
+  # Try to figure out the right type for a column based on some values for it.
+  # The possibilities are 'text', 'integer', or 'real'; this is roughly the set
+  # of stuff supported by both postgres and sqlite.
+  return 'integer' unless grep length && !/^-?[0-9]+$/, @_;
+  return 'real'    unless grep length &&
+                               !/^-?[0-9]+$
+                               | ^-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$
+                               | ^-?[0-9]*   \.[0-9]+  (?:[eE][-+]?[0-9]+)?$/x,
+                               @_;
+  return 'text';
+}
+
+sub inferred_table_schema {
+  my @types = map infer_column_type(@$_), transpose_tsv_lines @_;
+  join ', ', map sprintf("f%d %s", $_, $types[$_]), 0 .. $#types;
+}
+
 sub sqlite_table_reader_io {
   my ($db, $table) = @_;
   ni_process shell_quote('sqlite3', $db),
              ni_memory qq{.mode tabs\nselect * from $table;};
 }
 
+sub create_index_statement {
+  my ($should_index, $table, $schema) = @_;
+  return '' unless $should_index;
+  my $column = $schema =~ s/\s.*$//r;
+  "CREATE INDEX $table$column ON $table($column);\n";
+}
+
 sub sqlite_table_writer_io {
-  my ($db, $table) = @_;
+  my ($db, $table, $schema) = @_;
   my $index_first_field = $table =~ s/^\+//;
-  
+
+  my $result = ni_pipe();
+
+  unless (fork) {
+    $result->close_writer;
+    unless (defined $schema) {
+      my ($first_rows, $rest) = $result->peek(20);
+      $schema = inferred_table_schema @$first_rows;
+      $result = ni_fifo() <= $first_rows + $rest;
+    }
+
+    my $index_statement = create_index_statement($index_first_field,
+                                                 $table,
+                                                 $schema);
+
+    ni_process(shell_quote('sqlite3', $db),
+               ni_memory(qq{.mode tabs
+                            DROP TABLE IF EXISTS $table;
+                            CREATE TABLE $table ($schema);
+                            .import $result $table
+                            $index_statement})) > \*STDERR;
+    exit;
+  }
+
+  $result;
 }
 
 defsqldb 'sqlite3', 's',
@@ -55,7 +114,14 @@ defsqldb 'sqlite3', 's',
       # Not a query since queries require whitespace. Construct an IO that
       # reads and writes the given table, inferring a schema if the table
       # doesn't already exist.
-      sqlite_table_reader_io $db, $x;
+      ni_file "sql:s$db/$x",
+        sub {sqlite_table_reader_io($db, $x)->close_writer->reader_fh},
+        sub {sqlite_table_writer_io($db, $x)->close_reader->writer_fh};
+    } else {
+      # Probably a query; apply SQL expansions and run it.
+      my $query = expand_sql_shorthands $x;
+      ni_process shell_quote('sqlite3', $db),
+                 ni_memory(qq{.mode tabs\n$query;\n});
     }
   };
 

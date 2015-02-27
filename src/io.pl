@@ -29,7 +29,7 @@ sub defio {
   };
   *{"::ni_$name"} = *{"ni::ni_$name"} =
     sub { ${"ni::io::${name}::"}{new}("ni::io::$name", @_) };
-  *{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
+  *{"ni::io::${name}::$_"} = $methods->{$_} for keys %$methods;
   push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 
@@ -54,7 +54,7 @@ package ni::io;
 use overload qw# + plus_op  * mapone_op  / reduce_op  % grep_op  | pipe_op
                  eq compare_refs
                  "" explain
-                 >>= bind_op
+                 >> bind_op
                  > into  >= into_bg
                  < from  <= from_bg #;
 
@@ -99,13 +99,15 @@ sub pipe_op   { $_[0]->pipe($_[1]) }
 
 sub plus    { ::ni_sum(@_) }
 sub bind    { ::ni_bind(@_) }
-sub mapone  { $_[0] >>= ni::mapone_binding  @_[1..$#_] }
-sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
-sub reduce  { $_[0] >>= ni::reduce_binding  @_[1..$#_] }
-sub grep    { $_[0] >>= ni::grep_binding    @_[1..$#_] }
+sub mapone  { $_[0] >> ni::mapone_binding  @_[1..$#_] }
+sub flatmap { $_[0] >> ni::flatmap_binding @_[1..$#_] }
+sub reduce  { $_[0] >> ni::reduce_binding  @_[1..$#_] }
+sub grep    { $_[0] >> ni::grep_binding    @_[1..$#_] }
 sub pipe    { ::ni_process($_[1], $_[0], undef) }
 
 sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
+
+sub no_op { $_[0] }
 
 # User-facing methods
 sub from {

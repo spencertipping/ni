@@ -210,53 +210,11 @@ our %type_conversions = (
 'O:L' => q{ $_ .= "\n"; %@body });
 $type_conversions{$_} = gen "conversion:$_", {}, $type_conversions{$_}
 for keys %type_conversions;
-our $field_boundary_gensyms = gen 'empty:field_boundaries',
-{_n => 0, map(("_f$_" => 0), 0 .. 255)},
-join "\n", "# %:_n", map "# %:_f$_", 0 .. 255;
-sub gen_li_conversion;
 sub with_type {
 my ($type, $gen) = @_;
 return $gen if $$gen{sig}{type} eq $type;
-if ($$gen{sig}{type} =~ /^I(\d+)$/) {
-my $gi = $1;
-return $type_conversions{'L:O'}
-% {body => gen_li_conversion($gi, -1, $gen)} if $type eq 'L';
-return gen_li_conversion $gi, $1, $gen if $type =~ /^I(\d+)$/;
-} else {
 my $k = "$type:$$gen{sig}{type}";
 $type_conversions{$k} % {body => $gen};
-}
-}
-sub i_field_reference {
-my ($n) = @_;
-my $prev = $n - 1;
-($n ? gen("field_$n", {"_f$n" => 0, "_f$prev" => 0},
-qq{ substr(\$_, %:_f$prev, %:_f$n) })
-: gen("field 0", {_f0 => 0}, q{ substr($_, 0, %:_f0) }))
-->inherit_gensyms_from($field_boundary_gensyms);
-}
-sub i_length_init {
-gen('i_length_init', {_n => 0}, q{ %:_n = length $_ })
-->inherit_gensyms_from($field_boundary_gensyms);
-}
-sub i_field_construct {
-my ($n) = @_;
-my $prev = $n - 1;
-($n ? gen("field_cons_$n", {"_f$n" => 0, "_f$prev" => 0, _n => 0},
-qq{ %:_f$n = 1 + index(\$_, "\\t", %:_f$prev);
-%:_f$n = %:_n if %:_f$n == 0 })
-: gen("field_cons_0", {_f0 => 0, _n => 0},
-qq{ %:_f0 = 1 + index(\$_, "\\t");
-%:_f0 = %:_n if %:_f0 == 0 }))
-->inherit_gensyms_from($field_boundary_gensyms);
-}
-sub gen_li_conversion {
-my ($required, $have_so_far, $gen) = @_;
-return $gen if $have_so_far >= $required;
-gen_seq("li_conversion",
-i_length_init,
-map(i_field_construct($_), ($have_so_far + 1) .. $required),
-$gen);
 }
 sub typed_save_recover {
 my ($type) = @_;
@@ -264,11 +222,6 @@ if ($type eq 'F') {
 my $xs = [];
 (gen('s:F', {xs => $xs}, q{ @{%:xs} = @_ }),
 gen('r:F', {xs => $xs}, q{ @_ = @{%:xs} }));
-} elsif ($type =~ /^I/) {
-my $xs = [];
-my $x = '';
-(gen("s:$type", {xs => $xs, x => \$x}, q{ @{%:xs} = @_; ${%:x} = $_ }),
-gen("r:$type", {xs => $xs, x => \$x}, q{ @_ = @{%:xs}; $_ = ${%:x} }));
 } else {
 my $x = '';
 (gen("s:$type", {x => \$x}, q{ ${%:x} = $_ }),
@@ -339,24 +292,8 @@ my ($code, $type) = @_;
 };
 defperlfilter 'expand_field_references_typefully', sub {
 my ($code, $type) = @_;
-$type = 'F' if $code =~ /\@_/ || $code =~ /\$_\[/;
-my @pieces = split /(%\d+)/, $code;
-my @is_var = grep $pieces[$_] =~ /^%\d+$/, 0..$#pieces;
-my $max_required = max map substr($pieces[$_], 1), @is_var;
-if ($type =~ /^I(\d+)/) {
-$type = 'F';
-} elsif (@is_var and $type eq 'L') {
-$type = "I$max_required";
-} elsif (@is_var and $type eq 'O') {
-$type = 'F';
-}
-if ($type eq 'F') {
+$type = 'F' if $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /%\d+/;
 ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
-} elsif ($type =~ /^I/) {
-($code =~ s/%(\d+)/i_field_reference $1/gre, $type);
-} else {
-($code, $type);
-}
 };
 our %io_constructors;
 sub is_io { ref $_[0] && $_[0]->isa('ni::io') }
@@ -368,7 +305,7 @@ bless $constructor->(@args), $class;
 };
 *{"::ni_$name"} = *{"ni::ni_$name"} =
 sub { ${"ni::io::${name}::"}{new}("ni::io::$name", @_) };
-*{"ni::io::$name::$_"} = $methods->{$_} for keys %$methods;
+*{"ni::io::${name}::$_"} = $methods->{$_} for keys %$methods;
 push @{"ni::io::${name}::ISA"}, 'ni::io';
 }
 sub defioproxy {
@@ -385,7 +322,7 @@ package ni::io;
 use overload qw# + plus_op * mapone_op / reduce_op % grep_op | pipe_op
 eq compare_refs
 "" explain
->>= bind_op
+>> bind_op
 > into >= into_bg
 < from <= from_bg #;
 use Scalar::Util qw/refaddr/;
@@ -417,12 +354,13 @@ sub grep_op { $_[0]->grep($_[1]) }
 sub pipe_op { $_[0]->pipe($_[1]) }
 sub plus { ::ni_sum(@_) }
 sub bind { ::ni_bind(@_) }
-sub mapone { $_[0] >>= ni::mapone_binding @_[1..$#_] }
-sub flatmap { $_[0] >>= ni::flatmap_binding @_[1..$#_] }
-sub reduce { $_[0] >>= ni::reduce_binding @_[1..$#_] }
-sub grep { $_[0] >>= ni::grep_binding @_[1..$#_] }
+sub mapone { $_[0] >> ni::mapone_binding @_[1..$#_] }
+sub flatmap { $_[0] >> ni::flatmap_binding @_[1..$#_] }
+sub reduce { $_[0] >> ni::reduce_binding @_[1..$#_] }
+sub grep { $_[0] >> ni::grep_binding @_[1..$#_] }
 sub pipe { ::ni_process($_[1], $_[0], undef) }
 sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
+sub no_op { $_[0] }
 sub from {
 my ($self, $source, $leave_open) = @_;
 ::ni($source)->source_gen($self)->run;
@@ -507,8 +445,9 @@ defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
 sub { ni_file("[fh = " . fileno($_[0]) . "]",
 $_[0], $_[0]) };
 BEGIN {
+use File::Temp qw/tmpnam/;
 use List::Util qw/min max/;
-use POSIX qw/dup2/;
+use POSIX qw/dup2 mkfifo/;
 sub to_fh {
 return undef unless defined $_[0];
 return $_[0]->() if ref $_[0] eq 'CODE';
@@ -534,8 +473,8 @@ sub sink_as(&) { ni_sink_as("[anonymous sink]", @_) }
 sub source_as(&) { ni_source_as("[anonymous source]", @_) }
 defio 'file',
 sub {
-die "ni_file() requires three constructor arguments (got @_)" unless @_ == 3;
-+{description => $_[0], reader => $_[1], writer => $_[2]}
+die "ni_file() requires three constructor arguments (got @_)" unless @_ >= 3;
++{description => $_[0], reader => $_[1], writer => $_[2], on_close => $_[3]}
 },
 {
 explain => sub { ${$_[0]}{description} },
@@ -569,14 +508,20 @@ q{ print %:fh $_; };
 },
 close_reader => sub {
 my ($self) = @_;
-close $$self{reader} if ref $$self{reader} eq 'GLOB';
+if (ref $$self{reader} eq 'GLOB') {
+$$self{on_close}->($self, 0) if defined $$self{on_close};
+close $$self{reader};
 undef $$self{reader};
+}
 $self;
 },
 close_writer => sub {
 my ($self) = @_;
-close $$self{writer} if ref $$self{writer} eq 'GLOB';
+if (ref $$self{writer} eq 'GLOB') {
+$$self{on_close}->($self, 1) if defined $$self{on_close};
+close $$self{writer};
 undef $$self{writer};
+}
 $self;
 },
 };
@@ -600,9 +545,10 @@ q{ for (@{%:xs}) {
 },
 sink_gen => sub {
 my ($self, $type) = @_;
-gen "memory_sink:$type", {xs => $self},
-$type eq 'F' ? q{ push @{%:xs}, [@_]; }
-: q{ push @{%:xs}, $_; };
+$type eq 'F'
+? gen 'memory_sink:F', {xs => $self}, q{ push @{%:xs}, [@_]; }
+: with_type $type,
+gen 'memory_sink:O', {xs => $self}, q{ push @{%:xs}, $_; };
 },
 };
 defio 'ring',
@@ -676,12 +622,14 @@ my ($self) = @_;
 source_gen => sub {
 my ($self, $destination) = @_;
 gen 'iterate_source', {f => fn($$self{f}),
-x => $$self{x},
+x => \$$self{x},
+y => 0,
 body => $destination->sink_gen('O')},
 q{ while (1) {
-$_ = %:x;
+%:y = ${%:x};
+${%:x} = %:f->(${%:x});
+$_ = %:y;
 %@body
-%:x = %:f->(%:x);
 } };
 },
 };
@@ -714,17 +662,15 @@ gen_seq 'sum_source', map $_->source_gen($destination), @$self;
 defio 'cat',
 sub { \$_[0] },
 {
-explain => sub {
-"[cat ${$_[0]}]";
-},
+explain => sub { "[cat ${$_[0]}]" },
 source_gen => sub {
 my ($self, $destination) = @_;
 $$self->source_gen(sink_as {
 my ($type) = @_;
 with_type $type,
-gen 'cat_source',
+gen 'cat_source:F',
 {dest => $destination},
-q{ $_ > %:dest; }});
+q{ $_[0]->into(%:dest, 1); }});
 },
 };
 defio 'bind',
@@ -735,7 +681,7 @@ die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
 {
 explain => sub {
 my ($self) = @_;
-"$$self{base} >>= $$self{code_transform}[0]";
+"$$self{base} >> $$self{code_transform}[0]";
 },
 supports_reads => sub { ${$_[0]}{base}->supports_reads },
 supports_writes => sub { ${$_[0]}{base}->supports_writes },
@@ -764,6 +710,13 @@ select((select($out), $|++)[0]);
 select((select($in), $|++)[0]);
 ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
 $out, $in);
+};
+defioproxy 'fifo', sub {
+my ($name) = @_;
+mkfifo $name //= tmpnam, 0700 or die "mkfifo failed: $!";
+ni_file($name, "< $name", "> $name", sub {
+unlink $name or warn "failed to unlink fifo $name: $!";
+});
 };
 defioproxy 'process', sub {
 my ($command, $stdin_fh, $stdout_fh) = @_;
@@ -891,8 +844,8 @@ q{ chomp(%:l = <%:other>);
 }
 sub ni::io::peek {
 my ($self, $n) = @_;
-my $buffer = ni_memory();
-($buffer < $self->bind(take_binding($n)), $self);
+my $buffer = ni_memory() < $self >> take_binding($n);
+($buffer, $self);
 }
 our %op_shorthand_lookups; # keyed by short
 our %op_shorthands; # keyed by long
@@ -1116,7 +1069,7 @@ defop 'transform', 'M', 's',
 sub { fn($_[1])->($_[0]) };
 defop 'deref', 'r', '',
 'interprets each record as a data source and emits it',
-sub { ni_cat($_[0] * \&ni) };
+sub { ni_cat($_[0] * 'ni %0') };
 defop 'ref', 'R', 'V',
 'collects data into a file and emits the filename',
 sub { my ($self, $f) = @_;
@@ -1129,7 +1082,7 @@ defop 'iota', 'i', 'D',
 'generates numbers from 0 to n-1',
 sub {
 my $source = ni_iterate 0, '%0 + 1';
-$_[0] + (defined $_[1] ? $source->bind(take_binding $_[1]) : $source);
+$_[0] + (defined $_[1] ? $source >> take_binding $_[1] : $source);
 };
 use B::Deparse;
 use List::MoreUtils qw/firstidx/;
@@ -1172,15 +1125,30 @@ ni_memory($deparser->coderef2text($f));
 defop 'defined-methods', undef, '',
 'lists defined long and short methods on IO objects',
 sub { ni_memory(map "$_\n", grep /^_/, sort keys %{ni::io::}) };
+use List::Util qw/max/;
+defop 'fields', 'f', 'd',
+'selects the specified fields in the given order',
+sub {
+my ($self, $fields) = @_;
+my $select_all = $fields =~ s/\.$//;
+my @fields = grep length, split /(-?\d)/, $fields;
+if ($select_all) {
+my $max = max @fields;
+$self->mapone('@_[' . join(', ', @fields) .
+", " . ($max + 1) . " .. \$#_]");
+} else {
+$self->mapone('@_[' . join(', ', @fields) . ']');
+}
+};
 defop 'plus', undef, '',
 'adds two streams together (implied for files)',
 sub { $_[0] + $_[1] };
 defop 'tee', undef, 's',
 'tees current output into the specified io',
-sub { $_[0] >>= tee_binding(ni $_[1]) };
+sub { $_[0] >> tee_binding(ni $_[1]) };
 defop 'take', undef, 'd',
 'takes the first or last N records from the specified io',
-sub { $_[1] > 0 ? $_[0] >>= take_binding($_[1])
+sub { $_[1] > 0 ? $_[0] >> take_binding($_[1])
 : ni_ring(-$_[1]) < $_[0] };
 defop 'drop', undef, 'd',
 'drops the first or last N records from the specified io',
@@ -1188,14 +1156,14 @@ sub {
 my ($self, $n) = @_;
 $n >= 0
 ? $self->bind(drop_binding($n))
-: ni_source_as("$self >>= drop " . -$n . "]", sub {
+: ni_source_as("$self >> drop " . -$n . "]", sub {
 my ($destination) = @_;
 $self->source_gen(ni_ring(-$n, $destination));
 });
 };
 defop 'zip', 'z', 's',
 'zips lines together with those from the specified IO',
-sub { $_[0] >>= zip_binding(ni $_[1]) };
+sub { $_[0] >> zip_binding(ni $_[1]) };
 }
 __END__
 NI_MODULE geohash
@@ -1274,21 +1242,75 @@ if grep !defined, $prefix, $db, $x;
 die "unknown sql db prefix: $prefix" unless exists $sql_databases{$prefix};
 $sql_databases{$prefix}{io}->($db, $x);
 };
+sub transpose_tsv_lines {
+my $n = max map scalar(split /\t/), @_;
+my @columns = map [], 1 .. $n;
+for (@_) {
+my @vs = split /\t/;
+push $columns[$_], $vs[$_] for 0 .. $#vs;
+}
+@columns;
+}
+sub infer_column_type {
+return 'integer' unless grep length && !/^-?[0-9]+$/, @_;
+return 'real' unless grep length &&
+!/^-?[0-9]+$
+| ^-?[0-9]+(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$
+| ^-?[0-9]* \.[0-9]+ (?:[eE][-+]?[0-9]+)?$/x,
+@_;
+return 'text';
+}
+sub inferred_table_schema {
+my @types = map infer_column_type(@$_), transpose_tsv_lines @_;
+join ', ', map sprintf("f%d %s", $_, $types[$_]), 0 .. $#types;
+}
 sub sqlite_table_reader_io {
 my ($db, $table) = @_;
 ni_process shell_quote('sqlite3', $db),
 ni_memory qq{.mode tabs\nselect * from $table;};
 }
+sub create_index_statement {
+my ($should_index, $table, $schema) = @_;
+return '' unless $should_index;
+my $column = $schema =~ s/\s.*$//r;
+"CREATE INDEX $table$column ON $table($column);\n";
+}
 sub sqlite_table_writer_io {
-my ($db, $table) = @_;
+my ($db, $table, $schema) = @_;
 my $index_first_field = $table =~ s/^\+//;
+my $result = ni_pipe();
+unless (fork) {
+$result->close_writer;
+unless (defined $schema) {
+my ($first_rows, $rest) = $result->peek(20);
+$schema = inferred_table_schema @$first_rows;
+$result = ni_fifo() <= $first_rows + $rest;
+}
+my $index_statement = create_index_statement($index_first_field,
+$table,
+$schema);
+ni_process(shell_quote('sqlite3', $db),
+ni_memory(qq{.mode tabs
+DROP TABLE IF EXISTS $table;
+CREATE TABLE $table ($schema);
+.import $result $table
+$index_statement})) > \*STDERR;
+exit;
+}
+$result;
 }
 defsqldb 'sqlite3', 's',
 sub {
 my ($db, $x) = @_;
 $db = "/tmp/ni-$ENV{USER}-sqlite.db" unless length $db;
 if ($x =~ /^\S+$/) {
-sqlite_table_reader_io $db, $x;
+ni_file "sql:s$db/$x",
+sub {sqlite_table_reader_io($db, $x)->close_writer->reader_fh},
+sub {sqlite_table_writer_io($db, $x)->close_reader->writer_fh};
+} else {
+my $query = expand_sql_shorthands $x;
+ni_process shell_quote('sqlite3', $db),
+ni_memory(qq{.mode tabs\n$query;\n});
 }
 };
 NI_MODULE_END

@@ -1,7 +1,8 @@
 BEGIN {
 
+use File::Temp qw/tmpnam/;
 use List::Util qw/min max/;
-use POSIX qw/dup2/;
+use POSIX qw/dup2 mkfifo/;
 
 sub to_fh {
   return undef unless defined $_[0];
@@ -34,8 +35,8 @@ sub source_as(&) { ni_source_as("[anonymous source]", @_) }
 # Bidirectional filehandle IO with lazy creation
 defio 'file',
 sub {
-  die "ni_file() requires three constructor arguments (got @_)" unless @_ == 3;
-  +{description => $_[0], reader => $_[1], writer => $_[2]}
+  die "ni_file() requires three constructor arguments (got @_)" unless @_ >= 3;
+  +{description => $_[0], reader => $_[1], writer => $_[2], on_close => $_[3]}
 },
 {
   explain => sub { ${$_[0]}{description} },
@@ -75,15 +76,21 @@ sub {
 
   close_reader => sub {
     my ($self) = @_;
-    close $$self{reader} if ref $$self{reader} eq 'GLOB';
-    undef $$self{reader};
+    if (ref $$self{reader} eq 'GLOB') {
+      $$self{on_close}->($self, 0) if defined $$self{on_close};
+      close $$self{reader};
+      undef $$self{reader};
+    }
     $self;
   },
 
   close_writer => sub {
     my ($self) = @_;
-    close $$self{writer} if ref $$self{writer} eq 'GLOB';
-    undef $$self{writer};
+    if (ref $$self{writer} eq 'GLOB') {
+      $$self{on_close}->($self, 1) if defined $$self{on_close};
+      close $$self{writer};
+      undef $$self{writer};
+    }
     $self;
   },
 };
@@ -112,9 +119,10 @@ sub { [@_] },
 
   sink_gen => sub {
     my ($self, $type) = @_;
-    gen "memory_sink:$type", {xs => $self},
-      $type eq 'F' ? q{ push @{%:xs}, [@_]; }
-                   : q{ push @{%:xs}, $_; };
+    $type eq 'F'
+      ? gen 'memory_sink:F', {xs => $self}, q{ push @{%:xs}, [@_]; }
+      : with_type $type,
+          gen 'memory_sink:O', {xs => $self}, q{ push @{%:xs}, $_; };
   },
 };
 
@@ -199,12 +207,14 @@ defio 'iterate', sub { +{x => $_[0], f => $_[1]} },
   source_gen => sub {
     my ($self, $destination) = @_;
     gen 'iterate_source', {f    => fn($$self{f}),
-                           x    => $$self{x},
+                           x    => \$$self{x},
+                           y    => 0,
                            body => $destination->sink_gen('O')},
       q{ while (1) {
-           $_ = %:x;
+           %:y = ${%:x};
+           ${%:x} = %:f->(${%:x});
+           $_ = %:y;
            %@body
-           %:x = %:f->(%:x);
          } };
   },
 };
@@ -245,18 +255,16 @@ sub { [map $_->flatten, @_] },
 defio 'cat',
 sub { \$_[0] },
 {
-  explain => sub {
-    "[cat ${$_[0]}]";
-  },
+  explain => sub { "[cat ${$_[0]}]" },
 
   source_gen => sub {
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
       my ($type) = @_;
       with_type $type,
-        gen 'cat_source',
+        gen 'cat_source:F',
             {dest => $destination},
-            q{ $_ > %:dest; }});
+            q{ $_[0]->into(%:dest, 1); }});
   },
 };
 
@@ -269,7 +277,7 @@ sub {
 {
   explain => sub {
     my ($self) = @_;
-    "$$self{base} >>= $$self{code_transform}[0]";
+    "$$self{base} >> $$self{code_transform}[0]";
   },
 
   supports_reads  => sub { ${$_[0]}{base}->supports_reads },
@@ -305,6 +313,15 @@ defioproxy 'pipe', sub {
   select((select($in),  $|++)[0]);
   ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
           $out, $in);
+};
+
+# A named FIFO
+defioproxy 'fifo', sub {
+  my ($name) = @_;
+  mkfifo $name //= tmpnam, 0700 or die "mkfifo failed: $!";
+  ni_file($name, "< $name", "> $name", sub {
+    unlink $name or warn "failed to unlink fifo $name: $!";
+  });
 };
 
 # Stdin/stdout of an external process with stdin, stdout, neither, or both

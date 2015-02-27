@@ -92,37 +92,10 @@ defperlfilter 'expand_json_dot_notation', sub {
 defperlfilter 'expand_field_references_typefully', sub {
   my ($code, $type) = @_;
 
-  # First things first: if the code refers to @_ directly then we need to
-  # convert the type. This may result in an external coercion being generated,
-  # albeit at some small expense.
-  $type = 'F' if $code =~ /\@_/ || $code =~ /\$_\[/;
+  # Does the function refer to any arguments? If so, force a field-split.
+  # Otherwise we can get away with just providing $_.
+  $type = 'F' if $code =~ /\@_/ || $code =~ /\$_\[/ || $code =~ /%\d+/;
 
-  # Expand any field refs into @_ indexes or substr() calls, depending on the
-  # incoming type.
-  my @pieces       = split /(%\d+)/, $code;
-  my @is_var       = grep $pieces[$_] =~ /^%\d+$/, 0..$#pieces;
-  my $max_required = max map substr($pieces[$_], 1), @is_var;
-
-  if ($type =~ /^I(\d+)/) {
-    # Convert to fields. Realistically we won't actually have an indexed input
-    # like this.
-    $type = 'F';
-  } elsif (@is_var and $type eq 'L') {
-    # Refer to indexed fields
-    $type = "I$max_required";
-  } elsif (@is_var and $type eq 'O') {
-    # Awkward; positional parameters don't really apply here, and we might be
-    # getting a reference anyway (so we don't want to split). Converting to
-    # fields is a reasonable thing to do.
-    $type = 'F';
-  }
-
-  # Ok, now we can actually generate positional parameters.
-  if ($type eq 'F') {
-    ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
-  } elsif ($type =~ /^I/) {
-    ($code =~ s/%(\d+)/i_field_reference $1/gre, $type);
-  } else {
-    ($code, $type);
-  }
+  # Generate positional parameter references into @_.
+  ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
 };
