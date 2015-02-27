@@ -76,7 +76,8 @@ sub i_field_construct {
 sub gen_li_conversion {
   my ($required, $have_so_far, $gen) = @_;
   return $gen if $have_so_far >= $required;
-  gen_seq(($have_so_far >= 0 ? () : i_length_init),
+  gen_seq("li_conversion",
+          i_length_init,
           map(i_field_construct($_), ($have_so_far + 1) .. $required),
           $gen);
 }

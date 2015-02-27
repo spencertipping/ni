@@ -19,14 +19,14 @@ sub verify {
   chdir $tmpdir or die "failed to chdir $tmpdir: $!";
   my $result = qx/$c/;
   $result eq $o
-    or die "expected '$c' to produce '$o', but got '$result' instead";
+    or die "expected '$c' to produce (\n$o\n), but got (\n$result\n) instead";
   chdir $original;
 }
 
 my $command = undef;
 my $output  = undef;
 while (<>) {
-  if (s/^\$//) {
+  if (s/^\$\s*//) {
     verify $command, $output;
     $command = $_;
     $command .= ($_ = <>) while /\\$/;

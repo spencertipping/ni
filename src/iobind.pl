@@ -17,7 +17,8 @@ sub deffnbinding {
 
 BEGIN {
 
-deffnbinding 'flatmap', 'O', q{ for (%@f)       { %@body } };
+sub ::row;
+deffnbinding 'flatmap', 'F', q{ *{"::row"} = sub { %@body }; %@f };
 deffnbinding 'mapone',  'F', q{ if (@_ = (%@f)) { %@body } };
 deffnbinding 'grep',    '',  q{ if (%@f)        { %@body } };
 

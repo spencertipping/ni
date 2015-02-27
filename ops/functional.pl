@@ -4,6 +4,10 @@ defop 'map', 'm', 's',
   'transforms each record using the specified function',
   sub { $_[0] * $_[1] };
 
+defop 'flatmap', '+m', 's',
+  'produces multiple output records per input',
+  sub { $_[0]->flatmap($_[1]) };
+
 defop 'keep', 'k', 's',
   'keeps records for which the function returns true',
   sub { $_[0] % $_[1] };

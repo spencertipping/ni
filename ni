@@ -253,7 +253,8 @@ qq{ %:_f0 = 1 + index(\$_, "\\t");
 sub gen_li_conversion {
 my ($required, $have_so_far, $gen) = @_;
 return $gen if $have_so_far >= $required;
-gen_seq(($have_so_far >= 0 ? () : i_length_init),
+gen_seq("li_conversion",
+i_length_init,
 map(i_field_construct($_), ($have_so_far + 1) .. $required),
 $gen);
 }
@@ -824,7 +825,8 @@ $body;
 };
 }
 BEGIN {
-deffnbinding 'flatmap', 'O', q{ for (%@f) { %@body } };
+sub ::row;
+deffnbinding 'flatmap', 'F', q{ *{"::row"} = sub { %@body }; %@f };
 deffnbinding 'mapone', 'F', q{ if (@_ = (%@f)) { %@body } };
 deffnbinding 'grep', '', q{ if (%@f) { %@body } };
 }
@@ -1103,6 +1105,9 @@ use File::Temp qw/tmpnam/;
 defop 'map', 'm', 's',
 'transforms each record using the specified function',
 sub { $_[0] * $_[1] };
+defop 'flatmap', '+m', 's',
+'produces multiple output records per input',
+sub { $_[0]->flatmap($_[1]) };
 defop 'keep', 'k', 's',
 'keeps records for which the function returns true',
 sub { $_[0] % $_[1] };
