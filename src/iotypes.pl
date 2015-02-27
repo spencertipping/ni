@@ -59,8 +59,8 @@ sub {
 
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'file_source:V', {fh   => $self->reader_fh,
-                          body => $destination->sink_gen('L')},
+    gen 'file_source', {fh   => $self->reader_fh,
+                        body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
            %@body
          } };
@@ -133,11 +133,11 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
 
     # Emit two loops, one before and one after the break. This way we won't end
     # up doing a modulus per loop iteration.
-    gen 'ring_source:VV', {xs    => $$self{xs},
-                           n     => $size,
-                           end   => $i % $size,
-                           i     => $start % $size,
-                           body  => $destination->sink_gen('O')},
+    gen 'ring_source', {xs    => $$self{xs},
+                        n     => $size,
+                        end   => $i % $size,
+                        i     => $start % $size,
+                        body  => $destination->sink_gen('O')},
       q{ %:i = %@i;
          while (%:i < %@n) {
            $_ = ${%:xs}[%:i++];
@@ -153,26 +153,25 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
   sink_gen => sub {
     my ($self, $type) = @_;
     if (defined $$self{overflow}) {
-      gen "ring_sink:${type}V", {xs   => $$self{xs},
-                                 size => scalar(@{$$self{xs}}),
-                                 body => $$self{overflow}->sink_gen('O'),
-                                 n    => $$self{n},
-                                 e    => $type eq 'F' ? '[@_]' : '$_',
-                                 v    => 0,
-                                 i    => 0},
-        q{ %:v = $_;
-           %:i = ${%:n} % %@size;
-           if (${%:n}++ >= %@size) {
-             $_ = ${%:xs}[%:i];
-             %@body
-           }
-           ${%:xs}[%:i] = %:v; };
+      with_type $type,
+        gen "ring_sink:O", {xs   => $$self{xs},
+                            size => scalar(@{$$self{xs}}),
+                            body => $$self{overflow}->sink_gen('O'),
+                            n    => $$self{n},
+                            v    => 0,
+                            i    => 0},
+          q{ %:v = $_;
+             %:i = ${%:n} % %@size;
+             if (${%:n}++ >= %@size) {
+               $_ = ${%:xs}[%:i];
+               %@body
+             }
+             ${%:xs}[%:i] = %:v; };
     } else {
-      gen "ring_sink:${type}V", {xs   => $$self{xs},
-                                 size => scalar(@{$$self{xs}}),
-                                 n    => $$self{n},
-                                 e    => $type eq 'F' ? '[@_]' : '$_'},
-        q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
+      gen "ring_sink:O", {xs   => $$self{xs},
+                          size => scalar(@{$$self{xs}}),
+                          n    => $$self{n}},
+        q{ ${%:xs}[${%:n}++ % %@size] = $_; };
     }
   },
 };
@@ -180,7 +179,16 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
 # Infinite source of repeated function application
 defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
 {
-  # TODO
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    gen 'iterate_source', {f    => fn($$self{f}),
+                           x    => $$self{x},
+                           body => $destination->sink_gen('O')},
+      q{ while (1) {
+           $_ = ${%:x} = %:f->(${%:x});
+           %@body
+         } };
+  },
 };
 
 # Empty source, null sink

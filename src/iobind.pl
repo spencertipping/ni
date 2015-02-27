@@ -1,50 +1,34 @@
 # Bindings for common transformations
-sub flatmap_binding {
-  my @args = @_;
-  ["flatmap @args", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @args;
-    gen "flatmap:$type", {invocation => $i,
-                          body       => $into->sink_gen('O')},
-      q{ for (%@invocation) {
-           %@body
-         } };
-  }];
+sub deffnbinding {
+  my ($name, $bodytype, $body) = @_;
+  *{"ni::${name}_binding"} = sub {
+    my ($f) = @_;
+    ["$name $f", sub {
+      my ($into, $type) = @_;
+      my ($fc, $required_type) = fn($f, $type);
+      with_type $type,
+        gen "$name:$required_type",
+            {f    => $fc,
+             body => $into->sink_gen($bodytype || $required_type)},
+            $body;
+    }];
+  };
 }
 
-sub mapone_binding {
-  my @args = @_;
-  ["mapone @args", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @args;
-    gen "mapone:$type", {invocation => $i,
-                         body       => $into->sink_gen('F')},
-      q{ if (@_ = %@invocation) {
-           %@body
-         } };
-  }];
-}
+BEGIN {
 
-sub grep_binding {
-  my @args = @_;
-  ["grep @_", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @_;
-    gen "grep:$type", {invocation => $i,
-                       body       => $into->sink_gen($type)},
-      q{ if (%@invocation) {
-           %@body
-         } };
-  }];
+deffnbinding 'flatmap', 'O', q{ for (%@f)       { %@body } };
+deffnbinding 'mapone',  'F', q{ if (@_ = (%@f)) { %@body } };
+deffnbinding 'grep',    '',  q{ if (%@f)        { %@body } };
+
 }
 
 sub reduce_binding {
-  my ($f, $init, @args) = @_;
-  ["reduce $f $init @args", sub {
+  my ($f, $init) = @_;
+  ["reduce $f $init", sub {
     my ($into, $type) = @_;
-    my $i = invocation $type, $f;
     with_type $type,
-      gen 'reduce:F', {f    => $f,
+      gen 'reduce:F', {f    => fn($f),
                        init => $init,
                        body => $into->sink_gen('O')},
         q{ (%:init, @_) = %:f->(%:init, @_);

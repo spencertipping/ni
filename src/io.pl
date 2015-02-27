@@ -124,17 +124,13 @@ DEBUG_END
 
 sub into {
   my ($self, $dest) = @_;
-  $self->source_gen(::ni $dest)->run;
+  ::ni($dest)->from($self);
   $self;
 }
 
 sub into_bg {
   my ($self, $dest) = @_;
-DEBUG
-  die "cannot background-load a process-local io $dest"
-    if $dest->process_local;
-DEBUG_END
-  $self > $dest, exit unless fork;
+  ::ni($dest)->from_bg($self);
   $self;
 }
 

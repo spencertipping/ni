@@ -46,10 +46,13 @@ if [[ "$xs" != "${xs/C/-/}" ]]; then
 fi
 
 if [[ "$xs" != "${xs/N/-/}" ]]; then
-  testcase 'nfu 1' 'nfu testdata -m "row %0, length %0" -m "row %0, sqrt(%1)"'
-  testcase 'nfu 2' "nfu testdata -m '\"%0\t\" . length(%0)' -m 'row %0, sqrt(%1)'"
-  testcase 'ni 1'  "ni testdata -m '\$_[0], length \$_[0]' -m '\$_[0], sqrt(\$_[1])'"
-  testcase 'ni 2'  "ni testdata -m ';(\$_[0], length \$_[0])' -m ';(\$_[0], sqrt(\$_[1]))'"
+  testcase 'nfu 1'      'nfu testdata -m "row %0, length %0" -m "row %0, sqrt(%1)"'
+  testcase 'nfu 2'      "nfu testdata -m '\"%0\t\" . length(%0)' -m 'row %0, sqrt(%1)'"
+  testcase 'nfu single' "nfu testdata -m '\"%0\t\" . length(%0)'"
+  testcase 'nfu 3'      "nfu testdata -m '\"%0\t\" . length(%0)' -m 'row %0, sqrt(%1)' -k '%1 == int %1'"
+  testcase 'ni 1'       "ni testdata -m '%0, length %0' -m '%0, sqrt(%1)'"
+  testcase 'ni single'  "ni testdata -m '%0, length %0'"
+  testcase 'ni 3'       "ni testdata -m '%0, length %0' -m '%0, sqrt(%1)' -k '%1 == int %1'"
 fi
 
 rm testdata pair-with-length

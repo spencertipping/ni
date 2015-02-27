@@ -200,15 +200,65 @@ our %conversions = (
   'F:O' => q{ $_ = join("\t", @_); %@body },
   'L:O' => q{ chomp; %@body },
   'L:F' => q{ chomp; @_ = split /\t/; %@body },
-  'O:F' => q{ @_ = split /\t/; %@body },
+  'O:F' => q{ @_ = ($_); %@body },
   'O:L' => q{ $_ .= "\n"; %@body });
 $conversions{$_} = gen "conversion:$_", {}, $conversions{$_}
   for keys %conversions;
+sub gen_li_conversion;
 sub with_type {
   my ($type, $gen) = @_;
   return $gen if $$gen{sig}{type} eq $type;
-  my $k = "$$gen{sig}{type}:$type";
-  $conversions{$k} % {body => $gen};
+  if ($$gen{sig}{type} =~ /^I(\d+)$/) {
+    my $gi = $1;
+    return gen_seq "li_conversion:$type",
+      'chomp', gen_li_conversion($gi, -1, $gen) if $type eq 'L';
+    return gen_li_conversion $gi, $1, $gen if $type =~ /^I(\d+)$/;
+    die "type error: should never be adapting $type to a $gi gen "
+      . "(this is not only slow, but a bad idea for semantic reasons)";
+  } else {
+    my $k = "$type:$$gen{sig}{type}";
+    $conversions{$k} % {body => $gen};
+  }
+}
+sub gen_li_conversion {
+  my ($required, $have_so_far, $gen) = @_;
+  return $gen if $have_so_far >= $required;
+  if ($have_so_far < 0) {
+    my @vars = map(("f$_" => 0), 0 .. $required + 1);
+    my $init = gen
+      'li_init',
+      {n => 0, @vars},
+      join(";\n", q{%:n = length $_;},
+                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_" : 0)
+                                                         . qq{);\n} .
+                      qq{%:f$_ = %:n if %:f$_ == 0;},
+                      1 .. ($required + 1)),
+                  q{@_ = (} . join(', ', map "%:f$_", 0 .. ($required + 1))
+                            . q{);});
+    gen "li_conversion:I$required",
+        {init => $init, body => $gen},
+        q{ %@init
+           %@body };
+  } else {
+    my @vars = map(("f$_" => 0), $have_so_far + 1 .. $required + 1);
+    my $init = gen
+      'li_init',
+      {n => 0, @vars},
+      join(";\n", q{%:n = length $_;},
+                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_"
+                                                               : '$_[-1]')
+                                                         . qq{);\n} .
+                      qq{%:f$_ = %:n if %:f$_ == 0;},
+                      ($have_so_far + 1) .. ($required + 1)),
+                  q{@_ = (} . join(', ', '@_',
+                                         map "%:f$_", ($have_so_far + 1)
+                                                   .. ($required + 1))
+                            . q{);});
+    gen "li_conversion:I$required",
+        {init => $init, body => $gen},
+        q{ %@init
+           %@body };
+  }
 }
 sub typed_save_recover {
   my ($type) = @_;
@@ -227,22 +277,88 @@ sub typed_save_recover {
      gen("r:$type", {x => \$x}, q{ $_ = ${%:x} }));
   }
 }
-our %compiled_functions;
-sub expand_function_shorthands {
-  my ($code) = @_;
-  $code =~ s/%(\d+)/\$_[$1]/g;
-  1 while $code =~ s/([a-zA-Z0-9_\)\}\]\?\$])
+use List::Util qw/max/;
+use List::MoreUtils qw/any none firstidx/;
+our %fn_namespaces;
+our @perl_source_filters;
+sub compile_perl_lambda;
+sub fn {
+  my ($code, $type) = @_;
+  my $prefix = substr $code, 0, 1;
+  return $fn_namespaces{$prefix}->($code, $type)
+    if exists $fn_namespaces{$prefix};
+  compile_perl_lambda @_;
+}
+sub deffnns {
+  my ($prefix, $compiler) = @_;
+  die "deffnns: prefix must be exactly one character (got '$prefix')"
+    unless length $prefix == 1;
+  die "deffnns: cannot redefine existing function namespace '$prefix'"
+    if exists $fn_namespaces{$prefix};
+  die "deffnns: declining to usurp '$prefix', which is useful in code"
+    if $prefix =~ /^[-\s+~\/'"_\.0-9a-z\$\@\%(\[{]/;
+  $fn_namespaces{$prefix} = $compiler;
+}
+sub defperlfilter {
+  my ($name, $filter, $after) = @_;
+  die "defperlfilter: a filter called $name already exists"
+    if any {$$_[0] eq $name} @perl_source_filters;
+  die "defperlfilter: $after is not a defined filter"
+    if defined $after and none {$$_[0] eq $name} @perl_source_filters;
+  if (defined $after) {
+    splice @perl_source_filters,
+           1 + (firstidx {$$_[0] eq $name} @perl_source_filters),
+           0,
+           [$name, $filter];
+  } else {
+    push @perl_source_filters, [$name, $filter];
+  }
+}
+sub compile_perl_lambda {
+  my ($code, $type) = @_;
+  my ($original_code, $original_type) = ($code, $type);
+  if (defined $type) {
+    ($code, $type) = $$_[1]->($code, $type) for @perl_source_filters;
+    (gen({description => $original_code}, {}, $code), $type);
+  } else {
+    $type = 'F';
+    ($code, $type) = $$_[1]->($code, $type) for @perl_source_filters;
+    my $f = eval "sub {\n$code\n}";
+    die "fn: failed to compile '$original_code' -> '$code': $@"
+      if $@;
+    $f;
+  }
+}
+defperlfilter 'expand_json_dot_notation', sub {
+  my ($code, $type) = @_;
+  1 while $code =~ s/([a-zA-Z0-9\)\}\]])
                      \.
                      ([\$_a-zA-Z](?:-[0-9\w\?\$]|[0-9_\w?\$])*)
                     /$1\->{'$2'}/x;
-  $code;
-}
-sub compile {
-  return $_[0] if ref $_[0] eq 'CODE';
-  return $compiled_functions{$_[0]}
-     //= eval "package main; sub {\n" . expand_function_shorthands($_[0])
-                                      . "\n}";
-}
+  ($code, $type);
+};
+defperlfilter 'expand_field_references_typefully', sub {
+  my ($code, $type) = @_;
+  $type = 'F' if $code =~ /\@_/ || $code =~ /\$_\[/;
+  my @pieces       = split /(%\d+)/, $code;
+  my @is_var       = grep $pieces[$_] =~ /^%\d+$/, 0..$#pieces;
+  my $max_required = max map substr($pieces[$_], 1), @is_var;
+  if ($type =~ /^I(\d+)/) {
+    $type = 'F';
+  } elsif (@is_var and $type eq 'L') {
+    $type = "I$max_required";
+  } elsif (@is_var and $type eq 'O') {
+    $type = 'F';
+  }
+  if ($type eq 'F') {
+    ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
+  } elsif ($type =~ /^I/) {
+    ($code =~ s/%(\d+)/"substr(\$_, \$_[$1], \$_[" . ($1 + 1) . '])'/gre,
+     $type);
+  } else {
+    ($code, $type);
+  }
+};
 our %io_constructors;
 sub is_io { ref $_[0] && $_[0]->isa('ni::io') }
 sub defio {
@@ -318,12 +434,12 @@ sub from_bg {
 }
 sub into {
   my ($self, $dest) = @_;
-  $self->source_gen(::ni $dest)->run;
+  ::ni($dest)->from($self);
   $self;
 }
 sub into_bg {
   my ($self, $dest) = @_;
-  $self > $dest, exit unless fork;
+  ::ni($dest)->from_bg($self);
   $self;
 }
 }
@@ -436,8 +552,8 @@ sub {
   has_writer_fh   => sub { ${$_[0]}->supports_writes },
   source_gen => sub {
     my ($self, $destination) = @_;
-    gen 'file_source:V', {fh   => $self->reader_fh,
-                          body => $destination->sink_gen('L')},
+    gen 'file_source', {fh   => $self->reader_fh,
+                        body => $destination->sink_gen('L')},
       q{ while (<%:fh>) {
            %@body
          } };
@@ -496,11 +612,11 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
     my $i     = ${$$self{n}};
     my $size  = @{$$self{xs}};
     my $start = max 0, $i - $size;
-    gen 'ring_source:VV', {xs    => $$self{xs},
-                           n     => $size,
-                           end   => $i % $size,
-                           i     => $start % $size,
-                           body  => $destination->sink_gen('O')},
+    gen 'ring_source', {xs    => $$self{xs},
+                        n     => $size,
+                        end   => $i % $size,
+                        i     => $start % $size,
+                        body  => $destination->sink_gen('O')},
       q{ %:i = %@i;
          while (%:i < %@n) {
            $_ = ${%:xs}[%:i++];
@@ -515,31 +631,40 @@ sub { die "ring must contain at least one element" unless $_[0] > 0;
   sink_gen => sub {
     my ($self, $type) = @_;
     if (defined $$self{overflow}) {
-      gen "ring_sink:${type}V", {xs   => $$self{xs},
-                                 size => scalar(@{$$self{xs}}),
-                                 body => $$self{overflow}->sink_gen('O'),
-                                 n    => $$self{n},
-                                 e    => $type eq 'F' ? '[@_]' : '$_',
-                                 v    => 0,
-                                 i    => 0},
-        q{ %:v = $_;
-           %:i = ${%:n} % %@size;
-           if (${%:n}++ >= %@size) {
-             $_ = ${%:xs}[%:i];
-             %@body
-           }
-           ${%:xs}[%:i] = %:v; };
+      with_type $type,
+        gen "ring_sink:O", {xs   => $$self{xs},
+                            size => scalar(@{$$self{xs}}),
+                            body => $$self{overflow}->sink_gen('O'),
+                            n    => $$self{n},
+                            v    => 0,
+                            i    => 0},
+          q{ %:v = $_;
+             %:i = ${%:n} % %@size;
+             if (${%:n}++ >= %@size) {
+               $_ = ${%:xs}[%:i];
+               %@body
+             }
+             ${%:xs}[%:i] = %:v; };
     } else {
-      gen "ring_sink:${type}V", {xs   => $$self{xs},
-                                 size => scalar(@{$$self{xs}}),
-                                 n    => $$self{n},
-                                 e    => $type eq 'F' ? '[@_]' : '$_'},
-        q{ ${%:xs}[${%:n}++ % %@size] = %@e; };
+      gen "ring_sink:O", {xs   => $$self{xs},
+                          size => scalar(@{$$self{xs}}),
+                          n    => $$self{n}},
+        q{ ${%:xs}[${%:n}++ % %@size] = $_; };
     }
   },
 };
 defio 'iterate', sub { +{f => $_[0], x => $_[1]} },
 {
+  source_gen => sub {
+    my ($self, $destination) = @_;
+    gen 'iterate_source', {f    => fn($$self{f}),
+                           x    => $$self{x},
+                           body => $destination->sink_gen('O')},
+      q{ while (1) {
+           $_ = ${%:x} = %:f->(${%:x});
+           %@body
+         } };
+  },
 };
 defio 'null', sub { +{} },
 {
@@ -659,49 +784,32 @@ defioproxy 'filter', sub {
       : undef);
 };
 }
-sub flatmap_binding {
-  my @args = @_;
-  ["flatmap @args", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @args;
-    gen "flatmap:$type", {invocation => $i,
-                          body       => $into->sink_gen('O')},
-      q{ for (%@invocation) {
-           %@body
-         } };
-  }];
+sub deffnbinding {
+  my ($name, $bodytype, $body) = @_;
+  *{"ni::${name}_binding"} = sub {
+    my ($f) = @_;
+    ["$name $f", sub {
+      my ($into, $type) = @_;
+      my ($fc, $required_type) = fn($f, $type);
+      with_type $type,
+        gen "$name:$required_type",
+            {f    => $fc,
+             body => $into->sink_gen($bodytype || $required_type)},
+            $body;
+    }];
+  };
 }
-sub mapone_binding {
-  my @args = @_;
-  ["mapone @args", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @args;
-    gen "mapone:$type", {invocation => $i,
-                         body       => $into->sink_gen('F')},
-      q{ if (@_ = %@invocation) {
-           %@body
-         } };
-  }];
-}
-sub grep_binding {
-  my @args = @_;
-  ["grep @_", sub {
-    my ($into, $type) = @_;
-    my $i = invocation $type, @_;
-    gen "grep:$type", {invocation => $i,
-                       body       => $into->sink_gen($type)},
-      q{ if (%@invocation) {
-           %@body
-         } };
-  }];
+BEGIN {
+deffnbinding 'flatmap', 'O', q{ for (%@f)       { %@body } };
+deffnbinding 'mapone',  'F', q{ if (@_ = (%@f)) { %@body } };
+deffnbinding 'grep',    '',  q{ if (%@f)        { %@body } };
 }
 sub reduce_binding {
-  my ($f, $init, @args) = @_;
-  ["reduce $f $init @args", sub {
+  my ($f, $init) = @_;
+  ["reduce $f $init", sub {
     my ($into, $type) = @_;
-    my $i = invocation $type, $f;
     with_type $type,
-      gen 'reduce:F', {f    => $f,
+      gen 'reduce:F', {f    => fn($f),
                        init => $init,
                        body => $into->sink_gen('O')},
         q{ (%:init, @_) = %:f->(%:init, @_);
