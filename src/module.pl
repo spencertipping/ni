@@ -30,7 +30,7 @@ sub defshortfn {
 
   $short_functions{$name}        = $f;
   $short_function_modules{$name} = $ni::current_module;
-  *{"ni::$name"} = $f;
+  *{"::$name"} = $f;
 }
 
 sub parse_modules {
@@ -61,8 +61,6 @@ sub parse_modules {
   @modules;
 }
 
-@ni::modules = parse_modules $ni::data_fh;
-
 sub run_module {
   my ($name, $code) = @{$_[0]};
   $ni::current_module = $name;
@@ -81,5 +79,6 @@ sub run_module {
 # modules are loaded from the outer <DATA>, but this works (somewhat
 # paradoxically) because we're inside an eval already.
 BEGIN {
+  @ni::modules = parse_modules $ni::data_fh;
   run_module $_ for @ni::modules;
 }

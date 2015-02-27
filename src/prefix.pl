@@ -8,6 +8,7 @@ sub ::ni;
 
 DEBUG
 use Carp;
+$Carp::Verbose = 1;
 DEBUG_END
 
 sub self {

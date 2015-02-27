@@ -61,6 +61,7 @@ sub apply_format {
     } else {
       die "failed to match format $format" unless /[A-Z]/;
       push @parsed, undef;
+      unshift @args, $a;
     }
   }
 

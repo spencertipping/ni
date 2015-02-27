@@ -42,13 +42,13 @@ sub {
 
   reader_fh => sub {
     my ($self) = @_;
-    die "io not configured for reading" unless $self->supports_reads;
+    die "io $self not configured for reading" unless $self->supports_reads;
     $$self{reader} = to_fh $$self{reader};
   },
 
   writer_fh => sub {
     my ($self) = @_;
-    die "io not configured for writing" unless $self->supports_writes;
+    die "io $self not configured for writing" unless $self->supports_writes;
     $$self{writer} = to_fh $$self{writer};
   },
 
@@ -73,7 +73,19 @@ sub {
         q{ print %:fh $_; };
   },
 
-  close => sub { close $_[0]->writer_fh; $_[0] },
+  close_reader => sub {
+    my ($self) = @_;
+    close $$self{reader} if ref $$self{reader} eq 'GLOB';
+    undef $$self{reader};
+    $self;
+  },
+
+  close_writer => sub {
+    my ($self) = @_;
+    close $$self{writer} if ref $$self{writer} eq 'GLOB';
+    undef $$self{writer};
+    $self;
+  },
 };
 
 # An array of stuff in memory
@@ -289,6 +301,8 @@ sub {
 # A file-descriptor pipe
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
+  select((select($out), $|++)[0]);
+  select((select($in),  $|++)[0]);
   ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
           $out, $in);
 };
@@ -300,6 +314,9 @@ defioproxy 'process', sub {
   my ($command, $stdin_fh, $stdout_fh) = @_;
   my $stdin  = undef;
   my $stdout = undef;
+
+  $stdin  = $stdin_fh,  $stdin_fh  = $stdin_fh->reader_fh  if is_io $stdin_fh;
+  $stdout = $stdout_fh, $stdout_fh = $stdout_fh->writer_fh if is_io $stdout_fh;
 
   unless (defined $stdin_fh) {
     $stdin    = ni_pipe();
@@ -315,12 +332,14 @@ defioproxy 'process', sub {
   my $create_process = sub {
     return if defined $pid;
     unless ($pid = fork) {
-      close STDIN;  close $stdin->writer_fh  if defined $stdin;
-      close STDOUT; close $stdout->reader_fh if defined $stdout;
-      dup2 fileno $stdin_fh,  0 or die "dup2 $stdin_fh, 0 failed: $!";
-      dup2 fileno $stdout_fh, 1 or die "dup2 $stdout_fh, 1 failed: $!";
+      close STDIN;  $stdin->close_writer  if defined $stdin;
+      close STDOUT; $stdout->close_reader if defined $stdout;
+      dup2 fileno $stdin_fh,  0 or die "dup2 0 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 1 failed: $!";
       exec $command or die "exec $command failed: $!";
     }
+    close $stdin_fh;
+    close $stdout_fh;
   };
 
   ni_file(

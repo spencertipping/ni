@@ -84,8 +84,10 @@ sub process_local { 0 }
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
 
-sub flatten { ($_[0]) }
-sub close   { $_[0] }
+sub flatten      { ($_[0]) }
+sub close        { $_[0]->close_reader; $_[0]->close_writer }
+sub close_reader { $_[0] }
+sub close_writer { $_[0] }
 
 # Transforms
 sub plus_op   { $_[0]->plus($_[1]) }
@@ -107,18 +109,23 @@ sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
 
 # User-facing methods
 sub from {
-  my ($self, $source) = @_;
+  my ($self, $source, $leave_open) = @_;
   ::ni($source)->source_gen($self)->run;
+  $self->close_writer unless $leave_open;
   $self;
 }
 
 sub from_bg {
-  my ($self, $source) = @_;
+  my ($self, $source, $leave_open) = @_;
 DEBUG
   die "cannot background-load a process-local io $self"
     if $self->process_local;
 DEBUG_END
-  $self < $source, exit unless fork;
+  $self->from($source, $leave_open), exit unless fork;
+
+  # Because of the way perl deals with filehandles and forking, we'll also need
+  # to close $self here unless we're supposed to leave it open.
+  $self->close_writer unless $leave_open;
   $self;
 }
 

@@ -8,6 +8,7 @@ sub ni;
 sub ::ni;
 
 use Carp;
+$Carp::Verbose = 1;
 
 sub self {
   join "\n", "#!/usr/bin/env perl",
@@ -589,8 +590,10 @@ sub process_local { 0 }
 sub supports_reads  { 1 }
 sub supports_writes { 0 }
 
-sub flatten { ($_[0]) }
-sub close   { $_[0] }
+sub flatten      { ($_[0]) }
+sub close        { $_[0]->close_reader; $_[0]->close_writer }
+sub close_reader { $_[0] }
+sub close_writer { $_[0] }
 
 # Transforms
 sub plus_op   { $_[0]->plus($_[1]) }
@@ -612,16 +615,21 @@ sub compare_refs { refaddr($_[0]) eq refaddr($_[1]) }
 
 # User-facing methods
 sub from {
-  my ($self, $source) = @_;
+  my ($self, $source, $leave_open) = @_;
   ::ni($source)->source_gen($self)->run;
+  $self->close_writer unless $leave_open;
   $self;
 }
 
 sub from_bg {
-  my ($self, $source) = @_;
+  my ($self, $source, $leave_open) = @_;
   die "cannot background-load a process-local io $self"
     if $self->process_local;
-  $self < $source, exit unless fork;
+  $self->from($source, $leave_open), exit unless fork;
+
+  # Because of the way perl deals with filehandles and forking, we'll also need
+  # to close $self here unless we're supposed to leave it open.
+  $self->close_writer unless $leave_open;
   $self;
 }
 
@@ -756,13 +764,13 @@ sub {
 
   reader_fh => sub {
     my ($self) = @_;
-    die "io not configured for reading" unless $self->supports_reads;
+    die "io $self not configured for reading" unless $self->supports_reads;
     $$self{reader} = to_fh $$self{reader};
   },
 
   writer_fh => sub {
     my ($self) = @_;
-    die "io not configured for writing" unless $self->supports_writes;
+    die "io $self not configured for writing" unless $self->supports_writes;
     $$self{writer} = to_fh $$self{writer};
   },
 
@@ -787,7 +795,19 @@ sub {
         q{ print %:fh $_; };
   },
 
-  close => sub { close $_[0]->writer_fh; $_[0] },
+  close_reader => sub {
+    my ($self) = @_;
+    close $$self{reader} if ref $$self{reader} eq 'GLOB';
+    undef $$self{reader};
+    $self;
+  },
+
+  close_writer => sub {
+    my ($self) = @_;
+    close $$self{writer} if ref $$self{writer} eq 'GLOB';
+    undef $$self{writer};
+    $self;
+  },
 };
 
 # An array of stuff in memory
@@ -1003,6 +1023,8 @@ sub {
 # A file-descriptor pipe
 defioproxy 'pipe', sub {
   pipe my $out, my $in or die "pipe failed: $!";
+  select((select($out), $|++)[0]);
+  select((select($in),  $|++)[0]);
   ni_file("[pipe in = " . fileno($in) . ", out = " . fileno($out). "]",
           $out, $in);
 };
@@ -1014,6 +1036,9 @@ defioproxy 'process', sub {
   my ($command, $stdin_fh, $stdout_fh) = @_;
   my $stdin  = undef;
   my $stdout = undef;
+
+  $stdin  = $stdin_fh,  $stdin_fh  = $stdin_fh->reader_fh  if is_io $stdin_fh;
+  $stdout = $stdout_fh, $stdout_fh = $stdout_fh->writer_fh if is_io $stdout_fh;
 
   unless (defined $stdin_fh) {
     $stdin    = ni_pipe();
@@ -1029,12 +1054,14 @@ defioproxy 'process', sub {
   my $create_process = sub {
     return if defined $pid;
     unless ($pid = fork) {
-      close STDIN;  close $stdin->writer_fh  if defined $stdin;
-      close STDOUT; close $stdout->reader_fh if defined $stdout;
-      dup2 fileno $stdin_fh,  0 or die "dup2 $stdin_fh, 0 failed: $!";
-      dup2 fileno $stdout_fh, 1 or die "dup2 $stdout_fh, 1 failed: $!";
+      close STDIN;  $stdin->close_writer  if defined $stdin;
+      close STDOUT; $stdout->close_reader if defined $stdout;
+      dup2 fileno $stdin_fh,  0 or die "dup2 0 failed: $!";
+      dup2 fileno $stdout_fh, 1 or die "dup2 1 failed: $!";
       exec $command or die "exec $command failed: $!";
     }
+    close $stdin_fh;
+    close $stdout_fh;
   };
 
   ni_file(
@@ -1218,6 +1245,7 @@ sub apply_format {
     } else {
       die "failed to match format $format" unless /[A-Z]/;
       push @parsed, undef;
+      unshift @args, $a;
     }
   }
 
@@ -1283,7 +1311,7 @@ sub defshortfn {
 
   $short_functions{$name}        = $f;
   $short_function_modules{$name} = $ni::current_module;
-  *{"ni::$name"} = $f;
+  *{"::$name"} = $f;
 }
 
 sub parse_modules {
@@ -1314,8 +1342,6 @@ sub parse_modules {
   @modules;
 }
 
-@ni::modules = parse_modules $ni::data_fh;
-
 sub run_module {
   my ($name, $code) = @{$_[0]};
   $ni::current_module = $name;
@@ -1334,6 +1360,7 @@ sub run_module {
 # modules are loaded from the outer <DATA>, but this works (somewhat
 # paradoxically) because we're inside an eval already.
 BEGIN {
+  @ni::modules = parse_modules $ni::data_fh;
   run_module $_ for @ni::modules;
 }
 # Preprocess command line, collapsing stuff into array and hash references as
@@ -1424,7 +1451,7 @@ defop 'keep', 'k', 's',
 
 defop 'transform', 'M', 's',
   'transforms the stream as an object using the specified function',
-  sub { compile($_[1])->($_[0]) };
+  sub { fn($_[1])->($_[0]) };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
@@ -1439,6 +1466,13 @@ defop 'ref', 'R', 'V',
 defop 'iterate', undef, 'ss',
   '(x, f): generates x, f(x), f(f(x)), f(f(f(x))), ...',
   sub { $_[0] + ni_iterate($_[1], $_[2]) };
+
+defop 'iota', 'i', 'D',
+  'generates numbers from 0 to n-1',
+  sub {
+    my $source = ni_iterate 0, '%0 + 1';
+    $_[0] + (defined $_[1] ? $source->bind(take_binding $_[1]) : $source);
+  };
 use B::Deparse;
 use List::MoreUtils qw/firstidx/;
 
@@ -1621,6 +1655,18 @@ defdata 'sql',
     $sql_databases{$prefix}{io}->($db, $x);
   };
 
+sub sqlite_table_reader_io {
+  my ($db, $table) = @_;
+  ni_process shell_quote('sqlite3', $db),
+             ni_memory qq{.mode tabs\nselect * from $table;};
+}
+
+sub sqlite_table_writer_io {
+  my ($db, $table) = @_;
+  my $index_first_field = $table =~ s/^\+//;
+  
+}
+
 defsqldb 'sqlite3', 's',
   sub {
     my ($db, $x) = @_;
@@ -1630,7 +1676,7 @@ defsqldb 'sqlite3', 's',
       # Not a query since queries require whitespace. Construct an IO that
       # reads and writes the given table, inferring a schema if the table
       # doesn't already exist.
-      
+      sqlite_table_reader_io $db, $x;
     }
   };
 

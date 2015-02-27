@@ -10,7 +10,7 @@ defop 'keep', 'k', 's',
 
 defop 'transform', 'M', 's',
   'transforms the stream as an object using the specified function',
-  sub { compile($_[1])->($_[0]) };
+  sub { fn($_[1])->($_[0]) };
 
 defop 'deref', 'r', '',
   'interprets each record as a data source and emits it',
@@ -25,3 +25,10 @@ defop 'ref', 'R', 'V',
 defop 'iterate', undef, 'ss',
   '(x, f): generates x, f(x), f(f(x)), f(f(f(x))), ...',
   sub { $_[0] + ni_iterate($_[1], $_[2]) };
+
+defop 'iota', 'i', 'D',
+  'generates numbers from 0 to n-1',
+  sub {
+    my $source = ni_iterate 0, '%0 + 1';
+    $_[0] + (defined $_[1] ? $source->bind(take_binding $_[1]) : $source);
+  };

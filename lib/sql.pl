@@ -34,6 +34,18 @@ defdata 'sql',
     $sql_databases{$prefix}{io}->($db, $x);
   };
 
+sub sqlite_table_reader_io {
+  my ($db, $table) = @_;
+  ni_process shell_quote('sqlite3', $db),
+             ni_memory qq{.mode tabs\nselect * from $table;};
+}
+
+sub sqlite_table_writer_io {
+  my ($db, $table) = @_;
+  my $index_first_field = $table =~ s/^\+//;
+  
+}
+
 defsqldb 'sqlite3', 's',
   sub {
     my ($db, $x) = @_;
@@ -43,7 +55,7 @@ defsqldb 'sqlite3', 's',
       # Not a query since queries require whitespace. Construct an IO that
       # reads and writes the given table, inferring a schema if the table
       # doesn't already exist.
-      
+      sqlite_table_reader_io $db, $x;
     }
   };
 
