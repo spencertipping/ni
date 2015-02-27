@@ -47,7 +47,8 @@ sub parse_signature {
 sub parse_code;
 sub new {
   my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
+  my ($fragments, $gensym_indexes, $insertions) =
+    parse_code($code =~ s/^\s*|\s*$//gr);
 
   # Substitutions can be specified as refs, in which case we pull them out and
   # do a rewrite automatically (this is more notationally expedient than having
@@ -123,7 +124,8 @@ sub share_gensyms_with {
   # This directionality matters so multiple calls against $self will form a set
   # of mutually gensym-shared fragments.
   my ($self, $g) = @_;
-  $self->replace_gensyms($$g{gensym_names});
+  $g->replace_gensyms($$self{gensym_names});
+  $self;
 }
 
 sub inherit_gensyms_from {
@@ -191,7 +193,9 @@ sub debug_to_string {
         @{$$self{fragments}};
 
   my $ref_string = join ', ', map "$_: $$refs{$_}", sort keys %$refs;
-  "[$$self{id} $$self{sig} {$ref_string}\n$code_string]";
+  my $sig_string = join ', ', map "$_: $$self{sig}{$_}",
+                                  sort keys %{$$self{sig}};
+  "[$$self{id} {$sig_string} {$ref_string}\n$code_string]";
 }
 DEBUG_END
 

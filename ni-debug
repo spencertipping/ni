@@ -72,7 +72,8 @@ sub parse_signature {
 sub parse_code;
 sub new {
   my ($class, $sig, $refs, $code) = @_;
-  my ($fragments, $gensym_indexes, $insertions) = parse_code $code;
+  my ($fragments, $gensym_indexes, $insertions) =
+    parse_code($code =~ s/^\s*|\s*$//gr);
 
   # Substitutions can be specified as refs, in which case we pull them out and
   # do a rewrite automatically (this is more notationally expedient than having
@@ -142,7 +143,8 @@ sub share_gensyms_with {
   # This directionality matters so multiple calls against $self will form a set
   # of mutually gensym-shared fragments.
   my ($self, $g) = @_;
-  $self->replace_gensyms($$g{gensym_names});
+  $g->replace_gensyms($$self{gensym_names});
+  $self;
 }
 
 sub inherit_gensyms_from {
@@ -207,7 +209,9 @@ sub debug_to_string {
         @{$$self{fragments}};
 
   my $ref_string = join ', ', map "$_: $$refs{$_}", sort keys %$refs;
-  "[$$self{id} $$self{sig} {$ref_string}\n$code_string]";
+  my $sig_string = join ', ', map "$_: $$self{sig}{$_}",
+                                  sort keys %{$$self{sig}};
+  "[$$self{id} {$sig_string} {$ref_string}\n$code_string]";
 }
 
 sub compile {
@@ -279,10 +283,10 @@ sub parse_code {
 #
 # L  - a line, with newline, is present in $_.
 # O  - an object is present in $_ (if a string, the string has been chomped).
-# Ix - values are stored in $_, and @_ contains field offsets up to x.
+# Ix - values are stored in $_, and $_f0, $_f1, ..., $_fx are field boundaries.
 # F  - values are present in @_.
 
-our %conversions = (
+our %type_conversions = (
   'F:L' => q{ $_ = join("\t", @_) . "\n"; %@body },
   'F:O' => q{ $_ = join("\t", @_); %@body },
   'L:O' => q{ chomp; %@body },
@@ -290,75 +294,66 @@ our %conversions = (
   'O:F' => q{ @_ = ($_); %@body },
   'O:L' => q{ $_ .= "\n"; %@body });
 
-$conversions{$_} = gen "conversion:$_", {}, $conversions{$_}
-  for keys %conversions;
+$type_conversions{$_} = gen "conversion:$_", {}, $type_conversions{$_}
+  for keys %type_conversions;
+
+our $field_boundary_gensyms = gen 'empty:field_boundaries',
+  {_n => 0, map(("_f$_" => 0), 0 .. 255)},
+  join "\n", "# %:_n", map "# %:_f$_", 0 .. 255;
 
 sub gen_li_conversion;
 sub with_type {
   my ($type, $gen) = @_;
   return $gen if $$gen{sig}{type} eq $type;
 
-  # Special handling of I types.
+  # Special handling of Ix types.
   if ($$gen{sig}{type} =~ /^I(\d+)$/) {
     my $gi = $1;
-    return gen_seq "li_conversion:$type",
-      'chomp', gen_li_conversion($gi, -1, $gen) if $type eq 'L';
+    return $type_conversions{'L:O'}
+         % {body => gen_li_conversion($gi, -1, $gen)} if $type eq 'L';
     return gen_li_conversion $gi, $1, $gen if $type =~ /^I(\d+)$/;
-    die "type error: should never be adapting $type to a $gi gen "
-      . "(this is not only slow, but a bad idea for semantic reasons)";
+    confess "type error: should never be adapting $type to a $gi gen "
+          . "(this is not only slow, but a bad idea for semantic reasons)";
   } else {
     my $k = "$type:$$gen{sig}{type}";
     die "undefined type conversion: $$gen{sig}{type} -> $type"
-      unless defined $conversions{$k};
-    $conversions{$k} % {body => $gen};
+      unless defined $type_conversions{$k};
+    $type_conversions{$k} % {body => $gen};
   }
+}
+
+sub i_field_reference {
+  my ($n)  = @_;
+  my $prev = $n - 1;
+  ($n ? gen("field_$n", {"_f$n" => 0, "_f$prev" => 0},
+            qq{ substr(\$_, %:_f$prev, %:_f$n) })
+      : gen("field 0", {_f0 => 0}, q{ substr($_, 0, %:_f0) }))
+  ->inherit_gensyms_from($field_boundary_gensyms);
+}
+
+sub i_length_init {
+  gen('i_length_init', {_n => 0}, q{ %:_n = length $_ })
+  ->inherit_gensyms_from($field_boundary_gensyms);
+}
+
+sub i_field_construct {
+  my ($n) = @_;
+  my $prev = $n - 1;
+  ($n ? gen("field_cons_$n", {"_f$n" => 0, "_f$prev" => 0, _n => 0},
+            qq{ %:_f$n = 1 + index(\$_, "\\t", %:_f$prev);
+                %:_f$n = %:_n if %:_f$n == 0 })
+      : gen("field_cons_0", {_f0 => 0, _n => 0},
+            qq{ %:_f0 = 1 + index(\$_, "\\t");
+                %:_f0 = %:_n if %:_f0 == 0 }))
+  ->inherit_gensyms_from($field_boundary_gensyms);
 }
 
 sub gen_li_conversion {
   my ($required, $have_so_far, $gen) = @_;
   return $gen if $have_so_far >= $required;
-
-  # Generate optimized code in certain cases. Are we appending to @_ or
-  # replacing it altogether?
-  if ($have_so_far < 0) {
-    # Replacing altogether, so no sense in generating any push() calls.
-    my @vars = map(("f$_" => 0), 0 .. $required + 1);
-    my $init = gen
-      'li_init',
-      {n => 0, @vars},
-      join(";\n", q{%:n = length $_;},
-                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_" : 0)
-                                                         . qq{);\n} .
-                      qq{%:f$_ = %:n if %:f$_ == 0;},
-                      1 .. ($required + 1)),
-                  q{@_ = (} . join(', ', map "%:f$_", 0 .. ($required + 1))
-                            . q{);});
-
-    gen "li_conversion:I$required",
-        {init => $init, body => $gen},
-        q{ %@init
-           %@body };
-  } else {
-    my @vars = map(("f$_" => 0), $have_so_far + 1 .. $required + 1);
-    my $init = gen
-      'li_init',
-      {n => 0, @vars},
-      join(";\n", q{%:n = length $_;},
-                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_"
-                                                               : '$_[-1]')
-                                                         . qq{);\n} .
-                      qq{%:f$_ = %:n if %:f$_ == 0;},
-                      ($have_so_far + 1) .. ($required + 1)),
-                  q{@_ = (} . join(', ', '@_',
-                                         map "%:f$_", ($have_so_far + 1)
-                                                   .. ($required + 1))
-                            . q{);});
-
-    gen "li_conversion:I$required",
-        {init => $init, body => $gen},
-        q{ %@init
-           %@body };
-  }
+  gen_seq(($have_so_far >= 0 ? () : i_length_init),
+          map(i_field_construct($_), ($have_so_far + 1) .. $required),
+          $gen);
 }
 
 sub typed_save_recover {
@@ -368,6 +363,7 @@ sub typed_save_recover {
     (gen('s:F', {xs => $xs}, q{ @{%:xs} = @_ }),
      gen('r:F', {xs => $xs}, q{ @_ = @{%:xs} }));
   } elsif ($type =~ /^I/) {
+    # FIXME
     my $xs = [];
     my $x  = '';
     (gen("s:$type", {xs => $xs, x => \$x}, q{ @{%:xs} = @_; ${%:x} = $_ }),
@@ -496,8 +492,7 @@ defperlfilter 'expand_field_references_typefully', sub {
   if ($type eq 'F') {
     ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
   } elsif ($type =~ /^I/) {
-    ($code =~ s/%(\d+)/"substr(\$_, \$_[$1], \$_[" . ($1 + 1) . '])'/gre,
-     $type);
+    ($code =~ s/%(\d+)/i_field_reference $1/gre, $type);
   } else {
     ($code, $type);
   }
@@ -932,7 +927,7 @@ sub { [map $_->flatten, @_] },
   source_gen => sub {
     my ($self, $destination) = @_;
     return gen 'empty', {}, '' unless @$self;
-    gen_seq 'sum_source:VV', map $_->source_gen($destination), @$self;
+    gen_seq 'sum_source', map $_->source_gen($destination), @$self;
   },
 };
 
@@ -948,8 +943,8 @@ sub { \$_[0] },
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
       my ($type) = @_;
-      with_input_type $type,
-        gen 'cat_source:OV',
+      with_type $type,
+        gen 'cat_source',
             {dest => $destination},
             q{ $_ > %:dest; }});
   },
@@ -1248,8 +1243,8 @@ defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
   sub {
     my $gen = $_[0]->source_gen(sink_as {
-                with_input_type $_[0],
-                  gen 'print:LV', {}, "print STDOUT \$_;"});
+                with_type $_[0],
+                  gen 'print:L', {}, "print STDOUT \$_;"});
     ni_memory("\nCOMPILED\n" . $gen->compile,
               "\n",
               "\nDEBUG\n"    . $gen->debug_to_string);

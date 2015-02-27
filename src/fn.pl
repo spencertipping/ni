@@ -118,8 +118,7 @@ defperlfilter 'expand_field_references_typefully', sub {
   if ($type eq 'F') {
     ($code =~ s/%(\d+)/\$_[$1]/gr, $type);
   } elsif ($type =~ /^I/) {
-    ($code =~ s/%(\d+)/"substr(\$_, \$_[$1], \$_[" . ($1 + 1) . '])'/gre,
-     $type);
+    ($code =~ s/%(\d+)/i_field_reference $1/gre, $type);
   } else {
     ($code, $type);
   }

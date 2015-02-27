@@ -7,9 +7,14 @@ rm -f ni ni-boot ni-debug
   echo __END__
 } > ni-debug
 
+if grep FIXME ni-debug > /dev/null; then
+  echo $(grep FIXME ni-debug | wc -l) "thing(s) to fix"
+fi
+
 perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   < ni-debug \
   | egrep -v '^\s*(#(\s.+)?)?$' \
+  | sed -r 's/^\s*//' \
   > ni-boot
 
 sed -ri '2,6d; /^\s*DEBUG(_END)?/d' ni-debug

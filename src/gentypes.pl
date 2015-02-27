@@ -4,10 +4,10 @@
 #
 # L  - a line, with newline, is present in $_.
 # O  - an object is present in $_ (if a string, the string has been chomped).
-# Ix - values are stored in $_, and @_ contains field offsets up to x.
+# Ix - values are stored in $_, and $_f0, $_f1, ..., $_fx are field boundaries.
 # F  - values are present in @_.
 
-our %conversions = (
+our %type_conversions = (
   'F:L' => q{ $_ = join("\t", @_) . "\n"; %@body },
   'F:O' => q{ $_ = join("\t", @_); %@body },
   'L:O' => q{ chomp; %@body },
@@ -15,77 +15,70 @@ our %conversions = (
   'O:F' => q{ @_ = ($_); %@body },
   'O:L' => q{ $_ .= "\n"; %@body });
 
-$conversions{$_} = gen "conversion:$_", {}, $conversions{$_}
-  for keys %conversions;
+$type_conversions{$_} = gen "conversion:$_", {}, $type_conversions{$_}
+  for keys %type_conversions;
+
+our $field_boundary_gensyms = gen 'empty:field_boundaries',
+  {_n => 0, map(("_f$_" => 0), 0 .. 255)},
+  join "\n", "# %:_n", map "# %:_f$_", 0 .. 255;
 
 sub gen_li_conversion;
 sub with_type {
   my ($type, $gen) = @_;
   return $gen if $$gen{sig}{type} eq $type;
 
-  # Special handling of I types.
+  # Special handling of Ix types.
   if ($$gen{sig}{type} =~ /^I(\d+)$/) {
     my $gi = $1;
-    return gen_seq "li_conversion:$type",
-      'chomp', gen_li_conversion($gi, -1, $gen) if $type eq 'L';
+    return $type_conversions{'L:O'}
+         % {body => gen_li_conversion($gi, -1, $gen)} if $type eq 'L';
     return gen_li_conversion $gi, $1, $gen if $type =~ /^I(\d+)$/;
-    die "type error: should never be adapting $type to a $gi gen "
-      . "(this is not only slow, but a bad idea for semantic reasons)";
+DEBUG
+    confess "type error: should never be adapting $type to a $gi gen "
+          . "(this is not only slow, but a bad idea for semantic reasons)";
+DEBUG_END
   } else {
     my $k = "$type:$$gen{sig}{type}";
 DEBUG
     die "undefined type conversion: $$gen{sig}{type} -> $type"
-      unless defined $conversions{$k};
+      unless defined $type_conversions{$k};
 DEBUG_END
-    $conversions{$k} % {body => $gen};
+    $type_conversions{$k} % {body => $gen};
   }
+}
+
+sub i_field_reference {
+  my ($n)  = @_;
+  my $prev = $n - 1;
+  ($n ? gen("field_$n", {"_f$n" => 0, "_f$prev" => 0},
+            qq{ substr(\$_, %:_f$prev, %:_f$n) })
+      : gen("field 0", {_f0 => 0}, q{ substr($_, 0, %:_f0) }))
+  ->inherit_gensyms_from($field_boundary_gensyms);
+}
+
+sub i_length_init {
+  gen('i_length_init', {_n => 0}, q{ %:_n = length $_ })
+  ->inherit_gensyms_from($field_boundary_gensyms);
+}
+
+sub i_field_construct {
+  my ($n) = @_;
+  my $prev = $n - 1;
+  ($n ? gen("field_cons_$n", {"_f$n" => 0, "_f$prev" => 0, _n => 0},
+            qq{ %:_f$n = 1 + index(\$_, "\\t", %:_f$prev);
+                %:_f$n = %:_n if %:_f$n == 0 })
+      : gen("field_cons_0", {_f0 => 0, _n => 0},
+            qq{ %:_f0 = 1 + index(\$_, "\\t");
+                %:_f0 = %:_n if %:_f0 == 0 }))
+  ->inherit_gensyms_from($field_boundary_gensyms);
 }
 
 sub gen_li_conversion {
   my ($required, $have_so_far, $gen) = @_;
   return $gen if $have_so_far >= $required;
-
-  # Generate optimized code in certain cases. Are we appending to @_ or
-  # replacing it altogether?
-  if ($have_so_far < 0) {
-    # Replacing altogether, so no sense in generating any push() calls.
-    my @vars = map(("f$_" => 0), 0 .. $required + 1);
-    my $init = gen
-      'li_init',
-      {n => 0, @vars},
-      join(";\n", q{%:n = length $_;},
-                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_" : 0)
-                                                         . qq{);\n} .
-                      qq{%:f$_ = %:n if %:f$_ == 0;},
-                      1 .. ($required + 1)),
-                  q{@_ = (} . join(', ', map "%:f$_", 0 .. ($required + 1))
-                            . q{);});
-
-    gen "li_conversion:I$required",
-        {init => $init, body => $gen},
-        q{ %@init
-           %@body };
-  } else {
-    my @vars = map(("f$_" => 0), $have_so_far + 1 .. $required + 1);
-    my $init = gen
-      'li_init',
-      {n => 0, @vars},
-      join(";\n", q{%:n = length $_;},
-                  map(qq{%:f$_ = 1 + index(\$_, "\\t", } . ($_ ? "%:f$_"
-                                                               : '$_[-1]')
-                                                         . qq{);\n} .
-                      qq{%:f$_ = %:n if %:f$_ == 0;},
-                      ($have_so_far + 1) .. ($required + 1)),
-                  q{@_ = (} . join(', ', '@_',
-                                         map "%:f$_", ($have_so_far + 1)
-                                                   .. ($required + 1))
-                            . q{);});
-
-    gen "li_conversion:I$required",
-        {init => $init, body => $gen},
-        q{ %@init
-           %@body };
-  }
+  gen_seq(($have_so_far >= 0 ? () : i_length_init),
+          map(i_field_construct($_), ($have_so_far + 1) .. $required),
+          $gen);
 }
 
 sub typed_save_recover {
@@ -95,6 +88,7 @@ sub typed_save_recover {
     (gen('s:F', {xs => $xs}, q{ @{%:xs} = @_ }),
      gen('r:F', {xs => $xs}, q{ @_ = @{%:xs} }));
   } elsif ($type =~ /^I/) {
+    # FIXME
     my $xs = [];
     my $x  = '';
     (gen("s:$type", {xs => $xs, x => \$x}, q{ @{%:xs} = @_; ${%:x} = $_ }),

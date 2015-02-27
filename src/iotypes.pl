@@ -219,7 +219,7 @@ sub { [map $_->flatten, @_] },
   source_gen => sub {
     my ($self, $destination) = @_;
     return gen 'empty', {}, '' unless @$self;
-    gen_seq 'sum_source:VV', map $_->source_gen($destination), @$self;
+    gen_seq 'sum_source', map $_->source_gen($destination), @$self;
   },
 };
 
@@ -235,8 +235,8 @@ sub { \$_[0] },
     my ($self, $destination) = @_;
     $$self->source_gen(sink_as {
       my ($type) = @_;
-      with_input_type $type,
-        gen 'cat_source:OV',
+      with_type $type,
+        gen 'cat_source',
             {dest => $destination},
             q{ $_ > %:dest; }});
   },

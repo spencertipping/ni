@@ -32,8 +32,8 @@ defop 'debug-compile', undef, '',
   'shows the compiled code generated for the given io',
   sub {
     my $gen = $_[0]->source_gen(sink_as {
-                with_input_type $_[0],
-                  gen 'print:LV', {}, "print STDOUT \$_;"});
+                with_type $_[0],
+                  gen 'print:L', {}, "print STDOUT \$_;"});
     ni_memory("\nCOMPILED\n" . $gen->compile,
               "\n",
               "\nDEBUG\n"    . $gen->debug_to_string);
