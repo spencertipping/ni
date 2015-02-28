@@ -24,7 +24,7 @@ sub ungap_bits {
   return ($x ^ $x >> 16) & 0x00000000ffffffff;
 }
 
-sub geohash_encode {
+sub ::geohash_encode {
   my ($lat, $lng, $precision) = @_;
   $precision //= 12;
   my $bits = $precision > 0 ? $precision * 5 : -$precision;
@@ -37,7 +37,7 @@ sub geohash_encode {
                  : $gh;
 }
 
-sub geohash_decode {
+sub ::geohash_decode {
   my ($gh, $bits) = @_;
   unless (defined $bits) {
     # Decode gh from base-32
@@ -51,7 +51,7 @@ sub geohash_decode {
           ungap_bits($gh >> 1) / 0x40000000 * 360 - 180);
 }
 
-defshortfn 'ghe', \&geohash_encode;
-defshortfn 'ghd', \&geohash_decode;
+defshortfn 'ghe', \&::geohash_encode;
+defshortfn 'ghd', \&::geohash_decode;
 
 NI_MODULE_END

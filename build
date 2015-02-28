@@ -2,13 +2,13 @@
 rm -f ni ni-boot ni-debug
 {
   cat src/{core,prefix,gen,gentypes,fn,io}.pl \
-      src/{data,datatypes,iotypes,iobind,iofns}.pl \
-      src/{ops,module,main}.pl
+      src/{data,iotypes,iobind,iofns}.pl \
+      src/{ops,datatypes,module,main}.pl
 
   cat ops/*.pl
   echo \}
   echo __END__
-  cat lib/{geohash,sql,gnuplot,R}.pl
+  cat lib/{geohash,sql,gnuplot,R,json}.pl
 } > ni-debug
 
 if grep FIXME ni-debug > /dev/null; then

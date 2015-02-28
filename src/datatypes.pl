@@ -40,3 +40,6 @@ defdata 'ssh',
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
                     sub { ni_file("[fh = " . fileno($_[0]) . "]",
                                   $_[0], $_[0]) };
+
+defdata 'quoted', sub { ref $_[0] eq '[' },
+                  sub { self_pipe @{$_[0]} };

@@ -604,48 +604,6 @@ BEGIN {
 
   *{"ni::ni"} = *{"::ni"};
 }
-# Data source/sink implementations
-
-our %read_filters;
-our %write_filters;
-
-defdata 'file',
-  sub { -e $_[0] || $_[0] =~ s/^file:// },
-  sub {
-    my ($f)       = @_;
-    my $extension = ($f =~ /\.(\w+)$/)[0];
-    my $file      = ni_file("[file $f]", "< $f", "> $f");
-    exists $read_filters{$extension}
-      ? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
-      : $file;
-  };
-
-sub deffilter {
-  my ($extension, $read, $write) = @_;
-  $read_filters{$extension}  = $read;
-  $write_filters{$extension} = $write;
-
-  my $prefix_detector = qr/^$extension:/;
-  defdata $extension,
-    sub { $_[0] =~ s/$prefix_detector// },
-    sub { ni_filter(ni($_[0]), $read, $write) };
-}
-
-deffilter 'gz',  'gzip -d',  'gzip';
-deffilter 'lzo', 'lzop -d',  'lzop';
-deffilter 'xz',  'xz -d',    'xz';
-deffilter 'bz2', 'bzip2 -d', 'bzip2';
-
-defdata 'ssh',
-  sub { $_[0] =~ /^\w*@[^:\/]+:/ },
-  sub { $_[0] =~ /^([^:@]+)@([^:]+):(.*)$/;
-        my ($user, $host, $file) = ($1, $2, $3);
-
-        };
-
-defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
-                    sub { ni_file("[fh = " . fileno($_[0]) . "]",
-                                  $_[0], $_[0]) };
 BEGIN {
 
 use File::Temp qw/tmpnam/;
@@ -1094,7 +1052,7 @@ sub tee_binding {
     my ($save, $recover) = typed_save_recover $type;
     gen_seq "tee:$type", $save,    $tee->sink_gen($type),
                          $recover, $into->sink_gen($type);
-  }, $tee];
+  }, [$tee]];
 }
 
 sub take_binding {
@@ -1123,18 +1081,20 @@ sub drop_binding {
 
 sub zip_binding {
   my ($other) = @_;
-  ["zip $other->explain", sub {
+  ["zip $other", sub {
     my ($into, $type) = @_;
     my $other_source = $other->reader_fh;
 
     with_type $type,
       gen 'zip:F', {body  => $into->sink_gen('F'),
+                    live  => 1,
                     other => $other_source,
                     l     => ''},
-        q{ chomp(%:l = <%:other>);
+        q{ %:live &&= defined(%:l = <%:other>);
+           chomp %:l;
            @_ = (@_, split /\t/, %:l);
            %@body };
-  }];
+  }, [$other]];
 }
 # Extra IO functions
 
@@ -1143,6 +1103,15 @@ sub ni::io::peek {
   my ($self, $n) = @_;
   my $buffer = ni_memory() < $self >> take_binding($n);
   ($buffer, $self);
+}
+
+# Takes unique records, optionally counting and selecting by specific fields.
+sub ni::io::uniq {
+  my ($self, $count, @fields) = @_;
+  ni_source_as "$self >> uniq $count @fields", sub {
+    my ($destination) = @_;
+    # TODO
+  };
 }
 # High-level pipe operations, each of which corresponds to a command-line
 # option. They can also be used from compiled code.
@@ -1188,10 +1157,10 @@ sub defop {
 }
 
 our %format_matchers = (
-  a => qr/^[a-zA-Z]+$/,
-  d => qr/^[-+\.0-9]+$/,
-  s => qr/^.*$/,
-  v => qr/^[^-].*$/,
+  a => sub {              $_[0] =~ /^[a-zA-Z]+$/ },
+  d => sub {              $_[0] =~ /^[-+\.0-9]+$/ },
+  s => sub { ref $_[0] || $_[0] =~ /^.*$/ },
+  v => sub {              $_[0] =~ /^[^-].*$/ },
 );
 
 sub apply_format {
@@ -1200,9 +1169,9 @@ sub apply_format {
   my @parsed;
 
   for (@format) {
-    die "too few arguments for $format" if !@args && !/[A-Z]/;
+    die "too few arguments for format $format" if !@args && !/[A-Z]/;
     my $a = shift @args;
-    if ($a =~ /$format_matchers{lc $_}/) {
+    if ($format_matchers{lc $_}->($a)) {
       push @parsed, $a;
     } else {
       die "failed to match format $format" unless /[A-Z]/;
@@ -1243,6 +1212,51 @@ sub parse_commands {
   }
   @parsed;
 }
+# Data source/sink implementations
+
+our %read_filters;
+our %write_filters;
+
+defdata 'file',
+  sub { -e $_[0] || $_[0] =~ s/^file:// },
+  sub {
+    my ($f)       = @_;
+    my $extension = ($f =~ /\.(\w+)$/)[0];
+    my $file      = ni_file("[file $f]", "< $f", "> $f");
+    exists $read_filters{$extension}
+      ? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
+      : $file;
+  };
+
+sub deffilter {
+  my ($extension, $read, $write) = @_;
+  $read_filters{$extension}  = $read;
+  $write_filters{$extension} = $write;
+
+  my $prefix_detector = qr/^$extension:/;
+  defdata $extension,
+    sub { $_[0] =~ s/$prefix_detector// },
+    sub { ni_filter(ni($_[0]), $read, $write) };
+}
+
+deffilter 'gz',  'gzip -d',  'gzip';
+deffilter 'lzo', 'lzop -d',  'lzop';
+deffilter 'xz',  'xz -d',    'xz';
+deffilter 'bz2', 'bzip2 -d', 'bzip2';
+
+defdata 'ssh',
+  sub { $_[0] =~ /^\w*@[^:\/]+:/ },
+  sub { $_[0] =~ /^([^:@]+)@([^:]+):(.*)$/;
+        my ($user, $host, $file) = ($1, $2, $3);
+
+        };
+
+defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
+                    sub { ni_file("[fh = " . fileno($_[0]) . "]",
+                                  $_[0], $_[0]) };
+
+defdata 'quoted', sub { ref $_[0] eq '[' },
+                  sub { self_pipe @{$_[0]} };
 # Module support
 # ni allows you to define modules and cat them onto the end. These will be
 # saved in a --self image, and support some nice stuff like namespacing for
@@ -1500,6 +1514,81 @@ defop 'debug-compile', undef, '',
               "\n",
               "\nDEBUG\n"    . $gen->debug_to_string);
   };
+# Ops to wrap common shell tools like sort, uniq, join, comm, etc
+
+our $sort_buffer_size = $ENV{NI_SORT_BUFFER}   // '256M';
+our $sort_parallel    = $ENV{NI_SORT_PARALLEL} // 4;
+our $sort_compress    = $ENV{NI_SORT_COMPRESS} // '';
+
+sub sort_invocation {
+  my ($fields, @options) = @_;
+  my @fields = split //, $fields // '';
+  shell_quote 'sort', '-S', $sort_buffer_size,
+              "--parallel=$sort_parallel",
+              @fields
+                ? ('-t', "\t", map {('-k', "${_}b,$_")} map {$_ + 1} @fields)
+                : (),
+              length $sort_compress
+                ? ("--compress-program=$sort_compress")
+                : (),
+              @options;
+}
+
+sub expand_sort_flags {
+  my ($flags) = @_;
+  return () unless defined $flags;
+  map "-$_", split //, $flags =~ s/([A-Z])/"r" . lc $1/gre;
+}
+
+defop 'sort', 's', 'AD',
+  '[flags] [fields], flags = [nNgGr][u] with their default meaning',
+  sub {
+    my ($self, $flags, $fields) = @_;
+    $self | sort_invocation $fields, expand_sort_flags $flags;
+  };
+
+defop 'merge', undef, 'ADs',
+  '[flags] [fields] merge-data: see "sort" for flags',
+  sub {
+    my ($self, $flags, $fields, $data) = @_;
+    $self | sort_invocation $fields, expand_sort_flags($flags), '-m',
+                            '-',
+                            ni_fifo->from_bg($data);
+  };
+
+defop 'join', 'j', 'aDs',
+  '[flags] [field] join-data, flags = one of lrbnLRBN',
+  sub {
+    my ($self, $flag, $field, $data) = @_;
+    my $outer_join = $flag =~ y/[A-Z]/[a-z]/;
+    my $sort_left  = $flag =~ /[rn]/;
+    my $sort_right = $flag =~ /[ln]/;
+    $field //= 0;
+
+    my $left  = $sort_left ? $self->__sort(undef, $field) : $self;
+    my $right = ni $data;
+    $right = $right->__sort(undef, 0) if $sort_right;
+
+    $left | shell_quote('join', '-1', $field ? $field + 1 : '1',
+                                '-2', 1,
+                                '-t', "\t",
+                                $outer_join ? ('-a', 1) : (),
+                                '-',
+                                ni_fifo->from_bg($right));
+  };
+
+defop 'uniq', 'u', 'D',
+  'unique lines (or fields); count if prefixed with +',
+  sub {
+    # Don't shell out to uniq for this for two reasons. One is a dumb thing,
+    # but the shell command uniq doesn't tab-delimit its output, which makes it
+    # really hard to parse later on. The other is that our field descriptions
+    # might not be contiguous ranges, whereas all uniq can do is skip the first
+    # N fields.
+    my ($self, $fields) = @_;
+    my $count = ($fields //= '') =~ s/^\+//;
+    $self->uniq($count, split //, $fields);
+  };
 use List::Util qw/max/;
 
 defop 'fields', 'f', 'd',
@@ -1573,7 +1662,7 @@ sub ungap_bits {
   return ($x ^ $x >> 16) & 0x00000000ffffffff;
 }
 
-sub geohash_encode {
+sub ::geohash_encode {
   my ($lat, $lng, $precision) = @_;
   $precision //= 12;
   my $bits = $precision > 0 ? $precision * 5 : -$precision;
@@ -1586,7 +1675,7 @@ sub geohash_encode {
                  : $gh;
 }
 
-sub geohash_decode {
+sub ::geohash_decode {
   my ($gh, $bits) = @_;
   unless (defined $bits) {
     # Decode gh from base-32
@@ -1600,8 +1689,8 @@ sub geohash_decode {
           ungap_bits($gh >> 1) / 0x40000000 * 360 - 180);
 }
 
-defshortfn 'ghe', \&geohash_encode;
-defshortfn 'ghd', \&geohash_decode;
+defshortfn 'ghe', \&::geohash_encode;
+defshortfn 'ghd', \&::geohash_decode;
 
 NI_MODULE_END
 NI_MODULE sql
@@ -1795,7 +1884,7 @@ NI_MODULE R
 use File::Temp qw/tmpnam/;
 
 our $r_device_init   = $ENV{NI_R_DEVICE}      // 'pdf("FILE")';
-our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'evince';
+our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'xdg-open';
 
 our %r_shorthands = (
   # TODO
@@ -1827,5 +1916,31 @@ sub r_writer_io {
 }
 
 defdata 'R', sub { $_[0] =~ s/^R:// }, \&r_writer_io;
+
+NI_MODULE_END
+NI_MODULE json
+
+our $json;
+
+if (eval {require JSON}) {
+  JSON->import;
+  no warnings qw/uninitialized/;
+  $json = JSON->new->allow_nonref->utf8(1);
+} elsif (eval {require JSON::PP}) {
+  JSON::PP->import;
+  no warnings qw/uninitialized/;
+  $json = JSON::PP->new->allow_nonref->utf8(1);
+} else {
+  # No builtin JSON. At some point I'd like to write one, but until then just
+  # complain about the lamentable situation.
+  print STDERR
+    "ni: no JSON support detected (cpan install JSON should fix it)\n";
+}
+
+sub ::json_encode { $json->encode(@_) }
+sub ::json_decode { $json->decode(@_) }
+
+defshortfn 'je', \&::json_encode;
+defshortfn 'jd', \&::json_decode;
 
 NI_MODULE_END

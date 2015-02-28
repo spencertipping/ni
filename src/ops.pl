@@ -42,10 +42,10 @@ sub defop {
 }
 
 our %format_matchers = (
-  a => qr/^[a-zA-Z]+$/,
-  d => qr/^[-+\.0-9]+$/,
-  s => qr/^.*$/,
-  v => qr/^[^-].*$/,
+  a => sub {              $_[0] =~ /^[a-zA-Z]+$/ },
+  d => sub {              $_[0] =~ /^[-+\.0-9]+$/ },
+  s => sub { ref $_[0] || $_[0] =~ /^.*$/ },
+  v => sub {              $_[0] =~ /^[^-].*$/ },
 );
 
 sub apply_format {
@@ -54,9 +54,9 @@ sub apply_format {
   my @parsed;
 
   for (@format) {
-    die "too few arguments for $format" if !@args && !/[A-Z]/;
+    die "too few arguments for format $format" if !@args && !/[A-Z]/;
     my $a = shift @args;
-    if ($a =~ /$format_matchers{lc $_}/) {
+    if ($format_matchers{lc $_}->($a)) {
       push @parsed, $a;
     } else {
       die "failed to match format $format" unless /[A-Z]/;

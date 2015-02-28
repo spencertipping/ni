@@ -3,7 +3,7 @@ NI_MODULE R
 use File::Temp qw/tmpnam/;
 
 our $r_device_init   = $ENV{NI_R_DEVICE}      // 'pdf("FILE")';
-our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'evince';
+our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'xdg-open';
 
 our %r_shorthands = (
   # TODO

@@ -47,7 +47,7 @@ sub tee_binding {
     my ($save, $recover) = typed_save_recover $type;
     gen_seq "tee:$type", $save,    $tee->sink_gen($type),
                          $recover, $into->sink_gen($type);
-  }, $tee];
+  }, [$tee]];
 }
 
 sub take_binding {
@@ -76,16 +76,18 @@ sub drop_binding {
 
 sub zip_binding {
   my ($other) = @_;
-  ["zip $other->explain", sub {
+  ["zip $other", sub {
     my ($into, $type) = @_;
     my $other_source = $other->reader_fh;
 
     with_type $type,
       gen 'zip:F', {body  => $into->sink_gen('F'),
+                    live  => 1,
                     other => $other_source,
                     l     => ''},
-        q{ chomp(%:l = <%:other>);
+        q{ %:live &&= defined(%:l = <%:other>);
+           chomp %:l;
            @_ = (@_, split /\t/, %:l);
            %@body };
-  }];
+  }, [$other]];
 }
