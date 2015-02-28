@@ -21,6 +21,7 @@ testcase() {
 xs=$(echo -n $1)
 
 if [[ "$xs" != "${xs/G/-/}" ]]; then
+  testcase '/bin/cat'  'cat < testdata'
   testcase '/bin/cut'  'cut -f1 < testdata'
   testcase '/bin/wc'   'wc -l < testdata'
   testcase '/bin/sort' 'sort < testdata'

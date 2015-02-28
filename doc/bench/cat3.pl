@@ -1,0 +1,1 @@
+print while readline *STDIN;
