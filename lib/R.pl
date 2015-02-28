@@ -2,8 +2,8 @@ NI_MODULE R
 
 use File::Temp qw/tmpnam/;
 
-our $r_device_init   = $ENV{NI_R_DEVICE}      // 'png("FILE")';
-our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'display';
+our $r_device_init   = $ENV{NI_R_DEVICE}      // 'pdf("FILE")';
+our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'evince';
 
 our %r_shorthands = (
   # TODO
@@ -17,7 +17,7 @@ sub expand_r_shorthands {
 
 sub r_writer_io {
   my ($r_eval_code, $no_automatic_import) = @_;
-  my $tempimage = tmpnam . '.png';
+  my $tempimage = tmpnam . '.pdf';
 
   $r_eval_code = expand_r_shorthands $r_eval_code;
 

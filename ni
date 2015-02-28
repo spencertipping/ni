@@ -1384,8 +1384,8 @@ gnuplot_writer_io $stuff;
 NI_MODULE_END
 NI_MODULE R
 use File::Temp qw/tmpnam/;
-our $r_device_init = $ENV{NI_R_DEVICE} // 'png("FILE")';
-our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'display';
+our $r_device_init = $ENV{NI_R_DEVICE} // 'pdf("FILE")';
+our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'evince';
 our %r_shorthands = (
 );
 sub expand_r_shorthands {
@@ -1395,7 +1395,7 @@ $s;
 }
 sub r_writer_io {
 my ($r_eval_code, $no_automatic_import) = @_;
-my $tempimage = tmpnam . '.png';
+my $tempimage = tmpnam . '.pdf';
 $r_eval_code = expand_r_shorthands $r_eval_code;
 $r_eval_code = "$r_device_init; $r_eval_code" =~ s/FILE/$tempimage/gr;
 $r_eval_code = 'data <- read.table(file("stdin"), sep="\t"); ' . $r_eval_code
