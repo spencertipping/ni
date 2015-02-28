@@ -675,8 +675,9 @@ q{ $_[0]->into(%:dest, 1); }});
 };
 defio 'bind',
 sub {
-die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
-+{ base => $_[0], code_transform => $_[1] }
+die "code transform must be [description, f, ios...]"
+unless ref $_[1] eq 'ARRAY';
++{ base => $_[0], code_transform => $_[1], other_ios => [@_[2..$#_]] }
 },
 {
 explain => sub {
@@ -702,7 +703,16 @@ my ($type) = @_;
 $$self{code_transform}[1]->($destination, $type);
 });
 },
-close => sub { ${$_[0]}{base}->close; $_[0] },
+close_reader => sub {
+my ($self) = @_;
+$_->close_reader for $$self{base}, @{$$self{other_ios}};
+$self;
+},
+close_writer => sub {
+my ($self) = @_;
+$_->close_writer for $$self{base}, @{$$self{other_ios}};
+$self;
+},
 };
 defioproxy 'pipe', sub {
 pipe my $out, my $in or die "pipe failed: $!";
@@ -717,6 +727,11 @@ mkfifo $name //= tmpnam, 0700 or die "mkfifo failed: $!";
 ni_file($name, "< $name", "> $name", sub {
 unlink $name or warn "failed to unlink fifo $name: $!";
 });
+};
+defioproxy 'filename', sub {
+my ($name) = @_;
+$name //= tmpnam;
+ni_file($name, "< $name", "> $name");
 };
 defioproxy 'process', sub {
 my ($command, $stdin_fh, $stdout_fh) = @_;
@@ -804,7 +819,7 @@ my ($into, $type) = @_;
 my ($save, $recover) = typed_save_recover $type;
 gen_seq "tee:$type", $save, $tee->sink_gen($type),
 $recover, $into->sink_gen($type);
-}];
+}, $tee];
 }
 sub take_binding {
 my ($n) = @_;
@@ -906,8 +921,10 @@ sub parse_commands {
 my @parsed;
 for (my $o; defined($o = shift @_);) {
 return @parsed, map file_opt($_), @_ if $o eq '--';
-if (ref($o) =~ /\[$/) {
+if (ref($o) eq '[') {
 push @parsed, ['plus', self_pipe @$o];
+} elsif (ref $o) {
+die "ni: unknown bracket group type " . ref($o) . " to use as a command";
 } elsif ($o =~ /^--/) {
 my $c = $o =~ s/^--//r;
 die "unknown long command: $o" unless exists $op_fns{$c};
@@ -1067,10 +1084,10 @@ sub { $_[0] % $_[1] };
 defop 'transform', 'M', 's',
 'transforms the stream as an object using the specified function',
 sub { fn($_[1])->($_[0]) };
-defop 'deref', 'r', '',
+defop 'read', 'r', '',
 'interprets each record as a data source and emits it',
 sub { ni_cat($_[0] * 'ni %0') };
-defop 'ref', 'R', 'V',
+defop 'into', 'R', 'V',
 'collects data into a file and emits the filename',
 sub { my ($self, $f) = @_;
 $self > ni($f //= "file:" . tmpnam);
@@ -1314,6 +1331,54 @@ my $query = expand_sql_shorthands $x;
 ni_process shell_quote('sqlite3', $db),
 ni_memory(qq{.mode tabs\n$query;\n});
 }
+};
+
+NI_MODULE_END
+NI_MODULE gnuplot
+use POSIX qw/setsid/;
+our %gnuplot_shorthands = (
+'%l' => ' with lines',
+'%d' => ' with dots',
+'%i' => ' with impulses',
+'%u' => ' using ',
+'%t' => ' title ',
+);
+sub expand_gnuplot_shorthands {
+my ($s) = @_;
+$s =~ s/$_/$gnuplot_shorthands{$_}/g for keys %gnuplot_shorthands;
+$s;
+}
+sub gnuplot_writer_io {
+my ($script, @options) = @_;
+$script = expand_gnuplot_shorthands $script;
+my $into = ni_filename;
+ni_file "[gnuplot @options]",
+undef,
+sub {
+my $in = ni_pipe;
+unless (fork) {
+$in->close_writer;
+$in > $into;
+system 'gnuplot', '-persist', '-e',
+$script =~ s/DATA/"$into"/gr, @options;
+setsid;
+close STDIN;
+close STDOUT;
+unless (fork) {
+sleep 3600;
+unlink "$into";
+}
+exit;
+}
+$in->close_reader;
+$in->writer_fh;
+};
+}
+defdata 'gnuplot', sub { $_[0] =~ s/^gnuplot:// },
+sub {
+my ($stuff) = @_;
+$stuff = "plot DATA $stuff" unless $stuff =~ /DATA/;
+gnuplot_writer_io $stuff;
 };
 
 NI_MODULE_END

@@ -25,6 +25,7 @@ sub self {
 
 use POSIX qw/:sys_wait_h/;
 
+# Prepare for the insane amount of forking that will inevitably follow.
 $SIG{CHLD} = sub {
   local ($!, $?);
   waitpid -1, WNOHANG;

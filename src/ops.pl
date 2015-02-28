@@ -75,9 +75,11 @@ sub parse_commands {
     return @parsed, map file_opt($_), @_ if $o eq '--';
 
     # Special cases
-    if (ref($o) =~ /\[$/) {
+    if (ref($o) eq '[') {
       # Lambda-invocation of ni on the specified options.
       push @parsed, ['plus', self_pipe @$o];
+    } elsif (ref $o) {
+      die "ni: unknown bracket group type " . ref($o) . " to use as a command";
     } elsif ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};

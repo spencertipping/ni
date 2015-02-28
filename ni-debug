@@ -1,4 +1,10 @@
 #!/usr/bin/env perl
+$ni::selfcode = '';
+$ni::selfcode .= ($_ = <DATA>) until /^__END__$/;
+$ni::data_fh = \*DATA;
+eval $ni::selfcode;
+die $@ if $@;
+__DATA__
 {
 
 use v5.14;
@@ -24,6 +30,7 @@ sub self {
 
 use POSIX qw/:sys_wait_h/;
 
+# Prepare for the insane amount of forking that will inevitably follow.
 $SIG{CHLD} = sub {
   local ($!, $?);
   waitpid -1, WNOHANG;
@@ -912,8 +919,9 @@ sub { \$_[0] },
 # Introduces arbitrary indirection into an IO's code stream
 defio 'bind',
 sub {
-  die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
-  +{ base => $_[0], code_transform => $_[1] }
+  die "code transform must be [description, f, ios...]"
+    unless ref $_[1] eq 'ARRAY';
+  +{ base => $_[0], code_transform => $_[1], other_ios => [@_[2..$#_]] }
 },
 {
   explain => sub {
@@ -944,7 +952,17 @@ sub {
     });
   },
 
-  close => sub { ${$_[0]}{base}->close; $_[0] },
+  close_reader => sub {
+    my ($self) = @_;
+    $_->close_reader for $$self{base}, @{$$self{other_ios}};
+    $self;
+  },
+
+  close_writer => sub {
+    my ($self) = @_;
+    $_->close_writer for $$self{base}, @{$$self{other_ios}};
+    $self;
+  },
 };
 
 # A file-descriptor pipe
@@ -963,6 +981,13 @@ defioproxy 'fifo', sub {
   ni_file($name, "< $name", "> $name", sub {
     unlink $name or warn "failed to unlink fifo $name: $!";
   });
+};
+
+# A temporary file
+defioproxy 'filename', sub {
+  my ($name) = @_;
+  $name //= tmpnam;
+  ni_file($name, "< $name", "> $name");
 };
 
 # Stdin/stdout of an external process with stdin, stdout, neither, or both
@@ -1069,7 +1094,7 @@ sub tee_binding {
     my ($save, $recover) = typed_save_recover $type;
     gen_seq "tee:$type", $save,    $tee->sink_gen($type),
                          $recover, $into->sink_gen($type);
-  }];
+  }, $tee];
 }
 
 sub take_binding {
@@ -1196,9 +1221,11 @@ sub parse_commands {
     return @parsed, map file_opt($_), @_ if $o eq '--';
 
     # Special cases
-    if (ref($o) =~ /\[$/) {
+    if (ref($o) eq '[') {
       # Lambda-invocation of ni on the specified options.
       push @parsed, ['plus', self_pipe @$o];
+    } elsif (ref $o) {
+      die "ni: unknown bracket group type " . ref($o) . " to use as a command";
     } elsif ($o =~ /^--/) {
       my $c = $o =~ s/^--//r;
       die "unknown long command: $o" unless exists $op_fns{$c};
@@ -1394,11 +1421,11 @@ defop 'transform', 'M', 's',
   'transforms the stream as an object using the specified function',
   sub { fn($_[1])->($_[0]) };
 
-defop 'deref', 'r', '',
+defop 'read', 'r', '',
   'interprets each record as a data source and emits it',
   sub { ni_cat($_[0] * 'ni %0') };
 
-defop 'ref', 'R', 'V',
+defop 'into', 'R', 'V',
   'collects data into a file and emits the filename',
   sub { my ($self, $f) = @_;
         $self > ni($f //= "file:" . tmpnam);
@@ -1702,6 +1729,64 @@ defsqldb 'sqlite3', 's',
       ni_process shell_quote('sqlite3', $db),
                  ni_memory(qq{.mode tabs\n$query;\n});
     }
+  };
+
+NI_MODULE_END
+NI_MODULE gnuplot
+
+use POSIX qw/setsid/;
+
+our %gnuplot_shorthands = (
+  '%l' => ' with lines',
+  '%d' => ' with dots',
+  '%i' => ' with impulses',
+  '%u' => ' using ',
+  '%t' => ' title ',
+);
+
+sub expand_gnuplot_shorthands {
+  my ($s) = @_;
+  $s =~ s/$_/$gnuplot_shorthands{$_}/g for keys %gnuplot_shorthands;
+  $s;
+}
+
+sub gnuplot_writer_io {
+  my ($script, @options) = @_;
+  $script = expand_gnuplot_shorthands $script;
+
+  my $into = ni_filename;
+  ni_file "[gnuplot @options]",
+          undef,
+          sub {
+            my $in = ni_pipe;
+            unless (fork) {
+              $in->close_writer;
+              $in > $into;
+              system 'gnuplot', '-persist', '-e',
+                     $script =~ s/DATA/"$into"/gr, @options;
+
+              # Ugh, egregious double-fork to clean up tempfile later on. No
+              # idea how to get gnuplot to block properly and then exit when
+              # the user closes the plot window.
+              setsid;
+              close STDIN;
+              close STDOUT;
+              unless (fork) {
+                sleep 3600;
+                unlink "$into";
+              }
+              exit;
+            }
+            $in->close_reader;
+            $in->writer_fh;
+          };
+}
+
+defdata 'gnuplot', sub { $_[0] =~ s/^gnuplot:// },
+  sub {
+    my ($stuff) = @_;
+    $stuff = "plot DATA $stuff" unless $stuff =~ /DATA/;
+    gnuplot_writer_io $stuff;
   };
 
 NI_MODULE_END

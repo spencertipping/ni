@@ -8,7 +8,7 @@ rm -f ni ni-boot ni-debug
   cat ops/*.pl
   echo \}
   echo __END__
-  cat lib/{geohash,sql}.pl
+  cat lib/{geohash,sql,gnuplot}.pl
 } > ni-debug
 
 if grep FIXME ni-debug > /dev/null; then
@@ -21,7 +21,7 @@ perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   | sed -r 's/^\s*//; s/\s+/ /g' \
   > ni-boot
 
-sed -ri '2,7d; /^\s*DEBUG(_END)?/d' ni-debug
+sed -ri '/^\s*DEBUG(_END)?/d' ni-debug
 
 chmod 0500 ni-boot ni-debug
 

@@ -47,7 +47,7 @@ sub tee_binding {
     my ($save, $recover) = typed_save_recover $type;
     gen_seq "tee:$type", $save,    $tee->sink_gen($type),
                          $recover, $into->sink_gen($type);
-  }];
+  }, $tee];
 }
 
 sub take_binding {

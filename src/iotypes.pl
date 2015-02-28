@@ -271,8 +271,9 @@ sub { \$_[0] },
 # Introduces arbitrary indirection into an IO's code stream
 defio 'bind',
 sub {
-  die "code transform must be [description, f]" unless ref $_[1] eq 'ARRAY';
-  +{ base => $_[0], code_transform => $_[1] }
+  die "code transform must be [description, f, [ios...]]"
+    unless ref $_[1] eq 'ARRAY';
+  +{ base => $_[0], code_transform => $_[1], other_ios => $_[2] }
 },
 {
   explain => sub {
@@ -303,7 +304,17 @@ sub {
     });
   },
 
-  close => sub { ${$_[0]}{base}->close; $_[0] },
+  close_reader => sub {
+    my ($self) = @_;
+    $_->close_reader for $$self{base}, @{$$self{other_ios}};
+    $self;
+  },
+
+  close_writer => sub {
+    my ($self) = @_;
+    $_->close_writer for $$self{base}, @{$$self{other_ios}};
+    $self;
+  },
 };
 
 # A file-descriptor pipe
@@ -322,6 +333,13 @@ defioproxy 'fifo', sub {
   ni_file($name, "< $name", "> $name", sub {
     unlink $name or warn "failed to unlink fifo $name: $!";
   });
+};
+
+# A temporary file
+defioproxy 'filename', sub {
+  my ($name) = @_;
+  $name //= tmpnam;
+  ni_file($name, "< $name", "> $name");
 };
 
 # Stdin/stdout of an external process with stdin, stdout, neither, or both

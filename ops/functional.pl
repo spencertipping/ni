@@ -16,11 +16,11 @@ defop 'transform', 'M', 's',
   'transforms the stream as an object using the specified function',
   sub { fn($_[1])->($_[0]) };
 
-defop 'deref', 'r', '',
+defop 'read', 'r', '',
   'interprets each record as a data source and emits it',
   sub { ni_cat($_[0] * 'ni %0') };
 
-defop 'ref', 'R', 'V',
+defop 'into', 'R', 'V',
   'collects data into a file and emits the filename',
   sub { my ($self, $f) = @_;
         $self > ni($f //= "file:" . tmpnam);
