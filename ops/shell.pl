@@ -5,12 +5,13 @@ our $sort_parallel    = $ENV{NI_SORT_PARALLEL} // 4;
 our $sort_compress    = $ENV{NI_SORT_COMPRESS} // '';
 
 sub sort_invocation {
-  my ($fields, @options) = @_;
+  my ($fields, $use_byte_ordering, @options) = @_;
   my @fields = split //, $fields // '';
+  my $b      = $use_byte_ordering ? 'b' : '';
   shell_quote 'sort', '-S', $sort_buffer_size,
               "--parallel=$sort_parallel",
               @fields
-                ? ('-t', "\t", map {('-k', "${_}b,$_")} map {$_ + 1} @fields)
+                ? ('-t', "\t", map {('-k', "$_$b,$_")} map {$_ + 1} @fields)
                 : (),
               length $sort_compress
                 ? ("--compress-program=$sort_compress")
@@ -25,17 +26,19 @@ sub expand_sort_flags {
 }
 
 defop 'sort', 's', 'AD',
-  '[flags] [fields], flags = [nNgGr][u] with their default meaning',
+  '[flags] [fields], flags = [bnNgGr][u] with their default meaning',
   sub {
     my ($self, $flags, $fields) = @_;
-    $self | sort_invocation $fields, expand_sort_flags $flags;
+    my $byte = ($fields //= '') =~ s/b//;
+    $self | sort_invocation $fields, $byte, expand_sort_flags $flags;
   };
 
 defop 'merge', undef, 'ADs',
   '[flags] [fields] merge-data: see "sort" for flags',
   sub {
     my ($self, $flags, $fields, $data) = @_;
-    $self | sort_invocation $fields, expand_sort_flags($flags), '-m',
+    my $byte = $fields =~ s/b//;
+    $self | sort_invocation $fields, $byte, expand_sort_flags($flags), '-m',
                             '-',
                             ni_fifo->from_bg($data);
   };
@@ -44,14 +47,15 @@ defop 'join', 'j', 'aDs',
   '[flags] [field] join-data, flags = one of lrbnLRBN',
   sub {
     my ($self, $flag, $field, $data) = @_;
+    $flag  //= 'n';
+    $field //=  0;
+
     my $outer_join = $flag =~ y/[A-Z]/[a-z]/;
     my $sort_left  = $flag =~ /[rn]/;
     my $sort_right = $flag =~ /[ln]/;
-    $field //= 0;
-
-    my $left  = $sort_left ? $self->__sort(undef, $field) : $self;
-    my $right = ni $data;
-    $right = $right->__sort(undef, 0) if $sort_right;
+    my $left       = $sort_left  ? $self->__sort('b', $field) : $self;
+    my $right      = $sort_right ? ni($data)->__sort('b', $field)
+                                 : ni($data);
 
     $left | shell_quote('join', '-1', $field ? $field + 1 : '1',
                                 '-2', 1,

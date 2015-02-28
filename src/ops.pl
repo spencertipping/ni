@@ -61,11 +61,11 @@ sub apply_format {
     } else {
       die "failed to match format $format" unless /[A-Z]/;
       push @parsed, undef;
-      unshift @args, $a;
+      unshift @args, $a if defined $a;
     }
   }
 
-  [@parsed], @args;
+  \@parsed, @args;
 }
 
 sub file_opt { ['plus', ni $_[0]] }
@@ -90,7 +90,32 @@ sub parse_commands {
       my ($op, @stuff) = grep length,
                          split /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/, $o;
       die "undefined short op: $op" unless exists $op_shorthand_lookups{$op};
-      unshift @_, map $op_shorthand_lookups{$_} // $_, $op, @stuff;
+      $op = $op_shorthand_lookups{$op} =~ s/^--//r;
+
+      # Short options expand like this:
+      #
+      #   -sf10m 'foo'
+      #   -s -f 10 -m 'foo'
+      #
+      # Doing this involves knowing whether each thing is a command (in which
+      # case it gets a - prefix), or an argument. To do this, we expand
+      # everything out into un-prefixed things, prepend it to the remaining
+      # arguments (in case the command wants more arguments than were packed
+      # into the short form), and see whether the command consumes all of the
+      # short stuff.
+      my ($args, @rest) = apply_format $op_formats{$op}, @stuff, @_;
+      push @parsed, [$op, @$args];
+
+      if (@rest > @_) {
+        # The op left some packed-short stuff behind, so the next thing is a
+        # command. We need to repack everything because otherwise we'd end up
+        # losing track of deeply-stacked short commands.
+        my @to_repack = @rest[0 .. $#rest - @_];
+        @_ = ('-' . join('', @to_repack), @rest[@rest - @_ .. $#rest]);
+      } else {
+        # Nothing left behind, so just keep going normally.
+        @_ = @rest;
+      }
     } else {
       push @parsed, file_opt $o;
     }

@@ -886,10 +886,10 @@ push @parsed, $a;
 } else {
 die "failed to match format $format" unless /[A-Z]/;
 push @parsed, undef;
-unshift @args, $a;
+unshift @args, $a if defined $a;
 }
 }
-[@parsed], @args;
+\@parsed, @args;
 }
 sub file_opt { ['plus', ni $_[0]] }
 sub parse_commands {
@@ -910,7 +910,15 @@ push @parsed, [$c, @$args];
 my ($op, @stuff) = grep length,
 split /([:+^=%\/]?[a-zA-Z]|[-+\.0-9]+)/, $o;
 die "undefined short op: $op" unless exists $op_shorthand_lookups{$op};
-unshift @_, map $op_shorthand_lookups{$_} // $_, $op, @stuff;
+$op = $op_shorthand_lookups{$op} =~ s/^--//r;
+my ($args, @rest) = apply_format $op_formats{$op}, @stuff, @_;
+push @parsed, [$op, @$args];
+if (@rest > @_) {
+my @to_repack = @rest[0 .. $#rest - @_];
+@_ = ('-' . join('', @to_repack), @rest[@rest - @_ .. $#rest]);
+} else {
+@_ = @rest;
+}
 } else {
 push @parsed, file_opt $o;
 }
@@ -1167,12 +1175,13 @@ our $sort_buffer_size = $ENV{NI_SORT_BUFFER} // '256M';
 our $sort_parallel = $ENV{NI_SORT_PARALLEL} // 4;
 our $sort_compress = $ENV{NI_SORT_COMPRESS} // '';
 sub sort_invocation {
-my ($fields, @options) = @_;
+my ($fields, $use_byte_ordering, @options) = @_;
 my @fields = split //, $fields // '';
+my $b = $use_byte_ordering ? 'b' : '';
 shell_quote 'sort', '-S', $sort_buffer_size,
 "--parallel=$sort_parallel",
 @fields
-? ('-t', "\t", map {('-k', "${_}b,$_")} map {$_ + 1} @fields)
+? ('-t', "\t", map {('-k', "$_$b,$_")} map {$_ + 1} @fields)
 : (),
 length $sort_compress
 ? ("--compress-program=$sort_compress")
@@ -1185,16 +1194,18 @@ return () unless defined $flags;
 map "-$_", split //, $flags =~ s/([A-Z])/"r" . lc $1/gre;
 }
 defop 'sort', 's', 'AD',
-'[flags] [fields], flags = [nNgGr][u] with their default meaning',
+'[flags] [fields], flags = [bnNgGr][u] with their default meaning',
 sub {
 my ($self, $flags, $fields) = @_;
-$self | sort_invocation $fields, expand_sort_flags $flags;
+my $byte = ($fields //= '') =~ s/b//;
+$self | sort_invocation $fields, $byte, expand_sort_flags $flags;
 };
 defop 'merge', undef, 'ADs',
 '[flags] [fields] merge-data: see "sort" for flags',
 sub {
 my ($self, $flags, $fields, $data) = @_;
-$self | sort_invocation $fields, expand_sort_flags($flags), '-m',
+my $byte = $fields =~ s/b//;
+$self | sort_invocation $fields, $byte, expand_sort_flags($flags), '-m',
 '-',
 ni_fifo->from_bg($data);
 };
@@ -1202,13 +1213,14 @@ defop 'join', 'j', 'aDs',
 '[flags] [field] join-data, flags = one of lrbnLRBN',
 sub {
 my ($self, $flag, $field, $data) = @_;
+$flag //= 'n';
+$field //= 0;
 my $outer_join = $flag =~ y/[A-Z]/[a-z]/;
 my $sort_left = $flag =~ /[rn]/;
 my $sort_right = $flag =~ /[ln]/;
-$field //= 0;
-my $left = $sort_left ? $self->__sort(undef, $field) : $self;
-my $right = ni $data;
-$right = $right->__sort(undef, 0) if $sort_right;
+my $left = $sort_left ? $self->__sort('b', $field) : $self;
+my $right = $sort_right ? ni($data)->__sort('b', $field)
+: ni($data);
 $left | shell_quote('join', '-1', $field ? $field + 1 : '1',
 '-2', 1,
 '-t', "\t",
