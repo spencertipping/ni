@@ -10,7 +10,7 @@ defdata 'file',
     my $extension = ($f =~ /\.(\w+)$/)[0];
     my $file      = ni_file("[file $f]", "< $f", "> $f");
     exists $read_filters{$extension}
-      ? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
+      ? ni_filter $file, $read_filters{$extension}, $write_filters{$extension}
       : $file;
   };
 
@@ -22,7 +22,7 @@ sub deffilter {
   my $prefix_detector = qr/^$extension:/;
   defdata $extension,
     sub { $_[0] =~ s/$prefix_detector// },
-    sub { ni_filter(ni($_[0]), $read, $write) };
+    sub { ni_filter ni($_[0]), $read, $write };
 }
 
 deffilter 'gz',  'gzip -d',  'gzip';
@@ -30,12 +30,24 @@ deffilter 'lzo', 'lzop -d',  'lzop';
 deffilter 'xz',  'xz -d',    'xz';
 deffilter 'bz2', 'bzip2 -d', 'bzip2';
 
-defdata 'ssh',
-  sub { $_[0] =~ /^\w*@[^:\/]+:/ },
-  sub { $_[0] =~ /^([^:@]+)@([^:]+):(.*)$/;
-        my ($user, $host, $file) = ($1, $2, $3);
+defdata 'sh',
+  sub { $_[0] =~ s/^sh:// },
+  sub { ni_process $_[0], undef, undef };
 
-        };
+our @ssh_options = exists $ENV{NI_SSH_OPTIONS}
+                 ? split /:/, $ENV{NI_SSH_OPTIONS}
+                 : '-CX';
+
+defdata 'ssh',
+  sub { $_[0] =~ /^\w*\@[^:\/]+:/ },
+  sub {
+    die "ssh: invalid syntax: $_[0]" unless $_[0] =~ /^([^:@]*)\@([^:]+):(.*)$/;
+    my ($user, $host, $file) = ($1, $2, $3);
+    my $login = length $user ? "$user\@$host" : $host;
+    ni_process shell_quote('ssh', @ssh_options, $login, 'perl', '-', $file),
+               ni_memory(self),
+               undef;
+  };
 
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
                     sub { ni_file("[fh = " . fileno($_[0]) . "]",

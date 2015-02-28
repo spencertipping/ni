@@ -11,9 +11,8 @@ rm -f ni ni-boot ni-debug
   cat lib/{geohash,sql,gnuplot,R,json}.pl
 } > ni-debug
 
-if grep FIXME ni-debug > /dev/null; then
-  echo $(grep FIXME ni-debug | wc -l) "FIXME comment(s)"
-fi
+grep FIXME ni-debug
+grep TODO  ni-debug
 
 perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   < ni-debug \

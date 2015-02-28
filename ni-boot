@@ -926,7 +926,7 @@ my ($f) = @_;
 my $extension = ($f =~ /\.(\w+)$/)[0];
 my $file = ni_file("[file $f]", "< $f", "> $f");
 exists $read_filters{$extension}
-? ni_filter($file, $read_filters{$extension}, $write_filters{$extension})
+? ni_filter $file, $read_filters{$extension}, $write_filters{$extension}
 : $file;
 };
 sub deffilter {
@@ -936,16 +936,27 @@ $write_filters{$extension} = $write;
 my $prefix_detector = qr/^$extension:/;
 defdata $extension,
 sub { $_[0] =~ s/$prefix_detector// },
-sub { ni_filter(ni($_[0]), $read, $write) };
+sub { ni_filter ni($_[0]), $read, $write };
 }
 deffilter 'gz', 'gzip -d', 'gzip';
 deffilter 'lzo', 'lzop -d', 'lzop';
 deffilter 'xz', 'xz -d', 'xz';
 deffilter 'bz2', 'bzip2 -d', 'bzip2';
+defdata 'sh',
+sub { $_[0] =~ s/^sh:// },
+sub { ni_process $_[0], undef, undef };
+our @ssh_options = exists $ENV{NI_SSH_OPTIONS}
+? split /:/, $ENV{NI_SSH_OPTIONS}
+: '-CX';
 defdata 'ssh',
-sub { $_[0] =~ /^\w*@[^:\/]+:/ },
-sub { $_[0] =~ /^([^:@]+)@([^:]+):(.*)$/;
+sub { $_[0] =~ /^\w*\@[^:\/]+:/ },
+sub {
+die "ssh: invalid syntax: $_[0]" unless $_[0] =~ /^([^:@]*)\@([^:]+):(.*)$/;
 my ($user, $host, $file) = ($1, $2, $3);
+my $login = length $user ? "$user\@$host" : $host;
+ni_process shell_quote('ssh', @ssh_options, $login, 'perl', '-', $file),
+ni_memory(self),
+undef;
 };
 defdata 'globfile', sub { ref $_[0] eq 'GLOB' },
 sub { ni_file("[fh = " . fileno($_[0]) . "]",
@@ -1453,11 +1464,21 @@ use File::Temp qw/tmpnam/;
 our $r_device_init = $ENV{NI_R_DEVICE} // 'pdf("FILE")';
 our $display_program = $ENV{NI_IMAGE_DISPLAY} // 'xdg-open';
 our %r_shorthands = (
+'%i' => 'data <- read.table(file("stdin"), sep="\t"); ',
 );
 sub expand_r_shorthands {
 my ($s) = @_;
 $s =~ s/$_/$r_shorthands{$_}/g for keys %r_shorthands;
 $s;
+}
+sub r_reader_io {
+my ($r_eval_code) = @_;
+$r_eval_code = expand_r_shorthands $r_eval_code;
+$r_eval_code = "write.table((function () {$r_eval_code})(), '', "
+. "quote=FALSE, sep='\\t', col.names=NA)";
+ni_process shell_quote('R', '--slave', '-e', $r_eval_code),
+undef,
+undef;
 }
 sub r_writer_io {
 my ($r_eval_code, $no_automatic_import) = @_;
@@ -1472,7 +1493,12 @@ ni_process(shell_quote('R', '--slave', '-e', $r_eval_code)
 undef,
 \*STDERR);
 }
-defdata 'R', sub { $_[0] =~ s/^R:// }, \&r_writer_io;
+defdata 'R', sub { $_[0] =~ s/^R:// },
+sub {
+my ($r_code) = @_;
+ni_file "[R $r_code]", sub { r_reader_io($r_code)->reader_fh },
+sub { r_writer_io($r_code)->writer_fh };
+};
 NI_MODULE_END
 NI_MODULE json
 our $json;
