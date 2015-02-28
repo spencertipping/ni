@@ -14,19 +14,29 @@ sub to_fh {
 
 # Partial implementations
 defio 'sink_as',
-sub { +{description => $_[0], f => $_[1]} },
+sub { +{description => $_[0], f => $_[1], on_close => $_[2]} },
 {
   explain         => sub { "[sink as: " . ${$_[0]}{description} . "]" },
   supports_reads  => sub { 0 },
   supports_writes => sub { 1 },
   sink_gen        => sub { ${$_[0]}{f}->(@_[1..$#_]) },
+  close_writer    => sub {
+    my $f = ${$_[0]}{on_close};
+    $f->(@_) if defined $f;
+    $_[0];
+  },
 };
 
 defio 'source_as',
-sub { +{description => $_[0], f => $_[1]} },
+sub { +{description => $_[0], f => $_[1], on_close => $_[2]} },
 {
-  explain    => sub { "[source as: " . ${$_[0]}{description} . "]" },
-  source_gen => sub { ${$_[0]}{f}->(@_[1..$#_]) },
+  explain      => sub { "[source as: " . ${$_[0]}{description} . "]" },
+  source_gen   => sub { ${$_[0]}{f}->(@_[1..$#_]) },
+  close_reader => sub {
+    my $f = ${$_[0]}{on_close};
+    $f->(@_) if defined $f;
+    $_[0];
+  },
 };
 
 sub sink_as(&)   { ni_sink_as("[anonymous sink]", @_) }
@@ -271,9 +281,9 @@ sub { \$_[0] },
 # Introduces arbitrary indirection into an IO's code stream
 defio 'bind',
 sub {
-  die "code transform must be [description, f, [ios...]]"
+  die "code transform must be [description, f, on_close]"
     unless ref $_[1] eq 'ARRAY';
-  +{ base => $_[0], code_transform => $_[1], other_ios => $_[2] }
+  +{ base => $_[0], code_transform => $_[1], on_close => $_[2] }
 },
 {
   explain => sub {
@@ -306,13 +316,15 @@ sub {
 
   close_reader => sub {
     my ($self) = @_;
-    $_->close_reader for $$self{base}, @{$$self{other_ios}};
+    $$self{base}->close_reader;
+    $$self{on_close}->($self, 0) if defined $$self{on_close};
     $self;
   },
 
   close_writer => sub {
     my ($self) = @_;
-    $_->close_writer for $$self{base}, @{$$self{other_ios}};
+    $$self{base}->close_writer;
+    $$self{on_close}->($self, 1) if defined $$self{on_close};
     $self;
   },
 };

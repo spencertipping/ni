@@ -423,18 +423,28 @@ open my $fh, $_[0] or die "failed to open $_[0]: $!";
 $fh;
 }
 defio 'sink_as',
-sub { +{description => $_[0], f => $_[1]} },
+sub { +{description => $_[0], f => $_[1], on_close => $_[2]} },
 {
 explain => sub { "[sink as: " . ${$_[0]}{description} . "]" },
 supports_reads => sub { 0 },
 supports_writes => sub { 1 },
 sink_gen => sub { ${$_[0]}{f}->(@_[1..$#_]) },
+close_writer => sub {
+my $f = ${$_[0]}{on_close};
+$f->(@_) if defined $f;
+$_[0];
+},
 };
 defio 'source_as',
-sub { +{description => $_[0], f => $_[1]} },
+sub { +{description => $_[0], f => $_[1], on_close => $_[2]} },
 {
 explain => sub { "[source as: " . ${$_[0]}{description} . "]" },
 source_gen => sub { ${$_[0]}{f}->(@_[1..$#_]) },
+close_reader => sub {
+my $f = ${$_[0]}{on_close};
+$f->(@_) if defined $f;
+$_[0];
+},
 };
 sub sink_as(&) { ni_sink_as("[anonymous sink]", @_) }
 sub source_as(&) { ni_source_as("[anonymous source]", @_) }
@@ -642,9 +652,9 @@ q{ $_[0]->into(%:dest, 1); }});
 };
 defio 'bind',
 sub {
-die "code transform must be [description, f, [ios...]]"
+die "code transform must be [description, f, on_close]"
 unless ref $_[1] eq 'ARRAY';
-+{ base => $_[0], code_transform => $_[1], other_ios => $_[2] }
++{ base => $_[0], code_transform => $_[1], on_close => $_[2] }
 },
 {
 explain => sub {
@@ -672,12 +682,14 @@ $$self{code_transform}[1]->($destination, $type);
 },
 close_reader => sub {
 my ($self) = @_;
-$_->close_reader for $$self{base}, @{$$self{other_ios}};
+$$self{base}->close_reader;
+$$self{on_close}->($self, 0) if defined $$self{on_close};
 $self;
 },
 close_writer => sub {
 my ($self) = @_;
-$_->close_writer for $$self{base}, @{$$self{other_ios}};
+$$self{base}->close_writer;
+$$self{on_close}->($self, 1) if defined $$self{on_close};
 $self;
 },
 };
@@ -751,11 +763,12 @@ my ($f) = @_;
 ["$name $f", sub {
 my ($into, $type) = @_;
 my ($fc, $required_type) = fn($f, $type);
-with_type $type,
+my ($each, $end) = $into->sink_gen($bodytype || $required_type);
+with_type($type,
 gen "$name:$required_type",
 {f => $fc,
-body => $into->sink_gen($bodytype || $required_type)},
-$body;
+body => $each},
+$body), $end;
 }];
 };
 }
@@ -769,14 +782,15 @@ sub reduce_binding {
 my ($f, $init) = @_;
 ["reduce $f $init", sub {
 my ($into, $type) = @_;
-with_type $type,
+my ($each, $end) = $into->sink_gen('O');
+with_type($type,
 gen 'reduce:F', {f => fn($f),
 init => $init,
-body => $into->sink_gen('O')},
+body => $each},
 q{ (%:init, @_) = %:f->(%:init, @_);
 for (@_) {
 %@body
-} };
+} }), $end;
 }];
 }
 sub tee_binding {
@@ -784,58 +798,67 @@ my ($tee) = @_;
 ["tee $tee", sub {
 my ($into, $type) = @_;
 my ($save, $recover) = typed_save_recover $type;
-gen_seq "tee:$type", $save, $tee->sink_gen($type),
-$recover, $into->sink_gen($type);
-}, [$tee]];
+my ($tee_each, $tee_end) = $tee->sink_gen($type);
+my ($into_each, $into_end) = $into->sink_gen($type);
+gen_seq("tee:$type", $save, $tee->sink_gen($type),
+$recover, $into->sink_gen($type)),
+gen_seq("tee_end:$type", $tee_end, $into_end);
+}, sub { $tee->close_writer }];
 }
 sub take_binding {
 my ($n) = @_;
 die "must take a positive number of elements" unless $n > 0;
 ["take $n", sub {
 my ($into, $type) = @_;
-gen "take:${type}", {body => $into->sink_gen($type),
+my ($each, $end) = $into->sink_gen($type);
+gen("take:${type}", {body => $each,
+end => $end,
 remaining => $n},
 q{ %@body;
-return if --%:remaining <= 0; };
+if (--%:remaining <= 0) {
+%@end
+die 'DONE';
+} }), $end;
 }];
 }
 sub drop_binding {
 my ($n) = @_;
 ["drop $n", sub {
 my ($into, $type) = @_;
-gen "take:${type}", {body => $into->sink_gen($type),
+my ($each, $end) = $into->sink_gen($type);
+gen("take:${type}", {body => $each,
 remaining => $n},
 q{ if (--%:remaining < 0) {
 %@body
-}};
+} }), $end;
+}];
+}
+sub uniq_binding {
+my ($count, @fields) = @_;
+["uniq $count @fields", sub {
 }];
 }
 sub zip_binding {
 my ($other) = @_;
 ["zip $other", sub {
 my ($into, $type) = @_;
+my ($each, $end) = $into->sink_gen('F');
 my $other_source = $other->reader_fh;
-with_type $type,
-gen 'zip:F', {body => $into->sink_gen('F'),
+with_type($type,
+gen 'zip:F', {body => $each,
 live => 1,
 other => $other_source,
 l => ''},
 q{ %:live &&= defined(%:l = <%:other>);
 chomp %:l;
 @_ = (@_, split /\t/, %:l);
-%@body };
-}, [$other]];
+%@body }), $end;
+}, sub { $other->close_reader }];
 }
 sub ni::io::peek {
 my ($self, $n) = @_;
 my $buffer = ni_memory() < $self >> take_binding($n);
 ($buffer, $self);
-}
-sub ni::io::uniq {
-my ($self, $count, @fields) = @_;
-ni_source_as "$self >> uniq $count @fields", sub {
-my ($destination) = @_;
-};
 }
 our %op_shorthand_lookups; # keyed by short
 our %op_shorthands; # keyed by long
