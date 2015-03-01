@@ -13,12 +13,17 @@
 # You can introduce a branch-point in the side effect ordering by using the
 # special form "co"; this indicates that all of its subforms are
 # side-effect-commutative with respect to one another. Internally all of this
-# is modeled as a dataflow graph.
+# is modeled as a dataflow graph in which each expression is directed towards
+# its continuation(s).
 
 {
 
 package ni::lisp;
 
-
+# Special forms:
+#
+# (fn* name formal body)
+# (let* name value body)
+# (co* alternatives...)
 
 }
