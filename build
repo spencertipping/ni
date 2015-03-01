@@ -8,7 +8,7 @@ rm -f ni ni-boot ni-debug
   cat ops/*.pl
   echo \}
   echo __END__
-  cat lib/{geohash,sql,gnuplot,R,json}.pl
+  cat lib/{geohash,sql,gnuplot,R,json,curl}.pl
 } > ni-debug
 
 grep FIXME ni-debug
