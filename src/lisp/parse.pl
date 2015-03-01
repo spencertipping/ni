@@ -17,6 +17,8 @@
 
 package ni::lisp;
 
+# NB: these are not perl OO constructors in the usual sense (i.e. they can't be
+# called indirectly)
 sub list   { bless \@_,  "ni::lisp::list" }
 sub array  { bless \@_,  "ni::lisp::array" }
 sub hash   { bless {@_}, "ni::lisp::hash" }
@@ -46,7 +48,8 @@ sub deftypemethod {
 deftypemethod 'str',
   list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
   array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
-  hash   => sub { '{' . join(' ', %{$_[0]}) . '}' },
+  hash   => sub { '{' . join(' ', map(($_, ${$_[0]}{$_}), sort keys %{$_[0]}))
+                      . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
   number => sub { ${$_[0]} },
@@ -72,7 +75,7 @@ sub parse {
                          | (?<var>     \$[^\$\s()\[\]{},]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {
-    next if $+{comment} || $+{ws};
+    next if exists $+{comment} || exists $+{ws};
     if ($+{opener}) {
       push @stack, [];
     } elsif ($+{closer}) {
@@ -81,10 +84,11 @@ sub parse {
       push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
     } else {
       my @types = keys %+;
+      my $v     = $+{$types[0]};
       DEBUG
       die "FIXME: got @types" unless @types == 1;
       DEBUG_END
-      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($+{$types[0]});
+      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
     }
   }
   die "unbalanced brackets: " . scalar(@stack) . " != 1"

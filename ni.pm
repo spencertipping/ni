@@ -592,6 +592,8 @@ sub into_bg {
 
 package ni::lisp;
 
+# NB: these are not perl OO constructors in the usual sense (i.e. they can't be
+# called indirectly)
 sub list   { bless \@_,  "ni::lisp::list" }
 sub array  { bless \@_,  "ni::lisp::array" }
 sub hash   { bless {@_}, "ni::lisp::hash" }
@@ -619,7 +621,8 @@ sub deftypemethod {
 deftypemethod 'str',
   list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
   array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
-  hash   => sub { '{' . join(' ', %{$_[0]}) . '}' },
+  hash   => sub { '{' . join(' ', map(($_, ${$_[0]}{$_}), sort keys %{$_[0]}))
+                      . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
   number => sub { ${$_[0]} },
@@ -645,7 +648,7 @@ sub parse {
                          | (?<var>     \$[^\$\s()\[\]{},]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {
-    next if $+{comment} || $+{ws};
+    next if exists $+{comment} || exists $+{ws};
     if ($+{opener}) {
       push @stack, [];
     } elsif ($+{closer}) {
@@ -654,14 +657,39 @@ sub parse {
       push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
     } else {
       my @types = keys %+;
+      my $v     = $+{$types[0]};
       die "FIXME: got @types" unless @types == 1;
-      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($+{$types[0]});
+      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
     }
   }
   die "unbalanced brackets: " . scalar(@stack) . " != 1"
     unless @stack == 1;
   @{$stack[0]};
 }
+
+}
+# ni lisp compiler
+# This doesn't compile to final forms; instead, it compiles each form down to
+# an internal representation that can be handed off to a JIT backend for
+# optimized execution.
+#
+# The semantics of a ni-lisp program are dictated jointly by the space of
+# values and the space of side-effects. Conceptually side-effects are modeled
+# using a dependency graph that is only incidentally related to value-space;
+# this means that evaluation commutes across effects unless there's a data
+# dependency. To make this easier for ni to reason about, the "state of side
+# effects" is treated internally as a value despite never being visible as one.
+#
+# You can introduce a branch-point in the side effect ordering by using the
+# special form "co"; this indicates that all of its subforms are
+# side-effect-commutative with respect to one another. Internally all of this
+# is modeled as a dataflow graph.
+
+{
+
+package ni::lisp;
+
+
 
 }
 # Data source definitions
@@ -1774,7 +1802,6 @@ defop 'zip', 'z', 's',
   'zips lines together with those from the specified IO',
   sub { $_[0] >> zip_binding(ni $_[1]) };
 }
-1;
 __END__
 NI_MODULE geohash
 

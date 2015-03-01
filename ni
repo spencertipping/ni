@@ -406,7 +406,8 @@ my ($name, %alternatives) = @_;
 deftypemethod 'str',
 list => sub { '(' . join(' ', @{$_[0]}) . ')' },
 array => sub { '[' . join(' ', @{$_[0]}) . ']' },
-hash => sub { '{' . join(' ', %{$_[0]}) . '}' },
+hash => sub { '{' . join(' ', map(($_, ${$_[0]}{$_}), sort keys %{$_[0]}))
+. '}' },
 qstr => sub { "'" . ${$_[0]} . "'" },
 str => sub { '"' . ${$_[0]} . '"' },
 number => sub { ${$_[0]} },
@@ -430,7 +431,7 @@ while ($_[0] =~ / \G (?: (?<comment> \#.*)
 | (?<var> \$[^\$\s()\[\]{},]+)
 | (?<opener> [(\[{])
 | (?<closer> [)\]}])) /gx) {
-next if $+{comment} || $+{ws};
+next if exists $+{comment} || exists $+{ws};
 if ($+{opener}) {
 push @stack, [];
 } elsif ($+{closer}) {
@@ -439,13 +440,17 @@ die "too many closing brackets" unless @stack;
 push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
 } else {
 my @types = keys %+;
-push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($+{$types[0]});
+my $v = $+{$types[0]};
+push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
 }
 }
 die "unbalanced brackets: " . scalar(@stack) . " != 1"
 unless @stack == 1;
 @{$stack[0]};
 }
+}
+{
+package ni::lisp;
 }
 BEGIN {
 our @data_names;
