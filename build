@@ -2,25 +2,32 @@
 rm -f ni ni-boot ni-debug
 {
   cat src/{core,prefix,gen,gentypes,fn,io}.pl \
+      src/lisp/parse.pl \
       src/{data,iotypes,iobind,iofns}.pl \
       src/{ops,datatypes,module,main}.pl
 
   cat ops/*.pl
   echo \}
+  echo '1;'
   echo __END__
   cat lib/{geohash,sql,gnuplot,R,json,curl}.pl
 } > ni-debug
 
-grep FIXME ni-debug
-grep TODO  ni-debug
+grep '#.*FIXME' ni-debug | sed 's/^\s*//'
+grep '#.*TODO'  ni-debug | sed 's/^\s*//'
+
+perl -ne '$i |= /^\s*MAIN$/; print unless $i; $i &= !/^\s*MAIN_END$/' \
+  < ni-debug \
+  > ni.pm
 
 perl -ne '$i |= /^\s*DEBUG$/; print unless $i; $i &= !/^\s*DEBUG_END$/' \
   < ni-debug \
   | egrep -v '^\s*(#(\s.+)?)?$' \
+  | egrep -v '^1;$' \
   | sed -r 's/^\s*//; s/\s+/ /g' \
   > ni-boot
 
-sed -ri '/^\s*DEBUG(_END)?/d' ni-debug
+sed -ri '/^\s*(DEBUG|MAIN)(_END)?/d' ni-debug ni-boot ni.pm
 
 chmod 0500 ni-boot ni-debug
 

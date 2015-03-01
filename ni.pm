@@ -1552,25 +1552,6 @@ sub stream_to_process {
   exec $_ for @process_alternatives;
 }
 
-sub main {
-  $|++;
-  my $data = stream_for undef, preprocess_cli @_;
-  if (-t STDOUT && !exists $ENV{NI_NO_PAGER}) {
-    # Use a pager rather than writing straight to the terminal
-    stream_to_process $data, $ENV{NI_PAGER} // $ENV{PAGER} // 'less',
-                             'more';
-
-    # Ok, we're out of options; just write to the terminal after all
-    print STDERR "ni: couldn't exec any pagers, writing to the terminal\n";
-    print STDERR "ni: (sorry about this; if you set \$PAGER it should work)\n";
-    print STDERR "\n";
-    print while <>;
-  } else {
-    $data > \*STDOUT;
-  }
-}
-
-END { main @ARGV }
 use File::Temp qw/tmpnam/;
 
 defop 'map', 'm', 's',

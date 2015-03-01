@@ -384,6 +384,69 @@ my ($self, $dest) = @_;
 $self;
 }
 }
+{
+package ni::lisp;
+sub list { bless \@_, "ni::lisp::list" }
+sub array { bless \@_, "ni::lisp::array" }
+sub hash { bless {@_}, "ni::lisp::hash" }
+sub qstr { bless \$_[0], "ni::lisp::qstr" }
+sub str { bless \$_[0], "ni::lisp::str" }
+sub number { bless \$_[0], "ni::lisp::number" }
+sub var { bless \substr($_[0], 1), "ni::lisp::var" }
+our @parse_types = qw/ list array hash qstr str number var /;
+our %overloads = qw/ "" str /;
+for (@parse_types) {
+eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
+}
+push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
+sub deftypemethod {
+my ($name, %alternatives) = @_;
+*{"ni::lisp::${_}::$name"} = $alternatives{$_} for keys %alternatives;
+}
+deftypemethod 'str',
+list => sub { '(' . join(' ', @{$_[0]}) . ')' },
+array => sub { '[' . join(' ', @{$_[0]}) . ']' },
+hash => sub { '{' . join(' ', %{$_[0]}) . '}' },
+qstr => sub { "'" . ${$_[0]} . "'" },
+str => sub { '"' . ${$_[0]} . '"' },
+number => sub { ${$_[0]} },
+var => sub { "\$${$_[0]}" };
+our %bracket_types = (
+')' => \&ni::lisp::list,
+']' => \&ni::lisp::array,
+'}' => \&ni::lisp::hash,
+);
+sub parse {
+local $_;
+my @stack = [];
+while ($_[0] =~ / \G (?: (?<comment> \#.*)
+| (?<ws> [\s,]+)
+| '(?<qstr> (?:[^\\']|\\.)*)'
+| (?<number> (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
+| 0x[0-9a-fA-F]+
+| 0[0-7]+
+| [1-9][0-9]*))
+| (?<str> [^\$()\[\]{}\s,]+)
+| (?<var> \$[^\$\s()\[\]{},]+)
+| (?<opener> [(\[{])
+| (?<closer> [)\]}])) /gx) {
+next if $+{comment} || $+{ws};
+if ($+{opener}) {
+push @stack, [];
+} elsif ($+{closer}) {
+my $last = pop @stack;
+die "too many closing brackets" unless @stack;
+push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
+} else {
+my @types = keys %+;
+push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($+{$types[0]});
+}
+}
+die "unbalanced brackets: " . scalar(@stack) . " != 1"
+unless @stack == 1;
+@{$stack[0]};
+}
+}
 BEGIN {
 our @data_names;
 our %data_matchers;

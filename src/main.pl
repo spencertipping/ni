@@ -55,6 +55,7 @@ sub stream_to_process {
   exec $_ for @process_alternatives;
 }
 
+MAIN
 sub main {
   $|++;
   my $data = stream_for undef, preprocess_cli @_;
@@ -74,3 +75,4 @@ sub main {
 }
 
 END { main @ARGV }
+MAIN_END
