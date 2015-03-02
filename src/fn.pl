@@ -82,9 +82,9 @@ DEBUG_END
 
 defperlfilter 'expand_json_dot_notation', sub {
   my ($code, $type) = @_;
-  1 while $code =~ s/([a-zA-Z0-9\)\}\]])
+  1 while $code =~ s/([a-zA-Z\)\}\]])
                      \.
-                     ([\$_a-zA-Z](?:-[0-9\w\?\$]|[0-9_\w?\$])*)
+                     ([\$_a-zA-Z](?:-?[0-9\w\?\$])*)
                     /$1\->{'$2'}/x;
   ($code, $type);
 };
