@@ -82,20 +82,22 @@ our %special_to_graph = (
     die "fn* formal must be a symbol (got $formal instead)"
       unless ref $formal eq 'ni::lisp::str';
 
-    my $fn_graph    = fn_graph_node;
-    my $inner_scope = {'' => $scope, $$formal   => $fn_graph->formal_node
+    my $fn_graph    = fn_node;
+    my $inner_scope = {'' => $scope, $$formal   => $fn_graph->formal,
                                      $$self_ref => $fn_graph};
     my $body_graph  = $body->to_graph($inner_scope);
     $$fn_graph{body} = $body_graph;
-    value_node $fn_graph;
+    $fn_graph;
   },
 
   'let*' => sub {
     # This one is easy: just create a subscope that aliases the given name.
+    # Also make sure that we force side-effect ordering in value before body.
     my ($scope, $name, $value, $body) = @_;
     die "let* formal must be a symbol (got $name instead)"
       unless ref $name eq 'ni::lisp::str';
-    $body->to_graph({'' => $scope, $$name => $value->to_graph($scope)});
+    my $v = $value->to_graph($scope);
+    $v->then($body->to_graph({'' => $scope, $$name => $v}));
   },
 
   'do*' => sub {
@@ -107,29 +109,21 @@ our %special_to_graph = (
   },
 
   'co*' => sub {
-    # Create a join node with large in-degree and a single output.
+    # Create a single-in, single-out node that semantically returns a list.
     my ($scope, @nodes) = @_;
-    co_join_node map $_->to_graph($scope), @nodes;
+    co_node map $_->to_graph($scope), @nodes;
   },
 
   'if*' => sub {
     my ($scope, $cond, $then, $else) = @_;
-    if_join_node $cond->to_graph($scope),
-                 $then->to_graph($scope),
-                 $else->to_graph($scope);
+    if_node $cond->to_graph($scope),
+            $then->to_graph($scope),
+            $else->to_graph($scope);
   },
 
   'apply*' => sub {
-    my ($scope, $f, @args) = @_;
-
-    # Is $f a known function node (or can we resolve it to one)? If so,
-    # statically reduce the form. Otherwise encode an indirect call.
-    my $f_graph = $f->to_graph($scope);
-    return $f_graph->call(co_join_node map $_->to_graph($scope), @args)
-      if $f_graph->is_fn;
-
-    # Otherwise co-join f and its args, and generate an indirect apply node.
-    indirect_apply co_join_node $f_graph, map $_->to_graph($scope), @args;
+    my ($scope, @args) = @_;
+    apply_node co_node map $_->to_graph($scope), @args;
   },
 );
 
@@ -144,11 +138,31 @@ deftypemethod 'to_graph',
 
   array => sub {
     my ($self, $scope) = @_;
-    array_node scalar(@$self), co_join_node map $_->to_graph($scope), @$self;
+    bless_node 'array', co_node map $_->to_graph($scope), @$self;
   },
 
   hash => sub {
     my ($self, $scope) = @_;
+    bless_node 'hash', co_node map $_->to_graph($scope), @$self;
   },
+
+  str => sub {
+    # TODO: handle escape sequences
+    literal_node 'string', ${$_[0]};
+  },
+
+  qstr => sub {
+    # TODO: handle escape sequences
+    literal_node 'string', ${$_[0]};
+  },
+
+  number => sub {
+    literal_node 'number', ${$_[0]};
+  },
+
+  symbol => sub {
+    my ($self, $scope) = @_;
+    resolve($scope, $$self) // global_node($$self);
+  };
 
 }

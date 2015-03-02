@@ -19,16 +19,16 @@ package ni::lisp;
 
 # NB: these are not perl OO constructors in the usual sense (i.e. they can't be
 # called indirectly)
-sub list   { bless \@_,  "ni::lisp::list" }
-sub array  { bless \@_,  "ni::lisp::array" }
-sub hash   { bless {@_}, "ni::lisp::hash" }
+sub list   { bless \@_, "ni::lisp::list" }
+sub array  { bless \@_, "ni::lisp::array" }
+sub hash   { bless \@_, "ni::lisp::hash" }
 
-sub qstr   { bless \$_[0],            "ni::lisp::qstr" }
-sub str    { bless \$_[0],            "ni::lisp::str" }
-sub number { bless \$_[0],            "ni::lisp::number" }
-sub var    { bless \substr($_[0], 1), "ni::lisp::var" }
+sub qstr   { bless \$_[0], "ni::lisp::qstr" }
+sub str    { bless \$_[0], "ni::lisp::str" }
+sub symbol { bless \$_[0], "ni::lisp::symbol" }
+sub number { bless \$_[0], "ni::lisp::number" }
 
-our @parse_types = qw/ list array hash qstr str number var /;
+our @parse_types = qw/ list array hash qstr str symbol number /;
 our %overloads   = qw/ "" str /;
 
 for (@parse_types) {
@@ -48,12 +48,11 @@ sub deftypemethod {
 deftypemethod 'str',
   list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
   array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
-  hash   => sub { '{' . join(' ', map(($_, ${$_[0]}{$_}), sort keys %{$_[0]}))
-                      . '}' },
+  hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
-  number => sub { ${$_[0]} },
-  var    => sub { "\$${$_[0]}" };
+  symbol => sub { ${$_[0]} },
+  number => sub { ${$_[0]} };
 
 our %bracket_types = (
   ')' => \&ni::lisp::list,
@@ -67,12 +66,12 @@ sub parse {
   while ($_[0] =~ / \G (?: (?<comment> \#.*)
                          | (?<ws>      [\s,]+)
                          | '(?<qstr>   (?:[^\\']|\\.)*)'
+                         | "(?<str>    (?:[^\\"]|\\.)*)"
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
                                          | 0x[0-9a-fA-F]+
                                          | 0[0-7]+
                                          | [1-9][0-9]*))
-                         | (?<str>     [^\$()\[\]{}\s,]+)
-                         | (?<var>     \$[^\$\s()\[\]{},]+)
+                         | (?<symbol>  [^"()\[\]{}\s,]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {
     next if exists $+{comment} || exists $+{ws};
