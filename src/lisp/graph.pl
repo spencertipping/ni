@@ -45,7 +45,9 @@ sub defnodetype {
 }
 
 defnodetype 'fn',
-sub { +{formal => value->new, body => undef} },
+sub { +{self_ref => $_[0],
+        formal   => $_[1],
+        body     => $_[2]} },
 {
   compile => sub {
     # Compile into a reified function within the language in question.

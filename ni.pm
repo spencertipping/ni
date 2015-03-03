@@ -714,7 +714,9 @@ sub defnodetype {
 }
 
 defnodetype 'fn',
-sub { +{formal => value->new, body => undef} },
+sub { +{self_ref => $_[0],
+        formal   => $_[1],
+        body     => $_[2]} },
 {
   compile => sub {
     # Compile into a reified function within the language in question.
@@ -858,17 +860,17 @@ sub resolve_scope {
 }
 
 deftypemethod 'is_special_operator',
-  list  => sub { 0 },
-  array => sub { 0 },
-  hash  => sub { 0 },
-  qstr  => sub { 0 },
-  str   => sub {
+  list   => sub { 0 },
+  array  => sub { 0 },
+  hash   => sub { 0 },
+  qstr   => sub { 0 },
+  str    => sub { 0 },
+  symbol => sub {
     my ($self) = @_;
     $$self if $$self eq 'fn*' || $$self eq 'let*'
            || $$self eq 'do*' || $$self eq 'co*' || $$self eq 'if*';
   },
-  number => sub { 0 },
-  var    => sub { 0 };
+  number => sub { 0 };
 
 # Graph encoding
 # Graphs are doubly-linked structures with directed edges indicating
@@ -882,9 +884,9 @@ our %special_to_graph = (
     # disconnected graph here, adding it as a value to the surrounding graph.
     my ($scope, $self_ref, $formal, $body) = @_;
     die "fn* self ref must be a symbol (got $self_ref instead)"
-      unless ref $self_ref eq 'ni::lisp::str';
+      unless ref $self_ref eq 'ni::lisp::symbol';
     die "fn* formal must be a symbol (got $formal instead)"
-      unless ref $formal eq 'ni::lisp::str';
+      unless ref $formal eq 'ni::lisp::symbol';
 
     fn_node $self_ref, $formal, $body;
   },
@@ -894,7 +896,7 @@ our %special_to_graph = (
     # Also make sure that we force side-effect ordering in value before body.
     my ($scope, $name, $value, $body) = @_;
     die "let* formal must be a symbol (got $name instead)"
-      unless ref $name eq 'ni::lisp::str';
+      unless ref $name eq 'ni::lisp::symbol';
     my $v = $value->to_graph($scope);
     $v->then($body->to_graph({'' => $scope, $$name => $v}));
   },
