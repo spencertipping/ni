@@ -58,12 +58,48 @@
 # The graph form is reduced to special nodes, each of which is one of the
 # following:
 #
-# (co*   f1 f2 ... k)
-# (amb*  f1 f2 ... k)
-# (call* f x1 x2 ... k)
-# (nth*  i f1 f2 ... k)         # used to encode (if) and (cond)
-# (fn*   form)                  # lambda function
-# (di*   n)                     # De Bruijn lambda argument reference
+# (co*     f1 f2 ... k)
+# (amb*    f1 f2 ... k)
+# (call*   f x1 x2 ... k)
+# (nth*    i f1 f2 ... k)       # used to encode (if) and (cond)
+# (fn*     n body)              # n = number of formals to bind
+# (arg*    i)                   # De Bruijn index by #formals
+# (global* f)                   # global function named f
+#
+# Here's an example function and its corresponding representation:
+#
+# (fn [x y]
+#   (print (sqrt (+ (* x x) (* y y)))))
+#
+# (fn* 3                        # x y k
+#   (co* (fn* 1 (call* (global* *) (arg* 1) (arg* 1) (arg* 0)))
+#        (fn* 1 (call* (global* *) (arg* 2) (arg* 2) (arg* 0)))
+#        (fn* 2                 # co* continuation
+#          (call* (global* +) (arg* 0) (arg* 1)
+#            (fn* 1
+#              (call* (global* sqrt) (arg* 0)
+#                (fn* 1
+#                  (call* (global* print) (arg* 0) (arg* 6)))))))))
+#
+# In this case we can statically reclaim all memory because of the way each
+# function is annotated; (*), (+), (sqrt), and (print) are each linear in their
+# continuation and return values that don't alias their arguments. The ideal
+# Perl compilation would look like this:
+#
+# sub {
+#   $_[2]->(print(sqrt(($_[0]*$_[0]) + ($_[1]*$_[1]))));
+# }
+#
+# A naive and much slower compilation would be:
+#
+# sub {
+#   my $v1 = $_[0] * $_[0];
+#   my $v2 = $_[1] * $_[1];
+#   my $v3 = $v1 + $v2;
+#   my $v4 = sqrt($v3);
+#   my $v5 = print($v4);
+#   $_[2]->($v5);
+# }
 
 {
 
