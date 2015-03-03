@@ -401,7 +401,7 @@ eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
 push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
 sub deftypemethod {
 my ($name, %alternatives) = @_;
-*{"ni::lisp::${_}::$name"} = $alternatives{$_} for keys %alternatives;
+*{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
 }
 deftypemethod 'str',
 list => sub { '(' . join(' ', @{$_[0]}) . ')' },
@@ -449,114 +449,59 @@ unless @stack == 1;
 }
 }
 {
-package ni::lisp;
-sub fn_node { ni::lisp::fn->new(@_) }
-sub co_node { ni::lisp::co->new(@_) }
-sub if_node { ni::lisp::if->new(@_) }
-sub apply_node { ni::lisp::apply->new(@_) }
-sub global_node { ni::lisp::global->new(@_) }
-sub value_node { ni::lisp::value->new(@_) }
-sub bless_node { ni::lisp::value->new(@_[1..$#_])->type($_[0]) }
-sub literal_node { ni::lisp::value->new->constant(@_) }
+package ni::lisp::graph;
+use List::Util qw/max/;
+sub fn {
+my ($formal_vector, $body, $flags) = @_;
+$body = $body->resolve_formals(0, $formal_vector);
+bless {formals => scalar(@$formal_vector),
+body => $body,
+degree => undef}, 'ni::lisp::graph::fn';
 }
-{
-package ni::lisp::node;
-sub then {
-my ($self, $x) = @_;
-push @{$$x{wait_for} //= []}, $self;
-$self;
+sub co { bless \@_, 'ni::lisp::graph::co' }
+sub amb { bless \@_, 'ni::lisp::graph::amb' }
+sub call { bless \@_, 'ni::lisp::graph::call' }
+sub nth { bless \@_, 'ni::lisp::graph::nth' }
+sub arg { bless [$_[0], undef], 'ni::lisp::graph::arg' }
+sub global { bless \$_[0], 'ni::lisp::graph::global' }
+our %classes = qw/ co array amb array
+call array nth array /;
+sub defgraphmethod {
+my ($name, %alternatives) = @_;
+*{"ni::lisp::graph::${_}::$name"} =
+$alternatives{$_} // $classes{$_} && $alternatives{$classes{$_}}
+// sub { $_[0] }
+for keys %alternatives;
 }
-sub is_constant { 0 }
-our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
-sub defnodetype {
-my ($t, $ctor, %methods) = @_;
-@{"ni::lisp::${t}::ISA"} = qw/ ni::lisp::node /;
-*{"ni::lisp::${t}::new"} = sub {
-local $_;
-my ($class, @args) = @_;
-bless $ctor->(@args), $class;
-};
-*{"ni::lisp::${t}::$_"} = $methods{$_} for keys %methods;
-}
-defnodetype 'fn',
-sub { +{self_ref => $_[0],
-formal => $_[1],
-body => $_[2]} },
-{
-compile => sub {
-my ($self, $language) = @_;
-my $gensym = gensym 'fn';
-my $v_gensym = gensym 'x';
-$language->defn($gensym, $v_gensym, $$self{body});
-},
-};
-defnodetype 'co',
-sub { [@_] },
-{
-compile => sub {
-my ($self, $language) = @_;
-my $gensym = gensym 'co';
-$language->array($gensym, map $_->compile($language), @$self);
-},
-};
-defnodetype 'if',
-sub { +{cond => $_[0], then => $_[1], else => $_[2]} },
-{
-compile => sub {
-my ($self, $language) = @_;
-my $cond = $$self{cond}->compile($language);
-$language->choose($cond, $$self{then}, $$self{else});
-},
-};
-defnodetype 'apply',
-sub { +{f => $_[0], args => [@_[1..$#_]]} },
-{
-compile => sub {
-my ($self, $language) = @_;
-my $f = $$self{f};
-my $compiled_args = co->new(@{$$self{args}})->compile($language);
-if ($f->is_constant) {
-$f = $$f{value};
-die "cannot call a non-function $f" unless ref $f eq 'ni::lisp::fn';
-my $inlined_body = $$f{body}->to_graph({'' => $$f{scope},
-$$f{formal} => $compiled_args,
-$$f{self_ref} => $f});
-$inlined_body->compile($language);
-} else {
-$language->apply($f->compile($language), $compiled_args);
-}
-},
-};
-defnodetype 'value',
-sub { +{value => $_[1], type => $_[0], constant => 0} },
-{
-constant => sub {
-my ($self, $type, $x) = @_;
-$$self{constant} = 1;
-$$self{type} = $type;
-$$self{value} = $x;
-$self;
-},
-type => sub {
-my ($self, $t) = @_;
-$$self{type} = $t;
-$self;
-},
-value => sub {
+defgraphmethod 'degree',
+fn => sub {
 my ($self) = @_;
-$$self{value};
+$$self{degree} //= $$self{body}->degree - $$self{formals};
 },
-is_constant => sub {
-my ($self) = @_;
-$$self{constant};
+array => sub { my ($self) = @_; max map $_->degree, @$self },
+arg => sub { my ($self) = @_; $$self[1] // die "unlinked arg: $$self[0]" },
+global => sub { 0 };
+defgraphmethod 'resolve_formals',
+fn => sub {
+my ($self, $offset, $formals) = @_;
+$$self{body}->resolve_formals($offset + $$self{formals}, $formals);
+$self;
 },
-compile => sub {
-my ($self, $language) = @_;
-$self->is_constant
-? $language->typed_constant($$self{type}, $$self{value})
-: $$self{value}->compile($language);
+array => sub {
+my ($self, $offset, $formals) = @_;
+$_->resolve_formals($offset, $formals) for @$self;
+$self;
 },
+arg => sub {
+my ($self, $offset, $formals) = @_;
+return $self if defined $$self[1];
+for (0 .. $#{$formals}) {
+if ($$self[0] eq $$formals[$_]) {
+$$self[1] = $_;
+return $self;
+}
+}
+$self;
 };
 }
 {
@@ -567,30 +512,26 @@ return undef unless ref $scope eq 'HASH';
 $$scope{$x} // resolve_scope($$scope{''}, $x);
 }
 deftypemethod 'is_special_operator',
-list => sub { 0 },
-array => sub { 0 },
-hash => sub { 0 },
-qstr => sub { 0 },
-str => sub { 0 },
 symbol => sub {
 my ($self) = @_;
 $$self if $$self eq 'fn*' || $$self eq 'let*'
 || $$self eq 'do*' || $$self eq 'co*' || $$self eq 'if*';
-},
-number => sub { 0 };
+};
+deftypemethod 'usable_as_formal',
+symbol => sub { 1 };
 our %special_to_graph = (
 'fn*' => sub {
 my ($scope, $self_ref, $formal, $body) = @_;
 die "fn* self ref must be a symbol (got $self_ref instead)"
-unless ref $self_ref eq 'ni::lisp::symbol';
+unless $self_ref->usable_as_formal;
 die "fn* formal must be a symbol (got $formal instead)"
-unless ref $formal eq 'ni::lisp::symbol';
+unless $formal->usable_as_formal;
 fn_node $self_ref, $formal, $body;
 },
 'let*' => sub {
 my ($scope, $name, $value, $body) = @_;
 die "let* formal must be a symbol (got $name instead)"
-unless ref $name eq 'ni::lisp::symbol';
+unless $name->usable_as_formal;
 my $v = $value->to_graph($scope);
 $v->then($body->to_graph({'' => $scope, $$name => $v}));
 },

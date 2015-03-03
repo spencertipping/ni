@@ -105,6 +105,99 @@
 
 package ni::lisp::graph;
 
+use List::Util qw/max/;
 
+# NB: not proper constructors (call directly, not using ->fn() etc)
+sub fn {
+  my ($formal_vector, $body, $flags) = @_;
+  $body = $body->resolve_formals(0, $formal_vector);
+  bless {formals => scalar(@$formal_vector),
+DEBUG
+         original_formals => $formal_vector,
+DEBUG_END
+         body   => $body,
+         degree => undef}, 'ni::lisp::graph::fn';
+}
+
+sub co     { bless \@_,            'ni::lisp::graph::co' }
+sub amb    { bless \@_,            'ni::lisp::graph::amb' }
+sub call   { bless \@_,            'ni::lisp::graph::call' }
+sub nth    { bless \@_,            'ni::lisp::graph::nth' }
+sub arg    { bless [$_[0], undef], 'ni::lisp::graph::arg' }
+sub global { bless \$_[0],         'ni::lisp::graph::global' }
+
+our %classes = qw/ co   array  amb array
+                   call array  nth array /;
+
+sub defgraphmethod {
+  my ($name, %alternatives) = @_;
+  *{"ni::lisp::graph::${_}::$name"} =
+    $alternatives{$_} // $classes{$_} && $alternatives{$classes{$_}}
+                      // sub { $_[0] }
+    for keys %alternatives;
+}
+
+defgraphmethod 'degree',
+  fn     => sub {
+    my ($self) = @_;
+    $$self{degree} //= $$self{body}->degree - $$self{formals};
+  },
+  array  => sub { my ($self) = @_; max map $_->degree, @$self },
+  arg    => sub { my ($self) = @_; $$self[1] // die "unlinked arg: $$self[0]" },
+  global => sub { 0 };
+
+defgraphmethod 'resolve_formals',
+  fn => sub {
+    my ($self, $offset, $formals) = @_;
+    $$self{body}->resolve_formals($offset + $$self{formals}, $formals);
+    $self;
+  },
+  array => sub {
+    my ($self, $offset, $formals) = @_;
+    $_->resolve_formals($offset, $formals) for @$self;
+    $self;
+  },
+  arg => sub {
+    my ($self, $offset, $formals) = @_;
+    return $self if defined $$self[1];
+    for (0 .. $#{$formals}) {
+      if ($$self[0] eq $$formals[$_]) {
+        $$self[1] = $_;
+        return $self;
+      }
+    }
+    $self;
+  };
+
+DEBUG
+
+sub array_str_fn {
+  my ($header) = @_;
+  sub {
+    my ($self) = @_;
+    "($header" . join('', map " " . $_->str, @$self) . ")";
+  };
+}
+
+defgraphmethod 'str',
+  fn => sub {
+    my ($self) = @_;
+    "(fn* $$self{formals} [@$$self{original_formals}] "
+      . $$self{body}->str . ")";
+  },
+  co   => array_str_fn('co*'),
+  amb  => array_str_fn('amb*'),
+  call => array_str_fn('call*'),
+  nth  => array_str_fn('nth*'),
+  arg  => sub {
+    my ($self) = @_;
+    "(arg* $$self[0] $$self[1])";
+  },
+  global => sub {
+    my ($self) = @_;
+    "(global* $$self)";
+  };
+
+DEBUG_END
 
 }

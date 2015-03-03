@@ -615,7 +615,7 @@ push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
 
 sub deftypemethod {
   my ($name, %alternatives) = @_;
-  *{"ni::lisp::${_}::$name"} = $alternatives{$_} for keys %alternatives;
+  *{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
 }
 
 deftypemethod 'str',
@@ -668,158 +668,208 @@ sub parse {
 
 }
 # Continuation graph structure
-# Encodes operations over values as a possibly nonlinear series of nodes, each
-# node representing a computation over a value.
+# Represents code in a form much like CPS, but with degrees of freedom to
+# encode partial ordering. Specifically:
+#
+# (+ (f x) (g y))
+# CPS -> (λk (f x
+#          (λfx (g y
+#            (λgy (+ fx gy k))))))
+#
+# In our continuation graph structure, we replace the fixed evaluation order
+# with a (co*) form that provides parallelism:
+#
+# (+ (f x) (g y))
+# -> (λk (co* (λk1 (f x k1))
+#             (λk2 (g y k2))
+#             (λ[fx gy]
+#               (+ fx gy k))))
+#
+# Semantically, (co*) returns once all of the sub-continuations are invoked,
+# and additionally when any of the sub-continuations is re-invoked. So:
+#
+# > (co* (λk1 ...)
+#        (λk2 ...)
+#        (λk3 ...)
+#        (λ[v1 v2 v3] (print v1 v2 v3)))
+# > (k1 5)              # nothing happens
+# > (k2 6)              # nothing happens
+# > (k1 7)              # nothing happens
+# > (k3 9)              # (print 5 6 9) (print 7 6 9)
+# > (k2 4)              # (print 7 4 9)
+#
+# Non-triggering continuations are required to hold only a weak reference to
+# the other continuation queues. That way if k3 is freed before being called,
+# k1 and k2's space usage will be constant even if they are called repeatedly
+# (which would normally enqueue stuff).
+#
+# NB: the order of arguments relative to one another is explicitly undefined;
+# that is, if we have (k1 4) (k1 5) (k1 6) and (k2 a) (k2 b), the (co*)
+# continuation might see [4 a] [5 a] [6 a] or it might see [4 a] [4 b] [5 b],
+# etc. The queues of k1 and k2 are mutually unordered.
+#
+# Along with (co*) is (amb*), which forwards only the first continuation. That
+# is:
+#
+# > (amb* (λk1 ...)
+#         (λk2 ...)
+#         (λv (print v)))
+# > (k1 5)              # (print 5)
+# > (k2 4)              # nothing happens
+# > (k1 7)              # (print 7)
+#
+# It's important to deactivate all continuations except for the first because
+# the purpose of (amb*) is to express semantic ambivalence about the
+# implementation of a given computation; therefore, we still want just one
+# result despite providing two ways to calculate it.
+
+# Compiling this representation
+# The graph form is reduced to special nodes, each of which is one of the
+# following:
+#
+# (co*     f1 f2 ... k)
+# (amb*    f1 f2 ... k)
+# (call*   f x1 x2 ... k)
+# (nth*    i f1 f2 ... k)       # used to encode (if) and (cond)
+# (fn*     n body)              # n = number of formals to bind
+# (arg*    i)                   # De Bruijn index by #formals
+# (global* f)                   # global function named f
+#
+# Here's an example function and its corresponding representation:
+#
+# (fn [x y]
+#   (print (sqrt (+ (* x x) (* y y)))))
+#
+# (fn* 3                        # x y k
+#   (co* (fn* 1 (call* (global* *) (arg* 1) (arg* 1) (arg* 0)))
+#        (fn* 1 (call* (global* *) (arg* 2) (arg* 2) (arg* 0)))
+#        (fn* 2                 # co* continuation
+#          (call* (global* +) (arg* 0) (arg* 1)
+#            (fn* 1
+#              (call* (global* sqrt) (arg* 0)
+#                (fn* 1
+#                  (call* (global* print) (arg* 0) (arg* 6)))))))))
+#
+# In this case we can statically reclaim all memory because of the way each
+# function is annotated; (*), (+), (sqrt), and (print) are each linear in their
+# continuation and return values that don't alias their arguments. The ideal
+# Perl compilation would look like this:
+#
+# sub {
+#   $_[2]->(print(sqrt(($_[0]*$_[0]) + ($_[1]*$_[1]))));
+# }
+#
+# A naive and much slower compilation would be:
+#
+# sub {
+#   my $v1 = $_[0] * $_[0];
+#   my $v2 = $_[1] * $_[1];
+#   my $v3 = $v1 + $v2;
+#   my $v4 = sqrt($v3);
+#   my $v5 = print($v4);
+#   $_[2]->($v5);
+# }
 
 {
 
-package ni::lisp;
+package ni::lisp::graph;
 
-sub fn_node      { ni::lisp::fn->new(@_) }
-sub co_node      { ni::lisp::co->new(@_) }
-sub if_node      { ni::lisp::if->new(@_) }
-sub apply_node   { ni::lisp::apply->new(@_) }
+use List::Util qw/max/;
 
-sub global_node  { ni::lisp::global->new(@_) }
-sub value_node   { ni::lisp::value->new(@_) }
-sub bless_node   { ni::lisp::value->new(@_[1..$#_])->type($_[0]) }
-sub literal_node { ni::lisp::value->new->constant(@_) }
-
+# NB: not proper constructors (call directly, not using ->fn() etc)
+sub fn {
+  my ($formal_vector, $body, $flags) = @_;
+  $body = $body->resolve_formals(0, $formal_vector);
+  bless {formals => scalar(@$formal_vector),
+         original_formals => $formal_vector,
+         body   => $body,
+         degree => undef}, 'ni::lisp::graph::fn';
 }
 
-{
+sub co     { bless \@_,            'ni::lisp::graph::co' }
+sub amb    { bless \@_,            'ni::lisp::graph::amb' }
+sub call   { bless \@_,            'ni::lisp::graph::call' }
+sub nth    { bless \@_,            'ni::lisp::graph::nth' }
+sub arg    { bless [$_[0], undef], 'ni::lisp::graph::arg' }
+sub global { bless \$_[0],         'ni::lisp::graph::global' }
 
-package ni::lisp::node;
+our %classes = qw/ co   array  amb array
+                   call array  nth array /;
 
-sub then {
-  my ($self, $x) = @_;
-  push @{$$x{wait_for} //= []}, $self;
-  $self;
+sub defgraphmethod {
+  my ($name, %alternatives) = @_;
+  *{"ni::lisp::graph::${_}::$name"} =
+    $alternatives{$_} // $classes{$_} && $alternatives{$classes{$_}}
+                      // sub { $_[0] }
+    for keys %alternatives;
 }
 
-sub is_constant { 0 }
-
-our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
-
-sub defnodetype {
-  my ($t, $ctor, %methods) = @_;
-  @{"ni::lisp::${t}::ISA"} = qw/ ni::lisp::node /;
-  *{"ni::lisp::${t}::new"} = sub {
-    local $_;
-    my ($class, @args) = @_;
-    bless $ctor->(@args), $class;
-  };
-  *{"ni::lisp::${t}::$_"} = $methods{$_} for keys %methods;
-}
-
-defnodetype 'fn',
-sub { +{self_ref => $_[0],
-        formal   => $_[1],
-        body     => $_[2]} },
-{
-  compile => sub {
-    # Compile into a reified function within the language in question.
-    my ($self, $language) = @_;
-    my $gensym   = gensym 'fn';
-    my $v_gensym = gensym 'x';
-    $language->defn($gensym, $v_gensym, $$self{body});
+defgraphmethod 'degree',
+  fn     => sub {
+    my ($self) = @_;
+    $$self{degree} //= $$self{body}->degree - $$self{formals};
   },
-};
+  array  => sub { my ($self) = @_; max map $_->degree, @$self },
+  arg    => sub { my ($self) = @_; $$self[1] // die "unlinked arg: $$self[0]" },
+  global => sub { 0 };
 
-defnodetype 'co',
-sub { [@_] },
-{
-  compile => sub {
-    # For now, compile in sequential order and return a reified list.
-    my ($self, $language) = @_;
-    my $gensym = gensym 'co';
-    $language->array($gensym, map $_->compile($language), @$self);
+defgraphmethod 'resolve_formals',
+  fn => sub {
+    my ($self, $offset, $formals) = @_;
+    $$self{body}->resolve_formals($offset + $$self{formals}, $formals);
+    $self;
   },
-};
-
-defnodetype 'if',
-sub { +{cond => $_[0], then => $_[1], else => $_[2]} },
-{
-  compile => sub {
-    my ($self, $language) = @_;
-    my $cond = $$self{cond}->compile($language);
-    $language->choose($cond, $$self{then}, $$self{else});
+  array => sub {
+    my ($self, $offset, $formals) = @_;
+    $_->resolve_formals($offset, $formals) for @$self;
+    $self;
   },
-};
-
-defnodetype 'apply',
-sub { +{f => $_[0], args => [@_[1..$#_]]} },
-{
-  compile => sub {
-    my ($self, $language) = @_;
-    my $f             = $$self{f};
-    my $compiled_args = co->new(@{$$self{args}})->compile($language);
-    if ($f->is_constant) {
-      $f = $$f{value};
-      die "cannot call a non-function $f" unless ref $f eq 'ni::lisp::fn';
-      my $inlined_body  = $$f{body}->to_graph({''            => $$f{scope},
-                                               $$f{formal}   => $compiled_args,
-                                               $$f{self_ref} => $f});
-      $inlined_body->compile($language);
-    } else {
-      $language->apply($f->compile($language), $compiled_args);
+  arg => sub {
+    my ($self, $offset, $formals) = @_;
+    return $self if defined $$self[1];
+    for (0 .. $#{$formals}) {
+      if ($$self[0] eq $$formals[$_]) {
+        $$self[1] = $_;
+        return $self;
+      }
     }
-  },
-};
-
-defnodetype 'value',
-sub { +{value => $_[1], type => $_[0], constant => 0} },
-{
-  constant => sub {
-    my ($self, $type, $x) = @_;
-    $$self{constant} = 1;
-    $$self{type}     = $type;
-    $$self{value}    = $x;
     $self;
-  },
+  };
 
-  type => sub {
-    my ($self, $t) = @_;
-    $$self{type} = $t;
-    $self;
-  },
 
-  value => sub {
+sub array_str_fn {
+  my ($header) = @_;
+  sub {
     my ($self) = @_;
-    $$self{value};
-  },
+    "($header" . join('', map " " . $_->str, @$self) . ")";
+  };
+}
 
-  is_constant => sub {
+defgraphmethod 'str',
+  fn => sub {
     my ($self) = @_;
-    $$self{constant};
+    "(fn* $$self{formals} [@$$self{original_formals}] "
+      . $$self{body}->str . ")";
   },
+  co   => array_str_fn('co*'),
+  amb  => array_str_fn('amb*'),
+  call => array_str_fn('call*'),
+  nth  => array_str_fn('nth*'),
+  arg  => sub {
+    my ($self) = @_;
+    "(arg* $$self[0] $$self[1])";
+  },
+  global => sub {
+    my ($self) = @_;
+    "(global* $$self)";
+  };
 
-  compile => sub {
-    my ($self, $language) = @_;
-    $self->is_constant
-      ? $language->typed_constant($$self{type}, $$self{value})
-      : $$self{value}->compile($language);
-  },
-};
 
 }
 # ni lisp compiler
 # This doesn't compile to final forms; instead, it compiles each form down to
 # an internal representation that can be handed off to a JIT backend for
 # optimized execution.
-#
-# The semantics of a ni-lisp program are dictated jointly by the space of
-# values and the space of side-effects. Conceptually side-effects are modeled
-# using a dependency graph that is only incidentally related to value-space;
-# this means that evaluation commutes across effects unless there's a data
-# dependency. To make this easier for ni to reason about, the "state of side
-# effects" is treated internally as a value despite never being visible as one.
-#
-# You can introduce a branch-point in the side effect ordering by using the
-# special form "co"; this indicates that all of its subforms are
-# side-effect-commutative with respect to one another. Internally all of this
-# is modeled as a doubly-linked directed dataflow graph.
 
 {
 
@@ -860,17 +910,14 @@ sub resolve_scope {
 }
 
 deftypemethod 'is_special_operator',
-  list   => sub { 0 },
-  array  => sub { 0 },
-  hash   => sub { 0 },
-  qstr   => sub { 0 },
-  str    => sub { 0 },
   symbol => sub {
     my ($self) = @_;
     $$self if $$self eq 'fn*' || $$self eq 'let*'
            || $$self eq 'do*' || $$self eq 'co*' || $$self eq 'if*';
-  },
-  number => sub { 0 };
+  };
+
+deftypemethod 'usable_as_formal',
+  symbol => sub { 1 };
 
 # Graph encoding
 # Graphs are doubly-linked structures with directed edges indicating
@@ -884,9 +931,9 @@ our %special_to_graph = (
     # disconnected graph here, adding it as a value to the surrounding graph.
     my ($scope, $self_ref, $formal, $body) = @_;
     die "fn* self ref must be a symbol (got $self_ref instead)"
-      unless ref $self_ref eq 'ni::lisp::symbol';
+      unless $self_ref->usable_as_formal;
     die "fn* formal must be a symbol (got $formal instead)"
-      unless ref $formal eq 'ni::lisp::symbol';
+      unless $formal->usable_as_formal;
 
     fn_node $self_ref, $formal, $body;
   },
@@ -896,7 +943,7 @@ our %special_to_graph = (
     # Also make sure that we force side-effect ordering in value before body.
     my ($scope, $name, $value, $body) = @_;
     die "let* formal must be a symbol (got $name instead)"
-      unless ref $name eq 'ni::lisp::symbol';
+      unless $name->usable_as_formal;
     my $v = $value->to_graph($scope);
     $v->then($body->to_graph({'' => $scope, $$name => $v}));
   },
