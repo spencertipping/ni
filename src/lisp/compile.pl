@@ -82,12 +82,7 @@ our %special_to_graph = (
     die "fn* formal must be a symbol (got $formal instead)"
       unless ref $formal eq 'ni::lisp::str';
 
-    my $fn_graph    = fn_node;
-    my $inner_scope = {'' => $scope, $$formal   => $fn_graph->formal,
-                                     $$self_ref => $fn_graph};
-    my $body_graph  = $body->to_graph($inner_scope);
-    $$fn_graph{body} = $body_graph;
-    $fn_graph;
+    fn_node $self_ref, $formal, $body;
   },
 
   'let*' => sub {
@@ -123,7 +118,7 @@ our %special_to_graph = (
 
   'apply*' => sub {
     my ($scope, @args) = @_;
-    apply_node co_node map $_->to_graph($scope), @args;
+    apply_node map $_->to_graph($scope), @args;
   },
 );
 

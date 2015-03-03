@@ -24,9 +24,14 @@ package ni::lisp::node;
 
 sub then {
   my ($self, $x) = @_;
-  push @{$$self{effect_continuations}}, $x;
+  push @{$$x{wait_for} //= []}, $self;
   $self;
 }
+
+sub is_constant { 0 }
+
+our $gensym_id = 0;
+sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
 
 sub defnodetype {
   my ($t, $ctor, %methods) = @_;
@@ -34,9 +39,7 @@ sub defnodetype {
   *{"ni::lisp::${t}::new"} = sub {
     local $_;
     my ($class, @args) = @_;
-    my $self = $ctor->(@args);
-    $$self{$_} //= [] for qw/ continuations effect_continuations /;
-    bless $self, $class;
+    bless $ctor->(@args), $class;
   };
   *{"ni::lisp::${t}::$_"} = $methods{$_} for keys %methods;
 }
@@ -44,27 +47,54 @@ sub defnodetype {
 defnodetype 'fn',
 sub { +{formal => value_node, body => undef} },
 {
+  compile => sub {
+    # Compile into a reified function within the language in question.
+    my ($self, $language) = @_;
+    my $gensym   = gensym 'fn';
+    my $v_gensym = gensym 'x';
+    $language->defn($gensym, $v_gensym, $$self{body});
+  },
 };
 
 defnodetype 'co',
-sub { +{subgraphs => [@_]} },
+sub { [@_] },
 {
+  compile => sub {
+    # For now, compile in sequential order and return a reified list.
+    my ($self, $language) = @_;
+    my $gensym = gensym 'co';
+    $language->array($gensym, map $_->compile($language), @$self);
+  },
 };
 
 defnodetype 'if',
-sub { my ($cond, $then, $else) = @_;
-      my $result = {then => $then, else => $else};
-      $cond->to($result);
-      $result },
+sub { +{cond => $_[0], then => $_[1], else => $_[2]} },
 {
+  compile => sub {
+    my ($self, $language) = @_;
+    my $cond_gensym = $$self{cond}->compile($language);
+    $language->choose($cond, $then, $else);
+  },
 };
 
 defnodetype 'apply',
-sub { my ($args_co) = @_;
-      my $result = {};
-      $args_co->to($result);
-      $result },
+sub { +{f => $_[0], args => [@_[1..$#_]]} },
 {
+  compile => sub {
+    my ($self, $language) = @_;
+    my $f             = $$self{f};
+    my $compiled_args = co(@{$$self{args}})->compile($language);
+    if ($f->is_constant) {
+      $f = $$f{value};
+      die "cannot call a non-function $f" unless ref $f eq 'ni::lisp::fn';
+      my $inlined_body  = $$f{body}->to_graph({''            => $$f{scope},
+                                               $$f{formal}   => $compiled_args,
+                                               $$f{self_ref} => $f});
+      $inlined_body->compile($language);
+    } else {
+      $language->apply($f->compile($language), $compiled_args);
+    }
+  },
 };
 
 defnodetype 'value',
@@ -82,6 +112,23 @@ sub { +{value => $_[1], type => $_[0], constant => 0} },
     my ($self, $t) = @_;
     $$self{type} = $t;
     $self;
+  },
+
+  value => sub {
+    my ($self) = @_;
+    $$self{value};
+  },
+
+  is_constant => sub {
+    my ($self) = @_;
+    $$self{constant};
+  },
+
+  compile => sub {
+    my ($self, $language) = @_;
+    $self->is_constant
+      ? $language->typed_constant($$self{type}, $$self{value})
+      : $$self{value}->compile($language);
   },
 };
 
