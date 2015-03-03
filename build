@@ -2,7 +2,7 @@
 rm -f ni ni-boot ni-debug
 {
   cat src/{core,prefix,gen,gentypes,fn,io}.pl \
-      src/lisp/{parse,graph,compile},pl \
+      src/lisp/{parse,graph,compile}.pl \
       src/{data,iotypes,iobind,iofns}.pl \
       src/{ops,datatypes,module,main}.pl
 

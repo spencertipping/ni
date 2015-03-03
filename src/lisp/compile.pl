@@ -50,7 +50,7 @@ package ni::lisp;
 sub resolve_scope {
   my ($scope, $x) = @_;
   return undef unless ref $scope eq 'HASH';
-  $$scope{$x} || resolve_scope $$scope{''}, $x;
+  $$scope{$x} // resolve_scope($$scope{''}, $x);
 }
 
 deftypemethod 'is_special_operator',

@@ -6,15 +6,15 @@
 
 package ni::lisp;
 
-sub fn_node      { ni::lisp::fn_node->new(@_) }
-sub co_node      { ni::lisp::co_node->new(@_) }
-sub if_node      { ni::lisp::if_node->new(@_) }
-sub apply_node   { ni::lisp::apply_node->new(@_) }
+sub fn_node      { ni::lisp::fn->new(@_) }
+sub co_node      { ni::lisp::co->new(@_) }
+sub if_node      { ni::lisp::if->new(@_) }
+sub apply_node   { ni::lisp::apply->new(@_) }
 
-sub global_node  { ni::lisp::global_node->new(@_) }
-sub value_node   { ni::lisp::value_node->new(@_) }
-sub bless_node   { ni::lisp::value_node->new(@_[1..$#_])->type($_[0]) }
-sub literal_node { ni::lisp::value_node->new->constant(@_) }
+sub global_node  { ni::lisp::global->new(@_) }
+sub value_node   { ni::lisp::value->new(@_) }
+sub bless_node   { ni::lisp::value->new(@_[1..$#_])->type($_[0]) }
+sub literal_node { ni::lisp::value->new->constant(@_) }
 
 }
 
@@ -45,7 +45,7 @@ sub defnodetype {
 }
 
 defnodetype 'fn',
-sub { +{formal => value_node, body => undef} },
+sub { +{formal => value->new, body => undef} },
 {
   compile => sub {
     # Compile into a reified function within the language in question.
@@ -72,8 +72,8 @@ sub { +{cond => $_[0], then => $_[1], else => $_[2]} },
 {
   compile => sub {
     my ($self, $language) = @_;
-    my $cond_gensym = $$self{cond}->compile($language);
-    $language->choose($cond, $then, $else);
+    my $cond = $$self{cond}->compile($language);
+    $language->choose($cond, $$self{then}, $$self{else});
   },
 };
 
@@ -83,7 +83,7 @@ sub { +{f => $_[0], args => [@_[1..$#_]]} },
   compile => sub {
     my ($self, $language) = @_;
     my $f             = $$self{f};
-    my $compiled_args = co(@{$$self{args}})->compile($language);
+    my $compiled_args = co->new(@{$$self{args}})->compile($language);
     if ($f->is_constant) {
       $f = $$f{value};
       die "cannot call a non-function $f" unless ref $f eq 'ni::lisp::fn';
