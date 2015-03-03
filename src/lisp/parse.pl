@@ -42,7 +42,7 @@ push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
 
 sub deftypemethod {
   my ($name, %alternatives) = @_;
-  *{"ni::lisp::${_}::$name"} = $alternatives{$_} for keys %alternatives;
+  *{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
 }
 
 deftypemethod 'str',

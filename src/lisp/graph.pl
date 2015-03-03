@@ -1,6 +1,43 @@
 # Continuation graph structure
-# Encodes operations over values as a possibly nonlinear series of nodes, each
-# node representing a computation over a value.
+# Represents code in a form much like CPS, but with degrees of freedom to
+# encode partial ordering. Specifically:
+#
+# (+ (f x) (g y))
+# CPS -> (λk (f x
+#          (λfx (g y
+#            (λgy (+ fx gy k))))))
+#
+# In our continuation graph structure, we replace the fixed evaluation order
+# with a (co*) form that provides parallelism:
+#
+# (+ (f x) (g y))
+# -> (λk (co* (λk1 (f x k1))
+#             (λk2 (g y k2))
+#             (λ[fx gy]
+#               (+ fx gy k))))
+#
+# Semantically, (co*) returns once all of the sub-continuations are invoked,
+# and additionally when any of the sub-continuations is re-invoked. So:
+#
+# > (co* (λk1 ...)
+#        (λk2 ...)
+#        (λk3 ...)
+#        (λ[v1 v2 v3] (print v1 v2 v3)))
+# > (k1 5)              # nothing happens
+# > (k2 6)              # nothing happens
+# > (k1 7)              # nothing happens
+# > (k3 9)              # (print 5 6 9) (print 7 6 9)
+# > (k2 4)              # (print 7 4 9)
+#
+# Non-triggering continuations are required to hold only a weak reference to
+# the other continuation queues. That way if k3 is freed before being called,
+# k1 and k2's space usage will be constant even if they are called repeatedly
+# (which would normally enqueue stuff).
+#
+# NB: the order of arguments relative to one another is explicitly undefined;
+# that is, if we have (k1 4) (k1 5) (k1 6) and (k2 a) (k2 b), the (co*)
+# continuation might see [4 a] [5 a] [6 a] or it might see [4 a] [4 b] [5 b],
+# etc. The queues of k1 and k2 are mutually unordered.
 
 {
 
@@ -89,9 +126,9 @@ sub { +{f => $_[0], args => [@_[1..$#_]]} },
     if ($f->is_constant) {
       $f = $$f{value};
       die "cannot call a non-function $f" unless ref $f eq 'ni::lisp::fn';
-      my $inlined_body  = $$f{body}->to_graph({''            => $$f{scope},
-                                               $$f{formal}   => $compiled_args,
-                                               $$f{self_ref} => $f});
+      my $inlined_body = $$f{body}->to_graph({''            => $$f{scope},
+                                              $$f{formal}   => $compiled_args,
+                                              $$f{self_ref} => $f});
       $inlined_body->compile($language);
     } else {
       $language->apply($f->compile($language), $compiled_args);
