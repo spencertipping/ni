@@ -9,9 +9,6 @@
 #   3.0                 numeric atom
 #   [3 4 5]             array
 #   {foo bar}           hash
-#
-# As in Clojure, everything is immutable. The JIT's job is to figure out how to
-# make this acceptably fast, possibly by compiling to something besides Perl.
 
 {
 
@@ -33,9 +30,7 @@ our %overloads   = qw/ "" str /;
 
 for (@parse_types) {
   eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
-  DEBUG
   die $@ if $@;
-  DEBUG_END
 }
 
 push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
@@ -84,9 +79,7 @@ sub parse {
     } else {
       my @types = keys %+;
       my $v     = $+{$types[0]};
-      DEBUG
       die "FIXME: got @types" unless @types == 1;
-      DEBUG_END
       push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
     }
   }

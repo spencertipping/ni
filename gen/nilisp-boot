@@ -1,0 +1,275 @@
+#!/usr/bin/env perl
+# ni lisp reader
+# Produces a tree of blessed references representing the specified
+# s-expression. Syntactically:
+#
+#   'foo\nbar'          string with a literal backslash-n in it
+#   "foo\tbar"          string with tab character
+#   foo                 quoted atom (analogous to 'foo in lisp)
+#   $foo                variable reference (analogous to foo in lisp)
+#   3.0                 numeric atom
+#   [3 4 5]             array
+#   {foo bar}           hash
+
+{
+
+package ni::lisp;
+
+# NB: these are not perl OO constructors in the usual sense (i.e. they can't be
+# called indirectly)
+sub list   { bless \@_, "ni::lisp::list" }
+sub array  { bless \@_, "ni::lisp::array" }
+sub hash   { bless \@_, "ni::lisp::hash" }
+
+sub qstr   { bless \$_[0], "ni::lisp::qstr" }
+sub str    { bless \$_[0], "ni::lisp::str" }
+sub symbol { bless \$_[0], "ni::lisp::symbol" }
+sub number { bless \$_[0], "ni::lisp::number" }
+
+our @parse_types = qw/ list array hash qstr str symbol number /;
+our %overloads   = qw/ "" str /;
+
+for (@parse_types) {
+  eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
+  die $@ if $@;
+}
+
+push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
+
+sub deftypemethod {
+  my ($name, %alternatives) = @_;
+  *{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
+}
+
+deftypemethod 'str',
+  list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
+  array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
+  hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
+  qstr   => sub { "'" . ${$_[0]} . "'" },
+  str    => sub { '"' . ${$_[0]} . '"' },
+  symbol => sub { ${$_[0]} },
+  number => sub { ${$_[0]} };
+
+our %bracket_types = (
+  ')' => \&ni::lisp::list,
+  ']' => \&ni::lisp::array,
+  '}' => \&ni::lisp::hash,
+);
+
+sub parse {
+  local $_;
+  my @stack = [];
+  while ($_[0] =~ / \G (?: (?<comment> \#.*)
+                         | (?<ws>      [\s,]+)
+                         | '(?<qstr>   (?:[^\\']|\\.)*)'
+                         | "(?<str>    (?:[^\\"]|\\.)*)"
+                         | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
+                                         | 0x[0-9a-fA-F]+
+                                         | 0[0-7]+
+                                         | [1-9][0-9]*))
+                         | (?<symbol>  [^"()\[\]{}\s,]+)
+                         | (?<opener>  [(\[{])
+                         | (?<closer>  [)\]}])) /gx) {
+    next if exists $+{comment} || exists $+{ws};
+    if ($+{opener}) {
+      push @stack, [];
+    } elsif ($+{closer}) {
+      my $last = pop @stack;
+      die "too many closing brackets" unless @stack;
+      push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
+    } else {
+      my @types = keys %+;
+      my $v     = $+{$types[0]};
+      die "FIXME: got @types" unless @types == 1;
+      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
+    }
+  }
+  die "unbalanced brackets: " . scalar(@stack) . " != 1"
+    unless @stack == 1;
+  @{$stack[0]};
+}
+
+}
+# A very literal encoding of CPS into Perl lambdas. Not fast at all. This
+# literal encoding means we don't need to do our own lexical scope analysis or
+# write a GC.
+
+{
+
+package ni::lisp;
+
+sub compile_list;
+sub array_literal;
+sub hash_literal;
+sub qstr_literal;
+sub str_literal;
+sub var_reference;
+sub num_literal;
+sub function_call;
+
+our $gensym_id = 0;
+sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
+
+deftypemethod 'compile',
+  list   => sub { compile_list  @{$_[0]} },
+  array  => sub { array_literal map $_->compile, @{$_[0]} },
+  hash   => sub { hash_literal  map $_->compile, @{$_[0]} },
+  qstr   => sub { qstr_literal  ${$_[0]} },
+  str    => sub { str_literal   ${$_[0]} },
+  symbol => sub { var_reference ${$_[0]} },
+  number => sub { num_literal   ${$_[0]} };
+
+# CPS transformation happens at the macroexpansion level, so by this point the
+# whole program is represented in terms of CPS lambdas and associated special
+# forms.
+our %special_forms = (
+  'fn*' => sub {
+    my ($formals, $body) = @_;
+    die "formals must be specified as an array (got $formals)"
+      unless ref $formals eq 'ni::lisp::array';
+
+    my $perlized_formals = join ', ', map "\$$$_", @$formals;
+    my $compiled_body    = $body->compile;
+
+    qq{ sub {
+      my ($perlized_formals) = \@_;
+      $compiled_body;
+    } };
+  },
+
+  # A non-CPS form since it's a continuation-linear primitive. (It could be
+  # CPS, but it wouldn't buy us anything and would generate more lambdas.)
+  'nth*' => sub {
+    my ($n, @vs) = map $_->compile, @_;
+    my $v_options = array_literal @vs;
+    qq{ (($v_options)->[$n]) };
+  },
+
+  # We have no concurrency in the bootstrap layer, so just execute each
+  # continuation in sequence and collect results. We support delayed
+  # continuation invocation but nothing nonlinear.
+  'co*' => sub {
+    my $k    = pop(@_)->compile;
+    my $k_gs = gensym 'k';
+    my $i_gs = gensym 'indexes';
+    my $n    = @_;
+    my @ks   = map qq{ sub { \$$i_gs\{$_\} = \$_[0];
+                             \$$k_gs->(map \$$i_gs\{\$_\}, 0..$#_)
+                               if scalar(keys \%$i_gs) == $n; }},
+                   0..$#_;
+
+    my $calls = join "\n", map qq{ ($ks[$_])->($_[$_]); }, 0..$#_;
+
+    qq{
+      my \$$k_gs = $k;
+      my \%$i_gs;
+      $calls;
+    };
+  },
+
+  # For now, choose the first alternative every time. Others don't need to even
+  # be compiled because they're all semantically equivalent.
+  'amb*' => sub {
+    my $k = pop(@_)->compile;
+    my $f = $_[0]->compile;
+    qq{ ($f)->($k); };
+  },
+);
+
+sub compile_list {
+  my ($h, @xs) = @_;
+  exists $special_forms{$$h} ? $special_forms{$$h}->(@xs)
+                             : function_call($h, @xs);
+}
+
+sub array_literal { "[" . join(', ', @_) . "]" }
+sub hash_literal  { "{" . join(', ', @_) . "}" }
+sub qstr_literal  { "'$_[0]'" }
+sub str_literal   { "\"$_[0]\"" }
+sub var_reference { "\$" . ($_[0] =~ y/-/_/r) }
+sub num_literal   { $_[0] }
+
+sub function_call {
+  my ($f, @xs) = map $_->compile, @_;
+  $f . "->(" . join(", ", @xs) . ")";
+}
+
+}
+# Really simple macroexpander
+{
+
+package ni::lisp;
+
+our %macros;
+
+deftypemethod 'macroexpand',
+  list => sub {
+    my ($self, $macros) = @_;
+    my ($h, @xs) = @$self;
+    $macros //= \%macros;
+    return ni::lisp::list map $_->macroexpand, @$self
+      unless ref $h eq 'ni::lisp::symbol' and exists $$macros{$$h};
+
+    # Macros will be in CPS (even though they have no business being written
+    # this way), so catch the return value.
+    my $return;
+    $$macros{$$h}->(@xs, sub { $return = $_[0] });
+    $return->macroexpand;
+  },
+
+  array  => sub { ni::lisp::array map $_->macroexpand, @{$_[0]} },
+  hash   => sub { ni::lisp::hash  map $_->macroexpand, @{$_[0]} },
+  qstr   => sub { $_[0] },
+  str    => sub { $_[0] },
+  symbol => sub { $_[0] },
+  number => sub { $_[0] };
+
+}
+# Takes a regular Perl sub and makes it work with CPS
+sub cps {
+  my ($f) = @_;
+  sub {
+    my $k = pop @_;
+    $k->($f->(@_));
+  };
+}
+
+sub defcps { ${$_[0]} = cps $_[1] }
+
+defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
+defcps 'sym_str', sub { ni::lisp::str    ${$_[0]} };
+defcps 'str_sym', sub { ni::lisp::symbol ${$_[0]} };
+
+defcps 'car',   sub { my ($l) = @_; $$l[0] };
+defcps 'cdr',   sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
+defcps 'cons',  sub { my ($a, $d) = @_; ni::lisp::list($a, @$d) };
+defcps 'list',  sub { ni::lisp::list(@_) };
+defcps 'nil',   sub { ni::lisp::list() };
+defcps 'consp', sub { @{$_[0]} > 0 };
+defcps 'count', sub { scalar(@{$_[0]}) };
+defcps 'eq',    sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
+defcps 'not',   sub { $_[0] ? 0 : 1 };
+defcps 'print', sub { print join(' ', @_), "\n" };
+
+$ni::lisp::macros{def_} = sub {
+  my ($name, $value, $k) = @_;
+  my $m = $value->macroexpand;
+  my $c = $m->compile;
+  ${$$name =~ y/-/_/r} = eval $c;
+  die "failed to compile $name -> $m -> $c: $@" if $@;
+  $k->($name);
+};
+
+$ni::lisp::macros{defmacro_} = sub {
+  my ($name, @stuff) = @_;
+  $ni::lisp::macros{def_}->(@_);
+  $ni::lisp::macros{$$name} = ${$$name};
+};
+for my $f (ni::lisp::parse join '', <>) {
+  my $m = eval { $f->macroexpand };
+  die "error macroexpanding $f: $@" if $@;
+
+  my $c = $m->compile;
+  eval $m->compile;
+  die "error evaluating compilation for $f -> $m -> $c: $@" if $@;
+}
