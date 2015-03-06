@@ -452,57 +452,35 @@ unless @stack == 1;
 package ni::lisp::graph;
 use List::Util qw/max/;
 sub fn {
-my ($formal_vector, $body, $flags) = @_;
-$body = $body->resolve_formals(0, $formal_vector);
-bless {formals => scalar(@$formal_vector),
-body => $body,
-degree => undef}, 'ni::lisp::graph::fn';
+my ($formals, $closure, $body) = @_;
+my $fvs = $$body{free_variables};
+exists $$fvs{$_} and $$fvs{$_}{is_lexical} = 1 for @$closure, @$formals;
+my $effective_free_variables = {%$fvs};
+delete $$effective_free_variables{$_} for @$formals;
+bless {formals => $formals,
+closure => $closure,
+free_variables => $effective_free_variables,
+body => $body}, 'ni::lisp::graph::fn';
 }
-sub co { bless \@_, 'ni::lisp::graph::co' }
-sub amb { bless \@_, 'ni::lisp::graph::amb' }
-sub call { bless \@_, 'ni::lisp::graph::call' }
-sub nth { bless \@_, 'ni::lisp::graph::nth' }
-sub arg { bless [$_[0], undef], 'ni::lisp::graph::arg' }
-sub global { bless \$_[0], 'ni::lisp::graph::global' }
-our %classes = qw/ co array amb array
-call array nth array /;
+sub free_var_union;
+sub call {
+bless {f => $_[0],
+xs => [@_ > 2 ? @_[1..$#_ - 1] : ()],
+k => $_[-1],
+free_variables => free_var_union(@_)}, 'ni::lisp::graph::call';
+}
+sub co { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::co' }
+sub amb { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::amb' }
+sub nth { bless {n => $_[0], xs => [@_[1..$#_]]}, 'ni::lisp::graph::nth' }
+sub val { bless {name => $_[0], is_lexical => 0}, 'ni::lisp::graph::val' }
 sub defgraphmethod {
 my ($name, %alternatives) = @_;
-*{"ni::lisp::graph::${_}::$name"} =
-$alternatives{$_} // $classes{$_} && $alternatives{$classes{$_}}
-// sub { $_[0] }
+*{"ni::lisp::graph::${_}::$name"} = $alternatives{$_} // sub { $_[0] }
 for keys %alternatives;
 }
-defgraphmethod 'degree',
-fn => sub {
-my ($self) = @_;
-$$self{degree} //= $$self{body}->degree - $$self{formals};
-},
-array => sub { my ($self) = @_; max map $_->degree, @$self },
-arg => sub { my ($self) = @_; $$self[1] // die "unlinked arg: $$self[0]" },
-global => sub { 0 };
-defgraphmethod 'resolve_formals',
-fn => sub {
-my ($self, $offset, $formals) = @_;
-$$self{body}->resolve_formals($offset + $$self{formals}, $formals);
-$self;
-},
-array => sub {
-my ($self, $offset, $formals) = @_;
-$_->resolve_formals($offset, $formals) for @$self;
-$self;
-},
-arg => sub {
-my ($self, $offset, $formals) = @_;
-return $self if defined $$self[1];
-for (0 .. $#{$formals}) {
-if ($$self[0] eq $$formals[$_]) {
-$$self[1] = $_;
-return $self;
+sub free_var_union {
+my $result = {};
 }
-}
-$self;
-};
 }
 {
 package ni::lisp;

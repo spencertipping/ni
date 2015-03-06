@@ -61,9 +61,9 @@
 # (co*     f1 f2 ... k)
 # (amb*    f1 f2 ... k)
 # (call*   f x1 x2 ... k)
-# (nth*    i f1 f2 ... k)       # used to encode (if) and (cond)
-# (fn*     n body)              # n = number of formals to bind
-# (arg*    i)                   # De Bruijn index by #formals
+# (nth*    n x1 x2 ... xN)      # returns nth item from xs
+# (fn*     [fs...] [cl...] x)   # lambda with formals and named closure refs
+# (arg*    x)                   # named lexical argument
 # (global* f)                   # global function named f
 #
 # Here's an example function and its corresponding representation:
@@ -71,15 +71,15 @@
 # (fn [x y]
 #   (print (sqrt (+ (* x x) (* y y)))))
 #
-# (fn* 3                        # x y k
-#   (co* (fn* 1 (call* (global* *) (arg* 1) (arg* 1) (arg* 0)))
-#        (fn* 1 (call* (global* *) (arg* 2) (arg* 2) (arg* 0)))
-#        (fn* 2                 # co* continuation
-#          (call* (global* +) (arg* 0) (arg* 1)
-#            (fn* 1
-#              (call* (global* sqrt) (arg* 0)
-#                (fn* 1
-#                  (call* (global* print) (arg* 0) (arg* 6)))))))))
+# (fn* [x y k] []
+#   (co* (fn* [k1] [x] (call* (global* *) (arg* x) (arg* x)))
+#        (fn* [k1] [y] (call* (global* *) (arg* y) (arg* y)))
+#        (fn* [v1 v2] [k]
+#          (call* (global* +) (arg* v1) (arg* v2)
+#            (fn* [v] [k]
+#              (call* (global* sqrt) (arg* v)
+#                (fn* [v] [k]
+#                  (call* (global* print) (arg* v) (arg* k)))))))))
 #
 # In this case we can statically reclaim all memory because of the way each
 # function is annotated; (*), (+), (sqrt), and (print) are each linear in their
@@ -101,6 +101,23 @@
 #   $_[2]->($v5);
 # }
 
+# Encoding lexical scoping
+# Before getting into the details, there are a few high-level constraints I'm
+# dealing with in this code:
+#
+# 1. This is CPS-transformed source, so it could contain really deep lambdas.
+# 2. This is a JIT compiler, so compilation needs to be linear-ish time.
+#    Nothing quadratic in the lambda form complexity, since this will
+#    compromise runtime performance.
+# 3. As a side-effect of (2), if we can reuse information then we probably
+#    should.
+# 4. Time is more valuable than space.
+#
+# These performance considerations are about more than just keeping the JIT
+# fast for normal cases; we also want a fast compiler so we can inline more
+# inner functions to save heap allocations. The JIT can never become the
+# bottleneck as we're doing this.
+
 {
 
 package ni::lisp::graph;
@@ -109,65 +126,36 @@ use List::Util qw/max/;
 
 # NB: not proper constructors (call directly, not using ->fn() etc)
 sub fn {
-  my ($formal_vector, $body, $flags) = @_;
-  $body = $body->resolve_formals(0, $formal_vector);
-  bless {formals => scalar(@$formal_vector),
-DEBUG
-         original_formals => $formal_vector,
-DEBUG_END
-         body   => $body,
-         degree => undef}, 'ni::lisp::graph::fn';
+  my ($formals, $closure, $body) = @_;
+  my $fvs = $$body{free_variables};
+  exists $$fvs{$_} and $$fvs{$_}{is_lexical} = 1 for @$closure, @$formals;
+
+  my $effective_free_variables = {%$fvs};
+  delete $$effective_free_variables{$_} for @$formals;
+  bless {formals        => $formals,
+         closure        => $closure,
+         free_variables => $effective_free_variables,
+         body           => $body}, 'ni::lisp::graph::fn';
 }
 
-sub co     { bless \@_,            'ni::lisp::graph::co' }
-sub amb    { bless \@_,            'ni::lisp::graph::amb' }
-sub call   { bless \@_,            'ni::lisp::graph::call' }
-sub nth    { bless \@_,            'ni::lisp::graph::nth' }
-sub arg    { bless [$_[0], undef], 'ni::lisp::graph::arg' }
-sub global { bless \$_[0],         'ni::lisp::graph::global' }
+sub free_var_union;
+sub call {
+  bless {f              => $_[0],
+         xs             => [@_ > 2 ? @_[1..$#_ - 1] : ()],
+         k              => $_[-1],
+         free_variables => free_var_union(@_)}, 'ni::lisp::graph::call';
+}
 
-our %classes = qw/ co   array  amb array
-                   call array  nth array /;
+sub co  { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::co' }
+sub amb { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::amb' }
+sub nth { bless {n    => $_[0], xs => [@_[1..$#_]]}, 'ni::lisp::graph::nth' }
+sub val { bless {name => $_[0], is_lexical => 0},    'ni::lisp::graph::val' }
 
 sub defgraphmethod {
   my ($name, %alternatives) = @_;
-  *{"ni::lisp::graph::${_}::$name"} =
-    $alternatives{$_} // $classes{$_} && $alternatives{$classes{$_}}
-                      // sub { $_[0] }
+  *{"ni::lisp::graph::${_}::$name"} = $alternatives{$_} // sub { $_[0] }
     for keys %alternatives;
 }
-
-defgraphmethod 'degree',
-  fn     => sub {
-    my ($self) = @_;
-    $$self{degree} //= $$self{body}->degree - $$self{formals};
-  },
-  array  => sub { my ($self) = @_; max map $_->degree, @$self },
-  arg    => sub { my ($self) = @_; $$self[1] // die "unlinked arg: $$self[0]" },
-  global => sub { 0 };
-
-defgraphmethod 'resolve_formals',
-  fn => sub {
-    my ($self, $offset, $formals) = @_;
-    $$self{body}->resolve_formals($offset + $$self{formals}, $formals);
-    $self;
-  },
-  array => sub {
-    my ($self, $offset, $formals) = @_;
-    $_->resolve_formals($offset, $formals) for @$self;
-    $self;
-  },
-  arg => sub {
-    my ($self, $offset, $formals) = @_;
-    return $self if defined $$self[1];
-    for (0 .. $#{$formals}) {
-      if ($$self[0] eq $$formals[$_]) {
-        $$self[1] = $_;
-        return $self;
-      }
-    }
-    $self;
-  };
 
 DEBUG
 
@@ -182,22 +170,23 @@ sub array_str_fn {
 defgraphmethod 'str',
   fn => sub {
     my ($self) = @_;
-    "(fn* $$self{formals} [@$$self{original_formals}] "
+    "(fn* $$self{formals} [@{$$self{original_formals}}] "
       . $$self{body}->str . ")";
   },
   co   => array_str_fn('co*'),
   amb  => array_str_fn('amb*'),
   call => array_str_fn('call*'),
   nth  => array_str_fn('nth*'),
-  arg  => sub {
+  val  => sub {
     my ($self) = @_;
-    "(arg* $$self[0] $$self[1])";
-  },
-  global => sub {
-    my ($self) = @_;
-    "(global* $$self)";
+    "(arg* $$self{name} " . ($$self{is_lexical} ? 'L' : 'G') . ")";
   };
 
 DEBUG_END
+
+sub free_var_union {
+  my $result = {};
+
+}
 
 }
