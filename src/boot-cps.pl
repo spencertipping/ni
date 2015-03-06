@@ -36,7 +36,7 @@ our %special_forms = (
     die "formals must be specified as an array (got $formals)"
       unless ref $formals eq 'ni::lisp::array';
 
-    my $perlized_formals = join ', ', map "\$$$_", @$formals;
+    my $perlized_formals = join ', ', map "\$" . ($$_ =~ y/-/_/r), @$formals;
     my $compiled_body    = $body->compile;
 
     qq{ sub {
@@ -45,17 +45,15 @@ our %special_forms = (
     } };
   },
 
-  # A non-CPS form since it's a continuation-linear primitive. (It could be
-  # CPS, but it wouldn't buy us anything and would generate more lambdas.)
   'nth*' => sub {
-    my ($n, @vs) = map $_->compile, @_;
-    my $v_options = array_literal @vs;
-    qq{ (($v_options)->[$n]) };
+    my $k         = pop(@_)->compile;
+    my ($n, @vs)  = map $_->compile, @_;
+    my $v_options = join ', ', @vs;
+    qq{ ($k)->(($v_options)[$n]) };
   },
 
   # We have no concurrency in the bootstrap layer, so just execute each
-  # continuation in sequence and collect results. We support delayed
-  # continuation invocation but nothing nonlinear.
+  # continuation in sequence and collect results.
   'co*' => sub {
     my $k    = pop(@_)->compile;
     my $k_gs = gensym 'k';
@@ -86,8 +84,9 @@ our %special_forms = (
 
 sub compile_list {
   my ($h, @xs) = @_;
-  exists $special_forms{$$h} ? $special_forms{$$h}->(@xs)
-                             : function_call($h, @xs);
+  ref $h eq 'ni::lisp::symbol' && exists $special_forms{$$h}
+    ? $special_forms{$$h}->(@xs)
+    : function_call($h, @xs);
 }
 
 sub array_literal { "[" . join(', ', @_) . "]" }
@@ -101,5 +100,61 @@ sub function_call {
   my ($f, @xs) = map $_->compile, @_;
   $f . "->(" . join(", ", @xs) . ")";
 }
+
+# I don't want to write the following in CPS, so here's a Perl-hosted version.
+# This method assumes that your form has already been macroexpanded, and is not
+# idempotent at all (!!!).
+sub cps_wrap {
+  my $k_gensym = symbol gensym 'k';
+  list symbol('fn*'), array($k_gensym), $_[0]->cps_convert($k_gensym);
+}
+
+our %cps_special_forms = (
+  'fn*' => sub {
+    my ($formals, $body, $k_form) = @_;
+    my $k_gensym = symbol gensym 'k';
+    list $k_form,
+         list symbol('fn*'),
+              array(@$formals, $k_gensym),
+              $body->cps_convert($k_gensym);
+  },
+
+  'nth*' => sub {
+    my $k_form = pop @_;
+    my @gensyms = map symbol(gensym 'x'), @_;
+    list symbol('co*'),
+         map(cps_wrap($_), @_),
+         list symbol('fn*'),
+              array(@gensyms),
+              list symbol('nth*'), @gensyms, $k_form;
+  },
+
+  'co*' => sub {
+    my $k_form = pop @_;
+    list symbol('co*'), map(cps_wrap($_), @_), $k_form;
+  },
+
+  'amb*' => sub {
+    my $k_form = pop @_;
+    list symbol('amb*'), map(cps_wrap($_), @_), $k_form;
+  },
+);
+
+sub cps_convert_call {
+  list symbol('co*'),
+       map(cps_wrap($_), @xs),
+       list symbol('fn*'),
+            array
+
+}
+
+ni::lisp::deftypemethod 'cps_convert',
+  list => sub {
+    my ($self, $k_form) = @_;
+    my ($h, @xs) = @$self;
+    ref $h eq 'ni::lisp::symbol' && exists $cps_special_forms{$$h}
+      ? $cps_special_forms{$$h}->(@xs, $k_form)
+      : cps_convert_call $h, @xs, $k_form;
+  },
 
 }
