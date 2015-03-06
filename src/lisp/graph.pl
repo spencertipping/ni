@@ -117,76 +117,11 @@
 # fast for normal cases; we also want a fast compiler so we can inline more
 # inner functions to save heap allocations. The JIT can never become the
 # bottleneck as we're doing this.
+#
+#
 
 {
 
 package ni::lisp::graph;
-
-use List::Util qw/max/;
-
-# NB: not proper constructors (call directly, not using ->fn() etc)
-sub fn {
-  my ($formals, $closure, $body) = @_;
-  my $fvs = $$body{free_variables};
-  exists $$fvs{$_} and $$fvs{$_}{is_lexical} = 1 for @$closure, @$formals;
-
-  my $effective_free_variables = {%$fvs};
-  delete $$effective_free_variables{$_} for @$formals;
-  bless {formals        => $formals,
-         closure        => $closure,
-         free_variables => $effective_free_variables,
-         body           => $body}, 'ni::lisp::graph::fn';
-}
-
-sub free_var_union;
-sub call {
-  bless {f              => $_[0],
-         xs             => [@_ > 2 ? @_[1..$#_ - 1] : ()],
-         k              => $_[-1],
-         free_variables => free_var_union(@_)}, 'ni::lisp::graph::call';
-}
-
-sub co  { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::co' }
-sub amb { bless {xs => [@_[0..$#_-1]], k => $_[-1]}, 'ni::lisp::graph::amb' }
-sub nth { bless {n    => $_[0], xs => [@_[1..$#_]]}, 'ni::lisp::graph::nth' }
-sub val { bless {name => $_[0], is_lexical => 0},    'ni::lisp::graph::val' }
-
-sub defgraphmethod {
-  my ($name, %alternatives) = @_;
-  *{"ni::lisp::graph::${_}::$name"} = $alternatives{$_} // sub { $_[0] }
-    for keys %alternatives;
-}
-
-DEBUG
-
-sub array_str_fn {
-  my ($header) = @_;
-  sub {
-    my ($self) = @_;
-    "($header" . join('', map " " . $_->str, @$self) . ")";
-  };
-}
-
-defgraphmethod 'str',
-  fn => sub {
-    my ($self) = @_;
-    "(fn* $$self{formals} [@{$$self{original_formals}}] "
-      . $$self{body}->str . ")";
-  },
-  co   => array_str_fn('co*'),
-  amb  => array_str_fn('amb*'),
-  call => array_str_fn('call*'),
-  nth  => array_str_fn('nth*'),
-  val  => sub {
-    my ($self) = @_;
-    "(arg* $$self{name} " . ($$self{is_lexical} ? 'L' : 'G') . ")";
-  };
-
-DEBUG_END
-
-sub free_var_union {
-  my $result = {};
-
-}
 
 }
