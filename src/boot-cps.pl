@@ -59,12 +59,13 @@ our %special_forms = (
     my $k_gs = gensym 'k';
     my $i_gs = gensym 'indexes';
     my $n    = @_;
-    my @ks   = map qq{ sub { \$$i_gs\{$_\} = \$_[0];
-                             \$$k_gs->(map \$$i_gs\{\$_\}, 0..$#_)
+    my @ks   = map qq{ sub { \$$i_gs \{$_\} = \$_[0];
+                             \$$k_gs->(map \$$i_gs {\$_}, 0..$#_)
                                if scalar(keys \%$i_gs) == $n; }},
                    0..$#_;
 
-    my $calls = join "\n", map qq{ ($ks[$_])->($_[$_]); }, 0..$#_;
+    my @forms = map $_->compile, @_;
+    my $calls = join "\n", map qq{ ($ks[$_])->($forms[$_]); }, 0..$#_;
 
     qq{
       my \$$k_gs = $k;
@@ -141,14 +142,22 @@ our %cps_special_forms = (
 );
 
 sub cps_convert_call {
+  my $k_form = pop @_;
+  my @gensyms = map symbol(gensym 'x'), @_;
   list symbol('co*'),
        map(cps_wrap($_), @xs),
        list symbol('fn*'),
-            array
+            array(@gensyms),
+            list(@gensyms, $k_form);
 
 }
 
-ni::lisp::deftypemethod 'cps_convert',
+sub cps_constant {
+  my ($self, $k_form) = @_;
+  list $k_form, $self;
+}
+
+deftypemethod 'cps_convert',
   list => sub {
     my ($self, $k_form) = @_;
     my ($h, @xs) = @$self;
@@ -156,5 +165,27 @@ ni::lisp::deftypemethod 'cps_convert',
       ? $cps_special_forms{$$h}->(@xs, $k_form)
       : cps_convert_call $h, @xs, $k_form;
   },
+  array => sub {
+    my ($self, $k_form) = @_;
+    my @gensyms = map symbol(gensym 'x'), @$self;
+    list symbol('co*'),
+         map(cps_wrap($_), @$self),
+         list symbol('fn*'),
+              array(@gensyms),
+              list $k_form, array(@gensyms);
+  },
+  hash => sub {
+    my ($self, $k_form) = @_;
+    my @gensyms = map symbol(gensym 'x'), @$self;
+    list symbol('co*'),
+         map(cps_wrap($_), @$self),
+         list symbol('fn*'),
+              array(@gensyms),
+              list $k_form, hash(@gensyms);
+  },
+  qstr   => \&cps_constant,
+  str    => \&cps_constant,
+  symbol => \&cps_constant,
+  number => \&cps_constant;
 
 }

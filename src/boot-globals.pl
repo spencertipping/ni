@@ -51,5 +51,11 @@ $ni::lisp::macros{defmacrocps} = sub {
   $ni::lisp::macros{$$name} = ${$$name};
 };
 
-our $initial_continuation = (ni::lisp::parse '(fn* [x] x)')[0];
-defcps 'cps_convert', sub { $_[0]->cps_convert($initial_continuation) };
+defcps 'cps_convert', sub { $_[0]->cps_convert($_[1]) };
+
+$ni::lisp::macros{cpsdebug} = sub {
+  my ($form, $k) = @_;
+  $form = ni::lisp::cps_wrap($form->macroexpand);
+  print $form, "\n";
+  $k->($form);
+};
