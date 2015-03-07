@@ -6,7 +6,7 @@
 
 package ni::lisp;
 
-use constant DEBUG => 0;
+use constant DEBUG => 1;
 
 sub compile_list;
 sub array_literal;
@@ -37,15 +37,20 @@ deftypemethod 'compile',
 our %special_forms = (
   'fn*' => sub {
     my ($formals, $body) = @_;
-    die "formals must be specified as an array (got $formals)"
-      unless ref $formals eq 'ni::lisp::array';
+    die "formals must be specified as an array or symbol (got $formals)"
+      unless ref $formals eq 'ni::lisp::array'
+          || ref $formals eq 'ni::lisp::symbol';
 
-    my $perlized_formals = join ', ', map "\$" . perlize_name($$_), @$formals;
-    my $compiled_body    = $body->compile;
-    my $result_gensym    = gensym 'result';
+    my $formal_binding =
+      ref $formals eq 'ni::lisp::array'
+        ? "my (" . join(', ', map "\$" . perlize_name($$_), @$formals)
+                 . ") = \@_"
+        : "my \$" . perlize_name($$formals) . " = \\\@_";
+    my $compiled_body  = $body->compile;
+    my $result_gensym  = gensym 'result';
 
     DEBUG ? qq{ sub {
-              my ($perlized_formals) = \@_;
+              $formal_binding;
               my \$$result_gensym = eval {
                 $compiled_body;
               };
@@ -53,7 +58,7 @@ our %special_forms = (
               \$$result_gensym;
             } }
           : qq{ sub {
-              my ($perlized_formals) = \@_;
+              $formal_binding;
               $compiled_body;
             } };
   },
@@ -66,7 +71,8 @@ our %special_forms = (
   },
 
   # We have no concurrency in the bootstrap layer, so just execute each
-  # continuation in sequence and collect results.
+  # continuation in sequence and collect results. This implementation is
+  # semantically correct up to GC properties.
   'co*' => sub {
     my $k    = pop(@_)->compile;
     my $k_gs = gensym 'k';

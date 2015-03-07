@@ -9,5 +9,5 @@ if [[ $1 == '--boot' ]]; then
   } > gen/nilisp-boot
   chmod +x gen/nilisp-boot
 
-  gen/nilisp-boot src/nilisp-coreboot.ni
+  gen/nilisp-boot src/nilisp-{coreboot,core}.ni
 fi

@@ -25,8 +25,8 @@ defcps 'cons',  sub { my ($a, $d) = @_; ni::lisp::list($a, @$d) };
 defcps 'list',  sub { ni::lisp::list(@_) };
 defcps 'nil',   sub { ni::lisp::list() };
 defcps 'count', sub { scalar(@{$_[0]}) };
-defcps 'eq',    sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
-defcps 'gt',    sub { $_[0] > $_[1] ? 1 : 0 };
+defcps '=',     sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
+defcps '>',     sub { $_[0] > $_[1] ? 1 : 0 };
 defcps 'not',   sub { $_[0] ? 0 : 1 };
 defcps 'print', sub { print join(' ', @_), "\n" };
 

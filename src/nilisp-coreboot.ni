@@ -8,15 +8,17 @@
 # macros that do that for us.
 (defmacrocps* 'cps*'
   (fn* [form k]
-    (co* (fn* [k1] (str-sym 'fn*' k1))
-         (fn* [k2] (str-sym 'x'   k2))
-         (fn* [k3] (str-sym 'x'
-           (fn* [xsym] (list xsym
-             (fn* [xsymlist] (to-array xsymlist k3))))))
-         (fn* [fnsym xsym xsymarray]
-           (list fnsym xsymarray xsym
-             (fn* [k-form]
-               (cps-convert form k-form k))))))
+    (macroexpand form
+      (fn* [mform]
+        (co* (fn* [k1] (str-sym 'fn*' k1))
+             (fn* [k2] (str-sym 'x'   k2))
+             (fn* [k3] (str-sym 'x'
+               (fn* [xsym] (list xsym
+                 (fn* [xsymlist] (to-array xsymlist k3))))))
+             (fn* [fnsym xsym xsymarray]
+               (list fnsym xsymarray xsym
+                 (fn* [k-form]
+                   (cps-convert mform k-form k))))))))
   id*)
 
 (defmacrocps* 'defmacro'
