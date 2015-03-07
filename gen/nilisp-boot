@@ -47,7 +47,7 @@ deftypemethod 'str',
   hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
-  symbol => sub { ${$_[0]} },
+  symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
   number => sub { ${$_[0]} };
 
 our %bracket_types = (
@@ -98,6 +98,8 @@ sub parse {
 
 package ni::lisp;
 
+use constant DEBUG => 0;
+
 sub compile_list;
 sub array_literal;
 sub hash_literal;
@@ -108,7 +110,7 @@ sub num_literal;
 sub function_call;
 
 our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
+sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
@@ -132,14 +134,18 @@ our %special_forms = (
     my $compiled_body    = $body->compile;
     my $result_gensym    = gensym 'result';
 
-    qq{ sub {
-      my ($perlized_formals) = \@_;
-      my \$$result_gensym = eval {
-        $compiled_body;
-      };
-      die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
-      \$$result_gensym;
-    } };
+    DEBUG ? qq{ sub {
+              my ($perlized_formals) = \@_;
+              my \$$result_gensym = eval {
+                $compiled_body;
+              };
+              die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
+              \$$result_gensym;
+            } }
+          : qq{ sub {
+              my ($perlized_formals) = \@_;
+              $compiled_body;
+            } };
   },
 
   'nth*' => sub {
@@ -240,12 +246,14 @@ our %cps_special_forms = (
 
 sub cps_convert_call {
   my $k_form = pop @_;
-  my @gensyms = map symbol(gensym 'x'), @_;
+  my ($f, @xs) = @_;
+  my $f_gensym = symbol gensym(ref $f eq 'ni::lisp::symbol' ? $$f : 'f');
+  my @gensyms = map symbol(gensym 'x'), @xs;
   list symbol('co*'),
-       map(cps_wrap($_), @xs),
+       map(cps_wrap($_), @_),
        list symbol('fn*'),
-            array(@gensyms),
-            list(@gensyms, $k_form);
+            array($f_gensym, @gensyms),
+            list($f_gensym, @gensyms, $k_form);
 }
 
 sub cps_constant {
@@ -297,7 +305,6 @@ deftypemethod 'macroexpand',
     my ($self, $macros) = @_;
     my ($h, @xs) = @$self;
     $macros //= \%ni::lisp::macros;
-    print STDERR "macroexpanding $self\n";
     return ni::lisp::list map $_->macroexpand($macros), @$self
       unless ref $h eq 'ni::lisp::symbol' && exists $$macros{$$h};
 
@@ -328,8 +335,8 @@ sub cps {
 sub defcps { (eval "sub {\$$_[0] = \$_[0]}")->(cps $_[1]) }
 
 defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
-defcps 'sym_str', sub { ni::lisp::str    ${$_[0]} };
-defcps 'str_sym', sub { ni::lisp::symbol ${$_[0]} };
+defcps 'sym_str', sub { ni::lisp::str ${$_[0]} };
+defcps 'str_sym', sub { ni::lisp::symbol $_[0] };
 
 defcps 'to_array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to_hash',  sub { ni::lisp::hash  @{$_[0]} };
@@ -356,7 +363,7 @@ defcps 'eval',        sub { my $c = $_[0]->compile;
 
 defcps 'defcps_', sub {
   my ($name, $value) = @_;
-  ${$name} = $value;
+  ${$name =~ y/-/_/r} = $value;
   $name;
 };
 
@@ -375,8 +382,9 @@ for my $f (ni::lisp::parse join '', <>) {
   die "error macroexpanding $f: $@" if $@;
 
   my $c        = $m->compile;
-  my $readable = $deparser->coderef2text(eval "sub{\n$c\n}");
-  print STDERR "$f -> $m -> $readable\n";
+  my $coderef  = eval "sub{\n$c\n}";
+  die "error compiling coderef $c: $@" if $@;
+  my $readable = $deparser->coderef2text($coderef);
   my $r = eval $c;
   die "error evaluating compilation for $f -> $m -> $readable: $@" if $@;
   print STDERR "> $r\n";

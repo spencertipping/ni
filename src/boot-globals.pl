@@ -10,8 +10,8 @@ sub cps {
 sub defcps { (eval "sub {\$$_[0] = \$_[0]}")->(cps $_[1]) }
 
 defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
-defcps 'sym_str', sub { ni::lisp::str    ${$_[0]} };
-defcps 'str_sym', sub { ni::lisp::symbol ${$_[0]} };
+defcps 'sym_str', sub { ni::lisp::str ${$_[0]} };
+defcps 'str_sym', sub { ni::lisp::symbol $_[0] };
 
 defcps 'to_array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to_hash',  sub { ni::lisp::hash  @{$_[0]} };
@@ -38,7 +38,7 @@ defcps 'eval',        sub { my $c = $_[0]->compile;
 
 defcps 'defcps_', sub {
   my ($name, $value) = @_;
-  ${$name} = $value;
+  ${$name =~ y/-/_/r} = $value;
   $name;
 };
 

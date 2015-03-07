@@ -10,7 +10,6 @@ deftypemethod 'macroexpand',
     my ($self, $macros) = @_;
     my ($h, @xs) = @$self;
     $macros //= \%ni::lisp::macros;
-    print STDERR "macroexpanding $self\n";
     return ni::lisp::list map $_->macroexpand($macros), @$self
       unless ref $h eq 'ni::lisp::symbol' && exists $$macros{$$h};
 

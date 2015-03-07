@@ -46,7 +46,7 @@ deftypemethod 'str',
   hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
-  symbol => sub { ${$_[0]} },
+  symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
   number => sub { ${$_[0]} };
 
 our %bracket_types = (

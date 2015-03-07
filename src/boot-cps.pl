@@ -6,6 +6,8 @@
 
 package ni::lisp;
 
+use constant DEBUG => 0;
+
 sub compile_list;
 sub array_literal;
 sub hash_literal;
@@ -16,7 +18,7 @@ sub num_literal;
 sub function_call;
 
 our $gensym_id = 0;
-sub gensym { '__' . ($_[0] // 'gensym') . '_' . ++$gensym_id }
+sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
@@ -40,14 +42,18 @@ our %special_forms = (
     my $compiled_body    = $body->compile;
     my $result_gensym    = gensym 'result';
 
-    qq{ sub {
-      my ($perlized_formals) = \@_;
-      my \$$result_gensym = eval {
-        $compiled_body;
-      };
-      die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
-      \$$result_gensym;
-    } };
+    DEBUG ? qq{ sub {
+              my ($perlized_formals) = \@_;
+              my \$$result_gensym = eval {
+                $compiled_body;
+              };
+              die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
+              \$$result_gensym;
+            } }
+          : qq{ sub {
+              my ($perlized_formals) = \@_;
+              $compiled_body;
+            } };
   },
 
   'nth*' => sub {
@@ -148,12 +154,14 @@ our %cps_special_forms = (
 
 sub cps_convert_call {
   my $k_form = pop @_;
-  my @gensyms = map symbol(gensym 'x'), @_;
+  my ($f, @xs) = @_;
+  my $f_gensym = symbol gensym(ref $f eq 'ni::lisp::symbol' ? $$f : 'f');
+  my @gensyms = map symbol(gensym 'x'), @xs;
   list symbol('co*'),
-       map(cps_wrap($_), @xs),
+       map(cps_wrap($_), @_),
        list symbol('fn*'),
-            array(@gensyms),
-            list(@gensyms, $k_form);
+            array($f_gensym, @gensyms),
+            list($f_gensym, @gensyms, $k_form);
 }
 
 sub cps_constant {

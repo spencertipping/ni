@@ -4,15 +4,34 @@
 
 # It's worth escaping from CPS-land as soon as possible, so let's define some
 # macros that do that for us.
-(defmacrocps_ 'fn_'
-  (fn* [args body k]
+(defmacrocps_ 'cps_'
+  (fn* [form k]
     (co* (fn* [k1] (str-sym 'fn*' k1))
          (fn* [k2] (str-sym 'x'   k2))
-         (fn* [fnsym xsym]
-           (co* (fn* [k1] (list fnsym args body k1))
-                (fn* [k2] (list fnsym (to-array (list xsym)) xsym k2))
-                (fn* [fn-form k-form]
-                  (cps-convert fn-form k-form k))))))
+         (fn* [k3] (str-sym 'x'
+           (fn* [xsym] (list xsym
+             (fn* [xsymlist] (to-array xsymlist k3))))))
+         (fn* [fnsym xsym xsymarray]
+           (list fnsym xsymarray xsym
+             (fn* [k-form]
+               (cps-convert form k-form k))))))
   id_)
 
-(fn_ [x] x)
+(defmacrocps_ 'defmacro_'
+  (cps_
+    (fn* [name f]
+      (list (str-sym 'defmacrocps_')
+            (sym-str name)
+            (list (str-sym 'cps_') f)
+            (str-sym 'id_'))))
+  id_)
+
+(defmacro_ def_
+  (fn* [name x]
+    (list (str-sym 'defcps_')
+          (sym-str name)
+          (list (str-sym 'cps_') x)
+          (str-sym 'id_'))))
+
+(def_ say-hi (fn* [x] (print x)))
+(cps_ (say-hi 'there'))
