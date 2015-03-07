@@ -7,7 +7,7 @@ sub cps {
   };
 }
 
-sub defcps { ${$_[0]} = cps $_[1] }
+sub defcps { (eval "sub {\$$_[0] = \$_[0]}")->(cps $_[1]) }
 
 defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
 defcps 'sym_str', sub { ni::lisp::str    ${$_[0]} };
@@ -36,26 +36,16 @@ defcps 'eval',        sub { my $c = $_[0]->compile;
                             die "failed to eval $_[0] -> $c: $@" if $@;
                             $r };
 
-$ni::lisp::macros{defcps} = sub {
-  my ($name, $value, $k) = @_;
-  my $m = $value->macroexpand;
-  my $c = $m->compile;
-  ${$$name =~ y/-/_/r} = eval $c;
-  die "failed to compile $name -> $m -> $c: $@" if $@;
-  $k->($name);
+defcps 'defcps_', sub {
+  my ($name, $value) = @_;
+  ${$name} = $value;
+  $name;
 };
 
-$ni::lisp::macros{defmacrocps} = sub {
-  my ($name, @stuff) = @_;
-  $ni::lisp::macros{defcps}->(@_);
-  $ni::lisp::macros{$$name} = ${$$name};
+defcps 'defmacrocps_', sub {
+  my ($name, $value) = @_;
+  $ni::lisp::macros{$name} = $value;
+  $name;
 };
 
 defcps 'cps_convert', sub { $_[0]->cps_convert($_[1]) };
-
-$ni::lisp::macros{cpsdebug} = sub {
-  my ($form, $k) = @_;
-  $form = ni::lisp::cps_wrap($form->macroexpand);
-  print $form, "\n";
-  $k->($form);
-};

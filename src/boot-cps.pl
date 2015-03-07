@@ -38,10 +38,15 @@ our %special_forms = (
 
     my $perlized_formals = join ', ', map "\$" . ($$_ =~ y/-/_/r), @$formals;
     my $compiled_body    = $body->compile;
+    my $result_gensym    = gensym 'result';
 
     qq{ sub {
       my ($perlized_formals) = \@_;
-      $compiled_body;
+      my \$$result_gensym = eval {
+        $compiled_body;
+      };
+      die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
+      \$$result_gensym;
     } };
   },
 
@@ -59,13 +64,13 @@ our %special_forms = (
     my $k_gs = gensym 'k';
     my $i_gs = gensym 'indexes';
     my $n    = @_;
-    my @ks   = map qq{ sub { \$$i_gs \{$_\} = \$_[0];
-                             \$$k_gs->(map \$$i_gs {\$_}, 0..$#_)
-                               if scalar(keys \%$i_gs) == $n; }},
+    my @ks   = map qq[ sub { \$$i_gs]."{$_}".qq[ = \$_[0];
+                             \$$k_gs->(map \$$i_gs]."{\$_}".qq[, 0..$#_)
+                               if scalar(keys \%$i_gs) == $n; }],
                    0..$#_;
 
     my @forms = map $_->compile, @_;
-    my $calls = join "\n", map qq{ ($ks[$_])->($forms[$_]); }, 0..$#_;
+    my $calls = join "\n", map qq{ ($forms[$_])->($ks[$_]); }, 0..$#_;
 
     qq{
       my \$$k_gs = $k;
@@ -149,7 +154,6 @@ sub cps_convert_call {
        list symbol('fn*'),
             array(@gensyms),
             list(@gensyms, $k_form);
-
 }
 
 sub cps_constant {

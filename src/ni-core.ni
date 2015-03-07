@@ -1,11 +1,18 @@
 # ni core language definitions
-(defcps call-cc (fn* [f k] (f k k)))
+(defcps_ 'id_'     (fn* [x] x) (fn* [x] x))
+(defcps_ 'call-cc' (fn* [f k] (f k k)) id_)
 
 # It's worth escaping from CPS-land as soon as possible, so let's define some
 # macros that do that for us.
-(defmacrocps fn_
+(defmacrocps_ 'fn_'
   (fn* [args body k]
-    (k (cps-convert (list (str-sym "fn*") args body)
-                    (list (str-sym "fn*") [(str-sym "x")] (str-sym "x"))))))
+    (co* (fn* [k1] (str-sym 'fn*' k1))
+         (fn* [k2] (str-sym 'x'   k2))
+         (fn* [fnsym xsym]
+           (co* (fn* [k1] (list fnsym args body k1))
+                (fn* [k2] (list fnsym (to-array (list xsym)) xsym k2))
+                (fn* [fn-form k-form]
+                  (cps-convert fn-form k-form k))))))
+  id_)
 
-(print (fn_ [x] (print x)) (fn* [x] x))
+(fn_ [x] x)
