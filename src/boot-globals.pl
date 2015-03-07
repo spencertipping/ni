@@ -1,10 +1,7 @@
 # Takes a regular Perl sub and makes it work with CPS
 sub cps {
   my ($f) = @_;
-  sub {
-    my ($k, @xs) = @_;
-    $k->($f->(@xs));
-  };
+  sub { $_[0]->($f->(@_[1..$#_])) };
 }
 
 sub defcps { ${ni::lisp::perlize_name $_[0]} = cps $_[1] }
@@ -17,9 +14,8 @@ defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
 defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
 
-defcps 'aget', sub { $_[0]->[$_[1]] };
-
-defcps 'type', sub { ref($_[0]) =~ s/.*:://r };
+defcps 'aget',   sub { $_[0]->[$_[1]] };
+defcps 'type',   sub { ref($_[0]) =~ s/.*:://r };
 
 defcps 'car',    sub { my ($l) = @_; $$l[0] };
 defcps 'cdr',    sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
@@ -31,7 +27,10 @@ defcps 'count',  sub { scalar(@{$_[0]}) };
 defcps '=',      sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
 defcps '>',      sub { $_[0] > $_[1] ? 1 : 0 };
 defcps 'not',    sub { $_[0] ? 0 : 1 };
-defcps 'print',  sub { print join(' ', @_), "\n" };
+defcps 'print',  sub { print STDERR join(' ', @_), "\n" };
+defcps 'apply',  sub { $_[0]->(@_[1..$#_]) };
+
+defcps $_, eval "sub { \$_[0] $_ \$_[1] }" for qw# + - * / % ** << >> ^ & | #;
 
 defcps 'macroexpand', sub { $_[0]->macroexpand };
 defcps 'eval',        sub { my $c = $_[0]->compile;

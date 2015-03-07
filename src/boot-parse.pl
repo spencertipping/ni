@@ -49,6 +49,34 @@ deftypemethod 'str',
   symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
   number => sub { ${$_[0]} };
 
+sub indent { '  ' x $_[0] }
+deftypemethod 'pprint',
+  list   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "(\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . ")"
+                    : $_[0]->str) },
+
+  array  => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "[\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "]"
+                    : $_[0]->str) },
+
+  hash   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "{\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "}"
+                    : $_[0]->str) },
+
+  qstr   => sub { indent($_[1]) . $_[0] },
+  str    => sub { indent($_[1]) . $_[0] },
+  symbol => sub { indent($_[1]) . $_[0] },
+  number => sub { indent($_[1]) . $_[0] };
+
 our %bracket_types = (
   ')' => \&ni::lisp::list,
   ']' => \&ni::lisp::array,
@@ -65,7 +93,8 @@ sub parse {
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
                                          | 0x[0-9a-fA-F]+
                                          | 0[0-7]+
-                                         | [1-9][0-9]*))
+                                         | [1-9][0-9]*
+                                         | 0))
                          | (?<symbol>  [^"()\[\]{}\s,]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {

@@ -50,6 +50,34 @@ deftypemethod 'str',
   symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
   number => sub { ${$_[0]} };
 
+sub indent { '  ' x $_[0] }
+deftypemethod 'pprint',
+  list   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "(\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . ")"
+                    : $_[0]->str) },
+
+  array  => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "[\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "]"
+                    : $_[0]->str) },
+
+  hash   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "{\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "}"
+                    : $_[0]->str) },
+
+  qstr   => sub { indent($_[1]) . $_[0] },
+  str    => sub { indent($_[1]) . $_[0] },
+  symbol => sub { indent($_[1]) . $_[0] },
+  number => sub { indent($_[1]) . $_[0] };
+
 our %bracket_types = (
   ')' => \&ni::lisp::list,
   ']' => \&ni::lisp::array,
@@ -66,7 +94,8 @@ sub parse {
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
                                          | 0x[0-9a-fA-F]+
                                          | 0[0-7]+
-                                         | [1-9][0-9]*))
+                                         | [1-9][0-9]*
+                                         | 0))
                          | (?<symbol>  [^"()\[\]{}\s,]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {
@@ -98,7 +127,7 @@ sub parse {
 
 package ni::lisp;
 
-use constant DEBUG => 1;
+use constant DEBUG => 0;
 
 sub compile_list;
 sub array_literal;
@@ -112,7 +141,7 @@ sub function_call;
 our $gensym_id = 0;
 sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
-sub perlize_name { $_[0] =~ s/([^A-Za-z_])/"_".ord($1)/egr }
+sub perlize_name { $_[0] =~ s/([^A-Za-z0-9_])/"_".ord($1)/egr }
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
@@ -349,10 +378,7 @@ deftypemethod 'macroexpand',
 # Takes a regular Perl sub and makes it work with CPS
 sub cps {
   my ($f) = @_;
-  sub {
-    my ($k, @xs) = @_;
-    $k->($f->(@xs));
-  };
+  sub { $_[0]->($f->(@_[1..$#_])) };
 }
 
 sub defcps { ${ni::lisp::perlize_name $_[0]} = cps $_[1] }
@@ -365,9 +391,8 @@ defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
 defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
 
-defcps 'aget', sub { $_[0]->[$_[1]] };
-
-defcps 'type', sub { ref($_[0]) =~ s/.*:://r };
+defcps 'aget',   sub { $_[0]->[$_[1]] };
+defcps 'type',   sub { ref($_[0]) =~ s/.*:://r };
 
 defcps 'car',    sub { my ($l) = @_; $$l[0] };
 defcps 'cdr',    sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
@@ -379,7 +404,10 @@ defcps 'count',  sub { scalar(@{$_[0]}) };
 defcps '=',      sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
 defcps '>',      sub { $_[0] > $_[1] ? 1 : 0 };
 defcps 'not',    sub { $_[0] ? 0 : 1 };
-defcps 'print',  sub { print join(' ', @_), "\n" };
+defcps 'print',  sub { print STDERR join(' ', @_), "\n" };
+defcps 'apply',  sub { $_[0]->(@_[1..$#_]) };
+
+defcps $_, eval "sub { \$_[0] $_ \$_[1] }" for qw# + - * / % ** << >> ^ & | #;
 
 defcps 'macroexpand', sub { $_[0]->macroexpand };
 defcps 'eval',        sub { my $c = $_[0]->compile;
@@ -404,14 +432,16 @@ use B::Deparse;
 my $deparser = B::Deparse->new;
 
 for my $f (ni::lisp::parse join '', <>) {
+  print STDERR "> $f\n";
   my $m = eval { $f->macroexpand };
   die "error macroexpanding $f: $@" if $@;
-
-  my $c        = $m->compile;
+  my $c = $m->compile;
+  print "\n\n=begin comment\n\n" . $m->pprint(0) . "\n\n=end comment\n\n=cut\n\n";
+  print $c =~ s/\h+/ /gr, ";\n";
   my $coderef  = eval "sub{\n$c\n}";
   die "error compiling coderef $c: $@" if $@;
   my $readable = $deparser->coderef2text($coderef);
   my $r = eval $c;
   die "error evaluating compilation for $f -> $m -> $readable: $@" if $@;
-  print STDERR "> $f\n= $r\n";
+  print STDERR "= $r\n";
 }

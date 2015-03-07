@@ -6,8 +6,12 @@ if [[ $1 == '--boot' ]]; then
   mkdir -p gen
   { echo '#!/usr/bin/env perl'
     cat src/boot-{parse,cps,macroexpand,globals,main}.pl
-  } > gen/nilisp-boot
-  chmod +x gen/nilisp-boot
+  } > gen/nilisp-boot0
+  chmod +x gen/nilisp-boot0
 
-  gen/nilisp-boot src/nilisp-{coreboot,core}.ni
+  { echo '#!/usr/bin/env perl'
+    cat src/boot-{parse,cps,macroexpand,globals}.pl
+    gen/nilisp-boot0 src/nilisp-{coreboot,core}.ni
+  } > gen/nilisp-boot1
+  chmod +x gen/nilisp-boot1
 fi

@@ -6,7 +6,7 @@
 
 package ni::lisp;
 
-use constant DEBUG => 1;
+use constant DEBUG => 0;
 
 sub compile_list;
 sub array_literal;
@@ -20,7 +20,7 @@ sub function_call;
 our $gensym_id = 0;
 sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
-sub perlize_name { $_[0] =~ s/([^A-Za-z_])/"_".ord($1)/egr }
+sub perlize_name { $_[0] =~ s/([^A-Za-z0-9_])/"_".ord($1)/egr }
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },

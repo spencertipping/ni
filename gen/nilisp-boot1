@@ -1,0 +1,4762 @@
+#!/usr/bin/env perl
+# ni lisp reader
+# Produces a tree of blessed references representing the specified
+# s-expression. Syntactically:
+#
+#   'foo\nbar'          string with a literal backslash-n in it
+#   "foo\tbar"          string with tab character
+#   foo                 quoted atom (analogous to 'foo in lisp)
+#   $foo                variable reference (analogous to foo in lisp)
+#   3.0                 numeric atom
+#   [3 4 5]             array
+#   {foo bar}           hash
+
+{
+
+package ni::lisp;
+
+# NB: these are not perl OO constructors in the usual sense (i.e. they can't be
+# called indirectly)
+sub list   { bless \@_, "ni::lisp::list" }
+sub array  { bless \@_, "ni::lisp::array" }
+sub hash   { bless \@_, "ni::lisp::hash" }
+
+sub qstr   { bless \$_[0], "ni::lisp::qstr" }
+sub str    { bless \$_[0], "ni::lisp::str" }
+sub symbol { bless \$_[0], "ni::lisp::symbol" }
+sub number { bless \$_[0], "ni::lisp::number" }
+
+our @parse_types = qw/ list array hash qstr str symbol number /;
+our %overloads   = qw/ "" str /;
+
+for (@parse_types) {
+  eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
+  die $@ if $@;
+}
+
+push @{"ni::lisp::${_}::ISA"}, "ni::lisp::val" for @parse_types;
+
+sub deftypemethod {
+  my ($name, %alternatives) = @_;
+  *{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
+}
+
+deftypemethod 'str',
+  list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
+  array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
+  hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
+  qstr   => sub { "'" . ${$_[0]} . "'" },
+  str    => sub { '"' . ${$_[0]} . '"' },
+  symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
+  number => sub { ${$_[0]} };
+
+sub indent { '  ' x $_[0] }
+deftypemethod 'pprint',
+  list   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "(\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . ")"
+                    : $_[0]->str) },
+
+  array  => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "[\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "]"
+                    : $_[0]->str) },
+
+  hash   => sub { indent($_[1]) .
+                  (length($_[0]->str) > 80 - 2 * $_[1]
+                    ? "{\n"
+                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . "}"
+                    : $_[0]->str) },
+
+  qstr   => sub { indent($_[1]) . $_[0] },
+  str    => sub { indent($_[1]) . $_[0] },
+  symbol => sub { indent($_[1]) . $_[0] },
+  number => sub { indent($_[1]) . $_[0] };
+
+our %bracket_types = (
+  ')' => \&ni::lisp::list,
+  ']' => \&ni::lisp::array,
+  '}' => \&ni::lisp::hash,
+);
+
+sub parse {
+  local $_;
+  my @stack = [];
+  while ($_[0] =~ / \G (?: (?<comment> \#.*)
+                         | (?<ws>      [\s,]+)
+                         | '(?<qstr>   (?:[^\\']|\\.)*)'
+                         | "(?<str>    (?:[^\\"]|\\.)*)"
+                         | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
+                                         | 0x[0-9a-fA-F]+
+                                         | 0[0-7]+
+                                         | [1-9][0-9]*
+                                         | 0))
+                         | (?<symbol>  [^"()\[\]{}\s,]+)
+                         | (?<opener>  [(\[{])
+                         | (?<closer>  [)\]}])) /gx) {
+    next if exists $+{comment} || exists $+{ws};
+    if ($+{opener}) {
+      push @stack, [];
+    } elsif ($+{closer}) {
+      my $last = pop @stack;
+      die "too many closing brackets" unless @stack;
+      push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
+    } else {
+      my @types = keys %+;
+      my $v     = $+{$types[0]};
+      die "FIXME: got @types" unless @types == 1;
+      push @{$stack[-1]}, &{"ni::lisp::$types[0]"}($v);
+    }
+  }
+  die "unbalanced brackets: " . scalar(@stack) . " != 1"
+    unless @stack == 1;
+  @{$stack[0]};
+}
+
+}
+# A very literal encoding of CPS into Perl lambdas. Not fast at all. This
+# literal encoding means we don't need to do our own lexical scope analysis or
+# write a GC.
+
+{
+
+package ni::lisp;
+
+use constant DEBUG => 0;
+
+sub compile_list;
+sub array_literal;
+sub hash_literal;
+sub qstr_literal;
+sub str_literal;
+sub var_reference;
+sub num_literal;
+sub function_call;
+
+our $gensym_id = 0;
+sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
+
+sub perlize_name { $_[0] =~ s/([^A-Za-z0-9_])/"_".ord($1)/egr }
+
+deftypemethod 'compile',
+  list   => sub { compile_list  @{$_[0]} },
+  array  => sub { array_literal map $_->compile, @{$_[0]} },
+  hash   => sub { hash_literal  map $_->compile, @{$_[0]} },
+  qstr   => sub { qstr_literal  ${$_[0]} },
+  str    => sub { str_literal   ${$_[0]} },
+  symbol => sub { var_reference ${$_[0]} },
+  number => sub { num_literal   ${$_[0]} };
+
+# CPS transformation happens at the macroexpansion level, so by this point the
+# whole program is represented in terms of CPS lambdas and associated special
+# forms.
+our %special_forms = (
+  'fn*' => sub {
+    my ($formals, $body) = @_;
+    die "formals must be specified as an array or symbol (got $formals)"
+      unless ref $formals eq 'ni::lisp::array'
+          || ref $formals eq 'ni::lisp::symbol';
+
+    my $formal_binding =
+      ref $formals eq 'ni::lisp::array'
+        ? "my (" . join(', ', map "\$" . perlize_name($$_), @$formals)
+                 . ") = \@_"
+        : "my \$" . perlize_name($$formals) . " = \\\@_";
+    my $compiled_body  = $body->compile;
+    my $result_gensym  = gensym 'result';
+
+    DEBUG ? qq{ sub {
+              $formal_binding;
+              my \$$result_gensym = eval {
+                $compiled_body;
+              };
+              die q{((fn* $formals $body) }.join(" ", \@_).qq{): \$@} if \$@;
+              \$$result_gensym;
+            } }
+          : qq{ sub {
+              $formal_binding;
+              $compiled_body;
+            } };
+  },
+
+  'nth*' => sub {
+    my ($k, $n, @vs) = map $_->compile, @_;
+    my $v_options    = join ', ', @vs;
+    qq{ ($k)->(($v_options)[$n]) };
+  },
+
+  # We have no concurrency in the bootstrap layer, so just execute each
+  # continuation in sequence and collect results. This implementation is
+  # semantically correct up to GC properties.
+  'co*' => sub {
+    my ($k, @fs) = map $_->compile, @_;
+    my $k_gs     = gensym 'k';
+    my $i_gs     = gensym 'indexes';
+    my $n        = @fs;
+    my @ks       = map qq[ sub { \$$i_gs]."{$_}".qq[ = \$_[0];
+                                 \$$k_gs->(map \$$i_gs]."{\$_}".qq[, 0..$#_)
+                                   if scalar(keys \%$i_gs) == $n; }],
+                       0..$#fs;
+
+    my $calls    = join "\n", map qq{ ($fs[$_])->($ks[$_]); }, 0..$#fs;
+
+    qq{
+      my \$$k_gs = $k;
+      my \%$i_gs;
+      $calls;
+    };
+  },
+
+  # For now, choose the first alternative every time. Others don't need to even
+  # be compiled because they're all semantically equivalent.
+  'amb*' => sub {
+    my ($k, $f) = map $_->compile, @_;
+    qq{ ($f)->($k); };
+  },
+);
+
+sub compile_list {
+  my ($h, @xs) = @_;
+  ref $h eq 'ni::lisp::symbol' && exists $special_forms{$$h}
+    ? $special_forms{$$h}->(@xs)
+    : function_call($h, @xs);
+}
+
+sub array_literal { "[" . join(', ', @_) . "]" }
+sub hash_literal  { "{" . join(', ', @_) . "}" }
+sub qstr_literal  { "'$_[0]'" }
+sub str_literal   { "\"$_[0]\"" }
+sub var_reference { "\$" . perlize_name($_[0]) }
+sub num_literal   { $_[0] }
+
+sub function_call {
+  my ($f, @xs) = map $_->compile, @_;
+  $f . "->(" . join(", ", @xs) . ")";
+}
+
+# I don't want to write the following in CPS, so here's a Perl-hosted version.
+# This method assumes that your form has already been macroexpanded, and is not
+# idempotent at all (!!!).
+sub cps_wrap {
+  my $k_gensym = symbol gensym 'k';
+  list symbol('fn*'), array($k_gensym), $_[0]->cps_convert($k_gensym);
+}
+
+our %cps_special_forms = (
+  'fn*' => sub {
+    my ($k_form, $formals, $body) = @_;
+    my $k_gensym = symbol gensym 'k';
+
+    # Two possibilities. If the function is variadic, then we need to generate
+    # runtime code that splits the continuation off the end and saves it.
+    if (ref $formals eq 'ni::lisp::array') {
+      # Easy case: just add an extra formal for the continuation.
+      list $k_form,
+           list symbol('fn*'),
+                array($k_gensym, @$formals),
+                $body->cps_convert($k_gensym);
+    } else {
+      # Hard case: generate CPS-converted runtime code.
+      my $formals_gensym = symbol gensym 'kf';
+      list $k_form,
+           list symbol('fn*'),
+                $formals_gensym,
+                list symbol('uncons'),
+                     list(symbol('fn*'),
+                          array($k_gensym, $formals),
+                          $body->cps_convert($k_gensym)),
+                     $formals_gensym;
+    }
+  },
+
+  'nth*' => sub {
+    my $k_form = shift @_;
+    my @gensyms = map symbol(gensym 'x'), @_;
+    list symbol('co*'),
+         list(symbol('fn*'),
+              array(@gensyms),
+              list symbol('nth*'), $k_form, @gensyms),
+         map(cps_wrap($_), @_);
+  },
+
+  'co*' => sub {
+    my $k_form = shift @_;
+    list symbol('co*'), $k_form, map cps_wrap($_), @_;
+  },
+
+  'amb*' => sub {
+    my $k_form = shift @_;
+    list symbol('amb*'), $k_form, map cps_wrap($_), @_;
+  },
+);
+
+sub cps_convert_call {
+  my ($k_form, $f, @xs) = @_;
+  my $f_gensym = symbol gensym(ref $f eq 'ni::lisp::symbol' ? $$f : 'f');
+  my @gensyms = map symbol(gensym 'x'), @xs;
+  list symbol('co*'),
+       list(symbol('fn*'),
+            array($f_gensym, @gensyms),
+            list $f_gensym, $k_form, @gensyms),
+       map cps_wrap($_), $f, @xs;
+}
+
+sub cps_constant {
+  my ($self, $k_form) = @_;
+  list $k_form, $self;
+}
+
+deftypemethod 'cps_convert',
+  list => sub {
+    my ($self, $k_form) = @_;
+    my ($h, @xs) = @$self;
+    ref $h eq 'ni::lisp::symbol' && exists $cps_special_forms{$$h}
+      ? $cps_special_forms{$$h}->($k_form, @xs)
+      : cps_convert_call $k_form, $h, @xs;
+  },
+  array => sub {
+    my ($self, $k_form) = @_;
+    my @gensyms = map symbol(gensym 'x'), @$self;
+    list symbol('co*'),
+         list(symbol('fn*'),
+              array(@gensyms),
+              list $k_form, array(@gensyms)),
+         map cps_wrap($_), @$self;
+  },
+  hash => sub {
+    my ($self, $k_form) = @_;
+    my @gensyms = map symbol(gensym 'x'), @$self;
+    list symbol('co*'),
+         list(symbol('fn*'),
+              array(@gensyms),
+              list $k_form, hash(@gensyms)),
+         map cps_wrap($_), @$self;
+  },
+  qstr   => \&cps_constant,
+  str    => \&cps_constant,
+  symbol => \&cps_constant,
+  number => \&cps_constant;
+
+}
+# Really simple macroexpander
+{
+
+package ni::lisp;
+
+%ni::lisp::macros = ();
+
+deftypemethod 'macroexpand',
+  list => sub {
+    my ($self, $macros) = @_;
+    my ($h, @xs) = @$self;
+    $macros //= \%ni::lisp::macros;
+
+    unless (ref $h eq 'ni::lisp::symbol' && exists $$macros{$$h}) {
+      my @macroexpanded = eval { map $_->macroexpand($macros), @$self };
+      die "failed to macroexpand $self: $@" if $@;
+      ni::lisp::list @macroexpanded;
+    } else {
+      my $return;
+      $$macros{$$h}->(sub { $return = $_[0] }, @xs);
+      $return->macroexpand($macros);
+    }
+  },
+
+  array  => sub { ni::lisp::array map $_->macroexpand($_[1]), @{$_[0]} },
+  hash   => sub { ni::lisp::hash  map $_->macroexpand($_[1]), @{$_[0]} },
+  qstr   => sub { $_[0] },
+  str    => sub { $_[0] },
+  symbol => sub { $_[0] },
+  number => sub { $_[0] };
+
+}
+# Takes a regular Perl sub and makes it work with CPS
+sub cps {
+  my ($f) = @_;
+  sub { $_[0]->($f->(@_[1..$#_])) };
+}
+
+sub defcps { ${ni::lisp::perlize_name $_[0]} = cps $_[1] }
+
+defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
+defcps 'sym-str', sub { ni::lisp::str ${$_[0]} };
+defcps 'str-sym', sub { ni::lisp::symbol $_[0] };
+
+defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
+defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
+defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
+
+defcps 'aget',   sub { $_[0]->[$_[1]] };
+defcps 'type',   sub { ref($_[0]) =~ s/.*:://r };
+
+defcps 'car',    sub { my ($l) = @_; $$l[0] };
+defcps 'cdr',    sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
+defcps 'cons',   sub { my ($a, $d) = @_; ni::lisp::list($a, @$d) };
+defcps 'uncons', sub { my ($l) = @_; ($$l[0], ni::lisp::list(@$l[1..$#{$l}])) };
+defcps 'list',   sub { ni::lisp::list(@_) };
+defcps 'nil',    sub { ni::lisp::list() };
+defcps 'count',  sub { scalar(@{$_[0]}) };
+defcps '=',      sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
+defcps '>',      sub { $_[0] > $_[1] ? 1 : 0 };
+defcps 'not',    sub { $_[0] ? 0 : 1 };
+defcps 'print',  sub { print STDERR join(' ', @_), "\n" };
+defcps 'apply',  sub { $_[0]->(@_[1..$#_]) };
+
+defcps $_, eval "sub { \$_[0] $_ \$_[1] }" for qw# + - * / % ** << >> ^ & | #;
+
+defcps 'macroexpand', sub { $_[0]->macroexpand };
+defcps 'eval',        sub { my $c = $_[0]->compile;
+                            my $r = eval $c;
+                            die "failed to eval $_[0] -> $c: $@" if $@;
+                            $r };
+
+defcps 'defcps*', sub {
+  my ($name, $value) = @_;
+  ${ni::lisp::perlize_name $name} = $value;
+  $name;
+};
+
+defcps 'defmacrocps*', sub {
+  my ($name, $value) = @_;
+  $ni::lisp::macros{$name} = $value;
+  $name;
+};
+
+defcps 'cps-convert', sub { $_[0]->cps_convert($_[1]) };
+
+
+=begin comment
+
+(defcps* (fn* [x] x) 'id*' (fn* [x] x))
+
+=end comment
+
+=cut
+
+$defcps_42->( sub {
+ my ($x) = @_;
+ $x;
+ } , 'id*', sub {
+ my ($x) = @_;
+ $x;
+ } );
+
+
+=begin comment
+
+(defcps* id* 'call/cc' (fn* [k f] (f k k)))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, 'call/cc', sub {
+ my ($k, $f) = @_;
+ $f->($k, $k);
+ } );
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  'cps*'
+  (
+    fn*
+    [k form]
+    (
+      macroexpand
+      (
+        fn*
+        [mform]
+        (
+          co*
+          (
+            fn*
+            [fnsym xsym xsymarray]
+            (
+              list
+              (fn* [k-form] (cps-convert k mform k-form))
+              fnsym
+              xsymarray
+              xsym))
+          (fn* [k1] (str-sym k1 'fn*' k1))
+          (fn* [k2] (str-sym k2 'x' k2))
+          (
+            fn*
+            [k3]
+            (
+              str-sym
+              (fn* [xsym] (list (fn* [xsymlist] (to-array k3 xsymlist)) xsym))
+              'x'))))
+      form)))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, 'cps*', sub {
+ my ($k, $form) = @_;
+ $macroexpand->( sub {
+ my ($mform) = @_;
+ 
+ my $k11 = sub {
+ my ($fnsym, $xsym, $xsymarray) = @_;
+ $list->( sub {
+ my ($k_45form) = @_;
+ $cps_45convert->($k, $mform, $k_45form);
+ } , $fnsym, $xsymarray, $xsym);
+ } ;
+ my %indexes12;
+ ( sub {
+ my ($k1) = @_;
+ $str_45sym->($k1, 'fn*', $k1);
+ } )->( sub { $indexes12{0} = $_[0];
+ $k11->(map $indexes12{$_}, 0..3)
+ if scalar(keys %indexes12) == 3; }); 
+ ( sub {
+ my ($k2) = @_;
+ $str_45sym->($k2, 'x', $k2);
+ } )->( sub { $indexes12{1} = $_[0];
+ $k11->(map $indexes12{$_}, 0..3)
+ if scalar(keys %indexes12) == 3; }); 
+ ( sub {
+ my ($k3) = @_;
+ $str_45sym->( sub {
+ my ($xsym) = @_;
+ $list->( sub {
+ my ($xsymlist) = @_;
+ $to_45array->($k3, $xsymlist);
+ } , $xsym);
+ } , 'x');
+ } )->( sub { $indexes12{2} = $_[0];
+ $k11->(map $indexes12{$_}, 0..3)
+ if scalar(keys %indexes12) == 3; }); ;
+ ;
+ } , $form);
+ } );
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  'defmacro'
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k15 name f]
+      (
+        co*
+        (fn* [list16 x17 x18 x19 x20] (list16 k15 x17 x18 x19 x20))
+        (fn* [k21] (k21 list))
+        (
+          fn*
+          [k22]
+          (
+            co*
+            (fn* [str-sym23 x24] (str-sym23 k22 x24))
+            (fn* [k25] (k25 str-sym))
+            (fn* [k26] (k26 'defmacrocps*'))))
+        (
+          fn*
+          [k27]
+          (
+            co*
+            (fn* [str-sym28 x29] (str-sym28 k27 x29))
+            (fn* [k30] (k30 str-sym))
+            (fn* [k31] (k31 'id*'))))
+        (
+          fn*
+          [k32]
+          (
+            co*
+            (fn* [sym-str33 x34] (sym-str33 k32 x34))
+            (fn* [k35] (k35 sym-str))
+            (fn* [k36] (k36 name))))
+        (
+          fn*
+          [k37]
+          (
+            co*
+            (fn* [list38 x39 x40] (list38 k37 x39 x40))
+            (fn* [k41] (k41 list))
+            (
+              fn*
+              [k42]
+              (
+                co*
+                (fn* [str-sym43 x44] (str-sym43 k42 x44))
+                (fn* [k45] (k45 str-sym))
+                (fn* [k46] (k46 'cps*'))))
+            (fn* [k47] (k47 f))))))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, 'defmacro', sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k15, $name, $f) = @_;
+ 
+ my $k81 = sub {
+ my ($list16, $x17, $x18, $x19, $x20) = @_;
+ $list16->($k15, $x17, $x18, $x19, $x20);
+ } ;
+ my %indexes82;
+ ( sub {
+ my ($k21) = @_;
+ $k21->($list);
+ } )->( sub { $indexes82{0} = $_[0];
+ $k81->(map $indexes82{$_}, 0..5)
+ if scalar(keys %indexes82) == 5; }); 
+ ( sub {
+ my ($k22) = @_;
+ 
+ my $k54 = sub {
+ my ($str_45sym23, $x24) = @_;
+ $str_45sym23->($k22, $x24);
+ } ;
+ my %indexes55;
+ ( sub {
+ my ($k25) = @_;
+ $k25->($str_45sym);
+ } )->( sub { $indexes55{0} = $_[0];
+ $k54->(map $indexes55{$_}, 0..2)
+ if scalar(keys %indexes55) == 2; }); 
+ ( sub {
+ my ($k26) = @_;
+ $k26->('defmacrocps*');
+ } )->( sub { $indexes55{1} = $_[0];
+ $k54->(map $indexes55{$_}, 0..2)
+ if scalar(keys %indexes55) == 2; }); ;
+ ;
+ } )->( sub { $indexes82{1} = $_[0];
+ $k81->(map $indexes82{$_}, 0..5)
+ if scalar(keys %indexes82) == 5; }); 
+ ( sub {
+ my ($k27) = @_;
+ 
+ my $k60 = sub {
+ my ($str_45sym28, $x29) = @_;
+ $str_45sym28->($k27, $x29);
+ } ;
+ my %indexes61;
+ ( sub {
+ my ($k30) = @_;
+ $k30->($str_45sym);
+ } )->( sub { $indexes61{0} = $_[0];
+ $k60->(map $indexes61{$_}, 0..2)
+ if scalar(keys %indexes61) == 2; }); 
+ ( sub {
+ my ($k31) = @_;
+ $k31->('id*');
+ } )->( sub { $indexes61{1} = $_[0];
+ $k60->(map $indexes61{$_}, 0..2)
+ if scalar(keys %indexes61) == 2; }); ;
+ ;
+ } )->( sub { $indexes82{2} = $_[0];
+ $k81->(map $indexes82{$_}, 0..5)
+ if scalar(keys %indexes82) == 5; }); 
+ ( sub {
+ my ($k32) = @_;
+ 
+ my $k66 = sub {
+ my ($sym_45str33, $x34) = @_;
+ $sym_45str33->($k32, $x34);
+ } ;
+ my %indexes67;
+ ( sub {
+ my ($k35) = @_;
+ $k35->($sym_45str);
+ } )->( sub { $indexes67{0} = $_[0];
+ $k66->(map $indexes67{$_}, 0..2)
+ if scalar(keys %indexes67) == 2; }); 
+ ( sub {
+ my ($k36) = @_;
+ $k36->($name);
+ } )->( sub { $indexes67{1} = $_[0];
+ $k66->(map $indexes67{$_}, 0..2)
+ if scalar(keys %indexes67) == 2; }); ;
+ ;
+ } )->( sub { $indexes82{3} = $_[0];
+ $k81->(map $indexes82{$_}, 0..5)
+ if scalar(keys %indexes82) == 5; }); 
+ ( sub {
+ my ($k37) = @_;
+ 
+ my $k78 = sub {
+ my ($list38, $x39, $x40) = @_;
+ $list38->($k37, $x39, $x40);
+ } ;
+ my %indexes79;
+ ( sub {
+ my ($k41) = @_;
+ $k41->($list);
+ } )->( sub { $indexes79{0} = $_[0];
+ $k78->(map $indexes79{$_}, 0..3)
+ if scalar(keys %indexes79) == 3; }); 
+ ( sub {
+ my ($k42) = @_;
+ 
+ my $k74 = sub {
+ my ($str_45sym43, $x44) = @_;
+ $str_45sym43->($k42, $x44);
+ } ;
+ my %indexes75;
+ ( sub {
+ my ($k45) = @_;
+ $k45->($str_45sym);
+ } )->( sub { $indexes75{0} = $_[0];
+ $k74->(map $indexes75{$_}, 0..2)
+ if scalar(keys %indexes75) == 2; }); 
+ ( sub {
+ my ($k46) = @_;
+ $k46->('cps*');
+ } )->( sub { $indexes75{1} = $_[0];
+ $k74->(map $indexes75{$_}, 0..2)
+ if scalar(keys %indexes75) == 2; }); ;
+ ;
+ } )->( sub { $indexes79{1} = $_[0];
+ $k78->(map $indexes79{$_}, 0..3)
+ if scalar(keys %indexes79) == 3; }); 
+ ( sub {
+ my ($k47) = @_;
+ $k47->($f);
+ } )->( sub { $indexes79{2} = $_[0];
+ $k78->(map $indexes79{$_}, 0..3)
+ if scalar(keys %indexes79) == 3; }); ;
+ ;
+ } )->( sub { $indexes82{4} = $_[0];
+ $k81->(map $indexes82{$_}, 0..5)
+ if scalar(keys %indexes82) == 5; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "def"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k84 name x]
+      (
+        co*
+        (fn* [list85 x86 x87 x88 x89] (list85 k84 x86 x87 x88 x89))
+        (fn* [k90] (k90 list))
+        (
+          fn*
+          [k91]
+          (
+            co*
+            (fn* [str-sym92 x93] (str-sym92 k91 x93))
+            (fn* [k94] (k94 str-sym))
+            (fn* [k95] (k95 'defcps*'))))
+        (
+          fn*
+          [k96]
+          (
+            co*
+            (fn* [str-sym97 x98] (str-sym97 k96 x98))
+            (fn* [k99] (k99 str-sym))
+            (fn* [k100] (k100 'id*'))))
+        (
+          fn*
+          [k101]
+          (
+            co*
+            (fn* [sym-str102 x103] (sym-str102 k101 x103))
+            (fn* [k104] (k104 sym-str))
+            (fn* [k105] (k105 name))))
+        (
+          fn*
+          [k106]
+          (
+            co*
+            (fn* [list107 x108 x109] (list107 k106 x108 x109))
+            (fn* [k110] (k110 list))
+            (
+              fn*
+              [k111]
+              (
+                co*
+                (fn* [str-sym112 x113] (str-sym112 k111 x113))
+                (fn* [k114] (k114 str-sym))
+                (fn* [k115] (k115 'cps*'))))
+            (fn* [k116] (k116 x))))))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "def", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k84, $name, $x) = @_;
+ 
+ my $k150 = sub {
+ my ($list85, $x86, $x87, $x88, $x89) = @_;
+ $list85->($k84, $x86, $x87, $x88, $x89);
+ } ;
+ my %indexes151;
+ ( sub {
+ my ($k90) = @_;
+ $k90->($list);
+ } )->( sub { $indexes151{0} = $_[0];
+ $k150->(map $indexes151{$_}, 0..5)
+ if scalar(keys %indexes151) == 5; }); 
+ ( sub {
+ my ($k91) = @_;
+ 
+ my $k123 = sub {
+ my ($str_45sym92, $x93) = @_;
+ $str_45sym92->($k91, $x93);
+ } ;
+ my %indexes124;
+ ( sub {
+ my ($k94) = @_;
+ $k94->($str_45sym);
+ } )->( sub { $indexes124{0} = $_[0];
+ $k123->(map $indexes124{$_}, 0..2)
+ if scalar(keys %indexes124) == 2; }); 
+ ( sub {
+ my ($k95) = @_;
+ $k95->('defcps*');
+ } )->( sub { $indexes124{1} = $_[0];
+ $k123->(map $indexes124{$_}, 0..2)
+ if scalar(keys %indexes124) == 2; }); ;
+ ;
+ } )->( sub { $indexes151{1} = $_[0];
+ $k150->(map $indexes151{$_}, 0..5)
+ if scalar(keys %indexes151) == 5; }); 
+ ( sub {
+ my ($k96) = @_;
+ 
+ my $k129 = sub {
+ my ($str_45sym97, $x98) = @_;
+ $str_45sym97->($k96, $x98);
+ } ;
+ my %indexes130;
+ ( sub {
+ my ($k99) = @_;
+ $k99->($str_45sym);
+ } )->( sub { $indexes130{0} = $_[0];
+ $k129->(map $indexes130{$_}, 0..2)
+ if scalar(keys %indexes130) == 2; }); 
+ ( sub {
+ my ($k100) = @_;
+ $k100->('id*');
+ } )->( sub { $indexes130{1} = $_[0];
+ $k129->(map $indexes130{$_}, 0..2)
+ if scalar(keys %indexes130) == 2; }); ;
+ ;
+ } )->( sub { $indexes151{2} = $_[0];
+ $k150->(map $indexes151{$_}, 0..5)
+ if scalar(keys %indexes151) == 5; }); 
+ ( sub {
+ my ($k101) = @_;
+ 
+ my $k135 = sub {
+ my ($sym_45str102, $x103) = @_;
+ $sym_45str102->($k101, $x103);
+ } ;
+ my %indexes136;
+ ( sub {
+ my ($k104) = @_;
+ $k104->($sym_45str);
+ } )->( sub { $indexes136{0} = $_[0];
+ $k135->(map $indexes136{$_}, 0..2)
+ if scalar(keys %indexes136) == 2; }); 
+ ( sub {
+ my ($k105) = @_;
+ $k105->($name);
+ } )->( sub { $indexes136{1} = $_[0];
+ $k135->(map $indexes136{$_}, 0..2)
+ if scalar(keys %indexes136) == 2; }); ;
+ ;
+ } )->( sub { $indexes151{3} = $_[0];
+ $k150->(map $indexes151{$_}, 0..5)
+ if scalar(keys %indexes151) == 5; }); 
+ ( sub {
+ my ($k106) = @_;
+ 
+ my $k147 = sub {
+ my ($list107, $x108, $x109) = @_;
+ $list107->($k106, $x108, $x109);
+ } ;
+ my %indexes148;
+ ( sub {
+ my ($k110) = @_;
+ $k110->($list);
+ } )->( sub { $indexes148{0} = $_[0];
+ $k147->(map $indexes148{$_}, 0..3)
+ if scalar(keys %indexes148) == 3; }); 
+ ( sub {
+ my ($k111) = @_;
+ 
+ my $k143 = sub {
+ my ($str_45sym112, $x113) = @_;
+ $str_45sym112->($k111, $x113);
+ } ;
+ my %indexes144;
+ ( sub {
+ my ($k114) = @_;
+ $k114->($str_45sym);
+ } )->( sub { $indexes144{0} = $_[0];
+ $k143->(map $indexes144{$_}, 0..2)
+ if scalar(keys %indexes144) == 2; }); 
+ ( sub {
+ my ($k115) = @_;
+ $k115->('cps*');
+ } )->( sub { $indexes144{1} = $_[0];
+ $k143->(map $indexes144{$_}, 0..2)
+ if scalar(keys %indexes144) == 2; }); ;
+ ;
+ } )->( sub { $indexes148{1} = $_[0];
+ $k147->(map $indexes148{$_}, 0..3)
+ if scalar(keys %indexes148) == 3; }); 
+ ( sub {
+ my ($k116) = @_;
+ $k116->($x);
+ } )->( sub { $indexes148{2} = $_[0];
+ $k147->(map $indexes148{$_}, 0..3)
+ if scalar(keys %indexes148) == 3; }); ;
+ ;
+ } )->( sub { $indexes151{4} = $_[0];
+ $k150->(map $indexes151{$_}, 0..5)
+ if scalar(keys %indexes151) == 5; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+((fn* [x] x) 0)
+
+=end comment
+
+=cut
+
+ sub {
+ my ($x) = @_;
+ $x;
+ } ->(0);
+
+
+=begin comment
+
+(
+  co*
+  (fn* [not154 x155] (not154 (fn* [x] x) x155))
+  (fn* [k156] (k156 not))
+  (fn* [k157] (k157 0)))
+
+=end comment
+
+=cut
+
+
+ my $k162 = sub {
+ my ($not154, $x155) = @_;
+ $not154->( sub {
+ my ($x) = @_;
+ $x;
+ } , $x155);
+ } ;
+ my %indexes163;
+ ( sub {
+ my ($k156) = @_;
+ $k156->($not);
+ } )->( sub { $indexes163{0} = $_[0];
+ $k162->(map $indexes163{$_}, 0..2)
+ if scalar(keys %indexes163) == 2; }); 
+ ( sub {
+ my ($k157) = @_;
+ $k157->(0);
+ } )->( sub { $indexes163{1} = $_[0];
+ $k162->(map $indexes163{$_}, 0..2)
+ if scalar(keys %indexes163) == 2; }); ;
+ ;
+
+
+=begin comment
+
+(
+  co*
+  (fn* [not164 x165] (not164 (fn* [x] x) x165))
+  (fn* [k166] (k166 not))
+  (fn* [k167] (k167 1)))
+
+=end comment
+
+=cut
+
+
+ my $k172 = sub {
+ my ($not164, $x165) = @_;
+ $not164->( sub {
+ my ($x) = @_;
+ $x;
+ } , $x165);
+ } ;
+ my %indexes173;
+ ( sub {
+ my ($k166) = @_;
+ $k166->($not);
+ } )->( sub { $indexes173{0} = $_[0];
+ $k172->(map $indexes173{$_}, 0..2)
+ if scalar(keys %indexes173) == 2; }); 
+ ( sub {
+ my ($k167) = @_;
+ $k167->(1);
+ } )->( sub { $indexes173{1} = $_[0];
+ $k172->(map $indexes173{$_}, 0..2)
+ if scalar(keys %indexes173) == 2; }); ;
+ ;
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "let*"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k174 n v body]
+      (
+        co*
+        (fn* [list175 x176 x177] (list175 k174 x176 x177))
+        (fn* [k178] (k178 list))
+        (
+          fn*
+          [k179]
+          (
+            co*
+            (fn* [list180 x181 x182 x183] (list180 k179 x181 x182 x183))
+            (fn* [k184] (k184 list))
+            (
+              fn*
+              [k185]
+              (
+                co*
+                (fn* [str-sym186 x187] (str-sym186 k185 x187))
+                (fn* [k188] (k188 str-sym))
+                (fn* [k189] (k189 'fn*'))))
+            (
+              fn*
+              [k190]
+              (
+                co*
+                (fn* [to-array191 x192] (to-array191 k190 x192))
+                (fn* [k193] (k193 to-array))
+                (
+                  fn*
+                  [k194]
+                  (
+                    co*
+                    (fn* [list195 x196] (list195 k194 x196))
+                    (fn* [k197] (k197 list))
+                    (fn* [k198] (k198 n))))))
+            (fn* [k199] (k199 body))))
+        (fn* [k200] (k200 v))))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "let*", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k174, $n, $v, $body) = @_;
+ 
+ my $k228 = sub {
+ my ($list175, $x176, $x177) = @_;
+ $list175->($k174, $x176, $x177);
+ } ;
+ my %indexes229;
+ ( sub {
+ my ($k178) = @_;
+ $k178->($list);
+ } )->( sub { $indexes229{0} = $_[0];
+ $k228->(map $indexes229{$_}, 0..3)
+ if scalar(keys %indexes229) == 3; }); 
+ ( sub {
+ my ($k179) = @_;
+ 
+ my $k224 = sub {
+ my ($list180, $x181, $x182, $x183) = @_;
+ $list180->($k179, $x181, $x182, $x183);
+ } ;
+ my %indexes225;
+ ( sub {
+ my ($k184) = @_;
+ $k184->($list);
+ } )->( sub { $indexes225{0} = $_[0];
+ $k224->(map $indexes225{$_}, 0..4)
+ if scalar(keys %indexes225) == 4; }); 
+ ( sub {
+ my ($k185) = @_;
+ 
+ my $k209 = sub {
+ my ($str_45sym186, $x187) = @_;
+ $str_45sym186->($k185, $x187);
+ } ;
+ my %indexes210;
+ ( sub {
+ my ($k188) = @_;
+ $k188->($str_45sym);
+ } )->( sub { $indexes210{0} = $_[0];
+ $k209->(map $indexes210{$_}, 0..2)
+ if scalar(keys %indexes210) == 2; }); 
+ ( sub {
+ my ($k189) = @_;
+ $k189->('fn*');
+ } )->( sub { $indexes210{1} = $_[0];
+ $k209->(map $indexes210{$_}, 0..2)
+ if scalar(keys %indexes210) == 2; }); ;
+ ;
+ } )->( sub { $indexes225{1} = $_[0];
+ $k224->(map $indexes225{$_}, 0..4)
+ if scalar(keys %indexes225) == 4; }); 
+ ( sub {
+ my ($k190) = @_;
+ 
+ my $k220 = sub {
+ my ($to_45array191, $x192) = @_;
+ $to_45array191->($k190, $x192);
+ } ;
+ my %indexes221;
+ ( sub {
+ my ($k193) = @_;
+ $k193->($to_45array);
+ } )->( sub { $indexes221{0} = $_[0];
+ $k220->(map $indexes221{$_}, 0..2)
+ if scalar(keys %indexes221) == 2; }); 
+ ( sub {
+ my ($k194) = @_;
+ 
+ my $k217 = sub {
+ my ($list195, $x196) = @_;
+ $list195->($k194, $x196);
+ } ;
+ my %indexes218;
+ ( sub {
+ my ($k197) = @_;
+ $k197->($list);
+ } )->( sub { $indexes218{0} = $_[0];
+ $k217->(map $indexes218{$_}, 0..2)
+ if scalar(keys %indexes218) == 2; }); 
+ ( sub {
+ my ($k198) = @_;
+ $k198->($n);
+ } )->( sub { $indexes218{1} = $_[0];
+ $k217->(map $indexes218{$_}, 0..2)
+ if scalar(keys %indexes218) == 2; }); ;
+ ;
+ } )->( sub { $indexes221{1} = $_[0];
+ $k220->(map $indexes221{$_}, 0..2)
+ if scalar(keys %indexes221) == 2; }); ;
+ ;
+ } )->( sub { $indexes225{2} = $_[0];
+ $k224->(map $indexes225{$_}, 0..4)
+ if scalar(keys %indexes225) == 4; }); 
+ ( sub {
+ my ($k199) = @_;
+ $k199->($body);
+ } )->( sub { $indexes225{3} = $_[0];
+ $k224->(map $indexes225{$_}, 0..4)
+ if scalar(keys %indexes225) == 4; }); ;
+ ;
+ } )->( sub { $indexes229{1} = $_[0];
+ $k228->(map $indexes229{$_}, 0..3)
+ if scalar(keys %indexes229) == 3; }); 
+ ( sub {
+ my ($k200) = @_;
+ $k200->($v);
+ } )->( sub { $indexes229{2} = $_[0];
+ $k228->(map $indexes229{$_}, 0..3)
+ if scalar(keys %indexes229) == 3; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "if"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k231 cond then else]
+      (
+        co*
+        (fn* [list232 x233] (list232 k231 x233))
+        (fn* [k234] (k234 list))
+        (
+          fn*
+          [k235]
+          (
+            co*
+            (
+              fn*
+              [list236 x237 x238 x239 x240]
+              (list236 k235 x237 x238 x239 x240))
+            (fn* [k241] (k241 list))
+            (
+              fn*
+              [k242]
+              (
+                co*
+                (fn* [str-sym243 x244] (str-sym243 k242 x244))
+                (fn* [k245] (k245 str-sym))
+                (fn* [k246] (k246 'nth*'))))
+            (
+              fn*
+              [k247]
+              (
+                co*
+                (fn* [list248 x249 x250] (list248 k247 x249 x250))
+                (fn* [k251] (k251 list))
+                (
+                  fn*
+                  [k252]
+                  (
+                    co*
+                    (fn* [str-sym253 x254] (str-sym253 k252 x254))
+                    (fn* [k255] (k255 str-sym))
+                    (fn* [k256] (k256 'not'))))
+                (fn* [k257] (k257 cond))))
+            (
+              fn*
+              [k258]
+              (
+                co*
+                (fn* [list259 x260 x261 x262] (list259 k258 x260 x261 x262))
+                (fn* [k263] (k263 list))
+                (
+                  fn*
+                  [k264]
+                  (
+                    co*
+                    (fn* [str-sym265 x266] (str-sym265 k264 x266))
+                    (fn* [k267] (k267 str-sym))
+                    (fn* [k268] (k268 'fn*'))))
+                (
+                  fn*
+                  [k269]
+                  (
+                    co*
+                    (fn* [to-array270 x271] (to-array270 k269 x271))
+                    (fn* [k272] (k272 to-array))
+                    (
+                      fn*
+                      [k273]
+                      (co* (fn* [nil274] (nil274 k273)) (fn* [k275] (k275 nil))))))
+                (fn* [k276] (k276 then))))
+            (
+              fn*
+              [k277]
+              (
+                co*
+                (fn* [list278 x279 x280 x281] (list278 k277 x279 x280 x281))
+                (fn* [k282] (k282 list))
+                (
+                  fn*
+                  [k283]
+                  (
+                    co*
+                    (fn* [str-sym284 x285] (str-sym284 k283 x285))
+                    (fn* [k286] (k286 str-sym))
+                    (fn* [k287] (k287 'fn*'))))
+                (
+                  fn*
+                  [k288]
+                  (
+                    co*
+                    (fn* [to-array289 x290] (to-array289 k288 x290))
+                    (fn* [k291] (k291 to-array))
+                    (
+                      fn*
+                      [k292]
+                      (co* (fn* [nil293] (nil293 k292)) (fn* [k294] (k294 nil))))))
+                (fn* [k295] (k295 else))))))))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "if", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k231, $cond, $then, $else) = @_;
+ 
+ my $k366 = sub {
+ my ($list232, $x233) = @_;
+ $list232->($k231, $x233);
+ } ;
+ my %indexes367;
+ ( sub {
+ my ($k234) = @_;
+ $k234->($list);
+ } )->( sub { $indexes367{0} = $_[0];
+ $k366->(map $indexes367{$_}, 0..2)
+ if scalar(keys %indexes367) == 2; }); 
+ ( sub {
+ my ($k235) = @_;
+ 
+ my $k363 = sub {
+ my ($list236, $x237, $x238, $x239, $x240) = @_;
+ $list236->($k235, $x237, $x238, $x239, $x240);
+ } ;
+ my %indexes364;
+ ( sub {
+ my ($k241) = @_;
+ $k241->($list);
+ } )->( sub { $indexes364{0} = $_[0];
+ $k363->(map $indexes364{$_}, 0..5)
+ if scalar(keys %indexes364) == 5; }); 
+ ( sub {
+ my ($k242) = @_;
+ 
+ my $k304 = sub {
+ my ($str_45sym243, $x244) = @_;
+ $str_45sym243->($k242, $x244);
+ } ;
+ my %indexes305;
+ ( sub {
+ my ($k245) = @_;
+ $k245->($str_45sym);
+ } )->( sub { $indexes305{0} = $_[0];
+ $k304->(map $indexes305{$_}, 0..2)
+ if scalar(keys %indexes305) == 2; }); 
+ ( sub {
+ my ($k246) = @_;
+ $k246->('nth*');
+ } )->( sub { $indexes305{1} = $_[0];
+ $k304->(map $indexes305{$_}, 0..2)
+ if scalar(keys %indexes305) == 2; }); ;
+ ;
+ } )->( sub { $indexes364{1} = $_[0];
+ $k363->(map $indexes364{$_}, 0..5)
+ if scalar(keys %indexes364) == 5; }); 
+ ( sub {
+ my ($k247) = @_;
+ 
+ my $k316 = sub {
+ my ($list248, $x249, $x250) = @_;
+ $list248->($k247, $x249, $x250);
+ } ;
+ my %indexes317;
+ ( sub {
+ my ($k251) = @_;
+ $k251->($list);
+ } )->( sub { $indexes317{0} = $_[0];
+ $k316->(map $indexes317{$_}, 0..3)
+ if scalar(keys %indexes317) == 3; }); 
+ ( sub {
+ my ($k252) = @_;
+ 
+ my $k312 = sub {
+ my ($str_45sym253, $x254) = @_;
+ $str_45sym253->($k252, $x254);
+ } ;
+ my %indexes313;
+ ( sub {
+ my ($k255) = @_;
+ $k255->($str_45sym);
+ } )->( sub { $indexes313{0} = $_[0];
+ $k312->(map $indexes313{$_}, 0..2)
+ if scalar(keys %indexes313) == 2; }); 
+ ( sub {
+ my ($k256) = @_;
+ $k256->('not');
+ } )->( sub { $indexes313{1} = $_[0];
+ $k312->(map $indexes313{$_}, 0..2)
+ if scalar(keys %indexes313) == 2; }); ;
+ ;
+ } )->( sub { $indexes317{1} = $_[0];
+ $k316->(map $indexes317{$_}, 0..3)
+ if scalar(keys %indexes317) == 3; }); 
+ ( sub {
+ my ($k257) = @_;
+ $k257->($cond);
+ } )->( sub { $indexes317{2} = $_[0];
+ $k316->(map $indexes317{$_}, 0..3)
+ if scalar(keys %indexes317) == 3; }); ;
+ ;
+ } )->( sub { $indexes364{2} = $_[0];
+ $k363->(map $indexes364{$_}, 0..5)
+ if scalar(keys %indexes364) == 5; }); 
+ ( sub {
+ my ($k258) = @_;
+ 
+ my $k338 = sub {
+ my ($list259, $x260, $x261, $x262) = @_;
+ $list259->($k258, $x260, $x261, $x262);
+ } ;
+ my %indexes339;
+ ( sub {
+ my ($k263) = @_;
+ $k263->($list);
+ } )->( sub { $indexes339{0} = $_[0];
+ $k338->(map $indexes339{$_}, 0..4)
+ if scalar(keys %indexes339) == 4; }); 
+ ( sub {
+ my ($k264) = @_;
+ 
+ my $k324 = sub {
+ my ($str_45sym265, $x266) = @_;
+ $str_45sym265->($k264, $x266);
+ } ;
+ my %indexes325;
+ ( sub {
+ my ($k267) = @_;
+ $k267->($str_45sym);
+ } )->( sub { $indexes325{0} = $_[0];
+ $k324->(map $indexes325{$_}, 0..2)
+ if scalar(keys %indexes325) == 2; }); 
+ ( sub {
+ my ($k268) = @_;
+ $k268->('fn*');
+ } )->( sub { $indexes325{1} = $_[0];
+ $k324->(map $indexes325{$_}, 0..2)
+ if scalar(keys %indexes325) == 2; }); ;
+ ;
+ } )->( sub { $indexes339{1} = $_[0];
+ $k338->(map $indexes339{$_}, 0..4)
+ if scalar(keys %indexes339) == 4; }); 
+ ( sub {
+ my ($k269) = @_;
+ 
+ my $k334 = sub {
+ my ($to_45array270, $x271) = @_;
+ $to_45array270->($k269, $x271);
+ } ;
+ my %indexes335;
+ ( sub {
+ my ($k272) = @_;
+ $k272->($to_45array);
+ } )->( sub { $indexes335{0} = $_[0];
+ $k334->(map $indexes335{$_}, 0..2)
+ if scalar(keys %indexes335) == 2; }); 
+ ( sub {
+ my ($k273) = @_;
+ 
+ my $k331 = sub {
+ my ($nil274) = @_;
+ $nil274->($k273);
+ } ;
+ my %indexes332;
+ ( sub {
+ my ($k275) = @_;
+ $k275->($nil);
+ } )->( sub { $indexes332{0} = $_[0];
+ $k331->(map $indexes332{$_}, 0..1)
+ if scalar(keys %indexes332) == 1; }); ;
+ ;
+ } )->( sub { $indexes335{1} = $_[0];
+ $k334->(map $indexes335{$_}, 0..2)
+ if scalar(keys %indexes335) == 2; }); ;
+ ;
+ } )->( sub { $indexes339{2} = $_[0];
+ $k338->(map $indexes339{$_}, 0..4)
+ if scalar(keys %indexes339) == 4; }); 
+ ( sub {
+ my ($k276) = @_;
+ $k276->($then);
+ } )->( sub { $indexes339{3} = $_[0];
+ $k338->(map $indexes339{$_}, 0..4)
+ if scalar(keys %indexes339) == 4; }); ;
+ ;
+ } )->( sub { $indexes364{3} = $_[0];
+ $k363->(map $indexes364{$_}, 0..5)
+ if scalar(keys %indexes364) == 5; }); 
+ ( sub {
+ my ($k277) = @_;
+ 
+ my $k360 = sub {
+ my ($list278, $x279, $x280, $x281) = @_;
+ $list278->($k277, $x279, $x280, $x281);
+ } ;
+ my %indexes361;
+ ( sub {
+ my ($k282) = @_;
+ $k282->($list);
+ } )->( sub { $indexes361{0} = $_[0];
+ $k360->(map $indexes361{$_}, 0..4)
+ if scalar(keys %indexes361) == 4; }); 
+ ( sub {
+ my ($k283) = @_;
+ 
+ my $k346 = sub {
+ my ($str_45sym284, $x285) = @_;
+ $str_45sym284->($k283, $x285);
+ } ;
+ my %indexes347;
+ ( sub {
+ my ($k286) = @_;
+ $k286->($str_45sym);
+ } )->( sub { $indexes347{0} = $_[0];
+ $k346->(map $indexes347{$_}, 0..2)
+ if scalar(keys %indexes347) == 2; }); 
+ ( sub {
+ my ($k287) = @_;
+ $k287->('fn*');
+ } )->( sub { $indexes347{1} = $_[0];
+ $k346->(map $indexes347{$_}, 0..2)
+ if scalar(keys %indexes347) == 2; }); ;
+ ;
+ } )->( sub { $indexes361{1} = $_[0];
+ $k360->(map $indexes361{$_}, 0..4)
+ if scalar(keys %indexes361) == 4; }); 
+ ( sub {
+ my ($k288) = @_;
+ 
+ my $k356 = sub {
+ my ($to_45array289, $x290) = @_;
+ $to_45array289->($k288, $x290);
+ } ;
+ my %indexes357;
+ ( sub {
+ my ($k291) = @_;
+ $k291->($to_45array);
+ } )->( sub { $indexes357{0} = $_[0];
+ $k356->(map $indexes357{$_}, 0..2)
+ if scalar(keys %indexes357) == 2; }); 
+ ( sub {
+ my ($k292) = @_;
+ 
+ my $k353 = sub {
+ my ($nil293) = @_;
+ $nil293->($k292);
+ } ;
+ my %indexes354;
+ ( sub {
+ my ($k294) = @_;
+ $k294->($nil);
+ } )->( sub { $indexes354{0} = $_[0];
+ $k353->(map $indexes354{$_}, 0..1)
+ if scalar(keys %indexes354) == 1; }); ;
+ ;
+ } )->( sub { $indexes357{1} = $_[0];
+ $k356->(map $indexes357{$_}, 0..2)
+ if scalar(keys %indexes357) == 2; }); ;
+ ;
+ } )->( sub { $indexes361{2} = $_[0];
+ $k360->(map $indexes361{$_}, 0..4)
+ if scalar(keys %indexes361) == 4; }); 
+ ( sub {
+ my ($k295) = @_;
+ $k295->($else);
+ } )->( sub { $indexes361{3} = $_[0];
+ $k360->(map $indexes361{$_}, 0..4)
+ if scalar(keys %indexes361) == 4; }); ;
+ ;
+ } )->( sub { $indexes364{4} = $_[0];
+ $k363->(map $indexes364{$_}, 0..5)
+ if scalar(keys %indexes364) == 5; }); ;
+ ;
+ } )->( sub { $indexes367{1} = $_[0];
+ $k366->(map $indexes367{$_}, 0..2)
+ if scalar(keys %indexes367) == 2; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "listgen"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k369 xs]
+      (
+        co*
+        (fn* [f370] (f370 k369))
+        (
+          fn*
+          [k371]
+          (
+            co*
+            (fn* [x372 x373 x374] (nth* k371 x372 x373 x374))
+            (
+              fn*
+              [k375]
+              (
+                co*
+                (fn* [not376 x377] (not376 k375 x377))
+                (fn* [k378] (k378 not))
+                (
+                  fn*
+                  [k379]
+                  (
+                    co*
+                    (fn* [count380 x381] (count380 k379 x381))
+                    (fn* [k382] (k382 count))
+                    (fn* [k383] (k383 xs))))))
+            (
+              fn*
+              [k384]
+              (
+                k384
+                (
+                  fn*
+                  [k385]
+                  (
+                    k385
+                    (
+                      fn*
+                      [k386 k]
+                      (
+                        co*
+                        (fn* [k387 x388 x389] (k387 k386 x388 x389))
+                        (fn* [k390] (k390 k))
+                        (
+                          fn*
+                          [k391]
+                          (
+                            co*
+                            (fn* [car392 x393] (car392 k391 x393))
+                            (fn* [k394] (k394 car))
+                            (fn* [k395] (k395 xs))))
+                        (
+                          fn*
+                          [k396]
+                          (
+                            co*
+                            (fn* [listgen397 x398] (listgen397 k396 x398))
+                            (fn* [k399] (k399 listgen))
+                            (
+                              fn*
+                              [k400]
+                              (
+                                co*
+                                (fn* [cdr401 x402] (cdr401 k400 x402))
+                                (fn* [k403] (k403 cdr))
+                                (fn* [k404] (k404 xs))))))))))))
+            (
+              fn*
+              [k405]
+              (
+                k405
+                (
+                  fn*
+                  [k406]
+                  (
+                    k406
+                    (
+                      fn*
+                      [k407 k]
+                      (co* (fn* [k408] (k408 k407)) (fn* [k409] (k409 k))))))))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "listgen", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k369, $xs) = @_;
+ 
+ my $k458 = sub {
+ my ($f370) = @_;
+ $f370->($k369);
+ } ;
+ my %indexes459;
+ ( sub {
+ my ($k371) = @_;
+ 
+ my $k455 = sub {
+ my ($x372, $x373, $x374) = @_;
+ ($k371)->(($x373, $x374)[$x372]) ;
+ } ;
+ my %indexes456;
+ ( sub {
+ my ($k375) = @_;
+ 
+ my $k421 = sub {
+ my ($not376, $x377) = @_;
+ $not376->($k375, $x377);
+ } ;
+ my %indexes422;
+ ( sub {
+ my ($k378) = @_;
+ $k378->($not);
+ } )->( sub { $indexes422{0} = $_[0];
+ $k421->(map $indexes422{$_}, 0..2)
+ if scalar(keys %indexes422) == 2; }); 
+ ( sub {
+ my ($k379) = @_;
+ 
+ my $k418 = sub {
+ my ($count380, $x381) = @_;
+ $count380->($k379, $x381);
+ } ;
+ my %indexes419;
+ ( sub {
+ my ($k382) = @_;
+ $k382->($count);
+ } )->( sub { $indexes419{0} = $_[0];
+ $k418->(map $indexes419{$_}, 0..2)
+ if scalar(keys %indexes419) == 2; }); 
+ ( sub {
+ my ($k383) = @_;
+ $k383->($xs);
+ } )->( sub { $indexes419{1} = $_[0];
+ $k418->(map $indexes419{$_}, 0..2)
+ if scalar(keys %indexes419) == 2; }); ;
+ ;
+ } )->( sub { $indexes422{1} = $_[0];
+ $k421->(map $indexes422{$_}, 0..2)
+ if scalar(keys %indexes422) == 2; }); ;
+ ;
+ } )->( sub { $indexes456{0} = $_[0];
+ $k455->(map $indexes456{$_}, 0..3)
+ if scalar(keys %indexes456) == 3; }); 
+ ( sub {
+ my ($k384) = @_;
+ $k384->( sub {
+ my ($k385) = @_;
+ $k385->( sub {
+ my ($k386, $k) = @_;
+ 
+ my $k443 = sub {
+ my ($k387, $x388, $x389) = @_;
+ $k387->($k386, $x388, $x389);
+ } ;
+ my %indexes444;
+ ( sub {
+ my ($k390) = @_;
+ $k390->($k);
+ } )->( sub { $indexes444{0} = $_[0];
+ $k443->(map $indexes444{$_}, 0..3)
+ if scalar(keys %indexes444) == 3; }); 
+ ( sub {
+ my ($k391) = @_;
+ 
+ my $k429 = sub {
+ my ($car392, $x393) = @_;
+ $car392->($k391, $x393);
+ } ;
+ my %indexes430;
+ ( sub {
+ my ($k394) = @_;
+ $k394->($car);
+ } )->( sub { $indexes430{0} = $_[0];
+ $k429->(map $indexes430{$_}, 0..2)
+ if scalar(keys %indexes430) == 2; }); 
+ ( sub {
+ my ($k395) = @_;
+ $k395->($xs);
+ } )->( sub { $indexes430{1} = $_[0];
+ $k429->(map $indexes430{$_}, 0..2)
+ if scalar(keys %indexes430) == 2; }); ;
+ ;
+ } )->( sub { $indexes444{1} = $_[0];
+ $k443->(map $indexes444{$_}, 0..3)
+ if scalar(keys %indexes444) == 3; }); 
+ ( sub {
+ my ($k396) = @_;
+ 
+ my $k440 = sub {
+ my ($listgen397, $x398) = @_;
+ $listgen397->($k396, $x398);
+ } ;
+ my %indexes441;
+ ( sub {
+ my ($k399) = @_;
+ $k399->($listgen);
+ } )->( sub { $indexes441{0} = $_[0];
+ $k440->(map $indexes441{$_}, 0..2)
+ if scalar(keys %indexes441) == 2; }); 
+ ( sub {
+ my ($k400) = @_;
+ 
+ my $k437 = sub {
+ my ($cdr401, $x402) = @_;
+ $cdr401->($k400, $x402);
+ } ;
+ my %indexes438;
+ ( sub {
+ my ($k403) = @_;
+ $k403->($cdr);
+ } )->( sub { $indexes438{0} = $_[0];
+ $k437->(map $indexes438{$_}, 0..2)
+ if scalar(keys %indexes438) == 2; }); 
+ ( sub {
+ my ($k404) = @_;
+ $k404->($xs);
+ } )->( sub { $indexes438{1} = $_[0];
+ $k437->(map $indexes438{$_}, 0..2)
+ if scalar(keys %indexes438) == 2; }); ;
+ ;
+ } )->( sub { $indexes441{1} = $_[0];
+ $k440->(map $indexes441{$_}, 0..2)
+ if scalar(keys %indexes441) == 2; }); ;
+ ;
+ } )->( sub { $indexes444{2} = $_[0];
+ $k443->(map $indexes444{$_}, 0..3)
+ if scalar(keys %indexes444) == 3; }); ;
+ ;
+ } );
+ } );
+ } )->( sub { $indexes456{1} = $_[0];
+ $k455->(map $indexes456{$_}, 0..3)
+ if scalar(keys %indexes456) == 3; }); 
+ ( sub {
+ my ($k405) = @_;
+ $k405->( sub {
+ my ($k406) = @_;
+ $k406->( sub {
+ my ($k407, $k) = @_;
+ 
+ my $k450 = sub {
+ my ($k408) = @_;
+ $k408->($k407);
+ } ;
+ my %indexes451;
+ ( sub {
+ my ($k409) = @_;
+ $k409->($k);
+ } )->( sub { $indexes451{0} = $_[0];
+ $k450->(map $indexes451{$_}, 0..1)
+ if scalar(keys %indexes451) == 1; }); ;
+ ;
+ } );
+ } );
+ } )->( sub { $indexes456{2} = $_[0];
+ $k455->(map $indexes456{$_}, 0..3)
+ if scalar(keys %indexes456) == 3; }); ;
+ ;
+ } )->( sub { $indexes459{0} = $_[0];
+ $k458->(map $indexes459{$_}, 0..1)
+ if scalar(keys %indexes459) == 1; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "lreduce*"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k461 f init generator]
+      (
+        co*
+        (fn* [generator462 x463] (generator462 k461 x463))
+        (fn* [k464] (k464 generator))
+        (
+          fn*
+          [k465]
+          (
+            k465
+            (
+              fn*
+              kf467
+              (
+                uncons
+                (
+                  fn*
+                  [k466 xs]
+                  (
+                    co*
+                    (fn* [f468] (f468 k466))
+                    (
+                      fn*
+                      [k469]
+                      (
+                        co*
+                        (fn* [x470 x471 x472] (nth* k469 x470 x471 x472))
+                        (
+                          fn*
+                          [k473]
+                          (
+                            co*
+                            (fn* [not474 x475] (not474 k473 x475))
+                            (fn* [k476] (k476 not))
+                            (
+                              fn*
+                              [k477]
+                              (
+                                co*
+                                (fn* [count478 x479] (count478 k477 x479))
+                                (fn* [k480] (k480 count))
+                                (fn* [k481] (k481 xs))))))
+                        (
+                          fn*
+                          [k482]
+                          (
+                            k482
+                            (
+                              fn*
+                              [k483]
+                              (
+                                co*
+                                (
+                                  fn*
+                                  [lreduce*484 x485 x486 x487]
+                                  (lreduce*484 k483 x485 x486 x487))
+                                (fn* [k488] (k488 lreduce*))
+                                (fn* [k489] (k489 f))
+                                (
+                                  fn*
+                                  [k490]
+                                  (
+                                    co*
+                                    (fn* [f491 x492 x493] (f491 k490 x492 x493))
+                                    (fn* [k494] (k494 f))
+                                    (fn* [k495] (k495 init))
+                                    (
+                                      fn*
+                                      [k496]
+                                      (
+                                        co*
+                                        (
+                                          fn*
+                                          [aget497 x498 x499]
+                                          (aget497 k496 x498 x499))
+                                        (fn* [k500] (k500 aget))
+                                        (fn* [k501] (k501 xs))
+                                        (fn* [k502] (k502 0))))))
+                                (
+                                  fn*
+                                  [k503]
+                                  (
+                                    co*
+                                    (
+                                      fn*
+                                      [aget504 x505 x506]
+                                      (aget504 k503 x505 x506))
+                                    (fn* [k507] (k507 aget))
+                                    (fn* [k508] (k508 xs))
+                                    (fn* [k509] (k509 1))))))))
+                        (fn* [k510] (k510 (fn* [k511] (k511 init))))))))
+                kf467))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "lreduce*", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k461, $f, $init, $generator) = @_;
+ 
+ my $k565 = sub {
+ my ($generator462, $x463) = @_;
+ $generator462->($k461, $x463);
+ } ;
+ my %indexes566;
+ ( sub {
+ my ($k464) = @_;
+ $k464->($generator);
+ } )->( sub { $indexes566{0} = $_[0];
+ $k565->(map $indexes566{$_}, 0..2)
+ if scalar(keys %indexes566) == 2; }); 
+ ( sub {
+ my ($k465) = @_;
+ $k465->( sub {
+ my $kf467 = \@_;
+ $uncons->( sub {
+ my ($k466, $xs) = @_;
+ 
+ my $k560 = sub {
+ my ($f468) = @_;
+ $f468->($k466);
+ } ;
+ my %indexes561;
+ ( sub {
+ my ($k469) = @_;
+ 
+ my $k557 = sub {
+ my ($x470, $x471, $x472) = @_;
+ ($k469)->(($x471, $x472)[$x470]) ;
+ } ;
+ my %indexes558;
+ ( sub {
+ my ($k473) = @_;
+ 
+ my $k525 = sub {
+ my ($not474, $x475) = @_;
+ $not474->($k473, $x475);
+ } ;
+ my %indexes526;
+ ( sub {
+ my ($k476) = @_;
+ $k476->($not);
+ } )->( sub { $indexes526{0} = $_[0];
+ $k525->(map $indexes526{$_}, 0..2)
+ if scalar(keys %indexes526) == 2; }); 
+ ( sub {
+ my ($k477) = @_;
+ 
+ my $k522 = sub {
+ my ($count478, $x479) = @_;
+ $count478->($k477, $x479);
+ } ;
+ my %indexes523;
+ ( sub {
+ my ($k480) = @_;
+ $k480->($count);
+ } )->( sub { $indexes523{0} = $_[0];
+ $k522->(map $indexes523{$_}, 0..2)
+ if scalar(keys %indexes523) == 2; }); 
+ ( sub {
+ my ($k481) = @_;
+ $k481->($xs);
+ } )->( sub { $indexes523{1} = $_[0];
+ $k522->(map $indexes523{$_}, 0..2)
+ if scalar(keys %indexes523) == 2; }); ;
+ ;
+ } )->( sub { $indexes526{1} = $_[0];
+ $k525->(map $indexes526{$_}, 0..2)
+ if scalar(keys %indexes526) == 2; }); ;
+ ;
+ } )->( sub { $indexes558{0} = $_[0];
+ $k557->(map $indexes558{$_}, 0..3)
+ if scalar(keys %indexes558) == 3; }); 
+ ( sub {
+ my ($k482) = @_;
+ $k482->( sub {
+ my ($k483) = @_;
+ 
+ my $k551 = sub {
+ my ($lreduce_42484, $x485, $x486, $x487) = @_;
+ $lreduce_42484->($k483, $x485, $x486, $x487);
+ } ;
+ my %indexes552;
+ ( sub {
+ my ($k488) = @_;
+ $k488->($lreduce_42);
+ } )->( sub { $indexes552{0} = $_[0];
+ $k551->(map $indexes552{$_}, 0..4)
+ if scalar(keys %indexes552) == 4; }); 
+ ( sub {
+ my ($k489) = @_;
+ $k489->($f);
+ } )->( sub { $indexes552{1} = $_[0];
+ $k551->(map $indexes552{$_}, 0..4)
+ if scalar(keys %indexes552) == 4; }); 
+ ( sub {
+ my ($k490) = @_;
+ 
+ my $k541 = sub {
+ my ($f491, $x492, $x493) = @_;
+ $f491->($k490, $x492, $x493);
+ } ;
+ my %indexes542;
+ ( sub {
+ my ($k494) = @_;
+ $k494->($f);
+ } )->( sub { $indexes542{0} = $_[0];
+ $k541->(map $indexes542{$_}, 0..3)
+ if scalar(keys %indexes542) == 3; }); 
+ ( sub {
+ my ($k495) = @_;
+ $k495->($init);
+ } )->( sub { $indexes542{1} = $_[0];
+ $k541->(map $indexes542{$_}, 0..3)
+ if scalar(keys %indexes542) == 3; }); 
+ ( sub {
+ my ($k496) = @_;
+ 
+ my $k538 = sub {
+ my ($aget497, $x498, $x499) = @_;
+ $aget497->($k496, $x498, $x499);
+ } ;
+ my %indexes539;
+ ( sub {
+ my ($k500) = @_;
+ $k500->($aget);
+ } )->( sub { $indexes539{0} = $_[0];
+ $k538->(map $indexes539{$_}, 0..3)
+ if scalar(keys %indexes539) == 3; }); 
+ ( sub {
+ my ($k501) = @_;
+ $k501->($xs);
+ } )->( sub { $indexes539{1} = $_[0];
+ $k538->(map $indexes539{$_}, 0..3)
+ if scalar(keys %indexes539) == 3; }); 
+ ( sub {
+ my ($k502) = @_;
+ $k502->(0);
+ } )->( sub { $indexes539{2} = $_[0];
+ $k538->(map $indexes539{$_}, 0..3)
+ if scalar(keys %indexes539) == 3; }); ;
+ ;
+ } )->( sub { $indexes542{2} = $_[0];
+ $k541->(map $indexes542{$_}, 0..3)
+ if scalar(keys %indexes542) == 3; }); ;
+ ;
+ } )->( sub { $indexes552{2} = $_[0];
+ $k551->(map $indexes552{$_}, 0..4)
+ if scalar(keys %indexes552) == 4; }); 
+ ( sub {
+ my ($k503) = @_;
+ 
+ my $k548 = sub {
+ my ($aget504, $x505, $x506) = @_;
+ $aget504->($k503, $x505, $x506);
+ } ;
+ my %indexes549;
+ ( sub {
+ my ($k507) = @_;
+ $k507->($aget);
+ } )->( sub { $indexes549{0} = $_[0];
+ $k548->(map $indexes549{$_}, 0..3)
+ if scalar(keys %indexes549) == 3; }); 
+ ( sub {
+ my ($k508) = @_;
+ $k508->($xs);
+ } )->( sub { $indexes549{1} = $_[0];
+ $k548->(map $indexes549{$_}, 0..3)
+ if scalar(keys %indexes549) == 3; }); 
+ ( sub {
+ my ($k509) = @_;
+ $k509->(1);
+ } )->( sub { $indexes549{2} = $_[0];
+ $k548->(map $indexes549{$_}, 0..3)
+ if scalar(keys %indexes549) == 3; }); ;
+ ;
+ } )->( sub { $indexes552{3} = $_[0];
+ $k551->(map $indexes552{$_}, 0..4)
+ if scalar(keys %indexes552) == 4; }); ;
+ ;
+ } );
+ } )->( sub { $indexes558{1} = $_[0];
+ $k557->(map $indexes558{$_}, 0..3)
+ if scalar(keys %indexes558) == 3; }); 
+ ( sub {
+ my ($k510) = @_;
+ $k510->( sub {
+ my ($k511) = @_;
+ $k511->($init);
+ } );
+ } )->( sub { $indexes558{2} = $_[0];
+ $k557->(map $indexes558{$_}, 0..3)
+ if scalar(keys %indexes558) == 3; }); ;
+ ;
+ } )->( sub { $indexes561{0} = $_[0];
+ $k560->(map $indexes561{$_}, 0..1)
+ if scalar(keys %indexes561) == 1; }); ;
+ ;
+ } , $kf467);
+ } );
+ } )->( sub { $indexes566{1} = $_[0];
+ $k565->(map $indexes566{$_}, 0..2)
+ if scalar(keys %indexes566) == 2; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "rreduce*"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k568 f end generator]
+      (
+        co*
+        (fn* [generator569 x570] (generator569 k568 x570))
+        (fn* [k571] (k571 generator))
+        (
+          fn*
+          [k572]
+          (
+            k572
+            (
+              fn*
+              kf574
+              (
+                uncons
+                (
+                  fn*
+                  [k573 xs]
+                  (
+                    co*
+                    (fn* [f575] (f575 k573))
+                    (
+                      fn*
+                      [k576]
+                      (
+                        co*
+                        (fn* [x577 x578 x579] (nth* k576 x577 x578 x579))
+                        (
+                          fn*
+                          [k580]
+                          (
+                            co*
+                            (fn* [not581 x582] (not581 k580 x582))
+                            (fn* [k583] (k583 not))
+                            (
+                              fn*
+                              [k584]
+                              (
+                                co*
+                                (fn* [count585 x586] (count585 k584 x586))
+                                (fn* [k587] (k587 count))
+                                (fn* [k588] (k588 xs))))))
+                        (
+                          fn*
+                          [k589]
+                          (
+                            k589
+                            (
+                              fn*
+                              [k590]
+                              (
+                                co*
+                                (fn* [f591 x592 x593] (f591 k590 x592 x593))
+                                (fn* [k594] (k594 f))
+                                (
+                                  fn*
+                                  [k595]
+                                  (
+                                    co*
+                                    (
+                                      fn*
+                                      [aget596 x597 x598]
+                                      (aget596 k595 x597 x598))
+                                    (fn* [k599] (k599 aget))
+                                    (fn* [k600] (k600 xs))
+                                    (fn* [k601] (k601 0))))
+                                (
+                                  fn*
+                                  [k602]
+                                  (
+                                    co*
+                                    (
+                                      fn*
+                                      [rreduce*603 x604 x605 x606]
+                                      (rreduce*603 k602 x604 x605 x606))
+                                    (fn* [k607] (k607 rreduce*))
+                                    (fn* [k608] (k608 f))
+                                    (fn* [k609] (k609 end))
+                                    (
+                                      fn*
+                                      [k610]
+                                      (
+                                        co*
+                                        (
+                                          fn*
+                                          [aget611 x612 x613]
+                                          (aget611 k610 x612 x613))
+                                        (fn* [k614] (k614 aget))
+                                        (fn* [k615] (k615 xs))
+                                        (fn* [k616] (k616 1))))))))))
+                        (fn* [k617] (k617 (fn* [k618] (k618 end))))))))
+                kf574))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "rreduce*", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k568, $f, $end, $generator) = @_;
+ 
+ my $k672 = sub {
+ my ($generator569, $x570) = @_;
+ $generator569->($k568, $x570);
+ } ;
+ my %indexes673;
+ ( sub {
+ my ($k571) = @_;
+ $k571->($generator);
+ } )->( sub { $indexes673{0} = $_[0];
+ $k672->(map $indexes673{$_}, 0..2)
+ if scalar(keys %indexes673) == 2; }); 
+ ( sub {
+ my ($k572) = @_;
+ $k572->( sub {
+ my $kf574 = \@_;
+ $uncons->( sub {
+ my ($k573, $xs) = @_;
+ 
+ my $k667 = sub {
+ my ($f575) = @_;
+ $f575->($k573);
+ } ;
+ my %indexes668;
+ ( sub {
+ my ($k576) = @_;
+ 
+ my $k664 = sub {
+ my ($x577, $x578, $x579) = @_;
+ ($k576)->(($x578, $x579)[$x577]) ;
+ } ;
+ my %indexes665;
+ ( sub {
+ my ($k580) = @_;
+ 
+ my $k632 = sub {
+ my ($not581, $x582) = @_;
+ $not581->($k580, $x582);
+ } ;
+ my %indexes633;
+ ( sub {
+ my ($k583) = @_;
+ $k583->($not);
+ } )->( sub { $indexes633{0} = $_[0];
+ $k632->(map $indexes633{$_}, 0..2)
+ if scalar(keys %indexes633) == 2; }); 
+ ( sub {
+ my ($k584) = @_;
+ 
+ my $k629 = sub {
+ my ($count585, $x586) = @_;
+ $count585->($k584, $x586);
+ } ;
+ my %indexes630;
+ ( sub {
+ my ($k587) = @_;
+ $k587->($count);
+ } )->( sub { $indexes630{0} = $_[0];
+ $k629->(map $indexes630{$_}, 0..2)
+ if scalar(keys %indexes630) == 2; }); 
+ ( sub {
+ my ($k588) = @_;
+ $k588->($xs);
+ } )->( sub { $indexes630{1} = $_[0];
+ $k629->(map $indexes630{$_}, 0..2)
+ if scalar(keys %indexes630) == 2; }); ;
+ ;
+ } )->( sub { $indexes633{1} = $_[0];
+ $k632->(map $indexes633{$_}, 0..2)
+ if scalar(keys %indexes633) == 2; }); ;
+ ;
+ } )->( sub { $indexes665{0} = $_[0];
+ $k664->(map $indexes665{$_}, 0..3)
+ if scalar(keys %indexes665) == 3; }); 
+ ( sub {
+ my ($k589) = @_;
+ $k589->( sub {
+ my ($k590) = @_;
+ 
+ my $k658 = sub {
+ my ($f591, $x592, $x593) = @_;
+ $f591->($k590, $x592, $x593);
+ } ;
+ my %indexes659;
+ ( sub {
+ my ($k594) = @_;
+ $k594->($f);
+ } )->( sub { $indexes659{0} = $_[0];
+ $k658->(map $indexes659{$_}, 0..3)
+ if scalar(keys %indexes659) == 3; }); 
+ ( sub {
+ my ($k595) = @_;
+ 
+ my $k641 = sub {
+ my ($aget596, $x597, $x598) = @_;
+ $aget596->($k595, $x597, $x598);
+ } ;
+ my %indexes642;
+ ( sub {
+ my ($k599) = @_;
+ $k599->($aget);
+ } )->( sub { $indexes642{0} = $_[0];
+ $k641->(map $indexes642{$_}, 0..3)
+ if scalar(keys %indexes642) == 3; }); 
+ ( sub {
+ my ($k600) = @_;
+ $k600->($xs);
+ } )->( sub { $indexes642{1} = $_[0];
+ $k641->(map $indexes642{$_}, 0..3)
+ if scalar(keys %indexes642) == 3; }); 
+ ( sub {
+ my ($k601) = @_;
+ $k601->(0);
+ } )->( sub { $indexes642{2} = $_[0];
+ $k641->(map $indexes642{$_}, 0..3)
+ if scalar(keys %indexes642) == 3; }); ;
+ ;
+ } )->( sub { $indexes659{1} = $_[0];
+ $k658->(map $indexes659{$_}, 0..3)
+ if scalar(keys %indexes659) == 3; }); 
+ ( sub {
+ my ($k602) = @_;
+ 
+ my $k655 = sub {
+ my ($rreduce_42603, $x604, $x605, $x606) = @_;
+ $rreduce_42603->($k602, $x604, $x605, $x606);
+ } ;
+ my %indexes656;
+ ( sub {
+ my ($k607) = @_;
+ $k607->($rreduce_42);
+ } )->( sub { $indexes656{0} = $_[0];
+ $k655->(map $indexes656{$_}, 0..4)
+ if scalar(keys %indexes656) == 4; }); 
+ ( sub {
+ my ($k608) = @_;
+ $k608->($f);
+ } )->( sub { $indexes656{1} = $_[0];
+ $k655->(map $indexes656{$_}, 0..4)
+ if scalar(keys %indexes656) == 4; }); 
+ ( sub {
+ my ($k609) = @_;
+ $k609->($end);
+ } )->( sub { $indexes656{2} = $_[0];
+ $k655->(map $indexes656{$_}, 0..4)
+ if scalar(keys %indexes656) == 4; }); 
+ ( sub {
+ my ($k610) = @_;
+ 
+ my $k652 = sub {
+ my ($aget611, $x612, $x613) = @_;
+ $aget611->($k610, $x612, $x613);
+ } ;
+ my %indexes653;
+ ( sub {
+ my ($k614) = @_;
+ $k614->($aget);
+ } )->( sub { $indexes653{0} = $_[0];
+ $k652->(map $indexes653{$_}, 0..3)
+ if scalar(keys %indexes653) == 3; }); 
+ ( sub {
+ my ($k615) = @_;
+ $k615->($xs);
+ } )->( sub { $indexes653{1} = $_[0];
+ $k652->(map $indexes653{$_}, 0..3)
+ if scalar(keys %indexes653) == 3; }); 
+ ( sub {
+ my ($k616) = @_;
+ $k616->(1);
+ } )->( sub { $indexes653{2} = $_[0];
+ $k652->(map $indexes653{$_}, 0..3)
+ if scalar(keys %indexes653) == 3; }); ;
+ ;
+ } )->( sub { $indexes656{3} = $_[0];
+ $k655->(map $indexes656{$_}, 0..4)
+ if scalar(keys %indexes656) == 4; }); ;
+ ;
+ } )->( sub { $indexes659{2} = $_[0];
+ $k658->(map $indexes659{$_}, 0..3)
+ if scalar(keys %indexes659) == 3; }); ;
+ ;
+ } );
+ } )->( sub { $indexes665{1} = $_[0];
+ $k664->(map $indexes665{$_}, 0..3)
+ if scalar(keys %indexes665) == 3; }); 
+ ( sub {
+ my ($k617) = @_;
+ $k617->( sub {
+ my ($k618) = @_;
+ $k618->($end);
+ } );
+ } )->( sub { $indexes665{2} = $_[0];
+ $k664->(map $indexes665{$_}, 0..3)
+ if scalar(keys %indexes665) == 3; }); ;
+ ;
+ } )->( sub { $indexes668{0} = $_[0];
+ $k667->(map $indexes668{$_}, 0..1)
+ if scalar(keys %indexes668) == 1; }); ;
+ ;
+ } , $kf574);
+ } );
+ } )->( sub { $indexes673{1} = $_[0];
+ $k672->(map $indexes673{$_}, 0..2)
+ if scalar(keys %indexes673) == 2; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "gen"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k675 xs]
+      (
+        co*
+        (fn* [f676] (f676 k675))
+        (
+          fn*
+          [k677]
+          (
+            co*
+            (fn* [x678 x679 x680] (nth* k677 x678 x679 x680))
+            (
+              fn*
+              [k681]
+              (
+                co*
+                (fn* [not682 x683] (not682 k681 x683))
+                (fn* [k684] (k684 not))
+                (
+                  fn*
+                  [k685]
+                  (
+                    co*
+                    (fn* [=686 x687 x688] (=686 k685 x687 x688))
+                    (fn* [k689] (k689 =))
+                    (
+                      fn*
+                      [k690]
+                      (
+                        co*
+                        (fn* [type691 x692] (type691 k690 x692))
+                        (fn* [k693] (k693 type))
+                        (fn* [k694] (k694 xs))))
+                    (fn* [k695] (k695 'list'))))))
+            (
+              fn*
+              [k696]
+              (
+                k696
+                (
+                  fn*
+                  [k697]
+                  (
+                    co*
+                    (fn* [listgen698 x699] (listgen698 k697 x699))
+                    (fn* [k700] (k700 listgen))
+                    (fn* [k701] (k701 xs))))))
+            (
+              fn*
+              [k702]
+              (
+                k702
+                (
+                  fn*
+                  [k703]
+                  (
+                    co*
+                    (fn* [listgen704 x705] (listgen704 k703 x705))
+                    (fn* [k706] (k706 listgen))
+                    (
+                      fn*
+                      [k707]
+                      (
+                        co*
+                        (fn* [to-list708 x709] (to-list708 k707 x709))
+                        (fn* [k710] (k710 to-list))
+                        (fn* [k711] (k711 xs))))))))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "gen", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k675, $xs) = @_;
+ 
+ my $k754 = sub {
+ my ($f676) = @_;
+ $f676->($k675);
+ } ;
+ my %indexes755;
+ ( sub {
+ my ($k677) = @_;
+ 
+ my $k751 = sub {
+ my ($x678, $x679, $x680) = @_;
+ ($k677)->(($x679, $x680)[$x678]) ;
+ } ;
+ my %indexes752;
+ ( sub {
+ my ($k681) = @_;
+ 
+ my $k729 = sub {
+ my ($not682, $x683) = @_;
+ $not682->($k681, $x683);
+ } ;
+ my %indexes730;
+ ( sub {
+ my ($k684) = @_;
+ $k684->($not);
+ } )->( sub { $indexes730{0} = $_[0];
+ $k729->(map $indexes730{$_}, 0..2)
+ if scalar(keys %indexes730) == 2; }); 
+ ( sub {
+ my ($k685) = @_;
+ 
+ my $k726 = sub {
+ my ($_61686, $x687, $x688) = @_;
+ $_61686->($k685, $x687, $x688);
+ } ;
+ my %indexes727;
+ ( sub {
+ my ($k689) = @_;
+ $k689->($_61);
+ } )->( sub { $indexes727{0} = $_[0];
+ $k726->(map $indexes727{$_}, 0..3)
+ if scalar(keys %indexes727) == 3; }); 
+ ( sub {
+ my ($k690) = @_;
+ 
+ my $k722 = sub {
+ my ($type691, $x692) = @_;
+ $type691->($k690, $x692);
+ } ;
+ my %indexes723;
+ ( sub {
+ my ($k693) = @_;
+ $k693->($type);
+ } )->( sub { $indexes723{0} = $_[0];
+ $k722->(map $indexes723{$_}, 0..2)
+ if scalar(keys %indexes723) == 2; }); 
+ ( sub {
+ my ($k694) = @_;
+ $k694->($xs);
+ } )->( sub { $indexes723{1} = $_[0];
+ $k722->(map $indexes723{$_}, 0..2)
+ if scalar(keys %indexes723) == 2; }); ;
+ ;
+ } )->( sub { $indexes727{1} = $_[0];
+ $k726->(map $indexes727{$_}, 0..3)
+ if scalar(keys %indexes727) == 3; }); 
+ ( sub {
+ my ($k695) = @_;
+ $k695->('list');
+ } )->( sub { $indexes727{2} = $_[0];
+ $k726->(map $indexes727{$_}, 0..3)
+ if scalar(keys %indexes727) == 3; }); ;
+ ;
+ } )->( sub { $indexes730{1} = $_[0];
+ $k729->(map $indexes730{$_}, 0..2)
+ if scalar(keys %indexes730) == 2; }); ;
+ ;
+ } )->( sub { $indexes752{0} = $_[0];
+ $k751->(map $indexes752{$_}, 0..3)
+ if scalar(keys %indexes752) == 3; }); 
+ ( sub {
+ my ($k696) = @_;
+ $k696->( sub {
+ my ($k697) = @_;
+ 
+ my $k735 = sub {
+ my ($listgen698, $x699) = @_;
+ $listgen698->($k697, $x699);
+ } ;
+ my %indexes736;
+ ( sub {
+ my ($k700) = @_;
+ $k700->($listgen);
+ } )->( sub { $indexes736{0} = $_[0];
+ $k735->(map $indexes736{$_}, 0..2)
+ if scalar(keys %indexes736) == 2; }); 
+ ( sub {
+ my ($k701) = @_;
+ $k701->($xs);
+ } )->( sub { $indexes736{1} = $_[0];
+ $k735->(map $indexes736{$_}, 0..2)
+ if scalar(keys %indexes736) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes752{1} = $_[0];
+ $k751->(map $indexes752{$_}, 0..3)
+ if scalar(keys %indexes752) == 3; }); 
+ ( sub {
+ my ($k702) = @_;
+ $k702->( sub {
+ my ($k703) = @_;
+ 
+ my $k747 = sub {
+ my ($listgen704, $x705) = @_;
+ $listgen704->($k703, $x705);
+ } ;
+ my %indexes748;
+ ( sub {
+ my ($k706) = @_;
+ $k706->($listgen);
+ } )->( sub { $indexes748{0} = $_[0];
+ $k747->(map $indexes748{$_}, 0..2)
+ if scalar(keys %indexes748) == 2; }); 
+ ( sub {
+ my ($k707) = @_;
+ 
+ my $k744 = sub {
+ my ($to_45list708, $x709) = @_;
+ $to_45list708->($k707, $x709);
+ } ;
+ my %indexes745;
+ ( sub {
+ my ($k710) = @_;
+ $k710->($to_45list);
+ } )->( sub { $indexes745{0} = $_[0];
+ $k744->(map $indexes745{$_}, 0..2)
+ if scalar(keys %indexes745) == 2; }); 
+ ( sub {
+ my ($k711) = @_;
+ $k711->($xs);
+ } )->( sub { $indexes745{1} = $_[0];
+ $k744->(map $indexes745{$_}, 0..2)
+ if scalar(keys %indexes745) == 2; }); ;
+ ;
+ } )->( sub { $indexes748{1} = $_[0];
+ $k747->(map $indexes748{$_}, 0..2)
+ if scalar(keys %indexes748) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes752{2} = $_[0];
+ $k751->(map $indexes752{$_}, 0..3)
+ if scalar(keys %indexes752) == 3; }); ;
+ ;
+ } )->( sub { $indexes755{0} = $_[0];
+ $k754->(map $indexes755{$_}, 0..1)
+ if scalar(keys %indexes755) == 1; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "map"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k757 f xs]
+      (
+        co*
+        (fn* [rreduce*758 x759 x760 x761] (rreduce*758 k757 x759 x760 x761))
+        (fn* [k762] (k762 rreduce*))
+        (
+          fn*
+          [k763]
+          (
+            k763
+            (
+              fn*
+              [k764 x r]
+              (
+                co*
+                (fn* [cons765 x766 x767] (cons765 k764 x766 x767))
+                (fn* [k768] (k768 cons))
+                (
+                  fn*
+                  [k769]
+                  (
+                    co*
+                    (fn* [f770 x771] (f770 k769 x771))
+                    (fn* [k772] (k772 f))
+                    (fn* [k773] (k773 x))))
+                (fn* [k774] (k774 r))))))
+        (fn* [k775] (co* (fn* [nil776] (nil776 k775)) (fn* [k777] (k777 nil))))
+        (
+          fn*
+          [k778]
+          (
+            co*
+            (fn* [gen779 x780] (gen779 k778 x780))
+            (fn* [k781] (k781 gen))
+            (fn* [k782] (k782 xs))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "map", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k757, $f, $xs) = @_;
+ 
+ my $k810 = sub {
+ my ($rreduce_42758, $x759, $x760, $x761) = @_;
+ $rreduce_42758->($k757, $x759, $x760, $x761);
+ } ;
+ my %indexes811;
+ ( sub {
+ my ($k762) = @_;
+ $k762->($rreduce_42);
+ } )->( sub { $indexes811{0} = $_[0];
+ $k810->(map $indexes811{$_}, 0..4)
+ if scalar(keys %indexes811) == 4; }); 
+ ( sub {
+ my ($k763) = @_;
+ $k763->( sub {
+ my ($k764, $x, $r) = @_;
+ 
+ my $k795 = sub {
+ my ($cons765, $x766, $x767) = @_;
+ $cons765->($k764, $x766, $x767);
+ } ;
+ my %indexes796;
+ ( sub {
+ my ($k768) = @_;
+ $k768->($cons);
+ } )->( sub { $indexes796{0} = $_[0];
+ $k795->(map $indexes796{$_}, 0..3)
+ if scalar(keys %indexes796) == 3; }); 
+ ( sub {
+ my ($k769) = @_;
+ 
+ my $k791 = sub {
+ my ($f770, $x771) = @_;
+ $f770->($k769, $x771);
+ } ;
+ my %indexes792;
+ ( sub {
+ my ($k772) = @_;
+ $k772->($f);
+ } )->( sub { $indexes792{0} = $_[0];
+ $k791->(map $indexes792{$_}, 0..2)
+ if scalar(keys %indexes792) == 2; }); 
+ ( sub {
+ my ($k773) = @_;
+ $k773->($x);
+ } )->( sub { $indexes792{1} = $_[0];
+ $k791->(map $indexes792{$_}, 0..2)
+ if scalar(keys %indexes792) == 2; }); ;
+ ;
+ } )->( sub { $indexes796{1} = $_[0];
+ $k795->(map $indexes796{$_}, 0..3)
+ if scalar(keys %indexes796) == 3; }); 
+ ( sub {
+ my ($k774) = @_;
+ $k774->($r);
+ } )->( sub { $indexes796{2} = $_[0];
+ $k795->(map $indexes796{$_}, 0..3)
+ if scalar(keys %indexes796) == 3; }); ;
+ ;
+ } );
+ } )->( sub { $indexes811{1} = $_[0];
+ $k810->(map $indexes811{$_}, 0..4)
+ if scalar(keys %indexes811) == 4; }); 
+ ( sub {
+ my ($k775) = @_;
+ 
+ my $k801 = sub {
+ my ($nil776) = @_;
+ $nil776->($k775);
+ } ;
+ my %indexes802;
+ ( sub {
+ my ($k777) = @_;
+ $k777->($nil);
+ } )->( sub { $indexes802{0} = $_[0];
+ $k801->(map $indexes802{$_}, 0..1)
+ if scalar(keys %indexes802) == 1; }); ;
+ ;
+ } )->( sub { $indexes811{2} = $_[0];
+ $k810->(map $indexes811{$_}, 0..4)
+ if scalar(keys %indexes811) == 4; }); 
+ ( sub {
+ my ($k778) = @_;
+ 
+ my $k807 = sub {
+ my ($gen779, $x780) = @_;
+ $gen779->($k778, $x780);
+ } ;
+ my %indexes808;
+ ( sub {
+ my ($k781) = @_;
+ $k781->($gen);
+ } )->( sub { $indexes808{0} = $_[0];
+ $k807->(map $indexes808{$_}, 0..2)
+ if scalar(keys %indexes808) == 2; }); 
+ ( sub {
+ my ($k782) = @_;
+ $k782->($xs);
+ } )->( sub { $indexes808{1} = $_[0];
+ $k807->(map $indexes808{$_}, 0..2)
+ if scalar(keys %indexes808) == 2; }); ;
+ ;
+ } )->( sub { $indexes811{3} = $_[0];
+ $k810->(map $indexes811{$_}, 0..4)
+ if scalar(keys %indexes811) == 4; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "filter"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k813 f xs]
+      (
+        co*
+        (fn* [rreduce*814 x815 x816 x817] (rreduce*814 k813 x815 x816 x817))
+        (fn* [k818] (k818 rreduce*))
+        (
+          fn*
+          [k819]
+          (
+            k819
+            (
+              fn*
+              [k820 x r]
+              (
+                co*
+                (fn* [f821] (f821 k820))
+                (
+                  fn*
+                  [k822]
+                  (
+                    co*
+                    (fn* [x823 x824 x825] (nth* k822 x823 x824 x825))
+                    (
+                      fn*
+                      [k826]
+                      (
+                        co*
+                        (fn* [not827 x828] (not827 k826 x828))
+                        (fn* [k829] (k829 not))
+                        (
+                          fn*
+                          [k830]
+                          (
+                            co*
+                            (fn* [f831 x832] (f831 k830 x832))
+                            (fn* [k833] (k833 f))
+                            (fn* [k834] (k834 x))))))
+                    (
+                      fn*
+                      [k835]
+                      (
+                        k835
+                        (
+                          fn*
+                          [k836]
+                          (
+                            co*
+                            (fn* [cons837 x838 x839] (cons837 k836 x838 x839))
+                            (fn* [k840] (k840 cons))
+                            (fn* [k841] (k841 x))
+                            (fn* [k842] (k842 r))))))
+                    (fn* [k843] (k843 (fn* [k844] (k844 r))))))))))
+        (fn* [k845] (co* (fn* [nil846] (nil846 k845)) (fn* [k847] (k847 nil))))
+        (
+          fn*
+          [k848]
+          (
+            co*
+            (fn* [gen849 x850] (gen849 k848 x850))
+            (fn* [k851] (k851 gen))
+            (fn* [k852] (k852 xs))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "filter", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k813, $f, $xs) = @_;
+ 
+ my $k897 = sub {
+ my ($rreduce_42814, $x815, $x816, $x817) = @_;
+ $rreduce_42814->($k813, $x815, $x816, $x817);
+ } ;
+ my %indexes898;
+ ( sub {
+ my ($k818) = @_;
+ $k818->($rreduce_42);
+ } )->( sub { $indexes898{0} = $_[0];
+ $k897->(map $indexes898{$_}, 0..4)
+ if scalar(keys %indexes898) == 4; }); 
+ ( sub {
+ my ($k819) = @_;
+ $k819->( sub {
+ my ($k820, $x, $r) = @_;
+ 
+ my $k882 = sub {
+ my ($f821) = @_;
+ $f821->($k820);
+ } ;
+ my %indexes883;
+ ( sub {
+ my ($k822) = @_;
+ 
+ my $k879 = sub {
+ my ($x823, $x824, $x825) = @_;
+ ($k822)->(($x824, $x825)[$x823]) ;
+ } ;
+ my %indexes880;
+ ( sub {
+ my ($k826) = @_;
+ 
+ my $k866 = sub {
+ my ($not827, $x828) = @_;
+ $not827->($k826, $x828);
+ } ;
+ my %indexes867;
+ ( sub {
+ my ($k829) = @_;
+ $k829->($not);
+ } )->( sub { $indexes867{0} = $_[0];
+ $k866->(map $indexes867{$_}, 0..2)
+ if scalar(keys %indexes867) == 2; }); 
+ ( sub {
+ my ($k830) = @_;
+ 
+ my $k863 = sub {
+ my ($f831, $x832) = @_;
+ $f831->($k830, $x832);
+ } ;
+ my %indexes864;
+ ( sub {
+ my ($k833) = @_;
+ $k833->($f);
+ } )->( sub { $indexes864{0} = $_[0];
+ $k863->(map $indexes864{$_}, 0..2)
+ if scalar(keys %indexes864) == 2; }); 
+ ( sub {
+ my ($k834) = @_;
+ $k834->($x);
+ } )->( sub { $indexes864{1} = $_[0];
+ $k863->(map $indexes864{$_}, 0..2)
+ if scalar(keys %indexes864) == 2; }); ;
+ ;
+ } )->( sub { $indexes867{1} = $_[0];
+ $k866->(map $indexes867{$_}, 0..2)
+ if scalar(keys %indexes867) == 2; }); ;
+ ;
+ } )->( sub { $indexes880{0} = $_[0];
+ $k879->(map $indexes880{$_}, 0..3)
+ if scalar(keys %indexes880) == 3; }); 
+ ( sub {
+ my ($k835) = @_;
+ $k835->( sub {
+ my ($k836) = @_;
+ 
+ my $k873 = sub {
+ my ($cons837, $x838, $x839) = @_;
+ $cons837->($k836, $x838, $x839);
+ } ;
+ my %indexes874;
+ ( sub {
+ my ($k840) = @_;
+ $k840->($cons);
+ } )->( sub { $indexes874{0} = $_[0];
+ $k873->(map $indexes874{$_}, 0..3)
+ if scalar(keys %indexes874) == 3; }); 
+ ( sub {
+ my ($k841) = @_;
+ $k841->($x);
+ } )->( sub { $indexes874{1} = $_[0];
+ $k873->(map $indexes874{$_}, 0..3)
+ if scalar(keys %indexes874) == 3; }); 
+ ( sub {
+ my ($k842) = @_;
+ $k842->($r);
+ } )->( sub { $indexes874{2} = $_[0];
+ $k873->(map $indexes874{$_}, 0..3)
+ if scalar(keys %indexes874) == 3; }); ;
+ ;
+ } );
+ } )->( sub { $indexes880{1} = $_[0];
+ $k879->(map $indexes880{$_}, 0..3)
+ if scalar(keys %indexes880) == 3; }); 
+ ( sub {
+ my ($k843) = @_;
+ $k843->( sub {
+ my ($k844) = @_;
+ $k844->($r);
+ } );
+ } )->( sub { $indexes880{2} = $_[0];
+ $k879->(map $indexes880{$_}, 0..3)
+ if scalar(keys %indexes880) == 3; }); ;
+ ;
+ } )->( sub { $indexes883{0} = $_[0];
+ $k882->(map $indexes883{$_}, 0..1)
+ if scalar(keys %indexes883) == 1; }); ;
+ ;
+ } );
+ } )->( sub { $indexes898{1} = $_[0];
+ $k897->(map $indexes898{$_}, 0..4)
+ if scalar(keys %indexes898) == 4; }); 
+ ( sub {
+ my ($k845) = @_;
+ 
+ my $k888 = sub {
+ my ($nil846) = @_;
+ $nil846->($k845);
+ } ;
+ my %indexes889;
+ ( sub {
+ my ($k847) = @_;
+ $k847->($nil);
+ } )->( sub { $indexes889{0} = $_[0];
+ $k888->(map $indexes889{$_}, 0..1)
+ if scalar(keys %indexes889) == 1; }); ;
+ ;
+ } )->( sub { $indexes898{2} = $_[0];
+ $k897->(map $indexes898{$_}, 0..4)
+ if scalar(keys %indexes898) == 4; }); 
+ ( sub {
+ my ($k848) = @_;
+ 
+ my $k894 = sub {
+ my ($gen849, $x850) = @_;
+ $gen849->($k848, $x850);
+ } ;
+ my %indexes895;
+ ( sub {
+ my ($k851) = @_;
+ $k851->($gen);
+ } )->( sub { $indexes895{0} = $_[0];
+ $k894->(map $indexes895{$_}, 0..2)
+ if scalar(keys %indexes895) == 2; }); 
+ ( sub {
+ my ($k852) = @_;
+ $k852->($xs);
+ } )->( sub { $indexes895{1} = $_[0];
+ $k894->(map $indexes895{$_}, 0..2)
+ if scalar(keys %indexes895) == 2; }); ;
+ ;
+ } )->( sub { $indexes898{3} = $_[0];
+ $k897->(map $indexes898{$_}, 0..4)
+ if scalar(keys %indexes898) == 4; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defcps*
+  id*
+  "append"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      [k900 xs ys]
+      (
+        co*
+        (fn* [rreduce*901 x902 x903 x904] (rreduce*901 k900 x902 x903 x904))
+        (fn* [k905] (k905 rreduce*))
+        (fn* [k906] (k906 cons))
+        (fn* [k907] (k907 ys))
+        (
+          fn*
+          [k908]
+          (
+            co*
+            (fn* [gen909 x910] (gen909 k908 x910))
+            (fn* [k911] (k911 gen))
+            (fn* [k912] (k912 xs))))))))
+
+=end comment
+
+=cut
+
+$defcps_42->($id_42, "append", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my ($k900, $xs, $ys) = @_;
+ 
+ my $k924 = sub {
+ my ($rreduce_42901, $x902, $x903, $x904) = @_;
+ $rreduce_42901->($k900, $x902, $x903, $x904);
+ } ;
+ my %indexes925;
+ ( sub {
+ my ($k905) = @_;
+ $k905->($rreduce_42);
+ } )->( sub { $indexes925{0} = $_[0];
+ $k924->(map $indexes925{$_}, 0..4)
+ if scalar(keys %indexes925) == 4; }); 
+ ( sub {
+ my ($k906) = @_;
+ $k906->($cons);
+ } )->( sub { $indexes925{1} = $_[0];
+ $k924->(map $indexes925{$_}, 0..4)
+ if scalar(keys %indexes925) == 4; }); 
+ ( sub {
+ my ($k907) = @_;
+ $k907->($ys);
+ } )->( sub { $indexes925{2} = $_[0];
+ $k924->(map $indexes925{$_}, 0..4)
+ if scalar(keys %indexes925) == 4; }); 
+ ( sub {
+ my ($k908) = @_;
+ 
+ my $k921 = sub {
+ my ($gen909, $x910) = @_;
+ $gen909->($k908, $x910);
+ } ;
+ my %indexes922;
+ ( sub {
+ my ($k911) = @_;
+ $k911->($gen);
+ } )->( sub { $indexes922{0} = $_[0];
+ $k921->(map $indexes922{$_}, 0..2)
+ if scalar(keys %indexes922) == 2; }); 
+ ( sub {
+ my ($k912) = @_;
+ $k912->($xs);
+ } )->( sub { $indexes922{1} = $_[0];
+ $k921->(map $indexes922{$_}, 0..2)
+ if scalar(keys %indexes922) == 2; }); ;
+ ;
+ } )->( sub { $indexes925{3} = $_[0];
+ $k924->(map $indexes925{$_}, 0..4)
+ if scalar(keys %indexes925) == 4; }); ;
+ ;
+ } ));
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "cond"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      kf928
+      (
+        uncons
+        (
+          fn*
+          [k927 cases]
+          (
+            co*
+            (fn* [f929] (f929 k927))
+            (
+              fn*
+              [k930]
+              (
+                co*
+                (fn* [x931 x932 x933] (nth* k930 x931 x932 x933))
+                (
+                  fn*
+                  [k934]
+                  (
+                    co*
+                    (fn* [not935 x936] (not935 k934 x936))
+                    (fn* [k937] (k937 not))
+                    (
+                      fn*
+                      [k938]
+                      (
+                        co*
+                        (fn* [count939 x940] (count939 k938 x940))
+                        (fn* [k941] (k941 count))
+                        (fn* [k942] (k942 cases))))))
+                (
+                  fn*
+                  [k943]
+                  (
+                    k943
+                    (
+                      fn*
+                      [k944]
+                      (
+                        co*
+                        (
+                          fn*
+                          [list945 x946 x947 x948 x949]
+                          (list945 k944 x946 x947 x948 x949))
+                        (fn* [k950] (k950 list))
+                        (
+                          fn*
+                          [k951]
+                          (
+                            co*
+                            (fn* [str-sym952 x953] (str-sym952 k951 x953))
+                            (fn* [k954] (k954 str-sym))
+                            (fn* [k955] (k955 'if'))))
+                        (
+                          fn*
+                          [k956]
+                          (
+                            co*
+                            (fn* [car957 x958] (car957 k956 x958))
+                            (fn* [k959] (k959 car))
+                            (fn* [k960] (k960 cases))))
+                        (
+                          fn*
+                          [k961]
+                          (
+                            co*
+                            (fn* [car962 x963] (car962 k961 x963))
+                            (fn* [k964] (k964 car))
+                            (
+                              fn*
+                              [k965]
+                              (
+                                co*
+                                (fn* [cdr966 x967] (cdr966 k965 x967))
+                                (fn* [k968] (k968 cdr))
+                                (fn* [k969] (k969 cases))))))
+                        (
+                          fn*
+                          [k970]
+                          (
+                            co*
+                            (
+                              fn*
+                              [append971 x972 x973]
+                              (append971 k970 x972 x973))
+                            (fn* [k974] (k974 append))
+                            (
+                              fn*
+                              [k975]
+                              (
+                                co*
+                                (fn* [list976 x977] (list976 k975 x977))
+                                (fn* [k978] (k978 list))
+                                (
+                                  fn*
+                                  [k979]
+                                  (
+                                    co*
+                                    (
+                                      fn*
+                                      [str-sym980 x981]
+                                      (str-sym980 k979 x981))
+                                    (fn* [k982] (k982 str-sym))
+                                    (fn* [k983] (k983 'cond'))))))
+                            (
+                              fn*
+                              [k984]
+                              (
+                                co*
+                                (fn* [cdr985 x986] (cdr985 k984 x986))
+                                (fn* [k987] (k987 cdr))
+                                (
+                                  fn*
+                                  [k988]
+                                  (
+                                    co*
+                                    (fn* [cdr989 x990] (cdr989 k988 x990))
+                                    (fn* [k991] (k991 cdr))
+                                    (fn* [k992] (k992 cases))))))))))))
+                (
+                  fn*
+                  [k993]
+                  (
+                    k993
+                    (
+                      fn*
+                      [k994]
+                      (
+                        co*
+                        (fn* [list995 x996] (list995 k994 x996))
+                        (fn* [k997] (k997 list))
+                        (
+                          fn*
+                          [k998]
+                          (
+                            co*
+                            (fn* [str-sym999 x1000] (str-sym999 k998 x1000))
+                            (fn* [k1001] (k1001 str-sym))
+                            (fn* [k1002] (k1002 'nil'))))))))))))
+        kf928))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "cond", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my $kf928 = \@_;
+ $uncons->( sub {
+ my ($k927, $cases) = @_;
+ 
+ my $k1088 = sub {
+ my ($f929) = @_;
+ $f929->($k927);
+ } ;
+ my %indexes1089;
+ ( sub {
+ my ($k930) = @_;
+ 
+ my $k1085 = sub {
+ my ($x931, $x932, $x933) = @_;
+ ($k930)->(($x932, $x933)[$x931]) ;
+ } ;
+ my %indexes1086;
+ ( sub {
+ my ($k934) = @_;
+ 
+ my $k1014 = sub {
+ my ($not935, $x936) = @_;
+ $not935->($k934, $x936);
+ } ;
+ my %indexes1015;
+ ( sub {
+ my ($k937) = @_;
+ $k937->($not);
+ } )->( sub { $indexes1015{0} = $_[0];
+ $k1014->(map $indexes1015{$_}, 0..2)
+ if scalar(keys %indexes1015) == 2; }); 
+ ( sub {
+ my ($k938) = @_;
+ 
+ my $k1011 = sub {
+ my ($count939, $x940) = @_;
+ $count939->($k938, $x940);
+ } ;
+ my %indexes1012;
+ ( sub {
+ my ($k941) = @_;
+ $k941->($count);
+ } )->( sub { $indexes1012{0} = $_[0];
+ $k1011->(map $indexes1012{$_}, 0..2)
+ if scalar(keys %indexes1012) == 2; }); 
+ ( sub {
+ my ($k942) = @_;
+ $k942->($cases);
+ } )->( sub { $indexes1012{1} = $_[0];
+ $k1011->(map $indexes1012{$_}, 0..2)
+ if scalar(keys %indexes1012) == 2; }); ;
+ ;
+ } )->( sub { $indexes1015{1} = $_[0];
+ $k1014->(map $indexes1015{$_}, 0..2)
+ if scalar(keys %indexes1015) == 2; }); ;
+ ;
+ } )->( sub { $indexes1086{0} = $_[0];
+ $k1085->(map $indexes1086{$_}, 0..3)
+ if scalar(keys %indexes1086) == 3; }); 
+ ( sub {
+ my ($k943) = @_;
+ $k943->( sub {
+ my ($k944) = @_;
+ 
+ my $k1069 = sub {
+ my ($list945, $x946, $x947, $x948, $x949) = @_;
+ $list945->($k944, $x946, $x947, $x948, $x949);
+ } ;
+ my %indexes1070;
+ ( sub {
+ my ($k950) = @_;
+ $k950->($list);
+ } )->( sub { $indexes1070{0} = $_[0];
+ $k1069->(map $indexes1070{$_}, 0..5)
+ if scalar(keys %indexes1070) == 5; }); 
+ ( sub {
+ my ($k951) = @_;
+ 
+ my $k1022 = sub {
+ my ($str_45sym952, $x953) = @_;
+ $str_45sym952->($k951, $x953);
+ } ;
+ my %indexes1023;
+ ( sub {
+ my ($k954) = @_;
+ $k954->($str_45sym);
+ } )->( sub { $indexes1023{0} = $_[0];
+ $k1022->(map $indexes1023{$_}, 0..2)
+ if scalar(keys %indexes1023) == 2; }); 
+ ( sub {
+ my ($k955) = @_;
+ $k955->('if');
+ } )->( sub { $indexes1023{1} = $_[0];
+ $k1022->(map $indexes1023{$_}, 0..2)
+ if scalar(keys %indexes1023) == 2; }); ;
+ ;
+ } )->( sub { $indexes1070{1} = $_[0];
+ $k1069->(map $indexes1070{$_}, 0..5)
+ if scalar(keys %indexes1070) == 5; }); 
+ ( sub {
+ my ($k956) = @_;
+ 
+ my $k1028 = sub {
+ my ($car957, $x958) = @_;
+ $car957->($k956, $x958);
+ } ;
+ my %indexes1029;
+ ( sub {
+ my ($k959) = @_;
+ $k959->($car);
+ } )->( sub { $indexes1029{0} = $_[0];
+ $k1028->(map $indexes1029{$_}, 0..2)
+ if scalar(keys %indexes1029) == 2; }); 
+ ( sub {
+ my ($k960) = @_;
+ $k960->($cases);
+ } )->( sub { $indexes1029{1} = $_[0];
+ $k1028->(map $indexes1029{$_}, 0..2)
+ if scalar(keys %indexes1029) == 2; }); ;
+ ;
+ } )->( sub { $indexes1070{2} = $_[0];
+ $k1069->(map $indexes1070{$_}, 0..5)
+ if scalar(keys %indexes1070) == 5; }); 
+ ( sub {
+ my ($k961) = @_;
+ 
+ my $k1039 = sub {
+ my ($car962, $x963) = @_;
+ $car962->($k961, $x963);
+ } ;
+ my %indexes1040;
+ ( sub {
+ my ($k964) = @_;
+ $k964->($car);
+ } )->( sub { $indexes1040{0} = $_[0];
+ $k1039->(map $indexes1040{$_}, 0..2)
+ if scalar(keys %indexes1040) == 2; }); 
+ ( sub {
+ my ($k965) = @_;
+ 
+ my $k1036 = sub {
+ my ($cdr966, $x967) = @_;
+ $cdr966->($k965, $x967);
+ } ;
+ my %indexes1037;
+ ( sub {
+ my ($k968) = @_;
+ $k968->($cdr);
+ } )->( sub { $indexes1037{0} = $_[0];
+ $k1036->(map $indexes1037{$_}, 0..2)
+ if scalar(keys %indexes1037) == 2; }); 
+ ( sub {
+ my ($k969) = @_;
+ $k969->($cases);
+ } )->( sub { $indexes1037{1} = $_[0];
+ $k1036->(map $indexes1037{$_}, 0..2)
+ if scalar(keys %indexes1037) == 2; }); ;
+ ;
+ } )->( sub { $indexes1040{1} = $_[0];
+ $k1039->(map $indexes1040{$_}, 0..2)
+ if scalar(keys %indexes1040) == 2; }); ;
+ ;
+ } )->( sub { $indexes1070{3} = $_[0];
+ $k1069->(map $indexes1070{$_}, 0..5)
+ if scalar(keys %indexes1070) == 5; }); 
+ ( sub {
+ my ($k970) = @_;
+ 
+ my $k1066 = sub {
+ my ($append971, $x972, $x973) = @_;
+ $append971->($k970, $x972, $x973);
+ } ;
+ my %indexes1067;
+ ( sub {
+ my ($k974) = @_;
+ $k974->($append);
+ } )->( sub { $indexes1067{0} = $_[0];
+ $k1066->(map $indexes1067{$_}, 0..3)
+ if scalar(keys %indexes1067) == 3; }); 
+ ( sub {
+ my ($k975) = @_;
+ 
+ my $k1052 = sub {
+ my ($list976, $x977) = @_;
+ $list976->($k975, $x977);
+ } ;
+ my %indexes1053;
+ ( sub {
+ my ($k978) = @_;
+ $k978->($list);
+ } )->( sub { $indexes1053{0} = $_[0];
+ $k1052->(map $indexes1053{$_}, 0..2)
+ if scalar(keys %indexes1053) == 2; }); 
+ ( sub {
+ my ($k979) = @_;
+ 
+ my $k1049 = sub {
+ my ($str_45sym980, $x981) = @_;
+ $str_45sym980->($k979, $x981);
+ } ;
+ my %indexes1050;
+ ( sub {
+ my ($k982) = @_;
+ $k982->($str_45sym);
+ } )->( sub { $indexes1050{0} = $_[0];
+ $k1049->(map $indexes1050{$_}, 0..2)
+ if scalar(keys %indexes1050) == 2; }); 
+ ( sub {
+ my ($k983) = @_;
+ $k983->('cond');
+ } )->( sub { $indexes1050{1} = $_[0];
+ $k1049->(map $indexes1050{$_}, 0..2)
+ if scalar(keys %indexes1050) == 2; }); ;
+ ;
+ } )->( sub { $indexes1053{1} = $_[0];
+ $k1052->(map $indexes1053{$_}, 0..2)
+ if scalar(keys %indexes1053) == 2; }); ;
+ ;
+ } )->( sub { $indexes1067{1} = $_[0];
+ $k1066->(map $indexes1067{$_}, 0..3)
+ if scalar(keys %indexes1067) == 3; }); 
+ ( sub {
+ my ($k984) = @_;
+ 
+ my $k1063 = sub {
+ my ($cdr985, $x986) = @_;
+ $cdr985->($k984, $x986);
+ } ;
+ my %indexes1064;
+ ( sub {
+ my ($k987) = @_;
+ $k987->($cdr);
+ } )->( sub { $indexes1064{0} = $_[0];
+ $k1063->(map $indexes1064{$_}, 0..2)
+ if scalar(keys %indexes1064) == 2; }); 
+ ( sub {
+ my ($k988) = @_;
+ 
+ my $k1060 = sub {
+ my ($cdr989, $x990) = @_;
+ $cdr989->($k988, $x990);
+ } ;
+ my %indexes1061;
+ ( sub {
+ my ($k991) = @_;
+ $k991->($cdr);
+ } )->( sub { $indexes1061{0} = $_[0];
+ $k1060->(map $indexes1061{$_}, 0..2)
+ if scalar(keys %indexes1061) == 2; }); 
+ ( sub {
+ my ($k992) = @_;
+ $k992->($cases);
+ } )->( sub { $indexes1061{1} = $_[0];
+ $k1060->(map $indexes1061{$_}, 0..2)
+ if scalar(keys %indexes1061) == 2; }); ;
+ ;
+ } )->( sub { $indexes1064{1} = $_[0];
+ $k1063->(map $indexes1064{$_}, 0..2)
+ if scalar(keys %indexes1064) == 2; }); ;
+ ;
+ } )->( sub { $indexes1067{2} = $_[0];
+ $k1066->(map $indexes1067{$_}, 0..3)
+ if scalar(keys %indexes1067) == 3; }); ;
+ ;
+ } )->( sub { $indexes1070{4} = $_[0];
+ $k1069->(map $indexes1070{$_}, 0..5)
+ if scalar(keys %indexes1070) == 5; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1086{1} = $_[0];
+ $k1085->(map $indexes1086{$_}, 0..3)
+ if scalar(keys %indexes1086) == 3; }); 
+ ( sub {
+ my ($k993) = @_;
+ $k993->( sub {
+ my ($k994) = @_;
+ 
+ my $k1081 = sub {
+ my ($list995, $x996) = @_;
+ $list995->($k994, $x996);
+ } ;
+ my %indexes1082;
+ ( sub {
+ my ($k997) = @_;
+ $k997->($list);
+ } )->( sub { $indexes1082{0} = $_[0];
+ $k1081->(map $indexes1082{$_}, 0..2)
+ if scalar(keys %indexes1082) == 2; }); 
+ ( sub {
+ my ($k998) = @_;
+ 
+ my $k1078 = sub {
+ my ($str_45sym999, $x1000) = @_;
+ $str_45sym999->($k998, $x1000);
+ } ;
+ my %indexes1079;
+ ( sub {
+ my ($k1001) = @_;
+ $k1001->($str_45sym);
+ } )->( sub { $indexes1079{0} = $_[0];
+ $k1078->(map $indexes1079{$_}, 0..2)
+ if scalar(keys %indexes1079) == 2; }); 
+ ( sub {
+ my ($k1002) = @_;
+ $k1002->('nil');
+ } )->( sub { $indexes1079{1} = $_[0];
+ $k1078->(map $indexes1079{$_}, 0..2)
+ if scalar(keys %indexes1079) == 2; }); ;
+ ;
+ } )->( sub { $indexes1082{1} = $_[0];
+ $k1081->(map $indexes1082{$_}, 0..2)
+ if scalar(keys %indexes1082) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1086{2} = $_[0];
+ $k1085->(map $indexes1086{$_}, 0..3)
+ if scalar(keys %indexes1086) == 3; }); ;
+ ;
+ } )->( sub { $indexes1089{0} = $_[0];
+ $k1088->(map $indexes1089{$_}, 0..1)
+ if scalar(keys %indexes1089) == 1; }); ;
+ ;
+ } , $kf928);
+ } ));
+
+
+=begin comment
+
+(
+  co*
+  (fn* [f1092] (f1092 (fn* [x] x)))
+  (
+    fn*
+    [k1093]
+    (
+      co*
+      (fn* [x1094 x1095 x1096] (nth* k1093 x1094 x1095 x1096))
+      (
+        fn*
+        [k1097]
+        (
+          co*
+          (fn* [not1098 x1099] (not1098 k1097 x1099))
+          (fn* [k1100] (k1100 not))
+          (fn* [k1101] (k1101 0))))
+      (
+        fn*
+        [k1102]
+        (
+          k1102
+          (
+            fn*
+            [k1103]
+            (
+              co*
+              (fn* [print1104 x1105] (print1104 k1103 x1105))
+              (fn* [k1106] (k1106 print))
+              (fn* [k1107] (k1107 'uh oh if'))))))
+      (
+        fn*
+        [k1108]
+        (
+          k1108
+          (
+            fn*
+            [k1109]
+            (
+              co*
+              (fn* [print1110 x1111] (print1110 k1109 x1111))
+              (fn* [k1112] (k1112 print))
+              (fn* [k1113] (k1113 'ok if')))))))))
+
+=end comment
+
+=cut
+
+
+ my $k1140 = sub {
+ my ($f1092) = @_;
+ $f1092->( sub {
+ my ($x) = @_;
+ $x;
+ } );
+ } ;
+ my %indexes1141;
+ ( sub {
+ my ($k1093) = @_;
+ 
+ my $k1137 = sub {
+ my ($x1094, $x1095, $x1096) = @_;
+ ($k1093)->(($x1095, $x1096)[$x1094]) ;
+ } ;
+ my %indexes1138;
+ ( sub {
+ my ($k1097) = @_;
+ 
+ my $k1120 = sub {
+ my ($not1098, $x1099) = @_;
+ $not1098->($k1097, $x1099);
+ } ;
+ my %indexes1121;
+ ( sub {
+ my ($k1100) = @_;
+ $k1100->($not);
+ } )->( sub { $indexes1121{0} = $_[0];
+ $k1120->(map $indexes1121{$_}, 0..2)
+ if scalar(keys %indexes1121) == 2; }); 
+ ( sub {
+ my ($k1101) = @_;
+ $k1101->(0);
+ } )->( sub { $indexes1121{1} = $_[0];
+ $k1120->(map $indexes1121{$_}, 0..2)
+ if scalar(keys %indexes1121) == 2; }); ;
+ ;
+ } )->( sub { $indexes1138{0} = $_[0];
+ $k1137->(map $indexes1138{$_}, 0..3)
+ if scalar(keys %indexes1138) == 3; }); 
+ ( sub {
+ my ($k1102) = @_;
+ $k1102->( sub {
+ my ($k1103) = @_;
+ 
+ my $k1126 = sub {
+ my ($print1104, $x1105) = @_;
+ $print1104->($k1103, $x1105);
+ } ;
+ my %indexes1127;
+ ( sub {
+ my ($k1106) = @_;
+ $k1106->($print);
+ } )->( sub { $indexes1127{0} = $_[0];
+ $k1126->(map $indexes1127{$_}, 0..2)
+ if scalar(keys %indexes1127) == 2; }); 
+ ( sub {
+ my ($k1107) = @_;
+ $k1107->('uh oh if');
+ } )->( sub { $indexes1127{1} = $_[0];
+ $k1126->(map $indexes1127{$_}, 0..2)
+ if scalar(keys %indexes1127) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1138{1} = $_[0];
+ $k1137->(map $indexes1138{$_}, 0..3)
+ if scalar(keys %indexes1138) == 3; }); 
+ ( sub {
+ my ($k1108) = @_;
+ $k1108->( sub {
+ my ($k1109) = @_;
+ 
+ my $k1133 = sub {
+ my ($print1110, $x1111) = @_;
+ $print1110->($k1109, $x1111);
+ } ;
+ my %indexes1134;
+ ( sub {
+ my ($k1112) = @_;
+ $k1112->($print);
+ } )->( sub { $indexes1134{0} = $_[0];
+ $k1133->(map $indexes1134{$_}, 0..2)
+ if scalar(keys %indexes1134) == 2; }); 
+ ( sub {
+ my ($k1113) = @_;
+ $k1113->('ok if');
+ } )->( sub { $indexes1134{1} = $_[0];
+ $k1133->(map $indexes1134{$_}, 0..2)
+ if scalar(keys %indexes1134) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1138{2} = $_[0];
+ $k1137->(map $indexes1138{$_}, 0..3)
+ if scalar(keys %indexes1138) == 3; }); ;
+ ;
+ } )->( sub { $indexes1141{0} = $_[0];
+ $k1140->(map $indexes1141{$_}, 0..1)
+ if scalar(keys %indexes1141) == 1; }); ;
+ ;
+
+
+=begin comment
+
+(
+  co*
+  (fn* [f1142] (f1142 (fn* [x] x)))
+  (
+    fn*
+    [k1143]
+    (
+      co*
+      (fn* [x1144 x1145 x1146] (nth* k1143 x1144 x1145 x1146))
+      (
+        fn*
+        [k1147]
+        (
+          co*
+          (fn* [not1148 x1149] (not1148 k1147 x1149))
+          (fn* [k1150] (k1150 not))
+          (fn* [k1151] (k1151 0))))
+      (
+        fn*
+        [k1152]
+        (
+          k1152
+          (
+            fn*
+            [k1153]
+            (
+              co*
+              (fn* [print1154 x1155] (print1154 k1153 x1155))
+              (fn* [k1156] (k1156 print))
+              (fn* [k1157] (k1157 'uh oh'))))))
+      (
+        fn*
+        [k1158]
+        (
+          k1158
+          (
+            fn*
+            [k1159]
+            (
+              co*
+              (fn* [f1160] (f1160 k1159))
+              (
+                fn*
+                [k1161]
+                (
+                  co*
+                  (fn* [x1162 x1163 x1164] (nth* k1161 x1162 x1163 x1164))
+                  (
+                    fn*
+                    [k1165]
+                    (
+                      co*
+                      (fn* [not1166 x1167] (not1166 k1165 x1167))
+                      (fn* [k1168] (k1168 not))
+                      (fn* [k1169] (k1169 0))))
+                  (
+                    fn*
+                    [k1170]
+                    (
+                      k1170
+                      (
+                        fn*
+                        [k1171]
+                        (
+                          co*
+                          (fn* [print1172 x1173] (print1172 k1171 x1173))
+                          (fn* [k1174] (k1174 print))
+                          (fn* [k1175] (k1175 'uh oh 2'))))))
+                  (
+                    fn*
+                    [k1176]
+                    (
+                      k1176
+                      (
+                        fn*
+                        [k1177]
+                        (
+                          co*
+                          (fn* [f1178] (f1178 k1177))
+                          (
+                            fn*
+                            [k1179]
+                            (
+                              co*
+                              (
+                                fn*
+                                [x1180 x1181 x1182]
+                                (nth* k1179 x1180 x1181 x1182))
+                              (
+                                fn*
+                                [k1183]
+                                (
+                                  co*
+                                  (fn* [not1184 x1185] (not1184 k1183 x1185))
+                                  (fn* [k1186] (k1186 not))
+                                  (fn* [k1187] (k1187 1))))
+                              (
+                                fn*
+                                [k1188]
+                                (
+                                  k1188
+                                  (
+                                    fn*
+                                    [k1189]
+                                    (
+                                      co*
+                                      (
+                                        fn*
+                                        [print1190 x1191]
+                                        (print1190 k1189 x1191))
+                                      (fn* [k1192] (k1192 print))
+                                      (fn* [k1193] (k1193 'ok'))))))
+                              (
+                                fn*
+                                [k1194]
+                                (
+                                  k1194
+                                  (
+                                    fn*
+                                    [k1195]
+                                    (
+                                      co*
+                                      (fn* [nil1196] (nil1196 k1195))
+                                      (fn* [k1197] (k1197 nil)))))))))))))))))))))
+
+=end comment
+
+=cut
+
+
+ my $k1267 = sub {
+ my ($f1142) = @_;
+ $f1142->( sub {
+ my ($x) = @_;
+ $x;
+ } );
+ } ;
+ my %indexes1268;
+ ( sub {
+ my ($k1143) = @_;
+ 
+ my $k1264 = sub {
+ my ($x1144, $x1145, $x1146) = @_;
+ ($k1143)->(($x1145, $x1146)[$x1144]) ;
+ } ;
+ my %indexes1265;
+ ( sub {
+ my ($k1147) = @_;
+ 
+ my $k1204 = sub {
+ my ($not1148, $x1149) = @_;
+ $not1148->($k1147, $x1149);
+ } ;
+ my %indexes1205;
+ ( sub {
+ my ($k1150) = @_;
+ $k1150->($not);
+ } )->( sub { $indexes1205{0} = $_[0];
+ $k1204->(map $indexes1205{$_}, 0..2)
+ if scalar(keys %indexes1205) == 2; }); 
+ ( sub {
+ my ($k1151) = @_;
+ $k1151->(0);
+ } )->( sub { $indexes1205{1} = $_[0];
+ $k1204->(map $indexes1205{$_}, 0..2)
+ if scalar(keys %indexes1205) == 2; }); ;
+ ;
+ } )->( sub { $indexes1265{0} = $_[0];
+ $k1264->(map $indexes1265{$_}, 0..3)
+ if scalar(keys %indexes1265) == 3; }); 
+ ( sub {
+ my ($k1152) = @_;
+ $k1152->( sub {
+ my ($k1153) = @_;
+ 
+ my $k1210 = sub {
+ my ($print1154, $x1155) = @_;
+ $print1154->($k1153, $x1155);
+ } ;
+ my %indexes1211;
+ ( sub {
+ my ($k1156) = @_;
+ $k1156->($print);
+ } )->( sub { $indexes1211{0} = $_[0];
+ $k1210->(map $indexes1211{$_}, 0..2)
+ if scalar(keys %indexes1211) == 2; }); 
+ ( sub {
+ my ($k1157) = @_;
+ $k1157->('uh oh');
+ } )->( sub { $indexes1211{1} = $_[0];
+ $k1210->(map $indexes1211{$_}, 0..2)
+ if scalar(keys %indexes1211) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1265{1} = $_[0];
+ $k1264->(map $indexes1265{$_}, 0..3)
+ if scalar(keys %indexes1265) == 3; }); 
+ ( sub {
+ my ($k1158) = @_;
+ $k1158->( sub {
+ my ($k1159) = @_;
+ 
+ my $k1260 = sub {
+ my ($f1160) = @_;
+ $f1160->($k1159);
+ } ;
+ my %indexes1261;
+ ( sub {
+ my ($k1161) = @_;
+ 
+ my $k1257 = sub {
+ my ($x1162, $x1163, $x1164) = @_;
+ ($k1161)->(($x1163, $x1164)[$x1162]) ;
+ } ;
+ my %indexes1258;
+ ( sub {
+ my ($k1165) = @_;
+ 
+ my $k1219 = sub {
+ my ($not1166, $x1167) = @_;
+ $not1166->($k1165, $x1167);
+ } ;
+ my %indexes1220;
+ ( sub {
+ my ($k1168) = @_;
+ $k1168->($not);
+ } )->( sub { $indexes1220{0} = $_[0];
+ $k1219->(map $indexes1220{$_}, 0..2)
+ if scalar(keys %indexes1220) == 2; }); 
+ ( sub {
+ my ($k1169) = @_;
+ $k1169->(0);
+ } )->( sub { $indexes1220{1} = $_[0];
+ $k1219->(map $indexes1220{$_}, 0..2)
+ if scalar(keys %indexes1220) == 2; }); ;
+ ;
+ } )->( sub { $indexes1258{0} = $_[0];
+ $k1257->(map $indexes1258{$_}, 0..3)
+ if scalar(keys %indexes1258) == 3; }); 
+ ( sub {
+ my ($k1170) = @_;
+ $k1170->( sub {
+ my ($k1171) = @_;
+ 
+ my $k1225 = sub {
+ my ($print1172, $x1173) = @_;
+ $print1172->($k1171, $x1173);
+ } ;
+ my %indexes1226;
+ ( sub {
+ my ($k1174) = @_;
+ $k1174->($print);
+ } )->( sub { $indexes1226{0} = $_[0];
+ $k1225->(map $indexes1226{$_}, 0..2)
+ if scalar(keys %indexes1226) == 2; }); 
+ ( sub {
+ my ($k1175) = @_;
+ $k1175->('uh oh 2');
+ } )->( sub { $indexes1226{1} = $_[0];
+ $k1225->(map $indexes1226{$_}, 0..2)
+ if scalar(keys %indexes1226) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1258{1} = $_[0];
+ $k1257->(map $indexes1258{$_}, 0..3)
+ if scalar(keys %indexes1258) == 3; }); 
+ ( sub {
+ my ($k1176) = @_;
+ $k1176->( sub {
+ my ($k1177) = @_;
+ 
+ my $k1253 = sub {
+ my ($f1178) = @_;
+ $f1178->($k1177);
+ } ;
+ my %indexes1254;
+ ( sub {
+ my ($k1179) = @_;
+ 
+ my $k1250 = sub {
+ my ($x1180, $x1181, $x1182) = @_;
+ ($k1179)->(($x1181, $x1182)[$x1180]) ;
+ } ;
+ my %indexes1251;
+ ( sub {
+ my ($k1183) = @_;
+ 
+ my $k1234 = sub {
+ my ($not1184, $x1185) = @_;
+ $not1184->($k1183, $x1185);
+ } ;
+ my %indexes1235;
+ ( sub {
+ my ($k1186) = @_;
+ $k1186->($not);
+ } )->( sub { $indexes1235{0} = $_[0];
+ $k1234->(map $indexes1235{$_}, 0..2)
+ if scalar(keys %indexes1235) == 2; }); 
+ ( sub {
+ my ($k1187) = @_;
+ $k1187->(1);
+ } )->( sub { $indexes1235{1} = $_[0];
+ $k1234->(map $indexes1235{$_}, 0..2)
+ if scalar(keys %indexes1235) == 2; }); ;
+ ;
+ } )->( sub { $indexes1251{0} = $_[0];
+ $k1250->(map $indexes1251{$_}, 0..3)
+ if scalar(keys %indexes1251) == 3; }); 
+ ( sub {
+ my ($k1188) = @_;
+ $k1188->( sub {
+ my ($k1189) = @_;
+ 
+ my $k1240 = sub {
+ my ($print1190, $x1191) = @_;
+ $print1190->($k1189, $x1191);
+ } ;
+ my %indexes1241;
+ ( sub {
+ my ($k1192) = @_;
+ $k1192->($print);
+ } )->( sub { $indexes1241{0} = $_[0];
+ $k1240->(map $indexes1241{$_}, 0..2)
+ if scalar(keys %indexes1241) == 2; }); 
+ ( sub {
+ my ($k1193) = @_;
+ $k1193->('ok');
+ } )->( sub { $indexes1241{1} = $_[0];
+ $k1240->(map $indexes1241{$_}, 0..2)
+ if scalar(keys %indexes1241) == 2; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1251{1} = $_[0];
+ $k1250->(map $indexes1251{$_}, 0..3)
+ if scalar(keys %indexes1251) == 3; }); 
+ ( sub {
+ my ($k1194) = @_;
+ $k1194->( sub {
+ my ($k1195) = @_;
+ 
+ my $k1246 = sub {
+ my ($nil1196) = @_;
+ $nil1196->($k1195);
+ } ;
+ my %indexes1247;
+ ( sub {
+ my ($k1197) = @_;
+ $k1197->($nil);
+ } )->( sub { $indexes1247{0} = $_[0];
+ $k1246->(map $indexes1247{$_}, 0..1)
+ if scalar(keys %indexes1247) == 1; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1251{2} = $_[0];
+ $k1250->(map $indexes1251{$_}, 0..3)
+ if scalar(keys %indexes1251) == 3; }); ;
+ ;
+ } )->( sub { $indexes1254{0} = $_[0];
+ $k1253->(map $indexes1254{$_}, 0..1)
+ if scalar(keys %indexes1254) == 1; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1258{2} = $_[0];
+ $k1257->(map $indexes1258{$_}, 0..3)
+ if scalar(keys %indexes1258) == 3; }); ;
+ ;
+ } )->( sub { $indexes1261{0} = $_[0];
+ $k1260->(map $indexes1261{$_}, 0..1)
+ if scalar(keys %indexes1261) == 1; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1265{2} = $_[0];
+ $k1264->(map $indexes1265{$_}, 0..3)
+ if scalar(keys %indexes1265) == 3; }); ;
+ ;
+ } )->( sub { $indexes1268{0} = $_[0];
+ $k1267->(map $indexes1268{$_}, 0..1)
+ if scalar(keys %indexes1268) == 1; }); ;
+ ;
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "->>"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      kf1270
+      (
+        uncons
+        (
+          fn*
+          [k1269 forms]
+          (
+            co*
+            (
+              fn*
+              [lreduce*1271 x1272 x1273 x1274]
+              (lreduce*1271 k1269 x1272 x1273 x1274))
+            (fn* [k1275] (k1275 lreduce*))
+            (
+              fn*
+              [k1276]
+              (
+                k1276
+                (
+                  fn*
+                  [k1277 x form]
+                  (
+                    co*
+                    (
+                      fn*
+                      [append1278 x1279 x1280]
+                      (append1278 k1277 x1279 x1280))
+                    (fn* [k1281] (k1281 append))
+                    (fn* [k1282] (k1282 form))
+                    (
+                      fn*
+                      [k1283]
+                      (
+                        co*
+                        (fn* [list1284 x1285] (list1284 k1283 x1285))
+                        (fn* [k1286] (k1286 list))
+                        (fn* [k1287] (k1287 x))))))))
+            (
+              fn*
+              [k1288]
+              (
+                co*
+                (fn* [car1289 x1290] (car1289 k1288 x1290))
+                (fn* [k1291] (k1291 car))
+                (fn* [k1292] (k1292 forms))))
+            (
+              fn*
+              [k1293]
+              (
+                co*
+                (fn* [gen1294 x1295] (gen1294 k1293 x1295))
+                (fn* [k1296] (k1296 gen))
+                (
+                  fn*
+                  [k1297]
+                  (
+                    co*
+                    (fn* [cdr1298 x1299] (cdr1298 k1297 x1299))
+                    (fn* [k1300] (k1300 cdr))
+                    (fn* [k1301] (k1301 forms))))))))
+        kf1270))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "->>", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my $kf1270 = \@_;
+ $uncons->( sub {
+ my ($k1269, $forms) = @_;
+ 
+ my $k1335 = sub {
+ my ($lreduce_421271, $x1272, $x1273, $x1274) = @_;
+ $lreduce_421271->($k1269, $x1272, $x1273, $x1274);
+ } ;
+ my %indexes1336;
+ ( sub {
+ my ($k1275) = @_;
+ $k1275->($lreduce_42);
+ } )->( sub { $indexes1336{0} = $_[0];
+ $k1335->(map $indexes1336{$_}, 0..4)
+ if scalar(keys %indexes1336) == 4; }); 
+ ( sub {
+ my ($k1276) = @_;
+ $k1276->( sub {
+ my ($k1277, $x, $form) = @_;
+ 
+ my $k1314 = sub {
+ my ($append1278, $x1279, $x1280) = @_;
+ $append1278->($k1277, $x1279, $x1280);
+ } ;
+ my %indexes1315;
+ ( sub {
+ my ($k1281) = @_;
+ $k1281->($append);
+ } )->( sub { $indexes1315{0} = $_[0];
+ $k1314->(map $indexes1315{$_}, 0..3)
+ if scalar(keys %indexes1315) == 3; }); 
+ ( sub {
+ my ($k1282) = @_;
+ $k1282->($form);
+ } )->( sub { $indexes1315{1} = $_[0];
+ $k1314->(map $indexes1315{$_}, 0..3)
+ if scalar(keys %indexes1315) == 3; }); 
+ ( sub {
+ my ($k1283) = @_;
+ 
+ my $k1311 = sub {
+ my ($list1284, $x1285) = @_;
+ $list1284->($k1283, $x1285);
+ } ;
+ my %indexes1312;
+ ( sub {
+ my ($k1286) = @_;
+ $k1286->($list);
+ } )->( sub { $indexes1312{0} = $_[0];
+ $k1311->(map $indexes1312{$_}, 0..2)
+ if scalar(keys %indexes1312) == 2; }); 
+ ( sub {
+ my ($k1287) = @_;
+ $k1287->($x);
+ } )->( sub { $indexes1312{1} = $_[0];
+ $k1311->(map $indexes1312{$_}, 0..2)
+ if scalar(keys %indexes1312) == 2; }); ;
+ ;
+ } )->( sub { $indexes1315{2} = $_[0];
+ $k1314->(map $indexes1315{$_}, 0..3)
+ if scalar(keys %indexes1315) == 3; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1336{1} = $_[0];
+ $k1335->(map $indexes1336{$_}, 0..4)
+ if scalar(keys %indexes1336) == 4; }); 
+ ( sub {
+ my ($k1288) = @_;
+ 
+ my $k1321 = sub {
+ my ($car1289, $x1290) = @_;
+ $car1289->($k1288, $x1290);
+ } ;
+ my %indexes1322;
+ ( sub {
+ my ($k1291) = @_;
+ $k1291->($car);
+ } )->( sub { $indexes1322{0} = $_[0];
+ $k1321->(map $indexes1322{$_}, 0..2)
+ if scalar(keys %indexes1322) == 2; }); 
+ ( sub {
+ my ($k1292) = @_;
+ $k1292->($forms);
+ } )->( sub { $indexes1322{1} = $_[0];
+ $k1321->(map $indexes1322{$_}, 0..2)
+ if scalar(keys %indexes1322) == 2; }); ;
+ ;
+ } )->( sub { $indexes1336{2} = $_[0];
+ $k1335->(map $indexes1336{$_}, 0..4)
+ if scalar(keys %indexes1336) == 4; }); 
+ ( sub {
+ my ($k1293) = @_;
+ 
+ my $k1332 = sub {
+ my ($gen1294, $x1295) = @_;
+ $gen1294->($k1293, $x1295);
+ } ;
+ my %indexes1333;
+ ( sub {
+ my ($k1296) = @_;
+ $k1296->($gen);
+ } )->( sub { $indexes1333{0} = $_[0];
+ $k1332->(map $indexes1333{$_}, 0..2)
+ if scalar(keys %indexes1333) == 2; }); 
+ ( sub {
+ my ($k1297) = @_;
+ 
+ my $k1329 = sub {
+ my ($cdr1298, $x1299) = @_;
+ $cdr1298->($k1297, $x1299);
+ } ;
+ my %indexes1330;
+ ( sub {
+ my ($k1300) = @_;
+ $k1300->($cdr);
+ } )->( sub { $indexes1330{0} = $_[0];
+ $k1329->(map $indexes1330{$_}, 0..2)
+ if scalar(keys %indexes1330) == 2; }); 
+ ( sub {
+ my ($k1301) = @_;
+ $k1301->($forms);
+ } )->( sub { $indexes1330{1} = $_[0];
+ $k1329->(map $indexes1330{$_}, 0..2)
+ if scalar(keys %indexes1330) == 2; }); ;
+ ;
+ } )->( sub { $indexes1333{1} = $_[0];
+ $k1332->(map $indexes1333{$_}, 0..2)
+ if scalar(keys %indexes1333) == 2; }); ;
+ ;
+ } )->( sub { $indexes1336{3} = $_[0];
+ $k1335->(map $indexes1336{$_}, 0..4)
+ if scalar(keys %indexes1336) == 4; }); ;
+ ;
+ } , $kf1270);
+ } ));
+
+
+=begin comment
+
+(
+  defmacrocps*
+  id*
+  "->"
+  (
+    (fn* [x] x)
+    (
+      fn*
+      kf1340
+      (
+        uncons
+        (
+          fn*
+          [k1339 forms]
+          (
+            co*
+            (
+              fn*
+              [lreduce*1341 x1342 x1343 x1344]
+              (lreduce*1341 k1339 x1342 x1343 x1344))
+            (fn* [k1345] (k1345 lreduce*))
+            (
+              fn*
+              [k1346]
+              (
+                k1346
+                (
+                  fn*
+                  [k1347 x form]
+                  (
+                    co*
+                    (fn* [cons1348 x1349 x1350] (cons1348 k1347 x1349 x1350))
+                    (fn* [k1351] (k1351 cons))
+                    (
+                      fn*
+                      [k1352]
+                      (
+                        co*
+                        (fn* [car1353 x1354] (car1353 k1352 x1354))
+                        (fn* [k1355] (k1355 car))
+                        (fn* [k1356] (k1356 form))))
+                    (
+                      fn*
+                      [k1357]
+                      (
+                        co*
+                        (
+                          fn*
+                          [cons1358 x1359 x1360]
+                          (cons1358 k1357 x1359 x1360))
+                        (fn* [k1361] (k1361 cons))
+                        (fn* [k1362] (k1362 x))
+                        (
+                          fn*
+                          [k1363]
+                          (
+                            co*
+                            (fn* [cdr1364 x1365] (cdr1364 k1363 x1365))
+                            (fn* [k1366] (k1366 cdr))
+                            (fn* [k1367] (k1367 form))))))))))
+            (
+              fn*
+              [k1368]
+              (
+                co*
+                (fn* [car1369 x1370] (car1369 k1368 x1370))
+                (fn* [k1371] (k1371 car))
+                (fn* [k1372] (k1372 forms))))
+            (
+              fn*
+              [k1373]
+              (
+                co*
+                (fn* [gen1374 x1375] (gen1374 k1373 x1375))
+                (fn* [k1376] (k1376 gen))
+                (
+                  fn*
+                  [k1377]
+                  (
+                    co*
+                    (fn* [cdr1378 x1379] (cdr1378 k1377 x1379))
+                    (fn* [k1380] (k1380 cdr))
+                    (fn* [k1381] (k1381 forms))))))))
+        kf1340))))
+
+=end comment
+
+=cut
+
+$defmacrocps_42->($id_42, "->", sub {
+ my ($x) = @_;
+ $x;
+ } ->( sub {
+ my $kf1340 = \@_;
+ $uncons->( sub {
+ my ($k1339, $forms) = @_;
+ 
+ my $k1426 = sub {
+ my ($lreduce_421341, $x1342, $x1343, $x1344) = @_;
+ $lreduce_421341->($k1339, $x1342, $x1343, $x1344);
+ } ;
+ my %indexes1427;
+ ( sub {
+ my ($k1345) = @_;
+ $k1345->($lreduce_42);
+ } )->( sub { $indexes1427{0} = $_[0];
+ $k1426->(map $indexes1427{$_}, 0..4)
+ if scalar(keys %indexes1427) == 4; }); 
+ ( sub {
+ my ($k1346) = @_;
+ $k1346->( sub {
+ my ($k1347, $x, $form) = @_;
+ 
+ my $k1405 = sub {
+ my ($cons1348, $x1349, $x1350) = @_;
+ $cons1348->($k1347, $x1349, $x1350);
+ } ;
+ my %indexes1406;
+ ( sub {
+ my ($k1351) = @_;
+ $k1351->($cons);
+ } )->( sub { $indexes1406{0} = $_[0];
+ $k1405->(map $indexes1406{$_}, 0..3)
+ if scalar(keys %indexes1406) == 3; }); 
+ ( sub {
+ my ($k1352) = @_;
+ 
+ my $k1390 = sub {
+ my ($car1353, $x1354) = @_;
+ $car1353->($k1352, $x1354);
+ } ;
+ my %indexes1391;
+ ( sub {
+ my ($k1355) = @_;
+ $k1355->($car);
+ } )->( sub { $indexes1391{0} = $_[0];
+ $k1390->(map $indexes1391{$_}, 0..2)
+ if scalar(keys %indexes1391) == 2; }); 
+ ( sub {
+ my ($k1356) = @_;
+ $k1356->($form);
+ } )->( sub { $indexes1391{1} = $_[0];
+ $k1390->(map $indexes1391{$_}, 0..2)
+ if scalar(keys %indexes1391) == 2; }); ;
+ ;
+ } )->( sub { $indexes1406{1} = $_[0];
+ $k1405->(map $indexes1406{$_}, 0..3)
+ if scalar(keys %indexes1406) == 3; }); 
+ ( sub {
+ my ($k1357) = @_;
+ 
+ my $k1402 = sub {
+ my ($cons1358, $x1359, $x1360) = @_;
+ $cons1358->($k1357, $x1359, $x1360);
+ } ;
+ my %indexes1403;
+ ( sub {
+ my ($k1361) = @_;
+ $k1361->($cons);
+ } )->( sub { $indexes1403{0} = $_[0];
+ $k1402->(map $indexes1403{$_}, 0..3)
+ if scalar(keys %indexes1403) == 3; }); 
+ ( sub {
+ my ($k1362) = @_;
+ $k1362->($x);
+ } )->( sub { $indexes1403{1} = $_[0];
+ $k1402->(map $indexes1403{$_}, 0..3)
+ if scalar(keys %indexes1403) == 3; }); 
+ ( sub {
+ my ($k1363) = @_;
+ 
+ my $k1399 = sub {
+ my ($cdr1364, $x1365) = @_;
+ $cdr1364->($k1363, $x1365);
+ } ;
+ my %indexes1400;
+ ( sub {
+ my ($k1366) = @_;
+ $k1366->($cdr);
+ } )->( sub { $indexes1400{0} = $_[0];
+ $k1399->(map $indexes1400{$_}, 0..2)
+ if scalar(keys %indexes1400) == 2; }); 
+ ( sub {
+ my ($k1367) = @_;
+ $k1367->($form);
+ } )->( sub { $indexes1400{1} = $_[0];
+ $k1399->(map $indexes1400{$_}, 0..2)
+ if scalar(keys %indexes1400) == 2; }); ;
+ ;
+ } )->( sub { $indexes1403{2} = $_[0];
+ $k1402->(map $indexes1403{$_}, 0..3)
+ if scalar(keys %indexes1403) == 3; }); ;
+ ;
+ } )->( sub { $indexes1406{2} = $_[0];
+ $k1405->(map $indexes1406{$_}, 0..3)
+ if scalar(keys %indexes1406) == 3; }); ;
+ ;
+ } );
+ } )->( sub { $indexes1427{1} = $_[0];
+ $k1426->(map $indexes1427{$_}, 0..4)
+ if scalar(keys %indexes1427) == 4; }); 
+ ( sub {
+ my ($k1368) = @_;
+ 
+ my $k1412 = sub {
+ my ($car1369, $x1370) = @_;
+ $car1369->($k1368, $x1370);
+ } ;
+ my %indexes1413;
+ ( sub {
+ my ($k1371) = @_;
+ $k1371->($car);
+ } )->( sub { $indexes1413{0} = $_[0];
+ $k1412->(map $indexes1413{$_}, 0..2)
+ if scalar(keys %indexes1413) == 2; }); 
+ ( sub {
+ my ($k1372) = @_;
+ $k1372->($forms);
+ } )->( sub { $indexes1413{1} = $_[0];
+ $k1412->(map $indexes1413{$_}, 0..2)
+ if scalar(keys %indexes1413) == 2; }); ;
+ ;
+ } )->( sub { $indexes1427{2} = $_[0];
+ $k1426->(map $indexes1427{$_}, 0..4)
+ if scalar(keys %indexes1427) == 4; }); 
+ ( sub {
+ my ($k1373) = @_;
+ 
+ my $k1423 = sub {
+ my ($gen1374, $x1375) = @_;
+ $gen1374->($k1373, $x1375);
+ } ;
+ my %indexes1424;
+ ( sub {
+ my ($k1376) = @_;
+ $k1376->($gen);
+ } )->( sub { $indexes1424{0} = $_[0];
+ $k1423->(map $indexes1424{$_}, 0..2)
+ if scalar(keys %indexes1424) == 2; }); 
+ ( sub {
+ my ($k1377) = @_;
+ 
+ my $k1420 = sub {
+ my ($cdr1378, $x1379) = @_;
+ $cdr1378->($k1377, $x1379);
+ } ;
+ my %indexes1421;
+ ( sub {
+ my ($k1380) = @_;
+ $k1380->($cdr);
+ } )->( sub { $indexes1421{0} = $_[0];
+ $k1420->(map $indexes1421{$_}, 0..2)
+ if scalar(keys %indexes1421) == 2; }); 
+ ( sub {
+ my ($k1381) = @_;
+ $k1381->($forms);
+ } )->( sub { $indexes1421{1} = $_[0];
+ $k1420->(map $indexes1421{$_}, 0..2)
+ if scalar(keys %indexes1421) == 2; }); ;
+ ;
+ } )->( sub { $indexes1424{1} = $_[0];
+ $k1423->(map $indexes1424{$_}, 0..2)
+ if scalar(keys %indexes1424) == 2; }); ;
+ ;
+ } )->( sub { $indexes1427{3} = $_[0];
+ $k1426->(map $indexes1427{$_}, 0..4)
+ if scalar(keys %indexes1427) == 4; }); ;
+ ;
+ } , $kf1340);
+ } ));

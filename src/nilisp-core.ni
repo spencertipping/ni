@@ -15,20 +15,66 @@
 
 # List functions. Macros are hard to write without some ability to work with
 # lists/arrays/etc.
-(def list-unfold
+(def listgen
   (fn* [xs]
     (if (count xs)
-      (fn* [k] (k (car xs) (list-unfold (cdr xs))))
+      (fn* [k] (k (car xs) (listgen (cdr xs))))
       (fn* [k] (k)))))
 
-(def reduce
+(def lreduce*
   (fn* [f init generator]
     (generator (fn* xs
       (if (count xs)
-        (reduce f (f init (aget xs 0)) (aget xs 1))
+        (lreduce* f (f init (aget xs 0)) (aget xs 1))
         init)))))
 
-(cps*
-  (reduce (fn* [x y] (print x y))
-          1
-          (list-unfold [2 3 4])))
+(def rreduce*
+  (fn* [f end generator]
+    (generator (fn* xs
+      (if (count xs)
+        (f (aget xs 0) (rreduce* f end (aget xs 1)))
+        end)))))
+
+(def gen
+  (fn* [xs]
+    (if (= (type xs) 'list')
+      (listgen xs)
+      (listgen (to-list xs)))))
+
+(def map
+  (fn* [f xs]
+    (rreduce* (fn* [x r] (cons (f x) r))
+              (nil)
+              (gen xs))))
+
+(def filter
+  (fn* [f xs]
+    (rreduce* (fn* [x r] (if (f x) (cons x r) r))
+              (nil)
+              (gen xs))))
+
+(def append (fn* [xs ys] (rreduce* cons ys (gen xs))))
+
+# Useful macros
+(defmacro cond
+  (fn* cases
+    (if (count cases)
+      (list (str-sym 'if')
+            (car cases)
+            (car (cdr cases))
+            (append (list (str-sym 'cond'))
+                    (cdr (cdr cases))))
+      (list (str-sym 'nil')))))
+
+(defmacro ->>
+  (fn* forms
+    (lreduce* (fn* [x form] (append form (list x)))
+              (car forms)
+              (gen (cdr forms)))))
+
+(defmacro ->
+  (fn* forms
+    (lreduce* (fn* [x form] (cons (car form)
+                                  (cons x (cdr form))))
+              (car forms)
+              (gen (cdr forms)))))
