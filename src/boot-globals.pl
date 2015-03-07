@@ -7,15 +7,15 @@ sub cps {
   };
 }
 
-sub defcps { (eval "sub {\$$_[0] = \$_[0]}")->(cps $_[1]) }
+sub defcps { ${ni::lisp::perlize_name $_[0]} = cps $_[1] }
 
 defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym @_ };
-defcps 'sym_str', sub { ni::lisp::str ${$_[0]} };
-defcps 'str_sym', sub { ni::lisp::symbol $_[0] };
+defcps 'sym-str', sub { ni::lisp::str ${$_[0]} };
+defcps 'str-sym', sub { ni::lisp::symbol $_[0] };
 
-defcps 'to_array', sub { ni::lisp::array @{$_[0]} };
-defcps 'to_hash',  sub { ni::lisp::hash  @{$_[0]} };
-defcps 'to_list',  sub { ni::lisp::list  @{$_[0]} };
+defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
+defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
+defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
 
 defcps 'type', sub { ref($_[0]) =~ s/.*:://r };
 
@@ -36,16 +36,16 @@ defcps 'eval',        sub { my $c = $_[0]->compile;
                             die "failed to eval $_[0] -> $c: $@" if $@;
                             $r };
 
-defcps 'defcps_', sub {
+defcps 'defcps*', sub {
   my ($name, $value) = @_;
-  ${$name =~ y/-/_/r} = $value;
+  ${ni::lisp::perlize_name $name} = $value;
   $name;
 };
 
-defcps 'defmacrocps_', sub {
+defcps 'defmacrocps*', sub {
   my ($name, $value) = @_;
   $ni::lisp::macros{$name} = $value;
   $name;
 };
 
-defcps 'cps_convert', sub { $_[0]->cps_convert($_[1]) };
+defcps 'cps-convert', sub { $_[0]->cps_convert($_[1]) };

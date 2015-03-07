@@ -11,5 +11,5 @@ for my $f (ni::lisp::parse join '', <>) {
   my $readable = $deparser->coderef2text($coderef);
   my $r = eval $c;
   die "error evaluating compilation for $f -> $m -> $readable: $@" if $@;
-  print STDERR "> $r\n";
+  print STDERR "> $f\n= $r\n";
 }

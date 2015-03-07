@@ -1,10 +1,12 @@
-# ni core language definitions
-(defcps_ 'id_'     (fn* [x] x) (fn* [x] x))
-(defcps_ 'call-cc' (fn* [f k] (f k k)) id_)
+# ni core language definitions: bootstrap layer stuff
+# In the real language, the compiler does CPS for us and provides call-cc.
+
+(defcps* 'id*'     (fn* [x] x) (fn* [x] x))
+(defcps* 'call-cc' (fn* [f k] (f k k)) id*)
 
 # It's worth escaping from CPS-land as soon as possible, so let's define some
 # macros that do that for us.
-(defmacrocps_ 'cps_'
+(defmacrocps* 'cps*'
   (fn* [form k]
     (co* (fn* [k1] (str-sym 'fn*' k1))
          (fn* [k2] (str-sym 'x'   k2))
@@ -15,23 +17,20 @@
            (list fnsym xsymarray xsym
              (fn* [k-form]
                (cps-convert form k-form k))))))
-  id_)
+  id*)
 
-(defmacrocps_ 'defmacro_'
-  (cps_
+(defmacrocps* 'defmacro'
+  (cps*
     (fn* [name f]
-      (list (str-sym 'defmacrocps_')
+      (list (str-sym 'defmacrocps*')
             (sym-str name)
-            (list (str-sym 'cps_') f)
-            (str-sym 'id_'))))
-  id_)
+            (list (str-sym 'cps*') f)
+            (str-sym 'id*'))))
+  id*)
 
-(defmacro_ def_
+(defmacro def
   (fn* [name x]
-    (list (str-sym 'defcps_')
+    (list (str-sym 'defcps*')
           (sym-str name)
-          (list (str-sym 'cps_') x)
-          (str-sym 'id_'))))
-
-(def_ say-hi (fn* [x] (print x)))
-(cps_ (say-hi 'there'))
+          (list (str-sym 'cps*') x)
+          (str-sym 'id*'))))

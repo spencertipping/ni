@@ -8,4 +8,6 @@ if [[ $1 == '--boot' ]]; then
     cat src/boot-{parse,cps,macroexpand,globals,main}.pl
   } > gen/nilisp-boot
   chmod +x gen/nilisp-boot
+
+  gen/nilisp-boot src/nilisp-coreboot.ni
 fi

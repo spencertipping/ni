@@ -20,6 +20,8 @@ sub function_call;
 our $gensym_id = 0;
 sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
+sub perlize_name { $_[0] =~ s/([^A-Za-z_])/"_".ord($1)/egr }
+
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
   array  => sub { array_literal map $_->compile, @{$_[0]} },
@@ -38,7 +40,7 @@ our %special_forms = (
     die "formals must be specified as an array (got $formals)"
       unless ref $formals eq 'ni::lisp::array';
 
-    my $perlized_formals = join ', ', map "\$" . ($$_ =~ y/-/_/r), @$formals;
+    my $perlized_formals = join ', ', map "\$" . perlize_name($$_), @$formals;
     my $compiled_body    = $body->compile;
     my $result_gensym    = gensym 'result';
 
@@ -105,7 +107,7 @@ sub array_literal { "[" . join(', ', @_) . "]" }
 sub hash_literal  { "{" . join(', ', @_) . "}" }
 sub qstr_literal  { "'$_[0]'" }
 sub str_literal   { "\"$_[0]\"" }
-sub var_reference { "\$" . ($_[0] =~ y/-/_/r) }
+sub var_reference { "\$" . perlize_name($_[0]) }
 sub num_literal   { $_[0] }
 
 sub function_call {
