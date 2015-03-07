@@ -54,8 +54,15 @@
               (gen xs))))
 
 (def append (fn* [xs ys] (rreduce* cons ys (gen xs))))
+(def rappend (fn* [xs ys]
+  (if (count xs)
+    (rappend (cdr xs) (cons (car xs) ys))
+    ys)))
+
+(def reverse (fn* [xs] (rappend xs (nil))))
 
 # Useful macros
+(def else 1)
 (defmacro cond
   (fn* cases
     (if (count cases)
@@ -78,3 +85,24 @@
                                   (cons x (cdr form))))
               (car forms)
               (gen (cdr forms)))))
+
+(defmacro <<- (fn* forms (cons (str-sym '->>') (reverse forms))))
+
+# Quoting
+(def q*
+  (<<- (fn* [form])
+       (let* t (type form))
+       (cond (= t 'list')   (cons (str-sym 'list') (map q* form))
+             (= t 'array')  (cons (str-sym 'to-array')
+                                  (list (cons (str-sym 'list')
+                                              (map q* form))))
+             (= t 'hash')   (cons (str-sym 'to-hash')
+                                  (list (cons (str-sym 'list')
+                                              (map q* form))))
+             (= t 'symbol') (list (str-sym 'str-sym')
+                                  (sym-str form))
+             else           form)))
+
+(defmacro q q*)
+
+(cps* (eval (q (print "hi there!"))))
