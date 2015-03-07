@@ -156,9 +156,8 @@ our %special_forms = (
   },
 
   'nth*' => sub {
-    my $k         = pop(@_)->compile;
-    my ($n, @vs)  = map $_->compile, @_;
-    my $v_options = join ', ', @vs;
+    my ($k, $n, @vs) = map $_->compile, @_;
+    my $v_options    = join ', ', @vs;
     qq{ ($k)->(($v_options)[$n]) };
   },
 
@@ -166,17 +165,16 @@ our %special_forms = (
   # continuation in sequence and collect results. This implementation is
   # semantically correct up to GC properties.
   'co*' => sub {
-    my $k    = pop(@_)->compile;
-    my $k_gs = gensym 'k';
-    my $i_gs = gensym 'indexes';
-    my $n    = @_;
-    my @ks   = map qq[ sub { \$$i_gs]."{$_}".qq[ = \$_[0];
-                             \$$k_gs->(map \$$i_gs]."{\$_}".qq[, 0..$#_)
-                               if scalar(keys \%$i_gs) == $n; }],
-                   0..$#_;
+    my ($k, @fs) = map $_->compile, @_;
+    my $k_gs     = gensym 'k';
+    my $i_gs     = gensym 'indexes';
+    my $n        = @fs;
+    my @ks       = map qq[ sub { \$$i_gs]."{$_}".qq[ = \$_[0];
+                                 \$$k_gs->(map \$$i_gs]."{\$_}".qq[, 0..$#_)
+                                   if scalar(keys \%$i_gs) == $n; }],
+                       0..$#fs;
 
-    my @forms = map $_->compile, @_;
-    my $calls = join "\n", map qq{ ($forms[$_])->($ks[$_]); }, 0..$#_;
+    my $calls    = join "\n", map qq{ ($fs[$_])->($ks[$_]); }, 0..$#fs;
 
     qq{
       my \$$k_gs = $k;
@@ -188,8 +186,7 @@ our %special_forms = (
   # For now, choose the first alternative every time. Others don't need to even
   # be compiled because they're all semantically equivalent.
   'amb*' => sub {
-    my $k = pop(@_)->compile;
-    my $f = $_[0]->compile;
+    my ($k, $f) = map $_->compile, @_;
     qq{ ($f)->($k); };
   },
 );
@@ -223,45 +220,61 @@ sub cps_wrap {
 
 our %cps_special_forms = (
   'fn*' => sub {
-    my ($formals, $body, $k_form) = @_;
+    my ($k_form, $formals, $body) = @_;
     my $k_gensym = symbol gensym 'k';
-    list $k_form,
-         list symbol('fn*'),
-              array(@$formals, $k_gensym),
-              $body->cps_convert($k_gensym);
+
+    # Two possibilities. If the function is variadic, then we need to generate
+    # runtime code that splits the continuation off the end and saves it.
+    if (ref $formals eq 'ni::lisp::array') {
+      # Easy case: just add an extra formal for the continuation.
+      list $k_form,
+           list symbol('fn*'),
+                array($k_gensym, @$formals),
+                $body->cps_convert($k_gensym);
+    } else {
+      # Hard case: generate CPS-converted runtime code.
+      my $formals_gensym = symbol gensym 'kf';
+      list $k_form,
+           list symbol('fn*'),
+                $formals_gensym,
+                list symbol('uncons'),
+                     list(symbol('fn*'),
+                          array($k_gensym, $formals),
+                          $body->cps_convert($k_gensym)),
+                     $formals_gensym;
+    }
   },
 
   'nth*' => sub {
-    my $k_form = pop @_;
+    my $k_form = shift @_;
     my @gensyms = map symbol(gensym 'x'), @_;
     list symbol('co*'),
-         map(cps_wrap($_), @_),
-         list symbol('fn*'),
+         list(symbol('fn*'),
               array(@gensyms),
-              list symbol('nth*'), @gensyms, $k_form;
+              list symbol('nth*'), $k_form, @gensyms),
+         map(cps_wrap($_), @_);
   },
 
   'co*' => sub {
-    my $k_form = pop @_;
-    list symbol('co*'), map(cps_wrap($_), @_), $k_form;
+    my $k_form = shift @_;
+    list symbol('co*'), $k_form, map cps_wrap($_), @_;
   },
 
   'amb*' => sub {
-    my $k_form = pop @_;
-    list symbol('amb*'), map(cps_wrap($_), @_), $k_form;
+    my $k_form = shift @_;
+    list symbol('amb*'), $k_form, map cps_wrap($_), @_;
   },
 );
 
 sub cps_convert_call {
-  my $k_form = pop @_;
-  my ($f, @xs) = @_;
+  my ($k_form, $f, @xs) = @_;
   my $f_gensym = symbol gensym(ref $f eq 'ni::lisp::symbol' ? $$f : 'f');
   my @gensyms = map symbol(gensym 'x'), @xs;
   list symbol('co*'),
-       map(cps_wrap($_), @_),
-       list symbol('fn*'),
+       list(symbol('fn*'),
             array($f_gensym, @gensyms),
-            list($f_gensym, @gensyms, $k_form);
+            list $f_gensym, $k_form, @gensyms),
+       map cps_wrap($_), $f, @xs;
 }
 
 sub cps_constant {
@@ -274,26 +287,26 @@ deftypemethod 'cps_convert',
     my ($self, $k_form) = @_;
     my ($h, @xs) = @$self;
     ref $h eq 'ni::lisp::symbol' && exists $cps_special_forms{$$h}
-      ? $cps_special_forms{$$h}->(@xs, $k_form)
-      : cps_convert_call $h, @xs, $k_form;
+      ? $cps_special_forms{$$h}->($k_form, @xs)
+      : cps_convert_call $k_form, $h, @xs;
   },
   array => sub {
     my ($self, $k_form) = @_;
     my @gensyms = map symbol(gensym 'x'), @$self;
     list symbol('co*'),
-         map(cps_wrap($_), @$self),
-         list symbol('fn*'),
+         list(symbol('fn*'),
               array(@gensyms),
-              list $k_form, array(@gensyms);
+              list $k_form, array(@gensyms)),
+         map cps_wrap($_), @$self;
   },
   hash => sub {
     my ($self, $k_form) = @_;
     my @gensyms = map symbol(gensym 'x'), @$self;
     list symbol('co*'),
-         map(cps_wrap($_), @$self),
-         list symbol('fn*'),
+         list(symbol('fn*'),
               array(@gensyms),
-              list $k_form, hash(@gensyms);
+              list $k_form, hash(@gensyms)),
+         map cps_wrap($_), @$self;
   },
   qstr   => \&cps_constant,
   str    => \&cps_constant,
@@ -313,14 +326,16 @@ deftypemethod 'macroexpand',
     my ($self, $macros) = @_;
     my ($h, @xs) = @$self;
     $macros //= \%ni::lisp::macros;
-    return ni::lisp::list map $_->macroexpand($macros), @$self
-      unless ref $h eq 'ni::lisp::symbol' && exists $$macros{$$h};
 
-    # Macros will be in CPS (even though they have no business being written
-    # this way), so catch the return value.
-    my $return;
-    $$macros{$$h}->(@xs, sub { $return = $_[0] });
-    $return->macroexpand($macros);
+    unless (ref $h eq 'ni::lisp::symbol' && exists $$macros{$$h}) {
+      my @macroexpanded = eval { map $_->macroexpand($macros), @$self };
+      die "failed to macroexpand $self: $@" if $@;
+      ni::lisp::list @macroexpanded;
+    } else {
+      my $return;
+      $$macros{$$h}->(sub { $return = $_[0] }, @xs);
+      $return->macroexpand($macros);
+    }
   },
 
   array  => sub { ni::lisp::array map $_->macroexpand($_[1]), @{$_[0]} },
@@ -335,8 +350,8 @@ deftypemethod 'macroexpand',
 sub cps {
   my ($f) = @_;
   sub {
-    my $k = pop @_;
-    $k->($f->(@_));
+    my ($k, @xs) = @_;
+    $k->($f->(@xs));
   };
 }
 
@@ -350,18 +365,21 @@ defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
 defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
 
+defcps 'aget', sub { $_[0]->[$_[1]] };
+
 defcps 'type', sub { ref($_[0]) =~ s/.*:://r };
 
-defcps 'car',   sub { my ($l) = @_; $$l[0] };
-defcps 'cdr',   sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
-defcps 'cons',  sub { my ($a, $d) = @_; ni::lisp::list($a, @$d) };
-defcps 'list',  sub { ni::lisp::list(@_) };
-defcps 'nil',   sub { ni::lisp::list() };
-defcps 'count', sub { scalar(@{$_[0]}) };
-defcps '=',     sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
-defcps '>',     sub { $_[0] > $_[1] ? 1 : 0 };
-defcps 'not',   sub { $_[0] ? 0 : 1 };
-defcps 'print', sub { print join(' ', @_), "\n" };
+defcps 'car',    sub { my ($l) = @_; $$l[0] };
+defcps 'cdr',    sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
+defcps 'cons',   sub { my ($a, $d) = @_; ni::lisp::list($a, @$d) };
+defcps 'uncons', sub { my ($l) = @_; ($$l[0], ni::lisp::list(@$l[1..$#{$l}])) };
+defcps 'list',   sub { ni::lisp::list(@_) };
+defcps 'nil',    sub { ni::lisp::list() };
+defcps 'count',  sub { scalar(@{$_[0]}) };
+defcps '=',      sub { "$_[0]" eq "$_[1]" ? 1 : 0 };
+defcps '>',      sub { $_[0] > $_[1] ? 1 : 0 };
+defcps 'not',    sub { $_[0] ? 0 : 1 };
+defcps 'print',  sub { print join(' ', @_), "\n" };
 
 defcps 'macroexpand', sub { $_[0]->macroexpand };
 defcps 'eval',        sub { my $c = $_[0]->compile;

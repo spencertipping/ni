@@ -15,4 +15,20 @@
 
 # List functions. Macros are hard to write without some ability to work with
 # lists/arrays/etc.
-# TODO
+(def list-unfold
+  (fn* [xs]
+    (if (count xs)
+      (fn* [k] (k (car xs) (list-unfold (cdr xs))))
+      (fn* [k] (k)))))
+
+(def reduce
+  (fn* [f init generator]
+    (generator (fn* xs
+      (if (count xs)
+        (reduce f (f init (aget xs 0)) (aget xs 1))
+        init)))))
+
+(cps*
+  (reduce (fn* [x y] (print x y))
+          1
+          (list-unfold [2 3 4])))
