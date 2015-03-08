@@ -3,15 +3,16 @@
 # Step 1: (optionally) build the bootstrap compiler and use it to build the
 # self-hosting one.
 if [[ $1 == '--boot' ]]; then
+  rm -rf gen
   mkdir -p gen
   { echo '#!/usr/bin/env perl'
     cat src/boot-{parse,cps,macroexpand,globals,main}.pl
   } > gen/nilisp-boot0
-  chmod +x gen/nilisp-boot0
+  chmod 0500 gen/nilisp-boot0
 
   { echo '#!/usr/bin/env perl'
     cat src/boot-{parse,cps,macroexpand,globals}.pl
     gen/nilisp-boot0 src/nilisp-{coreboot,core}.ni
   } > gen/nilisp-boot1
-  chmod +x gen/nilisp-boot1
+  chmod 0500 gen/nilisp-boot1
 fi

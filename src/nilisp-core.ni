@@ -98,5 +98,3 @@
 
 (def qe* (fn* [form] (q* (macroexpand form))))
 (defmacro qe qe*)
-
-(cps* (eval (qe (cps* (print "hi there!")))))

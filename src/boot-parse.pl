@@ -14,16 +14,21 @@
 
 package ni::lisp;
 
-sub no_undefs {
-  defined $_ or die "found an undef in @_" for @_;
-  @_;
+sub only_refs {
+  my ($parens, @xs) = @_;
+  my ($o, $c) = split //, $parens;
+  defined $_ or die "found an undef in $o@xs$c" for @xs;
+  ref($_) =~ /^ni::/ or ref($_) eq 'CODE'
+    or die "found an invalid ref $_ (" . ref($_) . ") in $o@xs$c"
+    for @xs;
+  @xs;
 }
 
 # NB: these are not perl OO constructors in the usual sense (i.e. they can't be
 # called indirectly)
-sub list   { bless [no_undefs @_], "ni::lisp::list" }
-sub array  { bless [no_undefs @_], "ni::lisp::array" }
-sub hash   { bless [no_undefs @_], "ni::lisp::hash" }
+sub list   { bless [only_refs '()', @_], "ni::lisp::list" }
+sub array  { bless [only_refs '[]', @_], "ni::lisp::array" }
+sub hash   { bless [only_refs '{}', @_], "ni::lisp::hash" }
 
 sub qstr   { bless \$_[0], "ni::lisp::qstr" }
 sub str    { bless \$_[0], "ni::lisp::str" }
@@ -45,10 +50,13 @@ sub deftypemethod {
   *{"ni::lisp::${_}::$name"} = $alternatives{$_} // sub { 0 } for @parse_types;
 }
 
+sub to_str { defined $_[0] ? ref($_[0]) =~ /^ni::/ ? $_[0]->str
+                                                   : "<unblessed: $_[0]>"
+                           : '<undef>' }
 deftypemethod 'str',
-  list   => sub { '(' . join(' ', @{$_[0]}) . ')' },
-  array  => sub { '[' . join(' ', @{$_[0]}) . ']' },
-  hash   => sub { '{' . join(' ', @{$_[0]}) . '}' },
+  list   => sub { '(' . join(' ', map to_str($_), @{$_[0]}) . ')' },
+  array  => sub { '[' . join(' ', map to_str($_), @{$_[0]}) . ']' },
+  hash   => sub { '{' . join(' ', map to_str($_), @{$_[0]}) . '}' },
   qstr   => sub { "'" . ${$_[0]} . "'" },
   str    => sub { '"' . ${$_[0]} . '"' },
   symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
@@ -94,7 +102,7 @@ sub parse {
   local $_;
   my @stack = [];
   while ($_[0] =~ / \G (?: (?<comment> \#.*)
-                         | (?<ws>      [\s,]+)
+                         | (?<ws>      [\s,:]+)
                          | '(?<qstr>   (?:[^\\']|\\.)*)'
                          | "(?<str>    (?:[^\\"]|\\.)*)"
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
@@ -102,7 +110,7 @@ sub parse {
                                          | 0[0-7]+
                                          | [1-9][0-9]*
                                          | 0))
-                         | (?<symbol>  [^"()\[\]{}\s,]+)
+                         | (?<symbol>  [^"()\[\]{}\s,:]+)
                          | (?<opener>  [(\[{])
                          | (?<closer>  [)\]}])) /gx) {
     next if exists $+{comment} || exists $+{ws};

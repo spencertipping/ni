@@ -35,3 +35,6 @@
           (str-sym 'id*')
           (sym-str name)
           (list (str-sym 'cps*') x))))
+
+(defmacro macroprint (fn* [form]
+  ((fn* [x] 'macroprint') (print (macroexpand form)))))

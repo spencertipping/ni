@@ -20,12 +20,26 @@ sub function_call;
 our $gensym_id = 0;
 sub gensym { ($_[0] // 'gensym') . ++$gensym_id }
 
-sub perlize_name { $_[0] =~ s/([^A-Za-z0-9_])/"_".ord($1)/egr }
+sub perlize_name { '_' . ($_[0] =~ s/([^A-Za-z0-9_])/"_".ord($1)/egr) }
+
+sub compile {
+  # HACK: if we get a function in (which we do sometimes), then alias it to a
+  # gensym and return a reference to that gensym. This is the only way we can
+  # be sure to capture its closure state safely.
+  if (ref($_[0]) eq 'CODE') {
+    my $gs = perlize_name gensym 'fn';
+    ${"::$gs"} = $_[0];
+    return "\$$gs";
+  }
+
+  die "tried to compile $_[0]" unless ref($_[0]) =~ /^ni::/;
+  $_[0]->compile;
+}
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
-  array  => sub { array_literal map $_->compile, @{$_[0]} },
-  hash   => sub { hash_literal  map $_->compile, @{$_[0]} },
+  array  => sub { array_literal map compile($_), @{$_[0]} },
+  hash   => sub { hash_literal  map compile($_), @{$_[0]} },
   qstr   => sub { qstr_literal  ${$_[0]} },
   str    => sub { str_literal   ${$_[0]} },
   symbol => sub { var_reference ${$_[0]} },
@@ -54,8 +68,8 @@ our %special_forms = (
       ref $formals eq 'ni::lisp::array'
         ? "my (" . join(', ', map "\$" . perlize_name($$_), @$formals)
                  . ") = \@_"
-        : "my \$" . perlize_name($$formals) . " = \\\@_";
-    my $compiled_body  = $body->compile;
+        : "my \$" . perlize_name($$formals) . " = ni::lisp::array \@_";
+    my $compiled_body  = compile $body;
     my $result_gensym  = gensym 'result';
 
     DEBUG ? qq{ sub {
@@ -73,7 +87,7 @@ our %special_forms = (
   },
 
   'nth*' => sub {
-    my ($k, $n, @vs) = map $_->compile, @_;
+    my ($k, $n, @vs) = map compile($_), @_;
     my $v_options    = join ', ', @vs;
     qq{ ($k)->(($v_options)[$n]) };
   },
@@ -82,7 +96,12 @@ our %special_forms = (
   # continuation in sequence and collect results. This implementation is
   # semantically correct up to GC properties.
   'co*' => sub {
-    my ($k, @fs) = map $_->compile, @_;
+    my ($k, @fs) = map compile($_), @_;
+
+    # Special case: if there are no forms, then just invoke the continuation
+    # directly.
+    return qq{ ($k)->() } unless @fs;
+
     my $k_gs     = gensym 'k';
     my $i_gs     = gensym 'indexes';
     my $n        = @fs;
@@ -103,7 +122,7 @@ our %special_forms = (
   # For now, choose the first alternative every time. Others don't need to even
   # be compiled because they're all semantically equivalent.
   'amb*' => sub {
-    my ($k, $f) = map $_->compile, @_;
+    my ($k, $f) = map compile($_), @_;
     qq{ ($f)->($k); };
   },
 );
@@ -115,15 +134,15 @@ sub compile_list {
     : function_call($h, @xs);
 }
 
-sub array_literal { "ni::lisp::array([" . join(', ', @_) . "])" }
-sub hash_literal  { "ni::lisp::hash([" . join(', ', @_) . "])" }
+sub array_literal { "ni::lisp::array(" . join(', ', @_) . ")" }
+sub hash_literal  { "ni::lisp::hash(" . join(', ', @_) . ")" }
 sub qstr_literal  { "ni::lisp::qstr('$_[0]')" }
 sub str_literal   { "ni::lisp::str(\"$_[0]\")" }
 sub var_reference { "\$" . perlize_name($_[0]) }
 sub num_literal   { "ni::lisp::number($_[0])" }
 
 sub function_call {
-  my ($f, @xs) = map $_->compile, @_;
+  my ($f, @xs) = map compile($_), @_;
   $f . "->(" . join(", ", @xs) . ")";
 }
 

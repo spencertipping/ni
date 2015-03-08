@@ -8,15 +8,15 @@ sub def    { ${ni::lisp::perlize_name $_[0]} = $_[1] }
 sub defcps { def $_[0], cps $_[1] }
 
 defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym(@_ ? ${$_[0]} : undef) };
-defcps 'sym-str', sub { ni::lisp::str ${$_[0]} };
+defcps 'sym-str', sub { ni::lisp::str    ${$_[0]} };
 defcps 'str-sym', sub { ni::lisp::symbol ${$_[0]} };
 
 defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
 defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
 defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
 
-defcps 'aget',   sub { $_[0]->[$_[1]] };
-defcps 'type',   sub { ref($_[0]) =~ s/.*:://r };
+defcps 'aget',   sub { $_[0]->[${$_[1]}] };
+defcps 'type',   sub { ni::lisp::str(ref($_[0]) =~ s/.*:://r) };
 
 defcps 'car',    sub { my ($l) = @_; $$l[0] };
 defcps 'cdr',    sub { my ($l) = @_; ni::lisp::list(@$l[1..$#{$l}]) };
@@ -25,15 +25,16 @@ defcps 'uncons', sub { my ($l) = @_; ($$l[0], ni::lisp::list(@$l[1..$#{$l}])) };
 defcps 'list',   sub { ni::lisp::list(@_) };
 defcps 'count',  sub { ni::lisp::number scalar(@{$_[0]}) };
 defcps '=',      sub { ni::lisp::number("$_[0]" eq "$_[1]" ? 1 : 0) };
-defcps '>',      sub { ni::lisp::number($_[0] > $_[1] ? 1 : 0) };
+defcps '>',      sub { ni::lisp::number(${$_[0]} > ${$_[1]} ? 1 : 0) };
 defcps 'not',    sub { ni::lisp::number($_[0]->truthy ? 0 : 1) };
-defcps 'print',  sub { print STDERR join(' ', @_), "\n" };
+defcps 'print',  sub { my $x = print STDERR join(' ', @_), "\n";
+                       ni::lisp::number $x };
 
 defcps $_, eval "sub { ni::lisp::number(\${\$_[0]} $_ \${\$_[1]}) }"
   for qw# + - * / % ** << >> ^ & | #;
 
 defcps 'macroexpand', sub { $_[0]->macroexpand };
-defcps 'eval',        sub { my $c = $_[0]->compile;
+defcps 'eval',        sub { my $c = ni::lisp::compile $_[0];
                             my $r = eval $c;
                             die "failed to eval $_[0] -> $c: $@" if $@;
                             $r };
