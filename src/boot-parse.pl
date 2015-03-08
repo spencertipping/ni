@@ -14,11 +14,16 @@
 
 package ni::lisp;
 
+sub no_undefs {
+  defined $_ or die "found an undef in @_" for @_;
+  @_;
+}
+
 # NB: these are not perl OO constructors in the usual sense (i.e. they can't be
 # called indirectly)
-sub list   { bless \@_, "ni::lisp::list" }
-sub array  { bless \@_, "ni::lisp::array" }
-sub hash   { bless \@_, "ni::lisp::hash" }
+sub list   { bless [no_undefs @_], "ni::lisp::list" }
+sub array  { bless [no_undefs @_], "ni::lisp::array" }
+sub hash   { bless [no_undefs @_], "ni::lisp::hash" }
 
 sub qstr   { bless \$_[0], "ni::lisp::qstr" }
 sub str    { bless \$_[0], "ni::lisp::str" }
@@ -50,25 +55,27 @@ deftypemethod 'str',
   number => sub { ${$_[0]} };
 
 sub indent { '  ' x $_[0] }
+sub pprint { defined $_[0] ? $_[0]->pprint($_[1]) : '<undef>' }
+
 deftypemethod 'pprint',
   list   => sub { indent($_[1]) .
                   (length($_[0]->str) > 80 - 2 * $_[1]
                     ? "(\n"
-                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . join("\n", map pprint($_, $_[1] + 1), @{$_[0]})
                       . ")"
                     : $_[0]->str) },
 
   array  => sub { indent($_[1]) .
                   (length($_[0]->str) > 80 - 2 * $_[1]
                     ? "[\n"
-                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . join("\n", map pprint($_, $_[1] + 1), @{$_[0]})
                       . "]"
                     : $_[0]->str) },
 
   hash   => sub { indent($_[1]) .
                   (length($_[0]->str) > 80 - 2 * $_[1]
                     ? "{\n"
-                      . join("\n", map $_->pprint($_[1] + 1), @{$_[0]})
+                      . join("\n", map pprint($_, $_[1] + 1), @{$_[0]})
                       . "}"
                     : $_[0]->str) },
 

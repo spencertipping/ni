@@ -2,16 +2,14 @@
 # This file builds up the standard language from ni-lisp primitives.
 
 (defmacro let* (fn* [n v body]
-  (list (list (str-sym 'fn*')
-              (to-array (list n))
-              body)
+  (list (list (str-sym 'fn*') [n] body)
         v)))
 
 (defmacro if (fn* [cond then else]
   (list (list (str-sym 'nth*')
               (list (str-sym 'not') cond)
-              (list (str-sym 'fn*') (to-array (nil)) then)
-              (list (str-sym 'fn*') (to-array (nil)) else)))))
+              (list (str-sym 'fn*') [] then)
+              (list (str-sym 'fn*') [] else)))))
 
 # List functions. Macros are hard to write without some ability to work with
 # lists/arrays/etc.
@@ -44,13 +42,13 @@
 (def map
   (fn* [f xs]
     (rreduce* (fn* [x r] (cons (f x) r))
-              (nil)
+              nil
               (gen xs))))
 
 (def filter
   (fn* [f xs]
     (rreduce* (fn* [x r] (if (f x) (cons x r) r))
-              (nil)
+              nil
               (gen xs))))
 
 (def append (fn* [xs ys] (rreduce* cons ys (gen xs))))
@@ -59,18 +57,16 @@
     (rappend (cdr xs) (cons (car xs) ys))
     ys)))
 
-(def reverse (fn* [xs] (rappend xs (nil))))
+(def reverse (fn* [xs] (rappend xs nil)))
 
 # Useful macros
 (def else 1)
 (defmacro cond
   (fn* cases
     (if (count cases)
-      (list (str-sym 'if')
-            (car cases)
-            (car (cdr cases))
-            (append (list (str-sym 'cond'))
-                    (cdr (cdr cases))))
+      ((macro-fn 'if') (car cases)
+                       (car (cdr cases))
+                       (apply (macro-fn 'cond') (cdr (cdr cases))))
       (list (str-sym 'nil')))))
 
 (defmacro ->>
@@ -86,23 +82,21 @@
               (car forms)
               (gen (cdr forms)))))
 
-(defmacro <<- (fn* forms (cons (str-sym '->>') (reverse forms))))
+(defmacro <<- (fn* forms (apply (macro-fn '->>') (reverse forms))))
 
 # Quoting
 (def q*
   (<<- (fn* [form])
        (let* t (type form))
        (cond (= t 'list')   (cons (str-sym 'list') (map q* form))
-             (= t 'array')  (cons (str-sym 'to-array')
-                                  (list (cons (str-sym 'list')
-                                              (map q* form))))
-             (= t 'hash')   (cons (str-sym 'to-hash')
-                                  (list (cons (str-sym 'list')
-                                              (map q* form))))
-             (= t 'symbol') (list (str-sym 'str-sym')
-                                  (sym-str form))
+             (= t 'array')  (to-array (map q* form))
+             (= t 'hash')   (to-hash  (map q* form))
+             (= t 'symbol') (list (str-sym 'str-sym') (sym-str form))
              else           form)))
 
 (defmacro q q*)
 
-(cps* (eval (q (print "hi there!"))))
+(def qe* (fn* [form] (q* (macroexpand form))))
+(defmacro qe qe*)
+
+(cps* (eval (qe (cps* (print "hi there!")))))

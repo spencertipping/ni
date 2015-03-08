@@ -31,6 +31,15 @@ deftypemethod 'compile',
   symbol => sub { var_reference ${$_[0]} },
   number => sub { num_literal   ${$_[0]} };
 
+deftypemethod 'truthy',
+  list   => sub { !!@{$_[0]} },
+  array  => sub { 1 },
+  hash   => sub { 1 },
+  qstr   => sub { 1 },
+  str    => sub { 1 },
+  symbol => sub { 1 },
+  number => sub { ${$_[0]} };
+
 # CPS transformation happens at the macroexpansion level, so by this point the
 # whole program is represented in terms of CPS lambdas and associated special
 # forms.
@@ -106,12 +115,12 @@ sub compile_list {
     : function_call($h, @xs);
 }
 
-sub array_literal { "[" . join(', ', @_) . "]" }
-sub hash_literal  { "{" . join(', ', @_) . "}" }
-sub qstr_literal  { "'$_[0]'" }
-sub str_literal   { "\"$_[0]\"" }
+sub array_literal { "ni::lisp::array([" . join(', ', @_) . "])" }
+sub hash_literal  { "ni::lisp::hash([" . join(', ', @_) . "])" }
+sub qstr_literal  { "ni::lisp::qstr('$_[0]')" }
+sub str_literal   { "ni::lisp::str(\"$_[0]\")" }
 sub var_reference { "\$" . perlize_name($_[0]) }
-sub num_literal   { $_[0] }
+sub num_literal   { "ni::lisp::number($_[0])" }
 
 sub function_call {
   my ($f, @xs) = map $_->compile, @_;
