@@ -105,7 +105,7 @@ our %bracket_types = (
 sub parse {
   local $_;
   my @stack = [];
-  while ($_[0] =~ / \G (?: (?<comment> \#.*)
+  while ($_[0] =~ / \G (?: (?<comment> \#[!\s].*)
                          | (?<ws>      [\s,:]+)
                          | "(?<str>    (?:[^\\"]|\\.)*)"
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?

@@ -12,6 +12,7 @@ if [[ $1 == '--boot' ]]; then
   chmod 0500 gen/nilisp-boot0
 
   { cat src/nilisp-{coreboot,core}.ni; } > gen/core.ni
+  chmod 0400 gen/core.ni
 
   { echo '#!/usr/bin/env perl'
     cat src/boot-{parse,cps,macroexpand,globals}.pl
