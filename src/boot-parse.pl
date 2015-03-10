@@ -2,13 +2,12 @@
 # Produces a tree of blessed references representing the specified
 # s-expression. Syntactically:
 #
-#   'foo\nbar'          string with a literal backslash-n in it
-#   "foo\tbar"          string with tab character
-#   foo                 quoted atom (analogous to 'foo in lisp)
-#   $foo                variable reference (analogous to foo in lisp)
-#   3.0                 numeric atom
-#   [3 4 5]             array
-#   {foo bar}           hash
+#   "foo\tbar"  string with tab character
+#   foo         quoted atom (analogous to 'foo in lisp)
+#   $foo        variable reference (analogous to foo in lisp)
+#   3.0         numeric atom
+#   [3 4 5]     array
+#   {foo bar}   hash
 
 {
 
@@ -28,15 +27,14 @@ sub only_refs {
 # called indirectly)
 sub list   { bless [only_refs '()', @_], "ni::lisp::list" }
 sub array  { bless [only_refs '[]', @_], "ni::lisp::array" }
-sub hash   { bless [only_refs '{}', @_], "ni::lisp::hash" }
+sub hash   { bless {only_refs '{}', @_}, "ni::lisp::hash" }
 
-sub qstr   { bless \$_[0], "ni::lisp::qstr" }
 sub str    { bless \$_[0], "ni::lisp::str" }
 sub symbol { bless \$_[0], "ni::lisp::symbol" }
 sub number { bless \$_[0], "ni::lisp::number" }
 
-our @parse_types = qw/ list array hash qstr str symbol number /;
-our %overloads   = qw/ "" str /;
+our @parse_types = qw/ list array hash str symbol number /;
+our %overloads   = qw/ "" str @{} sequential /;
 
 for (@parse_types) {
   eval "package ni::lisp::$_; use overload qw#" . join(' ', %overloads) . "#;";
@@ -56,8 +54,8 @@ sub to_str { defined $_[0] ? ref($_[0]) =~ /^ni::/ ? $_[0]->str
 deftypemethod 'str',
   list   => sub { '(' . join(' ', map to_str($_), @{$_[0]}) . ')' },
   array  => sub { '[' . join(' ', map to_str($_), @{$_[0]}) . ']' },
-  hash   => sub { '{' . join(' ', map to_str($_), @{$_[0]}) . '}' },
-  qstr   => sub { "'" . ${$_[0]} . "'" },
+  hash   => sub { '{' . join(' ', map {$_ => to_str(${$_[0]}{$_})}
+                                      sort keys %{$_[0]}) . '}' },
   str    => sub { '"' . ${$_[0]} . '"' },
   symbol => sub { length ${$_[0]} ? ${$_[0]} : '<ESYM>' },
   number => sub { ${$_[0]} };
@@ -83,14 +81,20 @@ deftypemethod 'pprint',
   hash   => sub { indent($_[1]) .
                   (length($_[0]->str) > 80 - 2 * $_[1]
                     ? "{\n"
-                      . join("\n", map pprint($_, $_[1] + 1), @{$_[0]})
+                      . join("\n", map pprint($_, $_[1] + 1),
+                                   map "$_ ${$_[0]}{$_}", sort keys %{$_[0]})
                       . "}"
                     : $_[0]->str) },
 
-  qstr   => sub { indent($_[1]) . $_[0] },
   str    => sub { indent($_[1]) . $_[0] },
   symbol => sub { indent($_[1]) . $_[0] },
   number => sub { indent($_[1]) . $_[0] };
+
+deftypemethod 'sequential',
+  list  => sub { $_[0] },
+  array => sub { $_[0] },
+  hash  => sub { [map {(ni::lisp::parse $_)[0], ${$_[0]}{$_}}
+                      sort keys %{$_[0]}] };
 
 our %bracket_types = (
   ')' => \&ni::lisp::list,
@@ -103,7 +107,6 @@ sub parse {
   my @stack = [];
   while ($_[0] =~ / \G (?: (?<comment> \#.*)
                          | (?<ws>      [\s,:]+)
-                         | '(?<qstr>   (?:[^\\']|\\.)*)'
                          | "(?<str>    (?:[^\\"]|\\.)*)"
                          | (?<number>  (?: [-+]?[0-9]*\.[0-9]+([eE][0-9]+)?
                                          | 0x[0-9a-fA-F]+

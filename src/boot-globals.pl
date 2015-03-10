@@ -11,9 +11,14 @@ defcps 'gensym',  sub { ni::lisp::symbol ni::lisp::gensym(@_ ? ${$_[0]} : undef)
 defcps 'sym-str', sub { ni::lisp::str    ${$_[0]} };
 defcps 'str-sym', sub { ni::lisp::symbol ${$_[0]} };
 
-defcps 'to-array', sub { ni::lisp::array @{$_[0]} };
-defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]} };
-defcps 'to-list',  sub { ni::lisp::list  @{$_[0]} };
+defcps 'to-array', sub { ni::lisp::array @{$_[0]->sequential} };
+defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]->sequential} };
+defcps 'to-list',  sub { ni::lisp::list  @{$_[0]->sequential} };
+
+defcps 'has?', sub { my ($h, $k) = @_;
+                     ni::lisp::number(exists $$h{"$k"} ? 1 : 0) };
+defcps 'get',  sub { my ($h, $k, $notfound) = @_;
+                     $$h{"$k"} // $notfound // ni::lisp::number(0) };
 
 defcps 'aget',   sub { $_[0]->[${$_[1]}] };
 defcps 'type',   sub { ni::lisp::str(ref($_[0]) =~ s/.*:://r) };
@@ -31,6 +36,7 @@ defcps 'print',  sub { my $x = print STDERR join(' ', @_), "\n";
                        ni::lisp::number $x };
 
 defcps $_, eval "sub { ni::lisp::number(\${\$_[0]} $_ \${\$_[1]}) }"
+           // die "failed to eval number function $_: $@"
   for qw# + - * / % ** << >> ^ & | #;
 
 defcps 'macroexpand', sub { $_[0]->macroexpand };

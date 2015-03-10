@@ -40,8 +40,8 @@ deftypemethod 'macroexpand',
   },
 
   array  => sub { ni::lisp::array map $_->macroexpand($_[1]), @{$_[0]} },
-  hash   => sub { ni::lisp::hash  map $_->macroexpand($_[1]), @{$_[0]} },
-  qstr   => sub { $_[0] },
+  hash   => sub { ni::lisp::hash  map $_->macroexpand($_[1]),
+                                      @{$_[0]->sequential} },
   str    => sub { $_[0] },
   symbol => sub { $_[0] },
   number => sub { $_[0] };

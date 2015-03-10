@@ -18,7 +18,6 @@ syn region niList             matchgroup=niParens     start=/(/          end=/)/
 syn region niVector           matchgroup=niParens     start=/\[/         end=/]/ contains=@niTop
 syn region niMap              matchgroup=niParens     start=/{/          end=/}/ contains=@niTop
 syn region niSoftString       matchgroup=niQuoteMarks start=/\(^\|\s\)"/ end=/"/ contains=niSoftEscape,@niStringInterpolable
-syn region niHardString       matchgroup=niQuoteMarks start=/\(^\|\s\)'/ end=/'/ contains=niHardEscape
 
 syn cluster niTop add=niList,niVector,niMap,niSoftString,niHardString,niInterpolatedWord,niCore,niMeta,niProbablyMeta,niEscapedWord,niLineComment
 syn cluster niInterpolable add=niList,niInterpolatedWord
@@ -26,7 +25,7 @@ syn cluster niStringInterpolable add=niInterpolatedList,niInterpolatedWord
 
 syn keyword niCore gensym sym-str str-sym to-array to-hash to-list
 syn keyword niCore aget type car cdr cons uncons list count = > not print
-syn keyword niCore macroexpand eval apply macro-fn cps-convert nil
+syn keyword niCore macroexpand eval apply macro-fn cps-convert nil get has?
 
 syn match niSoftEscape /\\./     contained
 syn match niHardEscape /\\[\\']/ contained
@@ -48,7 +47,6 @@ hi def link niProbablyMeta        Type
 hi def link niParens              Special
 hi def link niQuoteMarks          Special
 hi def link niSoftString          String
-hi def link niHardString          String
 hi def link niInterpolatedWord    Identifier
 hi def link niInterpolationParens Special
 hi def link niLineComment         Comment

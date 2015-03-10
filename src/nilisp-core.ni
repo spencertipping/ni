@@ -2,14 +2,14 @@
 # This file builds up the standard language from ni-lisp primitives.
 
 (defmacro let* (fn* [n v body]
-  (list (list (str-sym 'fn*') [n] body)
+  (list (list (str-sym "fn*") [n] body)
         v)))
 
 (defmacro if (fn* [cond then else]
-  (list (list (str-sym 'nth*')
-              (list (str-sym 'not') cond)
-              (list (str-sym 'fn*') [] then)
-              (list (str-sym 'fn*') [] else)))))
+  (list (list (str-sym "nth*")
+              (list (str-sym "not") cond)
+              (list (str-sym "fn*") [] then)
+              (list (str-sym "fn*") [] else)))))
 
 # List functions. Macros are hard to write without some ability to work with
 # lists/arrays/etc.
@@ -35,7 +35,7 @@
 
 (def gen
   (fn* [xs]
-    (if (= (type xs) 'list')
+    (if (= (type xs) "list")
       (listgen xs)
       (listgen (to-list xs)))))
 
@@ -64,10 +64,10 @@
 (defmacro cond
   (fn* cases
     (if (count cases)
-      ((macro-fn 'if') (car cases)
+      ((macro-fn "if") (car cases)
                        (car (cdr cases))
-                       (apply (macro-fn 'cond') (cdr (cdr cases))))
-      (list (str-sym 'nil')))))
+                       (apply (macro-fn "cond") (cdr (cdr cases))))
+      (list (str-sym "nil")))))
 
 (defmacro ->>
   (fn* forms
@@ -82,19 +82,26 @@
               (car forms)
               (gen (cdr forms)))))
 
-(defmacro <<- (fn* forms (apply (macro-fn '->>') (reverse forms))))
+(defmacro <<- (fn* forms (apply (macro-fn "->>") (reverse forms))))
 
 # Quoting
-(def q*
-  (<<- (fn* [form])
+(def qq*
+  (<<- (fn* [form substs])
        (let* t (type form))
-       (cond (= t 'list')   (cons (str-sym 'list') (map q* form))
-             (= t 'array')  (to-array (map q* form))
-             (= t 'hash')   (to-hash  (map q* form))
-             (= t 'symbol') (list (str-sym 'str-sym') (sym-str form))
+       (cond (= t "list")   (cons (str-sym "list") (map qq* form))
+             (= t "array")  (to-array (map qq* form))
+             (= t "hash")   (to-hash  (map qq* form))
+             (= t "symbol") (if (has? substs form)
+                              (get substs form)
+                              (list (str-sym "str-sym") (sym-str form)))
              else           form)))
 
+(def q* (fn* [form] (qq* form {})))
+
 (defmacro q q*)
+(defmacro qq
+  (fn* [form substs]
+    (qq* form (eval (macroexpand substs)))))
 
 (def qe* (fn* [form] (q* (macroexpand form))))
 (defmacro qe qe*)

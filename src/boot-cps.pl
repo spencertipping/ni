@@ -11,7 +11,6 @@ use constant DEBUG => 0;
 sub compile_list;
 sub array_literal;
 sub hash_literal;
-sub qstr_literal;
 sub str_literal;
 sub var_reference;
 sub num_literal;
@@ -32,15 +31,15 @@ sub compile {
     return "\$$gs";
   }
 
-  die "tried to compile $_[0]" unless ref($_[0]) =~ /^ni::/;
+  die "tried to compile $_[0] (" . ref($_[0]) . ")"
+    unless ref($_[0]) =~ /^ni::/;
   $_[0]->compile;
 }
 
 deftypemethod 'compile',
   list   => sub { compile_list  @{$_[0]} },
   array  => sub { array_literal map compile($_), @{$_[0]} },
-  hash   => sub { hash_literal  map compile($_), @{$_[0]} },
-  qstr   => sub { qstr_literal  ${$_[0]} },
+  hash   => sub { hash_literal  map compile($_), @{$_[0]->sequential} },
   str    => sub { str_literal   ${$_[0]} },
   symbol => sub { var_reference ${$_[0]} },
   number => sub { num_literal   ${$_[0]} };
@@ -49,7 +48,6 @@ deftypemethod 'truthy',
   list   => sub { !!@{$_[0]} },
   array  => sub { 1 },
   hash   => sub { 1 },
-  qstr   => sub { 1 },
   str    => sub { 1 },
   symbol => sub { 1 },
   number => sub { ${$_[0]} };
@@ -136,7 +134,6 @@ sub compile_list {
 
 sub array_literal { "ni::lisp::array(" . join(', ', @_) . ")" }
 sub hash_literal  { "ni::lisp::hash(" . join(', ', @_) . ")" }
-sub qstr_literal  { "ni::lisp::qstr('$_[0]')" }
 sub str_literal   { "ni::lisp::str(\"$_[0]\")" }
 sub var_reference { "\$" . perlize_name($_[0]) }
 sub num_literal   { "ni::lisp::number($_[0])" }
@@ -237,14 +234,14 @@ deftypemethod 'cps_convert',
   },
   hash => sub {
     my ($self, $k_form) = @_;
-    my @gensyms = map symbol(gensym 'x'), @$self;
+    my @self = @{$self->sequential};
+    my @gensyms = map symbol(gensym 'x'), @self;
     list symbol('co*'),
          list(symbol('fn*'),
               array(@gensyms),
               list $k_form, hash(@gensyms)),
-         map cps_wrap($_), @$self;
+         map cps_wrap($_), @self;
   },
-  qstr   => \&cps_constant,
   str    => \&cps_constant,
   symbol => \&cps_constant,
   number => \&cps_constant;
