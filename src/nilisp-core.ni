@@ -87,21 +87,30 @@
 # Quoting
 (def qq*
   (<<- (fn* [form substs])
-       (let* t (type form))
-       (cond (= t "list")   (cons (str-sym "list") (map qq* form))
-             (= t "array")  (to-array (map qq* form))
-             (= t "hash")   (to-hash  (map qq* form))
-             (= t "symbol") (if (has? substs form)
-                              (get substs form)
-                              (list (str-sym "str-sym") (sym-str form)))
+       (let* t     (type form))
+       (let* recur (fn* [f] (qq* f substs)))
+       (cond (= t "list")   (cons (str-sym "list") (map recur form))
+             (= t "array")  (to-array (map recur form))
+             (= t "hash")   (to-hash  (map recur form))
+             (= t "symbol") (get substs form
+                                 (list (str-sym "str-sym") (sym-str form)))
              else           form)))
 
 (def q* (fn* [form] (qq* form {})))
-
 (defmacro q q*)
+
 (defmacro qq
-  (fn* [form substs]
-    (qq* form (eval (macroexpand substs)))))
+  (<<- (fn* [form substs])
+       (let* subgs (gensym "substs"))
+       (let* qform (qq* form (lreduce* (fn* [h k]
+                               (assoc h k (list (q get) subgs (q* k))))
+                               {}
+                               (gen (keys substs)))))
+       (let* qsub  (lreduce* (fn* [h k] (assoc h (q* k) (get substs k)))
+                             {}
+                             (gen (keys substs))))
+
+       (list (list (q fn*) [subgs] qform) qsub)))
 
 (def qe* (fn* [form] (q* (macroexpand form))))
 (defmacro qe qe*)

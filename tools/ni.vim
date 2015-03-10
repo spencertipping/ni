@@ -26,6 +26,7 @@ syn cluster niStringInterpolable add=niInterpolatedList,niInterpolatedWord
 syn keyword niCore gensym sym-str str-sym to-array to-hash to-list
 syn keyword niCore aget type car cdr cons uncons list count = > not print
 syn keyword niCore macroexpand eval apply macro-fn cps-convert nil get has?
+syn keyword niCore assoc dissoc keys
 
 syn match niSoftEscape /\\./     contained
 syn match niHardEscape /\\[\\']/ contained

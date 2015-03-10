@@ -15,10 +15,21 @@ defcps 'to-array', sub { ni::lisp::array @{$_[0]->sequential} };
 defcps 'to-hash',  sub { ni::lisp::hash  @{$_[0]->sequential} };
 defcps 'to-list',  sub { ni::lisp::list  @{$_[0]->sequential} };
 
+defcps 'assoc', sub { my ($h, $k, $v) = @_;
+                      ni::lisp::hash @{$h->sequential}, $k, $v };
+
+defcps 'dissoc', sub { my ($h, $k) = @_;
+                       my %h = %$h;
+                       delete $h{"$k"};
+                       ni::lisp::hash map {(ni::lisp::parse $_)[0] => $h{$_}}
+                                          keys %h };
+
 defcps 'has?', sub { my ($h, $k) = @_;
                      ni::lisp::number(exists $$h{"$k"} ? 1 : 0) };
 defcps 'get',  sub { my ($h, $k, $notfound) = @_;
                      $$h{"$k"} // $notfound // ni::lisp::number(0) };
+defcps 'keys', sub { ni::lisp::array(map {(ni::lisp::parse $_)[0]}
+                                         sort keys %{$_[0]}) };
 
 defcps 'aget',   sub { $_[0]->[${$_[1]}] };
 defcps 'type',   sub { ni::lisp::str(ref($_[0]) =~ s/.*:://r) };

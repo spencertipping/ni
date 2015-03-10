@@ -30,17 +30,27 @@ if (-t STDIN) {
     for my $f (ni::lisp::parse $_) {
       # Assume anything the user types in needs to be CPS-converted.
       my $m = eval { ni::lisp::list(ni::lisp::symbol('cps*'), $f)->macroexpand };
-      die "error macroexpanding " . $f->pprint(0) . "\n-- $@" if $@;
-      my $c = ni::lisp::compile $m;
-      my $coderef = eval "sub{\n$c\n}";
-      die "error compiling coderef $c\n-- macroexpansion is "
-        . $m->pprint(0) . "\n-- $@" if $@;
-      my $readable = $deparser->coderef2text($coderef);
-      my $r = eval $c;
-      die "error evaluating compilation for "
-        . $f->pprint(0) . " -> "
-        . $m->pprint(0) . " -> $readable\n-- $@" if $@;
-      print STDERR "= $r\n";
+      if ($@) {
+        print STDERR "error macroexpanding " . $f->pprint(0) . "\n-- $@";
+      } else {
+        my $c = ni::lisp::compile $m;
+        my $coderef = eval "sub{\n$c\n}";
+        if ($@) {
+          print STDERR "error compiling coderef $c\n-- macroexpansion is "
+            . $m->pprint(0) . "\n-- $@";
+        } else {
+          my $readable = $deparser->coderef2text($coderef);
+          my $r = eval $c;
+          if ($@) {
+            print STDERR "error evaluating compilation for "
+              . $f->pprint(0) . " -> "
+              . $m->pprint(0) . " -> $readable\n-- $@" if $@;
+          } else {
+            eval {print STDERR "= " . $r->pprint(0) . "\n"};
+            print STDERR "= $r\n(bogus: $@)\n" if $@;
+          }
+        }
+      }
 
       print STDERR "> ";
     }

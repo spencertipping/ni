@@ -29,9 +29,9 @@ sub list   { bless [only_refs '()', @_], "ni::lisp::list" }
 sub array  { bless [only_refs '[]', @_], "ni::lisp::array" }
 sub hash   { bless {only_refs '{}', @_}, "ni::lisp::hash" }
 
-sub str    { bless \$_[0], "ni::lisp::str" }
-sub symbol { bless \$_[0], "ni::lisp::symbol" }
-sub number { bless \$_[0], "ni::lisp::number" }
+sub str    { my ($x) = @_; bless \$x, "ni::lisp::str" }
+sub symbol { my ($x) = @_; bless \$x, "ni::lisp::symbol" }
+sub number { my ($x) = @_; bless \$x, "ni::lisp::number" }
 
 our @parse_types = qw/ list array hash str symbol number /;
 our %overloads   = qw/ "" str @{} sequential /;
