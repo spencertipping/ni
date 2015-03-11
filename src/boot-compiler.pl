@@ -197,6 +197,10 @@ def 'count', sub {
   number(scalar @$xs), @stuff;
 };
 
+def 'xl', sub { list(@{$_[0]}),  @_[1..$#_] };
+def 'xa', sub { array(@{$_[0]}), @_[1..$#_] };
+def 'xh', sub { hash(@{$_[0]}),  @_[1..$#_] };
+
 def 'lcons', sub {
   my ($x, $xs, @stuff) = @_;
   list($x, @$xs), @stuff;
