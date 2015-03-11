@@ -7,5 +7,12 @@ if [[ $1 == '--boot' ]]; then
   rm -rf gen
   mkdir -p gen
 
-  # TODO
+  { echo '#!/usr/bin/env perl'
+    cat src/boot-compiler.pl
+  } > gen/nb0
+  chmod 0500 gen/nb0
+fi
+
+if [[ $1 == '--repl' ]]; then
+  gen/nb0
 fi
