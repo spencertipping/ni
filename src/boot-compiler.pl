@@ -1,18 +1,14 @@
 # Bootstrap concatenative compiler
-# Concatenative languages have the desirable characteristic that juxtaposition
-# corresponds to function composition. This makes it particularly easy to
-# encode such a language as a series of Perl functions.
-
 package nb;
 
 { package nb::val; use overload qw/ "" str / }
 
-push @nb::string::ISA, 'nb::val', 'nb::one';
-push @nb::number::ISA, 'nb::val', 'nb::one';
+push @nb::string::ISA, 'nb::val', 'nb::one', 'nb::stable';
+push @nb::number::ISA, 'nb::val', 'nb::one', 'nb::stable';
 push @nb::symbol::ISA, 'nb::val', 'nb::one';
-push @nb::list::ISA,   'nb::val', 'nb::many';
-push @nb::array::ISA,  'nb::val', 'nb::many';
-push @nb::hash::ISA,   'nb::val', 'nb::many';
+push @nb::list::ISA,   'nb::val', 'nb::many', 'nb::stable';
+push @nb::array::ISA,  'nb::val', 'nb::many', 'nb::stable';
+push @nb::hash::ISA,   'nb::val', 'nb::many', 'nb::stable';
 
 sub nb::list::delimiters  { '(', ')' }
 sub nb::array::delimiters { '[', ']' }
@@ -20,15 +16,25 @@ sub nb::hash::delimiters  { '{', '}' }
 
 sub nb::string::str { "\"${$_[0]}\"" }
 sub nb::one::str    { ${$_[0]} }
-
 sub nb::many::str {
   my ($self) = @_;
   my ($open, $close) = $self->delimiters;
   $open . join(' ', @$self) . $close;
 }
 
-sub nb::symbol::value { ${${$_[0]}} }
-sub nb::val::value    {     $_[0]   }
+sub unquote;
+sub nb::stable::eval { $_[1]->($_[0], @_[2..$#_]) }
+sub nb::symbol::eval {
+  my ($self, $k, @stuff) = @_;
+  my $v = ${$$self} // die "can't eval undefined symbol $self";
+  unquote $k, $v, @stuff;
+}
+
+sub unquote {
+  my ($k, $v, @stuff) = @_;
+  return $v->($k, @stuff) if ref($v) eq 'CODE';
+  $eval->($k, $v, @stuff);
+}
 
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
 sub number { my ($x) = @_; bless \$x, 'nb::number' }
@@ -68,37 +74,18 @@ sub parse {
   @{$stack[0]};
 }
 
-# Interpreter and REPL
+# Interpreter and REPL (CPS)
 END {
   select((select(STDERR), $|++)[0]);
-  ${'^eval'}->(array(parse join '', <>)) if @ARGV;
-  if (-t STDIN) {
-    my @stack;
-    print STDERR "> ";
-    while (<STDIN>) {
-      chomp;
-      my $thing = $_;
-      eval { @stack = $_->(@stack) for parse $thing };
-      print STDERR "failed to evaluate $thing: $@" if $@;
-
-      ${'^prstack'}->(@stack);
-      print STDERR "> ";
-    }
-  }
 }
 
 # Global functions
-# Each of these exists in two forms, CPS-converted and regular. In the "real
-# language" all we'll have are the CPS versions, but writing CPS by hand is
-# miserable so I'm giving myself a way out for the bootstrap layer. Once we
-# have CPS-conversion macros this won't be a big issue.
-
+# All defined in CPS, which is also how the REPL works.
 sub def {
   my ($name, $f) = @_;
-  ${"^$name"} = $f;
   ${$name} = sub {
     my ($k, @xs) = @_;
-    $k->($f->(@xs));
+    unquote sub {$_[0]}, $k, $f->(@xs);
   };
 }
 
@@ -108,29 +95,18 @@ def 'dup',  sub { @_[0, 0, 1..$#_] };
 def 'drop', sub { @_[1..$#_] };
 
 # Eval, definition, and conditionals
-${'^eval'} = sub {
-  my ($x, @stuff) = @_;
-  die "argument to eval must be an array (got $x)"
-    unless ref($x) eq 'nb::array';
-  @stuff = $_->(@stuff) for @$x;
-  @stuff;
-};
-
-${'eval'} = sub {
+$eval = sub {
   my ($k, $x, @stuff) = @_;
   die "argument to eval must be an array (got $x)"
     unless ref($x) eq 'nb::array';
 
   if (@$x) {
-    my @ks = map {
-      my $i = $_;
-      my $f = $$x[$i];
-      sub { $f->($ks[$i + 1], @stuff) };
-    } 0..$#{$x} - 1;
-
-    push @ks, $k;
-    $ks[0]->(@stuff);
+    # [f g h] is evaluated as f([g h], @stack), which uses the array [g h] as a
+    # continuation.
+    my ($f, @xs) = @$x;
+    $f->eval($k, ni::array(@xs), @stuff);
   } else {
+    # ?????
     $k->(@stuff);
   }
 };
