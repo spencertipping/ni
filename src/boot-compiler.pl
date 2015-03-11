@@ -5,14 +5,14 @@
 
 package nb;
 
-{ package nb::val; use overload qw/ "" str &{} fn / }
+{ package nb::val; use overload qw/ "" str / }
 
-push @nb::string::ISA, 'nb::val', 'nb::one', 'nb::pushself';
-push @nb::number::ISA, 'nb::val', 'nb::one', 'nb::pushself';
+push @nb::string::ISA, 'nb::val', 'nb::one';
+push @nb::number::ISA, 'nb::val', 'nb::one';
 push @nb::symbol::ISA, 'nb::val', 'nb::one';
-push @nb::list::ISA,   'nb::val', 'nb::many', 'nb::pushself';
-push @nb::array::ISA,  'nb::val', 'nb::many', 'nb::pushself';
-push @nb::hash::ISA,   'nb::val', 'nb::many', 'nb::pushself';
+push @nb::list::ISA,   'nb::val', 'nb::many';
+push @nb::array::ISA,  'nb::val', 'nb::many';
+push @nb::hash::ISA,   'nb::val', 'nb::many';
 
 sub nb::list::delimiters  { '(', ')' }
 sub nb::array::delimiters { '[', ']' }
@@ -27,24 +27,8 @@ sub nb::many::str {
   $open . join(' ', @$self) . $close;
 }
 
-sub nb::pushself::fn {
-  my ($self) = @_;
-  sub { $self, @_ };
-}
-
-# HACK: a dynamically-scoped variable to keep track of which evaluation model
-# we're using. We need this because we could either be using ^eval (not CPS) or
-# eval (CPS), and we need to maintain that calling convention when invoking
-# each symbol.
-@nb::evaluators = ();
-
-sub nb::symbol::fn {
-  my ($self) = @_;
-  return sub { die "can't invoke undefined symbol $$self" }
-    unless defined(my $f = ${$$self});
-  ref($f) eq 'CODE' ? $f
-                    : sub { $nb::evaluators[-1]->($f, @_) };
-}
+sub nb::symbol::value { ${${$_[0]}} }
+sub nb::val::value    {     $_[0]   }
 
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
 sub number { my ($x) = @_; bless \$x, 'nb::number' }
@@ -128,9 +112,7 @@ ${'^eval'} = sub {
   my ($x, @stuff) = @_;
   die "argument to eval must be an array (got $x)"
     unless ref($x) eq 'nb::array';
-  push @nb::evaluators, ${'^eval'};
   @stuff = $_->(@stuff) for @$x;
-  pop @nb::evaluators;
   @stuff;
 };
 
@@ -139,22 +121,18 @@ ${'eval'} = sub {
   die "argument to eval must be an array (got $x)"
     unless ref($x) eq 'nb::array';
 
-  my @ks = map {
-    pop @nb::evaluators;
-    my $f = $$x[$_];
-    sub {
-      push @nb::evaluators, ${'eval'};
-      $f->($ks[$_ + 1], @stuff);
-    };
-  } 0..$#{$x} - 1;
+  if (@$x) {
+    my @ks = map {
+      my $i = $_;
+      my $f = $$x[$i];
+      sub { $f->($ks[$i + 1], @stuff) };
+    } 0..$#{$x} - 1;
 
-  push @ks, sub {
-    pop @nb::evaluators;
-    $k->(@_);
-  };
-
-  push @nb::evaluators, ${'eval'};
-  $ks[0]->(@stuff);
+    push @ks, $k;
+    $ks[0]->(@stuff);
+  } else {
+    $k->(@stuff);
+  }
 };
 
 def 'def', sub {
