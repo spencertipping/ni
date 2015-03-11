@@ -6,22 +6,6 @@ if [[ $1 == '--boot' ]]; then
   shift
   rm -rf gen
   mkdir -p gen
-  { echo '#!/usr/bin/env perl'
-    cat src/boot-{parse,cps,macroexpand,globals,main}.pl
-  } > gen/nilisp-boot0
-  chmod 0500 gen/nilisp-boot0
 
-  { cat src/nilisp-{coreboot,core}.ni; } > gen/core.ni
-  chmod 0400 gen/core.ni
-
-  { echo '#!/usr/bin/env perl'
-    cat src/boot-{parse,cps,macroexpand,globals}.pl
-    gen/nilisp-boot0 gen/core.ni < /dev/null
-  } > gen/nilisp-boot1
-  chmod 0500 gen/nilisp-boot1
-fi
-
-if [[ $1 == '--repl' ]]; then
-  shift
-  gen/nilisp-boot0 gen/core.ni
+  # TODO
 fi
