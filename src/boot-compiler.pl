@@ -43,6 +43,8 @@ sub list   { bless [@_], 'nb::list'  }
 sub array  { bless [@_], 'nb::array' }
 sub hash   { bless [@_], 'nb::hash'  }
 
+our $nil = array();
+
 our %bracket_types = ( ')' => \&list,
                        ']' => \&array,
                        '}' => \&hash );
@@ -89,26 +91,19 @@ sub def {
   };
 }
 
-# Stack manipulation
-def 'swap', sub { @_[1, 0, 2..$#_] };
-def 'dup',  sub { @_[0, 0, 1..$#_] };
-def 'drop', sub { @_[1..$#_] };
-
 # Eval, definition, and conditionals
 $eval = sub {
   my ($k, $x, @stuff) = @_;
   die "argument to eval must be an array (got $x)"
     unless ref($x) eq 'nb::array';
 
-  if (@$x) {
-    # [f g h] is evaluated as f([g h], @stack), which uses the array [g h] as a
-    # continuation.
-    my ($f, @xs) = @$x;
-    $f->eval($k, ni::array(@xs), @stuff);
-  } else {
-    # ?????
-    $k->(@stuff);
-  }
+  # Conceptually, CPS-converted eval is a list append operation. We have a
+  # situation like this:
+  #
+  # [f g h] eval i j k ...
+  #
+  # eval's job is to invoke f with the continuation [g h i j k ...].
+  # TODO
 };
 
 def 'def', sub {
@@ -122,6 +117,11 @@ def 'nth', sub {
   my ($n, @stuff) = @_;
   $stuff[$$n], @stuff;
 };
+
+# Stack manipulation
+def 'swap', sub { @_[1, 0, 2..$#_] };
+def 'dup',  sub { @_[0, 0, 1..$#_] };
+def 'drop', sub { @_[1..$#_] };
 
 # Scalar value stuff
 def 'type', sub { ref($_[0]) =~ s/^.*:://r };
