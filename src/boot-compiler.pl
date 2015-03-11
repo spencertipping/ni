@@ -3,7 +3,9 @@
 # corresponds to function composition. This makes it particularly easy to
 # encode such a language as a series of Perl functions.
 
-{ package nb::val; use overload qw/ "" str / }
+package nb;
+
+{ package nb::val; use overload qw/ "" str &{} fn / }
 
 push @nb::string::ISA, 'nb::val', 'nb::one', 'nb::pushself';
 push @nb::number::ISA, 'nb::val', 'nb::one', 'nb::pushself';
@@ -25,14 +27,24 @@ sub nb::many::str {
   $open . join(' ', @$self) . $close;
 }
 
-sub nb::pushself::invoke { @_ }
-sub nb::symbol::invoke {
-  my ($self, @stack) = @_;
-  my $f = ${$$self} // die "can't invoke undefined symbol $self";
-  $f->(@stack);
+sub nb::pushself::fn {
+  my ($self) = @_;
+  sub { $self, @_ };
 }
 
-package nb;
+# HACK: a dynamically-scoped variable to keep track of which evaluation model
+# we're using. We need this because we could either be using ^eval (not CPS) or
+# eval (CPS), and we need to maintain that calling convention when invoking
+# each symbol.
+@nb::evaluators = ();
+
+sub nb::symbol::fn {
+  my ($self) = @_;
+  return sub { die "can't invoke undefined symbol $$self" }
+    unless defined(my $f = ${$$self});
+  ref($f) eq 'CODE' ? $f
+                    : sub { $nb::evaluators[-1]->($f, @_) };
+}
 
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
 sub number { my ($x) = @_; bless \$x, 'nb::number' }
@@ -82,7 +94,7 @@ END {
     while (<STDIN>) {
       chomp;
       my $thing = $_;
-      eval { @stack = $_->invoke(@stack) for parse $thing };
+      eval { @stack = $_->(@stack) for parse $thing };
       print STDERR "failed to evaluate $thing: $@" if $@;
 
       ${'^prstack'}->(@stack);
@@ -100,7 +112,7 @@ END {
 sub def {
   my ($name, $f) = @_;
   ${"^$name"} = $f;
-  ${"$name"} = sub {
+  ${$name} = sub {
     my ($k, @xs) = @_;
     $k->($f->(@xs));
   };
@@ -112,20 +124,42 @@ def 'dup',  sub { @_[0, 0, 1..$#_] };
 def 'drop', sub { @_[1..$#_] };
 
 # Eval, definition, and conditionals
-def 'eval', sub {
+${'^eval'} = sub {
   my ($x, @stuff) = @_;
   die "argument to eval must be an array (got $x)"
     unless ref($x) eq 'nb::array';
-  @stuff = $_->invoke(@stuff) for @$x;
+  push @nb::evaluators, ${'^eval'};
+  @stuff = $_->(@stuff) for @$x;
+  pop @nb::evaluators;
   @stuff;
 };
 
-def 'defn', sub {
-  my ($name, $v, @stuff) = @_;
-  ${$name} = sub {
-    @_ = $_->(@_) for @$v;
-    @_;
+${'eval'} = sub {
+  my ($k, $x, @stuff) = @_;
+  die "argument to eval must be an array (got $x)"
+    unless ref($x) eq 'nb::array';
+
+  my @ks = map {
+    pop @nb::evaluators;
+    my $f = $$x[$_];
+    sub {
+      push @nb::evaluators, ${'eval'};
+      $f->($ks[$_ + 1], @stuff);
+    };
+  } 0..$#{$x} - 1;
+
+  push @ks, sub {
+    pop @nb::evaluators;
+    $k->(@_);
   };
+
+  push @nb::evaluators, ${'eval'};
+  $ks[0]->(@stuff);
+};
+
+def 'def', sub {
+  my ($name, $v, @stuff) = @_;
+  ${$name} = $v;
   @stuff;
 };
 
@@ -143,6 +177,9 @@ def 'sy', sub { symbol(${$_[0]}), @_[1..$#_] };
 def 'ns', sub { string(${$_[0]}), @_[1..$#_] };
 def 'sn', sub { number(${$_[0]}), @_[1..$#_] };
 
+def 'sv', sub { array(parse ${$_[0]}), @_[1..$#_] };
+def 'vs', sub { string($_[0]->str), @_[1..$#_] };
+
 def 'print', sub {
   my ($x, @stuff) = @_;
   print $$x, "\n";
@@ -150,7 +187,7 @@ def 'print', sub {
 };
 
 def 'prstack', sub {
-  printf STDERR "%2d: %s\n", $_, $_[$_] for 0..$#_;
+  printf STDERR "%02d: %s\n", $_, $_[$_] for 0..$#_;
   @_;
 };
 
