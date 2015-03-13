@@ -22,20 +22,6 @@ sub nb::many::str {
   $open . join(' ', @$self) . $close;
 }
 
-sub unquote;
-sub nb::stable::eval { $_[1]->($_[0], @_[2..$#_]) }
-sub nb::symbol::eval {
-  my ($self, $k, @stuff) = @_;
-  my $v = ${$$self} // die "can't eval undefined symbol $self";
-  unquote $k, $v, @stuff;
-}
-
-sub unquote {
-  my ($k, $v, @stuff) = @_;
-  return $v->($k, @stuff) if ref($v) eq 'CODE';
-  $eval->($k, $v, @stuff);
-}
-
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
 sub number { my ($x) = @_; bless \$x, 'nb::number' }
 sub symbol { my ($x) = @_; bless \$x, 'nb::symbol' }
@@ -53,10 +39,10 @@ sub parse {
   local $_;
   my @stack = [];
   while ($_[0] =~ /\G (?: (?<comment> \#[!\s].*)
-                        | (?<ws>      [:,\s]+)
-                        | (?<string>  "(?:[^\\"]|\\.)*")
+                        | (?<ws>      [,\s]+)
+                        | (?<string>  "(?:[^\\"]|\\.)*":?)
                         | (?<number>  [-+]?[0-9]\S*)
-                        | (?<symbol>  [^"()\[\]{}\s,:]+)
+                        | (?<symbol>  [^"()\[\]{}\s,]+)
                         | (?<opener>  [(\[{])
                         | (?<closer>  [)\]}]))/gx) {
     my $k = (keys %+)[0];
@@ -76,97 +62,41 @@ sub parse {
   @{$stack[0]};
 }
 
-# Interpreter and REPL (CPS)
-END {
-  select((select(STDERR), $|++)[0]);
-}
-
-# Global functions
-# All defined in CPS, which is also how the REPL works.
-sub def {
-  my ($name, $f) = @_;
-  ${$name} = sub {
-    my ($k, @xs) = @_;
-    unquote sub {$_[0]}, $k, $f->(@xs);
-  };
-}
-
-# Eval, definition, and conditionals
-$eval = sub {
-  my ($k, $x, @stuff) = @_;
-  die "argument to eval must be an array (got $x)"
-    unless ref($x) eq 'nb::array';
-
-  # Conceptually, CPS-converted eval is a list append operation. We have a
-  # situation like this:
-  #
-  # [f g h] eval i j k ...
-  #
-  # eval's job is to invoke f with the continuation [g h i j k ...].
-  # TODO
-};
-
-def 'def', sub {
-  my ($name, $v, @stuff) = @_;
-  ${$name} = $v;
-  @stuff;
-};
-
-# Used for conditionals in conjunction with 'eval'
-def 'nth', sub {
-  my ($n, @stuff) = @_;
-  $stuff[$$n], @stuff;
-};
-
-# Stack manipulation
-def 'swap', sub { @_[1, 0, 2..$#_] };
-def 'dup',  sub { @_[0, 0, 1..$#_] };
-def 'drop', sub { @_[1..$#_] };
-
-# Scalar value stuff
-def 'type', sub { ref($_[0]) =~ s/^.*:://r };
-
-def 'ys', sub { string(${$_[0]}), @_[1..$#_] };
-def 'sy', sub { symbol(${$_[0]}), @_[1..$#_] };
-def 'ns', sub { string(${$_[0]}), @_[1..$#_] };
-def 'sn', sub { number(${$_[0]}), @_[1..$#_] };
-
-def 'sv', sub { array(parse ${$_[0]}), @_[1..$#_] };
-def 'vs', sub { string($_[0]->str), @_[1..$#_] };
-
-def 'print', sub {
-  my ($x, @stuff) = @_;
-  print $$x, "\n";
-  @stuff;
-};
-
-def 'prstack', sub {
-  printf STDERR "%02d: %s\n", $_, $_[$_] for 0..$#_;
-  @_;
-};
-
-# Multi-value stuff
-def 'count', sub {
-  my ($xs, @stuff) = @_;
-  number(scalar @$xs), @stuff;
-};
-
-def 'xl', sub { list(@{$_[0]}),  @_[1..$#_] };
-def 'xa', sub { array(@{$_[0]}), @_[1..$#_] };
-def 'xh', sub { hash(@{$_[0]}),  @_[1..$#_] };
-
-def 'lcons', sub {
-  my ($x, $xs, @stuff) = @_;
-  list($x, @$xs), @stuff;
-};
-
-def 'acons', sub {
-  my ($x, $xs, @stuff) = @_;
-  array($x, @$xs), @stuff;
-};
-
-def 'uncons', sub {
-  my ($xs, @stuff) = @_;
-  my ($h, @t) = @$xs;
-  $h, &{ref $xs}(@t), @stuff;
-};
+# Interpreter/eval logic
+# Writing a Joy interpreter without continuations is fairly straightforward if
+# a little subtle. Continuations complicate matters a little, however,
+# particularly given that they need to be really fast and that they are the
+# mechanism by which we implement applicative-notation macros.
+#
+# In a concatenative language, a continuation is a pair of the current data
+# stack and the current return stack. In our case, everything is executed
+# inside a list, so each element in the return stack will be the tail of some
+# list we've started to evaluate. For example:
+#
+# [foo bar [woot1 woot2] call/cc bif] eval baz bok
+#
+# In this program, [woot1 woot2] is called on the following:
+#
+# [[bif] [baz bok]]     # return stack as a list
+# [...]                 # data stack as a list
+# ...                   # everything else on the stack
+#
+# What's interesting about this is that [woot1 woot2] is at liberty to look at
+# its continuation, create a new one, and call into that -- in effect
+# interpreting future code. This produces strange but useful possibilities like
+# this:
+#
+# [fn [x] (inc x)]
+#
+# where 'fn' takes its quoted continuation, [[x] (inc x)], reinterprets it into
+# concatenative notation, and calls into that continuation instead.
+#
+# Ok, so where does all of this leave us? Well, we need the interpreter to be
+# able to produce and consume continuations efficiently. In the applicative
+# world this is done using CPS, an abstraction whose concatenative analogue is
+# a little elusive (in my opinion anyway). The quoted-concatenative paradigm
+# defies this kind of all-at-once transformation in any case, since we won't
+# know when a list is intended as code or as data.
+#
+# This means that to the extent that we're CPS-transforming at all, we need to
+# do it at the interpretation level.
