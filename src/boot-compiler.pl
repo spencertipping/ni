@@ -22,14 +22,24 @@ sub nb::many::str {
   $open . join(' ', @$self) . $close;
 }
 
+sub nb::many::seq { @{$_[0]} }
+sub nb::list::seq {
+  my @result;
+  for (my ($self) = @_; @$self; $self = $$self[1]) {
+    push @result, $$self[0];
+  }
+  @result;
+}
+
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
 sub number { my ($x) = @_; bless \$x, 'nb::number' }
 sub symbol { my ($x) = @_; bless \$x, 'nb::symbol' }
-sub list   { bless [@_], 'nb::list'  }
+sub list   { @_ ? bless [$_[0], list(@_[1..$#_])], 'nb::list'
+                : bless [], 'nb::list' }
 sub array  { bless [@_], 'nb::array' }
 sub hash   { bless [@_], 'nb::hash'  }
 
-our $nil = array();
+our $nil = list;
 
 our %bracket_types = ( ')' => \&list,
                        ']' => \&array,
@@ -62,41 +72,24 @@ sub parse {
   @{$stack[0]};
 }
 
-# Interpreter/eval logic
-# Writing a Joy interpreter without continuations is fairly straightforward if
-# a little subtle. Continuations complicate matters a little, however,
-# particularly given that they need to be really fast and that they are the
-# mechanism by which we implement applicative-notation macros.
+# Interpreter and continuations
+# All of the relatively straightforward code above has probably suggested that
+# this interpreter consists of a simple loop that runs through lists, executing
+# each thing and moving on to the next. And indeed that's what I at first
+# thought it would be, but that's hardly a dangerous way to live. One might say
+# it's not really living at all.
 #
-# In a concatenative language, a continuation is a pair of the current data
-# stack and the current return stack. In our case, everything is executed
-# inside a list, so each element in the return stack will be the tail of some
-# list we've started to evaluate. For example:
+# No no, this interpreter is treacherous and subtle, the way an interpreter
+# should be. We have a few degrees of freedom at this point, so I'll constrain
+# the space a little:
 #
-# [foo bar [woot1 woot2] call/cc bif] eval baz bok
-#
-# In this program, [woot1 woot2] is called on the following:
-#
-# [[bif] [baz bok]]     # return stack as a list
-# [...]                 # data stack as a list
-# ...                   # everything else on the stack
-#
-# What's interesting about this is that [woot1 woot2] is at liberty to look at
-# its continuation, create a new one, and call into that -- in effect
-# interpreting future code. This produces strange but useful possibilities like
-# this:
-#
-# [fn [x] (inc x)]
-#
-# where 'fn' takes its quoted continuation, [[x] (inc x)], reinterprets it into
-# concatenative notation, and calls into that continuation instead.
-#
-# Ok, so where does all of this leave us? Well, we need the interpreter to be
-# able to produce and consume continuations efficiently. In the applicative
-# world this is done using CPS, an abstraction whose concatenative analogue is
-# a little elusive (in my opinion anyway). The quoted-concatenative paradigm
-# defies this kind of all-at-once transformation in any case, since we won't
-# know when a list is intended as code or as data.
-#
-# This means that to the extent that we're CPS-transforming at all, we need to
-# do it at the interpretation level.
+# 1. We have reusable continuations that can be inspected and constructed (more
+#    powerful than CPS; this gives us runtime macros that can transform their
+#    dynamic scope).
+# 2. All values and symbol bindings are immutable; to get (something that
+#    appears to be) mutability, you need to construct an alternative
+#    continuation and invoke it.
+# 3. The symbol table is a function that takes a symbol and returns its
+#    resolution. There is no default mechanism to handle unresolvable symbols,
+#    and the symbol table as an object is one of the elements of a
+#    continuation.
