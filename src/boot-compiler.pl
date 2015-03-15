@@ -243,6 +243,13 @@ def 'setcc', sub {
   @$c;
 };
 
+def 'nth', sub {
+  my ($ds, $rs, $r) = @_;
+  my ($n, $ds_) = ($ds->head, $ds->tail);
+  $ds_ = $ds_->tail while $n-- > 0;
+  (cons($ds_->head, $ds->tail), $rs, $r);
+};
+
 # Interpreter runtime
 our $ds = $nil;
 if (@ARGV) {
