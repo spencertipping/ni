@@ -20,26 +20,47 @@
 #   (t) (e) (f) r> drop drop  =  (f)
 #   (f) eval                  =  f
 
-(r< ! nth r> drop drop eval) 'if def
+(r< ! ! nth r> drop drop eval) 'if def
 
 # List functions
 (swap   cons) 'swons   def
 (uncons swap) 'unswons def
 
-# Derivations:
-#
-#   xs (f) map              =  x f xs (f) map swons
+# Derivation for map:
+#   x:xs (f) map            =  x f xs (f) map swons
 #     xs (f) swap dup nil?  =  (f) xs 1|0
 #
-#   inductive case:
-#   (f) x:xs unswons r< swap r>  =  xs x (f)
-#   xs x (f) dup r> eval         =  xs (f) x f
-#   xs (f) x f r> map swons      =  x f xs (f) map swons
+# Inductive case:
+#   (f) x:xs    unswons r< swap r>  =  xs x (f)
+#   xs x (f)    dup r> eval         =  xs (f) x f
+#   xs (f) x f  r> map swons        =  x f xs (f) map swons
 #
-#   base case:
-#   (f) () swap drop             =  ()
+# Base case:
+#   (f) () swap drop  =  ()
 
 (swap dup nil?
-  (unswons r< swap r> dup r> eval r> map swons)
   (swap drop)
+  (unswons r< swap r> dup r> eval r> map swons)
   if) 'map def
+
+# Derivation for filter:
+#   x:xs (f) filter         =  x xs (f) filter swons
+#     xs (f) swap dup nil?  =  (f) xs 1|0
+#
+# Inductive case:
+#   (f) x:xs      uncons dup r>  = (f) x xs x
+#   (f) x xs x    3 nth eval     = (f) x xs x f
+#   (f) x xs x f
+#     ((f) x xs r< filter swons)
+#     ((f) x xs r> drop filter) if
+#
+# Base case:
+#   (f) () swap drop  =  ()
+
+(swap dup nil?
+  (swap drop)
+  (uncons dup r> 3 nth eval
+    (r< filter swons)
+    (r> drop filter)
+    if)
+  if) 'filter def
