@@ -49,8 +49,8 @@ sub parse {
   while ($_[0] =~ /\G (?: (?<comment> \#[!\s].*)
                         | (?<ws>      [,\s]+)
                         | (?<string>  "(?:[^\\"]|\\.)*":?)
-                        | (?<number>  [-+]?[0-9][^\s",()\[\]{}]*)
-                        | (?<symbol>  [^"()\[\]{}\s,]+)
+                        | (?<number>  [-+]?[0-9][-+0-9a-zA-Z]*)
+                        | (?<symbol>  '*[^"()\[\]{}\s,]+)
                         | (?<opener>  [(\[{])
                         | (?<closer>  [)\]}]))/gx) {
     my $k = (keys %+)[0];
@@ -131,9 +131,13 @@ sub nb::val::invoke {
 
 sub nb::symbol::invoke {
   my ($self, $ds, $rs, $r) = @_;
-  my ($ds1, $rs1, $r1) = $r->eval(cons($self, $ds), $rs, $r);
-  my ($ds2, $resolved) = $ds1->perl_get(1);
-  $resolved->eval($ds2, $rs1, $r1);
+  if ($$self =~ /^'(.*)$/) {
+    (cons(symbol($1), $ds), $rs, $r);
+  } else {
+    my ($ds1, $rs1, $r1) = $r->eval(cons($self, $ds), $rs, $r);
+    my ($ds2, $resolved) = $ds1->perl_get(1);
+    $resolved->eval($ds2, $rs1, $r1);
+  }
 }
 
 sub nb::val::eval {
@@ -202,11 +206,16 @@ defn 'drop', 1, sub { () };
 defn 'swap', 2, sub { @_[1, 0] };
 defn 'dup',  1, sub { @_[0, 0] };
 
+defn 'r>', 3, sub { @_[1, 2, 0] };
+defn 'r<', 3, sub { @_[2, 0, 1] };
+
 defn 'assoc',  3, sub { $_[0]->assoc(@_[1, 2]) };
 defn 'dissoc', 2, sub { $_[0]->dissoc($_[1]) };
 defn 'nil?',   1, sub { number($_[0]->empty) };
+defn 'type',   1, sub { ref($_[0]) =~ s/^ni:://r };
 
-defn '=', 2, sub { number($_[0]->str eq $_[1]->str) };
+defn '=',  2, sub { number($_[0]->str eq $_[1]->str) };
+defn '!=', 2, sub { number($_[0]->str ne $_[1]->str) };
 
 defn 'str',  1, sub { string($_[0]->str) };
 defn 'read', 1, sub { parse(${$_[0]})->head };
@@ -240,12 +249,16 @@ def 'setcc', sub {
   my $c = $ds->head;
   die "continuation argument to set/cc must be an array (got $c)"
     unless ref($c) eq 'nb::array';
+  die "continuation argument (@$c) must have exactly three elements"
+    unless @$c == 3;
   @$c;
 };
 
 def 'nth', sub {
+  # Used for decisionals
   my ($ds, $rs, $r) = @_;
   my ($n, $ds_) = ($ds->head, $ds->tail);
+  $n = $$n;
   $ds_ = $ds_->tail while $n-- > 0;
   (cons($ds_->head, $ds->tail), $rs, $r);
 };

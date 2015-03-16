@@ -14,5 +14,5 @@ if [[ $1 == '--boot' ]]; then
 fi
 
 if [[ $1 == '--repl' ]]; then
-  gen/nb0
+  gen/nb0 src/coreboot.nc
 fi
