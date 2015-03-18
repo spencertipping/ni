@@ -9,7 +9,14 @@
 #
 #   (value 'name def) = ()
 
-(getr assoc setr) dup 'def swap eval
+(getr assoc setr) 'def '0101 st eval
+
+# Common stack functions
+('000  st) 'dup  def
+('201  st) 'swap def
+('1    st) 'drop def
+('3021 st) 'r>   def
+('3102 st) 'r<   def
 
 # Decisionals
 # Derivation:
@@ -64,3 +71,19 @@
     (r> drop filter)
     if)
   if) 'filter def
+
+# Derivation for append:
+#   x:xs y:ys append  =  x xs y:ys append swons
+#     () y:ys append  =       y:ys
+#
+# Inductive case:
+#   y:ys x:xs  unswons          =  y:ys x xs
+#   y:ys x xs  r< append swons  =  x xs y:ys append swons
+#
+# Base case:
+#   y:ys () drop  =  y:ys
+
+(swap dup nil?
+  (drop)
+  (unswons r< append swons)
+  if) 'append def

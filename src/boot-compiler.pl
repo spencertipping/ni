@@ -31,8 +31,16 @@ sub nb::list::seq {
   @result;
 }
 
+sub nb::list::get {
+  my ($self, $n) = @_;
+  $self = $self->tail while $n-- > 0;
+  $self->head;
+}
+
 sub string { my ($x) = @_; bless \$x, 'nb::string' }
-sub number { my ($x) = @_; bless \$x, 'nb::number' }
+sub number { my ($x) = @_;
+             $x = hex $x if $x =~ /^0x/;
+             bless \$x, 'nb::number' }
 sub symbol { my ($x) = @_; bless \$x, 'nb::symbol' }
 sub list   { @_ ? bless [$_[0], list(@_[1..$#_])], 'nb::list'
                 : bless [], 'nb::list' }
@@ -84,6 +92,15 @@ sub nb::hash::get {
     return $$self[$i + 1] if $$self[$i]->str eq $k_str;
   }
   $not_found;
+}
+
+sub nb::hash::contains {
+  my ($self, $k) = @_;
+  my $k_str = $k->str;
+  for (my $i = 0; $i < @$self; $i += 2) {
+    return 1 if $$self[$i]->str eq $k_str;
+  }
+  0;
 }
 
 sub nb::hash::assoc {
@@ -170,7 +187,10 @@ sub run {
     last if $rc->empty;
     my ($next, $c) = ($rc->head, $rc->tail);
     $rs = cons($c, $rs);
-    ($ds, $rs, $resolver) = $next->invoke($ds, $rs, $resolver);
+    eval {
+      ($ds, $rs, $resolver) = $next->invoke($ds, $rs, $resolver);
+    };
+    die "error invoking $next: $@\nds = $ds\nrs = $rs\nres = $resolver" if $@;
   }
   ($ds, $resolver);
 }
@@ -202,17 +222,46 @@ defn $_, 2, eval "sub { number(\${\$_[0]} $_ \${\$_[1]}) }"
 defn $_, 1, eval "sub { number($_\${\$_[0]}) }" for qw# ! ~ #;
 defn 'neg', 1, sub { number(-${$_[0]}) };
 
-defn 'drop', 1, sub { () };
-defn 'swap', 2, sub { @_[1, 0] };
-defn 'dup',  1, sub { @_[0, 0] };
+# Generic stack-manipulation command
+# Takes a base-62 symbol, interpreting the first digit as the drop count and
+# remaining ones as stack selectors. For example:
+#
+# '000          # dup
+# '1            # drop
+# '201          # swap
 
-defn 'r>', 3, sub { @_[1, 2, 0] };
-defn 'r<', 3, sub { @_[2, 0, 1] };
+our $b62 = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+def 'st', sub {
+  my ($ds, $rs, $r) = @_;
+  my ($rest, $s)       = $ds->perl_get(1);
+  my ($base, @dropped) = $ds->perl_get(index $b62, substr($$s, 0, 0));
+  my $result           = $base;
+
+  $result = cons $_ < @dropped ? $dropped[$_] : $rest->get($_ - @dropped),
+                 $result
+    for map index($b62, $_), split //, substr($$s, 1);
+
+  ($result, $rs, $r);
+};
+
+def 'nth', sub {
+  my ($ds, $rs, $r) = @_;
+  my ($ds_, $n) = $ds->perl_get(1);
+  (cons($ds_->get($$n), $ds), $rs, $r);
+};
 
 defn 'assoc',  3, sub { $_[0]->assoc(@_[1, 2]) };
 defn 'dissoc', 2, sub { $_[0]->dissoc($_[1]) };
+defn 'get',    2, sub { $_[0]->get($_[1], $nil) };
+defn 'get-or', 3, sub { $_[0]->get(@_[1, 2]) };
+defn 'has?',   2, sub { number($_[0]->contains($_[1])) };
 defn 'nil?',   1, sub { number($_[0]->empty) };
 defn 'type',   1, sub { ref($_[0]) =~ s/^ni:://r };
+
+defn 'la', 1, sub { array($_[0]->seq) };
+defn 'al', 1, sub { list($_[0]->seq) };
+defn 'lh', 1, sub { hash($_[0]->seq) };
+defn 'hl', 1, sub { list($_[0]->seq) };
 
 defn '=',  2, sub { number($_[0]->str eq $_[1]->str) };
 defn '!=', 2, sub { number($_[0]->str ne $_[1]->str) };
@@ -252,15 +301,6 @@ def 'setcc', sub {
   die "continuation argument (@$c) must have exactly three elements"
     unless @$c == 3;
   @$c;
-};
-
-def 'nth', sub {
-  # Used for decisionals
-  my ($ds, $rs, $r) = @_;
-  my ($n, $ds_) = ($ds->head, $ds->tail);
-  $n = $$n;
-  $ds_ = $ds_->tail while $n-- > 0;
-  (cons($ds_->head, $ds->tail), $rs, $r);
 };
 
 # Interpreter runtime
