@@ -12,5 +12,3 @@
 # applicative-to-concatenative compiler twice: once here in Perl and later in
 # ni-lisp. That way I can treat concatenative as a purely intermediate
 # representation.
-#
-# TODO: document the calling convention

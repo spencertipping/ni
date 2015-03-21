@@ -1,14 +1,30 @@
 # Bootstrap concatenative interpreter
+#
+# Semantics:
+# Numbers and strings are self-quoting; symbols prefixed with ' are
+# self-quoting, otherwise they resolve+evaluate when executed. Lists, arrays,
+# and hashes are all self-quoting. All values appear to be immutable and all
+# functions appear to be pure.
+#
+# Continuations are available and encoded using values that can be converted to
+# and from 3-arrays. As in Scheme, invoking a continuation causes it to replace
+# the current default one. Also as in Scheme, tail recursion is required;
+# although continuations have structured views of the return stack, the return
+# stack will never contain an empty list.
+#
+# TODO: does concurrency require any type of special form, or can the
+#       interpreter always use dataflow graph solving to figure it out?
+
 package nb;
 
 { package nb::val; use overload qw/ "" str / }
 
-push @nb::string::ISA, 'nb::val', 'nb::one', 'nb::stable';
-push @nb::number::ISA, 'nb::val', 'nb::one', 'nb::stable';
-push @nb::symbol::ISA, 'nb::val', 'nb::one';
-push @nb::list::ISA,   'nb::val', 'nb::many', 'nb::stable';
-push @nb::array::ISA,  'nb::val', 'nb::many', 'nb::stable';
-push @nb::hash::ISA,   'nb::val', 'nb::many', 'nb::stable';
+push @nb::string::ISA, qw/ nb::val nb::one  nb::stable /;
+push @nb::number::ISA, qw/ nb::val nb::one  nb::stable /;
+push @nb::symbol::ISA, qw/ nb::val nb::one             /;
+push @nb::list::ISA,   qw/ nb::val nb::many nb::stable /;
+push @nb::array::ISA,  qw/ nb::val nb::many nb::stable /;
+push @nb::hash::ISA,   qw/ nb::val nb::many nb::stable /;
 
 sub nb::list::delimiters  { '(', ')' }
 sub nb::array::delimiters { '[', ']' }
