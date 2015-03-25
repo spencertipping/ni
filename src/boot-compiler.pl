@@ -26,15 +26,7 @@
 # dynamically-compiled version.
 #
 # So instead of doing it that way, each argument list and return is represented
-# as a single value of some kind. It doesn't matter whether it's a list, array,
-# or anything else, though most of the time it will be. This paradigm needs to
-# be able to represent everything we'll ever want to do, so it requires a list
-# for return values despite most functions returning exactly one. (Almost all
-# of these intermediate structures are erased by abstract evaluation and
-# therefore never allocated.)
-#
-# A function like (fn [x] (inc x)), then, is compiled to take a list of the
-# form (x) and return a list of the form (y).
+# as a single value of some kind; that is, all functions are internally unary.
 #
 # Closure compilation.
 # Closures are just regular functions that contain quotations of values. For
@@ -45,18 +37,11 @@
 # Lexical variables are statically resolved, so the above function compiles
 # something like this:
 #
-# (                     # (x)
-#   unswons drop        # x
-#   () swons () swons   # ((x))
-#   'drop cons          # (drop (x))
-#   () swons            # ((drop (x)))
+# (                             # (x)
+#   unswons drop quote          # 'x
+#   () swons                    # ('x)
+#   'drop cons                  # (drop 'x)
 # )
-#
-# It won't end up making any difference, but in this example it's fine to have
-# the inner function not construct any lists (it just contains a list literal,
-# which will push a reference to itself) because lists are immutable. That
-# said, it won't matter because by the time any code hits a backend the return
-# list will have been erased.
 #
 # Special forms.
 # This is more interesting than it sounds because ni-lisp can't refer to any
@@ -71,13 +56,21 @@
 # (fn* self formal body)        # unary formal and return (!)
 # (co* f1 f2 ... fN)            # returns a list of ((f1) (f2) ... (fN))
 # (amb* f1 f2 ... fN)           # returns one of (f1), (f2), ..., or (fN)
-# (nth* i x0 x1 ... xN)         # returns x_i, segfaults if i out of bounds
-# (do* f1 f2 ... fN)            # do (f1), then (f2), ..., then return (fN)
+# (nth* i x0 x1 ... xN)         # does + returns x_i, segfaults if OOB
+# (do* x1 x2 ... xN)            # do x1, then x2, ..., then do + return xN
 #
 # We also allocate special forms to do stuff with continuations and resolvers:
 #
 # (def* name value)             # updates the resolver
 # (call/cc* f)                  # calls f with the current continuation
+#
+# (def*) normally compiles its value, so you can say (def* foo (fn [x] x)) and
+# expect that to do the right thing (given a suitable macro for fn). However,
+# there may be times when you want to define a function using concatenative
+# primitives; to do that, you can use the fact that lists are functionals:
+#
+# (def* foo '(5 swons))
+# (foo 1 2 3 4)                 # -> (5 1 2 3 4)
 #
 # Continuations are inspectable lists and ni-lisp functions, but they contain
 # some wrapper code to convert from the concatenative notion to functions that
@@ -88,10 +81,13 @@
 # If you use call/cc*, the continuation you receive will always have the
 # following form:
 #
-# ((tail-stack)         # self-quoting list form
-#  (data-stack)         # self-quoting list form
-#  'resolver            # self-quoting form of some kind (probably a hash)
-#  setcc)
+# (                     # continuation args should be in a list on the stack
+#   (data-stack)        # self-quoting list form
+#   swons               # function call to concatenative "swons"
+#   (tail-stack)        # self-quoting list form
+#   'resolver           # self-quoting form of some kind (probably a hash)
+#   setcc               # function call to concatenative "setcc"
+# )
 #
 # This means you can reliably inspect and transform the continuation (which is
 # how ni-lisp implements low-level fexprs, though you shouldn't use them).
@@ -108,13 +104,13 @@
 # we can do stuff with data structures. These are intentionally named after
 # functions in Clojure and have similar semantics:
 #
-# (symbol? x)
-# (string? x)
+# (symbol? x)                   # predicates return 0 or 1
+# (string? x)                   # (booleans are for wimps)
 # (number? x)
 # (nil? xs)
 # (count xs)
 #
-# (cons x xs)
+# (cons x xs)                   # basis for (list-conj)
 # (first xs)
 # (rest xs)
 # (list x y z ...)
@@ -127,14 +123,14 @@
 # (vec-conj xs x)               # generalized conj is defined later
 #
 # (hash-map k1 v1 k2 v2 ...)
-# (assoc h k1 v1 k2 v2 ...)
-# (dissoc h k1 k2 k3 ...)
+# (hash-conj xs [k v])          # basis for (assoc)
+# (hash-unconj h k)             # basis for (dissoc)
 # (keys h)
 # (vals h)
 # (contains? h k)
 # (get h k)
 # (get h k not-found)
-# (map? x)
+# (hash? x)                     # later aliased as (map?)
 #
 # Other data structures are built on top of these "primitives" to (mostly)
 # achieve parity with Clojure.
