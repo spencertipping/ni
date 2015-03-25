@@ -124,6 +124,7 @@
 # (vec xs)
 # (nth xs i)
 # (vec? x)
+# (vec-conj xs x)               # generalized conj is defined later
 #
 # (hash-map k1 v1 k2 v2 ...)
 # (assoc h k1 v1 k2 v2 ...)
@@ -137,5 +138,9 @@
 #
 # Other data structures are built on top of these "primitives" to (mostly)
 # achieve parity with Clojure.
+#
+# TODO: suppose we define sets by building on top of hash-maps, and we have a
+#       generalized conj function that we want to work with both. How do we
+#       determine the intent of something like (conj {} [x y])?
 
 package nb;
