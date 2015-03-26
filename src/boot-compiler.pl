@@ -109,6 +109,8 @@
 # (number? x)
 # (nil? xs)
 # (count xs)
+# (tag xs)                      # returns symbol prefix (see below)
+# (with-tag xs t)               # changes symbol prefix
 #
 # (cons x xs)                   # basis for (list-conj)
 # (first xs)
@@ -135,8 +137,16 @@
 # Other data structures are built on top of these "primitives" to (mostly)
 # achieve parity with Clojure.
 #
-# TODO: suppose we define sets by building on top of hash-maps, and we have a
-#       generalized conj function that we want to work with both. How do we
-#       determine the intent of something like (conj {} [x y])?
+# Vectors and maps can be prefixed with a symbol that doesn't change the
+# semantics of any primitive operators, but does remain with the data structure
+# across changes. For example:
+#
+# #[1 2 3]                      # a hashset of numbers
+# point{:x 3 :y 4}              # a named map
+# (assoc p{} :x 3)              # -> p{:x 3}
+# (tag point{:x 3 :y 4})        # -> 'point
+#
+# You can use this tag to implement derivative data structures based on the
+# builtin ones.
 
 package nb;
