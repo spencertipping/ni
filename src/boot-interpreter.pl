@@ -11,9 +11,6 @@
 # the current default one. Also as in Scheme, tail recursion is required;
 # although continuations have structured views of the return stack, the return
 # stack will never contain an empty list.
-#
-# TODO: does concurrency require any type of special form, or can the
-#       interpreter always use dataflow graph solving to figure it out?
 
 package nb;
 
@@ -70,21 +67,23 @@ our %bracket_types = ( ')' => \&list,
 sub parse {
   local $_;
   my @stack = [];
+  my @tags;
   while ($_[0] =~ /\G (?: (?<comment> \#[!\s].*)
                         | (?<ws>      [,\s]+)
                         | (?<string>  "(?:[^\\"]|\\.)*":?)
                         | (?<number>  [-+]?[0-9][-+0-9a-zA-Z]*)
                         | (?<symbol>  '*[^"()\[\]{}\s,]+)
-                        | (?<opener>  [(\[{])
+                        | (?<opener>  [^"()\[\]{}\s,]*[(\[{])
                         | (?<closer>  [)\]}]))/gx) {
     my $k = (keys %+)[0];
     next if $k eq 'comment' || $k eq 'ws';
     if ($k eq 'opener') {
       push @stack, [];
+      push @tags, $+{opener};
     } elsif ($k eq 'closer') {
       my $last = pop @stack;
       die "too many closing brackets" unless @stack;
-      push @{$stack[-1]}, $bracket_types{$+{closer}}->(@$last);
+      push @{$stack[-1]}, $bracket_types{$+{closer}}->(pop(@tags), @$last);
     } else {
       push @{$stack[-1]}, &{"nb::$k"}($+{$k});
     }
