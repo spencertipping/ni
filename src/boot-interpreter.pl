@@ -79,7 +79,7 @@ sub parse {
     next if $k eq 'comment' || $k eq 'ws';
     if ($k eq 'opener') {
       push @stack, [];
-      push @tags, $+{opener};
+      push @tags, $+{opener} =~ s/.$//r;
     } elsif ($k eq 'closer') {
       my $last = pop @stack;
       die "too many closing brackets" unless @stack;
