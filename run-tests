@@ -1,3 +1,0 @@
-#!/bin/bash
-./gen-tests
-verify-transcript $(find test -name '*.transcript')
