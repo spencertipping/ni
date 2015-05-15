@@ -1,8 +1,6 @@
 # ni: say "ni" to data
 ![ni!](http://spencertipping.com/ni.png)
 
-![!](http://spencertipping.com/ni2.png)
-
 MIT license as usual.
 
 # Introduction
@@ -62,13 +60,15 @@ data.
 
 # Documentation by example
 ## Survival commands
+![!](http://spencertipping.com/ni2.png)
+
 ni is terse and shares many properties with write-only languages. Because of
 this you'll probably want to make use of its documentation/previewing
 operators, which always go at the end:
 
 ```sh
 $ ni -n1r+10m/ --explain
-        fd:0
+        --cat fd:0
 -n      --number
 -1r+    --address 1 --reduce +
 -10m/   --address 10 --map /
@@ -89,6 +89,7 @@ configuration variables:
 
 ```sh
 $ ni --help
+$ ni --help-builtins
 $ ni --help-operators
 $ ni --help-quasifiles
 $ ni --help-env
@@ -267,6 +268,24 @@ $ ni n:10 -000m *+      # calculate (x * x) + x for x in 0..9
 $ ni n:10 -00m *,+      # calculate x*x and x+x for x in 0..9
 ```
 
+## Lambdas
+Because ni's command-line arguments are concatenative, you can quote a list
+and have that represent a stream transformer. For example:
+
+```sh
+$ ni n:5 -00m*
+$ ni n:5 [ -00m* ] --eval               # same as above
+$ ni n:5 [ [ -00m* ] --eval ] --eval    # ditto
+```
+
+Some commands like `-a` and `-r` process streams rather than individual rows,
+so you can pass a lambda rather than a piece of code:
+
+```sh
+$ ni n:1000 -r+                 # binary fold
+$ ni n:1000 -r [ -r+ ]          # fold-all, streaming into a binary fold
+```
+
 ## Encoded data
 ni knows about several common text formats:
 
@@ -274,5 +293,3 @@ ni knows about several common text formats:
 - XML/HTML
 - [Geohash](https://en.wikipedia.org/wiki/Geohash)
 - [WKT](https://en.wikipedia.org/wiki/Well-known_text)
-
-
