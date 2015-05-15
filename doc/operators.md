@@ -9,7 +9,7 @@ Short   | Long          | Operands      | Description
 `-c`    | count         |               | `uniq -c` for addressed columns
 `-C`    |               |               |
 `-d`    | distribute    | [flags] code  | distribute lines among workers
-`-D`    |               |               |
+`-D`    | duplicate     | qfile         | duplicate into quasifile
 `-e`    |               |               |
 `-E`    |               |               |
 `-f`    | fields        | [N]           | reorder, drop, create fields
@@ -59,9 +59,9 @@ Short   | Long          | Operands      | Description
 `-=`    |               |               |
 `-!`    |               |               |
 `-:`    |               |               |
-`-?`    |               |               |
 `-.`    |               |               |
 `-,`    |               |               |
+`-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
 `-%`    |               |               | prefix: exact statistical operators
 `-^`    | prepend       | qfile         | prepends qfile to stream
@@ -72,6 +72,15 @@ Short   | Long          | Operands      | Description
 
 ## Shorthands
 - `^...` = `[ -... ]`
+
+## Set operators
+Short   | Long          | Operands      | Description
+--------|---------------|---------------|------------
+`-?d`   | set-diff      | [flags] qfile | set difference by addressed field
+`-?i`   | intersection  | [flags] qfile | set intersection
+`-?s`   | subset        | [flags] qfile | running subset predicate
+`-?S`   | superset      | [flags] qfile | running superset predicate
+`-?u`   | union         | [flags] qfile | set union
 
 ## Numerical operators
 Short   | Long          | Operands      | Description
