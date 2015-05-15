@@ -68,20 +68,20 @@ operators, which always go at the end:
 
 ```sh
 $ ni -n1r+10m/ --explain
-	fd:0
--n	--number
--1r+	--address 1 --reduce +
--10m/	--address 10 --map /
+        fd:0
+-n      --number
+-1r+    --address 1 --reduce +
+-10m/   --address 10 --map /
 
 $ { echo '5'; echo '6'; } | ni -n1r+10m/ --trace
-0		5
-1	-n	1	5
-2	-1r+	1	5
-3	-10m/	5
-0		6
-1	-n	2	6
-2	-1r+	2	11
-3	-10m/	5.5
+0               5
+1       -n      1       5
+2       -1r+    1       5
+3       -10m/   5
+0               6
+1       -n      2       6
+2       -1r+    2       11
+3       -10m/   5.5
 ```
 
 You can also ask ni for a list of supported operators, quasi-file syntaxes, and
