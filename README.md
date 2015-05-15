@@ -67,21 +67,21 @@ this you'll probably want to make use of its documentation/previewing
 operators, which always go at the end:
 
 ```sh
-$ ni -n1R+10m/ --explain
+$ ni -n1R/+ -10m// --explain
         --cat fd:0
 -n      --number
--1r+    --address 1 --fold +
--10m/   --address 10 --map /
+-1R/+   --address 1 --fold / +
+-10m//  --address 10 --map / /
 
-$ { echo '5'; echo '6'; } | ni -n1R+10m/ --trace
+$ { echo '5'; echo '6'; } | ni -n1R/+ -10m// --trace
 0               5
 1       -n      1       5
-2       -1R+    1       5
-3       -10m/   5
+2       -1R/+   1       5
+3       -10m//  5
 0               6
 1       -n      2       6
-2       -1R+    2       11
-3       -10m/   5.5
+2       -1R/+   2       11
+3       -10m//  5.5
 ```
 
 You can also ask ni for a list of supported operators, quasi-file syntaxes, and
@@ -124,8 +124,8 @@ All ni commands start with `-` for short options or `--` for long ones:
 
 ```sh
 $ ni n:100 --pipe shuf -T1      # choose random number in [0, 99]
-$ ni n:1000 -m r'row _0 * _0'   # use Ruby to square each number
-$ ni n:1000 -m00*               # builtin multiplication operator
+$ ni n:1000 -mr'row _0 * _0'    # use Ruby to square each number
+$ ni n:1000 -00m/*              # Canard multiplication operator
 ```
 
 ## Basic stream operators
@@ -147,14 +147,18 @@ Typically you use `-g` and `-a` together unless your data is pre-grouped. For
 example, a local map/reduce workflow to count words looks like this:
 
 ```sh
-$ ni README.md -m r'l.split(/\W+/).map {|word| row(word, 1)}' \
-               -g1a r'row ls.lazy.reduce(0, &:+)'
+$ ni README.md -mr'l.split(/\W+/).map {|word| row(word, 1)}' \
+               -gar'row k, fs.lazy.map {|x| x[1].to_i}.reduce(0, &:+)'
+
+# equivalent and shorter:
+$ ni README.md -F\\W+ -1m/1 -ga ^1s
 ```
 
 ### Supported languages
 In the code above, the lower-case `r` prefix on the code specifies that the
 code is written in Ruby. Here's the list of languages ni knows about:
 
+- `/`: [Canard](doc/canard.md)
 - `r`: Ruby
     - line is stored as `l`
     - fields are in an array called `f`
@@ -187,7 +191,7 @@ Each of these languages defines a function called `row`, which you should use
 to efficiently emit lines to output:
 
 ```sh
-$ seq 1000 | ni -m r'row(%0, %0 * %0)'
+$ seq 1000 | ni -mr'row(%0, %0 * %0)'
 ```
 
 ### Multiple output lines
@@ -195,9 +199,9 @@ Any line-emitting operator can emit multiple output rows for a given input; to
 do this, you return an array:
 
 ```sh
-$ seq 1000 | ni -m r'(0..5).map {row %0, %0 + 1}'
-$ seq 1000 | ni -m p'(row(%0, %0 + 1) for x in range(5))'
-$ seq 1000 | ni -m P'map row(%0, %0 + 1), 1..5'
+$ seq 1000 | ni -mr'(0..5).map {row %0, %0 + 1}'
+$ seq 1000 | ni -mp'(row(%0, %0 + 1) for x in range(5))'
+$ seq 1000 | ni -mP'map row(%0, %0 + 1), 1..5'
 ```
 
 If your code returns `undef`, `None`, `nil`, or an empty array, no lines will
@@ -209,8 +213,8 @@ overkill. For example, maybe you're just summing a column. In that case you can
 use one of ni's builtin functions:
 
 ```sh
-$ ni -1r r'^0 + %0'             # use ruby to sum stuff
-$ ni -1r+                       # use ni builtin + (same output, but faster)
+$ ni -1Rr'^0.to_i + %0.to_i'    # use ruby to sum stuff
+$ ni -1R/+                      # use ni builtin + (same output, but faster)
 ```
 
 A full list of builtin functions is provided later on, or you can see one by
@@ -224,17 +228,17 @@ first column (for single-value operators like `-g`). You can readdress an
 operator by prefixing it with an address spec, which takes one of these two
 forms:
 
-- `\d+`, e.g. `-041m r'foo'`: address just the columns at the specified base-10
+- `\d+`, e.g. `-041mr'foo'`: address just the columns at the specified base-10
   indexes
-- `[0-9a-zA-Z]+@`, e.g. `-bc@m r'foo'`: indexes in base-62 (0-9, a-z, A-Z)
+- `[0-9a-zA-Z]+@`, e.g. `-bc@mr'foo'`: indexes in base-62 (0-9, a-z, A-Z)
 
 Addresses can duplicate and reorder columns. Unaddressed columns pass through
 unmodified. For example:
 
 ```sh
-$ ni /usr/share/dict/words -m r'row %0, l.size' > wsizes
-$ ni wsizes -1m r'%0 * %0'              # word, size²
-$ ni wsizes -11m r'%0 + %1'             # word, size + size
+$ ni /usr/share/dict/words -mr'row %0, l.size' > wsizes
+$ ni wsizes -1mr'%0 * %0'              # word, size²
+$ ni wsizes -11mr'%0 + %1'             # word, size + size
 ```
 
 Operators like `-a` can collapse multiple lines into fewer outputs. In this
@@ -246,44 +250,22 @@ If an operator emits fewer columns than its address, the unspecified columns
 are filled with blank values. If it emits more, extra columns are tacked onto
 the end of the input row (after assembling all addressed column values).
 
-## Builtin functions
-**This all might change**
-
-Builtin functions are concatenative and manipulate an operand stack initially
-comprised of the addressed fields of input.
-
-- `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `!`, `<`, `>`, `=`
-- `_sin`, `_cos`, `_tan`, `_log`, `_exp`, `_log2`, `_exp2`, `_sqr`, `_sqrt`
-- `_r`, `_w`, `_a`: read/write/append quasifile
-- `_rp`, `_pr`: rect to/from polar
-- `_ghe`, `_ghd`: geohash encode/decode
-- `_be`, `_bd`: binary encode/decode (like Perl/Ruby `pack`)
-- `_q`: quantize
-- `,`: juxtapose output of other functions (commutative, associative)
-
-Composition works like this:
-
-```sh
-$ ni n:10 -000m *+      # calculate (x * x) + x for x in 0..9
-$ ni n:10 -00m *,+      # calculate x*x and x+x for x in 0..9
-```
-
 ## Lambdas
 Because ni's command-line arguments are concatenative, you can quote a list
 and have that represent a stream transformer. For example:
 
 ```sh
-$ ni n:5 -00m*
-$ ni n:5 [ -00m* ] --eval               # same as above
-$ ni n:5 [ [ -00m* ] --eval ] --eval    # ditto
+$ ni n:5 -00m/*
+$ ni n:5 [ -00m/* ] --eval              # same as above
+$ ni n:5 [ [ -00m/* ] --eval ] --eval   # ditto
 ```
 
 Some commands like `-a` and `-r` process streams rather than individual rows,
 so you can pass a lambda rather than a piece of code:
 
 ```sh
-$ ni n:1000 -r+                 # binary fold
-$ ni n:1000 -r [ -r+ ]          # fold-all, streaming into a binary fold
+$ ni n:1000 -R/+                # binary fold
+$ ni n:1000 -r [ -R/+ ]         # fold-all, streaming into a binary fold
 ```
 
 ## Encoded data
