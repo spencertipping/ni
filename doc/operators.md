@@ -4,15 +4,15 @@ Short   | Long          | Operands      | Description
         | address       | fieldlist     | set address of next command
 `-a`    | aggregate     | transform     | aggregate rows by first field
 `-A`    |               |               |
-`-b`    |               |               |
-`-B`    |               |               |
+`-b`    | buffer        | size          | preload data, buffering into memory
+`-B`    | diskbuffer    | size          | preload data, buffering to disk
 `-c`    | count         |               | `uniq -c` for addressed columns
-`-C`    | number        |               | prepend line number (starts at 1)
+`-C`    |               |               |
 `-d`    | distribute    | [flags] code  | distribute lines among workers
 `-D`    |               |               |
 `-e`    |               |               |
 `-E`    |               |               |
-`-f`    | fields        | fieldlist     | reorder, drop, create fields
+`-f`    | fields        | [N]           | reorder, drop, create fields
 `-F`    | fieldsplit    | regexp        | split into columns on regexp
 `-g`    | group         |               | group rows by addressed column(s)
 `-G`    |               |               |
@@ -28,7 +28,7 @@ Short   | Long          | Operands      | Description
 `-L`    |               |               |
 `-m`    | map           | code          | runs code per line
 `-M`    |               |               |
-`-n`    |               |               |
+`-n`    | number        |               | prepend line number (init 1)
 `-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
@@ -41,13 +41,13 @@ Short   | Long          | Operands      | Description
 `-s`    | sum           |               | running sum
 `-S`    | delta         |               | delta (inverts --sum)
 `-t`    | take          | line-spec     | take selected lines
-`-T`    |               |               |
+`-T`    | tcp           | port lambda   | runs a TCP server
 `-u`    | uniq          |               | `uniq` for addressed columns
 `-U`    |               |               |
-`-v`    |               |               |
+`-v`    | vertical      | [fieldlist]   | chops line into multiple lines
 `-V`    |               |               |
 `-w`    |               |               |
-`-W`    |               |               |
+`-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    |               |               |
 `-X`    |               |               |
 `-y`    |               |               |
@@ -60,15 +60,18 @@ Short   | Long          | Operands      | Description
 `-!`    |               |               |
 `-:`    |               |               |
 `-?`    |               |               |
-`-#`    |               |               | prefix: numerical operators
 `-.`    |               |               |
 `-,`    |               |               |
+`-#`    |               |               | prefix: numerical operators
 `-%`    |               |               | prefix: exact statistical operators
 `-^`    | prepend       | qfile         | prepends qfile to stream
-`-[`    |               |               |
-`-]`    |               |               |
+`-[`    | begin         |               | pushes new empty stream onto stack
+`-]`    | end           |               | pops stream, appending to parent
 `-{`    |               |               |
 `-}`    |               |               |
+
+## Shorthands
+- `^...` = `[ -... ]`
 
 ## Numerical operators
 Short   | Long          | Operands      | Description

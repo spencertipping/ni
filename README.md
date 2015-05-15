@@ -67,20 +67,20 @@ this you'll probably want to make use of its documentation/previewing
 operators, which always go at the end:
 
 ```sh
-$ ni -n1r+10m/ --explain
+$ ni -n1R+10m/ --explain
         --cat fd:0
 -n      --number
--1r+    --address 1 --reduce +
+-1r+    --address 1 --fold +
 -10m/   --address 10 --map /
 
-$ { echo '5'; echo '6'; } | ni -n1r+10m/ --trace
+$ { echo '5'; echo '6'; } | ni -n1R+10m/ --trace
 0               5
 1       -n      1       5
-2       -1r+    1       5
+2       -1R+    1       5
 3       -10m/   5
 0               6
 1       -n      2       6
-2       -1r+    2       11
+2       -1R+    2       11
 3       -10m/   5.5
 ```
 
