@@ -123,7 +123,7 @@ $ ni n:100                      # numbers from 0 to 99 inclusive
 All ni commands start with `-` for short options or `--` for long ones:
 
 ```sh
-$ ni n:100 --pipe shuf -T1      # choose random number in [0, 99]
+$ ni n:100 -mf'shuf' -t1        # choose random number in [0, 99]
 $ ni n:1000 -mr'row _0 * _0'    # use Ruby to square each number
 $ ni n:1000 -00m/*              # Canard multiplication operator
 ```
@@ -159,6 +159,7 @@ In the code above, the lower-case `r` prefix on the code specifies that the
 code is written in Ruby. Here's the list of languages ni knows about:
 
 - `/`: [Canard](doc/canard.md)
+- `f`: line filter shell process
 - `r`: Ruby
     - line is stored as `l`
     - fields are in an array called `f`
@@ -257,6 +258,7 @@ and have that represent a stream transformer. For example:
 ```sh
 $ ni n:5 -00m/*
 $ ni n:5 [ -00m/* ] --eval              # same as above
+$ ni n:5 ^00m/* --eval                  # ditto
 $ ni n:5 [ [ -00m/* ] --eval ] --eval   # ditto
 ```
 
