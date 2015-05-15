@@ -3,70 +3,70 @@ Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
         | --address     | fieldlist     | set address of next command
 -a      | --aggregate   | transform     | aggregate rows by first field
--A
--b
--B
+-A      |               |               |
+-b      |               |               |
+-B      |               |               |
 -c      | --count       |               | `uniq -c` for addressed columns
 -C      | --number      |               | prepend line number (starts at 1)
 -d      | --delimiter   | regexp        | split into columns on regexp
--D
--e
--E
+-D      |               |               |
+-e      |               |               |
+-E      |               |               |
 -f      | --fields      | fieldlist     | reorder fields
--F
+-F      |               |               |
 -g      | --group       |               | group rows by addressed column(s)
--G
--h
--H
--i
--I
+-G      |               |               |
+-h      |               |               |
+-H      |               |               |
+-i      |               |               |
+-I      |               |               |
 -j      | --join        | flags qfile   | join data by addressed columns
--J
+-J      |               |               |
 -k      | --keep        | code          | keep rows for which code is true
--K
--l
--L
+-K      |               |               |
+-l      |               |               |
+-L      |               |               |
 -m      | --map         | code          | runs code per line
--M
--n
--N
+-M      |               |               |
+-n      |               |               |
+-N      |               |               |
 -o      | --order       |               | order rows by addressed column(s)
 -O      | --rorder      |               | reverse-order rows
--p
--P
--q
--Q
--r
--R
+-p      |               |               |
+-P      |               |               |
+-q      |               |               |
+-Q      |               |               |
+-r      |               |               |
+-R      |               |               |
 -s      | --sum         |               | running sum
 -S      | --delta       |               | delta (inverts --sum)
--t
--T
+-t      |               |               |
+-T      |               |               |
 -u      | --uniq        |               | `uniq` for addressed columns
--U
--v
--V
--w
--W
--x
--X
--y
--Y
--z
--Z
--+
--/
--=
--!
--:
--?
--@
--#
--.
--,
--%
--^
--[
--]
--{
--}
+-U      |               |               |
+-v      |               |               |
+-V      |               |               |
+-w      |               |               |
+-W      |               |               |
+-x      |               |               |
+-X      |               |               |
+-y      |               |               |
+-Y      |               |               |
+-z      |               |               |
+-Z      |               |               |
+-+      |               |               |
+-/      |               |               |
+-=      |               |               |
+-!      |               |               |
+-:      |               |               |
+-?      |               |               |
+-@      |               |               |
+-#      |               |               |
+-.      |               |               |
+-,      |               |               |
+-%      |               |               |
+-^      |               |               |
+-[      |               |               |
+-]      |               |               |
+-{      |               |               |
+-}      |               |               |
