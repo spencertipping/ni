@@ -1,9 +1,10 @@
-# Stream operators
+# Operator reference
+## General-purpose stream operators
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
         | address       | fieldlist     | set address of next command
         | c             | [flags] code  | pipe through C99
---------|---------------|---------------|------------
+        |               |               |
 `-a`    | aggregate     | transform     | aggregate rows by first field
 `-A`    |               |               |
 `-b`    | buffer        | size          | preload data, buffering into memory
@@ -36,8 +37,8 @@ Short   | Long          | Operands      | Description
 `-O`    | rorder        |               | reverse-order rows
 `-p`    | perl          | [flags] code  | pipe through perl
 `-P`    | python        | [flags] code  | pipe through python
-`-q`    |               |               |
-`-Q`    |               |               |
+`-q`    | sql           | db query      | sqlite3 query with transient table
+`-Q`    | psql          | db query      | postgres query with transient table
 `-r`    | ruby          | [flags] code  | pipe through ruby
 `-R`    | R             | [flags] code  | pipe through R
 `-s`    | sum           |               | running sum
@@ -69,11 +70,30 @@ Short   | Long          | Operands      | Description
 `-^`    | prepend       | qfile         | prepends qfile to stream
 `-[`    | begin         |               | pushes new empty stream onto stack
 `-]`    | end           |               | pops stream, appending to parent
-`-{`    |               |               |
-`-}`    |               |               |
+`-{`    |               |               | begins canard block
+`-}`    |               |               | ends canard block
 
-## Shorthands
-- `^...` = `[ -... ]`
+### Code flags
+With no flags, the code is invoked once per line. It uses `row()` to emit
+results, fields are available using `%0`, `%1`, ..., `%N`, and number of fields
+is `%#`.
+
+Flag    | Description
+--------|------------
+`%`     | all lines in one reduction; `%i` become generators of column values
+`?`     | code is used as a line filter; falsy returns delete the line
+`/`     | omit field splitting; `%0` contains the whole line and `%#` is 1
+`@`     | split fields into array; `String f[]` is available
+`:`     | name fields using first line (i.e. assume column headers)
+`!`     | all lines in one reduction; `%i` become **concrete arrays** of values
+
+Note that `/` prevents column-wise binary coding from being used, which may
+result in slower execution. `!` may use an arbitrary amount of space or cause
+OOME's.
+
+### Join flags
+With no flags, ni sorts both sides and joins on the first column. Joined values
+(not the right-hand join column itself) are zipped and the join is left-outer.
 
 ## Set operators
 Short   | Long          | Operands      | Description
