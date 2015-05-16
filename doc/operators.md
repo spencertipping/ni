@@ -2,7 +2,6 @@
 ## General-purpose stream operators
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
-        | address       | fieldlist     | set address of next command
         | c             | [flags] code  | pipe through C99
         |               |               |
 `-a`    | aggregate     | transform     | aggregate rows by first field
@@ -64,6 +63,7 @@ Short   | Long          | Operands      | Description
 `-:`    |               |               |
 `-.`    |               |               |
 `-,`    |               |               |
+`-@`    | address       | fieldlist     | set address of next command
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
 `-%`    |               |               | prefix: exact statistical operators
@@ -80,6 +80,8 @@ is `%#`.
 
 Flag    | Description
 --------|------------
+`+`     | distribute work across multiple local processes
+`*`     | distribute work across multiple remote processes
 `%`     | all lines in one reduction; `%i` become generators of column values
 `?`     | code is used as a line filter; falsy returns delete the line
 `/`     | omit field splitting; `%0` contains the whole line and `%#` is 1
@@ -94,6 +96,13 @@ OOME's.
 ### Join flags
 With no flags, ni sorts both sides and joins on the first column. Joined values
 (not the right-hand join column itself) are zipped and the join is left-outer.
+
+Flag    | Description
+--------|------------
+`^`     | left-hand data is already sorted
+`:`     | right-hand data is already sorted
+`%`     | outer left/right join
+`=`     | inner join
 
 ## Set operators
 Short   | Long          | Operands      | Description
