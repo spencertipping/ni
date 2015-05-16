@@ -20,8 +20,8 @@ example, a local map/reduce workflow to count words looks like this:
 $ ni README.md -mr'l.split(/\W+/).map {|word| row(word, 1)}' \
                -gar'row k, fs.lazy.map {|x| x[1].to_i}.reduce(0, &:+)'
 
-# equivalent and shorter:
-$ ni README.md -F\\W+ -1m/1 -ga ^1s
+# equivalent, but much faster and shorter:
+$ ni README.md -F \\W+ -1x1 -ga ^1s
 ```
 
 ### Supported languages

@@ -2,13 +2,15 @@
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
         | address       | fieldlist     | set address of next command
+        | c             | [flags] code  | pipe through C99
+--------|---------------|---------------|------------
 `-a`    | aggregate     | transform     | aggregate rows by first field
 `-A`    |               |               |
 `-b`    | buffer        | size          | preload data, buffering into memory
 `-B`    | diskbuffer    | size          | preload data, buffering to disk
 `-c`    | count         |               | `uniq -c` for addressed columns
-`-C`    |               |               |
-`-d`    | distribute    | [flags] code  | distribute lines among workers
+`-C`    | clojure       | [flags] code  | pipe through clojure
+`-d`    |               |               |
 `-D`    | duplicate     | qfile         | duplicate into quasifile
 `-e`    |               |               |
 `-E`    |               |               |
@@ -17,27 +19,27 @@ Short   | Long          | Operands      | Description
 `-g`    | group         |               | group rows by addressed column(s)
 `-G`    |               |               |
 `-h`    |               |               |
-`-H`    | hadoop        | m [r]         | hadoop streaming, emits qfile out
+`-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    |               |               |
-`-k`    | keep          | code          | keep rows for which code is true
+`-J`    | java          | [flags] code  | pipe through java
+`-k`    |               |               |
 `-K`    |               |               |
 `-l`    |               |               |
 `-L`    |               |               |
-`-m`    | map           | code          | runs code per line
-`-M`    |               |               |
+`-m`    |               |               |
+`-M`    | octave        | [flags] code  | pipe through octave
 `-n`    | number        |               | prepend line number (init 1)
 `-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
-`-p`    |               |               |
-`-P`    |               |               |
+`-p`    | perl          | [flags] code  | pipe through perl
+`-P`    | python        | [flags] code  | pipe through python
 `-q`    |               |               |
 `-Q`    |               |               |
-`-r`    | reduce        | code          | n-ary reduce entire stream
-`-R`    | fold          | code          | binary reduce entire stream
+`-r`    | ruby          | [flags] code  | pipe through ruby
+`-R`    | R             | [flags] code  | pipe through R
 `-s`    | sum           |               | running sum
 `-S`    | delta         |               | delta (inverts --sum)
 `-t`    | take          | line-spec     | take selected lines
@@ -45,15 +47,15 @@ Short   | Long          | Operands      | Description
 `-u`    | uniq          |               | `uniq` for addressed columns
 `-U`    |               |               |
 `-v`    | vertical      | [fieldlist]   | chops line into multiple lines
-`-V`    |               |               |
+`-V`    | horizontal    |               | join lines where addr field is blank
 `-w`    |               |               |
 `-W`    | web           | port lambda   | runs a very simple webserver
-`-x`    |               |               |
-`-X`    |               |               |
+`-x`    | canard        | [flags] code  | pipes through canard
+`-X`    | shell         | [flags] code  | pipes through shell command
 `-y`    |               |               |
 `-Y`    |               |               |
 `-z`    | zip           | qfile         | zip columns from specified qfile
-`-Z`    |               |               |
+`-Z`    | scala         | [flags] code  | pipe through scala
 `-+`    |               |               |
 `-/`    |               |               |
 `-=`    |               |               |

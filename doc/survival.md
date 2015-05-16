@@ -12,7 +12,7 @@ $ ni -n1R/+ -10m// --explain
 -1R/+   --address 1 --fold / +
 -10m//  --address 10 --map / /
 
-$ { echo '5'; echo '6'; } | ni -n1R/+ -10m// --trace
+$ ni perl:5,6 -n1R/+ -10m// --trace
 0               5
 1       -n      1       5
 2       -1R/+   1       5
