@@ -12,19 +12,19 @@ Short   | Long          | Operands      | Description
 `-C`    | clojure       | [flags] code  | pipe through clojure
 `-d`    |               |               |
 `-D`    | duplicate     | qfile         | duplicate into quasifile
-`-e`    |               |               |
-`-E`    |               |               |
+`-e`    | encode        | codec         | interpret with codec
+`-E`    | decode        | codec         | generate with codec
 `-f`    | fields        | [N]           | reorder, drop, create fields
 `-F`    | fieldsplit    | regexp        | split into columns on regexp
 `-g`    | group         |               | group rows by addressed column(s)
-`-G`    |               |               |
+`-G`    | grep          | pattern       | pipe through egrep
 `-h`    |               |               |
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
 `-J`    | java          | [flags] code  | pipe through java
-`-k`    |               |               |
+`-k`    | constant      | value         | emits a constant value
 `-K`    |               |               |
 `-l`    |               |               |
 `-L`    |               |               |
@@ -58,7 +58,7 @@ Short   | Long          | Operands      | Description
 `-Z`    | scala         | [flags] code  | pipe through scala
 `-+`    |               |               |
 `-/`    |               |               |
-`-=`    |               |               |
+`-=`    | conf[ig]      | var=value     | set configuration variable
 `-!`    |               |               |
 `-:`    |               |               |
 `-.`    |               |               |
@@ -66,7 +66,7 @@ Short   | Long          | Operands      | Description
 `-@`    | address       | fieldlist     | set address of next command
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
-`-%`    |               |               | prefix: exact statistical operators
+`-%`    |               |               |
 `-^`    | prepend       | qfile         | prepends qfile to stream
 `-[`    | begin         |               | pushes new empty stream onto stack
 `-]`    | end           |               | pops stream, appending to parent
@@ -116,17 +116,13 @@ Short   | Long          | Operands      | Description
 ## Numerical operators
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
+`-#a`   | average       | [flags]       | running average
+`-#h`   | entropy       | [flags]       | running entropy
 `-#l`   | log           | [base=2]      | log of each number
 `-#L`   | exp           | [base=2]      | exponentiate each number
+`-#n`   | ntiles        | N             | exact n-tiles of stream
 `-#p`   | root          | [exp=2]       | root of each number
 `-#P`   | pow           | [exp=2]       | power of each number
 `-#q`   | quant         | [q=1]         | quantize each number
-
-## Exact statistical operators
-Short   | Long          | Operands      | Description
---------|---------------|---------------|------------
-`-%a`   | average       | [flags]       | running average
-`-%h`   | entropy       | [flags]       | running entropy
-`-%n`   | ntiles        | N             | exact n-tiles of stream
-`-%s`   | stddev        | [flags]       | running standard deviation
-`-%v`   | variance      | [flags]       | running variance
+`-#s`   | stddev        | [flags]       | running standard deviation
+`-#v`   | variance      | [flags]       | running variance
