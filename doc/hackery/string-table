@@ -1,0 +1,32 @@
+#!/bin/sh
+compiled_path=`mktemp`
+source_path=`mktemp --suffix=.c`
+
+cat > "$source_path" <<'EOF'
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+static const char *const strings[] = {
+  "roflcopter",
+  "wharrgarbl",
+  "zomglolbbq",
+  (char*) 0,
+};
+int main(int argc, char **argv) {
+  for (int i = 0; i < argc; ++i)
+    printf("argv[%d] = %s\n", i, argv[i]);
+
+  for (int i = 0; strings[i]; ++i)
+    printf("strings[%d] = %s\n", i, strings[i]);
+
+  int unlink_status = unlink(argv[0]);
+  printf("Hello world!\n");
+  printf("unlinked self: %d, %d\n", unlink_status, errno);
+  return 0;
+}
+EOF
+
+c99 "$source_path" -o "$compiled_path"
+rm "$source_path"
+
+exec "$compiled_path"

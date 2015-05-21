@@ -4,6 +4,29 @@ stuff, a stream abstraction, a runtime for Canard, and TODO. In-code comments
 are minimized because ni is shipped as self-compiling source and we don't want
 to weigh it down with documentation.
 
+I need the project before it's done, so these variables govern which versions
+of various features get compiled:
+
+#define NI_STATUS_REFHEAP 0
+#define NI_STATUS_STREAMS 0
+#define NI_STATUS_STREAMHACK_MVP 1
+#define NI_STATUS_QUASIFILE 0
+#define NI_STATUS_QUASIFILEHACK_MVP 1
+
+Implementation plan.
+For my benefit: I need to figure out dependencies to get the order right.
+
+| quasifiles   shell + regexp (+ streams for compression; see below)
+  explain      streams
+  opt          streams + gc?
+  canard       refheap + gc
+
+TODO: how to deal with compressed data? nfu used file extensions, but I think
+we're better off using magic detection -- which means streams need to support
+peeking -- which means we need streams.
+
+
+
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,9 +35,12 @@ to weigh it down with documentation.
 
 void ni_image_begin(void) {}
 
-#define NI_EXIT_NORMAL     0
-#define NI_EXIT_USER_ERROR 1
-#define NI_EXIT_NI_BUG     2
+#define NI_EXIT_NORMAL       0
+#define NI_EXIT_USER_ERROR   1
+#define NI_EXIT_SYSTEM_ERROR 2
+#define NI_EXIT_NI_BUG       3
+
+#if NI_STATUS_REFHEAP
 
 Reference type (heap) implementation.
 ni references are 64-bit values that have a number of interpretations depending
@@ -44,7 +70,7 @@ void *ni_heap_limit;
 int ni_vtype(const ni_v x) {
   return (x & NI_NAN_MASK) == NI_NAN_MASK
        ? NI_TYPE_DBL
-       : (int) ((x & NI_TYPE_MASK) >> 48 & 0xf);
+       : (int) ((x & NI_TYPE_MASK) >> 48);
 }
 
 Some notes here. These types store data in the low 48 bits of the value, which
@@ -54,10 +80,52 @@ pointers are relative to something. `NI_TYPE_PTR` is relative to the start of
 the heap, and `NI_TYPE_FN` is relative to `&ni_image_begin` (which will be
 close to other functions on every sane platform).
 
+TODO: figure out semnatics for bytecode, and figure out how to engineer this
+such that the bytecode hosts the GC and related machinery. Then we get better
+data structure reuse.
+
+#endif
+
 Main function.
 The entry point for the CLI, and associated parsers/etc.
 
-void ni_usage(void) {}
+#if NI_STATUS_QUASIFILEHACK_MVP
+
+int ni_quasifile_fd(const char *qf) {
+  /* For now just support normal files. */
+  
+}
+
+#endif
+
+#if NI_STATUS_STREAMHACK_MVP
+
+If we don't have streams, then we can't store the representation of parsed CLI
+args. In this case we approximate by fork/chaining stuff. Each CLI argument
+causes a fork to happen, and we capture its stdout fd to either pipe into
+stdout, or to redirect into a pager.
+
+int ni_parse_args(const int argc, const char **argv) {
+  int read_fd = isatty(STDIN_FILENO) ? -1 : STDIN_FILENO;
+  for (int i = 0; i < argc; ++i) {
+    int fds[2];
+    if (pipe(fds)) {
+      fprintf(stderr, "pipe() error: %d\n", errno);
+      exit(NI_EXIT_SYSTEM_ERROR);
+    }
+
+    if (argv[i][0] != '-') {
+      /* We have a quasifile; get a fd for it. */
+
+    }
+  }
+}
+
+#endif
+
+void ni_usage(void) {
+  fprintf(stderr, "TODO: print usage\n");
+}
 
 int main(const int argc, const char *const *argv) {
   /* Any arguments? If not, and if stdin is a TTY, then print usage; the user
@@ -68,9 +136,12 @@ int main(const int argc, const char *const *argv) {
     return 1;
   }
 
+#if NI_STATUS_STREAMHACK_MVP
+  int fd = ni_parse_args(argc, argv);
   return 0;
+#endif
 
-#if 0
+#if NI_STATUS_STREAMS
   /* At this point it's a legitimate usage. The initial stream should read
    * stdin if it's redirected; otherwise we just use the empty stream. */
   ni_stream *in = stdin_tty ? ni_empty_stream() : ni_fd_stream(STDIN_FILENO);
