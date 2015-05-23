@@ -14,6 +14,9 @@ resource() {
   cd - > /dev/null
 }
 
+[[ -d gen ]] && rm -r gen
+cp -r src gen
+
 for f in ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni.c
@@ -38,7 +41,7 @@ cat > gen/ni-footer.sh <<'EOF'
 c99 "$s" -o "$e" && exec "$e" "$s" "$@"
 EOF
 
-for r in decompress.awk ni.c ni-header.sh ni-footer.sh; do
+for r in decompress.awk ni.c ni-header.sh ni-footer.sh usage; do
   resource $r
 done >> gen/ni-kernel
 

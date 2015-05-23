@@ -8,8 +8,9 @@ awk '{
   if (!ls--) {
     if (r) print "(const char *const) 0};"
     interp = (rs[rn++] = r = $2) ~ /\.c$/
+    ra[r] = "q" gensub("\\W", "_", "g", r)
     ls = $1
-    if (r) print "static const char *const q" (rn - 1) "[] = {"
+    if (r) print "static const char *const " ra[r] "[] = {"
   } else {
     if (interp) {code[c++] = $0}
     gsub("\\\\", "\\\\\\\\")
@@ -23,17 +24,18 @@ END {
   for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
   print "(const char *const) 0};"
   print "static const char *const *const rs[] = {"
-  for (i = 0; i < rn; ++i) print "q" i ","
+  for (i = 0; i < rn; ++i) print ra[rs[i]] ","
   print "(const char *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }' <<'EOF'
-23 decompress.awk
+24 decompress.awk
 {
   if (!ls--) {
     if (r) print "(const char *const) 0};"
     interp = (rs[rn++] = r = $2) ~ /\.c$/
+    ra[r] = "q" gensub("\\W", "_", "g", r)
     ls = $1
-    if (r) print "static const char *const q" (rn - 1) "[] = {"
+    if (r) print "static const char *const " ra[r] "[] = {"
   } else {
     if (interp) {code[c++] = $0}
     gsub("\\\\", "\\\\\\\\")
@@ -47,19 +49,20 @@ END {
   for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
   print "(const char *const) 0};"
   print "static const char *const *const rs[] = {"
-  for (i = 0; i < rn; ++i) print "q" i ","
+  for (i = 0; i < rn; ++i) print ra[rs[i]] ","
   print "(const char *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-27 ni.c
+28 ni.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #define EXIT_NORMAL       0
 #define EXIT_USER_ERROR   1
 #define EXIT_SYSTEM_ERROR 2
+#define resource_each(name) for (int i = 0; name[i]; ++i)
 void usage(void) {
-  fprintf(stderr, "TODO: usage\n");
+  resource_each(qusage) fprintf(stderr, "%s\n", qusage[i]);
 }
 #define die(...) \
   do { \
@@ -89,6 +92,10 @@ s=`mktemp --suffix=.c`
 2 ni-footer.sh
 } > "$s"
 c99 "$s" -o "$e" && exec "$e" "$s" "$@"
+3 usage
+usage: ni arguments...
+
+Each argument is a quasifile (no - prefix) or a stream operator (- prefix).
 EOF
 } > "$s"
 c99 "$s" -o "$e" && exec "$e" "$s" "$@"

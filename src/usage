@@ -1,0 +1,3 @@
+usage: ni arguments...
+
+Each argument is a quasifile (no - prefix) or a stream operator (- prefix).

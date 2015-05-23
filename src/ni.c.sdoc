@@ -6,8 +6,10 @@
 #define EXIT_USER_ERROR   1
 #define EXIT_SYSTEM_ERROR 2
 
+#define resource_each(name) for (int i = 0; name[i]; ++i)
+
 void usage(void) {
-  fprintf(stderr, "TODO: usage\n");
+  resource_each(qusage) fprintf(stderr, "%s\n", qusage[i]);
 }
 
 #define die(...) \
