@@ -1,23 +1,57 @@
 #!/bin/sh
+# ni self-compiling source image; not intended to be edited directly
+# MIT license, see https://github.com/spencertipping/ni for details
 e=`mktemp`
 s=`mktemp --suffix=.c`
 {
-awk 'BEGIN { print "static const char *const q[];" }
-{
-  print $0
-  gsub("\\\\", "\\\\\\\\")
-  gsub("\"", "\\\"")
-  q[NR] = "\"" $0 "\""
-  last_q = NR
-}
-
-END {
-  print "static const char *const q[] = {"
-  for (i = 1; i <= last_q; i++) {
-    print q[i] ","
+awk '{
+  if (!ls--) {
+    if (r) print "(const char *const) 0};"
+    interp = (rs[rn++] = r = $2) ~ /\.c$/
+    ls = $1
+    if (r) print "static const char *const q" (rn - 1) "[] = {"
+  } else {
+    if (interp) {code[c++] = $0}
+    gsub("\\\\", "\\\\\\\\")
+    gsub("\"", "\\\"")
+    print "\"" $0 "\","
   }
-  print "(const char*) NULL};"
+}
+END {
+  if (r) print "(const char *const) 0};"
+  print "static const char *const rn[] = {"
+  for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
+  print "(const char *const) 0};"
+  print "static const char *const *const rs[] = {"
+  for (i = 0; i < rn; ++i) print "q" i ","
+  print "(const char *const *const) 0};"
+  for (i = 0; i < c; ++i) print code[i]
 }' <<'EOF'
+23 decompress.awk
+{
+  if (!ls--) {
+    if (r) print "(const char *const) 0};"
+    interp = (rs[rn++] = r = $2) ~ /\.c$/
+    ls = $1
+    if (r) print "static const char *const q" (rn - 1) "[] = {"
+  } else {
+    if (interp) {code[c++] = $0}
+    gsub("\\\\", "\\\\\\\\")
+    gsub("\"", "\\\"")
+    print "\"" $0 "\","
+  }
+}
+END {
+  if (r) print "(const char *const) 0};"
+  print "static const char *const rn[] = {"
+  for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
+  print "(const char *const) 0};"
+  print "static const char *const *const rs[] = {"
+  for (i = 0; i < rn; ++i) print "q" i ","
+  print "(const char *const *const) 0};"
+  for (i = 0; i < c; ++i) print code[i]
+}
+27 ni.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,9 +74,21 @@ int main(const int argc, const char *const *argv) {
     usage();
     return EXIT_USER_ERROR;
   }
-  for (int i = 0; q[i]; ++i) printf("%s\n", q[i]);
+  for (int i = 0; rs[i]; ++i)
+    for (int j = 0; rs[i][j]; ++j)
+      printf("%s:%d: %s\n", rn[i], j + 1, rs[i][j]);
   return EXIT_NORMAL;
 }
+6 ni-header.sh
+#!/bin/sh
+# ni self-compiling source image; not intended to be edited directly
+# MIT license, see https://github.com/spencertipping/ni for details
+e=`mktemp`
+s=`mktemp --suffix=.c`
+{
+2 ni-footer.sh
+} > "$s"
+c99 "$s" -o "$e" && exec "$e" "$s" "$@"
 EOF
 } > "$s"
 c99 "$s" -o "$e" && exec "$e" "$s" "$@"

@@ -1,30 +1,47 @@
 #!/bin/bash
 # Builds a ni source image.
 
-sources=( ni.c )
-
 unsdoc() {
   perl -e \
     'print join "\n",grep /^\s*[^A-Z| ]/, split /\n(?:\s*\n)+/, join "", <>' \
     "$@"
 }
 
+resource() {
+  cd gen
+  wc -l "$1"
+  cat "$1"
+  cd - > /dev/null
+}
+
+for f in ni.c; do
+  unsdoc src/$f.sdoc
+done > gen/ni.c
+
+unsdoc src/decompress.awk.sdoc > gen/decompress.awk
+
 cat > gen/ni-kernel <<EOF
-awk '$(cat src/decompress.awk)' <<'EOF'
+awk '$(< gen/decompress.awk)' <<'EOF'
 EOF
 
-for f in "${sources[@]}"; do
-  unsdoc src/$f.sdoc >> gen/ni-kernel
-done
+cat > gen/ni-header.sh <<'EOF'
+#!/bin/sh
+# ni self-compiling source image; not intended to be edited directly
+# MIT license, see https://github.com/spencertipping/ni for details
+e=`mktemp`
+s=`mktemp --suffix=.c`
+{
+EOF
+
+cat > gen/ni-footer.sh <<'EOF'
+} > "$s"
+c99 "$s" -o "$e" && exec "$e" "$s" "$@"
+EOF
+
+for r in decompress.awk ni.c ni-header.sh ni-footer.sh; do
+  resource $r
+done >> gen/ni-kernel
 
 echo EOF >> gen/ni-kernel
 
-cat > ni <<EOF
-#!/bin/sh
-e=\`mktemp\`
-s=\`mktemp --suffix=.c\`
-{
-$(< gen/ni-kernel)
-} > "\$s"
-c99 "\$s" -o "\$e" && exec "\$e" "\$s" "\$@"
-EOF
+cat gen/ni-header.sh gen/ni-kernel gen/ni-footer.sh > ni
