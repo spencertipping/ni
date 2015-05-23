@@ -1,17 +1,30 @@
-#!/usr/bin/env perl
+#!/bin/bash
 # Builds a ni source image.
 
-unlink 'ni';
+sources=( ni.c )
 
-open my $out, '>', 'ni' or die "open > ni: $!";
-
-for (qw| ni.c |) {
-  open my $fh, '<', "src/$_.sdoc" or die "open < $_: $!";
-  print $out join "\n",
-             grep /^\s*[^A-Z| ]/,
-             split /\n(?:\s*\n)+/,
-             join '', <$fh>;
-  close $fh;
+unsdoc() {
+  perl -e \
+    'print join "\n",grep /^\s*[^A-Z| ]/, split /\n(?:\s*\n)+/, join "", <>' \
+    "$@"
 }
 
-chmod 0755, 'ni';
+cat > gen/ni-kernel <<EOF
+awk '$(cat src/decompress.awk)' <<'EOF'
+EOF
+
+for f in "${sources[@]}"; do
+  unsdoc src/$f.sdoc >> gen/ni-kernel
+done
+
+echo EOF >> gen/ni-kernel
+
+cat > ni <<EOF
+#!/bin/sh
+e=\`mktemp\`
+s=\`mktemp --suffix=.c\`
+{
+$(< gen/ni-kernel)
+} > "\$s"
+c99 "\$s" -o "\$e" && exec "\$e" "\$s" "\$@"
+EOF

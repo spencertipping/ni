@@ -1,3 +1,23 @@
+#!/bin/sh
+e=`mktemp`
+s=`mktemp --suffix=.c`
+{
+awk 'BEGIN { print "static const char *const q[];" }
+{
+  print $0
+  gsub("\\\\", "\\\\\\\\")
+  gsub("\"", "\\\"")
+  q[NR] = "\"" $0 "\""
+  last_q = NR
+}
+
+END {
+  print "static const char *const q[] = {"
+  for (i = 1; i <= last_q; i++) {
+    print q[i] ","
+  }
+  print "(const char*) NULL};"
+}' <<'EOF'
 #define NI_STATUS_REFHEAP 0
 #define NI_STATUS_STREAMS 0
 #define NI_STATUS_STREAMHACK_MVP 1
@@ -6,6 +26,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 void ni_image_begin(void) {}
@@ -40,7 +61,7 @@ int ni_quasifile_fd(const char *qf) {
   /* For now just support normal files. */
 }
 #endif
-#if NI_STATUS_STREAMHACK_MVP
+#if 0
 int ni_parse_args(const int argc, const char **argv) {
   int read_fd = isatty(STDIN_FILENO) ? -1 : STDIN_FILENO;
   for (int i = 0; i < argc; ++i) {
@@ -58,6 +79,11 @@ int ni_parse_args(const int argc, const char **argv) {
 void ni_usage(void) {
   fprintf(stderr, "TODO: print usage\n");
 }
+#define die(...) \
+  do { \
+    fprintf(stderr, __VA_ARGS__); \
+    exit(NI_EXIT_SYSTEM_ERROR); \
+  } while (0);
 int main(const int argc, const char *const *argv) {
   /* Any arguments? If not, and if stdin is a TTY, then print usage; the user
    * should be using cat instead. */
@@ -66,8 +92,11 @@ int main(const int argc, const char *const *argv) {
     ni_usage();
     return 1;
   }
+  if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
+  if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
+  fprintf(stderr, "zomg, this works\n");
 #if NI_STATUS_STREAMHACK_MVP
-  int fd = ni_parse_args(argc, argv);
+  /*int fd = ni_parse_args(argc, argv);*/
   return 0;
 #endif
 #if NI_STATUS_STREAMS
@@ -86,3 +115,6 @@ int main(const int argc, const char *const *argv) {
   return ni_connect(in, out);
 #endif
 }
+EOF
+} > "$s"
+c99 "$s" -o "$e" && exec "$e" "$s" "$@"

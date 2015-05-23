@@ -30,6 +30,7 @@ peeking -- which means we need streams.
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -98,7 +99,7 @@ int ni_quasifile_fd(const char *qf) {
 
 #endif
 
-#if NI_STATUS_STREAMHACK_MVP
+#if 0
 
 If we don't have streams, then we can't store the representation of parsed CLI
 args. In this case we approximate by fork/chaining stuff. Each CLI argument
@@ -127,6 +128,12 @@ void ni_usage(void) {
   fprintf(stderr, "TODO: print usage\n");
 }
 
+#define die(...) \
+  do { \
+    fprintf(stderr, __VA_ARGS__); \
+    exit(NI_EXIT_SYSTEM_ERROR); \
+  } while (0);
+
 int main(const int argc, const char *const *argv) {
   /* Any arguments? If not, and if stdin is a TTY, then print usage; the user
    * should be using cat instead. */
@@ -136,8 +143,12 @@ int main(const int argc, const char *const *argv) {
     return 1;
   }
 
+  if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
+  if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
+  fprintf(stderr, "zomg, this works\n");
+
 #if NI_STATUS_STREAMHACK_MVP
-  int fd = ni_parse_args(argc, argv);
+  /*int fd = ni_parse_args(argc, argv);*/
   return 0;
 #endif
 
