@@ -57,10 +57,10 @@ Short   | Long          | Operands      | Description
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    | scala         | [flags] code  | pipe through scala
 `-+`    |               |               |
-`-/`    |               |               |
-`-=`    | conf[ig]      | var=value     | set configuration variable
+`-/`    | subst         | { vars }      | substitute in prior terms
+`-=`    |               |               |
 `-!`    |               |               |
-`-:`    |               |               |
+`-:`    | conf[ig]      | var=value     | set configuration variable
 `-.`    |               |               |
 `-,`    |               |               |
 `-@`    | address       | fieldlist     | set address of next command
@@ -88,6 +88,9 @@ Flag    | Description
 `@`     | split fields into array; `String f[]` is available
 `:`     | name fields using first line (i.e. assume column headers)
 `!`     | all lines in one reduction; `%i` become **concrete arrays** of values
+
+**TODO:** `%` prefix won't work because single-column loading will either force
+or lose the others.
 
 Note that `/` prevents column-wise binary coding from being used, which may
 result in slower execution. `!` may use an arbitrary amount of space or cause
