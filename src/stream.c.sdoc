@@ -1,0 +1,17 @@
+Stream abstraction and operations.
+A stream is just a series of bytes with type information attached to it; the
+type information makes it possible to interpret the bytes as more complex
+values. Ultimately streams and UNIX file descriptors are convertible, although
+for optimization reasons not all streams have file descriptors. Streams are
+typically buffered so ni can use nonblocking IO.
+
+#include <sys/types.h>
+
+#define STREAM_BUFFER_SIZE (16 * 1024)
+
+typedef struct {
+  mode_t mode;
+  int    fd;
+  char  *type;
+  char   buf[STREAM_BUFFER_SIZE];
+} ni_stream;

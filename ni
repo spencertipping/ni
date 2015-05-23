@@ -53,9 +53,17 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-95 ni.c
+103 ni.c
 #define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
 #define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)
+#include <sys/types.h>
+#define STREAM_BUFFER_SIZE (16 * 1024)
+typedef struct {
+  mode_t mode;
+  int    fd;
+  char  *type;
+  char   buf[STREAM_BUFFER_SIZE];
+} ni_stream;
 typedef struct ni_stream* (*cli_stream_op)(struct ni_stream *s,
                                            int               argc,
                                            char const       *argv);
@@ -91,8 +99,8 @@ static cli_stream_option const cli_options[] = {
   {'O', "rorder",     "",   "reverse order"},
   {'p', "perl",       "C*", "pipe through perl"},
   {'P', "python",     "C*", "pipe through python"},
-  {'q', "sql",        "**", "sqlite3 query with transient table"},
-  {'Q', "psql",       "**", "postgres query with transient table"},
+  {'q', "sql",        ".*", "sqlite3 query with transient table"},
+  {'Q', "psql",       ".*", "postgres query with transient table"},
   {'r', "ruby",       "C*", "pipe through ruby"},
   {'R', "R",          "C*", "pipe through R"},
   {'s', "sum",        "",   "running sum"},

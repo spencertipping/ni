@@ -19,7 +19,7 @@ resource() {
 [[ -d gen ]] && rm -r gen
 cp -r src gen
 
-for f in resources.c ni.c; do
+for f in resources.c stream.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni.c
 

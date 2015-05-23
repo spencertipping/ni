@@ -6,14 +6,14 @@ primarily a frontend feature.
 Operator arguments are parsed using a simple grammar comprised of a sequence of
 these elements:
 
-| L = ni lambda; if short, parse one char; else take whole argument.
+| * = string: consume one arg, or the rest of the short arg
+  . = string: consume one arg, or one character from the short arg
+  ? = optional string: don't consume if next arg is an operator, consume short
+  L = ni lambda; if short, parse one char; else take an arg
   S = size = int with suffix (same short and long)
   N = integer
   R = row-spec (for take and drop)
   F = field-spec (for address)
-  * = string: consume one arg, or the rest of the short arg
-  . = string: consume one arg, or one character from the short arg
-  ? = optional string: don't consume if next arg is an operator
   c = optional code prefix flag
   j = optional join prefix flag
 
@@ -53,8 +53,8 @@ static cli_stream_option const cli_options[] = {
   {'O', "rorder",     "",   "reverse order"},
   {'p', "perl",       "C*", "pipe through perl"},
   {'P', "python",     "C*", "pipe through python"},
-  {'q', "sql",        "**", "sqlite3 query with transient table"},
-  {'Q', "psql",       "**", "postgres query with transient table"},
+  {'q', "sql",        ".*", "sqlite3 query with transient table"},
+  {'Q', "psql",       ".*", "postgres query with transient table"},
   {'r', "ruby",       "C*", "pipe through ruby"},
   {'R', "R",          "C*", "pipe through R"},
   {'s', "sum",        "",   "running sum"},
