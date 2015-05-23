@@ -1,3 +1,5 @@
 usage: ni arguments...
 
-Each argument is a quasifile (no - prefix) or a stream operator (- prefix).
+Arguments are either files (really quasifiles), or operators; if operators,
+each one modifies the current stream in some way. Available operators:
+
