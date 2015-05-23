@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+# Builds a ni source image.
+
+unlink 'ni';
+
+open my $out, '>', 'ni' or die "open > ni: $!";
+
+for (qw| ni.c |) {
+  open my $fh, '<', "src/$_.sdoc" or die "open < $_: $!";
+  print $out join "\n",
+             grep /^\s*[^A-Z| ]/,
+             split /\n(?:\s*\n)+/,
+             join '', <$fh>;
+  close $fh;
+}
+
+chmod 0755, 'ni';
