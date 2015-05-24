@@ -1,0 +1,69 @@
+Codec compiler.
+Codecs are specifications about how to handle data; the idea is very similar to
+Perl's pack() and unpack(), but with better support for text. Codecs are used
+as a simple type system for stream packets, which allows any packet to be
+printed in human-readable form.
+
+Codecs are written in a simple declarative language that compiles into
+invertible bytecode. The result is that every codec defines both encoding and
+decoding simultaneously. Although encoding inverts decoding, decoding does not
+always invert encoding due to delimited values (i.e. you could have placed a
+delimiter into a string, which would then change the decoding).
+
+The basic operations are:
+
+| primitive encode/decode (e.g. short, long, float, double)
+  cut field
+  cut record
+  read delimited
+  set offset (relative or absolute, buffering or losing data)
+  repeat something N times
+  repeat something until EOF
+
+Codecs always work in terms of records and fields. If you run ni on unformatted
+data, it uses a TSV codec (here the \n and \t are actually single bytes, not
+C-style escapes):
+
+| a\n!a\t@**
+
+This can be read as, "take newline-delimited strings as records, and within
+each record take tab-delimited strings as fields."
+
+Likewise, ni also supports binary data with the use of fixed-width encoding
+operators. For example, if you want to read doubles in groups of 8 from a
+binary file:
+
+| D@8!*
+
+Both @ (cut field) and ! (cut record) allow you to specify a reinterpretation
+of the data being cut. This is particularly useful for delimited cases, since
+the outer delimiter often has nothing to do with the inner one. If the
+reinterpretation is omitted, the cut data is typed as it was; so the format
+(a\n!)* just reads lines into single-field records and adds no structure.
+
+Codecs can also specify what happens in the event of partial reads. In the
+8-double example above, no partial record will be generated if an early EOF
+happens; that data will be rejected and left for whoever else wants to try to
+decode it. If you want to consume partial records, use the greedy-optional
+operator:
+
+| D@?8!*
+
+This means, "consume unless EOF" and as used here will cause fewer fields to be
+cut for short records. (EOF is a final condition, so the results don't become
+nondeterministic or anything.)
+
+#define NI_CODEC_FIXED_SIZE           1
+#define NI_CODEC_USES_DELIMITERS      2
+#define NI_CODEC_FORCES_EOF           4
+#define NI_CODEC_USES_SEEKS           8
+#define NI_CODEC_USES_BUFFERING_SEEKS 16
+#define NI_CODEC_USES_ABSOLUTE_SEEKS  32
+
+typedef struct {
+  int    flags;
+  size_t size;
+} ni_codec;
+
+ni_codec *ni_compile_codec(char const *const s);
+void ni_free_codec(ni_codec *c);
