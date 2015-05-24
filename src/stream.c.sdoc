@@ -6,6 +6,7 @@ for optimization reasons not all streams have file descriptors. Streams are
 typically buffered so ni can use nonblocking IO.
 
 #include <sys/types.h>
+#include <stdint.h>
 
 Stream structure.
 A stream is fundamentally described by the following:
@@ -23,16 +24,23 @@ buffer until you consume the data. I'll describe buffer operations in a moment
 to make this clearer.
 
 #define NI_PACKET_OWN_BUFFER 1
+#define NI_PACKET_SPLIT      2
 
 typedef struct {
-  int         flags;
-  int         errno;
-  ni_codec   *codec;
-  char const *data1;
-  size_t      data1_size;
-  char const *data2;
-  size_t      data2_size;
+  int             flags;
+  int             errno;
+  ni_codec const *codec;
+  char const     *data1;
+  size_t          data1_size;
+  char const     *data2;
+  size_t          data2_size;
+  char           *own_buffer;
 } ni_stream_packet;
+
+void ni_packet_unsplit(ni_stream_packet *p) {
+  if (!(p->flags & NI_PACKET_SPLIT)) return;
+  // TODO
+}
 
 Custom errno flags.
 This deserves a little discussion. C99 specifies that all system-returned

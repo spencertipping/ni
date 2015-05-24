@@ -53,17 +53,68 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-103 ni.c
+154 ni.c
 #define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
 #define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)
 #include <sys/types.h>
-#define STREAM_BUFFER_SIZE (16 * 1024)
+#define NI_CODEC_FIXED_SIZE           1
+#define NI_CODEC_USES_DELIMITERS      2
+#define NI_CODEC_FORCES_EOF           4
+#define NI_CODEC_USES_SEEKS           8
+#define NI_CODEC_USES_BUFFERING_SEEKS 16
+#define NI_CODEC_USES_ABSOLUTE_SEEKS  32
 typedef struct {
-  mode_t mode;
-  int    fd;
-  char  *type;
-  char   buf[STREAM_BUFFER_SIZE];
+  int    flags;
+  size_t size;
+} ni_codec;
+#define NI_CODEC_ESYNTAX (-1)
+#define NI_CODEC_ENREC   (-2)
+#define NI_CODEC_ENFIELD (-3)
+ni_codec *ni_compile_codec(char const *const s);
+void ni_free_codec(ni_codec *c);
+#include <sys/types.h>
+#include <stdint.h>
+#define NI_PACKET_OWN_BUFFER 1
+#define NI_PACKET_SPLIT      2
+typedef struct {
+  int             flags;
+  int             errno;
+  ni_codec const *codec;
+  char const     *data1;
+  size_t          data1_size;
+  char const     *data2;
+  size_t          data2_size;
+  char           *own_buffer;
+} ni_stream_packet;
+void ni_packet_unsplit(ni_stream_packet *p) {
+  if (!(p->flags & NI_PACKET_SPLIT)) return;
+  // TODO
+}
+#define NI_ERRNO_EOF (-1)
+typedef struct {
+  int      errno;
+  mode_t   mode;
+  int      fd;
+  char    *buffer;
+  size_t   buffer_capacity;
+  size_t   buffer_size;
+  off_t    read_offset;
+  off_t    fill_offset;
+  off_t    bytes;
+  uint64_t ms;
+  uint32_t delimiter_n   [256];
+  float    delimiter_mean[256];
+  float    delimiter_m2  [256];
+  float    delimiter_m3  [256];
 } ni_stream;
+#define NI_READ_ERROR             (-1)
+#define NI_READ_INCOMPLETE_AT_EOF (-2)
+#define NI_READ_MUST_LOAD         (-3)
+int ni_stream_read(ni_stream        *const s,
+                   ni_codec const   *const c,
+                   ni_stream_packet *const ps,
+                   int               const nps,
+                   int               const flags);
 typedef struct ni_stream* (*cli_stream_op)(struct ni_stream *s,
                                            int               argc,
                                            char const       *argv);

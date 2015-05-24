@@ -53,6 +53,8 @@ This means, "consume unless EOF" and as used here will cause fewer fields to be
 cut for short records. (EOF is a final condition, so the results don't become
 nondeterministic or anything.)
 
+#include <sys/types.h>
+
 #define NI_CODEC_FIXED_SIZE           1
 #define NI_CODEC_USES_DELIMITERS      2
 #define NI_CODEC_FORCES_EOF           4
@@ -64,6 +66,19 @@ typedef struct {
   int    flags;
   size_t size;
 } ni_codec;
+
+Errno values for codec compilation.
+On error, ni_compile_codec will return NULL and set errno to one of the
+following values:
+
+| NI_CODEC_ESYNTAX: some kind of syntax error
+  NI_CODEC_ENREC:   illegal nested record cut (i.e. inside record
+                    interpretation)
+  NI_CODEC_ENFIELD: illegal nested field cut
+
+#define NI_CODEC_ESYNTAX (-1)
+#define NI_CODEC_ENREC   (-2)
+#define NI_CODEC_ENFIELD (-3)
 
 ni_codec *ni_compile_codec(char const *const s);
 void ni_free_codec(ni_codec *c);
