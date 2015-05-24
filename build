@@ -19,7 +19,8 @@ resource() {
 [[ -d gen ]] && rm -r gen
 cp -r src gen
 
-for f in resources.c codec.c stream.c ni.c; do
+for f in codec.h stream.h \
+         resources.c codec.c stream.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni.c
 
@@ -49,4 +50,9 @@ done >> gen/ni-kernel
 
 echo EOF >> gen/ni-kernel
 
-cat gen/ni-header.sh gen/ni-kernel gen/ni-footer.sh > ni
+cat gen/ni-header.sh \
+    gen/ni-kernel \
+    gen/ni-footer.sh > gen/ni0 && chmod +x gen/ni0
+
+gen/ni0 --self > gen/ni1 && chmod +x gen/ni1 || exit $?
+gen/ni1 --self > ni      && chmod +x ni      || exit $?

@@ -1,0 +1,143 @@
+Stream abstraction and operations.
+A stream is just a series of bytes with type information attached to it; the
+type information makes it possible to interpret the bytes as more complex
+values. Ultimately streams and UNIX file descriptors are convertible, although
+for optimization reasons not all streams have file descriptors. Streams are
+typically buffered so ni can use nonblocking IO.
+
+#include <sys/types.h>
+#include <stdbool.h>
+#include <stdint.h>
+
+Packets and buffers.
+Let's take the simple case of reading stuff from a file. We don't know what's
+in the file yet, so we're just reading binary data. Someone wanting the data
+needs to specify some strategy for splitting it into "packets", or units of
+data that should be handed off to things like row-mapping operations. For this
+example let's assume the file needs to be split at 192-byte boundaries.
+
+Here's how a read is going to work. We start with a ni_stream backed by the
+file and ask it for a ni_stream_packet 192 bytes long. We can do this by
+constructing a codec describing what we're looking for:
+
+| ni_codec        *codec = ni_parse_codec("C192!*");
+  ni_stream       *fs    = ...;                 // stream backed by a file
+  ni_stream_packet p[64];
+  int n = ni_stream_read(fs, codec, p, 64, NI_READ_INITIALIZE | NI_READ_FAST);
+
+NI_READ_FAST is a flag that tells ni to just construct the resulting packets as
+fast as possible (see below; there are various tradeoffs it can make).
+NI_READ_INITIALIZE says that we haven't yet initialized the packets and that
+ni_stream_read should do this for us. (This is absolutely required if you don't
+want segfaults.)
+
+Ni will do some interesting things here, most of them centered around
+eliminating data copies. It knows that each packet will consume exactly 192
+bytes of data from the stream and that it can construct up to 64 of them, so
+its target buffer size is 12288 bytes. This is trivial if the last read
+produced an even multiple of 192 bytes, but that might not be the case; for
+example, if the last read produced 256 bytes and we generated one packet, then
+we have 64 bytes left over.
+
+This is where ni does some math to figure out what to do next. Moving 64 bytes
+isn't expensive, so depending on where they're located it may decide to just do
+that. On the other hand, if we have 480 bytes left over and they're at position
+128, it's probably cheaper to just continue filling the buffer and lose the 128
+bytes until the pointer can be reset.
+
+In addition to fixed-width records, ni's codec strings can also specify
+delimiters:
+
+| ni_codec lines = ni_parse_codec("a\n!*");
+
+This allows you to construct variable-length packets. When you do this, ni has
+to make a more complicated set of tradeoffs when figuring out what to do with
+the buffer. It keeps 2kb of statistical data on delimiter occurrence patterns
+to make these decisions more accurately, optimizing for average-case
+performance. (It also uses these tables to figure out whether it's worth using
+certain optimized algorithms to detect the delimiters).
+
+typedef struct {
+  int             flags;
+  int             errno;
+  ni_codec const *codec;
+  char const     *data1;
+  size_t          data1_size;
+  char const     *data2;
+  size_t          data2_size;
+  char           *own_buffer;
+} ni_stream_packet;
+
+bool ni_packet_issplit(ni_stream_packet *p);
+void ni_packet_unsplit(ni_stream_packet *p);
+void ni_packet_free(ni_stream_packet *p);
+
+Stream structure.
+A stream is fundamentally described by the following:
+
+| errno: the failure mode of the last failed read/write request; if EOF on
+         read, this will be set to NI_ERRNO_EOF.
+  fd:    the backing FD, if there is one (otherwise -1)
+
+Streams also have read buffers. These read buffers are automatically resized to
+contain enough data; for example, if you're scanning for newlines and get a
+long line, the stream will keep expanding the buffer until you consume the
+data. I'll describe buffer operations in a moment to make this clearer.
+
+#define NI_STREAM_MMAPPED 1
+
+typedef struct {
+  int      flags;
+  int      errno;
+  int      fd;
+  char    *buffer;
+  size_t   buffer_capacity;
+  size_t   buffer_size;
+  off_t    read_offset;
+  off_t    fill_offset;
+
+  off_t    bytes;
+  uint64_t ms;
+
+  uint32_t delimiter_n   [256];
+  float    delimiter_mean[256];
+  float    delimiter_m2  [256];
+  float    delimiter_m3  [256];
+} ni_stream;
+
+void ni_stream_init(ni_stream *s);
+void ni_stream_free(ni_stream *s);
+void ni_stream_resize_buffer(ni_stream *s, size_t n);
+
+ni_stream *ni_fd_stream(int fd);
+
+bool ni_stream_eof(ni_stream *s);
+
+Custom errno flags.
+This deserves a little discussion. C99 specifies that all system-returned
+values of errno are positive, so we've got the entire space of negative numbers
+to work with. This is great because some things that ni considers to be errors
+(like EOF) don't correspond to system call error conditions. Instead, UNIX does
+weird things like reading zero bytes and expecting you to figure out that
+you've hit EOF.
+
+#define NI_ERRNO_EOF (-1)
+
+Reading from streams.
+Streams are decoded into lists of packets, each of which corresponds to a
+record cut made by a codec. Streams try to be state-transparent, which is to
+say that they automatically load more data from the underlying fd unless you
+specify not to using NI_READ_NOLOAD.
+
+The return value is either the number of complete packets read, or one of the
+following:
+
+#define NI_READ_ERROR             (-1)
+#define NI_READ_INCOMPLETE_AT_EOF (-2)
+#define NI_READ_MUST_LOAD         (-3)
+
+int ni_stream_read(ni_stream        *const s,
+                   ni_codec const   *const c,
+                   ni_stream_packet *const ps,
+                   int               const nps,
+                   int               const flags);
