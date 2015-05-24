@@ -57,6 +57,8 @@ to make these decisions more accurately, optimizing for average-case
 performance. (It also uses these tables to figure out whether it's worth using
 certain optimized algorithms to detect the delimiters).
 
+#define NI_PACKET_USE_OWNBUFFER 1
+
 typedef struct {
   int             flags;
   int             errno;
@@ -66,11 +68,20 @@ typedef struct {
   char const     *data2;
   size_t          data2_size;
   char           *own_buffer;
+  size_t          own_buffer_capacity;
+  int             can_downsize;
 } ni_stream_packet;
 
-bool ni_packet_issplit(ni_stream_packet *p);
-void ni_packet_unsplit(ni_stream_packet *p);
-void ni_packet_free(ni_stream_packet *p);
+void        ni_packet_init(ni_stream_packet *p);
+void        ni_packet_free(ni_stream_packet *p);
+size_t      ni_packet_size(ni_stream_packet *p);
+char const *ni_packet_data(ni_stream_packet *p);
+bool        ni_packet_issplit(ni_stream_packet *p);
+bool        ni_packet_unsplit(ni_stream_packet *p);
+bool        ni_packet_resize_buffer(ni_stream_packet *p, size_t n);
+
+size_t ni_packet_max_buffersize = 1048576;
+int    ni_packet_downsize_n     = 64;
 
 Stream structure.
 A stream is fundamentally described by the following:
@@ -99,11 +110,15 @@ typedef struct {
   off_t    bytes;
   uint64_t ms;
 
+  struct ni_stream_delimopt *delimopt;
+} ni_stream;
+
+typedef struct {
   uint32_t delimiter_n   [256];
   float    delimiter_mean[256];
   float    delimiter_m2  [256];
   float    delimiter_m3  [256];
-} ni_stream;
+} ni_stream_delimopt;
 
 void ni_stream_init(ni_stream *s);
 void ni_stream_free(ni_stream *s);

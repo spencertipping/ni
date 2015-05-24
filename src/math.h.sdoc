@@ -1,0 +1,13 @@
+Ni math functions.
+Optimized bitwise and other math that I don't want to inline.
+
+#include <stdint.h>
+
+Next largest power of two.
+
+uint64_t ni_math_nlp2(uint64_t x) {
+  --x;
+  x |= x >> 1; x |= x >> 2;  x |= x >> 4;
+  x |= x >> 8; x |= x >> 16; x |= x >> 32;
+  return x + 1;
+}

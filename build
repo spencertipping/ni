@@ -19,10 +19,14 @@ resource() {
 [[ -d gen ]] && rm -r gen
 cp -r src gen
 
-for f in codec.h stream.h \
+for f in nope.h math.h \
+         codec.h stream.h \
          resources.c codec.c stream.c ni.c; do
   unsdoc src/$f.sdoc
-done > gen/ni.c
+done > gen/ni0.c
+
+{ grep '^#include' < gen/ni0.c | sort | uniq
+  grep -v '^#include' < gen/ni0.c; } > gen/ni.c
 
 unsdoc src/decompress.awk.sdoc > gen/decompress.awk
 

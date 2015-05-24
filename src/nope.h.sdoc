@@ -1,0 +1,60 @@
+Error reporting macros.
+ni does its best to protect users from doing things they'll regret, such as
+allocating humongous chunks of memory instead of splitting things into smaller
+packets. When it thinks you're misusing it, it will present you with a "nope"
+condition and give you the option to fix it.
+
+NB: headers included here will be moved to the top of the generated C source,
+so this actually does what we want.
+
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define NI_USER_ERROR    1
+#define NI_SYSTEM_ERROR  2
+#define NI_THIS_IS_A_BUG 3
+
+#define NI_LIMIT_NOPE 1
+
+void ni_nope_exit(int const reason) {
+  switch (reason) {
+    case NI_LIMIT_NOPE:
+      fprintf(stderr, "exiting due to exceeded limit\n");
+      exit(NI_USER_ERROR);
+      break;
+    default:
+      fprintf(stderr, "exiting for unknown reason: %d\n", reason);
+      exit(NI_THIS_IS_A_BUG);
+      break;
+  }
+}
+
+#define ni_limit_nope(var, limit, ...)                                  \
+  do {                                                                  \
+    while (var > limit) {                                               \
+      fprintf(stderr, __VA_ARGS__);                                     \
+      fprintf(stderr, "Three ways to proceed:\n"                        \
+                      "- 'n' to exit ni\n"                              \
+                      "- a new number to change the limit\n"            \
+                      "- 'y' to increase the limit and Just Work\n"     \
+                      "> ");                                            \
+      fflush(stderr);                                                   \
+      uint64_t nope_new_limit;                                          \
+      if (fscanf(stderr, "%llu", &nope_new_limit))                      \
+        limit = nope_new_limit;                                         \
+      else {                                                            \
+        char nope_reply;                                                \
+        fscanf(stderr, "%c", &nope_reply);                              \
+        switch (nope_reply) {                                           \
+          case 'n':                                                     \
+            ni_nope_exit(NI_LIMIT_NOPE);                                \
+            break;                                                      \
+          case 'y':                                                     \
+            limit = var;                                                \
+            break;                                                      \
+        }                                                               \
+      }                                                                 \
+    }                                                                   \
+  } while (0)
