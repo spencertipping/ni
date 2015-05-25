@@ -135,7 +135,7 @@ field positions are indexed to provide constant-time and zero-copy lookups.
 Although ni thinks in terms of records and fields, a codec is fundamentally
 hierarchical set of byte ranges that are interpreted as you request fields.
 
-typedef struct {
+typedef struct ni_codec_fieldspec {
   uint32_t offset;
   uint32_t size;
 } ni_codec_fieldspec;
@@ -146,12 +146,17 @@ typedef struct ni_codec_bytecode ni_codec_bytecode;
 Field position caching.
 Ok, this is a little complicated but ultimately worth it. The goal here is to
 store as much as possible in the codec itself since that's just written once.
+We can do this in some cases because some fields have constant width; e.g.
+(D8S8) is always 64 + 16 bytes.
 
-#define NI_CODEC_FIXEDSIZE 1
+Things get complicated if fixed-width fields are mixed with delimited things.
+
+#define NI_CODEC_FIXEDSIZE    1
+#define NI_CODEC_HAS_MAX_SIZE 2
 
 #define NI_CODEC_SUBSIZE_CACHE 64
 
-typedef struct {
+typedef struct ni_codec {
   int                     flags;
   int                     n_subs;
   struct ni_codec const **subs;
@@ -162,6 +167,7 @@ typedef struct {
     } assuming_fixed;
     struct {
       size_t                   minimum;
+      size_t                   maximum;
       ni_codec_bytecode const *size_bytecode;
     } assuming_variable;
   };
