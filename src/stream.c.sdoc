@@ -114,6 +114,9 @@ bool ni_stream_update_errno(ni_stream *const s,
 }
 
 
+TODO: optimize; if the overhead of a read() exceeds that of moving the existing
+memory, then move stuff and do a larger contiguous read().
+
 size_t ni_stream_fill(ni_stream *const s, size_t const n)
 {
   ni_assert_nope(s->fd >= 0,
