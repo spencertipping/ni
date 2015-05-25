@@ -16,32 +16,47 @@ so this actually does what we want.
 #define NI_SYSTEM_ERROR  2
 #define NI_THIS_IS_A_BUG 3
 
-#define NI_LIMIT_NOPE 1
+#define NI_LIMIT_NOPE  1
+#define NI_ASSERT_NOPE 2
 
 void ni_nope_exit(int const reason) {
   switch (reason) {
     case NI_LIMIT_NOPE:
-      fprintf(stderr, "exiting due to exceeded limit\n");
+      fprintf(stderr, "exiting with code %d due to exceeded limit\n", reason);
       exit(NI_USER_ERROR);
       break;
+    case NI_ASSERT_NOPE:
+      fprintf(stderr, "exiting with code %d due to failed assert\n", reason);
+      exit(NI_THIS_IS_A_BUG);
+      break;
     default:
-      fprintf(stderr, "exiting for unknown reason: %d\n", reason);
+      fprintf(stderr, "exiting for unknown reason (ni bug): %d\n", reason);
       exit(NI_THIS_IS_A_BUG);
       break;
   }
 }
 
-#define ni_limit_nope(var, limit, ...)                                  \
+#define ni_assert_nope(cond, ...)                                       \
   do {                                                                  \
-    while (var > limit) {                                               \
+    if (!(cond)) {                                                      \
       fprintf(stderr, __VA_ARGS__);                                     \
-      fprintf(stderr, "Three ways to proceed:\n"                        \
+      fprintf(stderr, "(this is a ni bug; sorry about this)\n");        \
+      ni_nope_exit(NI_ASSERT_NOPE);                                     \
+    }                                                                   \
+  } while (0)
+
+#define ni_limit_nope(val, limit, ...)                                  \
+  do {                                                                  \
+    uint64_t nope_val = (val);                                          \
+    while (nope_val > limit) {                                          \
+      fprintf(stderr, __VA_ARGS__);                                     \
+      fprintf(stderr, "\n"                                              \
                       "- 'n' to exit ni\n"                              \
                       "- a new number to change the limit\n"            \
                       "- 'y' to increase the limit and Just Work\n"     \
                       "> ");                                            \
       fflush(stderr);                                                   \
-      uint64_t nope_new_limit;                                          \
+      unsigned long long nope_new_limit;                                \
       if (fscanf(stderr, "%llu", &nope_new_limit))                      \
         limit = nope_new_limit;                                         \
       else {                                                            \
@@ -52,7 +67,7 @@ void ni_nope_exit(int const reason) {
             ni_nope_exit(NI_LIMIT_NOPE);                                \
             break;                                                      \
           case 'y':                                                     \
-            limit = var;                                                \
+            limit = nope_val;                                           \
             break;                                                      \
         }                                                               \
       }                                                                 \

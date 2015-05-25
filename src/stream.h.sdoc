@@ -23,7 +23,7 @@ constructing a codec describing what we're looking for:
 | ni_codec        *codec = ni_parse_codec("C192!*");
   ni_stream       *fs    = ...;                 // stream backed by a file
   ni_stream_packet p[64];
-  int n = ni_stream_read(fs, codec, p, 64, NI_READ_INITIALIZE | NI_READ_FAST);
+  int n = ni_stream_read(fs, codec, p, 64, NI_READ_INITIALIZE);
 
 NI_READ_FAST is a flag that tells ni to just construct the resulting packets as
 fast as possible (see below; there are various tradeoffs it can make).
@@ -55,13 +55,12 @@ to make a more complicated set of tradeoffs when figuring out what to do with
 the buffer. It keeps 2kb of statistical data on delimiter occurrence patterns
 to make these decisions more accurately, optimizing for average-case
 performance. (It also uses these tables to figure out whether it's worth using
-certain optimized algorithms to detect the delimiters).
+certain optimized algorithms to detect the delimiters.)
 
 #define NI_PACKET_USE_OWNBUFFER 1
 
 typedef struct {
   int             flags;
-  int             errno;
   ni_codec const *codec;
   char const     *data1;
   size_t          data1_size;
@@ -72,12 +71,12 @@ typedef struct {
   int             can_downsize;
 } ni_stream_packet;
 
-void        ni_packet_init(ni_stream_packet *p);
-void        ni_packet_free(ni_stream_packet *p);
-size_t      ni_packet_size(ni_stream_packet *p);
-char const *ni_packet_data(ni_stream_packet *p);
-bool        ni_packet_issplit(ni_stream_packet *p);
-bool        ni_packet_unsplit(ni_stream_packet *p);
+void        ni_packet_init         (ni_stream_packet *p);
+void        ni_packet_free         (ni_stream_packet *p);
+size_t      ni_packet_size         (ni_stream_packet const *p);
+char const *ni_packet_data         (ni_stream_packet *p);
+bool        ni_packet_issplit      (ni_stream_packet const *p);
+bool        ni_packet_unsplit      (ni_stream_packet *p);
 bool        ni_packet_resize_buffer(ni_stream_packet *p, size_t n);
 
 size_t ni_packet_max_buffersize = 1048576;
@@ -95,15 +94,21 @@ contain enough data; for example, if you're scanning for newlines and get a
 long line, the stream will keep expanding the buffer until you consume the
 data. I'll describe buffer operations in a moment to make this clearer.
 
-#define NI_STREAM_MMAPPED 1
+Custom errno flags.
+This deserves a little discussion. C99 specifies that all system-returned
+values of errno are positive, so we've got the entire space of negative numbers
+to work with. This is great because some things that ni considers to be errors
+(like EOF) don't correspond to system call error conditions. Instead, UNIX does
+weird things like reading zero bytes and expecting you to figure out that
+you've hit EOF.
+
+#define NI_ERRNO_EOF (-1)
 
 typedef struct {
-  int      flags;
-  int      errno;
+  int      read_errno;
   int      fd;
   char    *buffer;
-  size_t   buffer_capacity;
-  size_t   buffer_size;
+  int      buffer_capacity_log;
   off_t    read_offset;
   off_t    fill_offset;
 
@@ -120,23 +125,25 @@ typedef struct {
   float    delimiter_m3  [256];
 } ni_stream_delimopt;
 
-void ni_stream_init(ni_stream *s);
-void ni_stream_free(ni_stream *s);
-void ni_stream_resize_buffer(ni_stream *s, size_t n);
+void   ni_stream_init              (ni_stream       *s);
+void   ni_stream_free              (ni_stream       *s);
+bool   ni_stream_resize_buffer     (ni_stream       *s, int log);
+bool   ni_stream_issplit           (ni_stream const *s);
+void   ni_stream_accept            (ni_stream       *s, size_t n);
+size_t ni_stream_available         (ni_stream const *s);
+size_t ni_stream_remaining_capacity(ni_stream const *s);
+void   ni_stream_copy_into         (char            *dest,
+                                    ni_stream const *s,
+                                    off_t            offset,
+                                    size_t           n);
+
+bool   ni_stream_eof (ni_stream const *s);
+size_t ni_stream_fill(ni_stream *s, size_t n);
 
 ni_stream *ni_fd_stream(int fd);
 
-bool ni_stream_eof(ni_stream *s);
-
-Custom errno flags.
-This deserves a little discussion. C99 specifies that all system-returned
-values of errno are positive, so we've got the entire space of negative numbers
-to work with. This is great because some things that ni considers to be errors
-(like EOF) don't correspond to system call error conditions. Instead, UNIX does
-weird things like reading zero bytes and expecting you to figure out that
-you've hit EOF.
-
-#define NI_ERRNO_EOF (-1)
+size_t ni_stream_initial_buffersize = 8192;
+size_t ni_stream_max_buffersize     = 64 * 1048576;
 
 Reading from streams.
 Streams are decoded into lists of packets, each of which corresponds to a
@@ -151,8 +158,17 @@ following:
 #define NI_READ_INCOMPLETE_AT_EOF (-2)
 #define NI_READ_MUST_LOAD         (-3)
 
-int ni_stream_read(ni_stream        *const s,
-                   ni_codec const   *const c,
-                   ni_stream_packet *const ps,
-                   int               const nps,
-                   int               const flags);
+Flags:
+
+#define NI_READ_DEFAULT    0
+#define NI_READ_INITIALIZE 1
+#define NI_READ_NOLOAD     2
+
+NB: calling this function invalidates all packets you've ever generated from
+this stream.
+
+int ni_stream_read(ni_stream        *s,
+                   ni_codec const   *c,
+                   ni_stream_packet *ps,
+                   int               nps,
+                   int               flags);

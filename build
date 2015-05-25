@@ -21,7 +21,7 @@ cp -r src gen
 
 for f in nope.h math.h \
          codec.h stream.h \
-         resources.c codec.c stream.c ni.c; do
+         resources.c codec.c packet.c stream.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni0.c
 

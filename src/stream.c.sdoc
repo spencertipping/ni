@@ -1,82 +1,161 @@
-Packet implementation.
-Packet invariants are the following:
+Stream implementation.
+Stream buffers are circular, with the "read pointer" always behind the "fill
+pointer" in modular space. Stream capacities are always powers of two, so all
+modular arithmetic is done by masking.
 
-| 1. p.codec, p.data1, and p.data2, if set, are always externally allocated.
-  2. p.own_buffer, if set, is never aliased.
-  3. If p.flags & USE_OWNBUFFER, own_buffer is up to date.
-
-#include <stdint.h>
-#include <stdlib.h>
+#include <errno.h>
 #include <string.h>
-#include <sys/types.h>
+#include <unistd.h>
 
-void ni_packet_init(ni_stream_packet *p) {
-  p->codec = 0;
-  p->data1 = p->data2 = p->own_buffer = 0;
-  p->flags = p->errno = p->data1_size = p->data2_size =
-             p->own_buffer_capacity =
-             p->can_downsize = 0;
+
+void ni_stream_init(ni_stream *const s)
+{
+  s->fd = -1;
+  s->read_errno = s->buffer_capacity_log
+                = s->read_offset = s->fill_offset
+                = s->bytes = s->ms = 0;
+  s->buffer   = 0;
+  s->delimopt = 0;
 }
 
-void ni_packet_free(ni_stream_packet *p) {
-  if (p->own_buffer) free(p->own_buffer);
-  free(p);
+
+void ni_stream_free(ni_stream *const s)
+{
+  if (s->buffer)   free(s->buffer);
+  if (s->delimopt) free(s->delimopt);
+  free(s);
 }
 
-size_t ni_packet_size(ni_stream_packet *p)
-  { return p->data1_size + p->data2_size; }
 
-char const *ni_packet_data(ni_stream_packet *p) {
-  if (!ni_packet_issplit(p)) return p->data1;
-  if (!ni_packet_unsplit(p)) return 0;
-  return p->own_buffer;
-}
+Resize the buffer, but preserve data. This resets the stream's read offset to
+0. You can't resize a buffer to be smaller than the stream's available data.
 
-bool ni_packet_issplit(ni_stream_packet *p)
-  { return !!p->data2; }
+bool ni_stream_resize_buffer(ni_stream *const s, int const log)
+{
+  size_t const new_size  = 1 << log;
+  size_t const available = ni_stream_available(s);
+  char *new_buffer;
 
-bool ni_packet_unsplit(ni_stream_packet *p) {
-  if (!ni_packet_issplit(p)) return true;
-  size_t const new_size = p->data1_size + p->data2_size;
-  if (!ni_packet_resize_buffer(p, new_size)) return false;
-  memcpy(p->own_buffer, p->data1, p->data1_size);
-  memcpy(p->own_buffer + p->data1_size, p->data2, p->data2_size);
-  p->flags |= NI_PACKET_USE_OWNBUFFER;
+  if (1 << log < available)             return false;
+  if (!(new_buffer = malloc(new_size))) return false;
+  ni_stream_copy_into(new_buffer, s, 0, available);
+
+  free(s->buffer);
+  s->buffer              = new_buffer;
+  s->buffer_capacity_log = log;
+  s->read_offset         = 0;
+  s->fill_offset         = available;
   return true;
 }
 
-When reallocating buffers, we always want to choose powers of two. This way we
-have O(log n) reallocations for a linearly-expanding sequence of n bytes.
 
-If we reach a point where we're routinely requesting far less memory than we've
-reserved, we can (and should) downsize the buffer.
+bool ni_stream_issplit(ni_stream const *const s)
+  { return s->fill_offset < s->read_offset; }
 
-Note: ni_packet_resize_buffer destroys all buffer data and leaves the new
-buffer uninitialized.
 
-bool ni_packet_resize_buffer(ni_stream_packet *p, size_t const n) {
-  if (p->own_buffer_capacity >= n) {
-    if (p->own_buffer_capacity >> 1 > n
-        && ++p->can_downsize > ni_packet_downsize_n) {
-      if (p->own_buffer) free(p->own_buffer);
-      return !!(p->own_buffer = malloc(p->own_buffer_capacity >>= 1));
-    } else
-      p->can_downsize = 0;
-    return true;
+void ni_stream_accept(ni_stream *const s, size_t const n)
+{
+  ni_assert_nope(n <= ni_stream_available(s),
+    "ni is trying to accept %llu bytes, more than the %llu available "
+    "in the stream.\n",
+    ni_ull(n),
+    ni_ull(ni_stream_available(s)));
+  s->read_offset = s->read_offset + n & s->buffer_capacity_log - 1;
+  if (s->read_offset == s->fill_offset) s->read_offset = s->fill_offset = 0;
+}
+
+
+size_t ni_stream_available(ni_stream const *const s)
+{
+  size_t const size = 1 << s->buffer_capacity_log;
+  return s->fill_offset + size - s->read_offset & size - 1;
+}
+
+
+size_t ni_stream_remaining_capacity(ni_stream const *const s)
+  { return (1 << s->buffer_capacity_log) - ni_stream_available(s); }
+
+
+void ni_stream_copy_into(char            *const dest,
+                         ni_stream const *const s,
+                         off_t            const offset,
+                         size_t           const n)
+{
+  ni_assert_nope(offset + n <= ni_stream_available(s),
+    "ni is trying to copy %llu + %llu byte(s) from a stream with only %llu"
+    " byte(s) available.\n",
+    ni_ull(offset),
+    ni_ull(n),
+    ni_ull(ni_stream_available(s)));
+
+  if (!ni_stream_issplit(s))
+    memcpy(dest, s->buffer + s->read_offset + offset, n);
+  else {
+    size_t const split = (1 << s->buffer_capacity_log) - s->read_offset;
+    memcpy(dest,         s->buffer + s->read_offset, split);
+    memcpy(dest + split, s->buffer,                  s->fill_offset);
   }
+}
 
-  size_t const new_size = ni_math_nlp2(n);
-  ni_limit_nope(new_size, ni_packet_max_buffersize,
-    "ni is trying to allocate a packet buffer of size %llu, "
-    "rounded up to %llu. This exceeds %llu, the current value of "
-    "/limits/recordsize.\n",
-    (uint64_t) n,
-    (uint64_t) new_size,
-    (uint64_t) ni_packet_max_buffersize);
 
-  p->can_downsize = 0;
-  if (p->own_buffer) free(p->own_buffer);
-  if (!(p->own_buffer = malloc(new_size))) return false;
-  p->own_buffer_capacity = new_size;
+bool ni_stream_eof(ni_stream const *const s)
+  { return s->read_errno == NI_ERRNO_EOF; }
+
+
+Returns true if the stream has an error from the most recent read() call.
+
+bool ni_stream_update_errno(ni_stream *const s,
+                            ssize_t    const read_size)
+{
+  if (read_size > 0) return false;
+  s->read_errno = read_size ? errno : NI_ERRNO_EOF;
   return true;
 }
+
+
+size_t ni_stream_fill(ni_stream *const s, size_t const n)
+{
+  ni_assert_nope(s->fd >= 0,
+    "ni is trying to read from a stream whose file descriptor is"
+    " negative (which internally means the stream has no underlying"
+    " file or device).");
+
+  if (n > ni_stream_remaining_capacity(s)
+      && !ni_stream_resize_buffer(s, ni_cintlog2(n + ni_stream_available(s))))
+    return 0;
+
+
+  if (ni_stream_issplit(s)) {
+    ssize_t const r = read(s->fd,
+                           s->buffer + s->fill_offset,
+                           s->read_offset - s->fill_offset);
+    if (ni_stream_update_errno(s, r)) return 0;
+    s->fill_offset += r;
+    return r;
+  } else {
+    size_t  const size = 1 << s->buffer_capacity_log;
+    ssize_t const r1   = read(s->fd,
+                              s->buffer + s->fill_offset,
+                              (1 << size) - s->fill_offset);
+    if (ni_stream_update_errno(s, r1))                   return 0;
+    if (s->fill_offset = s->fill_offset + r1 & size - 1) return r1;
+    if (s->read_offset) {
+      ssize_t const r2 = read(s->fd, s->buffer, s->read_offset);
+      if (ni_stream_update_errno(s, r2)) return 0;
+      s->fill_offset += r2;
+      return r1 + r2;
+    }
+    return r1;
+  }
+}
+
+
+ni_stream *ni_fd_stream(int const fd)
+{
+  ni_stream *const result = malloc(sizeof(ni_stream));
+  ni_stream_init(result);
+  result->fd = fd;
+}
+
+
+
