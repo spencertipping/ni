@@ -23,11 +23,7 @@ constructing a codec describing what we're looking for:
 | ni_codec        *codec = ni_compile_codec("C192!*");
   ni_stream       *fs    = ...;                 // stream backed by a file
   ni_stream_packet p[64];
-  int n = ni_stream_read(fs, codec, p, 64, NI_READ_INITIALIZE);
-
-NI_READ_INITIALIZE says that we haven't yet initialized the packets and that
-ni_stream_read should do this for us. (This is absolutely required if you don't
-want segfaults.)
+  int n = ni_stream_read(fs, codec, p, 64, NI_READ_DEFAULT);
 
 Ni will do some interesting things here, most of them centered around
 eliminating data copies. It knows that each packet will consume exactly 192
@@ -46,8 +42,8 @@ bytes until the pointer can be reset.
 typedef struct {
   ni_codec const *codec;
   char const     *data1;
-  size_t          data1_size;
   char const     *data2;
+  size_t          data1_size;
   size_t          data2_size;
 
   // TODO: field stuff
@@ -128,9 +124,8 @@ following:
 
 Flags:
 
-#define NI_READ_DEFAULT    0
-#define NI_READ_INITIALIZE 1
-#define NI_READ_NOLOAD     2
+#define NI_READ_DEFAULT 0
+#define NI_READ_NOLOAD  1
 
 NB: calling this function invalidates all packets you've ever generated from
 this stream.
