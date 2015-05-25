@@ -14,74 +14,13 @@ Packet invariants are the following:
 void ni_packet_init(ni_stream_packet *const p)
 {
   p->codec = 0;
-  p->data1 = p->data2 = p->own_buffer = 0;
-  p->flags = p->data1_size = p->data2_size =
-             p->own_buffer_capacity =
-             p->can_downsize = 0;
+  p->data1 = p->data2 = 0;
+  p->data1_size = p->data2_size = 0;
 }
 
 
-void ni_packet_free(ni_stream_packet *const p)
-{
-  if (p->own_buffer) free(p->own_buffer);
-  free(p);
-}
+void ni_packet_free(ni_stream_packet *const p) { free(p); }
 
 
 size_t ni_packet_size(ni_stream_packet const *const p)
   { return p->data1_size + p->data2_size; }
-
-
-char const *ni_packet_data(ni_stream_packet *const p)
-{
-  if (!ni_packet_issplit(p)) return p->data1;
-  if (!ni_packet_unsplit(p)) return 0;
-  return p->own_buffer;
-}
-
-
-bool ni_packet_issplit(ni_stream_packet const *const p) { return !!p->data2; }
-
-
-bool ni_packet_unsplit(ni_stream_packet *const p)
-{
-  if (!ni_packet_issplit(p)) return true;
-  size_t const new_size = p->data1_size + p->data2_size;
-  if (!ni_packet_resize_buffer(p, new_size)) return false;
-  memcpy(p->own_buffer, p->data1, p->data1_size);
-  memcpy(p->own_buffer + p->data1_size, p->data2, p->data2_size);
-  p->flags |= NI_PACKET_USE_OWNBUFFER;
-  return true;
-}
-
-
-If we reach a point where we're routinely requesting far less memory than we've
-reserved, we can (and should) downsize the buffer.
-
-Note: ni_packet_resize_buffer destroys all buffer data and leaves the new
-buffer uninitialized.
-
-bool ni_packet_resize_buffer(ni_stream_packet *const p, size_t const n)
-{
-  if (p->own_buffer_capacity >= n) {
-    if (p->own_buffer_capacity >> 1 > n
-        && ++p->can_downsize > ni_packet_downsize_n) {
-      if (p->own_buffer) free(p->own_buffer);
-      return !!(p->own_buffer = malloc(p->own_buffer_capacity >>= 1));
-    } else
-      p->can_downsize = 0;
-    return true;
-  }
-
-  ni_limit_nope(n, ni_packet_max_buffersize,
-    "ni is trying to allocate a packet buffer of size %llu. "
-    "This exceeds %llu, the current value of /limits/recordsize.\n",
-    ni_ull(n),
-    ni_ull(ni_packet_max_buffersize));
-
-  p->can_downsize = 0;
-  if (p->own_buffer) free(p->own_buffer);
-  if (!(p->own_buffer = malloc(n))) return false;
-  p->own_buffer_capacity = n;
-  return true;
-}

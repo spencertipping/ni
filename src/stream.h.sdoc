@@ -43,49 +43,22 @@ that. On the other hand, if we have 480 bytes left over and they're at position
 128, it's probably cheaper to just continue filling the buffer and lose the 128
 bytes until the pointer can be reset.
 
-In addition to fixed-width records, ni's codec strings can also specify
-delimiters:
-
-| ni_codec lines = ni_compile_codec("a\n!*");
-
-This allows you to construct variable-length packets. When you do this, ni has
-to make a more complicated set of tradeoffs when figuring out what to do with
-the buffer. It keeps 2kb of statistical data on delimiter occurrence patterns
-to make these decisions more accurately, optimizing for average-case
-performance. (It also uses these tables to figure out whether it's worth using
-certain optimized algorithms to detect the delimiters.)
-
-#define NI_PACKET_USE_OWNBUFFER 1
-#define NI_FIELDS_PARSED        2
-
-#define NI_PACKET_FIELD_CACHE_SIZE 16
-
 typedef struct {
-  int             flags;
   ni_codec const *codec;
   char const     *data1;
   size_t          data1_size;
   char const     *data2;
   size_t          data2_size;
-  char           *own_buffer;
-  size_t          own_buffer_capacity;
-  int             can_downsize;
-  int             fields;
-  off_t           field_offsets[NI_PACKET_FIELD_CACHE_SIZE];
+
+  // TODO: field stuff
 } ni_stream_packet;
 
-void        ni_packet_init         (ni_stream_packet *p);
-void        ni_packet_free         (ni_stream_packet *p);
-size_t      ni_packet_size         (ni_stream_packet const *p);
-char const *ni_packet_data         (ni_stream_packet *p);
-bool        ni_packet_issplit      (ni_stream_packet const *p);
-bool        ni_packet_unsplit      (ni_stream_packet *p);
-bool        ni_packet_resize_buffer(ni_stream_packet *p, size_t n);
-char const *ni_packet_field        (ni_stream_packet *p, int field);
-size_t      ni_packet_field_size   (ni_stream_packet *p, int field);
-
-size_t ni_packet_max_buffersize = 1048576 * 16;
-int    ni_packet_downsize_n     = 64;
+void        ni_packet_init       (ni_stream_packet       *p);
+void        ni_packet_free       (ni_stream_packet       *p);
+size_t      ni_packet_size       (ni_stream_packet const *p);
+char const *ni_packet_field_data1(ni_stream_packet       *p, int field);
+char const *ni_packet_field_data2(ni_stream_packet       *p, int field);
+size_t      ni_packet_field_size (ni_stream_packet       *p, int field);
 
 Stream structure.
 A stream is fundamentally described by the following:
@@ -116,7 +89,6 @@ typedef struct {
   int      buffer_capacity_log;
   off_t    read_offset;
   off_t    fill_offset;
-
   off_t    bytes;
   uint64_t ms;
 } ni_stream;

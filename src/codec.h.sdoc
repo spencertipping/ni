@@ -95,16 +95,11 @@ codec you'll get output like this:
   0     7
   1     -1.0
 
-Codec bytecode.
-The codec compiler generates bytecode optimized for fast packet generation,
-which involves a few strategies:
-
-| 1. Fixed-width fields are combined into simple offsets.
-  2. Repeat counts are unrolled.
-  3. Delimiter strings are pre-indexed for BMH searching.
-  4. Delimiter bytes are pre-converted into wide masks for fast scanning.
-
-TODO: bytecode definitions (concatenative? register-based?)
+Codec execution.
+Codecs have two distinct phases of execution. For the decoding case (which is
+optimized heavily), the stream is quickly split into unparsed records. Records
+are decoded using sub-codecs when their fields are accessed; when possible,
+field positions are indexed to provide constant-time and zero-copy lookups.
 
 typedef struct {
   // TODO
