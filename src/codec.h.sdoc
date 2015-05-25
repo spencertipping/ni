@@ -26,9 +26,11 @@ Basic elements.
 Codecs have some control structures like | and *, but fundamentally they
 consist of the following type elements:
 
-| C  8-bit integer as a character (may contain nulls)
-  D  IEEE-754 double in binary format
-  F  IEEE-754 single in binary format
+| C  8-bit integer as a character (may contain nulls, single field on repeat)
+  c  8-bit integer as an integer (like C but splits fields on repeat)
+  U  UTF-8 character (single string field on repeat)
+  D  native binary double float (probably IEEE-754)
+  F  native binary single float (probably IEEE-754)
   L  32-bit unsigned integer, little endian
   l  32-bit unsigned integer, big endian
   Q  64-bit unsigned integer, little endian
@@ -79,11 +81,12 @@ structures like simple JSON arrays and well-formed XML.
 | [chars]  regex-style character class; used to assert and fail
   (a,b,c)  regex-style alternatives; if a fails, then b, etc
 
-Backtracking tends to be fast because all repetition operators are
-deterministic; that is, every codec runs in linear time. For example, this
-codec decodes a JSON array of numbers, one per record:
+Character classes are valid only inside an alternative group. Backtracking
+tends to be fast because all repetition operators are deterministic; that is,
+every codec runs in linear time. For example, this codec decodes a JSON array
+of numbers, one per record:
 
-| ni_compile_codec("[[]# ((d,f)!|',)>']")
+| ni_compile_codec("C# ((d,f)!|',)>']")
 
 Each alternative group prepends a codec index to the decoded-field list. This
 is really useful because it makes it possible to re-encode decoded results. But
@@ -95,12 +98,96 @@ codec you'll get output like this:
   0     7
   1     -1.0
 
+Grouping and field splitting.
+After unrolling, each "fundamental thing" is split into a field. A "fundamental
+thing" is either a conversion directive like S, D, etc, or a paren group. Field
+splits are inferred by the compiler and are designed to correspond to data
+structures you'll be able to use. For example:
+
+| D8            8 fields, each a double
+  C8            one field, an 8-byte array
+  d8            8 fields, each an int64
+  (C8D)8        8 fields, each an undecoded struct { char[8], double }
+  (C8D)*        N fields, each an undecoded struct { char[8], double }
+  C|'\t         N fields, each a byte array
+
+Here's how types are mapped:
+
+| C<repeat>     = byte[] (string if it's possible without UTF-8 decoding)
+  U<repeat>     = string with UTF-8 characters
+  D,F,S,s,...   = primitive numbers
+  SLQ           = tuple(int16, int32, int64)
+  S2LQ          = tuple(int16, int16, int32, int64)
+  C64D          = tuple(byte[64], double)
+  (x)           = tuple(x)
+  (x)5          = tuple(x, x, x, x, x)
+  (xyz)         = tuple(x, y, z)
+  x*            = tuple(x, x, ..., x)
+  x?            = tuple(x) | tuple()
+  (x,y,z)       = tuple(0, x...) | tuple(1, y...) | tuple(2, z...)
+
 Codec execution.
 Codecs have two distinct phases of execution. For the decoding case (which is
 optimized heavily), the stream is quickly split into unparsed records. Records
 are decoded using sub-codecs when their fields are accessed; when possible,
 field positions are indexed to provide constant-time and zero-copy lookups.
 
+Although ni thinks in terms of records and fields, a codec is fundamentally
+hierarchical set of byte ranges that are interpreted as you request fields.
+
 typedef struct {
-  // TODO
+  uint32_t offset;
+  uint32_t size;
+} ni_codec_fieldspec;
+
+struct ni_codec_bytecode;
+typedef struct ni_codec_bytecode ni_codec_bytecode;
+
+Field position caching.
+Ok, this is a little complicated but ultimately worth it. The goal here is to
+store as much as possible in the codec itself since that's just written once.
+
+#define NI_CODEC_FIXEDSIZE 1
+
+#define NI_CODEC_SUBSIZE_CACHE 64
+
+typedef struct {
+  int                     flags;
+  int                     n_subs;
+  struct ni_codec const **subs;
+
+  union {
+    struct {
+      size_t size;
+    } assuming_fixed;
+    struct {
+      size_t                   minimum;
+      ni_codec_bytecode const *size_bytecode;
+    } assuming_variable;
+  };
+
+  uint64_t sub_fixed;
+  int      n_fixed_subs;
+  uint32_t sub_offsets[NI_CODEC_SUBSIZE_CACHE];
 } ni_codec;
+
+struct ni_stream_packet;
+
+ni_codec *ni_codec_compile(char const *s);
+void      ni_codec_free   (ni_codec *c);
+
+int ni_codec_fields(ni_codec                const *c,
+                    struct ni_stream_packet const *p);
+
+ni_codec_fieldspec ni_codec_field(ni_codec                const *c,
+                                  struct ni_stream_packet const *p,
+                                  int                            n);
+
+Executing bytecode always returns the offset at which the execution ended. You
+can use this for each record's fields to extract field offsets.
+
+off_t ni_codec_run(ni_codec_bytecode const *b,
+                   char              const *data1,
+                   size_t                   data1_size,
+                   char              const *data2,
+                   size_t                   data2_size);
