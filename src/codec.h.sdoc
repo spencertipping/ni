@@ -13,7 +13,6 @@ delimiter into a string, which would then change the decoding).
 The basic operations are:
 
 | primitive encode/decode (e.g. short, long, float, double)
-  cut field
   cut record
   read delimited
   set offset (relative or absolute, buffering or losing data)
@@ -24,7 +23,7 @@ Codecs always work in terms of records and fields. If you run ni on unformatted
 data, it uses a TSV codec (here the \n and \t are actually single bytes, not
 C-style escapes):
 
-| a\n!a\t@**
+| a\n:a\t*!*
 
 This can be read as, "take newline-delimited strings as records, and within
 each record take tab-delimited strings as fields."
@@ -34,12 +33,6 @@ operators. For example, if you want to read doubles in groups of 8 from a
 binary file:
 
 | D@8!*
-
-Both @ (cut field) and ! (cut record) allow you to specify a reinterpretation
-of the data being cut. This is particularly useful for delimited cases, since
-the outer delimiter often has nothing to do with the inner one. If the
-reinterpretation is omitted, the cut data is typed as it was; so the format
-(a\n!)* just reads lines into single-field records and adds no structure.
 
 Codecs can also specify what happens in the event of partial reads. In the
 8-double example above, no partial record will be generated if an early EOF
@@ -58,14 +51,39 @@ nondeterministic or anything.)
 #define NI_CODEC_FIXED_SIZE           1
 #define NI_CODEC_USES_DELIMITERS      2
 #define NI_CODEC_FORCES_EOF           4
-#define NI_CODEC_USES_SEEKS           8
-#define NI_CODEC_USES_BUFFERING_SEEKS 16
-#define NI_CODEC_USES_ABSOLUTE_SEEKS  32
+#define NI_CODEC_USES_BUFFERING_SEEKS 8
+#define NI_CODEC_USES_ABSOLUTE_SEEKS  16
 
 typedef struct {
-  int    flags;
-  size_t size;
+  int                    flags;
+  size_t                 size;
+  unsigned char const   *bytecode;
+  struct ni_codec const *cut_references;
 } ni_codec;
+
+Bytecode.
+This bytecode is interpreted by ni_stream_read.
+
+| take N        takes N bytes into the current context
+  seek N        seeks by relative (signed) offset
+  delimit C     take up to and including character C or EOF
+  cut K         cuts a record with codec index K
+  goto-eof L    bump instruction pointer by L if EOF
+  goto-noeof L  bump instruction pointer by L unless EOF
+
+Each bytecode operand is encoded as a 16-bit integer that may be signed or
+unsigned. Operands immediately follow bytecodes. Bytecodes themselves are
+numbered in a compact range to make it easier for C to optimize a switch() over
+them.
+
+typedef enum {
+  NI_CB_TAKE,
+  NI_CB_SEEK,
+  NI_CB_DELIMIT,
+  NI_CB_CUT,
+  NI_CB_GOTO_EOF,
+  NI_CB_GOTO_NOEOF,
+} ni_codec_bytecode;
 
 Errno values for codec compilation.
 On error, ni_compile_codec will return NULL and set errno to one of the

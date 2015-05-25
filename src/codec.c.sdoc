@@ -1,2 +1,25 @@
 Codec implementation.
-TDOO
+Codecs work as a very simple bytecode. Compilation involves a couple of simple
+static analyses, some unrolling, and removing precedence operators. We also do
+some optimization, most notably fixed-width fusion, to reduce the number of
+operations required to access each field.
+
+The compiled bytecode contains the following instructions:
+
+| take{8,32} N          takes N bytes into the current context
+  seek{8,32} N          seeks by relative (signed) offset
+  delimit C             take up to and including character C or EOF
+  cut K                 cuts a record with codec index K
+  goto-eof L            bump instruction pointer by L if EOF
+  goto-noeof L          bump instruction pointer by L unless EOF
+
+Codecs are parsed using a fairly trivial stack algorithm. The only grouping
+operator supported is (), which creates a sub-codec.
+
+
+#define NI_CODEC_MAX_NESTING 256
+
+ni_codec *ni_compile_codec(char const *s)
+{
+  
+}

@@ -5,7 +5,6 @@ Packet invariants are the following:
   2. p.own_buffer, if set, is never aliased.
   3. If p.flags & USE_OWNBUFFER, own_buffer is up to date.
 
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

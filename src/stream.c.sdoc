@@ -15,28 +15,29 @@ void ni_stream_init(ni_stream *const s)
                 = s->read_offset = s->fill_offset
                 = s->bytes = s->ms = 0;
   s->buffer   = 0;
-  s->delimopt = 0;
 }
 
 
 void ni_stream_free(ni_stream *const s)
 {
-  if (s->buffer)   free(s->buffer);
-  if (s->delimopt) free(s->delimopt);
+  if (s->buffer) free(s->buffer);
   free(s);
 }
 
 
 Resize the buffer, but preserve data. This resets the stream's read offset to
-0. You can't resize a buffer to be smaller than the stream's available data.
+0. You can't resize a buffer to be smaller than the stream's available data; if
+you really want to do this, use ni_stream_accept(available) first.
 
 bool ni_stream_resize_buffer(ni_stream *const s, int const log)
 {
+  if (log == s->buffer_capacity_log) return true;
+
   size_t const new_size  = 1 << log;
   size_t const available = ni_stream_available(s);
   char *new_buffer;
 
-  if (1 << log < available)             return false;
+  if (new_size < available)             return false;
   if (!(new_buffer = malloc(new_size))) return false;
   ni_stream_copy_into(new_buffer, s, 0, available);
 
@@ -60,7 +61,7 @@ void ni_stream_accept(ni_stream *const s, size_t const n)
     "in the stream.\n",
     ni_ull(n),
     ni_ull(ni_stream_available(s)));
-  s->read_offset = s->read_offset + n & s->buffer_capacity_log - 1;
+  s->read_offset = s->read_offset + n & (1 << s->buffer_capacity_log) - 1;
   if (s->read_offset == s->fill_offset) s->read_offset = s->fill_offset = 0;
 }
 
@@ -124,7 +125,6 @@ size_t ni_stream_fill(ni_stream *const s, size_t const n)
       && !ni_stream_resize_buffer(s, ni_cintlog2(n + ni_stream_available(s))))
     return 0;
 
-
   if (ni_stream_issplit(s)) {
     ssize_t const r = read(s->fd,
                            s->buffer + s->fill_offset,
@@ -136,12 +136,12 @@ size_t ni_stream_fill(ni_stream *const s, size_t const n)
     size_t  const size = 1 << s->buffer_capacity_log;
     ssize_t const r1   = read(s->fd,
                               s->buffer + s->fill_offset,
-                              (1 << size) - s->fill_offset);
+                              size - s->fill_offset);
     if (ni_stream_update_errno(s, r1))                   return 0;
     if (s->fill_offset = s->fill_offset + r1 & size - 1) return r1;
     if (s->read_offset) {
       ssize_t const r2 = read(s->fd, s->buffer, s->read_offset);
-      if (ni_stream_update_errno(s, r2)) return 0;
+      if (ni_stream_update_errno(s, r2)) return r1;
       s->fill_offset += r2;
       return r1 + r2;
     }
@@ -155,7 +155,15 @@ ni_stream *ni_fd_stream(int const fd)
   ni_stream *const result = malloc(sizeof(ni_stream));
   ni_stream_init(result);
   result->fd = fd;
+  return result;
 }
 
 
-
+int ni_stream_read(ni_stream        *const s,
+                   ni_codec const   *const c,
+                   ni_stream_packet *const ps,
+                   int               const nps,
+                   int               const flags)
+{
+  // TODO
+}

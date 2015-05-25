@@ -20,13 +20,11 @@ Here's how a read is going to work. We start with a ni_stream backed by the
 file and ask it for a ni_stream_packet 192 bytes long. We can do this by
 constructing a codec describing what we're looking for:
 
-| ni_codec        *codec = ni_parse_codec("C192!*");
+| ni_codec        *codec = ni_compile_codec("C192!*");
   ni_stream       *fs    = ...;                 // stream backed by a file
   ni_stream_packet p[64];
   int n = ni_stream_read(fs, codec, p, 64, NI_READ_INITIALIZE);
 
-NI_READ_FAST is a flag that tells ni to just construct the resulting packets as
-fast as possible (see below; there are various tradeoffs it can make).
 NI_READ_INITIALIZE says that we haven't yet initialized the packets and that
 ni_stream_read should do this for us. (This is absolutely required if you don't
 want segfaults.)
@@ -48,7 +46,7 @@ bytes until the pointer can be reset.
 In addition to fixed-width records, ni's codec strings can also specify
 delimiters:
 
-| ni_codec lines = ni_parse_codec("a\n!*");
+| ni_codec lines = ni_compile_codec("a\n!*");
 
 This allows you to construct variable-length packets. When you do this, ni has
 to make a more complicated set of tradeoffs when figuring out what to do with
@@ -58,6 +56,9 @@ performance. (It also uses these tables to figure out whether it's worth using
 certain optimized algorithms to detect the delimiters.)
 
 #define NI_PACKET_USE_OWNBUFFER 1
+#define NI_FIELDS_PARSED        2
+
+#define NI_PACKET_FIELD_CACHE_SIZE 16
 
 typedef struct {
   int             flags;
@@ -69,6 +70,8 @@ typedef struct {
   char           *own_buffer;
   size_t          own_buffer_capacity;
   int             can_downsize;
+  int             fields;
+  off_t           field_offsets[NI_PACKET_FIELD_CACHE_SIZE];
 } ni_stream_packet;
 
 void        ni_packet_init         (ni_stream_packet *p);
@@ -78,8 +81,10 @@ char const *ni_packet_data         (ni_stream_packet *p);
 bool        ni_packet_issplit      (ni_stream_packet const *p);
 bool        ni_packet_unsplit      (ni_stream_packet *p);
 bool        ni_packet_resize_buffer(ni_stream_packet *p, size_t n);
+char const *ni_packet_field        (ni_stream_packet *p, int field);
+size_t      ni_packet_field_size   (ni_stream_packet *p, int field);
 
-size_t ni_packet_max_buffersize = 1048576;
+size_t ni_packet_max_buffersize = 1048576 * 16;
 int    ni_packet_downsize_n     = 64;
 
 Stream structure.
@@ -114,16 +119,7 @@ typedef struct {
 
   off_t    bytes;
   uint64_t ms;
-
-  struct ni_stream_delimopt *delimopt;
 } ni_stream;
-
-typedef struct {
-  uint32_t delimiter_n   [256];
-  float    delimiter_mean[256];
-  float    delimiter_m2  [256];
-  float    delimiter_m3  [256];
-} ni_stream_delimopt;
 
 void   ni_stream_init              (ni_stream       *s);
 void   ni_stream_free              (ni_stream       *s);
@@ -142,8 +138,8 @@ size_t ni_stream_fill(ni_stream *s, size_t n);
 
 ni_stream *ni_fd_stream(int fd);
 
-size_t ni_stream_initial_buffersize = 8192;
-size_t ni_stream_max_buffersize     = 64 * 1048576;
+size_t ni_stream_initial_buffersize_log = 16;
+size_t ni_stream_max_buffersize         = 20 + 6;
 
 Reading from streams.
 Streams are decoded into lists of packets, each of which corresponds to a
