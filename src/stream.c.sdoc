@@ -51,7 +51,8 @@ bool ni_stream_resize_buffer(ni_stream *const s, int const log)
 
 
 bool ni_stream_issplit(ni_stream const *const s)
-  { return s->fill_offset < s->read_offset; }
+  { size_t const mask = (1 << s->buffer_capacity_log) - 1;
+    return (s->fill_offset & mask) < (s->read_offset & mask); }
 
 
 void ni_stream_accept(ni_stream *const s, size_t const n)
@@ -67,15 +68,19 @@ void ni_stream_accept(ni_stream *const s, size_t const n)
 
 
 size_t ni_stream_available(ni_stream const *const s)
-{
-  size_t const size = 1 << s->buffer_capacity_log;
-  return s->fill_offset + size - s->read_offset & size - 1;
-}
+  { return s->fill_offset - s->read_offset
+         & (1 << s->buffer_capacity_log) - 1; }
 
+
+NB: can't eliminate the calculation of available, since the stream might be
+wrapped. If we don't consider this, we'll overwrite the current read pointer
+(since in modular space the read pointer is ahead of the fill pointer).
 
 size_t ni_stream_remaining_capacity(ni_stream const *const s)
   { return (1 << s->buffer_capacity_log) - ni_stream_available(s); }
 
+
+TODO: refactor code below to work with unmasked read_offset and fill_offset.
 
 void ni_stream_copy_into(char            *const dest,
                          ni_stream const *const s,

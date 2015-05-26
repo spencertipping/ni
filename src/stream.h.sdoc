@@ -41,8 +41,6 @@ typedef struct ni_stream_packet {
   char const     *data2;
   size_t          data1_size;
   size_t          data2_size;
-
-  
 } ni_stream_packet;
 
 void   ni_packet_init(ni_stream_packet       *p);
@@ -68,6 +66,25 @@ you've hit EOF.
 
 #define NI_ERRNO_EOF (-1)
 
+#define NI_STREAM_QUEUE_SIZE 64
+
+Stream queues are array minheaps of record addresses. We always take the
+minimum because streams are forward-only; see the codec documentation for
+details about where queue elements come from. Note that the queue is preserved
+between calls to ni_stream_read(), which means that if you change codecs
+between calls you'll inherit old queue entries. It's up to you whether you want
+to do this, but it may not do what you expect.
+
+Invariant: read_offset is a lower bound of the (circularly-unwrapped) memory
+referred to by any valid packet during the scope of a ni_stream_read() call.
+This prevents the stream from creating a packet, deciding it needs to read more
+stuff, and then overwriting the memory that packet refers to in the same
+ni_stream_read() call. After the ni_stream_read() call, read_offset contains
+the next enqueued address or one greater than the last record if none was
+enqueued.
+
+TODO: figure out exact details of how codecs enqueue addresses
+
 typedef struct ni_stream {
   int      read_errno;
   int      fd;
@@ -75,8 +92,8 @@ typedef struct ni_stream {
   int      buffer_capacity_log;
   off_t    read_offset;
   off_t    fill_offset;
-  off_t    bytes;
   uint64_t ms;
+  off_t    queue[NI_STREAM_QUEUE_SIZE];
 } ni_stream;
 
 void   ni_stream_init              (ni_stream       *s);
@@ -120,6 +137,10 @@ If an error is returned, no packets were read or modified. Flags:
 NB: calling this function invalidates all packets previously generated from
 this stream. You should reuse packet arrays unless you just like to allocate
 stuff.
+
+NB: due to stream queueing subtleties, packets may contain overlapping data.
+This won't make any difference in most cases because you should treat packet
+data as constant (as its type signature implies).
 
 int ni_stream_read(ni_stream        *s,
                    ni_codec const   *c,
