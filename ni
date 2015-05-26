@@ -1,8 +1,13 @@
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly
 # MIT license, see https://github.com/spencertipping/ni for details
-e=`mktemp`
-s=`mktemp --suffix=.c`
+prefix=${TMPDIR:-/tmp}/ni-$USER-$$
+i=0
+until mkdir "$prefix-$i" 2>&1 > /dev/null; do
+  i=`expr $i + 1`
+done
+e=$prefix-$i/ni
+s=$e.c
 {
 awk '{
   if (!ls--) {
@@ -54,7 +59,7 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-401 ni.c
+398 ni.c
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -433,39 +438,41 @@ void usage(void) {
 int main(int const argc, char const *const *argv) {
   if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
   if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
+  if (rmdir(argv[2]))  die("rmdir failed for %s",  argv[2]);
   int const stdin_tty = isatty(STDIN_FILENO);
-  if (argc == 2 && stdin_tty) {
+  if (argc == 3 && stdin_tty) {
     usage();
     return EXIT_USER_ERROR;
   }
-  if (argc == 3 && !strcmp(argv[2], "--self")) {
-    for_rs_parts(qni_header_sh, i) printf("%s\n", qni_header_sh[i]);
-    printf("awk '");
-    for_rs_parts(qdecompress_awk, i) printf("%s\n", qdecompress_awk[i]);
-    printf("' <<'EOF'\n");
-    for_rs_names(i) {
-      int nparts = 0;
-      for_rs_parts(rs[i], j) nparts = j + 1;
-      printf("%d %s\n", nparts, rn[i]);
-      for_rs_parts(rs[i], j) printf("%s\n", rs[i][j]);
-    }
-    printf("EOF\n");
-    for_rs_parts(qni_footer_sh, i) printf("%s\n", qni_footer_sh[i]);
-    return EXIT_NORMAL;
+  for_rs_parts(qni_header_sh, i) printf("%s\n", qni_header_sh[i]);
+  printf("awk '");
+  for_rs_parts(qdecompress_awk, i) printf("%s\n", qdecompress_awk[i]);
+  printf("' <<'EOF'\n");
+  for_rs_names(i) {
+    int nparts = 0;
+    for_rs_parts(rs[i], j) nparts = j + 1;
+    printf("%d %s\n", nparts, rn[i]);
+    for_rs_parts(rs[i], j) printf("%s\n", rs[i][j]);
   }
-  fprintf(stderr, "TODO: implement CLI\n");
-  return 1;
+  printf("EOF\n");
+  for_rs_parts(qni_footer_sh, i) printf("%s\n", qni_footer_sh[i]);
+  return EXIT_NORMAL;
 }
-6 ni-header.sh
+11 ni-header.sh
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly
 # MIT license, see https://github.com/spencertipping/ni for details
-e=`mktemp`
-s=`mktemp --suffix=.c`
+prefix=${TMPDIR:-/tmp}/ni-$USER-$$
+i=0
+until mkdir "$prefix-$i" 2>&1 > /dev/null; do
+  i=`expr $i + 1`
+done
+e=$prefix-$i/ni
+s=$e.c
 {
 2 ni-footer.sh
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$@"
+c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
 5 usage
 usage: ni arguments...
 
@@ -474,4 +481,4 @@ each one modifies the current stream in some way. Available operators:
 
 EOF
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$@"
+c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"

@@ -34,18 +34,25 @@ cat > gen/ni-kernel <<EOF
 awk '$(< gen/decompress.awk)' <<'EOF'
 EOF
 
+# mktemp isn't universally available (not specified by POSIX), so implement our
+# own cheesy version. mkdir will succeed iff we get the directory.
 cat > gen/ni-header.sh <<'EOF'
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly
 # MIT license, see https://github.com/spencertipping/ni for details
-e=`mktemp`
-s=`mktemp --suffix=.c`
+prefix=${TMPDIR:-/tmp}/ni-$USER-$$
+i=0
+until mkdir "$prefix-$i" 2>&1 > /dev/null; do
+  i=`expr $i + 1`
+done
+e=$prefix-$i/ni
+s=$e.c
 {
 EOF
 
 cat > gen/ni-footer.sh <<'EOF'
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$@"
+c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
 EOF
 
 for r in decompress.awk ni.c ni-header.sh ni-footer.sh usage; do
