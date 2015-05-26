@@ -69,6 +69,16 @@ will dictate where the next record will start. By default the record cut
 enqueues the "current offset" if repeated. Maybe think about the details here,
 but I think the idea is right.
 
+TODO: how is it possible to invert offsets? We know they're forward-only, so
+maybe we can derive the offsets by looking at the way records are packed; then
+"label this" means "get ready to write the actual offset", and "offset" means
+"write the current location back to the label". (This actually works nicely
+because we can just use the same registers and store the location to write the
+address as the register's value.)
+
+It seems like a few things still aren't quite right. Record-cut is potentially
+an awkward operator.
+
 Delimiters can be any of the following:
 
 | xHH      two hex digits: match a specific byte

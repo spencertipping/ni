@@ -81,6 +81,7 @@ static cli_stream_option const cli_options[] = {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define EXIT_NORMAL       0
@@ -114,9 +115,22 @@ int main(int const argc, char const *const *argv) {
     return EXIT_USER_ERROR;
   }
 
-  for (int i = 0; rs[i]; ++i)
-    for (int j = 0; rs[i][j]; ++j)
-      printf("%s:%d: %s\n", rn[i], j + 1, rs[i][j]);
+  if (argc == 3 && !strcmp(argv[2], "--self")) {
+    for_rs_parts(qni_header_sh, i) printf("%s\n", qni_header_sh[i]);
+    printf("awk '");
+    for_rs_parts(qdecompress_awk, i) printf("%s\n", qdecompress_awk[i]);
+    printf("' <<'EOF'\n");
+    for_rs_names(i) {
+      int nparts = 0;
+      for_rs_parts(rs[i], j) nparts = j + 1;
+      printf("%d %s\n", nparts, rn[i]);
+      for_rs_parts(rs[i], j) printf("%s\n", rs[i][j]);
+    }
+    printf("EOF\n");
+    for_rs_parts(qni_footer_sh, i) printf("%s\n", qni_footer_sh[i]);
+    return EXIT_NORMAL;
+  }
 
-  return EXIT_NORMAL;
+  fprintf(stderr, "TODO: implement CLI\n");
+  return 1;
 }
