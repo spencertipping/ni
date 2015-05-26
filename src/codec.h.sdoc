@@ -31,12 +31,15 @@ consist of the following type elements:
   U  UTF-8 character (single string field on repeat)
   D  native binary double float (probably IEEE-754)
   F  native binary single float (probably IEEE-754)
-  L  32-bit unsigned integer, little endian
-  l  32-bit unsigned integer, big endian
-  Q  64-bit unsigned integer, little endian
-  q  64-bit unsigned integer, big endian
-  S  16-bit unsigned integer, little endian
-  s  16-bit unsigned integer, big endian
+  L  32-bit unsigned integer
+  l  32-bit signed integer
+  Q  64-bit unsigned integer
+  q  64-bit signed integer
+  S  16-bit unsigned integer
+  s  16-bit signed integer
+
+Integer types use native endianness, but you can use a < prefix to force
+big-endian and a > to force little-endian.
 
 | h  hex-encoded integer as text (repeat count determines #bits)
   o  octal-encoded integer as text
@@ -47,15 +50,24 @@ Control structures.
 Each control structure is a postfix operator:
 
 | |d    repeat until and consume delimiter d or EOF
-  <d    repeat until but not including delimiter d
-  >d    repeat until and consume delimiter d
+  *<d   repeat until but not including delimiter d
+  *>d   repeat until and consume delimiter d
   N     repeat decimal-encoded int N times
   *     repeat until EOF
   ?     make optional: if EOF, accept empty
   !     cut record
   #     discard record, start new cut
-  @     set absolute offset after next record cut
-  %     set relative offset after next record cut
+  :N    store field's integer value in register N
+  +N    relative offset by value of register N
+
+TODO: fix offset and register commands. We need to be able to handle stuff like
+ELF headers, etc, which are complicated. For example, do we parse shdrs or
+phdrs first? It depends on which is lower if our cursor is forward-only.
+
+Oh! Use a seek queue! Offset commands enqueue addresses into a minheap that
+will dictate where the next record will start. By default the record cut
+enqueues the "current offset" if repeated. Maybe think about the details here,
+but I think the idea is right.
 
 Delimiters can be any of the following:
 
@@ -161,20 +173,7 @@ typedef struct ni_codec {
   int                     n_subs;
   struct ni_codec const **subs;
 
-  union {
-    struct {
-      size_t size;
-    } assuming_fixed;
-    struct {
-      size_t                   minimum;
-      size_t                   maximum;
-      ni_codec_bytecode const *size_bytecode;
-    } assuming_variable;
-  };
 
-  uint64_t sub_fixed;
-  int      n_fixed_subs;
-  uint32_t sub_offsets[NI_CODEC_SUBSIZE_CACHE];
 } ni_codec;
 
 struct ni_stream_packet;
