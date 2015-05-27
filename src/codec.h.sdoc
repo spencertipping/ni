@@ -22,6 +22,11 @@ Before getting into the details, here are some examples of codecs:
   ni_compile_codec("D!*")               // one binary double per record
   ni_compile_codec("C16SSLQ3LS6!")      // Elf64_Ehdr binary structure
 
+TODO: defined bytecode blocks; we need to dictate the parse mode for each
+offset redirection. We also need a parallel buffer to store emitted data per
+codec element; fields will be (logically) fused between the two. This, in turn,
+implies that we'll need write operations for buffers.
+
 Basic elements.
 Codecs have some control structures like | and *, but fundamentally they
 consist of the following type elements:
