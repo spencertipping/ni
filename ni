@@ -59,7 +59,26 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-398 ni.c
+401 ni.c
+#define EXIT_NORMAL       0
+#define EXIT_SYSTEM_ERROR 2
+#define EXIT_USER_ERROR   1
+#define _ISOC99_SOURCE
+#define NI_ASSERT_NOPE 2
+#define NI_CODEC_FIXEDSIZE    1
+#define NI_CODEC_HAS_MAX_SIZE 2
+#define NI_CODEC_MAX_NESTING 256
+#define NI_CODEC_SUBSIZE_CACHE 64
+#define NI_LIMIT_NOPE  1
+#define NI_PACKET_FIELDOFFSET_CACHE 16
+#define NI_READ_DEFAULT 0
+#define NI_READ_NOLOAD  1
+#define NI_STREAM_QUEUE_SIZE 64
+#define NI_SYSTEM_ERROR  2
+#define NI_THIS_IS_A_BUG 3
+#define NI_USER_ERROR    1
+#define _POSIX_C_SOURCE 200112L
+#define _XOPEN_SOURCE   600
 #include <errno.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -68,11 +87,6 @@ END {
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define NI_USER_ERROR    1
-#define NI_SYSTEM_ERROR  2
-#define NI_THIS_IS_A_BUG 3
-#define NI_LIMIT_NOPE  1
-#define NI_ASSERT_NOPE 2
 void ni_nope_exit(int const reason) {
   switch (reason) {
     case NI_LIMIT_NOPE:
@@ -151,9 +165,6 @@ typedef struct ni_codec_fieldspec {
 } ni_codec_fieldspec;
 struct ni_codec_bytecode;
 typedef struct ni_codec_bytecode ni_codec_bytecode;
-#define NI_CODEC_FIXEDSIZE    1
-#define NI_CODEC_HAS_MAX_SIZE 2
-#define NI_CODEC_SUBSIZE_CACHE 64
 typedef struct ni_codec {
   int                     flags;
   int                     n_subs;
@@ -172,7 +183,6 @@ off_t ni_codec_run(ni_codec_bytecode const *b,
                    size_t                   data1_size,
                    char              const *data2,
                    size_t                   data2_size);
-#define NI_PACKET_FIELDOFFSET_CACHE 16
 typedef struct ni_stream_packet {
   ni_codec const *codec;
   char const     *data1;
@@ -186,7 +196,6 @@ size_t ni_packet_size(ni_stream_packet const *p);
 int                ni_packet_fields(ni_stream_packet const *p);
 ni_codec_fieldspec ni_packet_field (ni_stream_packet const *p, int f);
 #define NI_ERRNO_EOF (-1)
-#define NI_STREAM_QUEUE_SIZE 64
 typedef struct ni_stream {
   int      read_errno;
   int      fd;
@@ -216,8 +225,6 @@ size_t ni_stream_max_buffersize_log     = 20 + 6;
 #define NI_READ_ERROR             (-1)
 #define NI_READ_INCOMPLETE_AT_EOF (-2)
 #define NI_READ_MUST_LOAD         (-3)
-#define NI_READ_DEFAULT 0
-#define NI_READ_NOLOAD  1
 int ni_stream_read(ni_stream        *s,
                    ni_codec const   *c,
                    ni_stream_packet *ps,
@@ -225,7 +232,6 @@ int ni_stream_read(ni_stream        *s,
                    int               flags);
 #define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
 #define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)
-#define NI_CODEC_MAX_NESTING 256
 ni_codec *ni_compile_codec(char const *s)
 {
 }
@@ -417,9 +423,6 @@ static cli_stream_option const cli_options[] = {
 };
 #define for_cli_options(i) \
   for (int i = 0; i < sizeof(cli_options) / sizeof(cli_stream_option); ++i)
-#define EXIT_NORMAL       0
-#define EXIT_USER_ERROR   1
-#define EXIT_SYSTEM_ERROR 2
 void usage(void) {
   for_rs_parts(qusage, i) fprintf(stderr, "%s\n", qusage[i]);
   for_cli_options(i)
