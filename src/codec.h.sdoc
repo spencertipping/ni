@@ -18,6 +18,21 @@ differ in that they:
   5. Add information to a stream of data as decisions are made.
   6. Support primitives for delimiter-scanning.
 
+Codec elements.
+Broadly speaking, elements fall into a few categories:
+
+| 1. Stuff that takes up fixed space, e.g. D, L, S, Q, C
+  2. Stuff that takes up variable space, e.g. C*, |'\n
+  3. Location markers, e.g. &0
+  4. Subcodecs, e.g. %1 {DD}
+  5. Labeling, e.g. :x
+  6. Typed enqueueing, e.g. !:N
+  7. (Something to add information...)
+
+Clearly this isn't quite right. I need to be thinking about this as an
+imperative language, not as some kind of idealized codec declaration. The only
+thing is that it needs to support inversion.
+
 Examples.
 Here are some codecs that work with text data:
 
