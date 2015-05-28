@@ -1,4 +1,44 @@
 Codecs.
+Codecs are low-level invertible combinatory parsers with primitives that handle
+both text (variable-length delimited) and binary data. They are not
+general-purpose CFG parsers, and most programming languages and
+highly-structured text contain elements that codecs can't handle. However,
+codecs can lex most languages; they're designed to decode the _format_, not the
+_structure_, of the data.
+
+Notationally, codecs borrow a lot from Perl's pack()/unpack() templates. Codecs
+differ in that they:
+
+| 1. Are executed as code and have some control-flow support.
+  2. Operate on indefinite/partially-realized streams of data.
+  3. Give you a lot of control over cursor positioning, which is useful for
+     fixed-offset stuff.
+  4. Superimpose an interpretation onto bytes (like C structs); nothing is
+     eagerly decoded except as necessary to find delimiters.
+  5. Add information to a stream of data as decisions are made.
+  6. Support primitives for delimiter-scanning.
+
+Examples.
+Here are some codecs that work with text data:
+
+| ni_compile_codec("C*!|'\n")           // text with newlines
+  ni_compile_codec("C*|'\t*!|'\n")      // TSV as text
+  ni_compile_codec("dffdC*!|'\n")       // int, double, double, int, stuff
+
+Binary:
+
+| ni_compile_codec("SS!*")              // 16-bit stereo WAV samples
+
+Parsing ELF files can be done with subcodecs:
+
+| ni_compile_codec(
+    "%1 {LL Q:o QQ Q:s QQ !:3}"         // Elf64_Phdr
+    "%2 {LLQQ Q:o Q:s LLQQ !:3}"        // Elf64_Shdr
+    "%3 {C*}"                           // uninterpreted binary data
+    "&0 C16SSLQ3LS6!")
+
+
+
 Codecs are specifications about how to handle data; the idea is very similar to
 Perl's pack() and unpack(), but with better support for text. Codecs are also
 used as a simple type system for stream packets, which allows any packet to be

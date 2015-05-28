@@ -243,7 +243,7 @@ void ni_stream_init(ni_stream *const s)
   s->fd = -1;
   s->read_errno = s->buffer_capacity_log
                 = s->read_offset = s->fill_offset = s->ms = 0;
-  s->buffer   = 0;
+  s->buffer = 0;
 }
 void ni_stream_free(ni_stream *const s)
 {

@@ -5,6 +5,8 @@ values. Ultimately streams and UNIX file descriptors are convertible, although
 for optimization reasons not all streams have file descriptors. Streams are
 typically buffered so ni can use nonblocking IO.
 
+TODO: add support for writable streams. Not yet sure how this needs to work.
+
 #include <sys/types.h>
 #include <stdbool.h>
 #include <stdint.h>
