@@ -130,6 +130,9 @@ following:
 #define NI_READ_ERROR             (-1)
 #define NI_READ_INCOMPLETE_AT_EOF (-2)
 #define NI_READ_MUST_LOAD         (-3)
+#define NI_READ_FAILED_MALLOC     (-4)
+#define NI_READ_QUEUE_OVERFLOW    (-5)
+#define NI_READ_QUEUE_BACKWARDS   (-6)
 
 If an error is returned, no packets were read or modified. Flags:
 
@@ -145,6 +148,7 @@ This won't make any difference in most cases because you should treat packet
 data as constant (as its type signature implies).
 
 int ni_stream_read(ni_stream        *s,
+                   ni_stream        *aux,
                    ni_codec const   *c,
                    ni_stream_packet *ps,
                    int               nps,
