@@ -2,20 +2,63 @@ Codecs.
 Codecs are reversible programs that assign formats to data, often examining the
 data in the process. They record all decisions made during execution into a
 separate stream, which means that no information is lost while they run.
-Structurally, here's what codec decoding looks like:
+Conceptually, here's the dataflow of decoding a stream:
 
-| <input stream of bytes> (input)
-            |     \
-            V      \
-         <codec> -> packets (output)
-            |      /
-            V     /
-      <aux stream> (output)
+| codec -> ni_compile_codec
+                      \
+                       \
+  input_stream --> ni_decode --> output_packets
+                  /      \  \
+  codec_state ----        \  --> aux_stream
+                           \
+                            ---> codec_state
 
-The aux stream contains packets encoded in a codec-state format; the last of
-these is preserved between ni_stream_read calls and contains the codec's
-internal state. The aux stream grows as necessary because of this. Field
-lookups cross both streams, since decisional constructs and record polymorphism
-both emit tracing data.
+Here's what that looks like in code:
 
-TODO: how are auxiliary fields allocated?
+| ni_codec       *c = ni_compile_codec("codec string");
+  ni_codec_state *s = ni_codec_init_state(c);
+  ni_stream  *input = ...;
+  ni_stream    *aux = ni_buffer_stream(1024 * 64);
+  ni_packet ps[64];
+  int packets = ni_decode(c, s, input, aux, ps,
+                          sizeof(ps) / sizeof(ni_packet));
+  if (packets < 0) {
+    // error; "packets" will contain a code explaining what went wrong
+  } else {
+    for (int i = 0; i < packets; ++i)
+      do_something_with(ps[i]);
+  }
+
+How codecs work.
+Codecs bidirectionally convert data between a byte-serialized form and ni's
+record/field model. The conversion is typically lossless, though you can write
+a codec that loses information or has degrees of freedom. Codecs share some
+problems with C++ in that they support polymorphic constructs and want to
+handle that case easily, but at the same time they allow you to sidestep the
+associated overhead.
+
+Here are two examples to illustrate this:
+
+  Example 1: TSV text.
+  TSV text has monomorphic records and a variable number of fields.
+
+  | ni_compile_codec("[C*|'\t]!|'\n")
+
+  Breaking this down:
+
+  | [C*|'\t]    -> push [C*|'\t] as a program onto the stack
+    !           -> pop program, push record-emitting version of program
+    |'\n        -> pop program, execute for each newline-delimited chunk
+
+  Example 2: ELF headers.
+  ELF files contain more than four data types, each with a different number of
+  fields. We need to emit type-tagged records to track them.
+
+  | ni_compile_codec(
+      "[:@base C16S2LQ Q/phoff Q/shoff LS/ehsize      "
+             "         S/phentsize S/phnum            "
+             "         S/shentsize S/shnum S/shstrndx "
+             " [phoff @base +] phdr ^                 "
+             " [shoff @base +] shdr ^          ]:ehdr "
+      "[]:phdr"
+      "[]:shdr")        // TODO
