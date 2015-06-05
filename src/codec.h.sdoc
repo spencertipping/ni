@@ -50,6 +50,18 @@ Here are two examples to illustrate this:
     !           -> pop program, push record-emitting version of program
     |'\n        -> pop program, execute for each newline-delimited chunk
 
+  Example 2: CSV text.
+  This is a bit more complicated because fields can either be double-quoted or
+  not, and there's a bunch of weirdness about how whitespace of various types
+  is handled.
+
+  Ignoring the embedded-linebreak case at first:
+
+  | ni_compile_codec("('\"[C*...")
+
+  NOPE. Need to make this a lot more about regex-style matching; otherwise we
+  have no way to change parsing contexts.
+
   Example 2: ELF headers.
   ELF files contain more than four data types, each with a different number of
   fields. We need to emit type-tagged records to track them.
@@ -60,5 +72,6 @@ Here are two examples to illustrate this:
              "         S/shentsize S/shnum S/shstrndx "
              " [phoff @base +] phdr ^                 "
              " [shoff @base +] shdr ^          ]:ehdr "
-      "[]:phdr"
-      "[]:shdr")        // TODO
+      "[...]:phdr "
+      "[...]:shdr "
+      "ehdr!")
