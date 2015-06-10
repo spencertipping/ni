@@ -8,8 +8,7 @@ until mkdir "$prefix-$i" 2>&1 > /dev/null; do
 done
 e=$prefix-$i/ni
 s=$e.c
-{
-awk '{
+d='{
   if (!ls--) {
     if (r) print "(const char *const) 0};"
     interp = (rs[rn++] = r = $2) ~ /\.c$/
@@ -33,7 +32,12 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-' <<'EOF'
+'
+{
+{
+echo "24 decompress.awk"
+echo "$d"
+cat <<'EOF'
 24 decompress.awk
 {
   if (!ls--) {

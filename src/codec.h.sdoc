@@ -119,7 +119,8 @@ Relevant structure definitions from elf(5) on Linux/amd64:
     uint16_t      e_shnum;
     uint16_t      e_shstrndx;
   } Elf64_Ehdr;
-  typedef struct {
+
+| typedef struct {
     uint32_t   p_type;
     uint32_t   p_flags;
     Elf64_Off  p_offset;
@@ -129,7 +130,8 @@ Relevant structure definitions from elf(5) on Linux/amd64:
     uint64_t   p_memsz;
     uint64_t   p_align;
   } Elf64_Phdr;
-  typedef struct {
+
+| typedef struct {
     uint32_t   sh_name;
     uint32_t   sh_type;
     uint64_t   sh_flags;
@@ -145,3 +147,29 @@ Relevant structure definitions from elf(5) on Linux/amd64:
 ELF parsing involves some interesting stuff because of the flexibility of the
 format. Because ni streams are forward-only, we need to use seek queues rather
 than trying to parse things in place.
+
+| ni_compile_codec(
+    "[@=start C16 S2L Q Q=phoff Q=shoff L S=ehsize S=phentsize S=phnum "
+    "                                              S=shentsize S=shnum S "
+    " start phoff + [phdr] phnum * @<< "
+    " start shoff + [shdr] shnum * @<< ]:ehdr "
+    ""
+    "[L2Q6]    :phdr "
+    "[L2Q4L2Q2]:shdr "
+    "ehdr!*")
+
+Here's how this one works:
+
+| @=start        = store current offset as "start"
+  C16            = read 16 chars
+  S2             = read two unsigned short ints
+  L              = read one unsigned long int (32-bit)
+  Q              = read one unsigned quad (64-bit)
+  Q=phoff        = read one unsigned quad and store in "phoff"
+  S=ehsize       = read one unsigned short and store in "ehsize"
+  start phoff +  = add phoff to start address, leave on stack
+  [phdr] phnum * = generate list with "phdr" phnum times, leave on stack
+  @<<            = enqueue address to execute repeated phdr list
+
+TODO: stop screwing around with this silliness and just write a real language
+already. This parser is going to be murder unless I actually pin it down.

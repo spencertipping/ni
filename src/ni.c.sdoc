@@ -17,6 +17,8 @@ these elements:
   c = optional code prefix flag
   j = optional join prefix flag
 
+TODO: more detailed description of what these are
+
 typedef struct ni_stream* (*cli_stream_op)(struct ni_stream *s,
                                            int               argc,
                                            char const       *argv);
