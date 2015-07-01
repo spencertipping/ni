@@ -4,8 +4,8 @@ Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
         | c             | [flags] code  | pipe through C99
         |               |               |
-`-a`    | aggregate     | transform     | aggregate rows by first field
-`-A`    |               |               |
+`-a`    | aggregate     | lambda        | aggregate rows by first field
+`-A`    | amb           | lambda-list   | choose fastest alternative
 `-b`    |               |               |
 `-B`    |               |               |
 `-c`    | count         |               | `uniq -c` for addressed columns
@@ -23,23 +23,23 @@ Short   | Long          | Operands      | Description
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    | jvm           |               | JVM language prefix
+`-J`    |               |               | JVM language prefix
 `-k`    | constant      | value         | emits a constant value
 `-K`    |               |               |
 `-l`    |               |               |
 `-L`    |               |               |
 `-m`    |               |               |
-`-M`    | octave        | [flags] code  | pipe through octave
+`-M`    |               |               |
 `-n`    | number        |               | prepend line number or intify
-`-N`    |               |               |
+`-N`    |               |               | numeric language prefix
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
-`-p`    | perl          | [flags] code  | pipe through perl
-`-P`    | python        | [flags] code  | pipe through python
+`-p`    | perl          | code          | map through perl
+`-P`    | Perl          | code          | reduce through perl
 `-q`    | queue         | [profile]     | queue against disk
 `-Q`    | sql           |               | SQL prefix
-`-r`    | ruby          | [flags] code  | pipe through ruby
-`-R`    | R             | [flags] code  | pipe through R
+`-r`    | ruby          | code          | map through ruby
+`-R`    | Ruby          | code          | reduce through ruby
 `-s`    | sum           |               | running sum
 `-S`    | delta         |               | delta (inverts --sum)
 `-t`    | take          | line-spec     | take selected lines
@@ -52,8 +52,8 @@ Short   | Long          | Operands      | Description
 `-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    |               |               |
 `-X`    |               |               |
-`-y`    |               |               |
-`-Y`    |               |               |
+`-y`    | python        | code          | map through python
+`-Y`    | Python        | code          | reduce through python
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    |               |               |
 `-+`    |               |               |
@@ -61,19 +61,65 @@ Short   | Long          | Operands      | Description
 `-=`    |               |               |
 `-!`    | shell         | command       | pipe stream through shell command
 `-:`    | conf[ig]      | var=value     | set configuration variable
-`-.`    | fork          | lambda        | fork through lambda/decisional
+`-.`    |               |               |
 `-,`    |               |               |
-`-@`    | address       | fieldlist     | set address of next command
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
 `-%`    | interleave    | qfile         | breadth-first concatenation
 `-^`    | prepend       | qfile         | prepends qfile to stream
-`-[`    | begin         |               | pushes new empty stream onto stack
-`-]`    | end           |               | pops stream, appending to parent
-`-{`    |               |               | stream through decisional
-`-}`    |               |               | n/a
 
-### Join flags
+## Bracket operators and syntax
+- `[ ... ]`: list as quasifile
+- `@[ ... ]`: forking list as quasifile
+- `-[ ... ]`: list as action: append results
+- `-@[ ... ]`: forking list as action: interleave in arbitrary order
+
+- `{ ... }`: decisional list as quasifile
+- `@{ ... }`: forking decisional list as quasifile
+- `-{ ... }`: decisional list as action: replace results
+- `-@{ ... }`: forking decisional list as action: interleave in arbitrary order
+
+Additional notation includes:
+
+- `^x` = `[ -x ]`
+- `^^x` = `[ [ -x ] ]`
+- `^x^y` = `[ -x [ -y ] ]`
+- `@^x^@^y` = `@[ -x [ @[ -y ] ] ]`
+- `4[ x y ]` = `[ x y x y x y x y ]`
+- `@3[ x y ]` = `@[ x y x y x y ]`
+- `-3[ x y ]` = `-[ x y x y x y ]`
+- `-@3[ x y ]` = `-@[ x y x y x y ]`
+- `2^x` = `[ -x -x ]` (unlikely to be what you want)
+- `2^^x` = `[ [ -x ] [ -x ] ]` (useful with `-d` and `-A`)
+
+Square-bracket lists support the following identities, up to record order as
+indicated above. `X` and `Y` stand for arbitrary lists of options.
+
+Shell form             | List form
+-----------------------|--------------
+`ni X | ni Y`          | `ni X Y`
+`ni X; ni Y`           | `ni X -[ Y ]`
+`ni Y; ni X`           | `ni X -^ [ Y ]`
+`ni X | tee f; ni f Y` | `ni X -@[ Y ]`
+`ni X sh:'ni Y'`       | `ni X [ Y ]` or `ni X ^Y`
+
+## Decisional lists
+Decisional lists allow you to predicate on a record's first field. All matching
+is done verbatim, so you'll need to transform your data before branching.
+
+## Language interfacing
+Languages have two modes, map and reduce, specified by lowercase and uppercase
+letters, respectively. Map mode invokes your code on each record individually;
+reduce mode invokes your code once and provides a lazy stream of records. Some
+languages are prefixed:
+
+- `-J[cC]` | `--[Cc]lojure`: Clojure (requires `lein`)
+- `-J[jJ]` | `--[Jj]ava`: Java (requires `mvn`)
+- `-J[sS]` | `--[Ss]cala`: Scala (requires `sbt` -- TODO)
+- `-M[oO]` | `--[Oo]ctave`: Octave
+- `-M[rR]` | `--[Rr]`: R
+
+## Join flags
 With no flags, ni sorts both sides and joins on the first column. Joined values
 (not the right-hand join column itself) are zipped and the join is left-outer.
 
