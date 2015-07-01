@@ -12,9 +12,9 @@ $ ni hdfs:/path/to/data.gz      # retrieves over HDFS
 $ ni s3://foo/bar/bif           # retrieves with s3cmd
 $ ni sql3:/tmp/mydb.db:foo      # convert SQLite 'foo' table to TSV
 $ ni sql3::'select * from foo'  # query results from ${TMPDIR:-/tmp}/$USER.db
-$ ni psql::mydb:foo             # ditto, but PostgreSQL
+$ ni psql:mydb:foo              # ditto, but PostgreSQL
 $ ni lucene:/path               # all documents from lucene index
-$ ni lucene:/path:'{"foo":"bar"}
+$ ni lucene:/path:'{"foo":"bar"}'
 $ ni fd:3                       # stream data from file descriptor 3
 $ ni perl:'0..99'               # stream from perl
 $ ni ruby:'(0...100).map {|x| x + 1}'
