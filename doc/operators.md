@@ -6,11 +6,11 @@ Short   | Long          | Operands      | Description
         |               |               |
 `-a`    | aggregate     | transform     | aggregate rows by first field
 `-A`    |               |               |
-`-b`    | buffer        | size          | preload data, buffering into memory
-`-B`    | diskbuffer    | size          | preload data, buffering to disk
+`-b`    |               |               |
+`-B`    |               |               |
 `-c`    | count         |               | `uniq -c` for addressed columns
-`-C`    | clojure       | [flags] code  | pipe through clojure
-`-d`    |               |               |
+`-C`    | clojure       | code          | map through clojure
+`-d`    | distribute    | lambda-list   | distribute across subprocesses
 `-D`    | duplicate     | qfile         | duplicate into quasifile
 `-e`    | encode        | codec         | interpret with codec
 `-E`    | decode        | codec         | generate with codec
@@ -23,21 +23,21 @@ Short   | Long          | Operands      | Description
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    | java          | [flags] code  | pipe through java
+`-J`    | jvm           |               | JVM language prefix
 `-k`    | constant      | value         | emits a constant value
 `-K`    |               |               |
 `-l`    |               |               |
 `-L`    |               |               |
 `-m`    |               |               |
 `-M`    | octave        | [flags] code  | pipe through octave
-`-n`    | number        |               | prepend line number (init 1)
+`-n`    | number        |               | prepend line number or intify
 `-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
 `-p`    | perl          | [flags] code  | pipe through perl
 `-P`    | python        | [flags] code  | pipe through python
-`-q`    | sql           | db query      | sqlite3 query with transient table
-`-Q`    | psql          | db query      | postgres query with transient table
+`-q`    | queue         | [profile]     | queue against disk
+`-Q`    | sql           |               | SQL prefix
 `-r`    | ruby          | [flags] code  | pipe through ruby
 `-R`    | R             | [flags] code  | pipe through R
 `-s`    | sum           |               | running sum
@@ -50,51 +50,28 @@ Short   | Long          | Operands      | Description
 `-V`    | horizontal    |               | join lines where addr field is blank
 `-w`    |               |               |
 `-W`    | web           | port lambda   | runs a very simple webserver
-`-x`    | canard        | [flags] code  | pipes through canard
-`-X`    | shell         | [flags] code  | pipes through shell command
+`-x`    |               |               |
+`-X`    |               |               |
 `-y`    |               |               |
 `-Y`    |               |               |
 `-z`    | zip           | qfile         | zip columns from specified qfile
-`-Z`    | scala         | [flags] code  | pipe through scala
+`-Z`    |               |               |
 `-+`    |               |               |
 `-/`    | subst         | { vars }      | substitute in prior terms
 `-=`    |               |               |
-`-!`    |               |               |
+`-!`    | shell         | command       | pipe stream through shell command
 `-:`    | conf[ig]      | var=value     | set configuration variable
-`-.`    |               |               |
+`-.`    | fork          | lambda        | fork through lambda/decisional
 `-,`    |               |               |
 `-@`    | address       | fieldlist     | set address of next command
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
-`-%`    |               |               |
+`-%`    | interleave    | qfile         | breadth-first concatenation
 `-^`    | prepend       | qfile         | prepends qfile to stream
 `-[`    | begin         |               | pushes new empty stream onto stack
 `-]`    | end           |               | pops stream, appending to parent
-`-{`    |               |               | begins canard block
-`-}`    |               |               | ends canard block
-
-### Code flags
-With no flags, the code is invoked once per line. It uses `row()` to emit
-results, fields are available using `%0`, `%1`, ..., `%N`, and number of fields
-is `%#`.
-
-Flag    | Description
---------|------------
-`+`     | distribute work across multiple local processes
-`*`     | distribute work across multiple remote processes
-`%`     | all lines in one reduction; `%i` become generators of column values
-`?`     | code is used as a line filter; falsy returns delete the line
-`/`     | omit field splitting; `%0` contains the whole line and `%#` is 1
-`@`     | split fields into array; `String f[]` is available
-`:`     | name fields using first line (i.e. assume column headers)
-`!`     | all lines in one reduction; `%i` become **concrete arrays** of values
-
-**TODO:** `%` prefix won't work because single-column loading will either force
-or lose the others.
-
-Note that `/` prevents column-wise binary coding from being used, which may
-result in slower execution. `!` may use an arbitrary amount of space or cause
-OOME's.
+`-{`    |               |               | stream through decisional
+`-}`    |               |               | n/a
 
 ### Join flags
 With no flags, ni sorts both sides and joins on the first column. Joined values
