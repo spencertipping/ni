@@ -2,14 +2,12 @@
 ## General-purpose stream operators
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
-        | c             | [flags] code  | pipe through C99
-        |               |               |
 `-a`    | aggregate     | lambda        | aggregate rows by first field
-`-A`    | amb           | lambda-list   | choose fastest alternative
+`-A`    |               |               |
 `-b`    |               |               |
 `-B`    |               |               |
 `-c`    | count         |               | `uniq -c` for addressed columns
-`-C`    | clojure       | code          | map through clojure
+`-C`    |               |               |
 `-d`    | distribute    | lambda-list   | distribute across subprocesses
 `-D`    | duplicate     | qfile         | duplicate into quasifile
 `-e`    | encode        | codec         | interpret with codec
@@ -23,7 +21,7 @@ Short   | Long          | Operands      | Description
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    |               |               | JVM language prefix
+`-J`    | kvjoin        | kvspec        | join against data from k/v store
 `-k`    | constant      | value         | emits a constant value
 `-K`    |               |               |
 `-l`    |               |               |
@@ -31,13 +29,13 @@ Short   | Long          | Operands      | Description
 `-m`    |               |               |
 `-M`    |               |               |
 `-n`    | number        |               | prepend line number or intify
-`-N`    |               |               | numeric language prefix
+`-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
 `-p`    | perl          | code          | map through perl
 `-P`    | Perl          | code          | reduce through perl
 `-q`    | queue         | [profile]     | queue against disk
-`-Q`    | sql           |               | SQL prefix
+`-Q`    |               |               |
 `-r`    | ruby          | code          | map through ruby
 `-R`    | Ruby          | code          | reduce through ruby
 `-s`    | sum           |               | running sum
@@ -58,8 +56,8 @@ Short   | Long          | Operands      | Description
 `-Z`    |               |               |
 `-+`    |               |               |
 `-/`    | subst         | { vars }      | substitute in prior terms
-`-=`    |               |               |
-`-!`    | shell         | command       | pipe stream through shell command
+`-=`    |               |               | language prefix
+`-$`    | shell         | command       | pipe stream through shell command
 `-:`    | conf[ig]      | var=value     | set configuration variable
 `-.`    |               |               |
 `-,`    |               |               |
@@ -90,7 +88,11 @@ Additional notation includes:
 - `-3[ x y ]` = `-[ x y x y x y ]`
 - `-@3[ x y ]` = `-@[ x y x y x y ]`
 - `2^x` = `[ -x -x ]` (unlikely to be what you want)
-- `2^^x` = `[ [ -x ] [ -x ] ]` (useful with `-d` and `-A`)
+- `2^^x` = `[ [ -x ] [ -x ] ]` (useful with `-d`)
+
+The `^` operator is structural, which means that arguments are parsed normally.
+As a result, `^R 'foo'` turns into `[ -R 'foo' ]` because `-R` requires an
+argument.
 
 Square-bracket lists support the following identities, up to record order as
 indicated above. `X` and `Y` stand for arbitrary lists of options.
@@ -106,6 +108,13 @@ Shell form             | List form
 ## Decisional lists
 Decisional lists allow you to predicate on a record's first field. All matching
 is done verbatim, so you'll need to transform your data before branching.
+Decisional lists are written like this:
+
+```sh
+$ ni ... { val1 -ga^R 'foo' , \
+           val2 -gc ... , \
+           ... } ...
+```
 
 ## Language interfacing
 Languages have two modes, map and reduce, specified by lowercase and uppercase
@@ -113,11 +122,17 @@ letters, respectively. Map mode invokes your code on each record individually;
 reduce mode invokes your code once and provides a lazy stream of records. Some
 languages are prefixed:
 
-- `-J[cC]` | `--[Cc]lojure`: Clojure (requires `lein`)
-- `-J[jJ]` | `--[Jj]ava`: Java (requires `mvn`)
-- `-J[sS]` | `--[Ss]cala`: Scala (requires `sbt` -- TODO)
-- `-M[oO]` | `--[Oo]ctave`: Octave
-- `-M[rR]` | `--[Rr]`: R
+- `-[pP]` | `--[pP]erl` (requires `perl`)
+- `-[yY]` | `--[pP]ython` (requires `python`)
+- `-[rR]` | `--[rR]uby` (requires `ruby`)
+
+- `-=[cC]` | `--[cC]lojure` (requires `lein`)
+- `-=[jJ]` | `--[jJ]ulia` (requires `julia`)
+- `-=[sS]` | `--[sS]cala` (requires `scala`)
+- `-=[oO]` | `--[oO]ctave` (requires `octave`)
+- `-=[rR]` | `--[rR]` (requires `R`)
+- `-=p` | `--postgres` (requires `psql`)
+- `-=s` | `--sqlite` (requires `sqlite3`)
 
 ## Join flags
 With no flags, ni sorts both sides and joins on the first column. Joined values
