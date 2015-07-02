@@ -1,5 +1,30 @@
 # Operator reference
+Short operators have the following conventions:
+
+- Frequency should be inversely proportional to typing effort on a QWERTY
+  keyboard.
+- In typical usage, uppercase operators rarely follow operators with optional
+  arguments; optional arguments tend to begin with uppercase letters.
+- Any operator whose argument is both mandatory and always multi-character can
+  be joined with its argument, e.g. `-p'foo'` for Perl code.
+- Unlike nfu, each operator is designed to handle a wide variety of use cases
+  with optional arguments. This enables better space optimization.
+
+## High-level changes from nfu
+- Field addressing happens before the operator: `-10f` instead of `-f10`
+- Partition is now aggregation: `-a^gc` instead of `--partition %0 ^gc`
+- Each language supports key-reduction: `-P'...'` instead of `-A '...'`
+- Command-line arguments are concatenative: `f1 -g f2` != `f1 f2 -g`
+- Forking is a list attribute
+- Quasifiles are read/write
+
 ## General-purpose stream operators
+The following prefixes are reserved for column addressing:
+
+- `.`: range operator
+- `,`: juxtaposition operator; enables field indexes > 9
+- `0-9`: fields
+
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
 `-a`    | aggregate     | lambda        | aggregate rows by first field
@@ -48,23 +73,20 @@ Short   | Long          | Operands      | Description
 `-V`    | horizontal    |               | join lines where addr field is blank
 `-w`    |               |               |
 `-W`    | web           | port lambda   | runs a very simple webserver
-`-x`    |               |               |
+`-x`    | xchg          |               | exchanges first and addressed//second
 `-X`    |               |               |
 `-y`    | python        | code          | map through python
 `-Y`    | Python        | code          | reduce through python
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    |               |               |
 `-+`    |               |               |
-`-/`    | subst         | { vars }      | substitute in prior terms
 `-=`    |               |               | language prefix
 `-$`    | shell         | command       | pipe stream through shell command
 `-:`    | conf[ig]      | var=value     | set configuration variable
-`-.`    |               |               |
-`-,`    |               |               |
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
 `-%`    | interleave    | qfile         | breadth-first concatenation
-`-^`    | prepend       | qfile         | prepends qfile to stream
+`-/`    | prepend       | qfile         | prepends to current stream
 
 ## Bracket operators and syntax
 - `[ ... ]`: list as quasifile
@@ -110,7 +132,7 @@ is done verbatim, so you'll need to transform your data before branching.
 Decisional lists are written like this:
 
 ```sh
-$ ni ... { val1 -ga^R 'foo' , \
+$ ni ... { val1 -ga^R 'foo' -n , \
            val2 -gc ... , \
            ... } ...
 ```
@@ -132,17 +154,6 @@ languages are prefixed:
 - `-=[rR]` | `--[rR]` (requires `R`)
 - `-=p` | `--postgres` (requires `psql`)
 - `-=s` | `--sqlite` (requires `sqlite3`)
-
-## Join flags
-With no flags, ni sorts both sides and joins on the first column. Joined values
-(not the right-hand join column itself) are zipped and the join is left-outer.
-
-Flag    | Description
---------|------------
-`^`     | left-hand data is already sorted
-`:`     | right-hand data is already sorted
-`%`     | outer left/right join
-`=`     | inner join
 
 ## Set operators
 Short   | Long          | Operands      | Description

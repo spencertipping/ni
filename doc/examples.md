@@ -11,6 +11,12 @@ $ ni hdfs:data.txt -H ^FW1k1 ^a^1st+1                   # hadoop
 - `-1s`: within each aggregated group, sum column 1's values
 - `-t+1`: take last row
 
+Non-MR word count (using gnu sort):
+
+```sh
+$ ni data.txt -FWvgc
+```
+
 ## Index JSON dataset by geohash
 ```sh
 $ ni data -r'r j0.name, ge(j0.latitude, j0.longitude, 8)' -10fg
