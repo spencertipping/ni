@@ -87,8 +87,7 @@ Additional notation includes:
 - `@3[ x y ]` = `@[ x y x y x y ]`
 - `-3[ x y ]` = `-[ x y x y x y ]`
 - `-@3[ x y ]` = `-@[ x y x y x y ]`
-- `2^x` = `[ -x -x ]` (unlikely to be what you want)
-- `2^^x` = `[ [ -x ] [ -x ] ]` (useful with `-d`)
+- `2^x` = `[ [ -x ] [ -x ] ]` (useful with `-d`)
 
 The `^` operator is structural, which means that arguments are parsed normally.
 As a result, `^R 'foo'` turns into `[ -R 'foo' ]` because `-R` requires an
