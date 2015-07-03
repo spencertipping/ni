@@ -42,3 +42,29 @@ $ ni http://data-source/data.txt -qd 16^gc
 
 The assumption here is that we want to download `data.txt` as fast as possible,
 then have 16 sort/count processes each pulling records as quickly as they can.
+
+## Bloom filters
+```sh
+$ ni data.txt -FWvJb [ /usr/share/dict/words -i .bloom ]
+```
+
+- `-FW`: split on non-words
+- `-v`: flatmap columns to vertical form
+- `-Jb`: join against a bloom filter
+- `[ ... ]`: quote ni invocation and use as a data source
+    - `-i`: redirect stream into a quasifile
+    - `.bloom`: create a temporary quasifile that is a bloom filter
+
+This can be much faster than sorting both sides of the data and doing a linear
+join:
+
+```sh
+$ ni data.txt -FWvj /usr/share/dict/words
+```
+
+Bloom filters can be tuned using configuration variables `bf.h` or `bf.p`,
+which specify true-positive confidence in bits or probability, respectively:
+
+```sh
+$ ni data.txt -FWvJb [ -:bf.h=8 /usr/share/dict/words -i .bloom ]
+```

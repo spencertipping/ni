@@ -46,9 +46,9 @@ Short   | Long          | Operands      | Description
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
 `-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    | kvjoin        | kvspec        | join against data from k/v store
+`-J`    | kvjoin        |               | prefix: join against key/value store
 `-k`    | constant      | value         | emits a constant value
-`-K`    |               |               |
+`-K`    | kill          |               | eats data; emits nothing
 `-l`    |               |               |
 `-L`    |               |               |
 `-m`    |               |               |
@@ -155,7 +155,23 @@ languages are prefixed:
 - `-=p` | `--postgres` (requires `psql`)
 - `-=s` | `--sqlite` (requires `sqlite3`)
 
+## Key/value joins
+These are implemented as batched queries to external key/value stores.
+
+Short   | Long          | Operands      | Description
+--------|---------------|---------------|------------
+`-Jb`   | join-bloom    | qfile         | intersect with bloom filter
+
+NOPE NOPE NOPE. This needs to be a language abstraction or something; otherwise
+we'll completely lack the API necessary to do things like bloom filter
+intersection/union efficiently. In general, unless we're sorting the left
+dataset, there's no reason to use anything other than a map-through-code
+operation for k/v joins.
+
 ## Set operators
+These are implemented using sorted linear joins. Depending on the application,
+you may be better off bulk-querying a data structure; see `-J`.
+
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
 `-?d`   | set-diff      | [flags] qfile | set difference by addressed field

@@ -25,7 +25,7 @@ the resource stream.
     ls = $1
     if (r) print "static const char *const " ra[r] "[] = {"
   } else {
-    if (interp) {code[c++] = $0}
+    if (interp) code[c++] = $0
     gsub("\\\\", "\\\\")
     gsub("\"", "\\\"")
     print "\"" $0 "\","

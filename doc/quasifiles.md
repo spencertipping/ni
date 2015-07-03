@@ -7,14 +7,16 @@ the default in documentation because it doesn't involve the shift key.
 Short   | Long          | Format          | Description
 --------|---------------|-----------------|------------
 `b.`    | `bloom.`      | `b./path`       | Bloom filter
+`c`     | `countmin.`   | `c./path`       | Count-min sketch
 `f.`    | `file.`       | `f./path`       | Local file
 `g.`    | `gnuplot.`    | `g....`         | Gnuplot
-`k.`    |               | `k.text`        | Literal constant text
 `//`    | `http[s].//`  | `//google.com`  | HTTP url (retrieved with curl)
 `n.`    |               | `n.[l,[s,]]u`   | Numeric range
+`q.`    | `sqlite.`     | `q.[db:]t`      | SQLite table
 `r.`    | `redis.`      | `r.host`        | Redis database
 `s.`    | `ssh.`        | `s.[u@]h:qfile` | SSH tunnel
 `s3.`   | `s3.//`       | `s3.path`       | S3 url (retrieved with s3cmd)
+`t.`    | `text.`       | `t.text`        | Literal constant text
 `$.`    | `sh.`         | `$.command`     | Shell command stdout
 
 ## Archives
@@ -26,7 +28,7 @@ compressed or archive formats:
 - lzo
 - lz4
 - snappy
-- pkzip/jar/odX
+- pkzip/jar
 - tar
 - xz
 
