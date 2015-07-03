@@ -80,9 +80,10 @@ Short   | Long          | Operands      | Description
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    |               |               |
 `-+`    |               |               |
+`-_`    |               |               |
+`-:`    |               |               |
 `-=`    |               |               | language prefix
 `-$`    | shell         | command       | pipe stream through shell command
-`-:`    | conf[ig]      | var=value     | set configuration variable
 `-?`    |               |               | prefix: set operators
 `-#`    |               |               | prefix: numerical operators
 `-%`    | interleave    | qfile         | breadth-first concatenation

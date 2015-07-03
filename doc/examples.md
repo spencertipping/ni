@@ -66,5 +66,5 @@ Bloom filters can be tuned using configuration variables `bf.h` or `bf.p`,
 which specify true-positive confidence in bits or probability, respectively:
 
 ```sh
-$ ni data.txt -FWvJb [ -:bf.h=8 /usr/share/dict/words -i .bloom ]
+$ ni data.txt -FWvJb [ bf.h=8 /usr/share/dict/words -i .bloom ]
 ```
