@@ -28,7 +28,7 @@ the resource stream.
     if (interp) code[c++] = $0
     gsub("\\\\", "\\\\")
     gsub("\"", "\\\"")
-    print "\"" $0 "\","
+    print "\"" $0 "\\n\","
   }
 }
 END {

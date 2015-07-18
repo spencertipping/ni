@@ -20,8 +20,7 @@ resource() {
 cp -r src gen
 
 for f in ni.h nope.h math.h \
-         stream.h \
-         resources.c packet.c stream.c ni.c; do
+         resources.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni0.c
 
@@ -67,3 +66,10 @@ cat gen/ni-header.sh \
 
 gen/ni0 --self > gen/ni1 && chmod +x gen/ni1 || exit $?
 gen/ni1 --self > ni      && chmod +x ni      || exit $?
+
+diff=$(diff gen/ni1 ni)
+if [[ -n $diff ]]; then
+  echo "unstable; got a diff:"
+  echo "$diff"
+  exit 1
+fi
