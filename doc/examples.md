@@ -45,15 +45,15 @@ then have 16 sort/count processes each pulling records as quickly as they can.
 
 ## Bloom filters
 ```sh
-$ ni data.txt -FWvJb [ /usr/share/dict/words -i .bloom ]
+$ ni data.txt -FWvJb [ /usr/share/dict/words -i b:@ ]
 ```
 
 - `-FW`: split on non-words
 - `-v`: flatmap columns to vertical form
-- `-Jb`: join against a bloom filter
+- `-Jb`: join against a bloom filter (TODO: nope nope nope)
 - `[ ... ]`: quote ni invocation and use as a data source
-    - `-i`: redirect stream into a quasifile
-    - `.bloom`: create a temporary quasifile that is a bloom filter
+    - `-i`: redirect stream into a quasifile, return quasifile name
+    - `b:@`: create a temporary quasifile that is a bloom filter
 
 This can be much faster than sorting both sides of the data and doing a linear
 join:
@@ -66,5 +66,5 @@ Bloom filters can be tuned using configuration variables `bf.h` or `bf.p`,
 which specify true-positive confidence in bits or probability, respectively:
 
 ```sh
-$ ni data.txt -FWvJb [ bf.h=8 /usr/share/dict/words -i .bloom ]
+$ ni data.txt -FWvJb [ bf.h=8 /usr/share/dict/words -i b:@ ]
 ```

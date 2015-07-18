@@ -34,14 +34,14 @@ Short   | Long          | Operands      | Description
 `-c`    | count         |               | `uniq -c` for addressed columns
 `-C`    |               |               |
 `-d`    | distribute    | lambda-list   | distribute across subprocesses
-`-D`    | duplicate     | qfile         | duplicate into quasifile
-`-e`    | encode        | codec         | interpret with codec
-`-E`    | decode        | codec         | generate with codec
+`-D`    | Distribute    | lambda-list   | distribute across machines
+`-e`    |               |               |
+`-E`    |               |               |
 `-f`    | fields        | [N]           | reorder, drop, create fields
 `-F`    | fieldsplit    | regexp        | split into columns on regexp
 `-g`    | group         |               | group rows by addressed column(s)
 `-G`    | grep          | pattern       | pipe through egrep
-`-h`    |               |               |
+`-h`    | ladoop        | m r           | local hadoop simulation
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
 `-I`    | from          |               | reads from qfiles
@@ -56,7 +56,7 @@ Short   | Long          | Operands      | Description
 `-n`    | number        |               | prepend line number or intify
 `-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
-`-O`    | rorder        |               | reverse-order rows
+`-O`    | Order         |               | reverse-order rows
 `-p`    | perl          | code          | map through perl
 `-P`    | Perl          | code          | reduce through perl
 `-q`    | queue         | [profile]     | queue against disk
