@@ -1,28 +1,39 @@
 # Examples
 ## Map/reduce word count
 ```sh
-$ ni data.txt -FW1k1ga ^1st+1                           # local
-$ ni hdfs:data.txt -H ^FW1k1 ^a^1st+1                   # hadoop
+$ ni data.txt -FW1k1gp'r f0, sum a0i1'                  # local
+$ ni hdfs:data.txt -h ^FW1k1 ^p'r f0, sum a0i1'         # local
+$ ni hdfs:data.txt -H ^FW1k1 ^p'r f0, sum a0i1'         # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
 - `-1k1`: address `-k1` to field 1, which juxtaposes each word with 1
-- `-ga`: group/aggregate
-- `-1s`: within each aggregated group, sum column 1's values
-- `-t+1`: take last row
+- `-g`: group
+- `-p`: execute perl code
+    - `r x, y`: emit a row of values
+    - `f0`: value of first field
+    - `a0i1`: integer interpretation of field 1 forward-aggregated by field 0
 
-Non-MR word count (using gnu sort):
+Using the `-A/--aggregate` operator:
 
 ```sh
-$ ni data.txt -FWvgc
+$ ni data.txt -FW1k1gA ^1st+1
+$ ni hdfs:data.txt -H ^FW1k1 ^a^1st+1
+```
+
+Non-MR word count (using command-line sort):
+
+```sh
+$ ni data.txt -FWvgc                                    # prepend count
+$ ni data.txt -FWvgcx                                   # append count
 ```
 
 ## Index JSON dataset by geohash
 ```sh
-$ ni data -r'r j0.name, ge(j0.latitude, j0.longitude, 8)' -10fg
+$ ni data -r'r j0.name, ge(j0.latitude, j0.longitude, 8)' -xg
 ```
 
-`j0` means "`%0` interpreted as JSON". It notationally bypasses the caching
+`j0` means "`f0` interpreted as JSON". It notationally bypasses the caching
 otherwise necessary to support multiple-access. `ge` is a builtin function to
 encode geohashes. It's possible that the actual geohash and JSON handling will
 be done outside the Ruby context to reduce the number of dependencies or

@@ -27,42 +27,42 @@ The following prefixes are reserved for column addressing:
 
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
-`-a`    | aggregate     | lambda        | aggregate rows by first field
-`-A`    |               |               |
+`-a`    | average       | window-spec   | running/windowed average
+`-A`    | aggregate     | lambda        | aggregate by addressed fields
 `-b`    |               |               |
 `-B`    |               |               |
 `-c`    | count         |               | `uniq -c` for addressed columns
-`-C`    |               |               |
+`-C`    | clojure       | code          | pipe through clojure
 `-d`    | distribute    | lambda-list   | distribute across subprocesses
 `-D`    | Distribute    | lambda-list   | distribute across machines
 `-e`    |               |               |
 `-E`    |               |               |
 `-f`    | fields        | [N]           | reorder, drop, create fields
-`-F`    | fieldsplit    | regexp        | split into columns on regexp
+`-F`    | fieldsplit    | split-spec    | split each column
 `-g`    | group         |               | group rows by addressed column(s)
 `-G`    | grep          | pattern       | pipe through egrep
-`-h`    | ladoop        | m r           | local hadoop simulation
+`-h`    | ladoop        | m r           | local simulation of `-H`
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
-`-i`    | into          | [quasifile]   | writes into qfile, emits qfile name
-`-I`    | from          |               | reads from qfiles
-`-j`    | join          | [flags] qfile | join data by addressed columns
-`-J`    | kvjoin        |               | prefix: join against key/value store
+`-i`    |               |               |
+`-I`    |               |               |
+`-j`    | join          | join-spec     | join data by addressed columns
+`-J`    |               |               |
 `-k`    | constant      | value         | emits a constant value
 `-K`    | kill          |               | eats data; emits nothing
-`-l`    |               |               |
-`-L`    |               |               |
-`-m`    |               |               |
-`-M`    |               |               |
+`-l`    | log           | log-spec      | log or other numerical compression
+`-L`    | exp           | log-spec      | invert a `--log` operation
+`-m`    | ruby          | code          | pipe through ruby
+`-M`    | octave        | code          | pipe through octave
 `-n`    | number        |               | prepend line number or intify
 `-N`    |               |               |
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | Order         |               | reverse-order rows
-`-p`    | perl          | code          | map through perl
-`-P`    | Perl          | code          | reduce through perl
-`-q`    | queue         | [profile]     | queue against disk
-`-Q`    |               |               |
-`-r`    | ruby          | code          | map through ruby
-`-R`    | Ruby          | code          | reduce through ruby
+`-p`    | perl          | code          | pipe through perl
+`-P`    | python        | code          | pipe through python
+`-q`    | queue         | queue-spec    | queue against disk
+`-Q`    | quant         | quant-spec    | quantize
+`-r`    | read          |               | dereferences quasifiles from stream
+`-R`    | write         | quasifile     | writes stream to quasifile
 `-s`    | sum           |               | running sum
 `-S`    | delta         |               | delta (inverts --sum)
 `-t`    | take          | line-spec     | take selected lines
@@ -74,18 +74,18 @@ Short   | Long          | Operands      | Description
 `-w`    |               |               |
 `-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    | xchg          |               | exchanges first and addressed//second
-`-X`    |               |               |
-`-y`    | python        | code          | map through python
-`-Y`    | Python        | code          | reduce through python
+`-X`    | switch        |               | rotates addressed columns to front
+`-y`    |               |               |
+`-Y`    |               |               |
 `-z`    | zip           | qfile         | zip columns from specified qfile
-`-Z`    |               |               |
+`-Z`    | scala         | code          | pipe through scala
 `-+`    |               |               |
 `-_`    |               |               |
 `-:`    |               |               |
-`-=`    |               |               | language prefix
-`-$`    | shell         | command       | pipe stream through shell command
-`-?`    |               |               | prefix: set operators
-`-#`    |               |               | prefix: numerical operators
+`-=`    |               |               |
+`-$`    | shell         | command       | pipe through shell command
+`-?`    |               |               |
+`-#`    |               |               |
 `-%`    | interleave    | qfile         | breadth-first concatenation
 `-/`    | prepend       | qfile         | prepends to current stream
 
@@ -123,7 +123,7 @@ Shell form             | List form
 -----------------------|--------------
 `ni X | ni Y`          | `ni X Y`
 `ni X; ni Y`           | `ni X -[ Y ]`
-`ni Y; ni X`           | `ni X -^ [ Y ]`
+`ni Y; ni X`           | `ni X -/ [ Y ]`
 `ni X | tee f; ni f Y` | `ni X -@[ Y ]`
 `ni X sh:'ni Y'`       | `ni X [ Y ]` or `ni X ^Y`
 
@@ -137,60 +137,3 @@ $ ni ... { val1 -ga^R 'foo' -n , \
            val2 -gc ... , \
            ... } ...
 ```
-
-## Language interfacing
-Languages have two modes, map and reduce, specified by lowercase and uppercase
-letters, respectively. Map mode invokes your code on each record individually;
-reduce mode invokes your code once and provides a lazy stream of records. Some
-languages are prefixed:
-
-- `-[pP]` | `--[pP]erl` (requires `perl`)
-- `-[yY]` | `--[pP]ython` (requires `python`)
-- `-[rR]` | `--[rR]uby` (requires `ruby`)
-
-- `-=[cC]` | `--[cC]lojure` (requires `lein`)
-- `-=[jJ]` | `--[jJ]ulia` (requires `julia`)
-- `-=[sS]` | `--[sS]cala` (requires `scala`)
-- `-=[oO]` | `--[oO]ctave` (requires `octave`)
-- `-=[rR]` | `--[rR]` (requires `R`)
-- `-=p` | `--postgres` (requires `psql`)
-- `-=s` | `--sqlite` (requires `sqlite3`)
-
-## Key/value joins
-These are implemented as batched queries to external key/value stores.
-
-Short   | Long          | Operands      | Description
---------|---------------|---------------|------------
-`-Jb`   | join-bloom    | qfile         | intersect with bloom filter
-
-NOPE NOPE NOPE. This needs to be a language abstraction or something; otherwise
-we'll completely lack the API necessary to do things like bloom filter
-intersection/union efficiently. In general, unless we're sorting the left
-dataset, there's no reason to use anything other than a map-through-code
-operation for k/v joins.
-
-## Set operators
-These are implemented using sorted linear joins. Depending on the application,
-you may be better off bulk-querying a data structure; see `-J`.
-
-Short   | Long          | Operands      | Description
---------|---------------|---------------|------------
-`-?d`   | set-diff      | [flags] qfile | set difference by addressed field
-`-?i`   | intersection  | [flags] qfile | set intersection
-`-?s`   | subset        | [flags] qfile | running subset predicate
-`-?S`   | superset      | [flags] qfile | running superset predicate
-`-?u`   | union         | [flags] qfile | set union
-
-## Numerical operators
-Short   | Long          | Operands      | Description
---------|---------------|---------------|------------
-`-#a`   | average       | [flags]       | running average
-`-#h`   | entropy       | [flags]       | running entropy
-`-#l`   | log           | [base=2]      | log of each number
-`-#L`   | exp           | [base=2]      | exponentiate each number
-`-#n`   | ntiles        | N             | exact n-tiles of stream
-`-#p`   | root          | [exp=2]       | root of each number
-`-#P`   | pow           | [exp=2]       | power of each number
-`-#q`   | quant         | [q=1]         | quantize each number
-`-#s`   | stddev        | [flags]       | running standard deviation
-`-#v`   | variance      | [flags]       | running variance
