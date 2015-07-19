@@ -1,7 +1,6 @@
 Stream abstraction.
-Streams consume and/or emit bytes and express a preference about the format(s)
-they work with. They also support EOF, which is used both to signal the end of
-input and within constructs like aggregation.
+TODO: figure out what it is streams actually represent. It increasingly seems
+like there are two levels of abstraction going on.
 
 #include <sys/types.h>
 
@@ -24,7 +23,7 @@ typedef enum ni_stream_type
 struct ni_stream;
 typedef struct ni_stream_ops
 {
-  ssize_t        (*read) (struct ni_stream *s, void *buf, size_t n);
+  ssize_t        (*read) (struct ni_stream *s, void       *buf, size_t n);
   ssize_t        (*write)(struct ni_stream *s, void const *buf, size_t n);
   void           (*close)(struct ni_stream *s);
   ni_stream_type (*inferred_type)(struct ni_stream const *s);

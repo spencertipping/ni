@@ -6,6 +6,9 @@ unsdoc() {
                  grep /^\h*[^A-Z| ]/,
                  split /\n(?:\h*\n)+(?:c\n)?/,
                  join "",
+                 map /"/ ? $_ : s/\h+/ /gr,
+                 split /("(?:[^"\\]*|\\.)")/,
+                 join "",
                  map s/^\h*//r,
                  map s/\h*\\$/\\/r, <>' \
        "$@"

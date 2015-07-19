@@ -64,7 +64,7 @@ ni_stream *ni_file_read(char const *const filename)
 
   s->ops            = &ni_stream_file_ops;
   s->read_fd        = fd;
-  s->write_fd       = -1; 
+  s->write_fd       = -1;
   s->opaque_state   = fs;
   fs->filename      = filename;
   fs->inferred_type = NI_STREAM_UNKNOWN;

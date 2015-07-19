@@ -60,9 +60,9 @@ print "(char const *const *const) 0};"
 for (i = 0; i < c; ++i) print code[i]
 }
 225 ni.c
-#define EXIT_NORMAL       0
+#define EXIT_NORMAL 0
 #define EXIT_SYSTEM_ERROR 2
-#define EXIT_USER_ERROR   1
+#define EXIT_USER_ERROR 1
 #define _ISOC99_SOURCE
 #define NI_ASSERT_NOPE 2
 #define NI_LIMIT_NOPE  1
@@ -70,7 +70,7 @@ for (i = 0; i < c; ++i) print code[i]
 #define NI_THIS_IS_A_BUG 3
 #define NI_USER_ERROR    1
 #define _POSIX_C_SOURCE 200112L
-#define _XOPEN_SOURCE   600
+#define _XOPEN_SOURCE 600
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -170,63 +170,63 @@ NI_STREAM_XZ,
 struct ni_stream;
 typedef struct ni_stream_ops
 {
-ssize_t        (*read) (struct ni_stream *s, void *buf, size_t n);
-ssize_t        (*write)(struct ni_stream *s, void const *buf, size_t n);
-void           (*close)(struct ni_stream *s);
+ssize_t (*read) (struct ni_stream *s, void *buf, size_t n);
+ssize_t (*write)(struct ni_stream *s, void const *buf, size_t n);
+void (*close)(struct ni_stream *s);
 ni_stream_type (*inferred_type)(struct ni_stream const *s);
 } ni_stream_ops;
-#define NI_READ_EOF     (-1)
-#define NI_READ_EIO     (-2)
-#define NI_READ_ERRNO   (-3)
-#define NI_READ_EPROC   (-4)
-#define NI_WRITE_EPIPE  (-1)
+#define NI_READ_EOF (-1)
+#define NI_READ_EIO (-2)
+#define NI_READ_ERRNO (-3)
+#define NI_READ_EPROC (-4)
+#define NI_WRITE_EPIPE (-1)
 #define NI_WRITE_ENOSPC (-2)
-#define NI_WRITE_EIO    (-3)
-#define NI_WRITE_ERRNO  (-4)
-#define NI_WRITE_EPROC  (-5)
+#define NI_WRITE_EIO (-3)
+#define NI_WRITE_ERRNO (-4)
+#define NI_WRITE_EPROC (-5)
 typedef struct ni_stream
 {
 ni_stream_ops const *ops;
-int                  read_fd;
-int                  write_fd;
-void                *opaque_state;
+int read_fd;
+int write_fd;
+void *opaque_state;
 } ni_stream;
 inline ssize_t ni_stream_read(ni_stream *const s,
-void      *const buf,
-size_t     const n)
+void *const buf,
+size_t const n)
 { return (*s->ops->read)(s, buf, n); }
-inline ssize_t ni_stream_write(ni_stream  *const s,
+inline ssize_t ni_stream_write(ni_stream *const s,
 void const *const buf,
-size_t      const n)
+size_t const n)
 { return (*s->ops->write)(s, buf, n); }
 inline void ni_stream_close(ni_stream *const s)
 { return (*s->ops->close)(s); }
 inline ni_stream_type ni_stream_inferred_type(ni_stream const *const s)
 { return (*s->ops->inferred_type)(s); }
-#define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
+#define for_rs_names(i) for (int i = 0; rs[i]; ++i)
 #define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)
 typedef struct ni_stream_file
 {
-char const    *filename;
+char const *filename;
 ni_stream_type inferred_type;
-off_t          read_offset;
-off_t          write_offset;
+off_t read_offset;
+off_t write_offset;
 } ni_stream_file;
 ssize_t ni_stream_file_read(ni_stream *const s,
-void      *const buf,
-size_t     const n)
+void *const buf,
+size_t const n)
 {
 return 0;
 }
-ssize_t ni_stream_file_write(ni_stream  *const s,
+ssize_t ni_stream_file_write(ni_stream *const s,
 void const *const buf,
-size_t      const n)
+size_t const n)
 {
 return 0;
 }
 void ni_stream_file_close(ni_stream *const s)
 {
-if (s->read_fd  != -1) close(s->read_fd)  || (s->read_fd  = -1);
+if (s->read_fd != -1) close(s->read_fd) || (s->read_fd = -1);
 if (s->write_fd != -1) close(s->write_fd) || (s->write_fd = -1);
 }
 ni_stream_type ni_stream_file_type(ni_stream const *const s)
@@ -234,25 +234,25 @@ ni_stream_type ni_stream_file_type(ni_stream const *const s)
 return ((ni_stream_file*) s->opaque_state)->inferred_type;
 }
 ni_stream_ops const ni_stream_file_ops = {
-.read          = &ni_stream_file_read,
-.write         = &ni_stream_file_write,
-.close         = &ni_stream_file_close,
+.read = &ni_stream_file_read,
+.write = &ni_stream_file_write,
+.close = &ni_stream_file_close,
 .inferred_type = &ni_stream_file_type
 };
 ni_stream *ni_file_read(char const *const filename)
 {
 int const fd = open(filename, O_RDONLY | O_NONBLOCK);
 if (fd == -1) return 0;
-ni_stream      *s  = malloc(sizeof(ni_stream));
+ni_stream *s = malloc(sizeof(ni_stream));
 ni_stream_file *fs = malloc(sizeof(ni_stream_file));
-s->ops            = &ni_stream_file_ops;
-s->read_fd        = fd;
-s->write_fd       = -1; 
-s->opaque_state   = fs;
-fs->filename      = filename;
+s->ops = &ni_stream_file_ops;
+s->read_fd = fd;
+s->write_fd = -1;
+s->opaque_state = fs;
+fs->filename = filename;
 fs->inferred_type = NI_STREAM_UNKNOWN;
-fs->read_offset   = 0;
-fs->write_offset  = 0;
+fs->read_offset = 0;
+fs->write_offset = 0;
 return s;
 }
 #define die(...)\
@@ -263,7 +263,7 @@ exit(EXIT_SYSTEM_ERROR);\
 int main(int argc, char const *const *argv) {
 if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
 if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
-if (rmdir(argv[2]))  die("rmdir failed for %s",  argv[2]);
+if (rmdir(argv[2])) die("rmdir failed for %s",  argv[2]);
 argc -= 3;
 argv += 3;
 int const stdin_tty = isatty(STDIN_FILENO);
