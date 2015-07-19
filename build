@@ -20,7 +20,7 @@ resource() {
 cp -r src gen
 
 for f in ni.h nope.h math.h stream.h \
-         resources.c ni.c; do
+         resources.c stream.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni0.c
 

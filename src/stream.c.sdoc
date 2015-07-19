@@ -1,0 +1,74 @@
+Stream implementations.
+The simplest type of stream is a file, which can be opened either for reading
+or for writing.
+
+
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
+typedef struct ni_stream_file
+{
+  char const    *filename;
+  ni_stream_type inferred_type;
+  off_t          read_offset;
+  off_t          write_offset;
+} ni_stream_file;
+
+
+ssize_t ni_stream_file_read(ni_stream *const s,
+                            void      *const buf,
+                            size_t     const n)
+{
+  return 0;
+}
+
+
+ssize_t ni_stream_file_write(ni_stream  *const s,
+                             void const *const buf,
+                             size_t      const n)
+{
+  return 0;
+}
+
+
+void ni_stream_file_close(ni_stream *const s)
+{
+  if (s->read_fd  != -1) close(s->read_fd)  || (s->read_fd  = -1);
+  if (s->write_fd != -1) close(s->write_fd) || (s->write_fd = -1);
+}
+
+
+ni_stream_type ni_stream_file_type(ni_stream const *const s)
+{
+  return ((ni_stream_file*) s->opaque_state)->inferred_type;
+}
+
+
+ni_stream_ops const ni_stream_file_ops = {
+  .read          = &ni_stream_file_read,
+  .write         = &ni_stream_file_write,
+  .close         = &ni_stream_file_close,
+  .inferred_type = &ni_stream_file_type
+};
+
+
+ni_stream *ni_file_read(char const *const filename)
+{
+  int const fd = open(filename, O_RDONLY | O_NONBLOCK);
+  if (fd == -1) return 0;
+
+  ni_stream      *s  = malloc(sizeof(ni_stream));
+  ni_stream_file *fs = malloc(sizeof(ni_stream_file));
+
+  s->ops            = &ni_stream_file_ops;
+  s->read_fd        = fd;
+  s->write_fd       = -1; 
+  s->opaque_state   = fs;
+  fs->filename      = filename;
+  fs->inferred_type = NI_STREAM_UNKNOWN;
+  fs->read_offset   = 0;
+  fs->write_offset  = 0;
+  return s;
+}

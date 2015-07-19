@@ -27,8 +27,7 @@ but manipulated with system commands that ni assumes are already installed:
 - bzip2
 - lzo (`lzop` command)
 - lz4
-- lzma
-- snappy (`python` and the Python `snappy` library)
+- lzip
 - pkzip/jar (`unzip` command)
 - tar
 - xz
