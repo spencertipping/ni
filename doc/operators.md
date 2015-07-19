@@ -12,9 +12,10 @@ Short operators have the following conventions:
 
 ## High-level changes from nfu
 - Field addressing happens before the operator: `-10f` instead of `-f10`
-- Partition is now aggregation: `-a^gc` instead of `--partition %0 ^gc`
-- Each language supports key-reduction: `-P'...'` instead of `-A '...'`
+- Partition is now aggregation: `-A^gc` instead of `--partition %0 ^gc`
+- Each language supports key-reduction in its API
 - Command-line arguments are concatenative: `f1 -g f2` != `f1 f2 -g`
+- Unlike nfu, lambdas are not command-line programs (though they can shell out)
 - Forking is a list attribute
 - Quasifiles are read/write
 
@@ -37,7 +38,7 @@ Short   | Long          | Operands      | Description
 `-D`    | Distribute    | lambda-list   | distribute across machines
 `-e`    |               |               |
 `-E`    |               |               |
-`-f`    | fields        | [N]           | reorder, drop, create fields
+`-f`    | fields        |               | reorder, drop, create fields
 `-F`    | fieldsplit    | split-spec    | split each column
 `-g`    | group         |               | group rows by addressed column(s)
 `-G`    | grep          | pattern       | pipe through egrep
@@ -59,8 +60,8 @@ Short   | Long          | Operands      | Description
 `-O`    | Order         |               | reverse-order rows
 `-p`    | perl          | code          | pipe through perl
 `-P`    | python        | code          | pipe through python
-`-q`    | queue         | queue-spec    | queue against disk
-`-Q`    | quant         | quant-spec    | quantize
+`-q`    | quant         | quant-spec    | quantize
+`-Q`    | queue         | queue-spec    | queue against disk
 `-r`    | read          |               | dereferences quasifiles from stream
 `-R`    | write         | quasifile     | writes stream to quasifile
 `-s`    | sum           |               | running sum

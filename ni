@@ -59,7 +59,7 @@ END {
   print "(char const *const *const) 0};"
   for (i = 0; i < c; ++i) print code[i]
 }
-121 ni.c
+143 ni.c
 #define EXIT_NORMAL       0
 #define EXIT_SYSTEM_ERROR 2
 #define EXIT_USER_ERROR   1
@@ -76,6 +76,7 @@ END {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include <unistd.h>
 void ni_nope_exit(int const reason) {
   switch (reason) {
@@ -149,6 +150,27 @@ int ni_cintlog2(uint64_t x)
   if (1 << log < x) ++log;
   return log;
 }
+struct ni_stream;
+typedef struct ni_stream_ops {
+  ssize_t (*read) (struct ni_stream *s, void *buf, size_t n);
+  ssize_t (*write)(struct ni_stream *s, void *buf, size_t n);
+  void    (*eof)  (struct ni_stream *s);
+} ni_stream_ops;
+#define NI_READ_EOF     (-1)
+#define NI_READ_EIO     (-2)
+#define NI_READ_ERRNO   (-3)
+#define NI_READ_EPROC   (-4)
+#define NI_WRITE_EPIPE  (-1)
+#define NI_WRITE_ENOSPC (-2)
+#define NI_WRITE_EIO    (-3)
+#define NI_WRITE_ERRNO  (-4)
+#define NI_WRITE_EPROC  (-5)
+typedef struct ni_stream {
+  ni_stream_ops *ops;
+  int            read_fd;
+  int            write_fd;
+  void          *state;
+} ni_stream;
 #define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
 #define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)
 #define die(...) \
@@ -195,7 +217,7 @@ s=$e.c
 {
 2 ni-footer.sh
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
+c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
 5 usage
 usage: ni arguments...
 
@@ -204,4 +226,4 @@ each one modifies the current stream in some way. Available operators:
 
 EOF
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
+c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"

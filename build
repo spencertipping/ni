@@ -19,7 +19,7 @@ resource() {
 [[ -d gen ]] && rm -r gen
 cp -r src gen
 
-for f in ni.h nope.h math.h \
+for f in ni.h nope.h math.h stream.h \
          resources.c ni.c; do
   unsdoc src/$f.sdoc
 done > gen/ni0.c
@@ -51,7 +51,7 @@ EOF
 
 cat > gen/ni-footer.sh <<'EOF'
 } > "$s"
-c99 "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
+c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
 EOF
 
 for r in decompress.awk ni.c ni-header.sh ni-footer.sh usage; do

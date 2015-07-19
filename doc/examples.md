@@ -30,7 +30,7 @@ $ ni data.txt -FWvgcx                                   # append count
 
 ## Index JSON dataset by geohash
 ```sh
-$ ni data -r'r j0.name, ge(j0.latitude, j0.longitude, 8)' -xg
+$ ni data -m'r j0.name, ge(j0.latitude, j0.longitude, 8)' -xg
 ```
 
 `j0` means "`f0` interpreted as JSON". It notationally bypasses the caching
@@ -48,7 +48,7 @@ also designed to maintain data movement, throttling only when absolutely
 necessary (i.e. low disk space on the host).
 
 ```sh
-$ ni http://data-source/data.txt -qd 16^gc
+$ ni http://data-source/data.txt -Qd 16^gc
 ```
 
 The assumption here is that we want to download `data.txt` as fast as possible,

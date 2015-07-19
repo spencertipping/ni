@@ -8,11 +8,13 @@
 #define EXIT_USER_ERROR   1
 #define EXIT_SYSTEM_ERROR 2
 
+
 #define die(...) \
   do { \
     fprintf(stderr, "ni: " __VA_ARGS__); \
     exit(EXIT_SYSTEM_ERROR); \
   } while (0);
+
 
 int main(int argc, char const *const *argv) {
   if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
