@@ -1,0 +1,14 @@
+#!/bin/bash
+# Runs a specific benchmark on synthetic input.
+
+mkdir -p $(dirname $0)/gen
+cd $(dirname $0)/gen
+
+[[ -e testdata ]] || nfu --repeat 100 /usr/share/dict/words -f00 > testdata
+
+gcc ../$1.c -o $1
+
+start_time=$(date +%s)
+while (( $(date +%s) - start_time < 5 )); do
+  time ./$1 < testdata > /dev/null
+done

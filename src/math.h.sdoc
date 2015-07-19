@@ -1,0 +1,31 @@
+Ni math functions.
+Optimized bitwise and other math that I don't want to inline.
+
+#include <stdint.h>
+
+#define ni_ull(x) ((unsigned long long) (x))
+
+Floor integer log-2 of a number (index of highest set bit).
+
+int ni_intlog2(uint64_t x)
+{
+  uint64_t y;
+  int l = 0;
+  for (int i = 5; i >= 0; --i) {
+    int shift = 1 << i;
+    if (y = x >> shift) {
+      x = y;
+      l += shift;
+    }
+  }
+  return l;
+}
+
+Ceiling log-2.
+
+int ni_cintlog2(uint64_t x)
+{
+  int log = ni_intlog2(x);
+  if (1 << log < x) ++log;
+  return log;
+}

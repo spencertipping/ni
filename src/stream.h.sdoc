@@ -1,0 +1,46 @@
+Stream abstraction.
+Streams consume and/or emit bytes and express a preference about the format(s)
+they work with. They also support EOF, which is used both to signal the end of
+input and within constructs like aggregation.
+
+#include <sys/types.h>
+
+struct ni_stream;
+typedef struct ni_stream_ops {
+  ssize_t (*read) (struct ni_stream *s, void *buf, size_t n);
+  ssize_t (*write)(struct ni_stream *s, void *buf, size_t n);
+  void    (*eof)  (struct ni_stream *s);
+} ni_stream_ops;
+
+The read() and write() functions don't block. Each either returns 0 to indicate
+temporary unavailability, positive to indicate that N bytes were read/written,
+or one of the following negative values to indicate an error. errno is always
+preserved.
+
+#define NI_READ_EOF     (-1)
+#define NI_READ_EIO     (-2)
+#define NI_READ_ERRNO   (-3)
+#define NI_READ_EPROC   (-4)
+
+#define NI_WRITE_EPIPE  (-1)
+#define NI_WRITE_ENOSPC (-2)
+#define NI_WRITE_EIO    (-3)
+#define NI_WRITE_ERRNO  (-4)
+#define NI_WRITE_EPROC  (-5)
+
+Some codes above worth noting are EPROC, which means the connected process
+exited with a nonzero code, and EOF, which indicates that no further bytes will
+ever be available for reading from the stream. EOF is by definition a stable
+condition.
+
+The stream structure below defines some shared fields to make it possible for a
+scheduler to quickly collect the file descriptors of all active streams and
+issue a single select() call. If either fd is unopened or not meaningful, it
+will be set to -1.
+
+typedef struct ni_stream {
+  ni_stream_ops *ops;
+  int            read_fd;
+  int            write_fd;
+  void          *state;
+} ni_stream;

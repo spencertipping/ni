@@ -1,0 +1,9 @@
+Access to bundled resources.
+The ni image contains its own source code as a series of string literals stored
+in arrays. (It's done this way to sidestep any C compiler limitations on string
+length; ISO specifies the minimum must be at least 509 chars.)
+
+TODO: replace this with a stream-based version
+
+#define for_rs_names(i)       for (int i = 0; rs[i]; ++i)
+#define for_rs_parts(name, i) for (int i = 0; name[i]; ++i)

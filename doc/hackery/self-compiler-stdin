@@ -1,0 +1,23 @@
+#!/bin/sh
+compiled_path=`mktemp`
+source_path=`mktemp --suffix=.c`
+
+echo "NOTE: this doesn't work on all platforms anymore"
+echo "(C programs really need the .c suffix)"
+
+c99 -x c - -o "$compiled_path" <<'EOF'
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+int main(int argc, char **argv) {
+  for (int i = 0; i < argc; ++i)
+    printf("argv[%d] = %s\n", i, argv[i]);
+
+  int unlink_status = unlink(argv[0]);
+  printf("Hello world!\n");
+  printf("unlinked self: %d, %d\n", unlink_status, errno);
+  return 0;
+}
+EOF
+
+exec "$compiled_path"

@@ -1,0 +1,46 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+#define EXIT_NORMAL       0
+#define EXIT_USER_ERROR   1
+#define EXIT_SYSTEM_ERROR 2
+
+
+#define die(...) \
+  do { \
+    fprintf(stderr, "ni: " __VA_ARGS__); \
+    exit(EXIT_SYSTEM_ERROR); \
+  } while (0);
+
+
+int main(int argc, char const *const *argv) {
+  if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
+  if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
+  if (rmdir(argv[2]))  die("rmdir failed for %s",  argv[2]);
+
+  argc -= 3;
+  argv += 3;
+
+  int const stdin_tty = isatty(STDIN_FILENO);
+  if (!argc && stdin_tty) {
+    fprintf(stderr, "TODO: print usage\n");
+    return EXIT_USER_ERROR;
+  }
+
+  for_rs_parts(qni_header_sh, i) printf("%s", qni_header_sh[i]);
+  printf("awk '");
+  for_rs_parts(qdecompress_awk, i) printf("%s", qdecompress_awk[i]);
+  printf("' <<'EOF'\n");
+  for_rs_names(i) {
+    int nparts = 0;
+    for_rs_parts(rs[i], j) nparts = j + 1;
+    printf("%d %s\n", nparts, rn[i]);
+    for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
+  }
+  printf("EOF\n");
+  for_rs_parts(qni_footer_sh, i) printf("%s", qni_footer_sh[i]);
+  return EXIT_NORMAL;
+}
