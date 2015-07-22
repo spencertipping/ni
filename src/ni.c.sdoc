@@ -37,7 +37,7 @@ int main(int argc, char const *const *argv) {
   for_rs_names(i) {
     int nparts = 0;
     for_rs_parts(rs[i], j) nparts = j + 1;
-    printf("%ld %s\n", rl[i], rn[i]);
+    printf("%d %s\n", nparts, rn[i]);
     for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
   }
   printf("EOF\n");

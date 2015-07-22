@@ -11,57 +11,49 @@ s=$e.c
 {
 awk '{
 if (!ls--) {
-if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
+if (r) print "0};"
 interp = (rs[rn++] = r = $2) ~ /\.c$/
 ra[r] = "q" gensub("\\W", "_", "g", r)
-rl[r] = ls = $1
-s = ""
+ls = $1
 if (r) print "static const char *const " ra[r] "[] = {"
 } else {
 if (interp) code[c++] = $0
 gsub("\\\\", "\\\\")
 gsub("\"", "\\\"")
-s = s $0 "\\n"
+print "\"" $0 "\\n\","
 }
 }
 END {
-if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
+if (r) print "0};"
 print "static char const *const rn[] = {"
 for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
 print "0};"
-print "static long const rl[] = {"
-for (i = 0; i < rn; ++i) print rl[rs[i]] ","
-print "-1};"
 print "static char const *const *const rs[] = {"
 for (i = 0; i < rn; ++i) print ra[rs[i]] ","
 print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
 ' <<'EOF'
-28 decompress.awk
+24 decompress.awk
 {
 if (!ls--) {
-if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
+if (r) print "0};"
 interp = (rs[rn++] = r = $2) ~ /\.c$/
 ra[r] = "q" gensub("\\W", "_", "g", r)
-rl[r] = ls = $1
-s = ""
+ls = $1
 if (r) print "static const char *const " ra[r] "[] = {"
 } else {
 if (interp) code[c++] = $0
 gsub("\\\\", "\\\\")
 gsub("\"", "\\\"")
-s = s $0 "\\n"
+print "\"" $0 "\\n\","
 }
 }
 END {
-if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
+if (r) print "0};"
 print "static char const *const rn[] = {"
 for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
 print "0};"
-print "static long const rl[] = {"
-for (i = 0; i < rn; ++i) print rl[rs[i]] ","
-print "-1};"
 print "static char const *const *const rs[] = {"
 for (i = 0; i < rn; ++i) print ra[rs[i]] ","
 print "0};"
@@ -286,7 +278,7 @@ printf("' <<'EOF'\n");
 for_rs_names(i) {
 int nparts = 0;
 for_rs_parts(rs[i], j) nparts = j + 1;
-printf("%ld %s\n", rl[i], rn[i]);
+printf("%d %s\n", nparts, rn[i]);
 for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
 }
 printf("EOF\n");
