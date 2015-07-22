@@ -41,7 +41,7 @@ Short   | Long          | Operands      | Description
 `-f`    | fields        |               | reorder, drop, create fields
 `-F`    | fieldsplit    | split-spec    | split each column
 `-g`    | group         |               | group rows by addressed column(s)
-`-G`    | grep          | pattern       | pipe through egrep
+`-G`    |               |               |
 `-h`    | ladoop        | m r           | local simulation of `-H`
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    |               |               |
@@ -114,7 +114,7 @@ Additional notation includes:
 - `2^x` = `[ [ -x ] [ -x ] ]` (useful with `-d`)
 
 The `^` operator is structural, which means that arguments are parsed normally.
-As a result, `^R 'foo'` turns into `[ -R 'foo' ]` because `-R` requires an
+As a result, `^r 'foo'` turns into `[ -r 'foo' ]` because `-r` requires an
 argument.
 
 Square-bracket lists support the following identities, up to record order as
@@ -134,7 +134,7 @@ is done verbatim, so you'll need to transform your data before branching.
 Decisional lists are written like this:
 
 ```sh
-$ ni ... { val1 -ga^R 'foo' -n , \
+$ ni ... { val1 -gA^r 'foo' -n , \
            val2 -gc ... , \
            ... } ...
 ```
