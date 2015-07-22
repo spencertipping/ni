@@ -11,52 +11,60 @@ s=$e.c
 {
 awk '{
 if (!ls--) {
-if (r) print "(const char *const) 0};"
+if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
 interp = (rs[rn++] = r = $2) ~ /\.c$/
 ra[r] = "q" gensub("\\W", "_", "g", r)
-ls = $1
+rl[r] = ls = $1
+s = ""
 if (r) print "static const char *const " ra[r] "[] = {"
 } else {
 if (interp) code[c++] = $0
 gsub("\\\\", "\\\\")
 gsub("\"", "\\\"")
-print "\"" $0 "\\n\","
+s = s $0 "\\n"
 }
 }
 END {
-if (r) print "(char const *const) 0};"
+if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
 print "static char const *const rn[] = {"
 for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
-print "(char const *const) 0};"
+print "0};"
+print "static long const rl[] = {"
+for (i = 0; i < rn; ++i) print rl[rs[i]] ","
+print "-1};"
 print "static char const *const *const rs[] = {"
 for (i = 0; i < rn; ++i) print ra[rs[i]] ","
-print "(char const *const *const) 0};"
+print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
 ' <<'EOF'
-24 decompress.awk
+28 decompress.awk
 {
 if (!ls--) {
-if (r) print "(const char *const) 0};"
+if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
 interp = (rs[rn++] = r = $2) ~ /\.c$/
 ra[r] = "q" gensub("\\W", "_", "g", r)
-ls = $1
+rl[r] = ls = $1
+s = ""
 if (r) print "static const char *const " ra[r] "[] = {"
 } else {
 if (interp) code[c++] = $0
 gsub("\\\\", "\\\\")
 gsub("\"", "\\\"")
-print "\"" $0 "\\n\","
+s = s $0 "\\n"
 }
 }
 END {
-if (r) print "(char const *const) 0};"
+if (r) print gensub(/([^\\]|\\.){,509}/, "\"&\",", "g", s) "0};"
 print "static char const *const rn[] = {"
 for (i = 0; i < rn; ++i) print "\"" rs[i] "\","
-print "(char const *const) 0};"
+print "0};"
+print "static long const rl[] = {"
+for (i = 0; i < rn; ++i) print rl[rs[i]] ","
+print "-1};"
 print "static char const *const *const rs[] = {"
 for (i = 0; i < rn; ++i) print ra[rs[i]] ","
-print "(char const *const *const) 0};"
+print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
 225 ni.c
@@ -278,7 +286,7 @@ printf("' <<'EOF'\n");
 for_rs_names(i) {
 int nparts = 0;
 for_rs_parts(rs[i], j) nparts = j + 1;
-printf("%d %s\n", nparts, rn[i]);
+printf("%ld %s\n", rl[i], rn[i]);
 for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
 }
 printf("EOF\n");

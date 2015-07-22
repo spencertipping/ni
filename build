@@ -69,8 +69,8 @@ cat gen/ni-header.sh \
     gen/ni-kernel \
     gen/ni-footer.sh > gen/ni0 && chmod +x gen/ni0
 
-gen/ni0 --self > gen/ni1 && chmod +x gen/ni1 || exit $?
-gen/ni1 --self > ni      && chmod +x ni      || exit $?
+gen/ni0 ni:self > gen/ni1 && chmod +x gen/ni1 || exit $?
+gen/ni1 ni:self > ni      && chmod +x ni      || exit $?
 
 diff=$(diff gen/ni1 ni)
 if [[ -n $diff ]]; then
