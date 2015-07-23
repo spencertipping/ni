@@ -95,7 +95,8 @@ reductions:
 $ ni data.txt -m 'r f0, a0->i1->mean, a0->i2->variance'
 ```
 
-The `mean` method is implemented like this:
+The `mean` method is implemented like this (but faster; see the discussion
+about JIT below):
 
 ```perl
 sub ni::mean {
@@ -147,3 +148,43 @@ $ ni data.txt -m 'my $f0   = f0;                        # capture current f0
                   my $var = ${a0->reset->i2->variance}; # force the next group
                   r $f0, $mean, $var'
 ```
+
+## JIT
+Most dynamic languages impose significant abstraction overhead, but they also
+typically support `eval`. ni capitalizes on the latter by allowing you to pass
+strings instead of subroutine references in almost all cases. These strings
+will then be compiled into an optimized function. JIT will almost always be
+significantly faster than the equivalent functional code, particularly when
+you're calculating multiple reductions.
+
+All you need to do to enable JIT is quote your code using `q{}` instead of
+`sub{}` and use different parameter addressing:
+
+```perl
+# non-jit version
+sub ni::sum {
+  my ($self) = @_;
+  $self->reduce(
+    0,
+    sub { $_[0] + $_[1] },
+    sub { $_[0] });
+}
+
+# jit version
+sub ni::sum {
+  my ($self) = @_;
+  $self->reduce(
+    0,
+    q{ %0 + %1 },
+    q{ %0 });
+}
+```
+
+JIT has two disadvantages:
+
+1. Subroutines are no longer closures, though you can pass in named references
+   to similar effect.
+2. Error reporting is much less helpful.
+
+In most cases, however, the performance advantages far outweigh these
+drawbacks.
