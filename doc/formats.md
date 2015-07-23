@@ -26,8 +26,32 @@ $ ni  file1.gz  file2.xz  -m 'length f0'  [| less]
 ```
 
 Specifically, the pipeline itself is all binary. Files and output are TSV by
-default, but input files are type-detected. Ideally no data is stored as
-binary, but I may add an option for it later on.
+default, but input files are type-detected. It's also ok to store results in
+the binary format: because endianness is encoded and it has a magic number, ni
+will be able to use that data later on.
+
+## File type detection
+Detecting file types is complicated by a few factors:
+
+1. Each ni process uses nonblocking IO to read file data; this allows ni to
+   minimize the amount of IPC going on.
+2. File type detection logic technically needs 265 bytes to be able to detect
+   all possibilities (notably tar files), but some files are shorter.
+3. Not all data sources are files; some are quasifiles like `n:10` or `ni:self`
+   that address memory or dynamic contents. This means not all sources are
+   backed by a file descriptor.
+4. Because of the indirection created by file type detection, each subprocess
+   requires two fds instead of one, plus one for the original file, increasing
+   the likelihood that we'll run out of file descriptors. We have a hard limit
+   of 1024 for `select()`, which is the only POSIX-specified polling mechanism.
+
+We have a few possible failure modes:
+
+1. We'll run out of fds, which forces ni to fork. The graph above uses six fds,
+   so it will probably take a while to hit a critical fd limit. But ni
+   ultimately needs to be able handle things like this.
+2. If we use blocking IO, we could fork too much and run out of memory. I have
+   yet to see this happen on Linux, even with ~2k processes.
 
 ## Binary format details
 The binary format is designed to minimize CPU load, particularly when dealing
@@ -85,6 +109,6 @@ implementations are only required to support sizes up to 64MB.
   05000000 00000000     # int64 f0 value                offset >| 40
   ffffffff ffffffff     # int64 f1 value                offset >| 48
   00000000 0000f03f     # double f2 value               offset >| 56
-  03000000 "foo"00      # byte-array f3 value           offset >| 64
+  03000000 "foo"xx      # byte-array f3 value           offset >| 64
 # next record starts at offset 64
 ```
