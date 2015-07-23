@@ -33,33 +33,16 @@ done > gen/ni0.c
   egrep -v '^#include|^#define[^()\\]+$' < gen/ni0.c; } > gen/ni.c
 
 unsdoc src/decompress.awk.sdoc > gen/decompress.awk
+unsdoc src/sh/ni-footer.sh.sdoc > gen/ni-footer.sh
+unsdoc src/sh/ni-header.sh.sdoc \
+  | sed "s/%SHA%/$(sha1sum gen/ni0.c | awk '{print $1}')/g" \
+  > gen/ni-header.sh
 
 cat > gen/ni-kernel <<EOF
 awk '$(< gen/decompress.awk)' <<'EOF'
 EOF
 
-# mktemp isn't universally available (not specified by POSIX), so implement our
-# own cheesy version. mkdir will succeed iff we get the directory.
-cat > gen/ni-header.sh <<'EOF'
-#!/bin/sh
-# ni self-compiling source image; not intended to be edited directly
-# MIT license, see https://github.com/spencertipping/ni for details
-prefix=${TMPDIR:-/tmp}/ni-$USER-$$
-i=0
-until mkdir "$prefix-$i" 2>&1 > /dev/null; do
-  i=`expr $i + 1`
-done
-e=$prefix-$i/ni
-s=$e.c
-{
-EOF
-
-cat > gen/ni-footer.sh <<'EOF'
-} > "$s"
-c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
-EOF
-
-for r in decompress.awk ni.c ni-header.sh ni-footer.sh usage; do
+for r in decompress.awk ni.c ni-header.sh ni-footer.sh doc/usage; do
   resource $r
 done >> gen/ni-kernel
 

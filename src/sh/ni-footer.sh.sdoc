@@ -1,0 +1,12 @@
+Take the result of the AWK invocation and write a C source file, compile that,
+and produce the SHA-named binary.
+
+} > "$s"
+
+if [ -n "$NI_INVISIBLE" ]; then
+  c99 -l m -l rt "$s" -o "$e" && rm "$s" \
+                              && exec "$e" "--ni:invisible" "$prefix-$i" "$@"
+else
+  c99 -l m -l rt "$s" -o "$sha" && rm "$s" && rmdir "$prefix-$i" \
+                                && exec "$sha" "$@"
+fi

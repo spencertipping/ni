@@ -16,16 +16,32 @@
   } while (0);
 
 
-int main(int argc, char const *const *argv) {
-  if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
-  if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
-  if (rmdir(argv[2]))  die("rmdir failed for %s",  argv[2]);
+Contents of argv[].
+The surrounding shell script will do one of two things when executing this
+program. One possibility is a direct passthrough, like this:
 
-  argc -= 3;
-  argv += 3;
+| $ exec ni "$@"
+
+The expectation is that ni proceeds to parse options normally, not deleting its
+image or source. The other possibility is that the shell script prepends the
+option `--ni:invisible` and the containing directory. In this case, we're
+expected to delete our on-disk image and then the containing directory.
+
+int main(int argc, char const **argv) {
+  if (argc >= 3 && !strcmp("--ni:invisible", argv[1])) {
+    if (unlink(argv[0]))
+      fprintf(stderr, "ni: NI_INVISIBLE failed to unlink image %s\n", argv[0]);
+    else
+      if (rmdir(argv[2]))
+        fprintf(stderr, "ni: NI_INVISIBLE failed to unlink directory %s\n",
+                        argv[2]);
+    argv[2] = argv[0];
+    argv += 2;
+    argc -= 2;
+  }
 
   int const stdin_tty = isatty(STDIN_FILENO);
-  if (!argc && stdin_tty) {
+  if (argc <= 1 && stdin_tty) {
     fprintf(stderr, "TODO: print usage\n");
     return EXIT_USER_ERROR;
   }

@@ -1,10 +1,12 @@
 #!/bin/sh
-# ni self-compiling source image; not intended to be edited directly
+# ni self-compiling source image; not intended to be edited directly.
 # MIT license, see https://github.com/spencertipping/ni for details
+sha=${TMPDIR:-/tmp}/ni-d51c266e71cd2ad682a60fd247f5c0eef8e517e8
+[ -x "$sha" ] && exec "$sha" "$@"
 prefix=${TMPDIR:-/tmp}/ni-$USER-$$
 i=0
 until mkdir "$prefix-$i" 2>&1 > /dev/null; do
-  i=`expr $i + 1`
+i=`expr $i + 1`
 done
 e=$prefix-$i/ni
 s=$e.c
@@ -59,7 +61,7 @@ for (i = 0; i < rn; ++i) print ra[rs[i]] ","
 print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
-225 ni.c
+231 ni.c
 #define EXIT_NORMAL 0
 #define EXIT_SYSTEM_ERROR 2
 #define EXIT_USER_ERROR 1
@@ -260,14 +262,20 @@ do {\
 fprintf(stderr, "ni: " __VA_ARGS__);\
 exit(EXIT_SYSTEM_ERROR);\
 } while (0);
-int main(int argc, char const *const *argv) {
-if (unlink(argv[0])) die("unlink failed for %s", argv[0]);
-if (unlink(argv[1])) die("unlink failed for %s", argv[1]);
-if (rmdir(argv[2])) die("rmdir failed for %s",  argv[2]);
-argc -= 3;
-argv += 3;
+int main(int argc, char const **argv) {
+if (argc >= 3 && !strcmp("--ni:invisible", argv[1])) {
+if (unlink(argv[0]))
+fprintf(stderr, "ni: NI_INVISIBLE failed to unlink image %s\n", argv[0]);
+else
+if (rmdir(argv[2]))
+fprintf(stderr, "ni: NI_INVISIBLE failed to unlink directory %s\n",
+argv[2]);
+argv[2] = argv[0];
+argv += 2;
+argc -= 2;
+}
 int const stdin_tty = isatty(STDIN_FILENO);
-if (!argc && stdin_tty) {
+if (argc <= 1 && stdin_tty) {
 fprintf(stderr, "TODO: print usage\n");
 return EXIT_USER_ERROR;
 }
@@ -285,22 +293,30 @@ printf("EOF\n");
 for_rs_parts(qni_footer_sh, i) printf("%s", qni_footer_sh[i]);
 return EXIT_NORMAL;
 }
-11 ni-header.sh
+13 ni-header.sh
 #!/bin/sh
-# ni self-compiling source image; not intended to be edited directly
+# ni self-compiling source image; not intended to be edited directly.
 # MIT license, see https://github.com/spencertipping/ni for details
+sha=${TMPDIR:-/tmp}/ni-d51c266e71cd2ad682a60fd247f5c0eef8e517e8
+[ -x "$sha" ] && exec "$sha" "$@"
 prefix=${TMPDIR:-/tmp}/ni-$USER-$$
 i=0
 until mkdir "$prefix-$i" 2>&1 > /dev/null; do
-  i=`expr $i + 1`
+i=`expr $i + 1`
 done
 e=$prefix-$i/ni
 s=$e.c
 {
-2 ni-footer.sh
+8 ni-footer.sh
 } > "$s"
-c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
-5 usage
+if [ -n "$NI_INVISIBLE" ]; then
+c99 -l m -l rt "$s" -o "$e" && rm "$s"\
+&& exec "$e" "--ni:invisible" "$prefix-$i" "$@"
+else
+c99 -l m -l rt "$s" -o "$sha" && rm "$s" && rmdir "$prefix-$i"\
+&& exec "$sha" "$@"
+fi
+5 doc/usage
 usage: ni arguments...
 
 Arguments are either files (really quasifiles), or operators; if operators,
@@ -308,4 +324,10 @@ each one modifies the current stream in some way. Available operators:
 
 EOF
 } > "$s"
-c99 -l m -l rt "$s" -o "$e" && exec "$e" "$s" "$prefix-$i" "$@"
+if [ -n "$NI_INVISIBLE" ]; then
+c99 -l m -l rt "$s" -o "$e" && rm "$s"\
+&& exec "$e" "--ni:invisible" "$prefix-$i" "$@"
+else
+c99 -l m -l rt "$s" -o "$sha" && rm "$s" && rmdir "$prefix-$i"\
+&& exec "$sha" "$@"
+fi

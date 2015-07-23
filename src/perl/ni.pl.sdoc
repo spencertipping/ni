@@ -1,0 +1,11 @@
+Perl interop library.
+See doc/interop.md and doc/formats.md for design notes about this module.
+
+{
+use v5.0;
+use strict;
+use warnings;
+package ni;
+
+
+}

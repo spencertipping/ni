@@ -1,0 +1,22 @@
+#!/bin/sh
+# ni self-compiling source image; not intended to be edited directly.
+# MIT license, see https://github.com/spencertipping/ni for details
+
+If we have a cached binary, execute that in-place. The only way such a binary
+could exist is with prior knowledge of this script, most likely because we
+created it.
+
+sha=${TMPDIR:-/tmp}/ni-%SHA%
+[ -x "$sha" ] && exec "$sha" "$@"
+
+Otherwise compile a new image, saving it as the SHA unless $NI_INVISIBLE is
+set. See ni-footer.sh.sdoc for the rest of this.
+
+prefix=${TMPDIR:-/tmp}/ni-$USER-$$
+i=0
+until mkdir "$prefix-$i" 2>&1 > /dev/null; do
+  i=`expr $i + 1`
+done
+e=$prefix-$i/ni
+s=$e.c
+{
