@@ -143,7 +143,7 @@ next one within a single invocation, you can use `a0->reset` to suppress the
 aliasing error:
 
 ```sh
-$ ni data.txt -m 'my $f0   = f0;                        # capture current f0
+$ ni data.txt -m 'my $f0 = f0;                          # capture current f0
                   my $mean = ${a0->i1->mean};           # force the group
                   my $var = ${a0->reset->i2->variance}; # force the next group
                   r $f0, $mean, $var'
@@ -180,11 +180,11 @@ sub ni::sum {
 }
 ```
 
-JIT has two disadvantages:
+JIT has three minor disadvantages that are worth being aware of:
 
 1. Subroutines are no longer closures, though you can pass in named references
    to similar effect.
 2. Error reporting is much less helpful.
-
-In most cases, however, the performance advantages far outweigh these
-drawbacks.
+3. The JIT translator will rewrite _every_ `%0`, `%1`, etc substring, including
+   those inside regular expressions and strings. You can prevent this by
+   literal-quoting an area using `%[` and `%]`.
