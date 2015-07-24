@@ -1,7 +1,7 @@
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly.
 # MIT license, see https://github.com/spencertipping/ni for details
-sha=${TMPDIR:-/tmp}/ni-a930fcb4bad43c6e910197702836181d5a3c4b00
+sha=${TMPDIR:-/tmp}/ni-130cc48bc97d3d865d9bc6b8459846c63d2a2bf6
 [ -x "$sha" ] && exec "$sha" "$@"
 prefix=${TMPDIR:-/tmp}/ni-$USER-$$
 i=0
@@ -36,7 +36,7 @@ print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
 ' <<'EOF'
-24 decompress.awk
+24 sh/decompress.awk
 {
 if (!ls--) {
 if (r) print "0};"
@@ -61,16 +61,34 @@ for (i = 0; i < rn; ++i) print ra[rs[i]] ","
 print "0};"
 for (i = 0; i < c; ++i) print code[i]
 }
-231 ni.c
+13 sh/ni-header.sh
+#!/bin/sh
+# ni self-compiling source image; not intended to be edited directly.
+# MIT license, see https://github.com/spencertipping/ni for details
+sha=${TMPDIR:-/tmp}/ni-130cc48bc97d3d865d9bc6b8459846c63d2a2bf6
+[ -x "$sha" ] && exec "$sha" "$@"
+prefix=${TMPDIR:-/tmp}/ni-$USER-$$
+i=0
+until mkdir "$prefix-$i" 2>&1 > /dev/null; do
+i=`expr $i + 1`
+done
+e=$prefix-$i/ni
+s=$e.c
+{
+8 sh/ni-footer.sh
+} > "$s"
+if [ -n "$NI_INVISIBLE" ]; then
+c99 -l m -l rt "$s" -o "$e" && rm "$s"\
+&& exec "$e" "--ni:invisible" "$prefix-$i" "$@"
+else
+c99 -l m -l rt "$s" -o "$sha" && rm "$s" && rmdir "$prefix-$i"\
+&& exec "$sha" "$@"
+fi
+177 ni.c
 #define EXIT_NORMAL 0
 #define EXIT_SYSTEM_ERROR 2
 #define EXIT_USER_ERROR 1
 #define _ISOC99_SOURCE
-#define NI_ASSERT_NOPE 2
-#define NI_LIMIT_NOPE  1
-#define NI_SYSTEM_ERROR  2
-#define NI_THIS_IS_A_BUG 3
-#define NI_USER_ERROR    1
 #define _POSIX_C_SOURCE 200112L
 #define _XOPEN_SOURCE 600
 #include <fcntl.h>
@@ -82,57 +100,14 @@ for (i = 0; i < c; ++i) print code[i]
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-void ni_nope_exit(int const reason) {
-switch (reason) {
-case NI_LIMIT_NOPE:
-fprintf(stderr, "exiting with code %d due to exceeded limit\n", reason);
-exit(NI_USER_ERROR);
-break;
-case NI_ASSERT_NOPE:
-fprintf(stderr, "exiting with code %d due to failed assert\n", reason);
-exit(NI_THIS_IS_A_BUG);
-break;
-default:
-fprintf(stderr, "exiting for unknown reason (ni bug): %d\n", reason);
-exit(NI_THIS_IS_A_BUG);
-break;
-}
-}
-#define ni_assert_nope(cond, ...)\
+#define die(...)\
 do {\
-if (!(cond)) {\
-fprintf(stderr, __VA_ARGS__);\
-fprintf(stderr, "(this is a ni bug; sorry about this)\n");\
-ni_nope_exit(NI_ASSERT_NOPE);\
-}\
+fprintf(stderr, "ni: " __VA_ARGS__);\
+exit(EXIT_SYSTEM_ERROR);\
 } while (0)
-#define ni_limit_nope(val, limit, ...)\
+#define warn(...)\
 do {\
-uint64_t nope_val = (val);\
-while (nope_val > limit) {\
-fprintf(stderr, __VA_ARGS__);\
-fprintf(stderr, "\n"\
-"- 'n' to exit ni\n"\
-"- a new number to change the limit\n"\
-"- 'y' to increase the limit and Just Work\n"\
-"> ");\
-fflush(stderr);\
-unsigned long long nope_new_limit;\
-if (fscanf(stderr, "%llu", &nope_new_limit))\
-limit = nope_new_limit;\
-else {\
-char nope_reply;\
-fscanf(stderr, "%c", &nope_reply);\
-switch (nope_reply) {\
-case 'n':\
-ni_nope_exit(NI_LIMIT_NOPE);\
-break;\
-case 'y':\
-limit = nope_val;\
-break;\
-}\
-}\
-}\
+fprintf(stderr, "ni: " __VA_ARGS__);\
 } while (0)
 #define ni_ull(x) ((unsigned long long) (x))
 int ni_intlog2(uint64_t x)
@@ -257,19 +232,13 @@ fs->read_offset = 0;
 fs->write_offset = 0;
 return s;
 }
-#define die(...)\
-do {\
-fprintf(stderr, "ni: " __VA_ARGS__);\
-exit(EXIT_SYSTEM_ERROR);\
-} while (0);
 int main(int argc, char const **argv) {
 if (argc >= 3 && !strcmp("--ni:invisible", argv[1])) {
 if (unlink(argv[0]))
-fprintf(stderr, "ni: NI_INVISIBLE failed to unlink image %s\n", argv[0]);
+warn("NI_INVISIBLE failed to unlink image %s\n", argv[0]);
 else
 if (rmdir(argv[2]))
-fprintf(stderr, "ni: NI_INVISIBLE failed to unlink directory %s\n",
-argv[2]);
+warn("NI_INVISIBLE failed to unlink directory %s\n", argv[2]);
 argv[2] = argv[0];
 argv += 2;
 argc -= 2;
@@ -281,7 +250,7 @@ return EXIT_USER_ERROR;
 }
 for_rs_parts(qsh_ni_header_sh, i) printf("%s", qsh_ni_header_sh[i]);
 printf("awk '");
-for_rs_parts(qdecompress_awk, i) printf("%s", qdecompress_awk[i]);
+for_rs_parts(qsh_decompress_awk, i) printf("%s", qsh_decompress_awk[i]);
 printf("' <<'EOF'\n");
 for_rs_names(i) {
 int nparts = 0;
@@ -293,29 +262,6 @@ printf("EOF\n");
 for_rs_parts(qsh_ni_footer_sh, i) printf("%s", qsh_ni_footer_sh[i]);
 return EXIT_NORMAL;
 }
-13 sh/ni-header.sh
-#!/bin/sh
-# ni self-compiling source image; not intended to be edited directly.
-# MIT license, see https://github.com/spencertipping/ni for details
-sha=${TMPDIR:-/tmp}/ni-a930fcb4bad43c6e910197702836181d5a3c4b00
-[ -x "$sha" ] && exec "$sha" "$@"
-prefix=${TMPDIR:-/tmp}/ni-$USER-$$
-i=0
-until mkdir "$prefix-$i" 2>&1 > /dev/null; do
-i=`expr $i + 1`
-done
-e=$prefix-$i/ni
-s=$e.c
-{
-8 sh/ni-footer.sh
-} > "$s"
-if [ -n "$NI_INVISIBLE" ]; then
-c99 -l m -l rt "$s" -o "$e" && rm "$s"\
-&& exec "$e" "--ni:invisible" "$prefix-$i" "$@"
-else
-c99 -l m -l rt "$s" -o "$sha" && rm "$s" && rmdir "$prefix-$i"\
-&& exec "$sha" "$@"
-fi
 5 doc/usage
 usage: ni arguments...
 
@@ -329,7 +275,7 @@ use strict;
 use warnings;
 package ni;
 }
-14 perl/binary.pl
+17 perl/binary.pl
 {
 package ni::binary;
 sub new {
@@ -339,9 +285,12 @@ binmode $out;
 bless { eof => 0,
 in_fd => fileno($in),
 out_fd => fileno($out),
-buffer => '',
+buffer => "\0" x 4096,
 offset => -1,
 record => [] }, $class;
+}
+sub read {
+my ($self) = @_;
 }
 }
 2 ruby/ni.rb

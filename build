@@ -1,6 +1,16 @@
 #!/bin/bash
 # Builds a ni source image.
 
+c_headers=( ni.h math.h stream.h )
+c_sources=( resources.c stream.c ni.c )
+
+resources=( sh/decompress.awk sh/ni-header.sh sh/ni-footer.sh
+            ni.c doc/usage
+            perl/ni.pl perl/binary.pl
+            ruby/ni.rb )
+
+# (no user-serviceable parts below)
+
 unsdoc() {
   perl -e 'print join "\n",
                  grep /^\h*[^A-Z| ]/,
@@ -37,10 +47,7 @@ for f in $(find src -type f); do
   fi
 done
 
-(cd gen
- cat ni.h nope.h math.h stream.h \
-     resources.c stream.c ni.c \
-   > ni0.c)
+(cd gen; cat ${c_headers[@]} ${c_sources[@]} > ni0.c)
 
 { egrep    '^#include|^#define[^()\\]+$' < gen/ni0.c | sort | uniq
   egrep -v '^#include|^#define[^()\\]+$' < gen/ni0.c; } > gen/ni.c
@@ -49,12 +56,10 @@ sed -ri -e "s/%SHA%/$(sha1sum gen/ni0.c | awk '{print $1}')/g" \
   gen/sh/ni-header.sh
 
 cat > gen/ni-kernel <<EOF
-awk '$(< gen/decompress.awk)' <<'EOF'
+awk '$(< gen/sh/decompress.awk)' <<'EOF'
 EOF
 
-for r in decompress.awk ni.c sh/ni-header.sh sh/ni-footer.sh doc/usage \
-         perl/ni.pl perl/binary.pl \
-         ruby/ni.rb; do
+for r in ${resources[@]}; do
   resource $r
 done >> gen/ni-kernel
 

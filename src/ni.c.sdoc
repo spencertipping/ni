@@ -4,17 +4,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define EXIT_NORMAL       0
-#define EXIT_USER_ERROR   1
-#define EXIT_SYSTEM_ERROR 2
-
-
-#define die(...) \
-  do { \
-    fprintf(stderr, "ni: " __VA_ARGS__); \
-    exit(EXIT_SYSTEM_ERROR); \
-  } while (0);
-
 
 Contents of argv[].
 The surrounding shell script will do one of two things when executing this
@@ -30,11 +19,10 @@ expected to delete our on-disk image and then the containing directory.
 int main(int argc, char const **argv) {
   if (argc >= 3 && !strcmp("--ni:invisible", argv[1])) {
     if (unlink(argv[0]))
-      fprintf(stderr, "ni: NI_INVISIBLE failed to unlink image %s\n", argv[0]);
+      warn("NI_INVISIBLE failed to unlink image %s\n", argv[0]);
     else
       if (rmdir(argv[2]))
-        fprintf(stderr, "ni: NI_INVISIBLE failed to unlink directory %s\n",
-                        argv[2]);
+        warn("NI_INVISIBLE failed to unlink directory %s\n", argv[2]);
     argv[2] = argv[0];
     argv += 2;
     argc -= 2;
@@ -48,7 +36,7 @@ int main(int argc, char const **argv) {
 
   for_rs_parts(qsh_ni_header_sh, i) printf("%s", qsh_ni_header_sh[i]);
   printf("awk '");
-  for_rs_parts(qdecompress_awk, i) printf("%s", qdecompress_awk[i]);
+  for_rs_parts(qsh_decompress_awk, i) printf("%s", qsh_decompress_awk[i]);
   printf("' <<'EOF'\n");
   for_rs_names(i) {
     int nparts = 0;

@@ -12,14 +12,17 @@ sub new {
   bless { eof    => 0,
           in_fd  => fileno($in),
           out_fd => fileno($out),
-          buffer => '',
+          buffer => "\0" x 4096,
           offset => -1,
           record => [] }, $class;
 }
 
 Record reading logic.
-We have a few cases. First, offset == -1: we have no current record and no
-buffered data. If offset is nonnegative, then it contains the current record's
-offset within buffer.
+If offset < 0, then we have no valid record at all and need to read. Otherwise
+offset points, within buffer, to the beginning of the encoded record structure.
+
+sub read {
+  my ($self) = @_;
+}
 
 }
