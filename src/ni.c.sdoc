@@ -46,7 +46,7 @@ int main(int argc, char const **argv) {
     return EXIT_USER_ERROR;
   }
 
-  for_rs_parts(qni_header_sh, i) printf("%s", qni_header_sh[i]);
+  for_rs_parts(qsh_ni_header_sh, i) printf("%s", qsh_ni_header_sh[i]);
   printf("awk '");
   for_rs_parts(qdecompress_awk, i) printf("%s", qdecompress_awk[i]);
   printf("' <<'EOF'\n");
@@ -57,6 +57,6 @@ int main(int argc, char const **argv) {
     for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
   }
   printf("EOF\n");
-  for_rs_parts(qni_footer_sh, i) printf("%s", qni_footer_sh[i]);
+  for_rs_parts(qsh_ni_footer_sh, i) printf("%s", qsh_ni_footer_sh[i]);
   return EXIT_NORMAL;
 }

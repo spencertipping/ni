@@ -1,0 +1,25 @@
+Ni-binary codec.
+A lazy, streaming codec for the ni-binary format. It supports partial record
+loading, blocking on IO for a field only when necessary.
+
+{
+package ni::binary;
+
+sub new {
+  my ($class, $in, $out) = @_;
+  binmode $in;
+  binmode $out;
+  bless { eof    => 0,
+          in_fd  => fileno($in),
+          out_fd => fileno($out),
+          buffer => '',
+          offset => -1,
+          record => [] }, $class;
+}
+
+Record reading logic.
+We have a few cases. First, offset == -1: we have no current record and no
+buffered data. If offset is nonnegative, then it contains the current record's
+offset within buffer.
+
+}

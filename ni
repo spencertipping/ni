@@ -1,7 +1,7 @@
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly.
 # MIT license, see https://github.com/spencertipping/ni for details
-sha=${TMPDIR:-/tmp}/ni-d51c266e71cd2ad682a60fd247f5c0eef8e517e8
+sha=${TMPDIR:-/tmp}/ni-a930fcb4bad43c6e910197702836181d5a3c4b00
 [ -x "$sha" ] && exec "$sha" "$@"
 prefix=${TMPDIR:-/tmp}/ni-$USER-$$
 i=0
@@ -279,7 +279,7 @@ if (argc <= 1 && stdin_tty) {
 fprintf(stderr, "TODO: print usage\n");
 return EXIT_USER_ERROR;
 }
-for_rs_parts(qni_header_sh, i) printf("%s", qni_header_sh[i]);
+for_rs_parts(qsh_ni_header_sh, i) printf("%s", qsh_ni_header_sh[i]);
 printf("awk '");
 for_rs_parts(qdecompress_awk, i) printf("%s", qdecompress_awk[i]);
 printf("' <<'EOF'\n");
@@ -290,14 +290,14 @@ printf("%d %s\n", nparts, rn[i]);
 for_rs_parts(rs[i], j) printf("%s", rs[i][j]);
 }
 printf("EOF\n");
-for_rs_parts(qni_footer_sh, i) printf("%s", qni_footer_sh[i]);
+for_rs_parts(qsh_ni_footer_sh, i) printf("%s", qsh_ni_footer_sh[i]);
 return EXIT_NORMAL;
 }
-13 ni-header.sh
+13 sh/ni-header.sh
 #!/bin/sh
 # ni self-compiling source image; not intended to be edited directly.
 # MIT license, see https://github.com/spencertipping/ni for details
-sha=${TMPDIR:-/tmp}/ni-d51c266e71cd2ad682a60fd247f5c0eef8e517e8
+sha=${TMPDIR:-/tmp}/ni-a930fcb4bad43c6e910197702836181d5a3c4b00
 [ -x "$sha" ] && exec "$sha" "$@"
 prefix=${TMPDIR:-/tmp}/ni-$USER-$$
 i=0
@@ -307,7 +307,7 @@ done
 e=$prefix-$i/ni
 s=$e.c
 {
-8 ni-footer.sh
+8 sh/ni-footer.sh
 } > "$s"
 if [ -n "$NI_INVISIBLE" ]; then
 c99 -l m -l rt "$s" -o "$e" && rm "$s"\
@@ -322,6 +322,31 @@ usage: ni arguments...
 Arguments are either files (really quasifiles), or operators; if operators,
 each one modifies the current stream in some way. Available operators:
 
+6 perl/ni.pl
+{
+use v5.0;
+use strict;
+use warnings;
+package ni;
+}
+14 perl/binary.pl
+{
+package ni::binary;
+sub new {
+my ($class, $in, $out) = @_;
+binmode $in;
+binmode $out;
+bless { eof => 0,
+in_fd => fileno($in),
+out_fd => fileno($out),
+buffer => '',
+offset => -1,
+record => [] }, $class;
+}
+}
+2 ruby/ni.rb
+class Ni
+end
 EOF
 } > "$s"
 if [ -n "$NI_INVISIBLE" ]; then

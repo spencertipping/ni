@@ -7,5 +7,8 @@ use strict;
 use warnings;
 package ni;
 
+Field accessors.
+These are obviously implemented using missing-method support, though we cache
+the ones that get called to minimize long-term overhead.
 
 }
