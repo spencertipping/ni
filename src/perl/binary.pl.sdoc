@@ -5,21 +5,32 @@ loading, blocking on IO for a field only when necessary.
 {
 package ni::binary;
 
+use constant HEADER_TEMPLATE_LE => '<(ssLL)';
+use constant HEADER_TEMPLATE_BE => '>(ssLL)';
+
+use constant FIELD_TEMPLATES_LE =>
+  qw[ <q d <L <(ssLL) ];
+
 sub new {
   my ($class, $in, $out) = @_;
   binmode $in;
   binmode $out;
-  bless { eof    => 0,
-          in_fd  => fileno($in),
-          out_fd => fileno($out),
-          buffer => "\0" x 4096,
-          offset => -1,
-          record => [] }, $class;
+  bless { eof    => 0,            offset => 0,
+          in_fd  => fileno($in),  valid  => 0,
+          out_fd => fileno($out), header => [],
+          buffer => "\0" x 4096,  fields => [] }, $class;
 }
 
 Record reading logic.
-If offset < 0, then we have no valid record at all and need to read. Otherwise
-offset points, within buffer, to the beginning of the encoded record structure.
+We know that buffer[offset] to buffer[offset + valid] is well-defined, and that
+if valid >= 12, then buffer[offset] can be decoded as a record header. header[]
+is empty if we have no current record; otherwise it contains three elements:
+
+| < NI magic, endianness indicator, record length, nfields >
+
+The fields[] array is just an array of numbers unpacked from the buffer.
+Because of the way the binary format works, we can easily type-detect by doing
+f & 0x7, and we can get the offset by doing f & ~0x7.
 
 sub read {
   my ($self) = @_;

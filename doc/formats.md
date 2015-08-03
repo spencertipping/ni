@@ -22,7 +22,8 @@ Given these constraints, here's how it works:
              |  |                         |
 $ ni  file1.gz  file2.xz  -m 'length f0'  [| less]
                            |
-                           binary->perl
+                           binary->perl->binary
+                           (perl library does this)
 ```
 
 Specifically, the pipeline itself is all binary. Files and output are TSV by
@@ -70,7 +71,7 @@ sub-record   ::= sub-number   uint32 length8
 
 magic-number ::= 'NI' 0x0021           # 0x0021 in native-endian encoding
 sub-number   ::= 'ni' 0x0021           # 0x0021 in native-endian encoding
-field-spec   ::= uint32 (type[1:3] offset8[4:32])
+field-spec   ::= uint32 ( offset8[32:4] type[3:1] )
 field-data   ::= padding* { double | int64 | byte-array | sub-record }
 byte-array   ::= uint32 length  byte * \0 *
 

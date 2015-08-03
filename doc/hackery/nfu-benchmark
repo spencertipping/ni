@@ -1,0 +1,4 @@
+#!/bin/bash
+( for i in `seq 100` ; do cat /usr/share/dict/words ; done ) \
+  | nfu -m 'length %0' \
+  > /dev/null

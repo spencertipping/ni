@@ -275,19 +275,21 @@ use strict;
 use warnings;
 package ni;
 }
-17 perl/binary.pl
+19 perl/binary.pl
 {
 package ni::binary;
+use constant HEADER_TEMPLATE_LE => '<(ssLL)';
+use constant HEADER_TEMPLATE_BE => '>(ssLL)';
+use constant FIELD_TEMPLATES_LE =>
+qw[ <q d <L <(ssLL) ];
 sub new {
 my ($class, $in, $out) = @_;
 binmode $in;
 binmode $out;
-bless { eof => 0,
-in_fd => fileno($in),
-out_fd => fileno($out),
-buffer => "\0" x 4096,
-offset => -1,
-record => [] }, $class;
+bless { eof => 0, offset => 0,
+in_fd => fileno($in), valid => 0,
+out_fd => fileno($out), header => [],
+buffer => "\0" x 4096, fields => [] }, $class;
 }
 sub read {
 my ($self) = @_;
