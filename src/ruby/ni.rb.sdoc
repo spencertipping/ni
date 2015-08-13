@@ -1,7 +1,0 @@
-Ruby interop library.
-Designed to be backwards-compatible to Ruby v1.8.7. See doc/interop.md and
-doc/formats.md for design notes.
-
-class Ni
-  
-end
