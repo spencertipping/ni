@@ -54,7 +54,14 @@ We have a few possible failure modes:
 2. If we use blocking IO, we could fork too much and run out of memory. I have
    yet to see this happen on Linux, even with ~2k processes.
 
+I think I'd rather assume one fork per pipeline stage. It should be cheap to
+pass binary data between processes; most of nfu's speed issues are probably due
+to its TSV/fields conversion.
+
 ## Binary format details
+**TODO:** Re-engineer this, or at least verify that it's a reasonable solution
+for languages like Perl and Ruby that use pack-templates.
+
 The binary format is designed to minimize CPU load, particularly when dealing
 with numbers. Conceptually, here's what is encoded:
 
@@ -64,29 +71,23 @@ record       ::= magic-number uint32 length8
                               field-spec *
                               field-data *
 
-sub-record   ::= sub-number   uint32 length8
-                              uint32 nfields
-                              field-spec *
-                              field-data *
-
 magic-number ::= 'NI' 0x0021           # 0x0021 in native-endian encoding
-sub-number   ::= 'ni' 0x0021           # 0x0021 in native-endian encoding
 field-spec   ::= uint32 ( offset8[32:4] type[3:1] )
-field-data   ::= padding* { double | int64 | byte-array | sub-record }
-byte-array   ::= uint32 length  byte * \0 *
+field-data   ::= padding* { double | int64 | byte-array }
+byte-array   ::= uint32 length  byte * \0 +
 
 type : {0   -> native-endian int64,
         1   -> double,
         2   -> byte array,
-        3   -> sub-record
-        4-7 -> reserved}
+        3-7 -> reserved}
 ```
 
 Like other data types, the binary format is detected by its magic number. The
 0x21 byte in the magic number may change in the future to indicate a future
 revision of the format, though it will always be greater than 0x20. The null
 byte is included to prevent any confusion with text data, and the magic number
-is repeated on each record to simplify inspection/debugging.
+is repeated on each record because the records may come from machines with
+different native encodings.
 
 Fields are always 8-byte aligned relative to the record offset, and records are
 guaranteed to be a multiple of 8 bytes long. The `length8` field in the record

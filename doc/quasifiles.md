@@ -3,7 +3,7 @@
 Short   | Long          | Format          | Description
 --------|---------------|-----------------|------------
 `b:`    | `bloom:`      | `b:/path`       | Bloom filter
-`c:     | `countmin:`   | `c:/path`       | Count-min sketch
+`c:`    | `countmin:`   | `c:/path`       | Count-min sketch
 `f:`    | `file:`       | `f:/path`       | Local file
 `//`    | `http[s]://`  | `//google.com`  | HTTP url (retrieved with curl)
 `h:`    | `hll:`        | `h:/path`       | HyperLogLog
