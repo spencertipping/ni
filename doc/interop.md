@@ -175,8 +175,8 @@ sub ni::sum {
   my ($self) = @_;
   $self->reduce(
     0,
-    q{ %0 + %1 },
-    q{ %0 });
+    q{ %0 + %1 },               # or q{ $x, $y | $x + $y }
+    q{ %0 });                   # or q{ $x | $x }
 }
 ```
 

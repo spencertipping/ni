@@ -59,58 +59,42 @@ pass binary data between processes; most of nfu's speed issues are probably due
 to its TSV/fields conversion.
 
 ## Binary format details
-**TODO:** Re-engineer this, or at least verify that it's a reasonable solution
-for languages like Perl and Ruby that use pack-templates.
+### Magic numbers
+We want something human-recognizable and not mistakable for text. I like the
+byte-string "ni!\000" for this: the null byte makes it an improbable header for
+almost everything else.
 
-The binary format is designed to minimize CPU load, particularly when dealing
-with numbers. Conceptually, here's what is encoded:
+### Changing endianness mid-stream
+More of an open question than an active issue; it's unclear to me how often
+this is likely to happen. The only way to actually get mixing is if we're
+reading records that have been serialized by someone else but we haven't yet
+had an opportunity to fix their endianness. This would happen if you
+concatenated binary files from different architectures, for example.
 
-```
-record       ::= magic-number uint32 length8
-                              uint32 nfields
-                              field-spec *
-                              field-data *
+So it seems like in practice, byte order changes are very infrequent. Certainly
+no need to do anything per-record.
 
-magic-number ::= 'NI' 0x0021           # 0x0021 in native-endian encoding
-field-spec   ::= uint32 ( offset8[32:4] type[3:1] )
-field-data   ::= padding* { double | int64 | byte-array }
-byte-array   ::= uint32 length  byte * \0 +
+### Seeking
+The assumption is that data is being streamed, so seeking is more about saving
+CPU cycles than being able to skip around in the data. That said, is there
+still a reason to have some navigational context (e.g. a local skip list)?
 
-type : {0   -> native-endian int64,
-        1   -> double,
-        2   -> byte array,
-        3-7 -> reserved}
-```
+The purpose of skipping over a record would be because you already know it's
+irrelevant. That happens in a few cases:
 
-Like other data types, the binary format is detected by its magic number. The
-0x21 byte in the magic number may change in the future to indicate a future
-revision of the format, though it will always be greater than 0x20. The null
-byte is included to prevent any confusion with text data, and the magic number
-is repeated on each record because the records may come from machines with
-different native encodings.
+1. Sampling randomly. If you use a Poisson process, you know how many records
+   to skip -- which is faster than uniformly predicating each one. Speed is
+   also critical here (presumably; otherwise you wouldn't subsample), so fast
+   multi-record seeking is worthwhile.
+2. Linear-joining against sparse, ordered data: you can load up a bunch of
+   records into a large buffer, then binary-search that buffer if you can seek
+   through it. (Marginally faster than a linear scan; fewer comparisons,
+   anyway.) Could significantly improve comparison count when mergesorting data
+   with sorted runs.
+3. Backward seeking, for any reason? I can't think of a decent reason to do
+   this.
 
-Fields are always 8-byte aligned relative to the record offset, and records are
-guaranteed to be a multiple of 8 bytes long. The `length8` field in the record
-header includes the record's header length and all field data, so if they're
-laid out in memory, then `r1 == (void*) r0 + 8 * r0.length8`.
-
-Although the schema technically supports records up to 32GB in size,
-implementations are only required to support sizes up to 64MB.
-
-### Example record
-```
-# { int64 f0 = 5, int64 f1 = -1, double f2 = 1.0, byte-array f3 = 'foo' }
-"NI" 21 00              # little-endian encoding        offset >| 4
-  08 00 00 00           # length8                       offset >| 8
-  04 00 00 00           # nfields                       offset >| 12
-  b00100000 00 00 00    # int64 f0 @offset 32           offset >| 16
-  b00101000 00 00 00    # int64 f1 @offset 40           offset >| 20
-  b00110001 00 00 00    # double f2 @offset 48          offset >| 24
-  b00111010 00 00 00    # byte-array f3 @offset 56      offset >| 28
-  xx xx xx xx           # padding to 8 bytes            offset >| 32
-  05000000 00000000     # int64 f0 value                offset >| 40
-  ffffffff ffffffff     # int64 f1 value                offset >| 48
-  00000000 0000f03f     # double f2 value               offset >| 56
-  03000000 "foo"xx      # byte-array f3 value           offset >| 64
-# next record starts at offset 64
-```
+It's easy to write the offsets if we commit to buffering more than one record
+before writing them (which we should probably do anyway). OK, so let's do this
+and have log-N byte offset pointers per record: one ahead, two ahead, four
+ahead, ..., 64 ahead. Any can be zero to indicate an unknown.
