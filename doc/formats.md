@@ -97,4 +97,41 @@ irrelevant. That happens in a few cases:
 It's easy to write the offsets if we commit to buffering more than one record
 before writing them (which we should probably do anyway). OK, so let's do this
 and have log-N byte offset pointers per record: one ahead, two ahead, four
-ahead, ..., 64 ahead. Any can be zero to indicate an unknown.
+ahead, ..., 256 ahead. Any can be zero to indicate an unknown.
+
+### Record encoding
+A record looks like this:
+
+```
+struct record {                 // all offsets relative to beginning of record
+  uint8_t  magic[2];            // always "nr"; helps debugging
+  uint16_t nfields;
+  uint64_t pointers[8];         // next, 2, 4, 8, ..., 256th next byte offsets
+  uint32_t fields[nfields];     // high 2 bits for type, low 30 bits for offset
+  byte     record_data[...];    // a blob
+};
+```
+
+There are three cell types: int64, double, and byte array, encoded like this:
+
+```
+enum field_type {
+  INT        = 0,
+  DOUBLE     = 1,
+  BYTE_ARRAY = 2,
+  RESERVED   = 3
+};
+```
+
+Ints and doubles are encoded natively; byte arrays are packed with their length
+first, like this:
+
+```
+struct byte_array {
+  uint32_t length;
+  byte     data[...];
+};
+```
+
+**TODO:** Remove field pointers (they take up too much space); instead, use NaN
+encoding.
