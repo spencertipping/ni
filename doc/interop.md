@@ -125,18 +125,14 @@ computations before forcing any of them:
 ```sh
 # this command will fail:
 $ ni data.txt -m 'my $mean = ${a0->i1->mean};           # forces the reduction
-                  my $variance = ${a0->i2->variance};   # error
+                  my $variance = ${a0->i2->variance};   # error: aliasing
                   r f0, $mean, $variance'
 
 # this is what you want:
 $ ni data.txt -m 'my $mean = a0->i1->mean;              # lazy
                   my $variance = a0->i2->variance;      # also lazy
-                  r f0, $$mean, $$variance'             # ok
+                  r f0, $mean, $variance'               # ok (r forces both)
 ```
-
-To reduce confusion, `r` accepts deferred computations and automatically forces
-them. This means you can usually leave things deferred and let ni handle the
-details.
 
 In the unlikely event that you actually do want to force a group and load the
 next one within a single invocation, you can use `a0->reset` to suppress the
@@ -149,6 +145,8 @@ $ ni data.txt -m 'my $f0 = f0;                          # capture current f0
                   r $f0, $mean, $var'
 ```
 
+In general you won't want to do this.
+
 ## JIT
 Most dynamic languages impose significant abstraction overhead, but they also
 typically support `eval`. ni capitalizes on the latter by allowing you to pass
@@ -157,8 +155,8 @@ will then be compiled into an optimized function. JIT will almost always be
 significantly faster than the equivalent functional code, particularly when
 you're calculating multiple reductions.
 
-All you need to do to enable JIT is quote your code using `q{}` instead of
-`sub{}` and use different parameter addressing:
+All you need to do to enable JIT is quote your code using `q{}` or similar
+instead of `sub{}` and use different parameter addressing:
 
 ```perl
 # non-jit version
@@ -175,9 +173,25 @@ sub ni::sum {
   my ($self) = @_;
   $self->reduce(
     0,
-    q{ %0 + %1 },               # or q{ $x, $y | $x + $y }
-    q{ %0 });                   # or q{ $x | $x }
+    q{ $x, $y | $x + $y },              # or q{ |$x, $y| $x + $y }
+    q{ $x | $x };                       # or q{ |$x| $x }
 }
+```
+
+```ruby
+# non-jit version
+def Ni::sum
+  reduce 0,
+         lambda {|x, y| x + y},
+         lambda {|x| x}
+end
+
+# jit version
+def Ni::sum
+  reduce 0,
+         %(x, y| x + y),                # or %(|x, y| x + y)
+         %(x| x)                        # or %(|x| x)
+end
 ```
 
 JIT has three minor disadvantages that are worth being aware of:
@@ -185,6 +199,3 @@ JIT has three minor disadvantages that are worth being aware of:
 1. Subroutines are no longer closures, though you can pass in named references
    to similar effect.
 2. Error reporting is much less helpful.
-3. The JIT translator will rewrite _every_ `%0`, `%1`, etc substring, including
-   those inside regular expressions and strings. You can prevent this by
-   literal-quoting an area using `%[` and `%]`.

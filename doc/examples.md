@@ -2,8 +2,8 @@
 ## Map/reduce word count
 ```sh
 $ ni data.txt -FW1k1gp'r f0, sum a0i1'                  # local
-$ ni hdfs:data.txt -h ^FW1k1 ^p'r f0, sum a0i1'         # local
-$ ni hdfs:data.txt -H ^FW1k1 ^p'r f0, sum a0i1'         # hadoop
+$ ni hdfs:data.txt -h ^FW1k1 ^p'r f0, sum a0->i1'       # local
+$ ni hdfs:data.txt -H ^FW1k1 ^p'r f0, sum a0->i1'       # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
@@ -41,8 +41,8 @@ improve performance; if this happens, the difference won't be observable unless
 you use some type of debugging/profiling tool.
 
 ## Real-time queueing
-ni provides some operators that implement disk-backed queues for bandwidth
-consistency. The main purpose of queueing like this is to augment the
+ni provides some operators that implement compressed, disk-backed queues for
+bandwidth consistency. The main purpose of queueing like this is to augment the
 OS-provided pipe buffer to improve overall performance, though ni queues are
 also designed to maintain data movement, throttling only when absolutely
 necessary (i.e. low disk space on the host).
@@ -61,7 +61,7 @@ $ ni data.txt -FWvJb [ /usr/share/dict/words -i b:@ ]
 
 - `-FW`: split on non-words
 - `-v`: flatmap columns to vertical form
-- `-Jb`: join against a bloom filter (TODO: nope nope nope)
+- `-Jb`: join against a bloom filter (**TODO:** nope nope nope)
 - `[ ... ]`: quote ni invocation and use as a data source
     - `-i`: redirect stream into a quasifile, return quasifile name
     - `b:@`: create a temporary quasifile that is a bloom filter

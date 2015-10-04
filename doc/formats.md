@@ -133,5 +133,4 @@ struct byte_array {
 };
 ```
 
-**TODO:** Remove field pointers (they take up too much space); instead, use NaN
-encoding.
+**TODO:** Factor record shape into a non-repeated reference field.
