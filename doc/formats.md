@@ -31,6 +31,15 @@ default, but input files are type-detected. It's also ok to store results in
 the binary format: because endianness is encoded and it has a magic number, ni
 will be able to use that data later on.
 
+**TODO:** The above model won't work for stuff like remotely-addressed
+  resources; i.e. suppose something puts data onto HDFS: we don't want to rope
+  the user into downloading it just to run another hadoop job, for example.
+
+**TODO:** We really should have a protocol that defaults to indirect references
+  but provides support for heredoc-style embedding (which we can do with a
+  sufficiently high-entropy marker, though scanning for it might be slow ...
+  maybe chunking instead?).
+
 ## File type detection
 Detecting file types is complicated by a few factors:
 
