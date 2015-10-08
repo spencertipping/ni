@@ -1,0 +1,69 @@
+#!/bin/sh
+# NB: probably runs only on Linux since I'm using gnu-specific date formats
+
+time() {
+  name=$1
+  work=$2
+  shift 2
+  start=`date +%s%N`
+  eval $@
+  end=`date +%s%N`
+  echo "$name: $(( (end - start) / work )) ns/unit"
+}
+
+read_vars() {
+  for i in `seq $1`; do
+    for j in `seq 1000`; do
+      eval ": \$var_$2$j"
+    done
+  done
+}
+
+time "nonexistent vars" 1000000 read_vars 1000
+time "nonexistent vars" 1000000 read_vars 1000
+
+for i in `seq 1000`; do
+  eval var_$i=x
+done
+
+time "1k vars" 1000000 read_vars 1000
+time "1k vars" 1000000 read_vars 1000
+
+for i in `seq 10000`; do
+  eval var_$i=x
+done
+
+time "10k vars" 500000 read_vars 500
+time "10k vars" 500000 read_vars 500
+
+for i in `seq 100000`; do
+  eval var_$i=x
+done
+
+time "100k vars"     100000 read_vars 100
+time "100k vars"     100000 read_vars 100
+time "100k vars/50"  100000 read_vars 100 50
+time "100k vars/50"  100000 read_vars 100 50
+time "100k vars/100" 100000 read_vars 100 100
+time "100k vars/100" 100000 read_vars 100 100
+
+for i in `seq 100000`; do
+  eval yar_$i=x
+done
+
+time "200k vars" 100000 read_vars 100
+time "200k vars" 100000 read_vars 100
+
+for i in `seq 100000`; do
+  unset var_$i
+done
+
+time "unset vars / 100k" 100000 read_vars 100
+time "unset vars / 100k" 100000 read_vars 100
+
+for i in `seq 100000`; do
+  unset yar_$i
+done
+
+time "unset vars / zero" 1000000 read_vars 1000
+time "unset vars / zero" 1000000 read_vars 1000

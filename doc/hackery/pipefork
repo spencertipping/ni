@@ -1,0 +1,5 @@
+#!/bin/sh
+[ $1 -gt 0 ] || exec cat
+while read line; do
+  echo "$1: $line"
+done | $0 $(($1 - 1))

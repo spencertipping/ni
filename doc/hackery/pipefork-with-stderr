@@ -1,0 +1,17 @@
+#!/bin/sh
+
+stderr_handler() {
+  while read errline; do
+    echo "stderr: $$ $errline"
+  done
+}
+
+loop_thing() {
+  [ $1 -gt 0 ] || exec cat
+  while read line; do
+    echo "$$ $1: $line"
+    echo "err $$ $1" 1>&2
+  done | loop_thing $(($1 - 1))
+}
+
+loop_thing "$@" 3>&1 1>&2 2>&3 3>&- | stderr_handler
