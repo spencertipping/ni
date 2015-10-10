@@ -12,11 +12,11 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'9373f5f05186f0092d611526dfaa715039e535ceee17f7eb407741c89f9c0777'
+module 'meta/struct.sh' <<'dde5a2e8b421df3f747b6c849ad813250a8cf2b63743976ccbdae26ebdaaf2eb'
 # Data structure metaprogramming
 cell_index=0
 cell() {
-  eval "$1=$2_\$cell_index"
+  eval "$1=_$2_\$cell_index"
   cell_index=$((cell_index + 1))
   [ "${cell_index%000}" = "$cell_index" ] || gc
 }
@@ -45,12 +45,15 @@ defstruct() {
 
 # Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
 # call to cons_str "$@" if called with $2 as a cons cell.
-defmulti() eval "$1() \${2%_*}_$1 \"\$@\""
+defmulti() eval "$1() {
+                   multi_${1}_type=\${2%_*}
+                   \${multi_${1}_type#_}_$1 \"\$@\"
+                 }"
 
 # Default multimethods available for all structures
 defmulti str
-9373f5f05186f0092d611526dfaa715039e535ceee17f7eb407741c89f9c0777
-module 'meta/lisp.sh' <<'ece0a6f712371fc84a819de411b91ec43c9bac49a500c70c1f950643d0f1ba18'
+dde5a2e8b421df3f747b6c849ad813250a8cf2b63743976ccbdae26ebdaaf2eb
+module 'meta/lisp.sh' <<'2ce696b6e075b0cee14ebd6c02132224ab1efcb4b12bb5f76b533c42edba097a'
 # Lisp in POSIX shell ... because we can.
 
 # Reader
@@ -69,7 +72,15 @@ lisp_read() {
       if [ "$lisp_read_x" = "]" ]; then
         vec lisp_read_head $lisp_read_head
       elif [ "$lisp_read_x" = "}" ]; then
-        hashmap lisp_read_head $lisp_read_head
+        # Go back and stringify the keys into sh primitives.
+        hashmap lisp_read_map
+        while [ -n "$lisp_read_head" ]; do
+          uncons lisp_read_head_k lisp_read_head $lisp_read_head
+          uncons lisp_read_head_v lisp_read_head $lisp_read_head
+          str lisp_read_head_k $lisp_read_head_k
+          assoc $lisp_read_map $lisp_read_head_k $lisp_read_head_v
+        done
+        lisp_read_head=$lisp_read_map
       fi
       cons ${lisp_read_r}_h $lisp_read_head $lisp_read_tailhead
     else
@@ -85,8 +96,8 @@ lisp_read() {
 # Compiler
 # This lisp uses a TCL-style evaluation model; that is, () is interpolated but
 # words themselves are assumed to be self-representing.
-ece0a6f712371fc84a819de411b91ec43c9bac49a500c70c1f950643d0f1ba18
-module 'meta/list.sh' <<'4c2aed86bf1601f947613a25144639882814f1557638fe6f20c6cb914f5c55bd'
+2ce696b6e075b0cee14ebd6c02132224ab1efcb4b12bb5f76b533c42edba097a
+module 'meta/list.sh' <<'fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17'
 # Linked list functions
 
 list_reverse() {
@@ -98,7 +109,21 @@ list_reverse() {
     eval "$1=\$3"
   fi
 }
-4c2aed86bf1601f947613a25144639882814f1557638fe6f20c6cb914f5c55bd
+
+# Like the usual (apply), but doesn't accept any intermediate arguments; that
+# is, it's just a function and a list.
+apply_last() {
+  apply_last_f=$1
+  apply_last_r=$2
+  apply_last_l=$3
+  shift 3
+  while [ -n "$apply_last_l" ]; do
+    uncons apply_last_h apply_last_l $apply_last_l
+    set -- "$@" "$apply_last_h"
+  done
+  $apply_last_f $apply_last_r "$@"
+}
+fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17
 module 'meta/vector.sh' <<'282f73b3b0c39b92d5c15a4be3291eb4f2c8edacce7d0397e4367ab773fd9c1f'
 # Vector data structure
 
@@ -187,25 +212,22 @@ cons_str() {
   eval "$1=\"(\${cons_str_s# })\""
 }
 9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5
-module 'meta/hashmap.sh' <<'0d77c332cca0b5981add3f73241c8a65ace39218f52b012ab9cf9b1566821381'
+module 'meta/hashmap.sh' <<'85326126cc64bd4b7346e4b3a6ad000d20a54c035561ba8d9e5327828fd3d8cb'
 # Hashmap data structure
-# (Not technically a hashmap because we piggyback off of the parent shell's 
+# (Not technically a hashmap because we piggyback off of the parent shell's
+#  global variable table; i.e. we're not doing anything clever here.)
 
 # Constructed from pairs of arguments:
 # hashmap result k1 v1 k2 v2 ... kn vn
 hashmap() {
   hashmap_r=$1
   cell hashmap_cell hashmap
-  hashmap_keylist=
   shift
   while [ $# -gt 0 ]; do
-    eval "${hashmap_cell}_key_$1=\"\$2\""
-    cons hashmap_keylist "$1" $hashmap_keylist
-    eval "${hashmap_cell}_cell_$1=\"\$hashmap_keylist\""
+    assoc $hashmap_cell "$1" "$2"
     shift 2
   done
-  eval "${hashmap_cell}_keys=\$hashmap_keylist
-        $hashmap_r=\$hashmap_cell"
+  eval "$hashmap_r=\$hashmap_cell"
 }
 
 hashmap_gc() {
@@ -218,17 +240,30 @@ hashmap_gc() {
   eval "$1=\"\$hashmap_gc_keys\""
 }
 
-assoc() {
-  : TODO
+hashmap_str() {
+  hashmap_str_s=
+  keys hashmap_str_l $2
+  while [ -n "$hashmap_str_l" ]; do
+    uncons hashmap_str_k hashmap_str_l $hashmap_str_l
+    set -- "$1" "$2" "$hashmap_str_s $hashmap_str_k" "$hashmap_str_l"
+    get hashmap_str_v $2 $hashmap_str_k
+    str hashmap_str_v $hashmap_str_v
+    hashmap_str_s="$3 $hashmap_str_v"
+    hashmap_str_l="$4"
+  done
+  eval "$1=\"{\$hashmap_str_s}\""
 }
 
-dissoc() {
-  : TODO
-}
+assoc() eval "${1}_key_$2=\"\$3\"
+              if [ -n \"\$${1}_cell_$2\" ]; then
+                cons ${1}_keys \"\$2\" \$${1}_keys
+                ${1}_cell_$2=\$${1}_keys
+              fi"
 
+keys()     eval "$1=\$${2}_keys"
 get()      eval "$1=\"\$${2}_key_$3\""
 contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
-0d77c332cca0b5981add3f73241c8a65ace39218f52b012ab9cf9b1566821381
+85326126cc64bd4b7346e4b3a6ad000d20a54c035561ba8d9e5327828fd3d8cb
 module 'meta/atom.sh' <<'ccf495cdd56f80fd109a7c041931a8e2c14746212212f9cf01d4f8ba61bb03e7'
 # Atoms
 meta_hook <<'EOF'
@@ -239,6 +274,12 @@ EOF
 string_str() eval "$1=\"\$${2}_x\""
 atom_str()   eval "$1=\"\$${2}_x\""
 ccf495cdd56f80fd109a7c041931a8e2c14746212212f9cf01d4f8ba61bb03e7
+module 'meta/.struct.sh.swp' <<'58f6e03f3322657736b4f9bff1f472759bec87233e25dd4f4cd72abf19940e80'
+b0VIM 7.4—Vqj!spencertippingxenorophidae~spencertipping/r/initiative/ni/src/meta/struct.shutf-83210#"! Utp'ad<
+ô
+'ßÒÉ¬‹[YXúÒ¾[SRB(Á1ßº³²pNLKüÂª~J65ô
+defmulti strddefmulti str# Default multimethods available for all structures                 }"                   \${multi_${1}_type#_}_$1 \"\$@\"                   multi_${1}_type=\${2%_*}defmulti() eval "$1() {# call to cons_str "$@" if called with $2 as a cons cell.# Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a}  eval "$defstruct_visitor\\\"\""  eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"  done    defstruct_i=$((defstruct_i + 1))    eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""    eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""    defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"    defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"  for defstruct_field; do  defstruct_i=2  shift  defstruct_ctor="$1() { cell ${1}_cell $1; eval \""  defstruct_visitor="gc_$1() eval \"\$1=\\\""  defstruct_name=$1  defined_structs="$defined_structs $1"defstruct() {defined_structs=# Defines a named structure with a constructor and GC visitor.}  [ "${cell_index%000}" = "$cell_index" ] || gc  cell_index=$((cell_index + 1))  eval "$1=_$2_\$cell_index"cell() {cell_index=0# Data structure metaprogramming
+58f6e03f3322657736b4f9bff1f472759bec87233e25dd4f4cd72abf19940e80
 module 'self/repl.sh' <<'dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a003cc88c3'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell

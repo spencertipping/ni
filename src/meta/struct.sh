@@ -1,7 +1,7 @@
 # Data structure metaprogramming
 cell_index=0
 cell() {
-  eval "$1=$2_\$cell_index"
+  eval "$1=_$2_\$cell_index"
   cell_index=$((cell_index + 1))
   [ "${cell_index%000}" = "$cell_index" ] || gc
 }
@@ -30,7 +30,10 @@ defstruct() {
 
 # Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
 # call to cons_str "$@" if called with $2 as a cons cell.
-defmulti() eval "$1() \${2%_*}_$1 \"\$@\""
+defmulti() eval "$1() {
+                   multi_${1}_type=\${2%_*}
+                   \${multi_${1}_type#_}_$1 \"\$@\"
+                 }"
 
 # Default multimethods available for all structures
 defmulti str
