@@ -90,7 +90,17 @@ self() {
   verb 'main "$@"'
 }
 EOF
-module 'bin/hash.c' <<'EOF'
+module 'self/sha3.sh' <<'EOF'
+# Support for hashing arbitrary data through the jit-C interface
+sha3() { sha3_setup; "$sha3_jit"; }
+sha3_setup() {
+  [ -n "$sha3_jit" ] && return
+  module_get sha3_source bin/sha3.c
+  sha3_jit="$(verb "$sha3_source" | jit_c)"
+  unset sha3_source
+}
+EOF
+module 'bin/sha3.c' <<'EOF'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
  *
@@ -137,24 +147,21 @@ EOF
 module 'main.sh' <<'EOF'
 main() {
   tmpdir
-  module_get hash_source bin/hash.c
-  h=$(verb "$hash_source" | jit_c)
-  $h
+  sha3
   tmpdir_free
 }
 EOF
 module 'jit/jit-c.sh' <<'EOF'
 # JIT support for C99 programs
-# Calling convention for these is like this:
+# Calling convention is like this:
 #
-# jit_program=$(jit_c <<'EOF'
+# jit_c jit_program <<'EOF'
 # #include <stdio.h>
 # int main() {
 #   printf("hello world\n");
 #   return 0;
 # }
 # EOF
-# )
 #
 # $jit_program "$@"             # to execute the program
 #
@@ -164,13 +171,41 @@ module 'jit/jit-c.sh' <<'EOF'
 jit_c_index=0
 jit_c() {
   tmpdir
+  jit_c_result="$1"
+  shift
   jit_c_index=$((jit_c_index + 1))
   jit_c_source="$self_tmpdir/jit-c-$jit_c_index.c"
-  cat > "$jit_c_source"
+  cat "$@" > "$jit_c_source"
   c99 "$jit_c_source" -o "${jit_c_source%.c}"
-  verb "${jit_c_source%.c}"
+  eval "$jit_c_result=\${jit_c_source%.c}"
 }
 
 jit_c_free() rm "$1" "$1.c"
+EOF
+module 'jit/jit-mvn.sh' <<'EOF'
+# JVM JIT using maven as the frontend
+# (this makes it easy to include dependencies)
+
+# Takes a series of -D options -- basically everything after the first two
+# given to jit_mvn -- and produces a POM XML file to stdout.
+mvn_pom() {
+  : TODO
+}
+
+# Usage: jit_mvn jit_program Foobar [-Dgroup/artifact=version ...] ... <<'EOF'
+# public class Foobar {
+#   public static void main(String[] args) {
+#     System.out.println("hello world!");
+#   }
+# }
+# EOF
+#
+# $jit_program "$@"
+#
+# jit_mvn_free $jit_program
+jit_mvn() {
+  jit_mvn_result=$1
+  jit_mvn_main=$2
+}
 EOF
 main "$@"
