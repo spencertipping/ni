@@ -48,8 +48,9 @@ vector() {
   cell vector_cell vector
   eval "${vector_cell}_n=0"
   for vector_x; do
-    eval "${vector_cell}_$vector_cell_n=\"\$vector_x\"
-          $vector_cell_n=\$((vector_cell_n + 1))"
+    eval "vector_n=\$${vector_cell}_n"
+    eval "${vector_cell}_$vector_n=\"\$vector_x\"
+          ${vector_cell}_n=\$(($vector_n + 1))"
   done
   eval "$vector_r=\$vector_cell"
 }
@@ -67,7 +68,7 @@ vector_gc() {
 }
 
 n()   eval "$1=\"\$${2}_n\""
-nth() eval "$1=\"\$${2}_$3\""
+get() eval "$1=\"\$${2}_$3\""
 
 defmulti str
 
@@ -89,6 +90,21 @@ cons_str() {
   eval "$1=\"(\${cons_str_s# })\""
 }
 
+vector_str() {
+  vector_str_i=0
+  vector_str_s=''
+  n vector_str_n $2
+  while [ $vector_str_i -lt $vector_str_n ]; do
+    set -- "$1" "$2" "$vector_str_s" "$vector_str_i" "$vector_str_n"
+    get vector_str_x $2 $vector_str_i
+    str vector_str_x $vector_str_x
+    vector_str_s="$3 $vector_str_x"
+    vector_str_i=$(($4 + 1))
+    vector_str_n=$5
+  done
+  eval "$1=\"[\${vector_str_s# }]\""
+}
+
 # A few list functions
 list_reverse() {
   if [ -n "$2" ]; then
@@ -107,40 +123,44 @@ vec() {
   shift 2
   set --
   while [ -n "$vec_l" ]; do
-    h vec_l_h $vec_l
+    h vec_h $vec_l
     t vec_l $vec_l
-    set -- "$@" "$vec_l_h"
+    set -- "$@" "$vec_h"
   done
   vector "$vec_r" "$@"
 }
 
 # Reader
-lisp_convert() sed 's/\([^$]\|^\)\([()\[\]{}]\)/\1 \2 /g'
+lisp_convert() sed 's/\([^$]\|^\)\([][()]\)/\1 \2 /g'
 lisp_read() {
-  lisp_construct_dest=$1
+  lisp_read_dest=$1
   shift
-  cons lisp_construct_r '' ''
-  for lisp_construct_x; do
-    if [ -z "${lisp_construct_x#[\[(]}" ]; then
-      cons lisp_construct_r '' $lisp_construct_r
-    elif [ -z "${lisp_construct_x#[\[(]}" ]; then
-      h lisp_construct_head $lisp_construct_r
-      t lisp_construct_r $lisp_construct_r
-      h lisp_construct_tailhead $lisp_construct_r
-      list_reverse lisp_construct_head $lisp_construct_head
-      if [ "$lisp_construct_x" = "]" ]; then
-        vec lisp_construct_head $lisp_construct_head
+  cons lisp_read_r '' ''
+  for lisp_read_x; do
+    if [ "$lisp_read_x" = '(' ] || [ "$lisp_read_x" = '[' ]; then
+      cons lisp_read_r '' $lisp_read_r
+    elif [ "$lisp_read_x" = ')' ] || [ "$lisp_read_x" = ']' ]; then
+      h lisp_read_head $lisp_read_r
+      t lisp_read_r $lisp_read_r
+      h lisp_read_tailhead $lisp_read_r
+      list_reverse lisp_read_head $lisp_read_head
+      if [ "$lisp_read_x" = "]" ]; then
+        vec lisp_read_head $lisp_read_head
       fi
-      cons ${lisp_construct_r}_h $lisp_construct_head $lisp_construct_tailhead
+      cons ${lisp_read_r}_h $lisp_read_head $lisp_read_tailhead
     else
-      h lisp_construct_head $lisp_construct_r
-      atom lisp_construct_cell $lisp_construct_x
-      cons ${lisp_construct_r}_h $lisp_construct_cell "$lisp_construct_head"
+      h lisp_read_head $lisp_read_r
+      atom lisp_read_cell $lisp_read_x
+      cons ${lisp_read_r}_h $lisp_read_cell "$lisp_read_head"
     fi
   done
-  h $lisp_construct_dest $lisp_construct_r
-  eval "list_reverse $lisp_construct_dest \$$lisp_construct_dest"
+  h $lisp_read_dest $lisp_read_r
+  eval "list_reverse $lisp_read_dest \$$lisp_read_dest"
 }
+
+lisp_read r $(lisp_convert)
+str s $r
+verb "$s" >&2
 
 # Compiler
 # This lisp uses a TCL-style evaluation model; that is, () is interpolated but
