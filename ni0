@@ -11,6 +11,34 @@ module() {
 module_index=1
 modules=boot.sh'
 eval "$module_0"
+module 'self/fs.sh' <<'EOF'
+# Filesystem interop
+
+# Usage: tmpdir destination_var
+# Returns the original tmpdir if the destination var is already populated and
+# exists.
+tmpdir() {
+  eval "[ -e \"\$${1:-self_tmpdir}/.this-is-a-ni-tmpdir\" ]" && return
+  tmpdir_prefix="${TMPDIR:-/tmp}/ni-$$"
+  tmpdir_index=0
+  until mkdir "$tmpdir_prefix-$tmpdir_index" 2>/dev/null; do
+    tmpdir_prefix=$((tmpdir_prefix + 1))
+  done
+  touch "$tmpdir_prefix-$tmpdir_index/.this-is-a-ni-tmpdir"
+  eval "${1:-self_tmpdir}=\$tmpdir_prefix-\$tmpdir_index"
+}
+
+tmpdir_free() {
+  [ $# -eq 0 ] && set -- "$self_tmpdir"
+  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
+    verb "ni: trying to clean up a tmpdir ($1)" \
+         "    but this tmpdir doesn't appear to have been created by ni" \
+         "    in this case, not doing anything" >&2
+    return 1
+  fi
+  rm -r "$1"
+}
+EOF
 module 'self/image.sh' <<'EOF'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret its arguments
@@ -62,99 +90,87 @@ self() {
   verb 'main "$@"'
 }
 EOF
-module 'jit/jit.sh' <<'EOF'
-# Core JIT support
-EOF
-module 'meta/macroexpand.awk' <<'EOF'
-BEGIN {
-  macro_mode = 0
-  n = -1
-}
+module 'bin/hash.c' <<'EOF'
+/* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
+ * cache intermediate results.
+ *
+ * Code from https://github.com/gvanas/KeccakCodePackage/blob/master/Standalone/CompactFIPS202/Keccak-more-compact.c;
+ * modified here to read from a file descriptor and to alias pointers for a
+ * speedup of about 4x */
 
-function await(c)       { awaiting[++n] = c }
-function is_quoted()    { return n >= 0 && awaiting[n] ~ /["']/ }
-function shell_quote(s) { gsub(/[\\']/, "'\\\\&'", s);
-                          return "printf %s '" s "'" }
+#include <unistd.h>
+#include <sys/types.h>
 
-function macro_process(s, r, c, q, heredoc_start, heredoc_end, last_was_dollar) {
-  r               = ""
-  last_was_dollar = 0
-  heredoc_start   = macro_mode ? "\n" : " <<'macro_end'"
-  heredoc_end     = macro_mode ? "\nmacro_end\n" : "\n"
-  macro_mode      = 1
-  for (i = 1; i <= length(s); ++i) {
-    c = substr(s, i, 1)
-    q = is_quoted()
-    if (n >= 0 && c == awaiting[n]) {
-      --n
-    } else if (n == -1 && c == ")") {
-      macro_mode = 0
-      if (i + 1 <= length(s)) {
-        return r heredoc_end shell_quote(substr(s, i + 1))
-      } else {
-        return r
-      }
-    } else if (c == "\\") {
-      ++i
-    } else if (c == "(" && (last_was_dollar || !q)) {
-      await(")")
-    } else if (c == "{") {
-      await("}")
-    } else if (c == "\"" || c == "'") {
-      await(c)
-    }
-    last_was_dollar = c == "$"
-    r = r c
-  }
-  sub(/\n$/, "", r)
-  return r heredoc_start
-}
+#define FOR(i,n) for(i=0; i<n; ++i)
+typedef unsigned char u8;
+typedef unsigned long long int u64;
+typedef unsigned int ui;
 
+void Keccak(ui r, ui c, const u8 *in, u64 inLen, u8 sfx, u8 *out, u64 outLen);
+
+int LFSR86540(u8 *R) { (*R)=((*R)<<1)^(((*R)&0x80)?0x71:0); return ((*R)&2)>>1; }
+#define ROL(a,o) ((((u64)a)<<o)^(((u64)a)>>(64-o)))
+#define rL(x,y) (*(u64*)((u8*)s+8*(x+5*y)))
+#define wL(x,y,l) (*(u64*)((u8*)s+8*(x+5*y))=(l))
+#define XL(x,y,l) (*(u64*)((u8*)s+8*(x+5*y))^=(l))
+void KeccakF1600(void *s)
 {
-  if (macro_mode) {
-    print macro_process($0 "\n")
-  } else {
-    if ((p = index($0, "%(")) > 0) {
-      print shell_quote(substr($0, 1, p - 1))
-      print macro_process(substr($0, p + 2) "\n")
-    } else {
-      print shell_quote($0 "\n")
+    ui r,x,y,i,j,Y; u8 R=0x01; u64 C[5],D;
+    for(i=0; i<24; i++) {
+        /*θ*/ FOR(x,5) C[x]=rL(x,0)^rL(x,1)^rL(x,2)^rL(x,3)^rL(x,4); FOR(x,5) { D=C[(x+4)%5]^ROL(C[(x+1)%5],1); FOR(y,5) XL(x,y,D); }
+        /*ρπ*/ x=1; y=r=0; D=rL(x,y); FOR(j,24) { r+=j+1; Y=(2*x+3*y)%5; x=y; y=Y; C[0]=rL(x,y); wL(x,y,ROL(D,r%64)); D=C[0]; }
+        /*χ*/ FOR(y,5) { FOR(x,5) C[x]=rL(x,y); FOR(x,5) wL(x,y,C[x]^((~C[(x+1)%5])&C[(x+2)%5])); }
+        /*ι*/ FOR(j,7) if (LFSR86540(&R)) XL(0,0,(u64)1<<((1<<j)-1));
     }
-  }
+}
+int main()
+{
+    /*initialize*/ u8 ia[65536], *in = ia, oa[32], *out = oa; u64 inLen; u8 s[200]; ui R=1088/8; ui i,b=0; u64 outLen=32; FOR(i,200) s[i]=0;
+    /*absorb*/ while ((inLen = read(0, in = ia, 65536)) > 0) while(inLen>0) { b=(inLen<R)?inLen:R; FOR(i,b) s[i]^=in[i]; in+=b; inLen-=b; if (b==R) { KeccakF1600(s); b=0; } }
+    /*pad*/ s[b]^=6; if((6&0x80)&&(b==(R-1))) KeccakF1600(s); s[R-1]^=0x80; KeccakF1600(s);
+    /*squeeze*/ while(outLen>0) { b=(outLen<R)?outLen:R; FOR(i,b) out[i]=s[i]; out+=b; outLen-=b; if(outLen>0) KeccakF1600(s); }
+
+    u8 oh[65], *hex="0123456789abcdef"; FOR(i, 32) { oh[i<<1]=hex[oa[i]>>4]; oh[i<<1|1]=hex[oa[i]&15]; }
+    oh[64]='\n'; write(1, oh, 65); return 0;
 }
 EOF
-module 'meta/macros.sh' <<'EOF'
-# Useful macro definitions that aren't library-specific
-let_level=0
-let() {
-  verb "$@"
-  let_level=$((let_level + 1))
-  macroexpand
-  let_level=$((let_level - 1))
-  for let_name; do
-    verb "unset ${let_name%%=*}"
-  done
-}
-EOF
-module 'meta/macro.sh' <<'EOF'
-# AOT shell macroexpansion
-# This is actually really simple; we just use %() as an AOT macroexpansion
-# indicator and have a awk script that shell-quotes stuff accordingly. The
-# exact structure is like this:
-#
-# %(macro-name [args...]                # passed in as $1, etc
-#   ....)                               # body quoted as a hardquoted heredoc
-#
-# Paren counting works just like it does in POSIX shell: quoted parens are
-# ignored. Sub-macroexpansion contexts aren't allowed.
-
-macroexpand() {
-  module_get macroexpand_awk meta/macroexpand.awk
-  eval "$(awk -e "$macroexpand_awk")"
-}
-
+module 'main.sh' <<'EOF'
 main() {
-  macroexpand
+  tmpdir
+  module_get hash_source bin/hash.c
+  h=$(verb "$hash_source" | jit_c)
+  $h
+  tmpdir_free
 }
+EOF
+module 'jit/jit-c.sh' <<'EOF'
+# JIT support for C99 programs
+# Calling convention for these is like this:
+#
+# jit_program=$(jit_c <<'EOF'
+# #include <stdio.h>
+# int main() {
+#   printf("hello world\n");
+#   return 0;
+# }
+# EOF
+# )
+#
+# $jit_program "$@"             # to execute the program
+#
+# Later on, you can free the jit context like this:
+# jit_c_free $jit_program
+
+jit_c_index=0
+jit_c() {
+  tmpdir
+  jit_c_index=$((jit_c_index + 1))
+  jit_c_source="$self_tmpdir/jit-c-$jit_c_index.c"
+  cat > "$jit_c_source"
+  c99 "$jit_c_source" -o "${jit_c_source%.c}"
+  verb "${jit_c_source%.c}"
+}
+
+jit_c_free() rm "$1" "$1.c"
 EOF
 main "$@"
