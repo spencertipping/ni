@@ -1,0 +1,23 @@
+#!/bin/sh
+# NB: all of this will be replaced by stuff from src/. This is just a minimal
+# first implementation to emit a self-modifying script based on the contents of
+# src/.
+
+module() {
+  [ $# -eq 2 ] && module_v="$2" || module_v="`cat`"
+  eval "module_$module_index=\"\$module_v\""
+  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
+  modules="$modules$newline$1"
+  module_index=$((module_index + 1))
+}
+
+module_index=0
+module boot.sh "$(cat src/boot.sh)"
+
+IFS="$newline"
+for file in $(find src -type f); do
+  [ "$file" = src/boot.sh ] || module "${file#src/}" "$(cat "$file")"
+done
+
+self > ni0
+chmod +x ni0

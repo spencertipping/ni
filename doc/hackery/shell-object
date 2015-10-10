@@ -1,0 +1,33 @@
+#!/bin/sh
+attr_boot='assoc() {
+  assoc_value="`cat`"
+  eval "attr_$1=\"\$assoc_value\""
+  attrs="$attrs:$1"
+  [ "${1%_sh}" = "$1" ] || eval "eval \"\$assoc_value\""
+}'
+eval "$attr_boot"
+attrs=boot
+
+assoc self_sh <<'EOF'
+self() {
+  echo "#!/bin/sh"
+  echo "attr_boot='$attr_boot'"
+  echo 'eval "$attr_boot"'
+  echo 'attrs=boot'
+
+  old_ifs="$IFS"
+  IFS=:
+  for a in $attrs; do
+    if [ $a != boot ]; then
+      echo "assoc $a <<'EOF'"
+      eval "echo \"\$attr_$a\""
+      echo "EOF"
+    fi
+  done
+  IFS="$old_ifs"
+}
+EOF
+
+assoc main_sh <<'EOF'
+self
+EOF

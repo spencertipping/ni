@@ -1,0 +1,153 @@
+#!/bin/sh
+# Self-modifying ni image: https://github.com/spencertipping/ni
+module_0='newline="$(printf "\\n ")" && newline="${newline% }"
+module() {
+  [ $# -eq 2 ] && module_v="$2" || module_v="$(cat)"
+  eval "module_$module_index=\"\$module_v\""
+  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
+  modules="$modules$newline$1"
+  module_index=$((module_index + 1))
+}
+module_index=1
+modules=boot.sh'
+eval "$module_0"
+module 'self/image.sh' <<'EOF'
+# Safe echo: works around the POSIX statement that "echo" is allowed to
+# interpret its arguments
+verb() {
+  for verb_arg; do
+    printf "%s\n" "$verb_arg"
+  done
+}
+
+# Retrieves a module's text by name
+# Usage: module_get destination_var module/name
+# Does nothing if the variable is already set, which makes it possible to use
+# this function repeatedly without a performance hit.
+module_get() {
+  eval "[ -n \"\$$1\" ]" && return
+  module_get_old_ifs="$IFS"
+  IFS="$newline"
+  module_get_i=0
+  for module_get_name in $modules; do
+    if [ "$2" = "$module_get_name" ]; then
+      eval "$1=\"\$module_$module_get_i\""
+      IFS="$module_get_old_ifs"
+      return 0
+    fi
+    module_get_i=$((module_get_i + 1))
+  done
+  IFS="$module_get_old_ifs"
+}
+
+# The current image
+self() {
+  verb "#!/bin/sh" \
+       "# Self-modifying ni image: https://github.com/spencertipping/ni" \
+       "module_0='$module_0'" \
+       'eval "$module_0"'
+
+  self_old_ifs="$IFS"
+  IFS="$newline"
+  self_i=0
+  for self_m in $modules; do
+    if [ $self_m != boot.sh ]; then
+      verb "module '$self_m' <<'EOF'"
+      eval "verb \"\$module_$self_i\""
+      verb "EOF"
+    fi
+    self_i=$((self_i + 1))
+  done
+  IFS="$self_old_ifs"
+  verb 'main "$@"'
+}
+EOF
+module 'jit/jit.sh' <<'EOF'
+# Core JIT support
+EOF
+module 'meta/macroexpand.awk' <<'EOF'
+BEGIN {
+  macro_mode = 0
+  n = -1
+}
+
+function await(c)       { awaiting[++n] = c }
+function is_quoted()    { return n >= 0 && awaiting[n] ~ /["']/ }
+function shell_quote(s) { gsub(/[\\']/, "'\\\\&'", s);
+                          return "printf %s '" s "'" }
+
+function macro_process(s, r, c, q, heredoc_start, heredoc_end, last_was_dollar) {
+  r               = ""
+  last_was_dollar = 0
+  heredoc_start   = macro_mode ? "\n" : " <<'macro_end'"
+  heredoc_end     = macro_mode ? "\nmacro_end\n" : "\n"
+  macro_mode      = 1
+  for (i = 1; i <= length(s); ++i) {
+    c = substr(s, i, 1)
+    q = is_quoted()
+    if (n >= 0 && c == awaiting[n]) {
+      --n
+    } else if (n == -1 && c == ")") {
+      macro_mode = 0
+      if (i + 1 <= length(s)) {
+        return r heredoc_end shell_quote(substr(s, i + 1))
+      } else {
+        return r
+      }
+    } else if (c == "\\") {
+      ++i
+    } else if (c == "(" && (last_was_dollar || !q)) {
+      await(")")
+    } else if (c == "{") {
+      await("}")
+    } else if (c == "\"" || c == "'") {
+      await(c)
+    }
+    last_was_dollar = c == "$"
+    r = r c
+  }
+  sub(/\n$/, "", r)
+  return r heredoc_start
+}
+
+{
+  if (macro_mode) {
+    print macro_process($0 "\n")
+  } else {
+    if ((p = index($0, "%(")) > 0) {
+      print shell_quote(substr($0, 1, p - 1))
+      print macro_process(substr($0, p + 2) "\n")
+    } else {
+      print shell_quote($0 "\n")
+    }
+  }
+}
+EOF
+module 'meta/macros.sh' <<'EOF'
+# Useful macro definitions that aren't library-specific
+let() {
+  :
+}
+EOF
+module 'meta/macro.sh' <<'EOF'
+# AOT shell macroexpansion
+# This is actually really simple; we just use %() as an AOT macroexpansion
+# indicator and have a awk script that shell-quotes stuff accordingly. The
+# exact structure is like this:
+#
+# %(macro-name [args...]                # passed in as $1, etc
+#   ....)                               # body quoted as a hardquoted heredoc
+#
+# Paren counting works just like it does in POSIX shell: quoted parens are
+# ignored. Sub-macroexpansion contexts aren't allowed.
+
+macroexpand() {
+  module_get macroexpand_awk meta/macroexpand.awk
+  awk -e "$macroexpand_awk"
+}
+
+main() {
+  macroexpand
+}
+EOF
+main "$@"

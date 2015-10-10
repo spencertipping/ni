@@ -1,4 +1,6 @@
 #!/usr/bin/env perl
+# NB: deprecated; this is based on an old and poorly-engineered binary format.
+
 use 5.000_000;
 use strict;
 use warnings;

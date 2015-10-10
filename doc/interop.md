@@ -194,7 +194,7 @@ def Ni::sum
 end
 ```
 
-JIT has three minor disadvantages that are worth being aware of:
+JIT has minor disadvantages that are worth being aware of:
 
 1. Subroutines are no longer closures, though you can pass in named references
    to similar effect.

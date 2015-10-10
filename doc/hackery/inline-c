@@ -17,7 +17,7 @@ inline_index=0
 
 inline_file() {
   inline_index=$((inline_index + 1))
-  cat > "$self_dir/$inline_index-$2"
+  cat <&3 > "$self_dir/$inline_index-$2"
   eval "$1=\"$self_dir/$inline_index-$2\""
 }
 
@@ -28,10 +28,14 @@ inline_c() {
   rm "${c_filename%.c}" "$c_filename"
 }
 
-inline_c <<EOF
+inline_c 3<<EOF
 #include <stdio.h>
+#include <sys/types.h>
 int main() {
-  printf("hello world!\n");
+  char buf[8192];
+  ssize_t n = sizeof(buf);
+  while ((n = getline(&buf, &n, stdin)) > 0)
+    printf("c program: got %d chars: %s\n", n, buf);
   return 0;
 }
 EOF

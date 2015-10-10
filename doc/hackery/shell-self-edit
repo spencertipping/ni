@@ -1,0 +1,72 @@
+#!/bin/sh
+attr_boot='assoc() {
+  if [ $# = 2 ]; then
+    assoc_value="$2"
+  else
+    assoc_value="`cat`"
+  fi
+  eval "attr_$1=\"\$assoc_value\""
+  attrs="$attrs:$1"
+  [ "${1%_sh}" = "$1" ] || eval "eval \"\$assoc_value\""
+}'
+eval "$attr_boot"
+attrs=boot
+assoc self_sh <<'EOF'
+self() {
+  echo "#!/bin/sh"
+  echo "attr_boot='$attr_boot'"
+  echo 'eval "$attr_boot"'
+  echo 'attrs=boot'
+
+  old_ifs="$IFS"
+  IFS=:
+  for a in $attrs; do
+    if [ $a != boot ]; then
+      echo "assoc $a <<'EOF'"
+      eval "echo \"\$attr_$a\""
+      echo "EOF"
+    fi
+  done
+  IFS="$old_ifs"
+  echo 'main "$@"'
+}
+EOF
+assoc temp_sh <<'EOF'
+tempdir() {
+  tempdir_index=0
+  tempdir_prefix=${TMPDIR:-/tmp}/ni-$$
+  until mkdir "$tempdir_prefix-$tempdir_index" 2>/dev/null; do
+    tempdir_index=$((tempdir_index + 1))
+  done
+  echo "$tempdir_prefix-$tempdir_index"
+}
+EOF
+assoc edit_sh <<'EOF'
+edit() {
+  edit_temp="$(tempdir)"
+  cd "$edit_temp"
+  old_ifs="$IFS"
+  IFS=:
+  for a in $attrs; do
+    eval "echo \"\$attr_$a\" > \"\$a\""
+  done
+  IFS="$old_ifs"
+  echo "entering edit mode (^D to exit)"
+  PROMPT="ni:: " PS1="ni:: " ${SHELL:-/bin/sh}
+  assoc boot "`cat boot`"
+  attrs=boot
+  for file in `ls`; do
+    [ "$file" = boot ] || assoc "$file" "`cat "$file"`"
+  done
+  echo rm -r "$edit_temp"
+}
+EOF
+assoc main_sh <<'EOF'
+main() {
+  edit
+  echo
+  echo "current state:" 1>&2
+  self
+}
+EOF
+main "$@"
