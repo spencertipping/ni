@@ -40,6 +40,35 @@ defstruct cons h t
 defstruct string x
 defstruct atom   x
 
+# This is roughly what defstruct generates, though this is a bit more
+# complicated because it supports variable arity.
+vector() {
+  vector_r=$1
+  shift
+  cell vector_cell vector
+  eval "${vector_cell}_n=0"
+  for vector_x; do
+    eval "${vector_cell}_$vector_cell_n=\"\$vector_x\"
+          $vector_cell_n=\$((vector_cell_n + 1))"
+  done
+  eval "$vector_r=\$vector_cell"
+}
+
+vector_gc() {
+  vector_gc_r=$1
+  eval "vector_gc_n=\$${2}_n"
+  vector_gc_i=0
+  vector_gc_s=
+  while [ $vector_gc_i -lt $vector_gc_n ]; do
+    eval "vector_gc_s=\"\$vector_gc_s \$${2}_$vector_gc_i\""
+    vector_gc_i=$((vector_gc_i + 1))
+  done
+  eval "$vector_gc_r=\"\$vector_gc_s\""
+}
+
+n()   eval "$1=\"\$${2}_n\""
+nth() eval "$1=\"\$${2}_$3\""
+
 defmulti str
 
 _str()       eval "$1=nil"
@@ -72,20 +101,36 @@ list_reverse() {
   fi
 }
 
+vec() {
+  vec_r=$1
+  vec_l=$2
+  shift 2
+  set --
+  while [ -n "$vec_l" ]; do
+    h vec_l_h $vec_l
+    t vec_l $vec_l
+    set -- "$@" "$vec_l_h"
+  done
+  vector "$vec_r" "$@"
+}
+
 # Reader
-lisp_convert() sed 's/\([()]\)/ \1 /g'
+lisp_convert() sed 's/\([^$]\|^\)\([()\[\]{}]\)/\1 \2 /g'
 lisp_read() {
   lisp_construct_dest=$1
   shift
   cons lisp_construct_r '' ''
   for lisp_construct_x; do
-    if [ "$lisp_construct_x" = "(" ]; then
+    if [ -z "${lisp_construct_x#[\[(]}" ]; then
       cons lisp_construct_r '' $lisp_construct_r
-    elif [ "$lisp_construct_x" = ")" ]; then
+    elif [ -z "${lisp_construct_x#[\[(]}" ]; then
       h lisp_construct_head $lisp_construct_r
       t lisp_construct_r $lisp_construct_r
       h lisp_construct_tailhead $lisp_construct_r
       list_reverse lisp_construct_head $lisp_construct_head
+      if [ "$lisp_construct_x" = "]" ]; then
+        vec lisp_construct_head $lisp_construct_head
+      fi
       cons ${lisp_construct_r}_h $lisp_construct_head $lisp_construct_tailhead
     else
       h lisp_construct_head $lisp_construct_r
@@ -96,3 +141,7 @@ lisp_read() {
   h $lisp_construct_dest $lisp_construct_r
   eval "list_reverse $lisp_construct_dest \$$lisp_construct_dest"
 }
+
+# Compiler
+# This lisp uses a TCL-style evaluation model; that is, () is interpolated but
+# words themselves are assumed to be self-representing.
