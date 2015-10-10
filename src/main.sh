@@ -8,8 +8,10 @@ main_setup() {
 
 main() {
   main_setup
+
   lisp_read r $(lisp_convert)
   str s $r
   verb "$s" >&2
+
   eval "$shutdown_hooks"
 }

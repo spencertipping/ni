@@ -36,11 +36,11 @@ hashmap_str() {
     hashmap_str_s="$3 $hashmap_str_v"
     hashmap_str_l="$4"
   done
-  eval "$1=\"{\$hashmap_str_s}\""
+  eval "$1=\"{\${hashmap_str_s# }}\""
 }
 
 assoc() eval "${1}_key_$2=\"\$3\"
-              if [ -n \"\$${1}_cell_$2\" ]; then
+              if [ -z \"\$${1}_cell_$2\" ]; then
                 cons ${1}_keys \"\$2\" \$${1}_keys
                 ${1}_cell_$2=\$${1}_keys
               fi"

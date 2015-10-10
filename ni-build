@@ -18,13 +18,15 @@ old_ifs="$IFS"
 IFS="$newline"
 for file in $(find src/meta -type f); do
   IFS="$old_ifs"
-  module "${file#src/}" "$(cat "$file")"
+  [ "$file" = "${file%.swp}" ] \
+    && module "${file#src/}" "$(cat "$file")"
 done
 
 IFS="$newline"
 for file in $(find src -type f); do
   IFS="$old_ifs"
   [ "$file" != src/boot.sh ] \
+    && [ "$file" = "${file%.swp}" ] \
     && [ "$file" = "${file#src/meta/}" ] \
     && module "${file#src/}" "$(cat "$file")"
 done

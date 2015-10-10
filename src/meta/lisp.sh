@@ -1,4 +1,4 @@
-# Lisp in POSIX shell ... because we can.
+# Lisp in POSIX shell ... because we can (I think).
 
 # Reader
 lisp_convert() sed 's/\([^$]\|^\)\([][(){}]\)/\1 \2 /g'
@@ -19,10 +19,10 @@ lisp_read() {
         # Go back and stringify the keys into sh primitives.
         hashmap lisp_read_map
         while [ -n "$lisp_read_head" ]; do
-          uncons lisp_read_head_k lisp_read_head $lisp_read_head
-          uncons lisp_read_head_v lisp_read_head $lisp_read_head
-          str lisp_read_head_k $lisp_read_head_k
-          assoc $lisp_read_map $lisp_read_head_k $lisp_read_head_v
+          uncons lisp_read_k lisp_read_head $lisp_read_head
+          uncons lisp_read_v lisp_read_head $lisp_read_head
+          str lisp_read_k $lisp_read_k
+          assoc $lisp_read_map $lisp_read_k $lisp_read_v
         done
         lisp_read_head=$lisp_read_map
       fi
@@ -39,5 +39,7 @@ lisp_read() {
 
 # Compiler
 # This lisp uses a TCL-style evaluation model; that is, () is interpolated but
-# words themselves are assumed to be self-representing.
+# words themselves are assumed to be self-representing. [] and {} quote singly,
+# and ' blocks evaluation entirely.
 
+# TODO
