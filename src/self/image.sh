@@ -18,8 +18,9 @@ module_get() {
   IFS="$module_get_old_ifs"
 }
 
-# The current image
+# Prints a representation of this object to stdout.
 self() {
+  main_setup
   verb "#!/bin/sh" \
        "# Self-modifying ni image: https://github.com/spencertipping/ni" \
        "module_0='$module_0'" \
@@ -30,9 +31,10 @@ self() {
   self_i=0
   for self_m in $modules; do
     if [ $self_m != boot.sh ]; then
-      verb "module '$self_m' <<'EOF'"
+      eval "self_marker=\"\$(echo \"\$module_$self_i\" | sha3)\""
+      verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
-      verb "EOF"
+      verb "$self_marker"
     fi
     self_i=$((self_i + 1))
   done

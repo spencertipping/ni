@@ -8,3 +8,4 @@ module() {
 }
 module_index=1
 modules=boot.sh
+meta_hook() meta_hooks="$meta_hooks$newline$(cat)"

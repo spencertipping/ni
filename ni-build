@@ -16,10 +16,20 @@ module boot.sh "$(cat src/boot.sh)"
 
 old_ifs="$IFS"
 IFS="$newline"
+for file in $(find src/meta -type f); do
+  IFS="$old_ifs"
+  module "${file#src/}" "$(cat "$file")"
+done
+
+IFS="$newline"
 for file in $(find src -type f); do
   IFS="$old_ifs"
-  [ "$file" = src/boot.sh ] || module "${file#src/}" "$(cat "$file")"
+  [ "$file" != src/boot.sh ] \
+    && [ "$file" = "${file#src/meta/}" ] \
+    && module "${file#src/}" "$(cat "$file")"
 done
 
 self > ni0
 chmod +x ni0
+
+eval "$shutdown_hooks"
