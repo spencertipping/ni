@@ -125,8 +125,15 @@ function macro_process(s, r, c, q, heredoc_start, heredoc_end, last_was_dollar) 
 EOF
 module 'meta/macros.sh' <<'EOF'
 # Useful macro definitions that aren't library-specific
+let_level=0
 let() {
-  :
+  verb "$@"
+  let_level=$((let_level + 1))
+  macroexpand
+  let_level=$((let_level - 1))
+  for let_name; do
+    verb "unset ${let_name%%=*}"
+  done
 }
 EOF
 module 'meta/macro.sh' <<'EOF'
@@ -143,7 +150,7 @@ module 'meta/macro.sh' <<'EOF'
 
 macroexpand() {
   module_get macroexpand_awk meta/macroexpand.awk
-  awk -e "$macroexpand_awk"
+  eval "$(awk -e "$macroexpand_awk")"
 }
 
 main() {

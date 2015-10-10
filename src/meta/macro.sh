@@ -11,7 +11,7 @@
 
 macroexpand() {
   module_get macroexpand_awk meta/macroexpand.awk
-  awk -e "$macroexpand_awk"
+  eval "$(awk -e "$macroexpand_awk")"
 }
 
 main() {
