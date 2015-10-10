@@ -38,8 +38,12 @@ lisp_read() {
 }
 
 # Compiler
-# This lisp uses a TCL-style evaluation model; that is, () is interpolated but
-# words themselves are assumed to be self-representing. [] and {} quote singly,
-# and ' blocks evaluation entirely.
+# The compiler converts s-expressions to sh function invocations, doing
+# compile-time macroexpansion in the process.
 
-# TODO
+# TODO: figure out how to handle recursion; could do a stack-level variable and
+# lift everything into an eval, maybe?
+
+# TODO: figure out the details of quoting. We'll need quasiquote, and most
+# likely full-quote as well. It may work just to have special forms; not sure
+# yet.

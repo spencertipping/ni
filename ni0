@@ -53,7 +53,7 @@ defmulti() eval "$1() {
 # Default multimethods available for all structures
 defmulti str
 dde5a2e8b421df3f747b6c849ad813250a8cf2b63743976ccbdae26ebdaaf2eb
-module 'meta/lisp.sh' <<'f04a0f9442dec3a871f507555b415e2a07b3a9f0302c4f2809d63f9e8e625f11'
+module 'meta/lisp.sh' <<'e391755c684d15b87d244cde484bf78f3c1ba038f21ef4ad235cfe54ee481c09'
 # Lisp in POSIX shell ... because we can (I think).
 
 # Reader
@@ -94,12 +94,16 @@ lisp_read() {
 }
 
 # Compiler
-# This lisp uses a TCL-style evaluation model; that is, () is interpolated but
-# words themselves are assumed to be self-representing. [] and {} quote singly,
-# and ' blocks evaluation entirely.
+# The compiler converts s-expressions to sh function invocations, doing
+# compile-time macroexpansion in the process.
 
-# TODO
-f04a0f9442dec3a871f507555b415e2a07b3a9f0302c4f2809d63f9e8e625f11
+# TODO: figure out how to handle recursion; could do a stack-level variable and
+# lift everything into an eval, maybe?
+
+# TODO: figure out the details of quoting. We'll need quasiquote, and most
+# likely full-quote as well. It may work just to have special forms; not sure
+# yet.
+e391755c684d15b87d244cde484bf78f3c1ba038f21ef4ad235cfe54ee481c09
 module 'meta/list.sh' <<'fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17'
 # Linked list functions
 
