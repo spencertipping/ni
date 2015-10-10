@@ -56,8 +56,8 @@ inhume() {
   inhume_old_ifs="$IFS"
   IFS="$newline"
   for inhume_f in $(find "$1" -type f); do
+    IFS="$inhume_old_ifs"
     [ "$inhume_f" = "$1/boot.sh" ] || module "${inhume_f#$1}" \
                                              "$(cat "$inhume_f")"
   done
-  IFS="$inhume_old_ifs"
 }

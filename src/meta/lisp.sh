@@ -73,11 +73,10 @@ list_reverse() {
 }
 
 # Reader
-lisp_convert() sed 's/(/ \\( /g; s/)/ \\) /g; s/$/ \\/'
+lisp_convert() sed 's/\([()]\)/ \1 /g'
 lisp_read() {
   lisp_construct_dest=$1
   shift
-
   cons lisp_construct_r '' ''
   for lisp_construct_x; do
     if [ "$lisp_construct_x" = "(" ]; then
@@ -86,18 +85,14 @@ lisp_read() {
       h lisp_construct_head $lisp_construct_r
       t lisp_construct_r $lisp_construct_r
       h lisp_construct_tailhead $lisp_construct_r
+      list_reverse lisp_construct_head $lisp_construct_head
       cons ${lisp_construct_r}_h $lisp_construct_head $lisp_construct_tailhead
-      eval "list_reverse ${lisp_construct_r}_h \$${lisp_construct_r}_h"
     else
       h lisp_construct_head $lisp_construct_r
-      atom lisp_construct_cell "$lisp_construct_x"
+      atom lisp_construct_cell $lisp_construct_x
       cons ${lisp_construct_r}_h $lisp_construct_cell "$lisp_construct_head"
     fi
   done
   h $lisp_construct_dest $lisp_construct_r
   eval "list_reverse $lisp_construct_dest \$$lisp_construct_dest"
 }
-
-lisp_read r1 $(lisp_convert)
-str s1 $r1
-verb "$s1" >&2
