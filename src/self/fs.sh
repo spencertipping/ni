@@ -24,3 +24,40 @@ tmpdir_free() {
   fi
   rm -r "$1"
 }
+
+# It's important to create a tmpdir at startup. If we don't, then a subprocess
+# will; but subprocesses can't modify our variable-space so we won't see it
+# (and therefore won't clean it up). The way around this is to prepend tmpdir
+# to the list of start hooks so it happens before anything gets jitted.
+setup_hooks="tmpdir$newline$start_hooks"
+shutdown_hooks="$shutdown_hooks${newline}tmpdir_free"
+
+# Exhume/inhume self to/from FS
+# Usage: exhume existing-directory (populates self to directory)
+exhume() {
+  exhume_i=0
+  exhume_old_ifs="$IFS"
+  IFS="$newline"
+  for exhume_m in $modules; do
+    mkdir -p "$1/${exhume_m%/*}"
+    eval "verb \"\$module_$exhume_i\"" > "$1/$exhume_m"
+    exhume_i=$((exhume_i + 1))
+  done
+  IFS="$exhume_old_ifs"
+}
+
+# Usage: inhume exhumed-directory (populates directory to self)
+# NB: just as exhume doesn't create one, this function doesn't remove the
+# directory. Also, inhumed files are in arbitrary order except for boot.sh,
+# which always goes first.
+inhume() {
+  module_index=0
+  module boot.sh "$(cat "$1/boot.sh")"
+  inhume_old_ifs="$IFS"
+  IFS="$newline"
+  for inhume_f in $(find "$1" -type f); do
+    [ "$inhume_f" = "$1/boot.sh" ] || module "${inhume_f#$1}" \
+                                             "$(cat "$inhume_f")"
+  done
+  IFS="$inhume_old_ifs"
+}

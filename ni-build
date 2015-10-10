@@ -14,10 +14,12 @@ module() {
 module_index=0
 module boot.sh "$(cat src/boot.sh)"
 
+old_ifs="$IFS"
 IFS="$newline"
 for file in $(find src -type f); do
   [ "$file" = src/boot.sh ] || module "${file#src/}" "$(cat "$file")"
 done
+IFS="$old_ifs"
 
 self > ni0
 chmod +x ni0

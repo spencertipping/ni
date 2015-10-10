@@ -1,5 +1,5 @@
 main() {
-  tmpdir
+  eval "$setup_hooks"
   sha3
-  tmpdir_free
+  eval "$shutdown_hooks"
 }

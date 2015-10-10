@@ -1,11 +1,3 @@
-# Safe echo: works around the POSIX statement that "echo" is allowed to
-# interpret its arguments
-verb() {
-  for verb_arg; do
-    printf "%s\n" "$verb_arg"
-  done
-}
-
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use

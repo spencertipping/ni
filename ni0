@@ -11,6 +11,20 @@ module() {
 module_index=1
 modules=boot.sh'
 eval "$module_0"
+module 'self/repl.sh' <<'EOF'
+# REPL environment for testing things and editing the image
+# Explodes the image into the filesystem, cd's there, and runs a sub-shell
+# that's prepopulated with all of ni's shell state. This means the subshell
+# will be a POSIX shell, not bash, ksh, or csh.
+#
+# If you want your preferred shell in an exploded state directory (but without
+# in-memory state), you can use repl_stateless.
+
+repl_sh() {
+  sh_repl_self_dir="$(self | sha3)"
+
+}
+EOF
 module 'self/fs.sh' <<'EOF'
 # Filesystem interop
 
@@ -38,16 +52,45 @@ tmpdir_free() {
   fi
   rm -r "$1"
 }
-EOF
-module 'self/image.sh' <<'EOF'
-# Safe echo: works around the POSIX statement that "echo" is allowed to
-# interpret its arguments
-verb() {
-  for verb_arg; do
-    printf "%s\n" "$verb_arg"
+
+# It's important to create a tmpdir at startup. If we don't, then a subprocess
+# will; but subprocesses can't modify our variable-space so we won't see it
+# (and therefore won't clean it up). The way around this is to prepend tmpdir
+# to the list of start hooks so it happens before anything gets jitted.
+setup_hooks="tmpdir$newline$start_hooks"
+shutdown_hooks="$shutdown_hooks${newline}tmpdir_free"
+
+# Exhume/inhume self to/from FS
+# Usage: exhume existing-directory (populates self to directory)
+exhume() {
+  exhume_i=0
+  exhume_old_ifs="$IFS"
+  IFS="$newline"
+  for exhume_m in $modules; do
+    mkdir -p "$1/${exhume_m%/*}"
+    eval "verb \"\$module_$exhume_i\"" > "$1/$exhume_m"
+    exhume_i=$((exhume_i + 1))
   done
+  IFS="$exhume_old_ifs"
 }
 
+# Usage: inhume exhumed-directory (populates directory to self)
+# NB: just as exhume doesn't create one, this function doesn't remove the
+# directory. Also, inhumed files are in arbitrary order except for boot.sh,
+# which always goes first.
+inhume() {
+  module_index=0
+  module boot.sh "$(cat "$1/boot.sh")"
+  inhume_old_ifs="$IFS"
+  IFS="$newline"
+  for inhume_f in $(find "$1" -type f); do
+    [ "$inhume_f" = "$1/boot.sh" ] || module "${inhume_f#$1}" \
+                                             "$(cat "$inhume_f")"
+  done
+  IFS="$inhume_old_ifs"
+}
+EOF
+module 'self/image.sh' <<'EOF'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -88,16 +131,6 @@ self() {
   done
   IFS="$self_old_ifs"
   verb 'main "$@"'
-}
-EOF
-module 'self/sha3.sh' <<'EOF'
-# Support for hashing arbitrary data through the jit-C interface
-sha3() { sha3_setup; "$sha3_jit"; }
-sha3_setup() {
-  [ -n "$sha3_jit" ] && return
-  module_get sha3_source bin/sha3.c
-  sha3_jit="$(verb "$sha3_source" | jit_c)"
-  unset sha3_source
 }
 EOF
 module 'bin/sha3.c' <<'EOF'
@@ -146,66 +179,223 @@ int main()
 EOF
 module 'main.sh' <<'EOF'
 main() {
-  tmpdir
+  eval "$setup_hooks"
   sha3
-  tmpdir_free
+  eval "$shutdown_hooks"
 }
 EOF
 module 'jit/jit-c.sh' <<'EOF'
 # JIT support for C99 programs
-# Calling convention is like this:
+# Calling convention is like this, except that heredocs inside $() don't seem
+# to be allowed:
 #
-# jit_c jit_program <<'EOF'
+# jit_program=$(jit_c [c99-option...] <<'EOF'
 # #include <stdio.h>
 # int main() {
 #   printf("hello world\n");
 #   return 0;
 # }
 # EOF
+# )
 #
 # $jit_program "$@"             # to execute the program
-#
-# Later on, you can free the jit context like this:
-# jit_c_free $jit_program
+# jit_c_free $jit_program       # to deallocate the program
 
 jit_c_index=0
 jit_c() {
   tmpdir
-  jit_c_result="$1"
-  shift
   jit_c_index=$((jit_c_index + 1))
   jit_c_source="$self_tmpdir/jit-c-$jit_c_index.c"
-  cat "$@" > "$jit_c_source"
-  c99 "$jit_c_source" -o "${jit_c_source%.c}"
-  eval "$jit_c_result=\${jit_c_source%.c}"
+  cat > "$jit_c_source"
+  c99 "$@" "$jit_c_source" -o "${jit_c_source%.c}"
+  verb "${jit_c_source%.c}"
 }
 
 jit_c_free() rm "$1" "$1.c"
 EOF
 module 'jit/jit-mvn.sh' <<'EOF'
 # JVM JIT using maven as the frontend
-# (this makes it easy to include dependencies)
 
-# Takes a series of -D options -- basically everything after the first two
-# given to jit_mvn -- and produces a POM XML file to stdout.
+# POM generation stuff
+# The goal here is to make it trivial to build a working POM file, without
+# typing out a whole bunch of XML. This is done by defining POM-macro functions
+# that handle various command-line options and generate the relevant XML
+# fragments for you. For example, here's the dependency generator:
+
+mvn_pom_deps() {
+  verb '<dependencies>'
+  for mvn_pom_deps_d; do
+    # Dependencies are specified using this syntax:
+    # [groupId/]artifactId=version[:scope]
+    mvn_pom_deps_ga="${1%%=*}"
+    mvn_pom_deps_vs="${1##*=}"
+    mvn_pom_deps_g="${mvn_pom_deps_ga%%/*}"
+    mvn_pom_deps_s="${mvn_pom_deps_vs##*:}"
+    [ "$mvn_pom_deps_s" = "$mvn_pom_deps_vs" ] \
+      && mvn_pom_deps_s= \
+      || mvn_pom_deps_s="<scope>$mvn_pom_deps_s</scope>"
+    verb "<dependency>" \
+         "<groupId>$mvn_pom_deps_g</groupId>" \
+         "<artifactId>${mvn_pom_deps_ga##*/}</artifactId>" \
+         "<version>${mvn_pom_deps_vs%%:*}</version>" \
+         "$mvn_pom_deps_s</dependency>"
+  done
+  verb '</dependencies>'
+}
+
+# Calling syntax for the above would be this:
+#
+# mvn_pom --deps foo.bar/bif=1.0.0-SNAPSHOT:development \
+#                foo.bar/baz=10:test \
+#         --...
+#
+# ni detects the end of arguments to a generator by looking for the next option
+# starting with --.
+
 mvn_pom() {
   : TODO
 }
 
-# Usage: jit_mvn jit_program Foobar [-Dgroup/artifact=version ...] ... <<'EOF'
+# Usage: jit_program=$(jit_mvn Foobar [-Dgroup/artifact=version ...] ... <<'EOF'
 # public class Foobar {
 #   public static void main(String[] args) {
 #     System.out.println("hello world!");
 #   }
 # }
 # EOF
+# )
 #
 # $jit_program "$@"
-#
 # jit_mvn_free $jit_program
 jit_mvn() {
   jit_mvn_result=$1
   jit_mvn_main=$2
 }
+EOF
+module 'util/verb.sh' <<'EOF'
+# Safe echo: works around the POSIX statement that "echo" is allowed to
+# interpret its arguments
+verb() {
+  for verb_arg; do
+    printf "%s\n" "$verb_arg"
+  done
+}
+EOF
+module 'util/sha3.sh' <<'EOF'
+# Support for hashing arbitrary data through the jit-C interface
+sha3() { sha3_setup; "$sha3_jit"; }
+sha3_setup() {
+  [ -n "$sha3_jit" ] && return
+  module_get sha3_source bin/sha3.c
+  sha3_jit="$(verb "$sha3_source" | jit_c)"
+  unset sha3_source
+}
+
+setup_hooks="$setup_hooks${newline}sha3_setup"
+EOF
+module 'meta/lisp.sh' <<'EOF'
+# Lisp in POSIX shell ... because we can.
+
+# Now we need core primitives, starting with cons cells. All of these use the
+# first argument as the return value because we want to avoid creating
+# subshells.
+cell_index=0
+cell() {
+  eval "$1=$2_\$cell_index"
+  cell_index=$((cell_index + 1))
+  [ "${cell_index%000}" = "$cell_index" ] || gc
+}
+
+# Defines a named structure with a constructor and GC visitor.
+defined_structs=
+defstruct() {
+  defined_structs="$defined_structs $1"
+  defstruct_name=$1
+  defstruct_visitor="gc_$1() eval \"\$1=\\\""
+  defstruct_ctor="$1() { cell ${1}_cell $1; eval \""
+  shift
+
+  defstruct_i=2
+  for defstruct_field; do
+    defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"
+    defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"
+    eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
+    eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
+    defstruct_i=$((defstruct_i + 1))
+  done
+
+  eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
+  eval "$defstruct_visitor\\\"\""
+}
+
+# Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
+# call to cons_str "$@" if called with $2 as a cons cell.
+defmulti() eval "$1() \${2%_*}_$1 \"\$@\""
+
+defstruct cons h t
+defstruct string x
+defstruct atom   x
+
+defmulti str
+
+_str()       eval "$1=nil"
+string_str() eval "$1=\"\$${2}_x\""
+atom_str()   eval "$1=\"\$${2}_x\""
+
+cons_str() {
+  cons_str_x="$2"
+  cons_str_s=''
+  while [ -n "$cons_str_x" ]; do
+    h cons_str_h $cons_str_x
+    t cons_str_x $cons_str_x
+    set -- "$1" "$cons_str_x" "$cons_str_s"     # for recursion
+    str cons_str_h $cons_str_h
+    cons_str_s="$3 $cons_str_h"
+    cons_str_x="$2"
+  done
+  eval "$1=\"(\${cons_str_s# })\""
+}
+
+# A few list functions
+list_reverse() {
+  if [ -n "$2" ]; then
+    h list_reverse_h $2
+    t list_reverse_t $2
+    cons list_reverse_l $list_reverse_h $3
+    list_reverse "$1" "$list_reverse_t" $list_reverse_l
+  else
+    eval "$1=\$3"
+  fi
+}
+
+# Reader
+lisp_convert() sed 's/(/ \\( /g; s/)/ \\) /g; s/$/ \\/'
+lisp_read() {
+  lisp_construct_dest=$1
+  shift
+
+  cons lisp_construct_r '' ''
+  for lisp_construct_x; do
+    if [ "$lisp_construct_x" = "(" ]; then
+      cons lisp_construct_r '' $lisp_construct_r
+    elif [ "$lisp_construct_x" = ")" ]; then
+      h lisp_construct_head $lisp_construct_r
+      t lisp_construct_r $lisp_construct_r
+      h lisp_construct_tailhead $lisp_construct_r
+      cons ${lisp_construct_r}_h $lisp_construct_head $lisp_construct_tailhead
+      eval "list_reverse ${lisp_construct_r}_h \$${lisp_construct_r}_h"
+    else
+      h lisp_construct_head $lisp_construct_r
+      atom lisp_construct_cell "$lisp_construct_x"
+      cons ${lisp_construct_r}_h $lisp_construct_cell "$lisp_construct_head"
+    fi
+  done
+  h $lisp_construct_dest $lisp_construct_r
+  eval "list_reverse $lisp_construct_dest \$$lisp_construct_dest"
+}
+
+lisp_read r1 $(lisp_convert)
+str s1 $r1
+verb "$s1" >&2
 EOF
 main "$@"

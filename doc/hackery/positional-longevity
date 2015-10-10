@@ -1,0 +1,16 @@
+#!/bin/sh
+f() {
+  echo f: $1 $2
+  g x y z $1 $2
+  echo f: "$@"
+  echo f: $1 $2
+}
+
+g() {
+  echo g: $1 $2
+  set -- a b c d e f
+  echo g: "$@"
+  echo g: $1 $2
+}
+
+f 3 4

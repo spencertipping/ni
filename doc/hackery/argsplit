@@ -1,0 +1,23 @@
+#!/bin/sh
+
+f() {
+  echo "got $# args, one per line below"
+  i=1
+  while [ $# -gt 0 ]; do
+    echo "$i: $1"
+    i=$((i+1))
+    shift
+  done
+}
+
+f a b c
+
+cat <<EOF | f $(cat)
+a
+b
+c
+EOF
+
+IFS="$(printf "%s\\n ")"
+IFS="${IFS% }"
+f a b c
