@@ -40,6 +40,8 @@ defstruct cons h t
 defstruct string x
 defstruct atom   x
 
+# TODO: hashmaps
+
 # This is roughly what defstruct generates, though this is a bit more
 # complicated because it supports variable arity.
 vector() {
@@ -67,8 +69,11 @@ vector_gc() {
   eval "$vector_gc_r=\"\$vector_gc_s\""
 }
 
-n()   eval "$1=\"\$${2}_n\""
-get() eval "$1=\"\$${2}_$3\""
+n()        eval "$1=\"\$${2}_n\""
+get()      eval "$1=\"\$${2}_$3\""
+assoc()    eval "${1}_$2=\"\$3\""
+dissoc()   unset ${1}_$2
+contains() eval "[ -n \"${2}_$3\" ] && $1=t || $1="
 
 defmulti str
 
@@ -131,21 +136,23 @@ vec() {
 }
 
 # Reader
-lisp_convert() sed 's/\([^$]\|^\)\([][()]\)/\1 \2 /g'
+lisp_convert() sed 's/\([^$]\|^\)\([][(){}]\)/\1 \2 /g'
 lisp_read() {
   lisp_read_dest=$1
   shift
   cons lisp_read_r '' ''
   for lisp_read_x; do
-    if [ "$lisp_read_x" = '(' ] || [ "$lisp_read_x" = '[' ]; then
+    if [ -z "${lisp_read_x#[[(\{]}" ]; then
       cons lisp_read_r '' $lisp_read_r
-    elif [ "$lisp_read_x" = ')' ] || [ "$lisp_read_x" = ']' ]; then
+    elif [ -z "${lisp_read_x#[])\}]}" ]; then
       h lisp_read_head $lisp_read_r
       t lisp_read_r $lisp_read_r
       h lisp_read_tailhead $lisp_read_r
       list_reverse lisp_read_head $lisp_read_head
       if [ "$lisp_read_x" = "]" ]; then
         vec lisp_read_head $lisp_read_head
+      elif [ "$lisp_read_x" = "}" ]; then
+        hashmap lisp_read_head $lisp_read_head
       fi
       cons ${lisp_read_r}_h $lisp_read_head $lisp_read_tailhead
     else
