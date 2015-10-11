@@ -22,6 +22,7 @@ module_get() {
 self() {
   main_setup
   verb "#!/bin/sh" \
+       "# <body style='display:none'><script type='ni' id='self'>" \
        "# Self-modifying ni image: https://github.com/spencertipping/ni" \
        "module_0='$module_0'" \
        'eval "$module_0"'
@@ -39,5 +40,5 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb 'main "$@"'
+  verb "# </""script>" 'main "$@"'
 }

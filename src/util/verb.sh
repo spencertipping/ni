@@ -5,3 +5,5 @@ verb() {
     printf "%s\n" "$verb_arg"
   done
 }
+
+err() verb "$@" >&2

@@ -1,4 +1,5 @@
 #!/bin/sh
+# <body style='display:none'><script type='ni' id='self'>
 # Self-modifying ni image: https://github.com/spencertipping/ni
 module_0='newline="$(printf "\\n ")" && newline="${newline% }"
 module() {
@@ -12,275 +13,6 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'dde5a2e8b421df3f747b6c849ad813250a8cf2b63743976ccbdae26ebdaaf2eb'
-# Data structure metaprogramming
-cell_index=0
-cell() {
-  eval "$1=_$2_\$cell_index"
-  cell_index=$((cell_index + 1))
-  [ "${cell_index%000}" = "$cell_index" ] || gc
-}
-
-# Defines a named structure with a constructor and GC visitor.
-defined_structs=
-defstruct() {
-  defined_structs="$defined_structs $1"
-  defstruct_name=$1
-  defstruct_visitor="gc_$1() eval \"\$1=\\\""
-  defstruct_ctor="$1() { cell ${1}_cell $1; eval \""
-  shift
-
-  defstruct_i=2
-  for defstruct_field; do
-    defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"
-    defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"
-    eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
-    eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
-    defstruct_i=$((defstruct_i + 1))
-  done
-
-  eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
-  eval "$defstruct_visitor\\\"\""
-}
-
-# Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
-# call to cons_str "$@" if called with $2 as a cons cell.
-defmulti() eval "$1() {
-                   multi_${1}_type=\${2%_*}
-                   \${multi_${1}_type#_}_$1 \"\$@\"
-                 }"
-
-# Default multimethods available for all structures
-defmulti str
-dde5a2e8b421df3f747b6c849ad813250a8cf2b63743976ccbdae26ebdaaf2eb
-module 'meta/lisp.sh' <<'e391755c684d15b87d244cde484bf78f3c1ba038f21ef4ad235cfe54ee481c09'
-# Lisp in POSIX shell ... because we can (I think).
-
-# Reader
-lisp_convert() sed 's/\([^$]\|^\)\([][(){}]\)/\1 \2 /g'
-lisp_read() {
-  lisp_read_dest=$1
-  shift
-  cons lisp_read_r '' ''
-  for lisp_read_x; do
-    if [ -z "${lisp_read_x#[[(\{]}" ]; then
-      cons lisp_read_r '' $lisp_read_r
-    elif [ -z "${lisp_read_x#[])\}]}" ]; then
-      uncons lisp_read_head lisp_read_r $lisp_read_r
-      h lisp_read_tailhead $lisp_read_r
-      list_reverse lisp_read_head $lisp_read_head
-      if [ "$lisp_read_x" = "]" ]; then
-        vec lisp_read_head $lisp_read_head
-      elif [ "$lisp_read_x" = "}" ]; then
-        # Go back and stringify the keys into sh primitives.
-        hashmap lisp_read_map
-        while [ -n "$lisp_read_head" ]; do
-          uncons lisp_read_k lisp_read_head $lisp_read_head
-          uncons lisp_read_v lisp_read_head $lisp_read_head
-          str lisp_read_k $lisp_read_k
-          assoc $lisp_read_map $lisp_read_k $lisp_read_v
-        done
-        lisp_read_head=$lisp_read_map
-      fi
-      cons ${lisp_read_r}_h $lisp_read_head $lisp_read_tailhead
-    else
-      h lisp_read_head $lisp_read_r
-      atom lisp_read_cell $lisp_read_x
-      cons ${lisp_read_r}_h $lisp_read_cell "$lisp_read_head"
-    fi
-  done
-  h $lisp_read_dest $lisp_read_r
-  eval "list_reverse $lisp_read_dest \$$lisp_read_dest"
-}
-
-# Compiler
-# The compiler converts s-expressions to sh function invocations, doing
-# compile-time macroexpansion in the process.
-
-# TODO: figure out how to handle recursion; could do a stack-level variable and
-# lift everything into an eval, maybe?
-
-# TODO: figure out the details of quoting. We'll need quasiquote, and most
-# likely full-quote as well. It may work just to have special forms; not sure
-# yet.
-e391755c684d15b87d244cde484bf78f3c1ba038f21ef4ad235cfe54ee481c09
-module 'meta/list.sh' <<'fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17'
-# Linked list functions
-
-list_reverse() {
-  if [ -n "$2" ]; then
-    uncons list_reverse_h list_reverse_t $2
-    cons list_reverse_l $list_reverse_h $3
-    list_reverse "$1" "$list_reverse_t" $list_reverse_l
-  else
-    eval "$1=\$3"
-  fi
-}
-
-# Like the usual (apply), but doesn't accept any intermediate arguments; that
-# is, it's just a function and a list.
-apply_last() {
-  apply_last_f=$1
-  apply_last_r=$2
-  apply_last_l=$3
-  shift 3
-  while [ -n "$apply_last_l" ]; do
-    uncons apply_last_h apply_last_l $apply_last_l
-    set -- "$@" "$apply_last_h"
-  done
-  $apply_last_f $apply_last_r "$@"
-}
-fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17
-module 'meta/vector.sh' <<'282f73b3b0c39b92d5c15a4be3291eb4f2c8edacce7d0397e4367ab773fd9c1f'
-# Vector data structure
-
-# This is roughly what defstruct generates, though this is a bit more
-# complicated because it supports variable arity.
-vector() {
-  vector_r=$1
-  shift
-  cell vector_cell vector
-  eval "${vector_cell}_n=0"
-  for vector_x; do
-    eval "vector_n=\$${vector_cell}_n"
-    eval "${vector_cell}_$vector_n=\"\$vector_x\"
-          ${vector_cell}_n=\$(($vector_n + 1))"
-  done
-  eval "$vector_r=\$vector_cell"
-}
-
-vector_gc() {
-  vector_gc_r=$1
-  eval "vector_gc_n=\$${2}_n"
-  vector_gc_i=0
-  vector_gc_s=
-  while [ $vector_gc_i -lt $vector_gc_n ]; do
-    eval "vector_gc_s=\"\$vector_gc_s \$${2}_$vector_gc_i\""
-    vector_gc_i=$((vector_gc_i + 1))
-  done
-  eval "$vector_gc_r=\"\$vector_gc_s\""
-}
-
-n()   eval "$1=\"\$${2}_n\""
-nth() eval "$1=\"\$${2}_$3\""
-
-vector_str() {
-  vector_str_i=0
-  vector_str_s=''
-  n vector_str_n $2
-  while [ $vector_str_i -lt $vector_str_n ]; do
-    set -- "$1" "$2" "$vector_str_s" "$vector_str_i" "$vector_str_n"
-    nth vector_str_x $2 $vector_str_i
-    str vector_str_x $vector_str_x
-    vector_str_s="$3 $vector_str_x"
-    vector_str_i=$(($4 + 1))
-    vector_str_n=$5
-  done
-  eval "$1=\"[\${vector_str_s# }]\""
-}
-
-# Converts a list reference to a vector, unlike (vector) above which makes one
-# out of its shell arguments.
-vec() {
-  vec_r=$1
-  vec_l=$2
-  shift 2
-  set --
-  while [ -n "$vec_l" ]; do
-    uncons vec_h vec_l $vec_l
-    set -- "$@" "$vec_h"
-  done
-  vector "$vec_r" "$@"
-}
-282f73b3b0c39b92d5c15a4be3291eb4f2c8edacce7d0397e4367ab773fd9c1f
-module 'meta/cons.sh' <<'9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5'
-# Cons cell primitive
-meta_hook <<'EOF'
-defstruct cons h t
-EOF
-
-# NB: non-standard calling convention. This is used only within sh functions
-# (i.e. what it does isn't expressible in lisp mode).
-uncons() eval "$1=\"\$${3}_h\"; $2=\"\$${3}_t\""
-
-_str() eval "$1=nil"            # nil case; nil is empty string
-
-cons_str() {
-  cons_str_x="$2"
-  cons_str_s=
-  while [ -n "$cons_str_x" ]; do
-    h cons_str_h $cons_str_x
-    t cons_str_x $cons_str_x
-    set -- "$1" "$cons_str_x" "$cons_str_s"     # for recursion
-    str cons_str_h $cons_str_h
-    cons_str_s="$3 $cons_str_h"
-    cons_str_x="$2"
-  done
-  eval "$1=\"(\${cons_str_s# })\""
-}
-9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5
-module 'meta/hashmap.sh' <<'2686583c4b1d9f6b09fe05c8e395140676f8e0d360276ad852a441afce73c979'
-# Hashmap data structure
-# (Not technically a hashmap because we piggyback off of the parent shell's
-#  global variable table; i.e. we're not doing anything clever here.)
-
-# Constructed from pairs of arguments:
-# hashmap result k1 v1 k2 v2 ... kn vn
-hashmap() {
-  hashmap_r=$1
-  cell hashmap_cell hashmap
-  shift
-  while [ $# -gt 0 ]; do
-    assoc $hashmap_cell "$1" "$2"
-    shift 2
-  done
-  eval "$hashmap_r=\$hashmap_cell"
-}
-
-hashmap_gc() {
-  hashmap_gc_keys=
-  keys hashmap_gc_l $2
-  while [ -n "$hashmap_gc_l" ]; do
-    uncons hashmap_gc_k hashmap_gc_l $hashmap_gc_l
-    hashmap_gc_keys="$hashmap_gc_keys $hashmap_gc_k"
-  done
-  eval "$1=\"\$hashmap_gc_keys\""
-}
-
-hashmap_str() {
-  hashmap_str_s=
-  keys hashmap_str_l $2
-  while [ -n "$hashmap_str_l" ]; do
-    uncons hashmap_str_k hashmap_str_l $hashmap_str_l
-    set -- "$1" "$2" "$hashmap_str_s $hashmap_str_k" "$hashmap_str_l"
-    get hashmap_str_v $2 $hashmap_str_k
-    str hashmap_str_v $hashmap_str_v
-    hashmap_str_s="$3 $hashmap_str_v"
-    hashmap_str_l="$4"
-  done
-  eval "$1=\"{\${hashmap_str_s# }}\""
-}
-
-assoc() eval "${1}_key_$2=\"\$3\"
-              if [ -z \"\$${1}_cell_$2\" ]; then
-                cons ${1}_keys \"\$2\" \$${1}_keys
-                ${1}_cell_$2=\$${1}_keys
-              fi"
-
-keys()     eval "$1=\$${2}_keys"
-get()      eval "$1=\"\$${2}_key_$3\""
-contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
-2686583c4b1d9f6b09fe05c8e395140676f8e0d360276ad852a441afce73c979
-module 'meta/atom.sh' <<'ccf495cdd56f80fd109a7c041931a8e2c14746212212f9cf01d4f8ba61bb03e7'
-# Atoms
-meta_hook <<'EOF'
-defstruct string x
-defstruct atom   x
-EOF
-
-string_str() eval "$1=\"\$${2}_x\""
-atom_str()   eval "$1=\"\$${2}_x\""
-ccf495cdd56f80fd109a7c041931a8e2c14746212212f9cf01d4f8ba61bb03e7
 module 'self/repl.sh' <<'dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a003cc88c3'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
@@ -295,7 +27,7 @@ repl_sh() {
 
 }
 dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a003cc88c3
-module 'self/fs.sh' <<'a827483ae7afd5a7d7445adcaed9cb97ef5a8b1e3b4570a3492806d00b145dcb'
+module 'self/fs.sh' <<'5bb0c581cd61512403d69af93004d8eff710316e089e48e2abbe5b4ee2905a21'
 # Filesystem interop
 
 # Usage: tmpdir destination_var
@@ -315,9 +47,9 @@ tmpdir() {
 tmpdir_free() {
   [ $# -eq 0 ] && set -- "$self_tmpdir"
   if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    verb "ni: trying to clean up a tmpdir ($1)" \
-         "    but this tmpdir doesn't appear to have been created by ni" \
-         "    in this case, not doing anything" >&2
+    err "ni: trying to clean up a tmpdir ($1)" \
+        "    but this tmpdir doesn't appear to have been created by ni" \
+        "    in this case, not doing anything"
     return 1
   fi
   rm -r "$1"
@@ -368,8 +100,8 @@ inhume() {
       && module "${inhume_f#$1}" "$(cat "$inhume_f")"
   done
 }
-a827483ae7afd5a7d7445adcaed9cb97ef5a8b1e3b4570a3492806d00b145dcb
-module 'self/image.sh' <<'77d065e887c8fc9cacae07ca878b337decc7bbdf0156c4558f230766ffe4ee17'
+5bb0c581cd61512403d69af93004d8eff710316e089e48e2abbe5b4ee2905a21
+module 'self/image.sh' <<'0a1cce947c9275c208b8ef7c0be8d470e17ce0518dd610921a8dbea6f60bb631'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -394,6 +126,7 @@ module_get() {
 self() {
   main_setup
   verb "#!/bin/sh" \
+       "# <body style='display:none'><script type='ni' id='self'>" \
        "# Self-modifying ni image: https://github.com/spencertipping/ni" \
        "module_0='$module_0'" \
        'eval "$module_0"'
@@ -411,9 +144,9 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb 'main "$@"'
+  verb "# </""script>" 'main "$@"'
 }
-77d065e887c8fc9cacae07ca878b337decc7bbdf0156c4558f230766ffe4ee17
+0a1cce947c9275c208b8ef7c0be8d470e17ce0518dd610921a8dbea6f60bb631
 module 'bin/sha3.c' <<'44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
@@ -458,7 +191,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4
-module 'main.sh' <<'fe412bd49bbdb11dab1aaee1f91d8966b3369460f0d75ad4b0c4cc731e85b46d'
+module 'main.sh' <<'bdca2642acfdf5fc94c47e471a74d30805c656cf9286dcb3c7a66a5b7d7fba55'
 main_is_setup=
 main_setup() {
   [ -n "$main_is_setup" ] && return
@@ -470,13 +203,11 @@ main_setup() {
 main() {
   main_setup
 
-  lisp_read r $(lisp_convert)
-  str s $r
-  verb "$s" >&2
+  err "todo"
 
   eval "$shutdown_hooks"
 }
-fe412bd49bbdb11dab1aaee1f91d8966b3369460f0d75ad4b0c4cc731e85b46d
+bdca2642acfdf5fc94c47e471a74d30805c656cf9286dcb3c7a66a5b7d7fba55
 module 'jit/jit-c.sh' <<'093b0a379b09a2ef39f5c708cdf6f2bc835f80856df1073d261fa1cff1801eee'
 # JIT support for C99 programs
 # Calling convention is like this, except that heredocs inside $() don't seem
@@ -565,7 +296,7 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
-module 'util/verb.sh' <<'4bf7f00fb83d3d5dbc0d6e24cc6e619101606be286fdd821a4dae8cca0ffd540'
+module 'util/verb.sh' <<'2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret its arguments
 verb() {
@@ -573,7 +304,9 @@ verb() {
     printf "%s\n" "$verb_arg"
   done
 }
-4bf7f00fb83d3d5dbc0d6e24cc6e619101606be286fdd821a4dae8cca0ffd540
+
+err() verb "$@" >&2
+2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717
 module 'util/sha3.sh' <<'17b94d7782eee6bcf42fa454add973958ee2388c8e0126b68956b3475a9bb0e9'
 # Support for hashing arbitrary data through the jit-C interface
 sha3() { sha3_setup; "$sha3_jit"; }
@@ -586,4 +319,5 @@ sha3_setup() {
 
 setup_hooks="$setup_hooks${newline}sha3_setup"
 17b94d7782eee6bcf42fa454add973958ee2388c8e0126b68956b3475a9bb0e9
+# </script>
 main "$@"

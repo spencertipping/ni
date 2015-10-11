@@ -40,6 +40,9 @@ lisp_read() {
 # Compiler
 # The compiler converts s-expressions to sh function invocations, doing
 # compile-time macroexpansion in the process.
+#
+# TODO: do this all later. We don't need a Lisp compiler to do what ni is
+# intended to do (unfortunately).
 
 # TODO: figure out how to handle recursion; could do a stack-level variable and
 # lift everything into an eval, maybe?

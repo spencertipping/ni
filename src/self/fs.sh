@@ -17,9 +17,9 @@ tmpdir() {
 tmpdir_free() {
   [ $# -eq 0 ] && set -- "$self_tmpdir"
   if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    verb "ni: trying to clean up a tmpdir ($1)" \
-         "    but this tmpdir doesn't appear to have been created by ni" \
-         "    in this case, not doing anything" >&2
+    err "ni: trying to clean up a tmpdir ($1)" \
+        "    but this tmpdir doesn't appear to have been created by ni" \
+        "    in this case, not doing anything"
     return 1
   fi
   rm -r "$1"
