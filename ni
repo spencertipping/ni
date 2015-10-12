@@ -421,42 +421,31 @@ self() {
   verb "# </""script>" "$self_main"
 }
 1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/ni.sh' <<'0f6a73c7e5466515321c5233e8fedf7611090b9a63e08af8968d1a24f48a0d66'
-# ni frontend: main argument parser and shell script compiler
+module 'ni/ni.sh' <<'dbdf7f2734728bf35dd568243fbbcd0a68a596c4d8695ea02202b7ec8748631e'
+# ni frontend core definitions: syntactic structures and multimethods
 # See also meta/ni-option.sh for the metaprogramming used by conf.sh.
 
-# Takes command-line options exactly as provided, and compiles a shell script
-# to execute the result. The resulting shell script may refer to other
-# generated programs, so it isn't network-portable. (ni as a whole, however,
-# is.)
-ni_compile() {
-  TODO ni_compile
-}
+# Complex commands
+defstruct lambda body           # [ ... ] or ^x
+defstruct lambdafork body       # @[ ... ] or @^x
+defstruct lambdaplus body       # -[ ... ]
+defstruct lambdamix body        # -@[ ... ]
+defstruct branch map            # { x ... , y ... , ... }
+defstruct branchfork map        # @{ x ... , y ... , ... }
+defstruct branchsub map         # -{ ... }
+defstruct branchmix map         # -@{ ... }
 
-# Parses command-line options and returns (as $$1) a cons tree containing their
-# structural representation. Each cons element is a vector of [fn args...].
-# There are some special commands:
-#
-# [lambda (...)]                # [ -x ... ] or ^x
-# [lambdafork (...)]            # @[ -x ... ] or @^x
-# [lambdaplus (...)]            # -[ ... ]
-# [lambdamix (...)]             # -@[ ... ]
-#
-# [branch {...}]                # { x ... , y ... , ... }
-# [branchfork {...}]            # @{ x ... , y ... , ... }
-# [branchsub {...}]             # -{ ... }
-# [branchmix {...}]             # -@{ ... }
-#
-# Names of quasifiles are wrapped in string references
+# Pipeline compilation multimethods
+# TODO
 
-ni_parse_options() {
-  ni_parse_options_r="$1"
-  eval "$1="
-  shift
-
-  TODO ni_parse_options
-}
-0f6a73c7e5466515321c5233e8fedf7611090b9a63e08af8968d1a24f48a0d66
+ni_compile() TODO ni_compile
+ni_parse_options() TODO ni_parse_options
+dbdf7f2734728bf35dd568243fbbcd0a68a596c4d8695ea02202b7ec8748631e
+module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
+# Quasifile object representation
+# TODO
+:
+2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91
 module 'ni/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
 # Sorting operators and function definitions
 meta_hook <<'EOF'
