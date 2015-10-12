@@ -62,7 +62,7 @@ main() {
   --repl)  shift; repl_sh ;;
   --self)  shift; self "$@" ;;
   --sha3)  shift; sha3 ;;
-  --state) shift; self "$@" | sha3 ;;
+  --state) shift; self "$@" | exec "$sha3" ;;
 
   *)
     ni_compile main_ni "$@" && "$main_ni"

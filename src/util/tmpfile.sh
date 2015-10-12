@@ -8,10 +8,10 @@ tmpdir() {
   tmpdir_prefix="${TMPDIR:-/tmp}/ni-$$"
   tmpdir_index=0
   until mkdir "$tmpdir_prefix-$tmpdir_index" 2>/dev/null; do
-    tmpdir_prefix=$((tmpdir_prefix + 1))
+    tmpdir_index=$((tmpdir_index + 1))
   done
   touch "$tmpdir_prefix-$tmpdir_index/.this-is-a-ni-tmpdir"
-  eval "${1:-self_tmpdir}=\$tmpdir_prefix-\$tmpdir_index"
+  eval "${1:-self_tmpdir}=\"\$tmpdir_prefix-\$tmpdir_index\""
 }
 
 tmpdir_free() {
