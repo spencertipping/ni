@@ -16,8 +16,10 @@ tmpdir() {
 
 tmpdir_free() {
   [ $# -eq 0 ] && set -- "$self_tmpdir"
-  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    err "ni: trying to clean up a tmpdir ($1)" \
+  if [ ! -d "$1" ]; then
+    return 0
+  elif [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
+    err "ni: trying to clean up a tmpdir \"$1\"" \
         "    but this tmpdir doesn't appear to have been created by ni" \
         "    in this case, not doing anything"
     return 1
@@ -36,8 +38,9 @@ tmpdir_rm() {
     shift
   fi
   for tmpdir_rm_f; do
-    if [ "${tmpdir_rm_f#$self_tmpdir/}" != "$tmpdir_rm_f" ]; then
-      rm "$tmpdir_rm_options" -- "$tmpdir_rm_f"
+    if [ -n "$self_tmpdir" ] \
+       && [ "${tmpdir_rm_f#$self_tmpdir/}" != "$tmpdir_rm_f" ]; then
+      rm $tmpdir_rm_options -- "$tmpdir_rm_f"
     else
       err "ni: attempting to remove \"$tmpdir_rm_f\", which is not" \
           "    located in a temp directory created by ni (in this case" \
@@ -73,4 +76,14 @@ canonical_file() {
   canonical_file_sha="$(sha3 < "$canonical_file_tmp")"
   mv "$canonical_file_tmp" "$self_tmpdir/$canonical_file_sha$1"
   verb "$self_tmpdir/$canonical_file_sha$1"
+}
+
+# Usage: data-source | file_buffer | ...
+# Essentially a passthrough, but completely buffers the input data first. This
+# works around a shell/pipe bug that otherwise causes truncated data streams.
+file_buffer() {
+  tmpfile file_buffer_tmp
+  cat > "$file_buffer_tmp"
+  cat "$file_buffer_tmp"
+  tmpdir_rm "$file_buffer_tmp"
 }

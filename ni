@@ -13,7 +13,7 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'e49890912d88fc07786f6b620598d7a4c79b78d6a13972aaf6a833592cecc4b1'
+module 'meta/struct.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Data structure metaprogramming
 cell_index=0
 cell() {
@@ -53,8 +53,8 @@ defmulti() eval "$1() {
 
 # Default multimethods available for all structures
 defmulti str
-e49890912d88fc07786f6b620598d7a4c79b78d6a13972aaf6a833592cecc4b1
-module 'meta/ni-option.sh' <<'7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a'
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'meta/ni-option.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # ni option data structure and generator
 
 meta_hook <<'EOF'
@@ -87,7 +87,7 @@ defoption() {
   [ -n "$defoption_short" ] \
     && assoc $short_options $defoption_short $defoption_new
 }
-7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 module 'meta/cons.sh' <<'9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -114,7 +114,7 @@ cons_str() {
   eval "$1=\"(\${cons_str_s# })\""
 }
 9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5
-module 'meta/hashmap.sh' <<'67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50'
+module 'meta/hashmap.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Hashmap data structure
 # (Not technically a hashmap because we piggyback off of the parent shell's
 #  global variable table; i.e. we're not doing anything clever here.)
@@ -171,8 +171,8 @@ assoc() eval "${1}_key_$2=\"\$3\"
 hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
-67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'fe3bfb1eae4e8b324a02d6b703ae2d680e56a2c91e3a54ab5de99594833f5c42'
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'self/repl.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -187,21 +187,21 @@ repl_sh() {
   mkdir "$repl_sh_self_dir" \
     && exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir"; exec sh -i "$repl_sh_state") \
+    && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
-    && tmpdir_rm -r "$repl_sh_self_dir" \
-    && jit_sh_free "$repl_sh_state"
+    && tmpdir_rm -r "$repl_sh_self_dir"
 }
 
 repl_stateless() {
   repl_stateless_self_dir="$self_tmpdir/repl-stateless-$(self | sha3)"
   mkdir "$repl_stateless_self_dir" \
     && exhume "$repl_stateless_self_dir" \
-    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}") \
+    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}" || exec sh) \
     && inhume "$repl_stateless_self_dir" \
     && tmpdir_rm -r "$repl_stateless_self_dir"
 }
-fe3bfb1eae4e8b324a02d6b703ae2d680e56a2c91e3a54ab5de99594833f5c42
-module 'self/fs.sh' <<'0d353a5e13b9410346089ed13f69c1b52ea2f758876a11ed982733f51b21daaf'
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'self/fs.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
 exhume() {
@@ -209,7 +209,7 @@ exhume() {
   exhume_old_ifs="$IFS"
   IFS="$newline"
   for exhume_m in $modules; do
-    mkdir -p "$1/${exhume_m%/*}"
+    [ "${exhume_m%/*}" = "$exhume_m" ] || mkdir -p "$1/${exhume_m%/*}"
     eval "verb \"\$module_$exhume_i\"" > "$1/$exhume_m"
     exhume_i=$((exhume_i + 1))
   done
@@ -224,20 +224,21 @@ inhume() {
   module_index=0
   module boot.sh "$(cat "$1/boot.sh")"
   inhume_old_ifs="$IFS"
+  inhume_dir="${1%/}"
 
   # Always inhume meta stuff first
   IFS="$newline"
-  for inhume_f in $(find "$1/meta" -type f); do
+  for inhume_f in $(find "$inhume_dir/meta" -type f); do
     IFS="$inhume_old_ifs"
-    module "${inhume_f#$1}" "$(cat "$inhume_f")"
+    module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
 
   IFS="$newline"
-  for inhume_f in $(find "$1" -type f); do
+  for inhume_f in $(find "$inhume_dir" -type f); do
     IFS="$inhume_old_ifs"
-    [ "$inhume_f" != "$1/boot.sh" ] \
-      && [ "${inhume_f#$1/meta/}" = "$inhume_f" ] \
-      && module "${inhume_f#$1}" "$(cat "$inhume_f")"
+    [ "$inhume_f" != "$inhume_dir/boot.sh" ] \
+      && [ "${inhume_f#$inhume_dir/meta/}" = "$inhume_f" ] \
+      && module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
   IFS="$inhume_old_ifs"
 }
@@ -259,8 +260,8 @@ save() {
     return 1
   fi
 }
-0d353a5e13b9410346089ed13f69c1b52ea2f758876a11ed982733f51b21daaf
-module 'self/image.sh' <<'e576cc9f5908054a721c494ac28cd4d3ee404bf2629520c0faf4dfc7bf522739'
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'self/image.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -308,7 +309,7 @@ self() {
   self_i=0
   for self_m in $modules; do
     if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
-      eval "self_marker=\"\$(echo \"\$module_$self_i\" | sha3)\""
+      eval "self_marker=\"\$(verb \"\$module_$self_i\" | exec "$sha3")\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
       verb "$self_marker"
@@ -318,7 +319,7 @@ self() {
   IFS="$self_old_ifs"
   verb "# </""script>" "$self_main"
 }
-e576cc9f5908054a721c494ac28cd4d3ee404bf2629520c0faf4dfc7bf522739
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 module 'ni/sorting.sh' <<'bf32a972639838f4214096a86c68cd49491c9e1cfff6af22b92069d62fbf9e80'
 # Sorting operators and function definitions
 
@@ -345,7 +346,7 @@ ni_cli_next() {
   TODO ni_cli_next
 }
 5e7a59076cc5134c3d7008dcb0985e1afade20b71a9e41a53f65d1fa4dcbb02b
-module 'bin/sha3.c' <<'44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4'
+module 'bin/sha3.c' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
  *
@@ -378,18 +379,19 @@ void KeccakF1600(void *s)
         /*ι*/ FOR(j,7) if (LFSR86540(&R)) XL(0,0,(u64)1<<((1<<j)-1));
     }
 }
+
 int main()
 {
-    /*initialize*/ u8 ia[65536], *in = ia, oa[32], *out = oa; u64 inLen; u8 s[200]; ui R=1088/8; ui i,b=0; u64 outLen=32; FOR(i,200) s[i]=0;
-    /*absorb*/ while ((inLen = read(0, in = ia, 65536)) > 0) while(inLen>0) { b=(inLen<R)?inLen:R; FOR(i,b) s[i]^=in[i]; in+=b; inLen-=b; if (b==R) { KeccakF1600(s); b=0; } }
+    /*initialize*/ u8 ia[1024], *in = ia, oa[32], *out = oa; u64 r, inLen = 0; u8 s[200]; ui R=1088/8; ui i,b=0; u64 outLen=32; FOR(i,200) s[i]=0;
+    /*absorb*/ while ((r = read(0, (in = ia) + inLen, 1024 - inLen)) && (inLen += r) < 1024) while(inLen>0) { b=(inLen<R)?inLen:R; FOR(i,b) s[i]^=in[i]; in+=b; inLen-=b; if (b==R) { KeccakF1600(s); b=0; } }
     /*pad*/ s[b]^=6; if((6&0x80)&&(b==(R-1))) KeccakF1600(s); s[R-1]^=0x80; KeccakF1600(s);
     /*squeeze*/ while(outLen>0) { b=(outLen<R)?outLen:R; FOR(i,b) out[i]=s[i]; out+=b; outLen-=b; if(outLen>0) KeccakF1600(s); }
 
     u8 oh[65], *hex="0123456789abcdef"; FOR(i, 32) { oh[i<<1]=hex[oa[i]>>4]; oh[i<<1|1]=hex[oa[i]&15]; }
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
-44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4
-module 'main.sh' <<'f905351a95d32991573723e43e5862048c26ca96188b269dc311fef181c28de1'
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'main.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -451,6 +453,7 @@ main() {
     fi
     ;;
 
+  --repl)  shift; repl_sh ;;
   --self)  shift; self "$@" ;;
   --sha3)  shift; sha3 ;;
   --state) shift; self "$@" | sha3 ;;
@@ -462,7 +465,7 @@ main() {
 
   eval "$shutdown_hooks"
 }
-f905351a95d32991573723e43e5862048c26ca96188b269dc311fef181c28de1
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
@@ -485,7 +488,7 @@ jit_sh() {
 
 jit_sh_free() tmpdir_rm "$1"
 c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9
-module 'jit/jit-c.sh' <<'d9e39f8c27bb8060a409f91d3a20307d94a32b5f0da6d52443c95997189e22ca'
+module 'jit/jit-c.sh' <<'d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1'
 # JIT support for C99 programs
 # Calling convention is like this, except that heredocs inside $() don't seem
 # to be allowed:
@@ -521,8 +524,8 @@ jit_c() {
 }
 
 jit_c_free() tmpdir_rm "$1" "$1.c"
-d9e39f8c27bb8060a409f91d3a20307d94a32b5f0da6d52443c95997189e22ca
-module 'jit/jit-mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
+d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1
+module 'jit/jit-mvn.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # JVM JIT using maven as the frontend
 
 # POM generation stuff
@@ -580,7 +583,7 @@ jit_mvn() {
   jit_mvn_result=$1
   jit_mvn_main=$2
 }
-56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
 module 'home/conf' <<'a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac'
 # ni configuration, including CLI option mapping. Uses generators defined in
 # meta/ni-option.sh.
@@ -590,7 +593,7 @@ defoption --group  -g D ni_group
 defoption --order  -o D ni_order
 defoption --rorder -O D ni_rorder
 a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac
-module 'util/tmpfile.sh' <<'cef0435e3164b11fce36be156813579efbfdb0ca88a98bd2ac65be8e4c17e44e'
+module 'util/tmpfile.sh' <<'a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a'
 # Creates uniquely-named files in the temporary directory
 
 # Usage: tmpdir destination_var
@@ -609,8 +612,10 @@ tmpdir() {
 
 tmpdir_free() {
   [ $# -eq 0 ] && set -- "$self_tmpdir"
-  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    err "ni: trying to clean up a tmpdir ($1)" \
+  if [ ! -d "$1" ]; then
+    return 0
+  elif [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
+    err "ni: trying to clean up a tmpdir \"$1\"" \
         "    but this tmpdir doesn't appear to have been created by ni" \
         "    in this case, not doing anything"
     return 1
@@ -629,8 +634,9 @@ tmpdir_rm() {
     shift
   fi
   for tmpdir_rm_f; do
-    if [ "${tmpdir_rm_f#$self_tmpdir/}" != "$tmpdir_rm_f" ]; then
-      rm "$tmpdir_rm_options" -- "$tmpdir_rm_f"
+    if [ -n "$self_tmpdir" ] \
+       && [ "${tmpdir_rm_f#$self_tmpdir/}" != "$tmpdir_rm_f" ]; then
+      rm $tmpdir_rm_options -- "$tmpdir_rm_f"
     else
       err "ni: attempting to remove \"$tmpdir_rm_f\", which is not" \
           "    located in a temp directory created by ni (in this case" \
@@ -667,18 +673,40 @@ canonical_file() {
   mv "$canonical_file_tmp" "$self_tmpdir/$canonical_file_sha$1"
   verb "$self_tmpdir/$canonical_file_sha$1"
 }
-cef0435e3164b11fce36be156813579efbfdb0ca88a98bd2ac65be8e4c17e44e
-module 'util/verb.sh' <<'2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717'
+
+# Usage: data-source | file_buffer | ...
+# Essentially a passthrough, but completely buffers the input data first. This
+# works around a shell/pipe bug that otherwise causes truncated data streams.
+file_buffer() {
+  tmpfile file_buffer_tmp
+  cat > "$file_buffer_tmp"
+  cat "$file_buffer_tmp"
+  tmpdir_rm "$file_buffer_tmp"
+}
+a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a
+module 'util/verb.sh' <<'bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret its arguments
+
+# Interesting bug workaround due to data truncation:
+# https://gist.github.com/stfactual/dd9ee48c964067453ff4
+verb_1024_q=?
+while [ ${#verb_1024_q} -lt 1024 ]; do
+  verb_1024_q="$verb_1024_q$verb_1024_q"
+done
+
 verb() {
   for verb_arg; do
+#    while [ ${#verb_arg} -gt 1024 ]; do
+#      printf %.1024s "$verb_arg"
+#      verb_arg="${verb_arg#$verb_1024_q}"
+#    done
     printf "%s\n" "$verb_arg"
   done
 }
 
 err() verb "$@" >&2
-2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717
+bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd
 module 'util/todo.sh' <<'eeb448fda0a8ccb41c9c7f26098fccf946e9d5e3b48818e1586fb82df9e0653f'
 # Support for todo-functions in code
 TODO() {
@@ -686,13 +714,14 @@ TODO() {
   return 1
 }
 eeb448fda0a8ccb41c9c7f26098fccf946e9d5e3b48818e1586fb82df9e0653f
-module 'util/sha3.sh' <<'f5d52ed2898c651d0790b5e378a1c1f698b682172c4e66895ababacf4f2fc97a'
+module 'util/sha3.sh' <<'05375d44b20622b02a04fd9594890166c9eec2641e851f3d76caadfec8720289'
 # Support for hashing arbitrary data through the jit-C interface
-sha3() { sha3_setup; "$sha3_jit"; }
+sha3() "$sha3"
+
 sha3_setup() {
-  [ -n "$sha3_jit" ] && return
+  [ -n "$sha3" ] && return
   module_get sha3_source bin/sha3.c
-  sha3_jit="$(verb "$sha3_source" | jit_c_base)"        # jit_c_base !!!
+  sha3="$(verb "$sha3_source" | jit_c_base)"            # jit_c_base !!!
   unset sha3_source
 }
 
@@ -700,6 +729,6 @@ setup_hooks="$setup_hooks${newline}sha3_setup"
 
 # NB: no shutdown hook to free the jit context here, since the sha3 program
 # should exist as long as ni maintains its tmpdir.
-f5d52ed2898c651d0790b5e378a1c1f698b682172c4e66895ababacf4f2fc97a
+05375d44b20622b02a04fd9594890166c9eec2641e851f3d76caadfec8720289
 # </script>
 main "$@"

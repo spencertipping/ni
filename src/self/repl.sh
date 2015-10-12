@@ -12,16 +12,16 @@ repl_sh() {
   mkdir "$repl_sh_self_dir" \
     && exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir"; exec sh -i "$repl_sh_state") \
+    && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
-    && tmpdir_rm -r "$repl_sh_self_dir" \
-    && jit_sh_free "$repl_sh_state"
+    && tmpdir_rm -r "$repl_sh_self_dir"
 }
 
 repl_stateless() {
   repl_stateless_self_dir="$self_tmpdir/repl-stateless-$(self | sha3)"
   mkdir "$repl_stateless_self_dir" \
     && exhume "$repl_stateless_self_dir" \
-    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}") \
+    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}" || exec sh) \
     && inhume "$repl_stateless_self_dir" \
     && tmpdir_rm -r "$repl_stateless_self_dir"
 }

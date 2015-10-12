@@ -59,6 +59,7 @@ main() {
     fi
     ;;
 
+  --repl)  shift; repl_sh ;;
   --self)  shift; self "$@" ;;
   --sha3)  shift; sha3 ;;
   --state) shift; self "$@" | sha3 ;;

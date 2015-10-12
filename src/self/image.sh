@@ -45,7 +45,7 @@ self() {
   self_i=0
   for self_m in $modules; do
     if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
-      eval "self_marker=\"\$(echo \"\$module_$self_i\" | sha3)\""
+      eval "self_marker=\"\$(verb \"\$module_$self_i\" | exec "$sha3")\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
       verb "$self_marker"
