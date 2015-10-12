@@ -7,8 +7,6 @@ EOF
 # (i.e. what it does isn't expressible in lisp mode).
 uncons() eval "$1=\"\$${3}_h\"; $2=\"\$${3}_t\""
 
-_str() eval "$1=nil"            # nil case; nil is empty string
-
 cons_str() {
   cons_str_x="$2"
   cons_str_s=

@@ -13,7 +13,7 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'01e69a09aecb75e82741a63234f1bca7229c16e1d3ce6d5504ede9c52370c71b'
+module 'meta/struct.sh' <<'d735fa546b3b8336222b3f2a82d286f4e8806954e6dabbac5bab2108ed33d9b4'
 # Data structure metaprogramming
 cell_index=0
 cell() {
@@ -27,7 +27,8 @@ defined_structs=
 defstruct() {
   defined_structs="$defined_structs $1"
   defstruct_name=$1
-  defstruct_visitor="gc_$1() eval \"\$1=\\\""
+  defstruct_str="${1}_str() eval \"\$1=\\\"<$1"
+  defstruct_visitor="${1}_gc() eval \"\$1=\\\""
   defstruct_ctor="$1() { cell ${1}_cell $1; eval \""
   shift
 
@@ -35,25 +36,33 @@ defstruct() {
   for defstruct_field; do
     defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"
     defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"
+    defstruct_str="$defstruct_str $defstruct_field=\\\$\${2}_$defstruct_field"
     eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
     eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
     defstruct_i=$((defstruct_i + 1))
   done
 
   eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
+  eval "$defstruct_str>\\\"\""
   eval "$defstruct_visitor\\\"\""
 }
 
 # Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
 # call to cons_str "$@" if called with $2 as a cons cell.
+#
+# If the object in question is not a reference (i.e. it's a bare string), then
+# it is its own string representation.
 defmulti() eval "$1() {
                    multi_${1}_type=\${2%_*}
-                   \${multi_${1}_type#_}_$1 \"\$@\"
+                   [ \"\${multi_${1}_type#_}\" != \"\$multi_${1}_type\" ] \
+                     && \${multi_${1}_type#_}_$1 \"\$@\" \
+                     || primitive_str \"\$@\"
                  }"
 
 # Default multimethods available for all structures
 defmulti str
-01e69a09aecb75e82741a63234f1bca7229c16e1d3ce6d5504ede9c52370c71b
+primitive_str() eval "$1=\"\$2\""
+d735fa546b3b8336222b3f2a82d286f4e8806954e6dabbac5bab2108ed33d9b4
 module 'meta/ni-option.sh' <<'7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a'
 # ni option data structure and generator
 
@@ -88,7 +97,101 @@ defoption() {
     && assoc $short_options $defoption_short $defoption_new
 }
 7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a
-module 'meta/cons.sh' <<'9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5'
+module 'meta/list.sh' <<'fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17'
+# Linked list functions
+
+list_reverse() {
+  if [ -n "$2" ]; then
+    uncons list_reverse_h list_reverse_t $2
+    cons list_reverse_l $list_reverse_h $3
+    list_reverse "$1" "$list_reverse_t" $list_reverse_l
+  else
+    eval "$1=\$3"
+  fi
+}
+
+# Like the usual (apply), but doesn't accept any intermediate arguments; that
+# is, it's just a function and a list.
+apply_last() {
+  apply_last_f=$1
+  apply_last_r=$2
+  apply_last_l=$3
+  shift 3
+  while [ -n "$apply_last_l" ]; do
+    uncons apply_last_h apply_last_l $apply_last_l
+    set -- "$@" "$apply_last_h"
+  done
+  $apply_last_f $apply_last_r "$@"
+}
+fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17
+module 'meta/vector.sh' <<'a4ec29723e8afe0d87cbc735f9f837565c27c646d1391f13693351acc1502408'
+# Vector data structure
+
+meta_hook <<'EOF'
+defmulti n
+defmulti nth
+EOF
+
+# This is roughly what defstruct generates, though this is a bit more
+# complicated because it supports variable arity.
+vector() {
+  vector_r=$1
+  shift
+  cell vector_cell vector
+  eval "${vector_cell}_n=0"
+  for vector_x; do
+    eval "vector_n=\$${vector_cell}_n"
+    eval "${vector_cell}_$vector_n=\"\$vector_x\"
+          ${vector_cell}_n=\$(($vector_n + 1))"
+  done
+  eval "$vector_r=\$vector_cell"
+}
+
+vector_gc() {
+  vector_gc_r=$1
+  eval "vector_gc_n=\$${2}_n"
+  vector_gc_i=0
+  vector_gc_s=
+  while [ $vector_gc_i -lt $vector_gc_n ]; do
+    eval "vector_gc_s=\"\$vector_gc_s \$${2}_$vector_gc_i\""
+    vector_gc_i=$((vector_gc_i + 1))
+  done
+  eval "$vector_gc_r=\"\$vector_gc_s\""
+}
+
+vector_n()   eval "$1=\"\$${2}_n\""
+vector_nth() eval "$1=\"\$${2}_$3\""
+
+vector_str() {
+  vector_str_i=0
+  vector_str_s=''
+  n vector_str_n $2
+  while [ $vector_str_i -lt $vector_str_n ]; do
+    set -- "$1" "$2" "$vector_str_s" "$vector_str_i" "$vector_str_n"
+    nth vector_str_x $2 $vector_str_i
+    str vector_str_x $vector_str_x
+    vector_str_s="$3 $vector_str_x"
+    vector_str_i=$(($4 + 1))
+    vector_str_n=$5
+  done
+  eval "$1=\"[\${vector_str_s# }]\""
+}
+
+# Converts a list reference to a vector, unlike (vector) above which makes one
+# out of its shell arguments.
+vec() {
+  vec_r=$1
+  vec_l=$2
+  shift 2
+  set --
+  while [ -n "$vec_l" ]; do
+    uncons vec_h vec_l $vec_l
+    set -- "$@" "$vec_h"
+  done
+  vector "$vec_r" "$@"
+}
+a4ec29723e8afe0d87cbc735f9f837565c27c646d1391f13693351acc1502408
+module 'meta/cons.sh' <<'383dfb475e9cdc3334055d883c1e64eb0e0b34501fa3907acfd7c77011a18f02'
 # Cons cell primitive
 meta_hook <<'EOF'
 defstruct cons h t
@@ -97,8 +200,6 @@ EOF
 # NB: non-standard calling convention. This is used only within sh functions
 # (i.e. what it does isn't expressible in lisp mode).
 uncons() eval "$1=\"\$${3}_h\"; $2=\"\$${3}_t\""
-
-_str() eval "$1=nil"            # nil case; nil is empty string
 
 cons_str() {
   cons_str_x="$2"
@@ -113,7 +214,7 @@ cons_str() {
   done
   eval "$1=\"(\${cons_str_s# })\""
 }
-9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5
+383dfb475e9cdc3334055d883c1e64eb0e0b34501fa3907acfd7c77011a18f02
 module 'meta/hashmap.sh' <<'67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50'
 # Hashmap data structure
 # (Not technically a hashmap because we piggyback off of the parent shell's
@@ -320,14 +421,7 @@ self() {
   verb "# </""script>" "$self_main"
 }
 1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/sorting.sh' <<'bf32a972639838f4214096a86c68cd49491c9e1cfff6af22b92069d62fbf9e80'
-# Sorting operators and function definitions
-
-ni_group() {
-  TODO ni_group
-}
-bf32a972639838f4214096a86c68cd49491c9e1cfff6af22b92069d62fbf9e80
-module 'ni.sh' <<'5e7a59076cc5134c3d7008dcb0985e1afade20b71a9e41a53f65d1fa4dcbb02b'
+module 'ni/ni.sh' <<'0f6a73c7e5466515321c5233e8fedf7611090b9a63e08af8968d1a24f48a0d66'
 # ni frontend: main argument parser and shell script compiler
 # See also meta/ni-option.sh for the metaprogramming used by conf.sh.
 
@@ -339,13 +433,41 @@ ni_compile() {
   TODO ni_compile
 }
 
-# Parses a single command-line option, defining a named shell function to
-# execute it and returning the remaining command-line. This function delegates
-# to the command-line option table defined in conf.sh.
-ni_cli_next() {
-  TODO ni_cli_next
+# Parses command-line options and returns (as $$1) a cons tree containing their
+# structural representation. Each cons element is a vector of [fn args...].
+# There are some special commands:
+#
+# [lambda (...)]                # [ -x ... ] or ^x
+# [lambdafork (...)]            # @[ -x ... ] or @^x
+# [lambdaplus (...)]            # -[ ... ]
+# [lambdamix (...)]             # -@[ ... ]
+#
+# [branch {...}]                # { x ... , y ... , ... }
+# [branchfork {...}]            # @{ x ... , y ... , ... }
+# [branchsub {...}]             # -{ ... }
+# [branchmix {...}]             # -@{ ... }
+#
+# Names of quasifiles are wrapped in string references
+
+ni_parse_options() {
+  ni_parse_options_r="$1"
+  eval "$1="
+  shift
+
+  TODO ni_parse_options
 }
-5e7a59076cc5134c3d7008dcb0985e1afade20b71a9e41a53f65d1fa4dcbb02b
+0f6a73c7e5466515321c5233e8fedf7611090b9a63e08af8968d1a24f48a0d66
+module 'ni/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
+# Sorting operators and function definitions
+meta_hook <<'EOF'
+defstruct ni_group column_spec ordering
+defstruct ni_order column_spec ordering
+EOF
+
+ni_group() {
+  TODO ni_group
+}
+337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1
 module 'bin/sha3.c' <<'b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
