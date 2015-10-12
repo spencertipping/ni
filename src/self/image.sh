@@ -18,20 +18,33 @@ module_get() {
   IFS="$module_get_old_ifs"
 }
 
-# Prints a representation of this object to stdout.
+# Prints a representation of this object to stdout. If invoked with --no-main
+# as the first option, no call to main() will be generated at the end of the
+# image. If invoked with --no-boot, boot.sh will be serialized as a normal
+# module rather than treated specially (which will produce a broken image, but
+# may be useful for serialization purposes).
 self() {
+  self_main='main "$@"'
+  self_boot=t
+  while [ $# -gt 0 ]; do
+    [ "$1" = "--no-main" ] && self_main=
+    [ "$1" = "--no-boot" ] && self_boot=
+    shift
+  done
+
   main_setup
-  verb "#!/bin/sh" \
-       "# <body style='display:none'><script type='ni' id='self'>" \
-       "# Self-modifying ni image: https://github.com/spencertipping/ni" \
-       "module_0='$module_0'" \
-       'eval "$module_0"'
+  [ -n "$self_boot" ] \
+    && verb "#!/bin/sh" \
+            "# <body style='display:none'><script type='ni' id='self'>" \
+            "# Self-modifying ni image: https://github.com/spencertipping/ni" \
+            "module_0='$module_0'" \
+            'eval "$module_0"'
 
   self_old_ifs="$IFS"
   IFS="$newline"
   self_i=0
   for self_m in $modules; do
-    if [ $self_m != boot.sh ]; then
+    if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
       eval "self_marker=\"\$(echo \"\$module_$self_i\" | sha3)\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
@@ -40,5 +53,5 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb "# </""script>" 'main "$@"'
+  verb "# </""script>" "$self_main"
 }

@@ -1,0 +1,7 @@
+# ni configuration, including CLI option mapping. Uses generators defined in
+# meta/ni-option.sh.
+
+# Sorting operations
+defoption --group  -g D ni_group
+defoption --order  -o D ni_order
+defoption --rorder -O D ni_rorder

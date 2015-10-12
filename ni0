@@ -13,7 +13,166 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'self/repl.sh' <<'dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a003cc88c3'
+module 'meta/struct.sh' <<'e49890912d88fc07786f6b620598d7a4c79b78d6a13972aaf6a833592cecc4b1'
+# Data structure metaprogramming
+cell_index=0
+cell() {
+  eval "$1=_$2_\$cell_index"
+  cell_index=$((cell_index + 1))
+  [ "${cell_index%000}" = "$cell_index" ] || TODO gc
+}
+
+# Defines a named structure with a constructor and GC visitor.
+defined_structs=
+defstruct() {
+  defined_structs="$defined_structs $1"
+  defstruct_name=$1
+  defstruct_visitor="gc_$1() eval \"\$1=\\\""
+  defstruct_ctor="$1() { cell ${1}_cell $1; eval \""
+  shift
+
+  defstruct_i=2
+  for defstruct_field; do
+    defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"
+    defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"
+    eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
+    eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
+    defstruct_i=$((defstruct_i + 1))
+  done
+
+  eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
+  eval "$defstruct_visitor\\\"\""
+}
+
+# Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a
+# call to cons_str "$@" if called with $2 as a cons cell.
+defmulti() eval "$1() {
+                   multi_${1}_type=\${2%_*}
+                   \${multi_${1}_type#_}_$1 \"\$@\"
+                 }"
+
+# Default multimethods available for all structures
+defmulti str
+e49890912d88fc07786f6b620598d7a4c79b78d6a13972aaf6a833592cecc4b1
+module 'meta/ni-option.sh' <<'7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a'
+# ni option data structure and generator
+
+meta_hook <<'EOF'
+defstruct option long short syntax fn description
+hashmap long_options
+hashmap short_options
+EOF
+
+option_str() eval "$1=\"-\$${2}_short|--\$${2}_long [\$${2}_syntax]" \
+                  "\$${2}_fn(): \$${2}_description\""
+
+# Defines a long and short option, with parsing hints. For example:
+# defoption --group -g D group "groups rows by column value"
+#
+# This means the following:
+# --group       long option name is "--group"; this is required
+# -g            short option name is "-g"; can be '' for no short option
+# D             option takes an optional number as an argument
+# ni_group      compiler function to be called for the option
+# "groups ..."  usage for the option
+#
+# If you then invoke ni as "ni -g4", "ni_group" will be called on "4" to
+# interact with the compiler to generate the relevant shell script. See ni.sh
+# for details about how this works.
+defoption() {
+  defoption_long="${1#--}"
+  defoption_short="${2#-}"
+  option defoption_new $defoption_long "$defoption_short" "$3" "$4" "$5"
+  assoc $long_options $defoption_long $defoption_new
+  [ -n "$defoption_short" ] \
+    && assoc $short_options $defoption_short $defoption_new
+}
+7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a
+module 'meta/cons.sh' <<'9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5'
+# Cons cell primitive
+meta_hook <<'EOF'
+defstruct cons h t
+EOF
+
+# NB: non-standard calling convention. This is used only within sh functions
+# (i.e. what it does isn't expressible in lisp mode).
+uncons() eval "$1=\"\$${3}_h\"; $2=\"\$${3}_t\""
+
+_str() eval "$1=nil"            # nil case; nil is empty string
+
+cons_str() {
+  cons_str_x="$2"
+  cons_str_s=
+  while [ -n "$cons_str_x" ]; do
+    h cons_str_h $cons_str_x
+    t cons_str_x $cons_str_x
+    set -- "$1" "$cons_str_x" "$cons_str_s"     # for recursion
+    str cons_str_h $cons_str_h
+    cons_str_s="$3 $cons_str_h"
+    cons_str_x="$2"
+  done
+  eval "$1=\"(\${cons_str_s# })\""
+}
+9ea29467cc2eea0ad32edc8e1abdb737f72192a3c4ccc97e3c475a41ed5cdbc5
+module 'meta/hashmap.sh' <<'67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50'
+# Hashmap data structure
+# (Not technically a hashmap because we piggyback off of the parent shell's
+#  global variable table; i.e. we're not doing anything clever here.)
+
+meta_hook <<'EOF'
+defmulti keys
+defmulti get
+defmulti contains
+EOF
+
+# Constructed from pairs of arguments:
+# hashmap result k1 v1 k2 v2 ... kn vn
+hashmap() {
+  hashmap_r=$1
+  cell hashmap_cell hashmap
+  shift
+  while [ $# -gt 0 ]; do
+    assoc $hashmap_cell "$1" "$2"
+    shift 2
+  done
+  eval "$hashmap_r=\$hashmap_cell"
+}
+
+hashmap_gc() {
+  hashmap_gc_keys=
+  keys hashmap_gc_l $2
+  while [ -n "$hashmap_gc_l" ]; do
+    uncons hashmap_gc_k hashmap_gc_l $hashmap_gc_l
+    hashmap_gc_keys="$hashmap_gc_keys $hashmap_gc_k"
+  done
+  eval "$1=\"\$hashmap_gc_keys\""
+}
+
+hashmap_str() {
+  hashmap_str_s=
+  keys hashmap_str_l $2
+  while [ -n "$hashmap_str_l" ]; do
+    uncons hashmap_str_k hashmap_str_l $hashmap_str_l
+    set -- "$1" "$2" "$hashmap_str_s $hashmap_str_k" "$hashmap_str_l"
+    get hashmap_str_v $2 $hashmap_str_k
+    str hashmap_str_v $hashmap_str_v
+    hashmap_str_s="$3 $hashmap_str_v"
+    hashmap_str_l="$4"
+  done
+  eval "$1=\"{\${hashmap_str_s# }}\""
+}
+
+assoc() eval "${1}_key_$2=\"\$3\"
+              if [ -z \"\$${1}_cell_$2\" ]; then
+                cons ${1}_keys \"\$2\" \$${1}_keys
+                ${1}_cell_$2=\$${1}_keys
+              fi"
+
+hashmap_keys()     eval "$1=\$${2}_keys"
+hashmap_get()      eval "$1=\"\$${2}_key_$3\""
+hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
+67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
+module 'self/repl.sh' <<'fe3bfb1eae4e8b324a02d6b703ae2d680e56a2c91e3a54ab5de99594833f5c42'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -23,45 +182,26 @@ module 'self/repl.sh' <<'dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a
 # in-memory state), you can use repl_stateless.
 
 repl_sh() {
-  sh_repl_self_dir="$(self | sha3)"
-
-}
-dff27cc55234b6f46883b3a6be243f7ecb84530f5360da656b9e76a003cc88c3
-module 'self/fs.sh' <<'5bb0c581cd61512403d69af93004d8eff710316e089e48e2abbe5b4ee2905a21'
-# Filesystem interop
-
-# Usage: tmpdir destination_var
-# Returns the original tmpdir if the destination var is already populated and
-# exists.
-tmpdir() {
-  eval "[ -e \"\$${1:-self_tmpdir}/.this-is-a-ni-tmpdir\" ]" && return
-  tmpdir_prefix="${TMPDIR:-/tmp}/ni-$$"
-  tmpdir_index=0
-  until mkdir "$tmpdir_prefix-$tmpdir_index" 2>/dev/null; do
-    tmpdir_prefix=$((tmpdir_prefix + 1))
-  done
-  touch "$tmpdir_prefix-$tmpdir_index/.this-is-a-ni-tmpdir"
-  eval "${1:-self_tmpdir}=\$tmpdir_prefix-\$tmpdir_index"
+  repl_sh_self_dir="$self_tmpdir/repl-sh-$(self | sha3)"
+  repl_sh_state="$(self --no-main | jit_sh)"
+  mkdir "$repl_sh_self_dir" \
+    && exhume "$repl_sh_self_dir" \
+    && (cd "$repl_sh_self_dir"; exec sh -i "$repl_sh_state") \
+    && inhume "$repl_sh_self_dir" \
+    && tmpdir_rm -r "$repl_sh_self_dir" \
+    && jit_sh_free "$repl_sh_state"
 }
 
-tmpdir_free() {
-  [ $# -eq 0 ] && set -- "$self_tmpdir"
-  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    err "ni: trying to clean up a tmpdir ($1)" \
-        "    but this tmpdir doesn't appear to have been created by ni" \
-        "    in this case, not doing anything"
-    return 1
-  fi
-  rm -r "$1"
+repl_stateless() {
+  repl_stateless_self_dir="$self_tmpdir/repl-stateless-$(self | sha3)"
+  mkdir "$repl_stateless_self_dir" \
+    && exhume "$repl_stateless_self_dir" \
+    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}") \
+    && inhume "$repl_stateless_self_dir" \
+    && tmpdir_rm -r "$repl_stateless_self_dir"
 }
-
-# It's important to create a tmpdir at startup. If we don't, then a subprocess
-# will; but subprocesses can't modify our variable-space so we won't see it
-# (and therefore won't clean it up). The way around this is to prepend tmpdir
-# to the list of start hooks so it happens before anything gets jitted.
-setup_hooks="tmpdir$newline$start_hooks"
-shutdown_hooks="$shutdown_hooks${newline}tmpdir_free"
-
+fe3bfb1eae4e8b324a02d6b703ae2d680e56a2c91e3a54ab5de99594833f5c42
+module 'self/fs.sh' <<'0d353a5e13b9410346089ed13f69c1b52ea2f758876a11ed982733f51b21daaf'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
 exhume() {
@@ -99,9 +239,28 @@ inhume() {
       && [ "${inhume_f#$1/meta/}" = "$inhume_f" ] \
       && module "${inhume_f#$1}" "$(cat "$inhume_f")"
   done
+  IFS="$inhume_old_ifs"
 }
-5bb0c581cd61512403d69af93004d8eff710316e089e48e2abbe5b4ee2905a21
-module 'self/image.sh' <<'0a1cce947c9275c208b8ef7c0be8d470e17ce0518dd610921a8dbea6f60bb631'
+
+# Writes the current image to the specified file. If the resulting image fails,
+# prints the name of the tempfile where it is stored.
+save() {
+  save_file=$(self | canonical_file)
+  save_state=$(self | sha3)
+  save_check=$(sh "$save_file" --state)
+  if [ "$save_state" = "$save_check" ]; then
+    chmod 755 "$save_file"
+    mv "$save_file" "$1"
+  else
+    err "ni: save failed; $save_state != $save_check"
+    save_fail_file="${TMPDIR:-/tmp}/${save_file#$self_tmpdir/}"
+    mv "$save_file" "$save_fail_file"
+    verb "$save_fail_file"
+    return 1
+  fi
+}
+0d353a5e13b9410346089ed13f69c1b52ea2f758876a11ed982733f51b21daaf
+module 'self/image.sh' <<'e576cc9f5908054a721c494ac28cd4d3ee404bf2629520c0faf4dfc7bf522739'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -122,20 +281,33 @@ module_get() {
   IFS="$module_get_old_ifs"
 }
 
-# Prints a representation of this object to stdout.
+# Prints a representation of this object to stdout. If invoked with --no-main
+# as the first option, no call to main() will be generated at the end of the
+# image. If invoked with --no-boot, boot.sh will be serialized as a normal
+# module rather than treated specially (which will produce a broken image, but
+# may be useful for serialization purposes).
 self() {
+  self_main='main "$@"'
+  self_boot=t
+  while [ $# -gt 0 ]; do
+    [ "$1" = "--no-main" ] && self_main=
+    [ "$1" = "--no-boot" ] && self_boot=
+    shift
+  done
+
   main_setup
-  verb "#!/bin/sh" \
-       "# <body style='display:none'><script type='ni' id='self'>" \
-       "# Self-modifying ni image: https://github.com/spencertipping/ni" \
-       "module_0='$module_0'" \
-       'eval "$module_0"'
+  [ -n "$self_boot" ] \
+    && verb "#!/bin/sh" \
+            "# <body style='display:none'><script type='ni' id='self'>" \
+            "# Self-modifying ni image: https://github.com/spencertipping/ni" \
+            "module_0='$module_0'" \
+            'eval "$module_0"'
 
   self_old_ifs="$IFS"
   IFS="$newline"
   self_i=0
   for self_m in $modules; do
-    if [ $self_m != boot.sh ]; then
+    if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
       eval "self_marker=\"\$(echo \"\$module_$self_i\" | sha3)\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
@@ -144,9 +316,35 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb "# </""script>" 'main "$@"'
+  verb "# </""script>" "$self_main"
 }
-0a1cce947c9275c208b8ef7c0be8d470e17ce0518dd610921a8dbea6f60bb631
+e576cc9f5908054a721c494ac28cd4d3ee404bf2629520c0faf4dfc7bf522739
+module 'ni/sorting.sh' <<'bf32a972639838f4214096a86c68cd49491c9e1cfff6af22b92069d62fbf9e80'
+# Sorting operators and function definitions
+
+ni_group() {
+  TODO ni_group
+}
+bf32a972639838f4214096a86c68cd49491c9e1cfff6af22b92069d62fbf9e80
+module 'ni.sh' <<'5e7a59076cc5134c3d7008dcb0985e1afade20b71a9e41a53f65d1fa4dcbb02b'
+# ni frontend: main argument parser and shell script compiler
+# See also meta/ni-option.sh for the metaprogramming used by conf.sh.
+
+# Takes command-line options exactly as provided, and compiles a shell script
+# to execute the result. The resulting shell script may refer to other
+# generated programs, so it isn't network-portable. (ni as a whole, however,
+# is.)
+ni_compile() {
+  TODO ni_compile
+}
+
+# Parses a single command-line option, defining a named shell function to
+# execute it and returning the remaining command-line. This function delegates
+# to the command-line option table defined in conf.sh.
+ni_cli_next() {
+  TODO ni_cli_next
+}
+5e7a59076cc5134c3d7008dcb0985e1afade20b71a9e41a53f65d1fa4dcbb02b
 module 'bin/sha3.c' <<'44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
@@ -191,7 +389,10 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 44df5c8e41a4bf87977fa99c9dbe0530bfe2ba7c0faf73952bdaa2da3e6d77f4
-module 'main.sh' <<'bdca2642acfdf5fc94c47e471a74d30805c656cf9286dcb3c7a66a5b7d7fba55'
+module 'main.sh' <<'f905351a95d32991573723e43e5862048c26ca96188b269dc311fef181c28de1'
+# Main function, called automatically with all command-line arguments. The call
+# is hard-coded in the image generator, so main() is a magic name.
+
 main_is_setup=
 main_setup() {
   [ -n "$main_is_setup" ] && return
@@ -203,12 +404,88 @@ main_setup() {
 main() {
   main_setup
 
-  err "todo"
+  module_get conf_module home/conf
+  eval "$conf_module"
+
+  # Handle image-level special options
+  case "$1" in
+  --edit)
+    shift
+    err "ni: entering a shell to edit the current image" \
+        "    any changes you make to files here will be reflected in ni" \
+        "    and written back into $0 (assuming the result is able to" \
+        "    function correctly; otherwise a tempfile will be saved)"
+    repl_stateless "$@"
+    main_save_result="$(save "$0")"
+    if [ -n "$main_save_result" ]; then
+      err "ni: the current image failed to save itself: preserving state;" \
+          "    the broken image is saved as $main_save_result."
+    fi
+    ;;
+
+  --install)
+    shift
+    main_save_dest="${1:-$HOME/bin/ni}"
+    [ "${main_save_dest#/}" = "$main_save_dest" ] \
+      && main_save_dest="$PWD/$main_save_dest"
+    main_save_dir="${main_save_dest%/*}"
+    main_save_i=0
+    mkdir -p "$main_save_dir"
+    if [ -e "$main_save_dest" ]; then
+      while [ -e "$main_save_dest$main_save_i" ]; do
+        main_save_i=$((main_save_i + 1))
+      done
+      save "$main_save_dest$main_save_i" || return $?
+    else
+      save "$main_save_dest" || return $?
+      [ $# -gt 0 ] || err "ni: installed image at $main_save_dest"
+    fi
+    ;;
+
+  --init)
+    if [ -e ni ]; then
+      err "ni: image already exists here; not overwriting"
+    else
+      save ni && err "ni: created image at ./ni" \
+              || return $?
+    fi
+    ;;
+
+  --self)  shift; self "$@" ;;
+  --sha3)  shift; sha3 ;;
+  --state) shift; self "$@" | sha3 ;;
+
+  *)
+    ni_compile main_ni "$@" && "$main_ni"
+    ;;
+  esac
 
   eval "$shutdown_hooks"
 }
-bdca2642acfdf5fc94c47e471a74d30805c656cf9286dcb3c7a66a5b7d7fba55
-module 'jit/jit-c.sh' <<'093b0a379b09a2ef39f5c708cdf6f2bc835f80856df1073d261fa1cff1801eee'
+f905351a95d32991573723e43e5862048c26ca96188b269dc311fef181c28de1
+module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
+# JIT support for POSIX shell programs
+#
+# jit_program=$(jit_sh <<'EOF'
+# echo "hello world $*"
+# EOF
+# )
+#
+# $jit_program "$@"             # to execute the program
+# jit_sh_free $jit_program      # to deallocate the program
+
+jit_sh() {
+  tmpdir
+  jit_sh_index=$((jit_sh_index + 1))
+  jit_sh_source="$self_tmpdir/jit-sh-$jit_sh_index"
+  { echo "#!/bin/sh"; cat; } > "$jit_sh_source"
+  chmod 700 "$jit_sh_source"
+  verb "$jit_sh_source"
+}
+
+jit_sh_free() tmpdir_rm "$1"
+c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9
+module 'jit/jit-c.sh' <<'d9e39f8c27bb8060a409f91d3a20307d94a32b5f0da6d52443c95997189e22ca'
 # JIT support for C99 programs
 # Calling convention is like this, except that heredocs inside $() don't seem
 # to be allowed:
@@ -225,18 +502,26 @@ module 'jit/jit-c.sh' <<'093b0a379b09a2ef39f5c708cdf6f2bc835f80856df1073d261fa1c
 # $jit_program "$@"             # to execute the program
 # jit_c_free $jit_program       # to deallocate the program
 
-jit_c_index=0
+# NB: this version is used for bootstrapping; specifically, we need to compile
+# the sha3 program before we'll have any support for unified jit.
+jit_c_base() {
+  tmpfile jit_c_base_source .c
+  cat > "$jit_c_base_source"
+  c99 "$@" "$jit_c_base_source" -o "${jit_c_base_source%.c}"
+  verb "${jit_c_base_source%.c}"
+}
+
+# This version is what you would normally use; it will reuse existing programs
+# rather than recompiling them.
 jit_c() {
-  tmpdir
-  jit_c_index=$((jit_c_index + 1))
-  jit_c_source="$self_tmpdir/jit-c-$jit_c_index.c"
-  cat > "$jit_c_source"
-  c99 "$@" "$jit_c_source" -o "${jit_c_source%.c}"
+  jit_c_source="$(canonical_file .c)"
+  [ -x "${jit_c_source%.c}" ] \
+    || c99 "$@" "$jit_c_source" -o "${jit_c_source%.c}"
   verb "${jit_c_source%.c}"
 }
 
-jit_c_free() rm "$1" "$1.c"
-093b0a379b09a2ef39f5c708cdf6f2bc835f80856df1073d261fa1cff1801eee
+jit_c_free() tmpdir_rm "$1" "$1.c"
+d9e39f8c27bb8060a409f91d3a20307d94a32b5f0da6d52443c95997189e22ca
 module 'jit/jit-mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
 # JVM JIT using maven as the frontend
 
@@ -296,6 +581,93 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
+module 'home/conf' <<'a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac'
+# ni configuration, including CLI option mapping. Uses generators defined in
+# meta/ni-option.sh.
+
+# Sorting operations
+defoption --group  -g D ni_group
+defoption --order  -o D ni_order
+defoption --rorder -O D ni_rorder
+a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac
+module 'util/tmpfile.sh' <<'cef0435e3164b11fce36be156813579efbfdb0ca88a98bd2ac65be8e4c17e44e'
+# Creates uniquely-named files in the temporary directory
+
+# Usage: tmpdir destination_var
+# Returns the original tmpdir if the destination var is already populated and
+# exists.
+tmpdir() {
+  eval "[ -e \"\$${1:-self_tmpdir}/.this-is-a-ni-tmpdir\" ]" && return
+  tmpdir_prefix="${TMPDIR:-/tmp}/ni-$$"
+  tmpdir_index=0
+  until mkdir "$tmpdir_prefix-$tmpdir_index" 2>/dev/null; do
+    tmpdir_prefix=$((tmpdir_prefix + 1))
+  done
+  touch "$tmpdir_prefix-$tmpdir_index/.this-is-a-ni-tmpdir"
+  eval "${1:-self_tmpdir}=\$tmpdir_prefix-\$tmpdir_index"
+}
+
+tmpdir_free() {
+  [ $# -eq 0 ] && set -- "$self_tmpdir"
+  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
+    err "ni: trying to clean up a tmpdir ($1)" \
+        "    but this tmpdir doesn't appear to have been created by ni" \
+        "    in this case, not doing anything"
+    return 1
+  fi
+  rm -r "$1"
+}
+
+# Removes files, but makes sure they're in the temporary directory first. This
+# is a sanity check to avoid blowing away random stuff on the filesystem, e.g.
+# if a variable got cleared by mistake. Forwards the "-r" option if passed
+# first.
+tmpdir_rm() {
+  tmpdir_rm_options=
+  if [ "x$1" = "x-r" ]; then
+    tmpdir_rm_options=-r
+    shift
+  fi
+  for tmpdir_rm_f; do
+    if [ "${tmpdir_rm_f#$self_tmpdir/}" != "$tmpdir_rm_f" ]; then
+      rm "$tmpdir_rm_options" -- "$tmpdir_rm_f"
+    else
+      err "ni: attempting to remove \"$tmpdir_rm_f\", which is not" \
+          "    located in a temp directory created by ni (in this case" \
+          "    not doing anything)"
+    fi
+  done
+}
+
+# It's important to create a tmpdir at startup. If we don't, then a subprocess
+# will; but subprocesses can't modify our variable-space so we won't see it
+# (and therefore won't clean it up). The way around this is to prepend tmpdir
+# to the list of start hooks so it happens before anything gets jitted.
+setup_hooks="tmpdir$newline$start_hooks"
+shutdown_hooks="$shutdown_hooks${newline}tmpdir_free"
+
+# Usage: tmpfile dest_var [suffix]
+tmpfile() {
+  tmpdir
+  tmpfile_i=0
+  while [ -e "$self_tmpdir/$tmpfile_i$2" ]; do
+    tmpfile_i=$((tmpfile_i + 1))
+  done
+  touch "$self_tmpdir/$tmpfile_i$2"
+  eval "$1=\"\$self_tmpdir/\$tmpfile_i\$2\""
+}
+
+# Usage: dest_var=$(data-source | canonical_file [suffix])
+# NB: uses disk-buffering, not memory-buffering. Does not, however, compress
+# the file.
+canonical_file() {
+  tmpfile canonical_file_tmp $1
+  cat > "$canonical_file_tmp"
+  canonical_file_sha="$(sha3 < "$canonical_file_tmp")"
+  mv "$canonical_file_tmp" "$self_tmpdir/$canonical_file_sha$1"
+  verb "$self_tmpdir/$canonical_file_sha$1"
+}
+cef0435e3164b11fce36be156813579efbfdb0ca88a98bd2ac65be8e4c17e44e
 module 'util/verb.sh' <<'2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret its arguments
@@ -307,17 +679,27 @@ verb() {
 
 err() verb "$@" >&2
 2db4154b2e5f63bdbd3fee09be3e48adb7178344daa86ffddadb40d382841717
-module 'util/sha3.sh' <<'17b94d7782eee6bcf42fa454add973958ee2388c8e0126b68956b3475a9bb0e9'
+module 'util/todo.sh' <<'eeb448fda0a8ccb41c9c7f26098fccf946e9d5e3b48818e1586fb82df9e0653f'
+# Support for todo-functions in code
+TODO() {
+  err "todo: $@"
+  return 1
+}
+eeb448fda0a8ccb41c9c7f26098fccf946e9d5e3b48818e1586fb82df9e0653f
+module 'util/sha3.sh' <<'f5d52ed2898c651d0790b5e378a1c1f698b682172c4e66895ababacf4f2fc97a'
 # Support for hashing arbitrary data through the jit-C interface
 sha3() { sha3_setup; "$sha3_jit"; }
 sha3_setup() {
   [ -n "$sha3_jit" ] && return
   module_get sha3_source bin/sha3.c
-  sha3_jit="$(verb "$sha3_source" | jit_c)"
+  sha3_jit="$(verb "$sha3_source" | jit_c_base)"        # jit_c_base !!!
   unset sha3_source
 }
 
 setup_hooks="$setup_hooks${newline}sha3_setup"
-17b94d7782eee6bcf42fa454add973958ee2388c8e0126b68956b3475a9bb0e9
+
+# NB: no shutdown hook to free the jit context here, since the sha3 program
+# should exist as long as ni maintains its tmpdir.
+f5d52ed2898c651d0790b5e378a1c1f698b682172c4e66895ababacf4f2fc97a
 # </script>
 main "$@"

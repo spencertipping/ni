@@ -3,7 +3,7 @@ cell_index=0
 cell() {
   eval "$1=_$2_\$cell_index"
   cell_index=$((cell_index + 1))
-  [ "${cell_index%000}" = "$cell_index" ] || gc
+  [ "${cell_index%000}" = "$cell_index" ] || TODO gc
 }
 
 # Defines a named structure with a constructor and GC visitor.

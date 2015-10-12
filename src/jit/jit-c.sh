@@ -14,14 +14,22 @@
 # $jit_program "$@"             # to execute the program
 # jit_c_free $jit_program       # to deallocate the program
 
-jit_c_index=0
+# NB: this version is used for bootstrapping; specifically, we need to compile
+# the sha3 program before we'll have any support for unified jit.
+jit_c_base() {
+  tmpfile jit_c_base_source .c
+  cat > "$jit_c_base_source"
+  c99 "$@" "$jit_c_base_source" -o "${jit_c_base_source%.c}"
+  verb "${jit_c_base_source%.c}"
+}
+
+# This version is what you would normally use; it will reuse existing programs
+# rather than recompiling them.
 jit_c() {
-  tmpdir
-  jit_c_index=$((jit_c_index + 1))
-  jit_c_source="$self_tmpdir/jit-c-$jit_c_index.c"
-  cat > "$jit_c_source"
-  c99 "$@" "$jit_c_source" -o "${jit_c_source%.c}"
+  jit_c_source="$(canonical_file .c)"
+  [ -x "${jit_c_source%.c}" ] \
+    || c99 "$@" "$jit_c_source" -o "${jit_c_source%.c}"
   verb "${jit_c_source%.c}"
 }
 
-jit_c_free() rm "$1" "$1.c"
+jit_c_free() tmpdir_rm "$1" "$1.c"

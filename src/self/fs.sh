@@ -1,37 +1,3 @@
-# Filesystem interop
-
-# Usage: tmpdir destination_var
-# Returns the original tmpdir if the destination var is already populated and
-# exists.
-tmpdir() {
-  eval "[ -e \"\$${1:-self_tmpdir}/.this-is-a-ni-tmpdir\" ]" && return
-  tmpdir_prefix="${TMPDIR:-/tmp}/ni-$$"
-  tmpdir_index=0
-  until mkdir "$tmpdir_prefix-$tmpdir_index" 2>/dev/null; do
-    tmpdir_prefix=$((tmpdir_prefix + 1))
-  done
-  touch "$tmpdir_prefix-$tmpdir_index/.this-is-a-ni-tmpdir"
-  eval "${1:-self_tmpdir}=\$tmpdir_prefix-\$tmpdir_index"
-}
-
-tmpdir_free() {
-  [ $# -eq 0 ] && set -- "$self_tmpdir"
-  if [ ! -e "$1/.this-is-a-ni-tmpdir" ]; then
-    err "ni: trying to clean up a tmpdir ($1)" \
-        "    but this tmpdir doesn't appear to have been created by ni" \
-        "    in this case, not doing anything"
-    return 1
-  fi
-  rm -r "$1"
-}
-
-# It's important to create a tmpdir at startup. If we don't, then a subprocess
-# will; but subprocesses can't modify our variable-space so we won't see it
-# (and therefore won't clean it up). The way around this is to prepend tmpdir
-# to the list of start hooks so it happens before anything gets jitted.
-setup_hooks="tmpdir$newline$start_hooks"
-shutdown_hooks="$shutdown_hooks${newline}tmpdir_free"
-
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
 exhume() {
@@ -69,4 +35,23 @@ inhume() {
       && [ "${inhume_f#$1/meta/}" = "$inhume_f" ] \
       && module "${inhume_f#$1}" "$(cat "$inhume_f")"
   done
+  IFS="$inhume_old_ifs"
+}
+
+# Writes the current image to the specified file. If the resulting image fails,
+# prints the name of the tempfile where it is stored.
+save() {
+  save_file=$(self | canonical_file)
+  save_state=$(self | sha3)
+  save_check=$(sh "$save_file" --state)
+  if [ "$save_state" = "$save_check" ]; then
+    chmod 755 "$save_file"
+    mv "$save_file" "$1"
+  else
+    err "ni: save failed; $save_state != $save_check"
+    save_fail_file="${TMPDIR:-/tmp}/${save_file#$self_tmpdir/}"
+    mv "$save_file" "$save_fail_file"
+    verb "$save_fail_file"
+    return 1
+  fi
 }

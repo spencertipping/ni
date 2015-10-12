@@ -2,6 +2,12 @@
 # (Not technically a hashmap because we piggyback off of the parent shell's
 #  global variable table; i.e. we're not doing anything clever here.)
 
+meta_hook <<'EOF'
+defmulti keys
+defmulti get
+defmulti contains
+EOF
+
 # Constructed from pairs of arguments:
 # hashmap result k1 v1 k2 v2 ... kn vn
 hashmap() {
@@ -45,6 +51,6 @@ assoc() eval "${1}_key_$2=\"\$3\"
                 ${1}_cell_$2=\$${1}_keys
               fi"
 
-keys()     eval "$1=\$${2}_keys"
-get()      eval "$1=\"\$${2}_key_$3\""
-contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
+hashmap_keys()     eval "$1=\$${2}_keys"
+hashmap_get()      eval "$1=\"\$${2}_key_$3\""
+hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
