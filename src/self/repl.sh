@@ -15,7 +15,7 @@ repl_sh() {
             "$(verb main_setup | canonical_file)" \
             - \
             "$(verb "eval \"\$shutdown_hooks\"" | canonical_file)" \
-        | exec sh) \
+        | exec sh "$@") \
     && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
     && rm -r "$repl_sh_self_dir"
@@ -27,7 +27,7 @@ repl_stateless() {
     && (cd "$repl_stateless_self_dir/home" || cd "$repl_stateless_self_dir"
         export PS1="ni$ "
         export PROMPT="ni$ "
-        exec "${SHELL:-bash}" || exec sh) \
+        exec "${SHELL:-bash}" "$@" || exec sh "$@") \
     && inhume "$repl_stateless_self_dir" \
     && rm -r "$repl_stateless_self_dir"
 }

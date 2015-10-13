@@ -174,7 +174,7 @@ apply_last() {
   $apply_last_f $apply_last_r "$@"
 }
 08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b
-module 'meta/vector.sh' <<'f9a52884c18b92403f45a5c4f0f7cecd2de1f6f68306a7be1b69479ec9c948eb'
+module 'meta/vector.sh' <<'57569d6802fd4faaf0361a5a75fa874079d3fcd9e88904c7519ace0a80ef4e95'
 # Vector data structure
 
 meta_hook <<'EOF'
@@ -207,9 +207,8 @@ vector_gc() {
 vector_n() eval "$1=\$((${2}_n - ${2}_shift))"
 
 vector_nth() {
-  vector_nth_i=$3
-  eval "vector_nth_i=\$((vector_nth_i - \$${2}_shift))"
-  eval "$1=\"\$${2}_$vector_nth_i\""
+  eval "vector_nth_i=\$${2}_shift"
+  eval "$1=\"\$${2}_$(($3 + vector_nth_i))\""
 }
 
 vector_str() {
@@ -260,7 +259,7 @@ vector_shift() {
   eval "$1=\"\$${2}_$vector_shift_i\""
   eval "${2}_shift=\$((vector_shift_i + 1))"
 }
-f9a52884c18b92403f45a5c4f0f7cecd2de1f6f68306a7be1b69479ec9c948eb
+57569d6802fd4faaf0361a5a75fa874079d3fcd9e88904c7519ace0a80ef4e95
 module 'meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -343,7 +342,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'083eda334f4e918a7fe2e71add28684202bae0ac30a28739450b39fab56584fc'
+module 'self/repl.sh' <<'ca80a505aa1b1a5c93c267861feea2bfc757b64c9d126478fc621950bc5677b9'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -361,7 +360,7 @@ repl_sh() {
             "$(verb main_setup | canonical_file)" \
             - \
             "$(verb "eval \"\$shutdown_hooks\"" | canonical_file)" \
-        | exec sh) \
+        | exec sh "$@") \
     && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
     && rm -r "$repl_sh_self_dir"
@@ -373,11 +372,11 @@ repl_stateless() {
     && (cd "$repl_stateless_self_dir/home" || cd "$repl_stateless_self_dir"
         export PS1="ni$ "
         export PROMPT="ni$ "
-        exec "${SHELL:-bash}" || exec sh) \
+        exec "${SHELL:-bash}" "$@" || exec sh "$@") \
     && inhume "$repl_stateless_self_dir" \
     && rm -r "$repl_stateless_self_dir"
 }
-083eda334f4e918a7fe2e71add28684202bae0ac30a28739450b39fab56584fc
+ca80a505aa1b1a5c93c267861feea2bfc757b64c9d126478fc621950bc5677b9
 module 'self/fs.sh' <<'9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
@@ -714,7 +713,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'21dcadc8b0a764af966a5f46bb404fca9fe8349aff84a7dd17e57b160e0faa8d'
+module 'main.sh' <<'f50f2de98348bb01cf011d42479b9f39e3b8407d0e7077ad1735e256f6298568'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -780,7 +779,7 @@ main() {
   --use|--intern|--inhume)    shift; inhume "$1" && save "$0" ;;
 
   # Internal options for the build process and debugging
-  --internal-repl)  shift; repl_sh ;;
+  --internal-repl)  shift; repl_sh "$@" ;;
   --internal-self)  shift; self "$@" ;;
   --internal-sha3)  shift; sha3 ;;
   --internal-state) shift; self "$@" | exec "$sha3" ;;
@@ -797,7 +796,7 @@ main() {
 
   eval "$shutdown_hooks"
 }
-21dcadc8b0a764af966a5f46bb404fca9fe8349aff84a7dd17e57b160e0faa8d
+f50f2de98348bb01cf011d42479b9f39e3b8407d0e7077ad1735e256f6298568
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #

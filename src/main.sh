@@ -63,7 +63,7 @@ main() {
   --use|--intern|--inhume)    shift; inhume "$1" && save "$0" ;;
 
   # Internal options for the build process and debugging
-  --internal-repl)  shift; repl_sh ;;
+  --internal-repl)  shift; repl_sh "$@" ;;
   --internal-self)  shift; self "$@" ;;
   --internal-sha3)  shift; sha3 ;;
   --internal-state) shift; self "$@" | exec "$sha3" ;;

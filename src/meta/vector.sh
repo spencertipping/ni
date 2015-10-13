@@ -30,8 +30,8 @@ vector_gc() {
 vector_n() eval "$1=\$((${2}_n - ${2}_shift))"
 
 vector_nth() {
-  eval "vector_nth_i=\$(($3 - \$${2}_shift))"
-  eval "$1=\"\$${2}_$vector_nth_i\""
+  eval "vector_nth_i=\$${2}_shift"
+  eval "$1=\"\$${2}_$(($3 + vector_nth_i))\""
 }
 
 vector_str() {
