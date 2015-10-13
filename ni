@@ -124,7 +124,7 @@ apply_last() {
   $apply_last_f $apply_last_r "$@"
 }
 fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17
-module 'meta/vector.sh' <<'a4ec29723e8afe0d87cbc735f9f837565c27c646d1391f13693351acc1502408'
+module 'meta/vector.sh' <<'fbb8e8a84096c18f7a40a7076d6e32f55279e473284628e0bb0a5eb6a5044a63'
 # Vector data structure
 
 meta_hook <<'EOF'
@@ -139,11 +139,7 @@ vector() {
   shift
   cell vector_cell vector
   eval "${vector_cell}_n=0"
-  for vector_x; do
-    eval "vector_n=\$${vector_cell}_n"
-    eval "${vector_cell}_$vector_n=\"\$vector_x\"
-          ${vector_cell}_n=\$(($vector_n + 1))"
-  done
+  push $vector_cell "$@"
   eval "$vector_r=\$vector_cell"
 }
 
@@ -190,7 +186,19 @@ vec() {
   done
   vector "$vec_r" "$@"
 }
-a4ec29723e8afe0d87cbc735f9f837565c27c646d1391f13693351acc1502408
+
+# Pushes one or more objects onto the end of a vector, modifying it in place.
+push() {
+  push_v=$1
+  n push_i $push_v
+  shift
+  for push_x; do
+    eval "${push_v}_$push_i=\"\$push_x\""
+    eval "${push_v}_n=\$((${push_v}_n + 1))"
+    shift
+  done
+}
+fbb8e8a84096c18f7a40a7076d6e32f55279e473284628e0bb0a5eb6a5044a63
 module 'meta/cons.sh' <<'383dfb475e9cdc3334055d883c1e64eb0e0b34501fa3907acfd7c77011a18f02'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -273,7 +281,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'a5b5264bfe23eeb6a198958c9602bbc3bd917f3b3c2bb88fa4eba77e71add324'
+module 'self/repl.sh' <<'3f92b426d635dd5d6441569a6bd459b0a40f6ba557aafa415b55b3fc4cabdd93'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -287,7 +295,8 @@ repl_sh() {
   repl_sh_state="$(self --no-main | jit_sh)"
   mkdir "$repl_sh_self_dir" \
     && exhume "$repl_sh_self_dir" \
-    && (cd "$repl_sh_self_dir"; exec sh -i "$repl_sh_state") \
+    && (cd "$repl_sh_self_dir"
+        cat "$repl_sh_state" - | exec sh) \
     && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
     && tmpdir_rm -r "$repl_sh_self_dir"
@@ -297,11 +306,14 @@ repl_stateless() {
   repl_stateless_self_dir="$self_tmpdir/repl-stateless-$(self | sha3)"
   mkdir "$repl_stateless_self_dir" \
     && exhume "$repl_stateless_self_dir" \
-    && (cd "$repl_stateless_self_dir"; exec "${SHELL:-bash}" || exec sh) \
+    && (cd "$repl_stateless_self_dir"
+        export PS1="ni$ "
+        export PROMPT="ni$ "
+        exec "${SHELL:-bash}" || exec sh) \
     && inhume "$repl_stateless_self_dir" \
     && tmpdir_rm -r "$repl_stateless_self_dir"
 }
-a5b5264bfe23eeb6a198958c9602bbc3bd917f3b3c2bb88fa4eba77e71add324
+3f92b426d635dd5d6441569a6bd459b0a40f6ba557aafa415b55b3fc4cabdd93
 module 'self/fs.sh' <<'a615a26b95db6aa5c312058c7a337d6584388004646fc5a5bc9795542826b312'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
@@ -421,7 +433,7 @@ self() {
   verb "# </""script>" "$self_main"
 }
 1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/ni.sh' <<'dbdf7f2734728bf35dd568243fbbcd0a68a596c4d8695ea02202b7ec8748631e'
+module 'ni/ni.sh' <<'1b1359356ab2494725bf23db70262b49191c8ca3fbe27ff49bd1d91b3fd48496'
 # ni frontend core definitions: syntactic structures and multimethods
 # See also meta/ni-option.sh for the metaprogramming used by conf.sh.
 
@@ -436,11 +448,64 @@ defstruct branchsub map         # -{ ... }
 defstruct branchmix map         # -@{ ... }
 
 # Pipeline compilation multimethods
-# TODO
+defmulti to_options             # convert back to option list
+defmulti compile                # compile to a shell command
+
+# Option parsing
+# Usage: ni_parse destination_var cli-options...
+ni_parse() {
+  cons ni_parse_stack   '' ''
+  cons ni_parse_command '' ''
+  ni_parse_r="$1"
+  shift
+
+  while [ $# -gt 0 ]; do
+    ni_parse_closers=0
+    ni_parse_push_one=t
+
+    # First handle syntax cases.
+    case "$1" in
+    '[')   cons ni_command_stack lambda     $ni_command_stack ;;
+    '@[')  cons ni_command_stack lambdafork $ni_command_stack ;;
+    '-[')  cons ni_command_stack lambdaplus $ni_command_stack ;;
+    '-@[') cons ni_command_stack lambdamix  $ni_command_stack ;;
+    '{')   cons ni_command_stack branch     $ni_command_stack ;;
+    '@{')  cons ni_command_stack branchfork $ni_command_stack ;;
+    '-{')  cons ni_command_stack branchsub  $ni_command_stack ;;
+    '-@{') cons ni_command_stack branchmix  $ni_command_stack ;;
+
+    ']'|'}') ni_parse_push_one=
+             ni_parse_closers=1 ;;
+
+    # Now handle general options and quasifiles.
+    *)
+      ni_parse_push_one=
+      if [ "x${1#--}" = "x$x" ]; then
+        TODO long option
+      elif [ "x${1#-}" = "x$x" ]; then
+        TODO short option
+      elif [ "x${1#^}" = "x$x" ]; then
+        TODO short lambda
+      else
+        TODO quasifile $1
+      fi
+    esac
+
+    [ "$ni_parse_push_one" = t ] && cons ni_parse_stack '' $ni_parse_stack
+
+    while [ $ni_parse_closers -gt 0 ]; do
+      uncons ni_command_this ni_command_stack $ni_command_stack
+      uncons ni_parse_this   ni_parse_stack   $ni_parse_stack
+      list_reverse ni_parse_this "$ni_parse_this"
+      vector ni_parse_v "$ni_command_this" "$ni_parse_this"
+      eval "cons \${ni_parse_stack}_h \$ni_parse_v \$${ni_parse_stack}_h"
+      ni_parse_closers=$((ni_parse_closers - 1))
+    done
+  done
+}
 
 ni_compile() TODO ni_compile
-ni_parse_options() TODO ni_parse_options
-dbdf7f2734728bf35dd568243fbbcd0a68a596c4d8695ea02202b7ec8748631e
+1b1359356ab2494725bf23db70262b49191c8ca3fbe27ff49bd1d91b3fd48496
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -822,6 +887,34 @@ verb() {
 
 err() verb "$@" >&2
 bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd
+module 'util/substr.sh' <<'63b697bd9532a93a09aea384ef7721e1ee78847fa89b84985739ee361c955172'
+# Numerically indexed substr function
+# POSIX shell doesn't have an expansion for this (bash has ${var:start:len}),
+# so we need to make one. This isn't especially fast, but it does work. All
+# indexes start at zero.
+
+# Usage: substr dest_var s start [length]
+substr() {
+  substr_start=$3
+  substr_mask=
+  substr_double=?
+  while [ $substr_start -gt 0 ]; do
+    [ $((substr_start & 1)) -eq 1 ] && substr_mask="$substr_mask$substr_double"
+    substr_double="$substr_double$substr_double"
+    substr_start=$((substr_start >> 1))
+  done
+
+  if [ -n "$4" ]; then
+    eval "$1=\"\$(printf %.$4s \"\${2#\$substr_mask}\")\""
+  else
+    eval "$1=\"\${2#\$substr_mask}\""
+  fi
+
+  # These could be quite large, so go ahead and free some memory
+  substr_double=
+  substr_mask=
+}
+63b697bd9532a93a09aea384ef7721e1ee78847fa89b84985739ee361c955172
 module 'util/todo.sh' <<'eeb448fda0a8ccb41c9c7f26098fccf946e9d5e3b48818e1586fb82df9e0653f'
 # Support for todo-functions in code
 TODO() {

@@ -12,11 +12,7 @@ vector() {
   shift
   cell vector_cell vector
   eval "${vector_cell}_n=0"
-  for vector_x; do
-    eval "vector_n=\$${vector_cell}_n"
-    eval "${vector_cell}_$vector_n=\"\$vector_x\"
-          ${vector_cell}_n=\$(($vector_n + 1))"
-  done
+  push $vector_cell "$@"
   eval "$vector_r=\$vector_cell"
 }
 
@@ -62,4 +58,16 @@ vec() {
     set -- "$@" "$vec_h"
   done
   vector "$vec_r" "$@"
+}
+
+# Pushes one or more objects onto the end of a vector, modifying it in place.
+push() {
+  push_v=$1
+  n push_i $push_v
+  shift
+  for push_x; do
+    eval "${push_v}_$push_i=\"\$push_x\""
+    eval "${push_v}_n=\$((${push_v}_n + 1))"
+    shift
+  done
 }
