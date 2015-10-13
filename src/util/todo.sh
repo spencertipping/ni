@@ -1,5 +1,5 @@
 # Support for todo-functions in code
 TODO() {
-  err "todo: $@"
+  err "todo: $*"
   return 1
 }

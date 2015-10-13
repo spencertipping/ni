@@ -44,12 +44,15 @@ inhume() {
 save() {
   save_file=$(self | canonical_file)
   save_state=$(self | sha3)
-  save_check=$(sh "$save_file" --state)
+  save_check=$(sh "$save_file" --internal-state)
   if [ "$save_state" = "$save_check" ]; then
     chmod 755 "$save_file"
     mv "$save_file" "$1"
   else
-    err "ni: save failed; $save_state != $save_check"
+    err "ni: save failed; $save_state " \
+        "    != $save_check" \
+        "    (this means the new object failed to convince this one that " \
+        "     it had managed to store everything and operate correctly)"
     save_fail_file="${TMPDIR:-/tmp}/${save_file#$self_tmpdir/}"
     mv "$save_file" "$save_fail_file"
     verb "$save_fail_file"

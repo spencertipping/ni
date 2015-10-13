@@ -1,6 +1,6 @@
 # Cons cell primitive
 meta_hook <<'EOF'
-defstruct cons h t
+defstruct --no-str cons h t
 EOF
 
 # NB: non-standard calling convention. This is used only within sh functions

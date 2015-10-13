@@ -9,6 +9,21 @@ cell() {
 # Defines a named structure with a constructor and GC visitor.
 defined_structs=
 defstruct() {
+  defstruct_emit_ctor=t
+  defstruct_emit_gc=t
+  defstruct_emit_accessors=t
+  defstruct_emit_str=t
+
+  while [ "x${1#--}" != "x$1" ]; do
+    case "$1" in
+    --no-ctor) defstruct_emit_ctor= ;;
+    --no-gc)   defstruct_emit_gc= ;;
+    --no-acc*) defstruct_emit_accessors= ;;
+    --no-str)  defstruct_emit_str= ;;
+    esac
+    shift
+  done
+
   defined_structs="$defined_structs $1"
   defstruct_name=$1
   defstruct_str="${1}_str() eval \"\$1=\\\"<$1"
@@ -21,14 +36,16 @@ defstruct() {
     defstruct_ctor="$defstruct_ctor$newline\${${defstruct_name}_cell}_$defstruct_field=\$$defstruct_i"
     defstruct_visitor="$defstruct_visitor \${2}_$defstruct_field"
     defstruct_str="$defstruct_str $defstruct_field=\\\$\${2}_$defstruct_field"
-    eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
-    eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
+    if [ -n "$defstruct_emit_accessors" ]; then
+      eval "$defstruct_field() eval \"\$1=\\\"\\\$\${2}_$defstruct_field\"\\\""
+      eval "${defstruct_field}_set() eval \"\${1}_$defstruct_field=\\\"\\\$2\\\"\""
+    fi
     defstruct_i=$((defstruct_i + 1))
   done
 
-  eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
-  eval "$defstruct_str>\\\"\""
-  eval "$defstruct_visitor\\\"\""
+  [ -n "$defstruct_emit_ctor" ] && eval "$defstruct_ctor$newline\$1=\$${defstruct_name}_cell\"; }"
+  [ -n "$defstruct_emit_str"  ] && eval "$defstruct_str>\\\"\""
+  [ -n "$defstruct_emit_gc"   ] && eval "$defstruct_visitor\\\"\""
 }
 
 # Defines a type-prefixed multimethod; e.g. "defmulti str" would expand into a

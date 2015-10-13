@@ -1,8 +1,10 @@
-# Numerically indexed substr function
+# String functions
+
+# Substring function
 # POSIX shell doesn't have an expansion for this (bash has ${var:start:len}),
 # so we need to make one. This isn't especially fast, but it does work. All
 # indexes start at zero.
-
+#
 # Usage: substr dest_var s start [length]
 substr() {
   substr_start=$3
@@ -23,4 +25,18 @@ substr() {
   # These could be quite large, so go ahead and free some memory
   substr_double=
   substr_mask=
+}
+
+# Returns the number of characters at the beginning of a string that match a
+# specified pattern.
+# Usage: matching_chars dest_var "$s" [0-9a-f]
+matching_chars() {
+  # TODO: n lg n, not n²
+  matching_chars_n=0
+  matching_chars_s="$2"
+  while [ "x${matching_chars_s#$3}" != "x$matching_chars_s" ]; do
+    matching_chars_s="${matching_chars_s#?}"
+    matching_chars_n=$((matching_chars_n + 1))
+  done
+  eval "$1=\$matching_chars_n"
 }

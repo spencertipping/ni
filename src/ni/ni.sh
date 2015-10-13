@@ -1,5 +1,7 @@
 # ni frontend core definitions: syntactic structures and multimethods
-# See also meta/ni-option.sh for the metaprogramming used by conf.sh.
+# See also meta/ni-option.sh for the metaprogramming used by home/conf.
+
+defstruct quasifile name
 
 # Complex commands
 defstruct lambda body           # [ ... ] or ^x
@@ -26,46 +28,95 @@ ni_parse() {
   while [ $# -gt 0 ]; do
     ni_parse_closers=0
     ni_parse_push_one=t
+    ni_parse_option="$1"
+    ni_parse_to_shift=1
 
     # First handle syntax cases.
-    case "$1" in
-    '[')   cons ni_command_stack lambda     $ni_command_stack ;;
-    '@[')  cons ni_command_stack lambdafork $ni_command_stack ;;
-    '-[')  cons ni_command_stack lambdaplus $ni_command_stack ;;
-    '-@[') cons ni_command_stack lambdamix  $ni_command_stack ;;
-    '{')   cons ni_command_stack branch     $ni_command_stack ;;
-    '@{')  cons ni_command_stack branchfork $ni_command_stack ;;
-    '-{')  cons ni_command_stack branchsub  $ni_command_stack ;;
-    '-@{') cons ni_command_stack branchmix  $ni_command_stack ;;
+    case "$ni_parse_option" in
+    '[')   cons ni_parse_command lambda     $ni_parse_command ;;
+    '@[')  cons ni_parse_command lambdafork $ni_parse_command ;;
+    '-[')  cons ni_parse_command lambdaplus $ni_parse_command ;;
+    '-@[') cons ni_parse_command lambdamix  $ni_parse_command ;;
+    '{')   cons ni_parse_command branch     $ni_parse_command ;;
+    '@{')  cons ni_parse_command branchfork $ni_parse_command ;;
+    '-{')  cons ni_parse_command branchsub  $ni_parse_command ;;
+    '-@{') cons ni_parse_command branchmix  $ni_parse_command ;;
 
-    ']'|'}') ni_parse_push_one=
-             ni_parse_closers=1 ;;
+    ']'|'}') ni_parse_push_one= ni_parse_closers=1 ;;
 
     # Now handle general options and quasifiles.
     *)
       ni_parse_push_one=
-      if [ "x${1#--}" = "x$x" ]; then
-        TODO long option
-      elif [ "x${1#-}" = "x$x" ]; then
+
+      # Look for any lambda prefixes, forking or not. These end as soon as
+      # we've consumed all arguments for the quoted operator, so we increment
+      # ni_parse_closers for each prefix.
+      while [ "x${ni_parse_option#^}"  != "x$ni_parse_option" ] \
+         || [ "x${ni_parse_option#@^}" != "x$ni_parse_option" ]; do
+        cons ni_parse_stack '' $ni_parse_stack
+        ni_parse_closers=$((ni_parse_closers + 1))
+        if [ "x${ni_parse_option#@}" != "x$ni_parse_option" ]; then
+          # Forking short lambda
+          cons ni_parse_command lambdafork $ni_parse_command
+        else
+          # Non-forking short lambda
+          cons ni_parse_command lambda $ni_parse_command
+        fi
+      done
+
+      if [ "x${ni_parse_option#--}" != "x$ni_parse_option" ]; then
+        # Long option parsing mode: retrieve the option's syntax and parse
+        # additional arguments, stuffing them all into the specified option
+        # structure.
+        get ni_parse_option_ref $long_options "${ni_parse_option#--}"
+        if [ -z "$ni_parse_option_ref" ]; then
+          err "ni: unknown long option $ni_parse_option"
+          return 1
+        fi
+
+        syntax ni_parse_syntax "$ni_parse_option_ref"
+        fn     ni_parse_fn     "$ni_parse_option_ref"
+
+        # After a long option, all arguments are expected to be provided as
+        # separate options; i.e. we don't have any shorthands for
+        # option-packing.
+        while [ -n "$ni_parse_syntax" ]; do
+          substr ni_parse_syntax_x "$ni_parse_syntax" 0 1
+          ni_parse_syntax="${ni_parse_syntax#?}"
+          TODO syntax parsing
+        done
+      elif [ "x${ni_parse_option#-}" != "x$ni_parse_option" ]; then
         TODO short option
-      elif [ "x${1#^}" = "x$x" ]; then
-        TODO short lambda
       else
-        TODO quasifile $1
+        TODO quasifile $ni_parse_option
       fi
     esac
 
     [ "$ni_parse_push_one" = t ] && cons ni_parse_stack '' $ni_parse_stack
 
     while [ $ni_parse_closers -gt 0 ]; do
-      uncons ni_command_this ni_command_stack $ni_command_stack
-      uncons ni_parse_this   ni_parse_stack   $ni_parse_stack
+      uncons ni_parse_the_cmd ni_parse_command $ni_parse_command
+      uncons ni_parse_this    ni_parse_stack   $ni_parse_stack
       list_reverse ni_parse_this "$ni_parse_this"
-      vector ni_parse_v "$ni_command_this" "$ni_parse_this"
+
+      # TODO: no longer accurate; we need to apply a constructor here.
+      vector ni_parse_v "$ni_parse_the_cmd" "$ni_parse_this"
+
       eval "cons \${ni_parse_stack}_h \$ni_parse_v \$${ni_parse_stack}_h"
       ni_parse_closers=$((ni_parse_closers - 1))
     done
+
+    shift $ni_parse_to_shift
+  done
+
+  until [ -z "$ni_parse_stack" ]; do
+    uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
   done
 }
 
-ni_compile() TODO ni_compile
+# Compiles a structure produced by ni_parse, returning the jit context to
+# execute it. Usage:
+# ni_compile dest_var $cons_structure
+ni_compile() {
+  TODO ni_compile
+}

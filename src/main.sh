@@ -22,13 +22,12 @@ main() {
     err "ni: entering a shell to edit the current image" \
         "    any changes you make to files here will be reflected in ni" \
         "    and written back into $0 (assuming the result is able to" \
-        "    function correctly; otherwise a tempfile will be saved)"
+        "    function correctly; otherwise a tempfile will be saved)" \
+        "" \
+        "    exit the shell to save your changes and return" \
+        ""
     repl_stateless "$@"
-    main_save_result="$(save "$0")"
-    if [ -n "$main_save_result" ]; then
-      err "ni: the current image failed to save itself: preserving state;" \
-          "    the broken image is saved as $main_save_result."
-    fi
+    save "$0"
     ;;
 
   --install)
@@ -59,13 +58,20 @@ main() {
     fi
     ;;
 
-  --repl)  shift; repl_sh ;;
-  --self)  shift; self "$@" ;;
-  --sha3)  shift; sha3 ;;
-  --state) shift; self "$@" | exec "$sha3" ;;
+  # FS interop
+  --unpack|--expand|--exhume) shift; mkdir "$1" && exhume "$1" ;;
+  --use|--intern|--inhume)    shift; inhume "$1" && save "$0" ;;
+
+  # Internal options for the build process and debugging
+  --internal-repl)  shift; repl_sh ;;
+  --internal-self)  shift; self "$@" ;;
+  --internal-sha3)  shift; sha3 ;;
+  --internal-state) shift; self "$@" | exec "$sha3" ;;
 
   *)
-    ni_compile main_ni "$@" && "$main_ni"
+    ni_parse main_parsed "$@"
+    str s $main_parsed
+    verb "got this: $s"
     ;;
   esac
 
