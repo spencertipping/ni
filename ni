@@ -80,13 +80,16 @@ defmulti() eval "$1() {
 defmulti str
 primitive_str() eval "$1=\"\$2\""
 046bbcde1645f24eb79fb98ff1f82b91ba727ca3a064eef9019ca970d8ead34e
-module 'meta/ni-option.sh' <<'7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a'
+module 'meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
 # ni option data structure and generator
 
 meta_hook <<'EOF'
 defstruct option long short syntax fn description
 hashmap long_options
 hashmap short_options
+
+defstruct option_syntax name mode accept description
+hashmap option_syntaxes
 EOF
 
 option_str() eval "$1=\"-\$${2}_short|--\$${2}_long [\$${2}_syntax]" \
@@ -113,8 +116,15 @@ defoption() {
   [ -n "$defoption_short" ] \
     && assoc $short_options $defoption_short $defoption_new
 }
-7eea35b6a521da042ad249230af04dba287e31305bba47b71986b589081a671a
-module 'meta/list.sh' <<'fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17'
+
+# Defines an option argument syntax parser. The mode indicates when, and how
+# much, the argument is accepted.
+defoptionsyntax() {
+  option_syntax defoptionsyntax_new "$@"
+  assoc $option_syntaxes $1 $defoptionsyntax_new
+}
+99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40
+module 'meta/list.sh' <<'08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b'
 # Linked list functions
 
 list_reverse() {
@@ -125,6 +135,29 @@ list_reverse() {
   else
     eval "$1=\$3"
   fi
+}
+
+list_append() {
+  if [ -n "$2" ]; then
+    uncons list_append_h list_append_t $2
+    set -- $1 "$list_append_h"
+    list_append list_append_t "$list_append_t" "$3"
+    cons $1 "$list_append_h" "$list_append_t"
+  else
+    eval "$1=\$3"
+  fi
+}
+
+# Converts command-line arguments to a list
+list() {
+  list_r=$1
+  list_cons=
+  shift
+  while [ $# -gt 0 ]; do
+    cons list_cons "$1" "$list_cons"
+    shift
+  done
+  list_reverse $list_r "$list_cons"
 }
 
 # Like the usual (apply), but doesn't accept any intermediate arguments; that
@@ -140,8 +173,8 @@ apply_last() {
   done
   $apply_last_f $apply_last_r "$@"
 }
-fe793c0e5ea99832e216de8c6ef46295bfb60915e4da3994c6e74947acf13e17
-module 'meta/vector.sh' <<'fbb8e8a84096c18f7a40a7076d6e32f55279e473284628e0bb0a5eb6a5044a63'
+08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b
+module 'meta/vector.sh' <<'f9a52884c18b92403f45a5c4f0f7cecd2de1f6f68306a7be1b69479ec9c948eb'
 # Vector data structure
 
 meta_hook <<'EOF'
@@ -149,21 +182,20 @@ defmulti n
 defmulti nth
 EOF
 
-# This is roughly what defstruct generates, though this is a bit more
-# complicated because it supports variable arity.
+# This is roughly what defstruct would have generated, though this is a bit
+# more complicated because it supports variable arity.
 vector() {
   vector_r=$1
   shift
   cell vector_cell vector
-  eval "${vector_cell}_n=0"
+  eval "${vector_cell}_n=0 ${vector_cell}_shift=0"
   push $vector_cell "$@"
   eval "$vector_r=\$vector_cell"
 }
 
 vector_gc() {
   vector_gc_r=$1
-  eval "vector_gc_n=\$${2}_n"
-  vector_gc_i=0
+  eval "vector_gc_n=\$${2}_n vector_gc_i=\$${2}_shift"
   vector_gc_s=
   while [ $vector_gc_i -lt $vector_gc_n ]; do
     eval "vector_gc_s=\"\$vector_gc_s \$${2}_$vector_gc_i\""
@@ -172,8 +204,13 @@ vector_gc() {
   eval "$vector_gc_r=\"\$vector_gc_s\""
 }
 
-vector_n()   eval "$1=\"\$${2}_n\""
-vector_nth() eval "$1=\"\$${2}_$3\""
+vector_n() eval "$1=\$((${2}_n - ${2}_shift))"
+
+vector_nth() {
+  vector_nth_i=$3
+  eval "vector_nth_i=\$((vector_nth_i - \$${2}_shift))"
+  eval "$1=\"\$${2}_$vector_nth_i\""
+}
 
 vector_str() {
   vector_str_i=0
@@ -207,15 +244,23 @@ vec() {
 # Pushes one or more objects onto the end of a vector, modifying it in place.
 push() {
   push_v=$1
-  n push_i $push_v
   shift
   for push_x; do
-    eval "${push_v}_$push_i=\"\$push_x\""
-    eval "${push_v}_n=\$((${push_v}_n + 1))"
+    eval "push_i=\$${push_v}_n"
+    eval "${push_v}_$push_i=\"\$push_x\" ${push_v}_n=\$((${push_v}_n + 1))"
     shift
   done
 }
-fbb8e8a84096c18f7a40a7076d6e32f55279e473284628e0bb0a5eb6a5044a63
+
+# Shifts an object from the beginning of the vector, modifying the vector in
+# place. Usage:
+# vector_shift object_var $vector_ref
+vector_shift() {
+  eval "vector_shift_i=\$${2}_shift"
+  eval "$1=\"\$${2}_$vector_shift_i\""
+  eval "${2}_shift=\$((vector_shift_i + 1))"
+}
+f9a52884c18b92403f45a5c4f0f7cecd2de1f6f68306a7be1b69479ec9c948eb
 module 'meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -298,7 +343,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'e3069d17f7966a2585a5c43beb19288f4968959a44de07c32ec3f708ef2687d4'
+module 'self/repl.sh' <<'083eda334f4e918a7fe2e71add28684202bae0ac30a28739450b39fab56584fc'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -312,7 +357,11 @@ repl_sh() {
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir/home" || cd "$repl_stateless_self_dir"
-        cat "$repl_sh_state" - | exec sh) \
+        cat "$repl_sh_state" \
+            "$(verb main_setup | canonical_file)" \
+            - \
+            "$(verb "eval \"\$shutdown_hooks\"" | canonical_file)" \
+        | exec sh) \
     && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
     && rm -r "$repl_sh_self_dir"
@@ -328,7 +377,7 @@ repl_stateless() {
     && inhume "$repl_stateless_self_dir" \
     && rm -r "$repl_stateless_self_dir"
 }
-e3069d17f7966a2585a5c43beb19288f4968959a44de07c32ec3f708ef2687d4
+083eda334f4e918a7fe2e71add28684202bae0ac30a28739450b39fab56584fc
 module 'self/fs.sh' <<'9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
@@ -451,7 +500,7 @@ self() {
   verb "# </""script>" "$self_main"
 }
 1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/ni.sh' <<'8590265215fe1bb6e0d830790473481ed93136330d8f4c17b4b67ee0f957480e'
+module 'ni/ni.sh' <<'71ac90c02a8b3cf9d8623f2ddc7f80f2160c4b82cc409ab012723c85eb78745a'
 # ni frontend core definitions: syntactic structures and multimethods
 # See also meta/ni-option.sh for the metaprogramming used by home/conf.
 
@@ -468,11 +517,15 @@ defstruct branchsub map         # -{ ... }
 defstruct branchmix map         # -@{ ... }
 
 # Pipeline compilation multimethods
-defmulti to_options             # convert back to option list
 defmulti compile                # compile to a shell command
+defmulti describe               # plain-English description
 
 # Option parsing
-# Usage: ni_parse destination_var cli-options...
+# Usage: ni_parse destination_var $vector_ref
+#
+# $vector_ref comes from using "vector" to convert "$@" to a vector object.
+# ni_parse will then consume the vector, which amounts to shifting it until
+# it's empty.
 ni_parse() {
   cons ni_parse_stack   '' ''
   cons ni_parse_command '' ''
@@ -531,16 +584,37 @@ ni_parse() {
         syntax ni_parse_syntax "$ni_parse_option_ref"
         fn     ni_parse_fn     "$ni_parse_option_ref"
 
+        ni_parse_arguments=
+
         # After a long option, all arguments are expected to be provided as
         # separate options; i.e. we don't have any shorthands for
-        # option-packing.
+        # option-packing, since clearly the user cares nothing about concision.
         while [ -n "$ni_parse_syntax" ]; do
           substr ni_parse_syntax_x "$ni_parse_syntax" 0 1
           ni_parse_syntax="${ni_parse_syntax#?}"
-          TODO syntax parsing
+
+          get ni_parse_optionsyntax "$option_syntaxes" "$ni_parse_syntax_x"
+          mode ni_parse_optionmode $ni_parse_optionsyntax
+
+          # TODO: can this work with lambdas? Is it sufficient to do a naive
+          # forward-traversal to see where the lambda ends? The only problem is
+          # that lambda delimiters are arguably subject to interpretation: we
+          # don't know whether one is literal, or whether it's an argument to
+          # an option that expects it.
+          case "$ni_parse_syntax_x" in
+          s|v) shift; cons ni_parse_arguments "$1" "$ni_parse_arguments" ;;
+          D)   if string_matches "$2" "[0-9]"; then
+                 shift
+                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
+               fi ;;
+          F)   if string_matches "$2" "[-.0-9]"; then
+                 shift
+                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
+               fi
+          esac
         done
       elif [ "x${ni_parse_option#-}" != "x$ni_parse_option" ]; then
-        TODO short option
+        TODO short option $ni_parse_option
       else
         TODO quasifile $ni_parse_option
       fi
@@ -574,7 +648,7 @@ ni_parse() {
 ni_compile() {
   TODO ni_compile
 }
-8590265215fe1bb6e0d830790473481ed93136330d8f4c17b4b67ee0f957480e
+71ac90c02a8b3cf9d8623f2ddc7f80f2160c4b82cc409ab012723c85eb78745a
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -640,7 +714,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'0a4e86eb42ec7a3fe30da5741eec8ed4ec107c472956e70da148063eb64afb9b'
+module 'main.sh' <<'21dcadc8b0a764af966a5f46bb404fca9fe8349aff84a7dd17e57b160e0faa8d'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -712,15 +786,18 @@ main() {
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
   *)
-    ni_parse main_parsed "$@"
-    str s $main_parsed
-    verb "got this: $s"
+    list main_options "$@"
+    str s1 $main_options
+    verb "options = $s1"
+    ni_parse main_parsed "$main_options"
+    str s2 $main_parsed
+    verb "parsed  = $s2"
     ;;
   esac
 
   eval "$shutdown_hooks"
 }
-0a4e86eb42ec7a3fe30da5741eec8ed4ec107c472956e70da148063eb64afb9b
+21dcadc8b0a764af966a5f46bb404fca9fe8349aff84a7dd17e57b160e0faa8d
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
@@ -839,15 +916,25 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
-module 'home/conf' <<'a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac'
+module 'home/conf' <<'ffb9884766d89f44d9807cc6bf02544a862e51d1245ded5102eb28aba9736c08'
 # ni configuration, including CLI option mapping. Uses generators defined in
 # meta/ni-option.sh.
+#
+# Valid argument-parsing syntax specifiers are:
+#
+#   s   string: rest of short argument, or next whole argument, or lambda
+#   v   varstring: one char of short, next whole, or lambda
+#   D   as many digits as we have in short mode, next if digits in long mode
+#   F   like D, but includes . - (mnemonic float)
+#   R   like F, but includes : , (mnemonic range)
+#
+# D, F, and R are uppercase because they all indicate optional quantities.
 
 # Sorting operations
 defoption --group  -g D ni_group
 defoption --order  -o D ni_order
 defoption --rorder -O D ni_rorder
-a26233e58002cee486637e5a49d5565823523596c1a7b8495c70d4b4e802eeac
+ffb9884766d89f44d9807cc6bf02544a862e51d1245ded5102eb28aba9736c08
 module 'util/tmpfile.sh' <<'716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48'
 # Creates uniquely-named files in the temporary directory
 
@@ -939,7 +1026,7 @@ file_buffer() {
   tmpdir_rm "$file_buffer_tmp"
 }
 716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48
-module 'util/string.sh' <<'ee8f20eb876ccf3920e0964beaa251c1940c308c760f26a181df4f7d98a256ef'
+module 'util/string.sh' <<'eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af'
 # String functions
 
 # Substring function
@@ -982,7 +1069,14 @@ matching_chars() {
   done
   eval "$1=\$matching_chars_n"
 }
-ee8f20eb876ccf3920e0964beaa251c1940c308c760f26a181df4f7d98a256ef
+
+# Indicates with its exit code whether every character in the given string
+# matches the specified pattern.
+string_matches() {
+  matching_chars string_matches_n "$1" "$2"
+  [ ${string_matches_n} -eq "${#1}" ]
+}
+eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af
 module 'util/verb.sh' <<'bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret its arguments

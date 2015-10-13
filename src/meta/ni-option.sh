@@ -4,6 +4,9 @@ meta_hook <<'EOF'
 defstruct option long short syntax fn description
 hashmap long_options
 hashmap short_options
+
+defstruct option_syntax name mode accept description
+hashmap option_syntaxes
 EOF
 
 option_str() eval "$1=\"-\$${2}_short|--\$${2}_long [\$${2}_syntax]" \
@@ -29,4 +32,11 @@ defoption() {
   assoc $long_options $defoption_long $defoption_new
   [ -n "$defoption_short" ] \
     && assoc $short_options $defoption_short $defoption_new
+}
+
+# Defines an option argument syntax parser. The mode indicates when, and how
+# much, the argument is accepted.
+defoptionsyntax() {
+  option_syntax defoptionsyntax_new "$@"
+  assoc $option_syntaxes $1 $defoptionsyntax_new
 }

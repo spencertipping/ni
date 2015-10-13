@@ -14,11 +14,15 @@ defstruct branchsub map         # -{ ... }
 defstruct branchmix map         # -@{ ... }
 
 # Pipeline compilation multimethods
-defmulti to_options             # convert back to option list
 defmulti compile                # compile to a shell command
+defmulti describe               # plain-English description
 
 # Option parsing
-# Usage: ni_parse destination_var cli-options...
+# Usage: ni_parse destination_var $vector_ref
+#
+# $vector_ref comes from using "vector" to convert "$@" to a vector object.
+# ni_parse will then consume the vector, which amounts to shifting it until
+# it's empty.
 ni_parse() {
   cons ni_parse_stack   '' ''
   cons ni_parse_command '' ''
@@ -77,16 +81,37 @@ ni_parse() {
         syntax ni_parse_syntax "$ni_parse_option_ref"
         fn     ni_parse_fn     "$ni_parse_option_ref"
 
+        ni_parse_arguments=
+
         # After a long option, all arguments are expected to be provided as
         # separate options; i.e. we don't have any shorthands for
-        # option-packing.
+        # option-packing, since clearly the user cares nothing about concision.
         while [ -n "$ni_parse_syntax" ]; do
           substr ni_parse_syntax_x "$ni_parse_syntax" 0 1
           ni_parse_syntax="${ni_parse_syntax#?}"
-          TODO syntax parsing
+
+          get ni_parse_optionsyntax "$option_syntaxes" "$ni_parse_syntax_x"
+          mode ni_parse_optionmode $ni_parse_optionsyntax
+
+          # TODO: can this work with lambdas? Is it sufficient to do a naive
+          # forward-traversal to see where the lambda ends? The only problem is
+          # that lambda delimiters are arguably subject to interpretation: we
+          # don't know whether one is literal, or whether it's an argument to
+          # an option that expects it.
+          case "$ni_parse_syntax_x" in
+          s|v) shift; cons ni_parse_arguments "$1" "$ni_parse_arguments" ;;
+          D)   if string_matches "$2" "[0-9]"; then
+                 shift
+                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
+               fi ;;
+          F)   if string_matches "$2" "[-.0-9]"; then
+                 shift
+                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
+               fi
+          esac
         done
       elif [ "x${ni_parse_option#-}" != "x$ni_parse_option" ]; then
-        TODO short option
+        TODO short option $ni_parse_option
       else
         TODO quasifile $ni_parse_option
       fi

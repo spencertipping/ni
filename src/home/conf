@@ -1,5 +1,15 @@
 # ni configuration, including CLI option mapping. Uses generators defined in
 # meta/ni-option.sh.
+#
+# Valid argument-parsing syntax specifiers are:
+#
+#   s   string: rest of short argument, or next whole argument, or lambda
+#   v   varstring: one char of short, next whole, or lambda
+#   D   as many digits as we have in short mode, next if digits in long mode
+#   F   like D, but includes . - (mnemonic float)
+#   R   like F, but includes : , (mnemonic range)
+#
+# D, F, and R are uppercase because they all indicate optional quantities.
 
 # Sorting operations
 defoption --group  -g D ni_group

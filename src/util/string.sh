@@ -40,3 +40,10 @@ matching_chars() {
   done
   eval "$1=\$matching_chars_n"
 }
+
+# Indicates with its exit code whether every character in the given string
+# matches the specified pattern.
+string_matches() {
+  matching_chars string_matches_n "$1" "$2"
+  [ ${string_matches_n} -eq "${#1}" ]
+}

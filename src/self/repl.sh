@@ -11,7 +11,11 @@ repl_sh() {
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir/home" || cd "$repl_stateless_self_dir"
-        cat "$repl_sh_state" - | exec sh) \
+        cat "$repl_sh_state" \
+            "$(verb main_setup | canonical_file)" \
+            - \
+            "$(verb "eval \"\$shutdown_hooks\"" | canonical_file)" \
+        | exec sh) \
     && jit_sh_free "$repl_sh_state" \
     && inhume "$repl_sh_self_dir" \
     && rm -r "$repl_sh_self_dir"

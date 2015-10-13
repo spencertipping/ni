@@ -69,9 +69,12 @@ main() {
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
   *)
-    ni_parse main_parsed "$@"
-    str s $main_parsed
-    verb "got this: $s"
+    list main_options "$@"
+    str s1 $main_options
+    verb "options = $s1"
+    ni_parse main_parsed "$main_options"
+    str s2 $main_parsed
+    verb "parsed  = $s2"
     ;;
   esac
 
