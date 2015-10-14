@@ -53,13 +53,37 @@ defstruct() {
 #
 # If the object in question is not a reference (i.e. it's a bare string), then
 # it is its own string representation.
-defmulti() eval "$1() {
-                   multi_${1}_type=\${2%_*}
-                   [ \"\${multi_${1}_type#_}\" != \"\$multi_${1}_type\" ] \
-                     && \${multi_${1}_type#_}_$1 \"\$@\" \
-                     || primitive_str \"\$@\"
-                 }"
+#
+# Some functions don't return things, while others return multiple values. To
+# deal with this, defmulti accepts an optional number before the multimethod
+# name to indicate the number of the argument whose type to use for dispatch.
+defmulti() {
+  defmulti_n=2
+  if string_matches "$1" [0-9]; then
+    defmulti_n=$1
+    shift
+  fi
+
+  for defmulti_name; do
+    eval "$defmulti_name() {
+      multi_${defmulti_name}_type=\${$defmulti_n%_*}
+      if [ \"\${multi_${defmulti_name}_type#_}\" != \"\$multi_${defmulti_name}_type\" ]; then
+        \${multi_${defmulti_name}_type#_}_$defmulti_name \"\$@\"
+      else
+        primitive_$defmulti_name \"\$@\"
+      fi
+    }"
+  done
+}
 
 # Default multimethods available for all structures
+meta_hook <<'EOF'
 defmulti str
+EOF
+
 primitive_str() eval "$1=\"\$2\""
+
+pr() {
+  str pr_s "$1"
+  verb "$pr_s"
+}

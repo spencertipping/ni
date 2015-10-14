@@ -1,6 +1,7 @@
 # ni frontend core definitions: syntactic structures and multimethods
 # See also meta/ni-option.sh for the metaprogramming used by home/conf.
 
+meta_hook <<'EOF'
 defstruct quasifile name
 
 # Complex commands
@@ -16,6 +17,7 @@ defstruct branchmix map         # -@{ ... }
 # Pipeline compilation multimethods
 defmulti compile                # compile to a shell command
 defmulti describe               # plain-English description
+EOF
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
@@ -27,12 +29,11 @@ ni_parse() {
   cons ni_parse_stack   '' ''
   cons ni_parse_command '' ''
   ni_parse_r="$1"
-  shift
+  ni_parse_v="$2"
 
-  while [ $# -gt 0 ]; do
+  while lpop ni_parse_option "$ni_parse_v"; do
     ni_parse_closers=0
     ni_parse_push_one=t
-    ni_parse_option="$1"
     ni_parse_to_shift=1
 
     # First handle syntax cases.
@@ -134,9 +135,11 @@ ni_parse() {
     shift $ni_parse_to_shift
   done
 
-  until [ -z "$ni_parse_stack" ]; do
-    uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
-  done
+  uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
+  if ! [ -z "$ni_parse_stack" ]; then
+    err "ni: unclosed bracket(s) or brace(s)"
+    return 1
+  fi
 }
 
 # Compiles a structure produced by ni_parse, returning the jit context to

@@ -1,9 +1,20 @@
 # Vector data structure
 
+# sh won't let us overload "shift", so I decided to prefer the (somewhat
+# un-idiomatic) directional push/pop mnemonics below.
 meta_hook <<'EOF'
-defmulti n
-defmulti nth
+defmulti   n nth vec
+defmulti   lpop  rpop
+defmulti 1 lpush rpush
 EOF
+
+primitive_vec() {
+  if [ $# -eq 2 ] && [ ${#2} -eq 0 ]; then
+    vector "$1"
+  else
+    vector "$@"
+  fi
+}
 
 # This is roughly what defstruct would have generated, though this is a bit
 # more complicated because it supports variable arity.
@@ -12,7 +23,7 @@ vector() {
   shift
   cell vector_cell vector
   eval "${vector_cell}_n=0 ${vector_cell}_shift=0"
-  push $vector_cell "$@"
+  rpush $vector_cell "$@"
   eval "$vector_r=\$vector_cell"
 }
 
@@ -50,8 +61,8 @@ vector_str() {
 }
 
 # Converts a list reference to a vector, unlike (vector) above which makes one
-# out of its shell arguments.
-vec() {
+# out of its shell arguments. nil is handled by primitive_vec.
+cons_vec() {
   vec_r=$1
   vec_l=$2
   shift 2
@@ -64,21 +75,49 @@ vec() {
 }
 
 # Pushes one or more objects onto the end of a vector, modifying it in place.
-push() {
-  push_v=$1
+vector_rpush() {
+  vector_rpush_v=$1
   shift
-  for push_x; do
-    eval "push_i=\$${push_v}_n"
-    eval "${push_v}_$push_i=\"\$push_x\" ${push_v}_n=\$((${push_v}_n + 1))"
+  for vector_rpush_x; do
+    eval "vector_rpush_i=\$${vector_rpush_v}_n"
+    eval "${vector_rpush_v}_$vector_rpush_i=\"\$vector_rpush_x\" " \
+         "${vector_rpush_v}_n=\$((${vector_rpush_v}_n + 1))"
     shift
   done
 }
 
-# Shifts an object from the beginning of the vector, modifying the vector in
+# Unshifts one or more elements onto the beginning of a vector. They're
+# unshifted in specified order; e.g. vector_lpush $v 1 2 3 results in [1 2 3
+# ...].
+vector_lpush() {
+  vector_lpush_v=$1
+  shift
+  eval "${vector_lpush_v}_shift=\$((${vector_lpush_v}_shift - $#))"
+  eval "vector_lpush_i=\$${vector_lpush_v}_shift"
+  for vector_lpush_x; do
+    eval "${vector_lpush_v}_$vector_lpush_i=\"\$vector_lpush_x\""
+    vector_lpush_i=$((vector_lpush_i + 1))
+  done
+}
+
+# Pops an object from the beginning of the vector, modifying the vector in
 # place. Usage:
-# vector_shift object_var $vector_ref
-vector_shift() {
-  eval "vector_shift_i=\$${2}_shift"
-  eval "$1=\"\$${2}_$vector_shift_i\""
-  eval "${2}_shift=\$((vector_shift_i + 1))"
+# vector_lpop object_var $vector_ref
+#
+# Returns with exit code 1 and does nothing else if there are no more elements
+# to be popped.
+vector_lpop() {
+  eval "[ \$${2}_shift -lt \$${2}_n ]" || return 1
+  eval "vector_lpop_i=\$${2}_shift"
+  eval "$1=\"\$${2}_$vector_lpop_i\""
+  unset ${2}_$vector_lpop_i
+  eval "${2}_shift=\$((vector_lpop_i + 1))"
+}
+
+vector_rpop() {
+  eval "[ \$${2}_n -gt \$${2}_shift ]" || return 1
+  eval "vector_rpop_n=\$((${2}_n - 1))"
+  eval "$1=\$${2}_$vector_rpop_n"
+  unset ${2}_$vector_rpop_n
+  eval "${2}_n=\$vector_rpop_n"
 }

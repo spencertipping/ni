@@ -69,7 +69,7 @@ main() {
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
   *)
-    list main_options "$@"
+    vector main_options "$@"
     str s1 $main_options
     verb "options = $s1"
     ni_parse main_parsed "$main_options"

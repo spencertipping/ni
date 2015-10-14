@@ -13,7 +13,7 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'046bbcde1645f24eb79fb98ff1f82b91ba727ca3a064eef9019ca970d8ead34e'
+module 'meta/struct.sh' <<'6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893'
 # Data structure metaprogramming
 cell_index=0
 cell() {
@@ -69,17 +69,41 @@ defstruct() {
 #
 # If the object in question is not a reference (i.e. it's a bare string), then
 # it is its own string representation.
-defmulti() eval "$1() {
-                   multi_${1}_type=\${2%_*}
-                   [ \"\${multi_${1}_type#_}\" != \"\$multi_${1}_type\" ] \
-                     && \${multi_${1}_type#_}_$1 \"\$@\" \
-                     || primitive_str \"\$@\"
-                 }"
+#
+# Some functions don't return things, while others return multiple values. To
+# deal with this, defmulti accepts an optional number before the multimethod
+# name to indicate the number of the argument whose type to use for dispatch.
+defmulti() {
+  defmulti_n=2
+  if string_matches "$1" [0-9]; then
+    defmulti_n=$1
+    shift
+  fi
+
+  for defmulti_name; do
+    eval "$defmulti_name() {
+      multi_${defmulti_name}_type=\${$defmulti_n%_*}
+      if [ \"\${multi_${defmulti_name}_type#_}\" != \"\$multi_${defmulti_name}_type\" ]; then
+        \${multi_${defmulti_name}_type#_}_$defmulti_name \"\$@\"
+      else
+        primitive_$defmulti_name \"\$@\"
+      fi
+    }"
+  done
+}
 
 # Default multimethods available for all structures
+meta_hook <<'EOF'
 defmulti str
+EOF
+
 primitive_str() eval "$1=\"\$2\""
-046bbcde1645f24eb79fb98ff1f82b91ba727ca3a064eef9019ca970d8ead34e
+
+pr() {
+  str pr_s "$1"
+  verb "$pr_s"
+}
+6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893
 module 'meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
 # ni option data structure and generator
 
@@ -174,13 +198,24 @@ apply_last() {
   $apply_last_f $apply_last_r "$@"
 }
 08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b
-module 'meta/vector.sh' <<'57569d6802fd4faaf0361a5a75fa874079d3fcd9e88904c7519ace0a80ef4e95'
+module 'meta/vector.sh' <<'c70d72a04390dbb684d272167d9b9f2c9b50250bcb58232f45e473aec796177a'
 # Vector data structure
 
+# sh won't let us overload "shift", so I decided to prefer the (somewhat
+# un-idiomatic) directional push/pop mnemonics below.
 meta_hook <<'EOF'
-defmulti n
-defmulti nth
+defmulti   n nth vec
+defmulti   lpop  rpop
+defmulti 1 lpush rpush
 EOF
+
+primitive_vec() {
+  if [ $# -eq 2 ] && [ ${#2} -eq 0 ]; then
+    vector "$1"
+  else
+    vector "$@"
+  fi
+}
 
 # This is roughly what defstruct would have generated, though this is a bit
 # more complicated because it supports variable arity.
@@ -189,7 +224,7 @@ vector() {
   shift
   cell vector_cell vector
   eval "${vector_cell}_n=0 ${vector_cell}_shift=0"
-  push $vector_cell "$@"
+  rpush $vector_cell "$@"
   eval "$vector_r=\$vector_cell"
 }
 
@@ -227,8 +262,8 @@ vector_str() {
 }
 
 # Converts a list reference to a vector, unlike (vector) above which makes one
-# out of its shell arguments.
-vec() {
+# out of its shell arguments. nil is handled by primitive_vec.
+cons_vec() {
   vec_r=$1
   vec_l=$2
   shift 2
@@ -241,25 +276,53 @@ vec() {
 }
 
 # Pushes one or more objects onto the end of a vector, modifying it in place.
-push() {
-  push_v=$1
+vector_rpush() {
+  vector_rpush_v=$1
   shift
-  for push_x; do
-    eval "push_i=\$${push_v}_n"
-    eval "${push_v}_$push_i=\"\$push_x\" ${push_v}_n=\$((${push_v}_n + 1))"
+  for vector_rpush_x; do
+    eval "vector_rpush_i=\$${vector_rpush_v}_n"
+    eval "${vector_rpush_v}_$vector_rpush_i=\"\$vector_rpush_x\" " \
+         "${vector_rpush_v}_n=\$((${vector_rpush_v}_n + 1))"
     shift
   done
 }
 
-# Shifts an object from the beginning of the vector, modifying the vector in
-# place. Usage:
-# vector_shift object_var $vector_ref
-vector_shift() {
-  eval "vector_shift_i=\$${2}_shift"
-  eval "$1=\"\$${2}_$vector_shift_i\""
-  eval "${2}_shift=\$((vector_shift_i + 1))"
+# Unshifts one or more elements onto the beginning of a vector. They're
+# unshifted in specified order; e.g. vector_lpush $v 1 2 3 results in [1 2 3
+# ...].
+vector_lpush() {
+  vector_lpush_v=$1
+  shift
+  eval "${vector_lpush_v}_shift=\$((${vector_lpush_v}_shift - $#))"
+  eval "vector_lpush_i=\$${vector_lpush_v}_shift"
+  for vector_lpush_x; do
+    eval "${vector_lpush_v}_$vector_lpush_i=\"\$vector_lpush_x\""
+    vector_lpush_i=$((vector_lpush_i + 1))
+  done
 }
-57569d6802fd4faaf0361a5a75fa874079d3fcd9e88904c7519ace0a80ef4e95
+
+# Pops an object from the beginning of the vector, modifying the vector in
+# place. Usage:
+# vector_lpop object_var $vector_ref
+#
+# Returns with exit code 1 and does nothing else if there are no more elements
+# to be popped.
+vector_lpop() {
+  eval "[ \$${2}_shift -lt \$${2}_n ]" || return 1
+  eval "vector_lpop_i=\$${2}_shift"
+  eval "$1=\"\$${2}_$vector_lpop_i\""
+  unset ${2}_$vector_lpop_i
+  eval "${2}_shift=\$((vector_lpop_i + 1))"
+}
+
+vector_rpop() {
+  eval "[ \$${2}_n -gt \$${2}_shift ]" || return 1
+  eval "vector_rpop_n=\$((${2}_n - 1))"
+  eval "$1=\$${2}_$vector_rpop_n"
+  unset ${2}_$vector_rpop_n
+  eval "${2}_n=\$vector_rpop_n"
+}
+c70d72a04390dbb684d272167d9b9f2c9b50250bcb58232f45e473aec796177a
 module 'meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -499,10 +562,11 @@ self() {
   verb "# </""script>" "$self_main"
 }
 1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/ni.sh' <<'71ac90c02a8b3cf9d8623f2ddc7f80f2160c4b82cc409ab012723c85eb78745a'
+module 'ni/ni.sh' <<'b0d27ef741a3b327e0f55b936ceeda3d2ce11a01edc792503849f338299f51d2'
 # ni frontend core definitions: syntactic structures and multimethods
 # See also meta/ni-option.sh for the metaprogramming used by home/conf.
 
+meta_hook <<'EOF'
 defstruct quasifile name
 
 # Complex commands
@@ -518,6 +582,7 @@ defstruct branchmix map         # -@{ ... }
 # Pipeline compilation multimethods
 defmulti compile                # compile to a shell command
 defmulti describe               # plain-English description
+EOF
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
@@ -529,12 +594,11 @@ ni_parse() {
   cons ni_parse_stack   '' ''
   cons ni_parse_command '' ''
   ni_parse_r="$1"
-  shift
+  ni_parse_v="$2"
 
-  while [ $# -gt 0 ]; do
+  while lpop ni_parse_option "$ni_parse_v"; do
     ni_parse_closers=0
     ni_parse_push_one=t
-    ni_parse_option="$1"
     ni_parse_to_shift=1
 
     # First handle syntax cases.
@@ -636,9 +700,11 @@ ni_parse() {
     shift $ni_parse_to_shift
   done
 
-  until [ -z "$ni_parse_stack" ]; do
-    uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
-  done
+  uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
+  if ! [ -z "$ni_parse_stack" ]; then
+    err "ni: unclosed bracket(s) or brace(s)"
+    return 1
+  fi
 }
 
 # Compiles a structure produced by ni_parse, returning the jit context to
@@ -647,7 +713,7 @@ ni_parse() {
 ni_compile() {
   TODO ni_compile
 }
-71ac90c02a8b3cf9d8623f2ddc7f80f2160c4b82cc409ab012723c85eb78745a
+b0d27ef741a3b327e0f55b936ceeda3d2ce11a01edc792503849f338299f51d2
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -713,7 +779,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'f50f2de98348bb01cf011d42479b9f39e3b8407d0e7077ad1735e256f6298568'
+module 'main.sh' <<'9237018979937a8fe909aedb3feb1cfc59429b3b1c01f643fc31223ffdfa935a'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -785,7 +851,7 @@ main() {
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
   *)
-    list main_options "$@"
+    vector main_options "$@"
     str s1 $main_options
     verb "options = $s1"
     ni_parse main_parsed "$main_options"
@@ -796,7 +862,7 @@ main() {
 
   eval "$shutdown_hooks"
 }
-f50f2de98348bb01cf011d42479b9f39e3b8407d0e7077ad1735e256f6298568
+9237018979937a8fe909aedb3feb1cfc59429b3b1c01f643fc31223ffdfa935a
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
