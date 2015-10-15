@@ -618,7 +618,7 @@ for structure_t in branch branchfork branchsub branchmix; do
         }"
 done
 4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0
-module 'ni/ni.sh' <<'fa367aa0ce059b700bc51a8080c0c24ef762df24bb0c0857ba8440d80cf21f15'
+module 'ni/ni.sh' <<'667bfd981f40e26c9b04769e1f698d8e4f8d377a4891a4a7bd7649bb34e342ce'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -693,13 +693,34 @@ ni_bracket_case() {
   esac
 }
 
+# Takes a constructor, a syntax string, and a vector of CLI options, and
+# returns the constructed option after shifting the vector. Parses any lambdas
+# it encounters, which is why this function contains recursion-safety.
+ni_syntax_long() {
+  TODO ni_syntax_long
+}
+
+# Constructs the parse tree for a long option and its arguments, shifting the
+# CLI-option vector to point to the following operator.
+#
+# Usage: ni_parse_long dest_var $long_option_name $cli_vector
+ni_parse_long() {
+  get ni_parse_long_op $long_options $2
+  syntax ni_parse_long_syn $ni_parse_long_op
+
+  TODO ni_parse_long
+}
+
 # Compiles a structure produced by ni_parse, returning a jit context to execute
-# it. Usage: ni_compile dest_var $parsed_vector
+# it. The jit context can be executed without arguments or environment
+# variables, since all quasifiles and other data will be included.
+
+# Usage: ni_compile dest_var $parsed_vector
 
 ni_compile() {
   TODO ni_compile
 }
-fa367aa0ce059b700bc51a8080c0c24ef762df24bb0c0857ba8440d80cf21f15
+667bfd981f40e26c9b04769e1f698d8e4f8d377a4891a4a7bd7649bb34e342ce
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO

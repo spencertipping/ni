@@ -72,8 +72,29 @@ ni_bracket_case() {
   esac
 }
 
+# Takes a constructor, a syntax string, and a vector of CLI options, and
+# returns the constructed option after shifting the vector. Parses any lambdas
+# it encounters, which is why this function contains recursion-safety.
+ni_syntax_long() {
+  TODO ni_syntax_long
+}
+
+# Constructs the parse tree for a long option and its arguments, shifting the
+# CLI-option vector to point to the following operator.
+#
+# Usage: ni_parse_long dest_var $long_option_name $cli_vector
+ni_parse_long() {
+  get ni_parse_long_op $long_options $2
+  syntax ni_parse_long_syn $ni_parse_long_op
+
+  TODO ni_parse_long
+}
+
 # Compiles a structure produced by ni_parse, returning a jit context to execute
-# it. Usage: ni_compile dest_var $parsed_vector
+# it. The jit context can be executed without arguments or environment
+# variables, since all quasifiles and other data will be included.
+
+# Usage: ni_compile dest_var $parsed_vector
 
 ni_compile() {
   TODO ni_compile
