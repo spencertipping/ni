@@ -1141,29 +1141,18 @@ string_matches() {
   [ ${string_matches_n} -eq "${#1}" ]
 }
 eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af
-module 'util/verb.sh' <<'bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd'
+module 'util/verb.sh' <<'8bdf71115f408772f7d3823c142e628d04c1eea6ad560896a75ea86752be917e'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
-# interpret its arguments
-
-# Interesting bug workaround due to data truncation:
-# https://gist.github.com/stfactual/dd9ee48c964067453ff4
-verb_1024_q=?
-while [ ${#verb_1024_q} -lt 1024 ]; do
-  verb_1024_q="$verb_1024_q$verb_1024_q"
-done
+# interpret things inside its arguments, e.g. escape sequences and -x options
 
 verb() {
   for verb_arg; do
-#    while [ ${#verb_arg} -gt 1024 ]; do
-#      printf %.1024s "$verb_arg"
-#      verb_arg="${verb_arg#$verb_1024_q}"
-#    done
     printf "%s\n" "$verb_arg"
   done
 }
 
 err() verb "$@" >&2
-bc4a06e43573a26490686bf3153f0609e3d0a933e41d1b84c50b854cc676edfd
+8bdf71115f408772f7d3823c142e628d04c1eea6ad560896a75ea86752be917e
 module 'util/todo.sh' <<'c7e6b724df83e49ba42c45c1f6f3b0835043d85751778589f58e75dabf6c7a7c'
 # Support for todo-functions in code
 TODO() {
