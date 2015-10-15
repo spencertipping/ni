@@ -198,7 +198,7 @@ apply_last() {
   $apply_last_f $apply_last_r "$@"
 }
 08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b
-module 'meta/vector.sh' <<'c70d72a04390dbb684d272167d9b9f2c9b50250bcb58232f45e473aec796177a'
+module 'meta/vector.sh' <<'eb075ad335d633a02bbd3b48accc32a7d0e49e02259dc7c0c93209fdc79f8064'
 # Vector data structure
 
 # sh won't let us overload "shift", so I decided to prefer the (somewhat
@@ -207,6 +207,7 @@ meta_hook <<'EOF'
 defmulti   n nth vec
 defmulti   lpop  rpop
 defmulti 1 lpush rpush
+defmulti 1 append
 EOF
 
 primitive_vec() {
@@ -322,7 +323,17 @@ vector_rpop() {
   unset ${2}_$vector_rpop_n
   eval "${2}_n=\$vector_rpop_n"
 }
-c70d72a04390dbb684d272167d9b9f2c9b50250bcb58232f45e473aec796177a
+
+# Append two vectors, the second on the right
+vector_append() {
+  vector_append_i=0
+  n vector_append_n $2
+  while [ $vector_append_i -lt $vector_append_n ]; do
+    nth vector_append_x $2 $vector_append_i
+    rpush $1 "$vector_append_x"
+  done
+}
+eb075ad335d633a02bbd3b48accc32a7d0e49e02259dc7c0c93209fdc79f8064
 module 'meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
 # Cons cell primitive
 meta_hook <<'EOF'
@@ -503,7 +514,7 @@ save() {
   fi
 }
 9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569
-module 'self/image.sh' <<'1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d'
+module 'self/image.sh' <<'bdbb6cdd8c08ea472958e080509912e2073805d2525f25a3d1c73f6150896c87'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -522,6 +533,12 @@ module_get() {
     module_get_i=$((module_get_i + 1))
   done
   IFS="$module_get_old_ifs"
+}
+
+# Evaluates the specified module as shell code.
+require() {
+  module_get require_code "$1"
+  eval "$require_code"
 }
 
 # Prints a representation of this object to stdout. If invoked with --no-main
@@ -561,28 +578,50 @@ self() {
   IFS="$self_old_ifs"
   verb "# </""script>" "$self_main"
 }
-1806392814e051c2e785915d3aec1e3b09247e9346d65e4fea51e1ae9f60233d
-module 'ni/ni.sh' <<'b0d27ef741a3b327e0f55b936ceeda3d2ce11a01edc792503849f338299f51d2'
-# ni frontend core definitions: syntactic structures and multimethods
-# See also meta/ni-option.sh for the metaprogramming used by home/conf.
+bdbb6cdd8c08ea472958e080509912e2073805d2525f25a3d1c73f6150896c87
+module 'ni/structure.sh' <<'4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0'
+# Syntactic structures and multimethods
+# See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
+# use those functions rather than anything here.
 
 meta_hook <<'EOF'
 defstruct quasifile name
 
 # Complex commands
-defstruct lambda body           # [ ... ] or ^x
-defstruct lambdafork body       # @[ ... ] or @^x
-defstruct lambdaplus body       # -[ ... ]
-defstruct lambdamix body        # -@[ ... ]
-defstruct branch map            # { x ... , y ... , ... }
-defstruct branchfork map        # @{ x ... , y ... , ... }
-defstruct branchsub map         # -{ ... }
-defstruct branchmix map         # -@{ ... }
+defstruct --no-str lambda body          # [ ... ] or ^x
+defstruct --no-str lambdafork body      # @[ ... ] or @^x
+defstruct --no-str lambdaplus body      # -[ ... ]
+defstruct --no-str lambdamix body       # -@[ ... ]
+defstruct --no-str branch map           # { x ... , y ... , ... }
+defstruct --no-str branchfork map       # @{ x ... , y ... , ... }
+defstruct --no-str branchsub map        # -{ ... }
+defstruct --no-str branchmix map        # -@{ ... }
 
 # Pipeline compilation multimethods
-defmulti compile                # compile to a shell command
-defmulti describe               # plain-English description
+defmulti compile                        # compile to a shell command
+defmulti describe                       # plain-English description
 EOF
+
+for structure_t in lambda lambdafork lambdaplus lambdamix; do
+  eval "${structure_t}_str() {
+          body ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+
+for structure_t in branch branchfork branchsub branchmix; do
+  eval "${structure_t}_str() {
+          map ${structure_t}_str_m \$2
+          str ${structure_t}_str_s \$${structure_t}_str_m
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0
+module 'ni/ni.sh' <<'fa367aa0ce059b700bc51a8080c0c24ef762df24bb0c0857ba8440d80cf21f15'
+# ni frontend functions: option parsing and compilation
+# Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
+# metaprogramming used by home/conf.
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
@@ -590,130 +629,77 @@ EOF
 # $vector_ref comes from using "vector" to convert "$@" to a vector object.
 # ni_parse will then consume the vector, which amounts to shifting it until
 # it's empty.
+#
+# The resulting structure is a vector of option defstructs.
+
 ni_parse() {
-  cons ni_parse_stack   '' ''
-  cons ni_parse_command '' ''
-  ni_parse_r="$1"
-  ni_parse_v="$2"
+  vector $1
 
-  while lpop ni_parse_option "$ni_parse_v"; do
-    ni_parse_closers=0
-    ni_parse_push_one=t
-    ni_parse_to_shift=1
-
-    # First handle syntax cases.
+  while lpop ni_parse_option $2; do
     case "$ni_parse_option" in
-    '[')   cons ni_parse_command lambda     $ni_parse_command ;;
-    '@[')  cons ni_parse_command lambdafork $ni_parse_command ;;
-    '-[')  cons ni_parse_command lambdaplus $ni_parse_command ;;
-    '-@[') cons ni_parse_command lambdamix  $ni_parse_command ;;
-    '{')   cons ni_parse_command branch     $ni_parse_command ;;
-    '@{')  cons ni_parse_command branchfork $ni_parse_command ;;
-    '-{')  cons ni_parse_command branchsub  $ni_parse_command ;;
-    '-@{') cons ni_parse_command branchmix  $ni_parse_command ;;
+    # Closer: done with inner parse, so return
+    ']'|'}')
+      return 0
+      ;;
 
-    ']'|'}') ni_parse_push_one= ni_parse_closers=1 ;;
+    # Openers: parse inside, then add to vector. Delegate to ni_bracket_case to
+    # select the constructing class.
+    '['|'@['|'-['|'-@['|'{'|'@{'|'-{'|'-@{')
+      ni_bracket_case ni_parse_b "$ni_parse_option"
+      set -- "$1" "$2" "$ni_parse_b"
+      ni_parse ni_parse_xs $2
+      $3 ni_parse_obj $ni_parse_xs
+      eval "rpush \$$1 \$ni_parse_obj"
+      ;;
 
-    # Now handle general options and quasifiles.
+    # Long options
+    --*)
+      ni_parse_long_option ni_parse_obj ${ni_parse_option#--} $2
+      eval "rpush \$$1 \$ni_parse_obj"
+      ;;
+
+    # Short options
+    -*|^*|@^*)
+      # Some explanation here. ni_parse is about establishing the context of an
+      # argument, which is why we match so many cases for this branch.
+      # ni_parse_short_options sorts out the lambda-notation for us by wrapping
+      # the results (and intermediate ones; see doc/operators.md for some
+      # examples of this). All we need to do is trim the leading -, if there is
+      # one, from the option string so it sees exactly what it needs to.
+
+      ni_parse_short_options ni_parse_objs ${ni_parse_option#-} $2
+      eval "rappend \$$1 \$ni_parse_objs"
+      ;;
+
+    # Quasifiles
     *)
-      ni_parse_push_one=
-
-      # Look for any lambda prefixes, forking or not. These end as soon as
-      # we've consumed all arguments for the quoted operator, so we increment
-      # ni_parse_closers for each prefix.
-      while [ "x${ni_parse_option#^}"  != "x$ni_parse_option" ] \
-         || [ "x${ni_parse_option#@^}" != "x$ni_parse_option" ]; do
-        cons ni_parse_stack '' $ni_parse_stack
-        ni_parse_closers=$((ni_parse_closers + 1))
-        if [ "x${ni_parse_option#@}" != "x$ni_parse_option" ]; then
-          # Forking short lambda
-          cons ni_parse_command lambdafork $ni_parse_command
-        else
-          # Non-forking short lambda
-          cons ni_parse_command lambda $ni_parse_command
-        fi
-      done
-
-      if [ "x${ni_parse_option#--}" != "x$ni_parse_option" ]; then
-        # Long option parsing mode: retrieve the option's syntax and parse
-        # additional arguments, stuffing them all into the specified option
-        # structure.
-        get ni_parse_option_ref $long_options "${ni_parse_option#--}"
-        if [ -z "$ni_parse_option_ref" ]; then
-          err "ni: unknown long option $ni_parse_option"
-          return 1
-        fi
-
-        syntax ni_parse_syntax "$ni_parse_option_ref"
-        fn     ni_parse_fn     "$ni_parse_option_ref"
-
-        ni_parse_arguments=
-
-        # After a long option, all arguments are expected to be provided as
-        # separate options; i.e. we don't have any shorthands for
-        # option-packing, since clearly the user cares nothing about concision.
-        while [ -n "$ni_parse_syntax" ]; do
-          substr ni_parse_syntax_x "$ni_parse_syntax" 0 1
-          ni_parse_syntax="${ni_parse_syntax#?}"
-
-          get ni_parse_optionsyntax "$option_syntaxes" "$ni_parse_syntax_x"
-          mode ni_parse_optionmode $ni_parse_optionsyntax
-
-          # TODO: can this work with lambdas? Is it sufficient to do a naive
-          # forward-traversal to see where the lambda ends? The only problem is
-          # that lambda delimiters are arguably subject to interpretation: we
-          # don't know whether one is literal, or whether it's an argument to
-          # an option that expects it.
-          case "$ni_parse_syntax_x" in
-          s|v) shift; cons ni_parse_arguments "$1" "$ni_parse_arguments" ;;
-          D)   if string_matches "$2" "[0-9]"; then
-                 shift
-                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
-               fi ;;
-          F)   if string_matches "$2" "[-.0-9]"; then
-                 shift
-                 cons ni_parse_arguments "$1" "$ni_parse_arguments"
-               fi
-          esac
-        done
-      elif [ "x${ni_parse_option#-}" != "x$ni_parse_option" ]; then
-        TODO short option $ni_parse_option
-      else
-        TODO quasifile $ni_parse_option
-      fi
+      quasifile ni_parse_obj "$ni_parse_option"
+      eval "rpush \$$1 \$ni_parse_obj"
+      ;;
     esac
-
-    [ "$ni_parse_push_one" = t ] && cons ni_parse_stack '' $ni_parse_stack
-
-    while [ $ni_parse_closers -gt 0 ]; do
-      uncons ni_parse_the_cmd ni_parse_command $ni_parse_command
-      uncons ni_parse_this    ni_parse_stack   $ni_parse_stack
-      list_reverse ni_parse_this "$ni_parse_this"
-
-      # TODO: no longer accurate; we need to apply a constructor here.
-      vector ni_parse_v "$ni_parse_the_cmd" "$ni_parse_this"
-
-      eval "cons \${ni_parse_stack}_h \$ni_parse_v \$${ni_parse_stack}_h"
-      ni_parse_closers=$((ni_parse_closers - 1))
-    done
-
-    shift $ni_parse_to_shift
   done
-
-  uncons "$ni_parse_r" ni_parse_stack "$ni_parse_stack"
-  if ! [ -z "$ni_parse_stack" ]; then
-    err "ni: unclosed bracket(s) or brace(s)"
-    return 1
-  fi
 }
 
-# Compiles a structure produced by ni_parse, returning the jit context to
-# execute it. Usage:
-# ni_compile dest_var $cons_structure
+ni_bracket_case() {
+  case "$2" in
+  '[')   eval "$1=lambda"     ;;
+  '@[')  eval "$1=lambdafork" ;;
+  '-[')  eval "$1=lambdaplus" ;;
+  '-@[') eval "$1=lambdamix"  ;;
+  '{')   eval "$1=branch"     ;;
+  '@{')  eval "$1=branchfork" ;;
+  '-{')  eval "$1=branchsub"  ;;
+  '-@{') eval "$1=branchmix"  ;;
+  esac
+}
+
+# Compiles a structure produced by ni_parse, returning a jit context to execute
+# it. Usage: ni_compile dest_var $parsed_vector
+
 ni_compile() {
   TODO ni_compile
 }
-b0d27ef741a3b327e0f55b936ceeda3d2ce11a01edc792503849f338299f51d2
+fa367aa0ce059b700bc51a8080c0c24ef762df24bb0c0857ba8440d80cf21f15
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -779,7 +765,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'9237018979937a8fe909aedb3feb1cfc59429b3b1c01f643fc31223ffdfa935a'
+module 'main.sh' <<'c52d4dbe1a5d196a9bfbc92692c9c3824762902edc818b59d00cd2e01e8589bf'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -794,8 +780,7 @@ main_setup() {
 main() {
   main_setup
 
-  module_get conf_module home/conf
-  eval "$conf_module"
+  require home/conf
 
   # Handle image-level special options
   case "$1" in
@@ -862,7 +847,7 @@ main() {
 
   eval "$shutdown_hooks"
 }
-9237018979937a8fe909aedb3feb1cfc59429b3b1c01f643fc31223ffdfa935a
+c52d4dbe1a5d196a9bfbc92692c9c3824762902edc818b59d00cd2e01e8589bf
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
@@ -981,9 +966,9 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
-module 'home/conf' <<'ffb9884766d89f44d9807cc6bf02544a862e51d1245ded5102eb28aba9736c08'
+module 'home/conf' <<'e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d'
 # ni configuration, including CLI option mapping. Uses generators defined in
-# meta/ni-option.sh.
+# meta/ni-option.sh. Also see ni/ni.sh for the option parsing implementation.
 #
 # Valid argument-parsing syntax specifiers are:
 #
@@ -993,13 +978,27 @@ module 'home/conf' <<'ffb9884766d89f44d9807cc6bf02544a862e51d1245ded5102eb28aba9
 #   F   like D, but includes . - (mnemonic float)
 #   R   like F, but includes : , (mnemonic range)
 #
-# D, F, and R are uppercase because they all indicate optional quantities.
+# D, F, and R are uppercase because they all indicate optional quantities (i.e.
+# they reject any non-numeric argument, leaving that to be interpreted as a
+# quasifile or further operator).
+
+# Inference
+# ni will infer things about the way in which it tends to be used; for example,
+# if you often specify a long filename, it will generate shorthands and let you
+# use those instead. This inference is stored in home/inferred and is loaded
+# below.
+#
+# TODO
+if false; then
+  enable_inference
+  require home/inferred
+fi
 
 # Sorting operations
 defoption --group  -g D ni_group
 defoption --order  -o D ni_order
 defoption --rorder -O D ni_rorder
-ffb9884766d89f44d9807cc6bf02544a862e51d1245ded5102eb28aba9736c08
+e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d
 module 'util/tmpfile.sh' <<'716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48'
 # Creates uniquely-named files in the temporary directory
 

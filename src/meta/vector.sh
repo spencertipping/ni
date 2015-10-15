@@ -6,6 +6,7 @@ meta_hook <<'EOF'
 defmulti   n nth vec
 defmulti   lpop  rpop
 defmulti 1 lpush rpush
+defmulti 1 append
 EOF
 
 primitive_vec() {
@@ -120,4 +121,14 @@ vector_rpop() {
   eval "$1=\$${2}_$vector_rpop_n"
   unset ${2}_$vector_rpop_n
   eval "${2}_n=\$vector_rpop_n"
+}
+
+# Append two vectors, the second on the right
+vector_append() {
+  vector_append_i=0
+  n vector_append_n $2
+  while [ $vector_append_i -lt $vector_append_n ]; do
+    nth vector_append_x $2 $vector_append_i
+    rpush $1 "$vector_append_x"
+  done
 }

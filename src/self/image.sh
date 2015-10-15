@@ -18,6 +18,12 @@ module_get() {
   IFS="$module_get_old_ifs"
 }
 
+# Evaluates the specified module as shell code.
+require() {
+  module_get require_code "$1"
+  eval "$require_code"
+}
+
 # Prints a representation of this object to stdout. If invoked with --no-main
 # as the first option, no call to main() will be generated at the end of the
 # image. If invoked with --no-boot, boot.sh will be serialized as a normal

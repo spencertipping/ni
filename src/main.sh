@@ -12,8 +12,7 @@ main_setup() {
 main() {
   main_setup
 
-  module_get conf_module home/conf
-  eval "$conf_module"
+  require home/conf
 
   # Handle image-level special options
   case "$1" in

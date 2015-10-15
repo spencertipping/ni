@@ -1,5 +1,5 @@
 # ni configuration, including CLI option mapping. Uses generators defined in
-# meta/ni-option.sh.
+# meta/ni-option.sh. Also see ni/ni.sh for the option parsing implementation.
 #
 # Valid argument-parsing syntax specifiers are:
 #
@@ -9,7 +9,21 @@
 #   F   like D, but includes . - (mnemonic float)
 #   R   like F, but includes : , (mnemonic range)
 #
-# D, F, and R are uppercase because they all indicate optional quantities.
+# D, F, and R are uppercase because they all indicate optional quantities (i.e.
+# they reject any non-numeric argument, leaving that to be interpreted as a
+# quasifile or further operator).
+
+# Inference
+# ni will infer things about the way in which it tends to be used; for example,
+# if you often specify a long filename, it will generate shorthands and let you
+# use those instead. This inference is stored in home/inferred and is loaded
+# below.
+#
+# TODO
+if false; then
+  enable_inference
+  require home/inferred
+fi
 
 # Sorting operations
 defoption --group  -g D ni_group
