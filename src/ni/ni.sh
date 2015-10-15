@@ -95,12 +95,22 @@ ni_parse_long() {
   TODO ni_parse_long
 }
 
+# Constructs a vector of parsed short-option defstructs (with arguments),
+# shifting the CLI vector accordingly. This function will always consume an
+# exact number of elements; i.e. even though a short option may not itself
+# represent an entire command-line argument, this function will continue
+# parsing options until it reaches the end of the string.
+#
+# Usage: ni_parse_short dest_var $short_option $cli_vector
+ni_parse_short() {
+  TODO ni_parse_short
+}
+
 # Compiles a structure produced by ni_parse, returning a jit context to execute
 # it. The jit context can be executed without arguments or environment
 # variables, since all quasifiles and other data will be included.
-
+#
 # Usage: ni_compile dest_var $parsed_vector
-
 ni_compile() {
   TODO ni_compile
 }

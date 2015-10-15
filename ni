@@ -579,7 +579,7 @@ self() {
   verb "# </""script>" "$self_main"
 }
 bdbb6cdd8c08ea472958e080509912e2073805d2525f25a3d1c73f6150896c87
-module 'ni/structure.sh' <<'4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0'
+module 'ni/structure.sh' <<'8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
 # use those functions rather than anything here.
@@ -592,10 +592,10 @@ defstruct --no-str lambda body          # [ ... ] or ^x
 defstruct --no-str lambdafork body      # @[ ... ] or @^x
 defstruct --no-str lambdaplus body      # -[ ... ]
 defstruct --no-str lambdamix body       # -@[ ... ]
-defstruct --no-str branch map           # { x ... , y ... , ... }
-defstruct --no-str branchfork map       # @{ x ... , y ... , ... }
-defstruct --no-str branchsub map        # -{ ... }
-defstruct --no-str branchmix map        # -@{ ... }
+defstruct --no-str branch branches      # { x ... , y ... , ... }
+defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
+defstruct --no-str branchsub branches   # -{ ... }
+defstruct --no-str branchmix branches   # -@{ ... }
 
 # Pipeline compilation multimethods
 defmulti compile                        # compile to a shell command
@@ -612,13 +612,13 @@ done
 
 for structure_t in branch branchfork branchsub branchmix; do
   eval "${structure_t}_str() {
-          map ${structure_t}_str_m \$2
-          str ${structure_t}_str_s \$${structure_t}_str_m
+          branches ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
           eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
         }"
 done
-4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0
-module 'ni/ni.sh' <<'acef2f1aba5166b91105a594a3e3fe0953e774526ca2b9b4271a09755d375697'
+8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
+module 'ni/ni.sh' <<'9c27bc6fe3b4fb82f59bf3f388c0d5363d7c6d27735753ecc9d14e5902b9a858'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -716,16 +716,26 @@ ni_parse_long() {
   TODO ni_parse_long
 }
 
+# Constructs a vector of parsed short-option defstructs (with arguments),
+# shifting the CLI vector accordingly. This function will always consume an
+# exact number of elements; i.e. even though a short option may not itself
+# represent an entire command-line argument, this function will continue
+# parsing options until it reaches the end of the string.
+#
+# Usage: ni_parse_short dest_var $short_option $cli_vector
+ni_parse_short() {
+  TODO ni_parse_short
+}
+
 # Compiles a structure produced by ni_parse, returning a jit context to execute
 # it. The jit context can be executed without arguments or environment
 # variables, since all quasifiles and other data will be included.
-
+#
 # Usage: ni_compile dest_var $parsed_vector
-
 ni_compile() {
   TODO ni_compile
 }
-acef2f1aba5166b91105a594a3e3fe0953e774526ca2b9b4271a09755d375697
+9c27bc6fe3b4fb82f59bf3f388c0d5363d7c6d27735753ecc9d14e5902b9a858
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO

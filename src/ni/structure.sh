@@ -10,10 +10,10 @@ defstruct --no-str lambda body          # [ ... ] or ^x
 defstruct --no-str lambdafork body      # @[ ... ] or @^x
 defstruct --no-str lambdaplus body      # -[ ... ]
 defstruct --no-str lambdamix body       # -@[ ... ]
-defstruct --no-str branch map           # { x ... , y ... , ... }
-defstruct --no-str branchfork map       # @{ x ... , y ... , ... }
-defstruct --no-str branchsub map        # -{ ... }
-defstruct --no-str branchmix map        # -@{ ... }
+defstruct --no-str branch branches      # { x ... , y ... , ... }
+defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
+defstruct --no-str branchsub branches   # -{ ... }
+defstruct --no-str branchmix branches   # -@{ ... }
 
 # Pipeline compilation multimethods
 defmulti compile                        # compile to a shell command
@@ -30,8 +30,8 @@ done
 
 for structure_t in branch branchfork branchsub branchmix; do
   eval "${structure_t}_str() {
-          map ${structure_t}_str_m \$2
-          str ${structure_t}_str_s \$${structure_t}_str_m
+          branches ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
           eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
         }"
 done
