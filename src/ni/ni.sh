@@ -12,29 +12,30 @@
 # The resulting structure is a vector of option defstructs.
 
 ni_parse() {
-  vector $1
+  vector ni_parse_v
 
   while lpop ni_parse_option $2; do
     case "$ni_parse_option" in
     # Closer: done with inner parse, so return
-    ']'|'}')
-      return 0
-      ;;
+    ']'|'}') break ;;
 
     # Openers: parse inside, then add to vector. Delegate to ni_bracket_case to
     # select the constructing class.
     '['|'@['|'-['|'-@['|'{'|'@{'|'-{'|'-@{')
       ni_bracket_case ni_parse_b "$ni_parse_option"
-      set -- "$1" "$2" "$ni_parse_b"
+      set -- "$1" "$2" "$ni_parse_b" "$ni_parse_v"
       ni_parse ni_parse_xs $2
       $3 ni_parse_obj $ni_parse_xs
-      eval "rpush \$$1 \$ni_parse_obj"
+      ni_parse_v=$4
+      rpush $ni_parse_v $ni_parse_obj
       ;;
 
     # Long options
     --*)
-      ni_parse_long_option ni_parse_obj ${ni_parse_option#--} $2
-      eval "rpush \$$1 \$ni_parse_obj"
+      set -- "$1" "$2" "$ni_parse_v"
+      ni_parse_long ni_parse_obj ${ni_parse_option#--} $2
+      ni_parse_v=$3
+      rpush $ni_parse_v $ni_parse_obj
       ;;
 
     # Short options
@@ -46,17 +47,21 @@ ni_parse() {
       # examples of this). All we need to do is trim the leading -, if there is
       # one, from the option string so it sees exactly what it needs to.
 
-      ni_parse_short_options ni_parse_objs ${ni_parse_option#-} $2
-      eval "rappend \$$1 \$ni_parse_objs"
+      set -- "$1" "$2" "$ni_parse_v"
+      ni_parse_short ni_parse_objs ${ni_parse_option#-} $2
+      ni_parse_v=$3
+      rappend $ni_parse_v $ni_parse_objs
       ;;
 
     # Quasifiles
     *)
       quasifile ni_parse_obj "$ni_parse_option"
-      eval "rpush \$$1 \$ni_parse_obj"
+      rpush $ni_parse_v $ni_parse_obj
       ;;
     esac
   done
+
+  eval "$1=\$ni_parse_v"
 }
 
 ni_bracket_case() {

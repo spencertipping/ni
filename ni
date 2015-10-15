@@ -618,7 +618,7 @@ for structure_t in branch branchfork branchsub branchmix; do
         }"
 done
 4b0a7d8d93ba4fe12a9ecb21b72316d52ae757c43c4b40c0f02f345641096ff0
-module 'ni/ni.sh' <<'667bfd981f40e26c9b04769e1f698d8e4f8d377a4891a4a7bd7649bb34e342ce'
+module 'ni/ni.sh' <<'acef2f1aba5166b91105a594a3e3fe0953e774526ca2b9b4271a09755d375697'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -633,29 +633,30 @@ module 'ni/ni.sh' <<'667bfd981f40e26c9b04769e1f698d8e4f8d377a4891a4a7bd7649bb34e
 # The resulting structure is a vector of option defstructs.
 
 ni_parse() {
-  vector $1
+  vector ni_parse_v
 
   while lpop ni_parse_option $2; do
     case "$ni_parse_option" in
     # Closer: done with inner parse, so return
-    ']'|'}')
-      return 0
-      ;;
+    ']'|'}') break ;;
 
     # Openers: parse inside, then add to vector. Delegate to ni_bracket_case to
     # select the constructing class.
     '['|'@['|'-['|'-@['|'{'|'@{'|'-{'|'-@{')
       ni_bracket_case ni_parse_b "$ni_parse_option"
-      set -- "$1" "$2" "$ni_parse_b"
+      set -- "$1" "$2" "$ni_parse_b" "$ni_parse_v"
       ni_parse ni_parse_xs $2
       $3 ni_parse_obj $ni_parse_xs
-      eval "rpush \$$1 \$ni_parse_obj"
+      ni_parse_v=$4
+      rpush $ni_parse_v $ni_parse_obj
       ;;
 
     # Long options
     --*)
-      ni_parse_long_option ni_parse_obj ${ni_parse_option#--} $2
-      eval "rpush \$$1 \$ni_parse_obj"
+      set -- "$1" "$2" "$ni_parse_v"
+      ni_parse_long ni_parse_obj ${ni_parse_option#--} $2
+      ni_parse_v=$3
+      rpush $ni_parse_v $ni_parse_obj
       ;;
 
     # Short options
@@ -667,17 +668,21 @@ ni_parse() {
       # examples of this). All we need to do is trim the leading -, if there is
       # one, from the option string so it sees exactly what it needs to.
 
-      ni_parse_short_options ni_parse_objs ${ni_parse_option#-} $2
-      eval "rappend \$$1 \$ni_parse_objs"
+      set -- "$1" "$2" "$ni_parse_v"
+      ni_parse_short ni_parse_objs ${ni_parse_option#-} $2
+      ni_parse_v=$3
+      rappend $ni_parse_v $ni_parse_objs
       ;;
 
     # Quasifiles
     *)
       quasifile ni_parse_obj "$ni_parse_option"
-      eval "rpush \$$1 \$ni_parse_obj"
+      rpush $ni_parse_v $ni_parse_obj
       ;;
     esac
   done
+
+  eval "$1=\$ni_parse_v"
 }
 
 ni_bracket_case() {
@@ -720,7 +725,7 @@ ni_parse_long() {
 ni_compile() {
   TODO ni_compile
 }
-667bfd981f40e26c9b04769e1f698d8e4f8d377a4891a4a7bd7649bb34e342ce
+acef2f1aba5166b91105a594a3e3fe0953e774526ca2b9b4271a09755d375697
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO

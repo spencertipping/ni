@@ -1,0 +1,16 @@
+#!/bin/sh
+
+factorial() {
+  if [ $2 -gt 1 ]; then
+    set -- "$1" "$2" "$(($2 - 1))"
+    factorial f $3
+    eval "$1=\$(($2 * $f))"
+  else
+    eval "$1=\$2"
+  fi
+}
+
+for i in `seq 10`; do
+  factorial x $i
+  echo "$i -> $x"
+done
