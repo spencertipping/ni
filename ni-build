@@ -14,28 +14,6 @@ module() {
 . src/self/fs.sh
 inhume src/
 
-if false; then
-module_index=0
-module boot.sh "$(cat src/boot.sh)"
-
-old_ifs="$IFS"
-IFS="$newline"
-for file in $(find src/meta -type f); do
-  IFS="$old_ifs"
-  [ "$file" = "${file%.swp}" ] \
-    && module "${file#src/}" "$(cat "$file")"
-done
-
-IFS="$newline"
-for file in $(find src -type f); do
-  IFS="$old_ifs"
-  [ "$file" != src/boot.sh ] \
-    && [ "$file" = "${file%.swp}" ] \
-    && [ "$file" = "${file#src/meta/}" ] \
-    && module "${file#src/}" "$(cat "$file")"
-done
-fi
-
 main_setup
 self > ni0 && chmod +x ni0
 
