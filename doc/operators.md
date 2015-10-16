@@ -11,11 +11,12 @@ Short operators have the following conventions:
   with optional arguments. This enables better space optimization.
 
 ## High-level changes from nfu
+- ni can compile code in arbitrary languages
+- ni saves state by rewriting itself, allowing you to easily customize it
 - Field addressing happens before the operator: `-10f` instead of `-f10`
 - Partition is now aggregation: `-A^gc` instead of `--partition %0 ^gc`
 - Each language supports key-reduction in its API
 - Command-line arguments are concatenative: `f1 -g f2` != `f1 f2 -g`
-- Unlike nfu, lambdas are not command-line programs (though they can shell out)
 - Forking is a list attribute
 - Quasifiles are read/write
 
@@ -90,7 +91,20 @@ Short   | Long          | Operands      | Description
 `-%`    | interleave    | qfile         | breadth-first concatenation
 `-/`    | prepend       | qfile         | prepends to current stream
 
-## Bracket operators and syntax
+## Lambda forms
+Each lambda form is compiled into, and replaced with, the name of a separate
+program. For example, writing `ni ... [ foo ]` is the same as writing `ni ...
+X`, where `X` is the name of a shell script that executes `ni foo`.
+
+### Quoted command shorthand
+```sh
+$ ni ... -$ 'grep foo'
+$ ni ... -$ grep[ foo ]         # same thing, but better quoting support
+$ ni ... -$ ni[ foo ]           # a way to quote ni, but more likely...
+$ ni ... -$ [ foo ]             # ... you'd say this instead
+```
+
+### Bracket operators and syntax
 - `[ ... ]`: list as quasifile
 - `@[ ... ]`: forking list as quasifile
 - `-[ ... ]`: list as action: append results
@@ -128,7 +142,7 @@ Shell form             | List form
 `ni X | tee f; ni f Y` | `ni X -@[ Y ]`
 `ni X sh:'ni Y'`       | `ni X [ Y ]` or `ni X ^Y`
 
-## Decisional lists
+### Decisional lists
 Decisional lists allow you to predicate on a record's first field. All matching
 is done verbatim, so you'll need to transform your data before branching.
 Decisional lists are written like this:

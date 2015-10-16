@@ -416,7 +416,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'ca80a505aa1b1a5c93c267861feea2bfc757b64c9d126478fc621950bc5677b9'
+module 'self/repl.sh' <<'8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -429,7 +429,8 @@ repl_sh() {
   tmpdir repl_sh_self_dir
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
-    && (cd "$repl_sh_self_dir/home" || cd "$repl_stateless_self_dir"
+    && (cd "$repl_sh_self_dir/home" 2>/dev/null \
+           || cd "$repl_stateless_self_dir"
         cat "$repl_sh_state" \
             "$(verb main_setup | canonical_file)" \
             - \
@@ -443,14 +444,15 @@ repl_sh() {
 repl_stateless() {
   tmpdir repl_stateless_self_dir
   exhume "$repl_stateless_self_dir" \
-    && (cd "$repl_stateless_self_dir/home" || cd "$repl_stateless_self_dir"
+    && (cd "$repl_stateless_self_dir/home" 2>/dev/null \
+           || cd "$repl_stateless_self_dir"
         export PS1="ni$ "
         export PROMPT="ni$ "
         exec "${SHELL:-bash}" "$@" || exec sh "$@") \
     && inhume "$repl_stateless_self_dir" \
     && rm -r "$repl_stateless_self_dir"
 }
-ca80a505aa1b1a5c93c267861feea2bfc757b64c9d126478fc621950bc5677b9
+8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51
 module 'self/fs.sh' <<'9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
@@ -514,7 +516,7 @@ save() {
   fi
 }
 9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569
-module 'self/image.sh' <<'bdbb6cdd8c08ea472958e080509912e2073805d2525f25a3d1c73f6150896c87'
+module 'self/image.sh' <<'497dd598b8970665b23f803171161866039574ff0363e2141d14a5c175e3cc6c'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -533,6 +535,7 @@ module_get() {
     module_get_i=$((module_get_i + 1))
   done
   IFS="$module_get_old_ifs"
+  return 1
 }
 
 # Evaluates the specified module as shell code.
@@ -578,7 +581,7 @@ self() {
   IFS="$self_old_ifs"
   verb "# </""script>" "$self_main"
 }
-bdbb6cdd8c08ea472958e080509912e2073805d2525f25a3d1c73f6150896c87
+497dd598b8970665b23f803171161866039574ff0363e2141d14a5c175e3cc6c
 module 'ni/structure.sh' <<'8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
@@ -618,10 +621,14 @@ for structure_t in branch branchfork branchsub branchmix; do
         }"
 done
 8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
-module 'ni/ni.sh' <<'9c27bc6fe3b4fb82f59bf3f388c0d5363d7c6d27735753ecc9d14e5902b9a858'
+module 'ni/ni.sh' <<'ed1a63b764eb94b785ef96ef5c7f7fa3f8412662c1303351b27a8441b5962ccd'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
+
+# NB: lambda options are deliberately delayed; that is, we don't parse them
+# until the lambda is invoked because the lambda may be running within a
+# context that provides different CLI arguments.
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
@@ -702,7 +709,17 @@ ni_bracket_case() {
 # returns the constructed option after shifting the vector. Parses any lambdas
 # it encounters, which is why this function contains recursion-safety.
 ni_syntax_long() {
-  TODO ni_syntax_long
+  ni_syntax_long_p=$1
+  while [ -n "$ni_syntax_long_p" ]; do
+    substr ni_syntax_long_n "$ni_syntax_long_p" 0 1
+    substr ni_syntax_long_p "$ni_syntax_long_p" 1
+
+    nth ni_syntax_long_arg "$2" 0
+
+    case "$ni_syntax_long_n" in
+    s)
+    esac
+  done
 }
 
 # Constructs the parse tree for a long option and its arguments, shifting the
@@ -735,7 +752,7 @@ ni_parse_short() {
 ni_compile() {
   TODO ni_compile
 }
-9c27bc6fe3b4fb82f59bf3f388c0d5363d7c6d27735753ecc9d14e5902b9a858
+ed1a63b764eb94b785ef96ef5c7f7fa3f8412662c1303351b27a8441b5962ccd
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -801,7 +818,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'c52d4dbe1a5d196a9bfbc92692c9c3824762902edc818b59d00cd2e01e8589bf'
+module 'main.sh' <<'0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -813,15 +830,51 @@ main_setup() {
   main_is_setup=t
 }
 
+make_home() {
+  # ni isn't distributed with a populated home/ directory because then upgrades
+  # would overwrite your stuff. Instead, ni creates home/ if home/conf doesn't
+  # exist.
+  if ! module_get make_home_conf home/conf; then
+    make_home_oldifs="$IFS"
+    IFS="$newline"
+    make_home_i=0
+    for make_home_m in $modules; do
+      if [ "${make_home_m#home-template/}" != "$make_home_m" ]; then
+        eval "module \"home/\${make_home_m#home-template/}\" \
+                     \"\$module_$make_home_i\""
+      fi
+      make_home_i=$((make_home_i + 1))
+    done
+  fi
+}
+
+interactive_edit() {
+  # Opens the user's preferred editor on a file, asking the user about their
+  # editor preference if we're unsure.
+  module_get interactive_edit_editor home/editor
+  if [ -z "$interactive_edit_editor" ]; then
+    # Not sure what to use; ask user and save their preference
+    interactive_edit_editor="${EDITOR:-$VISUAL}"
+    until "$interactive_edit_editor" "$@"; do
+      err "ni: didn't find anything in \$EDITOR or \$VISUAL;" \
+          "    what is your preferred text editor?" \
+          "> "
+      read interactive_edit_editor
+    done
+    module home/editor "$interactive_edit_editor"
+  else
+    "$interactive_edit_editor" "$@"
+  fi
+}
+
 main() {
   main_setup
-
-  require home/conf
 
   # Handle image-level special options
   case "$1" in
   --edit)
     shift
+    make_home
     err "ni: entering a shell to edit the current image" \
         "    any changes you make to files here will be reflected in ni" \
         "    and written back into $0 (assuming the result is able to" \
@@ -830,6 +883,18 @@ main() {
         "    exit the shell to save your changes and return" \
         ""
     repl_stateless "$@"
+    save "$0"
+    ;;
+
+  --conf|--config|--configure)
+    shift
+    make_home
+    tmpdir main_self_dir \
+      && exhume "$main_self_dir" \
+      && interactive_edit "$@" "$main_self_dir/home/conf" \
+      && inhume "$main_self_dir" \
+      && rm -r "$main_self_dir"
+
     save "$0"
     ;;
 
@@ -871,7 +936,11 @@ main() {
   --internal-sha3)  shift; sha3 ;;
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
+  # Normal invocation: parse CLI and run data pipeline
   *)
+    make_home
+    require home/conf
+
     vector main_options "$@"
     str s1 $main_options
     verb "options = $s1"
@@ -883,7 +952,7 @@ main() {
 
   eval "$shutdown_hooks"
 }
-c52d4dbe1a5d196a9bfbc92692c9c3824762902edc818b59d00cd2e01e8589bf
+0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a
 module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
@@ -1002,39 +1071,6 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
-module 'home/conf' <<'e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d'
-# ni configuration, including CLI option mapping. Uses generators defined in
-# meta/ni-option.sh. Also see ni/ni.sh for the option parsing implementation.
-#
-# Valid argument-parsing syntax specifiers are:
-#
-#   s   string: rest of short argument, or next whole argument, or lambda
-#   v   varstring: one char of short, next whole, or lambda
-#   D   as many digits as we have in short mode, next if digits in long mode
-#   F   like D, but includes . - (mnemonic float)
-#   R   like F, but includes : , (mnemonic range)
-#
-# D, F, and R are uppercase because they all indicate optional quantities (i.e.
-# they reject any non-numeric argument, leaving that to be interpreted as a
-# quasifile or further operator).
-
-# Inference
-# ni will infer things about the way in which it tends to be used; for example,
-# if you often specify a long filename, it will generate shorthands and let you
-# use those instead. This inference is stored in home/inferred and is loaded
-# below.
-#
-# TODO
-if false; then
-  enable_inference
-  require home/inferred
-fi
-
-# Sorting operations
-defoption --group  -g D ni_group
-defoption --order  -o D ni_order
-defoption --rorder -O D ni_rorder
-e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d
 module 'util/tmpfile.sh' <<'716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48'
 # Creates uniquely-named files in the temporary directory
 
@@ -1212,5 +1248,45 @@ setup_hooks="$setup_hooks${newline}sha3_setup"
 # NB: no shutdown hook to free the jit context here, since the sha3 program
 # should exist as long as ni maintains its tmpdir.
 05375d44b20622b02a04fd9594890166c9eec2641e851f3d76caadfec8720289
+module 'home-template/README.md' <<'4a55b882a77e91f48fd818988648a7b179758db4c2a3ea59e8c6bbc08ebe2b2d'
+# Home directory
+ni automatically loads `conf`, which configures its command-line option
+mapping. You can edit this file to add new bindings or change existing ones.
+
+No file inside `home` will be modified by a ni upgrade.
+4a55b882a77e91f48fd818988648a7b179758db4c2a3ea59e8c6bbc08ebe2b2d
+module 'home-template/conf' <<'e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d'
+# ni configuration, including CLI option mapping. Uses generators defined in
+# meta/ni-option.sh. Also see ni/ni.sh for the option parsing implementation.
+#
+# Valid argument-parsing syntax specifiers are:
+#
+#   s   string: rest of short argument, or next whole argument, or lambda
+#   v   varstring: one char of short, next whole, or lambda
+#   D   as many digits as we have in short mode, next if digits in long mode
+#   F   like D, but includes . - (mnemonic float)
+#   R   like F, but includes : , (mnemonic range)
+#
+# D, F, and R are uppercase because they all indicate optional quantities (i.e.
+# they reject any non-numeric argument, leaving that to be interpreted as a
+# quasifile or further operator).
+
+# Inference
+# ni will infer things about the way in which it tends to be used; for example,
+# if you often specify a long filename, it will generate shorthands and let you
+# use those instead. This inference is stored in home/inferred and is loaded
+# below.
+#
+# TODO
+if false; then
+  enable_inference
+  require home/inferred
+fi
+
+# Sorting operations
+defoption --group  -g D ni_group
+defoption --order  -o D ni_order
+defoption --rorder -O D ni_rorder
+e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d
 # </script>
 main "$@"

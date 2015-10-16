@@ -2,6 +2,10 @@
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
 
+# NB: lambda options are deliberately delayed; that is, we don't parse them
+# until the lambda is invoked because the lambda may be running within a
+# context that provides different CLI arguments.
+
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
 #
@@ -81,7 +85,17 @@ ni_bracket_case() {
 # returns the constructed option after shifting the vector. Parses any lambdas
 # it encounters, which is why this function contains recursion-safety.
 ni_syntax_long() {
-  TODO ni_syntax_long
+  ni_syntax_long_p=$1
+  while [ -n "$ni_syntax_long_p" ]; do
+    substr ni_syntax_long_n "$ni_syntax_long_p" 0 1
+    substr ni_syntax_long_p "$ni_syntax_long_p" 1
+
+    nth ni_syntax_long_arg "$2" 0
+
+    case "$ni_syntax_long_n" in
+    s)
+    esac
+  done
 }
 
 # Constructs the parse tree for a long option and its arguments, shifting the

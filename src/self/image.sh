@@ -16,6 +16,7 @@ module_get() {
     module_get_i=$((module_get_i + 1))
   done
   IFS="$module_get_old_ifs"
+  return 1
 }
 
 # Evaluates the specified module as shell code.

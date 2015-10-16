@@ -10,7 +10,8 @@ repl_sh() {
   tmpdir repl_sh_self_dir
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
-    && (cd "$repl_sh_self_dir/home" || cd "$repl_stateless_self_dir"
+    && (cd "$repl_sh_self_dir/home" 2>/dev/null \
+           || cd "$repl_stateless_self_dir"
         cat "$repl_sh_state" \
             "$(verb main_setup | canonical_file)" \
             - \
@@ -24,7 +25,8 @@ repl_sh() {
 repl_stateless() {
   tmpdir repl_stateless_self_dir
   exhume "$repl_stateless_self_dir" \
-    && (cd "$repl_stateless_self_dir/home" || cd "$repl_stateless_self_dir"
+    && (cd "$repl_stateless_self_dir/home" 2>/dev/null \
+           || cd "$repl_stateless_self_dir"
         export PS1="ni$ "
         export PROMPT="ni$ "
         exec "${SHELL:-bash}" "$@" || exec sh "$@") \

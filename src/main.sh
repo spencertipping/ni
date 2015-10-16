@@ -9,15 +9,51 @@ main_setup() {
   main_is_setup=t
 }
 
+make_home() {
+  # ni isn't distributed with a populated home/ directory because then upgrades
+  # would overwrite your stuff. Instead, ni creates home/ if home/conf doesn't
+  # exist.
+  if ! module_get make_home_conf home/conf; then
+    make_home_oldifs="$IFS"
+    IFS="$newline"
+    make_home_i=0
+    for make_home_m in $modules; do
+      if [ "${make_home_m#home-template/}" != "$make_home_m" ]; then
+        eval "module \"home/\${make_home_m#home-template/}\" \
+                     \"\$module_$make_home_i\""
+      fi
+      make_home_i=$((make_home_i + 1))
+    done
+  fi
+}
+
+interactive_edit() {
+  # Opens the user's preferred editor on a file, asking the user about their
+  # editor preference if we're unsure.
+  module_get interactive_edit_editor home/editor
+  if [ -z "$interactive_edit_editor" ]; then
+    # Not sure what to use; ask user and save their preference
+    interactive_edit_editor="${EDITOR:-$VISUAL}"
+    until "$interactive_edit_editor" "$@"; do
+      err "ni: didn't find anything in \$EDITOR or \$VISUAL;" \
+          "    what is your preferred text editor?" \
+          "> "
+      read interactive_edit_editor
+    done
+    module home/editor "$interactive_edit_editor"
+  else
+    "$interactive_edit_editor" "$@"
+  fi
+}
+
 main() {
   main_setup
-
-  require home/conf
 
   # Handle image-level special options
   case "$1" in
   --edit)
     shift
+    make_home
     err "ni: entering a shell to edit the current image" \
         "    any changes you make to files here will be reflected in ni" \
         "    and written back into $0 (assuming the result is able to" \
@@ -26,6 +62,18 @@ main() {
         "    exit the shell to save your changes and return" \
         ""
     repl_stateless "$@"
+    save "$0"
+    ;;
+
+  --conf|--config|--configure)
+    shift
+    make_home
+    tmpdir main_self_dir \
+      && exhume "$main_self_dir" \
+      && interactive_edit "$@" "$main_self_dir/home/conf" \
+      && inhume "$main_self_dir" \
+      && rm -r "$main_self_dir"
+
     save "$0"
     ;;
 
@@ -67,7 +115,11 @@ main() {
   --internal-sha3)  shift; sha3 ;;
   --internal-state) shift; self "$@" | exec "$sha3" ;;
 
+  # Normal invocation: parse CLI and run data pipeline
   *)
+    make_home
+    require home/conf
+
     vector main_options "$@"
     str s1 $main_options
     verb "options = $s1"
