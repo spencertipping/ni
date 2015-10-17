@@ -621,14 +621,29 @@ for structure_t in branch branchfork branchsub branchmix; do
         }"
 done
 8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
-module 'ni/ni.sh' <<'ed1a63b764eb94b785ef96ef5c7f7fa3f8412662c1303351b27a8441b5962ccd'
+module 'ni/ni.sh' <<'5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
 
+# Lambda redesign...
 # NB: lambda options are deliberately delayed; that is, we don't parse them
 # until the lambda is invoked because the lambda may be running within a
 # context that provides different CLI arguments.
+#
+# This means we need to _preprocess_ lambdas into JIT contexts or functions.
+#
+# ... which implies that the whole way we're annotating lambdas, e.g. @[] vs
+# -[], is flawed; the lambda doesn't dictate how it manipulates the stream.
+#
+# i.e. lambdas are a way to JIT-compile stuff. In particular, they make it
+# possible to quote things more easily than using shell-quoting, particularly
+# when the thing you're compiling is itself a command.
+#
+# Given that, it seems like lambdas should be context-specific: octave[ ... ]
+# might just concatenate its string arguments, whereas ni[ ... ] parses
+# normally? Really it's a way for a function to take an undetermined number of
+# arguments.
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref
@@ -752,7 +767,7 @@ ni_parse_short() {
 ni_compile() {
   TODO ni_compile
 }
-ed1a63b764eb94b785ef96ef5c7f7fa3f8412662c1303351b27a8441b5962ccd
+5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd
 module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
