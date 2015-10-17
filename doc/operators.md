@@ -13,11 +13,12 @@ Short operators have the following conventions:
 ## High-level changes from nfu
 - ni can compile code in arbitrary languages
 - ni saves state by rewriting itself, allowing you to easily customize it
+- ni automatically creates shorthands to minimize #characters/operation
+- ni is much more concise and has more powerful lambda notation
 - Field addressing happens before the operator: `-10f` instead of `-f10`
 - Partition is now aggregation: `-A^gc` instead of `--partition %0 ^gc`
 - Each language supports key-reduction in its API
 - Command-line arguments are concatenative: `f1 -g f2` != `f1 f2 -g`
-- Forking is a list attribute
 - Quasifiles are read/write
 
 ## General-purpose stream operators
@@ -37,7 +38,7 @@ Short   | Long          | Operands      | Description
 `-C`    | clojure       | code          | pipe through clojure
 `-d`    | distribute    | lambda-list   | distribute across subprocesses
 `-D`    | Distribute    | lambda-list   | distribute across machines
-`-e`    |               |               |
+`-e`    | encode        | format-spec   | encodes stream into a format
 `-E`    |               |               |
 `-f`    | fields        |               | reorder, drop, create fields
 `-F`    | fieldsplit    | split-spec    | split each column
@@ -82,21 +83,16 @@ Short   | Long          | Operands      | Description
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    | scala         | code          | pipe through scala
 `-+`    |               |               |
-`-_`    |               |               |
-`-:`    |               |               |
-`-=`    |               |               |
+`-=`    | save          | qfile         | fork stream and save to qfile
 `-$`    | shell         | command       | pipe through shell command
 `-?`    |               |               |
-`-#`    |               |               |
-`-%`    | interleave    | qfile         | breadth-first concatenation
-`-/`    | prepend       | qfile         | prepends to current stream
 
 ## Lambda forms
 Each lambda form is compiled into, and replaced with, the name of a separate
 program. For example, writing `ni ... [ foo ]` is the same as writing `ni ...
 X`, where `X` is the name of a shell script that executes `ni foo`.
 
-### Quoted command shorthand
+### Quoted commands
 ```sh
 $ ni ... -$ 'grep foo'
 $ ni ... -$ grep[ foo ]         # same thing, but better quoting support
@@ -105,6 +101,8 @@ $ ni ... -$ [ foo ]             # ... you'd say this instead
 ```
 
 ### Bracket operators and syntax
+**Pending redesign**
+
 - `[ ... ]`: list as quasifile
 - `@[ ... ]`: forking list as quasifile
 - `-[ ... ]`: list as action: append results

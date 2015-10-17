@@ -2,9 +2,24 @@
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
 
+# Lambda redesign...
 # NB: lambda options are deliberately delayed; that is, we don't parse them
 # until the lambda is invoked because the lambda may be running within a
 # context that provides different CLI arguments.
+#
+# This means we need to _preprocess_ lambdas into JIT contexts or functions.
+#
+# ... which implies that the whole way we're annotating lambdas, e.g. @[] vs
+# -[], is flawed; the lambda doesn't dictate how it manipulates the stream.
+#
+# i.e. lambdas are a way to JIT-compile stuff. In particular, they make it
+# possible to quote things more easily than using shell-quoting, particularly
+# when the thing you're compiling is itself a command.
+#
+# Given that, it seems like lambdas should be context-specific: octave[ ... ]
+# might just concatenate its string arguments, whereas ni[ ... ] parses
+# normally? Really it's a way for a function to take an undetermined number of
+# arguments.
 
 # Option parsing
 # Usage: ni_parse destination_var $vector_ref

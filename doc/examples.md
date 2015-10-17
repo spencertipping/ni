@@ -2,8 +2,8 @@
 ## Map/reduce word count
 ```sh
 $ ni data.txt -FW1k1gp'r f0, sum a0i1'                  # local
-$ ni hdfs:data.txt -h ^FW1k1 ^p'r f0, sum a0->i1'       # local
-$ ni hdfs:data.txt -H ^FW1k1 ^p'r f0, sum a0->i1'       # hadoop
+$ ni hdfs:data.txt -hFW1k1/p'r f0, sum a0->i1']         # local
+$ ni hdfs:data.txt -HFW1k1/p'r f0, sum a0->i1']         # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
@@ -17,8 +17,8 @@ $ ni hdfs:data.txt -H ^FW1k1 ^p'r f0, sum a0->i1'       # hadoop
 Using the `-A/--aggregate` operator:
 
 ```sh
-$ ni data.txt -FW1k1gA ^1st+1
-$ ni hdfs:data.txt -H ^FW1k1 ^a^1st+1
+$ ni data.txt -FW1k1gA^1st+1
+$ ni hdfs:data.txt -HFW1k1/A^1st+1
 ```
 
 Non-MR word count (using command-line sort):
@@ -35,10 +35,7 @@ $ ni data -m'r j0.name, ge(j0.latitude, j0.longitude, 8)' -xg
 
 `j0` means "`f0` interpreted as JSON". It notationally bypasses the caching
 otherwise necessary to support multiple-access. `ge` is a builtin function to
-encode geohashes. It's possible that the actual geohash and JSON handling will
-be done outside the Ruby context to reduce the number of dependencies or
-improve performance; if this happens, the difference won't be observable unless
-you use some type of debugging/profiling tool.
+encode geohashes.
 
 ## Real-time queueing
 ni provides some operators that implement compressed, disk-backed queues for
@@ -48,11 +45,21 @@ also designed to maintain data movement, throttling only when absolutely
 necessary (i.e. low disk space on the host).
 
 ```sh
-$ ni http://data-source/data.txt -Qd 16^gc
+# TODO: fix this; having -d be its own operator is egregiously verbose -- not
+# to mention the considerable ergonomic overhead immediately following a Q.
+$ ni http://data-source/data.txt -Qd16[gc]
 ```
 
 The assumption here is that we want to download `data.txt` as fast as possible,
 then have 16 sort/count processes each pulling records as quickly as they can.
+
+## Record extraction
+Variants of `-t` allow you to extract lines matching a specific pattern,
+internally using `grep -E`:
+
+```sh
+$ ni hdfs:/data/source -Ht/'foo.*bar'
+```
 
 ## Bloom filters
 ```sh
