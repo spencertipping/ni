@@ -15,7 +15,7 @@ Short operators have the following conventions:
 - ni automatically creates shorthands to minimize #characters/operation
 - ni is much more concise and has more powerful lambda notation
 - Field addressing happens before the operator: `-10f` instead of `-f10`
-- Partition is now aggregation: `-A^gc` instead of `--partition %0 ^gc`
+- Partition is now aggregation: `-Agc` instead of `--partition %0 ^gc`
 - Each language supports key-reduction in its API
 - Command-line arguments are concatenative: `f1 -g f2` != `f1 f2 -g`
 - Quasifiles are read/write
@@ -27,13 +27,15 @@ The following prefixes are reserved for column addressing:
 - `,`: juxtaposition operator; enables field indexes > 9
 - `0-9`: fields
 
-Reserved non-operators:
+Reserved non-operators (i.e. no short or long operator can be one of these, for
+syntactic reasons):
 
-Short   | Description
---------|------------
-`-E`    | exponential indicator: 1E5 = 100000
-`-=`    | fork stream and save to qfile
-`-@`    | fork stream and save to variable
+Short  | Description
+-------|------------
+`E`    | exponential indicator: 1E5 = 100000
+`=`    | fork stream and save to qfile (with optional lambda transform)
+`@`    | fork stream and save to variable (with optional lambda transform)
+`:`    | checkpoint through qfile
 
 The following are default bindings and can be changed by modifying `home/conf`:
 
@@ -46,7 +48,7 @@ Short   | Long          | Operands      | Description
 `-c`    | count         |               | `uniq -c` for addressed columns
 `-C`    | clojure       | code          | pipe through clojure
 `-d`    | distribute    | dist-spec ... | prefix for distributed computation
-`-D`    |               |               |
+`-D`    | difference    | qfile/lambda  | sorted difference (left ^ not right)
 `-e`    | encode        | format-spec   | encodes stream into a format
 `-f`    | fields        |               | reorder, drop, create fields
 `-F`    | fieldsplit    | split-spec    | split each column
@@ -55,7 +57,7 @@ Short   | Long          | Operands      | Description
 `-h`    | ladoop        | m r           | local simulation of `-H`
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    |               |               |
-`-I`    |               |               |
+`-I`    | intersection  | qfile/lambda  | sorted intersection
 `-j`    | join          | join-spec     | join data by addressed columns
 `-J`    | json          | access-spec   | extract specified paths within json
 `-k`    | constant      | value         | emits a constant value
@@ -64,22 +66,22 @@ Short   | Long          | Operands      | Description
 `-L`    | l2/exp        | log-spec      | numerical compression/expansion
 `-m`    | ruby          | code          | pipe through ruby
 `-M`    | octave        | code          | pipe through octave
-`-n`    | number        |               | prepend line number or intify
-`-N`    |               |               |
+`-n`    | number        | col-spec      | generate sequential numbers
+`-N`    | identify      | id-spec       | generate deterministic numbers
 `-o`    | order         |               | order rows by addressed column(s)
-`-O`    | Order         |               | reverse-order rows
+`-O`    | rorder        |               | reverse-order rows
 `-p`    | perl          | code          | pipe through perl
 `-P`    | python        | code          | pipe through python
 `-q`    | quant         | quant-spec    | quantize
-`-Q`    | queue         | queue-spec    | queue against disk
-`-r`    | read          |               | dereferences quasifiles from stream
-`-R`    | write         | quasifile     | writes stream to quasifile
+`-Q`    |               |               |
+`-r`    |               |               |
+`-R`    | R             | code          | pipe through R
 `-s`    | sum           |               | running sum
 `-S`    | delta         |               | delta (inverts --sum)
 `-t`    | take          | line-spec     | take selected lines
 `-T`    | tcp           | port lambda   | runs a TCP server
 `-u`    | uniq          |               | `uniq` for addressed columns
-`-U`    |               |               |
+`-U`    | union         | qfile/lambda  | sorted union
 `-v`    | vertical      | [fieldlist]   | chops line into multiple lines
 `-V`    | horizontal    |               | join lines where addr field is blank
 `-w`    |               |               |
