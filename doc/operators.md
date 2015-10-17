@@ -27,6 +27,16 @@ The following prefixes are reserved for column addressing:
 - `,`: juxtaposition operator; enables field indexes > 9
 - `0-9`: fields
 
+Reserved non-operators:
+
+Short   | Description
+--------|------------
+`-E`    | exponential indicator: 1E5 = 100000
+`-=`    | fork stream and save to qfile
+`-@`    | fork stream and save to variable
+
+The following are default bindings and can be changed by modifying `home/conf`:
+
 Short   | Long          | Operands      | Description
 --------|---------------|---------------|------------
 `-a`    | average       | window-spec   | running/windowed average
@@ -35,14 +45,13 @@ Short   | Long          | Operands      | Description
 `-B`    |               |               |
 `-c`    | count         |               | `uniq -c` for addressed columns
 `-C`    | clojure       | code          | pipe through clojure
-`-d`    | distribute    | lambda-list   | distribute across subprocesses
-`-D`    | Distribute    | lambda-list   | distribute across machines
+`-d`    | distribute    | dist-spec ... | prefix for distributed computation
+`-D`    |               |               |
 `-e`    | encode        | format-spec   | encodes stream into a format
-`-E`    | (reserved)    |               | exponential indicator: 1E5 = 100000
 `-f`    | fields        |               | reorder, drop, create fields
 `-F`    | fieldsplit    | split-spec    | split each column
 `-g`    | group         |               | group rows by addressed column(s)
-`-G`    |               |               |
+`-G`    | groupuniq     |               | `-gu`
 `-h`    | ladoop        | m r           | local simulation of `-H`
 `-H`    | hadoop        | m r           | hadoop streaming, emits qfile out
 `-i`    |               |               |
@@ -51,8 +60,8 @@ Short   | Long          | Operands      | Description
 `-J`    | json          | access-spec   | extract specified paths within json
 `-k`    | constant      | value         | emits a constant value
 `-K`    | kill          |               | eats data; emits nothing
-`-l`    | log           | log-spec      | log or other numerical compression
-`-L`    | exp           | log-spec      | invert a `--log` operation
+`-l`    | log           | lambda        | emits data as logging output
+`-L`    | l2/exp        | log-spec      | numerical compression/expansion
 `-m`    | ruby          | code          | pipe through ruby
 `-M`    | octave        | code          | pipe through octave
 `-n`    | number        |               | prepend line number or intify
@@ -76,11 +85,9 @@ Short   | Long          | Operands      | Description
 `-w`    |               |               |
 `-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    | xchg          |               | exchanges first and addressed//second
-`-X`    | switch        |               | rotates addressed columns to front
+`-X`    |               |               |
 `-y`    |               |               |
 `-Y`    |               |               |
 `-z`    | zip           | qfile         | zip columns from specified qfile
-`-Z`    | scala         | code          | pipe through scala
-`-+`    |               |               |
-`-=`    | save          | qfile         | fork stream and save to qfile
+`-Z`    |               |               |
 `-$`    | shell         | command       | pipe through shell command

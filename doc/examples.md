@@ -51,3 +51,20 @@ internally using `grep -E`:
 ```sh
 $ ni hdfs:/data/source -Ht/foo.*bar //=output.gz
 ```
+
+## Feature matrix construction
+Doing this correctly requires buffering because we're building a numerical
+index. For example, let's suppose we have a bunch of JSON arrays of city names,
+and the goal is to convert those to a matrix of row/city frequency. We also
+want to export the label mapping as `./labels` for debugging purposes.
+
+```sh
+$ ni data -J* @=labels^vG1n -m'ls = (1..labels.size).map {0}
+                               ss.each {|s| ls[labels[s] - 1] += 1}
+                               r ls'
+```
+
+- `-J*`: unpack JSON array to a row of values
+- `@=`: create both a variable and a file (`@` = variable, `=` = file)
+- `^vG1n`: modifier lambda: vertical, groupuniq, line number -> column 1
+  (ni converts this to a hashmap when you define a variable)
