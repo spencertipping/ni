@@ -84,7 +84,7 @@ Short   | Long          | Operands      | Description
 `-U`    | union         | qfile/lambda  | sorted union
 `-v`    | vertical      | [fieldlist]   | chops line into multiple lines
 `-V`    | horizontal    |               | join lines where addr field is blank
-`-w`    |               |               |
+`-w`    | waul          | code          | pipe through node/caterwaul
 `-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    | xchg          |               | exchanges first and addressed//second
 `-X`    |               |               |

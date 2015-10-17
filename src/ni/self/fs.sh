@@ -14,17 +14,17 @@ exhume() {
 
 # Usage: inhume exhumed-directory (populates directory to self)
 # NB: just as exhume doesn't create one, this function doesn't remove the
-# directory. Also, inhumed files are in arbitrary order except for boot.sh,
+# directory. Also, inhumed files are in arbitrary order except for ni/boot.sh,
 # which always goes first.
 inhume() {
   module_index=0
-  module boot.sh "$(cat "$1/boot.sh")"
+  module ni/boot.sh "$(cat "$1/ni/boot.sh")"
   inhume_old_ifs="$IFS"
   inhume_dir="${1%/}"
 
   # Always inhume meta stuff first
   IFS="$newline"
-  for inhume_f in $(find "$inhume_dir/meta" -type f); do
+  for inhume_f in $(find "$inhume_dir/ni/meta" -type f); do
     IFS="$inhume_old_ifs"
     module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
@@ -32,8 +32,8 @@ inhume() {
   IFS="$newline"
   for inhume_f in $(find "$inhume_dir" -type f); do
     IFS="$inhume_old_ifs"
-    [ "$inhume_f" != "$inhume_dir/boot.sh" ] \
-      && [ "${inhume_f#$inhume_dir/meta/}" = "$inhume_f" ] \
+    [ "$inhume_f" != "$inhume_dir/ni/boot.sh" ] \
+      && [ "${inhume_f#$inhume_dir/ni/meta/}" = "$inhume_f" ] \
       && module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
   IFS="$inhume_old_ifs"

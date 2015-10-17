@@ -11,7 +11,7 @@ module() {
   module_index=$((module_index + 1))
 }
 
-. src/self/fs.sh
+. src/ni/self/fs.sh
 inhume src/
 
 main_setup

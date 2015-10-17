@@ -27,7 +27,7 @@ require() {
 
 # Prints a representation of this object to stdout. If invoked with --no-main
 # as the first option, no call to main() will be generated at the end of the
-# image. If invoked with --no-boot, boot.sh will be serialized as a normal
+# image. If invoked with --no-boot, ni/boot.sh will be serialized as a normal
 # module rather than treated specially (which will produce a broken image, but
 # may be useful for serialization purposes).
 self() {
@@ -51,7 +51,7 @@ self() {
   IFS="$newline"
   self_i=0
   for self_m in $modules; do
-    if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
+    if [ -z "$self_boot" ] || [ "$self_m" != ni/boot.sh ]; then
       eval "self_marker=\"\$(verb \"\$module_$self_i\" | exec "$sha3")\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""

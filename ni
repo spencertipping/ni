@@ -13,7 +13,33 @@ module_index=1
 modules=boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'meta/struct.sh' <<'6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893'
+module 'boot.sh' <<'df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4'
+newline="$(printf "\\n ")" && newline="${newline% }"
+module() {
+  [ $# -eq 2 ] && module_v="$2" || module_v="$(cat)"
+  eval "module_$module_index=\"\$module_v\""
+  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
+  modules="$modules$newline$1"
+  module_index=$((module_index + 1))
+}
+module_index=1
+modules=boot.sh
+meta_hook() meta_hooks="$meta_hooks$newline$(cat)"
+df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4
+module 'boot.sh' <<'df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4'
+newline="$(printf "\\n ")" && newline="${newline% }"
+module() {
+  [ $# -eq 2 ] && module_v="$2" || module_v="$(cat)"
+  eval "module_$module_index=\"\$module_v\""
+  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
+  modules="$modules$newline$1"
+  module_index=$((module_index + 1))
+}
+module_index=1
+modules=boot.sh
+meta_hook() meta_hooks="$meta_hooks$newline$(cat)"
+df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4
+module 'ni/meta/struct.sh' <<'6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893'
 # Data structure metaprogramming
 cell_index=0
 cell() {
@@ -104,7 +130,7 @@ pr() {
   verb "$pr_s"
 }
 6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893
-module 'meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
+module 'ni/meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
 # ni option data structure and generator
 
 meta_hook <<'EOF'
@@ -148,7 +174,7 @@ defoptionsyntax() {
   assoc $option_syntaxes $1 $defoptionsyntax_new
 }
 99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40
-module 'meta/list.sh' <<'08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b'
+module 'ni/meta/list.sh' <<'08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b'
 # Linked list functions
 
 list_reverse() {
@@ -198,7 +224,7 @@ apply_last() {
   $apply_last_f $apply_last_r "$@"
 }
 08d0c5197e97ccfd5862e03d39effaaec2c7adf78d4845cca9000a2b76e42d5b
-module 'meta/vector.sh' <<'eb075ad335d633a02bbd3b48accc32a7d0e49e02259dc7c0c93209fdc79f8064'
+module 'ni/meta/vector.sh' <<'eb075ad335d633a02bbd3b48accc32a7d0e49e02259dc7c0c93209fdc79f8064'
 # Vector data structure
 
 # sh won't let us overload "shift", so I decided to prefer the (somewhat
@@ -334,7 +360,7 @@ vector_append() {
   done
 }
 eb075ad335d633a02bbd3b48accc32a7d0e49e02259dc7c0c93209fdc79f8064
-module 'meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
+module 'ni/meta/cons.sh' <<'480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322'
 # Cons cell primitive
 meta_hook <<'EOF'
 defstruct --no-str cons h t
@@ -358,7 +384,7 @@ cons_str() {
   eval "$1=\"(\${cons_str_s# })\""
 }
 480b6319a67ca4786afa845e433dd50abde3ed865a08720d8fb507b27f3fb322
-module 'meta/hashmap.sh' <<'67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50'
+module 'ni/meta/hashmap.sh' <<'67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50'
 # Hashmap data structure
 # (Not technically a hashmap because we piggyback off of the parent shell's
 #  global variable table; i.e. we're not doing anything clever here.)
@@ -416,7 +442,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'self/repl.sh' <<'8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51'
+module 'ni/self/repl.sh' <<'8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -453,7 +479,7 @@ repl_stateless() {
     && rm -r "$repl_stateless_self_dir"
 }
 8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51
-module 'self/fs.sh' <<'9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569'
+module 'ni/self/fs.sh' <<'d0145476b34792e001a2750652bd21516dd0ccd5749210fbd00796833ab8fe06'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)
 exhume() {
@@ -470,17 +496,17 @@ exhume() {
 
 # Usage: inhume exhumed-directory (populates directory to self)
 # NB: just as exhume doesn't create one, this function doesn't remove the
-# directory. Also, inhumed files are in arbitrary order except for boot.sh,
+# directory. Also, inhumed files are in arbitrary order except for ni/boot.sh,
 # which always goes first.
 inhume() {
   module_index=0
-  module boot.sh "$(cat "$1/boot.sh")"
+  module ni/boot.sh "$(cat "$1/ni/boot.sh")"
   inhume_old_ifs="$IFS"
   inhume_dir="${1%/}"
 
   # Always inhume meta stuff first
   IFS="$newline"
-  for inhume_f in $(find "$inhume_dir/meta" -type f); do
+  for inhume_f in $(find "$inhume_dir/ni/meta" -type f); do
     IFS="$inhume_old_ifs"
     module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
@@ -488,8 +514,8 @@ inhume() {
   IFS="$newline"
   for inhume_f in $(find "$inhume_dir" -type f); do
     IFS="$inhume_old_ifs"
-    [ "$inhume_f" != "$inhume_dir/boot.sh" ] \
-      && [ "${inhume_f#$inhume_dir/meta/}" = "$inhume_f" ] \
+    [ "$inhume_f" != "$inhume_dir/ni/boot.sh" ] \
+      && [ "${inhume_f#$inhume_dir/ni/meta/}" = "$inhume_f" ] \
       && module "${inhume_f#$inhume_dir/}" "$(cat "$inhume_f")"
   done
   IFS="$inhume_old_ifs"
@@ -515,8 +541,8 @@ save() {
     return 1
   fi
 }
-9ec1f481526cf3983cca1a6476d0ffe4d2c7da7b7d4c091a86435a050c806569
-module 'self/image.sh' <<'497dd598b8970665b23f803171161866039574ff0363e2141d14a5c175e3cc6c'
+d0145476b34792e001a2750652bd21516dd0ccd5749210fbd00796833ab8fe06
+module 'ni/self/image.sh' <<'d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -546,7 +572,7 @@ require() {
 
 # Prints a representation of this object to stdout. If invoked with --no-main
 # as the first option, no call to main() will be generated at the end of the
-# image. If invoked with --no-boot, boot.sh will be serialized as a normal
+# image. If invoked with --no-boot, ni/boot.sh will be serialized as a normal
 # module rather than treated specially (which will produce a broken image, but
 # may be useful for serialization purposes).
 self() {
@@ -570,7 +596,7 @@ self() {
   IFS="$newline"
   self_i=0
   for self_m in $modules; do
-    if [ -z "$self_boot" ] || [ "$self_m" != boot.sh ]; then
+    if [ -z "$self_boot" ] || [ "$self_m" != ni/boot.sh ]; then
       eval "self_marker=\"\$(verb \"\$module_$self_i\" | exec "$sha3")\""
       verb "module '$self_m' <<'$self_marker'"
       eval "verb \"\$module_$self_i\""
@@ -581,47 +607,8 @@ self() {
   IFS="$self_old_ifs"
   verb "# </""script>" "$self_main"
 }
-497dd598b8970665b23f803171161866039574ff0363e2141d14a5c175e3cc6c
-module 'ni/structure.sh' <<'8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b'
-# Syntactic structures and multimethods
-# See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
-# use those functions rather than anything here.
-
-meta_hook <<'EOF'
-defstruct quasifile name
-
-# Complex commands
-defstruct --no-str lambda body          # [ ... ] or ^x
-defstruct --no-str lambdafork body      # @[ ... ] or @^x
-defstruct --no-str lambdaplus body      # -[ ... ]
-defstruct --no-str lambdamix body       # -@[ ... ]
-defstruct --no-str branch branches      # { x ... , y ... , ... }
-defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
-defstruct --no-str branchsub branches   # -{ ... }
-defstruct --no-str branchmix branches   # -@{ ... }
-
-# Pipeline compilation multimethods
-defmulti compile                        # compile to a shell command
-defmulti describe                       # plain-English description
-EOF
-
-for structure_t in lambda lambdafork lambdaplus lambdamix; do
-  eval "${structure_t}_str() {
-          body ${structure_t}_str_b \$2
-          str ${structure_t}_str_s \$${structure_t}_str_b
-          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
-        }"
-done
-
-for structure_t in branch branchfork branchsub branchmix; do
-  eval "${structure_t}_str() {
-          branches ${structure_t}_str_b \$2
-          str ${structure_t}_str_s \$${structure_t}_str_b
-          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
-        }"
-done
-8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
-module 'ni/ni.sh' <<'5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd'
+d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212
+module 'ni/cli/parse.sh' <<'5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -768,12 +755,51 @@ ni_compile() {
   TODO ni_compile
 }
 5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd
-module 'ni/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
+module 'ni/cli/structure.sh' <<'8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b'
+# Syntactic structures and multimethods
+# See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
+# use those functions rather than anything here.
+
+meta_hook <<'EOF'
+defstruct quasifile name
+
+# Complex commands
+defstruct --no-str lambda body          # [ ... ] or ^x
+defstruct --no-str lambdafork body      # @[ ... ] or @^x
+defstruct --no-str lambdaplus body      # -[ ... ]
+defstruct --no-str lambdamix body       # -@[ ... ]
+defstruct --no-str branch branches      # { x ... , y ... , ... }
+defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
+defstruct --no-str branchsub branches   # -{ ... }
+defstruct --no-str branchmix branches   # -@{ ... }
+
+# Pipeline compilation multimethods
+defmulti compile                        # compile to a shell command
+defmulti describe                       # plain-English description
+EOF
+
+for structure_t in lambda lambdafork lambdaplus lambdamix; do
+  eval "${structure_t}_str() {
+          body ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+
+for structure_t in branch branchfork branchsub branchmix; do
+  eval "${structure_t}_str() {
+          branches ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
+module 'ni/ops/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
 :
 2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91
-module 'ni/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
+module 'ni/ops/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
 # Sorting operators and function definitions
 meta_hook <<'EOF'
 defstruct ni_group column_spec ordering
@@ -784,7 +810,11 @@ ni_group() {
   TODO ni_group
 }
 337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1
-module 'bin/sha3.c' <<'b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1'
+module 'ni/README.md' <<'43154d49d96653cf6b1c3daed250ee54d03e25d7a4405b8ad198eea758e49d7d'
+# Here there be monsters
+This directory contains core ni code. Modifying it voids your warranty.
+43154d49d96653cf6b1c3daed250ee54d03e25d7a4405b8ad198eea758e49d7d
+module 'ni/bin/sha3.c' <<'b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1'
 /* Calculates the SHA3-256 of stdin and argv. This is used throughout ni to
  * cache intermediate results.
  *
@@ -833,7 +863,7 @@ int main()
     oh[64]='\n'; write(1, oh, 65); return 0;
 }
 b04f3235cf9c75f6ee101abf07699975a65413c33078c14cd24acb46229b60f1
-module 'main.sh' <<'0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a'
+module 'ni/main.sh' <<'0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a'
 # Main function, called automatically with all command-line arguments. The call
 # is hard-coded in the image generator, so main() is a magic name.
 
@@ -968,7 +998,7 @@ main() {
   eval "$shutdown_hooks"
 }
 0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a
-module 'jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
+module 'ni/jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
 # JIT support for POSIX shell programs
 #
 # jit_program=$(jit_sh <<'EOF'
@@ -990,7 +1020,7 @@ jit_sh() {
 
 jit_sh_free() tmpdir_rm "$1"
 c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9
-module 'jit/jit-c.sh' <<'d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1'
+module 'ni/jit/jit-c.sh' <<'d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1'
 # JIT support for C99 programs
 # Calling convention is like this, except that heredocs inside $() don't seem
 # to be allowed:
@@ -1027,7 +1057,7 @@ jit_c() {
 
 jit_c_free() tmpdir_rm "$1" "$1.c"
 d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1
-module 'jit/jit-mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
+module 'ni/jit/jit-mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
 # JVM JIT using maven as the frontend
 
 # POM generation stuff
@@ -1086,7 +1116,7 @@ jit_mvn() {
   jit_mvn_main=$2
 }
 56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b
-module 'util/tmpfile.sh' <<'716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48'
+module 'ni/util/tmpfile.sh' <<'716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48'
 # Creates uniquely-named files in the temporary directory
 
 # Usage: tmpdir destination_var
@@ -1177,7 +1207,7 @@ file_buffer() {
   tmpdir_rm "$file_buffer_tmp"
 }
 716d8ab227a740cccb7bc4a9ce8b7a4cb5f3e7b1c7b6bbaf694fe05acc605b48
-module 'util/string.sh' <<'eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af'
+module 'ni/util/string.sh' <<'eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af'
 # String functions
 
 # Substring function
@@ -1228,7 +1258,7 @@ string_matches() {
   [ ${string_matches_n} -eq "${#1}" ]
 }
 eb820f0e739dc6b0c2062c225c6ff883d80e248543dcaef1ba2bb344ea7032af
-module 'util/verb.sh' <<'8bdf71115f408772f7d3823c142e628d04c1eea6ad560896a75ea86752be917e'
+module 'ni/util/verb.sh' <<'8bdf71115f408772f7d3823c142e628d04c1eea6ad560896a75ea86752be917e'
 # Safe echo: works around the POSIX statement that "echo" is allowed to
 # interpret things inside its arguments, e.g. escape sequences and -x options
 
@@ -1240,20 +1270,20 @@ verb() {
 
 err() verb "$@" >&2
 8bdf71115f408772f7d3823c142e628d04c1eea6ad560896a75ea86752be917e
-module 'util/todo.sh' <<'c7e6b724df83e49ba42c45c1f6f3b0835043d85751778589f58e75dabf6c7a7c'
+module 'ni/util/todo.sh' <<'c7e6b724df83e49ba42c45c1f6f3b0835043d85751778589f58e75dabf6c7a7c'
 # Support for todo-functions in code
 TODO() {
   err "todo: $*"
   return 1
 }
 c7e6b724df83e49ba42c45c1f6f3b0835043d85751778589f58e75dabf6c7a7c
-module 'util/sha3.sh' <<'05375d44b20622b02a04fd9594890166c9eec2641e851f3d76caadfec8720289'
+module 'ni/util/sha3.sh' <<'892a037589cb64f03d730b7089445600fa6ee0b9596081f6dfdbed6153e73777'
 # Support for hashing arbitrary data through the jit-C interface
 sha3() "$sha3"
 
 sha3_setup() {
   [ -n "$sha3" ] && return
-  module_get sha3_source bin/sha3.c
+  module_get sha3_source ni/bin/sha3.c
   sha3="$(verb "$sha3_source" | jit_c_base)"            # jit_c_base !!!
   unset sha3_source
 }
@@ -1262,15 +1292,15 @@ setup_hooks="$setup_hooks${newline}sha3_setup"
 
 # NB: no shutdown hook to free the jit context here, since the sha3 program
 # should exist as long as ni maintains its tmpdir.
-05375d44b20622b02a04fd9594890166c9eec2641e851f3d76caadfec8720289
-module 'home-template/README.md' <<'4a55b882a77e91f48fd818988648a7b179758db4c2a3ea59e8c6bbc08ebe2b2d'
+892a037589cb64f03d730b7089445600fa6ee0b9596081f6dfdbed6153e73777
+module 'ni/home-template/README.md' <<'4a55b882a77e91f48fd818988648a7b179758db4c2a3ea59e8c6bbc08ebe2b2d'
 # Home directory
 ni automatically loads `conf`, which configures its command-line option
 mapping. You can edit this file to add new bindings or change existing ones.
 
 No file inside `home` will be modified by a ni upgrade.
 4a55b882a77e91f48fd818988648a7b179758db4c2a3ea59e8c6bbc08ebe2b2d
-module 'home-template/conf' <<'e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d'
+module 'ni/home-template/conf' <<'e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d'
 # ni configuration, including CLI option mapping. Uses generators defined in
 # meta/ni-option.sh. Also see ni/ni.sh for the option parsing implementation.
 #
@@ -1303,5 +1333,23 @@ defoption --group  -g D ni_group
 defoption --order  -o D ni_order
 defoption --rorder -O D ni_rorder
 e6163c1ad8f4a4fd7974a8dcc7665852ebc3e9e1c65e2901232cada651c2ed8d
+module 'README.md' <<'1fe20bade4b8d66686107991f8a77f1b7109acb2f97fd0ff05ae1669a7d57171'
+# Root directory
+Places you can safely modify, within reason:
+
+- `home/`: a place where you can stash small-ish files and change configuration
+  settings
+- `extensions/`: where you can install third-party addons for ni
+
+**Any file you create ending in `.sh` will be executed when ni starts, which is
+most likely not what you want to do.** To avoid this, you can `require` the
+file from `home/conf`, which is loaded after all ni files and extensions.
+1fe20bade4b8d66686107991f8a77f1b7109acb2f97fd0ff05ae1669a7d57171
+module 'extensions/README.md' <<'d7261f9aea59e9368fe186298d61c7f4a525feb4f18e7ec00df9c1bbc1f8f243'
+# Extension directory
+ni extensions are typically provided as directories of files. You can drop
+those directories here (_if you trust them_) to have ni automatically load
+them.
+d7261f9aea59e9368fe186298d61c7f4a525feb4f18e7ec00df9c1bbc1f8f243
 # </script>
 main "$@"

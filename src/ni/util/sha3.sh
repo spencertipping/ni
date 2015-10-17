@@ -3,7 +3,7 @@ sha3() "$sha3"
 
 sha3_setup() {
   [ -n "$sha3" ] && return
-  module_get sha3_source bin/sha3.c
+  module_get sha3_source ni/bin/sha3.c
   sha3="$(verb "$sha3_source" | jit_c_base)"            # jit_c_base !!!
   unset sha3_source
 }
