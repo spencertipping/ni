@@ -7,5 +7,5 @@ module() {
   module_index=$((module_index + 1))
 }
 module_index=1
-modules=boot.sh
+modules=ni/boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"

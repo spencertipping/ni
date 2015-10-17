@@ -10,35 +10,9 @@ module() {
   module_index=$((module_index + 1))
 }
 module_index=1
-modules=boot.sh
+modules=ni/boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'boot.sh' <<'df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4'
-newline="$(printf "\\n ")" && newline="${newline% }"
-module() {
-  [ $# -eq 2 ] && module_v="$2" || module_v="$(cat)"
-  eval "module_$module_index=\"\$module_v\""
-  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
-  modules="$modules$newline$1"
-  module_index=$((module_index + 1))
-}
-module_index=1
-modules=boot.sh
-meta_hook() meta_hooks="$meta_hooks$newline$(cat)"
-df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4
-module 'boot.sh' <<'df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4'
-newline="$(printf "\\n ")" && newline="${newline% }"
-module() {
-  [ $# -eq 2 ] && module_v="$2" || module_v="$(cat)"
-  eval "module_$module_index=\"\$module_v\""
-  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
-  modules="$modules$newline$1"
-  module_index=$((module_index + 1))
-}
-module_index=1
-modules=boot.sh
-meta_hook() meta_hooks="$meta_hooks$newline$(cat)"
-df2f9ef2abc08248713bef9d55e77b70b81e9a63001ee6ffd39d0a5848af07a4
 module 'ni/meta/struct.sh' <<'6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893'
 # Data structure metaprogramming
 cell_index=0
@@ -442,7 +416,7 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
-module 'ni/self/repl.sh' <<'8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51'
+module 'ni/self/repl.sh' <<'2e8009ebb3f2a0d9ab4b9ff3992e89a8bdd140d432eb15d959cc55d825f97bf9'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
 # that's prepopulated with all of ni's shell state. This means the subshell
@@ -453,6 +427,7 @@ module 'ni/self/repl.sh' <<'8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5a
 
 repl_sh() {
   tmpdir repl_sh_self_dir
+  rm "$repl_sh_self_dir/.this-is-a-ni-tmpdir"
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir/home" 2>/dev/null \
@@ -469,6 +444,7 @@ repl_sh() {
 
 repl_stateless() {
   tmpdir repl_stateless_self_dir
+  rm "$repl_stateless_self_dir/.this-is-a-ni-tmpdir"
   exhume "$repl_stateless_self_dir" \
     && (cd "$repl_stateless_self_dir/home" 2>/dev/null \
            || cd "$repl_stateless_self_dir"
@@ -478,7 +454,7 @@ repl_stateless() {
     && inhume "$repl_stateless_self_dir" \
     && rm -r "$repl_stateless_self_dir"
 }
-8c97a64121ecd4469a05d023b42f1d54a579db3c0cd1ad791b5acca8b26d2c51
+2e8009ebb3f2a0d9ab4b9ff3992e89a8bdd140d432eb15d959cc55d825f97bf9
 module 'ni/self/fs.sh' <<'d0145476b34792e001a2750652bd21516dd0ccd5749210fbd00796833ab8fe06'
 # Exhume/inhume self to/from FS
 # Usage: exhume existing-directory (populates self to directory)

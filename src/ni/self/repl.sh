@@ -8,6 +8,7 @@
 
 repl_sh() {
   tmpdir repl_sh_self_dir
+  rm "$repl_sh_self_dir/.this-is-a-ni-tmpdir"
   repl_sh_state="$(self --no-main | jit_sh)"
   exhume "$repl_sh_self_dir" \
     && (cd "$repl_sh_self_dir/home" 2>/dev/null \
@@ -24,6 +25,7 @@ repl_sh() {
 
 repl_stateless() {
   tmpdir repl_stateless_self_dir
+  rm "$repl_stateless_self_dir/.this-is-a-ni-tmpdir"
   exhume "$repl_stateless_self_dir" \
     && (cd "$repl_stateless_self_dir/home" 2>/dev/null \
            || cd "$repl_stateless_self_dir"
