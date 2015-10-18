@@ -21,12 +21,12 @@ end
 CellSelectors = {
   :E => Class.new {def initialize v; @v = v;  end
                    def take?      x; @v == x; end},
-  :S => Class.new {def initialize v; @v = v >= 0;  end
-                   def take?      x; @v == x >= 0; end},
+  :S => Class.new {def initialize v; @v = v.to_f >= 0;  end
+                   def take?      x; @v == x.to_f >= 0; end},
   :Z => Class.new {def initialize v; @v = v.to_f == 0; end
                    def take?      x; @v == (x.to_f == 0); end},
-  :N => Class.new {def initialize n; @n = n; end
-                   def take?      x; (@n -= 1).nonzero?; end}}
+  :N => Class.new {def initialize n; @n = n.to_i; end
+                   def take?      x; (@n -= 1) >= 0; end}}
 
 TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
 
@@ -55,7 +55,7 @@ class Spreadsheet
 
   # Output stuff
   def r *xs
-    puts xs.join("\t")
+    puts xs.join("\t") rescue exit
   end
 
   # Input stuff
@@ -97,9 +97,9 @@ class Spreadsheet
   end
 
   def conditional_lookahead row, col, cond
-    cond = cond.new(cell row, col)
-    take = 0
-    take += 1 while cond.take?(cell row + take, col)
+    cond = CellSelectors[cond].new(cell col, row)
+    take = 1
+    take += 1 while cond.take? cell(col, row + take)
     take
   end
 
@@ -154,6 +154,29 @@ class Spreadsheet
       define_method name,
         eval(force ? "proc {seek! #{r2 + 1}; range(#{c1}, #{c2}, #{r1}, #{r2}).map! {|xs| xs.map!(&:#{TypeCoercions[t]})}}"
                    : "proc {                 range(#{c1}, #{c2}, #{r1}, #{r2}).map! {|xs| xs.map!(&:#{TypeCoercions[t]})}}")
+    end
+  end
+
+  def genvcond name, c, r, cond, cond_col, t, force
+    c        = c.to_column_index
+    cond_col = cond_col.to_column_index
+    singleton_class.instance_eval do
+      define_method name,
+        eval("proc {n = conditional_lookahead(#{r}, #{cond_col}, :#{cond})
+                    #{force ? "seek! #{r} + n" : ""}
+                    vrange(#{c}, #{r}, #{r - 1} + n).map!(&:#{TypeCoercions[t]})}")
+    end
+  end
+
+  def gencond name, c1, c2, r, cond, cond_col, t, force
+    c1       = c1.to_column_index
+    c2       = c2.to_column_index
+    cond_col = cond_col.to_column_index
+    singleton_class.instance_eval do
+      define_method name,
+        eval("proc {n = conditional_lookahead(#{r}, #{cond_col}, :#{cond})
+                    #{force ? "seek! #{r} + n" : ""}
+                    range(#{c1}, #{c2}, #{r}, #{r - 1} + n).map! {|xs| xs.map!(&:#{TypeCoercions[t]})}}")
     end
   end
 
