@@ -786,6 +786,93 @@ ni_group() {
   TODO ni_group
 }
 337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1
+module 'ni/interop/README.md' <<'dbce566bc304516c0479950e63d53cb2b11e4092ea975f27772d08bc983b09e4'
+# Interop libraries
+The source files are templates that contain a lot of the language-specific
+logic to consume and produce streams within a ni pipeline. Each language has a
+TSV binding that illustrates the basics. Later on I'll also add binary format
+support, though at the moment I'm still figuring out how that should work.
+dbce566bc304516c0479950e63d53cb2b11e4092ea975f27772d08bc983b09e4
+module 'ni/interop/ni.rb' <<'ccff5a5de5be78ac0056e1e89dd552f7fcd7bbc24b0baaf5f0252ef700db0faa'
+#!/usr/bin/env ruby
+# A standalone Ruby program that takes a row-mapper on the command line.
+
+#REQUIRES
+#LIBRARIES
+
+module Ni
+  @@context = binding
+
+  def r *xs; xs.join "\t"; end
+
+  class TSVContext
+    attr_reader :context
+    attr        :fields
+
+    def init
+      @context = binding
+    end
+
+    def << fields
+      @fields = fields
+    end
+
+    def method_missing name, *args
+      f = case name.to_s
+          when /[sf](\d+)/
+            eval "proc {@fields[#{$1}]}"
+          when /d(\d+)/
+            eval "proc {@fields[#{$1}].to_f}"
+          when /i(\d+)/
+            eval "proc {@fields[#{$1}].to_i}"
+          else
+            raise "unknown field spec: #{name.to_s}"
+          end
+
+      singleton_class.instance_eval do
+        define_method name, f
+      end
+
+      send name, *args
+    end
+  end
+
+  def self.run code
+    c = TSVContext.new
+    f = eval "proc {#{code}\n}", c.context
+
+    STDIN.each do |line|
+      c << line.chomp!.split(/\t/)
+      rs = c.instance_eval &f
+      if rs.is_a? Array
+        rs.each {|r| puts r}
+      else
+        puts rs.to_s
+      end
+    end
+  end
+end
+
+Ni.run ARGV[0]
+ccff5a5de5be78ac0056e1e89dd552f7fcd7bbc24b0baaf5f0252ef700db0faa
+module 'ni/interop/ni.pl' <<'685b02fe77468321df8766b1ddc82b68d587b9c06386ddaf50e9af89912a4f7d'
+#!/usr/bin/env perl
+# A standalone perl program that takes a row-mapper as a command-line argument.
+# Some templates here are expanded by ni in response to variables about
+# packages to include, version, etc.
+
+package ni;
+
+#USE_PACKAGES
+#LIBRARIES
+
+sub r { join "\t", @_ }
+
+my $compiled = eval "sub {$ARGV[0]\n}" // die "$ARGV[0]: $@";
+while (<STDIN>) {
+  /\n$/ ? print : print $_, "\n" for $compiled->(split /\t/);
+}
+685b02fe77468321df8766b1ddc82b68d587b9c06386ddaf50e9af89912a4f7d
 module 'ni/README.md' <<'43154d49d96653cf6b1c3daed250ee54d03e25d7a4405b8ad198eea758e49d7d'
 # Here there be monsters
 This directory contains core ni code. Modifying it voids your warranty.
@@ -974,29 +1061,7 @@ main() {
   eval "$shutdown_hooks"
 }
 0862f51a5b4170bbf5e4c95e169179c2822c315076ff6b90e027ae063f00003a
-module 'ni/jit/jit-sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
-# JIT support for POSIX shell programs
-#
-# jit_program=$(jit_sh <<'EOF'
-# echo "hello world $*"
-# EOF
-# )
-#
-# $jit_program "$@"             # to execute the program
-# jit_sh_free $jit_program      # to deallocate the program
-
-jit_sh() {
-  tmpdir
-  jit_sh_index=$((jit_sh_index + 1))
-  jit_sh_source="$self_tmpdir/jit-sh-$jit_sh_index"
-  { echo "#!/bin/sh"; cat; } > "$jit_sh_source"
-  chmod 700 "$jit_sh_source"
-  verb "$jit_sh_source"
-}
-
-jit_sh_free() tmpdir_rm "$1"
-c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9
-module 'ni/jit/jit-c.sh' <<'d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1'
+module 'ni/jit/c.sh' <<'d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1'
 # JIT support for C99 programs
 # Calling convention is like this, except that heredocs inside $() don't seem
 # to be allowed:
@@ -1033,7 +1098,29 @@ jit_c() {
 
 jit_c_free() tmpdir_rm "$1" "$1.c"
 d2265f53d8d9290885422cd2dd5e5ef2f3e69bfea4ab6d139acc6fbeac24bed1
-module 'ni/jit/jit-mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
+module 'ni/jit/sh.sh' <<'c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9'
+# JIT support for POSIX shell programs
+#
+# jit_program=$(jit_sh <<'EOF'
+# echo "hello world $*"
+# EOF
+# )
+#
+# $jit_program "$@"             # to execute the program
+# jit_sh_free $jit_program      # to deallocate the program
+
+jit_sh() {
+  tmpdir
+  jit_sh_index=$((jit_sh_index + 1))
+  jit_sh_source="$self_tmpdir/jit-sh-$jit_sh_index"
+  { echo "#!/bin/sh"; cat; } > "$jit_sh_source"
+  chmod 700 "$jit_sh_source"
+  verb "$jit_sh_source"
+}
+
+jit_sh_free() tmpdir_rm "$1"
+c9ddfdf2b372f6338580bd876b4a3cf06ee1212b0595f4b8de4c015a83f788a9
+module 'ni/jit/mvn.sh' <<'56d5b4c2e782305b4a824587cbecb0b18e42c98f3295bab87f1c7367ef81ae5b'
 # JVM JIT using maven as the frontend
 
 # POM generation stuff

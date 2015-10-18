@@ -3,18 +3,19 @@ A bunch of ways you might use ni to go about data manipulation tasks.
 
 ## Map/reduce word count
 ```sh
-$ ni data.txt -FW1k1gm'r f0, a0i1.sum'                  # local
-$ ni hdfs:data.txt -hFW1k1/^m'r f0, a0i1.sum'           # local
-$ ni hdfs:data.txt -HFW1k1/^m'r f0, a0i1.sum'           # hadoop
+$ ni data.txt -FW1k1gm'a0 {r f0, i1.sum}'               # local
+$ ni hdfs:data.txt -hFW1k1/^m'a0 {r f0, i1.sum}'        # local
+$ ni hdfs:data.txt -HFW1k1/^m'a0 {r f0, i1.sum}'        # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
 - `-1k1`: address `-k1` to field 1, which juxtaposes each word with 1
 - `-g`: group
 - `-m`: execute ruby code on each row
+    - `a0`: forward-aggregate by value in field 0
     - `r x, y`: emit a row of values
     - `f0`: value of first field
-    - `a0i1`: integer interpretation of field 1 forward-aggregated by field 0
+    - `i1`: integer interpretation of field 1
 
 Using the `-A/--aggregate` operator:
 
@@ -73,7 +74,7 @@ want to export the label mapping as `./labels` for debugging purposes.
 ```sh
 $ ni data -J* @=labels^vG1n -m'ls = (1..labels.size).map {0}
                                ss.each {|s| ls[labels[s] - 1] += 1}
-                               r ls'
+                               r *ls'
 ```
 
 - `-J*`: unpack JSON array to a row of values

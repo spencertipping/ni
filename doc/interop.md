@@ -70,7 +70,7 @@ the `next_record` function. (This means you can defer records and they'll be
 reducer inputs.) Here's what the above word count example looks like in ni:
 
 ```sh
-$ ni words.txt -m 'r f0, 1' -gm 'r f0, a0->i1->sum'
+$ ni words.txt -1k1gm 'a0 {r f0, i1.sum}'
 ```
 
 ni doesn't provide a `sum()` function for reasons described below.
