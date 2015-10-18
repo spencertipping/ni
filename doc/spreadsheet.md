@@ -51,10 +51,9 @@ using relative conditioning:
 
 Selection operators are:
 
-- `E` or `EQ`: equality of cells
-- `NE`: nonequality of adjacent cells
-- `G` or `GT`: ascending
-- `L` or `LT`: descending
+- `E`: equality of cells
+- `G`: ascending
+- `L`: descending
 - `LE`: nonascending
 - `GE`: nondescending
 - `S`: equal sign (positive/zero or negative)
