@@ -72,4 +72,15 @@ Lazy ranges work just like buffered ranges, with the following exceptions:
 3. Lazy ranges are abstract values and must be reduced to get a value out.
 
 You can construct a lazy range that overlaps a buffered range with no change in
-behavior.
+behavior. You can also use several overlapping or nonoverlapping lazy ranges at
+once, with the constraint that they must all exist before any of them is
+forced. `r` will automatically and simultaneously force all lazy ranges or
+reductions you hand to it.
+
+Lone capital letters, like `A` or `C`, don't refer to single cells; instead,
+they refer to entire column vectors. You can use these to reduce all input rows
+to a single value:
+
+```sh
+$ ni /usr/share/dict/words -m'r A.map(&:size).mean'     # average word length
+```

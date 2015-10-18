@@ -7,13 +7,7 @@ defstruct quasifile name
 
 # Complex commands
 defstruct --no-str lambda body          # [ ... ] or ^x
-defstruct --no-str lambdafork body      # @[ ... ] or @^x
-defstruct --no-str lambdaplus body      # -[ ... ]
-defstruct --no-str lambdamix body       # -@[ ... ]
 defstruct --no-str branch branches      # { x ... , y ... , ... }
-defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
-defstruct --no-str branchsub branches   # -{ ... }
-defstruct --no-str branchmix branches   # -@{ ... }
 
 # Pipeline compilation multimethods
 defmulti compile                        # compile to a shell command

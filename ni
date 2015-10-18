@@ -584,154 +584,15 @@ self() {
   verb "# </""script>" "$self_main"
 }
 d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212
-module 'ni/cli/parse.sh' <<'5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd'
+module 'ni/cli/parse.sh' <<'1539b42e923df4154e92e5bf72505cdf955fd6b8aad0fcd2706698963b6466a0'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
 
-# Lambda redesign...
-# NB: lambda options are deliberately delayed; that is, we don't parse them
-# until the lambda is invoked because the lambda may be running within a
-# context that provides different CLI arguments.
-#
-# This means we need to _preprocess_ lambdas into JIT contexts or functions.
-#
-# ... which implies that the whole way we're annotating lambdas, e.g. @[] vs
-# -[], is flawed; the lambda doesn't dictate how it manipulates the stream.
-#
-# i.e. lambdas are a way to JIT-compile stuff. In particular, they make it
-# possible to quote things more easily than using shell-quoting, particularly
-# when the thing you're compiling is itself a command.
-#
-# Given that, it seems like lambdas should be context-specific: octave[ ... ]
-# might just concatenate its string arguments, whereas ni[ ... ] parses
-# normally? Really it's a way for a function to take an undetermined number of
-# arguments.
-
-# Option parsing
-# Usage: ni_parse destination_var $vector_ref
-#
-# $vector_ref comes from using "vector" to convert "$@" to a vector object.
-# ni_parse will then consume the vector, which amounts to shifting it until
-# it's empty.
-#
-# The resulting structure is a vector of option defstructs.
-
-ni_parse() {
-  vector ni_parse_v
-
-  while lpop ni_parse_option $2; do
-    case "$ni_parse_option" in
-    # Closer: done with inner parse, so return
-    ']'|'}') break ;;
-
-    # Openers: parse inside, then add to vector. Delegate to ni_bracket_case to
-    # select the constructing class.
-    '['|'@['|'-['|'-@['|'{'|'@{'|'-{'|'-@{')
-      ni_bracket_case ni_parse_b "$ni_parse_option"
-      set -- "$1" "$2" "$ni_parse_b" "$ni_parse_v"
-      ni_parse ni_parse_xs $2
-      $3 ni_parse_obj $ni_parse_xs
-      ni_parse_v=$4
-      rpush $ni_parse_v $ni_parse_obj
-      ;;
-
-    # Long options
-    --*)
-      set -- "$1" "$2" "$ni_parse_v"
-      ni_parse_long ni_parse_obj ${ni_parse_option#--} $2
-      ni_parse_v=$3
-      rpush $ni_parse_v $ni_parse_obj
-      ;;
-
-    # Short options
-    -*|^*|@^*)
-      # Some explanation here. ni_parse is about establishing the context of an
-      # argument, which is why we match so many cases for this branch.
-      # ni_parse_short_options sorts out the lambda-notation for us by wrapping
-      # the results (and intermediate ones; see doc/operators.md for some
-      # examples of this). All we need to do is trim the leading -, if there is
-      # one, from the option string so it sees exactly what it needs to.
-
-      set -- "$1" "$2" "$ni_parse_v"
-      ni_parse_short ni_parse_objs ${ni_parse_option#-} $2
-      ni_parse_v=$3
-      rappend $ni_parse_v $ni_parse_objs
-      ;;
-
-    # Quasifiles
-    *)
-      quasifile ni_parse_obj "$ni_parse_option"
-      rpush $ni_parse_v $ni_parse_obj
-      ;;
-    esac
-  done
-
-  eval "$1=\$ni_parse_v"
-}
-
-ni_bracket_case() {
-  case "$2" in
-  '[')   eval "$1=lambda"     ;;
-  '@[')  eval "$1=lambdafork" ;;
-  '-[')  eval "$1=lambdaplus" ;;
-  '-@[') eval "$1=lambdamix"  ;;
-  '{')   eval "$1=branch"     ;;
-  '@{')  eval "$1=branchfork" ;;
-  '-{')  eval "$1=branchsub"  ;;
-  '-@{') eval "$1=branchmix"  ;;
-  esac
-}
-
-# Takes a constructor, a syntax string, and a vector of CLI options, and
-# returns the constructed option after shifting the vector. Parses any lambdas
-# it encounters, which is why this function contains recursion-safety.
-ni_syntax_long() {
-  ni_syntax_long_p=$1
-  while [ -n "$ni_syntax_long_p" ]; do
-    substr ni_syntax_long_n "$ni_syntax_long_p" 0 1
-    substr ni_syntax_long_p "$ni_syntax_long_p" 1
-
-    nth ni_syntax_long_arg "$2" 0
-
-    case "$ni_syntax_long_n" in
-    s)
-    esac
-  done
-}
-
-# Constructs the parse tree for a long option and its arguments, shifting the
-# CLI-option vector to point to the following operator.
-#
-# Usage: ni_parse_long dest_var $long_option_name $cli_vector
-ni_parse_long() {
-  get ni_parse_long_op $long_options $2
-  syntax ni_parse_long_syn $ni_parse_long_op
-
-  TODO ni_parse_long
-}
-
-# Constructs a vector of parsed short-option defstructs (with arguments),
-# shifting the CLI vector accordingly. This function will always consume an
-# exact number of elements; i.e. even though a short option may not itself
-# represent an entire command-line argument, this function will continue
-# parsing options until it reaches the end of the string.
-#
-# Usage: ni_parse_short dest_var $short_option $cli_vector
-ni_parse_short() {
-  TODO ni_parse_short
-}
-
-# Compiles a structure produced by ni_parse, returning a jit context to execute
-# it. The jit context can be executed without arguments or environment
-# variables, since all quasifiles and other data will be included.
-#
-# Usage: ni_compile dest_var $parsed_vector
-ni_compile() {
-  TODO ni_compile
-}
-5b37181d5a8555e47247de548b100e0927599e72be05fd1f7da7d44e806a61fd
-module 'ni/cli/structure.sh' <<'8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b'
+:
+# TODO
+1539b42e923df4154e92e5bf72505cdf955fd6b8aad0fcd2706698963b6466a0
+module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
 # use those functions rather than anything here.
@@ -741,13 +602,7 @@ defstruct quasifile name
 
 # Complex commands
 defstruct --no-str lambda body          # [ ... ] or ^x
-defstruct --no-str lambdafork body      # @[ ... ] or @^x
-defstruct --no-str lambdaplus body      # -[ ... ]
-defstruct --no-str lambdamix body       # -@[ ... ]
 defstruct --no-str branch branches      # { x ... , y ... , ... }
-defstruct --no-str branchfork branches  # @{ x ... , y ... , ... }
-defstruct --no-str branchsub branches   # -{ ... }
-defstruct --no-str branchmix branches   # -@{ ... }
 
 # Pipeline compilation multimethods
 defmulti compile                        # compile to a shell command
@@ -769,7 +624,7 @@ for structure_t in branch branchfork branchsub branchmix; do
           eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
         }"
 done
-8ef66eb829bc73ed624af655d922d9532e65e4df4e4200fb7ad427befb2d791b
+761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80
 module 'ni/ops/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
 # Quasifile object representation
 # TODO
@@ -855,7 +710,7 @@ end
 
 Ni.run ARGV[0]
 ccff5a5de5be78ac0056e1e89dd552f7fcd7bbc24b0baaf5f0252ef700db0faa
-module 'ni/interop/ni.pl' <<'685b02fe77468321df8766b1ddc82b68d587b9c06386ddaf50e9af89912a4f7d'
+module 'ni/interop/ni.pl' <<'dc8e3c3ba7b70141f630a9fe41c1af38b58646ace6cb74682afd681caa5c70c2'
 #!/usr/bin/env perl
 # A standalone perl program that takes a row-mapper as a command-line argument.
 # Some templates here are expanded by ni in response to variables about
@@ -866,13 +721,22 @@ package ni;
 #USE_PACKAGES
 #LIBRARIES
 
-sub r { join "\t", @_ }
+BEGIN {
+  for my $i (0 .. 99) {
+    eval "sub ni::f$i() {\$fields[$i]}";
+    eval "sub ni::s$i() {\$fields[$i]}";
+    eval "sub ni::i$i() {0 | \$fields[$i]}";
+    eval "sub ni::d$i() {0 + \$fields[$i]}";
+  }
+}
+
+our @fields;
+sub fs {@fields}
+sub r  {s/\n//g for @_; print join("\t", @_), "\n"}
 
 my $compiled = eval "sub {$ARGV[0]\n}" // die "$ARGV[0]: $@";
-while (<STDIN>) {
-  /\n$/ ? print : print $_, "\n" for $compiled->(split /\t/);
-}
-685b02fe77468321df8766b1ddc82b68d587b9c06386ddaf50e9af89912a4f7d
+chomp, &$compiled(@fields = split /\t/) while <STDIN>;
+dc8e3c3ba7b70141f630a9fe41c1af38b58646ace6cb74682afd681caa5c70c2
 module 'ni/README.md' <<'43154d49d96653cf6b1c3daed250ee54d03e25d7a4405b8ad198eea758e49d7d'
 # Here there be monsters
 This directory contains core ni code. Modifying it voids your warranty.
