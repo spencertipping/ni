@@ -3,19 +3,19 @@ A bunch of ways you might use ni to go about data manipulation tasks.
 
 ## Map/reduce word count
 ```sh
-$ ni data.txt -FW1k1gm'a0 {r f0, i1.sum}'               # local
-$ ni hdfs:data.txt -hFW1k1/^m'a0 {r f0, i1.sum}'        # local
-$ ni hdfs:data.txt -HFW1k1/^m'a0 {r f0, i1.sum}'        # hadoop
+$ ni data.txt -FW1k1gm'r a, B0eAi.sum}'                 # local
+$ ni hdfs:data.txt -hFW1k1/^m'r a, B0eAi.sum'           # local
+$ ni hdfs:data.txt -HFW1k1/^m'r a, B0eAi.sum'           # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
 - `-1k1`: address `-k1` to field 1, which juxtaposes each word with 1
 - `-g`: group
 - `-m`: execute ruby code on each row
-    - `a0`: forward-aggregate by value in field 0
-    - `r x, y`: emit a row of values
-    - `f0`: value of first field
-    - `i1`: integer interpretation of field 1
+    - `r ...`: emit a row containing one or more values
+    - `a`: value in current row, column a
+    - `B0eAi`: lazy range starting with `b0` and continuing for equal values
+      of column A (`eA`), cast to integer (`i`)
 
 Using the `-A/--aggregate` operator:
 

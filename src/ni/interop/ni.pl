@@ -8,9 +8,18 @@ package ni;
 #USE_PACKAGES
 #LIBRARIES
 
-sub r { join "\t", @_ }
+BEGIN {
+  for my $i (0 .. 99) {
+    eval "sub ni::f$i() {\$fields[$i]}";
+    eval "sub ni::s$i() {\$fields[$i]}";
+    eval "sub ni::i$i() {0 | \$fields[$i]}";
+    eval "sub ni::d$i() {0 + \$fields[$i]}";
+  }
+}
+
+our @fields;
+sub fs {@fields}
+sub r  {s/\n//g for @_; print join("\t", @_), "\n"}
 
 my $compiled = eval "sub {$ARGV[0]\n}" // die "$ARGV[0]: $@";
-while (<STDIN>) {
-  /\n$/ ? print : print $_, "\n" for $compiled->(split /\t/);
-}
+chomp, &$compiled(@fields = split /\t/) while <STDIN>;

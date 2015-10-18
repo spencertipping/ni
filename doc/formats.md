@@ -18,9 +18,9 @@ Given these constraints, here's how it works:
              |  |
       gzip -dc  xz -dc
              |  |
-      tsv->bin  tsv->bin                  bin->tsv
-             |  |                         |
-$ ni  file1.gz  file2.xz  -m 'length f0'  [| less]
+      tsv->bin  tsv->bin                 bin->tsv
+             |  |                        |
+$ ni  file1.gz  file2.xz  -m 'length a'  [| less]
                            |
                            binary->perl->binary
                            (perl library does this)
