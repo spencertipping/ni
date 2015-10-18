@@ -22,4 +22,5 @@ eval "$shutdown_hooks"
 # Build the actual ni image through two iterations of replication
 rm -f ni1 ni
 ./ni0    --install ni1 && rm ni0 \
-  && ni1 --install ni  && rm ni1
+  && ni1 --install ni  && rm ni1 \
+  && wc -c ni
