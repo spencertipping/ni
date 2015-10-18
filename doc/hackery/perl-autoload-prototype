@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+our $AUTOLOAD;
+sub AUTOLOAD() { @_ ? 0 : 1 }
+my $x = foo + 5;
+print $x == 5 ? "nope\n" : "woot\n";
