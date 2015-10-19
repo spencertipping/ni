@@ -23,28 +23,42 @@ class TakeN
   def take?      x; (@n -= 1) >= 0; end
 end
 
+def adjacent_condition &f
+  Class.new do
+    define_method :initialize do |*v_maybe|
+      unless v_maybe.empty?
+        @v     = v_maybe[0]
+        @v_set = true
+      end
+    end
+
+    define_method :take? do |x|
+      if @v_set
+        r = f.call(@v, x)
+        @v = x
+        r
+      else
+        @v     = x
+        @v_set = true
+      end
+    end
+  end
+end
+
 class CondColumn
   def initialize c, cond; @c = c; @cond = cond; end
   def take? x;            @cond.take? x[@c];    end
 end
 
 CellSelectors = {
-  :E  => Class.new {def initialize v; @v = v;  end
-                    def take?      x; @v == x; end},
+  :E  => adjacent_condition {|x, y| x == y},
+  :G  => adjacent_condition {|x, y| x > y},
+  :L  => adjacent_condition {|x, y| x < y},
+  :GE => adjacent_condition {|x, y| x >= y},
+  :LE => adjacent_condition {|x, y| x <= y},
 
-  :G  => Class.new {def initialize v; @v = v;                end
-                    def take?      x; (x > @v).tap {@v = x}; end},
-  :L  => Class.new {def initialize v; @v = v;                end
-                    def take?      x; (x < @v).tap {@v = x}; end},
-  :GE => Class.new {def initialize v; @v = v;                 end
-                    def take?      x; (x >= @v).tap {@v = x}; end},
-  :LE => Class.new {def initialize v; @v = v;                 end
-                    def take?      x; (x <= @v).tap {@v = x}; end},
-
-  :S  => Class.new {def initialize v; @v = v.to_f >= 0;  end
-                    def take?      x; @v == x.to_f >= 0; end},
-  :Z  => Class.new {def initialize v; @v = v.to_f == 0;    end
-                    def take?      x; @v == (x.to_f == 0); end},
+  :S  => adjacent_condition {|x, y| x >= 0 == y >= 0},
+  :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
   :N  => TakeN}
 
 TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
@@ -54,16 +68,21 @@ class Reducer
 
   def initialize
     @children = []
-    @eof      = false
+    @consumer = false
   end
 
-  def reduced?;  @children.empty? and !@eof;                      end
-  def end!;      @children.each(&:end!).empty!; @eof = true;      end
+  def reduced?
+    @children.reject!(&:reduced?)
+    !@consumer and @children.empty?
+  end
+
+  def end!;      @children.each(&:end!).clear;                    end
   def forward x; @children.each {|c| c << x}.reject!(&:reduced?); end
   def << x;      forward x;                                       end
 
   # Transforms
-  def child! x; @children << x; x; end
+  def child! r;  @children << r; r; end
+  def consumer!; @consumer = true;  end
 
   def map &f;          child! MapReducer.new(f);          end
   def take_while cond; child! TakeWhileReducer.new(cond); end
@@ -78,32 +97,43 @@ class Reducer
     end.map {|state| state[0].to_f / state[1]}
   end
 
-  def sum; reduce(0)   {|s, x| s + x}; end
-  def max; reduce(nil) {|s, x| s.nil? || x > s ? x : s}; end
-  def min; reduce(nil) {|s, x| s.nil? || x < s ? x : s}; end
+  def to_a; reduce([])  {|s, x| s << x}; end
+  def sum;  reduce(0)   {|s, x| s + x}; end
+  def max;  reduce(nil) {|s, x| s.nil? || x > s ? x : s}; end
+  def min;  reduce(nil) {|s, x| s.nil? || x < s ? x : s}; end
 end
 
 class MapReducer < Reducer
-  def initialize f; @f = f;                      end
-  def << x;         forward @f.call(@state = x); end
+  def initialize f; super(); @f = f;              end
+  def << x;         forward(@state = @f.call(x)); end
 end
 
 class SelectReducer < Reducer
-  def initialize f; @f = f;                            end
+  def initialize f; super(); @f = f;                   end
   def << x;         forward(@state = x) if @f.call(x); end
 end
 
 class TakeWhileReducer < Reducer
-  def initialize cond; @cond = cond; end
+  def initialize cond; super(); @cond = cond; end
   def << x
-    @cond = nil unless @cond.take? x
-    end! if @cond.nil?
+    return if @cond.nil?
+    if @cond.take? x
+      forward(@state = x)
+    else
+      @cond = nil
+      self.end!
+    end
   end
 end
 
 class ReduceReducer < Reducer
-  def initialize state, r; @state = state; @r = r;      end
-  def << x;                @state = @r.call(@state, x); end
+  def initialize state, r; super(); @state = state; @r = r; @consumer = true; end
+  def << x;                @state = @r.call(@state, x);                       end
+  def end!
+    @children.each {|c| c << @state; c.end!}
+    @children.clear
+    @consumer = false
+  end
 end
 
 class Spreadsheet
@@ -115,6 +145,7 @@ class Spreadsheet
     @io_eof    = false
     @step      = 1
     @reducers  = []
+    @callbacks = []
   end
 
   def run! code
@@ -135,67 +166,41 @@ class Spreadsheet
   # Output stuff
   def r *xs
     if xs.any? {|x| x.is_a? Reducer}
+      xs.select {|x| x.is_a? Reducer}.each(&:consumer!)
       @callbacks << proc do
-        r xs.map {|x| x.is_a?(Reducer) ? x.state : x}
+        s = xs.map {|x| x.is_a?(Reducer) ? x.state : x}.join("\t")
+        puts s rescue exit
       end
+      nil
     else
       puts xs.join("\t") rescue exit
     end
   end
 
-  def child! r; @reducers << x; end
+  def child! r; @reducers << r; r; end
 
-  # Input stuff
   def cell c, r
     lookahead_to r
     @lookahead[r][c.to_column_index]
   end
 
-  def hrange c1, c2, r
-    lookahead_to r
-    @lookahead[r][c1.to_column_index .. c2.to_column_index]
-  end
-
-  def vrange c, r1, r2
-    lookahead_to r2
-    c = c.to_column_index
-    @lookahead[r1 .. r2].map {|r| r[c]}
-  end
-
-  def range c1, c2, r1, r2
-    lookahead_to r2
-    c1 = c1.to_column_index
-    c2 = c2.to_column_index
-    @lookahead[r1 .. r2].map {|r| r[c1 .. c2]}
-  end
-
-  def cond_vrange c, r, col, cond
-    vrange c, r, r + conditional_lookahead(r, col, cond)
-  end
-
-  def cond_range c1, c2, r, col, cond
-    range c1, c2, r, r + conditional_lookahead(r, col, cond)
-  end
-
   # Buffered lookahead
   def next_row
-    xs = @io.gets.chomp!.split(/\t/)
-    @io_eof ||= @io.eof?
-    xs
+    return nil if @io_eof ||= @io.eof?
+    @io.gets.chomp!.split(/\t/)
   end
 
   def lookahead_to row
     until @lookahead.size > row or @io_eof
-      xs = next_row
-      @lookahead << xs
-      @reducers.each {|x| x << xs}.reject!(&:reduced?)
+      r = next_row
+      @lookahead << r unless r.nil?
     end
   end
 
   def conditional_lookahead row, col, cond
     cond = CellSelectors[cond].new(cell col, row)
     take = 1
-    take += 1 while cond.take? cell(col, row + take)
+    take += 1 while !@io_eof and cond.take? cell(col, row + take)
     take
   end
 
@@ -205,21 +210,26 @@ class Spreadsheet
   end
 
   def advance!
-    if @step > @lookahead.size
-      (@step -= @lookahead.size).times {@io.gets unless @io_eof ||= @io.eof?}
-      @lookahead = []
-    else
-      discarded = @lookahead.shift @step
+    until @reducers.empty? or @io_eof
+      lookahead_to 0
+      @reducers.each {|r| r << @lookahead.first}.reject!(&:reduced?)
+      unless @reducers.empty?
+        @step -= 1
+        @lookahead.shift
+      end
+    end
+    @reducers.each(&:end!).clear if @io_eof
+    @callbacks.each(&:call).clear
+
+    if @step > 0
+      if @lookahead.size > @step
+        @lookahead.shift @step
+      else
+        (@step -= @lookahead.size).times {next_row}
+        @lookahead.clear
+      end
     end
     @step = 1
-
-    # Handle any outstanding lazy computations TODO
-    until @reducers.empty? or @lookahead.empty? && @io_eof
-      xs = next_row
-      @reducers.each {|r| r << xs}.reject!(&:reduced?)
-    end
-    @reducers.each(&:end!)
-    @callbacks.each(&:call)
   end
 
   # Code generators (used by method generators below)
@@ -271,7 +281,10 @@ class Spreadsheet
     genf name,
       eval("proc {n = conditional_lookahead(#{r}, #{cond_col}, :#{cond})
                   #{force ? "seek! #{r} + n" : ""}
-                  vrange(#{c}, #{r}, #{r - 1} + n).map!(&:#{TypeCoercions[t]})}")
+                  lookahead_to #{r - 1} + n
+                  @lookahead[#{r}..#{r - 1} + n].map! do |xs|
+                    xs[#{c}].#{TypeCoercions[t]}
+                  end}")
   end
 
   def gencond name, c1, c2, r, cond, cond_col, t, force
@@ -281,7 +294,10 @@ class Spreadsheet
     genf name,
       eval("proc {n = conditional_lookahead(#{r}, #{cond_col}, :#{cond})
                   #{force ? "seek! #{r} + n" : ""}
-                  range(#{c1}, #{c2}, #{r}, #{r - 1} + n).map! {|xs| xs.map!(&:#{TypeCoercions[t]})}}")
+                  lookahead_to #{r - 1} + n
+                  @lookahead[#{r}..#{r - 1} + n].map! do |xs|
+                    xs.map!(&:#{TypeCoercions[t]})
+                  end}")
   end
 
   def genvlazy name, c, t, transform
@@ -314,17 +330,15 @@ class Spreadsheet
 
       # Lazy cases
       when /^_([a-z])([dis])?$/
-        genvlazy name, $1, $2, ".map {|r| r[#{$2}]}"
+        genvlazy name, $1.to_column_index, $2, ""
       when /^_([a-z])_?(\d+)([dis])?$/
-        genvlazy name, $1, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
+        genvlazy name, $1.to_column_index, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
       when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
-        genvlazy name, $1,
-          ".take_while(CondColumn.new(#{$3.to_column_index},
-                                      CellSelectors[:#{$2}].new))"
+        genvlazy name, $1.to_column_index, $4,
+          ".take_while(CondColumn.new(#{$3.to_column_index}, CellSelectors[:#{$2}].new))"
       when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
-        genlazy name, $1, $2, $5,
-          ".take_while(CondColumn.new(#{$4.to_column_index},
-                                      CellSelectors[:#{$3}].new))"
+        genlazy name, $1.to_column_index, $2.to_column_index, $5,
+          ".take_while(CondColumn.new(#{$4.to_column_index}, CellSelectors[:#{$3}].new))"
 
       else
         raise "unknown cell or range specifier: #{name}"
