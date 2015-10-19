@@ -137,8 +137,6 @@ class ReduceReducer < Reducer
 end
 
 class Spreadsheet
-  @@instance = nil
-
   def initialize source_io
     @lookahead = []
     @io        = source_io
@@ -146,6 +144,18 @@ class Spreadsheet
     @step      = 1
     @reducers  = []
     @callbacks = []
+
+    # TODO: fix massively egregious state leak (Spreadsheet's eigenclass is not
+    # up for grabs this way; the right solution is to hack .compile() to create
+    # a binding within an anonymous linked eigenclass)
+    me     = self
+    sender = proc {|name| me.send(name)}
+    Spreadsheet.instance_eval do
+      @@sender = sender
+      def const_missing name
+        @@sender.call(name)
+      end
+    end
   end
 
   def run! code
@@ -161,7 +171,7 @@ class Spreadsheet
   end
 
   def context; binding; end
-  def compile code; @@instance = self; eval "proc {#{code}\n}", context; end
+  def compile code; eval "proc {#{code}\n}", context; end
 
   # Output stuff
   def r *xs
@@ -329,14 +339,14 @@ class Spreadsheet
         gencond name, $1, $3, $2.to_i, $4.to_sym, $5, $6, !!$7
 
       # Lazy cases
-      when /^_([a-z])([dis])?$/
+      when /^([A-Z])([dis])?$/
         genvlazy name, $1.to_column_index, $2, ""
-      when /^_([a-z])_?(\d+)([dis])?$/
+      when /^([A-Z])_?(\d+)([dis])?$/
         genvlazy name, $1.to_column_index, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
-      when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
+      when /^([A-Z])_?([A-Z]+)([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $4,
           ".take_while(CondColumn.new(#{$3.to_column_index}, CellSelectors[:#{$2}].new))"
-      when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
+      when /^([A-Z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
         genlazy name, $1.to_column_index, $2.to_column_index, $5,
           ".take_while(CondColumn.new(#{$4.to_column_index}, CellSelectors[:#{$3}].new))"
 

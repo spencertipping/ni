@@ -66,9 +66,11 @@ consumed prior to starting the next iteration.
 ## Lazy ranges
 Lazy ranges work just like buffered ranges, with the following exceptions:
 
-1. Column names are specified in uppercase, selection operators in lowercase.
+1. The first letter is written in uppercase.
 2. Lazy ranges are always completely consumed since no buffering occurs.
 3. Lazy ranges are abstract values and must be reduced to get a value out.
+4. Lazy ranges always start on the first row (**TODO:** fix this because it's
+   lame).
 
 You can construct a lazy range that overlaps a buffered range with no change in
 behavior. You can also use several overlapping or nonoverlapping lazy ranges at
@@ -76,11 +78,8 @@ once, with the constraint that they must all exist before any of them is
 forced. `r` will automatically and simultaneously force all lazy ranges or
 reductions you hand to it.
 
-Lone capital letters, like `A` or `C`, don't refer to single cells; instead,
-they refer to entire column vectors. You can use these to reduce all input rows
-to a single value:
+You can also reduce a whole column vector; for example:
 
 ```sh
-$ ni /usr/share/dict/words -m'r A.map(&:size).mean'     # average word length
-$ ni /usr/share/dict/words -m'r A.map(:size).mean'      # same but faster
+$ ni /usr/share/dict/words -m'r _a.map(&:size).mean'     # average word length
 ```
