@@ -82,4 +82,5 @@ to a single value:
 
 ```sh
 $ ni /usr/share/dict/words -m'r A.map(&:size).mean'     # average word length
+$ ni /usr/share/dict/words -m'r A.map(:size).mean'      # same but faster
 ```
