@@ -76,7 +76,7 @@ Quantiles require pre-aggregation, which produces fairly small values that can
 be interpolated into a lambda using shell substitution:
 
 ```sh
-$ ni hdfs:/data -H ^r'qs = [$(ni hdfs:/data/part-00000 -o#100er)]
+$ ni hdfs:/data -H ^m'qs = [$(ni hdfs:/data/part-00000 -o#100er)]
                       qs.find_index {|q| ai <= q}' //
 ```
 
@@ -87,11 +87,11 @@ each time around.
 ```sh
 # option 1: read the lambda (not any shorter in character terms, and repeats
 # work since the initialization is distributed)
-$ ni hdfs:/data -H ^r'qs = cache {rl "hdfs:/data/part-00000 -ot#100er"}
+$ ni hdfs:/data -H ^m'qs = cache {rl "hdfs:/data/part-00000 -ot#100er"}
                       qs.find_index {|q| ai <= q}' //
 
 # option 2: stream-aliasing fork to create a variable (fast and concise)
 # technically a little different; we're taking 10K records instead of reading
 # just the first partfile. But the same idea.
-$ ni hdfs:/data @qs^t1E4ot#100 -H ^r'qs.find_index {|q| ai <= q}' //
+$ ni hdfs:/data @qs^t1E4ot#100 -H ^m'qs.find_index {|q| ai <= q}' //
 ```

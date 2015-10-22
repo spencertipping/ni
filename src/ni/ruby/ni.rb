@@ -2,6 +2,8 @@
 # A standalone Ruby program that takes a spreadsheet function on the command
 # line. See doc/spreadsheet.md for details about how this works.
 
+require 'set'
+
 class Fixnum
   def to_column_index; self; end
 end
@@ -12,6 +14,7 @@ end
 
 class NilClass
   def [] *args; nil; end
+  def map &f;   [];  end
 end
 
 class Object
@@ -84,10 +87,11 @@ class Reducer
   def child! r;  @children << r; r; end
   def consumer!; @consumer = true;  end
 
-  def map &f;          child! MapReducer.new(f);          end
-  def take_while cond; child! TakeWhileReducer.new(cond); end
-  def select &f;       child! SelectReducer.new(f);       end
-  def reduce x, &f;    child! ReduceReducer.new(x, f);    end
+  def map &f;          child! MapReducer.new(f);                        end
+  def take_while cond; child! TakeWhileReducer.new(cond);               end
+  def select &f;       child! SelectReducer.new(f);                     end
+  def reject &f;       child! SelectReducer.new(proc {|x| !f.call(x)}); end
+  def reduce x, &f;    child! ReduceReducer.new(x, f);                  end
 
   def mean
     reduce([0, 0]) do |state, x|
@@ -101,6 +105,13 @@ class Reducer
   def sum;  reduce(0)   {|s, x| s + x}; end
   def max;  reduce(nil) {|s, x| s.nil? || x > s ? x : s}; end
   def min;  reduce(nil) {|s, x| s.nil? || x < s ? x : s}; end
+
+  def frequencies; reduce(Hash.new 0) {|m, x| m[x] += 1; m}; end
+
+  def uniq
+    s = Set.new
+    select {|x| s.add? x}
+  end
 end
 
 class MapReducer < Reducer
@@ -144,24 +155,12 @@ class Spreadsheet
     @step      = 1
     @reducers  = []
     @callbacks = []
-
-    # TODO: fix massively egregious state leak (Spreadsheet's eigenclass is not
-    # up for grabs this way; the right solution is to hack .compile() to create
-    # a binding within an anonymous linked eigenclass)
-    me     = self
-    sender = proc {|name| me.send(name)}
-    Spreadsheet.instance_eval do
-      @@sender = sender
-      def const_missing name
-        @@sender.call(name)
-      end
-    end
   end
 
   def run! code
     f = compile(code)
     until eof?
-      instance_eval &f
+      f.call
       advance!
     end
   end
@@ -171,7 +170,9 @@ class Spreadsheet
   end
 
   def context; binding; end
-  def compile code; eval "proc {#{code}\n}", context; end
+  def compile code
+    eval "proc {#{code}\n}", context
+  end
 
   # Output stuff
   def r *xs
@@ -327,6 +328,8 @@ class Spreadsheet
       # Eager cases
       when /^([a-z])(\d*)([dis])?(!)?$/
         gencell name, $1, $2.to_i, $3, !!$4
+      when /^([a-z])(\d*)_([dis])?(!)?$/
+        genhrange name, $1, -1, $2.to_i, $3, !!$4
       when /^([a-z])_?([a-z])(\d*)([dis])?(!)?$/
         genhrange name, $1, $2, $3.to_i, $4, !!$5
       when /^([a-z])(\d*)_(\d+)([dis])?(!)?$/
@@ -339,14 +342,14 @@ class Spreadsheet
         gencond name, $1, $3, $2.to_i, $4.to_sym, $5, $6, !!$7
 
       # Lazy cases
-      when /^([A-Z])([dis])?$/
+      when /^_([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $2, ""
-      when /^([A-Z])_?(\d+)([dis])?$/
+      when /^_([a-z])_?(\d+)([dis])?$/
         genvlazy name, $1.to_column_index, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
-      when /^([A-Z])_?([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $4,
           ".take_while(CondColumn.new(#{$3.to_column_index}, CellSelectors[:#{$2}].new))"
-      when /^([A-Z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
         genlazy name, $1.to_column_index, $2.to_column_index, $5,
           ".take_while(CondColumn.new(#{$4.to_column_index}, CellSelectors[:#{$3}].new))"
 

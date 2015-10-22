@@ -42,6 +42,9 @@ Buffered ranges have three notations with different meanings:
 - `b_g3`: `[b3, c3, d3, e3, f3, g3]` (partial row vector)
 - `b3_d4` or `b3d4`: `[[b3, b4], [c3, c4], [d3, d4]]` (matrix)
 
+There's also the form `a_`, which selects every cell in the row. (And `b_`,
+`c_`, etc, do what you would expect.)
+
 Sometimes you want to select ranges based on cell values, which you can do
 using relative conditioning:
 
@@ -66,7 +69,8 @@ consumed prior to starting the next iteration.
 ## Lazy ranges
 Lazy ranges work just like buffered ranges, with the following exceptions:
 
-1. The first letter is written in uppercase.
+1. Lazy ranges start with an underscore. (I wanted to have the first letter in
+   uppercase instead, but Ruby is having none of it.)
 2. Lazy ranges are always completely consumed since no buffering occurs.
 3. Lazy ranges are abstract values and must be reduced to get a value out.
 4. Lazy ranges always start on the first row (**TODO:** fix this because it's
@@ -81,5 +85,5 @@ reductions you hand to it.
 You can also reduce a whole column vector; for example:
 
 ```sh
-$ ni /usr/share/dict/words -m'r _a.map(&:size).mean'     # average word length
+$ ni /usr/share/dict/words -m'r _a.map(&:size).mean'    # average word length
 ```

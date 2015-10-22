@@ -3,9 +3,9 @@ A bunch of ways you might use ni to go about data manipulation tasks.
 
 ## Map/reduce word count
 ```sh
-$ ni data.txt -FW1k1gm'r a, B0eAi.sum}'                 # local
-$ ni hdfs:data.txt -hFW1k1/^m'r a, B0eAi.sum'           # local
-$ ni hdfs:data.txt -HFW1k1/^m'r a, B0eAi.sum'           # hadoop
+$ ni data.txt -FW1k1gm'r a, _bEai.sum'                  # local
+$ ni hdfs:data.txt -hFW1k1/^m'r a, _bEai.sum'           # local
+$ ni hdfs:data.txt -HFW1k1/^m'r a, _bEai.sum'           # hadoop
 ```
 
 - `-FW`: shorthand for `-F '\W+'`: split on non-words
@@ -14,8 +14,8 @@ $ ni hdfs:data.txt -HFW1k1/^m'r a, B0eAi.sum'           # hadoop
 - `-m`: execute ruby code on each row
     - `r ...`: emit a row containing one or more values
     - `a`: value in current row, column a
-    - `B0eAi`: lazy range starting with `b0` and continuing for equal values
-      of column A (`eA`), cast to integer (`i`)
+    - `_bEai`: lazy range starting with `b0` and continuing for equal values
+      of column A (`Ea`), with each value cast to integer (`i`)
 
 Using the `-A/--aggregate` operator:
 
@@ -33,18 +33,18 @@ $ ni data.txt -FWvgcx                                   # append count
 
 ## Index JSON dataset by geohash
 ```sh
-$ ni data -m'r j0.name, ge(j0.latitude, j0.longitude, 8)' -xg
+$ ni data -m'r aj.name, ge(aj.latitude, aj.longitude, 8)' -xg
 ```
 
-`j0` means "`f0` interpreted as JSON". It notationally bypasses the caching
+`aj` means "`a0` interpreted as JSON". It notationally bypasses the caching
 otherwise necessary to support multiple-access. `ge` is a builtin function to
 encode geohashes.
 
 When performance is important, you're probably better off using ni's JSON
-parser generator like this:
+extractor like this:
 
 ```sh
-$ ni data -Jname,latitude,longitude -m'r s0, ge(d1, d2, 8)' -xg
+$ ni data -Jname,latitude,longitude -m'r a, ge(bd, cd, 8)' -xg
 ```
 
 ## Record extraction
@@ -69,16 +69,17 @@ your output will be reused.
 Doing this correctly requires buffering because we're building a numerical
 index. For example, let's suppose we have a bunch of JSON arrays of city names,
 and the goal is to convert those to a matrix of row/city frequency. We also
-want to export the label mapping as `./labels` for debugging purposes.
+want to export the label mapping as `./labels.gz` for debugging purposes.
 
 ```sh
-$ ni data -J* @=labels^vG1n -m'ls = (1..labels.size).map {0}
-                               ss.each {|s| ls[labels[s] - 1] += 1}
-                               r *ls'
+$ ni data -J* @:labels.gz^vG1n -m'ls = (1..labels.size).map {0}
+                                  a_.each {|l| ls[labels[l] - 1] += 1}
+                                  r *ls'
 ```
 
 - `-J*`: unpack JSON array to a row of values
-- `@=`: create both a variable and a file (`@` = variable, `=` = file)
+- `@:`: create both a variable and a file (`@` = variable, `:` = checkpoint
+  file); only the basename is used for the variable (i.e. the `.gz` is dropped)
 - `^vG1n`: modifier lambda: vertical, groupuniq, line number -> column 1
   (ni converts this to a hashmap when you define a variable)
 
@@ -89,7 +90,4 @@ checkpoint file:
 ```sh
 $ ni hdfs:/data/source -t1E5 ...                # slow
 $ ni hdfs:/data/source -t1E5 :input.gz          # fast for subsequent runs
-$ ni :input.gz[ hdfs:/data/source -t1E5 ] ...   # same thing, more explicit
 ```
-
-Note that checkpointing can't be used with `@`.

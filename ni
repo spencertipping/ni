@@ -584,74 +584,12 @@ self() {
   verb "# </""script>" "$self_main"
 }
 d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212
-module 'ni/cli/parse.sh' <<'1539b42e923df4154e92e5bf72505cdf955fd6b8aad0fcd2706698963b6466a0'
-# ni frontend functions: option parsing and compilation
-# Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
-# metaprogramming used by home/conf.
-
-:
-# TODO
-1539b42e923df4154e92e5bf72505cdf955fd6b8aad0fcd2706698963b6466a0
-module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
-# Syntactic structures and multimethods
-# See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
-# use those functions rather than anything here.
-
-meta_hook <<'EOF'
-defstruct quasifile name
-
-# Complex commands
-defstruct --no-str lambda body          # [ ... ] or ^x
-defstruct --no-str branch branches      # { x ... , y ... , ... }
-
-# Pipeline compilation multimethods
-defmulti compile                        # compile to a shell command
-defmulti describe                       # plain-English description
-EOF
-
-for structure_t in lambda lambdafork lambdaplus lambdamix; do
-  eval "${structure_t}_str() {
-          body ${structure_t}_str_b \$2
-          str ${structure_t}_str_s \$${structure_t}_str_b
-          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
-        }"
-done
-
-for structure_t in branch branchfork branchsub branchmix; do
-  eval "${structure_t}_str() {
-          branches ${structure_t}_str_b \$2
-          str ${structure_t}_str_s \$${structure_t}_str_b
-          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
-        }"
-done
-761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80
-module 'ni/ops/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
-# Quasifile object representation
-# TODO
-:
-2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91
-module 'ni/ops/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
-# Sorting operators and function definitions
-meta_hook <<'EOF'
-defstruct ni_group column_spec ordering
-defstruct ni_order column_spec ordering
-EOF
-
-ni_group() {
-  TODO ni_group
-}
-337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1
-module 'ni/interop/README.md' <<'dbce566bc304516c0479950e63d53cb2b11e4092ea975f27772d08bc983b09e4'
-# Interop libraries
-The source files are templates that contain a lot of the language-specific
-logic to consume and produce streams within a ni pipeline. Each language has a
-TSV binding that illustrates the basics. Later on I'll also add binary format
-support, though at the moment I'm still figuring out how that should work.
-dbce566bc304516c0479950e63d53cb2b11e4092ea975f27772d08bc983b09e4
-module 'ni/interop/ni.rb' <<'1cdc2330f51509c0cf1d0f04d2043dc562ea7e26bafc9d84a4184d0961705bb4'
+module 'ni/ruby/ni.rb' <<'7594a212965d788b063046009b021037ab28e1152ec9484a7591d2ba627ae67a'
 #!/usr/bin/env ruby
 # A standalone Ruby program that takes a spreadsheet function on the command
 # line. See doc/spreadsheet.md for details about how this works.
+
+require 'set'
 
 class Fixnum
   def to_column_index; self; end
@@ -663,6 +601,7 @@ end
 
 class NilClass
   def [] *args; nil; end
+  def map &f;   [];  end
 end
 
 class Object
@@ -735,10 +674,11 @@ class Reducer
   def child! r;  @children << r; r; end
   def consumer!; @consumer = true;  end
 
-  def map &f;          child! MapReducer.new(f);          end
-  def take_while cond; child! TakeWhileReducer.new(cond); end
-  def select &f;       child! SelectReducer.new(f);       end
-  def reduce x, &f;    child! ReduceReducer.new(x, f);    end
+  def map &f;          child! MapReducer.new(f);                        end
+  def take_while cond; child! TakeWhileReducer.new(cond);               end
+  def select &f;       child! SelectReducer.new(f);                     end
+  def reject &f;       child! SelectReducer.new(proc {|x| !f.call(x)}); end
+  def reduce x, &f;    child! ReduceReducer.new(x, f);                  end
 
   def mean
     reduce([0, 0]) do |state, x|
@@ -752,6 +692,13 @@ class Reducer
   def sum;  reduce(0)   {|s, x| s + x}; end
   def max;  reduce(nil) {|s, x| s.nil? || x > s ? x : s}; end
   def min;  reduce(nil) {|s, x| s.nil? || x < s ? x : s}; end
+
+  def frequencies; reduce(Hash.new 0) {|m, x| m[x] += 1; m}; end
+
+  def uniq
+    s = Set.new
+    select {|x| s.add? x}
+  end
 end
 
 class MapReducer < Reducer
@@ -795,24 +742,12 @@ class Spreadsheet
     @step      = 1
     @reducers  = []
     @callbacks = []
-
-    # TODO: fix massively egregious state leak (Spreadsheet's eigenclass is not
-    # up for grabs this way; the right solution is to hack .compile() to create
-    # a binding within an anonymous linked eigenclass)
-    me     = self
-    sender = proc {|name| me.send(name)}
-    Spreadsheet.instance_eval do
-      @@sender = sender
-      def const_missing name
-        @@sender.call(name)
-      end
-    end
   end
 
   def run! code
     f = compile(code)
     until eof?
-      instance_eval &f
+      f.call
       advance!
     end
   end
@@ -822,7 +757,9 @@ class Spreadsheet
   end
 
   def context; binding; end
-  def compile code; eval "proc {#{code}\n}", context; end
+  def compile code
+    eval "proc {#{code}\n}", context
+  end
 
   # Output stuff
   def r *xs
@@ -978,6 +915,8 @@ class Spreadsheet
       # Eager cases
       when /^([a-z])(\d*)([dis])?(!)?$/
         gencell name, $1, $2.to_i, $3, !!$4
+      when /^([a-z])(\d*)_([dis])?(!)?$/
+        genhrange name, $1, -1, $2.to_i, $3, !!$4
       when /^([a-z])_?([a-z])(\d*)([dis])?(!)?$/
         genhrange name, $1, $2, $3.to_i, $4, !!$5
       when /^([a-z])(\d*)_(\d+)([dis])?(!)?$/
@@ -990,14 +929,14 @@ class Spreadsheet
         gencond name, $1, $3, $2.to_i, $4.to_sym, $5, $6, !!$7
 
       # Lazy cases
-      when /^([A-Z])([dis])?$/
+      when /^_([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $2, ""
-      when /^([A-Z])_?(\d+)([dis])?$/
+      when /^_([a-z])_?(\d+)([dis])?$/
         genvlazy name, $1.to_column_index, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
-      when /^([A-Z])_?([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $4,
           ".take_while(CondColumn.new(#{$3.to_column_index}, CellSelectors[:#{$2}].new))"
-      when /^([A-Z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
         genlazy name, $1.to_column_index, $2.to_column_index, $5,
           ".take_while(CondColumn.new(#{$4.to_column_index}, CellSelectors[:#{$3}].new))"
 
@@ -1010,7 +949,91 @@ class Spreadsheet
 end
 
 Spreadsheet.new($stdin).run! ARGV[0]
-1cdc2330f51509c0cf1d0f04d2043dc562ea7e26bafc9d84a4184d0961705bb4
+7594a212965d788b063046009b021037ab28e1152ec9484a7591d2ba627ae67a
+module 'ni/cli/parse.sh' <<'cb3b2e26914cdd81b546f1ff4f6c8f8b6c9885ff12e8ca24c862511ae4d5a0aa'
+# ni frontend functions: option parsing and compilation
+# Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
+# metaprogramming used by home/conf.
+
+# Grammar
+# ni has a fairly complex command-line language consisting of the following
+# elements:
+#
+#   quasifiles                  ni data.txt
+#   short operators             ni -gcO
+#   long operators              ni --groupuniq
+#   variables                   ni @foo
+#   checkpoints                 ni :foo.gz
+#   outputs                     ni =foo.gz
+#   branches                    ni { a -g , b -c }
+#   branch lambdas              ni -A { a -g , b -c }
+#   lambdas                     ni -A [ -st+1 ]
+#   compilation contexts        ni octave[ 'xs = abs(fft(xs))' ]
+#
+# Those constructs in isolation would be easy to parse, but for ergonomic
+# advantage ni also gives you some shorthands:
+#
+#   ni -A ^st+1                 # short quoting
+#   ni -A [st+1]                # compact lambda form
+#   ni -Ast+1                   # lambda coercion (context-sensitive)
+#
+#   ni @:foo.gz                 # variable "foo" and checkpoint foo.gz
+#   ni @=foo.gz                 # same thing, but s/checkpoint/output/
+#   ni @foo[ -gcO ]             # var from transformed stream
+#
+# 
+
+:
+cb3b2e26914cdd81b546f1ff4f6c8f8b6c9885ff12e8ca24c862511ae4d5a0aa
+module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
+# Syntactic structures and multimethods
+# See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
+# use those functions rather than anything here.
+
+meta_hook <<'EOF'
+defstruct quasifile name
+
+# Complex commands
+defstruct --no-str lambda body          # [ ... ] or ^x
+defstruct --no-str branch branches      # { x ... , y ... , ... }
+
+# Pipeline compilation multimethods
+defmulti compile                        # compile to a shell command
+defmulti describe                       # plain-English description
+EOF
+
+for structure_t in lambda lambdafork lambdaplus lambdamix; do
+  eval "${structure_t}_str() {
+          body ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+
+for structure_t in branch branchfork branchsub branchmix; do
+  eval "${structure_t}_str() {
+          branches ${structure_t}_str_b \$2
+          str ${structure_t}_str_s \$${structure_t}_str_b
+          eval \"\$1=\\\"<${structure_t} \\\$${structure_t}_str_s>\\\"\"
+        }"
+done
+761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80
+module 'ni/ops/quasifile.sh' <<'2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91'
+# Quasifile object representation
+# TODO
+:
+2bfae0625668105102b2929fa3a85413c76dba3fd7e58f3bf0e9eaf4e3311f91
+module 'ni/ops/sorting.sh' <<'337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1'
+# Sorting operators and function definitions
+meta_hook <<'EOF'
+defstruct ni_group column_spec ordering
+defstruct ni_order column_spec ordering
+EOF
+
+ni_group() {
+  TODO ni_group
+}
+337e7d047c2cfd0609776a5111d8e1f450ded5ae0a58be4553c02400a4ed6cb1
 module 'ni/README.md' <<'43154d49d96653cf6b1c3daed250ee54d03e25d7a4405b8ad198eea758e49d7d'
 # Here there be monsters
 This directory contains core ni code. Modifying it voids your warranty.
