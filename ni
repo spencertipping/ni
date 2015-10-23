@@ -950,7 +950,7 @@ end
 
 Spreadsheet.new($stdin).run! ARGV[0]
 7594a212965d788b063046009b021037ab28e1152ec9484a7591d2ba627ae67a
-module 'ni/cli/parse.sh' <<'739d4038e2b059b07c9b260d03d699190ba91528e36f01ec2415ae6a5a52e9a3'
+module 'ni/cli/parse.sh' <<'f5a4f8328c487ccf57859ec4dc9a0d9f1304bb6dd59822b5f296ed61ff92d050'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -1013,11 +1013,24 @@ module 'ni/cli/parse.sh' <<'739d4038e2b059b07c9b260d03d699190ba91528e36f01ec2415
 #   lambda_op       ::= char implicit_lambda
 #   implicit_lambda ::= explicit_lambda | short_op+
 #   explicit_lambda ::= '^' short_op+ | '[ ' start ' ]' | '[' short_op+ ']'
+#
+# The non-whitespaced form of explicit_lambda, [st+1], is a little special in
+# that while each operator can accept its usual arguments you can't write
+# quasifiles because every new word will be interpreted as a non-prefixed short
+# op. For example, [m'r _a' gcO] == [ -m 'r _a' -gcO ].
+#
+# Another complication is that EBNF isn't a very good notation for encoding
+# command-line argument boundaries, which ni considers to be significant. For
+# example, these two invocations are completely different:
+#
+# $ ni -A [ -gcO ]              # valid lambda
+# $ ni -A "[ -gcO ]"            # broken compact-lambda, possibly a quasifile?
 
-
+# TODO: how much metaprogramming is appropriate here? (e.g. -t+1 vs -t/foo; do
+# I really want to hand-code that?)
 
 :
-739d4038e2b059b07c9b260d03d699190ba91528e36f01ec2415ae6a5a52e9a3
+f5a4f8328c487ccf57859ec4dc9a0d9f1304bb6dd59822b5f296ed61ff92d050
 module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
