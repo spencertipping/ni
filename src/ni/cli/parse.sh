@@ -27,7 +27,40 @@
 #   ni @:foo.gz                 # variable "foo" and checkpoint foo.gz
 #   ni @=foo.gz                 # same thing, but s/checkpoint/output/
 #   ni @foo[ -gcO ]             # var from transformed stream
+#   ni @foo[gcO]                # same
+#   ni @foo^gcO                 # same
 #
-# 
+#   ni -gcX[ egrep 'foo' ]      # same as -gcX "egrep 'foo'"
+#
+#   ni -A/                      # specify null-lambda
+#   ni -A:                      # specify identity lambda
+#   ni -H://                    # three lambdas: id, null, null
+#   ni -Hst+1//                 # [ -st+1 ], null, null
+#
+# Because of these shorthands, there isn't a construct for "optional lambda";
+# all lambda arguments are required.
+
+# Formal grammar
+# It isn't possible to write a static EBNF grammar for ni because it depends on
+# stuff in home/conf. However, by generalizing a bit:
+#
+#   start    ::= qfile | short | long | var | ckpt | output | branch | cmd
+#   qfile    ::= [^-]...
+#   short    ::= '-' short_op+
+#   long     ::= '--' word
+#   short_op ::= nullary | unary | lambda_op | ...      # <- home/conf
+#   var      ::= '@' {':' | '='}? word explicit_lambda?
+#   ckpt     ::= ':' qfile
+#   output   ::= '=' qfile
+#   branch   ::= '{' branch-case * '}'
+#   cmd      ::= word '[ ' word* ' ]'
+#
+#   nullary         ::= char
+#   unary           ::= char option
+#   lambda_op       ::= char implicit_lambda
+#   implicit_lambda ::= explicit_lambda | short_op+
+#   explicit_lambda ::= '^' short_op+ | '[ ' start ' ]' | '[' short_op+ ']'
+
+
 
 :

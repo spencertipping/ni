@@ -10,7 +10,7 @@ lambdas:
 $ ni hdfs:/data -H [ -t/foo -1f ] [ ] [ -A [ -1st+1 ] ] > output
 
 # short form: compressed as described below
-$ ni hdfs:/data -H[t/foo 1f]:^A1st+1 > output
+$ ni hdfs:/data -H[t/foo 1f]:A1st+1 > output
 ```
 
 Note that although it's nonsensical to have a nested hadoop job, ni doesn't
@@ -19,10 +19,10 @@ this to chain hadoop jobs:
 
 ```sh
 # broken; this will try to hadoop further from inside the reducer
-$ ni hdfs:/data -H[t/foo 1f]:^A1st+1H... > output
+$ ni hdfs:/data -H[t/foo 1f]:A1st+1H... > output
 
 # this is what you want, despite the two extra characters
-$ ni hdfs:/data -H[t/foo 1f]:^A1st+1 -H... > output
+$ ni hdfs:/data -H[t/foo 1f]:A1st+1 -H... > output
 $ ni hdfs:/data -H[t/foo 1f]:[A1st+1]H... > output      # or this; also works
 ```
 
@@ -68,6 +68,9 @@ $ ni hdfs:/data -H [ -t/foo -1f ] : [A1st+1]
 
 # ^ quoting abbreviation
 $ ni hdfs:/data -H [ -t/foo -1f ] : ^A1st+1
+
+# coercion, since -H expects three lambdas
+$ ni hdfs:/data -H [ -t/foo -1f ] : A1st+1
 ```
 
 ## First-order lambdas with closure state
@@ -76,12 +79,12 @@ Quantiles require pre-aggregation, which produces fairly small values that can
 be interpolated into a lambda using shell substitution:
 
 ```sh
-$ ni hdfs:/data -H ^m'qs = [$(ni hdfs:/data/part-00000 -o#100er)]
+$ ni hdfs:/data -H ^m'qs = ['$(ni hdfs:/data/part-00000 -o#100er)']
                       qs.find_index {|q| ai <= q}' //
 ```
 
 Shell substitution, of course, is a verbose way to do this because you're
-unnecessarily typing `$(ni` and `)`, and because you're reinitializing `qs`
+unnecessarily typing `'$(ni` and `)'`, and because you're reinitializing `qs`
 each time around.
 
 ```sh
@@ -92,6 +95,6 @@ $ ni hdfs:/data -H ^m'qs = cache {rl "hdfs:/data/part-00000 -ot#100er"}
 
 # option 2: stream-aliasing fork to create a variable (fast and concise)
 # technically a little different; we're taking 10K records instead of reading
-# just the first partfile. But the same idea.
+# just the first partfile. But the same idea, and doesn't repeat any work.
 $ ni hdfs:/data @qs^t1E4ot#100 -H ^m'qs.find_index {|q| ai <= q}' //
 ```

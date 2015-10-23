@@ -71,7 +71,7 @@ Short   | Long          | Operands      | Description
 `-o`    | order         |               | order rows by addressed column(s)
 `-O`    | rorder        |               | reverse-order rows
 `-p`    | perl          | code          | pipe through perl
-`-P`    | python        | code          | pipe through python
+`-P`    |               |               |
 `-q`    | quant         | quant-spec    | quantize
 `-Q`    |               |               |
 `-r`    |               |               |
@@ -87,9 +87,8 @@ Short   | Long          | Operands      | Description
 `-w`    | waul          | code          | pipe through node/caterwaul
 `-W`    | web           | port lambda   | runs a very simple webserver
 `-x`    | xchg          |               | exchanges first and addressed//second
-`-X`    |               |               |
+`-X`    | shell         | command       | pipes through a shell command
 `-y`    |               |               |
 `-Y`    |               |               |
 `-z`    | zip           | qfile         | zip columns from specified qfile
 `-Z`    |               |               |
-`-$`    | shell         | command       | pipe through shell command

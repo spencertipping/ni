@@ -950,7 +950,7 @@ end
 
 Spreadsheet.new($stdin).run! ARGV[0]
 7594a212965d788b063046009b021037ab28e1152ec9484a7591d2ba627ae67a
-module 'ni/cli/parse.sh' <<'cb3b2e26914cdd81b546f1ff4f6c8f8b6c9885ff12e8ca24c862511ae4d5a0aa'
+module 'ni/cli/parse.sh' <<'739d4038e2b059b07c9b260d03d699190ba91528e36f01ec2415ae6a5a52e9a3'
 # ni frontend functions: option parsing and compilation
 # Supporting definitions are in ni/structure.sh, and meta/ni-option.sh for the
 # metaprogramming used by home/conf.
@@ -980,11 +980,44 @@ module 'ni/cli/parse.sh' <<'cb3b2e26914cdd81b546f1ff4f6c8f8b6c9885ff12e8ca24c862
 #   ni @:foo.gz                 # variable "foo" and checkpoint foo.gz
 #   ni @=foo.gz                 # same thing, but s/checkpoint/output/
 #   ni @foo[ -gcO ]             # var from transformed stream
+#   ni @foo[gcO]                # same
+#   ni @foo^gcO                 # same
 #
-# 
+#   ni -gcX[ egrep 'foo' ]      # same as -gcX "egrep 'foo'"
+#
+#   ni -A/                      # specify null-lambda
+#   ni -A:                      # specify identity lambda
+#   ni -H://                    # three lambdas: id, null, null
+#   ni -Hst+1//                 # [ -st+1 ], null, null
+#
+# Because of these shorthands, there isn't a construct for "optional lambda";
+# all lambda arguments are required.
+
+# Formal grammar
+# It isn't possible to write a static EBNF grammar for ni because it depends on
+# stuff in home/conf. However, by generalizing a bit:
+#
+#   start    ::= qfile | short | long | var | ckpt | output | branch | cmd
+#   qfile    ::= [^-]...
+#   short    ::= '-' short_op+
+#   long     ::= '--' word
+#   short_op ::= nullary | unary | lambda_op | ...      # <- home/conf
+#   var      ::= '@' {':' | '='}? word explicit_lambda?
+#   ckpt     ::= ':' qfile
+#   output   ::= '=' qfile
+#   branch   ::= '{' branch-case * '}'
+#   cmd      ::= word '[ ' word* ' ]'
+#
+#   nullary         ::= char
+#   unary           ::= char option
+#   lambda_op       ::= char implicit_lambda
+#   implicit_lambda ::= explicit_lambda | short_op+
+#   explicit_lambda ::= '^' short_op+ | '[ ' start ' ]' | '[' short_op+ ']'
+
+
 
 :
-cb3b2e26914cdd81b546f1ff4f6c8f8b6c9885ff12e8ca24c862511ae4d5a0aa
+739d4038e2b059b07c9b260d03d699190ba91528e36f01ec2415ae6a5a52e9a3
 module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
