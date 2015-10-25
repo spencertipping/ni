@@ -84,6 +84,8 @@ EOF
 primitive_str() eval "$1=\"\$2\""
 
 pr() {
-  str pr_s "$1"
-  verb "$pr_s"
+  for pr_x; do
+    str pr_s "$pr_x"
+    verb "$pr_s"
+  done
 }

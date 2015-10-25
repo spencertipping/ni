@@ -13,7 +13,7 @@ module_index=1
 modules=ni/boot.sh
 meta_hook() meta_hooks="$meta_hooks$newline$(cat)"'
 eval "$module_0"
-module 'ni/meta/struct.sh' <<'6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893'
+module 'ni/meta/struct.sh' <<'290cd7348be6f9888baaf3299474949eefc300cb42167620077695d3163c6f3e'
 # Data structure metaprogramming
 cell_index=0
 cell() {
@@ -100,10 +100,12 @@ EOF
 primitive_str() eval "$1=\"\$2\""
 
 pr() {
-  str pr_s "$1"
-  verb "$pr_s"
+  for pr_x; do
+    str pr_s "$pr_x"
+    verb "$pr_s"
+  done
 }
-6e719a2f93ec39ed2c4fa7b2cddaf828a7906f88c1bd5c36fca81d4fab043893
+290cd7348be6f9888baaf3299474949eefc300cb42167620077695d3163c6f3e
 module 'ni/meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
 # ni option data structure and generator
 
@@ -416,6 +418,25 @@ hashmap_keys()     eval "$1=\$${2}_keys"
 hashmap_get()      eval "$1=\"\$${2}_key_$3\""
 hashmap_contains() eval "[ -n \"${2}_cell_$3\" ] && $1=t || $1="
 67846f18a425c510b0ac73ec8bf79a5c5c8c88a315f163e9498ab81895fa2f50
+module 'ni/meta/fn.sh' <<'3896a1407fcd2f6c98d0de07a5fdf97f8b9845b21f2771e306175330040cb6c2'
+# First-class functions
+# NB: because all POSIX sh variables are global, these function-constructors
+# typically build functions that are NOT recursion-safe.
+
+# TODO: fix the local-variable and recursion thing using metaprogramming at
+# this level.
+
+fn() {
+  cell $1 fn
+  eval "\$$1() { $2$newline }"
+}
+
+partial() {
+  partial_f=$1
+  shift
+  fn $partial_f "$@ \"\$@\""            # TODO: quoting
+}
+3896a1407fcd2f6c98d0de07a5fdf97f8b9845b21f2771e306175330040cb6c2
 module 'ni/self/repl.sh' <<'2e8009ebb3f2a0d9ab4b9ff3992e89a8bdd140d432eb15d959cc55d825f97bf9'
 # REPL environment for testing things and editing the image
 # Explodes the image into the filesystem, cd's there, and runs a sub-shell
@@ -1031,6 +1052,24 @@ module 'ni/cli/parse.sh' <<'f5a4f8328c487ccf57859ec4dc9a0d9f1304bb6dd59822b5f296
 
 :
 f5a4f8328c487ccf57859ec4dc9a0d9f1304bb6dd59822b5f296ed61ff92d050
+module 'ni/cli/combinators.sh' <<'903fa94d05d9fbf187f2dfb5b8eba954b7b5572117c0c36134513691065f0476'
+# Parser combinators
+# Just like in any other language, but uses eval() to compile new functions.
+# Also, parse states are a combination of positional argument index and
+# substring position within that argument; e.g.
+#
+#   $0 $1      $2
+#   ni --group -m'r a + b'
+#        ^
+#        |
+#        parse state = 1, 2, ?          <- parse states can return values
+#
+# Usual calling convention: result is returned indirectly through $1. The
+# 'arrow' macro condenses this by allocating temporary variables and chaining
+# things for you.
+
+:
+903fa94d05d9fbf187f2dfb5b8eba954b7b5572117c0c36134513691065f0476
 module 'ni/cli/structure.sh' <<'761f8723ba56bc0b613440d1da5da9e947a63a77514e4dd092f8879fd0555d80'
 # Syntactic structures and multimethods
 # See ni/ni.sh for the option parser and pipeline compiler; you'd most likely
