@@ -1,4 +1,7 @@
 # Lisp in POSIX shell ... because we can (I think).
+# Not a completely introspective form of lisp; this is just a way to get around
+# sh's tragic lack of local variables so I can write parser combinators without
+# too much effort.
 
 # Reader
 lisp_convert() sed 's/\([^$]\|^\)\([][(){}]\)/\1 \2 /g'
@@ -37,16 +40,16 @@ lisp_read() {
   eval "list_reverse $lisp_read_dest \$$lisp_read_dest"
 }
 
-# Compiler
-# The compiler converts s-expressions to sh function invocations, doing
-# compile-time macroexpansion in the process.
-#
-# TODO: do this all later. We don't need a Lisp compiler to do what ni is
-# intended to do (unfortunately).
+# Evaluator
+# NB: no function table, since functions are compiled to sh. Globals are
+# self-named, e.g. (def foo 5) is referenced as $foo.
+meta_hook <<'EOF'
+hashmap lisp_macros
+hashmap lisp_specials
+hashmap fn_arity
+EOF
 
-# TODO: figure out how to handle recursion; could do a stack-level variable and
-# lift everything into an eval, maybe?
-
-# TODO: figure out the details of quoting. We'll need quasiquote, and most
-# likely full-quote as well. It may work just to have special forms; not sure
-# yet.
+# Usage: lisp_eval dest_var $reader_output
+lisp_eval() {
+  :
+}

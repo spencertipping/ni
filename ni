@@ -106,6 +106,63 @@ pr() {
   done
 }
 290cd7348be6f9888baaf3299474949eefc300cb42167620077695d3163c6f3e
+module 'ni/meta/lisp.sh' <<'9d038c68db3e39577b45be6daffeb03245f9d6aa2bc014c848bca72298d40902'
+# Lisp in POSIX shell ... because we can (I think).
+# Not a completely introspective form of lisp; this is just a way to get around
+# sh's tragic lack of local variables so I can write parser combinators without
+# too much effort.
+
+# Reader
+lisp_convert() sed 's/\([^$]\|^\)\([][(){}]\)/\1 \2 /g'
+lisp_read() {
+  lisp_read_dest=$1
+  shift
+  cons lisp_read_r '' ''
+  for lisp_read_x; do
+    if [ -z "${lisp_read_x#[[(\{]}" ]; then
+      cons lisp_read_r '' $lisp_read_r
+    elif [ -z "${lisp_read_x#[])\}]}" ]; then
+      uncons lisp_read_head lisp_read_r $lisp_read_r
+      h lisp_read_tailhead $lisp_read_r
+      list_reverse lisp_read_head $lisp_read_head
+      if [ "$lisp_read_x" = "]" ]; then
+        vec lisp_read_head $lisp_read_head
+      elif [ "$lisp_read_x" = "}" ]; then
+        # Go back and stringify the keys into sh primitives.
+        hashmap lisp_read_map
+        while [ -n "$lisp_read_head" ]; do
+          uncons lisp_read_k lisp_read_head $lisp_read_head
+          uncons lisp_read_v lisp_read_head $lisp_read_head
+          str lisp_read_k $lisp_read_k
+          assoc $lisp_read_map $lisp_read_k $lisp_read_v
+        done
+        lisp_read_head=$lisp_read_map
+      fi
+      cons ${lisp_read_r}_h $lisp_read_head $lisp_read_tailhead
+    else
+      h lisp_read_head $lisp_read_r
+      atom lisp_read_cell $lisp_read_x
+      cons ${lisp_read_r}_h $lisp_read_cell "$lisp_read_head"
+    fi
+  done
+  h $lisp_read_dest $lisp_read_r
+  eval "list_reverse $lisp_read_dest \$$lisp_read_dest"
+}
+
+# Evaluator
+# NB: no function table, since functions are compiled to sh. Globals are
+# self-named, e.g. (def foo 5) is referenced as $foo.
+meta_hook <<'EOF'
+hashmap lisp_macros
+hashmap lisp_specials
+hashmap fn_arity
+EOF
+
+# Usage: lisp_eval dest_var $reader_output
+lisp_eval() {
+  :
+}
+9d038c68db3e39577b45be6daffeb03245f9d6aa2bc014c848bca72298d40902
 module 'ni/meta/ni-option.sh' <<'99cecd9d7da5e4adf23f0a7d82dccbba2af0c5932c22085ec6dc5cb6d4486c40'
 # ni option data structure and generator
 
@@ -539,7 +596,7 @@ save() {
   fi
 }
 d0145476b34792e001a2750652bd21516dd0ccd5749210fbd00796833ab8fe06
-module 'ni/self/image.sh' <<'d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212'
+module 'ni/self/image.sh' <<'10db37ec823cefce26c2abc95dae20252305989b498e7f7276efdc96578dbcaa'
 # Retrieves a module's text by name
 # Usage: module_get destination_var module/name
 # Does nothing if the variable is already set, which makes it possible to use
@@ -602,9 +659,13 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb "# </""script>" "$self_main"
+
+  # NB: we don't end the <script> tag we start in the header. If we did, ni
+  # images wouldn't be able to contain each other and still have working HTML
+  # introspection.
+  verb "$self_main"
 }
-d89bb4263affb41295e92c94138b67c2725b743033fdeb25a48a1e510d11a212
+10db37ec823cefce26c2abc95dae20252305989b498e7f7276efdc96578dbcaa
 module 'ni/ruby/ni.rb' <<'7594a212965d788b063046009b021037ab28e1152ec9484a7591d2ba627ae67a'
 #!/usr/bin/env ruby
 # A standalone Ruby program that takes a spreadsheet function on the command
@@ -1660,5 +1721,4 @@ ni extensions are typically provided as directories of files. You can drop
 those directories here (_if you trust them_) to have ni automatically load
 them.
 d7261f9aea59e9368fe186298d61c7f4a525feb4f18e7ec00df9c1bbc1f8f243
-# </script>
 main "$@"

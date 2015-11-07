@@ -60,5 +60,9 @@ self() {
     self_i=$((self_i + 1))
   done
   IFS="$self_old_ifs"
-  verb "# </""script>" "$self_main"
+
+  # NB: we don't end the <script> tag we start in the header. If we did, ni
+  # images wouldn't be able to contain each other and still have working HTML
+  # introspection.
+  verb "$self_main"
 }

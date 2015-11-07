@@ -89,5 +89,5 @@ checkpoint file:
 
 ```sh
 $ ni hdfs:/data/source -t1E5 ...                # slow
-$ ni hdfs:/data/source -t1E5 :input.gz          # fast for subsequent runs
+$ ni hdfs:/data/source -t1E5 :input.gz ...      # fast for subsequent runs
 ```
