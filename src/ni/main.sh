@@ -16,14 +16,14 @@ make_home() {
   if ! module_get make_home_conf home/conf; then
     make_home_oldifs="$IFS"
     IFS="$newline"
-    make_home_i=0
     for make_home_m in $modules; do
       if [ "${make_home_m#home-template/}" != "$make_home_m" ]; then
+        module_get make_home_d "$make_home_m"
         eval "module \"home/\${make_home_m#home-template/}\" \
-                     \"\$module_$make_home_i\""
+                     \"\$make_home_d\""
       fi
-      make_home_i=$((make_home_i + 1))
     done
+    IFS="$make_home_oldifs"
   fi
 }
 
@@ -113,7 +113,7 @@ main() {
   --internal-repl)  shift; repl_sh "$@" ;;
   --internal-self)  shift; self "$@" ;;
   --internal-sha3)  shift; sha3 ;;
-  --internal-state) shift; self "$@" | exec "$sha3" ;;
+  --internal-state) shift; self "$@" | "$sha3" ;;
 
   # Normal invocation: parse CLI and run data pipeline
   *)

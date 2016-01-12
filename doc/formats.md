@@ -1,4 +1,6 @@
 # ni data formats
+**TODO:** Delete this sad excuse for a design and start over.
+
 ni handles data formats in a somewhat complicated way, but I haven't yet come
 up with any better strategy. The design constraints are these:
 
