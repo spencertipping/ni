@@ -112,6 +112,10 @@ class Reducer
     s = Set.new
     select {|x| s.add? x}
   end
+
+  def method_missing name, *args
+    map {|r| r.send name, *args}
+  end
 end
 
 class MapReducer < Reducer
@@ -155,12 +159,21 @@ class Spreadsheet
     @step      = 1
     @reducers  = []
     @callbacks = []
+    @r_called  = false
   end
 
   def run! code
     f = compile(code)
     until eof?
-      f.call
+      @r_called = false
+      x = f.call
+      unless @r_called
+        if x.is_a? Array
+          r *x
+        elsif not x.nil?
+          r x
+        end
+      end
       advance!
     end
   end
@@ -176,6 +189,7 @@ class Spreadsheet
 
   # Output stuff
   def r *xs
+    @r_called = true
     if xs.any? {|x| x.is_a? Reducer}
       xs.select {|x| x.is_a? Reducer}.each(&:consumer!)
       @callbacks << proc do

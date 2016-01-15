@@ -7,5 +7,5 @@ does not yet exist. Sorry for the inconvenience.
 
 - [Examples](examples.md) (read this concurrently with the links below)
 - [Operators](operators.md)
-- [Language interop](interop.md)
 - [Quasifiles](quasifiles.md)
+- [Spreadsheet transformation](spreadsheet.md)
