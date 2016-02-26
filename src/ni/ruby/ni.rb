@@ -88,6 +88,7 @@ class Reducer
   def consumer!; @consumer = true;  end
 
   def map &f;          child! MapReducer.new(f);                        end
+  def flatmap &f;      child! FlatmapReducer.new(f);                    end
   def take_while cond; child! TakeWhileReducer.new(cond);               end
   def select &f;       child! SelectReducer.new(f);                     end
   def reject &f;       child! SelectReducer.new(proc {|x| !f.call(x)}); end
@@ -117,6 +118,16 @@ end
 class MapReducer < Reducer
   def initialize f; super(); @f = f;              end
   def << x;         forward(@state = @f.call(x)); end
+end
+
+class FlatmapReducer < Reducer
+  def initialize f; super(); @f = f; end
+  def << x
+    ys = @f.call(x)
+    ys.each do |y|
+      forward(@state = @f.call(y))
+    end
+  end
 end
 
 class SelectReducer < Reducer
@@ -160,7 +171,8 @@ class Spreadsheet
   def run! code
     f = compile(code)
     until eof?
-      f.call
+      x = f.call
+      r x unless x.nil?
       advance!
     end
   end
