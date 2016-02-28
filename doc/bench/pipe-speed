@@ -1,0 +1,23 @@
+#!/bin/bash
+catpipe() {
+  if (( $1 )); then
+    cat | catpipe $(($1 - 1))
+  else
+    cat
+  fi
+}
+
+nfu --repeat 100 /usr/share/dict/words > testdata
+
+time catpipe 0 < testdata > /dev/null
+time catpipe 1 < testdata > /dev/null
+time catpipe 2 < testdata > /dev/null
+time catpipe 4 < testdata > /dev/null
+time catpipe 8 < testdata > /dev/null
+time catpipe 16 < testdata > /dev/null
+time catpipe 32 < testdata > /dev/null
+time catpipe 64 < testdata > /dev/null
+time catpipe 128 < testdata > /dev/null
+time catpipe 256 < testdata > /dev/null
+
+rm testdata
