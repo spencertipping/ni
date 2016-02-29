@@ -1,0 +1,38 @@
+pipeline of size 0
+1.05GiB 0:00:00 [4.84GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [ 5.4GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.51GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.49GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.47GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.47GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.47GiB/s] [================================>] 100%            
+pipeline of size 0
+1.05GiB 0:00:00 [5.47GiB/s] [================================>] 100%            
+pipeline of size 1
+1.05GiB 0:00:00 [2.59GiB/s] [<=>                                               ]
+pipeline of size 2
+1.05GiB 0:00:00 [ 1.7GiB/s] [<=>                                               ]
+pipeline of size 4
+1.05GiB 0:00:00 [1.36GiB/s] [<=>                                               ]
+pipeline of size 8
+1.05GiB 0:00:01 [ 800MiB/s] [ <=>                                              ]
+pipeline of size 16
+1.05GiB 0:00:03 [ 357MiB/s] [   <=>                                            ]
+pipeline of size 32
+1.05GiB 0:00:06 [ 159MiB/s] [      <=>                                         ]
+pipeline of size 64
+1.05GiB 0:00:12 [83.8MiB/s] [            <=>                                   ]
+pipeline of size 128
+1.05GiB 0:00:26 [  41MiB/s] [                         <=>                      ]
+pipeline of size 256
+1.05GiB 0:00:56 [19.1MiB/s] [                                        <=>       ]
+pipeline of size 512
+1.05GiB 0:01:51 [9.63MiB/s] [           <=>                                    ]
+pipeline of size 1024
+1.05GiB 0:03:46 [4.73MiB/s] [                         <=>                      ]

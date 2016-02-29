@@ -13,7 +13,7 @@ for i in `seq 1200`; do
 done > testdata
 clear
 
-for n in 0 0 0 0 0 0 0 0 1 2 4 8 16 32 64 128 256 512 1024 2048; do
+for n in 0 0 0 0 0 0 0 0 1 2 4 8 16 32 64 128 256 512 1024; do
   echo "pipeline of size $n"
   catpipe $n < testdata > /dev/null
 done
