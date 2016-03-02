@@ -1,21 +1,21 @@
 #!/bin/bash
 catpipe() {
   if (( $1 )); then
-    cat | catpipe $(($1 - 1))
+    catpipe $(($1 / 2)) | catpipe $(($1 / 2))
   else
-    pv
+    cat
   fi
 }
 
 for i in `seq 1200`; do
-  echo -en "\r$i/1200" 1>&2
   cat /usr/share/dict/words
 done > testdata
-clear
 
-for n in 0 0 0 0 0 0 0 0 1 2 4 8 16 32 64 128 256 512 1024; do
-  echo "pipeline of size $n"
-  catpipe $n < testdata > /dev/null
+for n in 0 0 1 2 4 8 16 32 64 128 256 512 1024; do
+  for i in `seq 10`; do
+    echo $n
+    time catpipe $n < testdata > /dev/null
+  done
 done
 
 rm testdata
