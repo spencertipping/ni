@@ -1,0 +1,34 @@
+<!doctype html>
+<canvas id='c' width='1024' height='600'></canvas>
+<pre id='timings'></pre>
+<script>
+var p = document.getElementById('timings');
+var timings = [];
+
+Array.prototype.mean = function() {
+  for (var t = 0, i = 0; i < this.length; ++i)
+    t += this[i];
+  return t / this.length;
+};
+
+var j  = 0;
+var c  = document.getElementById('c').getContext('2d');
+var id = c.getImageData(0, 0, 1024, 600);
+
+setInterval(function () {
+  c.clearRect(0, 0, 1024, 600);
+  j++;
+  var start = +new Date;
+  for (var i = 0; i < 1024 * 600; ++i) {
+    var i4 = i * 4;
+    id.data[i4]     = i * 3 + j & 0xff;
+    id.data[i4 + 1] = (i + j) * 2 & 0xff;
+    id.data[i4 + 2] = i & 0xff;
+    id.data[i4 + 3] = 255;
+  }
+  c.putImageData(id, 0, 0);
+  var t = +new Date() - start;
+  timings.push((1024 * 600 / (1000 * t)));
+  p.innerText = timings.length + ": " + timings.mean() + " MP/sec";
+}, 20);
+</script>
