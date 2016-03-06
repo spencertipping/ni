@@ -10,12 +10,14 @@ That is, these are things whose absence ni has to tolerate somehow; it's not
 reasonable for ni to refuse to operate because these things are missing.
 
 - A read/write filesystem.
+- Arbitrary TCP/UDP connections. All we can assume is that SSH works from the
+  main machine to other machines; the reverse is not necessarily true.
 - A C compiler. I just found out that not all Docker images include the
   POSIX-specified `c99` compiler, and it's conceivable that minimalistic Linux
   images wouldn't have it either.
 - Any specific version of Perl, though we can assume v5.x is installed just
   because it's so common and without it we have few other options. (I'm not
-  writing ni's argument parser in POSIX sh, tempting thought that is.)
+  writing ni's argument parser in POSIX sh, tempting though that is.)
 - A JVM, obviously.
 - `/bin/bash`, as opposed to `/bin/sh`.
 - GNU coreutils, as opposed to POSIX coreutils. (This impacts the options we
@@ -31,3 +33,5 @@ It's probably also fine to degrade ni's functionality when running on a
 read-only filesystem. `sort` will trivially have this problem, for example --
 so any read-only nodes are relegated to simple streams rather than having the
 ability to buffer data.
+
+_Really what we want is to quantify each node's buffer capacity._
