@@ -12,22 +12,37 @@ $ ni /usr/share/dict/words t100 D[m1:g m2:g]
 
 The overall flow is left to right, but each command's arguments _follow_ it
 rather than preceding it. Continuation-parsing grammars don't help here because
-the unevaluated continuation has undefined arity.
+the unevaluated continuation has undefined arity. We solve this problem by
+having Canard evaluate from right to left, but having the operators themselves
+produce a list of stream-modifying functions that is then applied in reverse:
 
-## Two-stage evaluation
-We have this problem in the first place just because Canard's strictly
-rightwards evaluation model doesn't suit the subject-verb-object ordering often
-used for command-line arguments. The solution is to evaluate the command line
-in two stages before stream assembly:
+```sh
+$ ni %. [/usr/share/dict/words]     # metaprogramming evaluation (step 1)
+#    <- <----------------------     #
+#    |        push list             #
+#    eval                           #
 
-1. Evaluate metaprogramming from left to right
-2. Evaluate operator syntax from right to left
-3. Evaluate operators themselves from left to right (stream assembly)
+$ ni /usr/share/dict/words          # metaprogramming evaluation (step 2)
+#    ---------------------          #
+#        resolve name               #
 
-This is ideal because it also addresses command shorthands as consequences of
-name resolution, and because it means that all operators are just regular
-Canard functions that take arguments and return stream-transforming functions.
-This, in turn, makes it possible to define `explain` functionality.
+[empty-stream                       # result of metaprogramming evaluation
+ [append file                       # <- operation on empty-stream
+         "/usr/share/dict/words"]]  #
+```
 
-**NB:** This design requires operators and metaprogramming functions to have
-disjoint namespaces.
+Now the list is executed from left to right:
+
+```
+empty-stream                            -> a stream
+[append file "/usr/share/dict/words"]   -> eval sublist right to left
+```
+
+This evaluation model means we might as well have typed this and evaluated
+right to left:
+
+```
+append file "/usr/share/dict/words" empty-stream
+```
+
+And that is exactly what we need.
