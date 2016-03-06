@@ -41,8 +41,6 @@ You'll often want to save the list of machines somewhere so you can reuse it:
 ```sh
 $ ni /usr/share/dict/words \
      [machine1 machine2 ...] %=cluster D%[cluster [_:[stuff]] *]
-#    |-------------------------------|
-#      define %cluster as a variable
 ```
 
 `%=X` resolves to a Canard function that defines a variable `%X` when invoked.
