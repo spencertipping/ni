@@ -48,3 +48,29 @@ You'll often want to save the list of machines somewhere so you can reuse it:
 $ ni cluster=[machine1 machine2 ...] \
      /usr/share/dict/words D%[* [_:[stuff]] cluster]
 ```
+
+## Generating map/reduce workflows
+In practice you'd do this using one of the standard library functions, but
+here's how it works. You've got a list of machines, a mapper, a combiner, and a
+reducer:
+
+```sh
+$ ni map/reduce [machines] [mapper] [combiner] [reducer]
+```
+
+We need to generate the stream connections to execute [the
+workflow](distributed.md), which we can do using Canard list manipulation
+functions:
+
+```
+def map/reduce [
+  TODO
+  : [is   [iota count machines]
+     sshs [*[[ssh x]://[x]] machines]
+     mrow .[*[[o @combiner ssh nth machines c = str [r c]]://[c]] is]
+     m    [*[mrow] is]
+
+     rrow .[[M[* TODO: figure out quasiquoting here]]]]
+
+  : [machines mapper combiner reducer]]
+```
