@@ -11,15 +11,15 @@ prefixed with `%` at the toplevel. For example:
 
 ```sh
 $ ni /usr/share/dict/words              # direct
-$ ni [/usr/share/dict/words] %.         # use canard eval to do the same thing
+$ ni %. [/usr/share/dict/words]         # use canard eval to do the same thing
 ```
 
 If you're calling multiple functions in succession, you can factor off the `%`
 prefix by using brackets:
 
 ```sh
-$ ni [x y z] %:^ %:^ %:^                # uncons three times
-$ ni [x y z] %[:^ :^ :^]                # same thing, factoring out %
+$ ni %:^ %:^ %:^ [x y z]                # uncons three times
+$ ni %[:^ :^ :^] [x y z]                # same thing, factoring out %
 ```
 
 ## Lists and mapping
@@ -32,18 +32,16 @@ example:
 $ ni /usr/share/dict/words D[machine1:[stuff] machine2:[stuff] ...]
 
 # better way: use metaprogramming
-$ ni /usr/share/dict/words D%[[machine1 machine2 ...] [_:[stuff]] *]
+$ ni /usr/share/dict/words D %[* [_:[stuff]] [machine1 machine2 ...]
+
+# same thing, but using the shorthand D%
+$ ni /usr/share/dict/words D%[* [_:[stuff]] [machine1 machine2 ...]
 ```
 
 ## Variables
 You'll often want to save the list of machines somewhere so you can reuse it:
 
 ```sh
-$ ni /usr/share/dict/words \
-     [machine1 machine2 ...] %=cluster D%[cluster [_:[stuff]] *]
+$ ni cluster=[machine1 machine2 ...] \
+     /usr/share/dict/words D%[* [_:[stuff]] cluster]
 ```
-
-`%=X` resolves to a Canard function that defines a variable `%X` when invoked.
-
-Because `D%[cluster ...]` invokes a Canard evaluation context, `cluster` gets
-prefixed with `%` at parse-time; then `%cluster` evaluates to `[machine1 ...]`.
