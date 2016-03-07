@@ -23,7 +23,7 @@ can't afford to do this, of course, because then we have no profiling for
 individual processing stages. That's where stderr comes in:
 
 ```sh
-$ { command1 < infile | command2 | command3; } > outfile 2>logfile
+$ { command1 | command2 | command3; } < infile > outfile 2>logfile
 ```
 
 Now we have two equations:
