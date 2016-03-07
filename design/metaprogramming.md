@@ -12,6 +12,9 @@ prefixed with `%` at the toplevel. For example:
 ```sh
 $ ni /usr/share/dict/words              # direct
 $ ni %. [/usr/share/dict/words]         # use canard eval to do the same thing
+
+# you'll see stuff like this later, but it is NOT the same:
+$ ni %[/usr/share/dict/words]   # NOPE NOPE NOPE
 ```
 
 If you're calling multiple functions in succession, you can factor off the `%`
