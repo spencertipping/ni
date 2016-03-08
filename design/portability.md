@@ -35,3 +35,6 @@ so any read-only nodes are relegated to simple streams rather than having the
 ability to buffer data.
 
 _Really what we want is to quantify each node's buffer capacity._
+
+(I may be jumping the gun here by assuming ni has any awareness of node/node
+differences like this.)

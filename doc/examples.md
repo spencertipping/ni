@@ -1,4 +1,7 @@
 # Examples
+**TODO:** Rewrite this to work with the new Canard-powered syntax. Maybe also
+include some examples of ad-hoc metaprogramming.
+
 A bunch of ways you might use ni to go about data manipulation tasks.
 
 ## Map/reduce word count

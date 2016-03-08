@@ -35,10 +35,10 @@ example:
 $ ni /usr/share/dict/words D[machine1:[stuff] machine2:[stuff] ...]
 
 # better way: use metaprogramming
-$ ni /usr/share/dict/words D %[* [_:[stuff]] [machine1 machine2 ...]
+$ ni /usr/share/dict/words D %[*[_:[stuff]] [machine1 machine2 ...]]
 
 # same thing, but using the shorthand D%
-$ ni /usr/share/dict/words D%[* [_:[stuff]] [machine1 machine2 ...]
+$ ni /usr/share/dict/words D%[*[_:[stuff]] [machine1 machine2 ...]]
 ```
 
 ## Variables
@@ -46,7 +46,7 @@ You'll often want to save the list of machines somewhere so you can reuse it:
 
 ```sh
 $ ni cluster=[machine1 machine2 ...] \
-     /usr/share/dict/words D%[* [_:[stuff]] cluster]
+     /usr/share/dict/words D%[*[_:[stuff]] cluster]
 ```
 
 ## Generating map/reduce workflows
