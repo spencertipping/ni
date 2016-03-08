@@ -82,3 +82,5 @@ including the map-side partitioned sort. Note that the sorts are all explicitly
 specified; if you omit them you can do things like process infinite streams
 using incremental map/reduce.
 
+**TODO:** Can map/reduce stream topologies be encoded as matrix multiplication?
+If so, the metaprogramming API gets a lot simpler.
