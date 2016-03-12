@@ -46,3 +46,27 @@ append file "/usr/share/dict/words" empty-stream
 ```
 
 And that is exactly what we need.
+
+## Huge problem alert
+Suppose we've got this:
+
+```sh
+$ ni /usr/share/dict/words X 'grep foo'
+```
+
+The canard reader/evaluator goes from right to left and will behave like this:
+
+```
+grep foo                -> "g" followed by "rep foo"
+                        -> group operator; "rep foo" isn't a groupspec
+                        -> "r" followed by "ep foo"
+                        -> ...
+X                       -> oops, "grep foo" should have been a command arg
+                        -> we screwed up because spencer designed this crappily
+                        -> aaaaargh
+```
+
+Commands and arguments need to be identifiable _syntactically_ if we want
+juxtaposed short commands. I think this means we need a `-` prefix,
+unfortunately, so anything else becomes self-quoting. Unfortunate but
+unavoidable.
