@@ -1,0 +1,47 @@
+Command-line option parser.
+Right now we're just handling the `-m` option, which maps through the
+spreadsheet tool.
+
+use POSIX qw/dup2/;
+
+c
+BEGIN {
+  defenv 'RUBY', '/usr/bin/env ruby';
+}
+
+Fork a system shell process using a pipe for input.
+
+pipe(my $r, my $w) or die "failed to pipe: $!";
+
+if (my $pid = fork) {
+  close STDOUT;
+  close $r;
+} else {
+  close $w;
+  close STDIN;
+  dup2 fileno($r), 0 or die "failed to dup2 " . fileno($r) . ": $!";
+  exec '/bin/sh' or die "failed to create executor shell: $!";
+}
+
+while (@ARGV) {
+  my $arg = shift @ARGV;
+  if ($arg =~ /^-m(.*)$/s) {
+    my $code = length($1) ? $1 : shift @ARGV;
+    $code =~ s/'/'\''/g;
+
+    my $command =
+      RUBY . " -e 'Kernel.eval \$stdin.read' '$code' <<'EOF'\n"
+           . $ni::self{'spreadsheet.rb'}
+           . "\nEOF\n";
+    syswrite $w, $command;
+  } else {
+    print STDERR "ni: unknown argument $arg\n";
+  }
+}
+
+my $n = 0;
+print STDERR length($_), "\n" and syswrite $w, $_ while sysread STDIN, $_, 8192;
+close $w;
+close STDIN;
+
+waitpid $pid, 0;

@@ -1,0 +1,8 @@
+Metaprogramming constructs.
+These are various things ni uses to simplify configuration.
+
+sub defenv {
+  my ($env, $default) = @_;
+  my $val = $ENV{$env} // $default;
+  *{$env} = sub {$val};
+}

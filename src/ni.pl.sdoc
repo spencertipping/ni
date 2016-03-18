@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+# ni: https://github.com/spencertipping/ni; MIT license
+
+Main process for ni.
+The command-line entry point for the ni program. Modules are included in packed
+form after the __DATA__ marker.
+
+use 5.000_000;
+$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
+  while <DATA> =~ /^(\d+)\s+(.*)$/;
+eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+close DATA;
+__DATA__

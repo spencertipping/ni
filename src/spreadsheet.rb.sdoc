@@ -53,6 +53,7 @@ class CondColumn
   def take? x;            @cond.take? x[@c];    end
 end
 
+c
 CellSelectors = {
   :E  => adjacent_condition {|x, y| x == y},
   :G  => adjacent_condition {|x, y| x > y},
@@ -64,6 +65,7 @@ CellSelectors = {
   :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
   :N  => TakeN}
 
+c
 TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
 
 class Reducer
@@ -386,4 +388,5 @@ class Spreadsheet
   end
 end
 
-Spreadsheet.new($stdin).run! ARGV[0]
+c
+Spreadsheet.new(IO.for_fd 3).run! ARGV[0]

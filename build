@@ -1,0 +1,32 @@
+#!/bin/bash
+# Builds the ni image from files in src/.
+
+unsdoc() {
+  perl -e 'print join "", map s/^c\n//r,
+                          grep !/^\h*[|A-Z]/,
+                          split /\n(\h*\n)+/, join "", <>'
+}
+
+resource() {
+  cd gen
+  wc -l $1
+  cat $1
+  cd ..
+}
+
+mkdir -p gen
+
+for sdoc in $(find src -name *.sdoc); do
+  sdoc_gen=${sdoc%.sdoc}
+  sdoc_gen=gen/${sdoc_gen#src/}
+  unsdoc < $sdoc > $sdoc_gen
+done
+
+{
+  cat gen/ni.pl
+  resource meta.pl
+  resource cli.pl
+  resource spreadsheet.rb
+} > ni
+
+chmod +x ni
