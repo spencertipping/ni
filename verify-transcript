@@ -36,8 +36,14 @@ while (<>) {
     ++$commands;
     verify $command, $output;
     $command = $_;
-    $command .= ($_ = <>) while /\\$/;
-    $output  = '';
+
+    my $quoted = length s/[^']//gr;
+    while ($quoted & 1 || /\\$/) {
+      $command .= ($_ = <>);
+      $quoted += length s/[^']//gr;
+    }
+
+    $output = '';
   } else {
     $output .= $_;
   }
