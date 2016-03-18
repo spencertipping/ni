@@ -14,9 +14,13 @@ sub defenv {
   my $val = $ENV{$env} // $default;
   *{$env} = sub {$val};
 }
-35 cli.pl
+39 cli.pl
 
 use POSIX qw/dup2/;
+if (-t STDIN) {
+  print STDERR "TODO: print usage\n";
+  exit 2;
+}
 BEGIN {
   defenv 'RUBY', '/usr/bin/env ruby';
 }
@@ -37,16 +41,16 @@ while (@ARGV) {
     my $code = length($1) ? $1 : shift @ARGV;
     $code =~ s/'/'\''/g;
     my $command =
-      RUBY . " -e 'Kernel.eval \$stdin.read' '$code' 3<&1 <<'EOF'\n"
+      RUBY . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
            . $ni::self{'spreadsheet.rb'}
-           . "\nEOF\n";
+           . "\nEOF\n"
+           . "less\n";
     syswrite $w, $command;
   } else {
     print STDERR "ni: unknown argument $arg\n";
   }
 }
-my $n = 0;
-print STDERR length($_), "\n" and syswrite $w, $_ while sysread STDIN, $_, 8192;
+syswrite $w, $_ while sysread STDIN, $_, 8192;
 close $w;
 close STDIN;
 waitpid $pid, 0;
