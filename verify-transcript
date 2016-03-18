@@ -9,6 +9,9 @@ our $original = getcwd;
 our $tmpdir = tmpnam;
 mkdir $tmpdir;
 
+our $commands = 0;
+our $failures = 0;
+
 print STDERR "testing in $tmpdir\n";
 
 sub verify {
@@ -18,15 +21,19 @@ sub verify {
 
   chdir $tmpdir or die "failed to chdir $tmpdir: $!";
   my $result = qx/$c/;
-  $result eq $o
-    or die "expected '$c' to produce (\n$o\n), but got (\n$result\n) instead";
+
+  ++$failures,
+  print STDERR "expected '$c' to produce (\n$o\n), but got (\n$result\n) instead\n"
+    unless $result eq $o;
+
   chdir $original;
 }
 
-my $command = undef;
-my $output  = undef;
+my $command  = undef;
+my $output   = undef;
 while (<>) {
   if (s/^\$\s*//) {
+    ++$commands;
     verify $command, $output;
     $command = $_;
     $command .= ($_ = <>) while /\\$/;
@@ -39,3 +46,8 @@ while (<>) {
 verify $command, $output;
 
 system 'rm', '-r', $tmpdir;
+
+print "\n\n$commands command(s) total\n";
+print "$failures failed command(s)\n";
+
+exit !!$failures;

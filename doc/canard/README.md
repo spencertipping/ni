@@ -23,5 +23,12 @@ Superficially, you can expect canard to behave like Joy or Forth in reverse:
 * [+ 1] [1 2 3] -> [2 3 4]      (* is map)
 ```
 
+You can use `ni` to evaluate canard code like this:
+
+```sh
+$ ni --canard -+ 1 2
+3
+```
+
 - [How the interpreter works](interpreter.md)
 - [How the language is bootstrapped](bootstrap.md)
