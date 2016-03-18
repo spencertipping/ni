@@ -18,14 +18,14 @@ This is probably most easily explained by example:
 $ ni /usr/share/dict/words
 
 # append /usr/share/dict/words, take first 10k records
-$ ni /usr/share/dict/words tE4
+$ ni /usr/share/dict/words -tE4
 
 # append /usr/share/dict/words, fetched from other machine
 # technically, "ssh into other-machine and run 'ni /usr/share/dict/words'"
 $ ni other-machine:/usr/share/dict/words
 
-# ssh into other-machine and run "ni /usr/share/dict/words tE4"
-$ ni other-machine:[/usr/share/dict/words tE4]
+# ssh into other-machine and run "ni /usr/share/dict/words -tE4"
+$ ni other-machine:[/usr/share/dict/words -tE4]
 ```
 
 So the map-side of a map/reduce workflow is just something like this:
@@ -37,11 +37,11 @@ $ ni machine1:[...] machine2:[...] machine3:[...] ...
 Of course, if we ran that it would download all of the map results to the local
 machine. That might be what we want, but it probably isn't. What we'd do
 instead is to introduce a partitioning stage, in this case using the
-deterministic-distribution `D` operator:
+deterministic-distribution `-D` operator:
 
 ```sh
-$ ni machine1:[mapper... D[machine1:[reducer] machine2:[reducer] ...]] \
-     machine2:[mapper... D[machine1:[reducer] machine2:[reducer] ...]] \
+$ ni machine1:[mapper... -D[machine1:[reducer] machine2:[reducer] ...]] \
+     machine2:[mapper... -D[machine1:[reducer] machine2:[reducer] ...]] \
      ...
 ```
 
@@ -50,7 +50,7 @@ create however many of _its own_ reducer processes. No data is ever being
 combined. Another consequence of this is that the reducers will send their
 stream results back to the mappers, each of which just sends that same data
 back to the original machine. In other words, we're not network-optimizing the
-tail call to `D`.
+tail call to `-D`.
 
 ## Named streams
 What we really want is for the mapper/reducer connection to act kind of like a
@@ -58,10 +58,10 @@ data wormhole pipe:
 
 ```sh
 # conceptually:
-$ ni mapper:[some-data D[reducer:(write to pipe)]] (read from pipe)
+$ ni mapper:[some-data -D[reducer:(write to pipe)]] (read from pipe)
 
 # more concretely:
-$ ni mapper:[some-data D[reducer:=pipe]] reducer:@pipe
+$ ni mapper:[some-data -D[reducer:=pipe]] reducer:@pipe
 ```
 
 Each pipe is a single-reader, single-writer object, just like a UNIX FIFO. So
@@ -69,11 +69,11 @@ if we want to do the usual map/reduce thing of combining map inputs, we need to
 instruct the reducers to merge their sorted input pipes:
 
 ```sh
-$ ni machine1:[mapper-stuff... D[[o machine1:=m1r1] [o machine2:=m1r2] ...]] \
-     machine2:[mapper-stuff... D[[o machine1:=m2r1] [o machine2:=m2r2] ...]] \
+$ ni machine1:[mapper-stuff... -D[[-o machine1:=m1r1] [-o machine2:=m1r2] ...]] \
+     machine2:[mapper-stuff... -D[[-o machine1:=m2r1] [-o machine2:=m2r2] ...]] \
      ... \
-     machine1:[M[@m1r1 @m2r1 ... @mNr1] reducer-stuff...] \
-     machine2:[M[@m1r2 @m2r2 ... @mNr2] reducer-stuff...] \
+     machine1:[-M[@m1r1 @m2r1 ... @mNr1] reducer-stuff...] \
+     machine2:[-M[@m1r2 @m2r2 ... @mNr2] reducer-stuff...] \
      ...
 ```
 
