@@ -1,28 +1,91 @@
 #!/usr/bin/env perl
 # ni: https://github.com/spencertipping/ni; MIT license
-
 use 5.000_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-6 meta.pl
+8 ni
+#!/usr/bin/env perl
+# ni: https://github.com/spencertipping/ni; MIT license
+use 5.000_000;
+$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
+  while <DATA> =~ /^(\d+)\s+(.*)$/;
+eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+close DATA;
+__DATA__
+8 meta.pl
 
 sub defenv {
-  my ($env, $default) = @_;
-  my $val = $ENV{$env} // $default;
+  my ($env, $default, $doc) = @_;
+  my $val = $ENV{'NI_' . uc $env} // $default;
+  $val = &$val if ref $val eq 'CODE';
+  push @ni::envs, {name => $env, default => $default, doc => $doc, val => $val};
   *{$env} = sub {$val};
 }
-39 cli.pl
+7 config.pl
+
+sub first_existing_command {-x && return $_ for @_}
+defenv ruby => '/usr/bin/env ruby', 'command to execute a Ruby interpreter';
+defenv pager => sub {first_existing_command qw| /usr/bin/less
+                                                /bin/more
+                                                /bin/cat |},
+       'command to preview text data';
+47 canard.pl
+
+{
+package ni::canard;
+
+sub native {$_[0] + 0}
+sub cons   {bless [$_[0], $_[1]], 'ni::canard::cons'}
+sub symbol {bless \$_[0],         'ni::canard::symbol'}
+sub string {bless \$_[0],         'ni::canard::string'}
+sub interpreter {bless {n => [], d => 0, c => 0, r => 0},
+                       'ni::canard::interpreter'}
+
+sub eql {
+  return 1 if $_[0] eq $_[1];
+  my $r = ref $_[0];
+  return $_[0] eq $_[1] unless length $r;
+  return 0 unless $r eq ref $_[1];
+  $r eq 'ni::canard::cons' ? eql(h($_[0]), h($_[1])) && eql(t($_[0]), t($_[1]))
+                           : ${$_[0]} eq ${$_[1]};
+}
+sub str;
+sub str {
+  my $r = ref $_[0];
+  return $_[0] unless length $r;
+  return    ${$_[0]}    if $r eq 'ni::canard::symbol';
+  return "\"${$_[0]}\"" if $r eq 'ni::canard::string';
+  my @xs;
+  my $l = $_[0];
+  while (ref($l) eq 'ni::canard::cons') {
+    push @xs, str $l->[1];
+    $l = $l->[0];
+  }
+  '[' . join(' ', reverse @xs) . ']';
+}
+
+sub h {$_[0] ? $_[0][1] : 0}
+sub t {$_[0] ? $_[0][0] : 0}
+sub hn; sub hn {my ($xs, $n) = @_; $n ? hn t($xs), $n - 1 : h $xs}
+sub tn; sub tn {my ($xs, $n) = @_; $n ? tn t($xs), $n - 1 :   $xs}
+sub list {my $r = 0; $r = cons $r, $_ for @_; $r}
+sub lsub {
+  my ($l, $m) = @_;
+  my $r = ref $l;
+  return $m->{$$l} if $r eq 'ni::canard::symbol' && exists $m->{$$l};
+  return $l    unless $r eq 'ni::canard::cons';
+  cons lsub(t($l), $m), lsub(h($l), $m);
+}
+}
+36 cli.pl
 
 use POSIX qw/dup2/;
 if (-t STDIN) {
   print STDERR "TODO: print usage\n";
   exit 2;
-}
-BEGIN {
-  defenv 'RUBY', '/usr/bin/env ruby';
 }
 
 pipe(my $r, my $w) or die "failed to pipe: $!";
@@ -41,10 +104,10 @@ while (@ARGV) {
     my $code = length($1) ? $1 : shift @ARGV;
     $code =~ s/'/'\''/g;
     my $command =
-      RUBY . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
+      ruby . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
            . $ni::self{'spreadsheet.rb'}
            . "\nEOF\n"
-           . "less\n";
+           . pager . "\n";
     syswrite $w, $command;
   } else {
     print STDERR "ni: unknown argument $arg\n";

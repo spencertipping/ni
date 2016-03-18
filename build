@@ -1,30 +1,51 @@
 #!/bin/bash
 # Builds the ni image from files in src/.
 
+# Preprocessor to erase SDoc documentation. This minimizes the image size but
+# still makes it possible to document code in some detail.
 unsdoc() {
   perl -e 'print join "", map s/^c\n//r,
                           grep !/^\h*[|A-Z]/,
                           split /\n(\h*\n)+/, join "", <>'
 }
 
+# Resource format is "<nlines> <filename>\n<data...>", e.g.
+#
+# 5 foo.pl
+# #!/usr/bin/env perl
+# # stuff
+# while (<>) {
+#   print "hi $_";
+# }
+#
+# See src/ni for the logic that parses this from the __DATA__ section.
 resource() {
   cd gen
-  wc -l $1
-  cat $1
+  for r; do
+    wc -l $r
+    cat $r
+  done
   cd ..
 }
 
+# SDoc-process all source files into corresponding entries in gen/.
 mkdir -p gen
-
 for sdoc in $(find src -name *.sdoc); do
   sdoc_gen=${sdoc%.sdoc}
   sdoc_gen=gen/${sdoc_gen#src/}
   unsdoc < $sdoc > $sdoc_gen
 done
 
+# Build the ni image by including the header verbatim, then bundling the rest
+# of the files as resources. The header knows how to unpack resources from the
+# __DATA__ section of the script, and it evaluates the ones ending in .pl. This
+# mechanism makes it possible for ni to serialize its code without being stored
+# anywhere.
 {
-  cat gen/ni.pl
-  resource meta.pl
+  cat gen/ni
+  resource ni                   # so ni can regenerate the bootstrap code
+  resource meta.pl config.pl
+  resource canard.pl
   resource cli.pl
   resource spreadsheet.rb
 } > ni

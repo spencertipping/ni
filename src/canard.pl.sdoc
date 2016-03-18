@@ -54,8 +54,8 @@ circular reference to another one (which isn't possible with the normal API).
 
 sub h {$_[0] ? $_[0][1] : 0}
 sub t {$_[0] ? $_[0][0] : 0}
-sub hn {my ($xs, $n) = @_; $n ? hn t($xs), $n - 1 : h $xs}
-sub tn {my ($xs, $n) = @_; $n ? tn t($xs), $n - 1 :   $xs}
+sub hn; sub hn {my ($xs, $n) = @_; $n ? hn t($xs), $n - 1 : h $xs}
+sub tn; sub tn {my ($xs, $n) = @_; $n ? tn t($xs), $n - 1 :   $xs}
 
 sub list {my $r = 0; $r = cons $r, $_ for @_; $r}
 

@@ -1,0 +1,12 @@
+Configuration parameters.
+This is where we set up all environment variables and other global
+configuration things.
+
+sub first_existing_command {-x && return $_ for @_}
+
+defenv ruby => '/usr/bin/env ruby', 'command to execute a Ruby interpreter';
+
+defenv pager => sub {first_existing_command qw| /usr/bin/less
+                                                /bin/more
+                                                /bin/cat |},
+       'command to preview text data';

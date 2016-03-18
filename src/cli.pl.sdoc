@@ -9,11 +9,6 @@ if (-t STDIN) {
   exit 2;
 }
 
-c
-BEGIN {
-  defenv 'RUBY', '/usr/bin/env ruby';
-}
-
 Fork a system shell process using a pipe for input.
 
 pipe(my $r, my $w) or die "failed to pipe: $!";
@@ -35,10 +30,10 @@ while (@ARGV) {
     $code =~ s/'/'\''/g;
 
     my $command =
-      RUBY . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
+      ruby . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
            . $ni::self{'spreadsheet.rb'}
            . "\nEOF\n"
-           . "less\n";
+           . pager . "\n";
     syswrite $w, $command;
   } else {
     print STDERR "ni: unknown argument $arg\n";

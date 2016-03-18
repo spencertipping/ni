@@ -2,7 +2,9 @@ Metaprogramming constructs.
 These are various things ni uses to simplify configuration.
 
 sub defenv {
-  my ($env, $default) = @_;
-  my $val = $ENV{$env} // $default;
+  my ($env, $default, $doc) = @_;
+  my $val = $ENV{'NI_' . uc $env} // $default;
+  $val = &$val if ref $val eq 'CODE';
+  push @ni::envs, {name => $env, default => $default, doc => $doc, val => $val};
   *{$env} = sub {$val};
 }
