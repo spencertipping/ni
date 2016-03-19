@@ -14,22 +14,54 @@ types. Natives aren't blessed because they're just integer offsets into the
 interpreter's `n` table.
 
 sub native {$_[0] + 0}
-sub cons   {bless [$_[0], $_[1]], 'ni::canard::cons'}
-sub symbol {bless \$_[0],         'ni::canard::symbol'}
-sub string {bless \$_[0],         'ni::canard::string'}
+sub cons   {bless [@_[0, 1]], 'ni::canard::cons'}
+sub symbol {bless \$_[0],     'ni::canard::symbol'}
+sub string {bless \$_[0],     'ni::canard::string'}
 
 sub interpreter {bless {n => [], d => 0, c => 0, r => 0},
                        'ni::canard::interpreter'}
 
+Readers.
+ni parses canard written as command-line arguments, which is not strictly
+possible given that the shell erases most quotation marks. This means that the
+reader won't be able to tell the difference between `-m '-ai'` (map over
+Ruby/spreadsheet code that negates the first value) and `-m -ai` (use the `-ai`
+command on current CLI stack, then let `-m` pick up the rest).
+
+As a result, and by virtue of the read-first-execute-second model, we need to
+make data type decisions up front and live with them later. The problem becomes
+obvious in cases involving brackets:
+
+| $ ni [-m 'foo[0]']
+  $ ni [-m 'foo[0] + "]"']
+
+In order for ni to correctly parse the second one, it needs to know how Ruby
+delimits strings so it doesn't interpret the "]" as a canard list closer.
+Obviously this will never work, which leads to an invariant: _all
+arbitrary-string arguments must be shell-separated from canard-operative
+brackets_. We'd need to write the above examples this way:
+
+| $ ni [-m 'foo[0]' ]                   # whitespace before ] is required
+  $ ni [-m 'foo[0] + "]"' ]
+
+We have a similar problem with certain types of code arguments. For example,
+suppose we're doing something like this (return an array of the negated
+first-column value):
+
+| $ ni -m [-ai]
+
+
+
 Core functions.
 Structural equality and serialization.
 
+sub eql;
 sub eql {
   return 1 if $_[0] eq $_[1];
   my $r = ref $_[0];
   return $_[0] eq $_[1] unless length $r;
   return 0 unless $r eq ref $_[1];
-  $r eq 'ni::canard::cons' ? eql(h($_[0]), h($_[1])) && eql(t($_[0]), t($_[1]))
+  $r eq 'ni::canard::cons' ? eql h($_[0]), h($_[1]) and eql t($_[0]), t($_[1])
                            : ${$_[0]} eq ${$_[1]};
 }
 
