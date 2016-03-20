@@ -70,7 +70,8 @@ $
 ```
 
 This, in turn, requires that we execute all `BEGIN {}` blocks, taking any
-side-effects that result. I'm not sure we can realistically commit to this.
+side-effects that result. Due to [the way Perl is
+parsed](http://www.perlmonks.org/?node_id=44722), there's no way around this.
 
 ### Interaction with metaprogramming
 Obviously we can't get this right; we could easily have a world in which the
@@ -90,10 +91,3 @@ $ ni -m[-ai]                    # "[-ai]" is a string
 ```
 
 That does have a certain elegance about it.
-
-### Dealing with Perl
-We actually have a very narrow set of issues with quoted code, namely figuring
-out how many trailing brackets belong to the code and how many belong to
-canard. Rather than asking the question, "does this code compile," we can
-reduce it to, "could this code ever possibly compile" -- and that ends up being
-easier to figure out.
