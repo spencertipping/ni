@@ -32,24 +32,25 @@ defenv pager => sub {first_existing_command qw| /usr/bin/less
                                                 /bin/more
                                                 /bin/cat |},
        'command to preview text data';
-47 canard.pl
+48 canard.pl
 
 {
 package ni::canard;
 
 sub native {$_[0] + 0}
-sub cons   {bless [$_[0], $_[1]], 'ni::canard::cons'}
-sub symbol {bless \$_[0],         'ni::canard::symbol'}
-sub string {bless \$_[0],         'ni::canard::string'}
+sub cons   {bless [@_[0, 1]], 'ni::canard::cons'}
+sub symbol {bless \$_[0],     'ni::canard::symbol'}
+sub string {bless \$_[0],     'ni::canard::string'}
 sub interpreter {bless {n => [], d => 0, c => 0, r => 0},
                        'ni::canard::interpreter'}
 
+sub eql;
 sub eql {
   return 1 if $_[0] eq $_[1];
   my $r = ref $_[0];
   return $_[0] eq $_[1] unless length $r;
   return 0 unless $r eq ref $_[1];
-  $r eq 'ni::canard::cons' ? eql(h($_[0]), h($_[1])) && eql(t($_[0]), t($_[1]))
+  $r eq 'ni::canard::cons' ? eql h($_[0]), h($_[1]) && eql t($_[0]), t($_[1])
                            : ${$_[0]} eq ${$_[1]};
 }
 sub str;
@@ -79,6 +80,39 @@ sub lsub {
   return $l    unless $r eq 'ni::canard::cons';
   cons lsub(t($l), $m), lsub(h($l), $m);
 }
+}
+32 reader.pl
+
+{
+package ni::canard;
+
+
+
+sub read_string {
+  my @parsed = (native 0);
+  while ($_[0] =~ /\G\s*(\[|\]|                         # lists
+                         \#"(\S+)\n([\s\S]*?)\n\2|      # here-strings
+                         ("(?:[^\\"]|\\.)*)"|           # compact strings
+                         [^]["\s][^][\s]*               # symbols
+                         )/gx) {
+    my ($v, $h, $s1, $s2) = ($1, $2, $3, $4);
+    if ($v eq '[') {
+      push @parsed, native 0;
+    } elsif ($v eq ']') {
+      die "too many closing brackets" unless @parsed > 1;
+      my $h = pop @parsed;
+      $parsed[-1] = cons $parsed[-1], $h;
+    } else {
+      $parsed[-1] = cons $parsed[-1], length $h  ? string $s1
+                                    : length $s2 ? string substr($s2, 1)
+                                    :              symbol $v;
+    }
+  }
+  die "not enough closing brackets" if @parsed > 1;
+  $parsed[0];
+}
+
+# TODO
 }
 36 cli.pl
 

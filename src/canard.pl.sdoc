@@ -30,7 +30,7 @@ sub eql {
   my $r = ref $_[0];
   return $_[0] eq $_[1] unless length $r;
   return 0 unless $r eq ref $_[1];
-  $r eq 'ni::canard::cons' ? eql h($_[0]), h($_[1]) and eql t($_[0]), t($_[1])
+  $r eq 'ni::canard::cons' ? eql(h($_[0]), h($_[1])) && eql t($_[0]), t($_[1])
                            : ${$_[0]} eq ${$_[1]};
 }
 
