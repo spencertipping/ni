@@ -73,6 +73,12 @@ This, in turn, requires that we execute all `BEGIN {}` blocks, taking any
 side-effects that result. Due to [the way Perl is
 parsed](http://www.perlmonks.org/?node_id=44722), there's no way around this.
 
+### Approximate solution
+Rewrite `BEGIN` into something else, and if we can't find a solution then we
+explain to the user that `BEGIN` syntactic metaprogramming isn't supported.
+This actually isn't a terrible option; `use` can be assumed to be safe. I think
+we're in good shape.
+
 ### Interaction with metaprogramming
 Obviously we can't get this right; we could easily have a world in which the
 code in question is written inside a quoted list and can be compiled only once
@@ -90,4 +96,10 @@ $ ni -m [-ai]                   # separate canard list
 $ ni -m[-ai]                    # "[-ai]" is a string
 ```
 
-That does have a certain elegance about it.
+That does have a certain elegance about it. If you want to use an operator that
+won't exist at parse-time but that requires coercions, we can have predefined
+identities that coerce their arguments:
+
+```sh
+$ ni --mystery-operator \"pl[-ai]
+```

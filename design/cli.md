@@ -47,7 +47,7 @@ append file "/usr/share/dict/words" empty-stream
 
 And that is exactly what we need.
 
-## Huge problem alert
+## Huge problem alert (but maybe not; see below)
 Suppose we've got this:
 
 ```sh
@@ -70,3 +70,18 @@ Commands and arguments need to be identifiable _syntactically_ if we want
 juxtaposed short commands. I think this means we need a `-` prefix,
 unfortunately, so anything else becomes self-quoting. Unfortunate but
 unavoidable.
+
+### Possible resolution to this
+In the [CLI reader problem note](cli-reader-problem.md) I decided that ni needs
+to resolve symbols at parse-time for a forward-syntax pass. This makes it
+possible to have quoted code that isn't shell-separated from canard brackets,
+and to ask the interpreter whether something can be parsed.
+
+This mechanism already parameterizes the reader on symbol resolution, so we can
+do the same to its quotation inference. This allows us to remove prefix dashes
+in most cases (as long there's no way to misinterpret operators as quasifiles).
+So the following would be unambiguous:
+
+```sh
+$ ni foo t40d1D[machine1:[om'r a + b'] ...]
+```
