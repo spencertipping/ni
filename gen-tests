@@ -2,6 +2,6 @@
 for file in $(find doc -name '*.md' -type f); do
   dir=$(dirname $file)
   mkdir -p test/${dir#doc}
-  perl -ne '$p &= !/^\`\`\`$/; print if $p; $p |= /^\`\`\`sh$/' $file \
+  perl -ne 'print if (/^\`{3}sh$/../^\`{3}$/) && !/^\`/' $file \
     > test/${file#doc/}.transcript
 done
