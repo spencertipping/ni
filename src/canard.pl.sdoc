@@ -21,10 +21,6 @@ sub string {bless \$_[0],     'ni::canard::string'}
 sub interpreter {bless {n => [], d => 0, c => 0, r => 0},
                        'ni::canard::interpreter'}
 
-Readers.
-See the discussion in [../design/cli-reader-problem.md] for the background for
-this code.
-
 Core functions.
 Structural equality and serialization.
 

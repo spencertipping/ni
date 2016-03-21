@@ -46,6 +46,7 @@ done
   resource ni                   # so ni can regenerate the bootstrap code
   resource meta.pl config.pl
   resource canard.pl
+  resource reader.pl
   resource cli.pl
   resource spreadsheet.rb
 } > ni
