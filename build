@@ -42,11 +42,10 @@ done
 # mechanism makes it possible for ni to serialize its code without being stored
 # anywhere.
 {
-  cat gen/ni
-  resource ni                   # so ni can regenerate the bootstrap code
+  cat gen/ni                    # "eval" the bootstrap code
+  resource ni                   # ... and now store so ni can regenerate it
   resource meta.pl config.pl
-  resource canard.pl
-  resource reader.pl
+  resource compiler.pl
   resource cli.pl
   resource spreadsheet.rb
 } > ni

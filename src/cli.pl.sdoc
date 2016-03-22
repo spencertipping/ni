@@ -1,6 +1,5 @@
 Command-line option parser.
-Right now we're just handling the `-m` option, which maps through the
-spreadsheet tool.
+
 
 use POSIX qw/dup2/;
 

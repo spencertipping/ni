@@ -1,0 +1,13 @@
+Pipeline compiler.
+Functions to generate POSIX shell scripts to implement various pipelines. There
+are a few things that the compiler is responsible for generating:
+
+| 1. Commands and arguments (i.e. getting shell quoting right)
+  2. Heredoc-loaded script interpreters
+  3. Temporary files/directories, possibly after invoking a compiler
+  4. SSH tunnels to other machines
+
+In other words, this is where everything ni does turns into a real-world
+process.
+
+package ni::compiler;

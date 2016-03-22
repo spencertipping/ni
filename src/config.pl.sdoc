@@ -1,6 +1,9 @@
 Configuration parameters.
 This is where we set up all environment variables and other global
-configuration things.
+configuration things. See [meta.pl.sdoc](meta.pl.sdoc) for things like
+`defenv`.
+
+package ni::conf;
 
 sub first_existing_command {-x && return $_ for @_}
 
