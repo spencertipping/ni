@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni; MIT license
+# https://github.com/spencertipping/ni; MIT license
 use 5.000_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
@@ -8,114 +8,62 @@ close DATA;
 __DATA__
 8 ni
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni; MIT license
+# https://github.com/spencertipping/ni; MIT license
 use 5.000_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-8 meta.pl
+9 meta.pl
 
+package ni::meta;
 sub defenv {
   my ($env, $default, $doc) = @_;
   my $val = $ENV{'NI_' . uc $env} // $default;
   $val = &$val if ref $val eq 'CODE';
   push @ni::envs, {name => $env, default => $default, doc => $doc, val => $val};
-  *{$env} = sub {$val};
+  *{"ni::conf::$env"} = sub {$val};
 }
-7 config.pl
+8 config.pl
 
+package ni::conf;
 sub first_existing_command {-x && return $_ for @_}
-defenv ruby => '/usr/bin/env ruby', 'command to execute a Ruby interpreter';
-defenv pager => sub {first_existing_command qw| /usr/bin/less
-                                                /bin/more
-                                                /bin/cat |},
-       'command to preview text data';
-48 canard.pl
+ni::meta::defenv ruby => '/usr/bin/env ruby', 'command to execute a Ruby interpreter';
+ni::meta::defenv pager => sub {first_existing_command qw| /usr/bin/less
+                                                          /bin/more
+                                                          /bin/cat |},
+                 'command to preview text data';
+4 compiler.pl
 
-{
-package ni::canard;
 
-sub native {$_[0] + 0}
-sub cons   {bless [@_[0, 1]], 'ni::canard::cons'}
-sub symbol {bless \$_[0],     'ni::canard::symbol'}
-sub string {bless \$_[0],     'ni::canard::string'}
-sub interpreter {bless {n => [], d => 0, c => 0, r => 0},
-                       'ni::canard::interpreter'}
 
-sub eql;
-sub eql {
-  return 1 if $_[0] eq $_[1];
-  my $r = ref $_[0];
-  return $_[0] eq $_[1] unless length $r;
-  return 0 unless $r eq ref $_[1];
-  $r eq 'ni::canard::cons' ? eql h($_[0]), h($_[1]) && eql t($_[0]), t($_[1])
-                           : ${$_[0]} eq ${$_[1]};
+package ni::compiler;
+59 cli.pl
+
+package ni::cli;
+
+
+
+our %syntax_elements;
+our %operator_syntax;
+our @quasifile_parsers;
+sub seq {
+  my @ps = @_;
+  sub {
+    my @args = @_;
+    my @xs;
+    (($_, @args) = &$_(@args)) ? push @xs, $_ : return () for @ps;
+    \@xs, @args;
+  };
 }
-sub str;
-sub str {
-  my $r = ref $_[0];
-  return $_[0] unless length $r;
-  return    ${$_[0]}    if $r eq 'ni::canard::symbol';
-  return "\"${$_[0]}\"" if $r eq 'ni::canard::string';
-  my @xs;
-  my $l = $_[0];
-  while (ref($l) eq 'ni::canard::cons') {
-    push @xs, str $l->[1];
-    $l = $l->[0];
-  }
-  '[' . join(' ', reverse @xs) . ']';
+sub alt {
+  my @ps = @_;
+  sub {
+    my @r;
+    @r = &$_(@_) and return @r for @ps;
+  };
 }
-
-sub h {$_[0] ? $_[0][1] : 0}
-sub t {$_[0] ? $_[0][0] : 0}
-sub hn; sub hn {my ($xs, $n) = @_; $n ? hn t($xs), $n - 1 : h $xs}
-sub tn; sub tn {my ($xs, $n) = @_; $n ? tn t($xs), $n - 1 :   $xs}
-sub list {my $r = 0; $r = cons $r, $_ for @_; $r}
-sub lsub {
-  my ($l, $m) = @_;
-  my $r = ref $l;
-  return $m->{$$l} if $r eq 'ni::canard::symbol' && exists $m->{$$l};
-  return $l    unless $r eq 'ni::canard::cons';
-  cons lsub(t($l), $m), lsub(h($l), $m);
-}
-}
-32 reader.pl
-
-{
-package ni::canard;
-
-
-
-sub read_string {
-  my @parsed = (native 0);
-  while ($_[0] =~ /\G\s*(\[|\]|                         # lists
-                         \#"(\S+)\n([\s\S]*?)\n\2|      # here-strings
-                         ("(?:[^\\"]|\\.)*)"|           # compact strings
-                         [^]["\s][^][\s]*               # symbols
-                         )/gx) {
-    my ($v, $h, $s1, $s2) = ($1, $2, $3, $4);
-    if ($v eq '[') {
-      push @parsed, native 0;
-    } elsif ($v eq ']') {
-      die "too many closing brackets" unless @parsed > 1;
-      my $h = pop @parsed;
-      $parsed[-1] = cons $parsed[-1], $h;
-    } else {
-      $parsed[-1] = cons $parsed[-1], length $h  ? string $s1
-                                    : length $s2 ? string substr($s2, 1)
-                                    :              symbol $v;
-    }
-  }
-  die "not enough closing brackets" if @parsed > 1;
-  $parsed[0];
-}
-
-# TODO
-}
-36 cli.pl
-
 use POSIX qw/dup2/;
 if (-t STDIN) {
   print STDERR "TODO: print usage\n";
@@ -151,10 +99,13 @@ syswrite $w, $_ while sysread STDIN, $_, 8192;
 close $w;
 close STDIN;
 waitpid $pid, 0;
-331 spreadsheet.rb
+352 spreadsheet.rb
 #!/usr/bin/env ruby
-# A standalone Ruby program that takes a spreadsheet function on the command
-# line. See doc/spreadsheet.md for details about how this works.
+
+
+
+
+
 require 'set'
 class Fixnum
   def to_column_index; self; end
@@ -168,10 +119,6 @@ class NilClass
 end
 class Object
   def unchanged; self; end
-end
-class TakeN
-  def initialize n; @n = n.to_i;    end
-  def take?      x; (@n -= 1) >= 0; end
 end
 def adjacent_condition &f
   Class.new do
@@ -193,6 +140,10 @@ def adjacent_condition &f
     end
   end
 end
+class TakeN
+  def initialize n; @n = n.to_i;    end
+  def take?      x; (@n -= 1) >= 0; end
+end
 class CondColumn
   def initialize c, cond; @c = c; @cond = cond; end
   def take? x;            @cond.take? x[@c];    end
@@ -207,6 +158,9 @@ CellSelectors = {
   :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
   :N  => TakeN}
 TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
+
+
+
 class Reducer
   attr_reader :state
   def initialize
@@ -287,6 +241,7 @@ class ReduceReducer < Reducer
     @consumer = false
   end
 end
+
 class Spreadsheet
   def initialize source_io
     @lookahead = []
@@ -343,8 +298,12 @@ class Spreadsheet
     return nil if @io_eof ||= @io.eof?
     @io.gets.chomp!.split(/\t/)
   end
-  def lookahead_to row
-    until @lookahead.size > row or @io_eof
+  def lookahead_to cond
+    if cond.is_a? Number
+      cond_n = cond
+      cond   = proc { |l| l.size > cond_n }
+    end
+    until cond[@lookahead] or @io_eof
       r = next_row
       @lookahead << r unless r.nil?
     end
@@ -382,20 +341,27 @@ class Spreadsheet
   end
   # Code generators (used by method generators below)
   def accessor_0 c, r, t, force
-    eval "proc {#{force ? "seek! #{r}" : ""}
-                lookahead_to #{r}
-                @lookahead[#{r}][#{c}].#{TypeCoercions[t]}}"
+    eval %Q{proc do |*args|
+      #{force ? "seek! #{r}" : ""}
+      lookahead_to #{r}
+      @lookahead[#{r}][#{c}].#{TypeCoercions[t]}
+    end}
   end
   def accessor_1 flip90, c, r1, r2, t, force
-    eval "proc {#{force ? "seek! #{flip90 ? c : r2}" : ""}
-                lookahead_to #{flip90 ? c : r2}
-                #{flip90 ? "@lookahead[#{c}][#{r1}..#{r2}].map(&:#{TypeCoercions[t]})"
-                         : "@lookahead[#{r1}..#{r2}].map {|x| x[#{c}].#{TypeCoercions[t]}}"}}"
+    eval %Q{proc do |*args|
+      #{force ? "seek! #{flip90 ? c : r2}" : ""}
+      lookahead_to #{flip90 ? c : r2}
+      #{flip90 ? "@lookahead[#{c}][#{r1}..#{r2}].map(&:#{TypeCoercions[t]})"
+               : "@lookahead[#{r1}..#{r2}].map {|x| x[#{c}].#{TypeCoercions[t]}}"}
+    end}
   end
   def accessor_2 c1, c2, r1, r2, t, force
-    eval "proc {#{force ? "seek! #{r2}" : ""}
-                lookahead_to #{r2}
-                @lookahead[#{r1}..#{r2}].map {|r| r[#{c1}..#{c2}].map(&:#{TypeCoercions[t]})}}"
+    eval %Q{proc do |*args|
+      #{force ? "seek! #{r2}" : ""}
+      lookahead_to #{r2}
+      @lookahead[#{r1}..#{r2}].map {|r| r[#{c1}..#{c2}].
+                               map(&:#{TypeCoercions[t]})}
+    end}
   end
   # Method generators
   def genf name, f
@@ -469,17 +435,20 @@ class Spreadsheet
       when /^_([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $2, ""
       when /^_([a-z])_?(\d+)([dis])?$/
-        genvlazy name, $1.to_column_index, $4, ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
+        genvlazy name, $1.to_column_index, $4,
+                 ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
       when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
         genvlazy name, $1.to_column_index, $4,
-          ".take_while(CondColumn.new(#{$3.to_column_index}, CellSelectors[:#{$2}].new))"
+                 ".take_while(CondColumn.new(#{$3.to_column_index},
+                              CellSelectors[:#{$2}].new))"
       when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
         genlazy name, $1.to_column_index, $2.to_column_index, $5,
-          ".take_while(CondColumn.new(#{$4.to_column_index}, CellSelectors[:#{$3}].new))"
+                ".take_while(CondColumn.new(#{$4.to_column_index},
+                             CellSelectors[:#{$3}].new))"
       else
         raise "unknown cell or range specifier: #{name}"
     end
-    send(name)
+    send(name, *args)
   end
 end
 Spreadsheet.new(IO.for_fd 3).run! ARGV[0]

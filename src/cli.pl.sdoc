@@ -1,5 +1,47 @@
 Command-line option parser.
+A context-aware command line parser, which in a Canard-powered world works as
+the reader. Certain static symbols, despite being resolved at runtime, have
+read-time parse semantics that make it possible for ni syntax to be as
+expressive as (and often much more than) nfu. See design/cli.md for details.
 
+package ni::cli;
+
+This is implemented using parser combinators. %syntax_elements is an alias
+table so we can describe operator syntax using just strings. %operator_syntax
+maps short operator names to a string description of how to parse them; for
+example:
+
+| $operator_syntax{T} = 'rowspec';
+  $syntax_elements{rowspec} = sub { ... };
+
+Quasifiles are parsed with early preference using subs from @quasifile_parsers;
+functionally it's interpreted as a choice that happens _before_ option parsing
+happens, unless the option is prefixed with '-'. This means that in the event
+of something ambiguous, e.g. `ni f00`, where `f00` is the name of a file, the
+file interpretation will be preferred. If you want to force the option
+interpretation, you need to say `ni -f00`.
+
+our %syntax_elements;
+our %operator_syntax;
+our @quasifile_parsers;
+
+sub seq {
+  my @ps = @_;
+  sub {
+    my @args = @_;
+    my @xs;
+    (($_, @args) = &$_(@args)) ? push @xs, $_ : return () for @ps;
+    \@xs, @args;
+  };
+}
+
+sub alt {
+  my @ps = @_;
+  sub {
+    my @r;
+    @r = &$_(@_) and return @r for @ps;
+  };
+}
 
 use POSIX qw/dup2/;
 

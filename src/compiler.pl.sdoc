@@ -1,6 +1,6 @@
 Pipeline compiler.
-Functions to generate POSIX shell scripts to implement various pipelines. There
-are a few things that the compiler is responsible for generating:
+Functions to generate POSIX shell scripts to implement various pipelines.
+There are a few things that the compiler is responsible for generating:
 
 | 1. Commands and arguments (i.e. getting shell quoting right)
   2. Heredoc-loaded script interpreters
