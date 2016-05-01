@@ -15,41 +15,45 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-81 cli.pl
+83 cli.pl
 
 package ni;
 
 
 
-sub seqr {my ($ps) = @_;
-     sub {my ($x, @xs, @ys, @ps);
-          (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
-          (\@xs, @_)}}
-sub altr {my ($ps) = @_;
-     sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
-sub seq {seqr [@_]}
-sub alt {altr [@_]}
+use constant end_of_argv  => sub {@_           ? () : (0)};
+use constant consumed_opt => sub {length $_[0] ? () : @_};
+sub seqr(\@) {my ($ps) = @_;
+         sub {my ($x, @xs, @ys, @ps);
+              (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
+              (\@xs, @_)}}
+sub altr(\@) {my ($ps) = @_;
+         sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
+sub seq {seqr @_}
+sub alt {altr @_}
 sub rep {my ($p, $n) = (@_, 0);
     sub {my (@c, @r);
          push @r, $_ while ($_, @_) = &$p(@c = @_);
          @r >= $n ? (\@r, @c) : ()}}
-sub maybe {my ($p) = @_;
-      sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
-
-
-
-sub mr {my $r = qr/$_[0]/;
-   sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
-
-
-sub chaltr {my ($ps) = @_;
-       sub {my ($x, @xs, $c, @ys) = @_;
-            return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-            (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
-sub chalt {chaltr {@_}}
-
+sub maybe($) {my ($p) = @_;
+         sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
 sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+sub pif(&$) {my ($f, $p) = @_;
+        sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
+
+
+
+sub mr($) {my $r = qr/$_[0]/;
+   sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
+
+
+sub chaltr(\%) {my ($ps) = @_;
+           sub {my ($x, @xs, $c, @ys) = @_;
+                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+                (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chalt {my %h = @_; chaltr %h}
 
 use constant rbcode => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -67,36 +71,34 @@ use constant plcode => sub {
   $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
   print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code $_[0], possibly because
-    BEGIN-block metaprogramming is disabled when ni tries to figure this out.
+ni: failed to get closing bracket count for perl code "$_[0]", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out.
     https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 
 
-our %syntax_elements;
-our %operator_syntax;
-our @quasifile_parsers;
+our %operators;
+our @quasifiles;
 
-sub opts() {sub {opts(@_)}};
-use constant end_of_argv  => sub {@_           ? () : (0)};
-use constant consumed_opt => sub {length $_[0] ? () : @_};
-use constant short_opt    => $syntax_elements{short}
-                           = chaltr \%operator_syntax;
-use constant op           => $syntax_elements{op}
-                           = pmap {$$_[0]}
-                             seq alt(altr(\@quasifile_parsers), short_opt),
-                                 maybe consumed_opt;
-use constant lambda       => $syntax_elements{lambda}
-                           = pmap {$$_[1]} seq mr('^\['), opts, mr('^\]');
-use constant opts         => pmap {$$_[0]} seq rep(op), end_of_argv;
-$operator_syntax{m} = rbcode;
-$operator_syntax{p} = plcode;
-push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
+sub ops() {sub {ops()->(@_)}}
+
+
+use constant short => chalt %operators;
+use constant list  => pmap {$$_[1]} seq mrc '^\[', ops, mrc '^\]';
+use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
+                                        alt(altr @quasifiles, list, short),
+                                        maybe consumed_opt;
+use constant ops   => rep op;
+use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
+$operators{m} = rbcode;
+$operators{p} = plcode;
+unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^\]]*';
+unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^\]]*';
 use JSON;
-print encode_json([opts->(@ARGV)]), "\n";
-exit 0;
+print encode_json([cli->(@ARGV)]), "\n";
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 

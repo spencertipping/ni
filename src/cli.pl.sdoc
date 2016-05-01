@@ -25,24 +25,33 @@ This might seem like it would be slow, but most of the overhead lives in
 high-throughput native functions that are unlikely to take up much time in
 practice.
 
-sub seqr {my ($ps) = @_;
-     sub {my ($x, @xs, @ys, @ps);
-          (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
-          (\@xs, @_)}}
+use constant end_of_argv  => sub {@_           ? () : (0)};
+use constant consumed_opt => sub {length $_[0] ? () : @_};
 
-sub altr {my ($ps) = @_;
-     sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
+sub seqr(\@) {my ($ps) = @_;
+         sub {my ($x, @xs, @ys, @ps);
+              (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
+              (\@xs, @_)}}
 
-sub seq {seqr [@_]}
-sub alt {altr [@_]}
+sub altr(\@) {my ($ps) = @_;
+         sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
+
+sub seq {seqr @_}
+sub alt {altr @_}
 
 sub rep {my ($p, $n) = (@_, 0);
     sub {my (@c, @r);
          push @r, $_ while ($_, @_) = &$p(@c = @_);
          @r >= $n ? (\@r, @c) : ()}}
 
-sub maybe {my ($p) = @_;
-      sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
+sub maybe($) {my ($p) = @_;
+         sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
+
+sub pmap(&$) {my ($f, $p) = @_;
+         sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+
+sub pif(&$) {my ($f, $p) = @_;
+        sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
 
 Match/consume regex.
 You can specify a match group if you want to save (i.e. not consume) part of
@@ -55,31 +64,27 @@ stage):
 It's important to anchor the regex; otherwise the match could begin anywhere
 within the first argument.
 
-sub mr {my $r = qr/$_[0]/;
+sub mr($) {my $r = qr/$_[0]/;
    sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+
+sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
 
 Character dispatch.
 This is just a way to bypass a lot of the alt() overhead that would otherwise
 result to decode a high-entropy stream of text. The most obvious case is short
 option parsing.
 
-| chp(a => seq(...), b => ..., ...)
+| chalt(a => seq(...), b => ..., ...)
   # functionally the same as alt(seq(mr('^a', seq(...))),
   #                              seq(mr('^b', ...)),
   #                              ...)
 
-sub chaltr {my ($ps) = @_;
-       sub {my ($x, @xs, $c, @ys) = @_;
-            return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-            (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chaltr(\%) {my ($ps) = @_;
+           sub {my ($x, @xs, $c, @ys) = @_;
+                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+                (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 
-sub chalt {chaltr {@_}}
-
-Parse result transformation.
-Allows you to modify the result of a parse stage: a monadic map.
-
-sub pmap(&$) {my ($f, $p) = @_;
-         sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+sub chalt {my %h = @_; chaltr %h}
 
 Code parsing.
 This is nontrivial due to the CLI reader problem. The idea is that we need to
@@ -111,19 +116,20 @@ use constant plcode => sub {
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
 
   print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code $_[0], possibly because
-    BEGIN-block metaprogramming is disabled when ni tries to figure this out.
+ni: failed to get closing bracket count for perl code "$_[0]", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out.
     https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 CLI option parsing.
 %syntax_elements is an alias table so we can describe operator syntax using
-just strings. %operator_syntax maps short operator names to a string
-description of how to parse them; for example:
+just strings. %operator_syntax maps short operator letters to a parser for
+their arguments (if any); for example:
 
-| $operator_syntax{T} = 'rowspec';
-  $syntax_elements{rowspec} = sub { ... };
+| use constant takespec => mr '^\d+|^\+\d+';
+  $operators{T} = pmap {"head -n$_"} takespec;
 
 Quasifiles are parsed with early preference using subs from
 @quasifile_parsers; functionally it's interpreted as a choice that happens
@@ -132,38 +138,36 @@ means that in the event of something ambiguous, e.g. `ni f00`, where `f00` is
 the name of a file, the file interpretation will be preferred. If you want to
 force the option interpretation, you need to say `ni -f00`.
 
-our %syntax_elements;
-our %operator_syntax;
-our @quasifile_parsers;
+our %operators;
+our @quasifiles;
 
-Define the toplevel parser to be self-referential for the moment. Later when
+I define the toplevel parser to be self-referential for the moment. Later when
 we `use constant` the outer function will be replaced with the real one,
 resulting in the inner `opts(@_)` call pointing to it. (The indirection is
 required, unfortunately; otherwise we'd be unable to change the reference
 later from underneath a `use constant` expression.)
 
-sub opts() {sub {opts(@_)}};
+sub ops() {sub {ops()->(@_)}}
 
-use constant end_of_argv  => sub {@_           ? () : (0)};
-use constant consumed_opt => sub {length $_[0] ? () : @_};
+Syntax elements.
+I'll go through these by example:
 
-use constant short_opt    => $syntax_elements{short}
-                           = chaltr \%operator_syntax;
-use constant op           => $syntax_elements{op}
-                           = pmap {$$_[0]}
-                             seq alt(altr(\@quasifile_parsers), short_opt),
-                                 maybe consumed_opt;
+| $ ni foo m'a + b'             # quasifile, then short 'm' with rbcode
+  $ ni h [m'a, 1']              # short 'h' with lambda
 
-use constant lambda       => $syntax_elements{lambda}
-                           = pmap {$$_[1]} seq mr('^\['), opts, mr('^\]');
+use constant short => chalt %operators;
+use constant list  => pmap {$$_[1]} seq mrc '^\[', ops, mrc '^\]';
+use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
+                                        alt(altr @quasifiles, list, short),
+                                        maybe consumed_opt;
+use constant ops   => rep op;
+use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
 
-use constant opts         => pmap {$$_[0]} seq rep(op), end_of_argv;
+$operators{m} = rbcode;
+$operators{p} = plcode;
 
-$operator_syntax{m} = rbcode;
-$operator_syntax{p} = plcode;
-
-push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
+unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^\]]*';
+unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^\]]*';
 
 use JSON;
-print encode_json([opts->(@ARGV)]), "\n";
-exit 0;
+print encode_json([cli->(@ARGV)]), "\n";
