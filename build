@@ -44,7 +44,7 @@ done
 {
   cat gen/ni                    # "eval" the bootstrap code
   resource ni                   # ... and now store so ni can regenerate it
-  resource cli.pl
+  resource cli.pl sh.pl ops.pl
   resource spreadsheet.rb
 } > ni
 

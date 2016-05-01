@@ -1,0 +1,21 @@
+POSIX shell command generation.
+ni stream operators end up being compiled down to POSIX shell commands and
+piped into a shell process. This way you can compile a ni pipeline and execute
+it later in an environment that doesn't have ni or even perl, for example.
+
+Conceptually this is all straightforward: we just need a function that takes a
+parsed CLI option and produces the shell command for it. In practice there are
+some surrounding complexities:
+
+| 1. Some processes require configuration via stdin; for example, Ruby if
+     we want to preload a library like spreadsheet.rb without writing to the
+     filesystem (since spreadsheet.rb is probably too big for the command
+     line).
+  2. We want data and bandwidth monitoring at each pipeline stage, as well as
+     bottleneck detection. This means we need to insert filter processes.
+  3. Sometimes we'll have command failovers and such, e.g. if /usr/bin/less is
+     unavailable.
+
+package ni;
+
+

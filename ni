@@ -15,7 +15,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-83 cli.pl
+77 cli.pl
 
 package ni;
 
@@ -93,12 +93,13 @@ use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
                                         maybe consumed_opt;
 use constant ops   => rep op;
 use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
-$operators{m} = rbcode;
-$operators{p} = plcode;
-unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^\]]*';
-unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^\]]*';
-use JSON;
-print encode_json([cli->(@ARGV)]), "\n";
+4 sh.pl
+
+
+
+package ni;
+1 ops.pl
+
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 
