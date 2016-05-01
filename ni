@@ -15,7 +15,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-65 cli.pl
+81 cli.pl
 
 package ni;
 
@@ -42,41 +42,57 @@ sub mr {my $r = qr/$_[0]/;
    sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 
 
-sub chpr {my ($ps) = @_;
-     sub {my ($x, @xs, $c, @ys) = @_;
-          return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-          (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
-sub chp {chpr {@_}}
+sub chaltr {my ($ps) = @_;
+       sub {my ($x, @xs, $c, @ys) = @_;
+            return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+            (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chalt {chaltr {@_}}
 
 sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 
 use constant rbcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
   my ($code, @xs, $x, $qcode) = @_;
   ($qcode = $code) =~ s/'/'\\''/g;
   $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-  $_ ? () : ($code, $x, @xs)};
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
+
+use constant plcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs, $x, $qcode) = @_;
+  ($qcode = $code) =~ s/'/'\\''/g;
+  my $begin_warning = $qcode =~ s/BEGIN/END/g;
+  $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
+                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+  print STDERR <<EOF if $_ && $begin_warning;
+ni: failed to get closing bracket count for perl code $_[0], possibly because
+    BEGIN-block metaprogramming is disabled when ni tries to figure this out.
+    https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
+EOF
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 
 
 our %syntax_elements;
 our %operator_syntax;
 our @quasifile_parsers;
+
 sub opts() {sub {opts(@_)}};
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
-use constant short_opt    => $syntax_elements{short} = chpr \%operator_syntax;
+use constant short_opt    => $syntax_elements{short}
+                           = chaltr \%operator_syntax;
 use constant op           => $syntax_elements{op}
                            = pmap {$$_[0]}
                              seq alt(altr(\@quasifile_parsers), short_opt),
-                                 maybe(consumed_opt);
+                                 maybe consumed_opt;
 use constant lambda       => $syntax_elements{lambda}
                            = pmap {$$_[1]} seq mr('^\['), opts, mr('^\]');
 use constant opts         => pmap {$$_[0]} seq rep(op), end_of_argv;
-$operator_syntax{m}   = rbcode;
-$operator_syntax{p}   = mr '.*';
-$operator_syntax{'-'} = short_opt;
+$operator_syntax{m} = rbcode;
+$operator_syntax{p} = plcode;
 push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
 use JSON;
 print encode_json([opts->(@ARGV)]), "\n";

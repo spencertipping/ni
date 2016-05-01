@@ -68,12 +68,12 @@ option parsing.
   #                              seq(mr('^b', ...)),
   #                              ...)
 
-sub chpr {my ($ps) = @_;
-     sub {my ($x, @xs, $c, @ys) = @_;
-          return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-          (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chaltr {my ($ps) = @_;
+       sub {my ($x, @xs, $c, @ys) = @_;
+            return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+            (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 
-sub chp {chpr {@_}}
+sub chalt {chaltr {@_}}
 
 Parse result transformation.
 Allows you to modify the result of a parse stage: a monadic map.
@@ -88,11 +88,34 @@ lambda. Depending on the language, the only way to do this may be to shell out
 to an interpreter.
 
 use constant rbcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
   my ($code, @xs, $x, $qcode) = @_;
   ($qcode = $code) =~ s/'/'\\''/g;
   $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-  $_ ? () : ($code, $x, @xs)};
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
+
+Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
+blocks to avoid executing side effects. We can guarantee that nothing will run
+(beyond `use` statements, which we assume are safe) by removing any
+occurrences of the string `BEGIN` and replacing them with something
+syntactically equivalent but less volatile -- in this case, `END`.
+
+use constant plcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs, $x, $qcode) = @_;
+  ($qcode = $code) =~ s/'/'\\''/g;
+
+  my $begin_warning = $qcode =~ s/BEGIN/END/g;
+  $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
+                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+
+  print STDERR <<EOF if $_ && $begin_warning;
+ni: failed to get closing bracket count for perl code $_[0], possibly because
+    BEGIN-block metaprogramming is disabled when ni tries to figure this out.
+    https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
+EOF
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 CLI option parsing.
 %syntax_elements is an alias table so we can describe operator syntax using
@@ -113,24 +136,31 @@ our %syntax_elements;
 our %operator_syntax;
 our @quasifile_parsers;
 
+Define the toplevel parser to be self-referential for the moment. Later when
+we `use constant` the outer function will be replaced with the real one,
+resulting in the inner `opts(@_)` call pointing to it. (The indirection is
+required, unfortunately; otherwise we'd be unable to change the reference
+later from underneath a `use constant` expression.)
+
 sub opts() {sub {opts(@_)}};
 
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
-use constant short_opt    => $syntax_elements{short} = chpr \%operator_syntax;
+
+use constant short_opt    => $syntax_elements{short}
+                           = chaltr \%operator_syntax;
 use constant op           => $syntax_elements{op}
                            = pmap {$$_[0]}
                              seq alt(altr(\@quasifile_parsers), short_opt),
-                                 maybe(consumed_opt);
+                                 maybe consumed_opt;
 
 use constant lambda       => $syntax_elements{lambda}
                            = pmap {$$_[1]} seq mr('^\['), opts, mr('^\]');
 
 use constant opts         => pmap {$$_[0]} seq rep(op), end_of_argv;
 
-$operator_syntax{m}   = rbcode;
-$operator_syntax{p}   = mr '.*';
-$operator_syntax{'-'} = short_opt;
+$operator_syntax{m} = rbcode;
+$operator_syntax{p} = plcode;
 
 push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
 
