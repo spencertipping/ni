@@ -15,90 +15,70 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-9 meta.pl
+63 cli.pl
 
-package ni::meta;
-sub defenv {
-  my ($env, $default, $doc) = @_;
-  my $val = $ENV{'NI_' . uc $env} // $default;
-  $val = &$val if ref $val eq 'CODE';
-  push @ni::envs, {name => $env, default => $default, doc => $doc, val => $val};
-  *{"ni::conf::$env"} = sub {$val};
-}
-8 config.pl
-
-package ni::conf;
-sub first_existing_command {-x && return $_ for @_}
-ni::meta::defenv ruby => '/usr/bin/env ruby', 'command to execute a Ruby interpreter';
-ni::meta::defenv pager => sub {first_existing_command qw| /usr/bin/less
-                                                          /bin/more
-                                                          /bin/cat |},
-                 'command to preview text data';
-4 compiler.pl
+package ni;
 
 
 
-package ni::compiler;
-59 cli.pl
+sub seqr {
+  my ($ps) = @_;
+  sub {my ($x, @xs, @ys);
+       (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @$ps;
+       (\@xs, @_)}}
+sub altr {
+  my ($ps) = @_;
+  sub {my @r; @r = &$_(@_) and return @r for @$ps; ()}}
+sub seq {seqr [@_]}
+sub alt {altr [@_]}
+sub rep {
+  my ($p, $n) = (@_, 0);
+  sub {my (@c, @r);
+       push @r, $_ while ($_, @_) = &$p(@c = @_);
+       @r >= $n ? (\@r, @c) : ()}}
+sub maybe {
+  my ($p) = @_;
+  sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
 
-package ni::cli;
+
+
+sub mr {
+  my $r = qr/$_[0]/;
+  sub {my ($x, @xs) = @_;
+       $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+
+
+sub chpr {
+  my ($ps) = @_;
+  sub {my ($x, @xs, $c, @ys) = @_;
+       return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+       (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chp {chpr {@_}}
+
+sub pmap(&$) {
+  my ($f, $p) = @_;
+  sub {my @xs = &$p(@_);
+       @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 
 
 
 our %syntax_elements;
 our %operator_syntax;
 our @quasifile_parsers;
-sub seq {
-  my @ps = @_;
-  sub {
-    my @args = @_;
-    my @xs;
-    (($_, @args) = &$_(@args)) ? push @xs, $_ : return () for @ps;
-    \@xs, @args;
-  };
-}
-sub alt {
-  my @ps = @_;
-  sub {
-    my @r;
-    @r = &$_(@_) and return @r for @ps;
-  };
-}
-use POSIX qw/dup2/;
-if (-t STDIN) {
-  print STDERR "TODO: print usage\n";
-  exit 2;
-}
-
-pipe(my $r, my $w) or die "failed to pipe: $!";
-if (my $pid = fork) {
-  close STDOUT;
-  close $r;
-} else {
-  close $w;
-  close STDIN;
-  dup2 fileno($r), 0 or die "failed to dup2 " . fileno($r) . ": $!";
-  exec '/bin/sh' or die "failed to create executor shell: $!";
-}
-while (@ARGV) {
-  my $arg = shift @ARGV;
-  if ($arg =~ /^-m(.*)$/s) {
-    my $code = length($1) ? $1 : shift @ARGV;
-    $code =~ s/'/'\''/g;
-    my $command =
-      ruby . " -e 'Kernel.eval \$stdin.read' '$code' 3<&0 <<'EOF' |\n"
-           . $ni::self{'spreadsheet.rb'}
-           . "\nEOF\n"
-           . pager . "\n";
-    syswrite $w, $command;
-  } else {
-    print STDERR "ni: unknown argument $arg\n";
-  }
-}
-syswrite $w, $_ while sysread STDIN, $_, 8192;
-close $w;
-close STDIN;
-waitpid $pid, 0;
+use constant end_of_argv  => sub {@_           ? () : (0)};
+use constant consumed_opt => sub {length $_[0] ? () : @_};
+use constant short_opt    => $syntax_elements{short} = chpr \%operator_syntax;
+use constant op           => $syntax_elements{op}
+                           = seq maybe(consumed_opt), short_opt;
+#                                alt altr(\@quasifile_parsers), short_opt;
+use constant cli          => seq rep(op), end_of_argv;
+$operator_syntax{m}   = mr '.*';
+$operator_syntax{p}   = mr '.*';
+$operator_syntax{'-'} = short_opt;
+push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
+use JSON;
+print encode_json([cli->(@ARGV)]), "\n";
+exit 0;
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 
