@@ -15,69 +15,71 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-63 cli.pl
+65 cli.pl
 
 package ni;
 
 
 
-sub seqr {
-  my ($ps) = @_;
-  sub {my ($x, @xs, @ys);
-       (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @$ps;
-       (\@xs, @_)}}
-sub altr {
-  my ($ps) = @_;
-  sub {my @r; @r = &$_(@_) and return @r for @$ps; ()}}
+sub seqr {my ($ps) = @_;
+     sub {my ($x, @xs, @ys, @ps);
+          (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
+          (\@xs, @_)}}
+sub altr {my ($ps) = @_;
+     sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
 sub seq {seqr [@_]}
 sub alt {altr [@_]}
-sub rep {
-  my ($p, $n) = (@_, 0);
-  sub {my (@c, @r);
-       push @r, $_ while ($_, @_) = &$p(@c = @_);
-       @r >= $n ? (\@r, @c) : ()}}
-sub maybe {
-  my ($p) = @_;
-  sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
+sub rep {my ($p, $n) = (@_, 0);
+    sub {my (@c, @r);
+         push @r, $_ while ($_, @_) = &$p(@c = @_);
+         @r >= $n ? (\@r, @c) : ()}}
+sub maybe {my ($p) = @_;
+      sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
 
 
 
-sub mr {
-  my $r = qr/$_[0]/;
-  sub {my ($x, @xs) = @_;
-       $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+sub mr {my $r = qr/$_[0]/;
+   sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 
 
-sub chpr {
-  my ($ps) = @_;
-  sub {my ($x, @xs, $c, @ys) = @_;
-       return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-       (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+sub chpr {my ($ps) = @_;
+     sub {my ($x, @xs, $c, @ys) = @_;
+          return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+          (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 sub chp {chpr {@_}}
 
-sub pmap(&$) {
-  my ($f, $p) = @_;
-  sub {my @xs = &$p(@_);
-       @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+sub pmap(&$) {my ($f, $p) = @_;
+         sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+
+use constant rbcode => sub {
+  my ($code, @xs, $x, $qcode) = @_;
+  ($qcode = $code) =~ s/'/'\\''/g;
+  $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
+                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+  $_ ? () : ($code, $x, @xs)};
 
 
 
 our %syntax_elements;
 our %operator_syntax;
 our @quasifile_parsers;
+sub opts() {sub {opts(@_)}};
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
 use constant short_opt    => $syntax_elements{short} = chpr \%operator_syntax;
 use constant op           => $syntax_elements{op}
-                           = seq maybe(consumed_opt), short_opt;
-#                                alt altr(\@quasifile_parsers), short_opt;
-use constant cli          => seq rep(op), end_of_argv;
-$operator_syntax{m}   = mr '.*';
+                           = pmap {$$_[0]}
+                             seq alt(altr(\@quasifile_parsers), short_opt),
+                                 maybe(consumed_opt);
+use constant lambda       => $syntax_elements{lambda}
+                           = pmap {$$_[1]} seq mr('^\['), opts, mr('^\]');
+use constant opts         => pmap {$$_[0]} seq rep(op), end_of_argv;
+$operator_syntax{m}   = rbcode;
 $operator_syntax{p}   = mr '.*';
 $operator_syntax{'-'} = short_opt;
 push @quasifile_parsers, pmap {{file => $_}} mr '^/\w+';
 use JSON;
-print encode_json([cli->(@ARGV)]), "\n";
+print encode_json([opts->(@ARGV)]), "\n";
 exit 0;
 352 spreadsheet.rb
 #!/usr/bin/env ruby
