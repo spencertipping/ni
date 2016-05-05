@@ -45,7 +45,7 @@ sub pif(&$) {my ($f, $p) = @_;
 
 
 sub mr($) {my $r = qr/$_[0]/;
-   sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
 
 

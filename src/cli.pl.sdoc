@@ -65,7 +65,7 @@ It's important to anchor the regex; otherwise the match could begin anywhere
 within the first argument.
 
 sub mr($) {my $r = qr/$_[0]/;
-   sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 
 sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
 
