@@ -16,6 +16,30 @@ some surrounding complexities:
   3. Sometimes we'll have command failovers and such, e.g. if /usr/bin/less is
      unavailable.
 
+Constraint (1) means we'll need to compile a whole pipeline, not just an
+individual command. (2) and (3) can be done by modifying the pipeline before
+we compile it.
+
 package ni;
 
+Pipeline data format.
+Pipelines can be described as JSON arrays of command objects. The schema looks
+like this:
 
+| pipeline = [command, ...]
+  command = {
+    id: "ls -l foo",
+    exec: ["/bin/sh", "-c", ["/bin/ls", "-l", "/tmp/foo"]],
+    env: {"HOME": "/home/spencer"},
+    stdin: "heredoc-string ...",                // large string
+    files: {
+      "/tmp/foo": "file-contents...",           // large string
+      ...
+    },
+  }
+
+The `exec` list is really a string, but with the exception that any array will
+have each entry shell-quoted. You can nest arrays if you want a string of
+shell-quoted sub-items, etc. The only reason it's done this way is to make
+pipeline metaprogramming easier; otherwise you'd have to implement a
+shell-unquoter if you wanted to know the arguments to a command.

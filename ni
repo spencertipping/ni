@@ -3,7 +3,7 @@
 use 5.000_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
-eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
 8 ni
@@ -12,7 +12,7 @@ __DATA__
 use 5.000_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
-eval($ni::self{$_}), $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
 77 cli.pl
