@@ -3,7 +3,35 @@ This is the bridge between the parsing logic in cli.pl and the compilation
 logic in sh.pl. The idea here is to specify combinatory parsers for CLI
 options, and have them generate executable stages.
 
-$operators{g} = pmap {"sort $_"} maybe mr '^\d+';
+package ni;
+
+Basic CLI types.
+Some common argument formats for various commands, sometimes transformed for
+specific cases. These are documented somewhere in `doc/`.
+
+use constant number =>
+  alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
+      pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
+      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?'),
+      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+');
+
+use constant rowspec => alt ptag('head',                   number),
+                            ptag('tail',   pn 1, mr '^\+', number),
+                            ptag('every',  pn 1, mr '^x',  number),
+                            ptag('sample', pn 1, mr '^\.', number),
+                            ptag('match',  pn 1, mr '^/',  regex);
+
+use constant colspec => mr '^\d+';              # FIXME
+
+unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^]]*';
+unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^]]*';
+
+$operators{g} = pmap {"sort $_"} maybe colspec;
 
 $operators{m} = pmap {"ruby $_"} rbcode;
 $operators{p} = pmap {"perl $_"} plcode;
+
+$operators{T} = ptag 'take', rowspec;
+
+use JSON;
+print encode_json([cli->(@ARGV)]), "\n";

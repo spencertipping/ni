@@ -53,6 +53,10 @@ sub pmap(&$) {my ($f, $p) = @_;
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
 
+sub ptag($$) {my ($t, $p) = @_; pmap {{$t => $_}} $p}
+
+sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
+
 Match/consume regex.
 You can specify a match group if you want to save (i.e. not consume) part of
 the string. For example, to assert that `m` can be parsed only when followed
@@ -85,6 +89,17 @@ sub chaltr(\%) {my ($ps) = @_;
                 (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 
 sub chalt {my %h = @_; chaltr %h}
+
+Regex parsing.
+Sometimes we'll have an operator that takes a regex, which is subject to the
+CLI reader problem the same way code arguments are. Here's the logic to deal
+with that.
+
+use constant regex => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($r, @xs, $x) = @_;
+  $x .= ']', $r =~ s/\]$// until $r !~ /\]$/ or $_ = eval {qr/$r/};
+  $_ ? length $x ? ($r, $x, @xs) : ($r, @xs) : ()};
 
 Code parsing.
 This is nontrivial due to the CLI reader problem. The idea is that we need to
@@ -133,10 +148,11 @@ their arguments (if any); for example:
 
 Quasifiles are parsed with early preference using subs from
 @quasifile_parsers; functionally it's interpreted as a choice that happens
-_before_ option parsing happens, unless the option is prefixed with '-'. This
-means that in the event of something ambiguous, e.g. `ni f00`, where `f00` is
-the name of a file, the file interpretation will be preferred. If you want to
-force the option interpretation, you need to say `ni -f00`.
+_before_ option parsing happens. This means that in the event of something
+ambiguous, e.g. `ni f00`, where `f00` is the name of a file, the file
+interpretation will be preferred. If you want to force the option
+interpretation, you need to say `ni -f00` (provided that `-f00` isn't itself a
+file).
 
 our %operators;
 our @quasifiles;
@@ -145,7 +161,7 @@ I define the toplevel parser to be self-referential for the moment. Later when
 we `use constant` the outer function will be replaced with the real one,
 resulting in the inner `opts(@_)` call pointing to it. (The indirection is
 required, unfortunately; otherwise we'd be unable to change the reference
-later from underneath a `use constant` expression.)
+later from underneath the `use constant` expression.)
 
 sub ops() {sub {ops()->(@_)}}
 
@@ -155,10 +171,10 @@ I'll go through these by example:
 | $ ni foo m'a + b'             # quasifile, then short 'm' with rbcode
   $ ni h [m'a, 1']              # short 'h' with lambda
 
-use constant short => chalt %operators;
-use constant list  => pmap {$$_[1]} seq mrc '^\[', ops, mrc '^\]';
-use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
-                                        alt(altr @quasifiles, list, short),
-                                        maybe consumed_opt;
+use constant short => chaltr %operators;
+use constant list  => pn 1, mrc '^\[', ops, mrc '^\]';
+use constant op    => pn 1, rep(consumed_opt),
+                            alt(altr @quasifiles, list, short),
+                            rep(consumed_opt);
 use constant ops   => rep op;
-use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
+use constant cli   => pn 0, ops, end_of_argv;

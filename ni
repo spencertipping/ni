@@ -15,7 +15,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-77 cli.pl
+85 cli.pl
 
 package ni;
 
@@ -41,6 +41,8 @@ sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
+sub ptag($$) {my ($t, $p) = @_; pmap {{$t => $_}} $p}
+sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 
 
@@ -54,6 +56,12 @@ sub chaltr(\%) {my ($ps) = @_;
                 return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
                 (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 sub chalt {my %h = @_; chaltr %h}
+
+use constant regex => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($r, @xs, $x) = @_;
+  $x .= ']', $r =~ s/\]$// until $r !~ /\]$/ or $_ = eval {qr/$r/};
+  $_ ? length $x ? ($r, $x, @xs) : ($r, @xs) : ()};
 
 use constant rbcode => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -86,13 +94,13 @@ our @quasifiles;
 sub ops() {sub {ops()->(@_)}}
 
 
-use constant short => chalt %operators;
-use constant list  => pmap {$$_[1]} seq mrc '^\[', ops, mrc '^\]';
-use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
-                                        alt(altr @quasifiles, list, short),
-                                        maybe consumed_opt;
+use constant short => chaltr %operators;
+use constant list  => pn 1, mrc '^\[', ops, mrc '^\]';
+use constant op    => pn 1, rep(consumed_opt),
+                            alt(altr @quasifiles, list, short),
+                            rep(consumed_opt);
 use constant ops   => rep op;
-use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
+use constant cli   => pn 0, ops, end_of_argv;
 47 sh.pl
 
 
@@ -141,11 +149,29 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $mkdirs, $cats, $pipe, $docs;
 }
-4 ops.pl
+22 ops.pl
 
-$operators{g} = pmap {"sort $_"} maybe mr '^\d+';
+package ni;
+
+use constant number =>
+  alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
+      pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
+      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?'),
+      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+');
+use constant rowspec => alt ptag('head',                   number),
+                            ptag('tail',   pn 1, mr '^\+', number),
+                            ptag('every',  pn 1, mr '^x',  number),
+                            ptag('sample', pn 1, mr '^\.', number),
+                            ptag('match',  pn 1, mr '^/',  regex);
+use constant colspec => mr '^\d+';              # FIXME
+unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^]]*';
+unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^]]*';
+$operators{g} = pmap {"sort $_"} maybe colspec;
 $operators{m} = pmap {"ruby $_"} rbcode;
 $operators{p} = pmap {"perl $_"} plcode;
+$operators{T} = ptag 'take', rowspec;
+use JSON;
+print encode_json([cli->(@ARGV)]), "\n";
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 
