@@ -93,13 +93,59 @@ use constant op    => pmap {$$_[1]} seq maybe consumed_opt,
                                         maybe consumed_opt;
 use constant ops   => rep op;
 use constant cli   => pmap {$$_[0]} seq ops, end_of_argv;
-4 sh.pl
+47 sh.pl
+
 
 
 
 package ni;
-1 ops.pl
 
+
+
+sub shell_quote;
+sub shell_quote {
+  my ($c) = @_;
+  return join ' ', map shell_quote $_, @$c if ref $c;
+  return $c                                if $c =~ /[^-A-Za-z_0-9\/]/;
+  $c =~ s/'/'\\''/g;
+  "'$c'";
+}
+sub heredoc_terminator {
+  my $id = 0;
+  ++$id while $_[1] =~ /^_$_[0]_$id$/m;
+  "_$_[0]_$id";
+}
+sub compile_pipeline {
+  my %file_inits;
+  my @commands;
+  my @heredocs;
+  for my $i (0..$#_) {
+    my $c = $_[$i];
+    my $redirections;
+    if (exists $c->{stdin}) {
+      my $h = heredoc_terminator $i, $c->{stdin};
+      push @heredocs, "$c->{stdin}\n$h";
+      $redirections = "3<&0 <<\'$h\'";
+    }
+    $file_inits{$_} = $c->{files}{$_} for keys %{$c->{files}};
+    my @env = map "$_=" . shell_quote($c->{env}{$_}), keys %{$c->{env}};
+    push @commands, join " ", @env, shell_quote($c->{exec}), $redirections;
+  }
+  my $mkdirs = 'mkdir -p '
+             . shell_quote [map /^(.*)\/[^\/]*/, keys %file_inits];
+  my $cats   = join "\n", map {
+                 my $h = heredoc_terminator '', $file_inits{$_};
+                 "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
+               } keys %file_inits;
+  my $pipe   = join '|', @commands;
+  my $docs   = join "\n", @heredocs;
+  join "\n", $mkdirs, $cats, $pipe, $docs;
+}
+4 ops.pl
+
+$operators{g} = pmap {"sort $_"} maybe mr '^\d+';
+$operators{m} = pmap {"ruby $_"} rbcode;
+$operators{p} = pmap {"perl $_"} plcode;
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 

@@ -1,2 +1,9 @@
 Operation definitions.
+This is the bridge between the parsing logic in cli.pl and the compilation
+logic in sh.pl. The idea here is to specify combinatory parsers for CLI
+options, and have them generate executable stages.
 
+$operators{g} = pmap {"sort $_"} maybe mr '^\d+';
+
+$operators{m} = pmap {"ruby $_"} rbcode;
+$operators{p} = pmap {"perl $_"} plcode;
