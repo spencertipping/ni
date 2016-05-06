@@ -36,13 +36,13 @@ sub seqr(\@) {my ($ps) = @_;
 sub altr(\@) {my ($ps) = @_;
          sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
 
-sub seq {seqr @_}
-sub alt {altr @_}
+sub seq(@) {seqr @_}
+sub alt(@) {altr @_}
 
-sub rep {my ($p, $n) = (@_, 0);
-    sub {my (@c, @r);
-         push @r, $_ while ($_, @_) = &$p(@c = @_);
-         @r >= $n ? (\@r, @c) : ()}}
+sub rep($;$) {my ($p, $n) = (@_, 0);
+         sub {my (@c, @r);
+              push @r, $_ while ($_, @_) = &$p(@c = @_);
+              @r >= $n ? (\@r, @c) : ()}}
 
 sub maybe($) {my ($p) = @_;
          sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
@@ -53,7 +53,7 @@ sub pmap(&$) {my ($f, $p) = @_;
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
 
-sub ptag($$) {my ($t, $p) = @_; pmap {{$t => $_}} $p}
+sub ptag($$) {my ($t, $p) = @_; pmap {+{$t => $_}} $p}
 
 sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
@@ -71,7 +71,7 @@ within the first argument.
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 
-sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
+sub mrc($) {pn 0, mr($_[0]), maybe consumed_opt}
 
 Character dispatch.
 This is just a way to bypass a lot of the alt() overhead that would otherwise
@@ -88,7 +88,7 @@ sub chaltr(\%) {my ($ps) = @_;
                 return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
                 (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
 
-sub chalt {my %h = @_; chaltr %h}
+sub chalt(%) {my %h = @_; chaltr %h}
 
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the

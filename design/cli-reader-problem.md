@@ -103,3 +103,13 @@ identities that coerce their arguments:
 ```sh
 $ ni --mystery-operator \"pl[-ai]
 ```
+
+## Update after writing parser combinators and stuff
+The insanity of this idea is becoming fully apparent. I'm running into
+interesting problems like the fact that regular expressions tolerate literal
+closing brackets -- in other words, my optimistic assumption that sane
+languages require a balance isn't strictly true.
+
+I'm not totally sure what to do here. Putting whitespace around brackets is
+just egregious, yet bracket inference is likely to never really work.
+Backtracking is insane and error-prone.

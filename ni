@@ -29,33 +29,33 @@ sub seqr(\@) {my ($ps) = @_;
               (\@xs, @_)}}
 sub altr(\@) {my ($ps) = @_;
          sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
-sub seq {seqr @_}
-sub alt {altr @_}
-sub rep {my ($p, $n) = (@_, 0);
-    sub {my (@c, @r);
-         push @r, $_ while ($_, @_) = &$p(@c = @_);
-         @r >= $n ? (\@r, @c) : ()}}
+sub seq(@) {seqr @_}
+sub alt(@) {altr @_}
+sub rep($;$) {my ($p, $n) = (@_, 0);
+         sub {my (@c, @r);
+              push @r, $_ while ($_, @_) = &$p(@c = @_);
+              @r >= $n ? (\@r, @c) : ()}}
 sub maybe($) {my ($p) = @_;
          sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
 sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
-sub ptag($$) {my ($t, $p) = @_; pmap {{$t => $_}} $p}
+sub ptag($$) {my ($t, $p) = @_; pmap {+{$t => $_}} $p}
 sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 
 
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
-sub mrc($) {pmap {$$_[0]} seq mr $_[0], maybe consumed_opt}
+sub mrc($) {pn 0, mr($_[0]), maybe consumed_opt}
 
 
 sub chaltr(\%) {my ($ps) = @_;
            sub {my ($x, @xs, $c, @ys) = @_;
                 return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
                 (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
-sub chalt {my %h = @_; chaltr %h}
+sub chalt(%) {my %h = @_; chaltr %h}
 
 use constant regex => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -149,27 +149,43 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $mkdirs, $cats, $pipe, $docs;
 }
-22 ops.pl
+38 ops.pl
 
 package ni;
 
 use constant number =>
   alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
       pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
-      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?'),
-      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+');
-use constant rowspec => alt ptag('head',                   number),
-                            ptag('tail',   pn 1, mr '^\+', number),
+      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+'),
+      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?');
+use constant rowspec => alt ptag('tail',   pn 1, mr '^\+', number),
                             ptag('every',  pn 1, mr '^x',  number),
-                            ptag('sample', pn 1, mr '^\.', number),
-                            ptag('match',  pn 1, mr '^/',  regex);
-use constant colspec => mr '^\d+';              # FIXME
-unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^]]*';
-unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^]]*';
-$operators{g} = pmap {"sort $_"} maybe colspec;
-$operators{m} = pmap {"ruby $_"} rbcode;
-$operators{p} = pmap {"perl $_"} plcode;
-$operators{T} = ptag 'take', rowspec;
+                            ptag('match',  pn 1, mr '^/',  regex),
+                            ptag('sample', mr '^\.\d+'),
+                            ptag('head',   number);
+use constant colspec  => mr '^[-A-Z0-9.]+';
+use constant colspec1 => mr '^[A-Z0-9]';
+use constant vmapspec => alt ptag('hash', mr '^='),
+                             ptag('cval', mr '^+'),
+                             ptag('row',  mr '^r?');
+use constant idspec   => seq maybe vmapspec, maybe colspec;
+use constant valspec => alt pmap(sub {s/^=//; $_}, mrc '^=.*'),
+                            mr '^.';
+unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
+unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
+$operators{g} = ptag 'sort',     maybe colspec;
+$operators{G} = ptag 'sort -u',  maybe colspec;
+$operators{o} = ptag 'sort -n',  maybe colspec;
+$operators{O} = ptag 'sort -rn', maybe colspec;
+$operators{n} = ptag 'number', maybe idspec;
+$operators{f} = ptag 'fields', colspec;
+$operators{x} = ptag 'xchg',   colspec1;
+$operators{k} = ptag 'constant', seq colspec, valspec;
+$operators{c} = ptag 'count', maybe colspec;
+#$operators{w} = ptag 'waul', waulcode;
+$operators{m} = ptag 'ruby', rbcode;
+$operators{p} = ptag 'perl', plcode;
+$operators{r} = ptag 'rows', rowspec;
 use JSON;
 print encode_json([cli->(@ARGV)]), "\n";
 352 spreadsheet.rb

@@ -12,26 +12,48 @@ specific cases. These are documented somewhere in `doc/`.
 use constant number =>
   alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
       pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
-      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?'),
-      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+');
+      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+'),
+      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?');
 
-use constant rowspec => alt ptag('head',                   number),
-                            ptag('tail',   pn 1, mr '^\+', number),
+use constant rowspec => alt ptag('tail',   pn 1, mr '^\+', number),
                             ptag('every',  pn 1, mr '^x',  number),
-                            ptag('sample', pn 1, mr '^\.', number),
-                            ptag('match',  pn 1, mr '^/',  regex);
+                            ptag('match',  pn 1, mr '^/',  regex),
+                            ptag('sample', mr '^\.\d+'),
+                            ptag('head',   number);
 
-use constant colspec => mr '^\d+';              # FIXME
+use constant colspec  => mr '^[-A-Z0-9.]+';
+use constant colspec1 => mr '^[A-Z0-9]';
 
-unshift @quasifiles, pmap {"cat $_"} pif {-e} mrc '^[^]]*';
-unshift @quasifiles, pmap {"ls $_"}  pif {-d} mrc '^[^]]*';
+use constant vmapspec => alt ptag('hash', mr '^='),
+                             ptag('cval', mr '^+'),
+                             ptag('row',  mr '^r?');
 
-$operators{g} = pmap {"sort $_"} maybe colspec;
+use constant idspec   => seq maybe vmapspec, maybe colspec;
 
-$operators{m} = pmap {"ruby $_"} rbcode;
-$operators{p} = pmap {"perl $_"} plcode;
+use constant valspec => alt pmap(sub {s/^=//; $_}, mrc '^=.*'),
+                            mr '^.';
 
-$operators{T} = ptag 'take', rowspec;
+unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
+unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
+
+$operators{g} = ptag 'sort',     maybe colspec;
+$operators{G} = ptag 'sort -u',  maybe colspec;
+$operators{o} = ptag 'sort -n',  maybe colspec;
+$operators{O} = ptag 'sort -rn', maybe colspec;
+
+$operators{n} = ptag 'number', maybe idspec;
+
+$operators{f} = ptag 'fields', colspec;
+$operators{x} = ptag 'xchg',   colspec1;
+$operators{k} = ptag 'constant', seq colspec, valspec;
+
+$operators{c} = ptag 'count', maybe colspec;
+
+#$operators{w} = ptag 'waul', waulcode;
+$operators{m} = ptag 'ruby', rbcode;
+$operators{p} = ptag 'perl', plcode;
+
+$operators{r} = ptag 'rows', rowspec;
 
 use JSON;
 print encode_json([cli->(@ARGV)]), "\n";
