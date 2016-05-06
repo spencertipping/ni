@@ -55,5 +55,7 @@ $operators{p} = ptag 'perl', plcode;
 
 $operators{r} = ptag 'rows', rowspec;
 
+$operators{X} = ptag 'cart', datasource;
+
 use JSON;
 print encode_json([cli->(@ARGV)]), "\n";

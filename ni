@@ -15,7 +15,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-85 cli.pl
+86 cli.pl
 
 package ni;
 
@@ -41,14 +41,14 @@ sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
-sub ptag($$) {my ($t, $p) = @_; pmap {+{$t => $_}} $p}
-sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
+sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
+sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 
 
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
-sub mrc($) {pn 0, mr($_[0]), maybe consumed_opt}
+sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
 
 
 sub chaltr(\%) {my ($ps) = @_;
@@ -94,13 +94,14 @@ our @quasifiles;
 sub ops() {sub {ops()->(@_)}}
 
 
-use constant short => chaltr %operators;
-use constant list  => pn 1, mrc '^\[', ops, mrc '^\]';
-use constant op    => pn 1, rep(consumed_opt),
-                            alt(altr @quasifiles, list, short),
-                            rep(consumed_opt);
-use constant ops   => rep op;
-use constant cli   => pn 0, ops, end_of_argv;
+use constant quasifile  => altr @quasifiles;
+use constant short      => chaltr %operators;
+use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
+use constant ilist      => rep short, 1;
+use constant datasource => alt(quasifile, list, ilist);
+use constant op  => pn 1, rep(consumed_opt), datasource, rep(consumed_opt);
+use constant ops => rep op;
+use constant cli => pn 0, ops, end_of_argv;
 47 sh.pl
 
 
@@ -149,7 +150,7 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $mkdirs, $cats, $pipe, $docs;
 }
-38 ops.pl
+39 ops.pl
 
 package ni;
 
@@ -186,6 +187,7 @@ $operators{c} = ptag 'count', maybe colspec;
 $operators{m} = ptag 'ruby', rbcode;
 $operators{p} = ptag 'perl', plcode;
 $operators{r} = ptag 'rows', rowspec;
+$operators{X} = ptag 'cart', datasource;
 use JSON;
 print encode_json([cli->(@ARGV)]), "\n";
 352 spreadsheet.rb

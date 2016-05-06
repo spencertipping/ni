@@ -53,9 +53,8 @@ sub pmap(&$) {my ($f, $p) = @_;
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
 
-sub ptag($$) {my ($t, $p) = @_; pmap {+{$t => $_}} $p}
-
-sub pn($@) {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
+sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
+sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 Match/consume regex.
 You can specify a match group if you want to save (i.e. not consume) part of
@@ -71,7 +70,7 @@ within the first argument.
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
 
-sub mrc($) {pn 0, mr($_[0]), maybe consumed_opt}
+sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
 
 Character dispatch.
 This is just a way to bypass a lot of the alt() overhead that would otherwise
@@ -171,10 +170,12 @@ I'll go through these by example:
 | $ ni foo m'a + b'             # quasifile, then short 'm' with rbcode
   $ ni h [m'a, 1']              # short 'h' with lambda
 
-use constant short => chaltr %operators;
-use constant list  => pn 1, mrc '^\[', ops, mrc '^\]';
-use constant op    => pn 1, rep(consumed_opt),
-                            alt(altr @quasifiles, list, short),
-                            rep(consumed_opt);
-use constant ops   => rep op;
-use constant cli   => pn 0, ops, end_of_argv;
+use constant quasifile  => altr @quasifiles;
+use constant short      => chaltr %operators;
+use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
+use constant ilist      => rep short, 1;
+use constant datasource => alt(quasifile, list, ilist);
+
+use constant op  => pn 1, rep(consumed_opt), datasource, rep(consumed_opt);
+use constant ops => rep op;
+use constant cli => pn 0, ops, end_of_argv;
