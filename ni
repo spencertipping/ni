@@ -15,93 +15,6 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 __DATA__
-86 cli.pl
-
-package ni;
-
-
-
-use constant end_of_argv  => sub {@_           ? () : (0)};
-use constant consumed_opt => sub {length $_[0] ? () : @_};
-sub seqr(\@) {my ($ps) = @_;
-         sub {my ($x, @xs, @ys, @ps);
-              (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
-              (\@xs, @_)}}
-sub altr(\@) {my ($ps) = @_;
-         sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
-sub seq(@) {seqr @_}
-sub alt(@) {altr @_}
-sub rep($;$) {my ($p, $n) = (@_, 0);
-         sub {my (@c, @r);
-              push @r, $_ while ($_, @_) = &$p(@c = @_);
-              @r >= $n ? (\@r, @c) : ()}}
-sub maybe($) {my ($p) = @_;
-         sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
-sub pmap(&$) {my ($f, $p) = @_;
-         sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
-sub pif(&$) {my ($f, $p) = @_;
-        sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
-sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
-sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
-
-
-
-sub mr($) {my $r = qr/$_[0]/;
-      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
-sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
-
-
-sub chaltr(\%) {my ($ps) = @_;
-           sub {my ($x, @xs, $c, @ys) = @_;
-                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-                (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
-sub chalt(%) {my %h = @_; chaltr %h}
-
-use constant regex => sub {
-  return @_ unless $_[0] =~ /\]$/;
-  my ($r, @xs, $x) = @_;
-  $x .= ']', $r =~ s/\]$// until $r !~ /\]$/ or $_ = eval {qr/$r/};
-  $_ ? length $x ? ($r, $x, @xs) : ($r, @xs) : ()};
-
-use constant rbcode => sub {
-  return @_ unless $_[0] =~ /\]$/;
-  my ($code, @xs, $x, $qcode) = @_;
-  ($qcode = $code) =~ s/'/'\\''/g;
-  $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
-                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
-
-use constant plcode => sub {
-  return @_ unless $_[0] =~ /\]$/;
-  my ($code, @xs, $x, $qcode) = @_;
-  ($qcode = $code) =~ s/'/'\\''/g;
-  my $begin_warning = $qcode =~ s/BEGIN/END/g;
-  $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
-                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-  print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code "$_[0]", possibly
-    because BEGIN-block metaprogramming is disabled when ni tries to figure
-    this out.
-    https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
-EOF
-  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
-
-
-
-our %operators;
-our @quasifiles;
-
-sub ops() {sub {ops()->(@_)}}
-
-
-use constant quasifile  => altr @quasifiles;
-use constant short      => chaltr %operators;
-use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
-use constant ilist      => rep short, 1;
-use constant datasource => alt(quasifile, list, ilist);
-use constant op  => pn 1, rep(consumed_opt), datasource, rep(consumed_opt);
-use constant ops => rep op;
-use constant cli => pn 0, ops, end_of_argv;
 47 sh.pl
 
 
@@ -150,35 +63,190 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $mkdirs, $cats, $pipe, $docs;
 }
+154 cli.pl
+
+package ni;
+
+
+
+use constant end_of_argv  => sub {@_           ? () : (0)};
+use constant consumed_opt => sub {length $_[0] ? () : @_};
+sub seqr(\@) {my ($ps) = @_;
+         sub {my ($x, @xs, @ys, @ps);
+              (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
+              (\@xs, @_)}}
+sub altr(\@) {my ($ps) = @_;
+         sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
+sub seq(@) {seqr @_}
+sub alt(@) {altr @_}
+sub rep($;$) {my ($p, $n) = (@_, 0);
+         sub {my (@c, @r);
+              push @r, $_ while ($_, @_) = &$p(@c = @_);
+              @r >= $n ? (\@r, @c) : ()}}
+sub maybe($) {my ($p) = @_;
+         sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
+sub pmap(&$) {my ($f, $p) = @_;
+         sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+sub pif(&$) {my ($f, $p) = @_;
+        sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
+sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
+sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
+
+
+
+sub mr($) {my $r = qr/$_[0]/;
+      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
+
+
+
+sub chaltr(\%) {my ($ps) = @_;
+           sub {my ($x, @xs, $c, @ys) = @_;
+                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
+                (@ys = $$ps{$c}($x, @xs)) ? ($ys[0], @ys[1..$#ys]) : ()}}
+sub chalt(%) {my %h = @_; chaltr %h}
+
+use constant regex => pmap {s/\/$//; $_} mr '^(?:[^\\/]|\\.)*/';
+
+use constant rbcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs, $x, $qcode) = @_;
+  ($qcode = $code) =~ s/'/'\\''/g;
+  $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
+                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
+
+use constant plcode => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs, $x, $qcode) = @_;
+  ($qcode = $code) =~ s/'/'\\''/g;
+  my $begin_warning = $qcode =~ s/BEGIN/END/g;
+  $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
+                  and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+  print STDERR <<EOF if $_ && $begin_warning;
+ni: failed to get closing bracket count for perl code "$_[0]", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out.
+    https://github.com/spencertipping/ni/tree/master/design/cli-reader-problem.md
+EOF
+  $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
+
+
+
+our %operators;
+our @quasifiles;
+our %operator_docs;
+our @quasifile_docs;
+our %syntax_docs;
+sub defop($%) {
+  my ($op, %spec) = @_;
+  exists $spec{$_} or die "defop $op: must specify key $_" for qw/doc syntax/;
+  $operators{$op}     = $spec{syntax};
+  $operator_docs{$op} = $spec{doc};
+}
+sub defqfile(%) {
+  my (%spec) = @_;
+  exists $spec{$_} or die "defqfile: must specify key $_" for qw/doc syntax/;
+  unshift @quasifiles,     $spec{syntax};
+  unshift @quasifile_docs, $spec{doc};
+}
+sub defsyntax($%) {
+  my ($name, %spec) = @_;
+  exists $spec{$_} or die "defsyntax: must specify key $_" for qw/doc/;
+  $syntax_docs{$name} = $spec{doc};
+}
+
+sub ops() {sub {ops()->(@_)}}
+
+
+use constant quasifile  => altr @quasifiles;
+use constant short      => chaltr %operators;
+use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
+use constant ilist      => rep short, 1;
+use constant datasource => alt quasifile, list, ilist;
+use constant op         => pn 1, rep(consumed_opt),
+                                 alt(quasifile, short),
+                                 rep(consumed_opt);
+use constant ops        => rep op;
+use constant cli        => pn 0, ops, end_of_argv;
+defsyntax 'quasifile', doc => <<'EOF';
+Quasifile syntax element
+Delegates to all known quasifile parsers. You can define a new one using the
+`defqfile` function; for example:
+  # mrc = match regex and consume empty argument
+  defqfile doc => <<'EOF', syntax => pmap {"cat $_"} pif {-r} mrc('^[^]]+');
+  Regular file matcher
+  Matches files that exist and are readable.
+  EOF
+EOF
+defsyntax 'short', doc => <<'EOF';
+Short operator element
+Delegates to all known short-form operators. You can define a new one using
+the `defop` function:
+  defop 'g', doc => <<'EOF', syntax => pmap {"sort $_"} maybe colspec;
+  Group operator
+  Takes an optional column spec and sorts its input.
+  EOF
+EOF
+defsyntax 'list', doc => <<'EOF';
+List element
+Contains a stream transformer and represents it as an object. ni uses these as
+lambda expressions. Lists are encased in square brackets, which need not be
+whitespace-separated from their contents:
+  $ ni data1 jidata2                    # join against a qfile directly
+  $ ni data1 ji[data2 m'r b, a']        # join against a lambda output
+EOF
+defsyntax 'ilist', doc => <<'EOF';
+Implied list element
+This is used by commands that expect a lambda but have no reason to make you
+write brackets. For example, hadoop and variants:
+  $ ni hdfs:/path h[m'b, a']            # explicit lambda
+  $ ni hdfs:/path hm'b, a'              # implied lambda (h coerces it)
+EOF
+defsyntax 'datasource', doc => <<'EOF';
+Data source element
+Anything that can be read in isolation (i.e. without sending data into it).
+Can be a quasifile, a list, or an implied list, in that order of preference.
+Note that data sources aren't inferred at the toplevel; this element is used
+by operators that consume data.
+EOF
+defsyntax 'op', doc => <<'EOF';
+Stream operator element
+Anything that can be appended to an existing pipeline, which ends up being a
+readable quasifile or a short operator. Consumes empty arguments on either
+side. For example:
+  #    |-----------| |--------| <- these are both ops
+  $ ni /path/to/data m'r a + b'
+EOF
 39 ops.pl
 
 package ni;
 
 use constant number =>
-  alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
-      pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
-      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+'),
-      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?');
-use constant rowspec => alt ptag('tail',   pn 1, mr '^\+', number),
-                            ptag('every',  pn 1, mr '^x',  number),
-                            ptag('match',  pn 1, mr '^/',  regex),
-                            ptag('sample', mr '^\.\d+'),
-                            ptag('head',   number);
+  alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+      pmap(sub {1 << $_},   mr '^B(\d+)'),
+      pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+      pmap(\&eval,          mr '^=([^]]+)'),
+      pmap(sub {0 + $_},    mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?');
+use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
+                             ptag('every',  pn 1, mr '^x',  number),
+                             ptag('match',  pn 1, mr '^/',  regex),
+                             ptag('sample', mr '^\.\d+'),
+                             ptag('head',   number);
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
 use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('cval', mr '^+'),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
-use constant valspec => alt pmap(sub {s/^=//; $_}, mrc '^=.*'),
-                            mr '^.';
+use constant valspec  => alt mrc '^=(.*)', mr '^.';
 unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
 unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
 $operators{g} = ptag 'sort',     maybe colspec;
 $operators{G} = ptag 'sort -u',  maybe colspec;
 $operators{o} = ptag 'sort -n',  maybe colspec;
 $operators{O} = ptag 'sort -rn', maybe colspec;
-$operators{n} = ptag 'number', maybe idspec;
+$operators{n} = ptag 'number', idspec;
 $operators{f} = ptag 'fields', colspec;
 $operators{x} = ptag 'xchg',   colspec1;
 $operators{k} = ptag 'constant', seq colspec, valspec;

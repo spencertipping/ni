@@ -10,16 +10,17 @@ Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
 use constant number =>
-  alt pmap(sub {10 ** $1 if /^E(-?\d+)$/}, mr '^E-?\d+'),
-      pmap(sub {0 + "0$_"},                mr '^x[0-9a-fA-F]+'),
-      pmap(sub {s/^=//; eval $_},          mr '^=[^]]+'),
-      pmap(sub {0 + $_},                   mr '^-?\d*(\.\d+)?([eE][-+]?\d+)?');
+  alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+      pmap(sub {1 << $_},   mr '^B(\d+)'),
+      pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+      pmap(\&eval,          mr '^=([^]]+)'),
+      pmap(sub {0 + $_},    mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?');
 
-use constant rowspec => alt ptag('tail',   pn 1, mr '^\+', number),
-                            ptag('every',  pn 1, mr '^x',  number),
-                            ptag('match',  pn 1, mr '^/',  regex),
-                            ptag('sample', mr '^\.\d+'),
-                            ptag('head',   number);
+use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
+                             ptag('every',  pn 1, mr '^x',  number),
+                             ptag('match',  pn 1, mr '^/',  regex),
+                             ptag('sample', mr '^\.\d+'),
+                             ptag('head',   number);
 
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
@@ -30,8 +31,7 @@ use constant vmapspec => alt ptag('hash', mr '^='),
 
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 
-use constant valspec => alt pmap(sub {s/^=//; $_}, mrc '^=.*'),
-                            mr '^.';
+use constant valspec  => alt mrc '^=(.*)', mr '^.';
 
 unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
 unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
@@ -41,7 +41,7 @@ $operators{G} = ptag 'sort -u',  maybe colspec;
 $operators{o} = ptag 'sort -n',  maybe colspec;
 $operators{O} = ptag 'sort -rn', maybe colspec;
 
-$operators{n} = ptag 'number', maybe idspec;
+$operators{n} = ptag 'number', idspec;
 
 $operators{f} = ptag 'fields', colspec;
 $operators{x} = ptag 'xchg',   colspec1;

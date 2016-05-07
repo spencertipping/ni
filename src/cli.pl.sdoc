@@ -78,27 +78,26 @@ result to decode a high-entropy stream of text. The most obvious case is short
 option parsing.
 
 | chalt(a => seq(...), b => ..., ...)
-  # functionally the same as alt(seq(mr('^a', seq(...))),
-  #                              seq(mr('^b', ...)),
+  # functionally the same as alt(pn(1, mr('^a', seq(...))),
+  #                              pn(1, mr('^b', ...)),
   #                              ...)
+
+Note that the dispatch character itself isn't encoded into the result.
 
 sub chaltr(\%) {my ($ps) = @_;
            sub {my ($x, @xs, $c, @ys) = @_;
                 return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-                (@ys = $$ps{$c}($x, @xs)) ? ([$c, $ys[0]], @ys[1..$#ys]) : ()}}
+                (@ys = $$ps{$c}($x, @xs)) ? ($ys[0], @ys[1..$#ys]) : ()}}
 
 sub chalt(%) {my %h = @_; chaltr %h}
 
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
-CLI reader problem the same way code arguments are. Here's the logic to deal
-with that.
+CLI reader problem the same way code arguments are. Rather than try to infer
+brackets the same way, we just require that regexes are terminated with /
+(which should be ok because that's also how they typically start).
 
-use constant regex => sub {
-  return @_ unless $_[0] =~ /\]$/;
-  my ($r, @xs, $x) = @_;
-  $x .= ']', $r =~ s/\]$// until $r !~ /\]$/ or $_ = eval {qr/$r/};
-  $_ ? length $x ? ($r, $x, @xs) : ($r, @xs) : ()};
+use constant regex => pmap {s/\/$//; $_} mr '^(?:[^\\/]|\\.)*/';
 
 Code parsing.
 This is nontrivial due to the CLI reader problem. The idea is that we need to
@@ -156,6 +155,30 @@ file).
 our %operators;
 our @quasifiles;
 
+our %operator_docs;
+our @quasifile_docs;
+our %syntax_docs;
+
+sub defop($%) {
+  my ($op, %spec) = @_;
+  exists $spec{$_} or die "defop $op: must specify key $_" for qw/doc syntax/;
+  $operators{$op}     = $spec{syntax};
+  $operator_docs{$op} = $spec{doc};
+}
+
+sub defqfile(%) {
+  my (%spec) = @_;
+  exists $spec{$_} or die "defqfile: must specify key $_" for qw/doc syntax/;
+  unshift @quasifiles,     $spec{syntax};
+  unshift @quasifile_docs, $spec{doc};
+}
+
+sub defsyntax($%) {
+  my ($name, %spec) = @_;
+  exists $spec{$_} or die "defsyntax: must specify key $_" for qw/doc/;
+  $syntax_docs{$name} = $spec{doc};
+}
+
 I define the toplevel parser to be self-referential for the moment. Later when
 we `use constant` the outer function will be replaced with the real one,
 resulting in the inner `opts(@_)` call pointing to it. (The indirection is
@@ -164,18 +187,81 @@ later from underneath the `use constant` expression.)
 
 sub ops() {sub {ops()->(@_)}}
 
-Syntax elements.
-I'll go through these by example:
+CLI syntax elements.
+Building blocks for ni's command-line grammar, and the toplevel parser. See
+below for documentation.
 
-| $ ni foo m'a + b'             # quasifile, then short 'm' with rbcode
-  $ ni h [m'a, 1']              # short 'h' with lambda
+TODO: refactor the below into "read-only", "pipe", "read-write", "write-only",
+etc -- basically, a lot of elements below should be stream-context-aware. The
+erroneous use of "ilist" as a data source should make this obvious.
 
 use constant quasifile  => altr @quasifiles;
 use constant short      => chaltr %operators;
 use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
 use constant ilist      => rep short, 1;
-use constant datasource => alt(quasifile, list, ilist);
+use constant datasource => alt quasifile, list, ilist;
+use constant op         => pn 1, rep(consumed_opt),
+                                 alt(quasifile, short),
+                                 rep(consumed_opt);
+use constant ops        => rep op;
+use constant cli        => pn 0, ops, end_of_argv;
 
-use constant op  => pn 1, rep(consumed_opt), datasource, rep(consumed_opt);
-use constant ops => rep op;
-use constant cli => pn 0, ops, end_of_argv;
+defsyntax 'quasifile', doc => <<'EOF';
+Quasifile syntax element
+Delegates to all known quasifile parsers. You can define a new one using the
+`defqfile` function; for example:
+
+  # mrc = match regex and consume empty argument
+  defqfile doc => <<'EOF', syntax => pmap {"cat $_"} pif {-r} mrc('^[^]]+');
+  Regular file matcher
+  Matches files that exist and are readable.
+  EOF
+EOF
+
+defsyntax 'short', doc => <<'EOF';
+Short operator element
+Delegates to all known short-form operators. You can define a new one using
+the `defop` function:
+
+  defop 'g', doc => <<'EOF', syntax => pmap {"sort $_"} maybe colspec;
+  Group operator
+  Takes an optional column spec and sorts its input.
+  EOF
+EOF
+
+defsyntax 'list', doc => <<'EOF';
+List element
+Contains a stream transformer and represents it as an object. ni uses these as
+lambda expressions. Lists are encased in square brackets, which need not be
+whitespace-separated from their contents:
+
+  $ ni data1 jidata2                    # join against a qfile directly
+  $ ni data1 ji[data2 m'r b, a']        # join against a lambda output
+EOF
+
+defsyntax 'ilist', doc => <<'EOF';
+Implied list element
+This is used by commands that expect a lambda but have no reason to make you
+write brackets. For example, hadoop and variants:
+
+  $ ni hdfs:/path h[m'b, a']            # explicit lambda
+  $ ni hdfs:/path hm'b, a'              # implied lambda (h coerces it)
+EOF
+
+defsyntax 'datasource', doc => <<'EOF';
+Data source element
+Anything that can be read in isolation (i.e. without sending data into it).
+Can be a quasifile, a list, or an implied list, in that order of preference.
+Note that data sources aren't inferred at the toplevel; this element is used
+by operators that consume data.
+EOF
+
+defsyntax 'op', doc => <<'EOF';
+Stream operator element
+Anything that can be appended to an existing pipeline, which ends up being a
+readable quasifile or a short operator. Consumes empty arguments on either
+side. For example:
+
+  #    |-----------| |--------| <- these are both ops
+  $ ni /path/to/data m'r a + b'
+EOF
