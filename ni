@@ -22,7 +22,7 @@ __DATA__
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
-49 sh.pl
+51 sh.pl
 
 
 
@@ -50,6 +50,7 @@ sub compile_pipeline {
   my @heredocs;
   for my $i (0..$#_) {
     my $c = $_[$i];
+    exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
     my $redirections;
     if (exists $c->{stdin}) {
       my $h = heredoc_terminator $i, $c->{stdin};
@@ -68,9 +69,10 @@ sub compile_pipeline {
                  my $h = heredoc_terminator '', $file_inits{$_};
                  "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
                } keys %file_inits;
-  my $pipe   = join '|', @commands;
+  my $libs   = join "\n", @ni::self{grep /\.sh$/, sort keys %ni::self};
+  my $pipe   = join "\\\n  | ", @commands;
   my $docs   = join "\n", @heredocs;
-  join "\n", $mkdirs, $cats, $pipe, $docs;
+  join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
 }
 114 cli.pl
 
@@ -187,9 +189,10 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-51 ops.pl
+50 ops.pl
 
 package ni;
+sub psh {my (@sh) = @_; pmap {sh @sh, $_} pop @sh}
 
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
@@ -210,8 +213,8 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file', syntax => ptag('cat', pif {-e} mrc '^[^]]*'), doc => '';
-deflong 'dir',  syntax => ptag('ls',  pif {-d} mrc '^[^]]*'), doc => '';
+deflong 'file', syntax => psh('append', 'cat', pif {-e} mrc '^[^]]*'), doc => '';
+deflong 'dir',  syntax => psh('append', 'ls',  pif {-d} mrc '^[^]]*'), doc => '';
 sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
                               map /[A-Z]/ ? ord $_ - ord 'A' : $_,
                                   split //, $_[0]}
@@ -233,11 +236,18 @@ $operators{p} = ptag 'perl', plcode;
 $operators{r} = ptag 'rows', rowspec;
 $operators{X} = ptag 'cart', datasource;
 =cut
-use JSON;
 sub main {
   my ($p) = cli->(@ARGV);
-  print encode_json($p), "\n";
   print compile_pipeline(@$p), "\n";
+}
+8 sh/stream.sh
+
+
+
+
+append() {
+  cat
+  "$@"
 }
 352 spreadsheet.rb
 #!/usr/bin/env ruby

@@ -33,6 +33,7 @@ mkdir -p gen
 for sdoc in $(find src -name *.sdoc); do
   sdoc_gen=${sdoc%.sdoc}
   sdoc_gen=gen/${sdoc_gen#src/}
+  mkdir -p $(dirname $sdoc_gen)
   unsdoc < $sdoc > $sdoc_gen
 done
 
@@ -46,6 +47,9 @@ done
   resource ni                   # ... and now store so ni can regenerate it
   resource util.pl
   resource sh.pl cli.pl ops.pl
+
+  resource sh/stream.sh
+
   resource spreadsheet.rb
 } > ni
 

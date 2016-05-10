@@ -73,6 +73,8 @@ sub compile_pipeline {
 
   for my $i (0..$#_) {
     my $c = $_[$i];
+    exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
+
     my $redirections;
     if (exists $c->{stdin}) {
       my $h = heredoc_terminator $i, $c->{stdin};
@@ -95,7 +97,8 @@ sub compile_pipeline {
                  "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
                } keys %file_inits;
 
-  my $pipe   = join '|', @commands;
+  my $libs   = join "\n", @ni::self{grep /\.sh$/, sort keys %ni::self};
+  my $pipe   = join "\\\n  | ", @commands;
   my $docs   = join "\n", @heredocs;
-  join "\n", $mkdirs, $cats, $pipe, $docs;
+  join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
 }
