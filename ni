@@ -1,37 +1,44 @@
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
-use 5.000_000;
+use 5.006_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
+ni::main();
 __DATA__
-8 ni
+9 ni
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
-use 5.000_000;
+use 5.006_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
+ni::main();
 __DATA__
-47 sh.pl
+4 util.pl
+
+package ni;
+sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
+sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
+49 sh.pl
 
 
 
 
 package ni;
 
-
-
 sub shell_quote;
-sub shell_quote {
-  my ($c) = @_;
-  return join ' ', map shell_quote $_, @$c if ref $c;
-  return $c                                if $c =~ /[^-A-Za-z_0-9\/]/;
-  $c =~ s/'/'\\''/g;
-  "'$c'";
-}
+sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/.]/
+                                 ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                                 : $_,
+                           map ref $_ ? shell_quote @$_ : $_, @_}
+sub sh {+{id => shell_quote(@_), exec => [@_]}}
+
+
+
+use constant none => {};
 sub heredoc_terminator {
   my $id = 0;
   ++$id while $_[1] =~ /^_$_[0]_$id$/m;
@@ -49,12 +56,14 @@ sub compile_pipeline {
       push @heredocs, "$c->{stdin}\n$h";
       $redirections = "3<&0 <<\'$h\'";
     }
-    $file_inits{$_} = $c->{files}{$_} for keys %{$c->{files}};
-    my @env = map "$_=" . shell_quote($c->{env}{$_}), keys %{$c->{env}};
-    push @commands, join " ", @env, shell_quote($c->{exec}), $redirections;
+    $file_inits{$_} = $c->{files}{$_} for keys %{$c->{files} || none};
+    my @env = map "$_=" . shell_quote($c->{env}{$_}), keys %{$c->{env} || none};
+    push @commands, join " ", @env, shell_quote(@{$c->{exec}}), $redirections;
   }
-  my $mkdirs = 'mkdir -p '
-             . shell_quote [map /^(.*)\/[^\/]*/, keys %file_inits];
+  my $mkdirs = keys %file_inits
+               ? 'mkdir -p ' . shell_quote map /^(.*)\/[^\/]*$/,
+                                           keys %file_inits
+               : '';
   my $cats   = join "\n", map {
                  my $h = heredoc_terminator '', $file_inits{$_};
                  "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
@@ -63,7 +72,7 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $mkdirs, $cats, $pipe, $docs;
 }
-154 cli.pl
+114 cli.pl
 
 package ni;
 
@@ -92,18 +101,22 @@ sub pif(&$) {my ($f, $p) = @_;
 sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
 sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
-
-
 sub mr($) {my $r = qr/$_[0]/;
-      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+      sub {my ($x, @xs) = @_; $x =~ s/^($r)// ? ($2 || $1, $x, @xs) : ()}}
 sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
 
 
 
 sub chaltr(\%) {my ($ps) = @_;
-           sub {my ($x, @xs, $c, @ys) = @_;
-                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-                (@ys = $$ps{$c}($x, @xs)) ? ($ys[0], @ys[1..$#ys]) : ()}}
+           sub {my ($x, @xs, $k, @ys, %ls) = @_;
+                ++$ls{length $_} for keys %$ps;
+                for my $l (sort {$b <=> $a} keys %ls) {
+                  return (@ys = $$ps{$c}(substr($x, $l), @xs))
+                    ? ($ys[0], @ys[1..$#ys])
+                    : ()
+                  if exists $$ps{$c = substr $x, 0, $l};
+                }
+                ()}}
 sub chalt(%) {my %h = @_; chaltr %h}
 
 use constant regex => pmap {s/\/$//; $_} mr '^(?:[^\\/]|\\.)*/';
@@ -133,22 +146,24 @@ EOF
 
 
 
-our %operators;
-our @quasifiles;
-our %operator_docs;
-our @quasifile_docs;
+our %short;
+our @long;
+our %short_docs;
+our %long_docs;
 our %syntax_docs;
-sub defop($%) {
+sub defshort($%) {
   my ($op, %spec) = @_;
-  exists $spec{$_} or die "defop $op: must specify key $_" for qw/doc syntax/;
-  $operators{$op}     = $spec{syntax};
-  $operator_docs{$op} = $spec{doc};
+  exists $spec{$_} or die "defshort $op: must specify key $_"
+    for qw/doc syntax/;
+  $short{$op}      = $spec{syntax};
+  $short_docs{$op} = $spec{doc};
 }
-sub defqfile(%) {
-  my (%spec) = @_;
-  exists $spec{$_} or die "defqfile: must specify key $_" for qw/doc syntax/;
-  unshift @quasifiles,     $spec{syntax};
-  unshift @quasifile_docs, $spec{doc};
+sub deflong($%) {
+  my ($op, %spec) = @_;
+  exists $spec{$_} or die "deflong $op: must specify key $_"
+    for qw/doc syntax/;
+  unshift @long, $spec{syntax};
+  $long_docs{$op} = $spec{doc};
 }
 sub defsyntax($%) {
   my ($name, %spec) = @_;
@@ -156,83 +171,38 @@ sub defsyntax($%) {
   $syntax_docs{$name} = $spec{doc};
 }
 
+
+
+
+
+
+
+
 sub ops() {sub {ops()->(@_)}}
-
-
-use constant quasifile  => altr @quasifiles;
-use constant short      => chaltr %operators;
-use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
-use constant ilist      => rep short, 1;
-use constant datasource => alt quasifile, list, ilist;
-use constant op         => pn 1, rep(consumed_opt),
-                                 alt(quasifile, short),
-                                 rep(consumed_opt);
-use constant ops        => rep op;
-use constant cli        => pn 0, ops, end_of_argv;
-defsyntax 'quasifile', doc => <<'EOF';
-Quasifile syntax element
-Delegates to all known quasifile parsers. You can define a new one using the
-`defqfile` function; for example:
-  # mrc = match regex and consume empty argument
-  defqfile doc => <<'EOF', syntax => pmap {"cat $_"} pif {-r} mrc('^[^]]+');
-  Regular file matcher
-  Matches files that exist and are readable.
-  EOF
-EOF
-defsyntax 'short', doc => <<'EOF';
-Short operator element
-Delegates to all known short-form operators. You can define a new one using
-the `defop` function:
-  defop 'g', doc => <<'EOF', syntax => pmap {"sort $_"} maybe colspec;
-  Group operator
-  Takes an optional column spec and sorts its input.
-  EOF
-EOF
-defsyntax 'list', doc => <<'EOF';
-List element
-Contains a stream transformer and represents it as an object. ni uses these as
-lambda expressions. Lists are encased in square brackets, which need not be
-whitespace-separated from their contents:
-  $ ni data1 jidata2                    # join against a qfile directly
-  $ ni data1 ji[data2 m'r b, a']        # join against a lambda output
-EOF
-defsyntax 'ilist', doc => <<'EOF';
-Implied list element
-This is used by commands that expect a lambda but have no reason to make you
-write brackets. For example, hadoop and variants:
-  $ ni hdfs:/path h[m'b, a']            # explicit lambda
-  $ ni hdfs:/path hm'b, a'              # implied lambda (h coerces it)
-EOF
-defsyntax 'datasource', doc => <<'EOF';
-Data source element
-Anything that can be read in isolation (i.e. without sending data into it).
-Can be a quasifile, a list, or an implied list, in that order of preference.
-Note that data sources aren't inferred at the toplevel; this element is used
-by operators that consume data.
-EOF
-defsyntax 'op', doc => <<'EOF';
-Stream operator element
-Anything that can be appended to an existing pipeline, which ends up being a
-readable quasifile or a short operator. Consumes empty arguments on either
-side. For example:
-  #    |-----------| |--------| <- these are both ops
-  $ ni /path/to/data m'r a + b'
-EOF
-39 ops.pl
+use constant long   => altr @long;
+use constant short  => chaltr %short;
+use constant lambda => pn 1, mrc '\[', ops, mr '\]';
+use constant thing  => alt lambda, long, short;
+use constant suffix => rep thing;
+use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
+use constant ops    => rep op;
+use constant cli    => pn 0, ops, end_of_argv;
+51 ops.pl
 
 package ni;
 
-use constant number =>
-  alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
-      pmap(sub {1 << $_},   mr '^B(\d+)'),
-      pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-      pmap(\&eval,          mr '^=([^]]+)'),
-      pmap(sub {0 + $_},    mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?');
+use constant neval   => pmap {eval} mr '^=([^]]+)';
+use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+                            pmap(sub {1 << $_},   mr '^B(\d+)'),
+                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+                            pmap(sub {0 + $_},    mr '\d+');
+use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant number  => alt neval, integer, float;
 use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
                              ptag('every',  pn 1, mr '^x',  number),
                              ptag('match',  pn 1, mr '^/',  regex),
                              ptag('sample', mr '^\.\d+'),
-                             ptag('head',   number);
+                             ptag('head',   alt neval, integer);
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
 use constant vmapspec => alt ptag('hash', mr '^='),
@@ -240,9 +210,15 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
-unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
-$operators{g} = ptag 'sort',     maybe colspec;
+deflong 'file', syntax => ptag('cat', pif {-e} mrc '^[^]]*'), doc => '';
+deflong 'dir',  syntax => ptag('ls',  pif {-d} mrc '^[^]]*'), doc => '';
+sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
+                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
+                                  split //, $_[0]}
+defshort 'g', syntax => pmap(sub {sh 'sort', sort_colspec $_},
+                             maybe colspec),
+              doc    => 'Group rows by addressed columns';
+=pod
 $operators{G} = ptag 'sort -u',  maybe colspec;
 $operators{o} = ptag 'sort -n',  maybe colspec;
 $operators{O} = ptag 'sort -rn', maybe colspec;
@@ -256,8 +232,13 @@ $operators{m} = ptag 'ruby', rbcode;
 $operators{p} = ptag 'perl', plcode;
 $operators{r} = ptag 'rows', rowspec;
 $operators{X} = ptag 'cart', datasource;
+=cut
 use JSON;
-print encode_json([cli->(@ARGV)]), "\n";
+sub main {
+  my ($p) = cli->(@ARGV);
+  print encode_json($p), "\n";
+  print compile_pipeline(@$p), "\n";
+}
 352 spreadsheet.rb
 #!/usr/bin/env ruby
 

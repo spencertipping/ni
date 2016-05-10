@@ -57,18 +57,11 @@ sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
 sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 Match/consume regex.
-You can specify a match group if you want to save (i.e. not consume) part of
-the string. For example, to assert that `m` can be parsed only when followed
-by one or more characters (but to leave those characters for the next parse
-stage):
-
-| seq mr('^m(.+)'), parse_the_grouped_stuff...
-
-It's important to anchor the regex; otherwise the match could begin anywhere
-within the first argument.
+Consumes the match, returning either the matched text or the first match group
+you specify. Always matches from the beginning of a string.
 
 sub mr($) {my $r = qr/$_[0]/;
-      sub {my ($x, @xs) = @_; $x =~ s/($r)/$2/ ? ($1, $x, @xs) : ()}}
+      sub {my ($x, @xs) = @_; $x =~ s/^($r)// ? ($2 || $1, $x, @xs) : ()}}
 
 sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
 
@@ -85,9 +78,15 @@ option parsing.
 Note that the dispatch character itself isn't encoded into the result.
 
 sub chaltr(\%) {my ($ps) = @_;
-           sub {my ($x, @xs, $c, @ys) = @_;
-                return () unless $x =~ s/^(.)// && exists $$ps{$c = $1};
-                (@ys = $$ps{$c}($x, @xs)) ? ($ys[0], @ys[1..$#ys]) : ()}}
+           sub {my ($x, @xs, $k, @ys, %ls) = @_;
+                ++$ls{length $_} for keys %$ps;
+                for my $l (sort {$b <=> $a} keys %ls) {
+                  return (@ys = $$ps{$c}(substr($x, $l), @xs))
+                    ? ($ys[0], @ys[1..$#ys])
+                    : ()
+                  if exists $$ps{$c = substr $x, 0, $l};
+                }
+                ()}}
 
 sub chalt(%) {my %h = @_; chaltr %h}
 
@@ -152,25 +151,27 @@ interpretation will be preferred. If you want to force the option
 interpretation, you need to say `ni -f00` (provided that `-f00` isn't itself a
 file).
 
-our %operators;
-our @quasifiles;
+our %short;
+our @long;
 
-our %operator_docs;
-our @quasifile_docs;
+our %short_docs;
+our %long_docs;
 our %syntax_docs;
 
-sub defop($%) {
+sub defshort($%) {
   my ($op, %spec) = @_;
-  exists $spec{$_} or die "defop $op: must specify key $_" for qw/doc syntax/;
-  $operators{$op}     = $spec{syntax};
-  $operator_docs{$op} = $spec{doc};
+  exists $spec{$_} or die "defshort $op: must specify key $_"
+    for qw/doc syntax/;
+  $short{$op}      = $spec{syntax};
+  $short_docs{$op} = $spec{doc};
 }
 
-sub defqfile(%) {
-  my (%spec) = @_;
-  exists $spec{$_} or die "defqfile: must specify key $_" for qw/doc syntax/;
-  unshift @quasifiles,     $spec{syntax};
-  unshift @quasifile_docs, $spec{doc};
+sub deflong($%) {
+  my ($op, %spec) = @_;
+  exists $spec{$_} or die "deflong $op: must specify key $_"
+    for qw/doc syntax/;
+  unshift @long, $spec{syntax};
+  $long_docs{$op} = $spec{doc};
 }
 
 sub defsyntax($%) {
@@ -178,6 +179,33 @@ sub defsyntax($%) {
   exists $spec{$_} or die "defsyntax: must specify key $_" for qw/doc/;
   $syntax_docs{$name} = $spec{doc};
 }
+
+CLI syntax elements.
+Building blocks for ni's command-line grammar and the toplevel parser. Here's
+the big picture, which is a lot more subtle than nfu (and most command-line
+tools, for that matter).
+
+Notationally, ni supports a lot of interesting elements like anonymous
+streams. nfu used whitespace-delimited square brackets for this and ended up
+preprocessing them into shell commands, whereas ni keeps them as a first-class
+"list" data type -- which means operators are at liberty to interpret them
+however they'd like (with the understanding that ops and quasifiles are still
+parsed as usual).
+
+In nfu, there were two ways to write these streams:
+
+| $ nfu --pipe [ foo ]  # compiled to nfu --pipe "nfu foo"
+  $ nfu @[ foo ]        # compiled to nfu sh:"nfu foo"
+
+This is suboptimal, of course, because it involves writing @ and knowing when
+to use it. ni unifies the two:
+
+| $ ni -X[foo]          # [foo] is a lambda command, will have stdin
+  $ ni [foo]            # [foo] is a data source
+
+In ni terms, "lambda" implies that something is taking input (e.g. a hadoop
+mapper), whereas "source" implies that it's a self-sufficient producer of
+data.
 
 I define the toplevel parser to be self-referential for the moment. Later when
 we `use constant` the outer function will be replaced with the real one,
@@ -187,81 +215,11 @@ later from underneath the `use constant` expression.)
 
 sub ops() {sub {ops()->(@_)}}
 
-CLI syntax elements.
-Building blocks for ni's command-line grammar, and the toplevel parser. See
-below for documentation.
-
-TODO: refactor the below into "read-only", "pipe", "read-write", "write-only",
-etc -- basically, a lot of elements below should be stream-context-aware. The
-erroneous use of "ilist" as a data source should make this obvious.
-
-use constant quasifile  => altr @quasifiles;
-use constant short      => chaltr %operators;
-use constant list       => pn 1, mrc '^\[', ops, mrc '^\]';
-use constant ilist      => rep short, 1;
-use constant datasource => alt quasifile, list, ilist;
-use constant op         => pn 1, rep(consumed_opt),
-                                 alt(quasifile, short),
-                                 rep(consumed_opt);
-use constant ops        => rep op;
-use constant cli        => pn 0, ops, end_of_argv;
-
-defsyntax 'quasifile', doc => <<'EOF';
-Quasifile syntax element
-Delegates to all known quasifile parsers. You can define a new one using the
-`defqfile` function; for example:
-
-  # mrc = match regex and consume empty argument
-  defqfile doc => <<'EOF', syntax => pmap {"cat $_"} pif {-r} mrc('^[^]]+');
-  Regular file matcher
-  Matches files that exist and are readable.
-  EOF
-EOF
-
-defsyntax 'short', doc => <<'EOF';
-Short operator element
-Delegates to all known short-form operators. You can define a new one using
-the `defop` function:
-
-  defop 'g', doc => <<'EOF', syntax => pmap {"sort $_"} maybe colspec;
-  Group operator
-  Takes an optional column spec and sorts its input.
-  EOF
-EOF
-
-defsyntax 'list', doc => <<'EOF';
-List element
-Contains a stream transformer and represents it as an object. ni uses these as
-lambda expressions. Lists are encased in square brackets, which need not be
-whitespace-separated from their contents:
-
-  $ ni data1 jidata2                    # join against a qfile directly
-  $ ni data1 ji[data2 m'r b, a']        # join against a lambda output
-EOF
-
-defsyntax 'ilist', doc => <<'EOF';
-Implied list element
-This is used by commands that expect a lambda but have no reason to make you
-write brackets. For example, hadoop and variants:
-
-  $ ni hdfs:/path h[m'b, a']            # explicit lambda
-  $ ni hdfs:/path hm'b, a'              # implied lambda (h coerces it)
-EOF
-
-defsyntax 'datasource', doc => <<'EOF';
-Data source element
-Anything that can be read in isolation (i.e. without sending data into it).
-Can be a quasifile, a list, or an implied list, in that order of preference.
-Note that data sources aren't inferred at the toplevel; this element is used
-by operators that consume data.
-EOF
-
-defsyntax 'op', doc => <<'EOF';
-Stream operator element
-Anything that can be appended to an existing pipeline, which ends up being a
-readable quasifile or a short operator. Consumes empty arguments on either
-side. For example:
-
-  #    |-----------| |--------| <- these are both ops
-  $ ni /path/to/data m'r a + b'
-EOF
+use constant long   => altr @long;
+use constant short  => chaltr %short;
+use constant lambda => pn 1, mrc '\[', ops, mr '\]';
+use constant thing  => alt lambda, long, short;
+use constant suffix => rep thing;
+use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
+use constant ops    => rep op;
+use constant cli    => pn 0, ops, end_of_argv;

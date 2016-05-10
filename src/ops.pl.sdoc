@@ -9,18 +9,19 @@ Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
-use constant number =>
-  alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
-      pmap(sub {1 << $_},   mr '^B(\d+)'),
-      pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-      pmap(\&eval,          mr '^=([^]]+)'),
-      pmap(sub {0 + $_},    mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?');
+use constant neval   => pmap {eval} mr '^=([^]]+)';
+use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+                            pmap(sub {1 << $_},   mr '^B(\d+)'),
+                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+                            pmap(sub {0 + $_},    mr '\d+');
+use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant number  => alt neval, integer, float;
 
 use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
                              ptag('every',  pn 1, mr '^x',  number),
                              ptag('match',  pn 1, mr '^/',  regex),
                              ptag('sample', mr '^\.\d+'),
-                             ptag('head',   number);
+                             ptag('head',   alt neval, integer);
 
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
@@ -33,10 +34,19 @@ use constant idspec   => seq maybe vmapspec, maybe colspec;
 
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
 
-unshift @quasifiles, ptag 'cat', pif {-e} mrc '^[^]]*';
-unshift @quasifiles, ptag 'ls',  pif {-d} mrc '^[^]]*';
+deflong 'file', syntax => ptag('cat', pif {-e} mrc '^[^]]*'), doc => '';
+deflong 'dir',  syntax => ptag('ls',  pif {-d} mrc '^[^]]*'), doc => '';
 
-$operators{g} = ptag 'sort',     maybe colspec;
+sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
+                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
+                                  split //, $_[0]}
+
+defshort 'g', syntax => pmap(sub {sh 'sort', sort_colspec $_},
+                             maybe colspec),
+              doc    => 'Group rows by addressed columns';
+
+=pod
+
 $operators{G} = ptag 'sort -u',  maybe colspec;
 $operators{o} = ptag 'sort -n',  maybe colspec;
 $operators{O} = ptag 'sort -rn', maybe colspec;
@@ -57,5 +67,11 @@ $operators{r} = ptag 'rows', rowspec;
 
 $operators{X} = ptag 'cart', datasource;
 
+=cut
+
 use JSON;
-print encode_json([cli->(@ARGV)]), "\n";
+sub main {
+  my ($p) = cli->(@ARGV);
+  print encode_json($p), "\n";
+  print compile_pipeline(@$p), "\n";
+}
