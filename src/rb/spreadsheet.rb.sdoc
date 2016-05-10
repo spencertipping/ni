@@ -1,10 +1,8 @@
-#!/usr/bin/env ruby
-
 Spreadsheet line processor.
-See [doc/spreadsheet.md](../doc/spreadsheet.md) for the details of this DSL,
-but the overall idea is that this module is a standalone Ruby program that
-iterates over the stream of lines from file descriptor 3 and allows you to
-address them in spreadsheet notation.
+See doc/spreadsheet.md for the details of this DSL, but the overall idea is
+that this module is a standalone Ruby program that iterates over the stream of
+lines from file descriptor 3 and allows you to address them in spreadsheet
+notation.
 
 There are two different strategies here: buffered reading (in which you can
 reuse data and hold everything in memory), and lazy reading (in which things
@@ -80,120 +78,12 @@ CellSelectors = {
   :GE => adjacent_condition {|x, y| x >= y},
   :LE => adjacent_condition {|x, y| x <= y},
 
-  :S  => adjacent_condition {|x, y| x >= 0 == y >= 0},
+  :S  => adjacent_condition {|x, y| x.to_f >= 0 == y.to_f >= 0},
   :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
   :N  => TakeN}
 
 c
 TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
-
-Reducers for lazy ranging.
-Lazy ranges can be reduced under some function `(state0, x) -> state1`. We need
-these to be defined as reducers because you might have multiple expressions all
-dependent on the same underlying reducible collection (in this case, the lines
-being read), and they all need to reduce simultaneously since any discrepancy
-requires buffering.
-
-Reducers can have children, which happens when you have a derivative value. For
-example:
-
-| _ai.mean.map {|x| x*x}        # square of mean of column A, each an integer
-
-class Reducer
-  attr_reader :state
-
-  def initialize
-    @children = []
-    @consumer = false
-  end
-
-  def reduced?
-    @children.reject!(&:reduced?)
-    !@consumer and @children.empty?
-  end
-
-  def end!;      @children.each(&:end!).clear;                    end
-  def forward x; @children.each {|c| c << x}.reject!(&:reduced?); end
-  def << x;      forward x;                                       end
-
-  # Transforms
-  def child! r;  @children << r; r; end
-  def consumer!; @consumer = true;  end
-
-  def map &f;          child! MapReducer.new(f);                        end
-  def flatmap &f;      child! FlatmapReducer.new(f);                    end
-  def take_while cond; child! TakeWhileReducer.new(cond);               end
-  def select &f;       child! SelectReducer.new(f);                     end
-  def reject &f;       child! SelectReducer.new(proc {|x| !f.call(x)}); end
-  def reduce x, &f;    child! ReduceReducer.new(x, f);                  end
-
-  def mean
-    reduce([0, 0]) do |state, x|
-      state[0] += x
-      state[1] += 1
-      state
-    end.map {|state| state[0].to_f / state[1]}
-  end
-
-  def to_a; reduce([])  {|s, x| s << x}; end
-  def sum;  reduce(0)   {|s, x| s + x}; end
-  def max;  reduce(nil) {|s, x| s.nil? || x > s ? x : s}; end
-  def min;  reduce(nil) {|s, x| s.nil? || x < s ? x : s}; end
-
-  def frequencies; reduce(Hash.new 0) {|m, x| m[x] += 1; m}; end
-
-  def uniq
-    s = Set.new
-    select {|x| s.add? x}
-  end
-
-  def method_missing name, *args
-    map {|r| r.send name, *args}
-  end
-end
-
-class MapReducer < Reducer
-  def initialize f; super(); @f = f;              end
-  def << x;         forward(@state = @f.call(x)); end
-end
-
-class FlatmapReducer < Reducer
-  def initialize f; super(); @f = f; end
-  def << x
-    ys = @f.call(x)
-    ys.each do |y|
-      forward(@state = @f.call(y))
-    end
-  end
-end
-
-class SelectReducer < Reducer
-  def initialize f; super(); @f = f;                   end
-  def << x;         forward(@state = x) if @f.call(x); end
-end
-
-class TakeWhileReducer < Reducer
-  def initialize cond; super(); @cond = cond; end
-  def << x
-    return if @cond.nil?
-    if @cond.take? x
-      forward(@state = x)
-    else
-      @cond = nil
-      self.end!
-    end
-  end
-end
-
-class ReduceReducer < Reducer
-  def initialize state, r; super(); @state = state; @r = r; @consumer = true; end
-  def << x;                @state = @r.call(@state, x);                       end
-  def end!
-    @children.each {|c| c << @state; c.end!}
-    @children.clear
-    @consumer = false
-  end
-end
 
 Spreadsheet DSL.
 This is where we generate missing methods and buffer lines. The main loop is
@@ -397,6 +287,7 @@ class Spreadsheet
   end
 
   def method_missing name, *args
+    # TODO: refactor all of this into metaprogrammed cases
     case name.to_s
       # Eager cases
       when /^([a-z])(\d*)([dis])?(!)?$/

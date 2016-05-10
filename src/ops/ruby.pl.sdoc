@@ -5,5 +5,5 @@ package ni;
 
 defshort 'm', pmap {+{id    => shell_quote('ruby', $_),
                       exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
-                      stdin => $self{'rb/spreadsheet.rb'}}} rbcode;
+                      stdin => lib 'rb'}} rbcode;
 

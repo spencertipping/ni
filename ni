@@ -232,7 +232,7 @@ defshort 'O', psh qw/sort -nr/, sort_args;
 package ni;
 defshort 'm', pmap {+{id    => shell_quote('ruby', $_),
                       exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
-                      stdin => $self{'rb/spreadsheet.rb'}}} rbcode;
+                      stdin => lib 'rb'}} rbcode;
 5 ops/perl.pl
 
 package ni;
@@ -321,65 +321,7 @@ sub haversine {
 2 pl/lib
 util.pm
 math.pm
-352 rb/spreadsheet.rb
-#!/usr/bin/env ruby
-
-
-
-
-
-require 'set'
-class Fixnum
-  def to_column_index; self; end
-end
-class String
-  def to_column_index; self.downcase.ord - ?a.ord; end
-end
-class NilClass
-  def [] *args; nil; end
-  def map &f;   [];  end
-end
-class Object
-  def unchanged; self; end
-end
-def adjacent_condition &f
-  Class.new do
-    define_method :initialize do |*v_maybe|
-      unless v_maybe.empty?
-        @v     = v_maybe[0]
-        @v_set = true
-      end
-    end
-    define_method :take? do |x|
-      if @v_set
-        r = f.call(@v, x)
-        @v = x
-        r
-      else
-        @v     = x
-        @v_set = true
-      end
-    end
-  end
-end
-class TakeN
-  def initialize n; @n = n.to_i;    end
-  def take?      x; (@n -= 1) >= 0; end
-end
-class CondColumn
-  def initialize c, cond; @c = c; @cond = cond; end
-  def take? x;            @cond.take? x[@c];    end
-end
-CellSelectors = {
-  :E  => adjacent_condition {|x, y| x == y},
-  :G  => adjacent_condition {|x, y| x > y},
-  :L  => adjacent_condition {|x, y| x < y},
-  :GE => adjacent_condition {|x, y| x >= y},
-  :LE => adjacent_condition {|x, y| x <= y},
-  :S  => adjacent_condition {|x, y| x >= 0 == y >= 0},
-  :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
-  :N  => TakeN}
-TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
+83 rb/reducers.rb
 
 
 
@@ -463,6 +405,64 @@ class ReduceReducer < Reducer
     @consumer = false
   end
 end
+269 rb/spreadsheet.rb
+
+
+
+
+
+require 'set'
+class Fixnum
+  def to_column_index; self; end
+end
+class String
+  def to_column_index; self.downcase.ord - ?a.ord; end
+end
+class NilClass
+  def [] *args; nil; end
+  def map &f;   [];  end
+end
+class Object
+  def unchanged; self; end
+end
+def adjacent_condition &f
+  Class.new do
+    define_method :initialize do |*v_maybe|
+      unless v_maybe.empty?
+        @v     = v_maybe[0]
+        @v_set = true
+      end
+    end
+    define_method :take? do |x|
+      if @v_set
+        r = f.call(@v, x)
+        @v = x
+        r
+      else
+        @v     = x
+        @v_set = true
+      end
+    end
+  end
+end
+class TakeN
+  def initialize n; @n = n.to_i;    end
+  def take?      x; (@n -= 1) >= 0; end
+end
+class CondColumn
+  def initialize c, cond; @c = c; @cond = cond; end
+  def take? x;            @cond.take? x[@c];    end
+end
+CellSelectors = {
+  :E  => adjacent_condition {|x, y| x == y},
+  :G  => adjacent_condition {|x, y| x > y},
+  :L  => adjacent_condition {|x, y| x < y},
+  :GE => adjacent_condition {|x, y| x >= y},
+  :LE => adjacent_condition {|x, y| x <= y},
+  :S  => adjacent_condition {|x, y| x.to_f >= 0 == y.to_f >= 0},
+  :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
+  :N  => TakeN}
+TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
 
 class Spreadsheet
   def initialize source_io
@@ -637,6 +637,7 @@ class Spreadsheet
                   r.map {|xs| xs[#{c1}..#{c2}].map!(&:#{TypeCoercions[t]})}}")
   end
   def method_missing name, *args
+    # TODO: refactor all of this into metaprogrammed cases
     case name.to_s
       # Eager cases
       when /^([a-z])(\d*)([dis])?(!)?$/
@@ -674,6 +675,9 @@ class Spreadsheet
   end
 end
 Spreadsheet.new(IO.for_fd 3).run! ARGV[0]
+2 rb/lib
+reducers.rb
+spreadsheet.rb
 138 waul/caterwaul.min.js
 (function(f){return f(f)})(function(initializer,key,undefined){(function(f){return f(f)})(function(initializer){var calls_init=function(){var f=function(){return f.init.apply(f,arguments)
 };return f},original_global=typeof caterwaul==="undefined"?undefined:caterwaul,caterwaul_global=calls_init();caterwaul_global.deglobalize=function(){caterwaul=original_global;
