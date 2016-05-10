@@ -40,7 +40,7 @@ for f in $(find src -type f); do
     unsdoc < $f > $sdoc_gen
   else
     mkdir -p gen/$(dirname ${f#src/})
-    cp $f gen/${f#src/}
+    perl -npe 'chomp; $_ .= "\n"' < $f > gen/${f#src/}
   fi
 done
 
