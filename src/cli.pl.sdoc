@@ -141,7 +141,7 @@ just strings. %operator_syntax maps short operator letters to a parser for
 their arguments (if any); for example:
 
 | use constant takespec => mr '^\d+|^\+\d+';
-  $operators{T} = pmap {"head -n$_"} takespec;
+  $operators{T} = psh 'head', pmap {("-m", $_)} takespec;
 
 Quasifiles are parsed with early preference using subs from
 @quasifile_parsers; functionally it's interpreted as a choice that happens
@@ -154,31 +154,8 @@ file).
 our %short;
 our @long;
 
-our %short_docs;
-our %long_docs;
-our %syntax_docs;
-
-sub defshort($%) {
-  my ($op, %spec) = @_;
-  exists $spec{$_} or die "defshort $op: must specify key $_"
-    for qw/doc syntax/;
-  $short{$op}      = $spec{syntax};
-  $short_docs{$op} = $spec{doc};
-}
-
-sub deflong($%) {
-  my ($op, %spec) = @_;
-  exists $spec{$_} or die "deflong $op: must specify key $_"
-    for qw/doc syntax/;
-  unshift @long, $spec{syntax};
-  $long_docs{$op} = $spec{doc};
-}
-
-sub defsyntax($%) {
-  my ($name, %spec) = @_;
-  exists $spec{$_} or die "defsyntax: must specify key $_" for qw/doc/;
-  $syntax_docs{$name} = $spec{doc};
-}
+sub defshort($$) {$short{$_[0]} = $_[1]}
+sub deflong($$)  {unshift @long, $_[1]}
 
 CLI syntax elements.
 Building blocks for ni's command-line grammar and the toplevel parser. Here's

@@ -6,3 +6,5 @@ package ni;
 
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
+
+sub lib($) {join "\n", @self{map "$_[0]/$_", split /\n/, $self{"$_[0]/lib"}}}

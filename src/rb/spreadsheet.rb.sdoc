@@ -264,7 +264,7 @@ class Spreadsheet
   end
 
   def lookahead_to cond
-    if cond.is_a? Number
+    if cond.is_a? Fixnum
       cond_n = cond
       cond   = proc { |l| l.size > cond_n }
     end

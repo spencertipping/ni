@@ -5,7 +5,7 @@ options, and have them generate executable stages.
 
 package ni;
 
-sub psh {my (@sh) = @_; pmap {sh @sh, $_} pop @sh}
+sub psh {my (@sh) = @_; pmap {sh @sh, @$_} pop @sh}
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -36,15 +36,8 @@ use constant idspec   => seq maybe vmapspec, maybe colspec;
 
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
 
-deflong 'file', syntax => psh('append', 'cat', pif {-e} mrc '^[^]]*'), doc => '';
-deflong 'dir',  syntax => psh('append', 'ls',  pif {-d} mrc '^[^]]*'), doc => '';
-
-sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
-                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
-                                  split //, $_[0]}
-
-defshort 'g', syntax => psh('sort', pmap(\&sort_colspec, maybe colspec)),
-              doc    => 'Group rows by addressed columns';
+deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
+deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
 
 #defshort 'm', syntax => 
 

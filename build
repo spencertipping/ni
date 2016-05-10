@@ -55,8 +55,16 @@ done
   resource util.pl
   resource sh.pl cli.pl ops.pl
 
+  resource ops/sort.pl
+  resource ops/ruby.pl
+  resource ops/perl.pl
+
   # Library resources
   resource sh/stream.sh
+
+  resource pl/util.pm
+  resource pl/math.pm
+  resource pl/lib
 
   resource rb/spreadsheet.rb
 

@@ -17,11 +17,12 @@ eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
 ni::main();
 __DATA__
-4 util.pl
+5 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
+sub lib($) {join "\n", @self{map "$_[0]/$_", split /\n/, $self{"$_[0]/lib"}}}
 51 sh.pl
 
 
@@ -74,7 +75,7 @@ sub compile_pipeline {
   my $docs   = join "\n", @heredocs;
   join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
 }
-114 cli.pl
+94 cli.pl
 
 package ni;
 
@@ -150,28 +151,8 @@ EOF
 
 our %short;
 our @long;
-our %short_docs;
-our %long_docs;
-our %syntax_docs;
-sub defshort($%) {
-  my ($op, %spec) = @_;
-  exists $spec{$_} or die "defshort $op: must specify key $_"
-    for qw/doc syntax/;
-  $short{$op}      = $spec{syntax};
-  $short_docs{$op} = $spec{doc};
-}
-sub deflong($%) {
-  my ($op, %spec) = @_;
-  exists $spec{$_} or die "deflong $op: must specify key $_"
-    for qw/doc syntax/;
-  unshift @long, $spec{syntax};
-  $long_docs{$op} = $spec{doc};
-}
-sub defsyntax($%) {
-  my ($name, %spec) = @_;
-  exists $spec{$_} or die "defsyntax: must specify key $_" for qw/doc/;
-  $syntax_docs{$name} = $spec{doc};
-}
+sub defshort($$) {$short{$_[0]} = $_[1]}
+sub deflong($$)  {unshift @long, $_[1]}
 
 
 
@@ -189,10 +170,10 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-50 ops.pl
+45 ops.pl
 
 package ni;
-sub psh {my (@sh) = @_; pmap {sh @sh, $_} pop @sh}
+sub psh {my (@sh) = @_; pmap {sh @sh, @$_} pop @sh}
 
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
@@ -213,13 +194,8 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file', syntax => psh('append', 'cat', pif {-e} mrc '^[^]]*'), doc => '';
-deflong 'dir',  syntax => psh('append', 'ls',  pif {-d} mrc '^[^]]*'), doc => '';
-sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
-                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
-                                  split //, $_[0]}
-defshort 'g', syntax => psh('sort', pmap(\&sort_colspec, maybe colspec)),
-              doc    => 'Group rows by addressed columns';
+deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
+deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
 #defshort 'm', syntax => 
 =pod
 $operators{G} = ptag 'sort -u',  maybe colspec;
@@ -240,6 +216,29 @@ sub main {
   my ($p) = cli->(@ARGV);
   print compile_pipeline(@$p), "\n";
 }
+10 ops/sort.pl
+
+package ni;
+sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
+                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
+                                  split //, $_[0]}
+use constant sort_args => pmap {[sort_colspec $_]} maybe colspec;
+defshort 'g', psh qw/sort/,     sort_args;
+defshort 'G', psh qw/sort -u/,  sort_args;
+defshort 'o', psh qw/sort -n/,  sort_args;
+defshort 'O', psh qw/sort -nr/, sort_args;
+5 ops/ruby.pl
+
+package ni;
+defshort 'm', pmap {+{id    => shell_quote('ruby', $_),
+                      exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
+                      stdin => $self{'rb/spreadsheet.rb'}}} rbcode;
+5 ops/perl.pl
+
+package ni;
+defshort 'p', pmap {+{id    => "perl $_",
+                      exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
+                      stdin => lib 'pl'}} plcode;
 8 sh/stream.sh
 
 
@@ -249,6 +248,79 @@ append() {
   cat
   "$@"
 }
+46 pl/util.pm
+
+sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
+sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+sub mean {scalar @_ && sum(@_) / @_}
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  }
+  $m;
+}
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  }
+  $m;
+}
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+sub uniq  {local $_; my %seen, @xs; $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
+sub reductions(&$@) {
+  local $_;
+  my ($f, $x, @xs, @ys) = @_;
+  push @ys, $x = &$f($x, $_) for @xs;
+  @ys;
+}
+sub cart {
+  local $_;
+  return () unless @_;
+  return map [$_], @{$_[0]} if @_ == 1;
+  my @ns     = map scalar(@$_), @_;
+  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
+  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
+      0..prod(@ns) - 1;
+}
+22 pl/math.pm
+
+use Math::Trig;
+use constant LOG2  => log 2;
+use constant LOG2R => 1 / LOG2;
+sub log2 {LOG2R * log $_[0]}
+sub quant {my ($x, $q) = @_; $q ||= 1;
+           my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
+sub dot {local $_; my ($u, $v) = @_;
+         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+sub l1norm {local $_; sum map abs($_), @_}
+sub l2norm {local $_; sqrt sum map $_*$_, @_}
+sub rdeg($) {$_[0] * 180 / pi}
+sub drad($) {$_[0] / 180 * pi}
+sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
+sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+sub haversine {
+  local $_;
+  my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
+  my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+  my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+  2 * atan2(sqrt($a), sqrt(1 - $a));
+}
+2 pl/lib
+util.pm
+math.pm
 352 rb/spreadsheet.rb
 #!/usr/bin/env ruby
 
@@ -449,7 +521,7 @@ class Spreadsheet
     @io.gets.chomp!.split(/\t/)
   end
   def lookahead_to cond
-    if cond.is_a? Number
+    if cond.is_a? Fixnum
       cond_n = cond
       cond   = proc { |l| l.size > cond_n }
     end
