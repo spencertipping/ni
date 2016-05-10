@@ -1,5 +1,6 @@
 #!/bin/bash
 # Builds the ni image from files in src/.
+cd $(dirname $0)
 
 # Preprocessor to erase SDoc documentation. This minimizes the image size but
 # still makes it possible to document code in some detail.
@@ -29,12 +30,18 @@ resource() {
 }
 
 # SDoc-process all source files into corresponding entries in gen/.
+rm -rf gen
 mkdir -p gen
-for sdoc in $(find src -name *.sdoc); do
-  sdoc_gen=${sdoc%.sdoc}
-  sdoc_gen=gen/${sdoc_gen#src/}
-  mkdir -p $(dirname $sdoc_gen)
-  unsdoc < $sdoc > $sdoc_gen
+for f in $(find src -type f); do
+  if [[ "${f%.sdoc}" != $f ]]; then
+    sdoc_gen=${f%.sdoc}
+    sdoc_gen=gen/${sdoc_gen#src/}
+    mkdir -p $(dirname $sdoc_gen)
+    unsdoc < $f > $sdoc_gen
+  else
+    mkdir -p gen/$(dirname ${f#src/})
+    cp $f gen/${f#src/}
+  fi
 done
 
 # Build the ni image by including the header verbatim, then bundling the rest
@@ -48,9 +55,12 @@ done
   resource util.pl
   resource sh.pl cli.pl ops.pl
 
+  # Library resources
   resource sh/stream.sh
 
-  resource spreadsheet.rb
+  resource rb/spreadsheet.rb
+
+  resource waul/caterwaul{,.std,.ui}.min.js
 } > ni
 
 chmod +x ni

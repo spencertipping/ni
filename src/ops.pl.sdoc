@@ -43,9 +43,10 @@ sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
                               map /[A-Z]/ ? ord $_ - ord 'A' : $_,
                                   split //, $_[0]}
 
-defshort 'g', syntax => pmap(sub {sh 'sort', sort_colspec $_},
-                             maybe colspec),
+defshort 'g', syntax => psh('sort', pmap(\&sort_colspec, maybe colspec)),
               doc    => 'Group rows by addressed columns';
+
+#defshort 'm', syntax => 
 
 =pod
 
