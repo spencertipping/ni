@@ -4,9 +4,10 @@ things besides. This main function knows how to handle these cases.
 
 package ni;
 
-use constant exit_success   => 0;
-use constant exit_run_error => 1;
-use constant exit_nop       => 2;
+use constant exit_success      => 0;
+use constant exit_run_error    => 1;
+use constant exit_nop          => 2;
+use constant exit_sigchld_fail => 3;
 
 sub je($) {...}
 
@@ -35,6 +36,7 @@ sub shell {
   }
   close STDIN;
   close SH;
+  0;
 }
 
 sub main {

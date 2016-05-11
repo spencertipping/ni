@@ -236,12 +236,13 @@ package ni;
 defshort 'p', pmap {+{id    => "perl map $_",
                       exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
                       stdin => lib 'pl'}} plcode;
-33 main.pl
+35 main.pl
 
 package ni;
-use constant exit_success   => 0;
-use constant exit_run_error => 1;
-use constant exit_nop       => 2;
+use constant exit_success      => 0;
+use constant exit_run_error    => 1;
+use constant exit_nop          => 2;
+use constant exit_sigchld_fail => 3;
 sub je($) {...}
 sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
 sub usage() {print STDERR $self{'doc/usage'}; exit_nop}
@@ -263,6 +264,7 @@ sub shell {
   }
   close STDIN;
   close SH;
+  0;
 }
 sub main {
   return usage if !@_ || $_[0] eq '-h' || $_[0] eq '--help';
