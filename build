@@ -39,7 +39,6 @@ lib() {
 }
 
 # SDoc-process all source files into corresponding entries in gen/.
-rm -rf gen
 mkdir -p gen
 for f in $(find src -type f); do
   if [[ "${f%.sdoc}" != $f ]]; then
@@ -79,3 +78,5 @@ done
 } > ni
 
 chmod +x ni
+
+rm -rf gen
