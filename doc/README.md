@@ -134,3 +134,57 @@ $ ni data Or4
 998
 997
 ```
+
+Notice that operators can be joined without any whitespace. You can also write
+them as separate elements (and sometimes you have to, as I'll explain later):
+
+```bash
+$ ni data O r4
+1000
+999
+998
+997
+```
+
+### Spreadsheet transformation
+The first "serious" operator ni gives you is `m`, which maps a spreadsheet
+across rows of input. Rows are delimited by newlines and columns by tabs.
+Let's construct a data file from `/usr/share/dict/words` containing the first
+letter, the word, and the length of the word (I'll explain this command as we
+go):
+
+```bash
+$ ni /usr/share/dict/words m'r as[0], as, as.size' > data
+$ ni data r4
+A	A	1
+A	A's	3
+A	AA's	4
+A	AB's	4
+```
+
+When ni maps a spreadsheet over this data, it will look like this:
+
+```
+   |     A     |     B     |      C      | ...
+---+-----------+-----------+-------------+----
+ 0 |A          |A          |1            |
+ 1 |A          |A's        |3            |
+ 2 |A          |AA's       |4            |
+ 3 |A          |AB's       |4            |
+ ...
+```
+
+Although you can look downwards from where you are, ni is still mapping row by
+row. This happens by changing the row numbers and dropping the top one out
+after each iteration. As a result, you can refer to a single cell and get a
+stream of data:
+
+```bash
+$ ni data m'b0' | wc -l         # streaming IO: O(1) memory usage
+99171
+$ ni data m'b0' r4              # same thing here
+A
+A's
+AA's
+AB's
+```
