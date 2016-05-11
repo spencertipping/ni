@@ -3,9 +3,11 @@ These operations operate on multiple rows, as opposed to most which transform
 each row independently.
 
 package ni;
-use constant rowspec  => alt psh('tail', '-n', pn 1, mr '^\+', number),
-                             psh('every',      pn 1, mr '^x',  number),
-                             psh('match',      pn 1, mr '^/',  regex),
-                             psh('sample',     mr '^\.\d+'),
-                             psh('head', '-n', alt neval, integer);
+use constant rowspec => alt psh('tail', '-n', pn 1, mr '^\+', number),
+                            psh('tail', '-n', pmap {'+' . ($_ + 1)}
+                                              pn 1, mr '^-',  number),
+                            psh('every',      pn 1, mr '^x',  number),
+                            psh('match',      pn 1, mr '^/',  regex),
+                            psh('sample',     mr '^\.\d+'),
+                            psh('head', '-n', alt neval, integer);
 defshort 'r', rowspec;

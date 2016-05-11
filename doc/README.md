@@ -49,21 +49,31 @@ ni parses its command line from left to right, treating each element as a
 data-transform operator. Files append themselves and directories append their
 contents, which is why the examples above worked.
 
-Some operators transform the stream in-place, such as `r` (which selects
-rows). For example:
+### Selecting rows using `r`
+Some operators transform the stream in-place, such as `r`. For example:
 
 ```bash
 $ seq 1000 > data
-$ ni data r4            # head -n 4
+$ ni data r4            # first four rows
 1
 2
 3
 4
-$ ni data r+4           # tail -n 4
+$ ni data r-996         # all but the first 996 rows
 997
 998
 999
 1000
+$ ni data r+4           # last four rows
+997
+998
+999
+1000
+```
+
+`r` can also sample data:
+
+```bash
 $ ni data rx250         # every 250th row
 250
 500
@@ -79,4 +89,48 @@ $ ni data r/[2468]00$/  # select rows matching /[2468]00$/
 400
 600
 800
+```
+
+When used to "random sample", the seed is consistent; this way ni doesn't
+introduce nondeterminism into your process.
+
+### Sorting
+ni has four operators to sort things:
+
+- `g`: Sort ascending with default options
+- `G`: Sort ascending, but emit only unique rows
+- `o`: Sort numerically ascending (`sort -n`)
+- `O`: Sort numerically descending (`sort -rn`)
+
+These all use the UNIX `sort` command, which overflows gracefully onto disk
+and optionally compresses its temporary files. You can dictate which options
+are passed to `sort` using `$NI_SORT_FLAGS` -- by default, ni will specify a
+minimal and POSIX-compatible set of options.
+
+```bash
+$ ni data gr4                   # alpha-sort on numbers
+1
+10
+100
+1000
+$ ni data data gr4              # data contains duplicates
+1
+1
+10
+10
+$ ni data data Gr4              # duplicates removed by G
+1
+10
+100
+1000
+$ ni data or4
+1
+2
+3
+4
+$ ni data Or4
+1000
+999
+998
+997
 ```

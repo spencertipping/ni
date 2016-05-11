@@ -217,14 +217,16 @@ defshort 'g', psh qw/sort/,     sort_args;
 defshort 'G', psh qw/sort -u/,  sort_args;
 defshort 'o', psh qw/sort -n/,  sort_args;
 defshort 'O', psh qw/sort -nr/, sort_args;
-8 ops/rows.pl
+10 ops/rows.pl
 
 package ni;
-use constant rowspec  => alt psh('tail', '-n', pn 1, mr '^\+', number),
-                             psh('every',      pn 1, mr '^x',  number),
-                             psh('match',      pn 1, mr '^/',  regex),
-                             psh('sample',     mr '^\.\d+'),
-                             psh('head', '-n', alt neval, integer);
+use constant rowspec => alt psh('tail', '-n', pn 1, mr '^\+', number),
+                            psh('tail', '-n', pmap {'+' . ($_ + 1)}
+                                              pn 1, mr '^-',  number),
+                            psh('every',      pn 1, mr '^x',  number),
+                            psh('match',      pn 1, mr '^/',  regex),
+                            psh('sample',     mr '^\.\d+'),
+                            psh('head', '-n', alt neval, integer);
 defshort 'r', rowspec;
 5 ops/ruby.pl
 
