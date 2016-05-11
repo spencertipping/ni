@@ -1,6 +1,12 @@
 # Examples
 A bunch of ways you might use ni to go about data manipulation tasks.
 
+## Average line length
+```bash
+$ ni /usr/share/dict/words m'_as.map(&:size).mean'
+8.464243939821724
+```
+
 ## Map/reduce word count
 ```sh
 $ ni data.txt FW1k1 gm'r a, _bEai.sum'                  # local
