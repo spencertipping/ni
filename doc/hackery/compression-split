@@ -1,0 +1,21 @@
+#!/bin/bash
+scenario() {
+  perl -e "print rand(), qq{\\n} for 1..$1" > random-data
+  head -n$(($1 / 2)) random-data > random-data-1
+  tail -n$((($1 + 1) / 2)) random-data > random-data-2
+
+  uncompressed_size=$(wc -c < random-data)
+  full_gzip_size=$(gzip < random-data | wc -c)
+  p1_size=$(gzip < random-data-1 | wc -c)
+  p2_size=$(gzip < random-data-2 | wc -c)
+
+  delta=$((p1_size + p2_size - full_gzip_size))
+  echo "$1 $uncompressed_size -> $full_gzip_size + $((delta))"
+  rm random-data random-data-1 random-data-2
+}
+
+for size in 100 1000 10000 100000 1000000 10000000; do
+  for n in `seq 8`; do
+    scenario $size
+  done
+done

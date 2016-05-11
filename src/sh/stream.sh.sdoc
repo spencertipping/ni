@@ -1,0 +1,22 @@
+Stream shell functions.
+These are called by pipelines to simplify things. For example, a common
+operation is to append the output of some data-producing command:
+
+| $ ni . .              # lists current directory twice
+
+If you do this, ni will compile a pipeline that uses stream wrappers to
+concatenate the second `ls` output (despite the fact that technically it's a
+shell pipe). The mechanism looks like this:
+
+| append() {
+    cat
+    "$@"
+  }
+  cat /dev/null \
+    | append ls . \
+    | append ls .
+
+append() {
+  cat
+  "$@"
+}

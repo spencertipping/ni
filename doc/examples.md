@@ -3,7 +3,7 @@ A bunch of ways you might use ni to go about data manipulation tasks.
 
 ## Map/reduce word count
 ```sh
-$ ni data.txt -FW1k1gm'r a, _bEai.sum'                  # local
+$ ni data.txt FW1k1 gm'r a, _bEai.sum'                  # local
 $ ni hdfs:data.txt -hFW1k1/^m'r a, _bEai.sum'           # local
 $ ni hdfs:data.txt -HFW1k1/^m'r a, _bEai.sum'           # hadoop
 ```

@@ -1,3 +1,0 @@
-# Quasifile object representation
-# TODO
-:

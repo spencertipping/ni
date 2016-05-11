@@ -82,8 +82,9 @@ once, with the constraint that they must all exist before any of them is
 forced. `r` will automatically and simultaneously force all lazy ranges or
 reductions you hand to it.
 
-You can also reduce a whole column vector; for example:
+You can also reduce a whole column vector in constant space; for example:
 
 ```sh
-$ ni /usr/share/dict/words -m'r _a.map(&:size).mean'    # average word length
+$ ni /usr/share/dict/words -m'r _as.map(&:size).mean'   # average word length
+$ ni /usr/share/dict/words -m'r _as.size.mean'          # implicit broadcast
 ```

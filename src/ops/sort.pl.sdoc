@@ -1,0 +1,15 @@
+Row-sorting operations.
+Various things that shell out to POSIX sort.
+
+package ni;
+
+sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
+                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
+                                  split //, $_[0]}
+
+use constant sort_args => pmap {[sort_colspec $_]} maybe colspec;
+
+defshort 'g', psh qw/sort/,     sort_args;
+defshort 'G', psh qw/sort -u/,  sort_args;
+defshort 'o', psh qw/sort -n/,  sort_args;
+defshort 'O', psh qw/sort -nr/, sort_args;

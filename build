@@ -1,26 +1,80 @@
-#!/bin/sh
-# NB: all of this will be replaced by stuff from src/. This is just a minimal
-# first implementation to emit a self-modifying script based on the contents of
-# src/.
+#!/bin/bash
+# Builds the ni image from files in src/.
+cd $(dirname $0)
 
-module() {
-  [ $# -eq 2 ] && module_v="$2" || module_v="`cat`"
-  eval "module_$module_index=\"\$module_v\""
-  [ ${1%.sh} = $1 ] || eval "eval \"\$module_v\"" || echo "in module $1" >&2
-  modules="$modules$newline$1"
-  module_index=$((module_index + 1))
+# Preprocessor to erase SDoc documentation. This minimizes the image size but
+# still makes it possible to document code in some detail.
+unsdoc() {
+  perl -e 'print join "", map s/^c\n//r,
+                          grep !/^\h*[|A-Z]/,
+                          split /\n(\h*\n)+/, join "", <>'
 }
 
-. src/ni/self/fs.sh
-inhume src/
+# Resource format is "<nlines> <filename>\n<data...>", e.g.
+#
+# 5 foo.pl
+# #!/usr/bin/env perl
+# # stuff
+# while (<>) {
+#   print "hi $_";
+# }
+#
+# See src/ni for the logic that parses this from the __DATA__ section.
+resource() {
+  cd gen
+  for r; do
+    wc -l $r
+    cat $r
+  done
+  cd ..
+}
 
-main_setup
-self > ni0 && chmod +x ni0
+# SDoc-process all source files into corresponding entries in gen/.
+rm -rf gen
+mkdir -p gen
+for f in $(find src -type f); do
+  if [[ "${f%.sdoc}" != $f ]]; then
+    sdoc_gen=${f%.sdoc}
+    sdoc_gen=gen/${sdoc_gen#src/}
+    mkdir -p $(dirname $sdoc_gen)
+    unsdoc < $f > $sdoc_gen
+  else
+    mkdir -p gen/$(dirname ${f#src/})
+    perl -npe 'chomp; $_ .= "\n"' < $f > gen/${f#src/}
+  fi
+done
 
-eval "$shutdown_hooks"
+# Build the ni image by including the header verbatim, then bundling the rest
+# of the files as resources. The header knows how to unpack resources from the
+# __DATA__ section of the script, and it evaluates the ones ending in .pl. This
+# mechanism makes it possible for ni to serialize its code without being stored
+# anywhere.
+{
+  cat gen/ni                    # "eval" the bootstrap code
+  resource ni                   # ... and now store so ni can regenerate it
+  resource util.pl
+  resource sh.pl cli.pl ops.pl
 
-# Build the actual ni image through two iterations of replication
-rm -f ni1 ni
-./ni0    --install ni1 && rm ni0 \
-  && ni1 --install ni  && rm ni1 \
-  && wc -c ni
+  resource ops/sort.pl
+  resource ops/ruby.pl
+  resource ops/perl.pl
+
+  resource main.pl
+
+  # Library resources
+  resource sh/stream.sh
+  resource sh/pager.sh
+  resource sh/lib
+
+  resource pl/util.pm
+  resource pl/math.pm
+  resource pl/lib
+
+  resource rb/reducers.rb
+  resource rb/spreadsheet.rb
+  resource rb/lib
+
+  resource waul/caterwaul{,.std,.ui}.min.js
+} > ni
+
+chmod +x ni

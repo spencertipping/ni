@@ -1,0 +1,8 @@
+Perl mapper.
+A lot like the Ruby mapper, but not focused on the spreadsheet abstraction.
+
+package ni;
+
+defshort 'p', pmap {+{id    => "perl map $_",
+                      exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
+                      stdin => lib 'pl'}} plcode;
