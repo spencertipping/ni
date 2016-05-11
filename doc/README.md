@@ -154,7 +154,7 @@ containing the first letter, the word, and the length of the word (I'll
 explain this command as we go):
 
 ```bash
-$ ni /usr/share/dict/words m'r as[0], as, as.size' > data
+$ ni /usr/share/dict/words m'r a0s[0], as, as.size' > data
 $ ni data r4
 A	A	1
 A	A's	3
@@ -361,4 +361,30 @@ $ ni data m'r a_c if bi % 3 == 0' r4
 ```
 
 #### Indexing
-You don't have to hard-code rows or columns.
+You don't have to hard-code rows or columns. You can refer to any cell as a
+pair of numbers using `_[row, col]`, and you can index any column by omitting
+the row number. For example:
+
+```bash
+$ ni data r4m'r _[0, 0]'                # same as 'r a0'
+1
+2
+3
+4
+$ ni data r4m'r a[0], b[0]'             # same as 'r a0, b0'
+1	1
+2	4
+3	9
+4	16
+```
+
+Indexing preserves structure, which works internally by calling `map` for any
+non-numeric types. So you can do things like this:
+
+```bash
+$ ni data r4m'r a[0...4]'
+1	2	3	4
+2	3	4
+3	4
+4
+```
