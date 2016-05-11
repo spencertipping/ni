@@ -148,10 +148,10 @@ $ ni data O r4
 
 ### Spreadsheet transformation
 The first "serious" operator ni gives you is `m`, which maps a spreadsheet
-across rows of input. Rows are delimited by newlines and columns by tabs.
-Let's construct a data file from `/usr/share/dict/words` containing the first
-letter, the word, and the length of the word (I'll explain this command as we
-go):
+across rows of input using a Ruby DSL. Rows are delimited by newlines and
+columns by tabs. Let's construct a data file from `/usr/share/dict/words`
+containing the first letter, the word, and the length of the word (I'll
+explain this command as we go):
 
 ```bash
 $ ni /usr/share/dict/words m'r as[0], as, as.size' > data
@@ -228,6 +228,28 @@ AA's	0
 AB's	1
 ```
 
+The full set of coercions:
+
+```bash
+$ ni data r1m'r ci.class'               # coerce to integer
+Fixnum
+$ ni data r1m'r cs.class'               # coerce to string
+String
+$ ni data r1m'r cf.class'               # coerce to float
+Float
+$ ni data r1m'r c.class'                # no coercion
+String
+```
+
+The `s` coercion is useful for nonexistent values:
+
+```bash
+$ ni data r1m'r d.class'                # this cell is outside the data
+NilClass
+$ ni data r1m'r ds.class'               # coerce to string anyway
+String
+```
+
 ni is still moving down by just one row at a time, because although we're
 examining downward cells we aren't _consuming_ them. You can tell ni to
 consume things by appending `!` to a cell. For example, let's go two at a
@@ -235,5 +257,75 @@ time:
 
 ```bash
 $ ni data m'r b0, c1i! - c0i' r4        # c1i! = consume row containing c1
-# NB: broken test
+A	2
+AA's	0
+ABM's	-1
+ACTH's	-2
 ```
+
+The `0` suffix is implied if you leave it off, since the most common use case
+is to operate on just one input row at a time:
+
+```bash
+$ ni data m'r b, c1i! - ci' r4          # b = b0, ci = c0i
+A	2
+AA's	0
+ABM's	-1
+ACTH's	-2
+```
+
+#### Ranges
+Let's make a new dataset with a bunch of columns. I'm using a shell command
+data source (with prefix `$:`) to generate numbers.
+
+```bash
+$ ni $:'seq 1000' m'r (1..10).map {|x| ai**x}' > data
+$ ni data r4
+1	1	1	1	1	1	1	1	1	1
+2	4	8	16	32	64	128	256	512	1024
+3	9	27	81	243	729	2187	6561	19683	59049
+4	16	64	256	1024	4096	16384	65536	262144	1048576
+```
+
+We can select a column range using intervals, which are inclusive:
+
+```bash
+$ ni data r4m'r f_j'
+1	1	1	1	1
+64	128	256	512	1024
+729	2187	6561	19683	59049
+4096	16384	65536	262144	1048576
+$ ni data r4m'r a_c'
+1	1	1
+2	4	8
+3	9	27
+4	16	64
+```
+
+Ranges evaluate to arrays, so all of the usual Ruby operators will work as you
+expect:
+
+```bash
+$ ni data r4m'r a_c + e_f'
+1	1	1	1	1
+2	4	8	32	64
+3	9	27	243	729
+4	16	64	1024	4096
+```
+
+You can also construct row ranges:
+
+```bash
+$ ni data r4m'r a0_2 + b0_2'
+1	2	3	1	4	9
+2	3	4	4	9	16
+3	4	9	16
+4	16
+```
+
+Notice that since `r4` came before `m`, the spreadsheet ran out of downwards
+lookahead as it reached the end of its input data. As a result it returned
+shorter arrays than requested.
+
+#### Indexing
+You don't have to hard-code rows or columns.

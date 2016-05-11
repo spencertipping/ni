@@ -173,7 +173,7 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-32 ops.pl
+33 ops.pl
 
 package ni;
 sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
@@ -192,8 +192,9 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file', psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
-deflong 'dir',  psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
+deflong 'file',  psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
+deflong 'dir',   psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
+deflong 'shell', psh 'append', 'sh', '-c',       mrc '^\$:([^]]+)$';
 =pod
 $operators{n} = ptag 'number', idspec;
 $operators{f} = ptag 'fields', colspec;
@@ -560,7 +561,7 @@ CellSelectors = {
   :S  => adjacent_condition {|x, y| x.to_f >= 0 == y.to_f >= 0},
   :Z  => adjacent_condition {|x, y| (x.to_f == 0) == (y.to_f == 0)},
   :N  => TakeN}
-TypeCoercions = {"i" => "to_i", "d" => "to_f", "s" => "to_s", nil => "unchanged"}
+TypeCoercions = {"i" => "to_i", "f" => "to_f", "s" => "to_s", nil => "unchanged"}
 
 class Spreadsheet
   def initialize source_io
@@ -640,7 +641,7 @@ class Spreadsheet
   end
   # IO interop
   def seek! n
-    @step = n if n > @step
+    @step = n + 1 if n + 1 > @step
   end
   def advance!
     until @reducers.empty? or @io_eof
@@ -742,31 +743,31 @@ class Spreadsheet
     # TODO: refactor all of this into metaprogrammed cases
     case name.to_s
       # Eager cases
-      when /^([a-z])(\d*)([dis])?(!)?$/
+      when /^([a-z])(\d*)([fis])?(!)?$/
         gencell name, $1, $2.to_i, $3, !!$4
-      when /^([a-z])(\d*)_([dis])?(!)?$/
-        genhrange name, $1, -1, $2.to_i, $3, !!$4
-      when /^([a-z])_?([a-z])(\d*)([dis])?(!)?$/
+      when /^([a-z])_([a-z])(\d*)([fis])?(!)?$/
         genhrange name, $1, $2, $3.to_i, $4, !!$5
-      when /^([a-z])(\d*)_(\d+)([dis])?(!)?$/
+      when /^([a-z])(\d*)_([fis])?(!)?$/
+        genhrange name, $1, -1, $2.to_i, $3, !!$4
+      when /^([a-z])(\d*)_(\d+)([fis])?(!)?$/
         genvrange name, $1, $2.to_i, $3.to_i, $4, !!$5
-      when /^([a-z])(\d*)_?([a-z])(\d+)([dis])?(!)?$/
+      when /^([a-z])(\d*)_([a-z])(\d+)([fis])?(!)?$/
         genrange name, $1, $2.to_i, $3, $4.to_i, $5, !!$6
-      when /^([a-z])(\d*)_?([A-Z]+)([a-z])([dis])?(!)?$/
+      when /^([a-z])(\d*)_([A-Z]+)([a-z])([fis])?(!)?$/
         genvcond name, $1, $2.to_i, $3.to_sym, $4, $5, !!$6
-      when /^([a-z])(\d*)_?([a-z])([A-Z]+)([a-z])([dis])?(!)?$/
+      when /^([a-z])(\d*)_([a-z])([A-Z]+)([a-z])([fis])?(!)?$/
         gencond name, $1, $3, $2.to_i, $4.to_sym, $5, $6, !!$7
       # Lazy cases
-      when /^_([a-z])([dis])?$/
+      when /^_([a-z])([fis])?$/
         genvlazy name, $1.to_column_index, $2, ""
-      when /^_([a-z])_?(\d+)([dis])?$/
+      when /^_([a-z])_?(\d+)([fis])?$/
         genvlazy name, $1.to_column_index, $4,
                  ".take_while(TakeN.new(#{$3.to_i - $2.to_i}))"
-      when /^_([a-z])_?([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([A-Z]+)([a-z])([fis])?$/
         genvlazy name, $1.to_column_index, $4,
                  ".take_while(CondColumn.new(#{$3.to_column_index},
                               CellSelectors[:#{$2}].new))"
-      when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([dis])?$/
+      when /^_([a-z])_?([a-z]+)([A-Z]+)([a-z])([fis])?$/
         genlazy name, $1.to_column_index, $2.to_column_index, $5,
                 ".take_while(CondColumn.new(#{$4.to_column_index},
                              CellSelectors[:#{$3}].new))"
