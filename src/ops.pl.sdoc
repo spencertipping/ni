@@ -30,8 +30,8 @@ use constant idspec   => seq maybe vmapspec, maybe colspec;
 
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
 
-deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
-deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
+deflong 'file', psh 'append', 'decode', pif {-e} mrc '^[^]]*';
+deflong 'dir',  psh 'append', 'ls',     pif {-d} mrc '^[^]]*';
 
 =pod
 $operators{n} = ptag 'number', idspec;

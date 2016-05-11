@@ -1,8 +1,31 @@
-# Documentation
-Listed below in recommended reading order, assuming that you want to figure out
-how to use ni for things.
+# Using ni
+ni is complex and subtle, and the learning curve is an overhang. Here's the
+documentation.
 
-- [Examples](examples.md) (read this concurrently with the links below)
-- [Operators](operators.md)
-- [Quasifiles](quasifiles.md)
-- [Spreadsheet transformation](spreadsheet.md)
+## The basics
+ni is `less` if you use it on files:
+
+```bash
+$ echo foo > bar
+$ ni bar
+foo
+```
+
+It's more useful than `less` in some ways, though, in that it knows how to
+decode common compressed formats:
+
+```bash
+$ echo foo | gzip > bar.gz
+$ ni bar.gz
+foo
+```
+
+If you list multiple files, ni will concatenate them:
+
+```bash
+$ echo foo > bar
+$ echo bif > baz
+$ ni bar baz
+foo
+bif
+```

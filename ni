@@ -192,8 +192,8 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
-deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
+deflong 'file', psh 'append', 'decode', pif {-e} mrc '^[^]]*';
+deflong 'dir',  psh 'append', 'ls',     pif {-d} mrc '^[^]]*';
 =pod
 $operators{n} = ptag 'number', idspec;
 $operators{f} = ptag 'fields', colspec;
@@ -280,8 +280,9 @@ sub main {
   return compile parse @_[1..$#_] if $_[0] eq '--compile';
   return shell real_pipeline parse @_;
 }
-3 sh/lib
+4 sh/lib
 stream.sh
+compressed.sh
 rows.sh
 pager.sh
 5 sh/stream.sh
@@ -290,11 +291,45 @@ pager.sh
 
 
 append() { cat; "$@"; }
-4 sh/rows.sh
+31 sh/compressed.sh
+
+
+
+
+
+decode() {
+  perl -e '
+    sysread STDIN, $_, 8192;
+    my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+                : /^BZh\0/                ? "bzip2 -dc"
+                : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+                : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+                : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+    if (defined $decoder) {
+      open FH, "| $decoder" or die "decode: failed to open $decoder";
+      syswrite FH, $_;
+      syswrite FH, $_ while sysread STDIN, $_, 8192;
+      close STDIN;
+      close FH;
+      exit 0;
+    }
+    my $archiver = /^\x50\x4b\x03\x04/              ? "zip"
+                 : /^[\s\S]{257}ustar(\x0000|  \0)/ ? "tar" : undef;
+    if (defined $archiver) {
+      ...;
+      exit 0;
+    }
+    syswrite STDOUT, $_;
+    syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
+  ' < "$1"
+}
+6 sh/rows.sh
 
 every()  { perl -ne 'print unless $. % '"$1"; }
-sample() { perl -ne 'print if rand() < '"$1"; }         # FIXME performance
 match()  { perl -ne 'print if /'"$1"/; }
+
+sample() { perl -ne 'BEGIN {$e = -log(1 - rand()) * '"$1"'}
+                     if ($. >= 0) {print; $. -= $e}'; }
 2 sh/pager.sh
 
 pager() { exec less || exec more || exec cat; }
