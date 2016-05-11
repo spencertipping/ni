@@ -194,7 +194,7 @@ sub ops() {sub {ops()->(@_)}}
 
 use constant long   => altr @long;
 use constant short  => chaltr %short;
-use constant lambda => pn 1, mrc '\[', ops, mr '\]';
+use constant lambda => alt mrc '_', pn 1, mrc '\[', ops, mr '\]';
 use constant thing  => alt lambda, long, short;
 use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);

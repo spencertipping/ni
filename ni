@@ -3,19 +3,21 @@
 use 5.006_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
-eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_"
+  for grep /\.pl$/i, @ni::keys;
 close DATA;
-exit ni::main(@ARGV);
+eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-9 ni
+10 ni
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
 use 5.006_000;
 $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
-eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_"
+  for grep /\.pl$/i, @ni::keys;
 close DATA;
-exit ni::main(@ARGV);
+eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
 5 util.pl
 
@@ -165,7 +167,7 @@ sub deflong($$)  {unshift @long, $_[1]}
 sub ops() {sub {ops()->(@_)}}
 use constant long   => altr @long;
 use constant short  => chaltr %short;
-use constant lambda => pn 1, mrc '\[', ops, mr '\]';
+use constant lambda => alt mrc '_', pn 1, mrc '\[', ops, mr '\]';
 use constant thing  => alt lambda, long, short;
 use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
@@ -236,6 +238,12 @@ package ni;
 defshort 'p', pmap {+{id    => "perl map $_",
                       exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
                       stdin => lib 'pl'}} plcode;
+5 ops/hadoop.pl
+
+package ni;
+deflong 'hdfs', psh 'echo', mrc 'hdfs:[^]]+';
+defshort 'h', psh 'local_hadoop', rep pn(0, lambda, rep consumed_opt), 3;
+defshort 'H', psh 'real_hadoop',  rep pn(0, lambda, rep consumed_opt), 3;
 35 main.pl
 
 package ni;

@@ -1,0 +1,8 @@
+Hadoop-related operations.
+Real hadoop, local hadoop, and HDFS files.
+
+package ni;
+
+deflong 'hdfs', psh 'echo', mrc 'hdfs:[^]]+';
+defshort 'h', psh 'local_hadoop', rep pn(0, lambda, rep consumed_opt), 3;
+defshort 'H', psh 'real_hadoop',  rep pn(0, lambda, rep consumed_opt), 3;
