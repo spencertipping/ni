@@ -2,6 +2,8 @@ Math utility functions.
 Mostly geometric and statistical stuff.
 
 use Math::Trig;
+use constant tau => 2 * pi;
+
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
 
@@ -15,8 +17,8 @@ sub dot {local $_; my ($u, $v) = @_;
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
-sub rdeg($) {$_[0] * 180 / pi}
-sub drad($) {$_[0] / 180 * pi}
+sub rdeg($) {$_[0] * 360 / tau}
+sub drad($) {$_[0] / 360 * tau}
 
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}

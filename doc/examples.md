@@ -7,6 +7,12 @@ $ ni /usr/share/dict/words m'_as.map(&:size).mean'
 8.464243939821724
 ```
 
+Average word length grouped by first letter (first four rows of output):
+
+```bash
+$ ni /usr/share/dict/words m'r as[0], as' m'r a, _bEa.map(&:size).mean' r4
+```
+
 ## Map/reduce word count
 ```sh
 $ ni data.txt FW1k1 gm'r a, _bEai.sum'                  # local

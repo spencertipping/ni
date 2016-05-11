@@ -19,12 +19,6 @@ use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
 
-use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
-                             ptag('every',  pn 1, mr '^x',  number),
-                             ptag('match',  pn 1, mr '^/',  regex),
-                             ptag('sample', mr '^\.\d+'),
-                             ptag('head',   alt neval, integer);
-
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
 
@@ -39,14 +33,7 @@ use constant valspec  => alt mrc '^=(.*)', mr '^.';
 deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
 deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
 
-#defshort 'm', syntax => 
-
 =pod
-
-$operators{G} = ptag 'sort -u',  maybe colspec;
-$operators{o} = ptag 'sort -n',  maybe colspec;
-$operators{O} = ptag 'sort -rn', maybe colspec;
-
 $operators{n} = ptag 'number', idspec;
 
 $operators{f} = ptag 'fields', colspec;

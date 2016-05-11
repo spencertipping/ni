@@ -29,6 +29,15 @@ resource() {
   cd ..
 }
 
+lib() {
+  for l; do
+    resource $l/lib
+    for f in $(< src/$l/lib); do
+      resource $l/$f
+    done
+  done
+}
+
 # SDoc-process all source files into corresponding entries in gen/.
 rm -rf gen
 mkdir -p gen
@@ -56,25 +65,17 @@ done
   resource sh.pl cli.pl ops.pl
 
   resource ops/sort.pl
+  resource ops/rows.pl
   resource ops/ruby.pl
   resource ops/perl.pl
 
   resource main.pl
 
   # Library resources
-  resource sh/stream.sh
-  resource sh/pager.sh
-  resource sh/lib
-
-  resource pl/util.pm
-  resource pl/math.pm
-  resource pl/lib
-
-  resource rb/reducers.rb
-  resource rb/spreadsheet.rb
-  resource rb/lib
-
-  resource waul/caterwaul{,.std,.ui}.min.js
+  lib sh
+  lib pl
+  lib rb
+  lib waul
 } > ni
 
 chmod +x ni

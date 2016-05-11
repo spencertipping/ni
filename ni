@@ -171,7 +171,7 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-41 ops.pl
+32 ops.pl
 
 package ni;
 sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
@@ -183,11 +183,6 @@ use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {0 + $_},    mr '\d+');
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
-use constant rowspec  => alt ptag('tail',   pn 1, mr '^\+', number),
-                             ptag('every',  pn 1, mr '^x',  number),
-                             ptag('match',  pn 1, mr '^/',  regex),
-                             ptag('sample', mr '^\.\d+'),
-                             ptag('head',   alt neval, integer);
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
 use constant vmapspec => alt ptag('hash', mr '^='),
@@ -197,11 +192,7 @@ use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
 deflong 'file', psh 'append', 'cat', pif {-e} mrc '^[^]]*';
 deflong 'dir',  psh 'append', 'ls',  pif {-d} mrc '^[^]]*';
-#defshort 'm', syntax => 
 =pod
-$operators{G} = ptag 'sort -u',  maybe colspec;
-$operators{o} = ptag 'sort -n',  maybe colspec;
-$operators{O} = ptag 'sort -rn', maybe colspec;
 $operators{n} = ptag 'number', idspec;
 $operators{f} = ptag 'fields', colspec;
 $operators{x} = ptag 'xchg',   colspec1;
@@ -224,6 +215,15 @@ defshort 'g', psh qw/sort/,     sort_args;
 defshort 'G', psh qw/sort -u/,  sort_args;
 defshort 'o', psh qw/sort -n/,  sort_args;
 defshort 'O', psh qw/sort -nr/, sort_args;
+8 ops/rows.pl
+
+package ni;
+use constant rowspec  => alt psh('tail', '-n', pn 1, mr '^\+', number),
+                             psh('every',      pn 1, mr '^x',  number),
+                             psh('match',      pn 1, mr '^/',  regex),
+                             psh('sample',     mr '^\.\d+'),
+                             psh('head', '-n', alt neval, integer);
+defshort 'r', rowspec;
 5 ops/ruby.pl
 
 package ni;
@@ -272,21 +272,27 @@ sub main {
   return compile parse @_[1..$#_] if $_[0] eq '--compile';
   return shell real_pipeline parse @_;
 }
-8 sh/stream.sh
+3 sh/lib
+stream.sh
+rows.sh
+pager.sh
+5 sh/stream.sh
 
 
 
 
-append() {
-  cat
-  "$@"
-}
+append() { cat; "$@"; }
+4 sh/rows.sh
+
+every()  { perl -ne 'print unless $. % '"$1"; }
+sample() { perl -ne 'print if rand() < '"$1"; }         # FIXME performance
+match()  { perl -ne 'print if /'"$1"/; }
 2 sh/pager.sh
 
 pager() { exec less || exec more || exec cat; }
-2 sh/lib
-stream.sh
-pager.sh
+2 pl/lib
+util.pm
+math.pm
 46 pl/util.pm
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
@@ -334,9 +340,10 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-22 pl/math.pm
+23 pl/math.pm
 
 use Math::Trig;
+use constant tau => 2 * pi;
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
 sub log2 {LOG2R * log $_[0]}
@@ -346,8 +353,8 @@ sub dot {local $_; my ($u, $v) = @_;
          sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
-sub rdeg($) {$_[0] * 180 / pi}
-sub drad($) {$_[0] / 180 * pi}
+sub rdeg($) {$_[0] * 360 / tau}
+sub drad($) {$_[0] / 360 * tau}
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 sub haversine {
@@ -357,9 +364,9 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-2 pl/lib
-util.pm
-math.pm
+2 rb/lib
+reducers.rb
+spreadsheet.rb
 83 rb/reducers.rb
 
 
@@ -714,9 +721,10 @@ class Spreadsheet
   end
 end
 Spreadsheet.new(IO.for_fd 3).run! ARGV[0]
-2 rb/lib
-reducers.rb
-spreadsheet.rb
+3 waul/lib
+caterwaul.min.js
+caterwaul.std.min.js
+caterwaul.ui.min.js
 138 waul/caterwaul.min.js
 (function(f){return f(f)})(function(initializer,key,undefined){(function(f){return f(f)})(function(initializer){var calls_init=function(){var f=function(){return f.init.apply(f,arguments)
 };return f},original_global=typeof caterwaul==="undefined"?undefined:caterwaul,caterwaul_global=calls_init();caterwaul_global.deglobalize=function(){caterwaul=original_global;

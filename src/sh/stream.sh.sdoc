@@ -12,11 +12,7 @@ shell pipe). The mechanism looks like this:
     cat
     "$@"
   }
-  cat /dev/null \
-    | append ls . \
+  append ls . \
     | append ls .
 
-append() {
-  cat
-  "$@"
-}
+append() { cat; "$@"; }

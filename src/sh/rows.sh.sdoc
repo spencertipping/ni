@@ -1,0 +1,6 @@
+Row-selection functions.
+Wrappers to select specific rows from a file. This implements the `r` command.
+
+every()  { perl -ne 'print unless $. % '"$1"; }
+sample() { perl -ne 'print if rand() < '"$1"; }         # FIXME performance
+match()  { perl -ne 'print if /'"$1"/; }
