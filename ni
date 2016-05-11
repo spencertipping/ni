@@ -334,7 +334,7 @@ directory_list() {
 every()  { perl -ne 'print unless $. % '"$1"; }
 match()  { perl -ne 'print if /'"$1"/; }
 
-sample() { perl -ne 'BEGIN {$e = -log(1 - rand()) * '"$1"'}
+sample() { perl -ne 'BEGIN {srand(42); $e = -log(1 - rand()) / '"$1"'}
                      if ($. >= 0) {print; $. -= $e}'; }
 2 sh/pager.sh
 

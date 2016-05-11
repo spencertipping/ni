@@ -20,7 +20,8 @@ sub verify {
   print STDERR "\$ $c";
 
   chdir $tmpdir or die "failed to chdir $tmpdir: $!";
-  my $result = qx/$c/;
+  my $q = $c =~ s/'/'\\''/gr;
+  my $result = qx/sh -c '$q'/;
 
   ++$failures,
   print STDERR "expected '$c' to produce (\n$o\n), but got (\n$result\n) instead\n"
