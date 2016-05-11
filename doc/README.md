@@ -227,3 +227,13 @@ A's	1
 AA's	0
 AB's	1
 ```
+
+ni is still moving down by just one row at a time, because although we're
+examining downward cells we aren't _consuming_ them. You can tell ni to
+consume things by appending `!` to a cell. For example, let's go two at a
+time:
+
+```bash
+$ ni data m'r b0, c1i! - c0i' r4        # c1i! = consume row containing c1
+# NB: broken test
+```
