@@ -11,6 +11,10 @@ Average word length grouped by first letter (first four rows of output):
 
 ```bash
 $ ni /usr/share/dict/words m'r as[0], as' m'r a, _bEa.map(&:size).mean' r4
+A	7.627035830618892
+B	7.608695652173913
+C	8.055514433752776
+D	7.195435092724679
 ```
 
 ## Map/reduce word count
