@@ -502,13 +502,14 @@ class ReduceReducer < Reducer
     @consumer = false
   end
 end
-269 rb/spreadsheet.rb
+274 rb/spreadsheet.rb
 
 
 
 
 
 require 'set'
+Signal.trap('PIPE', 'EXIT')
 class Fixnum
   def to_column_index; self; end
 end
@@ -575,7 +576,11 @@ class Spreadsheet
     f = compile(code)
     until eof?
       @r_called = false
-      x = f.call
+      begin
+        x = f.call
+      rescue Exception => e
+        x = "ni!\001#{e.to_s.gsub(/[\n\t]/, ' ')}"
+      end
       unless @r_called
         if x.is_a? Array
           r *x

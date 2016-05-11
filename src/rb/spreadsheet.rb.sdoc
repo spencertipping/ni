@@ -20,6 +20,7 @@ All names are resolved using `method_missing`, at which point a method is
 generated to handle that case.
 
 require 'set'
+Signal.trap('PIPE', 'EXIT')
 
 class Fixnum
   def to_column_index; self; end
@@ -104,7 +105,11 @@ class Spreadsheet
     f = compile(code)
     until eof?
       @r_called = false
-      x = f.call
+      begin
+        x = f.call
+      rescue Exception => e
+        x = "ni!\001#{e.to_s.gsub(/[\n\t]/, ' ')}"
+      end
       unless @r_called
         if x.is_a? Array
           r *x

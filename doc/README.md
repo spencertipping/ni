@@ -188,3 +188,42 @@ A's
 AA's
 AB's
 ```
+
+None of this would be very useful if you had to stick to single-cell
+expressions, of course, so you can use the `r` function to emit a row with
+multiple values:
+
+```bash
+$ ni data m'r b0, c0' r4
+A	1
+A's	3
+AA's	4
+AB's	4
+```
+
+Now let's use downward references to measure the differences between word
+lengths:
+
+```bash
+$ ni data m'r b0, c1 - c0' r4           # wrong; emits error cells
+ni!undefined method `-' for "3":String
+ni!undefined method `-' for "4":String
+ni!undefined method `-' for "4":String
+ni!undefined method `-' for "5":String
+```
+
+Error cells in ni have the pattern `ni!\001<message>`. They're one of two
+binary magic prefixes ni has, the other being a valid packet (which begins
+with `ni!\0`). In general you won't encounter these unless something is wrong
+with your pipeline.
+
+We can fix the problem above by calling `to_i`, or more concisely by appending
+an `i` onto each cell reference:
+
+```bash
+$ ni data m'r b0, c1i - c0i' r4         # c1i and c0i coerce c1 and c0 to ints
+A	2
+A's	1
+AA's	0
+AB's	1
+```
