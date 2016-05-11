@@ -1,4 +1,5 @@
 stream.sh
 compressed.sh
+directory.sh
 rows.sh
 pager.sh

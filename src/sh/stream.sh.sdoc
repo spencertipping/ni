@@ -6,13 +6,6 @@ operation is to append the output of some data-producing command:
 
 If you do this, ni will compile a pipeline that uses stream wrappers to
 concatenate the second `ls` output (despite the fact that technically it's a
-shell pipe). The mechanism looks like this:
-
-| append() {
-    cat
-    "$@"
-  }
-  append ls . \
-    | append ls .
+shell pipe).
 
 append() { cat; "$@"; }

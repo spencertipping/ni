@@ -24,8 +24,22 @@ If you list multiple files, ni will concatenate them:
 
 ```bash
 $ echo foo > bar
-$ echo bif > baz
+$ echo bif | gzip > baz
 $ ni bar baz
 foo
 bif
+```
+
+Notice that ni knew to decompress the gzip file even though it didn't have a
+`.gz` extension; it looks at magic numbers.
+
+If you run ni on a directory, you'll get a list of its contents:
+
+```bash
+$ mkdir tmp
+$ touch tmp/a tmp/b tmp/c
+$ ni tmp
+tmp/a
+tmp/b
+tmp/c
 ```

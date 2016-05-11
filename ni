@@ -192,8 +192,8 @@ use constant vmapspec => alt ptag('hash', mr '^='),
                              ptag('row',  mr '^r?');
 use constant idspec   => seq maybe vmapspec, maybe colspec;
 use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file', psh 'append', 'decode', pif {-e} mrc '^[^]]*';
-deflong 'dir',  psh 'append', 'ls',     pif {-d} mrc '^[^]]*';
+deflong 'file', psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
+deflong 'dir',  psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
 =pod
 $operators{n} = ptag 'number', idspec;
 $operators{f} = ptag 'fields', colspec;
@@ -280,13 +280,13 @@ sub main {
   return compile parse @_[1..$#_] if $_[0] eq '--compile';
   return shell real_pipeline parse @_;
 }
-4 sh/lib
+5 sh/lib
 stream.sh
 compressed.sh
+directory.sh
 rows.sh
 pager.sh
-5 sh/stream.sh
-
+4 sh/stream.sh
 
 
 
@@ -322,6 +322,12 @@ decode() {
     syswrite STDOUT, $_;
     syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
   ' < "$1"
+}
+5 sh/directory.sh
+
+directory_list() {
+  ls "$1" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
+                      print "$prefix/$_"' "$1"
 }
 6 sh/rows.sh
 
