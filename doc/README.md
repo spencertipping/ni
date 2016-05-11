@@ -313,6 +313,16 @@ $ ni data r4m'r a_c + e_f'
 4	16	64	1024	4096
 ```
 
+If you leave off the end of a range, ni will select all cells rightwards:
+
+```bash
+$ ni data r4m'r g_'
+1	1	1	1
+128	256	512	1024
+2187	6561	19683	59049
+16384	65536	262144	1048576
+```
+
 You can also construct row ranges:
 
 ```bash
@@ -326,6 +336,29 @@ $ ni data r4m'r a0_2 + b0_2'
 Notice that since `r4` came before `m`, the spreadsheet ran out of downwards
 lookahead as it reached the end of its input data. As a result it returned
 shorter arrays than requested.
+
+#### Multiple output rows
+`r` emits a row each time you call it, which means you can turn one row into
+many. For example, let's take each row of data and rotate it to be vertical:
+
+```bash
+$ ni data m'a_.each {|x| r x}' r4
+1
+1
+1
+1
+```
+
+If you return nil and don't call `r`, no row will be emitted. This can be
+useful for filtering:
+
+```bash
+$ ni data m'r a_c if bi % 3 == 0' r4
+3	9	27
+6	36	216
+9	81	729
+12	144	1728
+```
 
 #### Indexing
 You don't have to hard-code rows or columns.
