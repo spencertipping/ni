@@ -3,7 +3,7 @@ Mostly just 'm', which compiles spreadsheet code.
 
 package ni;
 
-defshort 'm', pmap {+{id    => shell_quote('ruby', $_),
+defshort 'm', pmap {+{id    => "ruby map $_",
                       exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
                       stdin => lib 'rb'}} rbcode;
 

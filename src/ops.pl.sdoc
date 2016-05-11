@@ -5,7 +5,7 @@ options, and have them generate executable stages.
 
 package ni;
 
-sub psh {my (@sh) = @_; pmap {sh @sh, @$_} pop @sh}
+sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -65,7 +65,3 @@ $operators{X} = ptag 'cart', datasource;
 
 =cut
 
-sub main {
-  my ($p) = cli->(@ARGV);
-  print compile_pipeline(@$p), "\n";
-}

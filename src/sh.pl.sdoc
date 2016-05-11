@@ -73,6 +73,8 @@ sub compile_pipeline {
 
   for my $i (0..$#_) {
     my $c = $_[$i];
+    $c = {id => $c, exec => [$c]} unless ref $c;
+
     exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
 
     my $redirections;
@@ -97,7 +99,7 @@ sub compile_pipeline {
                  "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
                } keys %file_inits;
 
-  my $libs   = join "\n", @ni::self{grep /\.sh$/, sort keys %ni::self};
+  my $libs   = lib 'sh';
   my $pipe   = join "\\\n  | ", @commands;
   my $docs   = join "\n", @heredocs;
   join "\n", $libs, $mkdirs, $cats, $pipe, $docs;

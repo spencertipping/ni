@@ -5,7 +5,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
-ni::main();
+exit ni::main(@ARGV);
 __DATA__
 9 ni
 #!/usr/bin/env perl
@@ -15,7 +15,7 @@ $ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
   while <DATA> =~ /^(\d+)\s+(.*)$/;
 eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 close DATA;
-ni::main();
+exit ni::main(@ARGV);
 __DATA__
 5 util.pl
 
@@ -23,7 +23,7 @@ package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub lib($) {join "\n", @self{map "$_[0]/$_", split /\n/, $self{"$_[0]/lib"}}}
-51 sh.pl
+52 sh.pl
 
 
 
@@ -51,6 +51,7 @@ sub compile_pipeline {
   my @heredocs;
   for my $i (0..$#_) {
     my $c = $_[$i];
+    $c = {id => $c, exec => [$c]} unless ref $c;
     exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
     my $redirections;
     if (exists $c->{stdin}) {
@@ -70,7 +71,7 @@ sub compile_pipeline {
                  my $h = heredoc_terminator '', $file_inits{$_};
                  "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
                } keys %file_inits;
-  my $libs   = join "\n", @ni::self{grep /\.sh$/, sort keys %ni::self};
+  my $libs   = lib 'sh';
   my $pipe   = join "\\\n  | ", @commands;
   my $docs   = join "\n", @heredocs;
   join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
@@ -170,10 +171,10 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-45 ops.pl
+41 ops.pl
 
 package ni;
-sub psh {my (@sh) = @_; pmap {sh @sh, @$_} pop @sh}
+sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
@@ -212,10 +213,6 @@ $operators{p} = ptag 'perl', plcode;
 $operators{r} = ptag 'rows', rowspec;
 $operators{X} = ptag 'cart', datasource;
 =cut
-sub main {
-  my ($p) = cli->(@ARGV);
-  print compile_pipeline(@$p), "\n";
-}
 10 ops/sort.pl
 
 package ni;
@@ -230,15 +227,49 @@ defshort 'O', psh qw/sort -nr/, sort_args;
 5 ops/ruby.pl
 
 package ni;
-defshort 'm', pmap {+{id    => shell_quote('ruby', $_),
+defshort 'm', pmap {+{id    => "ruby map $_",
                       exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
                       stdin => lib 'rb'}} rbcode;
 5 ops/perl.pl
 
 package ni;
-defshort 'p', pmap {+{id    => "perl $_",
+defshort 'p', pmap {+{id    => "perl map $_",
                       exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
                       stdin => lib 'pl'}} plcode;
+33 main.pl
+
+package ni;
+use constant exit_success   => 0;
+use constant exit_run_error => 1;
+use constant exit_nop       => 2;
+sub je($) {...}
+sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
+sub usage() {print STDERR $self{'doc/usage'}; exit_nop}
+sub explain {print STDERR je [@_], "\n";      exit_nop}
+sub compile {print STDERR real_pipeline @_;   exit_nop}
+sub parse {
+  my ($parsed) = cli->(@_);
+  die "failed to parse " . join ' ', @_ unless ref $parsed && @$parsed;
+  @$parsed;
+}
+sub shell {
+  open SH, '| sh'   or
+  open SH, '| dash' or
+  open SH, '| bash' or die "ni: could not open any POSIX sh: $!";
+  syswrite SH, $_[0]
+    or die "ni: could not write compiled pipeline to shell process: $!";
+  unless (-t STDIN) {
+    syswrite SH, $_ while sysread STDIN, $_, 32768;
+  }
+  close STDIN;
+  close SH;
+}
+sub main {
+  return usage if !@_ || $_[0] eq '-h' || $_[0] eq '--help';
+  return explain parse @_[1..$#_] if $_[0] eq '--explain';
+  return compile parse @_[1..$#_] if $_[0] eq '--compile';
+  return shell real_pipeline parse @_;
+}
 8 sh/stream.sh
 
 
@@ -248,6 +279,12 @@ append() {
   cat
   "$@"
 }
+2 sh/pager.sh
+
+pager() { exec less || exec more || exec cat; }
+2 sh/lib
+stream.sh
+pager.sh
 46 pl/util.pm
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}

@@ -59,8 +59,12 @@ done
   resource ops/ruby.pl
   resource ops/perl.pl
 
+  resource main.pl
+
   # Library resources
   resource sh/stream.sh
+  resource sh/pager.sh
+  resource sh/lib
 
   resource pl/util.pm
   resource pl/math.pm

@@ -1,0 +1,46 @@
+Main function.
+ni can be invoked as a stream processor, but it can also do some toplevel
+things besides. This main function knows how to handle these cases.
+
+package ni;
+
+use constant exit_success   => 0;
+use constant exit_run_error => 1;
+use constant exit_nop       => 2;
+
+sub je($) {...}
+
+sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
+
+sub usage() {print STDERR $self{'doc/usage'}; exit_nop}
+sub explain {print STDERR je [@_], "\n";      exit_nop}
+sub compile {print STDERR real_pipeline @_;   exit_nop}
+
+sub parse {
+  my ($parsed) = cli->(@_);
+  die "failed to parse " . join ' ', @_ unless ref $parsed && @$parsed;
+  @$parsed;
+}
+
+sub shell {
+  open SH, '| sh'   or
+  open SH, '| dash' or
+  open SH, '| bash' or die "ni: could not open any POSIX sh: $!";
+
+  syswrite SH, $_[0]
+    or die "ni: could not write compiled pipeline to shell process: $!";
+
+  unless (-t STDIN) {
+    syswrite SH, $_ while sysread STDIN, $_, 32768;
+  }
+  close STDIN;
+  close SH;
+}
+
+sub main {
+  return usage if !@_ || $_[0] eq '-h' || $_[0] eq '--help';
+
+  return explain parse @_[1..$#_] if $_[0] eq '--explain';
+  return compile parse @_[1..$#_] if $_[0] eq '--compile';
+  return shell real_pipeline parse @_;
+}
