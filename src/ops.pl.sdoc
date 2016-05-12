@@ -34,22 +34,6 @@ deflong 'file',  psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
 deflong 'dir',   psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
 deflong 'shell', psh 'append', 'sh', '-c',       mrc '^\$:([^]]+)$';
 
-=pod
-$operators{n} = ptag 'number', idspec;
-
-$operators{f} = ptag 'fields', colspec;
-$operators{x} = ptag 'xchg',   colspec1;
-$operators{k} = ptag 'constant', seq colspec, valspec;
-
-$operators{c} = ptag 'count', maybe colspec;
-
-#$operators{w} = ptag 'waul', waulcode;
-$operators{m} = ptag 'ruby', rbcode;
-$operators{p} = ptag 'perl', plcode;
-
-$operators{r} = ptag 'rows', rowspec;
-
-$operators{X} = ptag 'cart', datasource;
-
-=cut
-
+deflong 'n',     psh qw/append seq/,   pn 1, mr '^n:',  alt neval, integer;
+deflong 'n0',    psh qw/append seq 0/, pn 1, mr '^n0:', alt neval, integer;
+deflong 'id',    psh qw/append echo/,        mr '^id:([^]]*)';

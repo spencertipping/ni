@@ -173,7 +173,7 @@ use constant suffix => rep thing;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
-33 ops.pl
+24 ops.pl
 
 package ni;
 sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
@@ -195,18 +195,9 @@ use constant valspec  => alt mrc '^=(.*)', mr '^.';
 deflong 'file',  psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
 deflong 'dir',   psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
 deflong 'shell', psh 'append', 'sh', '-c',       mrc '^\$:([^]]+)$';
-=pod
-$operators{n} = ptag 'number', idspec;
-$operators{f} = ptag 'fields', colspec;
-$operators{x} = ptag 'xchg',   colspec1;
-$operators{k} = ptag 'constant', seq colspec, valspec;
-$operators{c} = ptag 'count', maybe colspec;
-#$operators{w} = ptag 'waul', waulcode;
-$operators{m} = ptag 'ruby', rbcode;
-$operators{p} = ptag 'perl', plcode;
-$operators{r} = ptag 'rows', rowspec;
-$operators{X} = ptag 'cart', datasource;
-=cut
+deflong 'n',     psh qw/append seq/,   pn 1, mr '^n:',  alt neval, integer;
+deflong 'n0',    psh qw/append seq 0/, pn 1, mr '^n0:', alt neval, integer;
+deflong 'id',    psh qw/append echo/,        mr '^id:([^]]*)';
 10 ops/sort.pl
 
 package ni;
@@ -293,7 +284,7 @@ pager.sh
 
 
 
-append() { cat; "$@"; }
+append() { cat; exec "$@"; }
 31 sh/compressed.sh
 
 
