@@ -167,9 +167,9 @@ sub deflong($$)  {unshift @long, $_[1]}
 sub ops() {sub {ops()->(@_)}}
 use constant long   => altr @long;
 use constant short  => chaltr %short;
-use constant lambda => alt mrc '_', pn 1, mrc '\[', ops, mr '\]';
+use constant lambda => alt mr '_', pn 1, mrc '\[', ops, mr '\]';
 use constant thing  => alt lambda, long, short;
-use constant suffix => rep thing;
+use constant suffix => rep thing, 1;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
@@ -232,12 +232,22 @@ package ni;
 defshort 'p', pmap {+{id    => "perl map $_",
                       exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
                       stdin => lib 'pl'}} plcode;
-5 ops/hadoop.pl
+15 ops/hadoop.pl
 
 package ni;
+use constant hadoop_lambda => alt suffix,
+                                  mr '_',
+                                  pn 1, maybe(consumed_opt), lambda;
+use constant hadoop_m   => pmap {[map     => $_]}     hadoop_lambda;
+use constant hadoop_mr  => pmap {[map     => $$_[0],
+                                  reduce  => $$_[1]]} rep hadoop_lambda, 2;
+use constant hadoop_mcr => pmap {[map     => $$_[0],
+                                  combine => $$_[1],
+                                  reduce  => $$_[2]]} rep hadoop_lambda, 3;
+use constant hadoop_lambdas => alt hadoop_mcr, hadoop_mr, hadoop_m;
 deflong 'hdfs', psh 'echo', mrc 'hdfs:[^]]+';
-defshort 'h', psh 'local_hadoop', rep pn(0, lambda, rep consumed_opt), 3;
-defshort 'H', psh 'real_hadoop',  rep pn(0, lambda, rep consumed_opt), 3;
+defshort 'h', psh 'local_hadoop', hadoop_lambdas;
+defshort 'H', psh 'real_hadoop',  hadoop_lambdas;
 35 main.pl
 
 package ni;
