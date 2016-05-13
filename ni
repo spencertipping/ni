@@ -294,7 +294,7 @@ pager.sh
 
 
 
-append() { cat; exec "$@"; }
+append() { cat; "$@"; }
 31 sh/compressed.sh
 
 
