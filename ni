@@ -511,7 +511,7 @@ end
 
 
 require 'set'
-Signal.trap('PIPE', 'EXIT')
+Signal.trap 'PIPE', 'EXIT'
 class Fixnum
   def to_column_index; self; end
 end

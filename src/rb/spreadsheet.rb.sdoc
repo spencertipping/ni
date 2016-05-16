@@ -20,7 +20,7 @@ All names are resolved using `method_missing`, at which point a method is
 generated to handle that case.
 
 require 'set'
-Signal.trap('PIPE', 'EXIT')
+Signal.trap 'PIPE', 'EXIT'
 
 class Fixnum
   def to_column_index; self; end

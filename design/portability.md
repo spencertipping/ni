@@ -25,9 +25,10 @@ reasonable for ni to refuse to operate because these things are missing.
 - Ruby, Python, Octave, R, or any other scripting language.
 
 ## What we can assume
-I think it's fine to assume we have Perl 5.0.0, and that we can pipe the ni
-image into `ssh machine perl` to run it. That Perl process is at liberty to
-`exec` a shell pipeline, provided all of the subcommands will work correctly.
+I think it's fine to assume we have Perl 5.6.0 or later, and that we can pipe
+the ni image into `ssh machine perl` to run it. That Perl process is at
+liberty to `exec` a shell pipeline, provided all of the subcommands will work
+correctly.
 
 It's probably also fine to degrade ni's functionality when running on a
 read-only filesystem. `sort` will trivially have this problem, for example --
