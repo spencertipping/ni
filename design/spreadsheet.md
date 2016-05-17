@@ -50,10 +50,25 @@ $ ni m'aj.foo[0].bar'           # constructs JSON path cursor from methods
 $ ni m'aj.foo[].bar'            # ditto (I guess we support jq syntax)
 ```
 
-## Laziness
-- Laziness = emitting after forgetting things
-    - = nonblocking computation
-- Buffered = emit first, advance second
-    - = blocking computation
+## XML cursor support (?)
+XML spans lines, but maybe?
 
-Arrrgh. This is not the way I wanted this to work.
+```sh
+$ ni m'ax.foo'                  # <foo> element(s) inside xml
+$ ni m'ax.foo[0]'               # first <foo> element
+$ ni m'ax.foo[0][:bar]'         # "bar" attribute?
+```
+
+## Laziness
+- Laziness = emitting after forgetting things = nonblocking computation
+- Buffered = emit first, advance second = blocking computation
+
+Ok, everything's lazy until forced. So:
+
+```sh
+$ ni m'r  b[a../foo/]'          # asynchronous lazy range; emits when complete
+$ ni m'r! b[a../foo/]'          # forced before emitting
+```
+
+Concrete cell references are always forced early; otherwise they don't behave
+like normal values.
