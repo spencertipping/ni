@@ -35,3 +35,25 @@ $ ni m'r _[0, 0]'               # same as 'r a0'
 $ ni m'r a[_../foo/]'           # column A until the line matches /foo/
 $ ni m'r _[_../foo/]'           # lines until the one containing /foo/
 ```
+
+**Q:** Are these ranges lazy?
+
+Brackets are automatically added if the code fails to parse:
+
+```sh
+$ ni m'a, b'                    # same as ni m'[a, b]'
+```
+
+## JSON cursor support
+```sh
+$ ni m'aj.foo[0].bar'           # constructs JSON path cursor from methods
+$ ni m'aj.foo[].bar'            # ditto (I guess we support jq syntax)
+```
+
+## Laziness
+- Laziness = emitting after forgetting things
+    - = nonblocking computation
+- Buffered = emit first, advance second
+    - = blocking computation
+
+Arrrgh. This is not the way I wanted this to work.
