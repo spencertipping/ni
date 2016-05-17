@@ -59,6 +59,9 @@ $ ni m'ax.foo[0]'               # first <foo> element
 $ ni m'ax.foo[0][:bar]'         # "bar" attribute?
 ```
 
+Spanning lines might not be a problem if we're block-reading -- but then the
+spreadsheet abstraction goes out the window.
+
 ## Laziness
 - Laziness = emitting after forgetting things = nonblocking computation
 - Buffered = emit first, advance second = blocking computation
