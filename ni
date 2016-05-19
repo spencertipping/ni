@@ -581,7 +581,7 @@ class Spreadsheet
       begin
         x = f.call
       rescue Exception => e
-        x = "ni!\001#{e.to_s.gsub(/[\n\t]/, ' ')}"
+        x = "ni!\001#{e.to_s.gsub(/[\n\t]/, ' ')}\000"
       end
       unless @r_called
         if x.is_a? Array

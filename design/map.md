@@ -17,6 +17,18 @@ So the text-spreadsheet abstraction is most likely just one of many, though
 perhaps it's the most well-developed mode since the input space is also the
 most predictable.
 
+## Binary/text type erasure
+We can't use the same `m` operator across protocols because the promise is
+that we have another "record" of data in the readahead queue each time the `m`
+code is called. We'd know this only given knowledge of the protocol (while I
+suppose there's an argument to be made that bytes constitute a record of some
+sort, I'm not convinced it's a good one).
+
+So **the operator dictates the decoder and record queueing logic**. Ideally
+the operators would be very simple, but I'm not completely sure how to do it
+yet -- particularly for dispatch-heavy binary formats. I don't want a
+situation where binary and text data have poor interoperability.
+
 ## Binary and stream combination
 Let's assume we're parsing binary with the sequential-input constraint; that
 is, the input isn't seekable. Then continuations are stored in a queue to be
