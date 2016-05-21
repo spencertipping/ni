@@ -29,6 +29,9 @@ the operators would be very simple, but I'm not completely sure how to do it
 yet -- particularly for dispatch-heavy binary formats. I don't want a
 situation where binary and text data have poor interoperability.
 
+**Q:** Is there ever a situation where we need to dually decode the same data
+as both binary and text? (Maybe multi-protocol binary?)
+
 ## Binary and stream combination
 Let's assume we're parsing binary with the sequential-input constraint; that
 is, the input isn't seekable. Then continuations are stored in a queue to be
@@ -108,3 +111,25 @@ because they block (design/group.md). If the access pattern is encoded into
 the data itself or the underlying data is seekable, then we may have better
 options. A good example is when we want to do a random-access join against a
 sorted file, rather than buffering+sorting the left side.
+
+Is there any way to generalize this idea without introducing code overhead?
+
+## Implementation strategy
+This is clearly a rabbit hole. Let's table the complicated stuff for now and
+assume that most data sources are linear (whether binary or text), and that the
+record-reader part isn't actively parsing things. In other words, let's use the
+Hadoop pattern and assume that everything can be read sequentially. This
+obviously isn't fundamentally wrong because ni has to execute the mapping
+function with some reference frame.
+
+Metaphorically, ni is giving you a view into the data -- but it's the data _as
+it stands_, not the data in some arbitrary as-yet-to-be-determined format.
+Arguably if you want it to be reorganized, you'll have to use a record-level
+reordering transformation that might proceed to buffer stuff. In other words,
+all data we care about is streamed and not assumed to work in a random-access
+way.
+
+I suppose the only real compromise here would be a file format with stuff at
+the end that you needed in order to parse the rest, or something. But there the
+access pattern is fixed, just a little unusual. It wouldn't break the streaming
+paradigm since the data itself is most likely linearizable.
