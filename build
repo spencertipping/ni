@@ -57,7 +57,8 @@ done
 # of the files as resources. The header knows how to unpack resources from the
 # __DATA__ section of the script, and it evaluates the ones ending in .pl. This
 # mechanism makes it possible for ni to serialize its code without being stored
-# anywhere.
+# anywhere (which is useful if you're piping it to a system whose filesystem is
+# read-only).
 {
   cat gen/ni                    # "eval" the bootstrap code
   resource ni                   # ... and now store so ni can regenerate it
@@ -80,3 +81,5 @@ done
 } > ni
 
 chmod +x ni
+
+wc -c ni
