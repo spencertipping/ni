@@ -7,5 +7,5 @@ match()  { perl -ne 'print if /'"$1"/; }
 Row sampling is done using a Poisson process, which takes rand() out of the
 line of fire. This is particularly useful for sparse samplings.
 
-sample() { perl -ne 'BEGIN {srand(42); $e = -log(1 - rand()) / '"$1"'}
-                     if ($. >= 0) {print; $. -= $e}'; }
+sample() { perl -ne 'BEGIN {srand(42)}
+                     if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }

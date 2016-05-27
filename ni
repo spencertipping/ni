@@ -290,11 +290,12 @@ compressed.sh
 directory.sh
 rows.sh
 pager.sh
-4 sh/stream.sh
+5 sh/stream.sh
 
 
 
-append() { cat; "$@"; }
+append()  { cat; "$@"; }
+prepend() { "$@"; cat; }
 31 sh/compressed.sh
 
 
@@ -338,8 +339,8 @@ directory_list() {
 every()  { perl -ne 'print unless $. % '"$1"; }
 match()  { perl -ne 'print if /'"$1"/; }
 
-sample() { perl -ne 'BEGIN {srand(42); $e = -log(1 - rand()) / '"$1"'}
-                     if ($. >= 0) {print; $. -= $e}'; }
+sample() { perl -ne 'BEGIN {srand(42)}
+                     if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
 2 sh/pager.sh
 
 pager() { exec less || exec more || exec cat; }

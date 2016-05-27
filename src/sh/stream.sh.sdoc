@@ -8,4 +8,5 @@ If you do this, ni will compile a pipeline that uses stream wrappers to
 concatenate the second `ls` output (despite the fact that technically it's a
 shell pipe).
 
-append() { cat; "$@"; }
+append()  { cat; "$@"; }
+prepend() { "$@"; cat; }
