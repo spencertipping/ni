@@ -200,3 +200,4 @@ use constant suffix => rep thing, 1;
 use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
+use constant cli_d  => ops;

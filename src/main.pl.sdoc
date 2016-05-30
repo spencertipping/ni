@@ -19,8 +19,9 @@ sub compile {print STDERR real_pipeline @_;   exit_nop}
 
 sub parse {
   my ($parsed) = cli->(@_);
-  die "failed to parse " . join ' ', @_ unless ref $parsed && @$parsed;
-  @$parsed;
+  return @$parsed if ref $parsed && @$parsed;
+  my (undef, @rest) = cli_d->(@_);
+  die "failed to parse " . join ' ', @rest;
 }
 
 sub shell {

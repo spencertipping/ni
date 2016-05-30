@@ -22,7 +22,7 @@ use constant number  => alt neval, integer, float;
 use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
 
-use constant vmapspec => alt ptag('hash', mr '^='),
+use constant vmapspec => alt ptag('hash', mr '^%'),
                              ptag('cval', mr '^+'),
                              ptag('row',  mr '^r?');
 
