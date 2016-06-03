@@ -33,3 +33,19 @@ sense.
 **By default, lazy computations consume rows -- so the mapper won't be invoked
 again until all lazy computations are complete.** This sidesteps the whole
 question of interleaved stuff, which is counterintuitive and treacherous.
+
+In particular, `r` consumes the rows of its inputs by default. We can't have
+the lazy computations themselves consuming the rows, since then forks like `/`
+wouldn't work at all.
+
+Really we want the loop driver to skip the code if there are running lazy
+computations, unless the user has specified an alternative stop condition:
+
+```sh
+$ ni m'stop_at /^bar/; r (a../foo/).sum.to_f / (a../foo/).size'
+```
+
+## Non-TSV data
+`a`..`q` return lazy reducers acting on the binary data input stream, but there
+are other access methods too. **The input stream is always assumed to be
+linear** -- so there's no seeking around arbitrarily.
