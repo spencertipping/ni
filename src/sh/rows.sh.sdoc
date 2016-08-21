@@ -1,5 +1,7 @@
 Row-selection functions.
 Wrappers to select specific rows from a file. This implements the `r` command.
+Note that it's faster (and more powerful) to use perl than grep for regex
+matching, at least last time I tested it.
 
 every()  { perl -ne 'print unless $. % '"$1"; }
 match()  { perl -ne 'print if /'"$1"/; }

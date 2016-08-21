@@ -2,4 +2,4 @@ Pager handling.
 A wrapper around various programs to preview long streams of data. We might
 not have any, but if we do, we make them available under the 'pager' function.
 
-pager() { exec less || exec more || exec cat; }
+pager() { less || more || cat; }

@@ -29,6 +29,12 @@ resource() {
   cd ..
 }
 
+gen() {
+  for f; do
+    cat "gen/$f"
+  done
+}
+
 lib() {
   for l; do
     resource $l/lib
@@ -59,26 +65,7 @@ done
 # mechanism makes it possible for ni to serialize its code without being stored
 # anywhere (which is useful if you're piping it to a system whose filesystem is
 # read-only).
-{
-  cat gen/ni                    # "eval" the bootstrap code
-  resource ni                   # ... and now store so ni can regenerate it
-  resource util.pl
-  resource sh.pl cli.pl ops.pl
-
-  resource ops/sort.pl
-  resource ops/rows.pl
-  resource ops/ruby.pl
-  resource ops/perl.pl
-  resource ops/hadoop.pl
-
-  resource main.pl
-
-  # Library resources
-  lib sh
-  lib pl
-  lib rb
-  lib waul
-} > ni
+source src/ni.map > ni
 
 chmod +x ni
 
