@@ -33,7 +33,7 @@ sub verify {
 my $command  = undef;
 my $output   = undef;
 while (<>) {
-  if (s/^\$\s*//) {
+  if (s/^\$\s+//) {
     ++$commands;
     verify $command, $output;
     $command = $_;
