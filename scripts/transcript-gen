@@ -1,9 +1,10 @@
 #!/bin/bash
-cd $(dirname $0)
-rm -rf test
+cd $(dirname $0)/..
+rm -rf tests
+mkdir tests
 for file in $(find doc -name '*.md' -type f); do
   dir=$(dirname $file)
-  mkdir -p test/${dir#doc}
+  mkdir -p tests/${dir#doc}
   perl -ne 'print if (/^\`{3}bash$/../^\`{3}$/) && !/^\`/' $file \
-    > test/${file#doc/}.transcript
+    > tests/${file#doc/}.transcript
 done

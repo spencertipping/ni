@@ -1,22 +1,18 @@
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
 use 5.006_000;
-$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
-  while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_"
-  for grep /\.pl$/i, @ni::keys;
+$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1 while <DATA> =~ /^(\d+)\s+(.*)$/;
 close DATA;
+push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-10 ni
+8 ni
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
 use 5.006_000;
-$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1
-  while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_"
-  for grep /\.pl$/i, @ni::keys;
+$ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1 while <DATA> =~ /^(\d+)\s+(.*)$/;
 close DATA;
+push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
 18 ni.map

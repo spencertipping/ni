@@ -1,6 +1,0 @@
-#!/bin/bash
-cd $(dirname $0)
-./build
-./transcript-gen
-./transcript-verify $(find test -name '*.transcript')
-rm -rf test
