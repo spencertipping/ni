@@ -25,11 +25,6 @@ package ni;
 Simple constructors.
 Constructors for straightforward pipeline elements.
 
-sub shell_quote;
-sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/.]/
-                                 ? "'" . sgr($_, qr/'/, "'\\''") . "'"
-                                 : $_,
-                           map 'ARRAY' eq ref $_ ? shell_quote @$_ : $_, @_}
 
 sub sh {+{id => shell_quote(@_), exec => [@_]}}
 

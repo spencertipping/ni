@@ -15,83 +15,60 @@ close DATA;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-18 ni.map
-gen ni                        # "eval" the bootstrap code
-resource ni                   # ... and now store so ni can regenerate it
+17 ni.map
+
+unquote ni
+resource ni
 resource ni.map
 resource util.pl
-resource sh.pl cli.pl ops.pl
-
-resource ops/sort.pl
-resource ops/rows.pl
-resource ops/ruby.pl
-resource ops/perl.pl
-resource ops/hadoop.pl
-
+resource self.pl
+resource cli.pl
 resource main.pl
-
+# resource sh.pl ops.pl
+# resource ni.sh
+# resource ops/sort.pl
+# resource ops/rows.pl
+# resource ops/ruby.pl
+# resource ops/perl.pl
+# resource ops/hadoop.pl
 # Library resources
-lib sh
 lib pl
-lib rb
-5 util.pl
+10 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
-sub lib($) {join "\n", @self{map "$_[0]/$_", split /\n/, $self{"$_[0]/lib"}}}
-52 sh.pl
-
-
-
-
-package ni;
-
-sub shell_quote;
-sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/.]/
+sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                                  ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                                  : $_,
-                           map 'ARRAY' eq ref $_ ? shell_quote @$_ : $_, @_}
-sub sh {+{id => shell_quote(@_), exec => [@_]}}
+                           map 'ARRAY' eq ref $_ ? shell_quote(@$_) : $_, @_}
+sub rf {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
+sub rl {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
+25 self.pl
 
-
-
-use constant none => {};
-sub heredoc_terminator {
-  my $id = 0;
-  ++$id while $_[1] =~ /^_$_[0]_$id$/m;
-  "_$_[0]_$id";
+package ni;
+sub map_u {@self{@_}}
+sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/), $_, $self{$_}), @_}
+sub map_l {map map_resource("$_/lib", split /\n/, $self{"$_/lib"}), @_}
+sub read_map {join "\n", map {my ($c, @a) = split /\s+/;
+                                $c eq 'unquote'     ? map_u @a
+                              : $c eq 'resource'    ? map_r @a
+                              : $c =~ /^lib$|^ext$/ ? map_l @a
+                              : die "ni: unknown map command+args: $c @a"}
+                         grep {s/#.*//g; length}
+                         map split(/\n/), @self{@_}}
+sub intern_lib($) {$self{"$_[0]/$_"} = rf "$_[0]/$_"
+                   for split /\n/, ($self{"$_[0]/lib"} = rf "$_[0]/lib")}
+sub modify_self($) {
+  die "ni: not a modifiable instance: $0" unless -w $0;
+  open my $fh, "> $0" or die "ni: failed to open self: $!";
+  print $fh read_map $_[0];
+  close $fh;
 }
-sub compile_pipeline {
-  my %file_inits;
-  my @commands;
-  my @heredocs;
-  for my $i (0..$#_) {
-    my $c = $_[$i];
-    $c = {id => $c, exec => [$c]} unless ref $c;
-    exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
-    my $redirections;
-    if (exists $c->{stdin}) {
-      my $h = heredoc_terminator $i, $c->{stdin};
-      push @heredocs, "$c->{stdin}\n$h";
-      $redirections = "3<&0 <<\'$h\'";
-    }
-    $file_inits{$_} = $c->{files}{$_} for keys %{$c->{files} || none};
-    my @env = map "$_=" . shell_quote($c->{env}{$_}), keys %{$c->{env} || none};
-    push @commands, join " ", @env, shell_quote(@{$c->{exec}}), $redirections;
-  }
-  my $mkdirs = keys %file_inits
-               ? 'mkdir -p ' . shell_quote map /^(.*)\/[^\/]*$/,
-                                           keys %file_inits
-               : '';
-  my $cats   = join "\n", map {
-                 my $h = heredoc_terminator '', $file_inits{$_};
-                 "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
-               } keys %file_inits;
-  my $libs   = lib 'sh';
-  my $pipe   = join "\\\n  | ", @commands;
-  my $docs   = join "\n", @heredocs;
-  join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
+sub extend_self($) {
+  $self{'ni.map'} .= "\next $_[0]";
+  intern_lib $_[0];
+  modify_self 'ni.map';
 }
 95 cli.pl
 
@@ -189,82 +166,7 @@ use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
 use constant cli_d  => ops;
-24 ops.pl
-
-package ni;
-sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
-
-use constant neval   => pmap {eval} mr '^=([^]]+)';
-use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
-                            pmap(sub {1 << $_},   mr '^B(\d+)'),
-                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-                            pmap(sub {0 + $_},    mr '\d+');
-use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
-use constant number  => alt neval, integer, float;
-use constant colspec  => mr '^[-A-Z0-9.]+';
-use constant colspec1 => mr '^[A-Z0-9]';
-use constant vmapspec => alt ptag('hash', mr '^%'),
-                             ptag('cval', mr '^+'),
-                             ptag('row',  mr '^r?');
-use constant idspec   => seq maybe vmapspec, maybe colspec;
-use constant valspec  => alt mrc '^=(.*)', mr '^.';
-deflong 'file',  psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
-deflong 'dir',   psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
-deflong 'shell', psh 'append', 'sh', '-c',       mrc '^\$:([^]]+)$';
-deflong 'n',     psh qw/append seq/,   pn 1, mr '^n:',  alt neval, integer;
-deflong 'n0',    psh qw/append seq 0/, pn 1, mr '^n0:', alt neval, integer;
-deflong 'id',    psh qw/append echo/,        mr '^id:([^]]*)';
-10 ops/sort.pl
-
-package ni;
-sub sort_colspec {"-t", "\t", map {("-k", $_ + 1)}
-                              map /[A-Z]/ ? ord $_ - ord 'A' : $_,
-                                  split //, $_[0]}
-use constant sort_args => pmap {[sort_colspec $_]} maybe colspec;
-defshort 'g', psh qw/sort/,     sort_args;
-defshort 'G', psh qw/sort -u/,  sort_args;
-defshort 'o', psh qw/sort -n/,  sort_args;
-defshort 'O', psh qw/sort -nr/, sort_args;
-10 ops/rows.pl
-
-package ni;
-use constant rowspec => alt psh('tail', '-n', pn 1, mr '^\+', number),
-                            psh('tail', '-n', pmap {'+' . ($_ + 1)}
-                                              pn 1, mr '^-',  number),
-                            psh('every',      pn 1, mr '^x',  number),
-                            psh('match',      pn 1, mr '^/',  regex),
-                            psh('sample',     mr '^\.\d+'),
-                            psh('head', '-n', alt neval, integer);
-defshort 'r', rowspec;
-5 ops/ruby.pl
-
-package ni;
-defshort 'm', pmap {+{id    => "ruby map $_",
-                      exec  => ['ruby', '-e', 'Kernel.eval $stdin.read', $_],
-                      stdin => lib 'rb'}} rbcode;
-5 ops/perl.pl
-
-package ni;
-defshort 'p', pmap {+{id    => "perl map $_",
-                      exec  => ['perl', '-e', 'eval join "", <STDIN>', $_],
-                      stdin => lib 'pl'}} plcode;
-15 ops/hadoop.pl
-
-package ni;
-use constant hadoop_lambda => alt suffix,
-                                  mr '_',
-                                  pn 1, maybe(consumed_opt), lambda;
-use constant hadoop_m   => pmap {[map     => $_]}     hadoop_lambda;
-use constant hadoop_mr  => pmap {[map     => $$_[0],
-                                  reduce  => $$_[1]]} rep hadoop_lambda, 2;
-use constant hadoop_mcr => pmap {[map     => $$_[0],
-                                  combine => $$_[1],
-                                  reduce  => $$_[2]]} rep hadoop_lambda, 3;
-use constant hadoop_lambdas => alt hadoop_mcr, hadoop_mr, hadoop_m;
-deflong 'hdfs', psh 'echo', mrc 'hdfs:[^]]+';
-defshort 'h', psh 'local_hadoop', hadoop_lambdas;
-defshort 'H', psh 'real_hadoop',  hadoop_lambdas;
-36 main.pl
+37 main.pl
 
 package ni;
 use constant exit_success      => 0;
@@ -273,9 +175,9 @@ use constant exit_nop          => 2;
 use constant exit_sigchld_fail => 3;
 sub je($);
 sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
-sub usage() {print STDERR $self{'doc/usage'}; exit_nop}
-sub explain {print STDERR je [@_], "\n";      exit_nop}
-sub compile {print STDERR real_pipeline @_;   exit_nop}
+sub usage() {print $self{'doc/usage'}; exit_nop}
+sub explain {print je [@_], "\n";      exit_nop}
+sub compile {print real_pipeline @_;   exit_nop}
 sub parse {
   my ($parsed) = cli->(@_);
   return @$parsed if ref $parsed && @$parsed;
@@ -284,6 +186,7 @@ sub parse {
 }
 sub shell {
   open SH, '| sh'   or
+  open SH, '| ash'  or
   open SH, '| dash' or
   open SH, '| bash' or die "ni: could not open any POSIX sh: $!";
   syswrite SH, $_[0]
@@ -301,66 +204,6 @@ sub main {
   return compile parse @_[1..$#_] if $_[0] eq '--compile';
   return shell real_pipeline parse @_;
 }
-5 sh/lib
-stream.sh
-compressed.sh
-directory.sh
-rows.sh
-pager.sh
-5 sh/stream.sh
-
-
-
-append()  { cat; "$@"; }
-prepend() { "$@"; cat; }
-31 sh/compressed.sh
-
-
-
-
-
-decode() {
-  perl -e '
-    sysread STDIN, $_, 8192;
-    my $decoder = /^\x1f\x8b/             ? "gzip -dc"
-                : /^BZh\0/                ? "bzip2 -dc"
-                : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
-                : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
-                : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
-    if (defined $decoder) {
-      open FH, "| $decoder" or die "decode: failed to open $decoder";
-      syswrite FH, $_;
-      syswrite FH, $_ while sysread STDIN, $_, 8192;
-      close STDIN;
-      close FH;
-      exit 0;
-    }
-    my $archiver = /^\x50\x4b\x03\x04/              ? "zip"
-                 : /^[\s\S]{257}ustar(\x0000|  \0)/ ? "tar" : undef;
-    if (defined $archiver) {
-      ...;
-      exit 0;
-    }
-    syswrite STDOUT, $_;
-    syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
-  ' < "$1"
-}
-5 sh/directory.sh
-
-directory_list() {
-  ls "$1" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
-                      print "$prefix/$_"' "$1"
-}
-6 sh/rows.sh
-
-every()  { perl -ne 'print unless $. % '"$1"; }
-match()  { perl -ne 'print if /'"$1"/; }
-
-sample() { perl -ne 'BEGIN {srand(42)}
-                     if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
-2 sh/pager.sh
-
-pager() { less || more || cat; }
 2 pl/lib
 util.pm
 math.pm
@@ -435,4 +278,3 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-0 rb/lib

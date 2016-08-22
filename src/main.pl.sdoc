@@ -13,9 +13,9 @@ sub je($);
 
 sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
 
-sub usage() {print STDERR $self{'doc/usage'}; exit_nop}
-sub explain {print STDERR je [@_], "\n";      exit_nop}
-sub compile {print STDERR real_pipeline @_;   exit_nop}
+sub usage() {print $self{'doc/usage'}; exit_nop}
+sub explain {print je [@_], "\n";      exit_nop}
+sub compile {print real_pipeline @_;   exit_nop}
 
 sub parse {
   my ($parsed) = cli->(@_);
@@ -26,6 +26,7 @@ sub parse {
 
 sub shell {
   open SH, '| sh'   or
+  open SH, '| ash'  or
   open SH, '| dash' or
   open SH, '| bash' or die "ni: could not open any POSIX sh: $!";
 

@@ -1,0 +1,27 @@
+Resource layout map.
+ni is assembled by following the instructions here. This script is also
+included in the ni image itself so it can rebuild accordingly. The filenames
+referenced from this file correspond to SDoc-processed entries in src/.
+
+unquote ni
+resource ni
+resource ni.map
+
+resource util.pl
+resource self.pl
+resource cli.pl
+
+resource main.pl
+
+# resource sh.pl ops.pl
+
+# resource ni.sh
+
+# resource ops/sort.pl
+# resource ops/rows.pl
+# resource ops/ruby.pl
+# resource ops/perl.pl
+# resource ops/hadoop.pl
+
+# Library resources
+lib pl

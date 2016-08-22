@@ -29,7 +29,7 @@ resource() {
   cd ..
 }
 
-gen() {
+unquote() {
   for f; do
     cat "gen/$f"
   done
@@ -65,7 +65,7 @@ done
 # mechanism makes it possible for ni to serialize its code without being stored
 # anywhere (which is useful if you're piping it to a system whose filesystem is
 # read-only).
-source src/ni.map > ni
+source gen/ni.map > ni
 
 chmod +x ni
 

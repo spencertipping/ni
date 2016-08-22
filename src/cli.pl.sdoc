@@ -186,9 +186,9 @@ data.
 
 I define the toplevel parser to be self-referential for the moment. Later when
 we `use constant` the outer function will be replaced with the real one,
-resulting in the inner `opts(@_)` call pointing to it. (The indirection is
-required, unfortunately; otherwise we'd be unable to change the reference
-later from underneath the `use constant` expression.)
+resulting in the inner `ops(@_)` call pointing to it. (The indirection is
+required, unfortunately; otherwise we'd be unable to change the reference later
+from underneath the `use constant` expression.)
 
 sub ops() {sub {ops()->(@_)}}
 

@@ -1,8 +1,0 @@
-Directory functions.
-Mainly just a way to list the contents of a directory in a "stable" way: that
-is, one that ni can then read if you tell it to.
-
-directory_list() {
-  ls "$1" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
-                      print "$prefix/$_"' "$1"
-}
