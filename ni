@@ -15,7 +15,8 @@ close DATA;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-17 ni.map
+9 ni.map
+
 
 unquote ni
 resource ni
@@ -24,15 +25,6 @@ resource util.pl
 resource self.pl
 resource cli.pl
 resource main.pl
-# resource sh.pl ops.pl
-# resource ni.sh
-# resource ops/sort.pl
-# resource ops/rows.pl
-# resource ops/ruby.pl
-# resource ops/perl.pl
-# resource ops/hadoop.pl
-# Library resources
-lib pl
 10 util.pl
 
 package ni;
@@ -96,8 +88,8 @@ sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
-sub ptag($$) {my ($t, $p)  = @_; pmap {+{$t => $_}} $p}
-sub pn($@)   {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
+sub ptag(@) {my (@xs, $p) = @_; $p = pop @xs; pmap {[@xs, $_]} $p}
+sub pn($@)  {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/^($r)// ? ($2 || $1, $x, @xs) : ()}}
@@ -203,78 +195,4 @@ sub main {
   return explain parse @_[1..$#_] if $_[0] eq '--explain';
   return compile parse @_[1..$#_] if $_[0] eq '--compile';
   return shell real_pipeline parse @_;
-}
-2 pl/lib
-util.pm
-math.pm
-46 pl/util.pm
-
-sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
-sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
-sub mean {scalar @_ && sum(@_) / @_}
-sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
-sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
-sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
-sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
-sub argmax(&@) {
-  local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
-  }
-  $m;
-}
-sub argmin(&@) {
-  local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
-  }
-  $m;
-}
-sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
-sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
-sub uniq  {local $_; my %seen, @xs; $seen{$_}++ or push @xs, $_ for @_; @xs}
-sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
-sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
-sub reductions(&$@) {
-  local $_;
-  my ($f, $x, @xs, @ys) = @_;
-  push @ys, $x = &$f($x, $_) for @xs;
-  @ys;
-}
-sub cart {
-  local $_;
-  return () unless @_;
-  return map [$_], @{$_[0]} if @_ == 1;
-  my @ns     = map scalar(@$_), @_;
-  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
-  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
-      0..prod(@ns) - 1;
-}
-23 pl/math.pm
-
-use Math::Trig;
-use constant tau => 2 * pi;
-use constant LOG2  => log 2;
-use constant LOG2R => 1 / LOG2;
-sub log2 {LOG2R * log $_[0]}
-sub quant {my ($x, $q) = @_; $q ||= 1;
-           my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
-sub dot {local $_; my ($u, $v) = @_;
-         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
-sub l1norm {local $_; sum map abs($_), @_}
-sub l2norm {local $_; sqrt sum map $_*$_, @_}
-sub rdeg($) {$_[0] * 360 / tau}
-sub drad($) {$_[0] / 360 * tau}
-sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
-sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
-sub haversine {
-  local $_;
-  my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
-  my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
-  my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
-  2 * atan2(sqrt($a), sqrt(1 - $a));
 }
