@@ -5,8 +5,6 @@ options, and have them generate executable stages.
 
 package ni;
 
-sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
-
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.

@@ -2,20 +2,18 @@
 # https://github.com/spencertipping/ni; MIT license
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-close DATA;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-8 ni
+7 ni
 #!/usr/bin/env perl
 # https://github.com/spencertipping/ni; MIT license
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-close DATA;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-11 ni.map
+13 ni.map
 
 
 unquote ni
@@ -25,9 +23,11 @@ resource util.pl
 resource self.pl
 resource cli.pl
 resource main.pl
-lib core/stream
 lib core/gen
-10 util.pl
+lib core/meta
+lib core/stream
+lib core/pl
+11 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
@@ -36,24 +36,26 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                                  ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                                  : $_,
                            map 'ARRAY' eq ref $_ ? shell_quote(@$_) : $_, @_}
-sub rf {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
-sub rl {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
-26 self.pl
+sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
+27 self.pl
 
 package ni;
 sub map_u {@self{@_}}
-sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, $self{$_}), $_, $self{$_}), @_}
+sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;
                 map_r "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
-sub read_map {join "\n", map {my ($c, @a) = split /\s+/;
-                                $c eq 'unquote'     ? map_u @a
-                              : $c eq 'resource'    ? map_r @a
-                              : $c =~ /^lib$|^ext$/ ? map_l @a
-                              : die "ni: unknown map command+args: $c @a"}
-                         grep {s/#.*//g; length}
-                         map split(/\n/), @self{@_}}
-sub intern_lib($) {$self{"$_[0]/$_"} = rf "$_[0]/$_"
-                   for split /\n/, ($self{"$_[0]/lib"} = rf "$_[0]/lib")}
+sub read_map {join "\n", (map {my ($c, @a) = split /\s+/;
+                                 $c eq 'unquote'     ? map_u @a
+                               : $c eq 'resource'    ? map_r @a
+                               : $c =~ /^lib$|^ext$/ ? map_l @a
+                               : die "ni: unknown map command+args: $c @a"}
+                          grep {s/#.*//g; length}
+                          map split(/\n/), @self{@_}), "__END__"}
+sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_"
+                   for grep length,
+                       split /\n/, ($self{"$_[0]/lib"} = rfc "$_[0]/lib")}
 sub modify_self($) {
   die "ni: not a modifiable instance: $0" unless -w $0;
   open my $fh, "> $0" or die "ni: failed to open self: $!";
@@ -208,14 +210,9 @@ sub main {
   return &$h(@args) if $h;
   run_sh pipeline(parse_ops @ARGV);
 }
-1 core/stream/lib
-stream.sh
-0 core/stream/stream.sh
-
 2 core/gen/lib
 gen.pl
 sh.pl
-
 15 core/gen/gen.pl
 
 
@@ -232,14 +229,14 @@ sub gen {
     join '', @r;
   };
 }
-
-22 core/gen/sh.pl
+23 core/gen/sh.pl
 
 
 
 
 package ni;
-sub sh {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+sub sh  {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 sub pipeline {
   my @cs;
@@ -256,3 +253,145 @@ sub pipeline {
   }
   join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
 }
+1 core/meta/lib
+meta.pl
+6 core/meta/meta.pl
+
+package ni;
+deflong 'meta/self',
+  pmap {sh ['ni_append', 'cat'], stdin => read_map 'ni.map'} mr '^//ni/self';
+deflong 'meta/map',
+  pmap {sh ['ni_append', 'cat'], stdin => $self{'ni.map'}} mr '^//ni/map';
+2 core/stream/lib
+stream.pl
+stream.sh
+3 core/stream/stream.pl
+package ni;
+deflong 'ifile', ptag 'ni_append', 'ni_cat', pif {-e} mrc '^[^]]*';
+deflong 'idir',  ptag 'ni_append', 'ni_ls',  pif {-d} mrc '^[^]]*';
+50 core/stream/stream.sh
+#!/bin/sh
+# ni POSIX-shell library functions
+
+
+
+ni_append()  { cat; "$@"; }
+ni_prepend() { "$@"; cat; }
+
+
+
+
+
+ni_cat() {
+  # TODO: nested decoding, e.g. for .tar.gz?
+  for f; do
+    perl -e '
+      sysread STDIN, $_, 8192;
+      my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+                  : /^BZh\0/                ? "bzip2 -dc"
+                  : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+                  : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+                  : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+      if (defined $decoder) {
+        open FH, "| $decoder" or die "ni_cat: failed to open $decoder";
+        syswrite FH, $_;
+        syswrite FH, $_ while sysread STDIN, $_, 8192;
+        close STDIN;
+        close FH;
+        exit 0;
+      }
+      my $archiver = /^\x50\x4b\x03\x04/              ? "zip"
+                   : /^[\s\S]{257}ustar(\x0000|  \0)/ ? "tar" : undef;
+      if (defined $archiver) {
+        ;
+        exit 0;
+      }
+      syswrite STDOUT, $_;
+      syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
+    ' < "$f"
+  done
+}
+
+ni_ls() {
+  for d; do
+    ls "$d" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
+                        print "$prefix/$_"' "$d"
+  done
+}
+
+ni_pager() { ${NI_PAGER:-less} || more || cat; }
+2 core/pl/lib
+util.pm
+math.pm
+46 core/pl/util.pm
+
+sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
+sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+sub mean {scalar @_ && sum(@_) / @_}
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  }
+  $m;
+}
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  }
+  $m;
+}
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+sub uniq  {local $_; my %seen, @xs; $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
+sub reductions(&$@) {
+  local $_;
+  my ($f, $x, @xs, @ys) = @_;
+  push @ys, $x = &$f($x, $_) for @xs;
+  @ys;
+}
+sub cart {
+  local $_;
+  return () unless @_;
+  return map [$_], @{$_[0]} if @_ == 1;
+  my @ns     = map scalar(@$_), @_;
+  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
+  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
+      0..prod(@ns) - 1;
+}
+23 core/pl/math.pm
+
+use Math::Trig;
+use constant tau => 2 * pi;
+use constant LOG2  => log 2;
+use constant LOG2R => 1 / LOG2;
+sub log2 {LOG2R * log $_[0]}
+sub quant {my ($x, $q) = @_; $q ||= 1;
+           my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
+sub dot {local $_; my ($u, $v) = @_;
+         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+sub l1norm {local $_; sum map abs($_), @_}
+sub l2norm {local $_; sqrt sum map $_*$_, @_}
+sub rdeg($) {$_[0] * 360 / tau}
+sub drad($) {$_[0] / 360 * tau}
+sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
+sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+sub haversine {
+  local $_;
+  my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
+  my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+  my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+  2 * atan2(sqrt($a), sqrt(1 - $a));
+}
+__END__

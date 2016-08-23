@@ -1,6 +1,13 @@
 #!/bin/bash
+# Builds the ni image, first by assembling the self-modifying parts (./boot),
+# and then by telling it to add modules. core/ is symlinked to gen/, which is
+# produced by ./boot.
+
 ./boot
-./ni --internal/lib core/stream
 ./ni --internal/lib core/gen
+./ni --internal/lib core/meta
+./ni --internal/lib core/stream
+
+./ni --internal/lib core/pl
 
 wc -c ni

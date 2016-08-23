@@ -12,5 +12,6 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                                  : $_,
                            map 'ARRAY' eq ref $_ ? shell_quote(@$_) : $_, @_}
 
-sub rf {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
-sub rl {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
+sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
