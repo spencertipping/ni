@@ -1,37 +1,14 @@
-Operation definitions.
-This is the bridge between the parsing logic in cli.pl and the compilation
-logic in sh.pl. The idea here is to specify combinatory parsers for CLI
-options, and have them generate executable stages.
+Row-level operations.
+These reorder/drop/create entire rows without really looking at fields.
 
 package ni;
 
-Basic CLI types.
-Some common argument formats for various commands, sometimes transformed for
-specific cases. These are documented somewhere in `doc/`.
+use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
 
-use constant neval   => pmap {eval} mr '^=([^]]+)';
-use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
-                            pmap(sub {1 << $_},   mr '^B(\d+)'),
-                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-                            pmap(sub {0 + $_},    mr '\d+');
-use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
-use constant number  => alt neval, integer, float;
-
-use constant colspec  => mr '^[-A-Z0-9.]+';
-use constant colspec1 => mr '^[A-Z0-9]';
-
-use constant vmapspec => alt ptag('hash', mr '^%'),
-                             ptag('cval', mr '^+'),
-                             ptag('row',  mr '^r?');
-
-use constant idspec   => seq maybe vmapspec, maybe colspec;
-
-use constant valspec  => alt mrc '^=(.*)', mr '^.';
-
-deflong 'file',  psh 'append', 'decode',         pif {-e} mrc '^[^]]*';
-deflong 'dir',   psh 'append', 'directory_list', pif {-d} mrc '^[^]]*';
-deflong 'shell', psh 'append', 'sh', '-c',       mrc '^\$:([^]]+)$';
-
-deflong 'n',     psh qw/append seq/,   pn 1, mr '^n:',  alt neval, integer;
-deflong 'n0',    psh qw/append seq 0/, pn 1, mr '^n0:', alt neval, integer;
-deflong 'id',    psh qw/append echo/,        mr '^id:([^]]*)';
+defshort 'r', alt
+  pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
+  pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
+  pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),
+  pmap(sub {sh ['ni_rmatch',  $_], prefix => row_pre}, pn 1, mr '^/',  regex),
+  pmap(sub {sh ['ni_rsample', $_], prefix => row_pre}, mr '^\.\d+'),
+  pmap(sub {sh 'head', '-n', $_},                      alt neval, integer);

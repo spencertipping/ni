@@ -6,9 +6,12 @@
 cd $(dirname $0)
 
 ./boot
+./ni --internal/lib core/common
 ./ni --internal/lib core/gen
 ./ni --internal/lib core/stream
 ./ni --internal/lib core/meta
+
+./ni --internal/lib core/row
 
 ./ni --internal/lib core/pl
 

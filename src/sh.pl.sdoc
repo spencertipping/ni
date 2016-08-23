@@ -73,8 +73,6 @@ sub sh {
   +{exec => $exec, %o};
 }
 
-sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
-
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 
 sub sh_prefix() {join "\n", @self{@sh_libs}}

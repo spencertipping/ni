@@ -1,0 +1,16 @@
+Basic CLI types.
+Some common argument formats for various commands, sometimes transformed for
+specific cases. These are documented somewhere in `doc/`.
+
+package ni;
+
+use constant neval   => pmap {eval} mr '^=([^]]+)';
+use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+                            pmap(sub {1 << $_},   mr '^B(\d+)'),
+                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+                            pmap(sub {0 + $_},    mr '\d+');
+use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant number  => alt neval, integer, float;
+
+use constant colspec  => mr '^[-A-Z0-9.]+';
+use constant colspec1 => mr '^[A-Z0-9]';

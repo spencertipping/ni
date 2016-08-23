@@ -13,7 +13,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-14 ni.map
+16 ni.map
 
 
 unquote ni
@@ -24,9 +24,11 @@ resource self.pl
 resource cli.pl
 resource sh.pl
 resource main.pl
+lib core/common
 lib core/gen
 lib core/stream
 lib core/meta
+lib core/row
 lib core/pl
 7 util.pl
 
@@ -66,7 +68,7 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-95 cli.pl
+93 cli.pl
 
 package ni;
 
@@ -138,8 +140,6 @@ ni: failed to get closing bracket count for perl code "$_[0]", possibly
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
-
-
 our %short;
 our @long;
 sub defshort($$) {$short{$_[0]} = $_[1]}
@@ -162,7 +162,7 @@ use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
 use constant cli_d  => ops;
-68 sh.pl
+67 sh.pl
 
 
 
@@ -206,7 +206,6 @@ sub sh {
   my ($exec) = collect_nested_invocations \%o, $c;
   +{exec => $exec, %o};
 }
-sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 sub sh_prefix() {join "\n", @self{@sh_libs}}
 sub pipeline {
@@ -282,6 +281,20 @@ sub main {
   return &$h(@args) if $h;
   run_sh sh_code @ARGV;
 }
+1 core/common/lib
+common.pl
+11 core/common/common.pl
+
+package ni;
+use constant neval   => pmap {eval} mr '^=([^]]+)';
+use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
+                            pmap(sub {1 << $_},   mr '^B(\d+)'),
+                            pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
+                            pmap(sub {0 + $_},    mr '\d+');
+use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant number  => alt neval, integer, float;
+use constant colspec  => mr '^[-A-Z0-9.]+';
+use constant colspec1 => mr '^[A-Z0-9]';
 1 core/gen/lib
 gen.pl
 15 core/gen/gen.pl
@@ -339,7 +352,7 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-22 core/stream/stream.pl
+25 core/stream/stream.pl
 
 package ni;
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
@@ -362,6 +375,9 @@ sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
 deflong 'stream/sh', pmap {ni_append qw/sh -c/, $_} mrc '^(?:sh|\$):(.*)';
 deflong 'stream/fs', pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
                           alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+deflong 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
+deflong 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
+deflong 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 10 core/stream/stream.sh
 
 
@@ -383,6 +399,28 @@ deflong 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 deflong 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
+2 core/row/lib
+row.pl
+row.sh
+10 core/row/row.pl
+
+package ni;
+use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
+defshort 'r', alt
+  pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
+  pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
+  pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),
+  pmap(sub {sh ['ni_rmatch',  $_], prefix => row_pre}, pn 1, mr '^/',  regex),
+  pmap(sub {sh ['ni_rsample', $_], prefix => row_pre}, mr '^\.\d+'),
+  pmap(sub {sh 'head', '-n', $_},                      alt neval, integer);
+7 core/row/row.sh
+
+ni_revery()  { perl -ne 'print unless $. % '"$1"; }
+ni_rmatch()  { perl -ne 'print if /'"$1"/; }
+
+ni_rsample() { perl -ne '
+  BEGIN {srand($ENV{NI_SEED} || 42)}
+  if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
 2 core/pl/lib
 util.pm
 math.pm

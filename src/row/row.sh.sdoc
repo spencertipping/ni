@@ -9,5 +9,6 @@ ni_rmatch()  { perl -ne 'print if /'"$1"/; }
 Row sampling is done using a Poisson process, which takes rand() out of the
 line of fire. This is particularly useful for sparse samplings.
 
-ni_rsample() { perl -ne 'BEGIN {srand($ENV{NI_SEED} || 42)}
-                         if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
+ni_rsample() { perl -ne '
+  BEGIN {srand($ENV{NI_SEED} || 42)}
+  if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }

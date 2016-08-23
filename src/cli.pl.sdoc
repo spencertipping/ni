@@ -136,20 +136,8 @@ EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 CLI option parsing.
-%syntax_elements is an alias table so we can describe operator syntax using
-just strings. %operator_syntax maps short operator letters to a parser for
-their arguments (if any); for example:
-
-| use constant takespec => mr '^\d+|^\+\d+';
-  $operators{T} = psh 'head', pmap {("-m", $_)} takespec;
-
-Quasifiles are parsed with early preference using subs from
-@quasifile_parsers; functionally it's interpreted as a choice that happens
-_before_ option parsing happens. This means that in the event of something
-ambiguous, e.g. `ni f00`, where `f00` is the name of a file, the file
-interpretation will be preferred. If you want to force the option
-interpretation, you need to say `ni -f00` (provided that `-f00` isn't itself a
-file).
+Long parsers are preferred to short parsers; shorts are a single character
+each, whereas longs can have arbitrary form.
 
 our %short;
 our @long;
