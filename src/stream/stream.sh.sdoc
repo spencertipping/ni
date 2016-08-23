@@ -1,6 +1,3 @@
-#!/bin/sh
-# ni POSIX-shell library functions
-
 Stream shell functions.
 These are called by pipelines to simplify things. For example, a common
 operation is to append the output of some data-producing command:
@@ -14,74 +11,10 @@ shell pipe).
 ni_append()  { cat; "$@"; }
 ni_prepend() { "$@"; cat; }
 
-Compressed file support.
-This provides a shell command you can use to read the contents of a compressed
-file as though it weren't compressed. It's implemented as a filter process so
-we don't need to rely on file extensions.
+ni_append_hd()  { cat <&3; "$@"; }
+ni_prepend_hd() { "$@"; cat <&3; }
 
-We detect the following file formats:
-
-| gzip:  1f 8b
-  bzip2: BZh\0
-  7z:    37 7A BC AF 27 1C
-  lzop:  89 4c 5a 4f
-  lz4:   04 22 4d 18
-  tar:   75 73 74 61 72 00 30 30  | <- both for tar, at byte 257
-  tar:   75 73 74 61 72 20 20 00  |
-  zip:   50 4b 03 04
-  xz:    fd 37 7a 58 5a
-
-Decoding works by reading enough to decode the magic, then forwarding data
-into the appropriate decoding process (or doing nothing if we don't know what
-the data is).
-
-Archives are conditionally processed depending on what was requested. ni's
-grammar supports arbitrary suffixes following a `/` in a filename, which is
-passed into ni_cat() as $1. If specified, the suffix specifies which entry in
-the archive should be retrieved.
-
-ni_cat() {
-  # TODO: nested decoding, e.g. for .tar.gz?
-  for f; do
-    perl -e '
-      sysread STDIN, $_, 8192;
-      my $decoder = /^\x1f\x8b/             ? "gzip -dc"
-                  : /^BZh\0/                ? "bzip2 -dc"
-                  : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
-                  : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
-                  : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
-      if (defined $decoder) {
-        open FH, "| $decoder" or die "ni_cat: failed to open $decoder";
-        syswrite FH, $_;
-        syswrite FH, $_ while sysread STDIN, $_, 8192;
-        close STDIN;
-        close FH;
-        exit 0;
-      }
-
-      my $archiver = /^\x50\x4b\x03\x04/              ? "zip"
-                   : /^[\s\S]{257}ustar(\x0000|  \0)/ ? "tar" : undef;
-      if (defined $archiver) {
-        ;
-        exit 0;
-      }
-
-      syswrite STDOUT, $_;
-      syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
-    ' < "$f"
-  done
-}
-
-Directory functions.
-Mainly just a way to list the contents of a directory in a "stable" way: that
-is, one that ni can then read if you tell it to.
-
-ni_ls() {
-  for d; do
-    ls "$d" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
-                        print "$prefix/$_"' "$d"
-  done
-}
+ni_pipe() { eval "$1" | eval "$2"; }
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might

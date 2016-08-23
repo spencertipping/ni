@@ -25,18 +25,14 @@ resource cli.pl
 resource sh.pl
 resource main.pl
 lib core/gen
-lib core/meta
 lib core/stream
+lib core/meta
 lib core/pl
-11 util.pl
+7 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
-sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
-                                 ? "'" . sgr($_, qr/'/, "'\\''") . "'"
-                                 : $_,
-                           map 'ARRAY' eq ref $_ ? shell_quote(@$_) : $_, @_}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
@@ -164,22 +160,59 @@ use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
 use constant cli_d  => ops;
-25 sh.pl
+68 sh.pl
 
 
 
 
 package ni;
-our @sh_libs;
-sub sh  {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                           ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                           : $_,
+                     map 'ARRAY' eq ref $_ ? quote(@$_) : $_, @_}
+
+
+
+
+
+sub collect_nested_invocations {
+  local $_;
+  my ($options, @xs) = @_;
+  map {
+    my $c = $_;
+    if ('HASH' eq ref $c) {
+      if (exists $$c{stdin}) {
+        die "ni sh: only one stdin redirection is allowed for a subquoted "
+          . "command: " . quote(@{$$c{exec}}) if exists $$options{stdin};
+        $$options{stdin} = $$c{stdin};
+      }
+      if (exists $$c{prefix}) {
+        my $p = $$c{prefix};
+        $$options{prefix}{$_} = $$p{$_} for keys %$p;
+      }
+      [collect_nested_invocations($options, @{$$c{exec}})];
+    } elsif ('ARRAY' eq ref $c) {
+      [collect_nested_invocations($options, @$c)];
+    } else {
+      $c;
+    }
+  } @xs;
+}
+sub sh {
+  return {exec => [@_]} unless ref $_[0];
+  my ($c, %o) = @_;
+  my ($exec) = collect_nested_invocations \%o, $c;
+  +{exec => $exec, %o};
+}
 sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
-sub pipeline_prefix() {join "\n", @self{@sh_libs}}
+sub sh_prefix() {join "\n", @self{@sh_libs}}
 sub pipeline {
+  my %ps;
   my @cs;
   my @hs;
   for (@_) {
-    my $c = shell_quote @{$$_{exec}};
+    my $c = quote @{$$_{exec}};
     if (exists $$_{stdin}) {
       my $h = heredoc_for $$_{stdin};
       push @cs, "$c 3<&0 <<'$h'";
@@ -187,10 +220,16 @@ sub pipeline {
     } else {
       push @cs, $c;
     }
+    if (exists $$_{prefix}) {
+      my $p = $$_{prefix};
+      $ps{$_} = $$p{$_} for keys %$p;
+    }
   }
-  join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
+  join '', map "$_\n", values %ps,
+                       join("\\\n| ", @cs),
+                       @hs;
 }
-46 main.pl
+50 main.pl
 
 package ni;
 use constant exit_success      => 0;
@@ -198,12 +237,16 @@ use constant exit_run_error    => 1;
 use constant exit_nop          => 2;
 use constant exit_sigchld_fail => 3;
 our %option_handlers;
+our @pipeline_prefix = sh 'true';
+our @pipeline_suffix = ();
 sub parse_ops {
+  return () unless @_;
   my ($parsed) = cli->(@_);
   return @$parsed if ref $parsed && @$parsed;
   my (undef, @rest) = cli_d->(@_);
   die "failed to parse " . join ' ', @rest;
 }
+sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
 sub run_sh {
   open SH, '| sh'   or
   open SH, '| ash'  or
@@ -212,7 +255,7 @@ sub run_sh {
   syswrite SH, $_[0]
     or die "ni: could not write compiled pipeline to shell process: $!";
   unless (-t STDIN) {
-    syswrite SH, $_ while sysread STDIN, $_, 32768;
+    syswrite SH, $_ while sysread STDIN, $_, 8192;
   }
   close STDIN;
   close SH;
@@ -229,13 +272,13 @@ $option_handlers{usage} = sub {print $help_topics{usage}, "\n"; exit_nop};
 $option_handlers{help}
   = sub {print $help_topics{@_ ? $_[0] : 'ni'}, "\n"; exit_nop};
 $option_handlers{explain} = sub {TODO()};
-$option_handlers{compile} = sub {print pipeline(parse_ops @_), "\n"; exit_nop};
+$option_handlers{compile} = sub {print sh_code @_; exit_nop};
 sub main {
   my ($command, @args) = @ARGV;
   $command = '--help' if $command eq '-h';
   my $h = $command =~ s/^--// && $option_handlers{$command};
   return &$h(@args) if $h;
-  run_sh pipeline_prefix . "\n" . pipeline parse_ops @ARGV;
+  run_sh sh_code @ARGV;
 }
 1 core/gen/lib
 gen.pl
@@ -255,74 +298,84 @@ sub gen {
     join '', @r;
   };
 }
-1 core/meta/lib
-meta.pl
-6 core/meta/meta.pl
-
-package ni;
-deflong 'meta/self',
-  pmap {sh ['ni_append', 'cat'], stdin => read_map 'ni.map'} mr '^//ni/self';
-deflong 'meta/map',
-  pmap {sh ['ni_append', 'cat'], stdin => $self{'ni.map'}} mr '^//ni/map';
-2 core/stream/lib
+4 core/stream/lib
+cat.pm
+decode.pm
 stream.pl
 stream.sh
-4 core/stream/stream.pl
+13 core/stream/cat.pm
+
+while (@ARGV) {
+  my $f = shift @ARGV;
+  if (-d $f) {
+    opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
+    print "$f/$_\n" for sort grep $_ ne '.' && $_ ne '..', readdir $d;
+    closedir $d;
+  } else {
+    open F, '<', $f or die "ni_cat: failed to open $f: $!";
+    syswrite STDOUT, $_ while sysread F, $_, 8192;
+    close F;
+  }
+}
+19 core/stream/decode.pm
+
+
+
+
+sysread STDIN, $_, 8192;
+my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+            : /^BZh\0/                ? "bzip2 -dc"
+            : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+            : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+            : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+if (defined $decoder) {
+  open FH, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
+  syswrite FH, $_;
+  syswrite FH, $_ while sysread STDIN, $_, 8192;
+  close FH;
+} else {
+  syswrite STDOUT, $_;
+  syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
+}
+19 core/stream/stream.pl
+
 package ni;
-push @sh_libs, 'core/stream/stream.sh';
-deflong 'ifile', ptag 'ni_append', 'ni_cat', pif {-e} mrc '^[^]]*';
-deflong 'idir',  ptag 'ni_append', 'ni_ls',  pif {-d} mrc '^[^]]*';
-50 core/stream/stream.sh
-#!/bin/sh
-# ni POSIX-shell library functions
+use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
+use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
+sub perl_fn_dep($$) {+{$_[0] => perl_fn->(name => $_[0],
+                                          code => quote $self{$_[1]})}}
+sub ni_cat($) {sh ['ni_cat', $_[0]], prefix => perl_fn_dep('ni_cat', 'core/stream/cat.pm')}
+sub ni_decode {sh ['ni_decode'],     prefix => perl_fn_dep('ni_decode', 'core/stream/decode.pm')}
+sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
+sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
+                                  prefix => stream_sh}
+sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
+sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
+                                            prefix => stream_sh}
+@pipeline_prefix = ni_decode;
+@pipeline_suffix = ni_pager;
+deflong 'stream/sh', pmap {ni_append qw/sh -c/, $_} mrc '^(?:sh|\$):(.*)';
+deflong 'stream/fs', pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
+                          alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+10 core/stream/stream.sh
 
 
 
 ni_append()  { cat; "$@"; }
 ni_prepend() { "$@"; cat; }
-
-
-
-
-
-ni_cat() {
-  # TODO: nested decoding, e.g. for .tar.gz?
-  for f; do
-    perl -e '
-      sysread STDIN, $_, 8192;
-      my $decoder = /^\x1f\x8b/             ? "gzip -dc"
-                  : /^BZh\0/                ? "bzip2 -dc"
-                  : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
-                  : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
-                  : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
-      if (defined $decoder) {
-        open FH, "| $decoder" or die "ni_cat: failed to open $decoder";
-        syswrite FH, $_;
-        syswrite FH, $_ while sysread STDIN, $_, 8192;
-        close STDIN;
-        close FH;
-        exit 0;
-      }
-      my $archiver = /^\x50\x4b\x03\x04/              ? "zip"
-                   : /^[\s\S]{257}ustar(\x0000|  \0)/ ? "tar" : undef;
-      if (defined $archiver) {
-        ;
-        exit 0;
-      }
-      syswrite STDOUT, $_;
-      syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
-    ' < "$f"
-  done
-}
-
-ni_ls() {
-  for d; do
-    ls "$d" | perl -ne 'BEGIN {($prefix = shift @ARGV) =~ s/\/+$//}
-                        print "$prefix/$_"' "$d"
-  done
-}
+ni_append_hd()  { cat <&3; "$@"; }
+ni_prepend_hd() { "$@"; cat <&3; }
+ni_pipe() { eval "$1" | eval "$2"; }
 
 ni_pager() { ${NI_PAGER:-less} || more || cat; }
+1 core/meta/lib
+meta.pl
+5 core/meta/meta.pl
+
+package ni;
+deflong 'meta/self', pmap {ni_verb read_map 'ni.map'} mr '^//ni';
+deflong 'meta/keys', pmap {ni_verb join "\n", @keys}  mr '^//ni/';
+deflong 'meta/get',  pmap {ni_verb $self{$_}}         mr '^//ni/([^]]+)';
 2 core/pl/lib
 util.pm
 math.pm

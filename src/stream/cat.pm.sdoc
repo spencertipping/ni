@@ -1,0 +1,17 @@
+Perl code for the ni_cat function.
+ni_cat exists to turn filesystem objects into text. Files are emitted and
+directories are turned into listings. This code isn't evaluated into ni;
+instead, it's used as a library and inserted via -e into a perl interpreter.
+
+while (@ARGV) {
+  my $f = shift @ARGV;
+  if (-d $f) {
+    opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
+    print "$f/$_\n" for sort grep $_ ne '.' && $_ ne '..', readdir $d;
+    closedir $d;
+  } else {
+    open F, '<', $f or die "ni_cat: failed to open $f: $!";
+    syswrite STDOUT, $_ while sysread F, $_, 8192;
+    close F;
+  }
+}

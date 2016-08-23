@@ -3,8 +3,6 @@ Long options to access ni's internal state.
 
 package ni;
 
-deflong 'meta/self',
-  pmap {sh ['ni_append', 'cat'], stdin => read_map 'ni.map'} mr '^//ni/self';
-
-deflong 'meta/map',
-  pmap {sh ['ni_append', 'cat'], stdin => $self{'ni.map'}} mr '^//ni/map';
+deflong 'meta/self', pmap {ni_verb read_map 'ni.map'} mr '^//ni';
+deflong 'meta/keys', pmap {ni_verb join "\n", @keys}  mr '^//ni/';
+deflong 'meta/get',  pmap {ni_verb $self{$_}}         mr '^//ni/([^]]+)';

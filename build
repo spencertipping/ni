@@ -3,14 +3,16 @@
 # and then by telling it to add modules. core/ is symlinked to gen/, which is
 # produced by ./boot.
 
+cd $(dirname $0)
+
 ./boot
 ./ni --internal/lib core/gen
-./ni --internal/lib core/meta
 ./ni --internal/lib core/stream
+./ni --internal/lib core/meta
 
 ./ni --internal/lib core/pl
 
-if [[ `./ni //ni/self` != "$(< ni)" ]]; then
+if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1
 fi

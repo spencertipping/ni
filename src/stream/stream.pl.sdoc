@@ -1,6 +1,31 @@
+Streaming data sources.
+Common ways to read data, most notably from files and directories. Also
+included are numeric generators, shell commands, etc. Most of the functionality
+here is implemented by stream.sh.
+
 package ni;
 
-push @sh_libs, 'core/stream/stream.sh';
+use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
+use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
 
-deflong 'ifile', ptag 'ni_append', 'ni_cat', pif {-e} mrc '^[^]]*';
-deflong 'idir',  ptag 'ni_append', 'ni_ls',  pif {-d} mrc '^[^]]*';
+sub perl_fn_dep($$) {+{$_[0] => perl_fn->(name => $_[0],
+                                          code => quote $self{$_[1]})}}
+
+sub ni_cat($) {sh ['ni_cat', $_[0]], prefix => perl_fn_dep('ni_cat', 'core/stream/cat.pm')}
+sub ni_decode {sh ['ni_decode'],     prefix => perl_fn_dep('ni_decode', 'core/stream/decode.pm')}
+
+sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
+
+sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
+                                  prefix => stream_sh}
+
+sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
+sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
+                                            prefix => stream_sh}
+
+@pipeline_prefix = ni_decode;
+@pipeline_suffix = ni_pager;
+
+deflong 'stream/sh', pmap {ni_append qw/sh -c/, $_} mrc '^(?:sh|\$):(.*)';
+deflong 'stream/fs', pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
+                          alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
