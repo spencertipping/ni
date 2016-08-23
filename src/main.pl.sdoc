@@ -9,26 +9,20 @@ use constant exit_run_error    => 1;
 use constant exit_nop          => 2;
 use constant exit_sigchld_fail => 3;
 
-sub je($);
+our %option_handlers;
 
-sub real_pipeline {compile_pipeline @_, -t STDOUT ? ('pager') : ()}
-
-sub usage() {print $self{'doc/usage'}; exit_nop}
-sub explain {print je [@_], "\n";      exit_nop}
-sub compile {print real_pipeline @_;   exit_nop}
-
-sub parse {
+sub parse_ops {
   my ($parsed) = cli->(@_);
   return @$parsed if ref $parsed && @$parsed;
   my (undef, @rest) = cli_d->(@_);
   die "failed to parse " . join ' ', @rest;
 }
 
-sub shell {
+sub run_sh {
   open SH, '| sh'   or
   open SH, '| ash'  or
   open SH, '| dash' or
-  open SH, '| bash' or die "ni: could not open any POSIX sh: $!";
+  open SH, '| bash' or die "ni: could not run any POSIX sh: $!";
 
   syswrite SH, $_[0]
     or die "ni: could not write compiled pipeline to shell process: $!";
@@ -41,10 +35,31 @@ sub shell {
   0;
 }
 
-sub main {
-  return usage if !@_ || $_[0] eq '-h' || $_[0] eq '--help';
+Internal and debugging options.
+A handful of things useful for ni development. These are also present in the
+final image.
 
-  return explain parse @_[1..$#_] if $_[0] eq '--explain';
-  return compile parse @_[1..$#_] if $_[0] eq '--compile';
-  return shell real_pipeline parse @_;
+$option_handlers{'internal/eval'}
+  = sub {eval "package ni; $_[0]"; die $@ if $@; exit_success};
+
+$option_handlers{'internal/lib'}
+  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\nlib $_[0]";
+         modify_self 'ni.map'};
+
+Documentation options.
+Options for the end user that can't otherwise be parsed as pipelines.
+
+$option_handlers{usage} = sub {print $help_topics{usage}, "\n"; exit_nop};
+$option_handlers{help}
+  = sub {print $help_topics{@_ ? $_[0] : 'ni'}, "\n"; exit_nop};
+
+$option_handlers{explain} = sub {TODO()};
+$option_handlers{compile} = sub {print pipeline(parse_ops @_), "\n"; exit_nop};
+
+sub main {
+  my ($command, @args) = @ARGV;
+  $command = '--help' if $command eq '-h';
+  my $h = $command =~ s/^--// && $option_handlers{$command};
+  return &$h(@args) if $h;
+  run_sh pipeline(parse_ops @ARGV);
 }

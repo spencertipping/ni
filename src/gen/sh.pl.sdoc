@@ -1,0 +1,41 @@
+Self-contained POSIX shell tasks.
+Compiling a shell pipeline is not entirely trivial for a couple of reasons. One
+is that we have to be parsimonious about argv lengths to avoid hitting the
+upper limit (as low as 4k, potentially, though realistically at least 20k). The
+other is that some commands require heredocs, which in turn require unique
+terminators and some creative stdin redirection. Rather than managing these
+details by hand, you can instead use the `sh` function:
+
+| my $seq      = sh 'seq', 10;
+  my $perl_cat = sh ['perl', '-n'], stdin => <<EOF
+    open my $fh, "<&=", 3;              # old stdin is now redirected to fd 3
+    print while <$fh>;
+  EOF
+  my $pipeline = pipeline $seq, $perl_cat;
+
+Now you can write `$pipeline` into a `/bin/sh` process to execute it.
+
+NOTE: unlike system(), exec(), etc, if you say sh('ls -lh'), this will try to
+execute the "ls -lh" command rather than interpreting "-lh" as an argument.
+
+package ni;
+
+sub sh {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+
+sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+
+sub pipeline {
+  my @cs;
+  my @hs;
+  for (@_) {
+    my $c = shell_quote @{$$_{exec}};
+    if (exists $$_{stdin}) {
+      my $h = heredoc_for $$_{stdin};
+      push @cs, "$c 3<&0 <<'$h'";
+      push @hs, "$$_{stdin}\n$h";
+    } else {
+      push @cs, $c;
+    }
+  }
+  join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
+}

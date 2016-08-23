@@ -85,20 +85,7 @@ ni_ls() {
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might
-not have any, but if we do, we make them available under the 'pager' function.
+not have any, but if we do, we make them available under the 'ni_pager'
+function.
 
-ni_pager() { less || more || cat; }
-
-Row-selection functions.
-Wrappers to select specific rows from a stream. This implements the `r`
-command. Note that it's faster (and more powerful) to use perl than grep for
-regex matching, at least last time I tested it.
-
-ni_revery()  { perl -ne 'print unless $. % '"$1"; }
-ni_rmatch()  { perl -ne 'print if /'"$1"/; }
-
-Row sampling is done using a Poisson process, which takes rand() out of the
-line of fire. This is particularly useful for sparse samplings.
-
-ni_rsample() { perl -ne 'BEGIN {srand(42)}
-                         if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
+ni_pager() { ${NI_PAGER:-less} || more || cat; }

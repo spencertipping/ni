@@ -1,3 +1,6 @@
 #!/bin/bash
 ./boot
 ./ni --internal/lib core/stream
+./ni --internal/lib core/gen
+
+wc -c ni
