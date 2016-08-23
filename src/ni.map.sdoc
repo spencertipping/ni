@@ -14,5 +14,6 @@ resource ni.map
 resource util.pl
 resource self.pl
 resource cli.pl
+resource sh.pl
 
 resource main.pl

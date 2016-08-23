@@ -13,7 +13,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-13 ni.map
+14 ni.map
 
 
 unquote ni
@@ -22,6 +22,7 @@ resource ni.map
 resource util.pl
 resource self.pl
 resource cli.pl
+resource sh.pl
 resource main.pl
 lib core/gen
 lib core/meta
@@ -163,6 +164,32 @@ use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
 use constant ops    => rep op;
 use constant cli    => pn 0, ops, end_of_argv;
 use constant cli_d  => ops;
+25 sh.pl
+
+
+
+
+package ni;
+our @sh_libs;
+sub sh  {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
+sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub pipeline_prefix() {join "\n", @self{@sh_libs}}
+sub pipeline {
+  my @cs;
+  my @hs;
+  for (@_) {
+    my $c = shell_quote @{$$_{exec}};
+    if (exists $$_{stdin}) {
+      my $h = heredoc_for $$_{stdin};
+      push @cs, "$c 3<&0 <<'$h'";
+      push @hs, "$$_{stdin}\n$h";
+    } else {
+      push @cs, $c;
+    }
+  }
+  join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
+}
 46 main.pl
 
 package ni;
@@ -208,11 +235,10 @@ sub main {
   $command = '--help' if $command eq '-h';
   my $h = $command =~ s/^--// && $option_handlers{$command};
   return &$h(@args) if $h;
-  run_sh pipeline(parse_ops @ARGV);
+  run_sh pipeline_prefix . "\n" . pipeline parse_ops @ARGV;
 }
-2 core/gen/lib
+1 core/gen/lib
 gen.pl
-sh.pl
 15 core/gen/gen.pl
 
 
@@ -229,30 +255,6 @@ sub gen {
     join '', @r;
   };
 }
-23 core/gen/sh.pl
-
-
-
-
-package ni;
-sub sh  {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
-sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
-sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
-sub pipeline {
-  my @cs;
-  my @hs;
-  for (@_) {
-    my $c = shell_quote @{$$_{exec}};
-    if (exists $$_{stdin}) {
-      my $h = heredoc_for $$_{stdin};
-      push @cs, "$c 3<&0 <<'$h'";
-      push @hs, "$$_{stdin}\n$h";
-    } else {
-      push @cs, $c;
-    }
-  }
-  join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
-}
 1 core/meta/lib
 meta.pl
 6 core/meta/meta.pl
@@ -265,8 +267,9 @@ deflong 'meta/map',
 2 core/stream/lib
 stream.pl
 stream.sh
-3 core/stream/stream.pl
+4 core/stream/stream.pl
 package ni;
+push @sh_libs, 'core/stream/stream.sh';
 deflong 'ifile', ptag 'ni_append', 'ni_cat', pif {-e} mrc '^[^]]*';
 deflong 'idir',  ptag 'ni_append', 'ni_ls',  pif {-d} mrc '^[^]]*';
 50 core/stream/stream.sh

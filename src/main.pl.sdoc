@@ -61,5 +61,5 @@ sub main {
   $command = '--help' if $command eq '-h';
   my $h = $command =~ s/^--// && $option_handlers{$command};
   return &$h(@args) if $h;
-  run_sh pipeline(parse_ops @ARGV);
+  run_sh pipeline_prefix . "\n" . pipeline parse_ops @ARGV;
 }

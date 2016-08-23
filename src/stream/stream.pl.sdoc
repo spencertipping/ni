@@ -1,4 +1,6 @@
 package ni;
 
+push @sh_libs, 'core/stream/stream.sh';
+
 deflong 'ifile', ptag 'ni_append', 'ni_cat', pif {-e} mrc '^[^]]*';
 deflong 'idir',  ptag 'ni_append', 'ni_ls',  pif {-d} mrc '^[^]]*';

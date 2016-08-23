@@ -1,101 +1,46 @@
-POSIX shell command generation.
-ni stream operators end up being compiled down to POSIX shell commands and
-piped into a shell process. This way you can compile a ni pipeline and execute
-it later in an environment that doesn't have ni or even perl, for example.
+Self-contained POSIX shell tasks.
+Compiling a shell pipeline is not entirely trivial for a couple of reasons. One
+is that we have to be parsimonious about argv lengths to avoid hitting the
+upper limit (as low as 4k, potentially, though realistically at least 20k). The
+other is that some commands require heredocs, which in turn require unique
+terminators and some creative stdin redirection. Rather than managing these
+details by hand, you can instead use the `sh` function:
 
-Conceptually this is all straightforward: we just need a function that takes a
-parsed CLI option and produces the shell command for it. In practice there are
-some surrounding complexities:
+| my $seq      = sh 'seq', 10;
+  my $perl_cat = sh ['perl', '-n'], stdin => <<EOF
+    open my $fh, "<&=", 3;              # old stdin is now redirected to fd 3
+    print while <$fh>;
+  EOF
+  my $pipeline = pipeline $seq, $perl_cat;
 
-| 1. Some processes require configuration via stdin; for example, Ruby if
-     we want to preload a library like spreadsheet.rb without writing to the
-     filesystem (since spreadsheet.rb is probably too big for the command
-     line).
-  2. We want data and bandwidth monitoring at each pipeline stage, as well as
-     bottleneck detection. This means we need to insert filter processes.
-  3. Sometimes we'll have command failovers and such, e.g. if /usr/bin/less is
-     unavailable.
+Now you can write `$pipeline` into a `/bin/sh` process to execute it.
 
-Constraint (1) means we'll need to compile a whole pipeline, not just an
-individual command. (2) and (3) can be done by modifying the pipeline before
-we compile it.
+NOTE: unlike system(), exec(), etc, if you say sh('ls -lh'), this will try to
+execute the "ls -lh" command rather than interpreting "-lh" as an argument.
 
 package ni;
 
-Simple constructors.
-Constructors for straightforward pipeline elements.
+our @sh_libs;
 
+sub sh  {ref $_[0] ? {exec => $_[0], @_[1..$#_]} : {exec => [@_]}}
+sub psh {my (@sh) = @_; pmap {sh @sh, ref $_ ? @$_ : ($_)} pop @sh}
 
-sub sh {+{id => shell_quote(@_), exec => [@_]}}
+sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 
-Pipeline data format.
-Pipelines can be described as JSON arrays of command objects. The schema looks
-like this:
+sub pipeline_prefix() {join "\n", @self{@sh_libs}}
 
-| pipeline = [command1, command2, ...]
-  command = {
-    id: "ls -l foo",
-    exec: ["/bin/sh", "-c", ["/bin/ls", "-l", "/tmp/foo"]],
-    env: {"HOME": "/home/spencer"},
-    stdin: "heredoc-string ...",                // large string
-    files: {
-      "/tmp/foo": "file-contents...",           // large string
-      ...
-    },
-    meta: {
-      // random stuff
+sub pipeline {
+  my @cs;
+  my @hs;
+  for (@_) {
+    my $c = shell_quote @{$$_{exec}};
+    if (exists $$_{stdin}) {
+      my $h = heredoc_for $$_{stdin};
+      push @cs, "$c 3<&0 <<'$h'";
+      push @hs, "$$_{stdin}\n$h";
+    } else {
+      push @cs, $c;
     }
   }
-
-The `exec` list is really a string, but with the exception that any array will
-have each entry shell-quoted. You can nest arrays if you want a string of
-shell-quoted sub-items, etc. The only reason it's done this way is to make
-pipeline metaprogramming easier; otherwise you'd have to implement a
-shell-unquoter if you wanted to know the arguments to a command.
-
-use constant none => {};
-
-sub heredoc_terminator {
-  my $id = 0;
-  ++$id while $_[1] =~ /^_$_[0]_$id$/m;
-  "_$_[0]_$id";
-}
-
-sub compile_pipeline {
-  my %file_inits;
-  my @commands;
-  my @heredocs;
-
-  for my $i (0..$#_) {
-    my $c = $_[$i];
-    $c = {id => $c, exec => [$c]} unless ref $c;
-
-    exists $c->{$_} or die "compile_pipeline: must specify $_" for qw/exec id/;
-
-    my $redirections;
-    if (exists $c->{stdin}) {
-      my $h = heredoc_terminator $i, $c->{stdin};
-      push @heredocs, "$c->{stdin}\n$h";
-      $redirections = "3<&0 <<\'$h\'";
-    }
-
-    $file_inits{$_} = $c->{files}{$_} for keys %{$c->{files} || none};
-    my @env = map "$_=" . shell_quote($c->{env}{$_}), keys %{$c->{env} || none};
-    push @commands, join " ", @env, shell_quote(@{$c->{exec}}), $redirections;
-  }
-
-  my $mkdirs = keys %file_inits
-               ? 'mkdir -p ' . shell_quote map /^(.*)\/[^\/]*$/,
-                                           keys %file_inits
-               : '';
-
-  my $cats   = join "\n", map {
-                 my $h = heredoc_terminator '', $file_inits{$_};
-                 "cat > " . shell_quote($_) . " <<'$h'\n$file_inits{$_}\n$h"
-               } keys %file_inits;
-
-  my $libs   = lib 'sh';
-  my $pipe   = join "\\\n  | ", @commands;
-  my $docs   = join "\n", @heredocs;
-  join "\n", $libs, $mkdirs, $cats, $pipe, $docs;
+  join("\\\n\t| ", @cs) . "\n" . join("\n", @hs);
 }

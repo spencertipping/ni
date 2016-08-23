@@ -10,4 +10,9 @@
 
 ./ni --internal/lib core/pl
 
+if [[ `./ni //ni/self` != "$(< ni)" ]]; then
+  echo "ni is unstable under replication" >&2
+  exit 1
+fi
+
 wc -c ni
