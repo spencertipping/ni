@@ -36,20 +36,21 @@ sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
-27 self.pl
+29 self.pl
 
 package ni;
 sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;
                 map_r "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
-sub read_map {join "\n", (map {my ($c, @a) = split /\s+/;
-                                 $c eq 'unquote'     ? map_u @a
-                               : $c eq 'resource'    ? map_r @a
-                               : $c =~ /^lib$|^ext$/ ? map_l @a
-                               : die "ni: unknown map command+args: $c @a"}
-                          grep {s/#.*//g; length}
-                          map split(/\n/), @self{@_}), "__END__"}
+sub read_map {join '', map "$_\n",
+                       (map {my ($c, @a) = split /\s+/;
+                               $c eq 'unquote'     ? map_u @a
+                             : $c eq 'resource'    ? map_r @a
+                             : $c =~ /^lib$|^ext$/ ? map_l @a
+                             : die "ni: unknown map command+args: $c @a"}
+                        grep {s/#.*//g; length}
+                        map split(/\n/), @self{@_}), "__END__"}
 sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_"
                    for grep length,
                        split /\n/, ($self{"$_[0]/lib"} = rfc "$_[0]/lib")}
@@ -64,6 +65,7 @@ sub extend_self($) {
   intern_lib $_[0];
   modify_self 'ni.map';
 }
+sub image {read_map 'ni.map'}
 95 cli.pl
 
 package ni;
@@ -337,15 +339,18 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-19 core/stream/stream.pl
+22 core/stream/stream.pl
 
 package ni;
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
 use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
-sub perl_fn_dep($$) {+{$_[0] => perl_fn->(name => $_[0],
-                                          code => quote $self{$_[1]})}}
-sub ni_cat($) {sh ['ni_cat', $_[0]], prefix => perl_fn_dep('ni_cat', 'core/stream/cat.pm')}
-sub ni_decode {sh ['ni_decode'],     prefix => perl_fn_dep('ni_decode', 'core/stream/decode.pm')}
+use constant perl_ifn  => gen "%name() { perl - \"\$@\" <<'%hd'; }\n%code\n%hd";
+sub perl_fn_dep($$)
+{+{$_[0] => perl_fn->(name => $_[0], code => quote $self{$_[1]})}}
+sub perl_stdin_fn_dep($$)
+{+{$_[0] => perl_ifn->(name => $_[0], code => $_[1], hd => heredoc_for $_[1])}}
+sub ni_cat($)     {sh ['ni_cat', $_[0]], prefix => perl_fn_dep 'ni_cat',    'core/stream/cat.pm'}
+sub ni_decode(;$) {sh ['ni_decode', @_], prefix => perl_fn_dep 'ni_decode', 'core/stream/decode.pm'}
 sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
 sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
                                   prefix => stream_sh}
@@ -370,12 +375,14 @@ ni_pipe() { eval "$1" | eval "$2"; }
 ni_pager() { ${NI_PAGER:-less} || more || cat; }
 1 core/meta/lib
 meta.pl
-5 core/meta/meta.pl
+7 core/meta/meta.pl
 
 package ni;
-deflong 'meta/self', pmap {ni_verb read_map 'ni.map'} mr '^//ni';
-deflong 'meta/keys', pmap {ni_verb join "\n", @keys}  mr '^//ni/';
-deflong 'meta/get',  pmap {ni_verb $self{$_}}         mr '^//ni/([^]]+)';
+deflong 'meta/self', pmap {ni_verb image}            mr '^//ni';
+deflong 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
+deflong 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
+deflong 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
 2 core/pl/lib
 util.pm
 math.pm

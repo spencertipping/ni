@@ -1,8 +1,13 @@
 Image-related data sources.
-Long options to access ni's internal state.
+Long options to access ni's internal state. Also the ability to instantiate ni
+within a shell process.
 
 package ni;
 
-deflong 'meta/self', pmap {ni_verb read_map 'ni.map'} mr '^//ni';
-deflong 'meta/keys', pmap {ni_verb join "\n", @keys}  mr '^//ni/';
-deflong 'meta/get',  pmap {ni_verb $self{$_}}         mr '^//ni/([^]]+)';
+deflong 'meta/self', pmap {ni_verb image}            mr '^//ni';
+deflong 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
+deflong 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+
+sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
+
+deflong 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;

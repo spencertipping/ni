@@ -9,13 +9,14 @@ sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{
 sub map_l {map {my $l = $_;
                 map_r "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
 
-sub read_map {join "\n", (map {my ($c, @a) = split /\s+/;
-                                 $c eq 'unquote'     ? map_u @a
-                               : $c eq 'resource'    ? map_r @a
-                               : $c =~ /^lib$|^ext$/ ? map_l @a
-                               : die "ni: unknown map command+args: $c @a"}
-                          grep {s/#.*//g; length}
-                          map split(/\n/), @self{@_}), "__END__"}
+sub read_map {join '', map "$_\n",
+                       (map {my ($c, @a) = split /\s+/;
+                               $c eq 'unquote'     ? map_u @a
+                             : $c eq 'resource'    ? map_r @a
+                             : $c =~ /^lib$|^ext$/ ? map_l @a
+                             : die "ni: unknown map command+args: $c @a"}
+                        grep {s/#.*//g; length}
+                        map split(/\n/), @self{@_}), "__END__"}
 
 sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_"
                    for grep length,
@@ -33,3 +34,5 @@ sub extend_self($) {
   intern_lib $_[0];
   modify_self 'ni.map';
 }
+
+sub image {read_map 'ni.map'}
