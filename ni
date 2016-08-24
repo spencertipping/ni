@@ -68,7 +68,7 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-93 cli.pl
+92 cli.pl
 
 package ni;
 
@@ -140,28 +140,27 @@ ni: failed to get closing bracket count for perl code "$_[0]", possibly
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
-our %short;
-our @long;
-sub defshort($$) {$short{$_[0]} = $_[1]}
-sub deflong($$)  {unshift @long, $_[1]}
-
-
-
-
-
-
-
-
-sub ops() {sub {ops()->(@_)}}
-use constant long   => altr @long;
-use constant short  => chaltr %short;
-use constant lambda => alt mr '_', pn 1, mrc '\[', ops, mr '\]';
-use constant thing  => alt lambda, long, short;
-use constant suffix => rep thing, 1;
-use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
-use constant ops    => rep op;
-use constant cli    => pn 0, ops, end_of_argv;
-use constant cli_d  => ops;
+our %contexts;
+sub defcontext($) {
+  my $short = {};
+  my $long  = [];
+  my $r = $contexts{$_[0]} = {};
+  $$r{ops} = sub {$$r{ops}->(@_)};
+  $$r{longs}  = $long;
+  $$r{shorts} = $short;
+  $$r{long}   = altr @$long;
+  $$r{short}  = chaltr %$short;
+  $$r{lambda} = alt mr '_', pn 1, mrc '\[', $$r{ops}, mr '\]';
+  $$r{thing}  = alt $$r{lambda}, $$r{long}, $$r{short};
+  $$r{suffix} = rep $$r{thing}, 1;
+  $$r{op}     = pn 1, rep(consumed_opt), $$r{thing}, rep(consumed_opt);
+  $$r{ops}    = rep $$r{op};
+  $$r{cli}    = pn 0, $$r{ops}, end_of_argv;
+  $$r{cli_d}  = $$r{ops};
+}
+defcontext 'root';
+sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
+sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
 67 sh.pl
 
 
@@ -230,7 +229,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-50 main.pl
+52 main.pl
 
 package ni;
 use constant exit_success      => 0;
@@ -242,13 +241,15 @@ our @pipeline_prefix = sh 'true';
 our @pipeline_suffix = ();
 sub parse_ops {
   return () unless @_;
-  my ($parsed) = cli->(@_);
+  my ($parsed) = $contexts{root}{cli}->(@_);
   return @$parsed if ref $parsed && @$parsed;
-  my (undef, @rest) = cli_d->(@_);
+  my (undef, @rest) = $contexts{root}{cli_d}->(@_);
   die "failed to parse " . join ' ', @rest;
 }
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
 sub run_sh {
+  # TODO: fix fd stuff; right now the shell doesn't reliably redirect ambient
+  # stdin into the process
   open SH, '| sh'   or
   open SH, '| ash'  or
   open SH, '| dash' or
@@ -352,7 +353,7 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-25 core/stream/stream.pl
+27 core/stream/stream.pl
 
 package ni;
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
@@ -372,12 +373,14 @@ sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
 @pipeline_prefix = ni_decode;
 @pipeline_suffix = ni_pager;
-deflong 'stream/sh', pmap {ni_append qw/sh -c/, $_} mrc '^(?:sh|\$):(.*)';
-deflong 'stream/fs', pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
-                          alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
-deflong 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
-deflong 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
-deflong 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
+deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
+                             mrc '^(?:sh|\$):(.*)';
+deflong 'root', 'stream/fs',
+  pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
+  alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+deflong 'root', 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
+deflong 'root', 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
+deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 10 core/stream/stream.sh
 
 
@@ -394,11 +397,11 @@ meta.pl
 7 core/meta/meta.pl
 
 package ni;
-deflong 'meta/self', pmap {ni_verb image}            mr '^//ni';
-deflong 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
-deflong 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
+deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
+deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
-deflong 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
+deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
 2 core/row/lib
 row.pl
 row.sh
@@ -406,7 +409,7 @@ row.sh
 
 package ni;
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
-defshort 'r', alt
+defshort 'root', 'r', alt
   pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
   pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
   pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),

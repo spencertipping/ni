@@ -16,15 +16,17 @@ our @pipeline_suffix = ();
 
 sub parse_ops {
   return () unless @_;
-  my ($parsed) = cli->(@_);
+  my ($parsed) = $contexts{root}{cli}->(@_);
   return @$parsed if ref $parsed && @$parsed;
-  my (undef, @rest) = cli_d->(@_);
+  my (undef, @rest) = $contexts{root}{cli_d}->(@_);
   die "failed to parse " . join ' ', @rest;
 }
 
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
 
 sub run_sh {
+  # TODO: fix fd stuff; right now the shell doesn't reliably redirect ambient
+  # stdin into the process
   open SH, '| sh'   or
   open SH, '| ash'  or
   open SH, '| dash' or

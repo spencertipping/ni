@@ -4,10 +4,10 @@ within a shell process.
 
 package ni;
 
-deflong 'meta/self', pmap {ni_verb image}            mr '^//ni';
-deflong 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
-deflong 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
+deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
+deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 
-deflong 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
+deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;

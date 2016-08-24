@@ -5,7 +5,7 @@ package ni;
 
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
 
-defshort 'r', alt
+defshort 'root', 'r', alt
   pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
   pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
   pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),

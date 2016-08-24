@@ -135,57 +135,38 @@ ni: failed to get closing bracket count for perl code "$_[0]", possibly
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
-CLI option parsing.
-Long parsers are preferred to short parsers; shorts are a single character
-each, whereas longs can have arbitrary form.
+CLI parser generator.
+ni's CLI grammar is interesting because it maintains the same basic structure
+across a number of different interpretation contexts. For example, the main CLI
+arguments are interpreted as local/POSIX stuff, but if you create a JVM Spark
+context then the same grammar will host a series of modified operators that
+compile into Java/Scala code instead. The invariant parts of this are factored
+into a function that produces a CLI grammar with mutable long/short mappings
+(which can be modified using 'deflong' and 'defshort' below).
 
-our %short;
-our @long;
+our %contexts;
 
-sub defshort($$) {$short{$_[0]} = $_[1]}
-sub deflong($$)  {unshift @long, $_[1]}
+sub defcontext($) {
+  my $short = {};
+  my $long  = [];
+  my $r = $contexts{$_[0]} = {};
+  $$r{ops} = sub {$$r{ops}->(@_)};
 
-CLI syntax elements.
-Building blocks for ni's command-line grammar and the toplevel parser. Here's
-the big picture, which is a lot more subtle than nfu (and most command-line
-tools, for that matter).
+  $$r{longs}  = $long;
+  $$r{shorts} = $short;
 
-Notationally, ni supports a lot of interesting elements like anonymous
-streams. nfu used whitespace-delimited square brackets for this and ended up
-preprocessing them into shell commands, whereas ni keeps them as a first-class
-"list" data type -- which means operators are at liberty to interpret them
-however they'd like (with the understanding that ops and quasifiles are still
-parsed as usual).
+  $$r{long}   = altr @$long;
+  $$r{short}  = chaltr %$short;
+  $$r{lambda} = alt mr '_', pn 1, mrc '\[', $$r{ops}, mr '\]';
+  $$r{thing}  = alt $$r{lambda}, $$r{long}, $$r{short};
+  $$r{suffix} = rep $$r{thing}, 1;
+  $$r{op}     = pn 1, rep(consumed_opt), $$r{thing}, rep(consumed_opt);
+  $$r{ops}    = rep $$r{op};
+  $$r{cli}    = pn 0, $$r{ops}, end_of_argv;
+  $$r{cli_d}  = $$r{ops};
+}
 
-In nfu, there were two ways to write these streams:
+defcontext 'root';
 
-| $ nfu --pipe [ foo ]  # compiled to nfu --pipe "nfu foo"
-  $ nfu @[ foo ]        # compiled to nfu sh:"nfu foo"
-
-This is suboptimal, of course, because it involves writing @ and knowing when
-to use it. ni unifies the two:
-
-| $ ni -X[foo]          # [foo] is a lambda command, will have stdin
-  $ ni [foo]            # [foo] is a data source
-
-In ni terms, "lambda" implies that something is taking input (e.g. a hadoop
-mapper), whereas "source" implies that it's a self-sufficient producer of
-data.
-
-I define the toplevel parser to be self-referential for the moment. Later when
-we `use constant` the outer function will be replaced with the real one,
-resulting in the inner `ops(@_)` call pointing to it. (The indirection is
-required, unfortunately; otherwise we'd be unable to change the reference later
-from underneath the `use constant` expression.)
-
-sub ops() {sub {ops()->(@_)}}
-
-use constant long   => altr @long;
-use constant short  => chaltr %short;
-use constant lambda => alt mr '_', pn 1, mrc '\[', ops, mr '\]';
-use constant thing  => alt lambda, long, short;
-use constant suffix => rep thing, 1;
-use constant op     => pn 1, rep(consumed_opt), thing, rep(consumed_opt);
-use constant ops    => rep op;
-use constant cli    => pn 0, ops, end_of_argv;
-use constant cli_d  => ops;
+sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
+sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
