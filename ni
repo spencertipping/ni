@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-21 ni.map
+22 ni.map
 
 
 unquote ni
@@ -70,6 +70,7 @@ lib core/col
 lib core/row
 lib core/pl
 lib core/python
+lib core/sql
 lib core/java
 lib core/hadoop
 lib core/pyspark
@@ -706,6 +707,12 @@ use constant pycode => sub {
   my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
   $balance ? (pydent substr($code, 0, $balance), substr($code, $balance))
            : (pydent $code, @xs)};
+1 core/sql/lib
+sql.pl
+3 core/sql/sql.pl
+
+package ni;
+defcontext 'sql';
 1 core/java/lib
 java.pl
 3 core/java/java.pl

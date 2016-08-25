@@ -1,0 +1,8 @@
+SQL parsing context.
+Translates ni CLI grammar to a SELECT query.
+
+package ni;
+
+defcontext 'sql';
+
+
