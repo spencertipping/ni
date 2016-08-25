@@ -10,3 +10,8 @@ sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}

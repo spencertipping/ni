@@ -27,8 +27,8 @@ sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
 
-@pipeline_prefix = ni_decode;
-@pipeline_suffix = ni_pager;
+@pipeline_prefix = -t STDIN  ? ()       : ni_decode;
+@pipeline_suffix = -t STDOUT ? ni_pager : ();
 
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';

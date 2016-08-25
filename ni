@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-19 ni.map
+21 ni.map
 
 
 unquote ni
@@ -69,9 +69,11 @@ lib core/meta
 lib core/col
 lib core/row
 lib core/pl
+lib core/python
 lib core/java
 lib core/hadoop
-7 util.pl
+lib core/pyspark
+11 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
@@ -79,6 +81,10 @@ sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 30 self.pl
 
 package ni;
@@ -110,7 +116,7 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-93 cli.pl
+94 cli.pl
 
 package ni;
 
@@ -119,6 +125,7 @@ package ni;
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
 use constant none         => sub {(undef, @_)};
+sub k($) {my ($v) = @_; sub {($v, @_)}}
 sub seqr(\@) {my ($ps) = @_;
          sub {my ($x, @xs, @ys, @ps);
               (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
@@ -343,8 +350,8 @@ use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {0 + $_},    mr '\d+');
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
-use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
+use constant colspec  => mr '^[-A-Z0-9.]+';
 1 core/gen/lib
 gen.pl
 15 core/gen/gen.pl
@@ -382,11 +389,16 @@ while (@ARGV) {
     close F;
   }
 }
-19 core/stream/decode.pm
+24 core/stream/decode.pm
 
 
 
 
+my ($fd) = @ARGV;
+if (defined $fd) {
+  close STDIN;
+  open STDIN, "<&=$fd" or die "ni_decode: failed to open fd $fd: $!";
+}
 sysread STDIN, $_, 8192;
 my $decoder = /^\x1f\x8b/             ? "gzip -dc"
             : /^BZh\0/                ? "bzip2 -dc"
@@ -420,8 +432,8 @@ sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
 sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
-@pipeline_prefix = ni_decode;
-@pipeline_suffix = ni_pager;
+@pipeline_prefix = -t STDIN  ? ()       : ni_decode;
+@pipeline_suffix = -t STDOUT ? ni_pager : ();
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';
 deflong 'root', 'stream/fs',
@@ -647,6 +659,37 @@ sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
 sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"}
 sub grab($) {$_ .= <STDIN> until /$_[0]/}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
+1 core/python/lib
+python.pl
+28 core/python/python.pl
+
+package ni;
+
+
+
+
+sub pydent($) {
+  my @lines   = split /\n/, $_[0];
+  my @indents = map length(sr $_, qr/\S.*$/, ''), @lines;
+  my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
+  $indent = min $indent - 1, @indents[2..$#indents]
+    if $lines[0] =~ /:\s*(#.*)?$/ && @lines > 2;
+  my $spaces = ' ' x $indent;
+  $lines[$_] =~ s/^$spaces// for 1..$#lines;
+  join "\n", @lines;
+}
+sub indent($;$) {
+  my ($code, $indent) = (@_, 2);
+  join "\n", map ' ' x $indent . $_, split /\n/, $code;
+}
+
+use constant pycode => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs) = @_;
+  (my $tcode = $code) =~ s/"([^"\\]+|\\.)*"|'([^'\\]+|\\.)*'//g;
+  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
+  $balance ? (pydent substr($code, 0, $balance), substr($code, $balance))
+           : (pydent $code, @xs)};
 1 core/java/lib
 java.pl
 3 core/java/java.pl
@@ -657,4 +700,31 @@ defcontext 'java/cf';
 hadoop.pl
 1 core/hadoop/hadoop.pl
 
+1 core/pyspark/lib
+pyspark.pl
+24 core/pyspark/pyspark.pl
+
+
+package ni;
+
+defcontext 'pyspark';
+deflong 'pyspark', 'stream:n',
+  pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+
+our %spark_profiles = (
+  L => k {master => 'local',
+          gen    => gen pydent q{from pyspark import SparkContext
+                                 sc = SparkContext("local", "%name")
+                                 %body}});
+sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
+sub pyspark_compile {
+  my ($v, @chain) = @{$_[0]};
+  $x = shift(@xs)->(v => $x) while @xs;
+  $x;
+}
+defshort 'root', 'S', pmap {ni_pyspark @$_}
+                      seq chaltr(%spark_profiles),
+                          pmap {pyspark_compile $_}
+                          alt $contexts{pyspark}{lambda},
+                              $contexts{pyspark}{suffix};
 __END__

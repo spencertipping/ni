@@ -3,4 +3,46 @@ We need to define a context for CLI arguments so we can convert ni pipelines
 into pyspark code. This ends up being fairly straightforward because Spark
 provides so many high-level operators.
 
+There are two things going on here. First, we define the codegen for Spark
+jobs; this is fairly configuration-independent since the API is stable. Second,
+we define a configuration system that lets the user specify the Spark execution
+profile. This governs everything from `spark-submit` CLI options to
+SparkContext init.
 
+package ni;
+
+Pyspark operators.
+These exist in their own parsing context, which we hook in below by using
+$contexts{pyspark}{...}. Rather than compiling directly to Python code, we
+generate a series of gens, each of which refers to a '%v' quantity that
+signifies the value being transformed.
+
+defcontext 'pyspark';
+
+deflong 'pyspark', 'stream:n',
+  pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+
+Configuration management.
+A profile contains the code required to initialize the SparkContext and any
+other variables relevant to the process. Each is referenced by a single
+character and stored in the %spark_profiles table.
+
+our %spark_profiles = (
+  L => k {master => 'local',
+          gen    => gen pydent q{from pyspark import SparkContext
+                                 sc = SparkContext("local", "%name")
+                                 %body}});
+
+sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
+
+sub pyspark_compile {
+  my ($v, @chain) = @{$_[0]};
+  $x = shift(@xs)->(v => $x) while @xs;
+  $x;
+}
+
+defshort 'root', 'S', pmap {ni_pyspark @$_}
+                      seq chaltr(%spark_profiles),
+                          pmap {pyspark_compile $_}
+                          alt $contexts{pyspark}{lambda},
+                              $contexts{pyspark}{suffix};

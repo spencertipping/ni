@@ -16,6 +16,12 @@ Decoding works by reading enough to decode the magic, then forwarding data
 into the appropriate decoding process (or doing nothing if we don't know what
 the data is).
 
+my ($fd) = @ARGV;
+if (defined $fd) {
+  close STDIN;
+  open STDIN, "<&=$fd" or die "ni_decode: failed to open fd $fd: $!";
+}
+
 sysread STDIN, $_, 8192;
 
 my $decoder = /^\x1f\x8b/             ? "gzip -dc"

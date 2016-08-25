@@ -12,5 +12,5 @@ use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
 
-use constant colspec  => mr '^[-A-Z0-9.]+';
 use constant colspec1 => mr '^[A-Z0-9]';
+use constant colspec  => mr '^[-A-Z0-9.]+';

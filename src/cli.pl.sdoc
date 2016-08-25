@@ -29,6 +29,8 @@ use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
 use constant none         => sub {(undef, @_)};
 
+sub k($) {my ($v) = @_; sub {($v, @_)}}
+
 sub seqr(\@) {my ($ps) = @_;
          sub {my ($x, @xs, @ys, @ps);
               (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
