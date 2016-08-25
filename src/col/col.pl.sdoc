@@ -3,7 +3,7 @@ In root context, ni interprets columns as being tab-delimited.
 
 package ni;
 
-Optimized column selection.
+Column selection.
 Normally perl is fast at text manipulation, but on most UNIX systems
 `/usr/bin/cut` is at least an order of magnitude faster. We can use it if two
 conditions are met:
@@ -30,3 +30,28 @@ sub ni_cols(@) {
 our @col_alt = (pmap {ni_cols split //, $_} colspec);
 
 defshort 'root', 'f', altr @col_alt;
+
+Column splitting.
+Adapters for input formats that don't have tab delimiters. Common ones are,
+with their split-spec mnemonics:
+
+| commas:       C
+  pipes:        P
+  whitespace:   S
+  non-words:    W
+
+You can also field-split on arbitrary regexes, or extend the %split_chalt hash
+to add custom split operators.
+
+sub ni_split_chr($)   {sh 'perl', '-ne', "y/$_[0]/\\t/; print"}
+sub ni_split_regex($) {sh 'perl', '-ne', "s/$_[0]/\\t/g; print"}
+
+our %split_chalt = (
+  'C' => (pmap {ni_split_chr   ','}     none),
+  'P' => (pmap {ni_split_chr   '|'}     none),
+  'S' => (pmap {ni_split_regex qr/\h+/} none),
+  'W' => (pmap {ni_split_regex qr/\W+/} none),
+  '/' => (pmap {ni_split_regex $_}      regex),
+);
+
+defshort 'root', 'F', chaltr %split_chalt;

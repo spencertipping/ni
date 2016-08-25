@@ -110,7 +110,7 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-92 cli.pl
+93 cli.pl
 
 package ni;
 
@@ -118,6 +118,7 @@ package ni;
 
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
+use constant none         => sub {(undef, @_)};
 sub seqr(\@) {my ($ps) = @_;
          sub {my ($x, @xs, @ys, @ps);
               (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
@@ -452,7 +453,7 @@ sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
 1 core/col/lib
 col.pl
-19 core/col/col.pl
+32 core/col/col.pl
 
 package ni;
 
@@ -472,6 +473,19 @@ sub ni_cols(@) {
 }
 our @col_alt = (pmap {ni_cols split //, $_} colspec);
 defshort 'root', 'f', altr @col_alt;
+
+
+
+sub ni_split_chr($)   {sh 'perl', '-ne', "y/$_[0]/\\t/; print"}
+sub ni_split_regex($) {sh 'perl', '-ne', "s/$_[0]/\\t/g; print"}
+our %split_chalt = (
+  'C' => (pmap {ni_split_chr   ','}     none),
+  'P' => (pmap {ni_split_chr   '|'}     none),
+  'S' => (pmap {ni_split_regex qr/\h+/} none),
+  'W' => (pmap {ni_split_regex qr/\W+/} none),
+  '/' => (pmap {ni_split_regex $_}      regex),
+);
+defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
 row.pl
 row.sh

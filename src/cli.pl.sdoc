@@ -27,6 +27,7 @@ practice.
 
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
+use constant none         => sub {(undef, @_)};
 
 sub seqr(\@) {my ($ps) = @_;
          sub {my ($x, @xs, @ys, @ps);
