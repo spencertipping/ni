@@ -402,7 +402,7 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-27 core/stream/stream.pl
+28 core/stream/stream.pl
 
 package ni;
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
@@ -430,6 +430,7 @@ deflong 'root', 'stream/fs',
 deflong 'root', 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
 deflong 'root', 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
+deflong 'root', 'stream/pipe', pmap {sh 'sh', '-c', $_} mrc '^\$=(.*)';
 10 core/stream/stream.sh
 
 
@@ -636,18 +637,16 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-11 core/pl/stream.pm
+9 core/pl/stream.pm
 
 our @F;
 sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
 sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
-sub r(@) {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
+sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
+sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"}
 sub grab($) {$_ .= <STDIN> until /$_[0]/}
-BEGIN {
-  eval sprintf "sub %s() {\@F = split /\\t/ unless \@F; \$F[%d]}",
-               $_, ord($_) - 97
-  for 'a'..'q';
-}
+BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
 1 core/java/lib
 java.pl
 3 core/java/java.pl

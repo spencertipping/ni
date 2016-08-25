@@ -6,10 +6,8 @@ our @F;
 sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
 sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
 
-sub r(@) {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
+sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
+sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"}
 sub grab($) {$_ .= <STDIN> until /$_[0]/}
-BEGIN {
-  eval sprintf "sub %s() {\@F = split /\\t/ unless \@F; \$F[%d]}",
-               $_, ord($_) - 97
-  for 'a'..'q';
-}
+BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
