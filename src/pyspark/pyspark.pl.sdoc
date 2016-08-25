@@ -53,10 +53,9 @@ other variables relevant to the process. Each is referenced by a single
 character and stored in the %spark_profiles table.
 
 our %spark_profiles = (
-  L => k {master => 'local',
-          gen    => gen pydent q{from pyspark import SparkContext
-                                 sc = SparkContext("local", "%name")
-                                 %body}});
+  L => k gen pydent q{from pyspark import SparkContext
+                      sc = SparkContext("local", "%name")
+                      %body});
 
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 

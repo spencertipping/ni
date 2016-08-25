@@ -718,7 +718,7 @@ hadoop.pl
 
 1 core/pyspark/lib
 pyspark.pl
-34 core/pyspark/pyspark.pl
+33 core/pyspark/pyspark.pl
 
 
 package ni;
@@ -746,10 +746,9 @@ defshort 'pyspark', '+', pmap {gen "%v.union($_)"} $pyspark_rdd;
 defshort 'pyspark', '*', pmap {gen "%v.intersect($_)"} $pyspark_rdd;
 
 our %spark_profiles = (
-  L => k {master => 'local',
-          gen    => gen pydent q{from pyspark import SparkContext
-                                 sc = SparkContext("local", "%name")
-                                 %body}});
+  L => k gen pydent q{from pyspark import SparkContext
+                      sc = SparkContext("local", "%name")
+                      %body});
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
