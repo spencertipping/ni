@@ -280,9 +280,10 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-57 main.pl
+71 main.pl
 
 package ni;
+use POSIX qw/dup dup2/;
 use constant exit_success      => 0;
 use constant exit_run_error    => 1;
 use constant exit_nop          => 2;
@@ -298,21 +299,34 @@ sub parse_ops {
   die "failed to parse " . join ' ', @rest;
 }
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
+
+
 sub run_sh {
-  # TODO: fix fd stuff; right now the shell doesn't reliably redirect ambient
-  # stdin into the process
-  open SH, '| sh'   or
-  open SH, '| ash'  or
-  open SH, '| dash' or
-  open SH, '| bash' or die "ni: could not run any POSIX sh: $!";
-  syswrite SH, $_[0]
-    or die "ni: could not write compiled pipeline to shell process: $!";
-  unless (-t STDIN) {
-    syswrite SH, $_ while sysread STDIN, $_, 8192;
+  pipe my $r, $w;
+  if (my $child = fork) {
+    close $r;
+    close STDIN;
+    close STDOUT;
+    syswrite $w, $_[0] or die "ni: failed to write pipeline to shell: $!";
+    close STDERR;
+    close $w;
+    waitpid $child, 0;
+    $?;
+  } else {
+    close $w;
+    if (fileno $r == 3) {
+      defined(my $fd = dup fileno $r) or die "ni: failed to dup temp fd: $!";
+      close $r;
+      $r = $fd;
+    }
+    dup2 0, 3 or die "ni: failed to redirect stdin to shell: $!"
+      unless -t STDIN;
+    close STDIN;
+    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell: $!";
+    close $r;
+    exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'
+      or die "ni: failed to run any POSIX sh: $!";
   }
-  close STDIN;
-  close SH;
-  0;
 }
 
 $option_handlers{'internal/eval'}
@@ -432,7 +446,7 @@ sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
 sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
-@pipeline_prefix = -t STDIN  ? ()       : ni_decode;
+@pipeline_prefix = -t STDIN  ? ()       : ni_decode 3;
 @pipeline_suffix = -t STDOUT ? ni_pager : ();
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';

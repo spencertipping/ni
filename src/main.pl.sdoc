@@ -4,6 +4,8 @@ things besides. This main function knows how to handle these cases.
 
 package ni;
 
+use POSIX qw/dup dup2/;
+
 use constant exit_success      => 0;
 use constant exit_run_error    => 1;
 use constant exit_nop          => 2;
@@ -24,23 +26,45 @@ sub parse_ops {
 
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
 
+FD redirection stuff.
+ni compiles a shell pipeline by sending the pipeline code to a shell process as
+standard input. The shell then executes the pipeline, which reads from fd 3 to
+pull stdin (we have to do this because the shell's stdin is used for the
+pipeline code, and /bin/sh doesn't reliably differentiate between "more code"
+and "stdin to the program").
+
+We can't use Perl's open() function here because it only gives us a way to
+forward one file descriptor. Instead, we need to manually fork/exec and get
+everything set up using pipe() and dup2.
+
 sub run_sh {
-  # TODO: fix fd stuff; right now the shell doesn't reliably redirect ambient
-  # stdin into the process
-  open SH, '| sh'   or
-  open SH, '| ash'  or
-  open SH, '| dash' or
-  open SH, '| bash' or die "ni: could not run any POSIX sh: $!";
+  pipe my $r, $w;
 
-  syswrite SH, $_[0]
-    or die "ni: could not write compiled pipeline to shell process: $!";
+  if (my $child = fork) {
+    close $r;
+    close STDIN;
+    close STDOUT;
+    syswrite $w, $_[0] or die "ni: failed to write pipeline to shell: $!";
+    close STDERR;
+    close $w;
+    waitpid $child, 0;
+    $?;
+  } else {
+    close $w;
+    if (fileno $r == 3) {
+      defined(my $fd = dup fileno $r) or die "ni: failed to dup temp fd: $!";
+      close $r;
+      $r = $fd;
+    }
+    dup2 0, 3 or die "ni: failed to redirect stdin to shell: $!"
+      unless -t STDIN;
+    close STDIN;
+    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell: $!";
+    close $r;
 
-  unless (-t STDIN) {
-    syswrite SH, $_ while sysread STDIN, $_, 8192;
+    exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'
+      or die "ni: failed to run any POSIX sh: $!";
   }
-  close STDIN;
-  close SH;
-  0;
 }
 
 Internal and debugging options.
