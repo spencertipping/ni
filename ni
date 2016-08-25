@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-18 ni.map
+19 ni.map
 
 
 unquote ni
@@ -66,6 +66,7 @@ lib core/common
 lib core/gen
 lib core/stream
 lib core/meta
+lib core/col
 lib core/row
 lib core/pl
 lib core/java
@@ -449,6 +450,28 @@ deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
+1 core/col/lib
+col.pl
+19 core/col/col.pl
+
+package ni;
+
+
+sub col_cut(@) {
+  sh 'cut', '-f', join ',', TODO();
+}
+sub ni_cols(@) {
+  my $ind = grep /[^A-I.]/, @_;
+  my $asc = join('', @_) eq join('', sort @_);
+  # TODO: optimize using col_cut
+  my @cols    = map /^\.$/ ? -1 : ord($_) - 65, @_;
+  my $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
+  my $floor   = (sort {$b <=> $a} @cols)[0] + 1;
+  sh ['perl', '-ne',
+      $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols)];
+}
+our @col_alt = (pmap {ni_cols split //, $_} colspec);
+defshort 'root', 'f', altr @col_alt;
 2 core/row/lib
 row.pl
 row.sh

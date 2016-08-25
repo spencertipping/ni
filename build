@@ -11,6 +11,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/stream
 ./ni --internal/lib core/meta
 
+./ni --internal/lib core/col
 ./ni --internal/lib core/row
 
 ./ni --internal/lib core/pl
