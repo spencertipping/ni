@@ -18,7 +18,8 @@ sub read_map {join '', map "$_\n",
                         grep {s/#.*//g; length}
                         map split(/\n/), @self{@_}), "__END__"}
 
-sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_"
+sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_",
+                   $_ =~ /\.pl$/ && eval $self{"$_[0]/$_"}
                    for grep length,
                        split /\n/, ($self{"$_[0]/lib"} = rfc "$_[0]/lib")}
 

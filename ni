@@ -38,7 +38,7 @@ sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
-29 self.pl
+30 self.pl
 
 package ni;
 sub map_u {@self{@_}}
@@ -53,7 +53,8 @@ sub read_map {join '', map "$_\n",
                              : die "ni: unknown map command+args: $c @a"}
                         grep {s/#.*//g; length}
                         map split(/\n/), @self{@_}), "__END__"}
-sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_"
+sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_",
+                   $_ =~ /\.pl$/ && eval $self{"$_[0]/$_"}
                    for grep length,
                        split /\n/, ($self{"$_[0]/lib"} = rfc "$_[0]/lib")}
 sub modify_self($) {
@@ -229,7 +230,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-52 main.pl
+57 main.pl
 
 package ni;
 use constant exit_success      => 0;
@@ -270,17 +271,22 @@ $option_handlers{'internal/lib'}
   = sub {intern_lib $_[0]; $self{'ni.map'} .= "\nlib $_[0]";
          modify_self 'ni.map'};
 
+$option_handlers{lib} = sub {intern_lib shift; goto \&main};
+$option_handlers{extend}
+  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
+         modify_self 'ni.map'};
+
 $option_handlers{usage} = sub {print $help_topics{usage}, "\n"; exit_nop};
 $option_handlers{help}
   = sub {print $help_topics{@_ ? $_[0] : 'ni'}, "\n"; exit_nop};
 $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};
 sub main {
-  my ($command, @args) = @ARGV;
+  my ($command, @args) = @_;
   $command = '--help' if $command eq '-h';
   my $h = $command =~ s/^--// && $option_handlers{$command};
   return &$h(@args) if $h;
-  run_sh sh_code @ARGV;
+  run_sh sh_code @_;
 }
 1 core/common/lib
 common.pl
