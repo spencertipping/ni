@@ -1,19 +1,57 @@
 #!/usr/bin/env perl
-# https://github.com/spencertipping/ni; MIT license
+# ni: https://github.com/spencertipping/ni
+# Copyright (c) 2016 Spencer Tipping
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-7 ni
+26 ni
 #!/usr/bin/env perl
-# https://github.com/spencertipping/ni; MIT license
+# ni: https://github.com/spencertipping/ni
+# Copyright (c) 2016 Spencer Tipping
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-16 ni.map
+18 ni.map
 
 
 unquote ni
@@ -30,6 +68,8 @@ lib core/stream
 lib core/meta
 lib core/row
 lib core/pl
+lib core/java
+lib core/hadoop
 7 util.pl
 
 package ni;
@@ -162,7 +202,7 @@ sub defcontext($) {
 defcontext 'root';
 sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
 sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
-67 sh.pl
+68 sh.pl
 
 
 
@@ -214,6 +254,7 @@ sub pipeline {
   my @hs;
   for (@_) {
     my $c = quote @{$$_{exec}};
+    $c .= " $$_{magic}" if exists $$_{magic};
     if (exists $$_{stdin}) {
       my $h = heredoc_for $$_{stdin};
       push @cs, "$c 3<&0 <<'$h'";
@@ -411,7 +452,7 @@ deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
 2 core/row/lib
 row.pl
 row.sh
-10 core/row/row.pl
+27 core/row/row.pl
 
 package ni;
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
@@ -422,7 +463,24 @@ defshort 'root', 'r', alt
   pmap(sub {sh ['ni_rmatch',  $_], prefix => row_pre}, pn 1, mr '^/',  regex),
   pmap(sub {sh ['ni_rsample', $_], prefix => row_pre}, mr '^\.\d+'),
   pmap(sub {sh 'head', '-n', $_},                      alt neval, integer);
-7 core/row/row.sh
+
+
+
+
+use constant sortspec => rep seq colspec1, maybe mr '^[gnr]+';
+sub sort_args {
+  my @base = ('-t', "\t");
+  my @keys = map {my $i = ord($$_[0]) - 64;
+                  my $m = defined $$_[1] ? $$_[1] : '';
+                  ('-k', "$i$m,$i")} @_;
+  (@base, @keys);
+}
+sub ni_sort(@) {sh ['ni_sort', @_], prefix => row_pre}
+defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
+defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
+defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
+defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
+11 core/row/row.sh
 
 ni_revery()  { perl -ne 'print unless $. % '"$1"; }
 ni_rmatch()  { perl -ne 'print if /'"$1"/; }
@@ -430,9 +488,34 @@ ni_rmatch()  { perl -ne 'print if /'"$1"/; }
 ni_rsample() { perl -ne '
   BEGIN {srand($ENV{NI_SEED} || 42)}
   if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
-2 core/pl/lib
+
+ni_sort() {
+  # TODO: --compress-program etc
+  sort "$@"; }
+4 core/pl/lib
+pl.pl
 util.pm
 math.pm
+stream.pm
+18 core/pl/pl.pl
+
+package ni;
+sub perl_mapgen() {gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  while (<STDIN>) {
+    @F = ();
+    %mapper
+  }
+}}
+sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
+                                        core/pl/math.pm
+                                        core/pl/stream.pm |}}
+sub perl_mapper($) {sh [qw/perl -/],
+                       stdin => perl_mapgen->(prefix => perl_prefix,
+                                              mapper => $_[0])}
+defshort 'root', 'p', pmap {perl_mapper $_} plcode;
 46 core/pl/util.pm
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
@@ -504,4 +587,26 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
+11 core/pl/stream.pm
+
+our @F;
+sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
+sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
+sub r(@) {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
+sub grab($) {$_ .= <STDIN> until /$_[0]/}
+BEGIN {
+  eval sprintf "sub %s() {\@F = split /\\t/ unless \@F; \$F[%d]}",
+               $_, ord($_) - 97
+  for 'a'..'q';
+}
+1 core/java/lib
+java.pl
+3 core/java/java.pl
+
+package ni;
+defcontext 'java/cf';
+1 core/hadoop/lib
+hadoop.pl
+1 core/hadoop/hadoop.pl
+
 __END__

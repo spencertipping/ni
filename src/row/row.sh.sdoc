@@ -12,3 +12,14 @@ line of fire. This is particularly useful for sparse samplings.
 ni_rsample() { perl -ne '
   BEGIN {srand($ENV{NI_SEED} || 42)}
   if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
+
+Sorting.
+The biggest question here is whether we have a version of `sort` that can
+handle options like `--compress-program`. If so, we want to use these
+extensions because they accelerate things substantially. We have to detect this
+in shell rather than inside the ni codegen because the compiled code might be
+sent elsewhere.
+
+ni_sort() {
+  # TODO: --compress-program etc
+  sort "$@"; }

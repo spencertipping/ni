@@ -1,0 +1,6 @@
+Pyspark interop.
+We need to define a context for CLI arguments so we can convert ni pipelines
+into pyspark code. This ends up being fairly straightforward because Spark
+provides so many high-level operators.
+
+

@@ -15,6 +15,9 @@ cd $(dirname $0)
 
 ./ni --internal/lib core/pl
 
+./ni --internal/lib core/java
+./ni --internal/lib core/hadoop
+
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1

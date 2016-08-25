@@ -30,4 +30,3 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-

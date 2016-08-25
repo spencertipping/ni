@@ -83,6 +83,7 @@ sub pipeline {
   my @hs;
   for (@_) {
     my $c = quote @{$$_{exec}};
+    $c .= " $$_{magic}" if exists $$_{magic};
     if (exists $$_{stdin}) {
       my $h = heredoc_for $$_{stdin};
       push @cs, "$c 3<&0 <<'$h'";

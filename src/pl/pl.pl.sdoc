@@ -1,0 +1,26 @@
+Perl wrapper.
+Defines the `p` operator, which can be modified in a few different ways to do
+different things. By default it functions as a one-in, many-out row
+transformer.
+
+package ni;
+
+sub perl_mapgen() {gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  while (<STDIN>) {
+    @F = ();
+    %mapper
+  }
+}}
+
+sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
+                                        core/pl/math.pm
+                                        core/pl/stream.pm |}}
+
+sub perl_mapper($) {sh [qw/perl -/],
+                       stdin => perl_mapgen->(prefix => perl_prefix,
+                                              mapper => $_[0])}
+
+defshort 'root', 'p', pmap {perl_mapper $_} plcode;
