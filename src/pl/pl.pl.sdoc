@@ -37,6 +37,8 @@ sub perl_grepper($) {sh [qw/perl -/],
                         stdin => perl_grepgen->(prefix  => perl_prefix,
                                                 grepper => $_[0])}
 
-defshort 'root', 'p', pmap {perl_mapper $_} plcode;
+our @perl_alt = (pmap {perl_mapper $_} plcode);
+
+defshort 'root', 'p', altr @perl_alt;
 
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;

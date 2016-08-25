@@ -532,7 +532,7 @@ pl.pl
 util.pm
 math.pm
 stream.pm
-31 core/pl/pl.pl
+32 core/pl/pl.pl
 
 package ni;
 sub perl_mapgen() {gen q{
@@ -562,7 +562,8 @@ sub perl_mapper($) {sh [qw/perl -/],
 sub perl_grepper($) {sh [qw/perl -/],
                         stdin => perl_grepgen->(prefix  => perl_prefix,
                                                 grepper => $_[0])}
-defshort 'root', 'p', pmap {perl_mapper $_} plcode;
+our @perl_alt = (pmap {perl_mapper $_} plcode);
+defshort 'root', 'p', altr @perl_alt;
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
 46 core/pl/util.pm
 
