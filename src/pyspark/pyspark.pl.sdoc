@@ -13,14 +13,39 @@ package ni;
 
 Pyspark operators.
 These exist in their own parsing context, which we hook in below by using
-$contexts{pyspark}{...}. Rather than compiling directly to Python code, we
+contexts->{pyspark}{...}. Rather than compiling directly to Python code, we
 generate a series of gens, each of which refers to a '%v' quantity that
 signifies the value being transformed.
 
+sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
+sub pyspark_lambda($) {$_[0]}
+
 defcontext 'pyspark';
 
-deflong 'pyspark', 'stream:n',
+use constant pyspark_fn => pmap {pyspark_lambda $_} pycode;
+
+our $pyspark_rdd = pmap {pyspark_compile 'sc', @$_}
+                   alt context 'pyspark/lambda',
+                       context 'pyspark/suffix';
+
+our @pyspark_row_alt = (
+  (pmap {gen "%v.sample(False, $_)"} alt neval, integer),
+  (pmap {gen "%v.takeSample(False, $_)"} mr '^\.(\d+)'),
+  (pmap {gen "%v.filter($_)"} pyspark_fn));
+
+deflong 'pyspark', 'stream/n',
   pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+
+deflong 'pyspark', 'stream/pipe',
+  pmap {gen "%v.pipe(" . pyquote($_) . ")"} mr '^\$=([^]]+)';
+
+defshort 'pyspark', 'p', pmap {gen "%v.map(lambda x: $_)"} pyspark_fn;
+defshort 'pyspark', 'r', altr @pyspark_row_alt;
+defshort 'pyspark', 'G', k gen "%v.distinct()";
+defshort 'pyspark', 'g', k gen "%v.sortByKey()";
+
+defshort 'pyspark', '+', pmap {gen "%v.union($_)"} $pyspark_rdd;
+defshort 'pyspark', '*', pmap {gen "%v.intersect($_)"} $pyspark_rdd;
 
 Configuration management.
 A profile contains the code required to initialize the SparkContext and any
@@ -35,14 +60,5 @@ our %spark_profiles = (
 
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 
-sub pyspark_compile {
-  my ($v, @chain) = @{$_[0]};
-  $x = shift(@xs)->(v => $x) while @xs;
-  $x;
-}
-
 defshort 'root', 'S', pmap {ni_pyspark @$_}
-                      seq chaltr(%spark_profiles),
-                          pmap {pyspark_compile $_}
-                          alt $contexts{pyspark}{lambda},
-                              $contexts{pyspark}{suffix};
+                      seq chaltr(%spark_profiles), $pyspark_rdd;

@@ -18,9 +18,9 @@ our @pipeline_suffix = ();
 
 sub parse_ops {
   return () unless @_;
-  my ($parsed) = $contexts{root}{cli}->(@_);
+  my ($parsed) = context('root/cli')->(@_);
   return @$parsed if ref $parsed && @$parsed;
-  my (undef, @rest) = $contexts{root}{cli_d}->(@_);
+  my (undef, @rest) = context('root/cli_d')->(@_);
   die "failed to parse " . join ' ', @rest;
 }
 

@@ -116,7 +116,7 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-94 cli.pl
+95 cli.pl
 
 package ni;
 
@@ -132,8 +132,8 @@ sub seqr(\@) {my ($ps) = @_;
               (\@xs, @_)}}
 sub altr(\@) {my ($ps) = @_;
          sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
-sub seq(@) {seqr @_}
-sub alt(@) {altr @_}
+sub seq(@) {ref $_ or die "non-ref to seq(): $_" for @_; seqr @_}
+sub alt(@) {ref $_ or die "non-ref to alt(): $_" for @_; altr @_}
 sub rep($;$) {my ($p, $n) = (@_, 0);
          sub {my (@c, @r);
               push @r, $_ while ($_, @_) = &$p(@c = @_);
@@ -191,6 +191,7 @@ EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 our %contexts;
+sub context($) {my ($c, $p) = split /\//, $_[0]; $contexts{$c}{$p}}
 sub defcontext($) {
   my $short = {};
   my $long  = [];
@@ -293,9 +294,9 @@ our @pipeline_prefix = sh 'true';
 our @pipeline_suffix = ();
 sub parse_ops {
   return () unless @_;
-  my ($parsed) = $contexts{root}{cli}->(@_);
+  my ($parsed) = context('root/cli')->(@_);
   return @$parsed if ref $parsed && @$parsed;
-  my (undef, @rest) = $contexts{root}{cli_d}->(@_);
+  my (undef, @rest) = context('root/cli_d')->(@_);
   die "failed to parse " . join ' ', @rest;
 }
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
@@ -477,7 +478,7 @@ deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
 deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
-deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
+deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
 1 core/col/lib
 col.pl
 32 core/col/col.pl
@@ -675,7 +676,7 @@ sub grab($) {$_ .= <STDIN> until /$_[0]/}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
 1 core/python/lib
 python.pl
-28 core/python/python.pl
+29 core/python/python.pl
 
 package ni;
 
@@ -696,6 +697,7 @@ sub indent($;$) {
   my ($code, $indent) = (@_, 2);
   join "\n", map ' ' x $indent . $_, split /\n/, $code;
 }
+sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 
 use constant pycode => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -716,14 +718,32 @@ hadoop.pl
 
 1 core/pyspark/lib
 pyspark.pl
-24 core/pyspark/pyspark.pl
+34 core/pyspark/pyspark.pl
 
 
 package ni;
 
+sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
+sub pyspark_lambda($) {$_[0]}
 defcontext 'pyspark';
-deflong 'pyspark', 'stream:n',
+use constant pyspark_fn => pmap {pyspark_lambda $_} pycode;
+our $pyspark_rdd = pmap {pyspark_compile 'sc', @$_}
+                   alt context 'pyspark/lambda',
+                       context 'pyspark/suffix';
+our @pyspark_row_alt = (
+  (pmap {gen "%v.sample(False, $_)"} alt neval, integer),
+  (pmap {gen "%v.takeSample(False, $_)"} mr '^\.(\d+)'),
+  (pmap {gen "%v.filter($_)"} pyspark_fn));
+deflong 'pyspark', 'stream/n',
   pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+deflong 'pyspark', 'stream/pipe',
+  pmap {gen "%v.pipe(" . pyquote($_) . ")"} mr '^\$=([^]]+)';
+defshort 'pyspark', 'p', pmap {gen "%v.map(lambda x: $_)"} pyspark_fn;
+defshort 'pyspark', 'r', altr @pyspark_row_alt;
+defshort 'pyspark', 'G', k gen "%v.distinct()";
+defshort 'pyspark', 'g', k gen "%v.sortByKey()";
+defshort 'pyspark', '+', pmap {gen "%v.union($_)"} $pyspark_rdd;
+defshort 'pyspark', '*', pmap {gen "%v.intersect($_)"} $pyspark_rdd;
 
 our %spark_profiles = (
   L => k {master => 'local',
@@ -731,14 +751,6 @@ our %spark_profiles = (
                                  sc = SparkContext("local", "%name")
                                  %body}});
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
-sub pyspark_compile {
-  my ($v, @chain) = @{$_[0]};
-  $x = shift(@xs)->(v => $x) while @xs;
-  $x;
-}
 defshort 'root', 'S', pmap {ni_pyspark @$_}
-                      seq chaltr(%spark_profiles),
-                          pmap {pyspark_compile $_}
-                          alt $contexts{pyspark}{lambda},
-                              $contexts{pyspark}{suffix};
+                      seq chaltr(%spark_profiles), $pyspark_rdd;
 __END__

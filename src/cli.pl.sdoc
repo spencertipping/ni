@@ -39,8 +39,8 @@ sub seqr(\@) {my ($ps) = @_;
 sub altr(\@) {my ($ps) = @_;
          sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
 
-sub seq(@) {seqr @_}
-sub alt(@) {altr @_}
+sub seq(@) {ref $_ or die "non-ref to seq(): $_" for @_; seqr @_}
+sub alt(@) {ref $_ or die "non-ref to alt(): $_" for @_; altr @_}
 
 sub rep($;$) {my ($p, $n) = (@_, 0);
          sub {my (@c, @r);
@@ -148,6 +148,8 @@ into a function that produces a CLI grammar with mutable long/short mappings
 (which can be modified using 'deflong' and 'defshort' below).
 
 our %contexts;
+
+sub context($) {my ($c, $p) = split /\//, $_[0]; $contexts{$c}{$p}}
 
 sub defcontext($) {
   my $short = {};
