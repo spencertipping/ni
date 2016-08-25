@@ -477,8 +477,8 @@ defshort 'root', 'f', altr @col_alt;
 
 
 
-sub ni_split_chr($)   {sh 'perl', '-ne', "y/$_[0]/\\t/; print"}
-sub ni_split_regex($) {sh 'perl', '-ne', "s/$_[0]/\\t/g; print"}
+sub ni_split_chr($)   {sh 'perl', '-npe', "y/$_[0]/\\t/"}
+sub ni_split_regex($) {sh 'perl', '-npe', "s/$_[0]/\\t/g"}
 our %split_chalt = (
   'C' => (pmap {ni_split_chr   ','}     none),
   'P' => (pmap {ni_split_chr   '|'}     none),
