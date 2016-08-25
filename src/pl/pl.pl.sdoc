@@ -15,6 +15,16 @@ sub perl_mapgen() {gen q{
   }
 }}
 
+sub perl_grepgen() {gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  while (<STDIN>) {
+    @F = ();
+    print if %grepper
+  }
+}}
+
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm |}}
@@ -23,4 +33,10 @@ sub perl_mapper($) {sh [qw/perl -/],
                        stdin => perl_mapgen->(prefix => perl_prefix,
                                               mapper => $_[0])}
 
+sub perl_grepper($) {sh [qw/perl -/],
+                        stdin => perl_grepgen->(prefix  => perl_prefix,
+                                                grepper => $_[0])}
+
 defshort 'root', 'p', pmap {perl_mapper $_} plcode;
+
+unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;

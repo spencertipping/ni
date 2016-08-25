@@ -452,29 +452,27 @@ deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', lambda;
 2 core/row/lib
 row.pl
 row.sh
-27 core/row/row.pl
+25 core/row/row.pl
 
 package ni;
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
-defshort 'root', 'r', alt
-  pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
-  pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
-  pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),
-  pmap(sub {sh ['ni_rmatch',  $_], prefix => row_pre}, pn 1, mr '^/',  regex),
-  pmap(sub {sh ['ni_rsample', $_], prefix => row_pre}, mr '^\.\d+'),
-  pmap(sub {sh 'head', '-n', $_},                      alt neval, integer);
+our @row_alt = (
+  (pmap {sh 'tail', '-n', $_}                      pn 1, mr '^\+', number),
+  (pmap {sh 'tail', '-n', '+' . ($_ + 1)}          pn 1, mr '^-',  number),
+  (pmap {sh ['ni_revery',  $_], prefix => row_pre} pn 1, mr '^x',  number),
+  (pmap {sh ['ni_rmatch',  $_], prefix => row_pre} pn 1, mr '^/',  regex),
+  (pmap {sh ['ni_rsample', $_], prefix => row_pre} mr '^\.\d+'),
+  (pmap {sh 'head', '-n', $_}                      alt neval, integer));
+defshort 'root', 'r', altr @row_alt;
 
 
 
 
 use constant sortspec => rep seq colspec1, maybe mr '^[gnr]+';
-sub sort_args {
-  my @base = ('-t', "\t");
-  my @keys = map {my $i = ord($$_[0]) - 64;
-                  my $m = defined $$_[1] ? $$_[1] : '';
-                  ('-k', "$i$m,$i")} @_;
-  (@base, @keys);
-}
+sub sort_args {'-t', "\t",
+               map {my $i = ord($$_[0]) - 64;
+                    my $m = defined $$_[1] ? $$_[1] : '';
+                    ('-k', "$i$m,$i")} @_}
 sub ni_sort(@) {sh ['ni_sort', @_], prefix => row_pre}
 defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
 defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
@@ -497,7 +495,7 @@ pl.pl
 util.pm
 math.pm
 stream.pm
-18 core/pl/pl.pl
+31 core/pl/pl.pl
 
 package ni;
 sub perl_mapgen() {gen q{
@@ -509,13 +507,26 @@ sub perl_mapgen() {gen q{
     %mapper
   }
 }}
+sub perl_grepgen() {gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  while (<STDIN>) {
+    @F = ();
+    print if %grepper
+  }
+}}
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm |}}
 sub perl_mapper($) {sh [qw/perl -/],
                        stdin => perl_mapgen->(prefix => perl_prefix,
                                               mapper => $_[0])}
+sub perl_grepper($) {sh [qw/perl -/],
+                        stdin => perl_grepgen->(prefix  => perl_prefix,
+                                                grepper => $_[0])}
 defshort 'root', 'p', pmap {perl_mapper $_} plcode;
+unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
 46 core/pl/util.pm
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}

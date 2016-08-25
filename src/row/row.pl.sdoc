@@ -5,13 +5,15 @@ package ni;
 
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
 
-defshort 'root', 'r', alt
-  pmap(sub {sh 'tail', '-n', $_},                      pn 1, mr '^\+', number),
-  pmap(sub {sh 'tail', '-n', '+' . ($_ + 1)},          pn 1, mr '^-',  number),
-  pmap(sub {sh ['ni_revery',  $_], prefix => row_pre}, pn 1, mr '^x',  number),
-  pmap(sub {sh ['ni_rmatch',  $_], prefix => row_pre}, pn 1, mr '^/',  regex),
-  pmap(sub {sh ['ni_rsample', $_], prefix => row_pre}, mr '^\.\d+'),
-  pmap(sub {sh 'head', '-n', $_},                      alt neval, integer);
+our @row_alt = (
+  (pmap {sh 'tail', '-n', $_}                      pn 1, mr '^\+', number),
+  (pmap {sh 'tail', '-n', '+' . ($_ + 1)}          pn 1, mr '^-',  number),
+  (pmap {sh ['ni_revery',  $_], prefix => row_pre} pn 1, mr '^x',  number),
+  (pmap {sh ['ni_rmatch',  $_], prefix => row_pre} pn 1, mr '^/',  regex),
+  (pmap {sh ['ni_rsample', $_], prefix => row_pre} mr '^\.\d+'),
+  (pmap {sh 'head', '-n', $_}                      alt neval, integer));
+
+defshort 'root', 'r', altr @row_alt;
 
 Sorting.
 ni has four sorting operators, each of which can take modifiers:
@@ -32,13 +34,10 @@ modifiers, which are optional, are any of these:
 
 use constant sortspec => rep seq colspec1, maybe mr '^[gnr]+';
 
-sub sort_args {
-  my @base = ('-t', "\t");
-  my @keys = map {my $i = ord($$_[0]) - 64;
-                  my $m = defined $$_[1] ? $$_[1] : '';
-                  ('-k', "$i$m,$i")} @_;
-  (@base, @keys);
-}
+sub sort_args {'-t', "\t",
+               map {my $i = ord($$_[0]) - 64;
+                    my $m = defined $$_[1] ? $$_[1] : '';
+                    ('-k', "$i$m,$i")} @_}
 
 sub ni_sort(@) {sh ['ni_sort', @_], prefix => row_pre}
 
