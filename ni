@@ -751,6 +751,6 @@ our %spark_profiles = (
                                  sc = SparkContext("local", "%name")
                                  %body}});
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
-defshort 'root', 'S', pmap {ni_pyspark @$_}
+defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
 __END__
