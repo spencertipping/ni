@@ -75,11 +75,12 @@ lib core/java
 lib core/hadoop
 lib core/pyspark
 lib doc
-11 util.pl
+12 util.pl
 
 package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
+sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
@@ -713,10 +714,47 @@ use constant pycode => sub {
            : (pydent $code, @xs)};
 1 core/sql/lib
 sql.pl
-3 core/sql/sql.pl
+40 core/sql/sql.pl
 
 package ni;
 defcontext 'sql';
+sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
+sub ni::sqlgen::render {
+  local $_;
+  my ($self) = @_;
+  my $select = ni::dor $$self{select}, '*';
+  my @others;
+  for (qw/from where order_by group_by limit union intersect except
+          inner_join left_join right_join full_join/) {
+    next unless exists $$self{$_};
+    (my $k = $_) =~ y/a-z_/A-Z /;
+    push @others, "$k $$self{$_}";
+  }
+  ni::gen('SELECT %distinct %stuff %others')
+       ->(stuff    => $select,
+          distinct => $$self{uniq} ? 'DISTINCT' : '',
+          others   => join ' ', @others);
+}
+sub ni::sqlgen::modify_where {join ' AND ', @_}
+sub ni::sqlgen::modify {
+  my ($self, $k, $v) = @_;
+  defined \&{"ni::sqlgen::modify_$k"}
+    ? $$self{$k} = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v)
+    : $self = ni::sqlgen "($self->render)" if exists $$self{$k};
+  $$self{$k} = $v;
+  $self;
+}
+sub ni::sqlgen::map        {${$_[0]}->modify('select',     $_[1])}
+sub ni::sqlgen::filter     {${$_[0]}->modify('where',      $_[1])}
+sub ni::sqlgen::ijoin      {${$_[0]}->modify('inner_join', $_[1])}
+sub ni::sqlgen::ljoin      {${$_[0]}->modify('left_join',  $_[1])}
+sub ni::sqlgen::rjoin      {${$_[0]}->modify('right_join', $_[1])}
+sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
+sub ni::sqlgen::union      {${$_[0]}->modify('union',      $_[1])}
+sub ni::sqlgen::intersect  {${$_[0]}->modify('intersect',  $_[1])}
+sub ni::sqlgen::difference {${$_[0]}->modify('except',     $_[1])}
+sub ni::sqlgen::take       {${$_[0]}->modify('limit',      $_[1])}
+sub ni::sqlgen::sample     {${$_[0]}->modify('where',      "random() < $_[1]")}
 1 core/java/lib
 java.pl
 3 core/java/java.pl

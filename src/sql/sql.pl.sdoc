@@ -1,8 +1,55 @@
 SQL parsing context.
-Translates ni CLI grammar to a SELECT query.
+Translates ni CLI grammar to a SELECT query. This is a little interesting
+because SQL has a weird structure to it; to help with this I've also got a
+'sqlgen' abstraction that figures out when we need to drop into a subquery.
 
 package ni;
 
 defcontext 'sql';
 
+sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
 
+sub ni::sqlgen::render {
+  local $_;
+  my ($self) = @_;
+  my $select = ni::dor $$self{select}, '*';
+  my @others;
+
+  for (qw/from where order_by group_by limit union intersect except
+          inner_join left_join right_join full_join/) {
+    next unless exists $$self{$_};
+    (my $k = $_) =~ y/a-z_/A-Z /;
+    push @others, "$k $$self{$_}";
+  }
+
+  ni::gen('SELECT %distinct %stuff %others')
+       ->(stuff    => $select,
+          distinct => $$self{uniq} ? 'DISTINCT' : '',
+          others   => join ' ', @others);
+}
+
+sub ni::sqlgen::modify_where {join ' AND ', @_}
+
+sub ni::sqlgen::modify {
+  my ($self, $k, $v) = @_;
+  defined \&{"ni::sqlgen::modify_$k"}
+    ? $$self{$k} = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v)
+    : $self = ni::sqlgen "($self->render)" if exists $$self{$k};
+  $$self{$k} = $v;
+  $self;
+}
+
+sub ni::sqlgen::map        {${$_[0]}->modify('select',     $_[1])}
+sub ni::sqlgen::filter     {${$_[0]}->modify('where',      $_[1])}
+sub ni::sqlgen::ijoin      {${$_[0]}->modify('inner_join', $_[1])}
+sub ni::sqlgen::ljoin      {${$_[0]}->modify('left_join',  $_[1])}
+sub ni::sqlgen::rjoin      {${$_[0]}->modify('right_join', $_[1])}
+
+sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
+
+sub ni::sqlgen::union      {${$_[0]}->modify('union',      $_[1])}
+sub ni::sqlgen::intersect  {${$_[0]}->modify('intersect',  $_[1])}
+sub ni::sqlgen::difference {${$_[0]}->modify('except',     $_[1])}
+
+sub ni::sqlgen::take       {${$_[0]}->modify('limit',      $_[1])}
+sub ni::sqlgen::sample     {${$_[0]}->modify('where',      "random() < $_[1]")}
