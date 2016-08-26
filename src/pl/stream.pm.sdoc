@@ -13,7 +13,7 @@ situations. For example:
 our @q;
 our @F;
 
-sub rl()   {$_ = @q ? shift @q : <STDIN>}
+sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}

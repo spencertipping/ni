@@ -580,7 +580,7 @@ pl.pl
 util.pm
 math.pm
 stream.pm
-31 core/pl/pl.pl
+29 core/pl/pl.pl
 
 package ni;
 use constant perl_mapgen => gen q{
@@ -590,26 +590,24 @@ use constant perl_mapgen => gen q{
   sub row {
     %body
   }
-  while (@q ? $_ = shift @q : <STDIN>) {
-    @F = ();
+  while (defined rl) {
     %each
   }
 };
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm |}}
-sub perl_mapper($) {sh [qw/perl -/],
+sub perl_gen($$) {sh [qw/perl -/],
   stdin => perl_mapgen->(prefix => perl_prefix,
                          body   => $_[0],
-                         each   => 'pr for row')}
-sub perl_grepper($) {sh [qw/perl -/],
-  stdin => perl_mapgen->(prefix => perl_prefix,
-                         body   => $_[0],
-                         each   => 'pr if row')}
+                         each   => $_[1])}
+sub perl_mapper($)  {perl_gen $_[0], 'pr for row'}
+sub perl_grepper($) {perl_gen $_[0], 'pr if row'}
+sub perl_facet($)   {perl_gen $_[0], 'pr row . "\t$_"'}
 our @perl_alt = (pmap {perl_mapper $_} plcode);
 defshort 'root', 'p', altr @perl_alt;
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
-$facet_chalt{p} = pmap {[perl_mapper $$_[0],
+$facet_chalt{p} = pmap {[perl_facet $$_[0],
                          sh(['ni_sort', '-k1,1'], prefix => row_pre),
                          perl_mapper $$_[1]]} seq plcode, plcode;
 48 core/pl/util.pm
@@ -692,7 +690,7 @@ sub haversine {
 
 our @q;
 our @F;
-sub rl()   {$_ = @q ? shift @q : <STDIN>}
+sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
