@@ -2,8 +2,6 @@ Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
-package ni;
-
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {1 << $_},   mr '^B(\d+)'),

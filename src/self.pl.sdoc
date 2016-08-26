@@ -2,8 +2,6 @@ Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
-package ni;
-
 sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;

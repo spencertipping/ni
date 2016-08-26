@@ -20,13 +20,10 @@ command-line filters:
                                line      => 'line',
                                body      => 'System.out.println(line);');
 
-package ni;
-
-our %gen_cache;
 our $gensym_index = 0;
 sub gensym {join '_', '_gensym', ++$gensym_index, @_}
 
-sub gen {
+sub gen($) {
   my @pieces = split /(%\w+)/, $_[0];
   sub {
     my %vars = @_;

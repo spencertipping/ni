@@ -3,8 +3,6 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
-package ni;
-
 use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
@@ -19,7 +17,9 @@ use constant perl_mapgen => gen q{
 
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
-                                        core/pl/stream.pm |}}
+                                        core/pl/stream.pm
+                                        core/gen/gen.pl
+                                        core/pl/facet.pm |}}
 
 sub perl_gen($$) {sh [qw/perl -/],
   stdin => perl_mapgen->(prefix => perl_prefix,

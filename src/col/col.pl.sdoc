@@ -1,8 +1,6 @@
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
-package ni;
-
 Column selection.
 Normally perl is fast at text manipulation, but on most UNIX systems
 `/usr/bin/cut` is at least an order of magnitude faster. We can use it if two

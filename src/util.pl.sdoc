@@ -2,8 +2,6 @@ Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
 
-package ni;
-
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 

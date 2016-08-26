@@ -13,8 +13,6 @@ This generalizes easily to other programming environments, e.g. SQL GROUP BY:
 
 | $ ni ... [@'mod(x, 10)' 'sum(y)']
 
-package ni;
-
 our %facet_chalt;
 
 defshort 'root', '@', chaltr %facet_chalt;

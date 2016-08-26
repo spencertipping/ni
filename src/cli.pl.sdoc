@@ -4,8 +4,6 @@ the reader. Certain static symbols, despite being resolved at runtime, have
 read-time parse semantics that make it possible for ni syntax to be as
 expressive as (and often much more than) nfu. See design/cli.md for details.
 
-package ni;
-
 A parse state is just a modified copy of @ARGV, including string
 transformations. For example:
 

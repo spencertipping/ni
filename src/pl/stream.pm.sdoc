@@ -10,14 +10,24 @@ situations. For example:
 
 | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
+Uppercase letters are quoted fields: A == 'a'. This is useful when defining
+lazy facets (see facet.pm.sdoc).
+
 our @q;
 our @F;
 
 sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub F_()   {chomp, @F = split /\t/ unless @F; @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
+BEGIN {eval sprintf "sub %s() {(F_)[%d]}", $_, ord($_) - 97 for 'b'..'q';
+       eval sprintf "sub %s() {'%s'}", uc, $_               for 'a'..'q'}
+
+Optimize access to the first field; in particular, no need to fully populate @F
+since no seeking needs to happen. This should improve performance for faceting
+workflows.
+
+sub a() {@F ? $F[0] : substr $_, 0, index $_, "\t"}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
@@ -41,20 +51,3 @@ line at a time.
 sub rw(&) {my @r; push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
 sub ru(&) {my @r; push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-
-Faceting functions.
-Functions that operate on a single facet, which is defined by the first column
-value. Mnemonics:
-
-| fe: facet each (side-effects for each value, streaming)
-  fr: facet reduce (streaming, n-ary)
-
-sub fe(&) {my ($k, $f, $x) = (a, @_);
-           $x = &$f, rl while defined and a eq $k;
-           push @q, $_ if defined;
-           $x}
-
-sub fr(&@) {my ($k, $f, @xs) = (a, @_);
-            @xs = &$f(@xs), rl while defined and a eq $k;
-            push @q, $_ if defined;
-            @xs}

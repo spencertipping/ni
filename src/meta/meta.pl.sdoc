@@ -2,8 +2,6 @@ Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
-package ni;
-
 deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
 deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';

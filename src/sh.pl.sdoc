@@ -18,8 +18,6 @@ Now you can write `$pipeline` into a `/bin/sh` process to execute it.
 NOTE: unlike system(), exec(), etc, if you say sh('ls -lh'), this will try to
 execute the "ls -lh" command rather than interpreting "-lh" as an argument.
 
-package ni;
-
 sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                            : $_,

@@ -1,6 +1,4 @@
 Java op context.
 A context that translates ni CLI operators into Java control flow.
 
-package ni;
-
 defcontext 'java/cf';

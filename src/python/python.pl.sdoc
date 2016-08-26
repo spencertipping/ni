@@ -2,8 +2,6 @@ Python stuff.
 A context for processing stuff in Python, as well as various functions to
 handle the peculiarities of Python code.
 
-package ni;
-
 Indentation fixing.
 This is useful in any context where code is artificially indented, e.g. when
 you've got a multiline quotation and the first line appears outdented because

@@ -21,7 +21,7 @@
 # SOFTWARE.
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+push(@ni::evals, $_), eval "package ni;$ni::self{$_}", $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
 26 ni
@@ -48,7 +48,7 @@ __DATA__
 # SOFTWARE.
 use 5.006_000;
 chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
+push(@ni::evals, $_), eval "package ni;$ni::self{$_}", $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
 24 ni.map
@@ -76,9 +76,8 @@ lib core/java
 lib core/hadoop
 lib core/pyspark
 lib doc
-12 util.pl
+11 util.pl
 
-package ni;
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
@@ -89,9 +88,8 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
-30 self.pl
+29 self.pl
 
-package ni;
 sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;
@@ -120,9 +118,8 @@ sub extend_self($) {
   modify_self 'ni.map';
 }
 sub image {read_map 'ni.map'}
-95 cli.pl
+94 cli.pl
 
-package ni;
 
 
 
@@ -216,12 +213,11 @@ sub defcontext($) {
 defcontext 'root';
 sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
 sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
-69 sh.pl
+68 sh.pl
 
 
 
 
-package ni;
 sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                            : $_,
@@ -286,9 +282,8 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-69 main.pl
+68 main.pl
 
-package ni;
 use POSIX qw/dup dup2/;
 use constant exit_success      => 0;
 use constant exit_run_error    => 1;
@@ -358,9 +353,8 @@ sub main {
 }
 1 core/common/lib
 common.pl
-11 core/common/common.pl
+10 core/common/common.pl
 
-package ni;
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {1 << $_},   mr '^B(\d+)'),
@@ -372,14 +366,12 @@ use constant colspec1 => mr '^[A-Z0-9]';
 use constant colspec  => mr '^[-A-Z0-9.]+';
 1 core/gen/lib
 gen.pl
-15 core/gen/gen.pl
+13 core/gen/gen.pl
 
 
-package ni;
-our %gen_cache;
 our $gensym_index = 0;
 sub gensym {join '_', '_gensym', ++$gensym_index, @_}
-sub gen {
+sub gen($) {
   my @pieces = split /(%\w+)/, $_[0];
   sub {
     my %vars = @_;
@@ -432,9 +424,8 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-28 core/stream/stream.pl
+27 core/stream/stream.pl
 
-package ni;
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
 use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
 use constant perl_ifn  => gen "%name() { perl - \"\$@\" <<'%hd'; }\n%code\n%hd";
@@ -474,9 +465,8 @@ ni_pipe() { eval "$1" | eval "$2"; }
 ni_pager() { ${NI_PAGER:-less} || more || cat; }
 1 core/meta/lib
 meta.pl
-13 core/meta/meta.pl
+12 core/meta/meta.pl
 
-package ni;
 deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
 deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
@@ -490,9 +480,8 @@ deflong 'root', 'meta/help',
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
-32 core/col/col.pl
+31 core/col/col.pl
 
-package ni;
 
 
 sub col_cut(@) {
@@ -526,9 +515,8 @@ defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
 row.pl
 row.sh
-25 core/row/row.pl
+24 core/row/row.pl
 
-package ni;
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
 our @row_alt = (
   (pmap {sh 'tail', '-n', $_}                      pn 1, mr '^\+', number),
@@ -566,23 +554,22 @@ ni_sort() {
   sort "$@"; }
 1 core/facet/lib
 facet.pl
-8 core/facet/facet.pl
+7 core/facet/facet.pl
 
 
 
 
 
-package ni;
 our %facet_chalt;
 defshort 'root', '@', chaltr %facet_chalt;
-4 core/pl/lib
+5 core/pl/lib
 pl.pl
 util.pm
 math.pm
 stream.pm
-29 core/pl/pl.pl
+facet.pm
+30 core/pl/pl.pl
 
-package ni;
 use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
@@ -596,7 +583,9 @@ use constant perl_mapgen => gen q{
 };
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
-                                        core/pl/stream.pm |}}
+                                        core/pl/stream.pm
+                                        core/gen/gen.pl
+                                        core/pl/facet.pm |}}
 sub perl_gen($$) {sh [qw/perl -/],
   stdin => perl_mapgen->(prefix => perl_prefix,
                          body   => $_[0],
@@ -683,7 +672,8 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-29 core/pl/stream.pm
+23 core/pl/stream.pm
+
 
 
 
@@ -691,10 +681,13 @@ sub haversine {
 our @q;
 our @F;
 sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub F_()   {chomp, @F = split /\t/ unless @F; @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
+BEGIN {eval sprintf "sub %s() {(F_)[%d]}", $_, ord($_) - 97 for 'b'..'q';
+       eval sprintf "sub %s() {'%s'}", uc, $_               for 'a'..'q'}
+
+sub a() {@F ? $F[0] : substr $_, 0, index $_, "\t"}
 
 
 
@@ -703,6 +696,7 @@ BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
 sub rw(&) {my @r; push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
 sub ru(&) {my @r; push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
+46 core/pl/facet.pm
 
 
 sub fe(&) {my ($k, $f, $x) = (a, @_);
@@ -713,11 +707,46 @@ sub fr(&@) {my ($k, $f, @xs) = (a, @_);
             @xs = &$f(@xs), rl while defined and a eq $k;
             push @q, $_ if defined;
             @xs}
+
+
+sub fsum($)  {+{reduce => gen "%v1 + ($_[0])",
+                init   => gen '0',
+                n      => 1,
+                end    => gen '%v1'}}
+sub fmean($) {+{reduce => gen "%v1 + ($_[0]), %v2 + 1",
+                init   => gen '0, 0',
+                n      => 2,
+                end    => gen '%v1 / (%v2 || 1)'}}
+sub fmin($)  {+{reduce => gen "defined %v1 ? min %v1, ($_[0]) : ($_[0])",
+                init   => gen 'undef',
+                n      => 1,
+                end    => gen '%v1'}}
+sub fmax($)  {+{reduce => gen "defined %v1 ? max %v1, ($_[0]) : ($_[0])",
+                init   => gen 'undef',
+                n      => 1,
+                end    => gen '%v1'}}
+sub compound_facet(@) {
+  local $_;
+  my $slots = 0;
+  my @indexes = map {$slots += $$_{n}; $slots - $$_{n}} @_;
+  my @mapping = map {my $i = $_;
+                     [map {;"v$_" => sprintf "\$_[%d]", $indexes[$i] + $_ - 1}
+                          1..$_[$i]{n}]} 0..$#_;
+  +{init   => join(', ', map $$_{init}->(), @_),
+    reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
+    end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_)}
+}
+sub fc(@) {
+  my %c      = %{compound_facet @_};
+  my @init   = eval "($c{init})"            or die "fc: '$c{init}': $@";
+  my $reduce = eval "sub{\n($c{reduce})\n}" or die "fc: '$c{reduce}': $@";
+  my $end    = eval "sub{\n($c{end})\n}"    or die "fc: '$c{end}': $@";
+  &$end(fr {$reduce->(@_)} @init);
+}
 1 core/python/lib
 python.pl
-29 core/python/python.pl
+28 core/python/python.pl
 
-package ni;
 
 
 
@@ -747,9 +776,8 @@ use constant pycode => sub {
            : (pydent $code, @xs)};
 1 core/sql/lib
 sql.pl
-40 core/sql/sql.pl
+39 core/sql/sql.pl
 
-package ni;
 defcontext 'sql';
 sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
 sub ni::sqlgen::render {
@@ -790,9 +818,8 @@ sub ni::sqlgen::take       {${$_[0]}->modify('limit',      $_[1])}
 sub ni::sqlgen::sample     {${$_[0]}->modify('where',      "random() < $_[1]")}
 1 core/java/lib
 java.pl
-3 core/java/java.pl
+2 core/java/java.pl
 
-package ni;
 defcontext 'java/cf';
 1 core/hadoop/lib
 hadoop.pl
@@ -800,10 +827,9 @@ hadoop.pl
 
 1 core/pyspark/lib
 pyspark.pl
-33 core/pyspark/pyspark.pl
+32 core/pyspark/pyspark.pl
 
 
-package ni;
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
 sub pyspark_lambda($) {$_[0]}
@@ -848,7 +874,7 @@ include:
   data
 - `//help/row`: row-level operators
 - `//help/col`: column-level operators
-89 doc/stream.md
+88 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -936,6 +962,5 @@ $ ni n:3O                       # more typical reverse numeric sort
 1
 ```
 
-See `ni --tutorial row` for details about row-reordering operators like
-sorting.
+See `ni //help/row` for details about row-reordering operators like sorting.
 __END__

@@ -9,8 +9,6 @@ we define a configuration system that lets the user specify the Spark execution
 profile. This governs everything from `spark-submit` CLI options to
 SparkContext init.
 
-package ni;
-
 Pyspark operators.
 These exist in their own parsing context, which we hook in below by using
 contexts->{pyspark}{...}. Rather than compiling directly to Python code, we

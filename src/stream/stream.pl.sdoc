@@ -3,8 +3,6 @@ Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc. Most of the functionality
 here is implemented by stream.sh.
 
-package ni;
-
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
 use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
 use constant perl_ifn  => gen "%name() { perl - \"\$@\" <<'%hd'; }\n%code\n%hd";

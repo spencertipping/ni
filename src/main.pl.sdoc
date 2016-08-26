@@ -2,8 +2,6 @@ Main function.
 ni can be invoked as a stream processor, but it can also do some toplevel
 things besides. This main function knows how to handle these cases.
 
-package ni;
-
 use POSIX qw/dup dup2/;
 
 use constant exit_success      => 0;

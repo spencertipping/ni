@@ -1,8 +1,6 @@
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-package ni;
-
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
 
 our @row_alt = (

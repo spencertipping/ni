@@ -3,8 +3,6 @@ Translates ni CLI grammar to a SELECT query. This is a little interesting
 because SQL has a weird structure to it; to help with this I've also got a
 'sqlgen' abstraction that figures out when we need to drop into a subquery.
 
-package ni;
-
 defcontext 'sql';
 
 sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
