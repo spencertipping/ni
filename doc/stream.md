@@ -85,5 +85,4 @@ $ ni n:3O                       # more typical reverse numeric sort
 1
 ```
 
-See `ni --tutorial row` for details about row-reordering operators like
-sorting.
+See `ni //help/row` for details about row-reordering operators like sorting.
