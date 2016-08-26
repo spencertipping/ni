@@ -221,7 +221,7 @@ sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
 sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                            : $_,
-                     map 'ARRAY' eq ref $_ ? quote(@$_) : $_, @_}
+                     map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
 
 
 
@@ -258,7 +258,7 @@ sub sh {
 }
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 sub sh_prefix() {join "\n", @self{@sh_libs}}
-sub flatten {map 'ARRAY' eq ref ? flatten(@$_) : $_, @_}
+sub flatten {map 'ARRAY' eq ref($_) ? flatten(@$_) : $_, @_}
 sub pipeline {
   my %ps;
   my @cs;

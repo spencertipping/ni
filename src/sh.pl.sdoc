@@ -21,7 +21,7 @@ execute the "ls -lh" command rather than interpreting "-lh" as an argument.
 sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                            : $_,
-                     map 'ARRAY' eq ref $_ ? quote(@$_) : $_, @_}
+                     map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
 
 Shell commands can include some context, as shown in the example above. In
 addition to "stdin", which redirects fd 0 to fd 3, you can specify a hash of
@@ -75,7 +75,7 @@ sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 
 sub sh_prefix() {join "\n", @self{@sh_libs}}
 
-sub flatten {map 'ARRAY' eq ref ? flatten(@$_) : $_, @_}
+sub flatten {map 'ARRAY' eq ref($_) ? flatten(@$_) : $_, @_}
 
 sub pipeline {
   my %ps;
