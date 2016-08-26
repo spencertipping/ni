@@ -484,7 +484,7 @@ sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
 
 deflong 'root', 'meta/help',
-  pmap {$_ = 'tutorial' unless length;
+  pmap {$_ = 'README' if !length or /^tutorial$/;
         die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
         ni_verb $self{"doc/$_.md"}}
   pn 1, mr '^//help/?', mrc '^.*';
@@ -835,9 +835,9 @@ sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
 2 doc/lib
-tutorial.md
+README.md
 stream.md
-10 doc/tutorial.md
+10 doc/README.md
 # ni tutorial
 You can access this tutorial by running `ni //help`, or `ni //help/tutorial`.
 
