@@ -30,8 +30,9 @@ abstraction of "everything's a spreadsheet."
 Glad you asked, because ni is self-documenting:
 
 ```sh
-$ ni --help [topic]
-$ ni --explain [options...]
+$ ni --help
+$ ni //help/topic
+$ ni --explain [options...]     # TODO
 $ ni --compile [options...]
 ```
 
