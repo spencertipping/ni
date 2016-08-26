@@ -22,6 +22,8 @@ cd $(dirname $0)
 ./ni --internal/lib core/hadoop
 ./ni --internal/lib core/pyspark
 
+./ni --internal/lib doc
+
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1

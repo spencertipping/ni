@@ -5,37 +5,32 @@ transformer.
 
 package ni;
 
-sub perl_mapgen() {gen q{
+use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  sub row {
+    %body
+  }
   while (<STDIN>) {
     @F = ();
-    %mapper
+    %each
   }
-}}
-
-sub perl_grepgen() {gen q{
-  %prefix
-  close STDIN;
-  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
-  while (<STDIN>) {
-    @F = ();
-    print if %grepper
-  }
-}}
+};
 
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm |}}
 
 sub perl_mapper($) {sh [qw/perl -/],
-                       stdin => perl_mapgen->(prefix => perl_prefix,
-                                              mapper => $_[0])}
+  stdin => perl_mapgen->(prefix => perl_prefix,
+                         body   => $_[0],
+                         each   => 'pr for row')}
 
 sub perl_grepper($) {sh [qw/perl -/],
-                        stdin => perl_grepgen->(prefix  => perl_prefix,
-                                                grepper => $_[0])}
+  stdin => perl_mapgen->(prefix => perl_prefix,
+                         body   => $_[0],
+                         each   => 'pr if row')}
 
 our @perl_alt = (pmap {perl_mapper $_} plcode);
 

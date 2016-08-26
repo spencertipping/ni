@@ -1,15 +1,27 @@
-# ni: self-modifying APL for unstructured, streaming data
+# ni: portable, self-modifying APL for unstructured data
 ![ni!](http://spencertipping.com/ni.png)
+
+```sh
+$ ni --help                     # start here
+```
 
 ## APL, really?
 Not really, but conceptually similar. Ni is optimized to require as few
-characters as possible; for example, the ubiquitous word count:
+characters as possible; for example, the ubiquitous word count, sorting by
+descending word frequency:
 
 ```sh
-$ ni README.md fWvC             # run on POSIX tools locally
-$ ni README.md hfWv^c           # run on hadoop streaming
-$ ni README.md sfWvC            # run on spark
+$ ni README.md FWpF CO          # run on POSIX tools locally
+$ ni README.md hFWpF cO         # run on hadoop streaming
+$ ni README.md PL[FWpF CO]      # run on pyspark
 ```
+
+- `FW`: fieldsplit on non-words
+- `pF`: map with Perl code, in this case `F`, which is the array of fields
+  (this transposes horizontal rows to vertical)
+- `C`: sort+count (hadoop version uses `c` instead because the input is already
+  sorted)
+- `O`: reverse sort numerically
 
 Most operators are a single character, and ni maintains a consistent data
 abstraction of "everything's a spreadsheet."
@@ -21,8 +33,6 @@ Glad you asked, because ni is self-documenting:
 $ ni --help [topic]
 $ ni --explain [options...]
 $ ni --compile [options...]
-$ ni --usage
-$ ni --tutorial
 ```
 
 It can also explain how a command will be parsed and executed:

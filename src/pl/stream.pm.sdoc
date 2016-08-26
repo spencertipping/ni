@@ -1,13 +1,19 @@
 Perl stream-related functions.
-Utilities to parse and emit streams of data.
+Utilities to parse and emit streams of data. Handles the following use cases:
+
+| $ ni n:10p'a + a'             # emit single value
+  $ ni n:10p'a, a * a'          # emit multiple values vertically
+  $ ni n:10p'r a, a * a'        # emit multiple values horizontally
+
+The 'pr' function can bypass split /\t/, which is useful in high-throughput
+situations. For example:
+
+| $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
 our @F;
 
-sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
-sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
-
 sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
-sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
-sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"}
+sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 sub grab($) {$_ .= <STDIN> until /$_[0]/}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}

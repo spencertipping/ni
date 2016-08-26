@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-22 ni.map
+23 ni.map
 
 
 unquote ni
@@ -74,6 +74,7 @@ lib core/sql
 lib core/java
 lib core/hadoop
 lib core/pyspark
+lib doc
 11 util.pl
 
 package ni;
@@ -282,7 +283,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-71 main.pl
+74 main.pl
 
 package ni;
 use POSIX qw/dup dup2/;
@@ -342,9 +343,12 @@ $option_handlers{extend}
   = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
          modify_self 'ni.map'};
 
-$option_handlers{usage} = sub {print $help_topics{usage}, "\n"; exit_nop};
 $option_handlers{help}
-  = sub {print $help_topics{@_ ? $_[0] : 'ni'}, "\n"; exit_nop};
+  = sub {my ($topic) = (@_, 'tutorial');
+         my $text    = $self{"doc/$topic.md"};
+         die "ni: unknown help topic: $topic" unless $text;
+         print "$text\n";
+         exit_nop};
 $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};
 sub main {
@@ -508,11 +512,11 @@ defshort 'root', 'f', altr @col_alt;
 sub ni_split_chr($)   {sh 'perl', '-npe', "y/$_[0]/\\t/"}
 sub ni_split_regex($) {sh 'perl', '-npe', "s/$_[0]/\\t/g"}
 our %split_chalt = (
-  'C' => (pmap {ni_split_chr   ','}     none),
-  'P' => (pmap {ni_split_chr   '|'}     none),
-  'S' => (pmap {ni_split_regex qr/\h+/} none),
-  'W' => (pmap {ni_split_regex qr/\W+/} none),
-  '/' => (pmap {ni_split_regex $_}      regex),
+  'C' => (pmap {ni_split_chr   ','}          none),
+  'P' => (pmap {ni_split_chr   '|'}          none),
+  'S' => (pmap {ni_split_regex qr/\h+/}      none),
+  'W' => (pmap {ni_split_regex qr/[^\w\n]+/} none),
+  '/' => (pmap {ni_split_regex $_}           regex),
 );
 defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
@@ -561,41 +565,39 @@ pl.pl
 util.pm
 math.pm
 stream.pm
-32 core/pl/pl.pl
+28 core/pl/pl.pl
 
 package ni;
-sub perl_mapgen() {gen q{
+use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  sub row {
+    %body
+  }
   while (<STDIN>) {
     @F = ();
-    %mapper
+    %each
   }
-}}
-sub perl_grepgen() {gen q{
-  %prefix
-  close STDIN;
-  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
-  while (<STDIN>) {
-    @F = ();
-    print if %grepper
-  }
-}}
+};
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm |}}
 sub perl_mapper($) {sh [qw/perl -/],
-                       stdin => perl_mapgen->(prefix => perl_prefix,
-                                              mapper => $_[0])}
+  stdin => perl_mapgen->(prefix => perl_prefix,
+                         body   => $_[0],
+                         each   => 'pr for row')}
 sub perl_grepper($) {sh [qw/perl -/],
-                        stdin => perl_grepgen->(prefix  => perl_prefix,
-                                                grepper => $_[0])}
+  stdin => perl_mapgen->(prefix => perl_prefix,
+                         body   => $_[0],
+                         each   => 'pr if row')}
 our @perl_alt = (pmap {perl_mapper $_} plcode);
 defshort 'root', 'p', altr @perl_alt;
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
-46 core/pl/util.pm
+48 core/pl/util.pm
 
+sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
+sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_}
@@ -665,14 +667,15 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-9 core/pl/stream.pm
+10 core/pl/stream.pm
+
+
+
 
 our @F;
-sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
-sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
 sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
-sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"}
-sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"}
+sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 sub grab($) {$_ .= <STDIN> until /$_[0]/}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
 1 core/python/lib
@@ -759,4 +762,105 @@ our %spark_profiles = (
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
+2 doc/lib
+tutorial.md
+stream.md
+7 doc/tutorial.md
+# ni tutorial
+ni parses its command arguments to build and run a shell pipeline. Help topics
+include:
+
+- `stream`: an explanation of the basic way ni handles CLI options and data
+- `row`: row-level operators
+- `col`: column-level operators
+89 doc/stream.md
+# Stream operations
+Streams are made of text, and ni can do a few different things with them. The
+simplest involve stuff that bash utilities already handle (though more
+verbosely):
+
+```bash
+$ echo test > foo
+$ ni foo
+test
+$ ni foo foo
+test
+test
+```
+
+ni transparently decompresses common formats, regardless of file extension:
+
+```bash
+$ echo test | gzip > fooz
+$ ni fooz
+test
+$ cat fooz | ni
+test
+```
+
+## Data sources
+In addition to files, ni can generate data in a few ways:
+
+```bash
+$ ni $:'seq 4'                  # shell command stdout
+1
+2
+3
+4
+$ ni n:4                        # integer generator
+1
+2
+3
+4
+$ ni n0:4                       # integer generator, zero-based
+0
+1
+2
+3
+$ ni id:foo                     # literal text
+foo
+```
+
+## Transformation
+ni can stream data through a shell process, which is often shorter than
+shelling out separately:
+
+```bash
+$ ni n:3 | sort
+1
+2
+3
+$ ni n:3 $=sort                 # $= filters through a command
+1
+2
+3
+$ ni n:3 $='sort -r'
+3
+2
+1
+```
+
+And, of course, ni has shorthands for doing all of the above:
+
+```bash
+$ ni n:3 g                      # g = sort
+1
+2
+3
+$ ni n:3g                       # no need for whitespace
+1
+2
+3
+$ ni n:3gAr                     # reverse-sort by first field
+3
+2
+1
+$ ni n:3O                       # more typical reverse numeric sort
+3
+2
+1
+```
+
+See `ni --tutorial row` for details about row-reordering operators like
+sorting.
 __END__

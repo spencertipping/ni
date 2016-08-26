@@ -47,11 +47,11 @@ sub ni_split_chr($)   {sh 'perl', '-npe', "y/$_[0]/\\t/"}
 sub ni_split_regex($) {sh 'perl', '-npe', "s/$_[0]/\\t/g"}
 
 our %split_chalt = (
-  'C' => (pmap {ni_split_chr   ','}     none),
-  'P' => (pmap {ni_split_chr   '|'}     none),
-  'S' => (pmap {ni_split_regex qr/\h+/} none),
-  'W' => (pmap {ni_split_regex qr/\W+/} none),
-  '/' => (pmap {ni_split_regex $_}      regex),
+  'C' => (pmap {ni_split_chr   ','}          none),
+  'P' => (pmap {ni_split_chr   '|'}          none),
+  'S' => (pmap {ni_split_regex qr/\h+/}      none),
+  'W' => (pmap {ni_split_regex qr/[^\w\n]+/} none),
+  '/' => (pmap {ni_split_regex $_}           regex),
 );
 
 defshort 'root', 'F', chaltr %split_chalt;
