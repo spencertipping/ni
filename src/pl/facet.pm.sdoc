@@ -28,43 +28,41 @@ epic use of codegen and `eval` to help Perl be all it can be. We end up
 compiling into a single function body for an `fr` call, which is then mapped
 through a finalizer to eliminate intermediate states.
 
-sub fsum($)  {+{reduce => gen "%v1 + ($_[0])",
-                init   => gen '0',
-                n      => 1,
-                end    => gen '%v1'}}
+sub fsum($)  {+{reduce => gen "%1 + ($_[0])",
+                init   => [0],
+                end    => gen '%1'}}
 
-sub fmean($) {+{reduce => gen "%v1 + ($_[0]), %v2 + 1",
-                init   => gen '0, 0',
-                n      => 2,
-                end    => gen '%v1 / (%v2 || 1)'}}
+sub fmean($) {+{reduce => gen "%1 + ($_[0]), %2 + 1",
+                init   => [0, 0],
+                end    => gen '%1 / (%2 || 1)'}}
 
-sub fmin($)  {+{reduce => gen "defined %v1 ? min %v1, ($_[0]) : ($_[0])",
-                init   => gen 'undef',
-                n      => 1,
-                end    => gen '%v1'}}
+sub fmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
+                init   => [undef],
+                end    => gen '%1'}}
 
-sub fmax($)  {+{reduce => gen "defined %v1 ? max %v1, ($_[0]) : ($_[0])",
-                init   => gen 'undef',
-                n      => 1,
-                end    => gen '%v1'}}
+sub fmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
+                init   => [undef],
+                end    => gen '%1'}}
+
+sub rfn($$)  {+{reduce => gen $_[0],
+                init   => [@_[1..$#_]],
+                end    => gen join ', ', map "%$_", 1..$#_}}
 
 sub compound_facet(@) {
   local $_;
   my $slots = 0;
-  my @indexes = map {$slots += $$_{n}; $slots - $$_{n}} @_;
+  my @indexes = map {my $n = @{$$_{init}}; $slots += $n; $slots - $n} @_;
   my @mapping = map {my $i = $_;
-                     [map {;"v$_" => sprintf "\$_[%d]", $indexes[$i] + $_ - 1}
-                          1..$_[$i]{n}]} 0..$#_;
-
-  +{init   => join(', ', map $$_{init}->(), @_),
+                     [map {;$_ => sprintf "\$_[%d]", $indexes[$i] + $_ - 1}
+                          1..@{$_[$i]{init}}]} 0..$#_;
+  +{init   => [map @{$$_{init}}, @_],
     reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
     end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_)}
 }
 
 sub fc(@) {
   my %c      = %{compound_facet @_};
-  my @init   = eval "($c{init})"            or die "fc: '$c{init}': $@";
   my $reduce = eval "sub{\n($c{reduce})\n}" or die "fc: '$c{reduce}': $@";
   my $end    = eval "sub{\n($c{end})\n}"    or die "fc: '$c{end}': $@";
-  &$end(fr {$reduce->(@_)} @init);
+  &$end(fr {$reduce->(@_)} @{$c{init}});
 }
