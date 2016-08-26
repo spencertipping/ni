@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval $ni::self{$_}, $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-23 ni.map
+24 ni.map
 
 
 unquote ni
@@ -68,6 +68,7 @@ lib core/stream
 lib core/meta
 lib core/col
 lib core/row
+lib core/facet
 lib core/pl
 lib core/python
 lib core/sql
@@ -215,7 +216,7 @@ sub defcontext($) {
 defcontext 'root';
 sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
 sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
-68 sh.pl
+69 sh.pl
 
 
 
@@ -261,11 +262,12 @@ sub sh {
 }
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
 sub sh_prefix() {join "\n", @self{@sh_libs}}
+sub flatten {map 'ARRAY' eq ref ? flatten(@$_) : $_, @_}
 sub pipeline {
   my %ps;
   my @cs;
   my @hs;
-  for (@_) {
+  for (flatten @_) {
     my $c = quote @{$$_{exec}};
     $c .= " $$_{magic}" if exists $$_{magic};
     if (exists $$_{stdin}) {
@@ -562,12 +564,23 @@ ni_rsample() { perl -ne '
 ni_sort() {
   # TODO: --compress-program etc
   sort "$@"; }
+1 core/facet/lib
+facet.pl
+8 core/facet/facet.pl
+
+
+
+
+
+package ni;
+our %facet_chalt;
+defshort 'root', '@', chaltr %facet_chalt;
 4 core/pl/lib
 pl.pl
 util.pm
 math.pm
 stream.pm
-28 core/pl/pl.pl
+31 core/pl/pl.pl
 
 package ni;
 use constant perl_mapgen => gen q{
@@ -577,7 +590,7 @@ use constant perl_mapgen => gen q{
   sub row {
     %body
   }
-  while (<STDIN>) {
+  while (@q ? $_ = shift @q : <STDIN>) {
     @F = ();
     %each
   }
@@ -596,6 +609,9 @@ sub perl_grepper($) {sh [qw/perl -/],
 our @perl_alt = (pmap {perl_mapper $_} plcode);
 defshort 'root', 'p', altr @perl_alt;
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+$facet_chalt{p} = pmap {[perl_mapper $$_[0],
+                         sh(['ni_sort', '-k1,1'], prefix => row_pre),
+                         perl_mapper $$_[1]]} seq plcode, plcode;
 48 core/pl/util.pm
 
 sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
@@ -669,17 +685,36 @@ sub haversine {
   my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
   2 * atan2(sqrt($a), sqrt(1 - $a));
 }
-10 core/pl/stream.pm
+29 core/pl/stream.pm
 
 
 
 
+our @q;
 our @F;
-sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
-sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-sub grab($) {$_ .= <STDIN> until /$_[0]/}
+sub rl()   {$_ = @q ? shift @q : <STDIN>}
+sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
+
+
+
+
+
+sub rw(&) {my @r; push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
+sub ru(&) {my @r; push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
+sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
+
+
+sub fe(&) {my ($k, $f, $x) = (a, @_);
+           $x = &$f, rl while defined and a eq $k;
+           push @q, $_ if defined;
+           $x}
+sub fr(&@) {my ($k, $f, @xs) = (a, @_);
+            @xs = &$f(@xs), rl while defined and a eq $k;
+            push @q, $_ if defined;
+            @xs}
 1 core/python/lib
 python.pl
 29 core/python/python.pl

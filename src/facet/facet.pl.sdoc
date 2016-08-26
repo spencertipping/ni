@@ -1,0 +1,20 @@
+Faceting support.
+A compound operation that prepends a new facet-value column, sorts by that
+value, and supports streaming aggregation within facet groups. It's specified
+this way for two reasons. First, it's convenient; but second, and more
+importantly, not all backends will have the right set of primitives to let you
+specify a facet the same way.
+
+The general syntax is like this:
+
+| $ ni n:100 @p'a % 10' 'r a, fr {$_ + b} 0'    # sum each group
+
+This generalizes easily to other programming environments, e.g. SQL GROUP BY:
+
+| $ ni ... [@'mod(x, 10)' 'sum(y)']
+
+package ni;
+
+our %facet_chalt;
+
+defshort 'root', '@', chaltr %facet_chalt;

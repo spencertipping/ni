@@ -10,10 +10,51 @@ situations. For example:
 
 | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
+our @q;
 our @F;
 
-sub F(@)    {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
-sub r(@)    {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-sub pr(;$)  {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-sub grab($) {$_ .= <STDIN> until /$_[0]/}
+sub rl()   {$_ = @q ? shift @q : <STDIN>}
+sub F(@)   {chomp, @F = split /\t/ unless @F; @_ ? @F[@_] : @F}
+sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {eval sprintf "sub %s() {F %d}", $_, ord($_) - 97 for 'a'..'q'}
+
+Seeking functions.
+It's possible to read downwards (i.e. future lines), which returns an array and
+sends the after-rejected line into the lookahead queue to be used by the next
+iteration. Mnemonics:
+
+| rw: read while condition
+  ru: read until condition
+  re: read while equal
+
+These functions all read things into memory. If you want to stream stuff, you
+can do it in two ways. One is to use control flow with the 'rl' (read line)
+function:
+
+| do_stuff until rl =~ /<\//;           # iterate until closing XML tag
+  push @q, $_;                          # important: stash rejected line
+
+The other is to use the faceting functions below, each of which operates on one
+line at a time.
+
+sub rw(&) {my @r; push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
+sub ru(&) {my @r; push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
+sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
+
+Faceting functions.
+Functions that operate on a single facet, which is defined by the first column
+value. Mnemonics:
+
+| fe: facet each (side-effects for each value, streaming)
+  fr: facet reduce (streaming, n-ary)
+
+sub fe(&) {my ($k, $f, $x) = (a, @_);
+           $x = &$f, rl while defined and a eq $k;
+           push @q, $_ if defined;
+           $x}
+
+sub fr(&@) {my ($k, $f, @xs) = (a, @_);
+            @xs = &$f(@xs), rl while defined and a eq $k;
+            push @q, $_ if defined;
+            @xs}
