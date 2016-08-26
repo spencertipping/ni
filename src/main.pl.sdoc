@@ -91,12 +91,7 @@ $option_handlers{extend}
 Documentation options.
 Options for the end user that can't otherwise be parsed as pipelines.
 
-$option_handlers{help}
-  = sub {my ($topic) = (@_, 'tutorial');
-         my $text    = $self{"doc/$topic.md"};
-         die "ni: unknown help topic: $topic" unless $text;
-         print "$text\n";
-         exit_nop};
+$option_handlers{help} = sub {@_ = ("//help/" . (@_ ? $_[0] : '')); goto \&main};
 
 $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};

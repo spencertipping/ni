@@ -11,3 +11,13 @@ deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
+
+Documentation options.
+These are listed under the `//help` prefix. This isn't a toplevel option
+because it's more straightforward to model these as data sources.
+
+deflong 'root', 'meta/help',
+  pmap {$_ = 'tutorial' unless length;
+        die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
+        ni_verb $self{"doc/$_.md"}}
+  pn 1, mr '^//help/?', mrc '^.*';

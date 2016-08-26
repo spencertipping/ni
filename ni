@@ -283,7 +283,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-74 main.pl
+69 main.pl
 
 package ni;
 use POSIX qw/dup dup2/;
@@ -343,12 +343,7 @@ $option_handlers{extend}
   = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
          modify_self 'ni.map'};
 
-$option_handlers{help}
-  = sub {my ($topic) = (@_, 'tutorial');
-         my $text    = $self{"doc/$topic.md"};
-         die "ni: unknown help topic: $topic" unless $text;
-         print "$text\n";
-         exit_nop};
+$option_handlers{help} = sub {@_ = ("//help/" . (@_ ? $_[0] : '')); goto \&main};
 $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};
 sub main {
@@ -476,7 +471,7 @@ ni_pipe() { eval "$1" | eval "$2"; }
 ni_pager() { ${NI_PAGER:-less} || more || cat; }
 1 core/meta/lib
 meta.pl
-7 core/meta/meta.pl
+13 core/meta/meta.pl
 
 package ni;
 deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
@@ -484,6 +479,12 @@ deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
+
+deflong 'root', 'meta/help',
+  pmap {$_ = 'tutorial' unless length;
+        die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
+        ni_verb $self{"doc/$_.md"}}
+  pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
 32 core/col/col.pl
@@ -765,14 +766,17 @@ defshort 'root', 'P', pmap {ni_pyspark @$_}
 2 doc/lib
 tutorial.md
 stream.md
-7 doc/tutorial.md
+10 doc/tutorial.md
 # ni tutorial
+You can access this tutorial by running `ni //help`, or `ni //help/tutorial`.
+
 ni parses its command arguments to build and run a shell pipeline. Help topics
 include:
 
-- `stream`: an explanation of the basic way ni handles CLI options and data
-- `row`: row-level operators
-- `col`: column-level operators
+- `//help/stream`: an explanation of the basic way ni handles CLI options and
+  data
+- `//help/row`: row-level operators
+- `//help/col`: column-level operators
 89 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
