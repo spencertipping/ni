@@ -348,7 +348,7 @@ $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};
 sub main {
   my ($command, @args) = @_;
-  $command = '--help' if $command eq '-h';
+  $command = '--help' if $command eq '-h' or !@_ && -t STDIN && -t STDOUT;
   my $h = $command =~ s/^--// && $option_handlers{$command};
   return &$h(@args) if $h;
   run_sh sh_code @_;
