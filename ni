@@ -353,7 +353,7 @@ sub main {
 }
 1 core/common/lib
 common.pl
-10 core/common/common.pl
+18 core/common/common.pl
 
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
@@ -364,6 +364,14 @@ use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
 use constant colspec1 => mr '^[A-Z0-9]';
 use constant colspec  => mr '^[-A-Z0-9.]+';
+
+use constant generic_code => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs) = @_;
+  (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
+  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
+  $balance ? (substr($code, 0, $balance), substr($code, $balance))
+           : ($code, @xs)};
 1 core/gen/lib
 gen.pl
 13 core/gen/gen.pl
@@ -743,7 +751,7 @@ sub fc(@) {
 }
 1 core/python/lib
 python.pl
-28 core/python/python.pl
+22 core/python/python.pl
 
 
 
@@ -765,26 +773,20 @@ sub indent($;$) {
 }
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 
-use constant pycode => sub {
-  return @_ unless $_[0] =~ /\]$/;
-  my ($code, @xs) = @_;
-  (my $tcode = $code) =~ s/"([^"\\]+|\\.)*"|'([^'\\]+|\\.)*'//g;
-  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
-  $balance ? (pydent substr($code, 0, $balance), substr($code, $balance))
-           : (pydent $code, @xs)};
+use constant pycode => pmap {pydent $_} generic_code;
 1 core/sql/lib
 sql.pl
-39 core/sql/sql.pl
+80 core/sql/sql.pl
 
-defcontext 'sql';
 sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
 sub ni::sqlgen::render {
   local $_;
   my ($self) = @_;
+  return $$self{from} if 1 == keys %$self;
   my $select = ni::dor $$self{select}, '*';
   my @others;
   for (qw/from where order_by group_by limit union intersect except
-          inner_join left_join right_join full_join/) {
+          inner_join left_join right_join full_join natural_join/) {
     next unless exists $$self{$_};
     (my $k = $_) =~ y/a-z_/A-Z /;
     push @others, "$k $$self{$_}";
@@ -796,24 +798,65 @@ sub ni::sqlgen::render {
 }
 sub ni::sqlgen::modify_where {join ' AND ', @_}
 sub ni::sqlgen::modify {
-  my ($self, $k, $v) = @_;
-  defined \&{"ni::sqlgen::modify_$k"}
-    ? $$self{$k} = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v)
-    : $self = ni::sqlgen "($self->render)" if exists $$self{$k};
-  $$self{$k} = $v;
+  my ($self, %kvs) = @_;
+  for (my ($k, $v) = each %kvs) {
+    exists ${'ni::sqlgen::'}{"modify_$k"}
+      ? $$self{$k} = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v)
+      : $self = ni::sqlgen "($self->render)" if exists $$self{$k};
+    $$self{$k} = $v;
+  }
   $self;
 }
-sub ni::sqlgen::map        {${$_[0]}->modify('select',     $_[1])}
-sub ni::sqlgen::filter     {${$_[0]}->modify('where',      $_[1])}
-sub ni::sqlgen::ijoin      {${$_[0]}->modify('inner_join', $_[1])}
-sub ni::sqlgen::ljoin      {${$_[0]}->modify('left_join',  $_[1])}
-sub ni::sqlgen::rjoin      {${$_[0]}->modify('right_join', $_[1])}
+sub ni::sqlgen::map        {${$_[0]}->modify(select => $_[1])}
+sub ni::sqlgen::filter     {${$_[0]}->modify(where =>  $_[1])}
+sub ni::sqlgen::take       {${$_[0]}->modify(limit =>  $_[1])}
+sub ni::sqlgen::sample     {${$_[0]}->modify(where =>  "random() < $_[1]")}
+sub ni::sqlgen::ijoin      {${$_[0]}->modify(join => 1, inner_join   => $_[1])}
+sub ni::sqlgen::ljoin      {${$_[0]}->modify(join => 1, left_join    => $_[1])}
+sub ni::sqlgen::rjoin      {${$_[0]}->modify(join => 1, right_join   => $_[1])}
+sub ni::sqlgen::njoin      {${$_[0]}->modify(join => 1, natural_join => $_[1])}
 sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
-sub ni::sqlgen::union      {${$_[0]}->modify('union',      $_[1])}
-sub ni::sqlgen::intersect  {${$_[0]}->modify('intersect',  $_[1])}
-sub ni::sqlgen::difference {${$_[0]}->modify('except',     $_[1])}
-sub ni::sqlgen::take       {${$_[0]}->modify('limit',      $_[1])}
-sub ni::sqlgen::sample     {${$_[0]}->modify('where',      "random() < $_[1]")}
+sub ni::sqlgen::union      {${$_[0]}->modify(setop => 1, union     => $_[1])}
+sub ni::sqlgen::intersect  {${$_[0]}->modify(setop => 1, intersect => $_[1])}
+sub ni::sqlgen::difference {${$_[0]}->modify(setop => 1, except    => $_[1])}
+
+use constant sqlcode => generic_code;
+
+sub sql_compile {
+  local $_;
+  my ($g, @ms) = @_;
+  for (@ms) {
+    if (ref($_) eq 'ARRAY') {
+      my ($m, @args) = @$_;
+      $g = $g->$m(@args);
+    } else {
+      $g = $g->modify(%$_);
+    }
+  }
+  $g->render;
+}
+
+defcontext 'sql';
+use constant sql_table => pmap {sqlgen $_} mrc '^.*';
+our @sql_row_alt;
+our @sql_join_alt;
+our $sql_query = pmap {sql_compile $$_[0], @{$$_[1]}}
+                 seq sql_table, alt context 'sql/lambda',
+                                    context 'sql/suffix';
+defshort 'sql', 's', pmap {['select', $_]} sqlcode;
+defshort 'sql', 'w', pmap {['where',  $_]} sqlcode;
+defshort 'sql', 'r', altr @sql_row_alt;
+defshort 'sql', 'j', altr @sql_join_alt;
+defshort 'sql', 'G', k ['uniq'];
+defshort 'sql', 'g', pmap {['order_by', $_]} sqlcode;
+defshort 'sql', '+', pmap {['union',      $_]} $sql_query;
+defshort 'sql', '*', pmap {['intersect',  $_]} $sql_query;
+defshort 'sql', '-', pmap {['difference', $_]} $sql_query;
+defshort 'sql', '@', pmap {+{select => $$_[1], group_by => $$_[0]}}
+                     seq sqlcode, sqlcode;
+
+our %sql_profiles;
+defshort 'root', 'Q', chaltr %sql_profiles;
 1 core/java/lib
 java.pl
 2 core/java/java.pl

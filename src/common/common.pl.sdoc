@@ -12,3 +12,17 @@ use constant number  => alt neval, integer, float;
 
 use constant colspec1 => mr '^[A-Z0-9]';
 use constant colspec  => mr '^[-A-Z0-9.]+';
+
+Generic code parser.
+Counts brackets outside quoted strings, which in our case are '' and "".
+Doesn't look for regular expressions because these vary by language; but this
+parser should be able to handle most straightforward languages with quoted
+string literals and backslash escapes.
+
+use constant generic_code => sub {
+  return @_ unless $_[0] =~ /\]$/;
+  my ($code, @xs) = @_;
+  (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
+  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
+  $balance ? (substr($code, 0, $balance), substr($code, $balance))
+           : ($code, @xs)};
