@@ -6,6 +6,9 @@
 cd $(dirname $0)
 
 ./boot
+
+[[ -d core ]] || ln -s gen core
+
 ./ni --internal/lib core/common
 ./ni --internal/lib core/gen
 ./ni --internal/lib core/stream
