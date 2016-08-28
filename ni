@@ -656,10 +656,9 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-23 core/pl/math.pm
+24 core/pl/math.pm
 
-use Math::Trig;
-use constant tau => 2 * pi;
+use constant tau => 2 * 3.14159265358979323846264;
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
 sub log2 {LOG2R * log $_[0]}
@@ -673,12 +672,14 @@ sub rdeg($) {$_[0] * 360 / tau}
 sub drad($) {$_[0] / 360 * tau}
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
-sub haversine {
-  local $_;
-  my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
-  my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
-  my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
-  2 * atan2(sqrt($a), sqrt(1 - $a));
+if (eval {require Math::Trig}) {
+  sub haversine {
+    local $_;
+    my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
+    my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+    my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+    2 * atan2(sqrt($a), sqrt(1 - $a));
+  }
 }
 23 core/pl/stream.pm
 

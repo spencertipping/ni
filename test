@@ -1,6 +1,9 @@
 #!/bin/bash
 cd $(dirname $0)
+
 ./build
-scripts/transcript-gen
-scripts/transcript-verify $(find tests -name '*.transcript')
-rm -rf tests
+./lazytest $(find doc -name '*.md') > tests.sh
+docker run -i --rm -v $PWD:/data:ro $(docker build -q .) /bin/bash <<'EOF'
+  cd /tmp
+  bash /data/tests.sh
+EOF
