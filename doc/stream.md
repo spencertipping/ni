@@ -85,4 +85,11 @@ $ ni n:3O                       # more typical reverse numeric sort
 1
 ```
 
-See `ni //help/row` for details about row-reordering operators like sorting.
+Notice that ni typically doesn't require whitespace between commands. The only
+case where it does is when the parse would be ambiguous without it (and
+figuring out when this happens requires some knowledge about how the shell
+quotes things, since ni sees post-quoted arguments). ni will complain if it
+can't parse something, though.
+
+See [row.md](row.md) (`ni //help/row`) for details about row-reordering
+operators like sorting.

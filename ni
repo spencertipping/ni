@@ -551,7 +551,7 @@ defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
 11 core/row/row.sh
 
 ni_revery()  { perl -ne 'print unless $. % '"$1"; }
-ni_rmatch()  { perl -ne 'print if /'"$1"/; }
+ni_rmatch()  { perl -lne 'print if /'"$1"/; }
 
 ni_rsample() { perl -ne '
   BEGIN {srand($ENV{NI_SEED} || 42)}
@@ -925,7 +925,7 @@ include:
   data
 - `//help/row`: row-level operators
 - `//help/col`: column-level operators
-88 doc/stream.md
+95 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -1013,5 +1013,12 @@ $ ni n:3O                       # more typical reverse numeric sort
 1
 ```
 
-See `ni //help/row` for details about row-reordering operators like sorting.
+Notice that ni typically doesn't require whitespace between commands. The only
+case where it does is when the parse would be ambiguous without it (and
+figuring out when this happens requires some knowledge about how the shell
+quotes things, since ni sees post-quoted arguments). ni will complain if it
+can't parse something, though.
+
+See [row.md](row.md) (`ni //help/row`) for details about row-reordering
+operators like sorting.
 __END__
