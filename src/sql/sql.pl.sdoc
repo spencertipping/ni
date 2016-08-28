@@ -30,30 +30,36 @@ sub ni::sqlgen::modify_where {join ' AND ', @_}
 
 sub ni::sqlgen::modify {
   my ($self, %kvs) = @_;
-  for (my ($k, $v) = each %kvs) {
-    exists ${'ni::sqlgen::'}{"modify_$k"}
-      ? $$self{$k} = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v)
-      : $self = ni::sqlgen "($self->render)" if exists $$self{$k};
+  while (my ($k, $v) = each %kvs) {
+    if (exists $$self{$k}) {
+      if (exists ${'ni::sqlgen::'}{"modify_$k"}) {
+        $v = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v);
+      } else {
+        $self = ni::sqlgen "($self->render)";
+      }
+    }
     $$self{$k} = $v;
   }
   $self;
 }
 
-sub ni::sqlgen::map        {${$_[0]}->modify(select => $_[1])}
-sub ni::sqlgen::filter     {${$_[0]}->modify(where =>  $_[1])}
-sub ni::sqlgen::take       {${$_[0]}->modify(limit =>  $_[1])}
-sub ni::sqlgen::sample     {${$_[0]}->modify(where =>  "random() < $_[1]")}
+sub ni::sqlgen::map        {$_[0]->modify(select => $_[1])}
+sub ni::sqlgen::filter     {$_[0]->modify(where =>  $_[1])}
+sub ni::sqlgen::take       {$_[0]->modify(limit =>  $_[1])}
+sub ni::sqlgen::sample     {$_[0]->modify(where =>  "random() < $_[1]")}
 
-sub ni::sqlgen::ijoin      {${$_[0]}->modify(join => 1, inner_join   => $_[1])}
-sub ni::sqlgen::ljoin      {${$_[0]}->modify(join => 1, left_join    => $_[1])}
-sub ni::sqlgen::rjoin      {${$_[0]}->modify(join => 1, right_join   => $_[1])}
-sub ni::sqlgen::njoin      {${$_[0]}->modify(join => 1, natural_join => $_[1])}
+sub ni::sqlgen::ijoin      {$_[0]->modify(join => 1, inner_join   => $_[1])}
+sub ni::sqlgen::ljoin      {$_[0]->modify(join => 1, left_join    => $_[1])}
+sub ni::sqlgen::rjoin      {$_[0]->modify(join => 1, right_join   => $_[1])}
+sub ni::sqlgen::njoin      {$_[0]->modify(join => 1, natural_join => $_[1])}
+
+sub ni::sqlgen::order_by   {$_[0]->modify(order_by => $_[1])}
 
 sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
 
-sub ni::sqlgen::union      {${$_[0]}->modify(setop => 1, union     => $_[1])}
-sub ni::sqlgen::intersect  {${$_[0]}->modify(setop => 1, intersect => $_[1])}
-sub ni::sqlgen::difference {${$_[0]}->modify(setop => 1, except    => $_[1])}
+sub ni::sqlgen::union      {$_[0]->modify(setop => 1, union     => $_[1])}
+sub ni::sqlgen::intersect  {$_[0]->modify(setop => 1, intersect => $_[1])}
+sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 
 SQL code parse element.
 Counts brackets outside quoted strings.
@@ -87,15 +93,20 @@ defcontext 'sql';
 
 use constant sql_table => pmap {sqlgen $_} mrc '^.*';
 
-our @sql_row_alt;
-our @sql_join_alt;
-
 our $sql_query = pmap {sql_compile $$_[0], @{$$_[1]}}
-                 seq sql_table, alt context 'sql/lambda',
-                                    context 'sql/suffix';
+                 seq sql_table, maybe alt context 'sql/lambda',
+                                          context 'sql/suffix';
 
-defshort 'sql', 's', pmap {['select', $_]} sqlcode;
-defshort 'sql', 'w', pmap {['where',  $_]} sqlcode;
+our @sql_row_alt;
+our @sql_join_alt = (
+  (pmap {['ljoin', $_]} pn 1, mr '^L', $sql_query),
+  (pmap {['rjoin', $_]} pn 1, mr '^R', $sql_query),
+  (pmap {['njoin', $_]} pn 1, mr '^N', $sql_query),
+  (pmap {['ijoin', $_]} $sql_query),
+);
+
+defshort 'sql', 's', pmap {['map',    $_]} sqlcode;
+defshort 'sql', 'w', pmap {['filter', $_]} sqlcode;
 defshort 'sql', 'r', altr @sql_row_alt;
 defshort 'sql', 'j', altr @sql_join_alt;
 defshort 'sql', 'G', k ['uniq'];
