@@ -11,13 +11,13 @@ characters as possible; for example, the ubiquitous word count, sorting by
 descending word frequency:
 
 ```sh
-$ ni README.md FWpF CO          # run on POSIX tools locally
-$ ni README.md hFWpF cO         # run on hadoop streaming
-$ ni README.md PL[FWpF CO]      # run on pyspark
+$ ni README.md FWpF_ CO         # run on POSIX tools locally
+$ ni README.md hFWpF_ cO        # run on hadoop streaming
+$ ni README.md PL[FWpF_ CO]     # run on pyspark
 ```
 
 - `FW`: fieldsplit on non-words
-- `pF`: map with Perl code, in this case `F`, which is the array of fields
+- `pF_`: map with Perl code, in this case `F_`, which is the array of fields
   (this transposes horizontal rows to vertical)
 - `C`: sort+count (hadoop version uses `c` instead because the input is already
   sorted)
@@ -30,30 +30,10 @@ abstraction of "everything's a spreadsheet."
 Glad you asked, because ni is self-documenting:
 
 ```sh
-$ ni --help
+$ ni //help                     # ni --help also works
 $ ni //help/topic
 $ ni --explain [options...]     # TODO
-$ ni --compile [options...]
-```
-
-It can also explain how a command will be parsed and executed:
-
-```sh
-$ ni --explain README.md fWvC
-append	./README.md
-fields	split_on_words
-vertical
-sortcount
-
-$ ni --compile README.md fWvC
-ni_empty \
-	| ni_append README.md \
-	| perl -ane 'print "$_\n" for @F' \
-	| LC_ALL=C sort --compress-program=gzip \
-	| perl -ne 'BEGIN {$l = <STDIN>; $n = 1}
-		print("$n\t$l"), $n = 1, $l = $_ if $l ne ($_ = <STDIN>);
-		END {print "$n\t$l"}' \
-	| ni_pager
+$ ni --compile [options...]     # produces POSIX shell script
 ```
 
 ## Dev scripts and testing
