@@ -171,8 +171,40 @@ lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
-lazytest_case 'ni /etc/passwd F/:/
+lazytest_case 'ni /etc/passwd r2F/:/
 ' 3<<'LAZYTEST_EOF'
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+LAZYTEST_EOF
+lazytest_case 'ni //ni r3                            # some data
+' 3<<'LAZYTEST_EOF'
+#!/usr/bin/env perl
+# ni: https://github.com/spencertipping/ni
+# Copyright (c) 2016 Spencer Tipping
+LAZYTEST_EOF
+lazytest_case 'ni //ni r3F/\\//                      # split on forward slashes
+' 3<<'LAZYTEST_EOF'
+#!	usr	bin	env perl
+# ni: https:		github.com	spencertipping	ni
+# Copyright (c) 2016 Spencer Tipping
+LAZYTEST_EOF
+lazytest_case 'ni //ni r3FW                          # split on non-words
+' 3<<'LAZYTEST_EOF'
+	usr	bin	env	perl
+	ni	https	github	com	spencertipping	ni
+	Copyright	c	2016	Spencer	Tipping
+LAZYTEST_EOF
+lazytest_case 'ni //ni r3FS                          # split on whitespace
+' 3<<'LAZYTEST_EOF'
+#!/usr/bin/env	perl
+#	ni:	https://github.com/spencertipping/ni
+#	Copyright	(c)	2016	Spencer	Tipping
+LAZYTEST_EOF
+lazytest_case 'ni //ni r3Fm'\''/\/\w+/'\''                 # words beginning with a slash
+' 3<<'LAZYTEST_EOF'
+/usr	/bin	/env
+/github	/spencertipping	/ni
+
 LAZYTEST_EOF
 lazytest_case 'ni n:10r3                     # take first 3
 ' 3<<'LAZYTEST_EOF'

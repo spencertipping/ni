@@ -41,15 +41,17 @@ with their split-spec mnemonics:
 You can also field-split on arbitrary regexes, or extend the %split_chalt hash
 to add custom split operators.
 
-sub ni_split_chr($)   {sh 'perl', '-npe', "y/$_[0]/\\t/"}
-sub ni_split_regex($) {sh 'perl', '-npe', "s/$_[0]/\\t/g"}
+sub ni_split_chr($)   {sh 'perl', '-lnpe', "y/$_[0]/\\t/"}
+sub ni_split_regex($) {sh 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"}
+sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
 
 our %split_chalt = (
-  'C' => (pmap {ni_split_chr   ','}          none),
-  'P' => (pmap {ni_split_chr   '|'}          none),
-  'S' => (pmap {ni_split_regex qr/\h+/}      none),
-  'W' => (pmap {ni_split_regex qr/[^\w\n]+/} none),
-  '/' => (pmap {ni_split_regex $_}           regex),
+  'C' => (pmap {ni_split_chr   ','}              none),
+  'P' => (pmap {ni_split_chr   '|'}              none),
+  'S' => (pmap {ni_split_regex qr/\h+/}          none),
+  'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
+  '/' => (pmap {ni_split_regex $_}               regex),
+  'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
 );
 
 defshort 'root', 'F', chaltr %split_chalt;

@@ -91,17 +91,51 @@ root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```
 
-ni has some shorthands for common data formats:
+`F` has the following uses:
 
+- `F/regex/`: split on occurrences of regex. If present, the first capture
+  group will be included before a tab is appended to a field.
+- `Fm/regex/`: don't split; instead, look for matches of regex and use those as
+  the field values.
 - `FC`: split on commas
 - `FS`: split on runs of horizontal whitespace
 - `FW`: split on runs of non-word characters
 - `FP`: split on pipe symbols
 
 Note that `FC` isn't a proper CSV parser; it just transliterates all commas
-into tabs. Wherever possible, ni optimizes for throughput, and this is one such
-case.
+into tabs.
 
 ```bash
-$ 
+$ ni //ni r3                            # some data
+#!/usr/bin/env perl
+# ni: https://github.com/spencertipping/ni
+# Copyright (c) 2016 Spencer Tipping
+```
+
+```bash
+$ ni //ni r3F/\\//                      # split on forward slashes
+#!	usr	bin	env perl
+# ni: https:		github.com	spencertipping	ni
+# Copyright (c) 2016 Spencer Tipping
+```
+
+```bash
+$ ni //ni r3FW                          # split on non-words
+	usr	bin	env	perl
+	ni	https	github	com	spencertipping	ni
+	Copyright	c	2016	Spencer	Tipping
+```
+
+```bash
+$ ni //ni r3FS                          # split on whitespace
+#!/usr/bin/env	perl
+#	ni:	https://github.com/spencertipping/ni
+#	Copyright	(c)	2016	Spencer	Tipping
+```
+
+```bash
+$ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
+/usr	/bin	/env
+/github	/spencertipping	/ni
+
 ```

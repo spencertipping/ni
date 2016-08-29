@@ -166,7 +166,7 @@ sub chaltr(\%) {my ($ps) = @_;
                 ()}}
 sub chalt(%) {my %h = @_; chaltr %h}
 
-use constant regex => pmap {s/\/$//; $_} mr '^(?:[^\\/]|\\.)*/';
+use constant regex => pmap {s/\/$//; $_} mr qr/^(?:[^\\\/]+|\\.)*\//;
 
 use constant rbcode => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -491,7 +491,7 @@ deflong 'root', 'meta/help',
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
-31 core/col/col.pl
+33 core/col/col.pl
 
 
 
@@ -513,14 +513,16 @@ defshort 'root', 'f', altr @col_alt;
 
 
 
-sub ni_split_chr($)   {sh 'perl', '-npe', "y/$_[0]/\\t/"}
-sub ni_split_regex($) {sh 'perl', '-npe', "s/$_[0]/\\t/g"}
+sub ni_split_chr($)   {sh 'perl', '-lnpe', "y/$_[0]/\\t/"}
+sub ni_split_regex($) {sh 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"}
+sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
 our %split_chalt = (
-  'C' => (pmap {ni_split_chr   ','}          none),
-  'P' => (pmap {ni_split_chr   '|'}          none),
-  'S' => (pmap {ni_split_regex qr/\h+/}      none),
-  'W' => (pmap {ni_split_regex qr/[^\w\n]+/} none),
-  '/' => (pmap {ni_split_regex $_}           regex),
+  'C' => (pmap {ni_split_chr   ','}              none),
+  'P' => (pmap {ni_split_chr   '|'}              none),
+  'S' => (pmap {ni_split_regex qr/\h+/}          none),
+  'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
+  '/' => (pmap {ni_split_regex $_}               regex),
+  'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
 );
 defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
@@ -1186,7 +1188,7 @@ $ ni data oBr r4                # r suffix = reverse sort
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
 ```
-106 doc/col.md
+141 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -1280,18 +1282,53 @@ root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```
 
-ni has some shorthands for common data formats:
+`F` has the following uses:
 
+- `F/regex/`: split on occurrences of regex. If present, the first capture
+  group will be included before a tab is appended to a field.
+- `Fm/regex/`: don't split; instead, look for matches of regex and use those as
+  the field values.
 - `FC`: split on commas
-- `FS`: split on horizontal whitespace
-- `FW`: split on non-word characters
+- `FS`: split on runs of horizontal whitespace
+- `FW`: split on runs of non-word characters
 - `FP`: split on pipe symbols
 
 Note that `FC` isn't a proper CSV parser; it just transliterates all commas
 into tabs.
 
 ```bash
-$ 
+$ ni //ni r3                            # some data
+#!/usr/bin/env perl
+# ni: https://github.com/spencertipping/ni
+# Copyright (c) 2016 Spencer Tipping
+```
+
+```bash
+$ ni //ni r3F/\\//                      # split on forward slashes
+#!	usr	bin	env perl
+# ni: https:		github.com	spencertipping	ni
+# Copyright (c) 2016 Spencer Tipping
+```
+
+```bash
+$ ni //ni r3FW                          # split on non-words
+	usr	bin	env	perl
+	ni	https	github	com	spencertipping	ni
+	Copyright	c	2016	Spencer	Tipping
+```
+
+```bash
+$ ni //ni r3FS                          # split on whitespace
+#!/usr/bin/env	perl
+#	ni:	https://github.com/spencertipping/ni
+#	Copyright	(c)	2016	Spencer	Tipping
+```
+
+```bash
+$ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
+/usr	/bin	/env
+/github	/spencertipping	/ni
+
 ```
 2 doc/options.md
 # Complete ni operator listing
