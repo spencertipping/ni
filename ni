@@ -282,7 +282,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-68 main.pl
+71 main.pl
 
 use POSIX qw/dup dup2/;
 use constant exit_success      => 0;
@@ -337,6 +337,9 @@ $option_handlers{'internal/lib'}
          modify_self 'ni.map'};
 
 $option_handlers{lib} = sub {intern_lib shift; goto \&main};
+$option_handlers{run} = sub {eval 'package ni;' . shift;
+                             die $@ if $@;
+                             goto \&main};
 $option_handlers{extend}
   = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
          modify_self 'ni.map'};
@@ -681,7 +684,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-23 core/pl/stream.pm
+24 core/pl/stream.pm
 
 
 
@@ -689,14 +692,15 @@ if (eval {require Math::Trig}) {
 
 our @q;
 our @F;
-sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub F_()   {chomp, @F = split /\t/ unless @F; @F}
+our $l;
+sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
+sub F_(@)  {chomp, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf "sub %s() {(F_)[%d]}", $_, ord($_) - 97 for 'b'..'q';
-       eval sprintf "sub %s() {'%s'}", uc, $_               for 'a'..'q'}
+BEGIN {eval sprintf "sub %s() {F_ %d}", $_, ord($_) - 97 for 'b'..'q';
+       eval sprintf "sub %s() {'%s'}", uc, $_            for 'a'..'q'}
 
-sub a() {@F ? $F[0] : substr $_, 0, index $_, "\t"}
+sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 
 
@@ -912,21 +916,30 @@ our %spark_profiles = (
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
-3 doc/lib
+6 doc/lib
 README.md
 stream.md
 row.md
-10 doc/README.md
+col.md
+options.md
+sql.md
+16 doc/README.md
 # ni tutorial
-You can access this tutorial by running `ni //help`, or `ni //help/tutorial`.
+You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
 ni parses its command arguments to build and run a shell pipeline. Help topics
 include:
 
-- `//help/stream`: an explanation of the basic way ni handles CLI options and
-  data
-- `//help/row`: row-level operators
-- `//help/col`: column-level operators
+## Basics
+- [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
+- [row.md](row.md) (`ni //help/row`): row-level operators
+- [col.md](col.md) (`ni //help/col`): column-level operators
+- [perl.md](perl.md) (`ni //help/perl`): ni's Perl library
+- [ruby.md](ruby.md) (`ni //help/ruby`): ni's Ruby library
+
+## Reference
+- [options.md](options.md) (`ni //help/options`): every CLI option and
+  operator, each with example usage
 95 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
@@ -1172,5 +1185,140 @@ $ ni data oBr r4                # r suffix = reverse sort
 77	0.999520158580731	4.34380542185368
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
+```
+106 doc/col.md
+# Column operations
+ni models incoming data as a tab-delimited spreadsheet and provides some
+operators that allow you to manipulate the columns in a stream accordingly. The
+two important ones are `f[columns...]` to rearrange columns, and `F[delimiter]`
+to create new ones.
+
+ni always refers to columns using letters: `A` to `Z`.
+
+## Reordering
+First let's generate some data, in this case an 8x8 multiplication table:
+
+```bash
+$ ni n:8p'r map a*$_, 1..8' > mult-table
+$ ni mult-table
+1	2	3	4	5	6	7	8
+2	4	6	8	10	12	14	16
+3	6	9	12	15	18	21	24
+4	8	12	16	20	24	28	32
+5	10	15	20	25	30	35	40
+6	12	18	24	30	36	42	48
+7	14	21	28	35	42	49	56
+8	16	24	32	40	48	56	64
+```
+
+The `f` operator takes a multi-column spec and reorders, duplicates, or deletes
+columns accordingly.
+
+```bash
+$ ni mult-table fA      # the first column
+1
+2
+3
+4
+5
+6
+7
+8
+$ ni mult-table fDC     # fourth, then third column
+4	3
+8	6
+12	9
+16	12
+20	15
+24	18
+28	21
+32	24
+$ ni mult-table fAA     # first column, duplicated
+1	1
+2	2
+3	3
+4	4
+5	5
+6	6
+7	7
+8	8
+```
+
+You can also choose "the rest of the columns" using `.` within your column
+spec. This selects everything to the right of the rightmost column you've
+mentioned.
+
+```bash
+$ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+4	1	5	6	7	8
+8	2	10	12	14	16
+12	3	15	18	21	24
+16	4	20	24	28	32
+20	5	25	30	35	40
+24	6	30	36	42	48
+28	7	35	42	49	56
+32	8	40	48	56	64
+$ ni mult-table fBA.    # an easy way to swap first two columns
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
+6	3	9	12	15	18	21	24
+8	4	12	16	20	24	28	32
+10	5	15	20	25	30	35	40
+12	6	18	24	30	36	42	48
+14	7	21	28	35	42	49	56
+16	8	24	32	40	48	56	64
+```
+
+## Splitting
+The `F` operator gives you a way to convert non-tab-delimited data into TSV.
+For example, if you're parsing `/etc/passwd`, you'd turn colons into tabs
+first.
+
+```bash
+$ ni /etc/passwd r2F/:/
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+```
+
+ni has some shorthands for common data formats:
+
+- `FC`: split on commas
+- `FS`: split on horizontal whitespace
+- `FW`: split on non-word characters
+- `FP`: split on pipe symbols
+
+Note that `FC` isn't a proper CSV parser; it just transliterates all commas
+into tabs.
+
+```bash
+$ 
+```
+2 doc/options.md
+# Complete ni operator listing
+## 
+24 doc/sql.md
+# SQL interop
+ni defines a parsing context that translates command-line syntax into SQL
+queries. We'll need to define a SQL connection profile in order to use it:
+
+```bash
+$ mkdir sqlite-profile
+$ echo sqlite.pl > sqlite-profile/lib
+$ cat > sqlite-profile/sqlite.pl <<'EOF'
+$sql_profiles{S} = pmap {sh "sqlite3", $$_[0], $$_[1]}
+                        seq mrc '^.*', $sql_query;
+EOF
+```
+
+Now we can create a test database and use this library to access it.
+
+```bash
+$ sqlite3 test.db <<'EOF'
+CREATE TABLE foo(x int, y int);
+INSERT INTO foo(x, y) VALUES (1, 2);
+INSERT INTO foo(x, y) VALUES (3, 4);
+INSERT INTO foo(x, y) VALUES (5, 6);
+EOF
+$ ni --lib sqlite-profile QStest.db foo [wx=3]
 ```
 __END__

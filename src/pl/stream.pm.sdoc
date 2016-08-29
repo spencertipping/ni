@@ -15,19 +15,20 @@ lazy facets (see facet.pm.sdoc).
 
 our @q;
 our @F;
+our $l;
 
-sub rl()   {$_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub F_()   {chomp, @F = split /\t/ unless @F; @F}
+sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
+sub F_(@)  {chomp, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf "sub %s() {(F_)[%d]}", $_, ord($_) - 97 for 'b'..'q';
-       eval sprintf "sub %s() {'%s'}", uc, $_               for 'a'..'q'}
+BEGIN {eval sprintf "sub %s() {F_ %d}", $_, ord($_) - 97 for 'b'..'q';
+       eval sprintf "sub %s() {'%s'}", uc, $_            for 'a'..'q'}
 
 Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
 workflows.
 
-sub a() {@F ? $F[0] : substr $_, 0, index $_, "\t"}
+sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and

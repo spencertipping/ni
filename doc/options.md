@@ -1,0 +1,2 @@
+# Complete ni operator listing
+## 

@@ -82,6 +82,10 @@ not change the ni image, --extend causes ni to self-modify to include the
 specified extension.
 
 $option_handlers{lib} = sub {intern_lib shift; goto \&main};
+$option_handlers{run} = sub {eval 'package ni;' . shift;
+                             die $@ if $@;
+                             goto \&main};
+
 $option_handlers{extend}
   = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
          modify_self 'ni.map'};

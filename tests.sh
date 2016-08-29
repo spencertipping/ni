@@ -102,6 +102,78 @@ lazytest_case 'ni n:3O                       # more typical reverse numeric sort
 2
 1
 LAZYTEST_EOF
+lazytest_case 'ni n:8p'\''r map a*$_, 1..8'\'' > mult-table
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni mult-table
+' 3<<'LAZYTEST_EOF'
+1	2	3	4	5	6	7	8
+2	4	6	8	10	12	14	16
+3	6	9	12	15	18	21	24
+4	8	12	16	20	24	28	32
+5	10	15	20	25	30	35	40
+6	12	18	24	30	36	42	48
+7	14	21	28	35	42	49	56
+8	16	24	32	40	48	56	64
+LAZYTEST_EOF
+lazytest_case 'ni mult-table fA      # the first column
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+4
+5
+6
+7
+8
+LAZYTEST_EOF
+lazytest_case 'ni mult-table fDC     # fourth, then third column
+' 3<<'LAZYTEST_EOF'
+4	3
+8	6
+12	9
+16	12
+20	15
+24	18
+28	21
+32	24
+LAZYTEST_EOF
+lazytest_case 'ni mult-table fAA     # first column, duplicated
+' 3<<'LAZYTEST_EOF'
+1	1
+2	2
+3	3
+4	4
+5	5
+6	6
+7	7
+8	8
+LAZYTEST_EOF
+lazytest_case 'ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+' 3<<'LAZYTEST_EOF'
+4	1	5	6	7	8
+8	2	10	12	14	16
+12	3	15	18	21	24
+16	4	20	24	28	32
+20	5	25	30	35	40
+24	6	30	36	42	48
+28	7	35	42	49	56
+32	8	40	48	56	64
+LAZYTEST_EOF
+lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
+' 3<<'LAZYTEST_EOF'
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
+6	3	9	12	15	18	21	24
+8	4	12	16	20	24	28	32
+10	5	15	20	25	30	35	40
+12	6	18	24	30	36	42	48
+14	7	21	28	35	42	49	56
+16	8	24	32	40	48	56	64
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F/:/
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_case 'ni n:10r3                     # take first 3
 ' 3<<'LAZYTEST_EOF'
 1
