@@ -9,18 +9,20 @@ conditions are met:
 | 1. All addressed columns are at index 8 (9 if one-based) or lower.
   2. The addressed columns are in ascending order.
 
-sub col_cut(@) {
-  sh 'cut', '-f', join ',', TODO();
+sub col_cut {
+  my ($floor, $rest, @fs) = @_;
+  sh 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
-sub ni_cols(@) {
-  my $ind = grep /[^A-I.]/, @_;
-  my $asc = join('', @_) eq join('', sort @_);
-  # TODO: optimize using col_cut
+our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
 
-  my @cols    = map /^\.$/ ? -1 : ord($_) - 65, @_;
-  my $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
-  my $floor   = (sort {$b <=> $a} @cols)[0] + 1;
+sub ni_cols(@) {
+  my $ind   = grep /[^A-I.]/, @_;
+  my $asc   = join('', @_) eq join('', sort @_);
+  my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
+  my $floor = (sort {$b <=> $a} @cols)[0] + 1;
+  return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
+
   sh ['perl', '-ne',
       $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols)];
 }

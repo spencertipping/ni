@@ -491,20 +491,21 @@ deflong 'root', 'meta/help',
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
-33 core/col/col.pl
+34 core/col/col.pl
 
 
 
-sub col_cut(@) {
-  sh 'cut', '-f', join ',', TODO();
+sub col_cut {
+  my ($floor, $rest, @fs) = @_;
+  sh 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
+our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
 sub ni_cols(@) {
-  my $ind = grep /[^A-I.]/, @_;
-  my $asc = join('', @_) eq join('', sort @_);
-  # TODO: optimize using col_cut
-  my @cols    = map /^\.$/ ? -1 : ord($_) - 65, @_;
-  my $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
-  my $floor   = (sort {$b <=> $a} @cols)[0] + 1;
+  my $ind   = grep /[^A-I.]/, @_;
+  my $asc   = join('', @_) eq join('', sort @_);
+  my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
+  my $floor = (sort {$b <=> $a} @cols)[0] + 1;
+  return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
   sh ['perl', '-ne',
       $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols)];
 }
