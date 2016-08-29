@@ -171,7 +171,7 @@ lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
-lazytest_case 'ni /etc/passwd r2F/:/
+lazytest_case 'ni /etc/passwd r2F::          # F: followed by :, which is the split char
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
@@ -302,6 +302,31 @@ lazytest_case 'ni data oBr r4                # r suffix = reverse sort
 77	0.999520158580731	4.34380542185368
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
+LAZYTEST_EOF
+lazytest_case 'ni @pa '\''r a, fc fsum 1'\'' <<'\''EOF'\''
+foo
+bar
+foo
+bif
+EOF
+' 3<<'LAZYTEST_EOF'
+bar	1
+bif	1
+foo	2
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::@pg '\''r a, @{fc farr B}'\''
+' 3<<'LAZYTEST_EOF'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::gGp'\''r g, a_ reg'\''
+' 3<<'LAZYTEST_EOF'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
 LAZYTEST_EOF
 lazytest_case 'mkdir sqlite-profile
 ' 3<<'LAZYTEST_EOF'

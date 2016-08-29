@@ -44,6 +44,10 @@ sub fmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
                 init   => [undef],
                 end    => gen '%1'}}
 
+sub farr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
+                init   => [[]],
+                end    => gen '%1'}}
+
 sub rfn($$)  {+{reduce => gen $_[0],
                 init   => [@_[1..$#_]],
                 end    => gen join ', ', map "%$_", 1..$#_}}

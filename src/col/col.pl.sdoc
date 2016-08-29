@@ -53,6 +53,7 @@ our %split_chalt = (
   'S' => (pmap {ni_split_regex qr/\h+/}          none),
   'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
   '/' => (pmap {ni_split_regex $_}               regex),
+  ':' => (pmap {ni_split_chr   $_}               mr '^.'),
   'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
 );
 

@@ -491,7 +491,7 @@ deflong 'root', 'meta/help',
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
-34 core/col/col.pl
+35 core/col/col.pl
 
 
 
@@ -523,6 +523,7 @@ our %split_chalt = (
   'S' => (pmap {ni_split_regex qr/\h+/}          none),
   'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
   '/' => (pmap {ni_split_regex $_}               regex),
+  ':' => (pmap {ni_split_chr   $_}               mr '^.'),
   'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
 );
 defshort 'root', 'F', chaltr %split_chalt;
@@ -644,7 +645,7 @@ sub argmin(&@) {
 }
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
-sub uniq  {local $_; my %seen, @xs; $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
 sub reductions(&$@) {
@@ -687,7 +688,8 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-24 core/pl/stream.pm
+28 core/pl/stream.pm
+
 
 
 
@@ -697,11 +699,13 @@ our @q;
 our @F;
 our $l;
 sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub F_(@)  {chomp, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf "sub %s() {F_ %d}", $_, ord($_) - 97 for 'b'..'q';
-       eval sprintf "sub %s() {'%s'}", uc, $_            for 'a'..'q'}
+BEGIN {eval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
+       eval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
+       eval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
+                    $_, ord($_) - 97 for 'a'..'q'}
 
 sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
@@ -709,10 +713,11 @@ sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 
 
-sub rw(&) {my @r; push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
-sub ru(&) {my @r; push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @ls}
+sub rw(&) {my @r = ($l); push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @r}
+sub ru(&) {my @r = ($l); push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-44 core/pl/facet.pm
+BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+47 core/pl/facet.pm
 
 
 sub fe(&) {my ($k, $f, $x) = (a, @_);
@@ -736,6 +741,9 @@ sub fmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
                 end    => gen '%1'}}
 sub fmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
                 init   => [undef],
+                end    => gen '%1'}}
+sub farr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
+                init   => [[]],
                 end    => gen '%1'}}
 sub rfn($$)  {+{reduce => gen $_[0],
                 init   => [@_[1..$#_]],
@@ -1189,7 +1197,7 @@ $ ni data oBr r4                # r suffix = reverse sort
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
 ```
-141 doc/col.md
+143 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -1277,14 +1285,9 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 For example, if you're parsing `/etc/passwd`, you'd turn colons into tabs
 first.
 
-```bash
-$ ni /etc/passwd r2F/:/
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
-```
-
 `F` has the following uses:
 
+- `F:<char>`: split on character
 - `F/regex/`: split on occurrences of regex. If present, the first capture
   group will be included before a tab is appended to a field.
 - `Fm/regex/`: don't split; instead, look for matches of regex and use those as
@@ -1296,6 +1299,13 @@ daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 
 Note that `FC` isn't a proper CSV parser; it just transliterates all commas
 into tabs.
+
+### Examples
+```bash
+$ ni /etc/passwd r2F::          # F: followed by :, which is the split char
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+```
 
 ```bash
 $ ni //ni r3                            # some data

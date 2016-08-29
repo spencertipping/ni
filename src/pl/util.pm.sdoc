@@ -39,7 +39,7 @@ sub argmin(&@) {
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
 
-sub uniq  {local $_; my %seen, @xs; $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
 
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}

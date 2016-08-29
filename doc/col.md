@@ -85,14 +85,9 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 For example, if you're parsing `/etc/passwd`, you'd turn colons into tabs
 first.
 
-```bash
-$ ni /etc/passwd r2F/:/
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
-```
-
 `F` has the following uses:
 
+- `F:<char>`: split on character
 - `F/regex/`: split on occurrences of regex. If present, the first capture
   group will be included before a tab is appended to a field.
 - `Fm/regex/`: don't split; instead, look for matches of regex and use those as
@@ -104,6 +99,13 @@ daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 
 Note that `FC` isn't a proper CSV parser; it just transliterates all commas
 into tabs.
+
+### Examples
+```bash
+$ ni /etc/passwd r2F::          # F: followed by :, which is the split char
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+```
 
 ```bash
 $ ni //ni r3                            # some data
