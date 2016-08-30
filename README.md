@@ -40,15 +40,6 @@ $ ni --compile [options...]     # produces POSIX shell script
 - `./build`: create `ni` from source
 - `./test`: rebuild and run documentation tests for `ni`
 
-Documentation tests are fenced code snippets from the markdown docs - `sh` code
-is ignored, but `bash` code gets turned into test cases. It's written in
-transcript style; that is, you're demonstrating a command and its output:
-
-```sh
-$ echo hi               # when I run this
-hi                      # I should get this
-```
-
-Each such command/output pair becomes an assertion. See
-`scripts/transcript-gen` for the parser and `scripts/transcript-verify` for the
-logic that runs these assertions.
+All test cases are extracted from stuff in `doc/` by
+[LazyTest](https://github.com/spencertipping/lazytest), and the tests
+themselves are run inside a Docker container.

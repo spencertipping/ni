@@ -364,3 +364,11 @@ lazytest_case 'ni --lib my-library n:100N
 ' 3<<'LAZYTEST_EOF'
 100
 LAZYTEST_EOF
+lazytest_case 'ni n:5p'\''a * a'\''                # square some numbers
+' 3<<'LAZYTEST_EOF'
+1
+4
+9
+16
+25
+LAZYTEST_EOF
