@@ -1,0 +1,6 @@
+Lisp backend.
+A super simple SBCL operator.
+
+defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
+                               stdin => $_}
+                           mrc '^.*';

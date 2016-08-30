@@ -22,6 +22,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/python
 ./ni --internal/lib core/sql
 ./ni --internal/lib core/java
+./ni --internal/lib core/lisp
 
 ./ni --internal/lib core/hadoop
 ./ni --internal/lib core/pyspark

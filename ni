@@ -51,7 +51,7 @@ chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) wh
 push(@ni::evals, $_), eval "package ni;$ni::self{$_}", $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
 eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
 __DATA__
-24 ni.map
+25 ni.map
 
 
 unquote ni
@@ -73,6 +73,7 @@ lib core/pl
 lib core/python
 lib core/sql
 lib core/java
+lib core/lisp
 lib core/hadoop
 lib core/pyspark
 lib doc
@@ -888,6 +889,13 @@ java.pl
 2 core/java/java.pl
 
 defcontext 'java/cf';
+1 core/lisp/lib
+lisp.pl
+4 core/lisp/lisp.pl
+
+defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
+                               stdin => $_}
+                           mrc '^.*';
 1 core/hadoop/lib
 hadoop.pl
 1 core/hadoop/hadoop.pl
