@@ -404,3 +404,35 @@ lazytest_case 'ni /etc/passwd F::r3p'\''r scalar F_'\''            # number of f
 7
 7
 LAZYTEST_EOF
+lazytest_case 'ni n:2p'\''a, a + 100'\''                   # return without "r"
+' 3<<'LAZYTEST_EOF'
+1
+101
+2
+102
+LAZYTEST_EOF
+lazytest_case 'ni n:2p'\''r a, a + 100'\''                 # use "r" for side effect, return ()
+' 3<<'LAZYTEST_EOF'
+1	101
+2	102
+LAZYTEST_EOF
+lazytest_case 'ni n:3p'\''r $_ for 1..a; ()'\''            # use r imperatively, explicit return
+' 3<<'LAZYTEST_EOF'
+1
+1
+2
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni n:3p'\''r $_ for 1..a'\''                # use r imperatively, implicit return
+' 3<<'LAZYTEST_EOF'
+1
+
+1
+2
+
+1
+2
+3
+LAZYTEST_EOF

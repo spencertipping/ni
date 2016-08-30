@@ -1960,7 +1960,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-73 doc/perl.md
+142 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2007,7 +2007,7 @@ sub b() {F_ 1}
 ...
 ```
 
-## `F_`: the array of fields
+### `F_`: the array of fields
 The Perl code given to `p` is invoked on each line of input, which is stored
 both in `$l` and, for convenience, in `$_`. ni doesn't split `$l` into fields
 until you call `F_`, at which point the split happens and the fields are
@@ -2032,7 +2032,76 @@ $ ni /etc/passwd F::r3p'r scalar F_'            # number of fields
 7
 ```
 
-## Printing multiple rows
+### `r`, multiple rows, and return values
+`p` executes your Perl code using essentially this template:
+
+```pl
+sub row {
+  # your code goes here
+}
+while (<STDIN>) {
+  $l = $_;
+  print "$_\n" for row();
+}
+```
+
+Counterintuitively, `r(...)` doesn't return a value; it returns an empty list
+and side-effectfully prints a row. It works this way because that allows you to
+generate arbitrarily many rows in constant space.
+
+This design is also what makes it possible to omit `r` altogether; then you're
+returning one or more values, each of which will become a row of output:
+
+```bash
+$ ni n:2p'a, a + 100'                   # return without "r"
+1
+101
+2
+102
+$ ni n:2p'r a, a + 100'                 # use "r" for side effect, return ()
+1	101
+2	102
+$ ni n:3p'r $_ for 1..a; ()'            # use r imperatively, explicit return
+1
+1
+2
+1
+2
+3
+$ ni n:3p'r $_ for 1..a'                # use r imperatively, implicit return
+1
+
+1
+2
+
+1
+2
+3
+```
+
+The last example has blank lines because Perl's `for` construct returns a
+single empty scalar. You can suppress any implicit returns using `;()` at the
+end of your mapper code.
+
+Whether you use `r` or implicit returns, ni will remove newlines from every
+string you give it. This makes it easier to use `qx` without any filtering.
+
+## Utility functions
+ni predefines a bunch of useful functions that various versions of Perl may or
+may not provide by default:
+
+- `sr(match, replace, str)`: equivalent to `str =~ s/match/replace/r`, but
+  works prior to when Perl's `/r` flag was introduced
+- `sgr(match, replace, str)`: `str =~ s/match/replace/gr`
+
+- `sum(@)`, `prod(@)`, `mean(@)`
+- `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
+- `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
+- `reduce {f} $init, @xs`
+- `reductions {f} $init, @xs`
+- `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
+  Cartesian product
+
 
 67 doc/facet.md
 # Faceting
