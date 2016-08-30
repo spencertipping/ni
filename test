@@ -3,7 +3,8 @@ cd $(dirname $0)
 
 ./build
 ./lazytest $(find doc -name '*.md') > tests.sh
-docker run -i --rm -v $PWD:/data:ro $(docker build -q .) /bin/bash <<'EOF'
+docker run -i -m 256M --rm -v $PWD:/data:ro \
+  $(docker build -q .) /bin/bash <<'EOF'
   cd /tmp
   bash /data/tests.sh
 EOF

@@ -54,7 +54,7 @@ function:
 
 The other is to use the faceting functions defined in facet.pm.
 
-sub rw(&) {my @r = ($l); push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @r}
-sub ru(&) {my @r = ($l); push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @r}
+sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
+sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}

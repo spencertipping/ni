@@ -1151,8 +1151,8 @@ function:
 
 The other is to use the faceting functions defined in facet.pm.
 
-sub rw(&) {my @r = ($l); push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @r}
-sub ru(&) {my @r = ($l); push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @r}
+sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
+sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
 72 core/pl/facet.pm.sdoc
@@ -1960,7 +1960,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-142 doc/perl.md
+156 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2102,7 +2102,21 @@ may not provide by default:
 - `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
   Cartesian product
 
+## Aggregation
+`p` code can read forwards in the input stream. This is trivially possible by
+calling `rl()` ("read line"), which destructively advances to the next line and
+returns it; but more likely you'd use one of these instead:
 
+- `@lines = rw {condition}`: read lines while a condition is met
+- `@lines = ru {condition}`: read lines until a condition is met
+- `@lines = re {a + b}`: read lines while `a + b` is equal
+
+```bash
+$ ni n:10p'r ru {a%4 == 0}'
+1	2	3
+4	5	6	7
+8	9	10
+```
 67 doc/facet.md
 # Faceting
 ni supports an operator that facets rows: that is, it groups them by some

@@ -139,4 +139,18 @@ may not provide by default:
 - `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
   Cartesian product
 
+## Aggregation
+`p` code can read forwards in the input stream. This is trivially possible by
+calling `rl()` ("read line"), which destructively advances to the next line and
+returns it; but more likely you'd use one of these instead:
 
+- `@lines = rw {condition}`: read lines while a condition is met
+- `@lines = ru {condition}`: read lines until a condition is met
+- `@lines = re {a + b}`: read lines while `a + b` is equal
+
+```bash
+$ ni n:10p'r ru {a%4 == 0}'
+1	2	3
+4	5	6	7
+8	9	10
+```

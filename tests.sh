@@ -436,3 +436,9 @@ lazytest_case 'ni n:3p'\''r $_ for 1..a'\''                # use r imperatively,
 2
 3
 LAZYTEST_EOF
+lazytest_case 'ni n:10p'\''r ru {a%4 == 0}'\''
+' 3<<'LAZYTEST_EOF'
+1	2	3
+4	5	6	7
+8	9	10
+LAZYTEST_EOF
