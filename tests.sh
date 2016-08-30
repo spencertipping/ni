@@ -372,17 +372,35 @@ lazytest_case 'ni n:5p'\''a * a'\''                # square some numbers
 16
 25
 LAZYTEST_EOF
-lazytest_case 'ni n:4p'\''r a, a + 1'\''
+lazytest_case 'ni n:4p'\''r a, a + 1'\''                   # generate two columns
 ' 3<<'LAZYTEST_EOF'
 1	2
 2	3
 3	4
 4	5
 LAZYTEST_EOF
-lazytest_case 'ni n:4p'\''r a, a + 1'\'' p'\''r a + b'\''
+lazytest_case 'ni n:4p'\''r a, a + 1'\'' p'\''r a + b'\''        # ... and sum them
 ' 3<<'LAZYTEST_EOF'
 3
 5
 7
 9
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::r3
+' 3<<'LAZYTEST_EOF'
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+bin	x	2	2	bin	/bin	/bin/sh
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 0..3'\''
+' 3<<'LAZYTEST_EOF'
+root	x	0	0
+daemon	x	1	1
+bin	x	2	2
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::r3p'\''r scalar F_'\''            # number of fields
+' 3<<'LAZYTEST_EOF'
+7
+7
+7
 LAZYTEST_EOF
