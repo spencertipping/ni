@@ -89,7 +89,7 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
-29 self.pl
+33 self.pl
 
 sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
@@ -103,10 +103,14 @@ sub read_map {join '', map "$_\n",
                              : die "ni: unknown map command+args: $c @a"}
                         grep {s/#.*//g; length}
                         map split(/\n/), @self{@_}), "__END__"}
-sub intern_lib($) {$self{"$_[0]/$_"} = rfc "$_[0]/$_",
-                   $_ =~ /\.pl$/ && eval $self{"$_[0]/$_"}
-                   for grep length,
-                       split /\n/, ($self{"$_[0]/lib"} = rfc "$_[0]/lib")}
+sub intern_lib {
+  for my $l (@_) {
+    for (grep length, split /\n/, ($self{"$l/lib"} = rfc "$l/lib")) {
+      my $c = $self{"$l/$_"} = rfc "$l/$_";
+      eval "package ni;$c", $@ && die "$@ evaluating $l/$_" if /\.pl$/;
+    }
+  }
+}
 sub modify_self($) {
   die "ni: not a modifiable instance: $0" unless -w $0;
   open my $fh, "> $0" or die "ni: failed to open self: $!";
@@ -492,7 +496,7 @@ deflong 'root', 'meta/help',
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
 col.pl
-35 core/col/col.pl
+40 core/col/col.pl
 
 
 
@@ -502,6 +506,7 @@ sub col_cut {
 }
 our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
 sub ni_cols(@) {
+  # TODO: this function shouldn't be parsing column specs
   my $ind   = grep /[^A-I.]/, @_;
   my $asc   = join('', @_) eq join('', sort @_);
   my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
@@ -512,6 +517,10 @@ sub ni_cols(@) {
 }
 our @col_alt = (pmap {ni_cols split //, $_} colspec);
 defshort 'root', 'f', altr @col_alt;
+
+sub ni_colswap(@) {
+  # TODO after we do the colspec parsing refactor
+}
 
 
 

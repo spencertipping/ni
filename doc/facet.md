@@ -27,7 +27,7 @@ foo	2
 Structurally, here's what's going on:
 
 - `@p`: facet with Perl code
-- `a`: use the first column value as the faceting key
+- `a`: use the first column value as the faceting key (this is Perl code)
 - `r ...`: make a TSV row from an array of values...
   - `a`: ...the first of which is the faceting key (which is always `a` because
     the facet column is prepended to the data)
@@ -56,7 +56,7 @@ string argument rather than a code block; this is for performance reasons, and
 
 A lot of faceting workflows can be more easily expressed as a sort/reduce in
 code, particularly if you're not computing a new value for the key. For
-example, the above query can also be written this way:
+example, the above query can be written more concisely this way:
 
 ```bash
 $ ni /etc/passwd F::gGp'r g, a_ reg'

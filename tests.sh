@@ -351,3 +351,16 @@ LAZYTEST_EOF
 lazytest_case 'ni --lib sqlite-profile QStest.db foo [wx=3]
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_case 'mkdir my-library
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'echo my-lib.pl > my-library/lib
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'echo "defshort '\''root'\'', '\''N'\'', k sh ['\''wc'\'', '\''-l'\''];" > my-library/my-lib.pl
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni --lib my-library n:100N
+' 3<<'LAZYTEST_EOF'
+100
+LAZYTEST_EOF
