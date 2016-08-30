@@ -372,3 +372,17 @@ lazytest_case 'ni n:5p'\''a * a'\''                # square some numbers
 16
 25
 LAZYTEST_EOF
+lazytest_case 'ni n:4p'\''r a, a + 1'\''
+' 3<<'LAZYTEST_EOF'
+1	2
+2	3
+3	4
+4	5
+LAZYTEST_EOF
+lazytest_case 'ni n:4p'\''r a, a + 1'\'' p'\''r a + b'\''
+' 3<<'LAZYTEST_EOF'
+3
+5
+7
+9
+LAZYTEST_EOF
