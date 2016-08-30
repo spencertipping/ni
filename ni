@@ -889,13 +889,37 @@ java.pl
 2 core/java/java.pl
 
 defcontext 'java/cf';
-1 core/lisp/lib
+3 core/lisp/lib
+prefix.lisp
+fd-redirect.lisp
 lisp.pl
-4 core/lisp/lisp.pl
+1 core/lisp/prefix.lisp
+(declaim (optimize (speed 3) (safety 0)))
+7 core/lisp/fd-redirect.lisp
+;; Ok Wes, this one's on you dude.
+;; The contents of the data stream we want to process are coming in on FD 3,
+;; which should be available for reading (just like 0 normally is). In theory
+;; you could issue a read() syscall on fd 3 immediately and it would give you
+;; data, so you just have to convince Lisp to do this.
+
+(print :uhoh-no-fd-3-yet)
+16 core/lisp/lisp.pl
+
+
+use constant lisp_mapgen => gen q{
+  %prefix
+  (when t
+    (print :booyah)
+    %body)
+};
+
+sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp
+                                        core/lisp/fd-redirect.lisp |}}
 
 defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
-                               stdin => $_}
-                           mrc '^.*';
+                               stdin => lisp_mapgen->(prefix => lisp_prefix,
+                                                      body   => $_)}
+                           mrc '^.*[^]]+';
 1 core/hadoop/lib
 hadoop.pl
 1 core/hadoop/hadoop.pl
