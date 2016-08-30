@@ -8,12 +8,12 @@ during the build process to include more extensions, each of which lives in a
 subdirectory of src/.
 
 unquote ni
-resource ni
-resource ni.map
+resource ni.sdoc
+resource ni.map.sdoc
 
-resource util.pl
-resource self.pl
-resource cli.pl
-resource sh.pl
+resource util.pl.sdoc
+resource self.pl.sdoc
+resource cli.pl.sdoc
+resource sh.pl.sdoc
 
-resource main.pl
+resource main.pl.sdoc

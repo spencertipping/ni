@@ -9,3 +9,6 @@ $ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
 $ ni --lib my-library n:100N
 100
 ```
+
+Most ni extensions are about defining a new operator, which involves extending
+ni's command-line grammar.

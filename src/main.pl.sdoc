@@ -72,9 +72,7 @@ final image.
 $option_handlers{'internal/eval'}
   = sub {eval "package ni; $_[0]"; die $@ if $@; exit_success};
 
-$option_handlers{'internal/lib'}
-  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\nlib $_[0]";
-         modify_self 'ni.map'};
+$option_handlers{'internal/lib'} = sub {extend_self $_[0], 'lib'};
 
 Extensions.
 User-facing options to modify or live-extend ni. --lib is used to load code but
@@ -86,9 +84,7 @@ $option_handlers{run} = sub {eval 'package ni;' . shift;
                              die $@ if $@;
                              goto \&main};
 
-$option_handlers{extend}
-  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
-         modify_self 'ni.map'};
+$option_handlers{extend} = sub {extend_self $_[0], 'ext'};
 
 Documentation options.
 Options for the end user that can't otherwise be parsed as pipelines.

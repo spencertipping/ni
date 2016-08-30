@@ -1,5 +1,5 @@
-pl.pl
-util.pm
-math.pm
-stream.pm
-facet.pm
+pl.pl.sdoc
+util.pm.sdoc
+math.pm.sdoc
+stream.pm.sdoc
+facet.pm.sdoc

@@ -20,11 +20,21 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 use 5.006_000;
-chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval "package ni;$ni::self{$_}", $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
-eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
+sub ni::unsdoc
+{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}
+sub ni::eval($$)
+{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
+  eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
+  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1}/eg, die $@ if $@ }
+sub ni::set
+{ chomp($ni::self{$_[0]} = $_[1]);
+  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
+push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
+while <DATA> =~ /^(\d+)\s+(.*?)(\.sdoc)?$/;
+ni::eval 'exit main @ARGV', 'main';
 __DATA__
-26 ni
+41 ni.sdoc
 #!/usr/bin/env perl
 # ni: https://github.com/spencertipping/ni
 # Copyright (c) 2016 Spencer Tipping
@@ -46,22 +56,46 @@ __DATA__
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-use 5.006_000;
-chomp($ni::self{push(@ni::keys, $2) && $2} = join '', map $_ = <DATA>, 1..$1) while <DATA> =~ /^(\d+)\s+(.*)$/;
-push(@ni::evals, $_), eval "package ni;$ni::self{$_}", $@ && die "$@ evaluating $_" for grep /\.pl$/i, @ni::keys;
-eval {exit ni::main(@ARGV)}; $@ =~ s/\(eval (\d+)\)/$ni::evals[$1-1]/g; die $@;
-__DATA__
-25 ni.map
 
+use 5.006_000;
+
+sub ni::unsdoc
+{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}
+
+sub ni::eval($$)
+{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
+  eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
+  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1}/eg, die $@ if $@ }
+
+sub ni::set
+{ chomp($ni::self{$_[0]} = $_[1]);
+  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
+
+push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
+while <DATA> =~ /^(\d+)\s+(.*?)(\.sdoc)?$/;
+ni::eval 'exit main @ARGV', 'main';
+__DATA__
+34 ni.map.sdoc
+Resource layout map.
+ni is assembled by following the instructions here. This script is also
+included in the ni image itself so it can rebuild accordingly. The filenames
+referenced from this file correspond to SDoc-processed entries in src/.
+
+Note that these are just the entries for the core image. ni modifies itself
+during the build process to include more extensions, each of which lives in a
+subdirectory of src/.
 
 unquote ni
-resource ni
-resource ni.map
-resource util.pl
-resource self.pl
-resource cli.pl
-resource sh.pl
-resource main.pl
+resource ni.sdoc
+resource ni.map.sdoc
+
+resource util.pl.sdoc
+resource self.pl.sdoc
+resource cli.pl.sdoc
+resource sh.pl.sdoc
+
+resource main.pl.sdoc
 lib core/common
 lib core/gen
 lib core/stream
@@ -77,24 +111,34 @@ lib core/lisp
 lib core/hadoop
 lib core/pyspark
 lib doc
-11 util.pl
+17 util.pl.sdoc
+Utility functions.
+Generally useful stuff, some of which makes up for the old versions of Perl we
+need to support.
 
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
+
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
-sub rf  {open my $fh, "< $_[0]"; my $r = join '', <$fh>; close $fh; $r}
-sub rl  {open my $fh, "< $_[0]"; my @r =          <$fh>; close $fh; @r}
+
+sub rf  {open my $fh, "< $_[0]" or die $!; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {open my $fh, "< $_[0]" or die $!; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
-33 self.pl
+42 self.pl.sdoc
+Image functions.
+ni needs to be able to reconstruct itself from a map. These functions implement
+the map commands required to do this.
 
 sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;
                 map_r "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
+
 sub read_map {join '', map "$_\n",
                        (map {my ($c, @a) = split /\s+/;
                                $c eq 'unquote'     ? map_u @a
@@ -103,6 +147,7 @@ sub read_map {join '', map "$_\n",
                              : die "ni: unknown map command+args: $c @a"}
                         grep {s/#.*//g; length}
                         map split(/\n/), @self{@_}), "__END__"}
+
 sub intern_lib {
   for my $l (@_) {
     for (grep length, split /\n/, ($self{"$l/lib"} = rfc "$l/lib")) {
@@ -111,53 +156,102 @@ sub intern_lib {
     }
   }
 }
+
 sub modify_self($) {
   die "ni: not a modifiable instance: $0" unless -w $0;
   open my $fh, "> $0" or die "ni: failed to open self: $!";
   print $fh read_map $_[0];
   close $fh;
 }
-sub extend_self($) {
-  $self{'ni.map'} .= "\next $_[0]";
+
+sub extend_self($$) {
   intern_lib $_[0];
+  set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$_[1] $_[0]"
+    unless grep /^(lib|ext) $_[0]$/, split /\n/, $self{'ni.map'};
   modify_self 'ni.map';
 }
+
 sub image {read_map 'ni.map'}
-94 cli.pl
+175 cli.pl.sdoc
+Command-line option parser.
+A context-aware command line parser, which in a Canard-powered world works as
+the reader. Certain static symbols, despite being resolved at runtime, have
+read-time parse semantics that make it possible for ni syntax to be as
+expressive as (and often much more than) nfu. See design/cli.md for details.
 
+A parse state is just a modified copy of @ARGV, including string
+transformations. For example:
 
+| $ ni foo m'r a + b' T4
+  # initial parse state is ("foo", "mr a + b", "T4")
+  # quasifile parse step consumes "foo", so we then have ("mr a + b", "T4")
+  # quasifile parse step rejects ("mr a + b", "T4") by returning ()
+  # long option parsers all reject ("mr a + b", "T4")
+  # short option parser "m" happens:
+  #   m -> ruby-code
+  #   ruby-code is run on ("r a + b", "T4") and returns (code, "T4")
+  #     (had the code ended in extra ] characters, the parser would have
+  #      returned those separately, e.g. (code, "]", "T4"))
+  # ...
 
+This might seem like it would be slow, but most of the overhead lives in
+high-throughput native functions that are unlikely to take up much time in
+practice.
 
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
 use constant none         => sub {(undef, @_)};
+
 sub k($) {my ($v) = @_; sub {($v, @_)}}
+
 sub seqr(\@) {my ($ps) = @_;
          sub {my ($x, @xs, @ys, @ps);
               (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
               (\@xs, @_)}}
+
 sub altr(\@) {my ($ps) = @_;
          sub {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}}
+
 sub seq(@) {ref $_ or die "non-ref to seq(): $_" for @_; seqr @_}
 sub alt(@) {ref $_ or die "non-ref to alt(): $_" for @_; altr @_}
+
 sub rep($;$) {my ($p, $n) = (@_, 0);
          sub {my (@c, @r);
               push @r, $_ while ($_, @_) = &$p(@c = @_);
               @r >= $n ? (\@r, @c) : ()}}
+
 sub maybe($) {my ($p) = @_;
          sub {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}};
+
 sub pmap(&$) {my ($f, $p) = @_;
          sub {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}}
+
 sub pif(&$) {my ($f, $p) = @_;
         sub {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}}
+
 sub ptag(@) {my (@xs, $p) = @_; $p = pop @xs; pmap {[@xs, $_]} $p}
 sub pn($@)  {my ($n, @ps) = @_; pmap {$$_[$n]} seq @ps}
 
+Match/consume regex.
+Consumes the match, returning either the matched text or the first match group
+you specify. Always matches from the beginning of a string.
+
 sub mr($) {my $r = qr/$_[0]/;
       sub {my ($x, @xs) = @_; $x =~ s/^($r)// ? ($2 || $1, $x, @xs) : ()}}
+
 sub mrc($) {pn 0, mr $_[0], maybe consumed_opt}
 
+Character dispatch.
+This is just a way to bypass a lot of the alt() overhead that would otherwise
+result to decode a high-entropy stream of text. The most obvious case is short
+option parsing.
 
+| chalt(a => seq(...), b => ..., ...)
+  # functionally the same as alt(pn(1, mr('^a', seq(...))),
+  #                              pn(1, mr('^b', ...)),
+  #                              ...)
+
+Note that the dispatch character itself isn't encoded into the result.
 
 sub chaltr(\%) {my ($ps) = @_;
            sub {my ($x, @xs, $k, @ys, %ls) = @_;
@@ -169,9 +263,22 @@ sub chaltr(\%) {my ($ps) = @_;
                   if exists $$ps{$c = substr $x, 0, $l};
                 }
                 ()}}
+
 sub chalt(%) {my %h = @_; chaltr %h}
 
+Regex parsing.
+Sometimes we'll have an operator that takes a regex, which is subject to the
+CLI reader problem the same way code arguments are. Rather than try to infer
+brackets the same way, we just require that regexes are terminated with /
+(which should be ok because that's also how they typically start).
+
 use constant regex => pmap {s/\/$//; $_} mr qr/^(?:[^\\\/]+|\\.)*\//;
+
+Code parsing.
+This is nontrivial due to the CLI reader problem. The idea is that we need to
+figure out how many closing brackets belong to the code, vs how many close a
+lambda. Depending on the language, the only way to do this may be to shell out
+to an interpreter.
 
 use constant rbcode => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -181,13 +288,21 @@ use constant rbcode => sub {
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
+Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
+blocks to avoid executing side effects. We can guarantee that nothing will run
+(beyond `use` statements, which we assume are safe) by removing any
+occurrences of the string `BEGIN` and replacing them with something
+syntactically equivalent but less volatile -- in this case, `END`.
+
 use constant plcode => sub {
   return @_ unless $_[0] =~ /\]$/;
   my ($code, @xs, $x, $qcode) = @_;
   ($qcode = $code) =~ s/'/'\\''/g;
+
   my $begin_warning = $qcode =~ s/BEGIN/END/g;
   $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
                   and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+
   print STDERR <<EOF if $_ && $begin_warning;
 ni: failed to get closing bracket count for perl code "$_[0]", possibly
     because BEGIN-block metaprogramming is disabled when ni tries to figure
@@ -196,15 +311,28 @@ ni: failed to get closing bracket count for perl code "$_[0]", possibly
 EOF
   $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
+CLI parser generator.
+ni's CLI grammar is interesting because it maintains the same basic structure
+across a number of different interpretation contexts. For example, the main CLI
+arguments are interpreted as local/POSIX stuff, but if you create a JVM Spark
+context then the same grammar will host a series of modified operators that
+compile into Java/Scala code instead. The invariant parts of this are factored
+into a function that produces a CLI grammar with mutable long/short mappings
+(which can be modified using 'deflong' and 'defshort' below).
+
 our %contexts;
+
 sub context($) {my ($c, $p) = split /\//, $_[0]; $contexts{$c}{$p}}
+
 sub defcontext($) {
   my $short = {};
   my $long  = [];
   my $r = $contexts{$_[0]} = {};
   $$r{ops} = sub {$$r{ops}->(@_)};
+
   $$r{longs}  = $long;
   $$r{shorts} = $short;
+
   $$r{long}   = altr @$long;
   $$r{short}  = chaltr %$short;
   $$r{lambda} = alt mr '_', pn 1, mrc '\[', $$r{ops}, mr '\]';
@@ -215,22 +343,53 @@ sub defcontext($) {
   $$r{cli}    = pn 0, $$r{ops}, end_of_argv;
   $$r{cli_d}  = $$r{ops};
 }
+
 defcontext 'root';
+
 sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
 sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
-68 sh.pl
+103 sh.pl.sdoc
+Self-contained POSIX shell tasks.
+Compiling a shell pipeline is not entirely trivial for a couple of reasons. One
+is that we have to be parsimonious about argv lengths to avoid hitting the
+upper limit (as low as 4k, potentially, though realistically at least 20k). The
+other is that some commands require heredocs, which in turn require unique
+terminators and some creative stdin redirection. Rather than managing these
+details by hand, you can instead use the `sh` function:
 
+| my $seq      = sh 'seq', 10;
+  my $perl_cat = sh ['perl', '-n'], stdin => <<EOF
+    open my $fh, "<&=", 3;              # old stdin is now redirected to fd 3
+    print while <$fh>;
+  EOF
+  my $pipeline = pipeline $seq, $perl_cat;
 
+Now you can write `$pipeline` into a `/bin/sh` process to execute it.
 
+NOTE: unlike system(), exec(), etc, if you say sh('ls -lh'), this will try to
+execute the "ls -lh" command rather than interpreting "-lh" as an argument.
 
 sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            ? "'" . sgr($_, qr/'/, "'\\''") . "'"
                            : $_,
                      map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
 
+Shell commands can include some context, as shown in the example above. In
+addition to "stdin", which redirects fd 0 to fd 3, you can specify a hash of
+prefixes. These will be evaluated before any command in the pipeline, so you
+can do things like define shell functions. For example:
 
+| my $wot = sh ['ni_wot'], prefix => {ni_wot => 'ni_wot() { echo wot; }'};
 
+The keys in the prefixes hash are just used for deduplication. You can nest
+shell commands and their prefixes will be combined:
 
+| sub two {sh ['two', @_], prefix => {two => 'two() { eval "$1"; eval "$2"; }'}}
+  my $both = two $wot, $wot;
+
+In this case the 'two' shell function will receive two copies of the
+shell-quoted invocation of 'wot', and the 'ni_wot' function will be defined
+once before the pipeline.
 
 sub collect_nested_invocations {
   local $_;
@@ -255,15 +414,20 @@ sub collect_nested_invocations {
     }
   } @xs;
 }
+
 sub sh {
   return {exec => [@_]} unless ref $_[0];
   my ($c, %o) = @_;
   my ($exec) = collect_nested_invocations \%o, $c;
   +{exec => $exec, %o};
 }
+
 sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+
 sub sh_prefix() {join "\n", @self{@sh_libs}}
+
 sub flatten {map 'ARRAY' eq ref($_) ? flatten(@$_) : $_, @_}
+
 sub pipeline {
   my %ps;
   my @cs;
@@ -278,6 +442,7 @@ sub pipeline {
     } else {
       push @cs, $c;
     }
+
     if (exists $$_{prefix}) {
       my $p = $$_{prefix};
       $ps{$_} = $$p{$_} for keys %$p;
@@ -287,16 +452,23 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-71 main.pl
+103 main.pl.sdoc
+Main function.
+ni can be invoked as a stream processor, but it can also do some toplevel
+things besides. This main function knows how to handle these cases.
 
 use POSIX qw/dup dup2/;
+
 use constant exit_success      => 0;
 use constant exit_run_error    => 1;
 use constant exit_nop          => 2;
 use constant exit_sigchld_fail => 3;
+
 our %option_handlers;
+
 our @pipeline_prefix = sh 'true';
 our @pipeline_suffix = ();
+
 sub parse_ops {
   return () unless @_;
   my ($parsed) = context('root/cli')->(@_);
@@ -304,11 +476,23 @@ sub parse_ops {
   my (undef, @rest) = context('root/cli_d')->(@_);
   die "failed to parse " . join ' ', @rest;
 }
+
 sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
 
+FD redirection stuff.
+ni compiles a shell pipeline by sending the pipeline code to a shell process as
+standard input. The shell then executes the pipeline, which reads from fd 3 to
+pull stdin (we have to do this because the shell's stdin is used for the
+pipeline code, and /bin/sh doesn't reliably differentiate between "more code"
+and "stdin to the program").
+
+We can't use Perl's open() function here because it only gives us a way to
+forward one file descriptor. Instead, we need to manually fork/exec and get
+everything set up using pipe() and dup2.
 
 sub run_sh {
   pipe my $r, $w;
+
   if (my $child = fork) {
     close $r;
     close STDIN;
@@ -330,28 +514,41 @@ sub run_sh {
     close STDIN;
     dup2 fileno $r, 0 or die "ni: failed to redirect command to shell: $!";
     close $r;
+
     exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'
       or die "ni: failed to run any POSIX sh: $!";
   }
 }
 
+Internal and debugging options.
+A handful of things useful for ni development. These are also present in the
+final image.
+
 $option_handlers{'internal/eval'}
   = sub {eval "package ni; $_[0]"; die $@ if $@; exit_success};
-$option_handlers{'internal/lib'}
-  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\nlib $_[0]";
-         modify_self 'ni.map'};
+
+$option_handlers{'internal/lib'} = sub {extend_self $_[0], 'lib'};
+
+Extensions.
+User-facing options to modify or live-extend ni. --lib is used to load code but
+not change the ni image, --extend causes ni to self-modify to include the
+specified extension.
 
 $option_handlers{lib} = sub {intern_lib shift; goto \&main};
 $option_handlers{run} = sub {eval 'package ni;' . shift;
                              die $@ if $@;
                              goto \&main};
-$option_handlers{extend}
-  = sub {intern_lib $_[0]; $self{'ni.map'} .= "\next $_[0]";
-         modify_self 'ni.map'};
+
+$option_handlers{extend} = sub {extend_self $_[0], 'ext'};
+
+Documentation options.
+Options for the end user that can't otherwise be parsed as pipelines.
 
 $option_handlers{help} = sub {@_ = ("//help/" . (@_ ? $_[0] : '')); goto \&main};
+
 $option_handlers{explain} = sub {TODO()};
 $option_handlers{compile} = sub {print sh_code @_; exit_nop};
+
 sub main {
   my ($command, @args) = @_;
   $command = '--help' if $command eq '-h' or !@_ && -t STDIN && -t STDOUT;
@@ -360,8 +557,11 @@ sub main {
   run_sh sh_code @_;
 }
 1 core/common/lib
-common.pl
-18 core/common/common.pl
+common.pl.sdoc
+28 core/common/common.pl.sdoc
+Basic CLI types.
+Some common argument formats for various commands, sometimes transformed for
+specific cases. These are documented somewhere in `doc/`.
 
 use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
@@ -370,8 +570,15 @@ use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {0 + $_},    mr '\d+');
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
+
 use constant colspec1 => mr '^[A-Z]';
 use constant colspec  => mr '^[-A-Z.]+';
+
+Generic code parser.
+Counts brackets outside quoted strings, which in our case are '' and "".
+Doesn't look for regular expressions because these vary by language; but this
+parser should be able to handle most straightforward languages with quoted
+string literals and backslash escapes.
 
 use constant generic_code => sub {
   return @_ unless $_[0] =~ /\]$/;
@@ -381,12 +588,33 @@ use constant generic_code => sub {
   $balance ? (substr($code, 0, $balance), substr($code, $balance))
            : ($code, @xs)};
 1 core/gen/lib
-gen.pl
-13 core/gen/gen.pl
+gen.pl.sdoc
+34 core/gen/gen.pl.sdoc
+Code generator.
+A general-purpose interface to do code-generation stuff. This is used when
+you've got a task that's mostly boilerplate of some kind, but you've got
+variable regions. For example, if you wanted to generalize JVM-hosted
+command-line filters:
 
+| my $java_linefilter = gen q{
+    import java.io.*;
+    public class %classname {
+      public static void main(String[] args) {
+        BufferedReader stdin = <the ridiculous crap required to do this>;
+        String %line;
+        while ((%line = stdin.readLine()) != null) {
+          %body;
+        }
+      }
+    }
+  };
+  my $code = &$java_linefilter(classname => 'Foo',
+                               line      => 'line',
+                               body      => 'System.out.println(line);');
 
 our $gensym_index = 0;
 sub gensym {join '_', '_gensym', ++$gensym_index, @_}
+
 sub gen($) {
   my @pieces = split /(%\w+)/, $_[0];
   sub {
@@ -397,11 +625,40 @@ sub gen($) {
   };
 }
 4 core/stream/lib
-cat.pm
-decode.pm
-stream.pl
-stream.sh
-13 core/stream/cat.pm
+stream.sh.sdoc
+cat.pm.sdoc
+decode.pm.sdoc
+stream.pl.sdoc
+24 core/stream/stream.sh.sdoc
+Stream shell functions.
+These are called by pipelines to simplify things. For example, a common
+operation is to append the output of some data-producing command:
+
+| $ ni . .              # lists current directory twice
+
+If you do this, ni will compile a pipeline that uses stream wrappers to
+concatenate the second `ls` output (despite the fact that technically it's a
+shell pipe).
+
+ni_append()  { cat; "$@"; }
+ni_prepend() { "$@"; cat; }
+
+ni_append_hd()  { cat <&3; "$@"; }
+ni_prepend_hd() { "$@"; cat <&3; }
+
+ni_pipe() { eval "$1" | eval "$2"; }
+
+Pager handling.
+A wrapper around various programs to preview long streams of data. We might
+not have any, but if we do, we make them available under the 'ni_pager'
+function.
+
+ni_pager() { ${NI_PAGER:-less} || more || cat; }
+17 core/stream/cat.pm.sdoc
+Perl code for the ni_cat function.
+ni_cat exists to turn filesystem objects into text. Files are emitted and
+directories are turned into listings. This code isn't evaluated into ni;
+instead, it's used as a library and inserted via -e into a perl interpreter.
 
 while (@ARGV) {
   my $f = shift @ARGV;
@@ -415,22 +672,39 @@ while (@ARGV) {
     close F;
   }
 }
-24 core/stream/decode.pm
+41 core/stream/decode.pm.sdoc
+Compressed stream support.
+This provides a perl command you can use to read the contents of a compressed
+stream as though it weren't compressed. It's implemented as a filter process so
+we don't need to rely on file extensions.
 
+We detect the following file formats:
 
+| gzip:  1f 8b
+  bzip2: BZh\0
+  7z:    37 7A BC AF 27 1C
+  lzop:  89 4c 5a 4f
+  lz4:   04 22 4d 18
+  xz:    fd 37 7a 58 5a
 
+Decoding works by reading enough to decode the magic, then forwarding data
+into the appropriate decoding process (or doing nothing if we don't know what
+the data is).
 
 my ($fd) = @ARGV;
 if (defined $fd) {
   close STDIN;
   open STDIN, "<&=$fd" or die "ni_decode: failed to open fd $fd: $!";
 }
+
 sysread STDIN, $_, 8192;
+
 my $decoder = /^\x1f\x8b/             ? "gzip -dc"
             : /^BZh\0/                ? "bzip2 -dc"
             : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
             : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
             : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+
 if (defined $decoder) {
   open FH, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
   syswrite FH, $_;
@@ -440,54 +714,68 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-27 core/stream/stream.pl
+43 core/stream/stream.pl.sdoc
+Streaming data sources.
+Common ways to read data, most notably from files and directories. Also
+included are numeric generators, shell commands, etc. Most of the functionality
+here is implemented by stream.sh.
 
 use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
 use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
 use constant perl_ifn  => gen "%name() { perl - \"\$@\" <<'%hd'; }\n%code\n%hd";
+
 sub perl_fn_dep($$)
 {+{$_[0] => perl_fn->(name => $_[0], code => quote $self{$_[1]})}}
+
 sub perl_stdin_fn_dep($$)
 {+{$_[0] => perl_ifn->(name => $_[0], code => $_[1], hd => heredoc_for $_[1])}}
+
 sub ni_cat($)     {sh ['ni_cat', $_[0]], prefix => perl_fn_dep 'ni_cat',    'core/stream/cat.pm'}
 sub ni_decode(;$) {sh ['ni_decode', @_], prefix => perl_fn_dep 'ni_decode', 'core/stream/decode.pm'}
+
 sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
+
 sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
                                   prefix => stream_sh}
+
 sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
+
 @pipeline_prefix = -t STDIN  ? ()       : ni_decode 3;
 @pipeline_suffix = -t STDOUT ? ni_pager : ();
+
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';
+
 deflong 'root', 'stream/fs',
   pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
   alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+
 deflong 'root', 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
 deflong 'root', 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
+
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
+
 deflong 'root', 'stream/pipe', pmap {sh 'sh', '-c', $_} mrc '^\$=(.*)';
-10 core/stream/stream.sh
-
-
-
-ni_append()  { cat; "$@"; }
-ni_prepend() { "$@"; cat; }
-ni_append_hd()  { cat <&3; "$@"; }
-ni_prepend_hd() { "$@"; cat <&3; }
-ni_pipe() { eval "$1" | eval "$2"; }
-
-ni_pager() { ${NI_PAGER:-less} || more || cat; }
 1 core/meta/lib
-meta.pl
-12 core/meta/meta.pl
+meta.pl.sdoc
+21 core/meta/meta.pl.sdoc
+Image-related data sources.
+Long options to access ni's internal state. Also the ability to instantiate ni
+within a shell process.
 
 deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
 deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
 deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+
 sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
+
 deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
+
+Documentation options.
+These are listed under the `//help` prefix. This isn't a toplevel option
+because it's more straightforward to model these as data sources.
 
 deflong 'root', 'meta/help',
   pmap {$_ = 'README' if !length or /^tutorial$/;
@@ -495,16 +783,26 @@ deflong 'root', 'meta/help',
         ni_verb $self{"doc/$_.md"}}
   pn 1, mr '^//help/?', mrc '^.*';
 1 core/col/lib
-col.pl
-40 core/col/col.pl
+col.pl.sdoc
+69 core/col/col.pl.sdoc
+Column manipulation operators.
+In root context, ni interprets columns as being tab-delimited.
 
+Column selection.
+Normally perl is fast at text manipulation, but on most UNIX systems
+`/usr/bin/cut` is at least an order of magnitude faster. We can use it if two
+conditions are met:
 
+| 1. All addressed columns are at index 8 (9 if one-based) or lower.
+  2. The addressed columns are in ascending order.
 
 sub col_cut {
   my ($floor, $rest, @fs) = @_;
   sh 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
+
 our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
+
 sub ni_cols(@) {
   # TODO: this function shouldn't be parsing column specs
   my $ind   = grep /[^A-I.]/, @_;
@@ -512,21 +810,39 @@ sub ni_cols(@) {
   my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
   my $floor = (sort {$b <=> $a} @cols)[0] + 1;
   return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
+
   sh ['perl', '-ne',
       $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols)];
 }
+
 our @col_alt = (pmap {ni_cols split //, $_} colspec);
+
 defshort 'root', 'f', altr @col_alt;
+
+Column swapping.
+This is such a common thing to do that it gets its own operator `x`. The idea
+is that you're swapping the specified column(s) into the first N position(s).
 
 sub ni_colswap(@) {
   # TODO after we do the colspec parsing refactor
 }
 
+Column splitting.
+Adapters for input formats that don't have tab delimiters. Common ones are,
+with their split-spec mnemonics:
 
+| commas:       C
+  pipes:        P
+  whitespace:   S
+  non-words:    W
+
+You can also field-split on arbitrary regexes, or extend the %split_chalt hash
+to add custom split operators.
 
 sub ni_split_chr($)   {sh 'perl', '-lnpe', "y/$_[0]/\\t/"}
 sub ni_split_regex($) {sh 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"}
 sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
+
 our %split_chalt = (
   'C' => (pmap {ni_split_chr   ','}              none),
   'P' => (pmap {ni_split_chr   '|'}              none),
@@ -536,13 +852,17 @@ our %split_chalt = (
   ':' => (pmap {ni_split_chr   $_}               mr '^.'),
   'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
 );
+
 defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
-row.pl
-row.sh
-24 core/row/row.pl
+row.pl.sdoc
+row.sh.sdoc
+45 core/row/row.pl.sdoc
+Row-level operations.
+These reorder/drop/create entire rows without really looking at fields.
 
 use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
+
 our @row_alt = (
   (pmap {sh 'tail', '-n', $_}                      pn 1, mr '^\+', number),
   (pmap {sh 'tail', '-n', '+' . ($_ + 1)}          pn 1, mr '^-',  number),
@@ -550,50 +870,97 @@ our @row_alt = (
   (pmap {sh ['ni_rmatch',  $_], prefix => row_pre} pn 1, mr '^/',  regex),
   (pmap {sh ['ni_rsample', $_], prefix => row_pre} mr '^\.\d+'),
   (pmap {sh 'head', '-n', $_}                      alt neval, integer));
+
 defshort 'root', 'r', altr @row_alt;
 
+Sorting.
+ni has four sorting operators, each of which can take modifiers:
 
+| g     group: sort by byte ordering
+  G     groupuniq: sort + uniq by byte ordering
+  o     order: sort numeric ascending
+  O     rorder: sort numeric descending
 
+Modifiers follow the operator and dictate the column index and, optionally, the
+type of sort to perform on that column (though a lot of this is already
+specified by which sort operator you use). Columns are specified as A-Z, and
+modifiers, which are optional, are any of these:
+
+| g     general numeric sort (not available for all 'sort' versions)
+  n     numeric sort
+  r     reverse
 
 use constant sortspec => rep seq colspec1, maybe mr '^[gnr]+';
+
 sub sort_args {'-t', "\t",
                map {my $i = ord($$_[0]) - 64;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
+
 sub ni_sort(@) {sh ['ni_sort', @_], prefix => row_pre}
+
 defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
 defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
 defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
 defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
-11 core/row/row.sh
+25 core/row/row.sh.sdoc
+Row-selection functions.
+Wrappers to select specific rows from a stream. This implements the `r`
+command. Note that it's faster (and more powerful) to use perl than grep for
+regex matching, at least last time I tested it.
 
 ni_revery()  { perl -ne 'print unless $. % '"$1"; }
 ni_rmatch()  { perl -lne 'print if /'"$1"/; }
+
+Row sampling is done using a Poisson process, which takes rand() out of the
+line of fire. This is particularly useful for sparse samplings.
 
 ni_rsample() { perl -ne '
   BEGIN {srand($ENV{NI_SEED} || 42)}
   if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
 
+Sorting.
+The biggest question here is whether we have a version of `sort` that can
+handle options like `--compress-program`. If so, we want to use these
+extensions because they accelerate things substantially. We have to detect this
+in shell rather than inside the ni codegen because the compiled code might be
+sent elsewhere.
+
 ni_sort() {
   # TODO: --compress-program etc
   sort "$@"; }
 1 core/facet/lib
-facet.pl
-7 core/facet/facet.pl
+facet.pl.sdoc
+18 core/facet/facet.pl.sdoc
+Faceting support.
+A compound operation that prepends a new facet-value column, sorts by that
+value, and supports streaming aggregation within facet groups. It's specified
+this way for two reasons. First, it's convenient; but second, and more
+importantly, not all backends will have the right set of primitives to let you
+specify a facet the same way.
 
+The general syntax is like this:
 
+| $ ni n:100 @p'a % 10' 'r a, fr {$_ + b} 0'    # sum each group
 
+This generalizes easily to other programming environments, e.g. SQL GROUP BY:
 
+| $ ni ... [@'mod(x, 10)' 'sum(y)']
 
 our %facet_chalt;
+
 defshort 'root', '@', chaltr %facet_chalt;
 5 core/pl/lib
-pl.pl
-util.pm
-math.pm
-stream.pm
-facet.pm
-30 core/pl/pl.pl
+pl.pl.sdoc
+util.pm.sdoc
+math.pm.sdoc
+stream.pm.sdoc
+facet.pm.sdoc
+41 core/pl/pl.pl.sdoc
+Perl wrapper.
+Defines the `p` operator, which can be modified in a few different ways to do
+different things. By default it functions as a one-in, many-out row
+transformer.
 
 use constant perl_mapgen => gen q{
   %prefix
@@ -606,35 +973,50 @@ use constant perl_mapgen => gen q{
     %each
   }
 };
+
 sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm
                                         core/gen/gen.pl
                                         core/pl/facet.pm |}}
+
 sub perl_gen($$) {sh [qw/perl -/],
   stdin => perl_mapgen->(prefix => perl_prefix,
                          body   => $_[0],
                          each   => $_[1])}
+
 sub perl_mapper($)  {perl_gen $_[0], 'pr for row'}
 sub perl_grepper($) {perl_gen $_[0], 'pr if row'}
 sub perl_facet($)   {perl_gen $_[0], 'pr row . "\t$_"'}
+
 our @perl_alt = (pmap {perl_mapper $_} plcode);
+
 defshort 'root', 'p', altr @perl_alt;
+
 unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+
 $facet_chalt{p} = pmap {[perl_facet $$_[0],
                          sh(['ni_sort', '-k1,1'], prefix => row_pre),
                          perl_mapper $$_[1]]} seq plcode, plcode;
-48 core/pl/util.pm
+61 core/pl/util.pm.sdoc
+Utility library functions.
+Mostly inherited from nfu. This is all loaded inline before any Perl mapper
+code. Note that List::Util, the usual solution to a lot of these problems, is
+introduced in v5.7.3, so we can't rely on it being there.
 
 sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
 sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
+
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+
 sub mean {scalar @_ && sum(@_) / @_}
+
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
 sub argmax(&@) {
   local $_;
   my ($f, $m, @xs) = @_;
@@ -644,6 +1026,7 @@ sub argmax(&@) {
   }
   $m;
 }
+
 sub argmin(&@) {
   local $_;
   my ($f, $m, @xs) = @_;
@@ -653,10 +1036,13 @@ sub argmin(&@) {
   }
   $m;
 }
+
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+
 sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
 sub reductions(&$@) {
   local $_;
@@ -664,6 +1050,7 @@ sub reductions(&$@) {
   push @ys, $x = &$f($x, $_) for @xs;
   @ys;
 }
+
 sub cart {
   local $_;
   return () unless @_;
@@ -673,22 +1060,31 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-24 core/pl/math.pm
+33 core/pl/math.pm.sdoc
+Math utility functions.
+Mostly geometric and statistical stuff.
 
 use constant tau => 2 * 3.14159265358979323846264;
+
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
+
 sub log2 {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
+
 sub dot {local $_; my ($u, $v) = @_;
          sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
 sub rdeg($) {$_[0] * 360 / tau}
 sub drad($) {$_[0] / 360 * tau}
+
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+
 if (eval {require Math::Trig}) {
   sub haversine {
     local $_;
@@ -698,16 +1094,30 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-28 core/pl/stream.pm
+60 core/pl/stream.pm.sdoc
+Perl stream-related functions.
+Utilities to parse and emit streams of data. Handles the following use cases:
 
+| $ ni n:10p'a + a'             # emit single value
+  $ ni n:10p'a, a * a'          # emit multiple values vertically
+  $ ni n:10p'r a, a * a'        # emit multiple values horizontally
 
+The 'pr' function can bypass split /\t/, which is useful in high-throughput
+situations. For example:
 
+| $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
+Uppercase letters are quoted fields: A == 'a'. This is useful when defining
+lazy facets (see facet.pm.sdoc).
 
+Lowercase letters followed by underscores are field-extractors that can take an
+array of lines and return an array of field values. These are useful in
+conjunction with the line-reading functions `rw`, `ru`, and `re`.
 
 our @q;
 our @F;
 our $l;
+
 sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
@@ -717,47 +1127,89 @@ BEGIN {eval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
        eval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
                     $_, ord($_) - 97 for 'a'..'q'}
 
+Optimize access to the first field; in particular, no need to fully populate @F
+since no seeking needs to happen. This should improve performance for faceting
+workflows.
+
 sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
+Seeking functions.
+It's possible to read downwards (i.e. future lines), which returns an array and
+sends the after-rejected line into the lookahead queue to be used by the next
+iteration. Mnemonics:
 
+| rw: read while condition
+  ru: read until condition
+  re: read while equal
 
+These functions all read things into memory. If you want to stream stuff, you
+can do it in two ways. One is to use control flow with the 'rl' (read line)
+function:
 
+| do_stuff until rl =~ /<\//;           # iterate until closing XML tag
+  push @q, $_;                          # important: stash rejected line
+
+The other is to use the faceting functions defined in facet.pm.
 
 sub rw(&) {my @r = ($l); push @r, $_ while defined rl && &{$_[0]}; push @q, $_ if defined; @r}
 sub ru(&) {my @r = ($l); push @r, $_ until defined rl && &{$_[0]}; push @q, $_ if defined; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
-47 core/pl/facet.pm
+72 core/pl/facet.pm.sdoc
+Faceting functions.
+Functions that operate on a single facet, which is defined by the first column
+value. Mnemonics:
 
+| fe: facet each (side-effects for each value, streaming)
+  fr: facet reduce (streaming, n-ary)
 
 sub fe(&) {my ($k, $f, $x) = (a, @_);
            $x = &$f, rl while defined and a eq $k;
            push @q, $_ if defined;
            $x}
+
 sub fr(&@) {my ($k, $f, @xs) = (a, @_);
             @xs = &$f(@xs), rl while defined and a eq $k;
             push @q, $_ if defined;
             @xs}
 
+Compound reductions.
+Suppose you want to calculate, in parallel, the sum of one column and the mean
+of another. You can't use two separate `fr` calls since the first one will
+force the whole stream. Instead, you need a way to build a single compound
+function that maintains the two separate state elements. That's what `fc`
+(facet compound) is about.
+
+In fast languages we could probably get away with some nice combinatory stuff
+here, but this is performance-critical and Perl isn't fast. So I'm making some
+epic use of codegen and `eval` to help Perl be all it can be. We end up
+compiling into a single function body for an `fr` call, which is then mapped
+through a finalizer to eliminate intermediate states.
 
 sub fsum($)  {+{reduce => gen "%1 + ($_[0])",
                 init   => [0],
                 end    => gen '%1'}}
+
 sub fmean($) {+{reduce => gen "%1 + ($_[0]), %2 + 1",
                 init   => [0, 0],
                 end    => gen '%1 / (%2 || 1)'}}
+
 sub fmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
                 init   => [undef],
                 end    => gen '%1'}}
+
 sub fmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
                 init   => [undef],
                 end    => gen '%1'}}
+
 sub farr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
                 init   => [[]],
                 end    => gen '%1'}}
+
 sub rfn($$)  {+{reduce => gen $_[0],
                 init   => [@_[1..$#_]],
                 end    => gen join ', ', map "%$_", 1..$#_}}
+
 sub compound_facet(@) {
   local $_;
   my $slots = 0;
@@ -769,6 +1221,7 @@ sub compound_facet(@) {
     reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
     end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_)}
 }
+
 sub fc(@) {
   my %c      = %{compound_facet @_};
   my $reduce = eval "sub{\n($c{reduce})\n}" or die "fc: '$c{reduce}': $@";
@@ -776,53 +1229,87 @@ sub fc(@) {
   &$end(fr {$reduce->(@_)} @{$c{init}});
 }
 1 core/python/lib
-python.pl
-22 core/python/python.pl
+python.pl.sdoc
+46 core/python/python.pl.sdoc
+Python stuff.
+A context for processing stuff in Python, as well as various functions to
+handle the peculiarities of Python code.
 
+Indentation fixing.
+This is useful in any context where code is artificially indented, e.g. when
+you've got a multiline quotation and the first line appears outdented because
+the quote opener has taken up space:
 
+| my $python_code = q{import numpy as np
+                      print np};
+  # -----------------| <- this indentation is misleading
 
+In this case, we want to have the second line indented at zero, not at the
+apparent indentation. The pydent function does this transformation for you, and
+correctly handles Python block constructs:
 
+| my $python_code = pydent q{if True:
+                               print "well that's good"};
 
 sub pydent($) {
   my @lines   = split /\n/, $_[0];
   my @indents = map length(sr $_, qr/\S.*$/, ''), @lines;
   my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
+
   $indent = min $indent - 1, @indents[2..$#indents]
     if $lines[0] =~ /:\s*(#.*)?$/ && @lines > 2;
+
   my $spaces = ' ' x $indent;
   $lines[$_] =~ s/^$spaces// for 1..$#lines;
   join "\n", @lines;
 }
+
 sub indent($;$) {
   my ($code, $indent) = (@_, 2);
   join "\n", map ' ' x $indent . $_, split /\n/, $code;
 }
+
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
+
+Python code parse element.
+Counts brackets, excluding those inside quoted strings. This is more efficient
+and less accurate than Ruby/Perl, but the upside is that errors are not
+particularly common.
 
 use constant pycode => pmap {pydent $_} generic_code;
 1 core/sql/lib
-sql.pl
-90 core/sql/sql.pl
+sql.pl.sdoc
+129 core/sql/sql.pl.sdoc
+SQL parsing context.
+Translates ni CLI grammar to a SELECT query. This is a little interesting
+because SQL has a weird structure to it; to help with this I've also got a
+'sqlgen' abstraction that figures out when we need to drop into a subquery.
 
 sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
+
 sub ni::sqlgen::render {
   local $_;
   my ($self) = @_;
   return $$self{from} if 1 == keys %$self;
+
   my $select = ni::dor $$self{select}, '*';
   my @others;
+
   for (qw/from where order_by group_by limit union intersect except
           inner_join left_join right_join full_join natural_join/) {
     next unless exists $$self{$_};
     (my $k = $_) =~ y/a-z_/A-Z /;
     push @others, "$k $$self{$_}";
   }
+
   ni::gen('SELECT %distinct %stuff %others')
        ->(stuff    => $select,
           distinct => $$self{uniq} ? 'DISTINCT' : '',
           others   => join ' ', @others);
 }
+
 sub ni::sqlgen::modify_where {join ' AND ', @_}
+
 sub ni::sqlgen::modify {
   my ($self, %kvs) = @_;
   while (my ($k, $v) = each %kvs) {
@@ -837,21 +1324,34 @@ sub ni::sqlgen::modify {
   }
   $self;
 }
+
 sub ni::sqlgen::map        {$_[0]->modify(select => $_[1])}
 sub ni::sqlgen::filter     {$_[0]->modify(where =>  $_[1])}
 sub ni::sqlgen::take       {$_[0]->modify(limit =>  $_[1])}
 sub ni::sqlgen::sample     {$_[0]->modify(where =>  "random() < $_[1]")}
+
 sub ni::sqlgen::ijoin      {$_[0]->modify(join => 1, inner_join   => $_[1])}
 sub ni::sqlgen::ljoin      {$_[0]->modify(join => 1, left_join    => $_[1])}
 sub ni::sqlgen::rjoin      {$_[0]->modify(join => 1, right_join   => $_[1])}
 sub ni::sqlgen::njoin      {$_[0]->modify(join => 1, natural_join => $_[1])}
+
 sub ni::sqlgen::order_by   {$_[0]->modify(order_by => $_[1])}
+
 sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
+
 sub ni::sqlgen::union      {$_[0]->modify(setop => 1, union     => $_[1])}
 sub ni::sqlgen::intersect  {$_[0]->modify(setop => 1, intersect => $_[1])}
 sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 
+SQL code parse element.
+Counts brackets outside quoted strings.
+
 use constant sqlcode => generic_code;
+
+Code compilation.
+Parser elements can generate one of two things: [method, @args] or
+{%modifications}. Compiling code is just starting with a SQL context and
+left-reducing method calls.
 
 sub sql_compile {
   local $_;
@@ -867,11 +1367,18 @@ sub sql_compile {
   $g->render;
 }
 
+SQL operator mapping.
+For the most part we model SQL operations the same way that we address Spark
+RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
+
 defcontext 'sql';
+
 use constant sql_table => pmap {sqlgen $_} mrc '^.*';
+
 our $sql_query = pmap {sql_compile $$_[0], @{$$_[1]}}
                  seq sql_table, maybe alt context 'sql/lambda',
                                           context 'sql/suffix';
+
 our @sql_row_alt;
 our @sql_join_alt = (
   (pmap {['ljoin', $_]} pn 1, mr '^L', $sql_query),
@@ -879,29 +1386,40 @@ our @sql_join_alt = (
   (pmap {['njoin', $_]} pn 1, mr '^N', $sql_query),
   (pmap {['ijoin', $_]} $sql_query),
 );
+
 defshort 'sql', 's', pmap {['map',    $_]} sqlcode;
 defshort 'sql', 'w', pmap {['filter', $_]} sqlcode;
 defshort 'sql', 'r', altr @sql_row_alt;
 defshort 'sql', 'j', altr @sql_join_alt;
 defshort 'sql', 'G', k ['uniq'];
+
 defshort 'sql', 'g', pmap {['order_by', $_]} sqlcode;
+
 defshort 'sql', '+', pmap {['union',      $_]} $sql_query;
 defshort 'sql', '*', pmap {['intersect',  $_]} $sql_query;
 defshort 'sql', '-', pmap {['difference', $_]} $sql_query;
+
 defshort 'sql', '@', pmap {+{select => $$_[1], group_by => $$_[0]}}
                      seq sqlcode, sqlcode;
 
+Global operator.
+SQL stuff is accessed using Q, which delegates to a sub-parser that handles
+configuration/connections.
+
 our %sql_profiles;
+
 defshort 'root', 'Q', chaltr %sql_profiles;
 1 core/java/lib
-java.pl
-2 core/java/java.pl
+java.pl.sdoc
+4 core/java/java.pl.sdoc
+Java op context.
+A context that translates ni CLI operators into Java control flow.
 
 defcontext 'java/cf';
 3 core/lisp/lib
 prefix.lisp
 fd-redirect.lisp
-lisp.pl
+lisp.pl.sdoc
 1 core/lisp/prefix.lisp
 (declaim (optimize (speed 3) (safety 0)))
 7 core/lisp/fd-redirect.lisp
@@ -912,8 +1430,17 @@ lisp.pl
 ;; data, so you just have to convince Lisp to do this.
 
 (print :uhoh-no-fd-3-yet)
-16 core/lisp/lisp.pl
+36 core/lisp/lisp.pl.sdoc
+Lisp backend.
+A super simple SBCL operator. The first thing we want to do is to define the
+code template that we send to Lisp via stdin (using a heredoc). So ni ends up
+generating a pipeline element like this:
 
+| ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
+        (prefix lisp code)
+        (code to open fd 3 as stdin)
+        (line mapping code)
+        EOF
 
 use constant lisp_mapgen => gen q{
   %prefix
@@ -922,60 +1449,105 @@ use constant lisp_mapgen => gen q{
     %body)
 };
 
+Now we specify which files get loaded into the prefix. The ni build script
+preprocesses files with an sdoc extension (though you're not required to use
+it; normal files are passed straight through), and file paths become keys in
+the %self hash after having the src/ prefix replaced with core/.
+
 sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp
                                         core/lisp/fd-redirect.lisp |}}
+
+Finally we define the toplevel operator. 'root' is the operator context, 'L' is
+the operator name, and pmap {...} mrc '...' is the parsing expression that
+consumes the operator's arguments (in this case a single argument of just some
+Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
+how shell commands are represented.)
 
 defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
                                stdin => lisp_mapgen->(prefix => lisp_prefix,
                                                       body   => $_)}
                            mrc '^.*[^]]+';
 1 core/hadoop/lib
-hadoop.pl
-1 core/hadoop/hadoop.pl
+hadoop.pl.sdoc
+2 core/hadoop/hadoop.pl.sdoc
+Hadoop contexts.
 
 1 core/pyspark/lib
-pyspark.pl
-32 core/pyspark/pyspark.pl
+pyspark.pl.sdoc
+61 core/pyspark/pyspark.pl.sdoc
+Pyspark interop.
+We need to define a context for CLI arguments so we can convert ni pipelines
+into pyspark code. This ends up being fairly straightforward because Spark
+provides so many high-level operators.
 
+There are two things going on here. First, we define the codegen for Spark
+jobs; this is fairly configuration-independent since the API is stable. Second,
+we define a configuration system that lets the user specify the Spark execution
+profile. This governs everything from `spark-submit` CLI options to
+SparkContext init.
 
+Pyspark operators.
+These exist in their own parsing context, which we hook in below by using
+contexts->{pyspark}{...}. Rather than compiling directly to Python code, we
+generate a series of gens, each of which refers to a '%v' quantity that
+signifies the value being transformed.
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
 sub pyspark_lambda($) {$_[0]}
+
 defcontext 'pyspark';
+
 use constant pyspark_fn => pmap {pyspark_lambda $_} pycode;
+
 our $pyspark_rdd = pmap {pyspark_compile 'sc', @$_}
                    alt context 'pyspark/lambda',
                        context 'pyspark/suffix';
+
 our @pyspark_row_alt = (
   (pmap {gen "%v.sample(False, $_)"} alt neval, integer),
   (pmap {gen "%v.takeSample(False, $_)"} mr '^\.(\d+)'),
   (pmap {gen "%v.filter($_)"} pyspark_fn));
+
 deflong 'pyspark', 'stream/n',
   pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+
 deflong 'pyspark', 'stream/pipe',
   pmap {gen "%v.pipe(" . pyquote($_) . ")"} mr '^\$=([^]]+)';
+
 defshort 'pyspark', 'p', pmap {gen "%v.map(lambda x: $_)"} pyspark_fn;
 defshort 'pyspark', 'r', altr @pyspark_row_alt;
 defshort 'pyspark', 'G', k gen "%v.distinct()";
 defshort 'pyspark', 'g', k gen "%v.sortByKey()";
+
 defshort 'pyspark', '+', pmap {gen "%v.union($_)"} $pyspark_rdd;
 defshort 'pyspark', '*', pmap {gen "%v.intersect($_)"} $pyspark_rdd;
+
+Configuration management.
+A profile contains the code required to initialize the SparkContext and any
+other variables relevant to the process. Each is referenced by a single
+character and stored in the %spark_profiles table.
 
 our %spark_profiles = (
   L => k gen pydent q{from pyspark import SparkContext
                       sc = SparkContext("local", "%name")
                       %body});
+
 sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
+
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
-6 doc/lib
+10 doc/lib
 README.md
 stream.md
 row.md
 col.md
+perl.md
+facet.md
 options.md
 sql.md
-16 doc/README.md
+extend.md
+libraries.md
+22 doc/README.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -988,10 +1560,16 @@ include:
 - [col.md](col.md) (`ni //help/col`): column-level operators
 - [perl.md](perl.md) (`ni //help/perl`): ni's Perl library
 - [ruby.md](ruby.md) (`ni //help/ruby`): ni's Ruby library
+- [facet.md](facet.md) (`ni //help/facet`): the faceting operator
 
 ## Reference
 - [options.md](options.md) (`ni //help/options`): every CLI option and
   operator, each with example usage
+
+## Extending ni
+- [extend.md](extend.md) (`ni //help/extend`): how to write a ni extension
+- [libraries.md](libraries.md) (`ni //help/libraries`): how to load/use a
+  library
 95 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
@@ -1382,6 +1960,79 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
+4 doc/perl.md
+# Perl interface
+ni is written in Perl, but for the purposes of executing stuff it uses an
+isolated Perl interpreter and preloads a runtime library that provides
+line/field accessors and some utility functions.
+67 doc/facet.md
+# Faceting
+ni supports an operator that facets rows: that is, it groups them by some
+function and aggregates within each group. How this is implemented depends on
+the backend; map/reduce workflows do this automatically with the shuffle step,
+whereas multiple POSIX tools are required.
+
+The basic format of the facet operator is like this:
+
+```sh
+$ ni ... @<language><key-expr> <reducer>
+```
+
+For example, here's a Perl facet to implement word count:
+
+```bash
+$ ni @pa 'r a, fc fsum 1' <<'EOF'
+foo
+bar
+foo
+bif
+EOF
+bar	1
+bif	1
+foo	2
+```
+
+Structurally, here's what's going on:
+
+- `@p`: facet with Perl code
+- `a`: use the first column value as the faceting key (this is Perl code)
+- `r ...`: make a TSV row from an array of values...
+  - `a`: ...the first of which is the faceting key (which is always `a` because
+    the facet column is prepended to the data)
+  - `fc ...`: return an array of streaming reductions within each facet
+    - `fsum 1`: the first (and only) of which is a sum of the constant 1 for
+      each reduced item
+
+## Perl
+See [perl.md](perl.md) (`ni //help/perl`) for information about the libraries
+ni provides for Perl code.
+
+To get a list of users faceted by login shell:
+
+```bash
+$ ni /etc/passwd F::@pg 'r a, @{fc farr B}'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
+```
+
+Here, `farr B` means "collect faceted values into an array reference", and in
+this case the value is column B. (`B` is in uppercase because `farr` takes a
+string argument rather than a code block; this is for performance reasons, and
+[perl.md](perl.md) (`ni //help/perl`) discusses the details behind it.)
+
+A lot of faceting workflows can be more easily expressed as a sort/reduce in
+code, particularly if you're not computing a new value for the key. For
+example, the above query can be written more concisely this way:
+
+```bash
+$ ni /etc/passwd F::gGp'r g, a_ reg'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
+```
 2 doc/options.md
 # Complete ni operator listing
 ## 
@@ -1410,4 +2061,48 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 $ ni --lib sqlite-profile QStest.db foo [wx=3]
 ```
+14 doc/extend.md
+# Extending ni
+You can extend ni by writing a library. For example, suppose we want a new
+operator `N` that counts lines by shelling out to `wc -l`:
+
+```bash
+$ mkdir my-library
+$ echo my-lib.pl > my-library/lib
+$ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
+$ ni --lib my-library n:100N
+100
+```
+
+Most ni extensions are about defining a new operator, which involves extending
+ni's command-line grammar.
+28 doc/libraries.md
+# Libraries
+A library is just a directory with a `lib` file in it. `lib` lists the names of
+files to be included within that library, one per line, and in doing so
+specifies the order of inclusion (which sometimes matters if you're defining
+stuff in Perl). Most libraries will include at least one Perl file, which ni
+evaluates in the `ni` package. ni will assume that any file ending in `.pl`
+should be evaluated when the library is loaded. (Importantly, libraries are
+loaded _before_ the main CLI arguments are parsed, which is why it's possible
+to add new syntax.)
+
+ni has two library-loading options:
+
+- `ni --lib X ...`: load the `X` library before executing the pipeline
+- `ni --extend X [...]`: load the `X` library and rewrite yourself to include
+  it in the future (and then execute the pipeline if you got one)
+
+`--extend` is useful in a scripted context when you're building a site-specific
+ni executable, e.g.:
+
+```sh
+#!/bin/bash
+[[ -x /bin/ni ]] || get_ni_from_somewhere
+ni --extend site-lib1           # this modifies ni in place
+ni --extend site-lib2
+```
+
+`--extend` is idempotent, and you can use it to install a newer version of an
+already-included library.
 __END__

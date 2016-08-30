@@ -5,8 +5,7 @@ cd $(dirname $0)
 # Preprocessor to erase SDoc documentation. This minimizes the image size but
 # still makes it possible to document code in some detail.
 unsdoc() {
-  perl -e 'print join "", map s/^c\n//r,
-                          grep !/^\h*[|A-Z]/,
+  perl -e 'print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//,
                           split /\n(\h*\n)+/, join "", <>'
 }
 
@@ -21,7 +20,7 @@ unsdoc() {
 #
 # See src/ni for the logic that parses this from the __DATA__ section.
 resource() {
-  cd gen
+  cd src
   for r; do
     wc -l $r
     cat $r
@@ -44,7 +43,9 @@ lib() {
   done
 }
 
-# SDoc-process all source files into corresponding entries in gen/.
+# SDoc-process all source files into corresponding entries in gen/. ni includes
+# the SDoc sources directly, so this is just for debugging and to get a
+# non-SDoc form of ni.map, which we use below to bootstrap the image.
 rm -rf gen
 mkdir -p gen
 for f in $(find src -type f); do

@@ -32,10 +32,10 @@ sub modify_self($) {
   close $fh;
 }
 
-sub extend_self($) {
-  $self{'ni.map'} .= "\next $_[0]"
-    unless grep /^(lib|ext) $_[0]$/, split /\n/, $self{'ni.map'};
+sub extend_self($$) {
   intern_lib $_[0];
+  set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$_[1] $_[0]"
+    unless grep /^(lib|ext) $_[0]$/, split /\n/, $self{'ni.map'};
   modify_self 'ni.map';
 }
 
