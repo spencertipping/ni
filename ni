@@ -855,8 +855,34 @@ our %split_chalt = (
 
 defshort 'root', 'F', chaltr %split_chalt;
 2 core/row/lib
-row.pl.sdoc
 row.sh.sdoc
+row.pl.sdoc
+25 core/row/row.sh.sdoc
+Row-selection functions.
+Wrappers to select specific rows from a stream. This implements the `r`
+command. Note that it's faster (and more powerful) to use perl than grep for
+regex matching, at least last time I tested it.
+
+ni_revery()  { perl -ne 'print unless $. % '"$1"; }
+ni_rmatch()  { perl -lne 'print if /'"$1"/; }
+
+Row sampling is done using a Poisson process, which takes rand() out of the
+line of fire. This is particularly useful for sparse samplings.
+
+ni_rsample() { perl -ne '
+  BEGIN {srand($ENV{NI_SEED} || 42)}
+  if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
+
+Sorting.
+The biggest question here is whether we have a version of `sort` that can
+handle options like `--compress-program`. If so, we want to use these
+extensions because they accelerate things substantially. We have to detect this
+in shell rather than inside the ni codegen because the compiled code might be
+sent elsewhere.
+
+ni_sort() {
+  # TODO: --compress-program etc
+  sort "$@"; }
 45 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
@@ -903,32 +929,6 @@ defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
 defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
 defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
 defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
-25 core/row/row.sh.sdoc
-Row-selection functions.
-Wrappers to select specific rows from a stream. This implements the `r`
-command. Note that it's faster (and more powerful) to use perl than grep for
-regex matching, at least last time I tested it.
-
-ni_revery()  { perl -ne 'print unless $. % '"$1"; }
-ni_rmatch()  { perl -lne 'print if /'"$1"/; }
-
-Row sampling is done using a Poisson process, which takes rand() out of the
-line of fire. This is particularly useful for sparse samplings.
-
-ni_rsample() { perl -ne '
-  BEGIN {srand($ENV{NI_SEED} || 42)}
-  if ($. >= 0) {print; $. -= -log(1 - rand()) / '"$1"'}'; }
-
-Sorting.
-The biggest question here is whether we have a version of `sort` that can
-handle options like `--compress-program`. If so, we want to use these
-extensions because they accelerate things substantially. We have to detect this
-in shell rather than inside the ni codegen because the compiled code might be
-sent elsewhere.
-
-ni_sort() {
-  # TODO: --compress-program etc
-  sort "$@"; }
 1 core/facet/lib
 facet.pl.sdoc
 18 core/facet/facet.pl.sdoc
