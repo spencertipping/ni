@@ -11,20 +11,16 @@ if [[ $1 == '-q' ]]; then
     bash /data/tests.sh
 EOF
 else
-  for e in env/*; do
+  for e in env/alpine env/ubuntu-16.04; do
     echo
     echo "TESTING $e"
     echo
 
-    if docker build -f $e .; then
-      docker run -i -m 256M --rm -v $PWD:/data:ro \
-        $(docker build -q -f $e .) /bin/bash <<'EOF'
-        cd /tmp
-        bash /data/tests.sh
+    docker run -i -m 256M --rm -v $PWD:/data:ro \
+      $(docker build -q -f $e .) /bin/bash <<'EOF'
+      cd /tmp
+      bash /data/tests.sh
 EOF
-  else
-      echo "\033[1;31mdocker build failed\033[0;0m"
-    fi
 
     echo
   done

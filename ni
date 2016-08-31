@@ -1315,7 +1315,7 @@ particularly common.
 use constant pycode => pmap {pydent $_} generic_code;
 1 core/sql/lib
 sql.pl.sdoc
-129 core/sql/sql.pl.sdoc
+131 core/sql/sql.pl.sdoc
 SQL parsing context.
 Translates ni CLI grammar to a SELECT query. This is a little interesting
 because SQL has a weird structure to it; to help with this I've also got a
@@ -1429,7 +1429,9 @@ defshort 'sql', 'r', altr @sql_row_alt;
 defshort 'sql', 'j', altr @sql_join_alt;
 defshort 'sql', 'G', k ['uniq'];
 
-defshort 'sql', 'g', pmap {['order_by', $_]} sqlcode;
+defshort 'sql', 'g', pmap {['order_by', $_]}        sqlcode;
+defshort 'sql', 'o', pmap {['order_by', "$_ ASC"]}  sqlcode;
+defshort 'sql', 'O', pmap {['order_by', "$_ DESC"]} sqlcode;
 
 defshort 'sql', '+', pmap {['union',      $_]} $sql_query;
 defshort 'sql', '*', pmap {['intersect',  $_]} $sql_query;
@@ -2455,7 +2457,7 @@ $ ni /etc/passwd F::gGp'r g, a_ reg'
 2 doc/options.md
 # Complete ni operator listing
 ## 
-25 doc/sql.md
+29 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
 queries. We'll need to define a SQL connection profile in order to use it:
@@ -2464,7 +2466,7 @@ queries. We'll need to define a SQL connection profile in order to use it:
 $ mkdir sqlite-profile
 $ echo sqlite.pl > sqlite-profile/lib
 $ cat > sqlite-profile/sqlite.pl <<'EOF'
-$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite3", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '^.*', $sql_query;
 EOF
 ```
@@ -2472,7 +2474,7 @@ EOF
 Now we can create a test database and use this library to access it.
 
 ```bash
-$ sqlite test.db <<'EOF'
+$ sqlite3 test.db <<'EOF'
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
@@ -2480,6 +2482,10 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 $ ni --lib sqlite-profile QStest.db foo[wx=3]
 3	4
+$ ni --lib sqlite-profile QStest.db foo[Ox]
+5	6
+3	4
+1	2
 ```
 14 doc/extend.md
 # Extending ni

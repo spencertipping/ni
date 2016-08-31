@@ -367,12 +367,12 @@ lazytest_case 'echo sqlite.pl > sqlite-profile/lib
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_case 'cat > sqlite-profile/sqlite.pl <<'\''EOF'\''
-$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite3", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '\''^.*'\'', $sql_query;
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-lazytest_case 'sqlite test.db <<'\''EOF'\''
+lazytest_case 'sqlite3 test.db <<'\''EOF'\''
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
@@ -383,6 +383,12 @@ LAZYTEST_EOF
 lazytest_case 'ni --lib sqlite-profile QStest.db foo[wx=3]
 ' 3<<'LAZYTEST_EOF'
 3	4
+LAZYTEST_EOF
+lazytest_case 'ni --lib sqlite-profile QStest.db foo[Ox]
+' 3<<'LAZYTEST_EOF'
+5	6
+3	4
+1	2
 LAZYTEST_EOF
 lazytest_case 'mkdir my-library
 ' 3<<'LAZYTEST_EOF'

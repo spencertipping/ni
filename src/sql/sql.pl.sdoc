@@ -111,7 +111,9 @@ defshort 'sql', 'r', altr @sql_row_alt;
 defshort 'sql', 'j', altr @sql_join_alt;
 defshort 'sql', 'G', k ['uniq'];
 
-defshort 'sql', 'g', pmap {['order_by', $_]} sqlcode;
+defshort 'sql', 'g', pmap {['order_by', $_]}        sqlcode;
+defshort 'sql', 'o', pmap {['order_by', "$_ ASC"]}  sqlcode;
+defshort 'sql', 'O', pmap {['order_by', "$_ DESC"]} sqlcode;
 
 defshort 'sql', '+', pmap {['union',      $_]} $sql_query;
 defshort 'sql', '*', pmap {['intersect',  $_]} $sql_query;
