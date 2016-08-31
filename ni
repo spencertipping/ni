@@ -903,7 +903,7 @@ sent elsewhere.
 ni_sort() {
   # TODO: --compress-program etc
   sort "$@"; }
-47 core/row/row.pl.sdoc
+57 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -951,6 +951,16 @@ defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
 defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
 defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
 defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
+
+Counting.
+Sorted and unsorted streaming counts.
+
+sub ni_count {sh 'perl', '-ne',
+  q{if ($_ ne $last) {print "$n\t$_" if defined $last; $n = 0; $last = $_} ++$n;
+    END {print "$n\t$last" if defined $last}}}
+
+defshort 'root', 'c', k ni_count;
+defshort 'root', 'C', k [ni_sort, ni_count];
 1 core/facet/lib
 facet.pl.sdoc
 20 core/facet/facet.pl.sdoc
@@ -1779,7 +1789,7 @@ can't parse something, though.
 
 See [row.md](row.md) (`ni //help/row`) for details about row-reordering
 operators like sorting.
-149 doc/row.md
+181 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -1790,6 +1800,7 @@ anything else. They include:
 - Rows matching regex
 - Rows satisfying code
 - Reorder rows
+- Count identical rows
 
 ## First/last
 Shorthands for UNIX `head` and `tail`.
@@ -1928,6 +1939,37 @@ $ ni data oBr r4                # r suffix = reverse sort
 77	0.999520158580731	4.34380542185368
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
+```
+
+## Counting
+ni gives you the `c` and `C` operators to count runs of identical rows (just
+like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
+streaming count.
+
+```bash
+$ ni //ni FWpF_ r500 > word-list
+$ ni word-list cr10             # unsorted count
+1	usr
+1	bin
+1	env
+1	perl
+1	
+1	ni
+1	https
+1	github
+1	com
+1	spencertipping
+$ ni word-list Cr10             # sort first to group words
+41	0
+8	006_000
+1	1
+9	2
+2	2016
+2	3
+1	43
+1	5
+2	A
+3	ACTION
 ```
 143 doc/col.md
 # Column operations

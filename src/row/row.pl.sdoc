@@ -45,3 +45,13 @@ defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
 defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
 defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
 defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
+
+Counting.
+Sorted and unsorted streaming counts.
+
+sub ni_count {sh 'perl', '-ne',
+  q{if ($_ ne $last) {print "$n\t$_" if defined $last; $n = 0; $last = $_} ++$n;
+    END {print "$n\t$last" if defined $last}}}
+
+defshort 'root', 'c', k ni_count;
+defshort 'root', 'C', k [ni_sort, ni_count];

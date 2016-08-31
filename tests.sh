@@ -335,6 +335,35 @@ lazytest_case 'ni data oBr r4                # r suffix = reverse sort
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
 LAZYTEST_EOF
+lazytest_case 'ni //ni FWpF_ r500 > word-list
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni word-list cr10             # unsorted count
+' 3<<'LAZYTEST_EOF'
+1	usr
+1	bin
+1	env
+1	perl
+1	
+1	ni
+1	https
+1	github
+1	com
+1	spencertipping
+LAZYTEST_EOF
+lazytest_case 'ni word-list Cr10             # sort first to group words
+' 3<<'LAZYTEST_EOF'
+41	0
+8	006_000
+1	1
+9	2
+2	2016
+2	3
+1	43
+1	5
+2	A
+3	ACTION
+LAZYTEST_EOF
 lazytest_case 'ni @pa '\''r a, rca rsum 1'\'' <<'\''EOF'\''
 foo
 bar
