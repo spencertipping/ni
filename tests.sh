@@ -512,4 +512,32 @@ lazytest_case 'ni n:100p'\''r rc \&sr, rsum A, rmean A, rmin A, rmax A'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
+     p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
+       map r($_, $freqs{$_}), sort keys %freqs'\''
+' 3<<'LAZYTEST_EOF'
+a	39
+b	36
+c	14
+d	13
+e	17
+f	1
+g	11
+h	20
+i	46
+k	3
+l	19
+m	14
+n	50
+o	25
+p	15
+r	24
+s	51
+t	15
+u	17
+v	12
+w	12
+x	23
+y	12
+LAZYTEST_EOF
 lazytest_end

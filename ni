@@ -1970,7 +1970,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-254 doc/perl.md
+309 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2225,6 +2225,61 @@ And here's the easy way, using `rc`:
 $ ni n:100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
 5050	50.5	1	100
 ```
+
+### What's going on here
+`rsum`, `rmean`, etc, return compound reducers, which are hash references with
+keys that indicate (1) the initial state, (2) the reduction function **as a
+string**, and (3) the finalizer (which is why `rmean` can return a single
+number despite its intermediate state being the separated sum and number).
+
+Compound reducers are compiled functions, which means their arguments are
+expressed as strings representing quoted code. This is why we use `A` rather
+than `a` in the example above: `A` evaluates to the string `'a'`, which is
+spliced into a function body along with the other reducer expressions and
+compiled. The result is a very efficient reducer function that ends up looking
+like this:
+
+```pl
+sub {($_[0] + a, $_[1] + a, $_[2] + 1, min($_[3], a), max($_[4], a))}
+```
+
+`rc` hands this function to `sr` and then uses the finalizer functions to
+return individual values, one per initial reducer.
+
+### Custom compound reducers
+You can easily create your own compound reducer using `rfn`. For example, let's
+count the frequency of each lowercase letter in a file:
+
+```bash
+$ ni /etc/passwd FWpsplit// r/[a-z]/ \
+     p'my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
+       map r($_, $freqs{$_}), sort keys %freqs'
+a	39
+b	36
+c	14
+d	13
+e	17
+f	1
+g	11
+h	20
+i	46
+k	3
+l	19
+m	14
+n	50
+o	25
+p	15
+r	24
+s	51
+t	15
+u	17
+v	12
+w	12
+x	23
+y	12
+```
+
+Here's what's going on.
 69 doc/facet.md
 # Faceting
 ni supports an operator that facets rows: that is, it groups them by some
