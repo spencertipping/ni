@@ -37,12 +37,33 @@ lazytest_case 'ni --internal/parse generic_code [foo]]]
 ' 3<<'LAZYTEST_EOF'
 [foo] | ]]
 LAZYTEST_EOF
-lazytest_case 'ni n:4l'\''(+ a 1)'\''
+lazytest_case 'ni n:4l'\''(+ a 2)'\''
 ' 3<<'LAZYTEST_EOF'
-2
 3
 4
 5
+6
+LAZYTEST_EOF
+lazytest_case 'ni n:4l'\''(r a (1+ a))'\''                   # generate two columns
+' 3<<'LAZYTEST_EOF'
+1	2
+2	3
+3	4
+4	5
+LAZYTEST_EOF
+lazytest_case 'ni n:4l'\''(r a (1+ a))'\'' l'\''(r (+ a b))'\''        # ... and sum them
+' 3<<'LAZYTEST_EOF'
+3
+5
+7
+9
+LAZYTEST_EOF
+lazytest_case 'ni n:2l'\''a (+ a 100)'\''                   # return without "r"
+' 3<<'LAZYTEST_EOF'
+1
+101
+2
+102
 LAZYTEST_EOF
 lazytest_case 'echo test > foo
 ' 3<<'LAZYTEST_EOF'
