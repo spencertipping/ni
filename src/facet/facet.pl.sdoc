@@ -16,3 +16,5 @@ This generalizes easily to other programming environments, e.g. SQL GROUP BY:
 our %facet_chalt;
 
 defshort 'root', '@', chaltr %facet_chalt;
+
+sub deffacetalt($$) {$facet_chalt{$_[0]} = $_[1]}

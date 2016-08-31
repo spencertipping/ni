@@ -40,7 +40,7 @@ defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
                                                       body   => $_)}
                            lispcode;
 
-unshift @row_alt, pmap {sh [qw/sbcl --noinform --script/],
-                           stdin => lisp_grepgen->(prefix => lisp_prefix,
-                                                   body   => $_)}
-                       pn 1, mr '^l', lispcode;
+defrowalt pmap {sh [qw/sbcl --noinform --script/],
+                   stdin => lisp_grepgen->(prefix => lisp_prefix,
+                                           body   => $_)}
+          pn 1, mr '^l', lispcode;

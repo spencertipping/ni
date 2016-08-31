@@ -70,4 +70,4 @@ our %split_chalt = (
 
 defshort 'root', 'F', chaltr %split_chalt;
 
-sub defsplitchalt($$) {$split_chalt{$_[0]} = $_[1]}
+sub defsplitalt($$) {$split_chalt{$_[0]} = $_[1]}

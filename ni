@@ -869,7 +869,7 @@ our %split_chalt = (
 
 defshort 'root', 'F', chaltr %split_chalt;
 
-sub defsplitchalt($$) {$split_chalt{$_[0]} = $_[1]}
+sub defsplitalt($$) {$split_chalt{$_[0]} = $_[1]}
 2 core/row/lib
 row.sh.sdoc
 row.pl.sdoc
@@ -949,7 +949,7 @@ defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
 defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
 1 core/facet/lib
 facet.pl.sdoc
-18 core/facet/facet.pl.sdoc
+20 core/facet/facet.pl.sdoc
 Faceting support.
 A compound operation that prepends a new facet-value column, sorts by that
 value, and supports streaming aggregation within facet groups. It's specified
@@ -968,6 +968,8 @@ This generalizes easily to other programming environments, e.g. SQL GROUP BY:
 our %facet_chalt;
 
 defshort 'root', '@', chaltr %facet_chalt;
+
+sub deffacetalt($$) {$facet_chalt{$_[0]} = $_[1]}
 5 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
@@ -1214,7 +1216,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-41 core/pl/pl.pl.sdoc
+43 core/pl/pl.pl.sdoc
 Perl wrapper.
 Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
@@ -1251,11 +1253,13 @@ our @perl_alt = (pmap {perl_mapper $_} plcode);
 
 defshort 'root', 'p', altr @perl_alt;
 
-unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+sub defperlalt($) {unshift @perl_alt, $_[0]}
 
-$facet_chalt{p} = pmap {[perl_facet $$_[0],
-                         sh(['ni_sort', '-k1,1'], prefix => row_pre),
-                         perl_mapper $$_[1]]} seq plcode, plcode;
+defrowalt pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+
+deffacetalt 'p', pmap {[perl_facet $$_[0],
+                        sh(['ni_sort', '-k1,1'], prefix => row_pre),
+                        perl_mapper $$_[1]]} seq plcode, plcode;
 1 core/python/lib
 python.pl.sdoc
 46 core/python/python.pl.sdoc
@@ -1566,10 +1570,10 @@ defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
                                                       body   => $_)}
                            lispcode;
 
-unshift @row_alt, pmap {sh [qw/sbcl --noinform --script/],
-                           stdin => lisp_grepgen->(prefix => lisp_prefix,
-                                                   body   => $_)}
-                       pn 1, mr '^l', lispcode;
+defrowalt pmap {sh [qw/sbcl --noinform --script/],
+                   stdin => lisp_grepgen->(prefix => lisp_prefix,
+                                           body   => $_)}
+          pn 1, mr '^l', lispcode;
 1 core/hadoop/lib
 hadoop.pl.sdoc
 2 core/hadoop/hadoop.pl.sdoc
@@ -1743,19 +1747,19 @@ $ ni n:3 $='sort -r'
 And, of course, ni has shorthands for doing all of the above:
 
 ```bash
-$ ni n:3 g                      # g = sort
+$ ni n:3 g      # g = sort
 1
 2
 3
-$ ni n:3g                       # no need for whitespace
+$ ni n:3g       # no need for whitespace
 1
 2
 3
-$ ni n:3gAr                     # reverse-sort by first field
+$ ni n:3gAr     # reverse-sort by first field
 3
 2
 1
-$ ni n:3O                       # more typical reverse numeric sort
+$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
 3
 2
 1

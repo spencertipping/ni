@@ -67,19 +67,19 @@ $ ni n:3 $='sort -r'
 And, of course, ni has shorthands for doing all of the above:
 
 ```bash
-$ ni n:3 g                      # g = sort
+$ ni n:3 g      # g = sort
 1
 2
 3
-$ ni n:3g                       # no need for whitespace
+$ ni n:3g       # no need for whitespace
 1
 2
 3
-$ ni n:3gAr                     # reverse-sort by first field
+$ ni n:3gAr     # reverse-sort by first field
 3
 2
 1
-$ ni n:3O                       # more typical reverse numeric sort
+$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
 3
 2
 1

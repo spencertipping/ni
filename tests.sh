@@ -29,6 +29,13 @@ lazytest_end() {
 }
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_case 'ni n:4l'\''(+ a 1)'\''
+' 3<<'LAZYTEST_EOF'
+2
+3
+4
+5
+LAZYTEST_EOF
 lazytest_case 'echo test > foo
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
@@ -95,25 +102,25 @@ lazytest_case 'ni n:3 $='\''sort -r'\''
 2
 1
 LAZYTEST_EOF
-lazytest_case 'ni n:3 g                      # g = sort
+lazytest_case 'ni n:3 g      # g = sort
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
-lazytest_case 'ni n:3g                       # no need for whitespace
+lazytest_case 'ni n:3g       # no need for whitespace
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
-lazytest_case 'ni n:3gAr                     # reverse-sort by first field
+lazytest_case 'ni n:3gAr     # reverse-sort by first field
 ' 3<<'LAZYTEST_EOF'
 3
 2
 1
 LAZYTEST_EOF
-lazytest_case 'ni n:3O                       # more typical reverse numeric sort
+lazytest_case 'ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
 ' 3<<'LAZYTEST_EOF'
 3
 2
