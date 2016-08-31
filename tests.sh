@@ -2,11 +2,11 @@
 lazytest_n=0
 lazytest_fail=0
 lazytest_case() {
-  local actual="$(eval "$1")"
-  local expected="$(cat <&3)"
+  local actual="$(eval "$1"; echo "[exit code $?]")"
+  local expected="$(cat <&3; echo "[exit code $?]")"
   lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' '
+    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' ' | head -c79
     return 0
   else
     lazytest_fail=$((lazytest_fail + 1))
@@ -28,6 +28,14 @@ lazytest_end() {
   fi
 }
 cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni --internal/parse generic_code [foo]
+' 3<<'LAZYTEST_EOF'
+[foo]
+LAZYTEST_EOF
+lazytest_case 'ni --internal/parse generic_code [foo]]]
+' 3<<'LAZYTEST_EOF'
+[foo] | ]]
 LAZYTEST_EOF
 lazytest_case 'ni n:4l'\''(+ a 1)'\''
 ' 3<<'LAZYTEST_EOF'
@@ -359,12 +367,12 @@ lazytest_case 'echo sqlite.pl > sqlite-profile/lib
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_case 'cat > sqlite-profile/sqlite.pl <<'\''EOF'\''
-$sql_profiles{S} = pmap {sh "sqlite3", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '\''^.*'\'', $sql_query;
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-lazytest_case 'sqlite3 test.db <<'\''EOF'\''
+lazytest_case 'sqlite test.db <<'\''EOF'\''
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
@@ -372,8 +380,9 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-lazytest_case 'ni --lib sqlite-profile QStest.db foo [wx=3]
+lazytest_case 'ni --lib sqlite-profile QStest.db foo[wx=3]
 ' 3<<'LAZYTEST_EOF'
+3	4
 LAZYTEST_EOF
 lazytest_case 'mkdir my-library
 ' 3<<'LAZYTEST_EOF'
@@ -459,6 +468,7 @@ lazytest_case 'ni n:3p'\''r $_ for 1..a'\''                # use r imperatively,
 1
 2
 3
+
 LAZYTEST_EOF
 lazytest_case 'ni n:10p'\''r ru {a%4 == 0}'\''             # read forward until a multiple of 4
 ' 3<<'LAZYTEST_EOF'

@@ -91,7 +91,7 @@ RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
 defcontext 'sql';
 
-use constant sql_table => pmap {sqlgen $_} mrc '^.*';
+use constant sql_table => pmap {sqlgen $_} mrc '^[^][]*';
 
 our $sql_query = pmap {sql_compile $$_[0], @{$$_[1]}}
                  seq sql_table, maybe alt context 'sql/lambda',

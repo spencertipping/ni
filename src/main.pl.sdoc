@@ -74,6 +74,10 @@ $option_handlers{'internal/eval'}
 
 $option_handlers{'internal/lib'} = sub {extend_self $_[0], 'lib'};
 
+$option_handlers{'internal/parse'}
+  = sub {eval("package ni; sub {print join(' | ', ($_[0])->(\@_)), '\n'}")
+           ->(@_[1..$#_]); die $@ if $@; exit_success};
+
 Extensions.
 User-facing options to modify or live-extend ni. --lib is used to load code but
 not change the ni image, --extend causes ni to self-modify to include the

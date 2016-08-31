@@ -14,11 +14,11 @@ print <<'EOF';
 lazytest_n=0
 lazytest_fail=0
 lazytest_case() {
-  local actual="$(eval "$1")"
-  local expected="$(cat <&3)"
+  local actual="$(eval "$1"; echo "[exit code $?]")"
+  local expected="$(cat <&3; echo "[exit code $?]")"
   lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' '
+    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' ' | head -c79
     return 0
   else
     lazytest_fail=$((lazytest_fail + 1))

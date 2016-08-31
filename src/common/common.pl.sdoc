@@ -6,7 +6,7 @@ use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {1 << $_},   mr '^B(\d+)'),
                             pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-                            pmap(sub {0 + $_},    mr '\d+');
+                            pmap(sub {0 + $_},    mr '^\d+');
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
 
@@ -23,6 +23,6 @@ use constant generic_code => sub {
   return @_ unless $_[0] =~ /\]$/;
   my ($code, @xs) = @_;
   (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
-  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
+  my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
   $balance ? (substr($code, 0, $balance), substr($code, $balance))
            : ($code, @xs)};

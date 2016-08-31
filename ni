@@ -457,7 +457,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-103 main.pl.sdoc
+107 main.pl.sdoc
 Main function.
 ni can be invoked as a stream processor, but it can also do some toplevel
 things besides. This main function knows how to handle these cases.
@@ -534,6 +534,10 @@ $option_handlers{'internal/eval'}
 
 $option_handlers{'internal/lib'} = sub {extend_self $_[0], 'lib'};
 
+$option_handlers{'internal/parse'}
+  = sub {eval("package ni; sub {print join(' | ', ($_[0])->(\@_)), '\n'}")
+           ->(@_[1..$#_]); die $@ if $@; exit_success};
+
 Extensions.
 User-facing options to modify or live-extend ni. --lib is used to load code but
 not change the ni image, --extend causes ni to self-modify to include the
@@ -572,7 +576,7 @@ use constant neval   => pmap {eval} mr '^=([^]]+)';
 use constant integer => alt pmap(sub {10 ** $_},  mr '^E(-?\d+)'),
                             pmap(sub {1 << $_},   mr '^B(\d+)'),
                             pmap(sub {0 + "0$_"}, mr '^x[0-9a-fA-F]+'),
-                            pmap(sub {0 + $_},    mr '\d+');
+                            pmap(sub {0 + $_},    mr '^\d+');
 use constant float   => pmap {0 + $_} mr '^-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => alt neval, integer, float;
 
@@ -589,7 +593,7 @@ use constant generic_code => sub {
   return @_ unless $_[0] =~ /\]$/;
   my ($code, @xs) = @_;
   (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
-  my $balance = sr($tcode, qr/[^[]/, '') - sr($tcode, qr/[^]]/, '');
+  my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
   $balance ? (substr($code, 0, $balance), substr($code, $balance))
            : ($code, @xs)};
 1 core/gen/lib
@@ -1405,7 +1409,7 @@ RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
 defcontext 'sql';
 
-use constant sql_table => pmap {sqlgen $_} mrc '^.*';
+use constant sql_table => pmap {sqlgen $_} mrc '^[^][]*';
 
 our $sql_query = pmap {sql_compile $$_[0], @{$$_[1]}}
                  seq sql_table, maybe alt context 'sql/lambda',
@@ -2067,7 +2071,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-309 doc/perl.md
+310 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2184,6 +2188,7 @@ $ ni n:3p'r $_ for 1..a'                # use r imperatively, implicit return
 1
 2
 3
+
 ```
 
 The last example has blank lines because Perl's `for` construct returns a
@@ -2450,7 +2455,7 @@ $ ni /etc/passwd F::gGp'r g, a_ reg'
 2 doc/options.md
 # Complete ni operator listing
 ## 
-24 doc/sql.md
+25 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
 queries. We'll need to define a SQL connection profile in order to use it:
@@ -2459,7 +2464,7 @@ queries. We'll need to define a SQL connection profile in order to use it:
 $ mkdir sqlite-profile
 $ echo sqlite.pl > sqlite-profile/lib
 $ cat > sqlite-profile/sqlite.pl <<'EOF'
-$sql_profiles{S} = pmap {sh "sqlite3", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '^.*', $sql_query;
 EOF
 ```
@@ -2467,13 +2472,14 @@ EOF
 Now we can create a test database and use this library to access it.
 
 ```bash
-$ sqlite3 test.db <<'EOF'
+$ sqlite test.db <<'EOF'
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
 INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
-$ ni --lib sqlite-profile QStest.db foo [wx=3]
+$ ni --lib sqlite-profile QStest.db foo[wx=3]
+3	4
 ```
 14 doc/extend.md
 # Extending ni

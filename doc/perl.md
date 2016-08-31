@@ -114,6 +114,7 @@ $ ni n:3p'r $_ for 1..a'                # use r imperatively, implicit return
 1
 2
 3
+
 ```
 
 The last example has blank lines because Perl's `for` construct returns a
