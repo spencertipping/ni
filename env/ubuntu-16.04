@@ -1,4 +1,6 @@
-FROM ubuntu:10.04
+FROM ubuntu:16.04
+RUN apt-get update
+RUN apt-get install -qqy sbcl
 ADD ni /usr/bin/
 ADD test-data/etc-passwd /etc/passwd
 VOLUME /data
