@@ -20,8 +20,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 use 5.006_000;
+BEGIN {
+eval($ni::self{'boot/sdoc'} = q{
 sub ni::unsdoc
-{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}
+{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}});
+eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
   eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
@@ -29,12 +32,12 @@ sub ni::eval($$)
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
-  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
 __DATA__
-41 ni.sdoc
+43 ni.sdoc
 #!/usr/bin/env perl
 # ni: https://github.com/spencertipping/ni
 # Copyright (c) 2016 Spencer Tipping
@@ -58,10 +61,12 @@ __DATA__
 # SOFTWARE.
 
 use 5.006_000;
-
+BEGIN {
+eval($ni::self{'boot/sdoc'} = q{
 sub ni::unsdoc
-{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}
+{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}});
 
+eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
   eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
@@ -70,7 +75,7 @@ sub ni::eval($$)
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
-  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
@@ -760,7 +765,7 @@ deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 deflong 'root', 'stream/pipe', pmap {sh 'sh', '-c', $_} mrc '^\$=(.*)';
 1 core/meta/lib
 meta.pl.sdoc
-21 core/meta/meta.pl.sdoc
+28 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -782,9 +787,16 @@ deflong 'root', 'meta/help',
         die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
         ni_verb $self{"doc/$_.md"}}
   pn 1, mr '^//help/?', mrc '^.*';
+
+Misc utility options.
+Mostly around ni-specific oddities like SDoc.
+
+deflong 'root', 'meta/sdoc',
+  pmap {sh qw/perl -e/, "$self{'boot/sdoc'}; print ni::unsdoc join '', <>"}
+  mrc '^--sdoc';
 1 core/col/lib
 col.pl.sdoc
-69 core/col/col.pl.sdoc
+73 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -818,6 +830,8 @@ sub ni_cols(@) {
 our @col_alt = (pmap {ni_cols split //, $_} colspec);
 
 defshort 'root', 'f', altr @col_alt;
+
+sub defcolalt($) {unshift @col_alt, $_[0]}
 
 Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
@@ -854,6 +868,8 @@ our %split_chalt = (
 );
 
 defshort 'root', 'F', chaltr %split_chalt;
+
+sub defsplitchalt($$) {$split_chalt{$_[0]} = $_[1]}
 2 core/row/lib
 row.sh.sdoc
 row.pl.sdoc
@@ -883,7 +899,7 @@ sent elsewhere.
 ni_sort() {
   # TODO: --compress-program etc
   sort "$@"; }
-45 core/row/row.pl.sdoc
+47 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -898,6 +914,8 @@ our @row_alt = (
   (pmap {sh 'head', '-n', $_}                      alt neval, integer));
 
 defshort 'root', 'r', altr @row_alt;
+
+sub defrowalt($) {unshift @row_alt, $_[0]}
 
 Sorting.
 ni has four sorting operators, each of which can take modifiers:

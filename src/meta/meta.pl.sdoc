@@ -19,3 +19,10 @@ deflong 'root', 'meta/help',
         die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
         ni_verb $self{"doc/$_.md"}}
   pn 1, mr '^//help/?', mrc '^.*';
+
+Misc utility options.
+Mostly around ni-specific oddities like SDoc.
+
+deflong 'root', 'meta/sdoc',
+  pmap {sh qw/perl -e/, "$self{'boot/sdoc'}; print ni::unsdoc join '', <>"}
+  mrc '^--sdoc';

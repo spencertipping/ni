@@ -21,10 +21,12 @@
 # SOFTWARE.
 
 use 5.006_000;
-
+BEGIN {
+eval($ni::self{'boot/sdoc'} = q{
 sub ni::unsdoc
-{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}
+{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}});
 
+eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
   eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
@@ -33,7 +35,7 @@ sub ni::eval($$)
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
-  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;

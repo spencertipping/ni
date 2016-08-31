@@ -32,6 +32,8 @@ our @col_alt = (pmap {ni_cols split //, $_} colspec);
 
 defshort 'root', 'f', altr @col_alt;
 
+sub defcolalt($) {unshift @col_alt, $_[0]}
+
 Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
 is that you're swapping the specified column(s) into the first N position(s).
@@ -67,3 +69,5 @@ our %split_chalt = (
 );
 
 defshort 'root', 'F', chaltr %split_chalt;
+
+sub defsplitchalt($$) {$split_chalt{$_[0]} = $_[1]}
