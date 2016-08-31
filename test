@@ -5,7 +5,7 @@ cd $(dirname $0)
 ./lazytest $(find doc -name '*.md') > tests.sh
 
 if [[ $1 == '-q' ]]; then
-  docker run -i -m 256M --rm -v $PWD:/data:ro \
+  docker run --security-opt=seccomp=unconfined -i -m 256M --rm -v $PWD:/data:ro \
     $(docker build -q -f env/ubuntu-16.04 .) /bin/bash <<'EOF'
     cd /tmp
     bash /data/tests.sh
@@ -16,7 +16,7 @@ else
     echo "TESTING $e"
     echo
 
-    docker run -i -m 256M --rm -v $PWD:/data:ro \
+    docker run --security-opt=seccomp=unconfined -i -m 256M --rm -v $PWD:/data:ro \
       $(docker build -q -f $e .) /bin/bash <<'EOF'
       cd /tmp
       bash /data/tests.sh
