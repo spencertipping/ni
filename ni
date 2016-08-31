@@ -2073,7 +2073,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-310 doc/perl.md
+324 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2384,6 +2384,20 @@ y	12
 ```
 
 Here's what's going on.
+
+- `FW`: split into words
+- `psplit//`: the same as `p'split //'`: split the line into individual chars,
+  returned as an array so we end up with each on its own output line
+- `r/[a-z]/`: keep all lowercase letters from those rows
+- `p'...'`: apply perl to rows
+  - `rfn q{ ++${%1}{a()} && %1 }, {}`: a reducer whose initial state is the
+    empty hash `{}`, and whose reducer function does the following:
+    - `q{ ++${%1}{a()} ...}`: `%1` is the reduced quantity, and `a()` is the
+      first column of the line. We're incrementing the entry within the `%{%1}`
+      hash.
+    - `&& %1` is a way to return the hash reference as the reduced value (since
+      we're modifying it in place). We need to do this without using a comma
+      because each reducer function is evaluated in list context.
 69 doc/facet.md
 # Faceting
 ni supports an operator that facets rows: that is, it groups them by some
