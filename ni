@@ -1426,21 +1426,86 @@ Java op context.
 A context that translates ni CLI operators into Java control flow.
 
 defcontext 'java/cf';
-3 core/lisp/lib
+2 core/lisp/lib
 prefix.lisp
-fd-redirect.lisp
 lisp.pl.sdoc
-1 core/lisp/prefix.lisp
+75 core/lisp/prefix.lisp
 (declaim (optimize (speed 3) (safety 0)))
-7 core/lisp/fd-redirect.lisp
-;; Ok Wes, this one's on you dude.
-;; The contents of the data stream we want to process are coming in on FD 3,
-;; which should be available for reading (just like 0 normally is). In theory
-;; you could issue a read() syscall on fd 3 immediately and it would give you
-;; data, so you just have to convince Lisp to do this.
+(setf *read-default-float-format* 'double-float)
 
-(print :uhoh-no-fd-3-yet)
-36 core/lisp/lisp.pl.sdoc
+;;; utility functions from wu-sugar
+
+(defun str (&rest values)
+  (with-output-to-string (s)
+    (dolist (val values)
+      (princ val s))))
+
+(defun join (separator &rest strings)
+  "Concatenates STRINGS, joining them by SEPARATOR."
+  (when (characterp separator)
+    (setf separator (string separator)))
+  (if strings
+      (reduce (lambda (a b) (str a separator b)) strings)
+      ""))
+
+(defun split (string &rest delimiter-chars)
+  "Splits STRING by one or more delimiter characters, returning a list."
+  (let ((current-pos 0)
+	result)
+    (loop
+       (push (subseq string 
+		     current-pos 
+		     (setf current-pos (position-if (lambda (c) (member c delimiter-chars)) 
+						    string 
+						    :start current-pos)))
+	     result)
+       (unless current-pos (return))
+       (incf current-pos))
+    (nreverse result)))
+
+(defun starts-with-p (seq subseq)
+  (let ((subseq-len (length subseq))) 
+    (if (<= subseq-len (length seq)) 
+	(search subseq seq :end2 subseq-len)
+	nil)))
+
+(defun ends-with-p (seq subseq)
+  (let ((seq-len (length seq))
+	(subseq-len (length subseq))) 
+    (if (<= (length subseq) (length seq)) 
+	(search subseq seq :from-end t :start2 (- seq-len subseq-len))
+	nil)))
+
+(defun read-col (text)
+  (when text
+    (let* ((*read-eval* nil)
+           (r (read-from-string text)))
+      (etypecase r
+        (symbol text)
+        (number r)))))
+
+(defun r (&rest values)
+  (apply #'join #\Tab values))
+
+(defmacro with-ni-env (filter-p &body body)
+  (let ((l-var (gensym "L"))
+        (cols-var (gensym "COLS")))
+    `(let ((*standard-input* (sb-sys:make-fd-stream 3)))
+       (symbol-macrolet ,(loop for colname in '(a b c d e f g h i j k l m n o p q)
+                            for index from 0
+                            collect (list colname `(read-col (nth ,index ,cols-var))))     
+         (loop for ,l-var = (read-line *standard-input* nil) while ,l-var do
+              (let ((,cols-var (split ,l-var #\Tab)))
+                ,(if filter-p
+                     `(when (progn ,@body)
+                        (write-string ,l-var)
+                        (terpri))
+                     `(progn
+                        ,@(loop for form in body collect
+                               `(progn
+                                  (princ ,form)
+                                  (terpri)))))))))))
+46 core/lisp/lisp.pl.sdoc
 Lisp backend.
 A super simple SBCL operator. The first thing we want to do is to define the
 code template that we send to Lisp via stdin (using a heredoc). So ni ends up
@@ -1448,14 +1513,18 @@ generating a pipeline element like this:
 
 | ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
         (prefix lisp code)
-        (code to open fd 3 as stdin)
         (line mapping code)
         EOF
 
 use constant lisp_mapgen => gen q{
   %prefix
-  (when t
-    (print :booyah)
+  (with-ni-env nil
+    %body)
+};
+
+use constant lisp_grepgen => gen q{
+  %prefix
+  (with-ni-env t
     %body)
 };
 
@@ -1464,8 +1533,7 @@ preprocesses files with an sdoc extension (though you're not required to use
 it; normal files are passed straight through), and file paths become keys in
 the %self hash after having the src/ prefix replaced with core/.
 
-sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp
-                                        core/lisp/fd-redirect.lisp |}}
+sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp |}}
 
 Finally we define the toplevel operator. 'root' is the operator context, 'L' is
 the operator name, and pmap {...} mrc '...' is the parsing expression that
@@ -1473,10 +1541,17 @@ consumes the operator's arguments (in this case a single argument of just some
 Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
 how shell commands are represented.)
 
-defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
+use constant lispcode => mrc '^.*[^]]+';
+
+defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
                                stdin => lisp_mapgen->(prefix => lisp_prefix,
                                                       body   => $_)}
-                           mrc '^.*[^]]+';
+                           lispcode;
+
+unshift @row_alt, pmap {sh [qw/sbcl --noinform --script/],
+                           stdin => lisp_grepgen->(prefix => lisp_prefix,
+                                                   body   => $_)}
+                       pn 1, mr '^l', lispcode;
 1 core/hadoop/lib
 hadoop.pl.sdoc
 2 core/hadoop/hadoop.pl.sdoc
