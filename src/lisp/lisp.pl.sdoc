@@ -5,14 +5,18 @@ generating a pipeline element like this:
 
 | ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
         (prefix lisp code)
-        (code to open fd 3 as stdin)
         (line mapping code)
         EOF
 
 use constant lisp_mapgen => gen q{
   %prefix
-  (when t
-    (print :booyah)
+  (with-ni-env nil
+    %body)
+};
+
+use constant lisp_grepgen => gen q{
+  %prefix
+  (with-ni-env t
     %body)
 };
 
@@ -21,8 +25,7 @@ preprocesses files with an sdoc extension (though you're not required to use
 it; normal files are passed straight through), and file paths become keys in
 the %self hash after having the src/ prefix replaced with core/.
 
-sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp
-                                        core/lisp/fd-redirect.lisp |}}
+sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp |}}
 
 Finally we define the toplevel operator. 'root' is the operator context, 'L' is
 the operator name, and pmap {...} mrc '...' is the parsing expression that
@@ -30,7 +33,14 @@ consumes the operator's arguments (in this case a single argument of just some
 Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
 how shell commands are represented.)
 
-defshort 'root', 'L', pmap {sh [qw/sbcl --noinform --script/],
+use constant lispcode => mrc '^.*[^]]+';
+
+defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
                                stdin => lisp_mapgen->(prefix => lisp_prefix,
                                                       body   => $_)}
-                           mrc '^.*[^]]+';
+                           lispcode;
+
+unshift @row_alt, pmap {sh [qw/sbcl --noinform --script/],
+                           stdin => lisp_grepgen->(prefix => lisp_prefix,
+                                                   body   => $_)}
+                       pn 1, mr '^l', lispcode;
