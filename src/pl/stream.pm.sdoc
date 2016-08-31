@@ -25,10 +25,10 @@ sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       eval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
-       eval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
-                    $_, ord($_) - 97 for 'a'..'q'}
+BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
+       ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
+       ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
+                     $_, ord($_) - 97 for 'a'..'q'}
 
 Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
@@ -58,3 +58,18 @@ sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l 
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+
+Streaming aggregations.
+These functions are like the ones above, but designed to work in constant
+space:
+
+| se<column>: streaming reduce while column is equal
+  sr: streaming reduce all data
+
+sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
+             @xs = &$f(@xs), rl while defined and &$e eq $k;
+             push @q, $_ if defined; @xs}
+BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
+                     $_, $_ for 'a'..'q'}
+
+sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}

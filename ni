@@ -951,61 +951,18 @@ our %facet_chalt;
 
 defshort 'root', '@', chaltr %facet_chalt;
 5 core/pl/lib
-pl.pl.sdoc
 util.pm.sdoc
 math.pm.sdoc
 stream.pm.sdoc
-facet.pm.sdoc
-41 core/pl/pl.pl.sdoc
-Perl wrapper.
-Defines the `p` operator, which can be modified in a few different ways to do
-different things. By default it functions as a one-in, many-out row
-transformer.
-
-use constant perl_mapgen => gen q{
-  %prefix
-  close STDIN;
-  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
-  sub row {
-    %body
-  }
-  while (defined rl) {
-    %each
-  }
-};
-
-sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
-                                        core/pl/math.pm
-                                        core/pl/stream.pm
-                                        core/gen/gen.pl
-                                        core/pl/facet.pm |}}
-
-sub perl_gen($$) {sh [qw/perl -/],
-  stdin => perl_mapgen->(prefix => perl_prefix,
-                         body   => $_[0],
-                         each   => $_[1])}
-
-sub perl_mapper($)  {perl_gen $_[0], 'pr for row'}
-sub perl_grepper($) {perl_gen $_[0], 'pr if row'}
-sub perl_facet($)   {perl_gen $_[0], 'pr row . "\t$_"'}
-
-our @perl_alt = (pmap {perl_mapper $_} plcode);
-
-defshort 'root', 'p', altr @perl_alt;
-
-unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
-
-$facet_chalt{p} = pmap {[perl_facet $$_[0],
-                         sh(['ni_sort', '-k1,1'], prefix => row_pre),
-                         perl_mapper $$_[1]]} seq plcode, plcode;
-61 core/pl/util.pm.sdoc
+reducers.pm.sdoc
+pl.pl.sdoc
+60 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
 introduced in v5.7.3, so we can't rely on it being there.
 
-sub sr($$$)  {(my $x = $_[2]) =~ s/$_[0]/$_[1]/;  $x}
-sub sgr($$$) {(my $x = $_[2]) =~ s/$_[0]/$_[1]/g; $x}
+sub ceval {eval $_[0]; die $@ if $@}
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
@@ -1094,7 +1051,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-60 core/pl/stream.pm.sdoc
+75 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -1122,10 +1079,10 @@ sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {eval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       eval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
-       eval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
-                    $_, ord($_) - 97 for 'a'..'q'}
+BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
+       ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
+       ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
+                     $_, ord($_) - 97 for 'a'..'q'}
 
 Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
@@ -1155,54 +1112,52 @@ sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l 
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
-72 core/pl/facet.pm.sdoc
-Faceting functions.
-Functions that operate on a single facet, which is defined by the first column
-value. Mnemonics:
 
-| fe: facet each (side-effects for each value, streaming)
-  fr: facet reduce (streaming, n-ary)
+Streaming aggregations.
+These functions are like the ones above, but designed to work in constant
+space:
 
-sub fe(&) {my ($k, $f, $x) = (a, @_);
-           $x = &$f, rl while defined and a eq $k;
-           push @q, $_ if defined;
-           $x}
+| se<column>: streaming reduce while column is equal
+  sr: streaming reduce all data
 
-sub fr(&@) {my ($k, $f, @xs) = (a, @_);
-            @xs = &$f(@xs), rl while defined and a eq $k;
-            push @q, $_ if defined;
-            @xs}
+sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
+             @xs = &$f(@xs), rl while defined and &$e eq $k;
+             push @q, $_ if defined; @xs}
+BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
+                     $_, $_ for 'a'..'q'}
 
+sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
+68 core/pl/reducers.pm.sdoc
 Compound reductions.
 Suppose you want to calculate, in parallel, the sum of one column and the mean
-of another. You can't use two separate `fr` calls since the first one will
+of another. You can't use two separate `sr` calls since the first one will
 force the whole stream. Instead, you need a way to build a single compound
-function that maintains the two separate state elements. That's what `fc`
-(facet compound) is about.
+function that maintains the two separate state elements. That's what `rc`
+(reduce compound) is all about.
 
 In fast languages we could probably get away with some nice combinatory stuff
 here, but this is performance-critical and Perl isn't fast. So I'm making some
 epic use of codegen and `eval` to help Perl be all it can be. We end up
-compiling into a single function body for an `fr` call, which is then mapped
+compiling into a single function body for a `cr` call, which is then mapped
 through a finalizer to eliminate intermediate states.
 
-sub fsum($)  {+{reduce => gen "%1 + ($_[0])",
+sub rsum($)  {+{reduce => gen "%1 + ($_[0])",
                 init   => [0],
                 end    => gen '%1'}}
 
-sub fmean($) {+{reduce => gen "%1 + ($_[0]), %2 + 1",
+sub rmean($) {+{reduce => gen "%1 + ($_[0]), %2 + 1",
                 init   => [0, 0],
                 end    => gen '%1 / (%2 || 1)'}}
 
-sub fmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
+sub rmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
                 init   => [undef],
                 end    => gen '%1'}}
 
-sub fmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
+sub rmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
                 init   => [undef],
                 end    => gen '%1'}}
 
-sub farr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
+sub rarr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
                 init   => [[]],
                 end    => gen '%1'}}
 
@@ -1210,24 +1165,79 @@ sub rfn($$)  {+{reduce => gen $_[0],
                 init   => [@_[1..$#_]],
                 end    => gen join ', ', map "%$_", 1..$#_}}
 
-sub compound_facet(@) {
+sub compound_reducer(@) {
   local $_;
   my $slots = 0;
   my @indexes = map {my $n = @{$$_{init}}; $slots += $n; $slots - $n} @_;
   my @mapping = map {my $i = $_;
                      [map {;$_ => sprintf "\$_[%d]", $indexes[$i] + $_ - 1}
                           1..@{$_[$i]{init}}]} 0..$#_;
-  +{init   => [map @{$$_{init}}, @_],
-    reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
-    end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_)}
+  (init   => [map @{$$_{init}}, @_],
+   reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
+   end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_));
 }
 
-sub fc(@) {
-  my %c      = %{compound_facet @_};
-  my $reduce = eval "sub{\n($c{reduce})\n}" or die "fc: '$c{reduce}': $@";
-  my $end    = eval "sub{\n($c{end})\n}"    or die "fc: '$c{end}': $@";
-  &$end(fr {$reduce->(@_)} @{$c{init}});
+Reduce compound function.
+Executes a compound reduction using the specified stream reducer function.
+Typical usage would be like this:
+
+| ($sum, $mean) = rc \&sea, fsum A, fmean B;
+
+sub rc {
+  my ($f, @rs) = @_;
+  my %c        = compound_reducer @rs;
+  my $reduce   = eval "sub{\n($c{reduce})\n}" or die "sc: '$c{reduce}': $@";
+  my $end      = eval "sub{\n($c{end})\n}"    or die "sc: '$c{end}': $@";
+  &$end(&$f($reduce, @{$c{init}}));
 }
+
+Just like for `se` functions, we define shorthands such as `rca ...` = `rc
+\&sea, ...`.
+
+c
+BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
+41 core/pl/pl.pl.sdoc
+Perl wrapper.
+Defines the `p` operator, which can be modified in a few different ways to do
+different things. By default it functions as a one-in, many-out row
+transformer.
+
+use constant perl_mapgen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  sub row {
+    %body
+  }
+  while (defined rl) {
+    %each
+  }
+};
+
+sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
+                                        core/pl/math.pm
+                                        core/pl/stream.pm
+                                        core/gen/gen.pl
+                                        core/pl/reducers.pm |}}
+
+sub perl_gen($$) {sh [qw/perl -/],
+  stdin => perl_mapgen->(prefix => perl_prefix,
+                         body   => $_[0],
+                         each   => $_[1])}
+
+sub perl_mapper($)  {perl_gen $_[0], 'pr for row'}
+sub perl_grepper($) {perl_gen $_[0], 'pr if row'}
+sub perl_facet($)   {perl_gen $_[0], 'pr row . "\t$_"'}
+
+our @perl_alt = (pmap {perl_mapper $_} plcode);
+
+defshort 'root', 'p', altr @perl_alt;
+
+unshift @row_alt, pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+
+$facet_chalt{p} = pmap {[perl_facet $$_[0],
+                         sh(['ni_sort', '-k1,1'], prefix => row_pre),
+                         perl_mapper $$_[1]]} seq plcode, plcode;
 1 core/python/lib
 python.pl.sdoc
 46 core/python/python.pl.sdoc
@@ -1960,7 +1970,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
-192 doc/perl.md
+254 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -2086,23 +2096,7 @@ end of your mapper code.
 Whether you use `r` or implicit returns, ni will remove newlines from every
 string you give it. This makes it easier to use `qx` without any filtering.
 
-## Utility functions
-ni predefines a bunch of useful functions that various versions of Perl may or
-may not provide by default:
-
-- `sr(match, replace, str)`: equivalent to `str =~ s/match/replace/r`, but
-  works prior to when Perl's `/r` flag was introduced
-- `sgr(match, replace, str)`: `str =~ s/match/replace/gr`
-
-- `sum(@)`, `prod(@)`, `mean(@)`
-- `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
-- `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
-- `reduce {f} $init, @xs`
-- `reductions {f} $init, @xs`
-- `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
-  Cartesian product
-
-## Aggregation
+## Buffered readahead
 `p` code can read forwards in the input stream. This is trivially possible by
 calling `rl()` ("read line"), which destructively advances to the next line and
 returns it; but more likely you'd use one of these instead:
@@ -2151,14 +2145,93 @@ sub b_ {local $_; map((split /\t/)[1], @_)}
 ...
 ```
 
-## Facet aggregation
+## Utility functions
+ni predefines some stuff you may find useful:
 
-67 doc/facet.md
+- `sum(@)`, `prod(@)`, `mean(@)`
+- `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
+- `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
+- `reduce {f} $init, @xs`
+- `reductions {f} $init, @xs`
+- `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
+  Cartesian product
+
+```bash
+$ ni n:100p'sum rw {1}'
+5050
+$ ni n:10p'prod rw {1}'
+3628800
+$ ni n:100p'mean rw {1}'
+50.5
+```
+
+## Streaming lookahead
+This is implemented in terms of reducers, and gives you the ability to reduce
+arbitrarily many rows in constant space. There are two parts to this. First,
+the streaming reduce functions `se` and `sr`; and second, compound reducers
+(very useful, and explained in the next section).
+
+### `sr`
+Reduces the entire data stream:
+
+```pl
+($x, $y, ...) = sr {reducer} $x0, $y0, ...
+```
+
+For example, to sum arbitrarily many numbers in constant space:
+
+```bash
+$ ni n:10000p'sr {$_[0] + a} 0'
+50005000
+```
+
+### `se`
+Reduces over a contiguous group of rows for which the partition function
+remains equal. (Mnemonic is "stream while equal".)
+
+```pl
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+For example, to naively get a comma-delimited list of users by login shell:
+
+```bash
+$ ni /etc/passwd F::gGp'r g, se {"$_[0]," . a} \&g, ""'
+/bin/bash	,root
+/bin/false	,syslog
+/bin/sh	,backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	,sync
+```
+
+`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`.
+
+## Compound reducers
+If you want to do something like calculating the sum of one column, the average
+of another one, and the min/max of a third, you'll end up writing some awkward
+reducer code. ni provides a facility called compound reduction to deal with
+this. For example, here's the hard way:
+
+```bash
+$ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[2], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
+```
+
+And here's the easy way, using `rc`:
+
+```bash
+$ ni n:100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+5050	50.5	1	100
+```
+69 doc/facet.md
 # Faceting
 ni supports an operator that facets rows: that is, it groups them by some
 function and aggregates within each group. How this is implemented depends on
 the backend; map/reduce workflows do this automatically with the shuffle step,
-whereas multiple POSIX tools are required.
+whereas multiple POSIX tools are required. The facet operator handles this
+appropriately in each context.
 
 The basic format of the facet operator is like this:
 
@@ -2169,7 +2242,7 @@ $ ni ... @<language><key-expr> <reducer>
 For example, here's a Perl facet to implement word count:
 
 ```bash
-$ ni @pa 'r a, fc fsum 1' <<'EOF'
+$ ni @pa 'r a, rca rsum 1' <<'EOF'
 foo
 bar
 foo
@@ -2187,8 +2260,9 @@ Structurally, here's what's going on:
 - `r ...`: make a TSV row from an array of values...
   - `a`: ...the first of which is the faceting key (which is always `a` because
     the facet column is prepended to the data)
-  - `fc ...`: return an array of streaming reductions within each facet
-    - `fsum 1`: the first (and only) of which is a sum of the constant 1 for
+  - `rca ...`: return an array of streaming reductions within each facet on
+    column A
+    - `rsum 1`: the first (and only) of which is a sum of the constant 1 for
       each reduced item
 
 ## Perl
@@ -2198,15 +2272,15 @@ ni provides for Perl code.
 To get a list of users faceted by login shell:
 
 ```bash
-$ ni /etc/passwd F::@pg 'r a, @{fc farr B}'
+$ ni /etc/passwd F::@pg 'r a, @{rca rarr B}'
 /bin/bash	root
 /bin/false	syslog
 /bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
 /bin/sync	sync
 ```
 
-Here, `farr B` means "collect faceted values into an array reference", and in
-this case the value is column B. (`B` is in uppercase because `farr` takes a
+Here, `rarr B` means "collect faceted values into an array reference", and in
+this case the value is column B. (`B` is in uppercase because `rarr` takes a
 string argument rather than a code block; this is for performance reasons, and
 [perl.md](perl.md) (`ni //help/perl`) discusses the details behind it.)
 

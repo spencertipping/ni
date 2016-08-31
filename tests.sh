@@ -1,13 +1,30 @@
 #!/bin/bash
+lazytest_n=0
+lazytest_fail=0
 lazytest_case() {
   local actual="$(eval "$1")"
   local expected="$(cat <&3)"
+  lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo "$1" | tr '\n' ' '; echo
+    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' '
     return 0
   else
-    echo -e "\033[1;31mFAIL\033[0;0m $*: expected '$expected', got '$actual'"
+    lazytest_fail=$((lazytest_fail + 1))
+    echo -e "\r\033[J\033[1;31mFAIL\033[0;0m $*"
+    echo -e "EXPECTED\033[1;34m"
+    echo    "$expected"
+    echo
+    echo -e "\033[0;0mACTUAL\033[1;34m"
+    echo    "$actual"
+    echo -e "\033[0;0m"
     return 1
+  fi
+}
+lazytest_end() {
+  if ((lazytest_fail)); then
+    echo -e "\r\033[J\033[1;31m$lazytest_n tests, $lazytest_fail failed\033[0;0m"
+  else
+    echo -e "\r\033[J\033[1;32m$lazytest_n tests run, all passed\033[0;0m"
   fi
 }
 cat <<'LAZYTEST_EOF'
@@ -303,7 +320,7 @@ lazytest_case 'ni data oBr r4                # r suffix = reverse sort
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
 LAZYTEST_EOF
-lazytest_case 'ni @pa '\''r a, fc fsum 1'\'' <<'\''EOF'\''
+lazytest_case 'ni @pa '\''r a, rca rsum 1'\'' <<'\''EOF'\''
 foo
 bar
 foo
@@ -314,7 +331,7 @@ bar	1
 bif	1
 foo	2
 LAZYTEST_EOF
-lazytest_case 'ni /etc/passwd F::@pg '\''r a, @{fc farr B}'\''
+lazytest_case 'ni /etc/passwd F::@pg '\''r a, @{rca rarr B}'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	root
 /bin/false	syslog
@@ -461,3 +478,38 @@ lazytest_case 'ni mult-table p'\''r g_ ru {a%4 == 0}'\''   # extract seventh col
 28	35	42	49
 56	63	70
 LAZYTEST_EOF
+lazytest_case 'ni n:100p'\''sum rw {1}'\''
+' 3<<'LAZYTEST_EOF'
+5050
+LAZYTEST_EOF
+lazytest_case 'ni n:10p'\''prod rw {1}'\''
+' 3<<'LAZYTEST_EOF'
+3628800
+LAZYTEST_EOF
+lazytest_case 'ni n:100p'\''mean rw {1}'\''
+' 3<<'LAZYTEST_EOF'
+50.5
+LAZYTEST_EOF
+lazytest_case 'ni n:10000p'\''sr {$_[0] + a} 0'\''
+' 3<<'LAZYTEST_EOF'
+50005000
+LAZYTEST_EOF
+lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
+' 3<<'LAZYTEST_EOF'
+/bin/bash	,root
+/bin/false	,syslog
+/bin/sh	,backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	,sync
+LAZYTEST_EOF
+lazytest_case 'ni n:100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[2], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'\''
+' 3<<'LAZYTEST_EOF'
+5050	50.5	1	100
+LAZYTEST_EOF
+lazytest_case 'ni n:100p'\''r rc \&sr, rsum A, rmean A, rmin A, rmax A'\''
+' 3<<'LAZYTEST_EOF'
+5050	50.5	1	100
+LAZYTEST_EOF
+lazytest_end

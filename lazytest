@@ -11,15 +11,32 @@ use warnings;
 
 print <<'EOF';
 #!/bin/bash
+lazytest_n=0
+lazytest_fail=0
 lazytest_case() {
   local actual="$(eval "$1")"
   local expected="$(cat <&3)"
+  lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo "$1" | tr '\n' ' '; echo
+    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' '
     return 0
   else
-    echo -e "\033[1;31mFAIL\033[0;0m $*: expected '$expected', got '$actual'"
+    lazytest_fail=$((lazytest_fail + 1))
+    echo -e "\r\033[J\033[1;31mFAIL\033[0;0m $*"
+    echo -e "EXPECTED\033[1;34m"
+    echo    "$expected"
+    echo
+    echo -e "\033[0;0mACTUAL\033[1;34m"
+    echo    "$actual"
+    echo -e "\033[0;0m"
     return 1
+  fi
+}
+lazytest_end() {
+  if ((lazytest_fail)); then
+    echo -e "\r\033[J\033[1;31m$lazytest_n tests, $lazytest_fail failed\033[0;0m"
+  else
+    echo -e "\r\033[J\033[1;32m$lazytest_n tests run, all passed\033[0;0m"
   fi
 }
 cat <<'LAZYTEST_EOF'
@@ -60,3 +77,4 @@ while (<>) {
 }
 
 print "LAZYTEST_EOF\n";
+print "lazytest_end\n";

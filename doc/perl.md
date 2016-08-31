@@ -123,23 +123,7 @@ end of your mapper code.
 Whether you use `r` or implicit returns, ni will remove newlines from every
 string you give it. This makes it easier to use `qx` without any filtering.
 
-## Utility functions
-ni predefines a bunch of useful functions that various versions of Perl may or
-may not provide by default:
-
-- `sr(match, replace, str)`: equivalent to `str =~ s/match/replace/r`, but
-  works prior to when Perl's `/r` flag was introduced
-- `sgr(match, replace, str)`: `str =~ s/match/replace/gr`
-
-- `sum(@)`, `prod(@)`, `mean(@)`
-- `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
-- `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
-- `reduce {f} $init, @xs`
-- `reductions {f} $init, @xs`
-- `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
-  Cartesian product
-
-## Aggregation
+## Buffered readahead
 `p` code can read forwards in the input stream. This is trivially possible by
 calling `rl()` ("read line"), which destructively advances to the next line and
 returns it; but more likely you'd use one of these instead:
@@ -188,5 +172,83 @@ sub b_ {local $_; map((split /\t/)[1], @_)}
 ...
 ```
 
-## Facet aggregation
+## Utility functions
+ni predefines some stuff you may find useful:
 
+- `sum(@)`, `prod(@)`, `mean(@)`
+- `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
+- `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
+- `reduce {f} $init, @xs`
+- `reductions {f} $init, @xs`
+- `cart([a1, a2, a3], [b1, b2, b3], ...) = [a1, b1, ...], [a1, b2, ...], ...`:
+  Cartesian product
+
+```bash
+$ ni n:100p'sum rw {1}'
+5050
+$ ni n:10p'prod rw {1}'
+3628800
+$ ni n:100p'mean rw {1}'
+50.5
+```
+
+## Streaming lookahead
+This is implemented in terms of reducers, and gives you the ability to reduce
+arbitrarily many rows in constant space. There are two parts to this. First,
+the streaming reduce functions `se` and `sr`; and second, compound reducers
+(very useful, and explained in the next section).
+
+### `sr`
+Reduces the entire data stream:
+
+```pl
+($x, $y, ...) = sr {reducer} $x0, $y0, ...
+```
+
+For example, to sum arbitrarily many numbers in constant space:
+
+```bash
+$ ni n:10000p'sr {$_[0] + a} 0'
+50005000
+```
+
+### `se`
+Reduces over a contiguous group of rows for which the partition function
+remains equal. (Mnemonic is "stream while equal".)
+
+```pl
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+For example, to naively get a comma-delimited list of users by login shell:
+
+```bash
+$ ni /etc/passwd F::gGp'r g, se {"$_[0]," . a} \&g, ""'
+/bin/bash	,root
+/bin/false	,syslog
+/bin/sh	,backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	,sync
+```
+
+`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`.
+
+## Compound reducers
+If you want to do something like calculating the sum of one column, the average
+of another one, and the min/max of a third, you'll end up writing some awkward
+reducer code. ni provides a facility called compound reduction to deal with
+this. For example, here's the hard way:
+
+```bash
+$ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[2], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
+```
+
+And here's the easy way, using `rc`:
+
+```bash
+$ ni n:100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+5050	50.5	1	100
+```

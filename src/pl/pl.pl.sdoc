@@ -19,7 +19,7 @@ sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/pl/math.pm
                                         core/pl/stream.pm
                                         core/gen/gen.pl
-                                        core/pl/facet.pm |}}
+                                        core/pl/reducers.pm |}}
 
 sub perl_gen($$) {sh [qw/perl -/],
   stdin => perl_mapgen->(prefix => perl_prefix,
