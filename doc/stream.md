@@ -141,14 +141,20 @@ $ ni id:xz Zx | xz -dc
 xz
 $ ni id:lzo Zo | lzop -dc
 lzo
-$ ni id:lz4 Z4 | lz4 -dc
-lz4
 $ ni id:bzip2 Zb | bzip2 -dc
 bzip2
 ```
 
-ni also provides a decompression operator `ZD`, though you'll rarely need it
-because any external data will be decoded automatically:
+```sh
+# this one isn't a unit test because not all test docker images have a
+# straightforward LZ4 install (some are too old)
+$ ni id:lz4 Z4 | lz4 -dc
+lz4
+```
+
+ni also provides a universal decompression operator `ZD`, though you'll rarely
+need it because any external data will be decoded automatically. `ZD` has no
+effect if the data isn't compressed.
 
 ```bash
 $ ni n:4 Z ZD
@@ -156,6 +162,19 @@ $ ni n:4 Z ZD
 2
 3
 4
+$ ni n:4 ZD
+1
+2
+3
+4
+```
+
+Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
+compression by writing data to `/dev/null`:
+
+```bash
+$ ni n:4 ZN | wc -c
+0
 ```
 
 ## Checkpoints

@@ -16,6 +16,8 @@ ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
 
+ni_null() { cat > /dev/null; }
+
 ni_seq() { perl -e \
   'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
 

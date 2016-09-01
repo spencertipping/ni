@@ -14,15 +14,18 @@ print <<'EOF';
 lazytest_n=0
 lazytest_fail=0
 lazytest_case() {
+  echo -ne '\r\033[J'
+  echo -n "$1" | tr '\n' ' ' | head -c79
+  echo -ne '\r'
+
   local actual="$(eval "$1"; echo "[exit code $?]")"
   local expected="$(cat <&3; echo "[exit code $?]")"
   lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' ' | head -c79
     return 0
   else
     lazytest_fail=$((lazytest_fail + 1))
-    echo -e "\r\033[J\033[1;31mFAIL\033[0;0m $*"
+    echo -e "\033[J\033[1;31mFAIL\033[0;0m $*"
     echo -e "EXPECTED\033[1;34m"
     echo    "$expected"
     echo

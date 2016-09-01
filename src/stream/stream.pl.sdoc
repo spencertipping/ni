@@ -17,6 +17,7 @@ sub ni_cat($)     {sh ['ni_cat', $_[0]], prefix => perl_fn_dep 'ni_cat',    'cor
 sub ni_decode(;$) {sh ['ni_decode', @_], prefix => perl_fn_dep 'ni_decode', 'core/stream/decode.pm'}
 
 sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
+sub ni_null  {sh ['ni_null'],  prefix => stream_sh}
 
 sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
                                   prefix => stream_sh}
@@ -87,4 +88,5 @@ defnormalcompressor 'o', 'lzop';
 defnormalcompressor '4', 'lz4';
 defnormalcompressor 'b', 'bzip2';
 
+defcompressor 'N', k ni_null;
 defcompressor 'D', k ni_decode;

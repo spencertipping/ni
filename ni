@@ -570,7 +570,7 @@ sub main {
 }
 1 core/common/lib
 common.pl.sdoc
-35 core/common/common.pl.sdoc
+37 core/common/common.pl.sdoc
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
@@ -585,6 +585,8 @@ use constant number  => alt neval, integer, float;
 
 use constant colspec1 => mr '^[A-Z]';
 use constant colspec  => mr '^[-A-Z.]+';
+
+use constant ea       => mrc '^';
 
 Generic code parser.
 Counts brackets outside quoted strings, which in our case are '' and "".
@@ -648,7 +650,7 @@ stream.sh.sdoc
 cat.pm.sdoc
 decode.pm.sdoc
 stream.pl.sdoc
-31 core/stream/stream.sh.sdoc
+33 core/stream/stream.sh.sdoc
 Stream shell functions.
 These are called by pipelines to simplify things. For example, a common
 operation is to append the output of some data-producing command:
@@ -666,6 +668,8 @@ ni_append_hd()  { cat <&3; "$@"; }
 ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
+
+ni_null() { cat > /dev/null; }
 
 ni_seq() { perl -e \
   'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
@@ -740,7 +744,7 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-90 core/stream/stream.pl.sdoc
+92 core/stream/stream.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc. Most of the functionality
@@ -760,6 +764,7 @@ sub ni_cat($)     {sh ['ni_cat', $_[0]], prefix => perl_fn_dep 'ni_cat',    'cor
 sub ni_decode(;$) {sh ['ni_decode', @_], prefix => perl_fn_dep 'ni_decode', 'core/stream/decode.pm'}
 
 sub ni_pager {sh ['ni_pager'], prefix => stream_sh}
+sub ni_null  {sh ['ni_null'],  prefix => stream_sh}
 
 sub ni_pipe {@_ == 1 ? $_[0] : sh ['ni_pipe', $_[0], ni_pipe(@_[1..$#_])],
                                   prefix => stream_sh}
@@ -830,6 +835,7 @@ defnormalcompressor 'o', 'lzop';
 defnormalcompressor '4', 'lz4';
 defnormalcompressor 'b', 'bzip2';
 
+defcompressor 'N', k ni_null;
 defcompressor 'D', k ni_decode;
 1 core/meta/lib
 meta.pl.sdoc
@@ -1716,12 +1722,11 @@ defrowalt pmap {lisp_sh lisp_grepgen->(prefix => lisp_prefix,
 2 core/http/lib
 http.pm.sdoc
 http.pl.sdoc
-42 core/http/http.pm.sdoc
+36 core/http/http.pm.sdoc
 HTTP server.
 A very simple HTTP server that can be used to serve a stream's contents. The
 server is defined solely in terms of a function that takes a URL and returns
-data, optionally specifying the content type. The HTTP server returns when it
-receives EPIPE while writing to stdout.
+data, optionally specifying the content type.
 
 The code to drive the HTTP server arrives as stdin, and the optional hostname
 and port are specified as @ARGV. If omitted, they default to 127.0.0.1 and
@@ -1729,41 +1734,36 @@ random.
 
 use Socket;
 
-my ($hostname, $port) = @ARGV;
-$hostname = '127.0.0.1' unless defined $hostname;
-
 socket S, PF_INET, SOCK_STREAM, getprotobyname 'tcp'
   or die "ni_http: socket() failed: $!";
 
 setsockopt S, SOL_SOCKET, SO_REUSEADDR, pack 'l', 1
   or die "ni_http: setsockopt() failed: $!";
 
-my $tries = 0;
-until (defined $port) {
-  $port = 1024 + int rand(65535 - 1024);
-  bind S, sockaddr_in $port, INADDR_ANY or $port = undef;
-  die "ni_http: bind() failed on over 4096 random ports: $!" if ++$tries > 4096;
-}
+my ($port) = (@ARGV, 1024);
+@ARGV = ();
+++$port > 65535 && die "ni_http: bind() failed: $!"
+  until bind S, sockaddr_in $port, INADDR_ANY;
 
 listen S, SOMAXCONN or die "ni_http: listen() failed: $!";
 
-print "http://$hostname:$port/\n";
+print "http://localhost:$port/\n";
 close STDOUT;
 
 sub http(&) {
   my ($f) = @_;
-  for (; accept C, S; close C) {
-    $_ = ''; sysread C, $_, 8192, length until /\n\r?\n\r?$/;
+  for (; $_ = '', accept C, S; close C) {
+    sysread C, $_, 8192, length until /\n\r?\n\r?$/;
     *STDOUT = C;
     print "HTTP/1.1 200 OK\n\n";
     pr for &$f(/^GET (.*) HTTP\//);
   }
 }
-19 core/http/http.pl.sdoc
+20 core/http/http.pl.sdoc
 HTTP server.
 A trivial server that gets to decide what to do with the input stream. This
 blocks stream processing until a request comes in, at which point the function
-is called with `$url` set to the request URL.
+is called with `$_[0]` set to the URL.
 
 use constant perl_httpgen => gen q{
   %prefix
@@ -1774,11 +1774,12 @@ use constant perl_httpgen => gen q{
   };
 };
 
-defshort 'root', 'H', pmap {sh [qw/perl -/, defined $$_[0] ? ($$_[0]) : ()],
-  stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
-                                               $self{'core/http/http.pm'}),
-                          body   => $$_[1])}
-  seq maybe number, plcode;
+deflong 'root', 'http/url',
+  pmap {sh [qw/perl -/, defined $$_[1] ? ($$_[1]) : ()],
+        stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
+                                                     $self{'core/http/http.pm'}),
+                                body   => $$_[2])}
+  seq mrc '^--http$', maybe pn(0, number, maybe ea), plcode;
 1 core/hadoop/lib
 hadoop.pl.sdoc
 2 core/hadoop/hadoop.pl.sdoc
@@ -2738,7 +2739,7 @@ queries. We'll need to define a SQL connection profile in order to use it:
 $ mkdir sqlite-profile
 $ echo sqlite.pl > sqlite-profile/lib
 $ cat > sqlite-profile/sqlite.pl <<'EOF'
-$sql_profiles{S} = pmap {sh "sqlite3", "-separator", "\t", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '^.*', $sql_query;
 EOF
 ```
@@ -2746,7 +2747,7 @@ EOF
 Now we can create a test database and use this library to access it.
 
 ```bash
-$ sqlite3 test.db <<'EOF'
+$ sqlite test.db <<'EOF'
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
@@ -2759,7 +2760,7 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-219 doc/stream.md
+238 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -2903,14 +2904,20 @@ $ ni id:xz Zx | xz -dc
 xz
 $ ni id:lzo Zo | lzop -dc
 lzo
-$ ni id:lz4 Z4 | lz4 -dc
-lz4
 $ ni id:bzip2 Zb | bzip2 -dc
 bzip2
 ```
 
-ni also provides a decompression operator `ZD`, though you'll rarely need it
-because any external data will be decoded automatically:
+```sh
+# this one isn't a unit test because not all test docker images have a
+# straightforward LZ4 install (some are too old)
+$ ni id:lz4 Z4 | lz4 -dc
+lz4
+```
+
+ni also provides a universal decompression operator `ZD`, though you'll rarely
+need it because any external data will be decoded automatically. `ZD` has no
+effect if the data isn't compressed.
 
 ```bash
 $ ni n:4 Z ZD
@@ -2918,6 +2925,19 @@ $ ni n:4 Z ZD
 2
 3
 4
+$ ni n:4 ZD
+1
+2
+3
+4
+```
+
+Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
+compression by writing data to `/dev/null`:
+
+```bash
+$ ni n:4 ZN | wc -c
+0
 ```
 
 ## Checkpoints

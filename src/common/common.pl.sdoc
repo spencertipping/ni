@@ -13,6 +13,8 @@ use constant number  => alt neval, integer, float;
 use constant colspec1 => mr '^[A-Z]';
 use constant colspec  => mr '^[-A-Z.]+';
 
+use constant ea       => mrc '^';
+
 Generic code parser.
 Counts brackets outside quoted strings, which in our case are '' and "".
 Doesn't look for regular expressions because these vary by language; but this

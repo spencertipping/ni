@@ -1,8 +1,7 @@
 HTTP server.
 A very simple HTTP server that can be used to serve a stream's contents. The
 server is defined solely in terms of a function that takes a URL and returns
-data, optionally specifying the content type. The HTTP server returns when it
-receives EPIPE while writing to stdout.
+data, optionally specifying the content type.
 
 The code to drive the HTTP server arrives as stdin, and the optional hostname
 and port are specified as @ARGV. If omitted, they default to 127.0.0.1 and
@@ -10,31 +9,26 @@ random.
 
 use Socket;
 
-my ($hostname, $port) = @ARGV;
-$hostname = '127.0.0.1' unless defined $hostname;
-
 socket S, PF_INET, SOCK_STREAM, getprotobyname 'tcp'
   or die "ni_http: socket() failed: $!";
 
 setsockopt S, SOL_SOCKET, SO_REUSEADDR, pack 'l', 1
   or die "ni_http: setsockopt() failed: $!";
 
-my $tries = 0;
-until (defined $port) {
-  $port = 1024 + int rand(65535 - 1024);
-  bind S, sockaddr_in $port, INADDR_ANY or $port = undef;
-  die "ni_http: bind() failed on over 4096 random ports: $!" if ++$tries > 4096;
-}
+my ($port) = (@ARGV, 1024);
+@ARGV = ();
+++$port > 65535 && die "ni_http: bind() failed: $!"
+  until bind S, sockaddr_in $port, INADDR_ANY;
 
 listen S, SOMAXCONN or die "ni_http: listen() failed: $!";
 
-print "http://$hostname:$port/\n";
+print "http://localhost:$port/\n";
 close STDOUT;
 
 sub http(&) {
   my ($f) = @_;
-  for (; accept C, S; close C) {
-    $_ = ''; sysread C, $_, 8192, length until /\n\r?\n\r?$/;
+  for (; $_ = '', accept C, S; close C) {
+    sysread C, $_, 8192, length until /\n\r?\n\r?$/;
     *STDOUT = C;
     print "HTTP/1.1 200 OK\n\n";
     pr for &$f(/^GET (.*) HTTP\//);

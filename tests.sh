@@ -2,15 +2,18 @@
 lazytest_n=0
 lazytest_fail=0
 lazytest_case() {
+  echo -ne '\r\033[J'
+  echo -n "$1" | tr '\n' ' ' | head -c79
+  echo -ne '\r'
+
   local actual="$(eval "$1"; echo "[exit code $?]")"
   local expected="$(cat <&3; echo "[exit code $?]")"
   lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
-    echo -ne '\r\033[J'; echo "$1" | tr '\n' ' ' | head -c79
     return 0
   else
     lazytest_fail=$((lazytest_fail + 1))
-    echo -e "\r\033[J\033[1;31mFAIL\033[0;0m $*"
+    echo -e "\033[J\033[1;31mFAIL\033[0;0m $*"
     echo -e "EXPECTED\033[1;34m"
     echo    "$expected"
     echo
@@ -213,10 +216,6 @@ lazytest_case 'ni id:lzo Zo | lzop -dc
 ' 3<<'LAZYTEST_EOF'
 lzo
 LAZYTEST_EOF
-lazytest_case 'ni id:lz4 Z4 | lz4 -dc
-' 3<<'LAZYTEST_EOF'
-lz4
-LAZYTEST_EOF
 lazytest_case 'ni id:bzip2 Zb | bzip2 -dc
 ' 3<<'LAZYTEST_EOF'
 bzip2
@@ -227,6 +226,17 @@ lazytest_case 'ni n:4 Z ZD
 2
 3
 4
+LAZYTEST_EOF
+lazytest_case 'ni n:4 ZD
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+4
+LAZYTEST_EOF
+lazytest_case 'ni n:4 ZN | wc -c
+' 3<<'LAZYTEST_EOF'
+0
 LAZYTEST_EOF
 lazytest_case 'ni n:1000000gr4
 ' 3<<'LAZYTEST_EOF'
@@ -534,12 +544,12 @@ lazytest_case 'echo sqlite.pl > sqlite-profile/lib
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_case 'cat > sqlite-profile/sqlite.pl <<'\''EOF'\''
-$sql_profiles{S} = pmap {sh "sqlite3", "-separator", "\t", $$_[0], $$_[1]}
+$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '\''^.*'\'', $sql_query;
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-lazytest_case 'sqlite3 test.db <<'\''EOF'\''
+lazytest_case 'sqlite test.db <<'\''EOF'\''
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
