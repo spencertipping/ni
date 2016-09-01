@@ -23,7 +23,7 @@ use 5.006_000;
 BEGIN {
 eval($ni::self{'boot/sdoc'} = q{
 sub ni::unsdoc
-{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}});
+{join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0]}});
 eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
@@ -34,7 +34,7 @@ sub ni::set
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
   ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
-while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
+while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main(@ARGV)', 'main';
 __DATA__
 43 ni.sdoc
@@ -64,7 +64,7 @@ use 5.006_000;
 BEGIN {
 eval($ni::self{'boot/sdoc'} = q{
 sub ni::unsdoc
-{join '', grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, $_[0]}});
+{join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0]}});
 
 eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
@@ -78,7 +78,7 @@ sub ni::set
   ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
-while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
+while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main(@ARGV)', 'main';
 __DATA__
 37 ni.map.sdoc
@@ -954,7 +954,7 @@ sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
 our %split_chalt = (
   'C' => (pmap {ni_split_chr   ','}              none),
   'P' => (pmap {ni_split_chr   '|'}              none),
-  'S' => (pmap {ni_split_regex qr/\h+/}          none),
+  'S' => (pmap {ni_split_regex qr/\s+/}          none),
   'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
   '/' => (pmap {ni_split_regex $_}               regex),
   ':' => (pmap {ni_split_chr   $_}               mr '^.'),

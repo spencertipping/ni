@@ -61,7 +61,7 @@ sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
 our %split_chalt = (
   'C' => (pmap {ni_split_chr   ','}              none),
   'P' => (pmap {ni_split_chr   '|'}              none),
-  'S' => (pmap {ni_split_regex qr/\h+/}          none),
+  'S' => (pmap {ni_split_regex qr/\s+/}          none),
   'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
   '/' => (pmap {ni_split_regex $_}               regex),
   ':' => (pmap {ni_split_chr   $_}               mr '^.'),
