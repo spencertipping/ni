@@ -87,7 +87,7 @@ sub pipeline {
     if (exists $$_{stdin}) {
       my $h = heredoc_for $$_{stdin};
       push @cs, "$c 3<&0 <<'$h'";
-      push @hs, "$$_{stdin}\n$h";
+      push @hs, $$_{stdin} =~ /\n$/ ? "$$_{stdin}$h" : "$$_{stdin}\n$h";
     } else {
       push @cs, $c;
     }
