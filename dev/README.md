@@ -59,7 +59,7 @@ $ ./test --quick                # run tests in ubuntu-16.04
    [src/self.pl.sdoc](../src/self.pl.sdoc), called by
    `$option_handlers{'internal/lib'}` in
    [src/main.pl.sdoc](../src/main.pl.sdoc). The main function,
-   counterintuitively, is called by [src/ni.sdoc](src/ni.sdoc), which is the
+   counterintuitively, is called by [src/ni.sdoc](../src/ni.sdoc), which is the
    header of the `./ni` script. (ni is a weird program in that it's
    self-modifying and can print its state without reading its source code.)
 
