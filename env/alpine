@@ -8,7 +8,7 @@ RUN apk add bash curl perl sqlite sbcl@testing
 RUN apk add bzip2 lzo lz4 xz
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 ADD ni /usr/bin/
-ADD test-data/etc-passwd /etc/passwd
+ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
 WORKDIR /data
 CMD /bin/bash

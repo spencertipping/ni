@@ -4,7 +4,7 @@ RUN yum install -y sbcl
 RUN yum install -y lzop lz4
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 ADD ni /usr/bin/
-ADD test-data/etc-passwd /etc/passwd
+ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
 WORKDIR /data
 CMD /bin/bash

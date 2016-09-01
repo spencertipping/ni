@@ -3,7 +3,7 @@ RUN apt-get update
 RUN apt-get install -qqy sbcl sqlite curl
 RUN apt-get install -qqy bzip2 lzop liblz4-tool xz-utils
 ADD ni /usr/bin/
-ADD test-data/etc-passwd /etc/passwd
+ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
 WORKDIR /data
 CMD /bin/bash
