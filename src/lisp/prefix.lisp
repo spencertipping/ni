@@ -44,6 +44,9 @@
 	(search subseq seq :from-end t :start2 (- seq-len subseq-len))
 	nil)))
 
+
+(defvar *cols*)
+
 (defun read-col (text)
   (when text
     (let* ((*read-eval* nil)
@@ -52,24 +55,52 @@
         (symbol text)
         (number r)))))
 
-(defun r (&rest values)
+(defun %r (&rest values)
   (apply #'join #\Tab values))
 
+(defmacro r (&rest values)
+  `(multiple-value-call #'%r ,@values))
+
+(declaim (inline next-line))
+(defun next-line ()
+  (read-line *standard-input* nil))
+
+(defun %sr (&rest reducefn_inputfn_current)
+  (loop for l = (next-line) while l do
+       (let ((*cols* (split l #\Tab)))
+         (loop for (reducefn inputfn current) in reducefn_inputfn_current
+              for ric in reducefn_inputfn_current do
+              (setf (third ric)
+                    (funcall reducefn current (funcall inputfn))))))
+  (apply #'values (mapcar #'third reducefn_inputfn_current)))
+
+(defmacro sr (&rest reducer_input_initial)
+  `(let* ((bindings (list ,@(loop for (reducer input initial) in reducer_input_initial append
+                                 (list reducer `(lambda () ,input) initial))))
+          (fixed-bindings (loop for (reducefn inputfn initial) on bindings by #'cdddr collect
+                               (list reducefn inputfn (if initial                                                          
+                                                          (funcall reducefn initial (funcall inputfn))
+                                                          (funcall inputfn))))))
+     (apply #'%sr fixed-bindings)))
+
+(defun output-rows (&rest rows)
+  (dolist (row rows)
+    (princ row)
+    (terpri)))
+
 (defmacro with-ni-env (filter-p &body body)
-  (let ((l-var (gensym "L"))
-        (cols-var (gensym "COLS")))
+  (let ((l-var (gensym "L")))
     `(let ((*standard-input* (sb-sys:make-fd-stream 3)))
        (symbol-macrolet ,(loop for colname in '(a b c d e f g h i j k l m n o p q)
                             for index from 0
-                            collect (list colname `(read-col (nth ,index ,cols-var))))     
+                            collect (list colname `(read-col (nth ,index *cols*))))     
          (loop for ,l-var = (read-line *standard-input* nil) while ,l-var do
-              (let ((,cols-var (split ,l-var #\Tab)))
+              (let ((*cols* (split ,l-var #\Tab)))
                 ,(if filter-p
                      `(when (progn ,@body)
                         (write-string ,l-var)
                         (terpri))
                      `(progn
                         ,@(loop for form in body collect
-                               `(progn
-                                  (princ ,form)
-                                  (terpri)))))))))))
+                               `(multiple-value-call #'output-rows ,form)
+                        )))))))))

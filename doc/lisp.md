@@ -41,3 +41,30 @@ $ ni n:2l'a (+ a 100)'                   # return without "r"
 2
 102
 ```
+
+## Streaming lookahead
+This is implemented in terms of reducers, and gives you the ability to reduce
+arbitrarily many rows in constant space. There are two parts to this. First,
+the streaming reduce functions `se` and `sr`; and second, compound reducers
+(very useful, and explained in the next section).
+
+### `sr`
+Reduces the entire data stream:
+
+```
+syntax: sr (reducer value [initial-value])*
+```
+
+For example, to sum arbitrarily many numbers in constant space:
+
+```bash
+$ ni n:10000l"(sr ('+ a))"
+50005000
+```
+
+Or to reduce multiple columns into a row:
+
+```bash
+$ ni n:4fAA l"(r (sr ('+ a) ('* b)))"
+10	24
+```
