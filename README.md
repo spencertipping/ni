@@ -5,6 +5,11 @@
 $ ni --help                     # start here
 ```
 
+Or start at [doc/README.md](doc/README.md) if you'd prefer to read the docs
+online. All of the examples are unit tests, so they should work as advertised;
+if they don't, it's likely a system-specific issue and you should definitely
+open an issue so I can resolve it.
+
 ## APL, really?
 Not really, but conceptually similar. Ni is optimized to require as few
 characters as possible; for example, the ubiquitous word count, sorting by
