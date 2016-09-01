@@ -35,7 +35,7 @@ sub ni::set
   ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
-ni::eval 'exit main @ARGV', 'main';
+ni::eval 'exit main(@ARGV)', 'main';
 __DATA__
 43 ni.sdoc
 #!/usr/bin/env perl
@@ -79,7 +79,7 @@ sub ni::set
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
-ni::eval 'exit main @ARGV', 'main';
+ni::eval 'exit main(@ARGV)', 'main';
 __DATA__
 37 ni.map.sdoc
 Resource layout map.
