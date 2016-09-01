@@ -1,9 +1,6 @@
 FROM centos:5
-RUN yum install -y sqlite curl
-RUN yum install -y bzip2 lzop liblz4-tool xz-utils
-RUN yum install -y epel-release-5-4
+RUN yum install -y sqlite perl curl bzip2 xz epel-release-5-4
 RUN yum install -y sbcl
-RUN yum install -y perl
 ADD ni /usr/bin/
 ADD test-data/etc-passwd /etc/passwd
 VOLUME /data

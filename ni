@@ -1633,7 +1633,7 @@ lisp.pl.sdoc
                                `(progn
                                   (princ ,form)
                                   (terpri)))))))))))
-46 core/lisp/lisp.pl.sdoc
+48 core/lisp/lisp.pl.sdoc
 Lisp backend.
 A super simple SBCL operator. The first thing we want to do is to define the
 code template that we send to Lisp via stdin (using a heredoc). So ni ends up
@@ -1671,14 +1671,16 @@ how shell commands are represented.)
 
 use constant lispcode => mrc '^.*[^]]+';
 
-defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
-                               stdin => lisp_mapgen->(prefix => lisp_prefix,
-                                                      body   => $_)}
-                           lispcode;
+sub lisp_sh($) {sh [qw| sbcl --noinform --noprint --eval |,
+                    '(load *standard-input* :verbose nil :print nil)'],
+                   stdin => $_[0]}
 
-defrowalt pmap {sh [qw/sbcl --noinform --script/],
-                   stdin => lisp_grepgen->(prefix => lisp_prefix,
-                                           body   => $_)}
+defshort 'root', 'l', pmap {lisp_sh lisp_mapgen->(prefix => lisp_prefix,
+                                                  body   => $_)}
+                      lispcode;
+
+defrowalt pmap {lisp_sh lisp_grepgen->(prefix => lisp_prefix,
+                                       body   => $_)}
           pn 1, mr '^l', lispcode;
 2 core/http/lib
 http.pm.sdoc

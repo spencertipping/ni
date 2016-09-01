@@ -35,12 +35,14 @@ how shell commands are represented.)
 
 use constant lispcode => mrc '^.*[^]]+';
 
-defshort 'root', 'l', pmap {sh [qw/sbcl --noinform --script/],
-                               stdin => lisp_mapgen->(prefix => lisp_prefix,
-                                                      body   => $_)}
-                           lispcode;
+sub lisp_sh($) {sh [qw| sbcl --noinform --noprint --eval |,
+                    '(load *standard-input* :verbose nil :print nil)'],
+                   stdin => $_[0]}
 
-defrowalt pmap {sh [qw/sbcl --noinform --script/],
-                   stdin => lisp_grepgen->(prefix => lisp_prefix,
-                                           body   => $_)}
+defshort 'root', 'l', pmap {lisp_sh lisp_mapgen->(prefix => lisp_prefix,
+                                                  body   => $_)}
+                      lispcode;
+
+defrowalt pmap {lisp_sh lisp_grepgen->(prefix => lisp_prefix,
+                                       body   => $_)}
           pn 1, mr '^l', lispcode;
