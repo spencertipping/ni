@@ -25,19 +25,66 @@ sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
 
+TTY handling.
+Reset the default pipeline prefix/suffix depending on what ni is connected to.
+We don't want to interact with a terminal directly; we use less for output, and
+terminal input is ignored.
+
 @pipeline_prefix = -t STDIN  ? ()       : ni_decode 3;
 @pipeline_suffix = -t STDOUT ? ni_pager : ();
+
+Data sources.
+Various useful sources including shell commands, number generators, filesystem
+accessors, and verbatim text.
+
+sub ni_file($) {ni_append 'eval', ni_pipe ni_cat $_[0], ni_decode}
 
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';
 
-deflong 'root', 'stream/fs',
-  pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
-  alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+deflong 'root', 'stream/fs', pmap {ni_file $_}
+                             alt mrc '^file:(.+)', pif {-e} mrc '^[^][]+';
 
 deflong 'root', 'stream/n',  pmap {ni_append 'ni_seq', 1, $_}     pn 1, mr '^n:',  number;
 deflong 'root', 'stream/n0', pmap {ni_append 'ni_seq', 0, $_ - 1} pn 1, mr '^n0:', number;
 
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 
+Shell transformation.
+Pipe through a shell command. We also define a command to duplicate a stream
+through a shell command.
+
 deflong 'root', 'stream/pipe', pmap {sh 'sh', '-c', $_} mrc '^\$=(.*)';
+deflong 'root', 'stream/tee',  pmap {sh 'ni_tee', 'sh', '-c', $_}
+                               mrc '^\$\^(.*)';
+
+Sinking.
+We can sink data into a file just as easily as we can read from it. This is
+done with the `>` operator, which is typically written as `\>`.
+
+defshort 'root', '>', pmap {sh 'tee', $_} filename;
+
+Compression and decoding.
+Sometimes you want to emit compressed data, which you can do with the `Z`
+operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
+by adding a suffix. You can decode a stream in any of these formats using `ZD`
+(though in most cases ni will automatically decode compressed formats).
+
+our %compressors;
+
+defshort 'root', 'Z', pmap {dor $_, sh 'gzip'} maybe chaltr %compressors;
+
+sub defcompressor($$) {$compressors{$_[0]} = $_[1]}
+sub defnormalcompressor($$) {
+  my ($alt, $comp) = @_;
+  defcompressor $alt, pmap {defined $_ ? sh $comp, "-$_" : sh $comp}
+                      maybe integer;
+}
+
+defnormalcompressor 'g', 'gzip';
+defnormalcompressor 'x', 'xz';
+defnormalcompressor 'o', 'lzop';
+defnormalcompressor '4', 'lz4';
+defnormalcompressor 'b', 'bzip2';
+
+defcompressor 'D', k ni_decode;

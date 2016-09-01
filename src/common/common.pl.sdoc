@@ -26,3 +26,10 @@ use constant generic_code => sub {
   my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
   $balance ? (substr($code, 0, $balance), substr($code, $balance))
            : ($code, @xs)};
+
+Filenames, in general.
+Typically filenames won't include bracket characters, though they might include
+just about everything else. Two possibilities there: if we need special stuff,
+there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
+
+use constant filename => alt mrc '^file:(.+)', mr '^[^][]+';

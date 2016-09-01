@@ -155,6 +155,64 @@ lazytest_case 'ni n:3O       # NOTE: capital O, not zero; more typical reverse n
 2
 1
 LAZYTEST_EOF
+lazytest_case 'ni n:3 >file
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni file
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni n:3 \>file2
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni file2
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni n:3Z >file3.gz
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'zcat file3.gz
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni id:gzip Z | gzip -dc               # gzip by default
+' 3<<'LAZYTEST_EOF'
+gzip
+LAZYTEST_EOF
+lazytest_case 'ni id:gzip Zg | gzip -dc              # explicitly specify
+' 3<<'LAZYTEST_EOF'
+gzip
+LAZYTEST_EOF
+lazytest_case 'ni id:gzip Zg9 | gzip -dc             # specify compression level
+' 3<<'LAZYTEST_EOF'
+gzip
+LAZYTEST_EOF
+lazytest_case 'ni id:xz Zx | xz -dc
+' 3<<'LAZYTEST_EOF'
+xz
+LAZYTEST_EOF
+lazytest_case 'ni id:lzo Zo | lzop -dc
+' 3<<'LAZYTEST_EOF'
+lzo
+LAZYTEST_EOF
+lazytest_case 'ni id:lz4 Z4 | lz4 -dc
+' 3<<'LAZYTEST_EOF'
+lz4
+LAZYTEST_EOF
+lazytest_case 'ni id:bzip2 Zb | bzip2 -dc
+' 3<<'LAZYTEST_EOF'
+bzip2
+LAZYTEST_EOF
 lazytest_case 'ni n:8p'\''r map a*$_, 1..8'\'' > mult-table
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF

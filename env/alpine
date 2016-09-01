@@ -4,7 +4,8 @@ RUN echo '@edge http://nl.alpinelinux.org/alpine/edge/main' \
 RUN echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
       >> /etc/apk/repositories
 RUN apk update
-RUN apk add bash perl sqlite sbcl@testing
+RUN apk add bash curl perl sqlite sbcl@testing
+RUN apk add bzip2 lzo lz4 xz
 ADD ni /usr/bin/
 ADD test-data/etc-passwd /etc/passwd
 VOLUME /data

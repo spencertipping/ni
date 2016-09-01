@@ -81,7 +81,7 @@ push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
 __DATA__
-35 ni.map.sdoc
+37 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -105,6 +105,7 @@ lib core/common
 lib core/gen
 lib core/stream
 lib core/meta
+lib core/checkpoint
 lib core/col
 lib core/row
 lib core/facet
@@ -113,6 +114,7 @@ lib core/python
 lib core/sql
 lib core/java
 lib core/lisp
+lib core/http
 lib core/hadoop
 lib core/pyspark
 lib core/gnuplot
@@ -568,7 +570,7 @@ sub main {
 }
 1 core/common/lib
 common.pl.sdoc
-28 core/common/common.pl.sdoc
+35 core/common/common.pl.sdoc
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
@@ -597,6 +599,13 @@ use constant generic_code => sub {
   my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
   $balance ? (substr($code, 0, $balance), substr($code, $balance))
            : ($code, @xs)};
+
+Filenames, in general.
+Typically filenames won't include bracket characters, though they might include
+just about everything else. Two possibilities there: if we need special stuff,
+there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
+
+use constant filename => alt mrc '^file:(.+)', mr '^[^][]+';
 1 core/gen/lib
 gen.pl.sdoc
 34 core/gen/gen.pl.sdoc
@@ -731,7 +740,7 @@ if (defined $decoder) {
   syswrite STDOUT, $_;
   syswrite STDOUT, $_ while sysread STDIN, $_, 8192;
 }
-43 core/stream/stream.pl.sdoc
+90 core/stream/stream.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc. Most of the functionality
@@ -759,22 +768,69 @@ sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
 
+TTY handling.
+Reset the default pipeline prefix/suffix depending on what ni is connected to.
+We don't want to interact with a terminal directly; we use less for output, and
+terminal input is ignored.
+
 @pipeline_prefix = -t STDIN  ? ()       : ni_decode 3;
 @pipeline_suffix = -t STDOUT ? ni_pager : ();
+
+Data sources.
+Various useful sources including shell commands, number generators, filesystem
+accessors, and verbatim text.
+
+sub ni_file($) {ni_append 'eval', ni_pipe ni_cat $_[0], ni_decode}
 
 deflong 'root', 'stream/sh', pmap {ni_append qw/sh -c/, $_}
                              mrc '^(?:sh|\$):(.*)';
 
-deflong 'root', 'stream/fs',
-  pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
-  alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
+deflong 'root', 'stream/fs', pmap {ni_file $_}
+                             alt mrc '^file:(.+)', pif {-e} mrc '^[^][]+';
 
 deflong 'root', 'stream/n',  pmap {ni_append 'ni_seq', 1, $_}     pn 1, mr '^n:',  number;
 deflong 'root', 'stream/n0', pmap {ni_append 'ni_seq', 0, $_ - 1} pn 1, mr '^n0:', number;
 
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 
+Shell transformation.
+Pipe through a shell command. We also define a command to duplicate a stream
+through a shell command.
+
 deflong 'root', 'stream/pipe', pmap {sh 'sh', '-c', $_} mrc '^\$=(.*)';
+deflong 'root', 'stream/tee',  pmap {sh 'ni_tee', 'sh', '-c', $_}
+                               mrc '^\$\^(.*)';
+
+Sinking.
+We can sink data into a file just as easily as we can read from it. This is
+done with the `>` operator, which is typically written as `\>`.
+
+defshort 'root', '>', pmap {sh 'tee', $_} filename;
+
+Compression and decoding.
+Sometimes you want to emit compressed data, which you can do with the `Z`
+operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
+by adding a suffix. You can decode a stream in any of these formats using `ZD`
+(though in most cases ni will automatically decode compressed formats).
+
+our %compressors;
+
+defshort 'root', 'Z', pmap {dor $_, sh 'gzip'} maybe chaltr %compressors;
+
+sub defcompressor($$) {$compressors{$_[0]} = $_[1]}
+sub defnormalcompressor($$) {
+  my ($alt, $comp) = @_;
+  defcompressor $alt, pmap {defined $_ ? sh $comp, "-$_" : sh $comp}
+                      maybe integer;
+}
+
+defnormalcompressor 'g', 'gzip';
+defnormalcompressor 'x', 'xz';
+defnormalcompressor 'o', 'lzop';
+defnormalcompressor '4', 'lz4';
+defnormalcompressor 'b', 'bzip2';
+
+defcompressor 'D', k ni_decode;
 1 core/meta/lib
 meta.pl.sdoc
 28 core/meta/meta.pl.sdoc
@@ -806,6 +862,32 @@ Mostly around ni-specific oddities like SDoc.
 deflong 'root', 'meta/sdoc',
   pmap {sh qw/perl -e/, "$self{'boot/sdoc'}; print ni::unsdoc join '', <>"}
   mrc '^--sdoc';
+2 core/checkpoint/lib
+checkpoint.sh.sdoc
+checkpoint.pl.sdoc
+5 core/checkpoint/checkpoint.sh.sdoc
+Checkpoint shell functions.
+We need a function that generates a checkpoint file atomically; that is, it
+becomes its final name only when all of the content has been written.
+
+ni_checkpoint() { sh | tee "$1.part" && mv "$1.part" "$1"; }
+16 core/checkpoint/checkpoint.pl.sdoc
+Checkpoint files.
+You can break a long pipeline into a series of smaller files using
+checkpointing, whose operator is `:`. The idea is to cache intermediate
+results. A checkpoint specifies a file and a lambda whose output it should
+capture.
+
+use constant checkpoint_prefix =>
+  {checkpoint_sh => $self{'core/checkpoint/checkpoint.sh'},
+   %{stream_sh}};
+
+defshort 'root', ':',
+  pmap {-r $$_[0] ? ni_file $$_[0]
+                  : sh ['ni_append_hd', 'ni_checkpoint', $$_[0]],
+                       stdin  => pipeline($$_[1]),
+                       prefix => checkpoint_prefix}
+  seq filename, context 'root/lambda';
 1 core/col/lib
 col.pl.sdoc
 73 core/col/col.pl.sdoc
@@ -1598,6 +1680,72 @@ defrowalt pmap {sh [qw/sbcl --noinform --script/],
                    stdin => lisp_grepgen->(prefix => lisp_prefix,
                                            body   => $_)}
           pn 1, mr '^l', lispcode;
+2 core/http/lib
+http.pm.sdoc
+http.pl.sdoc
+42 core/http/http.pm.sdoc
+HTTP server.
+A very simple HTTP server that can be used to serve a stream's contents. The
+server is defined solely in terms of a function that takes a URL and returns
+data, optionally specifying the content type. The HTTP server returns when it
+receives EPIPE while writing to stdout.
+
+The code to drive the HTTP server arrives as stdin, and the optional hostname
+and port are specified as @ARGV. If omitted, they default to 127.0.0.1 and
+random.
+
+use Socket;
+
+my ($hostname, $port) = @ARGV;
+$hostname = '127.0.0.1' unless defined $hostname;
+
+socket S, PF_INET, SOCK_STREAM, getprotobyname 'tcp'
+  or die "ni_http: socket() failed: $!";
+
+setsockopt S, SOL_SOCKET, SO_REUSEADDR, pack 'l', 1
+  or die "ni_http: setsockopt() failed: $!";
+
+my $tries = 0;
+until (defined $port) {
+  $port = 1024 + int rand(65535 - 1024);
+  bind S, sockaddr_in $port, INADDR_ANY or $port = undef;
+  die "ni_http: bind() failed on over 4096 random ports: $!" if ++$tries > 4096;
+}
+
+listen S, SOMAXCONN or die "ni_http: listen() failed: $!";
+
+print "http://$hostname:$port/\n";
+close STDOUT;
+
+sub http(&) {
+  my ($f) = @_;
+  for (; accept C, S; close C) {
+    $_ = ''; sysread C, $_, 8192, length until /\n\r?\n\r?$/;
+    *STDOUT = C;
+    print "HTTP/1.1 200 OK\n\n";
+    pr for &$f(/^GET (.*) HTTP\//);
+  }
+}
+19 core/http/http.pl.sdoc
+HTTP server.
+A trivial server that gets to decide what to do with the input stream. This
+blocks stream processing until a request comes in, at which point the function
+is called with `$url` set to the request URL.
+
+use constant perl_httpgen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni_http: failed to open fd 3: $!";
+  http {
+    %body
+  };
+};
+
+defshort 'root', 'H', pmap {sh [qw/perl -/, defined $$_[0] ? ($$_[0]) : ()],
+  stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
+                                               $self{'core/http/http.pm'}),
+                          body   => $$_[1])}
+  seq maybe number, plcode;
 1 core/hadoop/lib
 hadoop.pl.sdoc
 2 core/hadoop/hadoop.pl.sdoc
@@ -2574,7 +2722,7 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-95 doc/stream.md
+151 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -2670,4 +2818,60 @@ can't parse something, though.
 
 See [row.md](row.md) (`ni //help/row`) for details about row-reordering
 operators like sorting.
+
+## Writing files
+You can write a file in two ways. One is, of course, using shell redirection:
+
+```bash
+$ ni n:3 >file
+$ ni file
+1
+2
+3
+```
+
+The other way is to copy the stream to a file:
+
+```bash
+$ ni n:3 \>file2
+1
+2
+3
+$ ni file2
+1
+2
+3
+```
+
+If you want to write a compressed file, you can use the `Z` operator:
+
+```bash
+$ ni n:3Z >file3.gz
+$ zcat file3.gz
+1
+2
+3
+```
+
+`Z` lets you specify which compressor you want to use; for example:
+
+```bash
+$ ni id:gzip Z | gzip -dc               # gzip by default
+gzip
+$ ni id:gzip Zg | gzip -dc              # explicitly specify
+gzip
+$ ni id:gzip Zg9 | gzip -dc             # specify compression level
+gzip
+$ ni id:xz Zx | xz -dc
+xz
+$ ni id:lzo Zo | lzop -dc
+lzo
+$ ni id:lz4 Z4 | lz4 -dc
+lz4
+$ ni id:bzip2 Zb | bzip2 -dc
+bzip2
+```
+
+## Checkpoints
+Checkpoints let you cache intermediate outputs in a pipeline.
 __END__

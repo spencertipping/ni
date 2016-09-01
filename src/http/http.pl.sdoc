@@ -1,0 +1,19 @@
+HTTP server.
+A trivial server that gets to decide what to do with the input stream. This
+blocks stream processing until a request comes in, at which point the function
+is called with `$url` set to the request URL.
+
+use constant perl_httpgen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni_http: failed to open fd 3: $!";
+  http {
+    %body
+  };
+};
+
+defshort 'root', 'H', pmap {sh [qw/perl -/, defined $$_[0] ? ($$_[0]) : ()],
+  stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
+                                               $self{'core/http/http.pm'}),
+                          body   => $$_[1])}
+  seq maybe number, plcode;
