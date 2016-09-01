@@ -639,7 +639,7 @@ stream.sh.sdoc
 cat.pm.sdoc
 decode.pm.sdoc
 stream.pl.sdoc
-28 core/stream/stream.sh.sdoc
+31 core/stream/stream.sh.sdoc
 Stream shell functions.
 These are called by pipelines to simplify things. For example, a common
 operation is to append the output of some data-producing command:
@@ -658,9 +658,12 @@ ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
 
-ni_seq() { perl -e 'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {
-                      print "$i\n";
-                    }' "$@"; }
+ni_seq() { perl -e \
+  'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
+
+ni_tee() { { perl -e 'open FH, ">&=3" or die $!;
+                      while (sysread STDIN, $_, 8192) {print FH; print}' \
+               | "$@"; } 3>&1; }
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might
@@ -1664,25 +1667,15 @@ sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
-2 core/gnuplot/lib
-gnuplot.sh.sdoc
+1 core/gnuplot/lib
 gnuplot.pl.sdoc
-7 core/gnuplot/gnuplot.sh.sdoc
-Gnuplot prefix functions.
-Stuff to tee data into a gnuplot process. Gnuplot requires some management in
-certain cases, sometimes involving tempfiles.
-
-ni_gnuplot_tee() { perl -e 'open FH, "| gnuplot -persist -" or die $!;
-                            while (<>) {print FH; print}
-                            close FH'; }
-10 core/gnuplot/gnuplot.pl.sdoc
+9 core/gnuplot/gnuplot.pl.sdoc
 Gnuplot interop.
 An operator that tees output to a gnuplot process.
 
 defcontext 'gnuplot';
 
-sub compile_gnuplot {sh ['ni_gnuplot_tee', @_],
-                        prefix => $self{'core/gnuplot/gnuplot.sh'}}
+sub compile_gnuplot {sh ['ni_tee', qw/gnuplot -persist -e/, @_]}
 
 defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
 defshort 'gnuplot', 'd', k 'plot "-" with dots';

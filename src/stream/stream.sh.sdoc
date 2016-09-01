@@ -16,9 +16,12 @@ ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
 
-ni_seq() { perl -e 'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {
-                      print "$i\n";
-                    }' "$@"; }
+ni_seq() { perl -e \
+  'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
+
+ni_tee() { { perl -e 'open FH, ">&=3" or die $!;
+                      while (sysread STDIN, $_, 8192) {print FH; print}' \
+               | "$@"; } 3>&1; }
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might
