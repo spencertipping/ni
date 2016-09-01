@@ -1,4 +1,7 @@
 # Developing ni
+Note that all paths in this README are relative to the repository root, not to
+this directory.
+
 ## Building the ni image
 ```sh
 $ ./build                       # constructs ./ni from stuff in src/
