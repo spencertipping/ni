@@ -11,7 +11,7 @@ if they don't, it's likely a system-specific issue and you should definitely
 open an issue so I can resolve it.
 
 ## APL, really?
-Not really, but conceptually similar. Ni is optimized to require as few
+Not really, but conceptually similar. ni is optimized to require as few
 characters as possible; for example, the ubiquitous word count, sorting by
 descending word frequency:
 
@@ -31,20 +31,11 @@ $ ni README.md PL[FWpF_ CO]     # run on pyspark
 Most operators are a single character, and ni maintains a consistent data
 abstraction of "everything's a spreadsheet."
 
-## WTF???
-Glad you asked, because ni is self-documenting:
-
-```sh
-$ ni //help                     # ni --help also works
-$ ni //help/topic
-$ ni --explain [options...]     # TODO
-$ ni --compile [options...]     # produces POSIX shell script
-```
-
 ## Dev scripts and testing
 - `./build`: create `ni` from source
 - `./test`: rebuild and run documentation tests for `ni`
 
 All test cases are extracted from stuff in `doc/` by
 [LazyTest](https://github.com/spencertipping/lazytest), and the tests
-themselves are run inside a Docker container.
+themselves are run inside various Docker images with different versions of
+Perl and other dependencies to test portability.
