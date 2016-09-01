@@ -1,0 +1,10 @@
+Gnuplot interop.
+An operator that tees output to a gnuplot process.
+
+defcontext 'gnuplot';
+
+sub compile_gnuplot {sh ['ni_gnuplot_tee', @_],
+                        prefix => $self{'core/gnuplot/gnuplot.sh'}}
+
+defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
+defshort 'gnuplot', 'd', k 'plot "-" with dots';

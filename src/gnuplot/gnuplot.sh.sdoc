@@ -1,0 +1,7 @@
+Gnuplot prefix functions.
+Stuff to tee data into a gnuplot process. Gnuplot requires some management in
+certain cases, sometimes involving tempfiles.
+
+ni_gnuplot_tee() { perl -e 'open FH, "| gnuplot -persist -" or die $!;
+                            while (<>) {print FH; print}
+                            close FH'; }

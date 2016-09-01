@@ -81,7 +81,7 @@ push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\h*(\d+)\h+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
 __DATA__
-34 ni.map.sdoc
+35 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -115,6 +115,7 @@ lib core/java
 lib core/lisp
 lib core/hadoop
 lib core/pyspark
+lib core/gnuplot
 lib doc
 17 util.pl.sdoc
 Utility functions.
@@ -638,7 +639,7 @@ stream.sh.sdoc
 cat.pm.sdoc
 decode.pm.sdoc
 stream.pl.sdoc
-24 core/stream/stream.sh.sdoc
+28 core/stream/stream.sh.sdoc
 Stream shell functions.
 These are called by pipelines to simplify things. For example, a common
 operation is to append the output of some data-producing command:
@@ -656,6 +657,10 @@ ni_append_hd()  { cat <&3; "$@"; }
 ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
+
+ni_seq() { perl -e 'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {
+                      print "$i\n";
+                    }' "$@"; }
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might
@@ -761,8 +766,8 @@ deflong 'root', 'stream/fs',
   pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
   alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
 
-deflong 'root', 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
-deflong 'root', 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
+deflong 'root', 'stream/n',  pmap {ni_append 'ni_seq', 1, $_}     pn 1, mr '^n:',  number;
+deflong 'root', 'stream/n0', pmap {ni_append 'ni_seq', 0, $_ - 1} pn 1, mr '^n0:', number;
 
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 
@@ -1659,17 +1664,42 @@ sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
 
 defshort 'root', 'P', pmap {ni_pyspark @$_}
                       seq chaltr(%spark_profiles), $pyspark_rdd;
-10 doc/lib
+2 core/gnuplot/lib
+gnuplot.sh.sdoc
+gnuplot.pl.sdoc
+7 core/gnuplot/gnuplot.sh.sdoc
+Gnuplot prefix functions.
+Stuff to tee data into a gnuplot process. Gnuplot requires some management in
+certain cases, sometimes involving tempfiles.
+
+ni_gnuplot_tee() { perl -e 'open FH, "| gnuplot -persist -" or die $!;
+                            while (<>) {print FH; print}
+                            close FH'; }
+10 core/gnuplot/gnuplot.pl.sdoc
+Gnuplot interop.
+An operator that tees output to a gnuplot process.
+
+defcontext 'gnuplot';
+
+sub compile_gnuplot {sh ['ni_gnuplot_tee', @_],
+                        prefix => $self{'core/gnuplot/gnuplot.sh'}}
+
+defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
+defshort 'gnuplot', 'd', k 'plot "-" with dots';
+13 doc/lib
 README.md
-stream.md
-row.md
 col.md
-perl.md
-facet.md
-options.md
-sql.md
+examples.md
 extend.md
+facet.md
+internals.md
 libraries.md
+lisp.md
+options.md
+perl.md
+row.md
+sql.md
+stream.md
 22 doc/README.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
@@ -1693,284 +1723,6 @@ include:
 - [extend.md](extend.md) (`ni //help/extend`): how to write a ni extension
 - [libraries.md](libraries.md) (`ni //help/libraries`): how to load/use a
   library
-95 doc/stream.md
-# Stream operations
-Streams are made of text, and ni can do a few different things with them. The
-simplest involve stuff that bash utilities already handle (though more
-verbosely):
-
-```bash
-$ echo test > foo
-$ ni foo
-test
-$ ni foo foo
-test
-test
-```
-
-ni transparently decompresses common formats, regardless of file extension:
-
-```bash
-$ echo test | gzip > fooz
-$ ni fooz
-test
-$ cat fooz | ni
-test
-```
-
-## Data sources
-In addition to files, ni can generate data in a few ways:
-
-```bash
-$ ni $:'seq 4'                  # shell command stdout
-1
-2
-3
-4
-$ ni n:4                        # integer generator
-1
-2
-3
-4
-$ ni n0:4                       # integer generator, zero-based
-0
-1
-2
-3
-$ ni id:foo                     # literal text
-foo
-```
-
-## Transformation
-ni can stream data through a shell process, which is often shorter than
-shelling out separately:
-
-```bash
-$ ni n:3 | sort
-1
-2
-3
-$ ni n:3 $=sort                 # $= filters through a command
-1
-2
-3
-$ ni n:3 $='sort -r'
-3
-2
-1
-```
-
-And, of course, ni has shorthands for doing all of the above:
-
-```bash
-$ ni n:3 g      # g = sort
-1
-2
-3
-$ ni n:3g       # no need for whitespace
-1
-2
-3
-$ ni n:3gAr     # reverse-sort by first field
-3
-2
-1
-$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
-3
-2
-1
-```
-
-Notice that ni typically doesn't require whitespace between commands. The only
-case where it does is when the parse would be ambiguous without it (and
-figuring out when this happens requires some knowledge about how the shell
-quotes things, since ni sees post-quoted arguments). ni will complain if it
-can't parse something, though.
-
-See [row.md](row.md) (`ni //help/row`) for details about row-reordering
-operators like sorting.
-181 doc/row.md
-# Row operations
-These are fairly well-optimized operations that operate on rows as units, which
-basically means that ni can just scan for newlines and doesn't have to parse
-anything else. They include:
-
-- Take first/last N
-- Take uniform-random or periodic sample
-- Rows matching regex
-- Rows satisfying code
-- Reorder rows
-- Count identical rows
-
-## First/last
-Shorthands for UNIX `head` and `tail`.
-
-```bash
-$ ni n:10r3                     # take first 3
-1
-2
-3
-$ ni n:10r+3                    # take last 3
-8
-9
-10
-$ ni n:10r-7                    # drop first 7
-8
-9
-10
-```
-
-## Sampling
-```bash
-$ ni n:10000rx4000              # take every 4000th row
-4000
-8000
-$ ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
-1
-6823
-8921
-9509
-```
-
-It's worth noting that uniform sampling, though random, is also deterministic;
-by default ni seeds the RNG with 42 every time (though you can change this by
-exporting `NI_SEED`). ni also uses an optimized Poisson process to sample rows,
-which minimizes calls to `rand()`.
-
-## Regex matching
-```bash
-$ ni n:10000r/[42]000$/
-2000
-4000
-$ ni n:1000r/[^1]$/r3
-2
-3
-4
-```
-
-These regexes are evaluated by Perl, which is likely to be faster than `grep`
-for nontrivial patterns.
-
-## Code
-`rp` means "select rows for which this Perl expression returns true".
-
-```bash
-$ ni n:10000rp'$_ % 100 == 42' r3
-42
-142
-242
-```
-
-The expression has access to column accessors and everything else described in
-[perl.md](perl.md) (`ni //help/perl`).
-
-Note that whitespace is always required after quoted code.
-
-**TODO:** other languages
-
-## Sorting
-ni has four operators that shell out to the UNIX sort command. Two are
-alpha-sorts:
-
-```bash
-$ ni n:100n:10gr4               # g = 'group'
-1
-1
-10
-10
-$ ni n:100n:100Gr4              # G = 'group uniq'
-1
-10
-100
-11
-```
-
-The idea behind `g` as `group` is that this is what you do prior to an
-aggregation; i.e. to group related rows together so you can stream into a
-reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
-
-ni also has two `order` operators that sort numerically:
-
-```bash
-$ ni n:100or3                   # o = 'order': sort numeric ascending
-1
-2
-3
-$ ni n:100Or3                   # O = 'reverse order'
-100
-99
-98
-```
-
-### Specifying sort columns
-When used without options, the sort operators sort by a whole row; but you can
-append one or more column specifications to change this. I'll generate some
-multicolumn data to demonstrate this (see [perl.md](perl.md) (`ni //help/perl`)
-for an explanation of the `p` operator).
-
-```bash
-$ ni n:100p'r a, sin(a), log(a)' > data         # generate multicolumn data
-$ ni data r4
-1	0.841470984807897	0
-2	0.909297426825682	0.693147180559945
-3	0.141120008059867	1.09861228866811
-4	-0.756802495307928	1.38629436111989
-```
-
-Now we can sort by the second column, which ni refers to as `B` (in general, ni
-uses spreadsheet notation: columns are letters, rows are numbers):
-
-```bash
-$ ni data oB r4
-11	-0.999990206550703	2.39789527279837
-55	-0.99975517335862	4.00733318523247
-99	-0.999206834186354	4.59511985013459
-80	-0.993888653923375	4.38202663467388
-```
-
-This is an example of required whitespace between `oB` and `r4`; columns can be
-suffixed with `g`, `n`, and/or `r` modifiers to modify how they are sorted
-(these behave as described for `sort`'s `-k` option), and ni prefers this
-interpretation:
-
-```bash
-$ ni data oBr r4                # r suffix = reverse sort
-33	0.999911860107267	3.49650756146648
-77	0.999520158580731	4.34380542185368
-58	0.992872648084537	4.06044301054642
-14	0.99060735569487	2.63905732961526
-```
-
-## Counting
-ni gives you the `c` and `C` operators to count runs of identical rows (just
-like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
-streaming count.
-
-```bash
-$ ni //ni FWpF_ r500 > word-list
-$ ni word-list cr10             # unsorted count
-1	usr
-1	bin
-1	env
-1	perl
-1	
-1	ni
-1	https
-1	github
-1	com
-1	spencertipping
-$ ni word-list Cr10             # sort first to group words
-41	0
-8	006_000
-1	1
-9	2
-2	2016
-2	3
-1	43
-1	5
-2	A
-3	ACTION
-```
 143 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
@@ -2115,6 +1867,183 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /github	/spencertipping	/ni
 
 ```
+4 doc/examples.md
+# General ni examples
+Things that might give you ideas to be more dangerous.
+
+**TODO**
+14 doc/extend.md
+# Extending ni
+You can extend ni by writing a library. For example, suppose we want a new
+operator `N` that counts lines by shelling out to `wc -l`:
+
+```bash
+$ mkdir my-library
+$ echo my-lib.pl > my-library/lib
+$ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
+$ ni --lib my-library n:100N
+100
+```
+
+Most ni extensions are about defining a new operator, which involves extending
+ni's command-line grammar.
+69 doc/facet.md
+# Faceting
+ni supports an operator that facets rows: that is, it groups them by some
+function and aggregates within each group. How this is implemented depends on
+the backend; map/reduce workflows do this automatically with the shuffle step,
+whereas multiple POSIX tools are required. The facet operator handles this
+appropriately in each context.
+
+The basic format of the facet operator is like this:
+
+```sh
+$ ni ... @<language><key-expr> <reducer>
+```
+
+For example, here's a Perl facet to implement word count:
+
+```bash
+$ ni @pa 'r a, rca rsum 1' <<'EOF'
+foo
+bar
+foo
+bif
+EOF
+bar	1
+bif	1
+foo	2
+```
+
+Structurally, here's what's going on:
+
+- `@p`: facet with Perl code
+- `a`: use the first column value as the faceting key (this is Perl code)
+- `r ...`: make a TSV row from an array of values...
+  - `a`: ...the first of which is the faceting key (which is always `a` because
+    the facet column is prepended to the data)
+  - `rca ...`: return an array of streaming reductions within each facet on
+    column A
+    - `rsum 1`: the first (and only) of which is a sum of the constant 1 for
+      each reduced item
+
+## Perl
+See [perl.md](perl.md) (`ni //help/perl`) for information about the libraries
+ni provides for Perl code.
+
+To get a list of users faceted by login shell:
+
+```bash
+$ ni /etc/passwd F::@pg 'r a, @{rca rarr B}'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
+```
+
+Here, `rarr B` means "collect faceted values into an array reference", and in
+this case the value is column B. (`B` is in uppercase because `rarr` takes a
+string argument rather than a code block; this is for performance reasons, and
+[perl.md](perl.md) (`ni //help/perl`) discusses the details behind it.)
+
+A lot of faceting workflows can be more easily expressed as a sort/reduce in
+code, particularly if you're not computing a new value for the key. For
+example, the above query can be written more concisely this way:
+
+```bash
+$ ni /etc/passwd F::gGp'r g, a_ reg'
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
+/bin/sync	sync
+```
+10 doc/internals.md
+# Internal options
+ni provides some internal debugging options that you may find useful if you're
+writing extensions.
+
+```bash
+$ ni --internal/parse generic_code [foo]
+[foo]
+$ ni --internal/parse generic_code [foo]]]
+[foo] | ]]
+```
+28 doc/libraries.md
+# Libraries
+A library is just a directory with a `lib` file in it. `lib` lists the names of
+files to be included within that library, one per line, and in doing so
+specifies the order of inclusion (which sometimes matters if you're defining
+stuff in Perl). Most libraries will include at least one Perl file, which ni
+evaluates in the `ni` package. ni will assume that any file ending in `.pl`
+should be evaluated when the library is loaded. (Importantly, libraries are
+loaded _before_ the main CLI arguments are parsed, which is why it's possible
+to add new syntax.)
+
+ni has two library-loading options:
+
+- `ni --lib X ...`: load the `X` library before executing the pipeline
+- `ni --extend X [...]`: load the `X` library and rewrite yourself to include
+  it in the future (and then execute the pipeline if you got one)
+
+`--extend` is useful in a scripted context when you're building a site-specific
+ni executable, e.g.:
+
+```sh
+#!/bin/bash
+[[ -x /bin/ni ]] || get_ni_from_somewhere
+ni --extend site-lib1           # this modifies ni in place
+ni --extend site-lib2
+```
+
+`--extend` is idempotent, and you can use it to install a newer version of an
+already-included library.
+43 doc/lisp.md
+# Common Lisp driver
+ni supports Common Lisp via SBCL, which is available using the `l` and `L`
+operators. For example:
+
+```bash
+$ ni n:4l'(+ a 2)'
+3
+4
+5
+6
+```
+
+## Basic stuff
+`a` to `q` are one-letter functions that return the first 17 tab-delimited
+values from the current line. `(r ...)` is a function that takes a list of
+values and prints a tab-delimited row. For example:
+
+```bash
+$ ni n:4l'(r a (1+ a))'                   # generate two columns
+1	2
+2	3
+3	4
+4	5
+$ ni n:4l'(r a (1+ a))' l'(r (+ a b))'        # ... and sum them
+3
+5
+7
+9
+```
+
+Note that whitespace is required after every `p'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Perl.
+
+It is possible to omit `r` altogether; then you're returning one or more
+values, each of which will become a row of output:
+
+```bash
+$ ni n:2l'a (+ a 100)'                   # return without "r"
+1
+101
+2
+102
+```
+2 doc/options.md
+# Complete ni operator listing
+## 
 324 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
@@ -2440,79 +2369,188 @@ Here's what's going on.
     - `&& %1` is a way to return the hash reference as the reduced value (since
       we're modifying it in place). We need to do this without using a comma
       because each reducer function is evaluated in list context.
-69 doc/facet.md
-# Faceting
-ni supports an operator that facets rows: that is, it groups them by some
-function and aggregates within each group. How this is implemented depends on
-the backend; map/reduce workflows do this automatically with the shuffle step,
-whereas multiple POSIX tools are required. The facet operator handles this
-appropriately in each context.
+181 doc/row.md
+# Row operations
+These are fairly well-optimized operations that operate on rows as units, which
+basically means that ni can just scan for newlines and doesn't have to parse
+anything else. They include:
 
-The basic format of the facet operator is like this:
+- Take first/last N
+- Take uniform-random or periodic sample
+- Rows matching regex
+- Rows satisfying code
+- Reorder rows
+- Count identical rows
 
-```sh
-$ ni ... @<language><key-expr> <reducer>
-```
-
-For example, here's a Perl facet to implement word count:
-
-```bash
-$ ni @pa 'r a, rca rsum 1' <<'EOF'
-foo
-bar
-foo
-bif
-EOF
-bar	1
-bif	1
-foo	2
-```
-
-Structurally, here's what's going on:
-
-- `@p`: facet with Perl code
-- `a`: use the first column value as the faceting key (this is Perl code)
-- `r ...`: make a TSV row from an array of values...
-  - `a`: ...the first of which is the faceting key (which is always `a` because
-    the facet column is prepended to the data)
-  - `rca ...`: return an array of streaming reductions within each facet on
-    column A
-    - `rsum 1`: the first (and only) of which is a sum of the constant 1 for
-      each reduced item
-
-## Perl
-See [perl.md](perl.md) (`ni //help/perl`) for information about the libraries
-ni provides for Perl code.
-
-To get a list of users faceted by login shell:
+## First/last
+Shorthands for UNIX `head` and `tail`.
 
 ```bash
-$ ni /etc/passwd F::@pg 'r a, @{rca rarr B}'
-/bin/bash	root
-/bin/false	syslog
-/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
-/bin/sync	sync
+$ ni n:10r3                     # take first 3
+1
+2
+3
+$ ni n:10r+3                    # take last 3
+8
+9
+10
+$ ni n:10r-7                    # drop first 7
+8
+9
+10
 ```
 
-Here, `rarr B` means "collect faceted values into an array reference", and in
-this case the value is column B. (`B` is in uppercase because `rarr` takes a
-string argument rather than a code block; this is for performance reasons, and
-[perl.md](perl.md) (`ni //help/perl`) discusses the details behind it.)
+## Sampling
+```bash
+$ ni n:10000rx4000              # take every 4000th row
+4000
+8000
+$ ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
+1
+6823
+8921
+9509
+```
 
-A lot of faceting workflows can be more easily expressed as a sort/reduce in
-code, particularly if you're not computing a new value for the key. For
-example, the above query can be written more concisely this way:
+It's worth noting that uniform sampling, though random, is also deterministic;
+by default ni seeds the RNG with 42 every time (though you can change this by
+exporting `NI_SEED`). ni also uses an optimized Poisson process to sample rows,
+which minimizes calls to `rand()`.
+
+## Regex matching
+```bash
+$ ni n:10000r/[42]000$/
+2000
+4000
+$ ni n:1000r/[^1]$/r3
+2
+3
+4
+```
+
+These regexes are evaluated by Perl, which is likely to be faster than `grep`
+for nontrivial patterns.
+
+## Code
+`rp` means "select rows for which this Perl expression returns true".
 
 ```bash
-$ ni /etc/passwd F::gGp'r g, a_ reg'
-/bin/bash	root
-/bin/false	syslog
-/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
-/bin/sync	sync
+$ ni n:10000rp'$_ % 100 == 42' r3
+42
+142
+242
 ```
-2 doc/options.md
-# Complete ni operator listing
-## 
+
+The expression has access to column accessors and everything else described in
+[perl.md](perl.md) (`ni //help/perl`).
+
+Note that whitespace is always required after quoted code.
+
+**TODO:** other languages
+
+## Sorting
+ni has four operators that shell out to the UNIX sort command. Two are
+alpha-sorts:
+
+```bash
+$ ni n:100n:10gr4               # g = 'group'
+1
+1
+10
+10
+$ ni n:100n:100Gr4              # G = 'group uniq'
+1
+10
+100
+11
+```
+
+The idea behind `g` as `group` is that this is what you do prior to an
+aggregation; i.e. to group related rows together so you can stream into a
+reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
+
+ni also has two `order` operators that sort numerically:
+
+```bash
+$ ni n:100or3                   # o = 'order': sort numeric ascending
+1
+2
+3
+$ ni n:100Or3                   # O = 'reverse order'
+100
+99
+98
+```
+
+### Specifying sort columns
+When used without options, the sort operators sort by a whole row; but you can
+append one or more column specifications to change this. I'll generate some
+multicolumn data to demonstrate this (see [perl.md](perl.md) (`ni //help/perl`)
+for an explanation of the `p` operator).
+
+```bash
+$ ni n:100p'r a, sin(a), log(a)' > data         # generate multicolumn data
+$ ni data r4
+1	0.841470984807897	0
+2	0.909297426825682	0.693147180559945
+3	0.141120008059867	1.09861228866811
+4	-0.756802495307928	1.38629436111989
+```
+
+Now we can sort by the second column, which ni refers to as `B` (in general, ni
+uses spreadsheet notation: columns are letters, rows are numbers):
+
+```bash
+$ ni data oB r4
+11	-0.999990206550703	2.39789527279837
+55	-0.99975517335862	4.00733318523247
+99	-0.999206834186354	4.59511985013459
+80	-0.993888653923375	4.38202663467388
+```
+
+This is an example of required whitespace between `oB` and `r4`; columns can be
+suffixed with `g`, `n`, and/or `r` modifiers to modify how they are sorted
+(these behave as described for `sort`'s `-k` option), and ni prefers this
+interpretation:
+
+```bash
+$ ni data oBr r4                # r suffix = reverse sort
+33	0.999911860107267	3.49650756146648
+77	0.999520158580731	4.34380542185368
+58	0.992872648084537	4.06044301054642
+14	0.99060735569487	2.63905732961526
+```
+
+## Counting
+ni gives you the `c` and `C` operators to count runs of identical rows (just
+like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
+streaming count.
+
+```bash
+$ ni //ni FWpF_ r500 > word-list
+$ ni word-list cr10             # unsorted count
+1	usr
+1	bin
+1	env
+1	perl
+1	
+1	ni
+1	https
+1	github
+1	com
+1	spencertipping
+$ ni word-list Cr10             # sort first to group words
+41	0
+8	006_000
+1	1
+9	2
+2	2016
+2	3
+1	43
+1	5
+2	A
+3	ACTION
+```
 29 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
@@ -2543,48 +2581,100 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-14 doc/extend.md
-# Extending ni
-You can extend ni by writing a library. For example, suppose we want a new
-operator `N` that counts lines by shelling out to `wc -l`:
+95 doc/stream.md
+# Stream operations
+Streams are made of text, and ni can do a few different things with them. The
+simplest involve stuff that bash utilities already handle (though more
+verbosely):
 
 ```bash
-$ mkdir my-library
-$ echo my-lib.pl > my-library/lib
-$ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
-$ ni --lib my-library n:100N
-100
+$ echo test > foo
+$ ni foo
+test
+$ ni foo foo
+test
+test
 ```
 
-Most ni extensions are about defining a new operator, which involves extending
-ni's command-line grammar.
-28 doc/libraries.md
-# Libraries
-A library is just a directory with a `lib` file in it. `lib` lists the names of
-files to be included within that library, one per line, and in doing so
-specifies the order of inclusion (which sometimes matters if you're defining
-stuff in Perl). Most libraries will include at least one Perl file, which ni
-evaluates in the `ni` package. ni will assume that any file ending in `.pl`
-should be evaluated when the library is loaded. (Importantly, libraries are
-loaded _before_ the main CLI arguments are parsed, which is why it's possible
-to add new syntax.)
+ni transparently decompresses common formats, regardless of file extension:
 
-ni has two library-loading options:
-
-- `ni --lib X ...`: load the `X` library before executing the pipeline
-- `ni --extend X [...]`: load the `X` library and rewrite yourself to include
-  it in the future (and then execute the pipeline if you got one)
-
-`--extend` is useful in a scripted context when you're building a site-specific
-ni executable, e.g.:
-
-```sh
-#!/bin/bash
-[[ -x /bin/ni ]] || get_ni_from_somewhere
-ni --extend site-lib1           # this modifies ni in place
-ni --extend site-lib2
+```bash
+$ echo test | gzip > fooz
+$ ni fooz
+test
+$ cat fooz | ni
+test
 ```
 
-`--extend` is idempotent, and you can use it to install a newer version of an
-already-included library.
+## Data sources
+In addition to files, ni can generate data in a few ways:
+
+```bash
+$ ni $:'seq 4'                  # shell command stdout
+1
+2
+3
+4
+$ ni n:4                        # integer generator
+1
+2
+3
+4
+$ ni n0:4                       # integer generator, zero-based
+0
+1
+2
+3
+$ ni id:foo                     # literal text
+foo
+```
+
+## Transformation
+ni can stream data through a shell process, which is often shorter than
+shelling out separately:
+
+```bash
+$ ni n:3 | sort
+1
+2
+3
+$ ni n:3 $=sort                 # $= filters through a command
+1
+2
+3
+$ ni n:3 $='sort -r'
+3
+2
+1
+```
+
+And, of course, ni has shorthands for doing all of the above:
+
+```bash
+$ ni n:3 g      # g = sort
+1
+2
+3
+$ ni n:3g       # no need for whitespace
+1
+2
+3
+$ ni n:3gAr     # reverse-sort by first field
+3
+2
+1
+$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
+3
+2
+1
+```
+
+Notice that ni typically doesn't require whitespace between commands. The only
+case where it does is when the parse would be ambiguous without it (and
+figuring out when this happens requires some knowledge about how the shell
+quotes things, since ni sees post-quoted arguments). ni will complain if it
+can't parse something, though.
+
+See [row.md](row.md) (`ni //help/row`) for details about row-reordering
+operators like sorting.
 __END__

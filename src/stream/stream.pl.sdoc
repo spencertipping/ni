@@ -35,8 +35,8 @@ deflong 'root', 'stream/fs',
   pmap {ni_append 'eval', ni_pipe ni_cat $_, ni_decode}
   alt mrc '^file:(.+)', pif {-e} mrc '^[^]]+';
 
-deflong 'root', 'stream/n',  pmap {ni_append 'seq',    $_}     pn 1, mr '^n:',  number;
-deflong 'root', 'stream/n0', pmap {ni_append 'seq', 0, $_ - 1} pn 1, mr '^n0:', number;
+deflong 'root', 'stream/n',  pmap {ni_append 'ni_seq', 1, $_}     pn 1, mr '^n:',  number;
+deflong 'root', 'stream/n0', pmap {ni_append 'ni_seq', 0, $_ - 1} pn 1, mr '^n0:', number;
 
 deflong 'root', 'stream/id', pmap {ni_append 'echo', $_} mrc '^id:(.*)';
 
