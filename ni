@@ -880,13 +880,13 @@ capture.
 
 use constant checkpoint_prefix =>
   {checkpoint_sh => $self{'core/checkpoint/checkpoint.sh'},
-   %{stream_sh}};
+   %{stream_sh()}};
 
 defshort 'root', ':',
   pmap {-r $$_[0] ? ni_file $$_[0]
-                  : sh ['ni_append_hd', 'ni_checkpoint', $$_[0]],
-                       stdin  => pipeline($$_[1]),
-                       prefix => checkpoint_prefix}
+                  : [sh(['ni_append_hd', 'ni_checkpoint', $$_[0]],
+                        stdin  => pipeline($$_[1]),
+                        prefix => checkpoint_prefix), ni_decode]}
   seq filename, context 'root/lambda';
 1 core/col/lib
 col.pl.sdoc
@@ -2722,7 +2722,7 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-151 doc/stream.md
+190 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -2873,5 +2873,44 @@ bzip2
 ```
 
 ## Checkpoints
-Checkpoints let you cache intermediate outputs in a pipeline.
+Checkpoints let you cache intermediate outputs in a pipeline. This can avoid
+expensive recomputation. For example, let's expensively get some numbers:
+
+```bash
+$ ni n:1000000gr4
+1
+10
+100
+1000
+```
+
+If we wanted to iterate on the pipeline from this point onwards, we could do
+this quickly by checkpointing the result:
+
+```bash
+$ ni :numbers[n:1000000gr4]
+1
+10
+100
+1000
+```
+
+Now this data will be reused if we rerun it:
+
+```bash
+$ ni :numbers[n:1000000gr4]O
+1000
+100
+10
+1
+```
+
+ni isn't rerunning the process at all; we can see this by modifying the
+checkpoint file:
+
+```bash
+$ echo 'checkpointed' > numbers
+$ ni :numbers[n:1000000gr4]O
+checkpointed
+```
 __END__

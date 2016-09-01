@@ -148,4 +148,43 @@ bzip2
 ```
 
 ## Checkpoints
-Checkpoints let you cache intermediate outputs in a pipeline.
+Checkpoints let you cache intermediate outputs in a pipeline. This can avoid
+expensive recomputation. For example, let's expensively get some numbers:
+
+```bash
+$ ni n:1000000gr4
+1
+10
+100
+1000
+```
+
+If we wanted to iterate on the pipeline from this point onwards, we could do
+this quickly by checkpointing the result:
+
+```bash
+$ ni :numbers[n:1000000gr4]
+1
+10
+100
+1000
+```
+
+Now this data will be reused if we rerun it:
+
+```bash
+$ ni :numbers[n:1000000gr4]O
+1000
+100
+10
+1
+```
+
+ni isn't rerunning the process at all; we can see this by modifying the
+checkpoint file:
+
+```bash
+$ echo 'checkpointed' > numbers
+$ ni :numbers[n:1000000gr4]O
+checkpointed
+```

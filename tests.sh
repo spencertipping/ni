@@ -213,6 +213,34 @@ lazytest_case 'ni id:bzip2 Zb | bzip2 -dc
 ' 3<<'LAZYTEST_EOF'
 bzip2
 LAZYTEST_EOF
+lazytest_case 'ni n:1000000gr4
+' 3<<'LAZYTEST_EOF'
+1
+10
+100
+1000
+LAZYTEST_EOF
+lazytest_case 'ni :numbers[n:1000000gr4]
+' 3<<'LAZYTEST_EOF'
+1
+10
+100
+1000
+LAZYTEST_EOF
+lazytest_case 'ni :numbers[n:1000000gr4]O
+' 3<<'LAZYTEST_EOF'
+1000
+100
+10
+1
+LAZYTEST_EOF
+lazytest_case 'echo '\''checkpointed'\'' > numbers
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_case 'ni :numbers[n:1000000gr4]O
+' 3<<'LAZYTEST_EOF'
+checkpointed
+LAZYTEST_EOF
 lazytest_case 'ni n:8p'\''r map a*$_, 1..8'\'' > mult-table
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
