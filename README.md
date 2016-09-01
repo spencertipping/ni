@@ -18,7 +18,7 @@ descending word frequency:
 ```sh
 $ ni README.md FWpF_ CO         # run on POSIX tools locally
 $ ni README.md hFWpF_ cO        # run on hadoop streaming
-$ ni README.md PL[FWpF_ CO]     # run on pyspark
+$ ni README.md PL[FWpF_ CO]     # run on local pyspark
 ```
 
 - `FW`: fieldsplit on non-words
@@ -39,3 +39,6 @@ All test cases are extracted from stuff in `doc/` by
 [LazyTest](https://github.com/spencertipping/lazytest), and the tests
 themselves are run inside various Docker images with different versions of
 Perl and other dependencies to test portability.
+
+See [dev/README.md](dev/README.md) for more information about how to hack on
+ni.

@@ -13,12 +13,13 @@ envs=( alpine
 tests() { echo 'cd /tmp; bash /data/tests.sh'; }
 image() { docker build -q -f env/$1 .; }
 
-c=$1
-shift
+default_image=ubuntu-16.04
 
 docker_magic="--security-opt=seccomp=unconfined"
 docker_opts="$docker_magic -i -m 256M --rm -v $PWD:/data:ro"
 
+c=$1
+shift
 case $c in
 -b|--build)
   for e in ${envs[@]}; do
@@ -30,11 +31,11 @@ case $c in
   ;;
 
 -q|--quick)
-  tests | docker run $docker_opts $(image ubuntu-16.04) /bin/bash
+  tests | docker run $docker_opts $(image ${1:-$default_image}) /bin/bash
   ;;
 
 -r|--repl)
-  docker run $docker_opts -t $(image ${1:-ubuntu-16.04}*) /bin/bash
+  docker run $docker_opts -t $(image ${1:-$default_image}) /bin/bash
   ;;
 
 *)
