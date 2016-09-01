@@ -65,6 +65,14 @@ lazytest_case 'ni n:2l'\''a (+ a 100)'\''                   # return without "r"
 2
 102
 LAZYTEST_EOF
+lazytest_case 'ni n:10000l"(sr ('\''+ a))"
+' 3<<'LAZYTEST_EOF'
+50005000
+LAZYTEST_EOF
+lazytest_case 'ni n:4fAA l"(r (sr ('\''+ a) ('\''* b)))"
+' 3<<'LAZYTEST_EOF'
+10	24
+LAZYTEST_EOF
 lazytest_case 'echo test > foo
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF

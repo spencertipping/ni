@@ -42,6 +42,15 @@ lazytest_end() {
 cat <<'LAZYTEST_EOF'
 EOF
 
+sub line_continues {
+  local $_ = $_[0];
+  return 1 if /\\$/;
+  s/\\.//g;
+  1 while s/"[^"]*"//g || s/'[^']*'//g || s/\`[^\`]*\`//g || s/\([^()]*\)//g;
+  1 & length s/[^"]//gr or 1 & length s/[^']//gr or 1 & length s/[^\`]//gr
+    or length(s/\(//gr) - length(s/\)//gr);
+}
+
 while (<>) {
   next unless (/^\`\`\`bash/../^\`\`\`$/) && !/^\`\`\`/;
 
@@ -50,7 +59,7 @@ while (<>) {
     # Assume all multiline strings are single-quoted, and that an odd number of
     # single-quotes means that we're still inside a string.
     print "LAZYTEST_EOF\n";
-    $_ .= <> while /\\$/ || 1 & length s/[^']//gr;
+    $_ .= <> while line_continues $_;
 
     # At this point we've appended our heredoc to the test wrapper, so we
     # should be all set. Look for previous heredocs and scan forwards until

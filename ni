@@ -1557,7 +1557,7 @@ defcontext 'java/cf';
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
-75 core/lisp/prefix.lisp
+106 core/lisp/prefix.lisp
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
 
@@ -1604,6 +1604,9 @@ lisp.pl.sdoc
 	(search subseq seq :from-end t :start2 (- seq-len subseq-len))
 	nil)))
 
+
+(defvar *cols*)
+
 (defun read-col (text)
   (when text
     (let* ((*read-eval* nil)
@@ -1612,27 +1615,55 @@ lisp.pl.sdoc
         (symbol text)
         (number r)))))
 
-(defun r (&rest values)
+(defun %r (&rest values)
   (apply #'join #\Tab values))
 
+(defmacro r (&rest values)
+  `(multiple-value-call #'%r ,@values))
+
+(declaim (inline next-line))
+(defun next-line ()
+  (read-line *standard-input* nil))
+
+(defun %sr (&rest reducefn_inputfn_current)
+  (loop for l = (next-line) while l do
+       (let ((*cols* (split l #\Tab)))
+         (loop for (reducefn inputfn current) in reducefn_inputfn_current
+              for ric in reducefn_inputfn_current do
+              (setf (third ric)
+                    (funcall reducefn current (funcall inputfn))))))
+  (apply #'values (mapcar #'third reducefn_inputfn_current)))
+
+(defmacro sr (&rest reducer_input_initial)
+  `(let* ((bindings (list ,@(loop for (reducer input initial) in reducer_input_initial append
+                                 (list reducer `(lambda () ,input) initial))))
+          (fixed-bindings (loop for (reducefn inputfn initial) on bindings by #'cdddr collect
+                               (list reducefn inputfn (if initial                                                          
+                                                          (funcall reducefn initial (funcall inputfn))
+                                                          (funcall inputfn))))))
+     (apply #'%sr fixed-bindings)))
+
+(defun output-rows (&rest rows)
+  (dolist (row rows)
+    (princ row)
+    (terpri)))
+
 (defmacro with-ni-env (filter-p &body body)
-  (let ((l-var (gensym "L"))
-        (cols-var (gensym "COLS")))
+  (let ((l-var (gensym "L")))
     `(let ((*standard-input* (sb-sys:make-fd-stream 3)))
        (symbol-macrolet ,(loop for colname in '(a b c d e f g h i j k l m n o p q)
                             for index from 0
-                            collect (list colname `(read-col (nth ,index ,cols-var))))     
+                            collect (list colname `(read-col (nth ,index *cols*))))     
          (loop for ,l-var = (read-line *standard-input* nil) while ,l-var do
-              (let ((,cols-var (split ,l-var #\Tab)))
+              (let ((*cols* (split ,l-var #\Tab)))
                 ,(if filter-p
                      `(when (progn ,@body)
                         (write-string ,l-var)
                         (terpri))
                      `(progn
                         ,@(loop for form in body collect
-                               `(progn
-                                  (princ ,form)
-                                  (terpri)))))))))))
+                               `(multiple-value-call #'output-rows ,form)
+                        )))))))))
 48 core/lisp/lisp.pl.sdoc
 Lisp backend.
 A super simple SBCL operator. The first thing we want to do is to define the
@@ -2117,7 +2148,7 @@ ni --extend site-lib2
 
 `--extend` is idempotent, and you can use it to install a newer version of an
 already-included library.
-43 doc/lisp.md
+70 doc/lisp.md
 # Common Lisp driver
 ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
@@ -2160,6 +2191,33 @@ $ ni n:2l'a (+ a 100)'                   # return without "r"
 101
 2
 102
+```
+
+## Streaming lookahead
+This is implemented in terms of reducers, and gives you the ability to reduce
+arbitrarily many rows in constant space. There are two parts to this. First,
+the streaming reduce functions `se` and `sr`; and second, compound reducers
+(very useful, and explained in the next section).
+
+### `sr`
+Reduces the entire data stream:
+
+```
+sr (reducer value [initial-value])* => reduced-value*
+```
+
+For example, to sum arbitrarily many numbers in constant space:
+
+```bash
+$ ni n:10000l"(sr ('+ a))"
+50005000
+```
+
+Or to reduce multiple columns into a row:
+
+```bash
+$ ni n:4fAA l"(r (sr ('+ a) ('* b)))"
+10	24
 ```
 2 doc/options.md
 # Complete ni operator listing
