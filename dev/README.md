@@ -16,6 +16,12 @@ this:
 Each one of these commands causes `./ni` to integrate the library into its
 state and rewrite itself accordingly. [1]
 
+Anytime you write a new core library, you'll need to add an `--internal/lib`
+line to `./build` to have it included in the ni image. `core/` is just a
+symlink to `src/`; it's this way so that ni's internal library names will start
+with `core` instead of `src` (yep, really; there's no other reason for the
+indirection).
+
 ## Running tests
 ```sh
 $ ./test                        # runs all tests in all environments
