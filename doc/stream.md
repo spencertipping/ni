@@ -147,6 +147,17 @@ $ ni id:bzip2 Zb | bzip2 -dc
 bzip2
 ```
 
+ni also provides a decompression operator `ZD`, though you'll rarely need it
+because any external data will be decoded automatically:
+
+```bash
+$ ni n:4 Z ZD
+1
+2
+3
+4
+```
+
 ## Checkpoints
 Checkpoints let you cache intermediate outputs in a pipeline. This can avoid
 expensive recomputation. For example, let's expensively get some numbers:
@@ -187,4 +198,22 @@ checkpoint file:
 $ echo 'checkpointed' > numbers
 $ ni :numbers[n:1000000gr4]O
 checkpointed
+```
+
+You can write compressed data into a checkpoint. The checkpointing operator
+itself will decode any compressed data you feed into it; for example:
+
+```bash
+$ ni :biglist[n:100000Z]r5
+1
+2
+3
+4
+5
+$ ni :biglist[n:100000Z]r5
+1
+2
+3
+4
+5
 ```
