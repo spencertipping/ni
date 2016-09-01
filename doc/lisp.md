@@ -52,7 +52,7 @@ the streaming reduce functions `se` and `sr`; and second, compound reducers
 Reduces the entire data stream:
 
 ```
-syntax: sr (reducer value [initial-value])*
+sr (reducer value [initial-value])* => reduced-value*
 ```
 
 For example, to sum arbitrarily many numbers in constant space:
