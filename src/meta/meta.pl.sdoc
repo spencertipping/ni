@@ -15,7 +15,7 @@ These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
 deflong 'root', 'meta/help',
-  pmap {$_ = 'README' if !length or /^tutorial$/;
+  pmap {$_ = 'tutorial' unless length;
         die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
         ni_verb $self{"doc/$_.md"}}
   pn 1, mr '^//help/?', mrc '^.*';
