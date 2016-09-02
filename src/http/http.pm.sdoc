@@ -30,6 +30,12 @@ sub http_reply($$%) {
   print $body;
 }
 
+sub uri_decode(@) {
+  my ($u) = @_;
+  $u =~ s/%(..)/chr hex $1/eg;
+  $u;
+}
+
 sub http(&) {
   my ($f) = @_;
   for (; $_ = '', accept C, S; close C) {
@@ -38,7 +44,7 @@ sub http(&) {
     close S;
     sysread C, $_, 8192, length until /\r?\n\r?\n$/;
     *STDOUT = C;
-    pr for &$f(/^GET (.*) HTTP\//, $_);
+    pr for &$f(uri_decode(/^GET (.*) HTTP\//), $_);
     exit;
   }
 }

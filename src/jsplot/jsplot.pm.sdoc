@@ -22,7 +22,8 @@ sub ni($) {
   syswrite PL, self;
 }
 
-sub ni_stream_data($$) {
-  print ws_header $_[0];
-  ni "$_[1] --http/wse";
+sub ni_stream_data($$@) {
+  my ($req, $opts, @fs) = @_;
+  print ws_header $req;
+  ni quote(@fs) . " $opts --http/wse";
 }

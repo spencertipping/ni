@@ -8,7 +8,7 @@ use constant wse_gen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die 'ni_http: failed to open fd 3';
-  print ws_encode $_ while sysread STDIN, $_, 8192;
+  print ws_encode $_ while <STDIN>;
 };
 
 deflong 'root', 'http/wse',

@@ -19,13 +19,14 @@ use constant perl_http_opgen => gen q{
   };
 };
 
+use constant http_prefix => join "\n", "BEGIN {$self{'core/deps/sha1.pl'}\n}",
+                                       $self{'core/http/http.pm'},
+                                       $self{'core/http/ws.pm'};
+
 sub ni_http_server {
   my ($body, @args) = grep defined, @_;
-  sh [qw/perl -/, @args],
-     stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
-                                                  $self{'core/http/http.pm'},
-                                                  $self{'core/http/ws.pm'}),
-                             body   => $body);
+  sh [qw/perl -/, @args], stdin => perl_httpgen->(prefix => http_prefix,
+                                                  body   => $body);
 }
 
 This HTTP server function is more for testing than anything especially
@@ -33,5 +34,5 @@ practical. However, the HTTP library is used to serve the JS plotting interface
 and stream the data over a websocket.
 
 deflong 'root', 'http/url',
-  pmap {ni_http_server perl_http_opgen->(body => $$_[2]), $$_[1]}
+  pmap {ni_http_server perl_http_opgen->(body => perl_prefix . "\n$$_[2]"), $$_[1]}
   seq mrc '^--http$', maybe pn(0, number, maybe ea), plcode;

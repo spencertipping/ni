@@ -16,7 +16,7 @@ ni_prepend_hd() { "$@"; cat <&3; }
 
 ni_pipe() { eval "$1" | eval "$2"; }
 
-ni_null() { cat > /dev/null; }
+ni_null() { perl -e '1 while sysread STDIN, $_, 8192'; }
 
 ni_seq() { perl -e \
   'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
@@ -24,6 +24,19 @@ ni_seq() { perl -e \
 ni_tee() { { perl -e 'open FH, ">&=3" or die $!;
                       while (sysread STDIN, $_, 8192) {print FH; print}' \
                | "$@"; } 3>&1; }
+
+ni_read() { while read f; do cat f; done; }
+ni_write() { cat > "$1"; echo "$1"; }
+
+ni_write_tempfile() {
+  ni_tempfile_prefix="${TMPDIR:-/tmp}/ni-$$-"
+  ni_tempfile_entropy=
+  while [ -e "$ni_tempfile_prefix-$ni_tempfile_entropy" ]; do
+    ni_tempfile_entropy="$(perl -e 'print join "", map chr(65 + rand 32), 0..12')"
+  done
+  cat > "$ni_tempfile_prefix-$ni_tempfile_entropy"
+  echo "$ni_tempfile_prefix-$ni_tempfile_entropy"
+}
 
 Pager handling.
 A wrapper around various programs to preview long streams of data. We might

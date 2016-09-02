@@ -26,6 +26,8 @@ sub ni_append  {sh ['ni_append', @_], prefix => stream_sh}
 sub ni_verb($) {sh ['ni_append_hd', 'cat'], stdin => $_[0],
                                             prefix => stream_sh}
 
+sub ni_write_tempfile {sh ['ni_write_tempfile'], prefix => stream_sh}
+
 TTY handling.
 Reset the default pipeline prefix/suffix depending on what ni is connected to.
 We don't want to interact with a terminal directly; we use less for output, and
@@ -63,7 +65,13 @@ Sinking.
 We can sink data into a file just as easily as we can read from it. This is
 done with the `>` operator, which is typically written as `\>`.
 
-defshort 'root', '>', pmap {sh 'tee', $_} filename;
+TODO: mixed-format reads; there's no good reason to think that each entry being
+read has the same encoding. This is a big refactor because it means we need to
+be able to send arbitrary portions of ni to the compiled process.
+
+defshort 'root', '>%', pmap {sh 'tee', $_} filename;
+defshort 'root', '>',  pmap {sh ['ni_write', $_], prefix => sh_prefix} filename;
+defshort 'root', '<', k sh ['ni_read'], prefix => sh_prefix;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`

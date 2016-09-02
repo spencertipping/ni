@@ -34,4 +34,7 @@ Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
-use constant filename => alt mrc '^file:(.+)', mr '^[^][]+';
+use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
+use constant tempfile => pmap {tmpdir . "/ni-$$-$_"} mr '^@(\w*)';
+
+use constant filename => alt mrc '^file:(.+)', tempfile, mr '^[^][]+';

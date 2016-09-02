@@ -4,7 +4,7 @@ We just encode text messages; no binary or other protocols are defined yet.
 c
 BEGIN {
   eval 'use Digest::SHA qw/sha1_base64/';
-  warn 'ni_http: no websocket support due to missing Digest::SHA' if $@;
+  Digest::SHA::PurePerl->import(qw/sha1_base64/) if $@;
 }
 
 use constant ws_guid => '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
