@@ -1736,7 +1736,7 @@ http.pm.sdoc
 ws.pm.sdoc
 http.pl.sdoc
 ws.pl.sdoc
-40 core/http/http.pm.sdoc
+44 core/http/http.pm.sdoc
 HTTP server.
 A very simple HTTP server that can be used to serve a stream's contents. The
 server is defined solely in terms of a function that takes a URL and returns
@@ -1772,9 +1772,13 @@ sub http_reply($$%) {
 sub http(&) {
   my ($f) = @_;
   for (; $_ = '', accept C, S; close C) {
-    sysread C, $_, 8192, length until /\n\r?\n\r?$/;
+    1 while 0 < waitpid -1, WNOHANG;
+    next if fork;
+    close S;
+    sysread C, $_, 8192, length until /\r?\n\r?\n$/;
     *STDOUT = C;
     pr for &$f(/^GET (.*) HTTP\//, $_);
+    exit;
   }
 }
 31 core/http/ws.pm.sdoc
@@ -2000,7 +2004,7 @@ ws.onmessage = function (e) {
 };
 
 });
-38 core/jsplot/jsplot.pm.sdoc
+28 core/jsplot/jsplot.pm.sdoc
 JSPlot data streaming functions.
 This ends up being called from the quoted code block in jsplot.pl.sdoc. This is
 the websocket connection that ni uses to stream data to the client. The
@@ -2013,16 +2017,7 @@ sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            : $_,
                      map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
 
-sub sigchld {
-  local $!;
-  1 while waitpid -1, WNOHANG;
-  $SIG{CHLD} = \&sigchld;
-}
-$SIG{CHLD} = \&sigchld;
-
 sub ni($) {
-  my $pid;
-  close STDOUT and return $pid if $pid = fork;
   if (1 != fileno STDOUT) {
     POSIX::close 1;
     dup2 fileno(STDOUT), 1 or die "ni_jsplot: failed to dup to stdout: $!";
@@ -2032,7 +2027,6 @@ sub ni($) {
   my $process = "perl - $_[0]";
   open PL, "| $process" or die "ni_jsplot: failed to open | $process: $!";
   syswrite PL, self;
-  exit;
 }
 
 sub ni_stream_data($$) {

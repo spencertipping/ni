@@ -33,8 +33,12 @@ sub http_reply($$%) {
 sub http(&) {
   my ($f) = @_;
   for (; $_ = '', accept C, S; close C) {
-    sysread C, $_, 8192, length until /\n\r?\n\r?$/;
+    1 while 0 < waitpid -1, WNOHANG;
+    next if fork;
+    close S;
+    sysread C, $_, 8192, length until /\r?\n\r?\n$/;
     *STDOUT = C;
     pr for &$f(/^GET (.*) HTTP\//, $_);
+    exit;
   }
 }
