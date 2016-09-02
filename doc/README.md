@@ -16,6 +16,7 @@ $ ni //help/stream                      # view a help topic
 - [row.md](row.md)       (`ni //help/row`):    row-level operators
 - [col.md](col.md)       (`ni //help/col`):    column-level operators
 - [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
+- [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
 - [facet.md](facet.md)   (`ni //help/facet`):  the faceting operator
 
