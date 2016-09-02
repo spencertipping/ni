@@ -3,7 +3,7 @@ JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
 JSPlot driver buffers the data to disk to make it repeatable.
 
-use constant jsplot_gen => gen pydent <<'EOF';
+use constant jsplot_gen => gen <<'EOF';
 <!doctype html>
 <html>
 <head>
@@ -12,8 +12,30 @@ use constant jsplot_gen => gen pydent <<'EOF';
 <script src='https://code.jquery.com/jquery.min.js'></script>
 <script>%js</script>
 </head>
-<body></body>
+<body>
+<canvas id='c'></canvas>
+</body>
 </html>
 EOF
 
+use constant jsplot_html => jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
+                                         js  => $self{'core/jsplot/jsplot.js'});
 
+use constant jsplot_server_gen => gen q{
+  use constant self => %self_hd
+  %prefix
+  print "http://localhost:$port/";
+  close STDOUT;
+  use constant html => q{%html};
+  http {
+    my ($url, $req) = @_;
+    http_reply 200, html if $url eq '/';
+    ni_stream_data $req, $1 if $url =~ /^\/ni\/(.*)/;
+    http_reply 404, $url;
+  };
+};
+
+defplotalt 'j',
+  k ni_http_server jsplot_server_gen->(prefix  => $self{'core/jsplot/jsplot.pm'},
+                                       self_hd => heredoc_wrap(image, ';'),
+                                       html    => jsplot_html);

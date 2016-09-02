@@ -2,8 +2,8 @@ Gnuplot interop.
 An operator that tees output to a gnuplot process.
 
 defcontext 'gnuplot';
+defshort 'gnuplot', 'd', k 'plot "-" with dots';
 
 sub compile_gnuplot {sh ['ni_tee', qw/gnuplot -persist -e/, @_]}
 
-defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
-defshort 'gnuplot', 'd', k 'plot "-" with dots';
+defplotalt 'g', pmap {compile_gnuplot $_} context 'gnuplot/op';

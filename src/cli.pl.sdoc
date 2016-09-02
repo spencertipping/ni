@@ -171,5 +171,12 @@ sub defcontext($) {
 
 defcontext 'root';
 
-sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
-sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
+sub defshort($$$) {
+  die "ni: redefining existing short operator $_[1] (use rmshort first)"
+    if exists $contexts{$_[0]}{shorts}{$_[1]};
+  $contexts{$_[0]}{shorts}{$_[1]} = $_[2];
+}
+
+sub rmshort($) {delete $contexts{$_[0]}{shorts}{$_[1]}}
+
+sub deflong($$$) {unshift @{$contexts{$_[0]}{longs}}, $_[2]}

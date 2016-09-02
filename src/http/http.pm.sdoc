@@ -22,15 +22,19 @@ my ($port) = (@ARGV, 1024);
 
 listen S, SOMAXCONN or die "ni_http: listen() failed: $!";
 
-print "http://localhost:$port/\n";
-close STDOUT;
+sub http_reply($$%) {
+  my ($code, $body, %headers) = @_;
+  print "HTTP/1.1 $code NI\n";
+  print "$_: $headers{$_}\n" for sort keys %headers;
+  print "Content-Length: " . length($body) . "\n\n";
+  print $body;
+}
 
 sub http(&) {
   my ($f) = @_;
   for (; $_ = '', accept C, S; close C) {
     sysread C, $_, 8192, length until /\n\r?\n\r?$/;
     *STDOUT = C;
-    print "HTTP/1.1 200 OK\n\n";
-    pr for &$f(/^GET (.*) HTTP\//);
+    pr for &$f(/^GET (.*) HTTP\//, $_);
   }
 }

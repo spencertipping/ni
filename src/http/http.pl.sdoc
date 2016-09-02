@@ -7,14 +7,31 @@ use constant perl_httpgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni_http: failed to open fd 3: $!";
+  %body
+};
+
+use constant perl_http_opgen => gen q{
+  print "http://localhost:$port/\n";
+  close STDOUT;
   http {
+    print "HTTP/1.1 200 OK\n\n";
     %body
   };
 };
 
+sub ni_http_server {
+  my ($body, @args) = grep defined, @_;
+  sh [qw/perl -/, @args],
+     stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
+                                                  $self{'core/http/http.pm'},
+                                                  $self{'core/http/ws.pm'}),
+                             body   => $body);
+}
+
+This HTTP server function is more for testing than anything especially
+practical. However, the HTTP library is used to serve the JS plotting interface
+and stream the data over a websocket.
+
 deflong 'root', 'http/url',
-  pmap {sh [qw/perl -/, defined $$_[1] ? ($$_[1]) : ()],
-        stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
-                                                     $self{'core/http/http.pm'}),
-                                body   => $$_[2])}
+  pmap {ni_http_server perl_http_opgen->(body => $$_[2]), $$_[1]}
   seq mrc '^--http$', maybe pn(0, number, maybe ea), plcode;

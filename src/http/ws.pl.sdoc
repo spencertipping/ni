@@ -1,0 +1,16 @@
+WebSocket serialization.
+Converts an arbitrary data stream to a series of WebSocket messages. ni uses
+this to stream data into the client for JSPlot visualization. All data is sent
+as a "text" message.
+
+use constant ws_perl => $self{'core/http/ws.pm'};
+use constant wse_gen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die 'ni_http: failed to open fd 3';
+  print ws_encode $_ while sysread STDIN, $_, 8192;
+};
+
+deflong 'root', 'http/wse',
+  pmap {sh [qw/perl -/], stdin => wse_gen->(prefix => ws_perl)}
+  mrc '^--http/wse$';

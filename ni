@@ -27,8 +27,8 @@ sub ni::unsdoc
 eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
-  eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
-  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1}/eg, die $@ if $@ }
+  eval "package ni;$_[0]\n;1";
+  if ($@) {$@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg; die $@}}
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
@@ -69,8 +69,8 @@ sub ni::unsdoc
 eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
-  eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
-  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1}/eg, die $@ if $@ }
+  eval "package ni;$_[0]\n;1";
+  if ($@) {$@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg; die $@}}
 
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
@@ -81,7 +81,7 @@ push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
 __DATA__
-38 ni.map.sdoc
+39 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -115,6 +115,7 @@ lib core/sql
 lib core/java
 lib core/lisp
 lib core/http
+lib core/plot
 lib core/hadoop
 lib core/pyspark
 lib core/gnuplot
@@ -181,7 +182,7 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-175 cli.pl.sdoc
+182 cli.pl.sdoc
 Command-line option parser.
 A context-aware command line parser, which in a Canard-powered world works as
 the reader. Certain static symbols, despite being resolved at runtime, have
@@ -355,9 +356,16 @@ sub defcontext($) {
 
 defcontext 'root';
 
-sub defshort($$$) {$contexts{$_[0]}{shorts}{$_[1]} = $_[2]}
-sub deflong($$$)  {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
-103 sh.pl.sdoc
+sub defshort($$$) {
+  die "ni: redefining existing short operator $_[1] (use rmshort first)"
+    if exists $contexts{$_[0]}{shorts}{$_[1]};
+  $contexts{$_[0]}{shorts}{$_[1]} = $_[2];
+}
+
+sub rmshort($) {delete $contexts{$_[0]}{shorts}{$_[1]}}
+
+sub deflong($$$) {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
+104 sh.pl.sdoc
 Self-contained POSIX shell tasks.
 Compiling a shell pipeline is not entirely trivial for a couple of reasons. One
 is that we have to be parsimonious about argv lengths to avoid hitting the
@@ -431,7 +439,8 @@ sub sh {
   +{exec => $exec, %o};
 }
 
-sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub heredoc_for($)   {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub heredoc_wrap($$) {my $hd = heredoc_for $_[0]; "<<'$hd'$_[1]\n$_[0]\n$hd\n"}
 
 sub sh_prefix() {join "\n", @self{@sh_libs}}
 
@@ -461,7 +470,7 @@ sub pipeline {
                        join("\\\n| ", @cs),
                        @hs;
 }
-107 main.pl.sdoc
+109 main.pl.sdoc
 Main function.
 ni can be invoked as a stream processor, but it can also do some toplevel
 things besides. This main function knows how to handle these cases.
@@ -514,14 +523,16 @@ sub run_sh {
   } else {
     close $w;
     if (fileno $r == 3) {
-      defined(my $fd = dup fileno $r) or die "ni: failed to dup temp fd: $!";
+      my $fd = dup fileno $r;
+      defined $fd or die "ni: failed to dup temp fd " . fileno($r) . ": $!";
       close $r;
-      $r = $fd;
+      open $r, "<&=$fd" or die "ni: failed to open dup fd $fd: $!";
     }
     dup2 0, 3 or die "ni: failed to redirect stdin to shell: $!"
       unless -t STDIN;
     close STDIN;
-    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell: $!";
+    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell "
+                           . fileno($r) . " -> 0): $!";
     close $r;
 
     exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'
@@ -1720,10 +1731,12 @@ defshort 'root', 'l', pmap {lisp_sh lisp_mapgen->(prefix => lisp_prefix,
 defrowalt pmap {lisp_sh lisp_grepgen->(prefix => lisp_prefix,
                                        body   => $_)}
           pn 1, mr '^l', lispcode;
-2 core/http/lib
+4 core/http/lib
 http.pm.sdoc
+ws.pm.sdoc
 http.pl.sdoc
-36 core/http/http.pm.sdoc
+ws.pl.sdoc
+40 core/http/http.pm.sdoc
 HTTP server.
 A very simple HTTP server that can be used to serve a stream's contents. The
 server is defined solely in terms of a function that takes a URL and returns
@@ -1748,19 +1761,55 @@ my ($port) = (@ARGV, 1024);
 
 listen S, SOMAXCONN or die "ni_http: listen() failed: $!";
 
-print "http://localhost:$port/\n";
-close STDOUT;
+sub http_reply($$%) {
+  my ($code, $body, %headers) = @_;
+  print "HTTP/1.1 $code NI\n";
+  print "$_: $headers{$_}\n" for sort keys %headers;
+  print "Content-Length: " . length($body) . "\n\n";
+  print $body;
+}
 
 sub http(&) {
   my ($f) = @_;
   for (; $_ = '', accept C, S; close C) {
     sysread C, $_, 8192, length until /\n\r?\n\r?$/;
     *STDOUT = C;
-    print "HTTP/1.1 200 OK\n\n";
-    pr for &$f(/^GET (.*) HTTP\//);
+    pr for &$f(/^GET (.*) HTTP\//, $_);
   }
 }
-20 core/http/http.pl.sdoc
+31 core/http/ws.pm.sdoc
+WebSocket encoding functions.
+We just encode text messages; no binary or other protocols are defined yet.
+
+c
+BEGIN {
+  eval 'use Digest::SHA qw/sha1_base64/';
+  warn 'ni_http: no websocket support due to missing Digest::SHA' if $@;
+}
+
+use constant ws_guid => '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+sub ws_header($) {
+  my ($client_key) = $_[0] =~ /Sec-WebSocket-Key:\s*(\S+)/i;
+  my ($protocol)   = $_[0] =~ /Sec-WebSocket-Protocol:\s*(\S+)/i;
+  my $hash = sha1_base64 $client_key . ws_guid;
+  join "\n", "HTTP/1.1 101 Switching Protocols",
+             "Upgrade: websocket",
+             "Connection: upgrade",
+             "Sec-WebSocket-Accept: $hash=",
+             "Sec-WebSocket-Protocol: $protocol",
+             '', '';
+}
+
+sub ws_length_encode($) {
+  my ($n) = @_;
+  return pack 'C',        $n if $n < 126;
+  return pack 'Cn',  126, $n if $n < 65536;
+  return pack 'CNN', 127, $n >> 32, $n;
+}
+
+sub ws_encode($) {"\x81" . ws_length_encode(length $_[0]) . $_[0]}
+37 core/http/http.pl.sdoc
 HTTP server.
 A trivial server that gets to decide what to do with the input stream. This
 blocks stream processing until a request comes in, at which point the function
@@ -1770,17 +1819,63 @@ use constant perl_httpgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni_http: failed to open fd 3: $!";
+  %body
+};
+
+use constant perl_http_opgen => gen q{
+  print "http://localhost:$port/\n";
+  close STDOUT;
   http {
+    print "HTTP/1.1 200 OK\n\n";
     %body
   };
 };
 
+sub ni_http_server {
+  my ($body, @args) = grep defined, @_;
+  sh [qw/perl -/, @args],
+     stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
+                                                  $self{'core/http/http.pm'},
+                                                  $self{'core/http/ws.pm'}),
+                             body   => $body);
+}
+
+This HTTP server function is more for testing than anything especially
+practical. However, the HTTP library is used to serve the JS plotting interface
+and stream the data over a websocket.
+
 deflong 'root', 'http/url',
-  pmap {sh [qw/perl -/, defined $$_[1] ? ($$_[1]) : ()],
-        stdin => perl_httpgen->(prefix => join("\n", perl_prefix,
-                                                     $self{'core/http/http.pm'}),
-                                body   => $$_[2])}
+  pmap {ni_http_server perl_http_opgen->(body => $$_[2]), $$_[1]}
   seq mrc '^--http$', maybe pn(0, number, maybe ea), plcode;
+16 core/http/ws.pl.sdoc
+WebSocket serialization.
+Converts an arbitrary data stream to a series of WebSocket messages. ni uses
+this to stream data into the client for JSPlot visualization. All data is sent
+as a "text" message.
+
+use constant ws_perl => $self{'core/http/ws.pm'};
+use constant wse_gen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die 'ni_http: failed to open fd 3';
+  print ws_encode $_ while sysread STDIN, $_, 8192;
+};
+
+deflong 'root', 'http/wse',
+  pmap {sh [qw/perl -/], stdin => wse_gen->(prefix => ws_perl)}
+  mrc '^--http/wse$';
+1 core/plot/lib
+plot.pl.sdoc
+9 core/plot/plot.pl.sdoc
+Plot operator.
+This delegates to other operators using a chalt. The mnemonic is "v" for
+"visualize."
+
+our %plot_chalt;
+
+defshort 'root', 'v', chaltr %plot_chalt;
+
+sub defplotalt($$) {$plot_chalt{$_[0]} = $_[1]}
 1 core/hadoop/lib
 hadoop.pl.sdoc
 2 core/hadoop/hadoop.pl.sdoc
@@ -1857,25 +1952,100 @@ Gnuplot interop.
 An operator that tees output to a gnuplot process.
 
 defcontext 'gnuplot';
+defshort 'gnuplot', 'd', k 'plot "-" with dots';
 
 sub compile_gnuplot {sh ['ni_tee', qw/gnuplot -persist -e/, @_]}
 
-defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
-defshort 'gnuplot', 'd', k 'plot "-" with dots';
-2 core/jsplot/lib
+defplotalt 'g', pmap {compile_gnuplot $_} context 'gnuplot/op';
+4 core/jsplot/lib
+jsplot.css.sdoc
 jsplot.js.sdoc
+jsplot.pm.sdoc
 jsplot.pl.sdoc
-3 core/jsplot/jsplot.js.sdoc
+1 core/jsplot/jsplot.css.sdoc
+body {margin: 0; color: #111; font-family: sans-serif; overflow: hidden}
+35 core/jsplot/jsplot.js.sdoc
 JSPlot.
+A plotting library that allows you to live-transform the data, and that
+supports incremental rendering in not much space.
 
-alert('hi');
-19 core/jsplot/jsplot.pl.sdoc
+$(function () {
+var w  = $(window);
+var c  = $('#c');
+var cx = c[0].getContext('2d');
+var wwl, whl;
+setInterval(function () {
+  var ww = w.width(), wh = w.height();
+  if (ww !== wwl || wh !== whl) c.attr({width: wwl = ww, height: whl = wh});
+}, 50);
+
+View coordinates.
+vr = view rotation, vp = view position, vs = view scaling. Everything is done
+in 3D whether we're looking at 2D or 3D data.
+
+var vr = [0, 0, 0];
+var vp = [0, 0, 0];
+var vs = [0, 0, 0];
+
+AJAX data requests.
+Data comes down in small pieces and is rendered as it arrives. We do this for
+two reasons: first, to decrease view latency; and second, to run in constant
+space. (The client does store some data, but there's an upper bound on how
+much.)
+
+var ws_url = document.location.href.replace(/^http:/, 'ws:') + 'ni/';
+var ws = new WebSocket(ws_url + 'n:100', 'foo');
+ws.onmessage = function (e) {
+  console.log(e.data);
+};
+
+});
+38 core/jsplot/jsplot.pm.sdoc
+JSPlot data streaming functions.
+This ends up being called from the quoted code block in jsplot.pl.sdoc. This is
+the websocket connection that ni uses to stream data to the client. The
+template defines a constant called 'self' that contains the ni image.
+
+use POSIX qw/dup2 :sys_wait_h/;
+
+sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                           ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                           : $_,
+                     map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
+
+sub sigchld {
+  local $!;
+  1 while waitpid -1, WNOHANG;
+  $SIG{CHLD} = \&sigchld;
+}
+$SIG{CHLD} = \&sigchld;
+
+sub ni($) {
+  my $pid;
+  close STDOUT and return $pid if $pid = fork;
+  if (1 != fileno STDOUT) {
+    POSIX::close 1;
+    dup2 fileno(STDOUT), 1 or die "ni_jsplot: failed to dup to stdout: $!";
+    close STDOUT;
+  }
+
+  my $process = "perl - $_[0]";
+  open PL, "| $process" or die "ni_jsplot: failed to open | $process: $!";
+  syswrite PL, self;
+  exit;
+}
+
+sub ni_stream_data($$) {
+  print ws_header $_[0];
+  ni "$_[1] --http/wse";
+}
+41 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
 JSPlot driver buffers the data to disk to make it repeatable.
 
-use constant jsplot_gen => gen pydent <<'EOF';
+use constant jsplot_gen => gen <<'EOF';
 <!doctype html>
 <html>
 <head>
@@ -1884,11 +2054,33 @@ use constant jsplot_gen => gen pydent <<'EOF';
 <script src='https://code.jquery.com/jquery.min.js'></script>
 <script>%js</script>
 </head>
-<body></body>
+<body>
+<canvas id='c'></canvas>
+</body>
 </html>
 EOF
 
+use constant jsplot_html => jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
+                                         js  => $self{'core/jsplot/jsplot.js'});
 
+use constant jsplot_server_gen => gen q{
+  use constant self => %self_hd
+  %prefix
+  print "http://localhost:$port/";
+  close STDOUT;
+  use constant html => q{%html};
+  http {
+    my ($url, $req) = @_;
+    http_reply 200, html if $url eq '/';
+    ni_stream_data $req, $1 if $url =~ /^\/ni\/(.*)/;
+    http_reply 404, $url;
+  };
+};
+
+defplotalt 'j',
+  k ni_http_server jsplot_server_gen->(prefix  => $self{'core/jsplot/jsplot.pm'},
+                                       self_hd => heredoc_wrap(image, ';'),
+                                       html    => jsplot_html);
 13 doc/lib
 col.md
 examples.md

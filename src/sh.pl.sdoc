@@ -71,7 +71,8 @@ sub sh {
   +{exec => $exec, %o};
 }
 
-sub heredoc_for {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub heredoc_for($)   {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub heredoc_wrap($$) {my $hd = heredoc_for $_[0]; "<<'$hd'$_[1]\n$_[0]\n$hd\n"}
 
 sub sh_prefix() {join "\n", @self{@sh_libs}}
 

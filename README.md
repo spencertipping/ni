@@ -10,10 +10,15 @@ online. All of the examples are unit tests, so they should work as advertised;
 if they don't, it's likely a system-specific issue and you should definitely
 open an issue so I can resolve it.
 
+ni is designed to be extremely portable: it depends only on Perl v5.8.8 or
+later, and on POSIX.2001-specified shell utilities like `/bin/sort`. In
+practice it means that ni should work out of the box on any system up to a
+decade old (and quite possibly older).
+
 ## APL, really?
-Not really, but conceptually similar. ni is optimized to require as few
-characters as possible; for example, the ubiquitous word count, sorting by
-descending word frequency:
+Not literally, but in concept. ni uses a concatenative array language optimized
+for brevity and streaming larger-than-memory data. For example, the ubiquitous
+big-data word count sorted by descending frequency:
 
 ```sh
 $ ni README.md FWpF_ CO         # run on POSIX tools locally

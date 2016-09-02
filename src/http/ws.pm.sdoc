@@ -1,0 +1,31 @@
+WebSocket encoding functions.
+We just encode text messages; no binary or other protocols are defined yet.
+
+c
+BEGIN {
+  eval 'use Digest::SHA qw/sha1_base64/';
+  warn 'ni_http: no websocket support due to missing Digest::SHA' if $@;
+}
+
+use constant ws_guid => '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+sub ws_header($) {
+  my ($client_key) = $_[0] =~ /Sec-WebSocket-Key:\s*(\S+)/i;
+  my ($protocol)   = $_[0] =~ /Sec-WebSocket-Protocol:\s*(\S+)/i;
+  my $hash = sha1_base64 $client_key . ws_guid;
+  join "\n", "HTTP/1.1 101 Switching Protocols",
+             "Upgrade: websocket",
+             "Connection: upgrade",
+             "Sec-WebSocket-Accept: $hash=",
+             "Sec-WebSocket-Protocol: $protocol",
+             '', '';
+}
+
+sub ws_length_encode($) {
+  my ($n) = @_;
+  return pack 'C',        $n if $n < 126;
+  return pack 'Cn',  126, $n if $n < 65536;
+  return pack 'CNN', 127, $n >> 32, $n;
+}
+
+sub ws_encode($) {"\x81" . ws_length_encode(length $_[0]) . $_[0]}

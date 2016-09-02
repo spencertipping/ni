@@ -29,8 +29,8 @@ sub ni::unsdoc
 eval($ni::self{'boot/self'} = q{
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
-  eval "package ni;$_[0]\n;1" or die "$@ evaluating $_[1]";
-  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1}/eg, die $@ if $@ }
+  eval "package ni;$_[0]\n;1";
+  if ($@) {$@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg; die $@}}
 
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);

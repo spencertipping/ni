@@ -50,14 +50,16 @@ sub run_sh {
   } else {
     close $w;
     if (fileno $r == 3) {
-      defined(my $fd = dup fileno $r) or die "ni: failed to dup temp fd: $!";
+      my $fd = dup fileno $r;
+      defined $fd or die "ni: failed to dup temp fd " . fileno($r) . ": $!";
       close $r;
-      $r = $fd;
+      open $r, "<&=$fd" or die "ni: failed to open dup fd $fd: $!";
     }
     dup2 0, 3 or die "ni: failed to redirect stdin to shell: $!"
       unless -t STDIN;
     close STDIN;
-    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell: $!";
+    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell "
+                           . fileno($r) . " -> 0): $!";
     close $r;
 
     exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'

@@ -1,3 +1,35 @@
 JSPlot.
+A plotting library that allows you to live-transform the data, and that
+supports incremental rendering in not much space.
 
-alert('hi');
+$(function () {
+var w  = $(window);
+var c  = $('#c');
+var cx = c[0].getContext('2d');
+var wwl, whl;
+setInterval(function () {
+  var ww = w.width(), wh = w.height();
+  if (ww !== wwl || wh !== whl) c.attr({width: wwl = ww, height: whl = wh});
+}, 50);
+
+View coordinates.
+vr = view rotation, vp = view position, vs = view scaling. Everything is done
+in 3D whether we're looking at 2D or 3D data.
+
+var vr = [0, 0, 0];
+var vp = [0, 0, 0];
+var vs = [0, 0, 0];
+
+AJAX data requests.
+Data comes down in small pieces and is rendered as it arrives. We do this for
+two reasons: first, to decrease view latency; and second, to run in constant
+space. (The client does store some data, but there's an upper bound on how
+much.)
+
+var ws_url = document.location.href.replace(/^http:/, 'ws:') + 'ni/';
+var ws = new WebSocket(ws_url + 'n:100', 'foo');
+ws.onmessage = function (e) {
+  console.log(e.data);
+};
+
+});
