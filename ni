@@ -81,7 +81,7 @@ push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
 __DATA__
-37 ni.map.sdoc
+38 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -118,6 +118,7 @@ lib core/http
 lib core/hadoop
 lib core/pyspark
 lib core/gnuplot
+lib core/jsplot
 lib doc
 17 util.pl.sdoc
 Utility functions.
@@ -1861,6 +1862,33 @@ sub compile_gnuplot {sh ['ni_tee', qw/gnuplot -persist -e/, @_]}
 
 defshort 'root', 'P', pmap {compile_gnuplot $_} context 'gnuplot/op';
 defshort 'gnuplot', 'd', k 'plot "-" with dots';
+2 core/jsplot/lib
+jsplot.js.sdoc
+jsplot.pl.sdoc
+3 core/jsplot/jsplot.js.sdoc
+JSPlot.
+
+alert('hi');
+19 core/jsplot/jsplot.pl.sdoc
+JSPlot interop.
+JSPlot is served over HTTP as a portable web interface. It requests data via
+AJAX, and may request the same data multiple times to save browser memory. The
+JSPlot driver buffers the data to disk to make it repeatable.
+
+use constant jsplot_gen => gen pydent <<'EOF';
+<!doctype html>
+<html>
+<head>
+<title>ni/jsplot</title>
+<style>%css</style>
+<script src='https://code.jquery.com/jquery.min.js'></script>
+<script>%js</script>
+</head>
+<body></body>
+</html>
+EOF
+
+
 13 doc/lib
 col.md
 examples.md

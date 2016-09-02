@@ -1,0 +1,19 @@
+JSPlot interop.
+JSPlot is served over HTTP as a portable web interface. It requests data via
+AJAX, and may request the same data multiple times to save browser memory. The
+JSPlot driver buffers the data to disk to make it repeatable.
+
+use constant jsplot_gen => gen pydent <<'EOF';
+<!doctype html>
+<html>
+<head>
+<title>ni/jsplot</title>
+<style>%css</style>
+<script src='https://code.jquery.com/jquery.min.js'></script>
+<script>%js</script>
+</head>
+<body></body>
+</html>
+EOF
+
+

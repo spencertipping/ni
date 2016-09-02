@@ -29,6 +29,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/hadoop
 ./ni --internal/lib core/pyspark
 ./ni --internal/lib core/gnuplot
+./ni --internal/lib core/jsplot
 
 ./ni --internal/lib doc
 
