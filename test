@@ -3,6 +3,7 @@ cd $(dirname $0)
 
 envs=( alpine
        centos-5
+       centos-6
        debian-wheezy
        ubuntu-12.04
        ubuntu-14.04
