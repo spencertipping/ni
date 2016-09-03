@@ -7,6 +7,8 @@ use strict;
 use warnings;
 use POSIX qw/:sys_wait_h dup2/;
 
+$|++;
+
 my $w = undef;
 my $r = undef;
 
