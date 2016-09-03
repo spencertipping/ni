@@ -1,0 +1,2 @@
+#!/bin/sh
+seq 10000 | sort | sort -n | sort | sort -n | sort | more

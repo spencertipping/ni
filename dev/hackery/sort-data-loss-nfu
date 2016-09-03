@@ -1,0 +1,8 @@
+#!/bin/bash
+# nfu's sorting operators lose data with certain combinations of operators on
+# older versions of Perl, e.g. the one with ubuntu 12.04.
+#
+# The command below should output 100000, but in data-loss cases will print a
+# much lower value instead (I got 520 last time I tried it).
+
+./nfu n:100000 -gcgc | wc -l

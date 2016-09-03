@@ -1,0 +1,48 @@
+#!/usr/bin/env perl
+# See sort-data-loss-nfu for a discussion of what's going on here. Basically,
+# I'm isolating the cause of data loss and trying to get a stable setup
+# involving fork/exec from perl.
+
+use strict;
+use warnings;
+use POSIX qw/:sys_wait_h dup2/;
+
+my $w = undef;
+my $r = undef;
+
+sub thing(&) {
+  my ($f) = @_;
+  if (defined $r) {
+    if (0 != fileno $r) {
+      dup2 fileno $r, 0 or die "dup2 stdin failed: $!";
+      close $r;
+    }
+    open STDIN, "<&=0" or die "failed to open STDIN: $!";
+  }
+  pipe $r, $w or die "failed to pipe: $!";
+  printf STDERR "(%d, %d)\n", fileno $r, fileno $w;
+  unless (fork) {
+    close STDOUT;
+    dup2 fileno $w, 1 or die "dup2 stdout failed: $!";
+    close $w;
+    open STDOUT, ">&=1" or die "failed to open STDOUT: $!";
+    &$f();
+    exit;
+  }
+  close $w;
+}
+
+close STDIN;
+thing {print "$_\n" for 1..100000};
+thing {exec "sort" or die "exec failed: $!"};
+thing {print "1\t$_" while <STDIN>};
+thing {exec "sort" or die "exec failed: $!"};
+thing {print "1\t$_" while <STDIN>};
+
+close $w;
+if (fileno $r != 0) {
+  dup2 fileno $r, 0;
+  close $r;
+}
+
+exec 'wc -l';
