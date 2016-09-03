@@ -6,3 +6,4 @@
 # much lower value instead (I got 520 last time I tried it).
 
 ./nfu n:100000 -gcgc | wc -l
+./nfu-nosigchld n:100000 -gcgc | wc -l
