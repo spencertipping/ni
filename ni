@@ -271,7 +271,7 @@ sub chaltr(\%) {my ($ps) = @_;
                   return (@ys = $$ps{$c}(substr($x, $l), @xs))
                     ? ($ys[0], @ys[1..$#ys])
                     : ()
-                  if exists $$ps{$c = substr $x, 0, $l};
+                  if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
                 }
                 ()}}
 
@@ -4088,7 +4088,7 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-238 doc/stream.md
+244 doc/stream.md
 # Stream operations
 Streams are made of text, and ni can do a few different things with them. The
 simplest involve stuff that bash utilities already handle (though more
@@ -4189,21 +4189,27 @@ operators like sorting.
 You can write a file in two ways. One is, of course, using shell redirection:
 
 ```bash
-$ ni n:3 >file
+$ ni n:3 >file                  # nothing goes to the terminal
 $ ni file
 1
 2
 3
 ```
 
-The other way is to copy the stream to a file:
+The other way is to use one of ni's two file-writing operators:
 
 ```bash
-$ ni n:3 \>file2
+$ ni n:3 \>file2                # writes the filename to the terminal
+file2
+$ ni file2
 1
 2
 3
-$ ni file2
+$ ni n:3 \>%file3               # duplicates output
+1
+2
+3
+$ ni file3
 1
 2
 3

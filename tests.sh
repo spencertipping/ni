@@ -166,7 +166,7 @@ lazytest_case 'ni n:3O       # NOTE: capital O, not zero; more typical reverse n
 2
 1
 LAZYTEST_EOF
-lazytest_case 'ni n:3 >file
+lazytest_case 'ni n:3 >file                  # nothing goes to the terminal
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_case 'ni file
@@ -175,13 +175,23 @@ lazytest_case 'ni file
 2
 3
 LAZYTEST_EOF
-lazytest_case 'ni n:3 \>file2
+lazytest_case 'ni n:3 \>file2                # writes the filename to the terminal
+' 3<<'LAZYTEST_EOF'
+file2
+LAZYTEST_EOF
+lazytest_case 'ni file2
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
-lazytest_case 'ni file2
+lazytest_case 'ni n:3 \>%file3               # duplicates output
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+LAZYTEST_EOF
+lazytest_case 'ni file3
 ' 3<<'LAZYTEST_EOF'
 1
 2

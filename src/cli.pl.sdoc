@@ -85,7 +85,7 @@ sub chaltr(\%) {my ($ps) = @_;
                   return (@ys = $$ps{$c}(substr($x, $l), @xs))
                     ? ($ys[0], @ys[1..$#ys])
                     : ()
-                  if exists $$ps{$c = substr $x, 0, $l};
+                  if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
                 }
                 ()}}
 

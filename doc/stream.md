@@ -98,21 +98,27 @@ operators like sorting.
 You can write a file in two ways. One is, of course, using shell redirection:
 
 ```bash
-$ ni n:3 >file
+$ ni n:3 >file                  # nothing goes to the terminal
 $ ni file
 1
 2
 3
 ```
 
-The other way is to copy the stream to a file:
+The other way is to use one of ni's two file-writing operators:
 
 ```bash
-$ ni n:3 \>file2
+$ ni n:3 \>file2                # writes the filename to the terminal
+file2
+$ ni file2
 1
 2
 3
-$ ni file2
+$ ni n:3 \>%file3               # duplicates output
+1
+2
+3
+$ ni file3
 1
 2
 3
