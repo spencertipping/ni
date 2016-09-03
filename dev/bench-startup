@@ -1,0 +1,12 @@
+#!/bin/bash
+r=${1:-100}
+ni < /dev/null > /dev/null
+date > /dev/null
+
+start=$(date +%s%N)
+for i in `seq $r`; do
+  ni < /dev/null > /dev/null
+done
+end=$(date +%s%N)
+
+echo -e "ni_startup\t$(( (end - start) / 1000000 / r ))\tms"

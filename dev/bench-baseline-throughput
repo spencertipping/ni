@@ -1,0 +1,35 @@
+#!/bin/bash
+date > /dev/null
+ni < /dev/null > /dev/null
+cat < /dev/null > /dev/null
+dd < /dev/null > /dev/null
+
+ta=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..8192' \
+| pv | cat > /dev/null
+
+tb=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..8192' \
+| pv | dd > /dev/null
+
+tc=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..8192' \
+| pv | ni > /dev/null
+
+td=$(date +%s%N)
+
+echo -e "cat_8G\t$(((tb - ta) / 1000000))\tms"
+echo -e "dd_8G\t$(((tc - tb) / 1000000))\tms"
+echo -e "ni_8G\t$(((td - tc) / 1000000))\tms"
