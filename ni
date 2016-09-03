@@ -659,7 +659,7 @@ ni_tee() { { perl -e 'open FH, ">&=3" or die $!;
                       while (sysread STDIN, $_, 8192) {print FH; print}' \
                | "$@"; } 3>&1; }
 
-ni_read() { while read f; do cat f; done; }
+ni_read() { while read f; do cat "$f"; done; }
 ni_write() { cat > "$1"; echo "$1"; }
 
 ni_write_tempfile() {
