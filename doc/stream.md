@@ -120,6 +120,17 @@ $ ni file3
 3
 ```
 
+The `<` operator inverts `>` by reading files; it's conceptually equivalent to
+`xargs cat`:
+
+```bash
+$ ni n:4 \>file3 \<
+1
+2
+3
+4
+```
+
 If you want to write a compressed file, you can use the `Z` operator:
 
 ```bash

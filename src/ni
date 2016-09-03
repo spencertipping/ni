@@ -39,7 +39,7 @@ sub ni::eval($$)
 
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
-  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
+  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc$/;
   ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1

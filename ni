@@ -39,7 +39,7 @@ sub ni::eval($$)
 
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
-  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
+  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc$/;
   ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
@@ -4053,7 +4053,7 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-240 doc/stream.md
+251 doc/stream.md
 # Stream operations
 ```bash
 $ echo test > foo
@@ -4174,6 +4174,17 @@ $ ni file3
 1
 2
 3
+```
+
+The `<` operator inverts `>` by reading files; it's conceptually equivalent to
+`xargs cat`:
+
+```bash
+$ ni n:4 \>file3 \<
+1
+2
+3
+4
 ```
 
 If you want to write a compressed file, you can use the `Z` operator:
