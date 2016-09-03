@@ -3005,7 +3005,7 @@ body {margin: 0; color: #eee; background: #111; font-family: sans-serif;
     color:#eee; font-family:monospace; border:none; outline:none;
     position:absolute; left:8px; top:8px }
 #i:focus {opacity: 1}
-70 core/jsplot/jsplot.js.sdoc
+72 core/jsplot/jsplot.js.sdoc
 JSPlot.
 A plotting library that allows you to live-transform the data, and that
 supports incremental rendering in not much space.
@@ -3067,10 +3067,12 @@ var collect_point = function (p) {
 };
 
 setInterval(function () {
+  var i = 0, t = +new Date();
   cx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  for (var i = 0; i < buffer.length; ++i)
-    cx.fillRect(+buffer[i][0] + wwl/2, +buffer[i][1] + whl/2, 1, 1);
-  buffer = [];
+  for (; +new Date() < t + 50 && i < buffer.length; ++i)
+    if      (buffer[i].length === 1) cx.fillRect(i, whl/2 - +buffer[i][0], 1, 1);
+    else if (buffer[i].length === 2) cx.fillRect(+buffer[i][0] + wwl/2, whl/2 - +buffer[i][1], 1, 1);
+  buffer.splice(0, i);
 }, 50);
 
 refresh();
