@@ -26,7 +26,7 @@ case $c in
     echo
     echo "BUILDING $e"
     echo
-    docker build -f $e .
+    docker build -f env/$e .
   done
   ;;
 
