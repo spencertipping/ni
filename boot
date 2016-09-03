@@ -28,12 +28,6 @@ resource() {
   cd ..
 }
 
-unquote() {
-  for f; do
-    cat "gen/$f"
-  done
-}
-
 lib() {
   for l; do
     resource $l/lib
@@ -41,6 +35,10 @@ lib() {
       resource $l/$f
     done
   done
+}
+
+bootcode() {
+  cat src/ni
 }
 
 # SDoc-process all source files into corresponding entries in gen/. ni includes

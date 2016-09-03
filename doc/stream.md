@@ -1,8 +1,4 @@
 # Stream operations
-Streams are made of text, and ni can do a few different things with them. The
-simplest involve stuff that bash utilities already handle (though more
-verbosely):
-
 ```bash
 $ echo test > foo
 $ ni foo

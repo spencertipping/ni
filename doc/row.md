@@ -163,19 +163,19 @@ $ ni word-list cr10             # unsorted count
 1	perl
 1	
 1	ni
-1	https
-1	github
-1	com
-1	spencertipping
+1	self
+1	license
+1	_
+1	ni
 $ ni word-list Cr10             # sort first to group words
-41	0
-8	006_000
-1	1
+14	0
+8	1
 9	2
 2	2016
-2	3
-1	43
+1	3
+1	39
 1	5
-2	A
-3	ACTION
+1	A
+2	ACTION
+1	AN
 ```

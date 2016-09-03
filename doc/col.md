@@ -110,34 +110,34 @@ daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```bash
 $ ni //ni r3                            # some data
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
 ```
 
 ```bash
 $ ni //ni r3F/\\//                      # split on forward slashes
 #!	usr	bin	env perl
-# ni: https:		github.com	spencertipping	ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https:		github.com	spencertipping	ni
 ```
 
 ```bash
 $ ni //ni r3FW                          # split on non-words
 	usr	bin	env	perl
-	ni	https	github	com	spencertipping	ni
-	Copyright	c	2016	Spencer	Tipping
+	ni	self	license	_	
+ni	https	github	com	spencertipping	ni
 ```
 
 ```bash
 $ ni //ni r3FS                          # split on whitespace
 #!/usr/bin/env	perl
-#	ni:	https://github.com/spencertipping/ni
-#	Copyright	(c)	2016	Spencer	Tipping
+$ni::self{license}	=	<<'_';
+ni:	https://github.com/spencertipping/ni
 ```
 
 ```bash
 $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
-/github	/spencertipping	/ni
 
+/github	/spencertipping	/ni
 ```

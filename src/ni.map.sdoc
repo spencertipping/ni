@@ -7,8 +7,7 @@ Note that these are just the entries for the core image. ni modifies itself
 during the build process to include more extensions, each of which lives in a
 subdirectory of src/.
 
-unquote ni
-resource ni.sdoc
+bootcode
 resource ni.map.sdoc
 
 resource util.pl.sdoc

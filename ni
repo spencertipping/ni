@@ -1,87 +1,54 @@
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni
-# Copyright (c) 2016 Spencer Tipping
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-use 5.006_000;
-BEGIN {
-eval($ni::self{'boot/sdoc'} = q{
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
+Copyright (c) 2016 Spencer Tipping | MIT license
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+_
+eval($ni::self{ni} = <<'_');
+sub ni::boot_header
+{ join "\n", '#!/usr/bin/env perl',
+             "\$ni::self{license} = <<'_';\n$ni::self{license}_",
+             "eval(\$ni::self{ni} = <<'_');\n$ni::self{ni}_",
+             "die \$@ if \$@",
+             "__DATA__" }
+
 sub ni::unsdoc
-{join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0]}});
-eval($ni::self{'boot/self'} = q{
+{ join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0] }
+
 sub ni::eval($$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
   eval "package ni;$_[0]\n;1";
-  if ($@) {$@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg; die $@}}
-sub ni::set
-{ chomp($ni::self{$_[0]} = $_[1]);
-  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
-  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
-push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
-while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
-ni::eval 'exit main @ARGV', 'main';
-__DATA__
-43 ni.sdoc
-#!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni
-# Copyright (c) 2016 Spencer Tipping
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
-use 5.006_000;
-BEGIN {
-eval($ni::self{'boot/sdoc'} = q{
-sub ni::unsdoc
-{join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0]}});
-
-eval($ni::self{'boot/self'} = q{
-sub ni::eval($$)
-{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
-  eval "package ni;$_[0]\n;1";
-  if ($@) {$@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg; die $@}}
+  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg, die $@ if $@ }
 
 sub ni::set
 { chomp($ni::self{$_[0]} = $_[1]);
   ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc/;
-  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }})}
+  ni::eval $_[1], $_[0] if $_[0] =~ /\.pl$/ }
 
 push(@ni::keys, $2), ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
 ni::eval 'exit main @ARGV', 'main';
+_
+die $@ if $@
 __DATA__
-40 ni.map.sdoc
+39 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -91,8 +58,7 @@ Note that these are just the entries for the core image. ni modifies itself
 during the build process to include more extensions, each of which lives in a
 subdirectory of src/.
 
-unquote ni
-resource ni.sdoc
+bootcode
 resource ni.map.sdoc
 
 resource util.pl.sdoc
@@ -140,19 +106,18 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
-42 self.pl.sdoc
+41 self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
-sub map_u {@self{@_}}
 sub map_r {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub map_l {map {my $l = $_;
                 map_r "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
 
 sub read_map {join '', map "$_\n",
                        (map {my ($c, @a) = split /\s+/;
-                               $c eq 'unquote'     ? map_u @a
+                               $c eq 'bootcode'    ? ni::boot_header
                              : $c eq 'resource'    ? map_r @a
                              : $c =~ /^lib$|^ext$/ ? map_l @a
                              : die "ni: unknown map command+args: $c @a"}
@@ -3316,36 +3281,36 @@ daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```bash
 $ ni //ni r3                            # some data
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
 ```
 
 ```bash
 $ ni //ni r3F/\\//                      # split on forward slashes
 #!	usr	bin	env perl
-# ni: https:		github.com	spencertipping	ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https:		github.com	spencertipping	ni
 ```
 
 ```bash
 $ ni //ni r3FW                          # split on non-words
 	usr	bin	env	perl
-	ni	https	github	com	spencertipping	ni
-	Copyright	c	2016	Spencer	Tipping
+	ni	self	license	_	
+ni	https	github	com	spencertipping	ni
 ```
 
 ```bash
 $ ni //ni r3FS                          # split on whitespace
 #!/usr/bin/env	perl
-#	ni:	https://github.com/spencertipping/ni
-#	Copyright	(c)	2016	Spencer	Tipping
+$ni::self{license}	=	<<'_';
+ni:	https://github.com/spencertipping/ni
 ```
 
 ```bash
 $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
-/github	/spencertipping	/ni
 
+/github	/spencertipping	/ni
 ```
 4 doc/examples.md
 # General ni examples
@@ -4042,21 +4007,21 @@ $ ni word-list cr10             # unsorted count
 1	perl
 1	
 1	ni
-1	https
-1	github
-1	com
-1	spencertipping
+1	self
+1	license
+1	_
+1	ni
 $ ni word-list Cr10             # sort first to group words
-41	0
-8	006_000
-1	1
+14	0
+8	1
 9	2
 2	2016
-2	3
-1	43
+1	3
+1	39
 1	5
-2	A
-3	ACTION
+1	A
+2	ACTION
+1	AN
 ```
 29 doc/sql.md
 # SQL interop
@@ -4088,12 +4053,8 @@ $ ni --lib sqlite-profile QStest.db foo[Ox]
 3	4
 1	2
 ```
-244 doc/stream.md
+240 doc/stream.md
 # Stream operations
-Streams are made of text, and ni can do a few different things with them. The
-simplest involve stuff that bash utilities already handle (though more
-verbosely):
-
 ```bash
 $ echo test > foo
 $ ni foo

@@ -14,6 +14,7 @@ lazytest_case() {
   else
     lazytest_fail=$((lazytest_fail + 1))
     echo -e "\033[J\033[1;31mFAIL\033[0;0m $*"
+    echo -e "\033[1;31m$lazytest_file:$lazytest_line\033[0;0m"
     echo -e "EXPECTED\033[1;34m"
     echo    "$expected"
     echo
@@ -32,14 +33,20 @@ lazytest_end() {
 }
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/internals.md'
+lazytest_line=6
 lazytest_case 'ni --internal/parse generic_code [foo]
 ' 3<<'LAZYTEST_EOF'
 [foo]
 LAZYTEST_EOF
+lazytest_file='doc/internals.md'
+lazytest_line=8
 lazytest_case 'ni --internal/parse generic_code [foo]]]
 ' 3<<'LAZYTEST_EOF'
 [foo] | ]]
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=6
 lazytest_case 'ni n:4l'\''(+ a 2)'\''
 ' 3<<'LAZYTEST_EOF'
 3
@@ -47,6 +54,8 @@ lazytest_case 'ni n:4l'\''(+ a 2)'\''
 5
 6
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=19
 lazytest_case 'ni n:4l'\''(r a (1+ a))'\''                   # generate two columns
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -54,6 +63,8 @@ lazytest_case 'ni n:4l'\''(r a (1+ a))'\''                   # generate two colu
 3	4
 4	5
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=24
 lazytest_case 'ni n:4l'\''(r a (1+ a))'\'' l'\''(r (+ a b))'\''        # ... and sum them
 ' 3<<'LAZYTEST_EOF'
 3
@@ -61,6 +72,8 @@ lazytest_case 'ni n:4l'\''(r a (1+ a))'\'' l'\''(r (+ a b))'\''        # ... and
 7
 9
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=38
 lazytest_case 'ni n:2l'\''a (+ a 100)'\''                   # return without "r"
 ' 3<<'LAZYTEST_EOF'
 1
@@ -68,37 +81,55 @@ lazytest_case 'ni n:2l'\''a (+ a 100)'\''                   # return without "r"
 2
 102
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=61
 lazytest_case 'ni n:10000l"(sr ('\''+ a))"
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
+lazytest_file='doc/lisp.md'
+lazytest_line=68
 lazytest_case 'ni n:4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 ' 3<<'LAZYTEST_EOF'
 10	24
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=3
 lazytest_case 'echo test > foo
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=4
 lazytest_case 'ni foo
 ' 3<<'LAZYTEST_EOF'
 test
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=6
 lazytest_case 'ni foo foo
 ' 3<<'LAZYTEST_EOF'
 test
 test
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=14
 lazytest_case 'echo test | gzip > fooz
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=15
 lazytest_case 'ni fooz
 ' 3<<'LAZYTEST_EOF'
 test
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=17
 lazytest_case 'cat fooz | ni
 ' 3<<'LAZYTEST_EOF'
 test
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=25
 lazytest_case 'ni $:'\''seq 4'\''                  # shell command stdout
 ' 3<<'LAZYTEST_EOF'
 1
@@ -106,6 +137,8 @@ lazytest_case 'ni $:'\''seq 4'\''                  # shell command stdout
 3
 4
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=30
 lazytest_case 'ni n:4                        # integer generator
 ' 3<<'LAZYTEST_EOF'
 1
@@ -113,6 +146,8 @@ lazytest_case 'ni n:4                        # integer generator
 3
 4
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=35
 lazytest_case 'ni n0:4                       # integer generator, zero-based
 ' 3<<'LAZYTEST_EOF'
 0
@@ -120,116 +155,162 @@ lazytest_case 'ni n0:4                       # integer generator, zero-based
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=40
 lazytest_case 'ni id:foo                     # literal text
 ' 3<<'LAZYTEST_EOF'
 foo
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=49
 lazytest_case 'ni n:3 | sort
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=53
 lazytest_case 'ni n:3 $=sort                 # $= filters through a command
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=57
 lazytest_case 'ni n:3 $='\''sort -r'\''
 ' 3<<'LAZYTEST_EOF'
 3
 2
 1
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=66
 lazytest_case 'ni n:3 g      # g = sort
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=70
 lazytest_case 'ni n:3g       # no need for whitespace
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=74
 lazytest_case 'ni n:3gAr     # reverse-sort by first field
 ' 3<<'LAZYTEST_EOF'
 3
 2
 1
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=78
 lazytest_case 'ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
 ' 3<<'LAZYTEST_EOF'
 3
 2
 1
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=97
 lazytest_case 'ni n:3 >file                  # nothing goes to the terminal
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=98
 lazytest_case 'ni file
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=107
 lazytest_case 'ni n:3 \>file2                # writes the filename to the terminal
 ' 3<<'LAZYTEST_EOF'
 file2
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=109
 lazytest_case 'ni file2
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=113
 lazytest_case 'ni n:3 \>%file3               # duplicates output
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=117
 lazytest_case 'ni file3
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=126
 lazytest_case 'ni n:3Z >file3.gz
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=127
 lazytest_case 'zcat file3.gz
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=136
 lazytest_case 'ni id:gzip Z | gzip -dc               # gzip by default
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=138
 lazytest_case 'ni id:gzip Zg | gzip -dc              # explicitly specify
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=140
 lazytest_case 'ni id:gzip Zg9 | gzip -dc             # specify compression level
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=142
 lazytest_case 'ni id:xz Zx | xz -dc
 ' 3<<'LAZYTEST_EOF'
 xz
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=144
 lazytest_case 'ni id:lzo Zo | lzop -dc
 ' 3<<'LAZYTEST_EOF'
 lzo
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=146
 lazytest_case 'ni id:bzip2 Zb | bzip2 -dc
 ' 3<<'LAZYTEST_EOF'
 bzip2
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=162
 lazytest_case 'ni n:4 Z ZD
 ' 3<<'LAZYTEST_EOF'
 1
@@ -237,6 +318,8 @@ lazytest_case 'ni n:4 Z ZD
 3
 4
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=167
 lazytest_case 'ni n:4 ZD
 ' 3<<'LAZYTEST_EOF'
 1
@@ -244,10 +327,14 @@ lazytest_case 'ni n:4 ZD
 3
 4
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=178
 lazytest_case 'ni n:4 ZN | wc -c
 ' 3<<'LAZYTEST_EOF'
 0
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=187
 lazytest_case 'ni n:1000000gr4
 ' 3<<'LAZYTEST_EOF'
 1
@@ -255,6 +342,8 @@ lazytest_case 'ni n:1000000gr4
 100
 1000
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=198
 lazytest_case 'ni :numbers[n:1000000gr4]
 ' 3<<'LAZYTEST_EOF'
 1
@@ -262,6 +351,8 @@ lazytest_case 'ni :numbers[n:1000000gr4]
 100
 1000
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=208
 lazytest_case 'ni :numbers[n:1000000gr4]O
 ' 3<<'LAZYTEST_EOF'
 1000
@@ -269,13 +360,19 @@ lazytest_case 'ni :numbers[n:1000000gr4]O
 10
 1
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=219
 lazytest_case 'echo '\''checkpointed'\'' > numbers
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=220
 lazytest_case 'ni :numbers[n:1000000gr4]O
 ' 3<<'LAZYTEST_EOF'
 checkpointed
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=228
 lazytest_case 'ni :biglist[n:100000Z]r5
 ' 3<<'LAZYTEST_EOF'
 1
@@ -284,6 +381,8 @@ lazytest_case 'ni :biglist[n:100000Z]r5
 4
 5
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=234
 lazytest_case 'ni :biglist[n:100000Z]r5
 ' 3<<'LAZYTEST_EOF'
 1
@@ -292,9 +391,13 @@ lazytest_case 'ni :biglist[n:100000Z]r5
 4
 5
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=13
 lazytest_case 'ni n:8p'\''r map a*$_, 1..8'\'' > mult-table
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=14
 lazytest_case 'ni mult-table
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8
@@ -306,6 +409,8 @@ lazytest_case 'ni mult-table
 7	14	21	28	35	42	49	56
 8	16	24	32	40	48	56	64
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=29
 lazytest_case 'ni mult-table fA      # the first column
 ' 3<<'LAZYTEST_EOF'
 1
@@ -317,6 +422,8 @@ lazytest_case 'ni mult-table fA      # the first column
 7
 8
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=38
 lazytest_case 'ni mult-table fDC     # fourth, then third column
 ' 3<<'LAZYTEST_EOF'
 4	3
@@ -328,6 +435,8 @@ lazytest_case 'ni mult-table fDC     # fourth, then third column
 28	21
 32	24
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=47
 lazytest_case 'ni mult-table fAA     # first column, duplicated
 ' 3<<'LAZYTEST_EOF'
 1	1
@@ -339,6 +448,8 @@ lazytest_case 'ni mult-table fAA     # first column, duplicated
 7	7
 8	8
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=63
 lazytest_case 'ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 ' 3<<'LAZYTEST_EOF'
 4	1	5	6	7	8
@@ -350,6 +461,8 @@ lazytest_case 'ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 28	7	35	42	49	56
 32	8	40	48	56	64
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=72
 lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
@@ -361,64 +474,86 @@ lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=105
 lazytest_case 'ni /etc/passwd r2F::          # F: followed by :, which is the split char
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=111
 lazytest_case 'ni //ni r3                            # some data
 ' 3<<'LAZYTEST_EOF'
 #!/usr/bin/env perl
-# ni: https://github.com/spencertipping/ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=118
 lazytest_case 'ni //ni r3F/\\//                      # split on forward slashes
 ' 3<<'LAZYTEST_EOF'
 #!	usr	bin	env perl
-# ni: https:		github.com	spencertipping	ni
-# Copyright (c) 2016 Spencer Tipping
+$ni::self{license} = <<'_';
+ni: https:		github.com	spencertipping	ni
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=125
 lazytest_case 'ni //ni r3FW                          # split on non-words
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env	perl
-	ni	https	github	com	spencertipping	ni
-	Copyright	c	2016	Spencer	Tipping
+	ni	self	license	_	
+ni	https	github	com	spencertipping	ni
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=132
 lazytest_case 'ni //ni r3FS                          # split on whitespace
 ' 3<<'LAZYTEST_EOF'
 #!/usr/bin/env	perl
-#	ni:	https://github.com/spencertipping/ni
-#	Copyright	(c)	2016	Spencer	Tipping
+$ni::self{license}	=	<<'_';
+ni:	https://github.com/spencertipping/ni
 LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=139
 lazytest_case 'ni //ni r3Fm'\''/\/\w+/'\''                 # words beginning with a slash
 ' 3<<'LAZYTEST_EOF'
 /usr	/bin	/env
-/github	/spencertipping	/ni
 
+/github	/spencertipping	/ni
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=17
 lazytest_case 'ni n:10r3                     # take first 3
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=21
 lazytest_case 'ni n:10r+3                    # take last 3
 ' 3<<'LAZYTEST_EOF'
 8
 9
 10
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=25
 lazytest_case 'ni n:10r-7                    # drop first 7
 ' 3<<'LAZYTEST_EOF'
 8
 9
 10
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=33
 lazytest_case 'ni n:10000rx4000              # take every 4000th row
 ' 3<<'LAZYTEST_EOF'
 4000
 8000
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=36
 lazytest_case 'ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
 ' 3<<'LAZYTEST_EOF'
 1
@@ -426,23 +561,31 @@ lazytest_case 'ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
 8921
 9509
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=50
 lazytest_case 'ni n:10000r/[42]000$/
 ' 3<<'LAZYTEST_EOF'
 2000
 4000
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=53
 lazytest_case 'ni n:1000r/[^1]$/r3
 ' 3<<'LAZYTEST_EOF'
 2
 3
 4
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=66
 lazytest_case 'ni n:10000rp'\''$_ % 100 == 42'\'' r3
 ' 3<<'LAZYTEST_EOF'
 42
 142
 242
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=84
 lazytest_case 'ni n:100n:10gr4               # g = '\''group'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -450,6 +593,8 @@ lazytest_case 'ni n:100n:10gr4               # g = '\''group'\''
 10
 10
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=89
 lazytest_case 'ni n:100n:100Gr4              # G = '\''group uniq'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -457,21 +602,29 @@ lazytest_case 'ni n:100n:100Gr4              # G = '\''group uniq'\''
 100
 11
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=103
 lazytest_case 'ni n:100or3                   # o = '\''order'\'': sort numeric ascending
 ' 3<<'LAZYTEST_EOF'
 1
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=107
 lazytest_case 'ni n:100Or3                   # O = '\''reverse order'\''
 ' 3<<'LAZYTEST_EOF'
 100
 99
 98
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=120
 lazytest_case 'ni n:100p'\''r a, sin(a), log(a)'\'' > data         # generate multicolumn data
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=121
 lazytest_case 'ni data r4
 ' 3<<'LAZYTEST_EOF'
 1	0.841470984807897	0
@@ -479,6 +632,8 @@ lazytest_case 'ni data r4
 3	0.141120008059867	1.09861228866811
 4	-0.756802495307928	1.38629436111989
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=132
 lazytest_case 'ni data oB r4
 ' 3<<'LAZYTEST_EOF'
 11	-0.999990206550703	2.39789527279837
@@ -486,6 +641,8 @@ lazytest_case 'ni data oB r4
 99	-0.999206834186354	4.59511985013459
 80	-0.993888653923375	4.38202663467388
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=145
 lazytest_case 'ni data oBr r4                # r suffix = reverse sort
 ' 3<<'LAZYTEST_EOF'
 33	0.999911860107267	3.49650756146648
@@ -493,9 +650,13 @@ lazytest_case 'ni data oBr r4                # r suffix = reverse sort
 58	0.992872648084537	4.06044301054642
 14	0.99060735569487	2.63905732961526
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=158
 lazytest_case 'ni //ni FWpF_ r500 > word-list
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=159
 lazytest_case 'ni word-list cr10             # unsorted count
 ' 3<<'LAZYTEST_EOF'
 1	usr
@@ -504,24 +665,28 @@ lazytest_case 'ni word-list cr10             # unsorted count
 1	perl
 1	
 1	ni
-1	https
-1	github
-1	com
-1	spencertipping
+1	self
+1	license
+1	_
+1	ni
 LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=170
 lazytest_case 'ni word-list Cr10             # sort first to group words
 ' 3<<'LAZYTEST_EOF'
-41	0
-8	006_000
-1	1
+14	0
+8	1
 9	2
 2	2016
-2	3
-1	43
+1	3
+1	39
 1	5
-2	A
-3	ACTION
+1	A
+2	ACTION
+1	AN
 LAZYTEST_EOF
+lazytest_file='doc/facet.md'
+lazytest_line=17
 lazytest_case 'ni @pa '\''r a, rca rsum 1'\'' <<'\''EOF'\''
 foo
 bar
@@ -533,6 +698,8 @@ bar	1
 bif	1
 foo	2
 LAZYTEST_EOF
+lazytest_file='doc/facet.md'
+lazytest_line=47
 lazytest_case 'ni /etc/passwd F::@pg '\''r a, @{rca rarr B}'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	root
@@ -540,6 +707,8 @@ lazytest_case 'ni /etc/passwd F::@pg '\''r a, @{rca rarr B}'\''
 /bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
 /bin/sync	sync
 LAZYTEST_EOF
+lazytest_file='doc/facet.md'
+lazytest_line=64
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, a_ reg'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	root
@@ -547,18 +716,26 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, a_ reg'\''
 /bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
 /bin/sync	sync
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=6
 lazytest_case 'mkdir sqlite-profile
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=7
 lazytest_case 'echo sqlite.pl > sqlite-profile/lib
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=8
 lazytest_case 'cat > sqlite-profile/sqlite.pl <<'\''EOF'\''
 $sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
                         seq mrc '\''^.*'\'', $sql_query;
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=17
 lazytest_case 'sqlite test.db <<'\''EOF'\''
 CREATE TABLE foo(x int, y int);
 INSERT INTO foo(x, y) VALUES (1, 2);
@@ -567,29 +744,43 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=23
 lazytest_case 'ni --lib sqlite-profile QStest.db foo[wx=3]
 ' 3<<'LAZYTEST_EOF'
 3	4
 LAZYTEST_EOF
+lazytest_file='doc/sql.md'
+lazytest_line=25
 lazytest_case 'ni --lib sqlite-profile QStest.db foo[Ox]
 ' 3<<'LAZYTEST_EOF'
 5	6
 3	4
 1	2
 LAZYTEST_EOF
+lazytest_file='doc/extend.md'
+lazytest_line=6
 lazytest_case 'mkdir my-library
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/extend.md'
+lazytest_line=7
 lazytest_case 'echo my-lib.pl > my-library/lib
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/extend.md'
+lazytest_line=8
 lazytest_case 'echo "defshort '\''root'\'', '\''N'\'', k sh ['\''wc'\'', '\''-l'\''];" > my-library/my-lib.pl
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/extend.md'
+lazytest_line=9
 lazytest_case 'ni --lib my-library n:100N
 ' 3<<'LAZYTEST_EOF'
 100
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=10
 lazytest_case 'ni n:5p'\''a * a'\''                # square some numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -598,6 +789,8 @@ lazytest_case 'ni n:5p'\''a * a'\''                # square some numbers
 16
 25
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=24
 lazytest_case 'ni n:4p'\''r a, a + 1'\''                   # generate two columns
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -605,6 +798,8 @@ lazytest_case 'ni n:4p'\''r a, a + 1'\''                   # generate two column
 3	4
 4	5
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=29
 lazytest_case 'ni n:4p'\''r a, a + 1'\'' p'\''r a + b'\''        # ... and sum them
 ' 3<<'LAZYTEST_EOF'
 3
@@ -612,24 +807,32 @@ lazytest_case 'ni n:4p'\''r a, a + 1'\'' p'\''r a + b'\''        # ... and sum t
 7
 9
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=58
 lazytest_case 'ni /etc/passwd F::r3
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 bin	x	2	2	bin	/bin	/bin/sh
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=62
 lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 0..3'\''
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0
 daemon	x	1	1
 bin	x	2	2
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=66
 lazytest_case 'ni /etc/passwd F::r3p'\''r scalar F_'\''            # number of fields
 ' 3<<'LAZYTEST_EOF'
 7
 7
 7
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=93
 lazytest_case 'ni n:2p'\''a, a + 100'\''                   # return without "r"
 ' 3<<'LAZYTEST_EOF'
 1
@@ -637,11 +840,15 @@ lazytest_case 'ni n:2p'\''a, a + 100'\''                   # return without "r"
 2
 102
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=98
 lazytest_case 'ni n:2p'\''r a, a + 100'\''                 # use "r" for side effect, return ()
 ' 3<<'LAZYTEST_EOF'
 1	101
 2	102
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=101
 lazytest_case 'ni n:3p'\''r $_ for 1..a; ()'\''            # use r imperatively, explicit return
 ' 3<<'LAZYTEST_EOF'
 1
@@ -651,6 +858,8 @@ lazytest_case 'ni n:3p'\''r $_ for 1..a; ()'\''            # use r imperatively,
 2
 3
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=108
 lazytest_case 'ni n:3p'\''r $_ for 1..a'\''                # use r imperatively, implicit return
 ' 3<<'LAZYTEST_EOF'
 1
@@ -663,12 +872,16 @@ lazytest_case 'ni n:3p'\''r $_ for 1..a'\''                # use r imperatively,
 3
 
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=140
 lazytest_case 'ni n:10p'\''r ru {a%4 == 0}'\''             # read forward until a multiple of 4
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 4	5	6	7
 8	9	10
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=151
 lazytest_case 'ni n:10p'\''r map a*$_, 1..10'\'' | tee mult-table
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8	9	10
@@ -682,28 +895,40 @@ lazytest_case 'ni n:10p'\''r map a*$_, 1..10'\'' | tee mult-table
 9	18	27	36	45	54	63	72	81	90
 10	20	30	40	50	60	70	80	90	100
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=162
 lazytest_case 'ni mult-table p'\''r g_ ru {a%4 == 0}'\''   # extract seventh column from each line
 ' 3<<'LAZYTEST_EOF'
 7	14	21
 28	35	42	49
 56	63	70
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=188
 lazytest_case 'ni n:100p'\''sum rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=190
 lazytest_case 'ni n:10p'\''prod rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 3628800
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=192
 lazytest_case 'ni n:100p'\''mean rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 50.5
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=212
 lazytest_case 'ni n:10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=227
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -711,6 +936,8 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sh	,backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	,sync
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=243
 lazytest_case 'ni n:100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -718,10 +945,14 @@ lazytest_case 'ni n:100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=253
 lazytest_case 'ni n:100p'\''r rc \&sr, rsum A, rmean A, rmin A, rmax A'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=282
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
