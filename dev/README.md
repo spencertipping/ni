@@ -55,7 +55,22 @@ $ ./test --quick                # run tests in ubuntu-16.04
 ```
 
 ## Running benchmarks
-**TODO**
+There are two sets of benchmarks. One is in `dev/hackery/bench`; these are
+miscellaneous experiments I ran while considering ways to implement things in
+ni, and aren't used to benchmark ni in production.
+
+Production benchmarks are `dev/bench-*`, each of which produces TSV output like
+this:
+
+```
+ni_perl_256M	21768	ms
+ni_perl_r_256M	19214	ms
+...
+```
+
+These measure the time required to do a specific fixed task. You can run all
+benchmarks with `dev/bench`, which will rewrite the benchmark log so you can
+track performance by commit.
 
 # Notes
 1. The rewriting process itself is implemented by functions in

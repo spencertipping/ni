@@ -2,13 +2,19 @@
 date > /dev/null
 ni < /dev/null > /dev/null
 
+if [[ $1 != "--try" ]]; then
+  echo "TODO for wes: the lisp driver crashes when reading ni source" >&2
+  echo "              (run dev/bench-lisp --try to see what happens)" >&2
+  exit 1
+fi
+
 ta=$(date +%s%N)
 perl -e '
   my $data = `ni //ni`;
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| pv | ni l'a' > /dev/null
+| ni l'a' > /dev/null
 
 tb=$(date +%s%N)
 perl -e '
@@ -16,7 +22,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| pv | ni l'(r a)' > /dev/null
+| ni l'(r a)' > /dev/null
 
 tc=$(date +%s%N)
 

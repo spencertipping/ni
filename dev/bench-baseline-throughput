@@ -10,7 +10,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..8192' \
-| pv | cat > /dev/null
+| cat > /dev/null
 
 tb=$(date +%s%N)
 perl -e '
@@ -18,7 +18,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..8192' \
-| pv | dd > /dev/null
+| dd bs=64K > /dev/null
 
 tc=$(date +%s%N)
 perl -e '
@@ -26,7 +26,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..8192' \
-| pv | ni > /dev/null
+| ni > /dev/null
 
 td=$(date +%s%N)
 
