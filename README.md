@@ -37,10 +37,6 @@ Most operators are a single character, and ni maintains a consistent data
 abstraction of "everything's a spreadsheet."
 
 ## What everything here does
-- `Dockerfile`: a symlink to `env/ubuntu-16.04`, one of the testing
-  environments for ni portability. If you use
-  [dotbash](https://github.com/spencertipping/dotbash), you can run `dr` to
-  build and run a transient testing container.
 - `./boot`: create the base `ni` image with no extensions. This image does
   almost nothing and is effectively unusable.
 - `./build`: run `./boot`, then extend with a bunch of libraries. See [the dev

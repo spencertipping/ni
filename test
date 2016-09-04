@@ -10,9 +10,9 @@ envs=( alpine
        ubuntu-16.04 )
 
 ./build
-./lazytest $(find doc -name '*.md') > tests.sh
+./lazytest $(find doc -name '*.md') > dev/tests.sh
 
-tests() { echo 'cd /tmp; bash /data/tests.sh'; }
+tests() { echo 'cd /tmp; bash /data/dev/tests.sh'; }
 image() { docker build -q -f env/$1 .; }
 
 default_image=ubuntu-16.04
