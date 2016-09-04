@@ -4,7 +4,11 @@ environment because we can much more easily quote code; ni should produce
 customized sub-images of itself when asked to compile a pipeline.
 
 Running in-process isn't a good idea because then we lose the ability to filter
-stderr.
+stderr (actually we don't; we can do the pipe-fork stuff to make it work just
+fine).
+
+### Process-consing design
+Pipeline addition as consing, both for compilation and for runtime.
 
 ### Parser documentation
 Rather than just returning values, parse states should include documentation,
