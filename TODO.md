@@ -1,16 +1,19 @@
-### Code quoting abstraction
-Right now we're quoting code using `sh [qw/perl -/], stdin => ...`, but this
-doesn't make it easy to share libraries between the ni runtime and compiled ni
-pipelines.
+### Replace /bin/sh with perl
+Using POSIX shell is more trouble than it's worth. Perl is a better runtime
+environment because we can much more easily quote code; ni should produce
+customized sub-images of itself when asked to compile a pipeline.
 
-Not 100% sure about the ideal design, but I'm thinking some kind of
-`context->eval(X)` abstraction where some contexts are runtime and others are
-compiled.
-
-### Benchmarking of various sorts
-Startup time, operation throughput, etc (WIP: `dev/bench-X`)
+Running in-process isn't a good idea because then we lose the ability to filter
+stderr.
 
 ### Parser documentation
 Rather than just returning values, parse states should include documentation,
 info about the original input, and other intermediate stuff to explain what's
 going on. Maybe also rejected parses?
+
+### Fast partial JSON parsing
+Something that uses regexes to parse JSON without allocating tons of memory.
+
+### Optimized line processor
+Right now we're slower than nfu, which is terrible. ni should be able to go
+much faster.
