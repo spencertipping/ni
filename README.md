@@ -36,14 +36,29 @@ $ ni README.md PL[FWpF_ CO]     # run on local pyspark
 Most operators are a single character, and ni maintains a consistent data
 abstraction of "everything's a spreadsheet."
 
-## Dev scripts and testing
-- `./build`: create `ni` from source
-- `./test`: rebuild and run documentation tests for `ni`
-
-All test cases are extracted from stuff in `doc/` by
-[LazyTest](https://github.com/spencertipping/lazytest), and the tests
-themselves are run inside various Docker images with different versions of
-Perl and other dependencies to test portability.
-
-See [dev/README.md](dev/README.md) for more information about how to hack on
-ni.
+## What everything here does
+- `Dockerfile`: a symlink to `env/ubuntu-16.04`, one of the testing
+  environments for ni portability. If you use
+  [dotbash](https://github.com/spencertipping/dotbash), you can run `dr` to
+  build and run a transient testing container.
+- `./boot`: create the base `ni` image with no extensions. This image does
+  almost nothing and is effectively unusable.
+- `./build`: run `./boot`, then extend with a bunch of libraries. See [the dev
+  docs](dev/) for information about how this works.
+- `core/`: all of the core libraries installed by `./build` onto the base
+  image.
+- `dev/`: documentation and scripts for ni development.
+- `doc/`: documentation for using ni. This ends up being added to the ni image
+  by `./build`. Examples in the documentation are extracted into tests by
+  `./lazytest`.
+- `env/`: dockerfiles for ni portability testing. This way we can make sure it
+  works with new and old versions of Perl and coreutils. `./test` loads these.
+- `./lazytest`: a copy of
+  [LazyTest](https://github.com/spencertipping/lazytest) used to generate unit
+  tests from the documentation examples. This is run by `./test`.
+- `./ni`: the fully-built ni image if you run `./build`, or just the core image
+  if you run `./boot`.
+- `src/`: the source files to construct the ni base image.
+- `./test`: runs unit tests or launches a test environment. All tests are run
+  inside one of the dockerized environments; see the [dev docs](dev/) for more
+  details about how this works.

@@ -4,10 +4,8 @@ cd $(dirname $0)
 
 # Preprocessor to erase SDoc documentation. This minimizes the image size but
 # still makes it possible to document code in some detail.
-unsdoc() {
-  perl -e 'print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//,
-                          split /\n(\h*\n)+/, join "", <>'
-}
+unsdoc() { perl -e 'print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//,
+                                   split /\n(\h*\n)+/, join "", <>'; }
 
 # Resource format is "<nlines> <filename>\n<data...>", e.g.
 #
@@ -19,6 +17,11 @@ unsdoc() {
 # }
 #
 # See src/ni for the logic that parses this from the __DATA__ section.
+
+# NB: these three functions are named to correspond to directives in
+# src/ni.map.sdoc.
+bootcode() { cat src/ni; }
+
 resource() {
   cd src
   for r; do
@@ -37,34 +40,13 @@ lib() {
   done
 }
 
-bootcode() {
-  cat src/ni
-}
-
-# SDoc-process all source files into corresponding entries in gen/. ni includes
-# the SDoc sources directly, so this is just for debugging and to get a
-# non-SDoc form of ni.map, which we use below to bootstrap the image.
-rm -rf gen
-mkdir -p gen
-for f in $(find src -type f); do
-  if [[ "${f%.sdoc}" != $f ]]; then
-    sdoc_gen=${f%.sdoc}
-    sdoc_gen=gen/${sdoc_gen#src/}
-    mkdir -p $(dirname $sdoc_gen)
-    unsdoc < $f > $sdoc_gen
-  else
-    mkdir -p gen/$(dirname ${f#src/})
-    perl -npe 'chomp; $_ .= "\n"' < $f > gen/${f#src/}
-  fi
-done
-
 # Build the ni image by including the header verbatim, then bundling the rest
 # of the files as resources. The header knows how to unpack resources from the
 # __DATA__ section of the script, and it evaluates the ones ending in .pl. This
 # mechanism makes it possible for ni to serialize its code without being stored
 # anywhere (which is useful if you're piping it to a system whose filesystem is
 # read-only).
-source gen/ni.map > ni
+eval "$(unsdoc < src/ni.map.sdoc)" > ni
 
 chmod +x ni
 

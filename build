@@ -1,13 +1,10 @@
 #!/bin/bash
 # Builds the ni image, first by assembling the self-modifying parts (./boot),
-# and then by telling it to add modules. core/ is symlinked to gen/, which is
-# produced by ./boot.
+# and then by telling it to add modules.
 
 cd $(dirname $0)
 
 ./boot
-
-[[ -d core ]] || ln -s src core
 
 ./ni --internal/lib core/common
 ./ni --internal/lib core/gen
