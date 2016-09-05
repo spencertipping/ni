@@ -11,7 +11,17 @@ anywhere. This can work if we write a custom function and then use the
 constant-space `--internal/eval X` (or similar) to invoke it. This, in turn,
 means that we need an API to represent derivative images and library
 collections. (Trivially we could just quote `@ARGV` and stash it into a wrapped
-function. No sense in doing anything more complicated yet.)
+function. No sense in doing anything more complicated yet -- though we'll need
+something marginally more complicated if we also want to handle lambdas.)
+
+A lot of this branch comes down to re-engineering the argument parser.
+
+**NB:** The point of the refactor is to avoid serializing the ni image into
+each pipeline stage separately, and to simplify code sharing between ni and the
+mapper code. (And to work around a double-free bug in some versions of
+`/bin/sh`, though this doesn't seem to actually cause any problems.) However,
+these benefits exist only for the Perl frontend; other languages will have all
+of the same problems.
 
 ## Pipeline monitors
 While we're doing this, we might as well go ahead and figure out how to get
