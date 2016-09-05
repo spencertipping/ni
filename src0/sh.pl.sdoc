@@ -1,0 +1,104 @@
+Self-contained POSIX shell tasks.
+Compiling a shell pipeline is not entirely trivial for a couple of reasons. One
+is that we have to be parsimonious about argv lengths to avoid hitting the
+upper limit (as low as 4k, potentially, though realistically at least 20k). The
+other is that some commands require heredocs, which in turn require unique
+terminators and some creative stdin redirection. Rather than managing these
+details by hand, you can instead use the `sh` function:
+
+| my $seq      = sh 'seq', 10;
+  my $perl_cat = sh ['perl', '-n'], stdin => <<EOF
+    open my $fh, "<&=", 3;              # old stdin is now redirected to fd 3
+    print while <$fh>;
+  EOF
+  my $pipeline = pipeline $seq, $perl_cat;
+
+Now you can write `$pipeline` into a `/bin/sh` process to execute it.
+
+NOTE: unlike system(), exec(), etc, if you say sh('ls -lh'), this will try to
+execute the "ls -lh" command rather than interpreting "-lh" as an argument.
+
+sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                           ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                           : $_,
+                     map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
+
+Shell commands can include some context, as shown in the example above. In
+addition to "stdin", which redirects fd 0 to fd 3, you can specify a hash of
+prefixes. These will be evaluated before any command in the pipeline, so you
+can do things like define shell functions. For example:
+
+| my $wot = sh ['ni_wot'], prefix => {ni_wot => 'ni_wot() { echo wot; }'};
+
+The keys in the prefixes hash are just used for deduplication. You can nest
+shell commands and their prefixes will be combined:
+
+| sub two {sh ['two', @_], prefix => {two => 'two() { eval "$1"; eval "$2"; }'}}
+  my $both = two $wot, $wot;
+
+In this case the 'two' shell function will receive two copies of the
+shell-quoted invocation of 'wot', and the 'ni_wot' function will be defined
+once before the pipeline.
+
+sub collect_nested_invocations {
+  local $_;
+  my ($options, @xs) = @_;
+  map {
+    my $c = $_;
+    if ('HASH' eq ref $c) {
+      if (exists $$c{stdin}) {
+        die "ni sh: only one stdin redirection is allowed for a subquoted "
+          . "command: " . quote(@{$$c{exec}}) if exists $$options{stdin};
+        $$options{stdin} = $$c{stdin};
+      }
+      if (exists $$c{prefix}) {
+        my $p = $$c{prefix};
+        $$options{prefix}{$_} = $$p{$_} for keys %$p;
+      }
+      [collect_nested_invocations($options, @{$$c{exec}})];
+    } elsif ('ARRAY' eq ref $c) {
+      [collect_nested_invocations($options, @$c)];
+    } else {
+      $c;
+    }
+  } @xs;
+}
+
+sub sh {
+  return {exec => [@_]} unless ref $_[0];
+  my ($c, %o) = @_;
+  my ($exec) = collect_nested_invocations \%o, $c;
+  +{exec => $exec, %o};
+}
+
+sub heredoc_for($)   {my $n = 0; ++$n while $_[0] =~ /^_$n$/m; "_$n"}
+sub heredoc_wrap($$) {my $hd = heredoc_for $_[0]; "<<'$hd'$_[1]\n$_[0]\n$hd\n"}
+
+sub sh_prefix() {join "\n", @self{@sh_libs}}
+
+sub flatten {map 'ARRAY' eq ref($_) ? flatten(@$_) : $_, @_}
+
+sub pipeline {
+  my %ps;
+  my @cs;
+  my @hs;
+  for (flatten @_) {
+    my $c = quote @{$$_{exec}};
+    $c .= " $$_{magic}" if exists $$_{magic};
+    if (exists $$_{stdin}) {
+      my $h = heredoc_for $$_{stdin};
+      push @cs, "$c 3<&0 <<'$h'";
+      push @hs, $$_{stdin} =~ /\n$/ ? "$$_{stdin}$h" : "$$_{stdin}\n$h";
+    } else {
+      push @cs, $c;
+    }
+
+    if (exists $$_{prefix}) {
+      my $p = $$_{prefix};
+      $ps{$_} = $$p{$_} for keys %$p;
+    }
+  }
+  join '', map "$_\n", values %ps,
+                       join("\\\n| ", @cs),
+                       @hs;
+}

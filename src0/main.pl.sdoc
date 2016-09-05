@@ -1,0 +1,109 @@
+Main function.
+ni can be invoked as a stream processor, but it can also do some toplevel
+things besides. This main function knows how to handle these cases.
+
+use POSIX qw/dup dup2/;
+
+use constant exit_success      => 0;
+use constant exit_run_error    => 1;
+use constant exit_nop          => 2;
+use constant exit_sigchld_fail => 3;
+
+our %option_handlers;
+
+our @pipeline_prefix = sh 'true';
+our @pipeline_suffix = ();
+
+sub parse_ops {
+  return () unless @_;
+  my ($parsed) = context('root/cli')->(@_);
+  return @$parsed if ref $parsed && @$parsed;
+  my (undef, @rest) = context('root/cli_d')->(@_);
+  die "failed to parse " . join ' ', @rest;
+}
+
+sub sh_code {pipeline @pipeline_prefix, parse_ops(@_), @pipeline_suffix}
+
+FD redirection stuff.
+ni compiles a shell pipeline by sending the pipeline code to a shell process as
+standard input. The shell then executes the pipeline, which reads from fd 3 to
+pull stdin (we have to do this because the shell's stdin is used for the
+pipeline code, and /bin/sh doesn't reliably differentiate between "more code"
+and "stdin to the program").
+
+We can't use Perl's open() function here because it only gives us a way to
+forward one file descriptor. Instead, we need to manually fork/exec and get
+everything set up using pipe() and dup2.
+
+sub run_sh {
+  pipe my $r, $w;
+
+  if (my $child = fork) {
+    close $r;
+    close STDIN;
+    close STDOUT;
+    syswrite $w, $_[0] or die "ni: failed to write pipeline to shell: $!";
+    close STDERR;
+    close $w;
+    waitpid $child, 0;
+    $?;
+  } else {
+    close $w;
+    if (fileno $r == 3) {
+      my $fd = dup fileno $r;
+      defined $fd or die "ni: failed to dup temp fd " . fileno($r) . ": $!";
+      close $r;
+      open $r, "<&=$fd" or die "ni: failed to open dup fd $fd: $!";
+    }
+    dup2 0, 3 or die "ni: failed to redirect stdin to shell: $!"
+      unless -t STDIN;
+    close STDIN;
+    dup2 fileno $r, 0 or die "ni: failed to redirect command to shell "
+                           . fileno($r) . " -> 0): $!";
+    close $r;
+
+    exec 'sh' or exec 'ash' or exec 'dash' or exec 'bash'
+      or die "ni: failed to run any POSIX sh: $!";
+  }
+}
+
+Internal and debugging options.
+A handful of things useful for ni development. These are also present in the
+final image.
+
+$option_handlers{'internal/eval'}
+  = sub {eval "package ni; $_[0]"; die $@ if $@; exit_success};
+
+$option_handlers{'internal/lib'} = sub {extend_self $_[0], 'lib'};
+
+$option_handlers{'internal/parse'}
+  = sub {eval("package ni; sub {print join(' | ', ($_[0])->(\@_)), '\n'}")
+           ->(@_[1..$#_]); die $@ if $@; exit_success};
+
+Extensions.
+User-facing options to modify or live-extend ni. --lib is used to load code but
+not change the ni image, --extend causes ni to self-modify to include the
+specified extension.
+
+$option_handlers{lib} = sub {intern_lib shift; goto \&main};
+$option_handlers{run} = sub {eval 'package ni;' . shift;
+                             die $@ if $@;
+                             goto \&main};
+
+$option_handlers{extend} = sub {extend_self $_[0], 'ext'};
+
+Documentation options.
+Options for the end user that can't otherwise be parsed as pipelines.
+
+$option_handlers{help} = sub {@_ = ("//help/" . (@_ ? $_[0] : '')); goto \&main};
+
+$option_handlers{explain} = sub {TODO()};
+$option_handlers{compile} = sub {print sh_code @_; exit_nop};
+
+sub main {
+  my ($command, @args) = @_;
+  $command = '--help' if $command eq '-h' or !@_ && -t STDIN && -t STDOUT;
+  my $h = $command =~ s/^--// && $option_handlers{$command};
+  return &$h(@args) if $h;
+  run_sh sh_code @_;
+}

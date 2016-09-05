@@ -1,0 +1,17 @@
+Utility functions.
+Generally useful stuff, some of which makes up for the old versions of Perl we
+need to support.
+
+sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
+sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
+
+sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
+
+sub rf  {open my $fh, "< $_[0]" or die $!; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {open my $fh, "< $_[0]" or die $!; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
+
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
