@@ -172,7 +172,7 @@ transformations. For example:
 
 This might seem like it would be slow, but most of the overhead lives in
 high-throughput native functions that are unlikely to take up much time in
-practice.
+practice. (Beyond which, how long is a typical command line really?)
 
 use constant end_of_argv  => sub {@_           ? () : (0)};
 use constant consumed_opt => sub {length $_[0] ? () : @_};
