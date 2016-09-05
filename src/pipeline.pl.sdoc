@@ -1,0 +1,30 @@
+Pipeline construction.
+A way to build a shell pipeline in-process by consing a transformation onto
+this process's standard input. This will cause a fork to happen, and the forked
+PID is returned.
+
+use POSIX qw/dup2/;
+
+sub move_fd($$) {
+  my ($old, $new) = @_;
+  return if $old == $new;
+  close $new;
+  dup2 $old, $new or die "ni: dup2($old, $new) failed: $!";
+  close $old;
+}
+
+sub stdin_cons(&@) {
+  pipe my $r, my $w or die "ni: stdin_cons pipe failed: $!";
+  my $pid = fork;
+  die "ni: stdin_cons fork failed: $!" unless defined $pid;
+  if ($pid) {
+    close $w;
+    move_fd fileno $r, 0;
+    return $pid;
+  } else {
+    close $r;
+    move_fd fileno $w, 1;
+    &{$_[0]}(@_[1..$#_]);
+    exit;
+  }
+}

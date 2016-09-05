@@ -1,0 +1,66 @@
+Regex parsing.
+Sometimes we'll have an operator that takes a regex, which is subject to the
+CLI reader problem the same way code arguments are. Rather than try to infer
+brackets the same way, we just require that regexes are terminated with /
+(which should be ok because that's also how they typically start).
+
+use constant regex =>
+  parsfn((pmap {s/\/$//; $_} prx qr/^(?:[^\\\/]+|\\.)*\//),
+    pdoc {'regex'});
+
+Generic code parser.
+Counts brackets outside quoted strings, which in our case are '' and "".
+Doesn't look for regular expressions because these vary by language; but this
+parser should be able to handle most straightforward languages with quoted
+string literals and backslash escapes.
+
+use constant generic_code =>
+  parser {return @_ unless $_[0] =~ /\]$/;
+          my ($code, @xs) = @_;
+          (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
+          my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
+          $balance ? (substr($code, 0, $balance), substr($code, $balance))
+                   : ($code, @xs)}
+    pdoc {'generic_code'};
+
+Code parsing.
+This is nontrivial due to the CLI reader problem. The idea is that we need to
+figure out how many closing brackets belong to the code, vs how many close a
+lambda. Depending on the language, the only way to do this may be to shell out
+to an interpreter.
+
+use constant rbcode =>
+  parser {return @_ unless $_[0] =~ /\]$/;
+          my ($code, @xs, $x, $qcode) = @_;
+          ($qcode = $code) =~ s/'/'\\''/g;
+          $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
+                          and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+          $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)}
+    pdoc {'rbcode'};
+
+Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
+blocks to avoid executing side effects. We can guarantee that nothing will run
+(beyond `use` statements, which we assume are safe) by removing any
+occurrences of the string `BEGIN` and replacing them with something
+syntactically equivalent but less volatile -- in this case, `END`.
+
+use constant plcode =>
+  parser {return @_ unless $_[0] =~ /\]$/;
+          my ($code, @xs, $x, $qcode) = @_;
+          ($qcode = $code) =~ s/'/'\\''/g;
+
+          my $begin_warning = $qcode =~ s/BEGIN/END/g;
+          $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
+                          and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+
+          print STDERR <<EOF if $_ && $begin_warning;
+ni: failed to get closing bracket count for perl code "$_[0]", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out. To avoid this, bypass bracket inference by terminating your code
+    with a single space, e.g:
+
+    p'[[some code]]'            # this fails due to bracket inference
+    p'[[some code]] '           # this works by bypassing it
+EOF
+          $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)}
+    pdoc {'plcode'};
