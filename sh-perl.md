@@ -23,6 +23,12 @@ mapper code. (And to work around a double-free bug in some versions of
 these benefits exist only for the Perl frontend; other languages will have all
 of the same problems.
 
+Actually this isn't quite true. If we can fork first and stdin-populate second,
+we'll avoid the humongous heredoc chains we'd currently get, which should save
+a ton of memory on ni's end as it constructs the compiled script (not to
+mention the downstream savings if that script ends up being sent somewhere).
+It's absolutely worth it: ni should fork and use callable ops.
+
 ## Pipeline monitors
 While we're doing this, we might as well go ahead and figure out how to get
 pipeline reporting in there. Ideally this would provide:
