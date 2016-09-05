@@ -36,3 +36,7 @@ This should be right. Then we can log it and support stuff like searching. If
 we have a bunch of fds we can isolate each stderr stream to a specific process,
 though I'm not sure what exactly this buys us. We also need to make sure stderr
 doesn't block the monitor writers.
+
+The monitors are trackable anyway because we can drop IDs into the closure
+context. This means we need a fairly coherent view of the pipeline before we
+commit to executing it.
