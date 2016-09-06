@@ -1,26 +1,23 @@
 Parser combinators.
-Meta-aware parser combinators that operate over arrays of strings. Function
-coercion parses things, `->describe()` produces a structural description.
+List-structured combinators. These work like normal parser combinators, but are
+indirected through data structures to make them much easier to inspect. This
+allows ni to build an operator mapping table.
 
-{
-package ni::parser;
-use overload qw/ &{} parse /;
-
-sub parse    {${$_[0]}{parse}}
-sub describe {${$_[0]}{describe}->(@_[1..$#_])}
+our %parsers;
+sub defparser($$&) {
+  my ($name, $proto, $f) = @_;
+  $parsers{$name} = $f;
+  eval "sub p$name($proto) {['$name', \@_]}";
 }
 
-sub parsfn($$) { bless {parse => $_[0], describe => $_[1]}, 'ni::parser' }
-sub parser(&&) { parsfn $_[0], $_[1] }
-sub pdoc(&)    { $_[0] }
+sub parse($@) {$parsers{${$_[0]}[0]}->(@_)}
 
 Base parsers.
 Stuff for dealing with some base cases.
 
-use constant pend   => parser {@_           ? () : (0)} pdoc {'end of input'};
-use constant pempty => parser {length $_[0] ? () : @_}  pdoc {'empty arg'};
-
-sub pk($) {my ($v) = @_; parser {($v, @_)} pdoc {['constant', $v]}}
+defparser 'end',   '',  sub {@_           ? () : (0)};
+defparser 'empty', '',  sub {length $_[1] ? () : @_};
+defparser 'k',     '$', sub {(${$_[0]}[1], @_)};
 
 Basic combinators.
 Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
@@ -28,52 +25,51 @@ a dispatch on specified prefixes. The 'r' suffix means that the parser
 combinator takes a reference to a collection; this allows you to modify the
 collection later on to add more alternatives.
 
-sub paltr(\@) {my ($ps) = @_;
-       parser {my @ps, @r; @r = &$_(@_) and return @r for @ps = @$ps; ()}
-         pdoc {['palt', map $_->describe, @$ps]}}
+defparser 'altr', '\@',
+  sub {my ($self, @xs, @ps, @r) = @_;
+       @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
-sub pdspr(\%) {my ($ps) = @_;
-       parser {my ($x, @xs, $k, @ys, %ls) = @_;
-               ++$ls{length $_} for keys %$ps;
-               for my $l (sort {$b <=> $a} keys %ls) {
-                 return (@ys = $$ps{$c}(substr($x, $l), @xs))
-                   ? ($ys[0], @ys[1..$#ys])
-                   : ()
-                 if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
-               }
-               ()}
-         pdoc {['pdsp', map {; $_ => $$ps{$_}->describe} sort keys %$ps]}}
+defparser 'dspr', '\%',
+  sub {my ($self, $x, @xs, $k, @xs, %ls) = @_;
+       my (undef, $ps) = @$self;
+       ++$ls{length $_} for keys %$ps;
+       for my $l (sort {$b <=> $a} keys %ls) {
+         return (@ys = parse $ps{$c}, substr($x, $l), @xs) ? @ys : ()
+         if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
+       }
+       ()};
 
-sub palt(@) {my @ps = @_; paltr @ps}
-sub pdsp(%) {my %ps = @_; pdspr %ps}
+sub palt(@) {my @ps = @_; paltr(@ps)}
+sub pdsp(%) {my %ps = @_; pdspr(%ps)}
 
-sub pseq(@) {my $ps = \@_;
-     parser {my ($x, @xs, @ys, @ps);
-             (($x, @_) = &$_(@_)) ? push @xs, $x : return () for @ps = @$ps;
-             (\@xs, @_)}
-       pdoc {['pseq', map $_->describe, @$ps]}}
+defparser 'seq', '@',
+  sub {my ($self, @is, $x, @xs, @ys, @ps) = @_;
+       (($x, @is) = parse $_, @is) ? push @xs, $x : return ()
+         for @ps = @{$$self[1]};
+       (\@xs, @_)};
 
-sub prep($;$) {my ($p, $n) = (@_, 0);
-       parser {my (@c, @r);
-               push @r, $_ while ($_, @_) = &$p(@c = @_);
-               @r >= $n ? (\@r, @c) : ()}
-         pdoc {['prep', $n, $p->describe]}}
+defparser 'rep', '$;$',
+  sub {my ($self, @is, @c, @r) = @_;
+       my (undef, $p, $n) = (@$self, 0);
+       push @r, $_ while ($_, @_) = parse $p, (@c = @_);
+       @r >= $n ? (\@r, @c) : ()};
 
-sub popt($) {my ($p) = @_;
-     parser {my @xs = &$p(@_); @xs ? @xs : (undef, @_)}
-       pdoc {['popt', $p->describe]}};
+defparser 'opt', '$',
+  sub {my ($self, @is) = @_;
+       my @xs = &{$$self[1]}(@is); @xs ? @xs : (undef, @is)};
 
-sub pmap(&$) {my ($f, $p) = @_;
-      parser {my @xs = &$p(@_); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()}
-        pdoc {['pmap', $f, $p->describe]}}
+defparser 'map', '&$',
+  sub {my ($self, @is) = @_;
+       my (undef, $f, $p) = @$self;
+       my @xs = &$p(@is); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
-sub pcond(&$) {my ($f, $p) = @_;
-       parser {my @xs = &$p(@_); @xs && &$f($_ = $xs[0]) ? @xs : ()}
-         pdoc {['pcond', $f, $p->describe]}}
+defparser 'cond', '&$',
+  sub {my ($self, @is) = @_;
+       my (undef, $f, $p) = @$self;
+       my @xs = &$p(@is); @xs && &$f($_ = $xs[0]) ? @xs : ()};
 
 sub pn($@) {my ($n, @ps) = @_;
-    parsfn((pmap {$$_[$n]} pseq @ps),
-      pdoc {['pn', $n, map $_->describe, @ps]})}
+            pmap(fn "\$\$_[$n]", pseq(@ps))}
 
 Regex parsing.
 Consumes the match, returning either the matched text or the first match group

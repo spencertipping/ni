@@ -5,18 +5,38 @@ PID is returned.
 
 use POSIX qw/dup2/;
 
+sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
+sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
+sub cpipe {pipe @_ or die "ni: pipe failed: $!"}
+
 sub move_fd($$) {
   my ($old, $new) = @_;
   return if $old == $new;
   close $new;
-  dup2 $old, $new or die "ni: dup2($old, $new) failed: $!";
+  cdup2 $old, $new
   close $old;
 }
 
+sub with_stdin(&$) {
+  cpipe my $r, my $w;
+  my $pid = cfork;
+  if ($pid) {
+    close $r;
+    syswrite $w, $_[1];
+    close $w;
+    $pid;
+  } else {
+    move_fd 0, 3;
+    move_fd fileno $r, 0;
+    close $w;
+    &{$_[0]}();
+    exit;
+  }
+}
+
 sub stdin_cons(&@) {
-  pipe my $r, my $w or die "ni: stdin_cons pipe failed: $!";
-  my $pid = fork;
-  die "ni: stdin_cons fork failed: $!" unless defined $pid;
+  cpipe my $r, my $w;
+  my $pid = cfork;
   if ($pid) {
     close $w;
     move_fd fileno $r, 0;

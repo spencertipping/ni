@@ -12,3 +12,4 @@ resource ni.map.sdoc
 
 resource util.pl.sdoc
 resource parse.pl.sdoc
+resource pipeline.pl.sdoc

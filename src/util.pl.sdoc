@@ -15,3 +15,19 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+{
+package ni::fn;
+use overload qw/ &{} apply ${} source /;
+sub new {
+  my ($class, $code) = @_;
+  my $compiled = eval "sub {$code\n}";
+  die "ni: error compiling $code: $@" if $@;
+  bless {f => eval "sub {$code\n}", code => $code}, $class;
+}
+
+sub apply($@) {${$_[0]}{f}->(@_[1..$#_])}
+sub source($) {\${$_[0]}{code}}
+}
+
+sub fn($) {ni::fn->new($_[0])}
