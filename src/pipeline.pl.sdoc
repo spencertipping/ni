@@ -26,9 +26,9 @@ sub with_stdin(&$) {
     close $w;
     $pid;
   } else {
+    close $w;
     move_fd 0, 3;
     move_fd fileno $r, 0;
-    close $w;
     &{$_[0]}();
     exit;
   }
@@ -40,7 +40,7 @@ sub stdin_cons(&@) {
   if ($pid) {
     close $w;
     move_fd fileno $r, 0;
-    return $pid;
+    $pid;
   } else {
     close $r;
     move_fd fileno $w, 1;

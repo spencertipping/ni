@@ -15,5 +15,7 @@ resource dev.pl.sdoc
 resource parse.pl.sdoc
 resource common.pl.sdoc
 resource cli.pl.sdoc
+resource op.pl.sdoc
 resource pipeline.pl.sdoc
+resource self.pl.sdoc
 resource main.pl.sdoc

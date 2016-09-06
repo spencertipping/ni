@@ -14,7 +14,13 @@ defclispecial '--dev/parse', q{
   parse pcli '', @_;
 };
 
+Extensions.
+Options to extend and modify the ni image.
+
+defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
+
 Root CLI context.
+This is used by extensions that define long and short options.
 
 defcontext '';
 
@@ -25,6 +31,4 @@ sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
   my @r = parse pcli '', @_;
-  print scalar(@r), "\n";
-  print "$_\n" for @r;
 }

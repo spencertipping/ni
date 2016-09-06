@@ -1,0 +1,15 @@
+Operator definition.
+Like ni's parser combinators, operators are indirected using names. This
+provides an intermediate representation that can be inspected and serialized.
+
+our %operators;
+sub defoperator($$) {
+  my ($name, $f) = @_;
+  $operators{$name} = fn $f;
+  eval "sub $name(@) {['$name', @_]}";
+}
+
+sub operate($) {
+  my ($name, @args) = @_;
+  $operators{$name}->(@args);
+}
