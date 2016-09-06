@@ -16,18 +16,23 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
+Quoted function support.
+Functions that store their code in string form. This is useful for two
+purposes: first, it enables you to recompile things, e.g. for dynamic inlining;
+and second, it makes functions self-documenting, particularly in the context of
+parser combinators.
+
 {
 package ni::fn;
-use overload qw/ &{} apply ${} source /;
+use overload qw/ &{} f "" source /;
 sub new {
   my ($class, $code) = @_;
-  my $compiled = eval "sub {$code\n}";
-  die "ni: error compiling $code: $@" if $@;
-  bless {f => eval "sub {$code\n}", code => $code}, $class;
+  bless {f => ni::eval("sub {$code\n}", "anon sub{$code}"), code => $code},
+        $class;
 }
 
-sub apply($@) {${$_[0]}{f}->(@_[1..$#_])}
-sub source($) {\${$_[0]}{code}}
+sub f($)      {${$_[0]}{f}}
+sub source($) {${$_[0]}{code}}
 }
 
-sub fn($) {ni::fn->new($_[0])}
+sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}

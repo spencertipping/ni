@@ -7,13 +7,13 @@ use POSIX qw/dup2/;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
-sub cpipe {pipe @_ or die "ni: pipe failed: $!"}
+sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
 
 sub move_fd($$) {
   my ($old, $new) = @_;
   return if $old == $new;
   close $new;
-  cdup2 $old, $new
+  cdup2 $old, $new;
   close $old;
 }
 

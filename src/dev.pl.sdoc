@@ -1,0 +1,24 @@
+Development functions.
+Utilities helpful for debugging and developing ni.
+
+sub dev_inspect($) {
+  local $_;
+  my $x = $_[0];
+  return '[' . join(', ', map dev_inspect($_), @$x) . ']' if 'ARRAY' eq ref $x;
+  return '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}), keys %$x) . '}' if 'HASH' eq ref $x;
+  "" . $x;
+}
+
+sub dev_trace($) {
+  my ($fname) = @_;
+  my $f = \&{$fname};
+  my $indent = '';
+  *{$fname} = sub {
+    printf STDERR "$indent$fname %s ...\n", dev_inspect [@_];
+    $indent .= "  ";
+    my @r = &$f(@_);
+    $indent =~ s/  $//;
+    printf STDERR "$indent$fname %s = %s\n", dev_inspect [@_], dev_inspect [@r];
+    @r;
+  };
+}

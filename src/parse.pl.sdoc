@@ -3,23 +3,29 @@ List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
+use strict 'refs';
+
 our %parsers;
-sub defparser($$&) {
+sub defparser($$$) {
   my ($name, $proto, $f) = @_;
-  $parsers{$name} = $f;
+  $parsers{$name} = fn $f;
   eval "sub p$name($proto) {['$name', \@_]}";
 }
 
-sub parse($@) {$parsers{${$_[0]}[0]}->(@_)}
+sub parse {
+  my ($p, @args) = @{$_[0]};
+  my $f = $parsers{$p} or die "ni: no such parser: $p";
+  &$f(@_);
+}
 
 Base parsers.
 Stuff for dealing with some base cases.
 
 c
 BEGIN {
-defparser 'end',   '',  sub {@_           ? () : (0)};
-defparser 'empty', '',  sub {length $_[1] ? () : @_};
-defparser 'k',     '$', sub {(${$_[0]}[1], @_)};
+  defparser 'end',   '',  sub {@_ > 1       ? () : (0)};
+  defparser 'empty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'k',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
 }
 
 Basic combinators.
@@ -30,55 +36,56 @@ collection later on to add more alternatives.
 
 c
 BEGIN {
-defparser 'altr', '\@',
-  sub {my ($self, @xs, @ps, @r) = @_;
-       @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
+  defparser 'altr', '\@',
+    sub {my ($self, @xs, @ps, @r) = @_;
+         @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
-defparser 'dspr', '\%',
-  sub {my ($self, $x, @xs, $k, @xs, %ls) = @_;
-       my (undef, $ps) = @$self;
-       ++$ls{length $_} for keys %$ps;
-       for my $l (sort {$b <=> $a} keys %ls) {
-         return (@ys = parse $ps{$c}, substr($x, $l), @xs) ? @ys : ()
-         if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
-       }
-       ()};
+  defparser 'dspr', '\%',
+    sub {my ($self, $x, @xs, $k, @ys, %ls) = @_;
+         my (undef, $ps) = @$self;
+         ++$ls{length $_} for keys %$ps;
+         for my $l (sort {$b <=> $a} keys %ls) {
+           return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
+           if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
+         }
+         ()};
 }
 
-sub palt(@) {my @ps = @_; paltr(@ps)}
-sub pdsp(%) {my %ps = @_; pdspr(%ps)}
+sub palt(@) {my @ps = @_; paltr @ps}
+sub pdsp(%) {my %ps = @_; pdspr %ps}
 
 c
 BEGIN {
-defparser 'seq', '@',
-  sub {my ($self, @is, $x, @xs, @ys, @ps) = @_;
-       (($x, @is) = parse $_, @is) ? push @xs, $x : return ()
-         for @ps = @{$$self[1]};
-       (\@xs, @_)};
+  defparser 'seq', '@',
+    sub {my ($self, @is, $x, @xs, @ys) = @_;
+         my (undef, @ps) = @$self;
+         (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
+         (\@xs, @is)};
 
-defparser 'rep', '$;$',
-  sub {my ($self, @is, @c, @r) = @_;
-       my (undef, $p, $n) = (@$self, 0);
-       push @r, $_ while ($_, @_) = parse $p, (@c = @_);
-       @r >= $n ? (\@r, @c) : ()};
+  defparser 'rep', '$;$',
+    sub {my ($self, @is, @c, @r) = @_;
+         my (undef, $p, $n) = (@$self, 0);
+         push @r, $_ while ($_, @is) = parse $p, (@c = @is);
+         @r >= $n ? (\@r, @c) : ()};
 
-defparser 'opt', '$',
-  sub {my ($self, @is) = @_;
-       my @xs = &{$$self[1]}(@is); @xs ? @xs : (undef, @is)};
+  defparser 'opt', '$',
+    sub {my ($self, @is) = @_;
+         my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
 
-defparser 'map', '&$',
-  sub {my ($self, @is) = @_;
-       my (undef, $f, $p) = @$self;
-       my @xs = &$p(@is); @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
+  defparser 'map', '$$',
+    sub {my ($self, @is) = @_;
+         my (undef, $f, $p) = @$self;
+         $f = fn $f;
+         my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
-defparser 'cond', '&$',
-  sub {my ($self, @is) = @_;
-       my (undef, $f, $p) = @$self;
-       my @xs = &$p(@is); @xs && &$f($_ = $xs[0]) ? @xs : ()};
+  defparser 'cond', '&$',
+    sub {my ($self, @is) = @_;
+         my (undef, $f, $p) = @$self;
+         $f = fn $f;
+         my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
-sub pn($@) {my ($n, @ps) = @_;
-            pmap(fn "\$\$_[$n]", pseq(@ps))}
+sub pn($@) {my ($n, @ps) = @_; pmap fn "\$\$_[$n]", pseq @ps}
 
 Regex parsing.
 Consumes the match, returning either the matched text or the first match group
@@ -86,9 +93,9 @@ you specify. Always matches from the beginning of a string.
 
 c
 BEGIN {
-defparser 'prx', '$',
-  sub {my ($self, $x, @xs) = @_;
-       $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+  defparser 'rx', '$',
+    sub {my ($self, $x, @xs) = @_;
+         $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 }
 
-sub prc($) {pn(0, prx(qr/$_[0]/), popt(pempty()))}
+sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}

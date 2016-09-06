@@ -1,0 +1,30 @@
+CLI entry point.
+Some custom toplevel option handlers and the main function that ni uses to
+parse CLI options and execute the data pipeline.
+
+our %cli_special;
+sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
+
+Development options.
+Things useful for developing ni.
+
+defclispecial '--dev/self', q{print "$ni::self{$_[0]}\n"};
+defclispecial '--dev/parse', q{
+  dev_trace 'ni::parse';
+  parse pcli '', @_;
+};
+
+Root CLI context.
+
+defcontext '';
+
+defshort '/x', pk 'x';
+defshort '/y', pk 'y';
+
+sub main {
+  my ($cmd, @args) = @_;
+  return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
+  my @r = parse pcli '', @_;
+  print scalar(@r), "\n";
+  print "$_\n" for @r;
+}

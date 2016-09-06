@@ -11,5 +11,9 @@ bootcode
 resource ni.map.sdoc
 
 resource util.pl.sdoc
+resource dev.pl.sdoc
 resource parse.pl.sdoc
+resource common.pl.sdoc
+resource cli.pl.sdoc
 resource pipeline.pl.sdoc
+resource main.pl.sdoc

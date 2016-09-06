@@ -39,9 +39,9 @@ CLI grammar elements.
 Generators for various syntactic constructs given a context. Here's what they
 represent:
 
-| pseries(context):     a chain of consecutive operators in the context
-  plambda(context):     a lambda-list: [ chain ]
-  pcli(context):        a complete command-line within the context
+| pseries(context): a chain of consecutive operators in the context
+  plambda(context): a lambda-list: [ chain ]
+  pcli(context):    a complete command-line within the context
 
 sub pseries($) {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
 sub plambda($) {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
