@@ -1,46 +1,48 @@
-CLI parser generator.
-ni's CLI grammar is interesting because it maintains the same basic structure
-across a number of different interpretation contexts. For example, the main CLI
-arguments are interpreted as local/POSIX stuff, but if you create a JVM Spark
-context then the same grammar will host a series of modified operators that
-compile into Java/Scala code instead. The invariant parts of this are factored
-into a function that produces a CLI grammar with mutable long/short mappings
-(which can be modified using 'deflong' and 'defshort' below).
+CLI grammar.
+ni's command line grammar uses some patterns on top of the parser combinator
+primitives defined in parse.pl.sdoc. Probably the most important one to know
+about is the long/short option dispatch, which looks like this:
 
-TODO: rewrite all of this
+| option = alt @longs, dsp %shorts
+
+This compound dispatch pattern is called a "context" because it represents the
+full range of stuff a ni parser will end up resolving.
 
 our %contexts;
-
-sub context($) {my ($c, $p) = split /\//, $_[0]; $contexts{$c}{$p}}
+our %long_refs;
+our %short_refs;
 
 sub defcontext($) {
-  my $short = {};
-  my $long  = [];
-  my $r = $contexts{$_[0]} = {};
-  $$r{ops} = sub {$$r{ops}->(@_)};
-
-  $$r{longs}  = $long;
-  $$r{shorts} = $short;
-
-  $$r{long}   = altr @$long;
-  $$r{short}  = chaltr %$short;
-  $$r{lambda} = alt mr '_', pn 1, mrc '\[', $$r{ops}, mr '\]';
-  $$r{thing}  = alt $$r{lambda}, $$r{long}, $$r{short};
-  $$r{suffix} = rep $$r{thing}, 1;
-  $$r{op}     = pn 1, rep(consumed_opt), $$r{thing}, rep(consumed_opt);
-  $$r{ops}    = rep $$r{op};
-  $$r{cli}    = pn 0, $$r{ops}, end_of_argv;
-  $$r{cli_d}  = $$r{ops};
+  $short_refs{$_[0]} = {};
+  $long_refs{$_[0]}  = [pdspr %{$short_refs{$_[0]}}];
+  $contexts{$_[0]}   = paltr @{$long_refs{$_[0]}};
 }
 
-defcontext 'root';
-
-sub defshort($$$) {
-  die "ni: redefining existing short operator $_[1] (use rmshort first)"
-    if exists $contexts{$_[0]}{shorts}{$_[1]};
-  $contexts{$_[0]}{shorts}{$_[1]} = $_[2];
+sub defshort($$) {
+  my ($context, $dsp) = split /\//, $_[0];
+  die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
+    if exists $short_refs{$context}{$dsp};
+  $short_refs{$context}{$dsp} = $_[1];
 }
 
-sub rmshort($) {delete $contexts{$_[0]}{shorts}{$_[1]}}
+sub deflong($$) {
+  my ($context, $name) = split /\//, $_[0];
+  unshift @{$long_refs{$context}}, $_[1];
+}
 
-sub deflong($$$) {unshift @{$contexts{$_[0]}{longs}}, $_[2]}
+sub rmshort($) {
+  my ($context, $dsp) = split /\//, $_[0];
+  delete $short_refs{$context}{$dsp};
+}
+
+CLI grammar elements.
+Generators for various syntactic constructs given a context. Here's what they
+represent:
+
+| pseries(context):     a chain of consecutive operators in the context
+  plambda(context):     a lambda-list: [ chain ]
+  pcli(context):        a complete command-line within the context
+
+sub pseries($) {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
+sub plambda($) {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
+sub pcli($)    {pn 0, pseries $_[0], pend}
