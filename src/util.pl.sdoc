@@ -16,6 +16,13 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
+Module loading.
+ni can include .pm files in its resource stream, which contain Perl code but
+aren't evaluated by default. This function is used to eval them into the
+current runtime.
+
+sub load($) {ni::eval $self{$_[0]}, $_[0]}
+
 Quoted function support.
 Functions that store their code in string form. This is useful for two
 purposes: first, it enables you to recompile things, e.g. for dynamic inlining;

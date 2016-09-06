@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-26 ni.map.sdoc
+27 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -72,11 +72,12 @@ resource pipeline.pl.sdoc
 resource self.pl.sdoc
 resource main.pl.sdoc
 lib core/gen
+lib core/checkpoint
 lib core/deps
 lib core/java
 lib core/hadoop
 lib doc
-38 util.pl.sdoc
+45 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -94,6 +95,13 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+Module loading.
+ni can include .pm files in its resource stream, which contain Perl code but
+aren't evaluated by default. This function is used to eval them into the
+current runtime.
+
+sub load($) {ni::eval $self{$_[0]}, $_[0]}
 
 Quoted function support.
 Functions that store their code in string form. This is useful for two
@@ -532,6 +540,28 @@ sub gen($) {
     join '', @r;
   };
 }
+2 core/checkpoint/lib
+checkpoint.sh.sdoc
+checkpoint.pl.sdoc
+5 core/checkpoint/checkpoint.sh.sdoc
+Checkpoint shell functions.
+We need a function that generates a checkpoint file atomically; that is, it
+becomes its final name only when all of the content has been written.
+
+ni_checkpoint() { sh | tee "$1.part" && mv "$1.part" "$1"; }
+12 core/checkpoint/checkpoint.pl.sdoc
+Checkpoint files.
+You can break a long pipeline into a series of smaller files using
+checkpointing, whose operator is `:`. The idea is to cache intermediate
+results. A checkpoint specifies a file and a lambda whose output it should
+capture.
+
+defoperator 'checkpoint', q{
+  my ($file, $generator) = @_;
+  append {-r $file ? cat $file : checkpoint_create $file, $generator};
+};
+
+defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq filename, plambda '';
 1 core/deps/lib
 sha1.pl
 1031 core/deps/sha1.pl

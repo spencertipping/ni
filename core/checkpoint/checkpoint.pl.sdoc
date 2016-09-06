@@ -4,13 +4,9 @@ checkpointing, whose operator is `:`. The idea is to cache intermediate
 results. A checkpoint specifies a file and a lambda whose output it should
 capture.
 
-use constant checkpoint_prefix =>
-  {checkpoint_sh => $self{'core/checkpoint/checkpoint.sh'},
-   %{stream_sh()}};
+defoperator 'checkpoint', q{
+  my ($file, $generator) = @_;
+  append {-r $file ? cat $file : checkpoint_create $file, $generator};
+};
 
-defshort 'root', ':',
-  pmap {-r $$_[0] ? ni_file $$_[0]
-                  : [sh(['ni_append_hd', 'ni_checkpoint', $$_[0]],
-                        stdin  => pipeline($$_[1]),
-                        prefix => checkpoint_prefix), ni_decode]}
-  seq filename, context 'root/lambda';
+defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq filename, plambda '';
