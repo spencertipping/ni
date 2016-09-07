@@ -1,0 +1,79 @@
+Streaming data sources.
+Common ways to read data, most notably from files and directories. Also
+included are numeric generators, shell commands, etc.
+
+$main_operator = sub {
+  sicons {operate @$_} for @_;
+  exec 'less' or exec 'more' or exec 'cat';
+};
+
+use constant shell_command => prc '.*';
+
+defoperator 'cat', q{
+  my ($f) = @_;
+  sappend {sforward srfile $f, siproc {sdecode}};
+};
+
+defoperator 'echo', q{my ($x) = @_; sappend {print "$x\n"}};
+defoperator 'sh',   q{my ($c) = @_; sappend {exec $c}};
+defoperator 'n', q{
+  my ($l, $u) = @_;
+  sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
+};
+
+defshort '/n',  pmap q{n_op 1, $_ + 1}, number;
+defshort '/n0', pmap q{n_op 0, $_}, number;
+
+Shell transformation.
+Pipe through a shell command. We also define a command to duplicate a stream
+through a shell command.
+
+defoperator 'pipe', q{exec $_[0] or die "ni: failed to exec $_[0]: $!"};
+defshort '/$=', pmap q{pipe_op $_}, shell_command;
+
+defoperator 'tee', q{
+  my ($cmd) = @_;
+  open my $fh, '|', $cmd or die "ni: tee $cmd failed: $!";
+  stee \*STDIN, $fh, \*STDOUT;
+};
+defshort '/$^', pmap q{tee $_}, shell_command;
+
+Sinking.
+We can sink data into a file just as easily as we can read from it. This is
+done with the `>` operator, which is typically written as `\>`.
+
+defoperator 'file_tee',   q{stee \*STDIN, swfile($_[0]), \*STDOUT};
+defoperator 'file_write', q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
+defoperator 'file_read',  q{
+  while (<STDIN>) {
+    chomp;
+    await_children;
+    operate 'cat', $_;
+  }
+};
+
+deflong '/file_tee',   pmap q{file_tee $_},   pn 1, prx qr/\>%/, filename;
+deflong '/file_write', pmap q{file_write $_}, pn 1, prx qr/\>/,  filename;
+deflong '/file_read',  pmap q{file_read},           prx qr/\</;
+
+Compression and decoding.
+Sometimes you want to emit compressed data, which you can do with the `Z`
+operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
+by adding a suffix. You can decode a stream in any of these formats using `ZD`
+(though in most cases ni will automatically decode compressed formats).
+
+our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
+
+use constant compressor_name => prx '[gxo4b]';
+use constant compressor_spec =>
+  pmap q{my ($c, $level) = @$_;
+         $c = $compressors{$c || 'g'};
+         defined $level ? pipe_op "$c -$level" : pipe_op $c},
+  pseq popt compressor_name, popt integer;
+
+defoperator 'sink_null', q{1 while sysread STDIN, $_, 8192};
+defoperator 'decode', q{decode};
+
+defshort '/Z',  compressor_spec;
+defshort '/ZN', pk sink_null_op();
+defshort '/ZD', pk decode_op();

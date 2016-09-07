@@ -6,7 +6,9 @@ PID is returned.
 I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
-use POSIX qw/dup2/;
+use POSIX qw/dup2 :sys_wait_h/;
+
+sub await_children() {1 while 0 < waitpid -1, WNOHANG}
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
@@ -25,39 +27,38 @@ A few functions, depending on what you want to do:
 
 | siproc(&): fork into block, return pipe FH to block's STDIN.
   soproc(&): fork into block, return pipe FH from block's STDOUT.
-  sicons(&): fork into block, connect its STDOUT to our STDIN, return pid.
-  socons(&): fork into block, connect our STDOUT to its STDIN, return pid.
+  sicons(&): fork into block, connect its STDOUT to our STDIN.
+  socons(&): fork into block, connect our STDOUT to its STDIN.
 
-
-
-sub with_stdin(&$) {
-  cpipe my $r, my $w;
-  my $pid = cfork;
-  if ($pid) {
-    close $r;
-    syswrite $w, $_[1];
-    close $w;
-    $pid;
-  } else {
-    close $w;
-    move_fd 0, 3;
-    move_fd fileno $r, 0;
-    &{$_[0]}();
-    exit;
-  }
+sub forkopen($$) {
+  my ($mode, $f) = @_;
+  my ($fh, $pid);
+  return $fh if $pid = open $fh, $mode;
+  die "ni: forkopen $mode failed: $!" unless defined $pid;
+  close $fh;
+  &$f();
+  exit;
 }
 
-sub stdin_cons(&@) {
-  cpipe my $r, my $w;
-  my $pid = cfork;
-  if ($pid) {
-    close $w;
-    move_fd fileno $r, 0;
-    $pid;
-  } else {
-    close $r;
-    move_fd fileno $w, 1;
-    &{$_[0]}(@_[1..$#_]);
-    exit;
-  }
-}
+sub siproc(&) {forkopen '|-', $_[0]}
+sub soproc(&) {forkopen '-|', $_[0]}
+sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f(@_)}, 0}
+sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f(@_)}, 1}
+
+Stream functions.
+These are called by pipelines to simplify things. For example, a common
+operation is to append the output of some data-producing command:
+
+| $ ni . .              # lists current directory twice
+
+If you do this, ni will create a pipeline that uses stream wrappers to
+concatenate the second `ls` output (despite the fact that technically it's a
+shell pipe).
+
+sub sforward($$) {local $_; syswrite $_[1], $_ while sysread $_[0], $_, 8192}
+sub stee($$$)    {local $_; syswrite($_[1], $_), syswrite($_[2], $_) while sysread $_[0], $_, 8192}
+sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}()}
+sub sprepend(&)  {&{$_[0]}(); sforward \*STDIN, \*STDOUT}
+
+sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
+sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}

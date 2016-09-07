@@ -2,27 +2,22 @@ Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
-deflong 'root', 'meta/self', pmap {ni_verb image}            mr '^//ni';
-deflong 'root', 'meta/keys', pmap {ni_verb join "\n", @keys} mr '^//ni/';
-deflong 'root', 'meta/get',  pmap {ni_verb $self{$_}}        mr '^//ni/([^]]+)';
+defoperator 'meta_image', q{sappend {print image, "\n"}};
+defoperator 'meta_keys',  q{sappend {print "$_\n" for @keys}};
+defoperator 'meta_key',   q{sappend {print "$_\n" for @self{@_}}};
 
-sub ni {sh ['ni_self', @_], prefix => perl_stdin_fn_dep 'ni_self', image}
+defoperator 'meta_help', q{
+  my ($topic) = @_;
+  $topic = 'tutorial' unless length $topic;
+  sappend {print $self{"doc/$topic.md"}, "\n"};
+};
 
-deflong 'root', 'meta/ni', pmap {ni @$_} pn 1, mr '^@', context 'root/lambda';
+deflong '/meta_self', pmap q{meta_image_op},  prx '//ni';
+deflong '/meta_keys', pmap q{meta_keys_op},   prx '//ni/';
+deflong '/meta_get',  pmap q{meta_key_op $_}, prx '//ni/([^]]+)';
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
-deflong 'root', 'meta/help',
-  pmap {$_ = 'tutorial' unless length;
-        die "ni: unknown help topic: $_" unless exists $self{"doc/$_.md"};
-        ni_verb $self{"doc/$_.md"}}
-  pn 1, mr '^//help/?', mrc '^.*';
-
-Misc utility options.
-Mostly around ni-specific oddities like SDoc.
-
-deflong 'root', 'meta/sdoc',
-  pmap {sh qw/perl -e/, "$self{'boot/sdoc'}; print ni::unsdoc join '', <>"}
-  mrc '^--sdoc';
+deflong '/meta_help', pmap q{meta_help_op $_}, prx '^//help/?(.*)';

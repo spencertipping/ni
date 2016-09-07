@@ -6,9 +6,13 @@ cd $(dirname $0)
 
 ./boot
 
-./ni --internal/lib core/common
-./ni --internal/lib core/gen
 ./ni --internal/lib core/stream
+./ni --internal/lib core/meta
+
+./ni --internal/lib doc
+
+if false; then
+./ni --internal/lib core/gen
 ./ni --internal/lib core/meta
 ./ni --internal/lib core/checkpoint
 
@@ -32,6 +36,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/jsplot
 
 ./ni --internal/lib doc
+fi
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2

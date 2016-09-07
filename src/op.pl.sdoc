@@ -6,10 +6,13 @@ our %operators;
 sub defoperator($$) {
   my ($name, $f) = @_;
   $operators{$name} = fn $f;
-  eval "sub $name(@) {['$name', @_]}";
+  ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
+  ni::eval "sub ${name}_run(@) {\$operators{\$name}->(\@_)}",
+           "defoperator $name ($f)";
 }
 
-sub operate($) {
+sub operate {
   my ($name, @args) = @_;
+  die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }

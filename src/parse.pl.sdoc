@@ -78,7 +78,7 @@ BEGIN {
          $f = fn $f;
          my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
-  defparser 'cond', '&$',
+  defparser 'cond', '$$',
     sub {my ($self, @is) = @_;
          my (undef, $f, $p) = @$self;
          $f = fn $f;

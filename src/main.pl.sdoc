@@ -19,16 +19,31 @@ Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
 
+Documentation.
+
+defclispecial '--explain', q{
+  my ($r) = parse pcli '', @_;
+  print join("\t", map dev_inspect $_, @$_), "\n" for @$r;
+};
+
 Root CLI context.
 This is used by extensions that define long and short options.
 
 defcontext '';
 
-defshort '/x', pk 'x';
-defshort '/y', pk 'y';
+our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
-  my @r = parse pcli '', @_;
+
+  close STDIN if -t STDIN;
+
+  my ($r) = parse pcli '', @_;
+  return &$main_operator(@$r) if ref $r;
+
+  my (undef, @rest) = parse pcli_debug '', @_;
+  print STDERR "ni: failed to parse starting here:\n";
+  print STDERR "  @rest\n";
+  exit 1;
 }
