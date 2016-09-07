@@ -1,0 +1,61 @@
+Pyspark interop.
+We need to define a context for CLI arguments so we can convert ni pipelines
+into pyspark code. This ends up being fairly straightforward because Spark
+provides so many high-level operators.
+
+There are two things going on here. First, we define the codegen for Spark
+jobs; this is fairly configuration-independent since the API is stable. Second,
+we define a configuration system that lets the user specify the Spark execution
+profile. This governs everything from `spark-submit` CLI options to
+SparkContext init.
+
+Pyspark operators.
+These exist in their own parsing context, which we hook in below by using
+contexts->{pyspark}{...}. Rather than compiling directly to Python code, we
+generate a series of gens, each of which refers to a '%v' quantity that
+signifies the value being transformed.
+
+sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
+sub pyspark_lambda($) {$_[0]}
+
+defcontext 'pyspark';
+
+use constant pyspark_fn => pmap {pyspark_lambda $_} pycode;
+
+our $pyspark_rdd = pmap {pyspark_compile 'sc', @$_}
+                   alt context 'pyspark/lambda',
+                       context 'pyspark/suffix';
+
+our @pyspark_row_alt = (
+  (pmap {gen "%v.sample(False, $_)"} alt neval, integer),
+  (pmap {gen "%v.takeSample(False, $_)"} mr '^\.(\d+)'),
+  (pmap {gen "%v.filter($_)"} pyspark_fn));
+
+deflong 'pyspark', 'stream/n',
+  pmap {gen "sc.parallelize(range($_))"} pn 1, mr '^n:', number;
+
+deflong 'pyspark', 'stream/pipe',
+  pmap {gen "%v.pipe(" . pyquote($_) . ")"} mr '^\$=([^]]+)';
+
+defshort 'pyspark', 'p', pmap {gen "%v.map(lambda x: $_)"} pyspark_fn;
+defshort 'pyspark', 'r', altr @pyspark_row_alt;
+defshort 'pyspark', 'G', k gen "%v.distinct()";
+defshort 'pyspark', 'g', k gen "%v.sortByKey()";
+
+defshort 'pyspark', '+', pmap {gen "%v.union($_)"} $pyspark_rdd;
+defshort 'pyspark', '*', pmap {gen "%v.intersect($_)"} $pyspark_rdd;
+
+Configuration management.
+A profile contains the code required to initialize the SparkContext and any
+other variables relevant to the process. Each is referenced by a single
+character and stored in the %spark_profiles table.
+
+our %spark_profiles = (
+  L => k gen pydent q{from pyspark import SparkContext
+                      sc = SparkContext("local", "%name")
+                      %body});
+
+sub ni_pyspark {sh ['echo', 'TODO: pyspark', @_]}
+
+defshort 'root', 'P', pmap {ni_pyspark @$_}
+                      seq chaltr(%spark_profiles), $pyspark_rdd;

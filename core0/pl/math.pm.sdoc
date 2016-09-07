@@ -1,0 +1,33 @@
+Math utility functions.
+Mostly geometric and statistical stuff.
+
+use constant tau => 2 * 3.14159265358979323846264;
+
+use constant LOG2  => log 2;
+use constant LOG2R => 1 / LOG2;
+
+sub log2 {LOG2R * log $_[0]}
+sub quant {my ($x, $q) = @_; $q ||= 1;
+           my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
+
+sub dot {local $_; my ($u, $v) = @_;
+         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+
+sub l1norm {local $_; sum map abs($_), @_}
+sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+sub rdeg($) {$_[0] * 360 / tau}
+sub drad($) {$_[0] / 360 * tau}
+
+sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
+sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+
+if (eval {require Math::Trig}) {
+  sub haversine {
+    local $_;
+    my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
+    my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+    my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+    2 * atan2(sqrt($a), sqrt(1 - $a));
+  }
+}

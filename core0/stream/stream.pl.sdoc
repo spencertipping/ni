@@ -3,6 +3,16 @@ Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc. Most of the functionality
 here is implemented by stream.sh.
 
+use constant stream_sh => {stream_sh => $self{'core/stream/stream.sh'}};
+use constant perl_fn   => gen '%name() { perl -e %code "$@"; }';
+use constant perl_ifn  => gen "%name() { perl - \"\$@\" <<'%hd'; }\n%code\n%hd";
+
+sub perl_fn_dep($$)
+{+{$_[0] => perl_fn->(name => $_[0], code => quote $self{$_[1]})}}
+
+sub perl_stdin_fn_dep($$)
+{+{$_[0] => perl_ifn->(name => $_[0], code => $_[1], hd => heredoc_for $_[1])}}
+
 sub ni_cat($)     {sh ['ni_cat', $_[0]], prefix => perl_fn_dep 'ni_cat',    'core/stream/cat.pm'}
 sub ni_decode(;$) {sh ['ni_decode', @_], prefix => perl_fn_dep 'ni_decode', 'core/stream/decode.pm'}
 

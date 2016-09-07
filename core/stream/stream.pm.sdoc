@@ -1,0 +1,104 @@
+Stream functions.
+These are called by pipelines to simplify things. For example, a common
+operation is to append the output of some data-producing command:
+
+| $ ni . .              # lists current directory twice
+
+If you do this, ni will compile a pipeline that uses stream wrappers to
+concatenate the second `ls` output (despite the fact that technically it's a
+shell pipe).
+
+sub sforward($$) {syswrite $_[1], $_ while sysread $_[0], $_, 8192}
+sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}()}
+sub sprepend(&)  {&{$_[0]}(); sforward \*STDIN, \*STDOUT}
+
+sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
+sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
+
+File/directory cat.
+cat exists to turn filesystem objects into text. Files are emitted and
+directories are turned into readable listings. Normally you'd use this in
+conjunction with decode.
+
+sub cat {
+  for my $f (@_) {
+    if (-d $f) {
+      $| = 1;
+      opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
+      print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
+      closedir $d;
+    } else {
+      open F, '<', $f or die "ni_cat: failed to open $f: $!";
+      sforward \*F, \*STDOUT;
+      close F;
+    }
+  }
+}
+
+Compressed stream support.
+This provides a stdin filter you can use to read the contents of a compressed
+stream as though it weren't compressed. It's implemented as a filter process so
+we don't need to rely on file extensions.
+
+We detect the following file formats:
+
+| gzip:  1f 8b
+  bzip2: BZh\0
+  lzo:   89 4c 5a 4f
+  lz4:   04 22 4d 18
+  xz:    fd 37 7a 58 5a
+
+Decoding works by reading enough to decode the magic, then forwarding data
+into the appropriate decoding process (or doing nothing if we don't know what
+the data is). By default it works on stdin, but you can pass a different file
+descriptor in if you want to.
+
+sub decode(;$) {
+  my ($i) = (@_, \*STDIN);
+
+  sysread $i, $_, 8192;
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+              : /^BZh\0/                ? "bzip2 -dc"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+
+  if (defined $decoder) {
+    open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
+    syswrite $o, $_;
+    syswrite $o, $_ while sysread $i, $_, 8192;
+    close $o;
+  } else {
+    syswrite STDOUT, $_;
+    syswrite STDOUT, $_ while sysread $i, $_, 8192;
+  }
+}
+
+TODO
+
+ni_seq() { perl -e \
+  'for (my $i = $ARGV[0]; $i <= $ARGV[1]; ++$i) {print "$i\n"}' "$@"; }
+
+ni_tee() { { perl -e 'open FH, ">&=3" or die $!;
+                      while (sysread STDIN, $_, 8192) {print FH; print}' \
+               | "$@"; } 3>&1; }
+
+ni_read() { while read f; do cat "$f"; done; }
+ni_write() { cat > "$1"; echo "$1"; }
+
+ni_write_tempfile() {
+  ni_tempfile_prefix="${TMPDIR:-/tmp}/ni-$$-"
+  ni_tempfile_entropy=
+  while [ -e "$ni_tempfile_prefix-$ni_tempfile_entropy" ]; do
+    ni_tempfile_entropy="$(perl -e 'print join "", map chr(65 + rand 32), 0..12')"
+  done
+  cat > "$ni_tempfile_prefix-$ni_tempfile_entropy"
+  echo "$ni_tempfile_prefix-$ni_tempfile_entropy"
+}
+
+Pager handling.
+A wrapper around various programs to preview long streams of data. We might
+not have any, but if we do, we make them available under the 'ni_pager'
+function.
+
+ni_pager() { ${NI_PAGER:-less} || more || cat; }

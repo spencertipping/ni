@@ -6,7 +6,7 @@ capture.
 
 defoperator 'checkpoint', q{
   my ($file, $generator) = @_;
-  sappend {-r $file ? cat $file : checkpoint_create $file, $generator};
+  append {-r $file ? cat $file : checkpoint_create $file, $generator};
 };
 
 defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq filename, plambda '';

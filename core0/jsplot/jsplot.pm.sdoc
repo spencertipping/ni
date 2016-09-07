@@ -1,0 +1,29 @@
+JSPlot data streaming functions.
+This ends up being called from the quoted code block in jsplot.pl.sdoc. This is
+the websocket connection that ni uses to stream data to the client. The
+template defines a constant called 'self' that contains the ni image.
+
+use POSIX qw/dup2 :sys_wait_h/;
+
+sub quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                           ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                           : $_,
+                     map 'ARRAY' eq ref($_) ? quote(@$_) : $_, @_}
+
+sub ni($) {
+  if (1 != fileno STDOUT) {
+    POSIX::close 1;
+    dup2 fileno(STDOUT), 1 or die "ni_jsplot: failed to dup to stdout: $!";
+    close STDOUT;
+  }
+
+  my $process = "perl - $_[0]";
+  open PL, "| $process" or die "ni_jsplot: failed to open | $process: $!";
+  syswrite PL, self;
+}
+
+sub ni_stream_data($$@) {
+  my ($req, $opts, @fs) = @_;
+  print ws_header $req;
+  ni quote(@fs) . " $opts --http/wse";
+}

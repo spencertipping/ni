@@ -3,6 +3,9 @@ A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
 PID is returned.
 
+I define some system functions with a `c` prefix: these are checked system
+calls that will die with a helpful message if anything fails.
+
 use POSIX qw/dup2/;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
@@ -16,6 +19,16 @@ sub move_fd($$) {
   cdup2 $old, $new;
   close $old;
 }
+
+Process construction.
+A few functions, depending on what you want to do:
+
+| siproc(&): fork into block, return pipe FH to block's STDIN.
+  soproc(&): fork into block, return pipe FH from block's STDOUT.
+  sicons(&): fork into block, connect its STDOUT to our STDIN, return pid.
+  socons(&): fork into block, connect our STDOUT to its STDIN, return pid.
+
+
 
 sub with_stdin(&$) {
   cpipe my $r, my $w;

@@ -1,0 +1,5 @@
+Checkpoint shell functions.
+We need a function that generates a checkpoint file atomically; that is, it
+becomes its final name only when all of the content has been written.
+
+ni_checkpoint() { sh | tee "$1.part" && mv "$1.part" "$1"; }
