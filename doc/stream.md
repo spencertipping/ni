@@ -27,12 +27,12 @@ $ ni $:'seq 4'                  # shell command stdout
 2
 3
 4
-$ ni n:4                        # integer generator
+$ ni n4                         # integer generator
 1
 2
 3
 4
-$ ni n0:4                       # integer generator, zero-based
+$ ni n04                        # integer generator, zero-based
 0
 1
 2
@@ -46,15 +46,15 @@ ni can stream data through a shell process, which is often shorter than
 shelling out separately:
 
 ```bash
-$ ni n:3 | sort
+$ ni n3 | sort
 1
 2
 3
-$ ni n:3 $=sort                 # $= filters through a command
+$ ni n3 $=sort                  # $= filters through a command
 1
 2
 3
-$ ni n:3 $='sort -r'
+$ ni n3 $='sort -r'
 3
 2
 1
@@ -63,19 +63,19 @@ $ ni n:3 $='sort -r'
 And, of course, ni has shorthands for doing all of the above:
 
 ```bash
-$ ni n:3 g      # g = sort
+$ ni n3 g       # g = sort
 1
 2
 3
-$ ni n:3g       # no need for whitespace
+$ ni n3g        # no need for whitespace
 1
 2
 3
-$ ni n:3gAr     # reverse-sort by first field
+$ ni n3gAr      # reverse-sort by first field
 3
 2
 1
-$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
+$ ni n3O        # NOTE: capital O, not zero; more typical reverse numeric sort
 3
 2
 1
@@ -94,7 +94,7 @@ operators like sorting.
 You can write a file in two ways. One is, of course, using shell redirection:
 
 ```bash
-$ ni n:3 >file                  # nothing goes to the terminal
+$ ni n3 >file                   # nothing goes to the terminal
 $ ni file
 1
 2
@@ -104,13 +104,13 @@ $ ni file
 The other way is to use one of ni's two file-writing operators:
 
 ```bash
-$ ni n:3 \>file2                # writes the filename to the terminal
+$ ni n3 \>file2                 # writes the filename to the terminal
 file2
 $ ni file2
 1
 2
 3
-$ ni n:3 \>%file3               # duplicates output
+$ ni n3 \>%file3                # duplicates output
 1
 2
 3
@@ -124,7 +124,7 @@ The `<` operator inverts `>` by reading files; it's conceptually equivalent to
 `xargs cat`:
 
 ```bash
-$ ni n:4 \>file3 \<
+$ ni n4 \>file3 \<
 1
 2
 3
@@ -134,7 +134,7 @@ $ ni n:4 \>file3 \<
 If you want to write a compressed file, you can use the `Z` operator:
 
 ```bash
-$ ni n:3Z >file3.gz
+$ ni n3Z >file3.gz
 $ zcat file3.gz
 1
 2
@@ -170,12 +170,12 @@ need it because any external data will be decoded automatically. `ZD` has no
 effect if the data isn't compressed.
 
 ```bash
-$ ni n:4 Z ZD
+$ ni n4 Z ZD
 1
 2
 3
 4
-$ ni n:4 ZD
+$ ni n4 ZD
 1
 2
 3
@@ -186,7 +186,7 @@ Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
 compression by writing data to `/dev/null`:
 
 ```bash
-$ ni n:4 ZN | wc -c
+$ ni n4 ZN | wc -c
 0
 ```
 
@@ -195,7 +195,7 @@ Checkpoints let you cache intermediate outputs in a pipeline. This can avoid
 expensive recomputation. For example, let's expensively get some numbers:
 
 ```bash
-$ ni n:1000000gr4
+$ ni n1000000gr4
 1
 10
 100
@@ -206,7 +206,7 @@ If we wanted to iterate on the pipeline from this point onwards, we could do
 this quickly by checkpointing the result:
 
 ```bash
-$ ni :numbers[n:1000000gr4]
+$ ni :numbers[n1000000gr4]
 1
 10
 100
@@ -216,7 +216,7 @@ $ ni :numbers[n:1000000gr4]
 Now this data will be reused if we rerun it:
 
 ```bash
-$ ni :numbers[n:1000000gr4]O
+$ ni :numbers[n1000000gr4]O
 1000
 100
 10
@@ -228,7 +228,7 @@ checkpoint file:
 
 ```bash
 $ echo 'checkpointed' > numbers
-$ ni :numbers[n:1000000gr4]O
+$ ni :numbers[n1000000gr4]O
 checkpointed
 ```
 
@@ -236,13 +236,13 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n:100000Z]r5
+$ ni :biglist[n100000Z]r5
 1
 2
 3
 4
 5
-$ ni :biglist[n:100000Z]r5
+$ ni :biglist[n100000Z]r5
 1
 2
 3

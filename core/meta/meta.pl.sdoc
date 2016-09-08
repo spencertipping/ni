@@ -21,3 +21,12 @@ These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
 deflong '/meta_help', pmap q{meta_help_op $_}, prx '^//help/?(.*)';
+
+defoperator 'meta_options', q{
+  for my $c (sort keys %contexts) {
+    printf "%s\tshort\t%s\t%s\n", $c, $_, sgr dev_inspect $short_refs{$c}->{$_}, qr/\n/, ' ' for sort keys %{$short_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  $c,     sgr dev_inspect $_,                    qr/\n/, ' ' for           @{$long_refs{$c}};
+  }
+};
+
+deflong '/meta_options', pmap q{meta_options_op}, prx '//ni/options';

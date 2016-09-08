@@ -246,7 +246,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-86 common.pl.sdoc
+88 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -314,7 +314,8 @@ Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
 use constant neval   => pmap q{eval}, prx '=([^]]+)';
-use constant integer => palt pmap(q{10 ** $_},  prx 'E(-?\d+)'),
+use constant integer => palt pmap(q{int},       neval),
+                             pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                              pmap(q{0 + $_},    prx '\d+');
@@ -332,7 +333,8 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@(\w*)';
 
-use constant filename => palt prc '^file:(.+)', tempfile, prx '^[^][]+';
+use constant filename => palt prc '^file:(.+)', tempfile,
+                              pcond q{-e}, prx '^[^][]+';
 49 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
@@ -561,7 +563,7 @@ sub sprepend(&)  {&{$_[0]}(); sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
-59 core/stream/stream.pl.sdoc
+58 core/stream/stream.pl.sdoc
 Compressed stream support.
 This provides a stdin filter you can use to read the contents of a compressed
 stream as though it weren't compressed. It's implemented as a filter process so
@@ -593,11 +595,10 @@ sub sdecode(;$) {
   if (defined $decoder) {
     open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
     syswrite $o, $_;
-    syswrite $o, $_ while sysread $i, $_, 8192;
-    close $o;
+    sforward $i, $o;
   } else {
     syswrite STDOUT, $_;
-    syswrite STDOUT, $_ while sysread $i, $_, 8192;
+    sforward $i, \*STDOUT;
   }
 }
 
@@ -614,14 +615,14 @@ sub scat {
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
     } else {
-      open F, '<', $f or die "ni_cat: failed to open $f: $!";
-      sforward \*F, siproc {decode};
-      close F;
+      open my $fh, '<', $f or die "ni_cat: failed to open $f: $!";
+      sforward $fh, siproc {decode};
+      close $fh;
       await_children;
     }
   }
 }
-79 core/stream/ops.pl.sdoc
+81 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -647,6 +648,8 @@ defoperator 'n', q{
 
 defshort '/n',  pmap q{n_op 1, $_ + 1}, number;
 defshort '/n0', pmap q{n_op 0, $_}, number;
+
+deflong '/fs', pmap q{cat_op $_}, filename;
 
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
@@ -703,7 +706,7 @@ defshort '/ZN', pk sink_null_op();
 defshort '/ZD', pk decode_op();
 1 core/meta/lib
 meta.pl.sdoc
-23 core/meta/meta.pl.sdoc
+32 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -727,6 +730,15 @@ These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
 deflong '/meta_help', pmap q{meta_help_op $_}, prx '^//help/?(.*)';
+
+defoperator 'meta_options', q{
+  for my $c (sort keys %contexts) {
+    printf "%s\tshort\t%s\t%s\n", $c, $_, sgr dev_inspect $short_refs{$c}->{$_}, qr/\n/, ' ' for sort keys %{$short_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  $c,     sgr dev_inspect $_,                    qr/\n/, ' ' for           @{$long_refs{$c}};
+  }
+};
+
+deflong '/meta_options', pmap q{meta_options_op}, prx '//ni/options';
 13 doc/lib
 col.md
 examples.md
@@ -754,7 +766,7 @@ ni always refers to columns using letters: `A` to `Z`.
 First let's generate some data, in this case an 8x8 multiplication table:
 
 ```bash
-$ ni n:8p'r map a*$_, 1..8' > mult-table
+$ ni n8p'r map a*$_, 1..8' > mult-table
 $ ni mult-table
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16
@@ -899,7 +911,7 @@ operator `N` that counts lines by shelling out to `wc -l`:
 $ mkdir my-library
 $ echo my-lib.pl > my-library/lib
 $ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
-$ ni --lib my-library n:100N
+$ ni --lib my-library n100N
 100
 ```
 
@@ -1021,7 +1033,7 @@ ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
 
 ```bash
-$ ni n:4l'(+ a 2)'
+$ ni n4l'(+ a 2)'
 3
 4
 5
@@ -1034,12 +1046,12 @@ values from the current line. `(r ...)` is a function that takes a list of
 values and prints a tab-delimited row. For example:
 
 ```bash
-$ ni n:4l'(r a (1+ a))'                   # generate two columns
+$ ni n4l'(r a (1+ a))'                  # generate two columns
 1	2
 2	3
 3	4
 4	5
-$ ni n:4l'(r a (1+ a))' l'(r (+ a b))'        # ... and sum them
+$ ni n4l'(r a (1+ a))' l'(r (+ a b))'   # ... and sum them
 3
 5
 7
@@ -1053,7 +1065,7 @@ It is possible to omit `r` altogether; then you're returning one or more
 values, each of which will become a row of output:
 
 ```bash
-$ ni n:2l'a (+ a 100)'                   # return without "r"
+$ ni n2l'a (+ a 100)'                   # return without "r"
 1
 101
 2
@@ -1076,14 +1088,14 @@ sr (reducer value [initial-value])* => reduced-value*
 For example, to sum arbitrarily many numbers in constant space:
 
 ```bash
-$ ni n:10000l"(sr ('+ a))"
+$ ni n10000l"(sr ('+ a))"
 50005000
 ```
 
 Or to reduce multiple columns into a row:
 
 ```bash
-$ ni n:4fAA l"(r (sr ('+ a) ('* b)))"
+$ ni n4fAA l"(r (sr ('+ a) ('* b)))"
 10	24
 ```
 2 doc/options.md
@@ -1099,7 +1111,7 @@ ni provides the `p` operator to execute a Perl line processor on the current
 data stream. For example:
 
 ```bash
-$ ni n:5p'a * a'                # square some numbers
+$ ni n5p'a * a'                 # square some numbers
 1
 4
 9
@@ -1113,12 +1125,12 @@ values from the current line. `r(...)` is a function that takes a list of
 values and prints a tab-delimited row. For example:
 
 ```bash
-$ ni n:4p'r a, a + 1'                   # generate two columns
+$ ni n4p'r a, a + 1'                    # generate two columns
 1	2
 2	3
 3	4
 4	5
-$ ni n:4p'r a, a + 1' p'r a + b'        # ... and sum them
+$ ni n4p'r a, a + 1' p'r a + b'         # ... and sum them
 3
 5
 7
@@ -1182,22 +1194,22 @@ This design is also what makes it possible to omit `r` altogether; then you're
 returning one or more values, each of which will become a row of output:
 
 ```bash
-$ ni n:2p'a, a + 100'                   # return without "r"
+$ ni n2p'a, a + 100'                    # return without "r"
 1
 101
 2
 102
-$ ni n:2p'r a, a + 100'                 # use "r" for side effect, return ()
+$ ni n2p'r a, a + 100'                  # use "r" for side effect, return ()
 1	101
 2	102
-$ ni n:3p'r $_ for 1..a; ()'            # use r imperatively, explicit return
+$ ni n3p'r $_ for 1..a; ()'             # use r imperatively, explicit return
 1
 1
 2
 1
 2
 3
-$ ni n:3p'r $_ for 1..a'                # use r imperatively, implicit return
+$ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 1
 
 1
@@ -1229,7 +1241,7 @@ returns it; but more likely you'd use one of these instead:
 lines and destroy the context for `a`, `b`, etc.
 
 ```bash
-$ ni n:10p'r ru {a%4 == 0}'             # read forward until a multiple of 4
+$ ni n10p'r ru {a%4 == 0}'              # read forward until a multiple of 4
 1	2	3
 4	5	6	7
 8	9	10
@@ -1240,7 +1252,7 @@ The line array returned by `ru` is just an array of flat, tab-delimited strings
 column-accessor functions `a_`, `b_`, etc:
 
 ```bash
-$ ni n:10p'r map a*$_, 1..10' | tee mult-table
+$ ni n10p'r map a*$_, 1..10' | tee mult-table
 1	2	3	4	5	6	7	8	9	10
 2	4	6	8	10	12	14	16	18	20
 3	6	9	12	15	18	21	24	27	30
@@ -1277,11 +1289,11 @@ ni predefines some stuff you may find useful:
   Cartesian product
 
 ```bash
-$ ni n:100p'sum rw {1}'
+$ ni n100p'sum rw {1}'
 5050
-$ ni n:10p'prod rw {1}'
+$ ni n10p'prod rw {1}'
 3628800
-$ ni n:100p'mean rw {1}'
+$ ni n100p'mean rw {1}'
 50.5
 ```
 
@@ -1301,7 +1313,7 @@ Reduces the entire data stream:
 For example, to sum arbitrarily many numbers in constant space:
 
 ```bash
-$ ni n:10000p'sr {$_[0] + a} 0'
+$ ni n10000p'sr {$_[0] + a} 0'
 50005000
 ```
 
@@ -1332,7 +1344,7 @@ reducer code. ni provides a facility called compound reduction to deal with
 this. For example, here's the hard way:
 
 ```bash
-$ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
             r $sum, $sum / $n, $min, $max'
@@ -1342,7 +1354,7 @@ $ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 And here's the easy way, using `rc`:
 
 ```bash
-$ ni n:100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+$ ni n100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
 5050	50.5	1	100
 ```
 
@@ -1431,15 +1443,15 @@ anything else. They include:
 Shorthands for UNIX `head` and `tail`.
 
 ```bash
-$ ni n:10r3                     # take first 3
+$ ni n10r3                      # take first 3
 1
 2
 3
-$ ni n:10r+3                    # take last 3
+$ ni n10r+3                     # take last 3
 8
 9
 10
-$ ni n:10r-7                    # drop first 7
+$ ni n10r-7                     # drop first 7
 8
 9
 10
@@ -1447,10 +1459,10 @@ $ ni n:10r-7                    # drop first 7
 
 ## Sampling
 ```bash
-$ ni n:10000rx4000              # take every 4000th row
+$ ni n10000rx4000               # take every 4000th row
 4000
 8000
-$ ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
+$ ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 1
 6823
 8921
@@ -1464,10 +1476,10 @@ which minimizes calls to `rand()`.
 
 ## Regex matching
 ```bash
-$ ni n:10000r/[42]000$/
+$ ni n10000r/[42]000$/
 2000
 4000
-$ ni n:1000r/[^1]$/r3
+$ ni n1000r/[^1]$/r3
 2
 3
 4
@@ -1480,7 +1492,7 @@ for nontrivial patterns.
 `rp` means "select rows for which this Perl expression returns true".
 
 ```bash
-$ ni n:10000rp'$_ % 100 == 42' r3
+$ ni n10000rp'$_ % 100 == 42' r3
 42
 142
 242
@@ -1498,12 +1510,12 @@ ni has four operators that shell out to the UNIX sort command. Two are
 alpha-sorts:
 
 ```bash
-$ ni n:100n:10gr4               # g = 'group'
+$ ni n100n10gr4                 # g = 'group'
 1
 1
 10
 10
-$ ni n:100n:100Gr4              # G = 'group uniq'
+$ ni n100n100Gr4                # G = 'group uniq'
 1
 10
 100
@@ -1517,11 +1529,11 @@ reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
 ni also has two `order` operators that sort numerically:
 
 ```bash
-$ ni n:100or3                   # o = 'order': sort numeric ascending
+$ ni n100or3                    # o = 'order': sort numeric ascending
 1
 2
 3
-$ ni n:100Or3                   # O = 'reverse order'
+$ ni n100Or3                    # O = 'reverse order'
 100
 99
 98
@@ -1534,7 +1546,7 @@ multicolumn data to demonstrate this (see [perl.md](perl.md) (`ni //help/perl`)
 for an explanation of the `p` operator).
 
 ```bash
-$ ni n:100p'r a, sin(a), log(a)' > data         # generate multicolumn data
+$ ni n100p'r a, sin(a), log(a)' > data          # generate multicolumn data
 $ ni data r4
 1	0.841470984807897	0
 2	0.909297426825682	0.693147180559945
@@ -1656,12 +1668,12 @@ $ ni $:'seq 4'                  # shell command stdout
 2
 3
 4
-$ ni n:4                        # integer generator
+$ ni n4                         # integer generator
 1
 2
 3
 4
-$ ni n0:4                       # integer generator, zero-based
+$ ni n04                        # integer generator, zero-based
 0
 1
 2
@@ -1675,15 +1687,15 @@ ni can stream data through a shell process, which is often shorter than
 shelling out separately:
 
 ```bash
-$ ni n:3 | sort
+$ ni n3 | sort
 1
 2
 3
-$ ni n:3 $=sort                 # $= filters through a command
+$ ni n3 $=sort                  # $= filters through a command
 1
 2
 3
-$ ni n:3 $='sort -r'
+$ ni n3 $='sort -r'
 3
 2
 1
@@ -1692,19 +1704,19 @@ $ ni n:3 $='sort -r'
 And, of course, ni has shorthands for doing all of the above:
 
 ```bash
-$ ni n:3 g      # g = sort
+$ ni n3 g       # g = sort
 1
 2
 3
-$ ni n:3g       # no need for whitespace
+$ ni n3g        # no need for whitespace
 1
 2
 3
-$ ni n:3gAr     # reverse-sort by first field
+$ ni n3gAr      # reverse-sort by first field
 3
 2
 1
-$ ni n:3O       # NOTE: capital O, not zero; more typical reverse numeric sort
+$ ni n3O        # NOTE: capital O, not zero; more typical reverse numeric sort
 3
 2
 1
@@ -1723,7 +1735,7 @@ operators like sorting.
 You can write a file in two ways. One is, of course, using shell redirection:
 
 ```bash
-$ ni n:3 >file                  # nothing goes to the terminal
+$ ni n3 >file                   # nothing goes to the terminal
 $ ni file
 1
 2
@@ -1733,13 +1745,13 @@ $ ni file
 The other way is to use one of ni's two file-writing operators:
 
 ```bash
-$ ni n:3 \>file2                # writes the filename to the terminal
+$ ni n3 \>file2                 # writes the filename to the terminal
 file2
 $ ni file2
 1
 2
 3
-$ ni n:3 \>%file3               # duplicates output
+$ ni n3 \>%file3                # duplicates output
 1
 2
 3
@@ -1753,7 +1765,7 @@ The `<` operator inverts `>` by reading files; it's conceptually equivalent to
 `xargs cat`:
 
 ```bash
-$ ni n:4 \>file3 \<
+$ ni n4 \>file3 \<
 1
 2
 3
@@ -1763,7 +1775,7 @@ $ ni n:4 \>file3 \<
 If you want to write a compressed file, you can use the `Z` operator:
 
 ```bash
-$ ni n:3Z >file3.gz
+$ ni n3Z >file3.gz
 $ zcat file3.gz
 1
 2
@@ -1799,12 +1811,12 @@ need it because any external data will be decoded automatically. `ZD` has no
 effect if the data isn't compressed.
 
 ```bash
-$ ni n:4 Z ZD
+$ ni n4 Z ZD
 1
 2
 3
 4
-$ ni n:4 ZD
+$ ni n4 ZD
 1
 2
 3
@@ -1815,7 +1827,7 @@ Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
 compression by writing data to `/dev/null`:
 
 ```bash
-$ ni n:4 ZN | wc -c
+$ ni n4 ZN | wc -c
 0
 ```
 
@@ -1824,7 +1836,7 @@ Checkpoints let you cache intermediate outputs in a pipeline. This can avoid
 expensive recomputation. For example, let's expensively get some numbers:
 
 ```bash
-$ ni n:1000000gr4
+$ ni n1000000gr4
 1
 10
 100
@@ -1835,7 +1847,7 @@ If we wanted to iterate on the pipeline from this point onwards, we could do
 this quickly by checkpointing the result:
 
 ```bash
-$ ni :numbers[n:1000000gr4]
+$ ni :numbers[n1000000gr4]
 1
 10
 100
@@ -1845,7 +1857,7 @@ $ ni :numbers[n:1000000gr4]
 Now this data will be reused if we rerun it:
 
 ```bash
-$ ni :numbers[n:1000000gr4]O
+$ ni :numbers[n1000000gr4]O
 1000
 100
 10
@@ -1857,7 +1869,7 @@ checkpoint file:
 
 ```bash
 $ echo 'checkpointed' > numbers
-$ ni :numbers[n:1000000gr4]O
+$ ni :numbers[n1000000gr4]O
 checkpointed
 ```
 
@@ -1865,13 +1877,13 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n:100000Z]r5
+$ ni :biglist[n100000Z]r5
 1
 2
 3
 4
 5
-$ ni :biglist[n:100000Z]r5
+$ ni :biglist[n100000Z]r5
 1
 2
 3

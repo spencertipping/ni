@@ -24,6 +24,8 @@ defoperator 'n', q{
 defshort '/n',  pmap q{n_op 1, $_ + 1}, number;
 defshort '/n0', pmap q{n_op 0, $_}, number;
 
+deflong '/fs', pmap q{cat_op $_}, filename;
+
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
 through a shell command.

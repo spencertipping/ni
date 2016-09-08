@@ -65,7 +65,8 @@ Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
 use constant neval   => pmap q{eval}, prx '=([^]]+)';
-use constant integer => palt pmap(q{10 ** $_},  prx 'E(-?\d+)'),
+use constant integer => palt pmap(q{int},       neval),
+                             pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                              pmap(q{0 + $_},    prx '\d+');
@@ -83,4 +84,5 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@(\w*)';
 
-use constant filename => palt prc '^file:(.+)', tempfile, prx '^[^][]+';
+use constant filename => palt prc '^file:(.+)', tempfile,
+                              pcond q{-e}, prx '^[^][]+';

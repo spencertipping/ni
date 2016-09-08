@@ -14,15 +14,15 @@ anything else. They include:
 Shorthands for UNIX `head` and `tail`.
 
 ```bash
-$ ni n:10r3                     # take first 3
+$ ni n10r3                      # take first 3
 1
 2
 3
-$ ni n:10r+3                    # take last 3
+$ ni n10r+3                     # take last 3
 8
 9
 10
-$ ni n:10r-7                    # drop first 7
+$ ni n10r-7                     # drop first 7
 8
 9
 10
@@ -30,10 +30,10 @@ $ ni n:10r-7                    # drop first 7
 
 ## Sampling
 ```bash
-$ ni n:10000rx4000              # take every 4000th row
+$ ni n10000rx4000               # take every 4000th row
 4000
 8000
-$ ni n:10000r.0002              # sample uniformly, P(row) = 0.0002
+$ ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 1
 6823
 8921
@@ -47,10 +47,10 @@ which minimizes calls to `rand()`.
 
 ## Regex matching
 ```bash
-$ ni n:10000r/[42]000$/
+$ ni n10000r/[42]000$/
 2000
 4000
-$ ni n:1000r/[^1]$/r3
+$ ni n1000r/[^1]$/r3
 2
 3
 4
@@ -63,7 +63,7 @@ for nontrivial patterns.
 `rp` means "select rows for which this Perl expression returns true".
 
 ```bash
-$ ni n:10000rp'$_ % 100 == 42' r3
+$ ni n10000rp'$_ % 100 == 42' r3
 42
 142
 242
@@ -81,12 +81,12 @@ ni has four operators that shell out to the UNIX sort command. Two are
 alpha-sorts:
 
 ```bash
-$ ni n:100n:10gr4               # g = 'group'
+$ ni n100n10gr4                 # g = 'group'
 1
 1
 10
 10
-$ ni n:100n:100Gr4              # G = 'group uniq'
+$ ni n100n100Gr4                # G = 'group uniq'
 1
 10
 100
@@ -100,11 +100,11 @@ reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
 ni also has two `order` operators that sort numerically:
 
 ```bash
-$ ni n:100or3                   # o = 'order': sort numeric ascending
+$ ni n100or3                    # o = 'order': sort numeric ascending
 1
 2
 3
-$ ni n:100Or3                   # O = 'reverse order'
+$ ni n100Or3                    # O = 'reverse order'
 100
 99
 98
@@ -117,7 +117,7 @@ multicolumn data to demonstrate this (see [perl.md](perl.md) (`ni //help/perl`)
 for an explanation of the `p` operator).
 
 ```bash
-$ ni n:100p'r a, sin(a), log(a)' > data         # generate multicolumn data
+$ ni n100p'r a, sin(a), log(a)' > data          # generate multicolumn data
 $ ni data r4
 1	0.841470984807897	0
 2	0.909297426825682	0.693147180559945

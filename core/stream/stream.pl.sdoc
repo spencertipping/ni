@@ -29,11 +29,10 @@ sub sdecode(;$) {
   if (defined $decoder) {
     open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
     syswrite $o, $_;
-    syswrite $o, $_ while sysread $i, $_, 8192;
-    close $o;
+    sforward $i, $o;
   } else {
     syswrite STDOUT, $_;
-    syswrite STDOUT, $_ while sysread $i, $_, 8192;
+    sforward $i, \*STDOUT;
   }
 }
 
@@ -50,9 +49,9 @@ sub scat {
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
     } else {
-      open F, '<', $f or die "ni_cat: failed to open $f: $!";
-      sforward \*F, siproc {decode};
-      close F;
+      open my $fh, '<', $f or die "ni_cat: failed to open $f: $!";
+      sforward $fh, siproc {decode};
+      close $fh;
       await_children;
     }
   }

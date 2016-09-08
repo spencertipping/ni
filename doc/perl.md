@@ -7,7 +7,7 @@ ni provides the `p` operator to execute a Perl line processor on the current
 data stream. For example:
 
 ```bash
-$ ni n:5p'a * a'                # square some numbers
+$ ni n5p'a * a'                 # square some numbers
 1
 4
 9
@@ -21,12 +21,12 @@ values from the current line. `r(...)` is a function that takes a list of
 values and prints a tab-delimited row. For example:
 
 ```bash
-$ ni n:4p'r a, a + 1'                   # generate two columns
+$ ni n4p'r a, a + 1'                    # generate two columns
 1	2
 2	3
 3	4
 4	5
-$ ni n:4p'r a, a + 1' p'r a + b'        # ... and sum them
+$ ni n4p'r a, a + 1' p'r a + b'         # ... and sum them
 3
 5
 7
@@ -90,22 +90,22 @@ This design is also what makes it possible to omit `r` altogether; then you're
 returning one or more values, each of which will become a row of output:
 
 ```bash
-$ ni n:2p'a, a + 100'                   # return without "r"
+$ ni n2p'a, a + 100'                    # return without "r"
 1
 101
 2
 102
-$ ni n:2p'r a, a + 100'                 # use "r" for side effect, return ()
+$ ni n2p'r a, a + 100'                  # use "r" for side effect, return ()
 1	101
 2	102
-$ ni n:3p'r $_ for 1..a; ()'            # use r imperatively, explicit return
+$ ni n3p'r $_ for 1..a; ()'             # use r imperatively, explicit return
 1
 1
 2
 1
 2
 3
-$ ni n:3p'r $_ for 1..a'                # use r imperatively, implicit return
+$ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 1
 
 1
@@ -137,7 +137,7 @@ returns it; but more likely you'd use one of these instead:
 lines and destroy the context for `a`, `b`, etc.
 
 ```bash
-$ ni n:10p'r ru {a%4 == 0}'             # read forward until a multiple of 4
+$ ni n10p'r ru {a%4 == 0}'              # read forward until a multiple of 4
 1	2	3
 4	5	6	7
 8	9	10
@@ -148,7 +148,7 @@ The line array returned by `ru` is just an array of flat, tab-delimited strings
 column-accessor functions `a_`, `b_`, etc:
 
 ```bash
-$ ni n:10p'r map a*$_, 1..10' | tee mult-table
+$ ni n10p'r map a*$_, 1..10' | tee mult-table
 1	2	3	4	5	6	7	8	9	10
 2	4	6	8	10	12	14	16	18	20
 3	6	9	12	15	18	21	24	27	30
@@ -185,11 +185,11 @@ ni predefines some stuff you may find useful:
   Cartesian product
 
 ```bash
-$ ni n:100p'sum rw {1}'
+$ ni n100p'sum rw {1}'
 5050
-$ ni n:10p'prod rw {1}'
+$ ni n10p'prod rw {1}'
 3628800
-$ ni n:100p'mean rw {1}'
+$ ni n100p'mean rw {1}'
 50.5
 ```
 
@@ -209,7 +209,7 @@ Reduces the entire data stream:
 For example, to sum arbitrarily many numbers in constant space:
 
 ```bash
-$ ni n:10000p'sr {$_[0] + a} 0'
+$ ni n10000p'sr {$_[0] + a} 0'
 50005000
 ```
 
@@ -240,7 +240,7 @@ reducer code. ni provides a facility called compound reduction to deal with
 this. For example, here's the hard way:
 
 ```bash
-$ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
             r $sum, $sum / $n, $min, $max'
@@ -250,7 +250,7 @@ $ ni n:100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 And here's the easy way, using `rc`:
 
 ```bash
-$ ni n:100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+$ ni n100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
 5050	50.5	1	100
 ```
 

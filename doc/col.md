@@ -10,7 +10,7 @@ ni always refers to columns using letters: `A` to `Z`.
 First let's generate some data, in this case an 8x8 multiplication table:
 
 ```bash
-$ ni n:8p'r map a*$_, 1..8' > mult-table
+$ ni n8p'r map a*$_, 1..8' > mult-table
 $ ni mult-table
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16

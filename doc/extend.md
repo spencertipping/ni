@@ -6,7 +6,7 @@ operator `N` that counts lines by shelling out to `wc -l`:
 $ mkdir my-library
 $ echo my-lib.pl > my-library/lib
 $ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
-$ ni --lib my-library n:100N
+$ ni --lib my-library n100N
 100
 ```
 
