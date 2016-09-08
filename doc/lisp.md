@@ -3,7 +3,7 @@ ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
 
 ```bash
-$ ni n:4l'(+ a 2)'
+$ ni n:4 l'(+ a 2)'
 3
 4
 5
@@ -16,12 +16,12 @@ values from the current line. `(r ...)` is a function that takes a list of
 values and prints a tab-delimited row. For example:
 
 ```bash
-$ ni n:4l'(r a (1+ a))'                   # generate two columns
+$ ni n:4 l'(r a (1+ a))'                   # generate two columns
 1	2
 2	3
 3	4
 4	5
-$ ni n:4l'(r a (1+ a))' l'(r (+ a b))'        # ... and sum them
+$ ni n:4 l'(r a (1+ a))' l'(r (+ a b))'        # ... and sum them
 3
 5
 7
@@ -35,7 +35,7 @@ It is possible to omit `r` altogether; then you're returning one or more
 values, each of which will become a row of output:
 
 ```bash
-$ ni n:2l'a (+ a 100)'                   # return without "r"
+$ ni n:2 l'a (+ a 100)'                   # return without "r"
 1
 101
 2
@@ -58,13 +58,31 @@ sr (reducer value [initial-value])* => reduced-value*
 For example, to sum arbitrarily many numbers in constant space:
 
 ```bash
-$ ni n:10000l"(sr ('+ a))"
+$ ni n:10000 l"(sr ('+ a))"
 50005000
 ```
 
 Or to reduce multiple columns into a row:
 
 ```bash
-$ ni n:4fAA l"(r (sr ('+ a) ('* b)))"
-10	24
+$ ni n:4fAA l"(r (sr ('+ a 1000) ('* b)))"
+1010	24
+```
+
+### `se`
+Reduces over a contiguous group of rows for which the partition function
+remains equal. (Mnemonic is "stream while equal".)
+
+```
+se function value-form partition-form [initial-value] => reduced-value
+```
+
+For example, to naively get a comma-delimited list of users by login shell:
+
+```bash
+$ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	sync
 ```
