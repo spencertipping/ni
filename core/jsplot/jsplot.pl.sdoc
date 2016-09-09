@@ -23,12 +23,24 @@ use constant jsplot_html => jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
                                          js  => $self{'core/jsplot/jsplot.js'});
 
 JSPlot data streaming.
-This is the websocket connection that ni uses to stream data to the client.
+This is the websocket connection that ni uses to stream data to the client. Any
+data we receive from the client indicates that the client is canceling the
+websocket request, so we need to break the pipe and kill off subprocesses.
 
 sub jsplot_stream($$@) {
+  local $_;
   my ($reply, $req, @ni_args) = @_;
-  print $reply ws_header($req);
-  sforward sni(cli(@ni_args), http_websocket_encode_op), $reply;
+  safewrite $reply, ws_header($req);
+  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_op;
+  my $rmask   = '';
+  vec($rmask, fileno $reply, 1) = 1;
+
+  saferead $reply, $_, 8192 while select my $rout = $rmask, undef, undef, 0;
+
+  while (saferead $ni_pipe, $_, 8192) {
+    exit if select my $rout = $rmask, undef, undef, 0;
+    safewrite $reply, $_;
+  }
 }
 
 defoperator jsplot_server => q{
