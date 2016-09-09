@@ -37,3 +37,12 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
+sub image_with(%) {
+  my %old_self = %self;
+  my %h        = @_;
+  $self{'ni.map'} .= join '', map "\nresource $_", keys %h;
+  @self{keys %h} = values %h;
+  my $i = image;
+  %self = %old_self;
+  $i;
+}

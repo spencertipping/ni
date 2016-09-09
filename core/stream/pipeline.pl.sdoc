@@ -175,10 +175,10 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            map 'ARRAY' eq ref($_) ? shell_quote(@$_) : $_, @_}
 
 sub sni(@) {
-  my $q = shell_quote @_;
+  my @args = @_;
   soproc {
-    open my $fh, '| perl - ' . $q
-      or die "ni: sni @args failed to fork to perl: $!";
-    syswrite $fh, image;
+    open my $fh, '| perl - --internal/operate transient/op'
+      or die "ni: sni failed to fork to perl: $!";
+    syswrite $fh, image_with 'transient/op' => json_encode([@args]);
   };
 }

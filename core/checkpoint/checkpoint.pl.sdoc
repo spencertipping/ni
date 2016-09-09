@@ -5,7 +5,7 @@ results. A checkpoint specifies a file and a lambda whose output it should
 capture.
 
 sub checkpoint_create($$) {
-  stee sni(@{$_[1]}), swfile "$_[0].part", \*STDOUT;
+  stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
   rename "$_[0].part", $_[0];
 }
 

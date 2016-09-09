@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-31 ni.map.sdoc
+32 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -74,6 +74,7 @@ lib core/stream
 lib core/meta
 lib core/checkpoint
 lib core/gen
+lib core/json
 lib core/col
 lib core/row
 lib core/facet
@@ -423,7 +424,7 @@ sub flatten_operators($) {
   return $_[0] unless ref $name;
   map flatten_operators($_), @{$_[0]};
 }
-39 self.pl.sdoc
+48 self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
@@ -463,7 +464,16 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-67 main.pl.sdoc
+sub image_with(%) {
+  my %old_self = %self;
+  my %h        = @_;
+  $self{'ni.map'} .= join '', map "\nresource $_", keys %h;
+  @self{keys %h} = values %h;
+  my $i = image;
+  %self = %old_self;
+  $i;
+}
+75 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -484,6 +494,7 @@ sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
 Development options.
 Things useful for developing ni.
 
+defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
 defclispecial '--dev/self', q{print "$ni::self{$_[0]}\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
@@ -496,11 +507,18 @@ Options to extend and modify the ni image.
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
 defclispecial '--lib', q{intern_lib shift; goto \&main};
 
+Internal interfacing.
+Functions used by ni internally.
+
+defclispecial '--internal/operate', q{
+  &$main_operator(flatten_operators json_decode($self{$_[0]}));
+};
+
 Documentation.
 
 defclispecial '--explain', q{
   my ($r) = parse pcli '', @_;
-  print join("\t", map dev_inspect($_), @$_), "\n" for @$r;
+  print json_encode($_), "\n" for @$r;
 };
 
 Root CLI context.
@@ -712,11 +730,11 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
                            map 'ARRAY' eq ref($_) ? shell_quote(@$_) : $_, @_}
 
 sub sni(@) {
-  my $q = shell_quote @_;
+  my @args = @_;
   soproc {
-    open my $fh, '| perl - ' . $q
-      or die "ni: sni @args failed to fork to perl: $!";
-    syswrite $fh, image;
+    open my $fh, '| perl - --internal/operate transient/op'
+      or die "ni: sni failed to fork to perl: $!";
+    syswrite $fh, image_with 'transient/op' => json_encode([@args]);
   };
 }
 83 core/stream/ops.pl.sdoc
@@ -848,7 +866,7 @@ results. A checkpoint specifies a file and a lambda whose output it should
 capture.
 
 sub checkpoint_create($$) {
-  stee sni(@{$_[1]}), swfile "$_[0].part", \*STDOUT;
+  stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
   rename "$_[0].part", $_[0];
 }
 
@@ -894,6 +912,79 @@ sub gen($) {
     $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
     join '', @r;
   };
+}
+1 core/json/lib
+json.pl.sdoc
+70 core/json/json.pl.sdoc
+JSON parser/generator.
+Perl has native JSON libraries available in CPAN, but we can't assume those are
+installed locally. The pure-perl library is unusably slow, and even it isn't
+always there. So I'm implementing an optimized pure-Perl library here to
+address this. Note that this library doesn't parse all valid JSON, but it does
+come close -- and I've never seen a real-world use case of JSON that it would
+fail to parse.
+
+use Scalar::Util qw/looks_like_number/;
+
+our %json_unescapes =
+  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
+   t => "\t");
+
+sub json_unescape_one($) {$json_unescapes{$_[0]} || chr hex substr $_[0], 1}
+sub json_unescape($) {
+  my $x = substr $_[0], 1, -1;
+  $x =~ s/\\(["\\\/bfnrt]|u[0-9a-fA-F]{4})/json_unescape_one $1/eg;
+  $x;
+}
+
+Fully decode a string of JSON. Unless you need to extract everything, this is
+probably the slowest option; targeted attribute extraction should be much
+faster.
+
+sub json_decode($) {
+  local $_;
+  my @v = [];
+  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)"|-?\d[-+eE0-9.]*/g) {
+    if (/^[[{]$/) {
+      push @v, [];
+    } elsif (/^\]$/) {
+      die "json_decode $_[0]: too many closing brackets" if @v < 2;
+      push @{$v[-2]}, $v[-1];
+      pop @v;
+    } elsif (/^\}$/) {
+      die "json_decode $_[0]: too many closing brackets" if @v < 2;
+      push @{$v[-2]}, {@{$v[-1]}};
+      pop @v;
+    } else {
+      push @{$v[-1]}, /^"/      ? json_unescape $_
+                    : /^true$/  ? 1
+                    : /^false$/ ? 0
+                    : /^null$/  ? undef
+                    :             0 + $_;
+    }
+  }
+  my $r = pop @v;
+  die "json_decode $_[0]: not enough closing brackets" if @v;
+  wantarray ? @$r : $$r[0];
+}
+
+Encode a string of JSON from a structured value. TODO: add the ability to
+generate true/false values.
+
+our %json_escapes = map {;$json_unescapes{$_} => $_} keys %json_unescapes;
+
+sub json_escape($) {
+  (my $x = $_[0]) =~ s/([\b\f\n\r\t"\\])/"\\" . $json_escapes{$1}/eg;
+  "\"$x\"";
+}
+
+sub json_encode($) {
+  local $_;
+  my ($v) = @_;
+  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+  return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
+                             sort keys %$v) . "}" if 'HASH' eq ref $v;
+  looks_like_number $v ? $v : json_escape $v;
 }
 1 core/col/lib
 col.pl.sdoc
@@ -1319,7 +1410,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-50 core/pl/pl.pl.sdoc
+53 core/pl/pl.pl.sdoc
 Perl wrapper.
 Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
@@ -1337,11 +1428,14 @@ use constant perl_mapgen => gen q{
   }
 };
 
-sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
-                                        core/pl/math.pm
-                                        core/pl/stream.pm
-                                        core/gen/gen.pl
-                                        core/pl/reducers.pm |}}
+our @perl_prefix = qw| core/pl/util.pm
+                       core/pl/math.pm
+                       core/pl/stream.pm
+                       core/gen/gen.pl
+                       core/json/json.pl
+                       core/pl/reducers.pm |;
+
+sub perl_prefix() {join "\n", @self{@perl_prefix}}
 
 c
 BEGIN {
@@ -2597,7 +2691,7 @@ $ ni word-list Cr10             # sort first to group words
 8	2
 1	2016
 1	3
-1	31
+1	32
 1	45
 1	5
 1	A
