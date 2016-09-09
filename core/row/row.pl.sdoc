@@ -1,17 +1,29 @@
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-use constant row_pre => {row_sh => $self{'core/row/row.sh'}};
+defoperator head => q{exec 'head', @_};
+defoperator tail => q{exec 'tail', @_};
+
+defoperator row_every => q{$. % $_[0] || print while <STDIN>};
+defoperator row_match => q{/$_[0]/o && print while <STDIN>};
+defoperator row_sample => q{
+  srand $ENV{NI_SEED} || 42;
+  while (<STDIN>) {
+    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+  }
+};
+
+defoperator row_sort => q{exec 'sort', @_};
 
 our @row_alt = (
-  (pmap {sh 'tail', '-n', $_}                      pn 1, mr '^\+', number),
-  (pmap {sh 'tail', '-n', '+' . ($_ + 1)}          pn 1, mr '^-',  number),
-  (pmap {sh ['ni_revery',  $_], prefix => row_pre} pn 1, mr '^x',  number),
-  (pmap {sh ['ni_rmatch',  $_], prefix => row_pre} pn 1, mr '^/',  regex),
-  (pmap {sh ['ni_rsample', $_], prefix => row_pre} mr '^\.\d+'),
-  (pmap {sh 'head', '-n', $_}                      alt neval, integer));
+  pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
+  pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
+  pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
+  pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
+  pmap(q{row_sample_op $_},                   prx '\.\d+'),
+  pmap(q{head_op '-n', $_},             integer));
 
-defshort 'root', 'r', altr @row_alt;
+defshort '/r', paltr @row_alt;
 
 sub defrowalt($) {unshift @row_alt, $_[0]}
 
@@ -32,26 +44,38 @@ modifiers, which are optional, are any of these:
   n     numeric sort
   r     reverse
 
-use constant sortspec => rep seq colspec1, maybe mr '^[gnr]+';
+use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
 
 sub sort_args {'-t', "\t",
                map {my $i = ord($$_[0]) - 64;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
 
-sub ni_sort(@) {sh ['ni_sort', @_], prefix => row_pre}
-
-defshort 'root', 'g', pmap {ni_sort        sort_args @$_} sortspec;
-defshort 'root', 'G', pmap {ni_sort '-u',  sort_args @$_} sortspec;
-defshort 'root', 'o', pmap {ni_sort '-n',  sort_args @$_} sortspec;
-defshort 'root', 'O', pmap {ni_sort '-rn', sort_args @$_} sortspec;
+defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
+defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
+defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
+defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
 Counting.
 Sorted and unsorted streaming counts.
 
-sub ni_count {sh 'perl', '-ne',
-  q{if ($_ ne $last) {print "$n\t$_" if defined $last; $n = 0; $last = $_} ++$n;
-    END {print "$n\t$last" if defined $last}}}
+defoperator count => q{
+  my ($n, $last) = (0, undef);
+  while (<STDIN>) {
+    if ($_ ne $last) {
+      print "$n\t$_" if defined $last;
+      $n = 0;
+      $last = $_;
+    }
+    ++$n;
+  }
+  print "$n\t$last" if defined $last;
+};
 
-defshort 'root', 'c', k ni_count;
-defshort 'root', 'C', k [ni_sort, ni_count];
+defoperator sort_count => q{
+  sicons {operate row_sort_op};
+  operate count_op;
+};
+
+defshort '/c', pmap q{count_op},      pnone;
+defshort '/C', pmap q{sort_count_op}, pnone;

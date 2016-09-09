@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-24 ni.map.sdoc
+27 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -73,6 +73,9 @@ resource main.pl.sdoc
 lib core/stream
 lib core/meta
 lib core/checkpoint
+lib core/gen
+lib core/col
+lib core/row
 lib doc
 45 util.pl.sdoc
 Utility functions.
@@ -683,7 +686,7 @@ point, which can cause unexpected results and loss of precision.
 
 $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
-  sicons {operate @$_} for @_ ? @_ : ('//help');
+  sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
 };
@@ -793,15 +796,8 @@ defoperator 'meta_options', q{
 };
 
 deflong '/meta_options', pmap q{meta_options_op}, prx '//ni/options';
-2 core/checkpoint/lib
-checkpoint.sh.sdoc
+1 core/checkpoint/lib
 checkpoint.pl.sdoc
-5 core/checkpoint/checkpoint.sh.sdoc
-Checkpoint shell functions.
-We need a function that generates a checkpoint file atomically; that is, it
-becomes its final name only when all of the content has been written.
-
-ni_checkpoint() { sh | tee "$1.part" && mv "$1.part" "$1"; }
 17 core/checkpoint/checkpoint.pl.sdoc
 Checkpoint files.
 You can break a long pipeline into a series of smaller files using
@@ -820,6 +816,203 @@ defoperator 'checkpoint', q{
 };
 
 defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq nefilename, plambda '';
+1 core/gen/lib
+gen.pl.sdoc
+34 core/gen/gen.pl.sdoc
+Code generator.
+A general-purpose interface to do code-generation stuff. This is used when
+you've got a task that's mostly boilerplate of some kind, but you've got
+variable regions. For example, if you wanted to generalize JVM-hosted
+command-line filters:
+
+| my $java_linefilter = gen q{
+    import java.io.*;
+    public class %classname {
+      public static void main(String[] args) {
+        BufferedReader stdin = <the ridiculous crap required to do this>;
+        String %line;
+        while ((%line = stdin.readLine()) != null) {
+          %body;
+        }
+      }
+    }
+  };
+  my $code = &$java_linefilter(classname => 'Foo',
+                               line      => 'line',
+                               body      => 'System.out.println(line);');
+
+our $gensym_index = 0;
+sub gensym {join '_', '_gensym', ++$gensym_index, @_}
+
+sub gen($) {
+  my @pieces = split /(%\w+)/, $_[0];
+  sub {
+    my %vars = @_;
+    my @r = @pieces;
+    $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
+    join '', @r;
+  };
+}
+1 core/col/lib
+col.pl.sdoc
+73 core/col/col.pl.sdoc
+Column manipulation operators.
+In root context, ni interprets columns as being tab-delimited.
+
+Column selection.
+Normally perl is fast at text manipulation, but on most UNIX systems
+`/usr/bin/cut` is at least an order of magnitude faster. We can use it if two
+conditions are met:
+
+| 1. All addressed columns are at index 8 (9 if one-based) or lower.
+  2. The addressed columns are in ascending order.
+
+sub col_cut {
+  my ($floor, $rest, @fs) = @_;
+  exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
+}
+
+our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
+
+defoperator cols => q{
+  # TODO: this function shouldn't be parsing column specs
+  my $ind   = grep /[^A-I.]/, @_;
+  my $asc   = join('', @_) eq join('', sort @_);
+  my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
+  my $floor = (sort {$b <=> $a} @cols)[0] + 1;
+  return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
+
+  my $body = $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols);
+  eval qq{while (<STDIN>) {$body}};
+};
+
+our @col_alt = pmap q{cols_op split //, $_}, colspec;
+
+defshort '/f', paltr @col_alt;
+
+sub defcolalt($) {unshift @col_alt, $_[0]}
+
+Column swapping.
+This is such a common thing to do that it gets its own operator `x`. The idea
+is that you're swapping the specified column(s) into the first N position(s).
+
+sub ni_colswap(@) {
+  # TODO after we do the colspec parsing refactor
+}
+
+Column splitting.
+Adapters for input formats that don't have tab delimiters. Common ones are,
+with their split-spec mnemonics:
+
+| commas:       C
+  pipes:        P
+  whitespace:   S
+  non-words:    W
+
+You can also field-split on arbitrary regexes, or extend the %split_chalt hash
+to add custom split operators.
+
+defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
+defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
+defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
+
+our %split_dsp = (
+  'C' => pmap(q{split_chr_op   ','},               pnone),
+  'P' => pmap(q{split_chr_op   '|'},               pnone),
+  'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
+  'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
+  '/' => pmap(q{split_regex_op $_},                regex),
+  ':' => pmap(q{split_chr_op   $_},                prx '^.'),
+  'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex),
+);
+
+defshort '/F', pdspr %split_dsp;
+
+sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
+1 core/row/lib
+row.pl.sdoc
+81 core/row/row.pl.sdoc
+Row-level operations.
+These reorder/drop/create entire rows without really looking at fields.
+
+defoperator head => q{exec 'head', @_};
+defoperator tail => q{exec 'tail', @_};
+
+defoperator row_every => q{$. % $_[0] || print while <STDIN>};
+defoperator row_match => q{/$_[0]/o && print while <STDIN>};
+defoperator row_sample => q{
+  srand $ENV{NI_SEED} || 42;
+  while (<STDIN>) {
+    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+  }
+};
+
+defoperator row_sort => q{exec 'sort', @_};
+
+our @row_alt = (
+  pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
+  pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
+  pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
+  pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
+  pmap(q{row_sample_op $_},                   prx '\.\d+'),
+  pmap(q{head_op '-n', $_},             integer));
+
+defshort '/r', paltr @row_alt;
+
+sub defrowalt($) {unshift @row_alt, $_[0]}
+
+Sorting.
+ni has four sorting operators, each of which can take modifiers:
+
+| g     group: sort by byte ordering
+  G     groupuniq: sort + uniq by byte ordering
+  o     order: sort numeric ascending
+  O     rorder: sort numeric descending
+
+Modifiers follow the operator and dictate the column index and, optionally, the
+type of sort to perform on that column (though a lot of this is already
+specified by which sort operator you use). Columns are specified as A-Z, and
+modifiers, which are optional, are any of these:
+
+| g     general numeric sort (not available for all 'sort' versions)
+  n     numeric sort
+  r     reverse
+
+use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
+
+sub sort_args {'-t', "\t",
+               map {my $i = ord($$_[0]) - 64;
+                    my $m = defined $$_[1] ? $$_[1] : '';
+                    ('-k', "$i$m,$i")} @_}
+
+defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
+defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
+defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
+defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+
+Counting.
+Sorted and unsorted streaming counts.
+
+defoperator count => q{
+  my ($n, $last) = (0, undef);
+  while (<STDIN>) {
+    if ($_ ne $last) {
+      print "$n\t$_" if defined $last;
+      $n = 0;
+      $last = $_;
+    }
+    ++$n;
+  }
+  print "$n\t$last" if defined $last;
+};
+
+defoperator sort_count => q{
+  sicons {operate row_sort_op};
+  operate count_op;
+};
+
+defshort '/c', pmap q{count_op},      pnone;
+defshort '/C', pmap q{sort_count_op}, pnone;
 13 doc/lib
 col.md
 examples.md

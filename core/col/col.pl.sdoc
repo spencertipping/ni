@@ -11,12 +11,12 @@ conditions are met:
 
 sub col_cut {
   my ($floor, $rest, @fs) = @_;
-  sh 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
+  exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
 our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
 
-sub ni_cols(@) {
+defoperator cols => q{
   # TODO: this function shouldn't be parsing column specs
   my $ind   = grep /[^A-I.]/, @_;
   my $asc   = join('', @_) eq join('', sort @_);
@@ -24,13 +24,13 @@ sub ni_cols(@) {
   my $floor = (sort {$b <=> $a} @cols)[0] + 1;
   return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
 
-  sh ['perl', '-ne',
-      $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols)];
-}
+  my $body = $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols);
+  eval qq{while (<STDIN>) {$body}};
+};
 
-our @col_alt = (pmap {ni_cols split //, $_} colspec);
+our @col_alt = pmap q{cols_op split //, $_}, colspec;
 
-defshort 'root', 'f', altr @col_alt;
+defshort '/f', paltr @col_alt;
 
 sub defcolalt($) {unshift @col_alt, $_[0]}
 
@@ -54,20 +54,20 @@ with their split-spec mnemonics:
 You can also field-split on arbitrary regexes, or extend the %split_chalt hash
 to add custom split operators.
 
-sub ni_split_chr($)   {sh 'perl', '-lnpe', "y/$_[0]/\\t/"}
-sub ni_split_regex($) {sh 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"}
-sub ni_scan_regex($)  {sh 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"}
+defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
+defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
+defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-our %split_chalt = (
-  'C' => (pmap {ni_split_chr   ','}              none),
-  'P' => (pmap {ni_split_chr   '|'}              none),
-  'S' => (pmap {ni_split_regex qr/\s+/}          none),
-  'W' => (pmap {ni_split_regex qr/[^\w\n]+/}     none),
-  '/' => (pmap {ni_split_regex $_}               regex),
-  ':' => (pmap {ni_split_chr   $_}               mr '^.'),
-  'm' => (pn 1, mr '^/', pmap {ni_scan_regex $_} regex),
+our %split_dsp = (
+  'C' => pmap(q{split_chr_op   ','},               pnone),
+  'P' => pmap(q{split_chr_op   '|'},               pnone),
+  'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
+  'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
+  '/' => pmap(q{split_regex_op $_},                regex),
+  ':' => pmap(q{split_chr_op   $_},                prx '^.'),
+  'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex),
 );
 
-defshort 'root', 'F', chaltr %split_chalt;
+defshort '/F', pdspr %split_dsp;
 
-sub defsplitalt($$) {$split_chalt{$_[0]} = $_[1]}
+sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}

@@ -9,7 +9,7 @@ point, which can cause unexpected results and loss of precision.
 
 $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
-  sicons {operate @$_} for @_ ? @_ : ('//help');
+  sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
 };
