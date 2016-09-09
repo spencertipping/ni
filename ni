@@ -3111,7 +3111,7 @@ setInterval(function () {
 refresh();
 
 });
-50 core/jsplot/jsplot.pl.sdoc
+49 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -3141,7 +3141,6 @@ This is the websocket connection that ni uses to stream data to the client.
 
 sub jsplot_stream($$@) {
   my ($reply, $req, @ni_args) = @_;
-  print STDERR "ni_args = @ni_args\n";
   print $reply ws_header($req);
   sforward sni(cli(@ni_args), http_websocket_encode_op), $reply;
 }

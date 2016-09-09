@@ -173,7 +173,7 @@ $ ni word-list Cr10             # sort first to group words
 8	2
 1	2016
 1	3
-1	32
+1	37
 1	45
 1	5
 1	A
