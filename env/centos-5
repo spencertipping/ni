@@ -1,7 +1,7 @@
 FROM centos:5
 RUN yum install -y sqlite perl curl bzip2 xz epel-release-5-4
 RUN yum install -y sbcl
-RUN yum install -y lzop lz4
+RUN yum install -y lzop lz4 strace
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd

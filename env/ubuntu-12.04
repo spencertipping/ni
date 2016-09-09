@@ -1,7 +1,7 @@
 FROM ubuntu:12.04
 RUN apt-get update
 RUN apt-get install -qqy sbcl sqlite curl
-RUN apt-get install -qqy bzip2 lzop xz-utils
+RUN apt-get install -qqy bzip2 lzop xz-utils strace
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
