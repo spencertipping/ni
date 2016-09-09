@@ -2,14 +2,9 @@ Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
-Note that we generate numbers internally rather than shelling out to `seq`
-(which is ~20x faster than Perl for the purpose, incidentally). This is
-deliberate: certain versions of `seq` generate floating-point numbers after a
-point, which can cause unexpected results and loss of precision.
-
 $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
-  sicons {operate @$_} for @_;
+  @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
 };
@@ -19,7 +14,13 @@ use constant shell_command => prc '.*';
 defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
 defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
 defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
-defoperator n    => q{
+
+Note that we generate numbers internally rather than shelling out to `seq`
+(which is ~20x faster than Perl for the purpose, incidentally). This is
+deliberate: certain versions of `seq` generate floating-point numbers after a
+point, which can cause unexpected results and loss of precision.
+
+defoperator n => q{
   my ($l, $u) = @_;
   sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
 };

@@ -16,3 +16,9 @@ sub operate {
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }
+
+sub flatten_operators($) {
+  my ($name) = @{$_[0]};
+  return $_[0] unless ref $name;
+  map flatten_operators($_), @{$_[0]};
+}

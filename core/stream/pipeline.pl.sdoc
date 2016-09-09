@@ -177,7 +177,7 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
 sub sni(@) {
   my $q = shell_quote @_;
   soproc {
-    open my $fh, '| perl - ' . $q . ' </dev/null'
+    open my $fh, '| perl - ' . $q
       or die "ni: sni @args failed to fork to perl: $!";
     syswrite $fh, image;
   };

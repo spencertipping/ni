@@ -13,8 +13,8 @@ This generalizes easily to other programming environments, e.g. SQL GROUP BY:
 
 | $ ni ... [@'mod(x, 10)' 'sum(y)']
 
-our %facet_chalt;
+our %facet_dsp;
 
-defshort 'root', '@', chaltr %facet_chalt;
+defshort '/@', pdspr %facet_dsp;
 
-sub deffacetalt($$) {$facet_chalt{$_[0]} = $_[1]}
+sub deffacetalt($$) {$facet_dsp{$_[0]} = $_[1]}

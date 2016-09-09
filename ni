@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-27 ni.map.sdoc
+30 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -76,6 +76,9 @@ lib core/checkpoint
 lib core/gen
 lib core/col
 lib core/row
+lib core/facet
+lib core/pl
+lib core/lisp
 lib doc
 45 util.pl.sdoc
 Utility functions.
@@ -341,7 +344,7 @@ just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@(\w*)';
+use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@:(\w*)';
 
 use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prx '^[^][]+';
@@ -397,7 +400,7 @@ sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
 sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
 sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
-18 op.pl.sdoc
+24 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -415,6 +418,12 @@ sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
+}
+
+sub flatten_operators($) {
+  my ($name) = @{$_[0]};
+  return $_[0] unless ref $name;
+  map flatten_operators($_), @{$_[0]};
 }
 39 self.pl.sdoc
 Image functions.
@@ -516,7 +525,7 @@ sub main {
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
 
   my ($r) = parse pcli '', @_;
-  return &$main_operator(@$r) if ref $r;
+  return &$main_operator(flatten_operators $r) if ref $r;
 
   my (undef, @rest) = parse pcli_debug '', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
@@ -706,24 +715,19 @@ sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
 sub sni(@) {
   my $q = shell_quote @_;
   soproc {
-    open my $fh, '| perl - ' . $q . ' </dev/null'
+    open my $fh, '| perl - ' . $q
       or die "ni: sni @args failed to fork to perl: $!";
     syswrite $fh, image;
   };
 }
-82 core/stream/ops.pl.sdoc
+83 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
-Note that we generate numbers internally rather than shelling out to `seq`
-(which is ~20x faster than Perl for the purpose, incidentally). This is
-deliberate: certain versions of `seq` generate floating-point numbers after a
-point, which can cause unexpected results and loss of precision.
-
 $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
-  sicons {operate @$_} for @_;
+  @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
 };
@@ -733,7 +737,13 @@ use constant shell_command => prc '.*';
 defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
 defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
 defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
-defoperator n    => q{
+
+Note that we generate numbers internally rather than shelling out to `seq`
+(which is ~20x faster than Perl for the purpose, incidentally). This is
+deliberate: certain versions of `seq` generate floating-point numbers after a
+point, which can cause unexpected results and loss of precision.
+
+defoperator n => q{
   my ($l, $u) = @_;
   sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
 };
@@ -848,7 +858,7 @@ defoperator 'checkpoint', q{
   sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
 };
 
-defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq nefilename, plambda '';
+defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, plambda '';
 1 core/gen/lib
 gen.pl.sdoc
 34 core/gen/gen.pl.sdoc
@@ -964,7 +974,7 @@ defshort '/F', pdspr %split_dsp;
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
 1 core/row/lib
 row.pl.sdoc
-81 core/row/row.pl.sdoc
+76 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -972,9 +982,9 @@ defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', @_};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
-defoperator row_match => q{/$_[0]/o && print while <STDIN>};
+defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
-  srand $ENV{NI_SEED} || 42;
+  srand($ENV{NI_SEED} || 42);
   while (<STDIN>) {
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
   }
@@ -1039,19 +1049,496 @@ defoperator count => q{
   print "$n\t$last" if defined $last;
 };
 
-defoperator sort_count => q{
-  sicons {operate row_sort_op};
-  operate count_op;
+defshort '/c', pmap q{count_op},                pnone;
+defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
+1 core/facet/lib
+facet.pl.sdoc
+20 core/facet/facet.pl.sdoc
+Faceting support.
+A compound operation that prepends a new facet-value column, sorts by that
+value, and supports streaming aggregation within facet groups. It's specified
+this way for two reasons. First, it's convenient; but second, and more
+importantly, not all backends will have the right set of primitives to let you
+specify a facet the same way.
+
+The general syntax is like this:
+
+| $ ni n:100 @p'a % 10' 'r a, fr {$_ + b} 0'    # sum each group
+
+This generalizes easily to other programming environments, e.g. SQL GROUP BY:
+
+| $ ni ... [@'mod(x, 10)' 'sum(y)']
+
+our %facet_dsp;
+
+defshort '/@', pdspr %facet_dsp;
+
+sub deffacetalt($$) {$facet_dsp{$_[0]} = $_[1]}
+5 core/pl/lib
+util.pm.sdoc
+math.pm.sdoc
+stream.pm.sdoc
+reducers.pm.sdoc
+pl.pl.sdoc
+60 core/pl/util.pm.sdoc
+Utility library functions.
+Mostly inherited from nfu. This is all loaded inline before any Perl mapper
+code. Note that List::Util, the usual solution to a lot of these problems, is
+introduced in v5.7.3, so we can't rely on it being there.
+
+sub ceval {eval $_[0]; die $@ if $@}
+
+sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
+sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+
+sub mean {scalar @_ && sum(@_) / @_}
+
+sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  }
+  $m;
+}
+
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs) = @_;
+  my $fm = &$f($m);
+  for my $x (@xs) {
+    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  }
+  $m;
+}
+
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+
+sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+
+sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
+sub reductions(&$@) {
+  local $_;
+  my ($f, $x, @xs, @ys) = @_;
+  push @ys, $x = &$f($x, $_) for @xs;
+  @ys;
+}
+
+sub cart {
+  local $_;
+  return () unless @_;
+  return map [$_], @{$_[0]} if @_ == 1;
+  my @ns     = map scalar(@$_), @_;
+  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
+  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
+      0..prod(@ns) - 1;
+}
+33 core/pl/math.pm.sdoc
+Math utility functions.
+Mostly geometric and statistical stuff.
+
+use constant tau => 2 * 3.14159265358979323846264;
+
+use constant LOG2  => log 2;
+use constant LOG2R => 1 / LOG2;
+
+sub log2 {LOG2R * log $_[0]}
+sub quant {my ($x, $q) = @_; $q ||= 1;
+           my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
+
+sub dot {local $_; my ($u, $v) = @_;
+         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+
+sub l1norm {local $_; sum map abs($_), @_}
+sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+sub rdeg($) {$_[0] * 360 / tau}
+sub drad($) {$_[0] / 360 * tau}
+
+sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
+sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+
+if (eval {require Math::Trig}) {
+  sub haversine {
+    local $_;
+    my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
+    my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+    my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+    2 * atan2(sqrt($a), sqrt(1 - $a));
+  }
+}
+75 core/pl/stream.pm.sdoc
+Perl stream-related functions.
+Utilities to parse and emit streams of data. Handles the following use cases:
+
+| $ ni n:10p'a + a'             # emit single value
+  $ ni n:10p'a, a * a'          # emit multiple values vertically
+  $ ni n:10p'r a, a * a'        # emit multiple values horizontally
+
+The 'pr' function can bypass split /\t/, which is useful in high-throughput
+situations. For example:
+
+| $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
+
+Uppercase letters are quoted fields: A == 'a'. This is useful when defining
+lazy facets (see facet.pm.sdoc).
+
+Lowercase letters followed by underscores are field-extractors that can take an
+array of lines and return an array of field values. These are useful in
+conjunction with the line-reading functions `rw`, `ru`, and `re`.
+
+our @q;
+our @F;
+our $l;
+
+sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
+sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
+BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
+       ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
+       ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
+                     $_, ord($_) - 97 for 'a'..'q'}
+
+Optimize access to the first field; in particular, no need to fully populate @F
+since no seeking needs to happen. This should improve performance for faceting
+workflows.
+
+sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
+
+Seeking functions.
+It's possible to read downwards (i.e. future lines), which returns an array and
+sends the after-rejected line into the lookahead queue to be used by the next
+iteration. Mnemonics:
+
+| rw: read while condition
+  ru: read until condition
+  re: read while equal
+
+These functions all read things into memory. If you want to stream stuff, you
+can do it in two ways. One is to use control flow with the 'rl' (read line)
+function:
+
+| do_stuff until rl =~ /<\//;           # iterate until closing XML tag
+  push @q, $_;                          # important: stash rejected line
+
+The other is to use the faceting functions defined in facet.pm.
+
+sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
+sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
+sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
+BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+
+Streaming aggregations.
+These functions are like the ones above, but designed to work in constant
+space:
+
+| se<column>: streaming reduce while column is equal
+  sr: streaming reduce all data
+
+sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
+             @xs = &$f(@xs), rl while defined and &$e eq $k;
+             push @q, $_ if defined; @xs}
+BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
+                     $_, $_ for 'a'..'q'}
+
+sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
+68 core/pl/reducers.pm.sdoc
+Compound reductions.
+Suppose you want to calculate, in parallel, the sum of one column and the mean
+of another. You can't use two separate `sr` calls since the first one will
+force the whole stream. Instead, you need a way to build a single compound
+function that maintains the two separate state elements. That's what `rc`
+(reduce compound) is all about.
+
+In fast languages we could probably get away with some nice combinatory stuff
+here, but this is performance-critical and Perl isn't fast. So I'm making some
+epic use of codegen and `eval` to help Perl be all it can be. We end up
+compiling into a single function body for a `cr` call, which is then mapped
+through a finalizer to eliminate intermediate states.
+
+sub rsum($)  {+{reduce => gen "%1 + ($_[0])",
+                init   => [0],
+                end    => gen '%1'}}
+
+sub rmean($) {+{reduce => gen "%1 + ($_[0]), %2 + 1",
+                init   => [0, 0],
+                end    => gen '%1 / (%2 || 1)'}}
+
+sub rmin($)  {+{reduce => gen "defined %1 ? min %1, ($_[0]) : ($_[0])",
+                init   => [undef],
+                end    => gen '%1'}}
+
+sub rmax($)  {+{reduce => gen "defined %1 ? max %1, ($_[0]) : ($_[0])",
+                init   => [undef],
+                end    => gen '%1'}}
+
+sub rarr($)  {+{reduce => gen "[\@{%1}, ($_[0])]",
+                init   => [[]],
+                end    => gen '%1'}}
+
+sub rfn($$)  {+{reduce => gen $_[0],
+                init   => [@_[1..$#_]],
+                end    => gen join ', ', map "%$_", 1..$#_}}
+
+sub compound_reducer(@) {
+  local $_;
+  my $slots = 0;
+  my @indexes = map {my $n = @{$$_{init}}; $slots += $n; $slots - $n} @_;
+  my @mapping = map {my $i = $_;
+                     [map {;$_ => sprintf "\$_[%d]", $indexes[$i] + $_ - 1}
+                          1..@{$_[$i]{init}}]} 0..$#_;
+  (init   => [map @{$$_{init}}, @_],
+   reduce => join(', ', map $_[$_]{reduce}->(@{$mapping[$_]}), 0..$#_),
+   end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_));
+}
+
+Reduce compound function.
+Executes a compound reduction using the specified stream reducer function.
+Typical usage would be like this:
+
+| ($sum, $mean) = rc \&sea, fsum A, fmean B;
+
+sub rc {
+  my ($f, @rs) = @_;
+  my %c        = compound_reducer @rs;
+  my $reduce   = eval "sub{\n($c{reduce})\n}" or die "sc: '$c{reduce}': $@";
+  my $end      = eval "sub{\n($c{end})\n}"    or die "sc: '$c{end}': $@";
+  &$end(&$f($reduce, @{$c{init}}));
+}
+
+Just like for `se` functions, we define shorthands such as `rca ...` = `rc
+\&sea, ...`.
+
+c
+BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
+50 core/pl/pl.pl.sdoc
+Perl wrapper.
+Defines the `p` operator, which can be modified in a few different ways to do
+different things. By default it functions as a one-in, many-out row
+transformer.
+
+use constant perl_mapgen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  sub row {
+    %body
+  }
+  while (defined rl) {
+    %each
+  }
 };
 
-defshort '/c', pmap q{count_op},      pnone;
-defshort '/C', pmap q{sort_count_op}, pnone;
-13 doc/lib
+sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
+                                        core/pl/math.pm
+                                        core/pl/stream.pm
+                                        core/gen/gen.pl
+                                        core/pl/reducers.pm |}}
+
+c
+BEGIN {
+  defoperator perl_code => q{
+    my ($body, $each) = @_;
+    move_fd 0, 3;
+    safewrite siproc {exec 'perl', '-'},
+              perl_mapgen->(prefix => perl_prefix,
+                            body   => $body,
+                            each   => $each);
+  };
+}
+
+sub perl_mapper($)  {perl_code_op $_[0], 'pr for row'}
+sub perl_grepper($) {perl_code_op $_[0], 'pr if row'}
+sub perl_facet($)   {perl_code_op $_[0], 'pr row . "\t$_"'}
+
+our @perl_alt = pmap q{perl_mapper $_}, pplcode;
+
+defshort '/p', paltr @perl_alt;
+
+sub defperlalt($) {unshift @perl_alt, $_[0]}
+
+defrowalt pmap q{perl_grepper $_}, pn 1, prx 'p', pplcode;
+
+deffacetalt 'p', pmap q{[perl_facet $$_[0],
+                         row_sort_op('-k1b,1'),
+                         perl_mapper $$_[1]]}, pseq pplcode, pplcode;
+2 core/lisp/lib
+prefix.lisp
+lisp.pl.sdoc
+106 core/lisp/prefix.lisp
+(declaim (optimize (speed 3) (safety 0)))
+(setf *read-default-float-format* 'double-float)
+
+;;; utility functions from wu-sugar
+
+(defun str (&rest values)
+  (with-output-to-string (s)
+    (dolist (val values)
+      (princ val s))))
+
+(defun join (separator &rest strings)
+  "Concatenates STRINGS, joining them by SEPARATOR."
+  (when (characterp separator)
+    (setf separator (string separator)))
+  (if strings
+      (reduce (lambda (a b) (str a separator b)) strings)
+      ""))
+
+(defun split (string &rest delimiter-chars)
+  "Splits STRING by one or more delimiter characters, returning a list."
+  (let ((current-pos 0)
+	result)
+    (loop
+       (push (subseq string 
+		     current-pos 
+		     (setf current-pos (position-if (lambda (c) (member c delimiter-chars)) 
+						    string 
+						    :start current-pos)))
+	     result)
+       (unless current-pos (return))
+       (incf current-pos))
+    (nreverse result)))
+
+(defun starts-with-p (seq subseq)
+  (let ((subseq-len (length subseq))) 
+    (if (<= subseq-len (length seq)) 
+	(search subseq seq :end2 subseq-len)
+	nil)))
+
+(defun ends-with-p (seq subseq)
+  (let ((seq-len (length seq))
+	(subseq-len (length subseq))) 
+    (if (<= (length subseq) (length seq)) 
+	(search subseq seq :from-end t :start2 (- seq-len subseq-len))
+	nil)))
+
+
+(defvar *cols*)
+
+(defun read-col (text)
+  (when text
+    (let* ((*read-eval* nil)
+           (r (read-from-string text)))
+      (etypecase r
+        (symbol text)
+        (number r)))))
+
+(defun %r (&rest values)
+  (apply #'join #\Tab values))
+
+(defmacro r (&rest values)
+  `(multiple-value-call #'%r ,@values))
+
+(declaim (inline next-line))
+(defun next-line ()
+  (read-line *standard-input* nil))
+
+(defun %sr (&rest reducefn_inputfn_current)
+  (loop for l = (next-line) while l do
+       (let ((*cols* (split l #\Tab)))
+         (loop for (reducefn inputfn current) in reducefn_inputfn_current
+              for ric in reducefn_inputfn_current do
+              (setf (third ric)
+                    (funcall reducefn current (funcall inputfn))))))
+  (apply #'values (mapcar #'third reducefn_inputfn_current)))
+
+(defmacro sr (&rest reducer_input_initial)
+  `(let* ((bindings (list ,@(loop for (reducer input initial) in reducer_input_initial append
+                                 (list reducer `(lambda () ,input) initial))))
+          (fixed-bindings (loop for (reducefn inputfn initial) on bindings by #'cdddr collect
+                               (list reducefn inputfn (if initial                                                          
+                                                          (funcall reducefn initial (funcall inputfn))
+                                                          (funcall inputfn))))))
+     (apply #'%sr fixed-bindings)))
+
+(defun output-rows (&rest rows)
+  (dolist (row rows)
+    (princ row)
+    (terpri)))
+
+(defmacro with-ni-env (filter-p &body body)
+  (let ((l-var (gensym "L")))
+    `(let ((*standard-input* (sb-sys:make-fd-stream 3)))
+       (symbol-macrolet ,(loop for colname in '(a b c d e f g h i j k l m n o p q)
+                            for index from 0
+                            collect (list colname `(read-col (nth ,index *cols*))))     
+         (loop for ,l-var = (read-line *standard-input* nil) while ,l-var do
+              (let ((*cols* (split ,l-var #\Tab)))
+                ,(if filter-p
+                     `(when (progn ,@body)
+                        (write-string ,l-var)
+                        (terpri))
+                     `(progn
+                        ,@(loop for form in body collect
+                               `(multiple-value-call #'output-rows ,form)
+                        )))))))))
+52 core/lisp/lisp.pl.sdoc
+Lisp backend.
+A super simple SBCL operator. The first thing we want to do is to define the
+code template that we send to Lisp via stdin (using a heredoc). So ni ends up
+generating a pipeline element like this:
+
+| ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
+        (prefix lisp code)
+        (line mapping code)
+        EOF
+
+use constant lisp_mapgen => gen q{
+  %prefix
+  (with-ni-env nil
+    %body)
+};
+
+use constant lisp_grepgen => gen q{
+  %prefix
+  (with-ni-env t
+    %body)
+};
+
+Now we specify which files get loaded into the prefix. The ni build script
+preprocesses files with an sdoc extension (though you're not required to use
+it; normal files are passed straight through), and file paths become keys in
+the %self hash after having the src/ prefix replaced with core/.
+
+sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp |}}
+
+Finally we define the toplevel operator. 'root' is the operator context, 'L' is
+the operator name, and pmap {...} mrc '...' is the parsing expression that
+consumes the operator's arguments (in this case a single argument of just some
+Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
+how shell commands are represented.)
+
+use constant lispcode => prc '.*[^]]+';
+
+defoperator lisp_code => q{
+  my $code = $_[0];
+  move_fd 0, 3;
+  safewrite siproc {exec qw| sbcl --noinform --noprint --eval |,
+                         '(load *standard-input* :verbose nil :print nil)'},
+            $code;
+};
+
+defshort '/l', pmap q{lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
+                                                 body   => $_)},
+               lispcode;
+
+defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
+                                             body   => $_)},
+          pn 1, prx 'l', lispcode;
+12 doc/lib
 col.md
 examples.md
 extend.md
 facet.md
-internals.md
 libraries.md
 lisp.md
 options.md
@@ -1209,7 +1696,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 Things that might give you ideas to be more dangerous.
 
 **TODO**
-14 doc/extend.md
+17 doc/extend.md
 # Extending ni
 You can extend ni by writing a library. For example, suppose we want a new
 operator `N` that counts lines by shelling out to `wc -l`:
@@ -1217,7 +1704,10 @@ operator `N` that counts lines by shelling out to `wc -l`:
 ```bash
 $ mkdir my-library
 $ echo my-lib.pl > my-library/lib
-$ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
+$ cat > my-library/my-lib.pl <<'EOF'
+defoperator count_lines => q{exec 'wc', '-l'};
+defshort '/N', pmap q{count_lines_op}, pnone;
+EOF
 $ ni --lib my-library n100N
 100
 ```
@@ -1293,17 +1783,6 @@ $ ni /etc/passwd F::gGp'r g, a_ reg'
 /bin/false	syslog
 /bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
 /bin/sync	sync
-```
-10 doc/internals.md
-# Internal options
-ni provides some internal debugging options that you may find useful if you're
-writing extensions.
-
-```bash
-$ ni --internal/parse generic_code [foo]
-[foo]
-$ ni --internal/parse generic_code [foo]]]
-[foo] | ]]
 ```
 28 doc/libraries.md
 # Libraries

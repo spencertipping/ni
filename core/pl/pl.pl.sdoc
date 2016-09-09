@@ -21,23 +21,30 @@ sub perl_prefix() {join "\n", @self{qw| core/pl/util.pm
                                         core/gen/gen.pl
                                         core/pl/reducers.pm |}}
 
-sub perl_gen($$) {sh [qw/perl -/],
-  stdin => perl_mapgen->(prefix => perl_prefix,
-                         body   => $_[0],
-                         each   => $_[1])}
+c
+BEGIN {
+  defoperator perl_code => q{
+    my ($body, $each) = @_;
+    move_fd 0, 3;
+    safewrite siproc {exec 'perl', '-'},
+              perl_mapgen->(prefix => perl_prefix,
+                            body   => $body,
+                            each   => $each);
+  };
+}
 
-sub perl_mapper($)  {perl_gen $_[0], 'pr for row'}
-sub perl_grepper($) {perl_gen $_[0], 'pr if row'}
-sub perl_facet($)   {perl_gen $_[0], 'pr row . "\t$_"'}
+sub perl_mapper($)  {perl_code_op $_[0], 'pr for row'}
+sub perl_grepper($) {perl_code_op $_[0], 'pr if row'}
+sub perl_facet($)   {perl_code_op $_[0], 'pr row . "\t$_"'}
 
-our @perl_alt = (pmap {perl_mapper $_} plcode);
+our @perl_alt = pmap q{perl_mapper $_}, pplcode;
 
-defshort 'root', 'p', altr @perl_alt;
+defshort '/p', paltr @perl_alt;
 
 sub defperlalt($) {unshift @perl_alt, $_[0]}
 
-defrowalt pmap {perl_grepper $_} pn 1, mr '^p', plcode;
+defrowalt pmap q{perl_grepper $_}, pn 1, prx 'p', pplcode;
 
-deffacetalt 'p', pmap {[perl_facet $$_[0],
-                        sh(['ni_sort', '-k1,1'], prefix => row_pre),
-                        perl_mapper $$_[1]]} seq plcode, plcode;
+deffacetalt 'p', pmap q{[perl_facet $$_[0],
+                         row_sort_op('-k1b,1'),
+                         perl_mapper $$_[1]]}, pseq pplcode, pplcode;

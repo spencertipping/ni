@@ -168,14 +168,14 @@ $ ni word-list cr10             # unsorted count
 1	_
 1	ni
 $ ni word-list Cr10             # sort first to group words
-14	0
+15	0
 8	1
-9	2
-2	2016
+8	2
+1	2016
 1	3
-1	39
+1	30
+1	45
 1	5
 1	A
 2	ACTION
-1	AN
 ```

@@ -57,7 +57,7 @@ sub main {
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
 
   my ($r) = parse pcli '', @_;
-  return &$main_operator(@$r) if ref $r;
+  return &$main_operator(flatten_operators $r) if ref $r;
 
   my (undef, @rest) = parse pcli_debug '', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";

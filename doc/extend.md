@@ -5,7 +5,10 @@ operator `N` that counts lines by shelling out to `wc -l`:
 ```bash
 $ mkdir my-library
 $ echo my-lib.pl > my-library/lib
-$ echo "defshort 'root', 'N', k sh ['wc', '-l'];" > my-library/my-lib.pl
+$ cat > my-library/my-lib.pl <<'EOF'
+defoperator count_lines => q{exec 'wc', '-l'};
+defshort '/N', pmap q{count_lines_op}, pnone;
+EOF
 $ ni --lib my-library n100N
 100
 ```

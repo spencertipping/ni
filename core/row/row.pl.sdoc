@@ -5,9 +5,9 @@ defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', @_};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
-defoperator row_match => q{/$_[0]/o && print while <STDIN>};
+defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
-  srand $ENV{NI_SEED} || 42;
+  srand($ENV{NI_SEED} || 42);
   while (<STDIN>) {
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
   }
@@ -72,10 +72,5 @@ defoperator count => q{
   print "$n\t$last" if defined $last;
 };
 
-defoperator sort_count => q{
-  sicons {operate row_sort_op};
-  operate count_op;
-};
-
-defshort '/c', pmap q{count_op},      pnone;
-defshort '/C', pmap q{sort_count_op}, pnone;
+defshort '/c', pmap q{count_op},                pnone;
+defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;

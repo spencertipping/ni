@@ -13,6 +13,10 @@ cd $(dirname $0)
 
 ./ni --internal/lib core/col
 ./ni --internal/lib core/row
+./ni --internal/lib core/facet
+
+./ni --internal/lib core/pl
+./ni --internal/lib core/lisp
 
 ./ni --internal/lib doc
 

@@ -33,16 +33,20 @@ consumes the operator's arguments (in this case a single argument of just some
 Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
 how shell commands are represented.)
 
-use constant lispcode => mrc '^.*[^]]+';
+use constant lispcode => prc '.*[^]]+';
 
-sub lisp_sh($) {sh [qw| sbcl --noinform --noprint --eval |,
-                    '(load *standard-input* :verbose nil :print nil)'],
-                   stdin => $_[0]}
+defoperator lisp_code => q{
+  my $code = $_[0];
+  move_fd 0, 3;
+  safewrite siproc {exec qw| sbcl --noinform --noprint --eval |,
+                         '(load *standard-input* :verbose nil :print nil)'},
+            $code;
+};
 
-defshort 'root', 'l', pmap {lisp_sh lisp_mapgen->(prefix => lisp_prefix,
-                                                  body   => $_)}
-                      lispcode;
+defshort '/l', pmap q{lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
+                                                 body   => $_)},
+               lispcode;
 
-defrowalt pmap {lisp_sh lisp_grepgen->(prefix => lisp_prefix,
-                                       body   => $_)}
-          pn 1, mr '^l', lispcode;
+defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
+                                             body   => $_)},
+          pn 1, prx 'l', lispcode;
