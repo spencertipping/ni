@@ -16,11 +16,7 @@ $main_operator = sub {
 
 use constant shell_command => prc '.*';
 
-defoperator cat => q{
-  my ($f) = @_;
-  sappend {scat $f};
-};
-
+defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
 defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
 defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
 defoperator n    => q{
@@ -59,7 +55,7 @@ defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
 defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
 defoperator file_read  => q{chomp, scat $_ while <STDIN>};
 
-defshort '/>%', pmap q{file_tee_op $_},   filename;
+defshort '/>%', pmap q{file_tee_op $_},   nefilename;
 defshort '/>',  pmap q{file_write_op $_}, nefilename;
 defshort '/<',  pmap q{file_read_op},     pnone;
 
@@ -78,7 +74,7 @@ use constant compressor_spec =>
          defined $level ? pipe_op "$c -$level" : pipe_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator sink_null => q{1 while sysread \*STDIN, $_, 8192};
+defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
 defoperator decode    => q{sdecode};
 
 defshort '/Z',  compressor_spec;

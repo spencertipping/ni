@@ -456,10 +456,17 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-56 main.pl.sdoc
+63 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
+
+sub sigchld_handler {
+  local ($!, $?);
+  1 while 0 < waitpid -1, WNOHANG;
+  $SIG{CHLD} = \&sigchld_handler;
+};
+$SIG{CHLD} = \&sigchld_handler;
 
 our %cli_special;
 sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
@@ -516,7 +523,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-157 core/stream/pipeline.pl.sdoc
+177 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -525,9 +532,8 @@ PID is returned.
 I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
+use Errno qw/EINTR/;
 use POSIX qw/dup2 :sys_wait_h/;
-
-sub await_children() {1 while 0 < waitpid -1, WNOHANG}
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
@@ -539,6 +545,28 @@ sub move_fd($$) {
   close $new;
   cdup2 $old, $new;
   close $old;
+}
+
+Safe reads/writes.
+This is required because older versions of Perl don't automatically retry
+interrupted reads/writes. We run the risk of interruption because we have a
+SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
+handle this case properly.
+
+sub saferead($$$) {
+  my $n = undef;
+  do {
+    return $n if defined($n = sysread $_[0], $_[1], $_[2]);
+  } while $!{EINTR};
+  return undef;
+}
+
+sub safewrite($$) {
+  my $n = undef;
+  do {
+    return $n if defined($n = syswrite $_[0], $_[1]);
+  } while $!{EINTR};
+  return undef;
 }
 
 Process construction.
@@ -593,8 +621,8 @@ If you do this, ni will create a pipeline that uses stream wrappers to
 concatenate the second `ls` output (despite the fact that technically it's a
 shell pipe).
 
-sub sforward($$) {local $_; syswrite $_[1], $_ while sysread $_[0], $_, 8192}
-sub stee($$$)    {local $_; syswrite($_[1], $_), syswrite($_[2], $_) while sysread $_[0], $_, 8192}
+sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
+sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
 sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}}
 sub sprepend(&)  {&{$_[0]}; sforward \*STDIN, \*STDOUT}
 
@@ -620,7 +648,7 @@ the data is).
 
 sub sdecode(;$) {
   local $_;
-  sysread STDIN, $_, 8192;
+  saferead \*STDIN, $_, 8192;
   my $decoder = /^\x1f\x8b/             ? "gzip -dc"
               : /^BZh\0/                ? "bzip2 -dc"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
@@ -629,10 +657,10 @@ sub sdecode(;$) {
 
   if (defined $decoder) {
     open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
-    syswrite $o, $_;
+    safewrite $o, $_;
     sforward \*STDIN, $o;
   } else {
-    syswrite STDOUT, $_;
+    safewrite \*STDOUT, $_;
     sforward \*STDIN, \*STDOUT;
   }
 }
@@ -651,7 +679,6 @@ sub scat {
       closedir $d;
     } else {
       sforward srfile $f, siproc {sdecode};
-      await_children;
     }
   }
 }
@@ -674,7 +701,7 @@ sub sni(@) {
     syswrite $fh, image;
   };
 }
-86 core/stream/ops.pl.sdoc
+82 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -693,11 +720,7 @@ $main_operator = sub {
 
 use constant shell_command => prc '.*';
 
-defoperator cat => q{
-  my ($f) = @_;
-  sappend {scat $f};
-};
-
+defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
 defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
 defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
 defoperator n    => q{
@@ -736,7 +759,7 @@ defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
 defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
 defoperator file_read  => q{chomp, scat $_ while <STDIN>};
 
-defshort '/>%', pmap q{file_tee_op $_},   filename;
+defshort '/>%', pmap q{file_tee_op $_},   nefilename;
 defshort '/>',  pmap q{file_write_op $_}, nefilename;
 defshort '/<',  pmap q{file_read_op},     pnone;
 
@@ -755,7 +778,7 @@ use constant compressor_spec =>
          defined $level ? pipe_op "$c -$level" : pipe_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator sink_null => q{1 while sysread \*STDIN, $_, 8192};
+defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
 defoperator decode    => q{sdecode};
 
 defshort '/Z',  compressor_spec;
