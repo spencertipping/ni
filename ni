@@ -4145,23 +4145,23 @@ $ ni word-list cr10             # unsorted count
 1	bin
 1	env
 1	perl
-1	
 1	ni
 1	self
 1	license
 1	_
 1	ni
+1	https
 $ ni word-list Cr10             # sort first to group words
-15	0
-8	1
-8	2
-1	2016
-1	3
-1	37
-1	5
-1	A
-2	ACTION
+2	A
+1	ACTION
 1	AN
+1	AND
+2	ANY
+1	ARGV
+1	ARISING
+1	AS
+1	AUTHORS
+1	BE
 ```
 33 doc/sql.md
 # SQL interop
