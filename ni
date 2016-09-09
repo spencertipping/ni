@@ -2753,7 +2753,7 @@ how shell commands are represented.)
 use constant lispcode => prc '.*[^]]+';
 
 defoperator lisp_code => q{
-  my $code = $_[0];
+  my ($code) = @_;
   move_fd 0, 3;
   safewrite siproc {exec qw| sbcl --noinform --noprint --eval |,
                          '(load *standard-input* :verbose nil :print nil)'},
