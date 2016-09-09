@@ -456,10 +456,13 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-63 main.pl.sdoc
+66 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
+
+use strict;
+use POSIX qw/:sys_wait_h/;
 
 sub sigchld_handler {
   local ($!, $?);
@@ -523,7 +526,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-177 core/stream/pipeline.pl.sdoc
+178 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -533,7 +536,7 @@ I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
 use Errno qw/EINTR/;
-use POSIX qw/dup2 :sys_wait_h/;
+use POSIX qw/dup2/;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
@@ -648,7 +651,8 @@ the data is).
 
 sub sdecode(;$) {
   local $_;
-  saferead \*STDIN, $_, 8192;
+  return unless saferead \*STDIN, $_, 8192;
+
   my $decoder = /^\x1f\x8b/             ? "gzip -dc"
               : /^BZh\0/                ? "bzip2 -dc"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
