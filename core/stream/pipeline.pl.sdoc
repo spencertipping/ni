@@ -30,20 +30,39 @@ A few functions, depending on what you want to do:
   sicons(&): fork into block, connect its STDOUT to our STDIN.
   socons(&): fork into block, connect our STDOUT to its STDIN.
 
+NOTE: forkopen does something strange and noteworthy. You'll notice that it's
+reopening STDIN and STDOUT from FDs, which seems redundant. This is required
+because Perl filehandles aren't the same as OS-level file descriptors, and ni
+deals with both in different ways.
+
+In particular, ni closes STDIN (the filehandle) if the input comes from a
+terminal, since presumably the user doesn't intend to type their input in
+manually. This needs to happen before any exec() from a forked filter process.
+But this creates a problem: if we later reactivate fd 0, which we do by moving
+file descriptors from a pipe. We have to do this at the fd level so exec()
+works correctly (since exec doesn't know anything about Perl filehandles, just
+fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
+operation, Perl's STDIN filehandle will think it's closed and return no data.
+
+So that's why we do these redundant open STDIN and STDOUT operations. At some
+point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
+moment that seems like more trouble than it's worth.
+
 sub forkopen($$) {
   my ($mode, $f) = @_;
   my ($fh, $pid);
   return $fh if $pid = open $fh, $mode;
   die "ni: forkopen $mode failed: $!" unless defined $pid;
-  close $fh;
-  &$f();
+  open STDIN,  '<&=0';
+  open STDOUT, '>&=1';
+  &$f;
   exit;
 }
 
 sub siproc(&) {forkopen '|-', $_[0]}
 sub soproc(&) {forkopen '-|', $_[0]}
-sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f(@_)}, 0}
-sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f(@_)}, 1}
+sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f}, 0; open STDIN,  '<&=0'}
+sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f}, 1; open STDOUT, '>&=1'}
 
 Stream functions.
 These are called by pipelines to simplify things. For example, a common
@@ -57,8 +76,63 @@ shell pipe).
 
 sub sforward($$) {local $_; syswrite $_[1], $_ while sysread $_[0], $_, 8192}
 sub stee($$$)    {local $_; syswrite($_[1], $_), syswrite($_[2], $_) while sysread $_[0], $_, 8192}
-sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}()}
-sub sprepend(&)  {&{$_[0]}(); sforward \*STDIN, \*STDOUT}
+sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}}
+sub sprepend(&)  {&{$_[0]}; sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
+
+Compressed stream support.
+This provides a stdin filter you can use to read the contents of a compressed
+stream as though it weren't compressed. It's implemented as a filter process so
+we don't need to rely on file extensions.
+
+We detect the following file formats:
+
+| gzip:  1f 8b
+  bzip2: BZh\0
+  lzo:   89 4c 5a 4f
+  lz4:   04 22 4d 18
+  xz:    fd 37 7a 58 5a
+
+Decoding works by reading enough to decode the magic, then forwarding data
+into the appropriate decoding process (or doing nothing if we don't know what
+the data is).
+
+sub sdecode(;$) {
+  local $_;
+  sysread STDIN, $_, 8192;
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+              : /^BZh\0/                ? "bzip2 -dc"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+
+  if (defined $decoder) {
+    open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
+    syswrite $o, $_;
+    sforward \*STDIN, $o;
+  } else {
+    syswrite STDOUT, $_;
+    sforward \*STDIN, \*STDOUT;
+  }
+}
+
+File/directory cat.
+cat exists to turn filesystem objects into text. Files are emitted and
+directories are turned into readable listings. Files are automatically
+decompressed.
+
+sub scat {
+  for my $f (@_) {
+    if (-d $f) {
+      $| = 1;
+      opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
+      print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
+      closedir $d;
+    } else {
+      sforward srfile $f, siproc {sdecode};
+      await_children;
+    }
+  }
+}

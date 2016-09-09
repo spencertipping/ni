@@ -31,19 +31,23 @@ This is used by extensions that define long and short options.
 
 defcontext '';
 
+Main stuff.
+sub main() is called by the ni boot header on @ARGV. I've separated
+$main_operator so it can be extended to handle various cases; for instance, ni
+launches a pager when its output is connected to a terminal, etc. This is
+handled by core/stream.
+
 our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
 
-  close STDIN if -t STDIN;
-
   my ($r) = parse pcli '', @_;
   return &$main_operator(@$r) if ref $r;
 
   my (undef, @rest) = parse pcli_debug '', @_;
-  print STDERR "ni: failed to parse starting here:\n";
+  print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   exit 1;
 }

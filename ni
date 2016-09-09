@@ -444,7 +444,7 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-49 main.pl.sdoc
+53 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -478,27 +478,30 @@ This is used by extensions that define long and short options.
 
 defcontext '';
 
+Main stuff.
+sub main() is called by the ni boot header on @ARGV. I've separated
+$main_operator so it can be extended to handle various cases; for instance, ni
+launches a pager when its output is connected to a terminal, etc. This is
+handled by core/stream.
+
 our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
 
-  close STDIN if -t STDIN;
-
   my ($r) = parse pcli '', @_;
   return &$main_operator(@$r) if ref $r;
 
   my (undef, @rest) = parse pcli_debug '', @_;
-  print STDERR "ni: failed to parse starting here:\n";
+  print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   exit 1;
 }
-3 core/stream/lib
+2 core/stream/lib
 pipeline.pl.sdoc
-stream.pl.sdoc
 ops.pl.sdoc
-64 core/stream/pipeline.pl.sdoc
+138 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -531,20 +534,39 @@ A few functions, depending on what you want to do:
   sicons(&): fork into block, connect its STDOUT to our STDIN.
   socons(&): fork into block, connect our STDOUT to its STDIN.
 
+NOTE: forkopen does something strange and noteworthy. You'll notice that it's
+reopening STDIN and STDOUT from FDs, which seems redundant. This is required
+because Perl filehandles aren't the same as OS-level file descriptors, and ni
+deals with both in different ways.
+
+In particular, ni closes STDIN (the filehandle) if the input comes from a
+terminal, since presumably the user doesn't intend to type their input in
+manually. This needs to happen before any exec() from a forked filter process.
+But this creates a problem: if we later reactivate fd 0, which we do by moving
+file descriptors from a pipe. We have to do this at the fd level so exec()
+works correctly (since exec doesn't know anything about Perl filehandles, just
+fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
+operation, Perl's STDIN filehandle will think it's closed and return no data.
+
+So that's why we do these redundant open STDIN and STDOUT operations. At some
+point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
+moment that seems like more trouble than it's worth.
+
 sub forkopen($$) {
   my ($mode, $f) = @_;
   my ($fh, $pid);
   return $fh if $pid = open $fh, $mode;
   die "ni: forkopen $mode failed: $!" unless defined $pid;
-  close $fh;
-  &$f();
+  open STDIN,  '<&=0';
+  open STDOUT, '>&=1';
+  &$f;
   exit;
 }
 
 sub siproc(&) {forkopen '|-', $_[0]}
 sub soproc(&) {forkopen '-|', $_[0]}
-sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f(@_)}, 0}
-sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f(@_)}, 1}
+sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f}, 0; open STDIN,  '<&=0'}
+sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f}, 1; open STDOUT, '>&=1'}
 
 Stream functions.
 These are called by pipelines to simplify things. For example, a common
@@ -558,12 +580,12 @@ shell pipe).
 
 sub sforward($$) {local $_; syswrite $_[1], $_ while sysread $_[0], $_, 8192}
 sub stee($$$)    {local $_; syswrite($_[1], $_), syswrite($_[2], $_) while sysread $_[0], $_, 8192}
-sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}()}
-sub sprepend(&)  {&{$_[0]}(); sforward \*STDIN, \*STDOUT}
+sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}}
+sub sprepend(&)  {&{$_[0]}; sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
-58 core/stream/stream.pl.sdoc
+
 Compressed stream support.
 This provides a stdin filter you can use to read the contents of a compressed
 stream as though it weren't compressed. It's implemented as a filter process so
@@ -579,13 +601,11 @@ We detect the following file formats:
 
 Decoding works by reading enough to decode the magic, then forwarding data
 into the appropriate decoding process (or doing nothing if we don't know what
-the data is). By default it works on stdin, but you can pass a different file
-descriptor in if you want to.
+the data is).
 
 sub sdecode(;$) {
-  my ($i) = (@_, \*STDIN);
-
-  sysread $i, $_, 8192;
+  local $_;
+  sysread STDIN, $_, 8192;
   my $decoder = /^\x1f\x8b/             ? "gzip -dc"
               : /^BZh\0/                ? "bzip2 -dc"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
@@ -595,17 +615,17 @@ sub sdecode(;$) {
   if (defined $decoder) {
     open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
     syswrite $o, $_;
-    sforward $i, $o;
+    sforward \*STDIN, $o;
   } else {
     syswrite STDOUT, $_;
-    sforward $i, \*STDOUT;
+    sforward \*STDIN, \*STDOUT;
   }
 }
 
 File/directory cat.
 cat exists to turn filesystem objects into text. Files are emitted and
-directories are turned into readable listings. Normally you'd use this in
-conjunction with decode.
+directories are turned into readable listings. Files are automatically
+decompressed.
 
 sub scat {
   for my $f (@_) {
@@ -615,28 +635,28 @@ sub scat {
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
     } else {
-      open my $fh, '<', $f or die "ni_cat: failed to open $f: $!";
-      sforward $fh, siproc {decode};
-      close $fh;
+      sforward srfile $f, siproc {sdecode};
       await_children;
     }
   }
 }
-81 core/stream/ops.pl.sdoc
+83 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 $main_operator = sub {
-  sicons {operate @$_} for @_;
-  exec 'less' or exec 'more' or exec 'cat';
+  close STDIN if -t STDIN;
+  sicons {operate @$_} for @_ ? @_ : ('//help');
+  exec 'less' or exec 'more' if -t STDOUT;
+  sforward \*STDIN, \*STDOUT;
 };
 
 use constant shell_command => prc '.*';
 
 defoperator 'cat', q{
   my ($f) = @_;
-  sappend {sforward srfile $f, siproc {sdecode}};
+  sappend {scat $f};
 };
 
 defoperator 'echo', q{my ($x) = @_; sappend {print "$x\n"}};
@@ -698,7 +718,7 @@ use constant compressor_spec =>
          defined $level ? pipe_op "$c -$level" : pipe_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator 'sink_null', q{1 while sysread STDIN, $_, 8192};
+defoperator 'sink_null', q{1 while sysread \*STDIN, $_, 8192};
 defoperator 'decode', q{decode};
 
 defshort '/Z',  compressor_spec;

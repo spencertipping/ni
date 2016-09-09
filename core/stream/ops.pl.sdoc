@@ -3,15 +3,17 @@ Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 $main_operator = sub {
-  sicons {operate @$_} for @_;
-  exec 'less' or exec 'more' or exec 'cat';
+  close STDIN if -t STDIN;
+  sicons {operate @$_} for @_ ? @_ : ('//help');
+  exec 'less' or exec 'more' if -t STDOUT;
+  sforward \*STDIN, \*STDOUT;
 };
 
 use constant shell_command => prc '.*';
 
 defoperator 'cat', q{
   my ($f) = @_;
-  sappend {sforward srfile $f, siproc {sdecode}};
+  sappend {scat $f};
 };
 
 defoperator 'echo', q{my ($x) = @_; sappend {print "$x\n"}};
@@ -73,7 +75,7 @@ use constant compressor_spec =>
          defined $level ? pipe_op "$c -$level" : pipe_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator 'sink_null', q{1 while sysread STDIN, $_, 8192};
+defoperator 'sink_null', q{1 while sysread \*STDIN, $_, 8192};
 defoperator 'decode', q{decode};
 
 defshort '/Z',  compressor_spec;
