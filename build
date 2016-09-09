@@ -8,13 +8,13 @@ cd $(dirname $0)
 
 ./ni --internal/lib core/stream
 ./ni --internal/lib core/meta
+./ni --internal/lib core/checkpoint
 
 ./ni --internal/lib doc
 
 if false; then
 ./ni --internal/lib core/gen
 ./ni --internal/lib core/meta
-./ni --internal/lib core/checkpoint
 
 ./ni --internal/lib core/deps
 

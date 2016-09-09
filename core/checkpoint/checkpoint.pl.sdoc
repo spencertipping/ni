@@ -4,9 +4,14 @@ checkpointing, whose operator is `:`. The idea is to cache intermediate
 results. A checkpoint specifies a file and a lambda whose output it should
 capture.
 
+sub checkpoint_create($$) {
+  stee sni(@{$_[1]}), swfile "$_[0].part", \*STDOUT;
+  rename "$_[0].part", $_[0];
+}
+
 defoperator 'checkpoint', q{
   my ($file, $generator) = @_;
-  sappend {-r $file ? cat $file : checkpoint_create $file, $generator};
+  sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
 };
 
-defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq filename, plambda '';
+defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq nefilename, plambda '';

@@ -86,3 +86,5 @@ use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@(\w*)';
 
 use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prx '^[^][]+';
+
+use constant nefilename => palt filename, prx '^[^][]+';

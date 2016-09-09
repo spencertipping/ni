@@ -8,7 +8,7 @@ deliberate: certain versions of `seq` generate floating-point numbers after a
 point, which can cause unexpected results and loss of precision.
 
 $main_operator = sub {
-  close STDIN if -t STDIN;
+  -t STDIN ? close STDIN : sicons {sdecode};
   sicons {operate @$_} for @_ ? @_ : ('//help');
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
@@ -60,7 +60,7 @@ defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
 defoperator file_read  => q{chomp, scat $_ while <STDIN>};
 
 defshort '/>%', pmap q{file_tee_op $_},   filename;
-defshort '/>',  pmap q{file_write_op $_}, filename;
+defshort '/>',  pmap q{file_write_op $_}, nefilename;
 defshort '/<',  pmap q{file_read_op},     pnone;
 
 Compression and decoding.

@@ -23,7 +23,7 @@ Documentation.
 
 defclispecial '--explain', q{
   my ($r) = parse pcli '', @_;
-  print join("\t", map dev_inspect $_, @$_), "\n" for @$r;
+  print join("\t", map dev_inspect($_), @$_), "\n" for @$r;
 };
 
 Root CLI context.

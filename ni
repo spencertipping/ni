@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-23 ni.map.sdoc
+24 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -72,6 +72,7 @@ resource self.pl.sdoc
 resource main.pl.sdoc
 lib core/stream
 lib core/meta
+lib core/checkpoint
 lib doc
 45 util.pl.sdoc
 Utility functions.
@@ -119,16 +120,21 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-24 dev.pl.sdoc
+29 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
 
-sub dev_inspect($) {
+sub dev_inspect($;\%) {
   local $_;
-  my $x = $_[0];
-  return '[' . join(', ', map dev_inspect($_), @$x) . ']' if 'ARRAY' eq ref $x;
-  return '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}), keys %$x) . '}' if 'HASH' eq ref $x;
-  "" . $x;
+  my ($x, $refs) = (@_, {});
+  return "<circular $x>" if exists $$refs{$x};
+
+  $$refs{$x} = $x;
+  my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, $refs), @$x) . ']'
+        : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, $refs), keys %$x) . '}'
+        : "" . $x;
+  delete $$refs{$x};
+  $r;
 }
 
 sub dev_trace($) {
@@ -140,7 +146,7 @@ sub dev_trace($) {
     $indent .= "  ";
     my @r = &$f(@_);
     $indent =~ s/  $//;
-    printf STDERR "$indent$fname %s = %s\n", dev_inspect [@_], dev_inspect [@r];
+    printf STDERR "$indent$fname %s = %s\n", dev_inspect([@_]), dev_inspect [@r];
     @r;
   };
 }
@@ -247,7 +253,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-88 common.pl.sdoc
+90 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -336,6 +342,8 @@ use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@(\w*)';
 
 use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prx '^[^][]+';
+
+use constant nefilename => palt filename, prx '^[^][]+';
 49 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
@@ -471,7 +479,7 @@ Documentation.
 
 defclispecial '--explain', q{
   my ($r) = parse pcli '', @_;
-  print join("\t", map dev_inspect $_, @$_), "\n" for @$r;
+  print join("\t", map dev_inspect($_), @$_), "\n" for @$r;
 };
 
 Root CLI context.
@@ -505,7 +513,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-138 core/stream/pipeline.pl.sdoc
+157 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -644,6 +652,25 @@ sub scat {
     }
   }
 }
+
+Self invocation.
+You can run ni and read from the resulting file descriptor; this gives you a
+way to evaluate lambda expressions (this is how checkpoints work, for example).
+If you do this, the ni subprocess won't receive anything on its standard input.
+
+sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                                 ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                                 : $_,
+                           map 'ARRAY' eq ref($_) ? shell_quote(@$_) : $_, @_}
+
+sub sni(@) {
+  my $q = shell_quote @_;
+  soproc {
+    open my $fh, '| perl - ' . $q . ' </dev/null'
+      or die "ni: sni @args failed to fork to perl: $!";
+    syswrite $fh, image;
+  };
+}
 86 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
@@ -655,7 +682,7 @@ deliberate: certain versions of `seq` generate floating-point numbers after a
 point, which can cause unexpected results and loss of precision.
 
 $main_operator = sub {
-  close STDIN if -t STDIN;
+  -t STDIN ? close STDIN : sicons {sdecode};
   sicons {operate @$_} for @_ ? @_ : ('//help');
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
@@ -707,7 +734,7 @@ defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
 defoperator file_read  => q{chomp, scat $_ while <STDIN>};
 
 defshort '/>%', pmap q{file_tee_op $_},   filename;
-defshort '/>',  pmap q{file_write_op $_}, filename;
+defshort '/>',  pmap q{file_write_op $_}, nefilename;
 defshort '/<',  pmap q{file_read_op},     pnone;
 
 Compression and decoding.
@@ -760,12 +787,39 @@ deflong '/meta_help', pmap q{meta_help_op $_}, prx '^//help/?(.*)';
 
 defoperator 'meta_options', q{
   for my $c (sort keys %contexts) {
-    printf "%s\tshort\t%s\t%s\n", $c, $_, sgr dev_inspect $short_refs{$c}->{$_}, qr/\n/, ' ' for sort keys %{$short_refs{$c}};
-    printf "%s\tlong\t%s\t%s\n",  $c,     sgr dev_inspect $_,                    qr/\n/, ' ' for           @{$long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", $c, $_, sgr dev_inspect($short_refs{$c}->{$_}), qr/\n/, ' ' for sort keys %{$short_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  $c,     sgr dev_inspect($_),                    qr/\n/, ' ' for           @{$long_refs{$c}};
   }
 };
 
 deflong '/meta_options', pmap q{meta_options_op}, prx '//ni/options';
+2 core/checkpoint/lib
+checkpoint.sh.sdoc
+checkpoint.pl.sdoc
+5 core/checkpoint/checkpoint.sh.sdoc
+Checkpoint shell functions.
+We need a function that generates a checkpoint file atomically; that is, it
+becomes its final name only when all of the content has been written.
+
+ni_checkpoint() { sh | tee "$1.part" && mv "$1.part" "$1"; }
+17 core/checkpoint/checkpoint.pl.sdoc
+Checkpoint files.
+You can break a long pipeline into a series of smaller files using
+checkpointing, whose operator is `:`. The idea is to cache intermediate
+results. A checkpoint specifies a file and a lambda whose output it should
+capture.
+
+sub checkpoint_create($$) {
+  stee sni(@{$_[1]}), swfile "$_[0].part", \*STDOUT;
+  rename "$_[0].part", $_[0];
+}
+
+defoperator 'checkpoint', q{
+  my ($file, $generator) = @_;
+  sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
+};
+
+defshort '/:', pmap q{checkpoint $$_[0], $$_[1]}, pseq nefilename, plambda '';
 13 doc/lib
 col.md
 examples.md
