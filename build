@@ -17,6 +17,7 @@ cd $(dirname $0)
 
 ./ni --internal/lib core/pl
 ./ni --internal/lib core/lisp
+./ni --internal/lib core/sql
 
 ./ni --internal/lib doc
 

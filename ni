@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-30 ni.map.sdoc
+31 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -79,6 +79,7 @@ lib core/row
 lib core/facet
 lib core/pl
 lib core/lisp
+lib core/sql
 lib doc
 45 util.pl.sdoc
 Utility functions.
@@ -347,9 +348,9 @@ use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@:(\w*)';
 
 use constant filename => palt prc '^file:(.+)', tempfile,
-                              pcond q{-e}, prx '^[^][]+';
+                              pcond q{-e}, prc '^[^][]+';
 
-use constant nefilename => palt filename, prx '^[^][]+';
+use constant nefilename => palt filename, prc '^[^][]+';
 46 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
@@ -462,7 +463,7 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-66 main.pl.sdoc
+67 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -493,6 +494,7 @@ Extensions.
 Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
+defclispecial '--lib', q{intern_lib shift; goto \&main};
 
 Documentation.
 
@@ -1588,6 +1590,141 @@ defshort '/l', pmap q{lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
                                              body   => $_)},
           pn 1, prx 'l', lispcode;
+1 core/sql/lib
+sql.pl.sdoc
+132 core/sql/sql.pl.sdoc
+SQL parsing context.
+Translates ni CLI grammar to a SELECT query. This is a little interesting
+because SQL has a weird structure to it; to help with this I've also got a
+'sqlgen' abstraction that figures out when we need to drop into a subquery.
+
+sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
+
+sub ni::sqlgen::render {
+  local $_;
+  my ($self) = @_;
+  return $$self{from} if 1 == keys %$self;
+
+  my $select = ni::dor $$self{select}, '*';
+  my @others;
+
+  for (qw/from where order_by group_by limit union intersect except
+          inner_join left_join right_join full_join natural_join/) {
+    next unless exists $$self{$_};
+    (my $k = $_) =~ y/a-z_/A-Z /;
+    push @others, "$k $$self{$_}";
+  }
+
+  ni::gen('SELECT %distinct %stuff %others')
+       ->(stuff    => $select,
+          distinct => $$self{uniq} ? 'DISTINCT' : '',
+          others   => join ' ', @others);
+}
+
+sub ni::sqlgen::modify_where {join ' AND ', @_}
+
+sub ni::sqlgen::modify {
+  my ($self, %kvs) = @_;
+  while (my ($k, $v) = each %kvs) {
+    if (exists $$self{$k}) {
+      if (exists ${'ni::sqlgen::'}{"modify_$k"}) {
+        $v = &{"ni::sqlgen::modify_$k"}($$self{$k}, $v);
+      } else {
+        $self = ni::sqlgen "($self->render)";
+      }
+    }
+    $$self{$k} = $v;
+  }
+  $self;
+}
+
+sub ni::sqlgen::map        {$_[0]->modify(select => $_[1])}
+sub ni::sqlgen::filter     {$_[0]->modify(where =>  $_[1])}
+sub ni::sqlgen::take       {$_[0]->modify(limit =>  $_[1])}
+sub ni::sqlgen::sample     {$_[0]->modify(where =>  "random() < $_[1]")}
+
+sub ni::sqlgen::ijoin      {$_[0]->modify(join => 1, inner_join   => $_[1])}
+sub ni::sqlgen::ljoin      {$_[0]->modify(join => 1, left_join    => $_[1])}
+sub ni::sqlgen::rjoin      {$_[0]->modify(join => 1, right_join   => $_[1])}
+sub ni::sqlgen::njoin      {$_[0]->modify(join => 1, natural_join => $_[1])}
+
+sub ni::sqlgen::order_by   {$_[0]->modify(order_by => $_[1])}
+
+sub ni::sqlgen::uniq       {${$_[0]}{uniq} = 1; $_[0]}
+
+sub ni::sqlgen::union      {$_[0]->modify(setop => 1, union     => $_[1])}
+sub ni::sqlgen::intersect  {$_[0]->modify(setop => 1, intersect => $_[1])}
+sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
+
+SQL code parse element.
+Counts brackets outside quoted strings.
+
+use constant sqlcode => pgeneric_code;
+
+Code compilation.
+Parser elements can generate one of two things: [method, @args] or
+{%modifications}. Compiling code is just starting with a SQL context and
+left-reducing method calls.
+
+sub sql_compile {
+  local $_;
+  my ($g, @ms) = @_;
+  for (@ms) {
+    if (ref($_) eq 'ARRAY') {
+      my ($m, @args) = @$_;
+      $g = $g->$m(@args);
+    } else {
+      $g = $g->modify(%$_);
+    }
+  }
+  $g->render;
+}
+
+SQL operator mapping.
+For the most part we model SQL operations the same way that we address Spark
+RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
+
+defcontext 'sql';
+
+use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
+
+our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
+                 pseq sql_table, popt plambda 'sql';
+
+our @sql_row_alt;
+our @sql_join_alt = (
+  pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
+  pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
+  pmap(q{['njoin', $_]}, pn 1, prx 'N', $sql_query),
+  pmap(q{['ijoin', $_]}, $sql_query),
+);
+
+defshort 'sql/s', pmap q{['map',    $_]}, sqlcode;
+defshort 'sql/w', pmap q{['filter', $_]}, sqlcode;
+defshort 'sql/r', paltr @sql_row_alt;
+defshort 'sql/j', paltr @sql_join_alt;
+defshort 'sql/G', pk ['uniq'];
+
+defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
+defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
+defshort 'sql/O', pmap q{['order_by', "$_ DESC"]}, sqlcode;
+
+defshort 'sql/+', pmap q{['union',      $_]}, $sql_query;
+defshort 'sql/*', pmap q{['intersect',  $_]}, $sql_query;
+defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
+
+defshort 'sql/@', pmap q{+{select => $$_[1], group_by => $$_[0]}},
+                       pseq sqlcode, sqlcode;
+
+Global operator.
+SQL stuff is accessed using Q, which delegates to a sub-parser that handles
+configuration/connections.
+
+our %sql_profiles;
+
+defshort '/Q', pdspr %sql_profiles;
+
+sub defsqlprofile($$) {$sql_profiles{$_[0]} = $_[1]}
 12 doc/lib
 col.md
 examples.md
@@ -2460,13 +2597,13 @@ $ ni word-list Cr10             # sort first to group words
 8	2
 1	2016
 1	3
-1	30
+1	31
 1	45
 1	5
 1	A
 2	ACTION
 ```
-29 doc/sql.md
+33 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
 queries. We'll need to define a SQL connection profile in order to use it:
@@ -2475,8 +2612,12 @@ queries. We'll need to define a SQL connection profile in order to use it:
 $ mkdir sqlite-profile
 $ echo sqlite.pl > sqlite-profile/lib
 $ cat > sqlite-profile/sqlite.pl <<'EOF'
-$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
-                        seq mrc '^.*', $sql_query;
+defoperator sqlite => q{
+  my ($db, $query) = @_;
+  exec 'sqlite', '-separator', "\t", $db, $query;
+};
+defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
+                        pseq filename, $sql_query;
 EOF
 ```
 

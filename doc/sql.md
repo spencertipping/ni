@@ -6,8 +6,12 @@ queries. We'll need to define a SQL connection profile in order to use it:
 $ mkdir sqlite-profile
 $ echo sqlite.pl > sqlite-profile/lib
 $ cat > sqlite-profile/sqlite.pl <<'EOF'
-$sql_profiles{S} = pmap {sh "sqlite", "-separator", "\t", $$_[0], $$_[1]}
-                        seq mrc '^.*', $sql_query;
+defoperator sqlite => q{
+  my ($db, $query) = @_;
+  exec 'sqlite', '-separator', "\t", $db, $query;
+};
+defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
+                        pseq filename, $sql_query;
 EOF
 ```
 
