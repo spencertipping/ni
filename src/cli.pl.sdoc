@@ -16,19 +16,19 @@ sub defcontext($) {
 }
 
 sub defshort($$) {
-  my ($context, $dsp) = split /\//, $_[0];
+  my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
   $short_refs{$context}{$dsp} = $_[1];
 }
 
 sub deflong($$) {
-  my ($context, $name) = split /\//, $_[0];
+  my ($context, $name) = split /\//, $_[0], 2;
   unshift @{$long_refs{$context}}, $_[1];
 }
 
 sub rmshort($) {
-  my ($context, $dsp) = split /\//, $_[0];
+  my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
 }
 
@@ -44,3 +44,5 @@ sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
 sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
 sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
+
+sub cli(@) {my ($r) = parse pcli '', @_; $r}

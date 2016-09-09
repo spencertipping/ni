@@ -16,12 +16,45 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
+use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+';
+sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
+sub noise_str($) {join '', map noise_char, 1..$_[0]}
+
 Module loading.
 ni can include .pm files in its resource stream, which contain Perl code but
 aren't evaluated by default. This function is used to eval them into the
 current runtime.
 
 sub load($) {ni::eval $self{$_[0]}, $_[0]}
+
+Shell quoting/unquoting.
+Useful for two cases. One is when you have a structured list and want a shell
+string that will send those arguments to a command; the other is when you have
+a single string and want to get the ARGV list a shell would pass to a command
+(modulo dollar substitution, which we don't do).
+
+sub shell_quote {
+  local $_;
+  join ' ', map /[^-A-Za-z_0-9\/:@.]/
+                  ? "'" . sgr($_, qr/'/, "'\\''") . "'"
+                  : $_,
+            map 'ARRAY' eq ref($_) ? shell_quote(@$_) : $_, @_;
+}
+
+sub shell_unquote_one($) {
+  my ($x) = @_;
+  $x =~ s/\\(["\\])/$1/g, return substr $x, 1, -1 if $x =~ /^"/;
+  return                         substr $x, 1, -1 if $x =~ /^'/;
+  return                         substr $x, 1     if $x =~ /^\\/;
+  $x;
+}
+
+sub shell_unquote($) {
+  local $_;
+  my @ps = $_[0] =~ /"(?:[^"\\]+|\\[\s\S])*"|'[^']*'|\\[\s\S]|[^\s"'\\]+|\s+/g;
+  my @s  = (-1, grep($ps[$_] =~ /^\s/, 0..$#ps), scalar @ps);
+  map join('', map shell_unquote_one $_, @ps[$s[$_]+1 .. $s[$_+1]-1]), 0..$#s-1;
+}
 
 Quoted function support.
 Functions that store their code in string form. This is useful for two

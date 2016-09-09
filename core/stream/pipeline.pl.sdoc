@@ -169,11 +169,6 @@ You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, the ni subprocess won't receive anything on its standard input.
 
-sub shell_quote {join ' ', map /[^-A-Za-z_0-9\/:@.]/
-                                 ? "'" . sgr($_, qr/'/, "'\\''") . "'"
-                                 : $_,
-                           map 'ARRAY' eq ref($_) ? shell_quote(@$_) : $_, @_}
-
 sub sni(@) {
   my @args = @_;
   soproc {

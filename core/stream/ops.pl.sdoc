@@ -50,11 +50,25 @@ defshort '/$^', pmap q{tee_op $_}, shell_command;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
-done with the `>` operator, which is typically written as `\>`.
+done with the `>` operator, which is typically written as `\>`. The difference
+between this and the shell's > operator is that \> outputs the filename; this
+lets you invert the operation with the nullary \< operator.
+
+use constant tmpdir => $ENV{TMPDIR} || "/tmp";
+sub tempfile_name() {
+  my $r = '/';
+  $r = tmpdir . "/ni-$$-" . noise_str 8 while -e $r;
+  $r;
+}
 
 defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
-defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
 defoperator file_read  => q{chomp, scat $_ while <STDIN>};
+defoperator file_write => q{
+  my ($file) = @_;
+  $file = tempfile_name unless defined $file;
+  sforward \*STDIN, swfile $file;
+  print "$file\n";
+};
 
 defshort '/>%', pmap q{file_tee_op $_},   nefilename;
 defshort '/>',  pmap q{file_write_op $_}, nefilename;

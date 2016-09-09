@@ -65,7 +65,7 @@ sub main {
   @_ = ('//help')
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
 
-  my ($r) = parse pcli '', @_;
+  my ($r) = cli @_;
   return &$main_operator(flatten_operators $r) if ref $r;
 
   my (undef, @rest) = parse pcli_debug '', @_;

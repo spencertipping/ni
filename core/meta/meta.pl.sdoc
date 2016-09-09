@@ -4,7 +4,7 @@ within a shell process.
 
 defoperator 'meta_image', q{sappend {print image, "\n"}};
 defoperator 'meta_keys',  q{sappend {print "$_\n" for @keys}};
-defoperator 'meta_key',   q{sappend {print "$_\n" for @self{@_}}};
+defoperator 'meta_key',   q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
 
 defoperator 'meta_help', q{
   my ($topic) = @_;
@@ -12,15 +12,15 @@ defoperator 'meta_help', q{
   sappend {print $self{"doc/$topic.md"}, "\n"};
 };
 
-deflong '/meta_self', pmap q{meta_image_op},  prx '//ni';
-deflong '/meta_keys', pmap q{meta_keys_op},   prx '//ni/';
-deflong '/meta_get',  pmap q{meta_key_op $_}, prx '//ni/([^]]+)';
+deflong '/meta_key',  pmap q{meta_key_op $_}, prc '//([^][]+)$';
+deflong '/meta_keys', pmap q{meta_keys_op},   prc '//$';
+deflong '/meta_self', pmap q{meta_image_op},  prc '//ni';
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
-deflong '/meta_help', pmap q{meta_help_op $_}, prx '^//help/?(.*)';
+deflong '/meta_help', pmap q{meta_help_op $_}, prc '//help/?(.*)';
 
 defoperator 'meta_options', q{
   for my $c (sort keys %contexts) {
@@ -29,4 +29,4 @@ defoperator 'meta_options', q{
   }
 };
 
-deflong '/meta_options', pmap q{meta_options_op}, prx '//ni/options';
+deflong '/meta_options', pmap q{meta_options_op}, prc '//options';

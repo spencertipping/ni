@@ -22,26 +22,28 @@ EOF
 use constant jsplot_html => jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
                                          js  => $self{'core/jsplot/jsplot.js'});
 
-use constant jsplot_server_gen => gen q{
-  use constant self => %self_hd
-  %prefix
-  print "http://localhost:$port/";
-  close STDOUT;
-  use constant html => q{%html};
-  chomp(our @data = <>);
-  http {
-    my ($url, $req) = @_;
-    http_reply 200, html if $url eq '/';
-    ni_stream_data $req, $1, @data if $url =~ /^\/ni\/(.*)/;
-    http_reply 404, $url;
+JSPlot data streaming.
+This is the websocket connection that ni uses to stream data to the client.
+
+sub jsplot_stream($$@) {
+  my ($reply, $req, @ni_args) = @_;
+  print $reply ws_header($req);
+  sforward sni(cli(@ni_args), http_websocket_encode_op), $reply;
+}
+
+defoperator jsplot_server => q{
+  load 'core/http/ws.pm';
+  my ($port) = @_;
+  chomp(my @data = <STDIN>);
+  http $port, sub {
+    my ($url, $req, $reply) = @_;
+    return print "http://localhost:$port/\n" unless defined $reply;
+    return http_reply $reply, 200, jsplot_html if $url eq '/';
+    return jsplot_stream($reply, $req, @data, shell_unquote $1)
+      if $url =~ /^\/ni\/(.*)/;
+    http_reply $reply, 404, $url;
   };
 };
 
-use constant jsplot_prefix => join "\n", @self{qw| util.pl
-                                                   core/jsplot/jsplot.pm |};
-
-defplotalt 'j',
-  k [ni_write_tempfile,
-     ni_http_server jsplot_server_gen->(prefix  => jsplot_prefix,
-                                        self_hd => heredoc_wrap(image, ';'),
-                                        html    => jsplot_html)];
+defplotalt 'j', pmap q{[file_write_op, jsplot_server_op $_ || 8090]},
+                popt integer;
