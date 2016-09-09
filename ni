@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-32 ni.map.sdoc
+34 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -81,6 +81,8 @@ lib core/facet
 lib core/pl
 lib core/lisp
 lib core/sql
+lib core/plot
+lib core/gnuplot
 lib doc
 45 util.pl.sdoc
 Utility functions.
@@ -1819,6 +1821,33 @@ our %sql_profiles;
 defshort '/Q', pdspr %sql_profiles;
 
 sub defsqlprofile($$) {$sql_profiles{$_[0]} = $_[1]}
+1 core/plot/lib
+plot.pl.sdoc
+9 core/plot/plot.pl.sdoc
+Plot operator.
+This delegates to other operators using a chalt. The mnemonic is "v" for
+"visualize."
+
+our %plot_dsp;
+
+defshort '/v', pdspr %plot_dsp;
+
+sub defplotalt($$) {$plot_dsp{$_[0]} = $_[1]}
+1 core/gnuplot/lib
+gnuplot.pl.sdoc
+12 core/gnuplot/gnuplot.pl.sdoc
+Gnuplot interop.
+An operator that tees output to a gnuplot process.
+
+defcontext 'gnuplot';
+defshort 'gnuplot/d', pk 'plot "-" with dots';
+
+defoperator gnuplot => q{
+  my ($args) = @_;
+  stee \*STDIN, siproc {exec 'gnuplot', '-persist', '-e', $args}, \*STDOUT;
+};
+
+defplotalt 'g', pmap q{gnuplot_op $_}, $contexts{gnuplot};
 12 doc/lib
 col.md
 examples.md

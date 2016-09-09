@@ -20,6 +20,9 @@ cd $(dirname $0)
 ./ni --internal/lib core/lisp
 ./ni --internal/lib core/sql
 
+./ni --internal/lib core/plot
+./ni --internal/lib core/gnuplot
+
 ./ni --internal/lib doc
 
 if false; then
