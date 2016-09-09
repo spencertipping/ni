@@ -964,7 +964,7 @@ defshort '/F', pdspr %split_dsp;
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
 1 core/row/lib
 row.pl.sdoc
-90 core/row/row.pl.sdoc
+81 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -980,16 +980,7 @@ defoperator row_sample => q{
   }
 };
 
-Interesting subtlety with the sorting operator, and any similar thing for that
-matter. GNU coreutils sort uses fork to implement parallelism, and at some
-point will end up waiting for child processes, capturing them with SIGCHLD. If
-this ni process has any children that haven't exited yet and sort inherits our
-PID, then it will receive SIGCHLD for _ni's_ children, not its own -- and this
-causes it to deadlock. So we fork for the sole purpose of giving it a new PID
-and not catching any of our children (which will be inherited by init since
-we're exiting).
-
-defoperator row_sort => q{exec 'sort', @_ unless cfork};
+defoperator row_sort => q{exec 'sort', @_};
 
 our @row_alt = (
   pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
