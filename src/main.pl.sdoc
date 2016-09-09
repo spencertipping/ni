@@ -43,6 +43,9 @@ sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
 
+  @_ = ('//help')
+    if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
+
   my ($r) = parse pcli '', @_;
   return &$main_operator(@$r) if ref $r;
 

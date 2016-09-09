@@ -26,6 +26,7 @@ BEGIN {
   defparser 'end',   '',  sub {@_ > 1       ? () : (0)};
   defparser 'empty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
   defparser 'k',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
+  defparser 'none',  '',  sub {(undef,       @_[1..$#_])};
 }
 
 Basic combinators.

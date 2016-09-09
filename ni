@@ -144,7 +144,7 @@ sub dev_trace($) {
     @r;
   };
 }
-101 parse.pl.sdoc
+102 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -173,6 +173,7 @@ BEGIN {
   defparser 'end',   '',  sub {@_ > 1       ? () : (0)};
   defparser 'empty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
   defparser 'k',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
+  defparser 'none',  '',  sub {(undef,       @_[1..$#_])};
 }
 
 Basic combinators.
@@ -444,7 +445,7 @@ sub extend_self($$) {
 }
 
 sub image {read_map 'ni.map'}
-53 main.pl.sdoc
+56 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -489,6 +490,9 @@ our $main_operator = sub {operate @$_ for @_};
 sub main {
   my ($cmd, @args) = @_;
   return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
+
+  @_ = ('//help')
+    if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
 
   my ($r) = parse pcli '', @_;
   return &$main_operator(@$r) if ref $r;
@@ -640,10 +644,15 @@ sub scat {
     }
   }
 }
-83 core/stream/ops.pl.sdoc
+86 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
+
+Note that we generate numbers internally rather than shelling out to `seq`
+(which is ~20x faster than Perl for the purpose, incidentally). This is
+deliberate: certain versions of `seq` generate floating-point numbers after a
+point, which can cause unexpected results and loss of precision.
 
 $main_operator = sub {
   close STDIN if -t STDIN;
@@ -654,20 +663,24 @@ $main_operator = sub {
 
 use constant shell_command => prc '.*';
 
-defoperator 'cat', q{
+defoperator cat => q{
   my ($f) = @_;
   sappend {scat $f};
 };
 
-defoperator 'echo', q{my ($x) = @_; sappend {print "$x\n"}};
-defoperator 'sh',   q{my ($c) = @_; sappend {exec $c}};
-defoperator 'n', q{
+defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
+defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
+defoperator n    => q{
   my ($l, $u) = @_;
   sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
 };
 
-defshort '/n',  pmap q{n_op 1, $_ + 1}, number;
-defshort '/n0', pmap q{n_op 0, $_}, number;
+defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
+defshort '/n0',  pmap q{n_op 0, $_}, number;
+defshort '/id:', pmap q{echo_op $_}, prc '.*';
+
+defshort '/$:',  pmap q{sh_op $_}, shell_command;
+defshort '/sh:', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
@@ -675,33 +688,27 @@ Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
 through a shell command.
 
-defoperator 'pipe', q{exec $_[0] or die "ni: failed to exec $_[0]: $!"};
+defoperator pipe => q{exec $_[0] or die "ni: failed to exec $_[0]: $!"};
 defshort '/$=', pmap q{pipe_op $_}, shell_command;
 
-defoperator 'tee', q{
+defoperator tee => q{
   my ($cmd) = @_;
-  open my $fh, '|', $cmd or die "ni: tee $cmd failed: $!";
+  open my $fh, "| $cmd" or die "ni: tee $cmd failed: $!";
   stee \*STDIN, $fh, \*STDOUT;
 };
-defshort '/$^', pmap q{tee $_}, shell_command;
+defshort '/$^', pmap q{tee_op $_}, shell_command;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
 done with the `>` operator, which is typically written as `\>`.
 
-defoperator 'file_tee',   q{stee \*STDIN, swfile($_[0]), \*STDOUT};
-defoperator 'file_write', q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
-defoperator 'file_read',  q{
-  while (<STDIN>) {
-    chomp;
-    await_children;
-    operate 'cat', $_;
-  }
-};
+defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
+defoperator file_write => q{sforward \*STDIN, swfile $_[0]; print "$_[0]\n"};
+defoperator file_read  => q{chomp, scat $_ while <STDIN>};
 
-deflong '/file_tee',   pmap q{file_tee $_},   pn 1, prx qr/\>%/, filename;
-deflong '/file_write', pmap q{file_write $_}, pn 1, prx qr/\>/,  filename;
-deflong '/file_read',  pmap q{file_read},           prx qr/\</;
+defshort '/>%', pmap q{file_tee_op $_},   filename;
+defshort '/>',  pmap q{file_write_op $_}, filename;
+defshort '/<',  pmap q{file_read_op},     pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
@@ -718,8 +725,8 @@ use constant compressor_spec =>
          defined $level ? pipe_op "$c -$level" : pipe_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator 'sink_null', q{1 while sysread \*STDIN, $_, 8192};
-defoperator 'decode', q{decode};
+defoperator sink_null => q{1 while sysread \*STDIN, $_, 8192};
+defoperator decode    => q{sdecode};
 
 defshort '/Z',  compressor_spec;
 defshort '/ZN', pk sink_null_op();
