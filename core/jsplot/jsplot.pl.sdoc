@@ -3,20 +3,7 @@ JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
 JSPlot driver buffers the data to disk to make it repeatable.
 
-use constant jsplot_gen => gen <<'EOF';
-<!doctype html>
-<html>
-<head>
-<title>ni/jsplot</title>
-<style>%css</style>
-<script>%js</script>
-</head>
-<body>
-<input id='i'></input>
-<canvas id='c'></canvas>
-</body>
-</html>
-EOF
+use constant jsplot_gen => gen $self{'core/jsplot/jsplot.html'};
 
 use constant jsplot_html =>
   jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},

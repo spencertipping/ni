@@ -15,11 +15,7 @@ sub http_reply($$$%) {
                         $body);
 }
 
-sub uri_decode(@) {
-  my ($u) = @_;
-  $u =~ s/%(..)/chr hex $1/eg;
-  $u;
-}
+sub uri_decode(@) {(my $u = $_[0]) =~ s/%([0-9A-Fa-f]{2})/chr hex $1/eg; $u}
 
 sub safeaccept($$) {
   my $r;
@@ -38,7 +34,7 @@ sub http($$) {
     or die "ni http: setsockopt() failed: $!";
 
   ++$_[0] > 65535 && die "ni http: bind() failed: $!"
-    until bind $server, sockaddr_in $_[0], INADDR_ANY;
+    until bind $server, sockaddr_in $_[0], INADDR_LOOPBACK;
 
   listen $server, SOMAXCONN or die "ni http: listen() failed: $!";
 
