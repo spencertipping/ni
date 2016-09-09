@@ -43,4 +43,4 @@ Counts brackets, excluding those inside quoted strings. This is more efficient
 and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
-use constant pycode => pmap {pydent $_} generic_code;
+use constant pycode => pmap q{pydent $_}, generic_code;

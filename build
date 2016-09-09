@@ -20,39 +20,17 @@ cd $(dirname $0)
 ./ni --internal/lib core/pl
 ./ni --internal/lib core/lisp
 ./ni --internal/lib core/sql
+./ni --internal/lib core/python
 
 ./ni --internal/lib core/http
 ./ni --internal/lib core/plot
 ./ni --internal/lib core/gnuplot
 ./ni --internal/lib core/jsplot
-
-./ni --internal/lib doc
-
-if false; then
-./ni --internal/lib core/gen
-./ni --internal/lib core/meta
-
-./ni --internal/lib core/deps
-
-./ni --internal/lib core/col
-./ni --internal/lib core/row
-./ni --internal/lib core/facet
-
-./ni --internal/lib core/pl
-./ni --internal/lib core/python
-./ni --internal/lib core/sql
-./ni --internal/lib core/java
-./ni --internal/lib core/lisp
-./ni --internal/lib core/http
-./ni --internal/lib core/plot
 
 ./ni --internal/lib core/hadoop
 ./ni --internal/lib core/pyspark
-./ni --internal/lib core/gnuplot
-./ni --internal/lib core/jsplot
 
 ./ni --internal/lib doc
-fi
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2

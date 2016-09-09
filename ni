@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-37 ni.map.sdoc
+40 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -82,10 +82,13 @@ lib core/facet
 lib core/pl
 lib core/lisp
 lib core/sql
+lib core/python
 lib core/http
 lib core/plot
 lib core/gnuplot
 lib core/jsplot
+lib core/hadoop
+lib core/pyspark
 lib doc
 78 util.pl.sdoc
 Utility functions.
@@ -2905,6 +2908,55 @@ our %sql_profiles;
 defshort '/Q', pdspr %sql_profiles;
 
 sub defsqlprofile($$) {$sql_profiles{$_[0]} = $_[1]}
+1 core/python/lib
+python.pl.sdoc
+46 core/python/python.pl.sdoc
+Python stuff.
+A context for processing stuff in Python, as well as various functions to
+handle the peculiarities of Python code.
+
+Indentation fixing.
+This is useful in any context where code is artificially indented, e.g. when
+you've got a multiline quotation and the first line appears outdented because
+the quote opener has taken up space:
+
+| my $python_code = q{import numpy as np
+                      print np};
+  # -----------------| <- this indentation is misleading
+
+In this case, we want to have the second line indented at zero, not at the
+apparent indentation. The pydent function does this transformation for you, and
+correctly handles Python block constructs:
+
+| my $python_code = pydent q{if True:
+                               print "well that's good"};
+
+sub pydent($) {
+  my @lines   = split /\n/, $_[0];
+  my @indents = map length(sr $_, qr/\S.*$/, ''), @lines;
+  my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
+
+  $indent = min $indent - 1, @indents[2..$#indents]
+    if $lines[0] =~ /:\s*(#.*)?$/ && @lines > 2;
+
+  my $spaces = ' ' x $indent;
+  $lines[$_] =~ s/^$spaces// for 1..$#lines;
+  join "\n", @lines;
+}
+
+sub indent($;$) {
+  my ($code, $indent) = (@_, 2);
+  join "\n", map ' ' x $indent . $_, split /\n/, $code;
+}
+
+sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
+
+Python code parse element.
+Counts brackets, excluding those inside quoted strings. This is more efficient
+and less accurate than Ruby/Perl, but the upside is that errors are not
+particularly common.
+
+use constant pycode => pmap q{pydent $_}, generic_code;
 2 core/http/lib
 ws.pm.sdoc
 http.pl.sdoc
@@ -3164,6 +3216,75 @@ defoperator jsplot_server => q{
 
 defplotalt 'j', pmap q{[file_write_op, jsplot_server_op $_ || 8090]},
                 popt integer;
+1 core/hadoop/lib
+hadoop.pl.sdoc
+1 core/hadoop/hadoop.pl.sdoc
+Hadoop contexts.
+1 core/pyspark/lib
+pyspark.pl.sdoc
+62 core/pyspark/pyspark.pl.sdoc
+Pyspark interop.
+We need to define a context for CLI arguments so we can convert ni pipelines
+into pyspark code. This ends up being fairly straightforward because Spark
+provides so many high-level operators.
+
+There are two things going on here. First, we define the codegen for Spark
+jobs; this is fairly configuration-independent since the API is stable. Second,
+we define a configuration system that lets the user specify the Spark execution
+profile. This governs everything from `spark-submit` CLI options to
+SparkContext init.
+
+Pyspark operators.
+These exist in their own parsing context, which we hook in below by using
+contexts->{pyspark}{...}. Rather than compiling directly to Python code, we
+generate a series of gens, each of which refers to a '%v' quantity that
+signifies the value being transformed.
+
+sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
+sub pyspark_lambda($) {$_[0]}
+
+defcontext 'pyspark';
+
+use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
+
+our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_},
+                   palt plambda 'pyspark', pseries 'pyspark';
+
+our @pyspark_row_alt = (
+  (pmap q{gen "%v.sample(False, $_)"}, integer),
+  (pmap q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
+  (pmap q{gen "%v.filter($_)"}, pyspark_fn));
+
+deflong 'pyspark/stream/n',
+  pmap q{gen "sc.parallelize(range($_))"}, pn 1, prx 'n', number;
+
+deflong 'pyspark/stream/pipe',
+  pmap q{gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
+
+defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
+defshort 'pyspark/r', paltr @pyspark_row_alt;
+defshort 'pyspark/G', pk gen "%v.distinct()";
+defshort 'pyspark/g', pk gen "%v.sortByKey()";
+
+defshort 'pyspark/+', pmap q{gen "%v.union($_)"}, $pyspark_rdd;
+defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, $pyspark_rdd;
+
+Configuration management.
+A profile contains the code required to initialize the SparkContext and any
+other variables relevant to the process. Each is referenced by a single
+character and stored in the %spark_profiles table.
+
+our %spark_profiles = (
+  L => pk gen pydent q{from pyspark import SparkContext
+                       sc = SparkContext("local", "%name")
+                       %body});
+
+sub defsparkprofile($$) {$spark_profiles{$_[0]} = $_[1]}
+
+defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
+
+defshort '/P', pmap q{pyspark_op @$_},
+               pseq pdspr(%spark_profiles), $pyspark_rdd;
 12 doc/lib
 col.md
 examples.md
