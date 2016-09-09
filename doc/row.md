@@ -174,8 +174,8 @@ $ ni word-list Cr10             # sort first to group words
 1	2016
 1	3
 1	37
-1	45
 1	5
 1	A
 2	ACTION
+1	AN
 ```
