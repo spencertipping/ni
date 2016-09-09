@@ -68,3 +68,21 @@ Or to reduce multiple columns into a row:
 $ ni n4fAA l"(r (sr ('+ a) ('* b)))"
 10	24
 ```
+
+### `se`
+Reduces over a contiguous group of rows for which the partition function
+remains equal. (Mnemonic is "stream while equal".)
+
+```
+se function value-form partition-form [initial-value] => reduced-value
+```
+
+For example, to naively get a comma-delimited list of users by login shell:
+
+```bash
+$ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	sync
+```

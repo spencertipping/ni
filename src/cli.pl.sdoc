@@ -5,9 +5,6 @@ about is the long/short option dispatch, which looks like this:
 
 | option = alt @longs, dsp %shorts
 
-This compound dispatch pattern is called a "context" because it represents the
-full range of stuff a ni parser will end up resolving.
-
 our %contexts;
 our %long_refs;
 our %short_refs;

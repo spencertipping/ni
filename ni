@@ -350,16 +350,13 @@ use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prx '^[^][]+';
 
 use constant nefilename => palt filename, prx '^[^][]+';
-49 cli.pl.sdoc
+46 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
 about is the long/short option dispatch, which looks like this:
 
 | option = alt @longs, dsp %shorts
-
-This compound dispatch pattern is called a "context" because it represents the
-full range of stuff a ni parser will end up resolving.
 
 our %contexts;
 our %long_refs;
@@ -1374,7 +1371,7 @@ deffacetalt 'p', pmap q{[perl_facet $$_[0],
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
-106 core/lisp/prefix.lisp
+163 core/lisp/prefix.lisp
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
 
@@ -1421,7 +1418,12 @@ lisp.pl.sdoc
 	(search subseq seq :from-end t :start2 (- seq-len subseq-len))
 	nil)))
 
+(defun partial (function &rest args)
+  (lambda (&rest more-args)
+    (apply function (append args more-args))))
 
+
+(defvar *l*)
 (defvar *cols*)
 
 (defun read-col (text)
@@ -1438,9 +1440,13 @@ lisp.pl.sdoc
 (defmacro r (&rest values)
   `(multiple-value-call #'%r ,@values))
 
+(defvar *line-q* (make-array 10 :adjustable t :fill-pointer 0))
+
 (declaim (inline next-line))
 (defun next-line ()
-  (read-line *standard-input* nil))
+  (or (when (plusp (length *line-q*))
+        (vector-pop *line-q*))
+      (read-line *standard-input* nil)))
 
 (defun %sr (&rest reducefn_inputfn_current)
   (loop for l = (next-line) while l do
@@ -1460,18 +1466,66 @@ lisp.pl.sdoc
                                                           (funcall inputfn))))))
      (apply #'%sr fixed-bindings)))
 
+(defun %se (reducefn inputfn continuefn current)
+  (loop for l = (next-line) while l do
+       (let ((*cols* (split l #\Tab)))
+         (if (funcall continuefn)
+             (setf current (funcall reducefn current (funcall inputfn)))
+             (progn
+               (vector-push-extend l *line-q*)
+               (return)))))
+  current)
+
+(defmacro se (reducer input partition &optional (initial nil initial-supplied-p))
+  `(let* ((inputfn (lambda () ,input))
+          (partfn (lambda () ,partition))
+          (first-partfn-result (funcall partfn))
+          (continuefn (lambda () (equal first-partfn-result (funcall partfn))))
+          (reducefn ,reducer))
+     (%se reducefn inputfn continuefn ,(if initial-supplied-p               
+                                          `(funcall reducefn ,initial (funcall inputfn))
+                                          `(funcall inputfn)))))
+
+(defun %rw (continue-fn)
+  (let ((result (list *l*)))
+    (loop for *l* = (next-line) while *l* do
+         (let ((*cols* (split *l* #\Tab)))
+           (if (funcall continue-fn)
+               (push *l* result)
+               (progn
+                 (vector-push-extend *l* *line-q*)
+                 (return)))))
+    (apply #'values (nreverse result))))
+
+(defmacro rw (condition)
+  `(let ((continue-fn (lambda () ,condition)))
+     (%rw continue-fn)))
+
+(defmacro ru (condition)
+  `(let ((continue-fn (lambda () (not ,condition))))
+     (%rw continue-fn)))
+
+;; TODO: convert row strings to numbers
+;; (defun %mean (&rest values)
+;;   (/ (apply #'+ values)
+;;      (length values)))
+
+;; (defmacro mean (form)
+;;   `(multiple-value-call #'%mean ,form))
+
 (defun output-rows (&rest rows)
   (dolist (row rows)
     (princ row)
     (terpri)))
 
 (defmacro with-ni-env (filter-p &body body)
-  (let ((l-var (gensym "L")))
+  (let ((l-var '*l* ;;(gensym "L")
+         ))
     `(let ((*standard-input* (sb-sys:make-fd-stream 3)))
        (symbol-macrolet ,(loop for colname in '(a b c d e f g h i j k l m n o p q)
                             for index from 0
                             collect (list colname `(read-col (nth ,index *cols*))))     
-         (loop for ,l-var = (read-line *standard-input* nil) while ,l-var do
+         (loop for ,l-var = (next-line) while ,l-var do
               (let ((*cols* (split ,l-var #\Tab)))
                 ,(if filter-p
                      `(when (progn ,@body)
@@ -1813,7 +1867,7 @@ ni --extend site-lib2
 
 `--extend` is idempotent, and you can use it to install a newer version of an
 already-included library.
-70 doc/lisp.md
+88 doc/lisp.md
 # Common Lisp driver
 ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
@@ -1883,6 +1937,24 @@ Or to reduce multiple columns into a row:
 ```bash
 $ ni n4fAA l"(r (sr ('+ a) ('* b)))"
 10	24
+```
+
+### `se`
+Reduces over a contiguous group of rows for which the partition function
+remains equal. (Mnemonic is "stream while equal".)
+
+```
+se function value-form partition-form [initial-value] => reduced-value
+```
+
+For example, to naively get a comma-delimited list of users by login shell:
+
+```bash
+$ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
+/bin/bash	root
+/bin/false	syslog
+/bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
+/bin/sync	sync
 ```
 2 doc/options.md
 # Complete ni operator listing
@@ -2383,16 +2455,16 @@ $ ni word-list cr10             # unsorted count
 1	_
 1	ni
 $ ni word-list Cr10             # sort first to group words
-14	0
+15	0
 8	1
-9	2
-2	2016
+8	2
+1	2016
 1	3
-1	39
+1	30
+1	45
 1	5
 1	A
 2	ACTION
-1	AN
 ```
 29 doc/sql.md
 # SQL interop
