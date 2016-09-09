@@ -63,7 +63,7 @@ defoperator count => q{
   my ($n, $last) = (0, undef);
   while (<STDIN>) {
     if ($_ ne $last) {
-      print "$n\t$_" if defined $last;
+      print "$n\t$last" if defined $last;
       $n = 0;
       $last = $_;
     }

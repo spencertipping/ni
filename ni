@@ -2216,7 +2216,7 @@ defoperator count => q{
   my ($n, $last) = (0, undef);
   while (<STDIN>) {
     if ($_ ne $last) {
-      print "$n\t$_" if defined $last;
+      print "$n\t$last" if defined $last;
       $n = 0;
       $last = $_;
     }
@@ -4139,7 +4139,7 @@ like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
 streaming count.
 
 ```bash
-$ ni //ni FWpF_ r500 > word-list
+$ ni //ni FWpF_ r/[^0-9]/r500 > word-list
 $ ni word-list cr10             # unsorted count
 1	usr
 1	bin
