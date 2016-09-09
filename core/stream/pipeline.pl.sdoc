@@ -11,8 +11,8 @@ use POSIX qw/dup2 :sys_wait_h/;
 sub await_children() {1 while 0 < waitpid -1, WNOHANG}
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
-sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
+sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
 
 sub move_fd($$) {
   my ($old, $new) = @_;
@@ -51,8 +51,8 @@ moment that seems like more trouble than it's worth.
 sub forkopen($$) {
   my ($mode, $f) = @_;
   my ($fh, $pid);
-  return $fh if $pid = open $fh, $mode;
-  die "ni: forkopen $mode failed: $!" unless defined $pid;
+  defined($pid = open $fh, $mode) or die "ni: forkopen $mode failed: $!";
+  return $fh if $pid;
   open STDIN,  '<&=0';
   open STDOUT, '>&=1';
   &$f;
