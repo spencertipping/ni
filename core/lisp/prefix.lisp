@@ -1,3 +1,6 @@
+;;;;;;;;
+;; NB: don't delete the line of semicolons above; SBCL throws away the first few
+;; bytes on CentOS.
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
 

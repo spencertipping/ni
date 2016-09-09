@@ -2550,7 +2550,10 @@ deffacetalt 'p', pmap q{[perl_facet $$_[0],
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
-163 core/lisp/prefix.lisp
+166 core/lisp/prefix.lisp
+;;;;;;;;
+;; NB: don't delete the line of semicolons above; SBCL throws away the first few
+;; bytes on CentOS.
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
 
