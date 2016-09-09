@@ -526,7 +526,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-178 core/stream/pipeline.pl.sdoc
+184 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -599,18 +599,24 @@ point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
 moment that seems like more trouble than it's worth.
 
 sub forkopen($$) {
-  my ($mode, $f) = @_;
-  my ($fh, $pid);
-  defined($pid = open $fh, $mode) or die "ni: forkopen $mode failed: $!";
-  return $fh if $pid;
-  open STDIN,  '<&=0';
-  open STDOUT, '>&=1';
-  &$f;
-  exit;
+  my ($fd, $f) = @_;
+  cpipe my $r, my $w;
+  my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
+  if (cfork) {
+    close $child;
+    return $ret;
+  } else {
+    close $ret;
+    move_fd fileno $child, $fd;
+    open STDIN,  '<&=0' if $fd == 0;
+    open STDOUT, '>&=1' if $fd == 1;
+    &$f;
+    exit;
+  }
 }
 
-sub siproc(&) {forkopen '|-', $_[0]}
-sub soproc(&) {forkopen '-|', $_[0]}
+sub siproc(&) {forkopen 0, $_[0]}
+sub soproc(&) {forkopen 1, $_[0]}
 sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f}, 0; open STDIN,  '<&=0'}
 sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f}, 1; open STDOUT, '>&=1'}
 
