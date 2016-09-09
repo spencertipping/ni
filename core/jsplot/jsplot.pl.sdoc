@@ -9,7 +9,6 @@ use constant jsplot_gen => gen <<'EOF';
 <head>
 <title>ni/jsplot</title>
 <style>%css</style>
-<script src='https://code.jquery.com/jquery.min.js'></script>
 <script>%js</script>
 </head>
 <body>
@@ -19,8 +18,10 @@ use constant jsplot_gen => gen <<'EOF';
 </html>
 EOF
 
-use constant jsplot_html => jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
-                                         js  => $self{'core/jsplot/jsplot.js'});
+use constant jsplot_html =>
+  jsplot_gen->(css => $self{'core/jsplot/jsplot.css'},
+               js  => join '', @self{qw| core/jsplot/jquery.min.js
+                                         core/jsplot/jsplot.js |});
 
 JSPlot data streaming.
 This is the websocket connection that ni uses to stream data to the client. Any
