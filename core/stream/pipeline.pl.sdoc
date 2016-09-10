@@ -7,7 +7,14 @@ I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
 use Errno qw/EINTR/;
-use POSIX qw/dup2/;
+use POSIX qw/dup2 :sys_wait_h/;
+
+sub await_children {
+  local ($!, $?);
+  1 while 0 < waitpid -1, WNOHANG;
+  $SIG{CHLD} = \&await_children;
+};
+$SIG{CHLD} = \&await_children;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}

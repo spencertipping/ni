@@ -15,6 +15,17 @@ $ ni n5p'a * a'                 # square some numbers
 25
 ```
 
+`p` does a decent job of figuring out where a chunk of code ends where lambdas
+are concerned:
+
+```bash
+$ ni :plfoo[n4p'a*a']
+1
+4
+9
+16
+```
+
 ## Basic stuff
 `a` to `q` are one-letter functions that return the first 17 tab-delimited
 values from the current line. `r(...)` is a function that takes a list of

@@ -314,7 +314,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-104 common.pl.sdoc
+118 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -343,12 +343,23 @@ figure out how many closing brackets belong to the code, vs how many close a
 lambda. Depending on the language, the only way to do this may be to shell out
 to an interpreter.
 
+sub siproc(&);
+sub soproc(&);
+
+sub syntax_check($$) {
+  my ($check_cmd, $code) = @_;
+  my $r;
+  saferead(soproc {
+    safewrite(siproc {exec 'sh', '-c', $check_cmd . ' >/dev/null 2>&1; echo $?'}, $code);
+  }, $r, 8192);
+  0 + $r;
+}
+
 defparser 'rbcode', '',
   sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
-       my ($self, $code, @xs, $x, $qcode) = @_;
-       ($qcode = $code) =~ s/'/'\\''/g;
-       $x .= ']' while $_ = system("ruby -ce '$qcode' >/dev/null 2>&1")
-                       and ($qcode =~ s/\]$//, $code =~ s/\]$//);
+       my ($self, $code, @xs, $x) = @_;
+       $x .= ']' while $_ = syntax_check('ruby -c -', $code)
+                       and $code =~ s/\]$//;
        $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
@@ -357,25 +368,28 @@ blocks to avoid executing side effects. We can guarantee that nothing will run
 occurrences of the string `BEGIN` and replacing them with something
 syntactically equivalent but less volatile -- in this case, `END`.
 
-defparser 'plcode', '',
-  sub {return @_[1..$#_] unless $_[0] =~ /\]$/;
-       my ($self, $code, @xs, $x, $qcode) = @_;
-       ($qcode = $code) =~ s/'/'\\''/g;
+Note that we can't use system() because ni automatically collects child processes.
 
-       my $begin_warning = $qcode =~ s/BEGIN/END/g;
-       $x .= ']' while $_ = system("perl -ce '$qcode' >/dev/null 2>&1")
+defparser 'plcode', '$',
+  sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
+       my ($self, $code, @xs, $x) = @_;
+       my $qcode = $code;
+       my $begin_warning = $qcode =~ s/BEGIN/ END /g;
+       my $codegen = $$self[1];
+       my $status = 0;
+       $x .= ']' while $status = syntax_check('perl -c -', &$codegen($qcode))
                        and ($qcode =~ s/\]$//, $code =~ s/\]$//);
 
        print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code "$_[0]", possibly
+ni: failed to get closing bracket count for perl code "$code", possibly
     because BEGIN-block metaprogramming is disabled when ni tries to figure
     this out. To avoid this, bypass bracket inference by terminating your code
     with a single space, e.g:
 
-    p'[[some code]]'            # this fails due to bracket inference
+    p'[[some code]]'            # this may fail due to bracket inference
     p'[[some code]] '           # this works by bypassing it
 EOF
-       $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
+       $status ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -548,20 +562,10 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-80 main.pl.sdoc
+70 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
-
-use strict;
-use POSIX qw/:sys_wait_h/;
-
-sub sigchld_handler {
-  local ($!, $?);
-  1 while 0 < waitpid -1, WNOHANG;
-  $SIG{CHLD} = \&sigchld_handler;
-};
-$SIG{CHLD} = \&sigchld_handler;
 
 our %cli_special;
 sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
@@ -632,7 +636,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-184 core/stream/pipeline.pl.sdoc
+191 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -642,7 +646,14 @@ I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
 use Errno qw/EINTR/;
-use POSIX qw/dup2/;
+use POSIX qw/dup2 :sys_wait_h/;
+
+sub await_children {
+  local ($!, $?);
+  1 while 0 < waitpid -1, WNOHANG;
+  $SIG{CHLD} = \&await_children;
+};
+$SIG{CHLD} = \&await_children;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
@@ -2726,7 +2737,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-53 core/pl/pl.pl.sdoc
+56 core/pl/pl.pl.sdoc
 Perl wrapper.
 Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
@@ -2744,42 +2755,45 @@ use constant perl_mapgen => gen q{
   }
 };
 
-our @perl_prefix = qw| core/pl/util.pm
+use constant perl_prefix =>
+  join "\n", @self{qw| core/pl/util.pm
                        core/pl/math.pm
                        core/pl/stream.pm
                        core/gen/gen.pl
                        core/json/json.pl
-                       core/pl/reducers.pm |;
+                       core/pl/reducers.pm |};
 
-sub perl_prefix() {join "\n", @self{@perl_prefix}}
-
-c
-BEGIN {
-  defoperator perl_code => q{
-    my ($body, $each) = @_;
-    move_fd 0, 3;
-    safewrite siproc {exec 'perl', '-'},
-              perl_mapgen->(prefix => perl_prefix,
-                            body   => $body,
-                            each   => $each);
-  };
+sub stdin_to_perl($) {
+  move_fd 0, 3;
+  safewrite siproc {exec 'perl', '-'}, $_[0];
 }
 
-sub perl_mapper($)  {perl_code_op $_[0], 'pr for row'}
-sub perl_grepper($) {perl_code_op $_[0], 'pr if row'}
-sub perl_facet($)   {perl_code_op $_[0], 'pr row . "\t$_"'}
+sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
+                                 body   => $_[0],
+                                 each   => $_[1])}
 
-our @perl_alt = pmap q{perl_mapper $_}, pplcode;
+sub perl_mapper($)  {perl_code $_[0], 'pr for row'}
+sub perl_grepper($) {perl_code $_[0], 'pr if row'}
+sub perl_facet($)   {perl_code $_[0], 'pr row . "\t$_"'}
+
+defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
+defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
+defoperator perl_facet   => q{stdin_to_perl perl_facet   $_[0]};
+
+our @perl_alt = pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
 
 defshort '/p', paltr @perl_alt;
 
 sub defperlalt($) {unshift @perl_alt, $_[0]}
 
-defrowalt pmap q{perl_grepper $_}, pn 1, prx 'p', pplcode;
+defrowalt pmap q{perl_grepper_op $_},
+          pn 1, prx 'p', pplcode \&perl_grepper;
 
-deffacetalt 'p', pmap q{[perl_facet $$_[0],
+deffacetalt 'p', pmap q{[perl_facet_op($$_[0]),
                          row_sort_op('-k1b,1'),
-                         perl_mapper $$_[1]]}, pseq pplcode, pplcode;
+                         perl_mapper_op($$_[1])]},
+                 pseq pplcode \&perl_facet,
+                      pplcode \&perl_mapper;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
@@ -4144,7 +4158,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 2 doc/options.md
 # Complete ni operator listing
 **TODO**
-353 doc/perl.md
+364 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -4160,6 +4174,17 @@ $ ni n5p'a * a'                 # square some numbers
 9
 16
 25
+```
+
+`p` does a decent job of figuring out where a chunk of code ends where lambdas
+are concerned:
+
+```bash
+$ ni :plfoo[n4p'a*a']
+1
+4
+9
+16
 ```
 
 ## Basic stuff

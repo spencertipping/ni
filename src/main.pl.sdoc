@@ -2,16 +2,6 @@ CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
 
-use strict;
-use POSIX qw/:sys_wait_h/;
-
-sub sigchld_handler {
-  local ($!, $?);
-  1 while 0 < waitpid -1, WNOHANG;
-  $SIG{CHLD} = \&sigchld_handler;
-};
-$SIG{CHLD} = \&sigchld_handler;
-
 our %cli_special;
 sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
 
