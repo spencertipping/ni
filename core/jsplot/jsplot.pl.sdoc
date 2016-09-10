@@ -18,14 +18,19 @@ websocket request, so we need to break the pipe and kill off subprocesses.
 sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
+  my ($ops) = cli @ni_args;
   safewrite $reply, ws_header($req);
-  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_batch_op 1048576;
+  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_batch_op 65536;
+
+  my $incoming;
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  saferead $reply, $_, 8192 while select my $rout = $rmask, undef, undef, 0;
-  while (saferead $ni_pipe, $_, 8192) {
-    return if select my $rout = $rmask, undef, undef, 0;
+  while (saferead $ni_pipe, $_, 65536) {
+    if (select my $rout = $rmask, undef, undef, 0) {
+      saferead $reply, $incoming, 8192;
+      return if $incoming =~ /^\x81\x80/;
+    }
     safewrite $reply, $_;
   }
 }

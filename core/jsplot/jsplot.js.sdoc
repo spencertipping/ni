@@ -4,21 +4,23 @@ supports incremental rendering in not much space.
 
 $(function () {
 var w  = $(window);
-var c  = $('#screen');
+var c  = $('#screen').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false);
 var t  = $('#transform');
 var pr = $('#preview');
 
+var size_label = $('#sizelabel');
+
 t.val(decodeURIComponent(document.location.hash.substr(1)));
 
-var onscreen_ctx = c[0].getContext('2d');
+var ctx = c[0].getContext('2d');
 
 var wwl, whl;
 setInterval(function () {
   var ww = w.width(), wh = w.height();
   if (ww !== wwl || wh !== whl) {
     t .css({width: ww - 2 * t.offset().left});
+    pr.css({width: ww, height: wh, top: t.height() + 2 * t.offset().top});
     c .attr({width: wwl = ww, height: whl = wh});
-    pr.attr({width: ww, height: wh});
     anything_new = true;
   }
 }, 50);
@@ -27,36 +29,79 @@ View coordinates.
 vr = view rotation, vp = view position, vs = view scaling. Everything is done
 in 3D whether we're looking at 2D or 3D data.
 
-var vr = [0, 0, 0];
-var vp = [0, 0, 0];
-var vs = [1, 1, 1];
+var matrix    = function () {return [1, 0, 0, 0,
+                                     0, 1, 0, 0,
+                                     0, 0, 1, 0,
+                                     0, 0, 0, 1]};
 
-var mx = null, my = null, mshift = false;
+var translate = function (x, y, z) {var r = matrix(); r[3] = x; r[7] = y; r[11] = z; return r};
+var scale     = function (x, y, z) {var r = matrix(); r[0] = x; r[5] = y; r[10] = z; return r};
+var rotate    = function (y, x)    {return mm(rotate_y(y), rotate_x(x))};
 
-c.mousedown(function (e) {mx = e.pageX; my = e.pageY; mshift = e.shiftKey});
+var rotate_x = function (t) {
+  var r = matrix(), s = Math.sin(t), c = Math.cos(t);
+  r[5] = r[10] = c;
+  r[6] = s;
+  r[9] = -s;
+  return r;
+};
+
+var rotate_y = function (t) {
+  var r = matrix(), s = Math.sin(t), c = Math.cos(t);
+  r[0] = r[10] = c;
+  r[2] = s;
+  r[8] = -s;
+  return r;
+};
+
+var mm = function (a, b) {
+  var r = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (var i = 0; i < 4; ++i)
+    for (var j = 0; j < 4; ++j)
+      for (var k = 0; k < 4; ++k)
+        r[i*4 + j] += a[i*4 + k] * b[k*4 + j];
+  return r;
+};
+
+var vm = [1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1];
+
+var distance = 1.4;
+
+var mx = null, my = null, mshift = false, mctrl = false;
+
+c.mousedown(function (e) {
+  mx     = e.pageX;
+  my     = e.pageY;
+  mshift = e.shiftKey;
+  mctrl  = e.ctrlKey;
+});
+
 $(document).mousemove(function (e) {
   if (mx === null) return;
-
-  if (mshift !== e.shiftKey) {
-    mx = e.pageX;
-    my = e.pageY;
-    mshift = e.shiftKey;
-  }
 
   var hh = wwl / 2;
   var vh = whl / 2;
 
-  if (mshift) {
-    vs = [vs[0] * Math.exp(4 * (Math.abs(e.pageX - hh) - Math.abs(mx - hh)) / wwl),
-          vs[1] * Math.exp(4 * (Math.abs(e.pageY - vh) - Math.abs(my - vh)) / whl), 1];
-  } else
-    vp = [vp[0] + (e.pageX - mx) / vs[0], vp[1] + (my - e.pageY) / vs[1], 0];
+  if (mctrl && mshift)
+    vm = mm(vm, scale(Math.exp(4 * (Math.abs(e.pageX - hh) - Math.abs(mx - hh)) / wwl),
+                      Math.exp(4 * (Math.abs(e.pageY - vh) - Math.abs(my - vh)) / whl), 1));
+  else if (mctrl)
+    distance *= Math.exp(2 * (e.pageY - my) / whl);
+  else if (mshift)
+    vm = mm(rotate(-(e.pageX - mx) / wwl * Math.PI * 2,
+                    (e.pageY - my) / whl * Math.PI * 2), vm);
+  else
+    vm = mm(translate((e.pageX - mx) / wwl, (my - e.pageY) / whl, 0), vm);
 
   mx = e.pageX;
   my = e.pageY;
   partial = 0;
   anything_new = true;
 });
+
 $(document).mouseup(function (e) {
   if (mx === null) return;
   mx = my = null;
@@ -73,30 +118,54 @@ much.)
 t.keydown(function (e) {if (e.which === 13 && !e.shiftKey) {refresh(); return false}});
 t.keyup  (function (e) {document.location.hash = encodeURIComponent(t.val())});
 
-var incoming     = '';
-var anything_new = false;
+var incoming       = '';
+var anything_new   = false;
+var last_data_time = 0;
 
 var ws = null;
 var refresh = function () {
   var ws_url = document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '') + 'ni/';
-  if (ws != null) ws.close();
+  if (ws != null) {
+    try {ws.send('')} catch (e) {}
+    ws.close();
+  }
   ws = new WebSocket(ws_url + encodeURIComponent(t.val()), 'data');
   incoming = '';
   n_points = 0;
   min_x = 0, max_x = 0, min_y = 0, max_y = 0,
   min_z = 0, max_z = 0, min_w = 0, max_w = 0;
 
-  var buffer = '';
+  var continuation = '';
+  var size = 0;
+
   ws.onmessage = function (e) {
-    if (incoming.length < 1048576) incoming += e.data;
-    pr.toggle(!/^[-+\.0-9eE\s]+\t[-+\.0-9eE\s]+/.test(incoming));
-    buffer += e.data;
+    var m = continuation + e.data;
+
+    if (incoming.length < 65536) {
+      incoming += m;
+      pr.toggle(!/^[-+\.0-9eE\s]+\t[-+\.0-9eE\s]+/.test(incoming));
+      pr.text(incoming.split(/\n/).slice(0, whl / 10 | 0)
+                                  .map(function (x) {return x.substr(0, wwl / 5 | 0)})
+                                  .join('\n'));
+    }
+
+    if (+new Date - last_data_time > 1000) {
+      anything_new = true;
+      partial = 0;
+      last_data_time = +new Date;
+    }
+
+    var lines = m.split(/\n/);
+    continuation = lines.pop();
+    for (var i = 0; i < lines.length; ++i)
+      collect_point(lines[i].split(/\t/));
+
+    size_label.text(n_points + " : " + ((size += e.data.length) >>> 10) + "K");
+  };
+
+  ws.onclose = function () {
     anything_new = true;
     partial = 0;
-    var lines = buffer.split(/\n/);
-    for (var i = 0; i < lines.length - 1; ++i)
-      collect_point(lines[i].split(/\t/));
-    buffer = lines.pop();
   };
 };
 
@@ -112,17 +181,17 @@ var min_x = 0, max_x = 0, min_y = 0, max_y = 0,
     min_z = 0, max_z = 0, min_w = 0, max_w = 0;
 
 var collect_point = function (p) {
+  if (isNaN(p[0] = +p[0])) p[0] = min_x;
+  if (isNaN(p[1] = +p[1])) p[1] = min_y;
+  if (isNaN(p[2] = +p[2])) p[2] = min_z;
+  if (isNaN(p[3] = +p[3])) p[3] = min_w;
+
   if (!n_points) {
     min_x = max_x = +p[0];
     min_y = max_y = +p[1];
     min_z = max_z = +p[2];
     min_w = max_w = +p[3];
   }
-
-  if (isNaN(p[0] = +p[0])) p[0] = min_x;
-  if (isNaN(p[1] = +p[1])) p[1] = min_y;
-  if (isNaN(p[2] = +p[2])) p[2] = min_z;
-  if (isNaN(p[3] = +p[3])) p[3] = min_w;
 
   min_x = Math.min(min_x, p[0]);
   max_x = Math.max(max_x, p[0]);
@@ -149,36 +218,54 @@ var collect_point = function (p) {
   }
 };
 
-var render = function () {
+setInterval(function () {
   if (!anything_new) return;
-  if (!partial) onscreen_ctx.clearRect(0, 0, wwl, whl);
-  onscreen_ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+  if (!partial) ctx.clearRect(0, 0, wwl, whl);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
 
   var t = +new Date;
 
-  var sx = wwl / (max_x - min_x);
-  var sy = whl / (max_y - min_y);
+  var sx = 1 / (max_x - min_x || 1);
+  var sy = 1 / (max_y - min_y || 1);
+  var sz = 1 / (max_z - min_z || 1);
+
   var cx = (max_x + min_x) / 2;
   var cy = (max_y + min_y) / 2;
+  var cz = (max_z + min_z) / 2;
 
-  for (var i = partial; (i &= 0xff) < 255 && +new Date - t < 30; ++i) {
+  var cm = mm(vm, mm(scale(sx, sy, sz),
+                     translate(-cx, -cy, -cz)));
+
+  var m00 = cm[0],  m01 = cm[1],  m02 = cm[2],  m03 = cm[3],
+      m10 = cm[4],  m11 = cm[5],  m12 = cm[6],  m13 = cm[7],
+      m20 = cm[8],  m21 = cm[9],  m22 = cm[10], m23 = cm[11] + distance,
+      m30 = cm[12], m31 = cm[13], m32 = cm[14], m33 = cm[15];
+
+  for (var i = partial; (i &= 0xff) < 255 && +new Date - t < 15; ++i) {
     for (; i < n_points; i += 256) {
-      var x = wwl/2 + ((parsed[i * 4 + 0] - cx) * sx + vp[0]) * vs[0];
-      var y = whl/2 - ((parsed[i * 4 + 1] - cy) * sy + vp[1]) * vs[1];
-      onscreen_ctx.fillRect(x, y, 1, 1);
+      var x = parsed[i * 4 + 0];
+      var y = parsed[i * 4 + 1];
+      var z = parsed[i * 4 + 2];
+
+      var wp = 1 / (m30*x + m31*y + m32*z + m33);
+      var xp = wp * (m00*x + m01*y + m02*z + m03);
+      var yp = wp * (m10*x + m11*y + m12*z + m13);
+      var zp = wp * (m20*x + m21*y + m22*z + m23);
+
+      if (zp > 0) {
+        zp = 1 / zp;
+        var ps = Math.max(zp, 0.5);
+        ctx.fillRect(xp * zp * wwl + wwl/2,
+                     whl/2 - yp * zp * whl,
+                     ps,
+                     ps);
+      }
     }
   }
 
   partial = i === 255 ? 0 : i;
   anything_new = i !== 255;
-};
-setInterval(render, 50);
-
-setInterval(function () {
-  if (anything_new)
-    pr.text(n_points + " row(s)\n"
-                     + incoming.split(/\n/).slice(0, whl / 10 | 0).join('\n'));
-}, 250);
+}, 30);
 
 refresh();
 

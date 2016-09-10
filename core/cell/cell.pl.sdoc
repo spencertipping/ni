@@ -5,7 +5,8 @@ code. They're also optimized for performance.
 defcontext 'cell';
 defshort '/,', pqfn 'cell';
 
-use constant cellspec => pmap q{$_ || [1, 0]}, popt colspec;
+use constant cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
+use constant cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
 
 Codegen.
 Most of these have exactly the same format and take a column spec.
@@ -46,8 +47,8 @@ defoperator intify_hash => q{
              each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
 };
 
-defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec;
-defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec, popt integer;
+defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
+defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 
 Numerical transformations.
 Trivial stuff that applies to each cell individually.
@@ -66,8 +67,8 @@ defoperator cell_exp => q{
   cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
 };
 
-defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec, log_base;
-defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec, log_base;
+defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
+defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
 
 use constant jitter_bias => pmap q{dor $_, 0}, popt number;
 use constant jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
@@ -80,7 +81,7 @@ defoperator jitter_uniform => q{
 };
 
 defshort 'cell/j', pmap q{jitter_uniform_op @$_},
-                   pseq cellspec, jitter_mag, jitter_bias;
+                   pseq cellspec_fixed, jitter_mag, jitter_bias;
 
 use constant quant_spec => pmap q{$_ || 1}, popt number;
 
@@ -91,7 +92,7 @@ defoperator quantize => q{
              each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
 };
 
-defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec, quant_spec;
+defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
 
 Streaming numeric transformations.
 Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
@@ -110,5 +111,5 @@ defoperator col_delta => q{
              each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
 };
 
-defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec;
-defshort 'cell/d', pmap q{col_delta_op $_}, cellspec;
+defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec_fixed;
+defshort 'cell/d', pmap q{col_delta_op $_}, cellspec_fixed;

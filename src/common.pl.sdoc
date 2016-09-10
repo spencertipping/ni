@@ -72,7 +72,7 @@ use constant integer => palt pmap(q{int},       neval),
                              pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                             pmap(q{0 + $_},    prx '\d+(?:[eE]\d+)?');
+                             pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?');
 use constant float   => pmap q{0 + $_}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => palt neval, integer, float;
 
@@ -80,6 +80,10 @@ use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';
 use constant colspec_rest  => pmap q{-1}, prx '\.';
 use constant colspec_range => pmap q{[$$_[0] .. $$_[2]]},
                               pseq colspec1, prx '-', colspec1;
+
+use constant colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
+                              pmap q{[map ref() ? @$_ : $_, @$_]},
+                              prep palt(colspec_range, colspec1), 1;
 
 use constant colspec => pmap q{[max(@$_) + 1, @$_]},
                         pmap q{[map ref() ? @$_ : $_, @$_]},
