@@ -16,8 +16,9 @@ var wwl, whl;
 setInterval(function () {
   var ww = w.width(), wh = w.height();
   if (ww !== wwl || wh !== whl) {
-    t.css({width: ww - 2 * t.offset().left});
-    c.attr({width: wwl = ww, height: whl = wh});
+    t .css({width: ww - 2 * t.offset().left});
+    c .attr({width: wwl = ww, height: whl = wh});
+    pr.attr({width: ww, height: wh});
     anything_new = true;
   }
 }, 50);
@@ -69,7 +70,7 @@ two reasons: first, to decrease view latency; and second, to run in constant
 space. (The client does store some data, but there's an upper bound on how
 much.)
 
-t.keydown(function (e) {if (e.which === 13 && e.shiftKey) {refresh(); return false}});
+t.keydown(function (e) {if (e.which === 13 && !e.shiftKey) {refresh(); return false}});
 t.keyup  (function (e) {document.location.hash = encodeURIComponent(t.val())});
 
 var incoming     = '';
@@ -87,7 +88,8 @@ var refresh = function () {
 
   var buffer = '';
   ws.onmessage = function (e) {
-    if (incoming.length < 2048) incoming += e.data;
+    if (incoming.length < 1048576) incoming += e.data;
+    pr.toggle(!/^[-+\.0-9eE\s]+\t[-+\.0-9eE\s]+/.test(incoming));
     buffer += e.data;
     anything_new = true;
     partial = 0;
@@ -174,7 +176,8 @@ setInterval(render, 50);
 
 setInterval(function () {
   if (anything_new)
-    pr.text(n_points + " point(s)\n" + incoming.split(/\n/).slice(0, 8).join("\n"));
+    pr.text(n_points + " row(s)\n"
+                     + incoming.split(/\n/).slice(0, whl / 10 | 0).join('\n'));
 }, 250);
 
 refresh();

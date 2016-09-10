@@ -3,10 +3,9 @@ body {margin: 0; color: #eee; background: #111; font-family: sans-serif;
 
 *:focus, *:hover {opacity: 1 !important}
 
-#transform {
-  opacity:0.25; background:rgba(255,255,255,0.1); font-size:16pt;
-  color:#eee; font-family:monospace; border:none; outline:none;
-  position:absolute; left:8px; top:8px }
+#transform {opacity:0.25; background:rgba(255,255,255,0.1); font-size:16pt;
+            color:#eee; font-family:monospace; border:none; outline:none;
+            position:absolute; left:8px; top:8px }
 
-#preview {opacity:0; font-size:12pt; color:#eee; font-family:monospace;
+#preview {z-index:1; display:none; font-size:12pt; color:#eee; font-family:monospace;
           position:absolute; left:8px; top:40px}
