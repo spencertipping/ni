@@ -11,4 +11,7 @@ defoperator ssh => q{
   safewrite $fh, $stdin;
 };
 
-defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq prc '[^][]*', pqfn '';
+use constant ssh_host => prc '[^][/,]+';
+
+defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
+defshort '/::',   pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';

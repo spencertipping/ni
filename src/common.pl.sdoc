@@ -92,7 +92,9 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant filename => palt prc '^file:(.+)', tempfile,
+use constant filename => palt prc 'file:(.+)',
+                              prc '\.?/.*',
+                              tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';

@@ -314,7 +314,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-98 common.pl.sdoc
+100 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -409,7 +409,9 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant filename => palt prc '^file:(.+)', tempfile,
+use constant filename => palt prc 'file:(.+)',
+                              prc '\.?/.*',
+                              tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';
@@ -2119,7 +2121,7 @@ sub json_encode($) {
 }
 1 core/net/lib
 net.pl.sdoc
-14 core/net/net.pl.sdoc
+17 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2133,7 +2135,10 @@ defoperator ssh => q{
   safewrite $fh, $stdin;
 };
 
-defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq prc '[^][]*', pqfn '';
+use constant ssh_host => prc '[^][/,]+';
+
+defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
+defshort '/::',   pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
 1 core/col/lib
 col.pl.sdoc
 84 core/col/col.pl.sdoc
