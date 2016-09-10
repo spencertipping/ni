@@ -3,18 +3,22 @@ A plotting library that allows you to live-transform the data, and that
 supports incremental rendering in not much space.
 
 $(function () {
-var w   = $(window);
-var c   = $('#screen');
-var t   = $('#transform');
-var pr  = $('#preview');
-var ctx = c[0].getContext('2d');
+var w  = $(window);
+var c  = $('#screen');
+var t  = $('#transform');
+var pr = $('#preview');
+
+t.val(document.location.hash.substr(1));
+
+var onscreen_ctx = c[0].getContext('2d');
+
 var wwl, whl;
 setInterval(function () {
   var ww = w.width(), wh = w.height();
   if (ww !== wwl || wh !== whl) {
     t.css({width: ww - 2 * t.offset().left});
     c.attr({width: wwl = ww, height: whl = wh});
-    refresh();
+    anything_new = true;
   }
 }, 50);
 
@@ -24,7 +28,40 @@ in 3D whether we're looking at 2D or 3D data.
 
 var vr = [0, 0, 0];
 var vp = [0, 0, 0];
-var vs = [0, 0, 0];
+var vs = [1, 1, 1];
+
+var mx = null, my = null, mshift = false;
+
+c.mousedown(function (e) {mx = e.pageX; my = e.pageY; mshift = e.shiftKey});
+$(document).mousemove(function (e) {
+  if (mx === null) return;
+
+  if (mshift !== e.shiftKey) {
+    mx = e.pageX;
+    my = e.pageY;
+    mshift = e.shiftKey;
+  }
+
+  var hh = wwl / 2;
+  var vh = whl / 2;
+
+  if (mshift) {
+    vs = [vs[0] * Math.exp(4 * (Math.abs(e.pageX - hh) - Math.abs(mx - hh)) / wwl),
+          vs[1] * Math.exp(4 * (Math.abs(e.pageY - vh) - Math.abs(my - vh)) / whl), 1];
+  } else
+    vp = [vp[0] + (e.pageX - mx) / vs[0], vp[1] + (my - e.pageY) / vs[1], 0];
+
+  mx = e.pageX;
+  my = e.pageY;
+  partial = 0;
+  anything_new = true;
+});
+$(document).mouseup(function (e) {
+  if (mx === null) return;
+  mx = my = null;
+  partial = 0;
+  anything_new = true;
+});
 
 AJAX data requests.
 Data comes down in small pieces and is rendered as it arrives. We do this for
@@ -33,25 +70,31 @@ space. (The client does store some data, but there's an upper bound on how
 much.)
 
 t.keydown(function (e) {if (e.which === 13) refresh()});
+t.keyup  (function (e) {document.location.hash = t.val()});
 
 var incoming     = '';
 var anything_new = false;
 
 var ws = null;
 var refresh = function () {
-  var ws_url = document.location.href.replace(/^http:/, 'ws:') + 'ni/';
+  var ws_url = document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '') + 'ni/';
   if (ws != null) ws.close();
-  ws = new WebSocket(ws_url + t.val(), 'data');
+  ws = new WebSocket(ws_url + encodeURIComponent(t.val()), 'data');
   incoming = '';
   n_points = 0;
   min_x = 0, max_x = 0, min_y = 0, max_y = 0,
   min_z = 0, max_z = 0, min_w = 0, max_w = 0;
 
+  var buffer = '';
   ws.onmessage = function (e) {
+    if (incoming.length < 2048) incoming += e.data;
+    buffer += e.data;
     anything_new = true;
     partial = 0;
-    if (incoming.length < 2048) incoming += e.data;
-    collect_point(e.data.split(/\t/));
+    var lines = buffer.split(/\n/);
+    for (var i = 0; i < lines.length - 1; ++i)
+      collect_point(lines[i].split(/\t/));
+    buffer = lines.pop();
   };
 };
 
@@ -61,26 +104,31 @@ everything in timed batches.
 
 var n_points = 0;
 var partial  = 0;
-var parsed   = new Float32Array(4 * 262144);
+var parsed   = new Float64Array(4 * 1048576);
 
 var min_x = 0, max_x = 0, min_y = 0, max_y = 0,
     min_z = 0, max_z = 0, min_w = 0, max_w = 0;
 
 var collect_point = function (p) {
-  if (n_points === 0) {
+  if (!n_points) {
     min_x = max_x = +p[0];
     min_y = max_y = +p[1];
     min_z = max_z = +p[2];
     min_w = max_w = +p[3];
   }
 
-  min_x = Math.min(min_x, p[0] = +p[0]);
+  if (isNaN(p[0] = +p[0])) p[0] = min_x;
+  if (isNaN(p[1] = +p[1])) p[1] = min_y;
+  if (isNaN(p[2] = +p[2])) p[2] = min_z;
+  if (isNaN(p[3] = +p[3])) p[3] = min_w;
+
+  min_x = Math.min(min_x, p[0]);
   max_x = Math.max(max_x, p[0]);
-  min_y = Math.min(min_y, p[1] = +p[1]);
+  min_y = Math.min(min_y, p[1]);
   max_y = Math.max(max_y, p[1]);
-  min_z = Math.min(min_z, p[2] = +p[2]);
+  min_z = Math.min(min_z, p[2]);
   max_z = Math.max(max_z, p[2]);
-  min_w = Math.min(min_w, p[3] = +p[3]);
+  min_w = Math.min(min_w, p[3]);
   max_w = Math.max(max_w, p[3]);
 
   if (++n_points * 4 + 4 < parsed.length) {
@@ -90,7 +138,7 @@ var collect_point = function (p) {
     parsed[n_points * 4 + 3] = p[3];
   } else {
     var i = Math.random() * n_points | 0;
-    if (i < parsed.length / 4) {
+    if (i * 4 + 4 < parsed.length) {
       parsed[i * 4 + 0] = p[0];
       parsed[i * 4 + 1] = p[1];
       parsed[i * 4 + 2] = p[2];
@@ -99,9 +147,10 @@ var collect_point = function (p) {
   }
 };
 
-setInterval(function () {
+var render = function () {
   if (!anything_new) return;
-  if (!partial) ctx.clearRect(0, 0, wwl, whl);
+  if (!partial) onscreen_ctx.clearRect(0, 0, wwl, whl);
+  onscreen_ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
 
   var t = +new Date;
 
@@ -110,25 +159,22 @@ setInterval(function () {
   var cx = (max_x + min_x) / 2;
   var cy = (max_y + min_y) / 2;
 
-  var id = ctx.getImageData(0, 0, wwl, whl);
-
-  for (var i = partial; i < n_points && +new Date - t < 200;) {
-    var upper = Math.min(n_points, i + 4096);
-    for (; i < upper; ++i) {
-      var x = wwl/2 + (parsed[i * 4 + 0] - cx) * sx | 0;
-      var y = whl/2 - (parsed[i * 4 + 1] - cy) * sy | 0;
-      id.data[(y * id.width + x) * 4 + 0] = 255;
-      id.data[(y * id.width + x) * 4 + 1] = 255;
-      id.data[(y * id.width + x) * 4 + 2] = 255;
-      id.data[(y * id.width + x) * 4 + 3] += 31;
+  for (var i = partial; (i &= 0xff) < 255 && +new Date - t < 30; ++i) {
+    for (; i < n_points; i += 256) {
+      var x = wwl/2 + ((parsed[i * 4 + 0] - cx) * sx + vp[0]) * vs[0];
+      var y = whl/2 - ((parsed[i * 4 + 1] - cy) * sy + vp[1]) * vs[1];
+      onscreen_ctx.fillRect(x, y, 1, 1);
     }
   }
 
-  ctx.putImageData(id, 0, 0);
+  partial = i === 255 ? 0 : i;
+  anything_new = i !== 255;
+};
+setInterval(render, 50);
 
-  partial = i < n_points ? i : 0;
-  anything_new = i < n_points;
-  pr.text(n_points + " point(s)\n" + incoming.split(/\n/).slice(0, 8).join("\n"));
+setInterval(function () {
+  if (anything_new)
+    pr.text(n_points + " point(s)\n" + incoming.split(/\n/).slice(0, 8).join("\n"));
 }, 250);
 
 refresh();

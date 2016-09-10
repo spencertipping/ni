@@ -1,7 +1,6 @@
 HTTP server.
-A very simple HTTP server that can be used to serve a stream's contents. The
-server is defined solely in terms of a function that takes a URL and returns
-data, optionally specifying the content type.
+A very simple HTTP server that can be used to serve a stream's contents. This is used
+by other libraries to serve things like JSPlot.
 
 use Socket;
 use Errno qw/EINTR/;
@@ -48,9 +47,18 @@ sub http($$) {
   }
 }
 
+Websocket operators.
+This is used to stream a data source to the browser. See `core/jsplot` for details.
+
 defoperator http_websocket_encode => q{
   load 'core/http/ws.pm';
-  print ws_encode($_) while <STDIN>;
+  safewrite \*STDOUT, ws_encode($_) while <STDIN>;
 };
 
-deflong '/http/wse', pmap q{http_websocket_encode_op}, prc '--http/wse$';
+defoperator http_websocket_encode_batch => q{
+  load 'core/http/ws.pm';
+  safewrite \*STDOUT, ws_encode($_) while saferead \*STDIN, $_, $_[0] || 8192;
+};
+
+deflong '/http/wse',       pmap q{http_websocket_encode_op},             prc '--http/wse$';
+deflong '/http/wse-batch', pmap q{http_websocket_encode_batch_op}, pn 1, prc '--http/wse-batch$', popt integer;

@@ -19,14 +19,13 @@ sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
   safewrite $reply, ws_header($req);
-  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_op;
+  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_batch_op 1048576;
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
   saferead $reply, $_, 8192 while select my $rout = $rmask, undef, undef, 0;
-
   while (saferead $ni_pipe, $_, 8192) {
-    exit if select my $rout = $rmask, undef, undef, 0;
+    return if select my $rout = $rmask, undef, undef, 0;
     safewrite $reply, $_;
   }
 }
