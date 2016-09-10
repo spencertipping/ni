@@ -1,5 +1,7 @@
 Networking stuff.
-SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere.
+SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
+not need to be installed on the remote system, nor does its filesystem need to
+be writable.
 
 defoperator ssh => q{
   my ($host, $lambda) = @_;
@@ -9,5 +11,4 @@ defoperator ssh => q{
   safewrite $fh, $stdin;
 };
 
-deflong '/ssh', pmap q{ssh_op $$_[0], $$_[1]},
-                pseq prc 'ssh:([^][]*)', plambda '';
+defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq prc '[^][]*', pqfn '';

@@ -22,8 +22,7 @@ defcontext 'pyspark';
 
 use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
 
-our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_},
-                   palt plambda 'pyspark', pseries 'pyspark';
+our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
 
 our @pyspark_row_alt = (
   (pmap q{gen "%v.sample(False, $_)"}, integer),

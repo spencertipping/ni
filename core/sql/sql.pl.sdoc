@@ -94,7 +94,7 @@ defcontext 'sql';
 use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt plambda 'sql';
+                 pseq sql_table, popt pqfn 'sql';
 
 our @sql_row_alt;
 our @sql_join_alt = (

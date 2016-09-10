@@ -322,3 +322,32 @@ Here's what's going on.
     - `&& %1` is a way to return the hash reference as the reduced value (since
       we're modifying it in place). We need to do this without using a comma
       because each reducer function is evaluated in list context.
+
+Of course, it's a lot easier to use the streaming count operator:
+
+```bash
+$ ni /etc/passwd FWpsplit// r/[a-z]/CfBA
+a	39
+b	36
+c	14
+d	13
+e	17
+f	1
+g	11
+h	20
+i	46
+k	3
+l	19
+m	14
+n	50
+o	25
+p	15
+r	24
+s	51
+t	15
+u	17
+v	12
+w	12
+x	23
+y	12
+```

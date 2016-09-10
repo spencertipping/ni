@@ -249,3 +249,15 @@ $ ni :biglist[n100000Z]r5
 4
 5
 ```
+
+Checkpointing, like most operators that accept lambda expressions, can also be
+written with the lambda implicit:
+
+```bash
+$ ni :biglist n100000Z r5
+1
+2
+3
+4
+5
+```

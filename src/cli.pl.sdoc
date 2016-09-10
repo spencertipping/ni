@@ -6,12 +6,14 @@ about is the long/short option dispatch, which looks like this:
 | option = alt @longs, dsp %shorts
 
 our %contexts;
+our %long_names;
 our %long_refs;
 our %short_refs;
 
 sub defcontext($) {
   $short_refs{$_[0]} = {};
   $long_refs{$_[0]}  = [pdspr %{$short_refs{$_[0]}}];
+  $long_names{$_[0]} = ['<short dispatch>'];
   $contexts{$_[0]}   = paltr @{$long_refs{$_[0]}};
 }
 
@@ -24,6 +26,7 @@ sub defshort($$) {
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
+  unshift @{$long_names{$context}}, $name;
   unshift @{$long_refs{$context}}, $_[1];
 }
 
@@ -40,8 +43,11 @@ represent:
   plambda(context): a lambda-list: [ chain ]
   pcli(context):    a complete command-line within the context
 
+sub psuffix($)    {prep $contexts{$_[0]}}
 sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
 sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
+sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
+
 sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 

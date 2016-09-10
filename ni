@@ -91,7 +91,7 @@ lib core/jsplot
 lib core/hadoop
 lib core/pyspark
 lib doc
-78 util.pl.sdoc
+80 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -113,6 +113,8 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+';
 sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
 sub noise_str($) {join '', map noise_char, 1..$_[0]}
+
+sub abbrev($$) {length($_[0]) < $_[1] ? $_[0] : substr($_[0], 0, $_[1] - 3) . '...'}
 
 Module loading.
 ni can include .pm files in its resource stream, which contain Perl code but
@@ -170,7 +172,7 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-29 dev.pl.sdoc
+31 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
 
@@ -186,6 +188,8 @@ sub dev_inspect($;\%) {
   delete $$refs{$x};
   $r;
 }
+
+sub dev_inspect_nonl($) {(my $r = dev_inspect $_[0]) =~ s/\s+/ /g; $r}
 
 sub dev_trace($) {
   my ($fname) = @_;
@@ -404,7 +408,7 @@ use constant filename => palt prc '^file:(.+)', tempfile, gc_tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';
-48 cli.pl.sdoc
+54 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -413,12 +417,14 @@ about is the long/short option dispatch, which looks like this:
 | option = alt @longs, dsp %shorts
 
 our %contexts;
+our %long_names;
 our %long_refs;
 our %short_refs;
 
 sub defcontext($) {
   $short_refs{$_[0]} = {};
   $long_refs{$_[0]}  = [pdspr %{$short_refs{$_[0]}}];
+  $long_names{$_[0]} = ['<short dispatch>'];
   $contexts{$_[0]}   = paltr @{$long_refs{$_[0]}};
 }
 
@@ -431,6 +437,7 @@ sub defshort($$) {
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
+  unshift @{$long_names{$context}}, $name;
   unshift @{$long_refs{$context}}, $_[1];
 }
 
@@ -447,8 +454,11 @@ represent:
   plambda(context): a lambda-list: [ chain ]
   pcli(context):    a complete command-line within the context
 
+sub psuffix($)    {prep $contexts{$_[0]}}
 sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
 sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
+sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
+
 sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 
@@ -918,8 +928,8 @@ deflong '/meta_help', pmap q{meta_help_op $_}, prc '//help/?(.*)';
 
 defoperator 'meta_options', q{
   for my $c (sort keys %contexts) {
-    printf "%s\tshort\t%s\t%s\n", $c, $_, sgr dev_inspect($short_refs{$c}->{$_}), qr/\n/, ' ' for sort keys %{$short_refs{$c}};
-    printf "%s\tlong\t%s\t%s\n",  $c,     sgr dev_inspect($_),                    qr/\n/, ' ' for           @{$long_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
   }
 };
 
@@ -1977,7 +1987,7 @@ defoperator 'checkpoint', q{
   sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
 };
 
-defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, plambda '';
+defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, pqfn '';
 1 core/gen/lib
 gen.pl.sdoc
 34 core/gen/gen.pl.sdoc
@@ -2090,9 +2100,11 @@ sub json_encode($) {
 }
 1 core/net/lib
 net.pl.sdoc
-13 core/net/net.pl.sdoc
+14 core/net/net.pl.sdoc
 Networking stuff.
-SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere.
+SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
+not need to be installed on the remote system, nor does its filesystem need to
+be writable.
 
 defoperator ssh => q{
   my ($host, $lambda) = @_;
@@ -2102,8 +2114,7 @@ defoperator ssh => q{
   safewrite $fh, $stdin;
 };
 
-deflong '/ssh', pmap q{ssh_op $$_[0], $$_[1]},
-                pseq prc 'ssh:([^][]*)', plambda '';
+defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq prc '[^][]*', pqfn '';
 1 core/col/lib
 col.pl.sdoc
 73 core/col/col.pl.sdoc
@@ -2904,7 +2915,7 @@ defcontext 'sql';
 use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt plambda 'sql';
+                 pseq sql_table, popt pqfn 'sql';
 
 our @sql_row_alt;
 our @sql_join_alt = (
@@ -3394,7 +3405,7 @@ hadoop.pl.sdoc
 Hadoop contexts.
 1 core/pyspark/lib
 pyspark.pl.sdoc
-62 core/pyspark/pyspark.pl.sdoc
+61 core/pyspark/pyspark.pl.sdoc
 Pyspark interop.
 We need to define a context for CLI arguments so we can convert ni pipelines
 into pyspark code. This ends up being fairly straightforward because Spark
@@ -3419,8 +3430,7 @@ defcontext 'pyspark';
 
 use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
 
-our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_},
-                   palt plambda 'pyspark', pseries 'pyspark';
+our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
 
 our @pyspark_row_alt = (
   (pmap q{gen "%v.sample(False, $_)"}, integer),
@@ -3828,7 +3838,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 2 doc/options.md
 # Complete ni operator listing
 ## 
-324 doc/perl.md
+353 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -4153,6 +4163,35 @@ Here's what's going on.
     - `&& %1` is a way to return the hash reference as the reduced value (since
       we're modifying it in place). We need to do this without using a comma
       because each reducer function is evaluated in list context.
+
+Of course, it's a lot easier to use the streaming count operator:
+
+```bash
+$ ni /etc/passwd FWpsplit// r/[a-z]/CfBA
+a	39
+b	36
+c	14
+d	13
+e	17
+f	1
+g	11
+h	20
+i	46
+k	3
+l	19
+m	14
+n	50
+o	25
+p	15
+r	24
+s	51
+t	15
+u	17
+v	12
+w	12
+x	23
+y	12
+```
 181 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
@@ -4335,7 +4374,7 @@ $ ni word-list Cr10             # sort first to group words
 1	AUTHORS
 1	BE
 ```
-33 doc/sql.md
+35 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
 queries. We'll need to define a SQL connection profile in order to use it:
@@ -4364,12 +4403,14 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 $ ni --lib sqlite-profile QStest.db foo[wx=3]
 3	4
-$ ni --lib sqlite-profile QStest.db foo[Ox]
+$ ni --lib sqlite-profile QStest.db foo wx=3
+3	4
+$ ni --lib sqlite-profile QStest.db foo Ox
 5	6
 3	4
 1	2
 ```
-251 doc/stream.md
+263 doc/stream.md
 # Stream operations
 ```bash
 $ echo test > foo
@@ -4615,6 +4656,18 @@ $ ni :biglist[n100000Z]r5
 4
 5
 $ ni :biglist[n100000Z]r5
+1
+2
+3
+4
+5
+```
+
+Checkpointing, like most operators that accept lambda expressions, can also be
+written with the lambda implicit:
+
+```bash
+$ ni :biglist n100000Z r5
 1
 2
 3

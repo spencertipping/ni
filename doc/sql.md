@@ -26,7 +26,9 @@ INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
 $ ni --lib sqlite-profile QStest.db foo[wx=3]
 3	4
-$ ni --lib sqlite-profile QStest.db foo[Ox]
+$ ni --lib sqlite-profile QStest.db foo wx=3
+3	4
+$ ni --lib sqlite-profile QStest.db foo Ox
 5	6
 3	4
 1	2
