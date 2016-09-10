@@ -81,10 +81,20 @@ Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
-use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@:(\w*)';
+our @files_to_gc;
 
-use constant filename => palt prc '^file:(.+)', tempfile,
+c
+END {unlink $_ for @files_to_gc}
+
+use constant tmpdir      => dor $ENV{TMPDIR}, '/tmp';
+use constant tempfile    => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
+use constant gc_tempfile => pmap q{
+  my $f = tmpdir . "/ni-gc-$<-$_";
+  push @files_to_gc, $f;
+  $f;
+}, prx '@#(\w*)';
+
+use constant filename => palt prc '^file:(.+)', tempfile, gc_tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';

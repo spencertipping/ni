@@ -169,11 +169,16 @@ You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, the ni subprocess won't receive anything on its standard input.
 
+sub sni_exec_list(@) {
+  my $stdin = image_with 'transient/op' => json_encode([@_]);
+  ($stdin, qw|perl - --internal/operate transient/op|);
+}
+
 sub sni(@) {
-  my @args = @_;
+  my ($stdin, @exec_list) = sni_exec_list @_;
   soproc {
-    open my $fh, '| perl - --internal/operate transient/op'
+    open my $fh, "| " . shell_quote @exec_list
       or die "ni: sni failed to fork to perl: $!";
-    syswrite $fh, image_with 'transient/op' => json_encode([@args]);
+    safewrite $fh, $stdin;
   };
 }

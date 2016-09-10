@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-40 ni.map.sdoc
+41 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -76,6 +76,7 @@ lib core/deps
 lib core/checkpoint
 lib core/gen
 lib core/json
+lib core/net
 lib core/col
 lib core/row
 lib core/facet
@@ -302,7 +303,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-90 common.pl.sdoc
+100 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -386,10 +387,20 @@ Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
-use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile => pmap q{tmpdir . "/ni-$$-$_"}, prx '^@:(\w*)';
+our @files_to_gc;
 
-use constant filename => palt prc '^file:(.+)', tempfile,
+c
+END {unlink $_ for @files_to_gc}
+
+use constant tmpdir      => dor $ENV{TMPDIR}, '/tmp';
+use constant tempfile    => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
+use constant gc_tempfile => pmap q{
+  my $f = tmpdir . "/ni-gc-$<-$_";
+  push @files_to_gc, $f;
+  $f;
+}, prx '@#(\w*)';
+
+use constant filename => palt prc '^file:(.+)', tempfile, gc_tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';
@@ -595,7 +606,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-179 core/stream/pipeline.pl.sdoc
+184 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -767,12 +778,17 @@ You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, the ni subprocess won't receive anything on its standard input.
 
+sub sni_exec_list(@) {
+  my $stdin = image_with 'transient/op' => json_encode([@_]);
+  ($stdin, qw|perl - --internal/operate transient/op|);
+}
+
 sub sni(@) {
-  my @args = @_;
+  my ($stdin, @exec_list) = sni_exec_list @_;
   soproc {
-    open my $fh, '| perl - --internal/operate transient/op'
+    open my $fh, "| " . shell_quote @exec_list
       or die "ni: sni failed to fork to perl: $!";
-    syswrite $fh, image_with 'transient/op' => json_encode([@args]);
+    safewrite $fh, $stdin;
   };
 }
 97 core/stream/ops.pl.sdoc
@@ -2072,6 +2088,22 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
+1 core/net/lib
+net.pl.sdoc
+13 core/net/net.pl.sdoc
+Networking stuff.
+SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere.
+
+defoperator ssh => q{
+  my ($host, $lambda) = @_;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  open my $fh, "| ssh " . shell_quote($host, [@exec])
+    or die "ni: ssh failed to fork: $!";
+  safewrite $fh, $stdin;
+};
+
+deflong '/ssh', pmap q{ssh_op $$_[0], $$_[1]},
+                pseq prc 'ssh:([^][]*)', plambda '';
 1 core/col/lib
 col.pl.sdoc
 73 core/col/col.pl.sdoc

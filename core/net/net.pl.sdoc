@@ -1,0 +1,13 @@
+Networking stuff.
+SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere.
+
+defoperator ssh => q{
+  my ($host, $lambda) = @_;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  open my $fh, "| ssh " . shell_quote($host, [@exec])
+    or die "ni: ssh failed to fork: $!";
+  safewrite $fh, $stdin;
+};
+
+deflong '/ssh', pmap q{ssh_op $$_[0], $$_[1]},
+                pseq prc 'ssh:([^][]*)', plambda '';
