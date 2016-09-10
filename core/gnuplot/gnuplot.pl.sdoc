@@ -6,7 +6,7 @@ defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator gnuplot => q{
   my ($args) = @_;
-  stee \*STDIN, siproc {exec 'gnuplot', '-persist', '-e', $args}, \*STDOUT;
+  exec 'gnuplot', '-persist', '-e', $args;
 };
 
 defplotalt 'g', pmap q{gnuplot_op $_}, $contexts{gnuplot};

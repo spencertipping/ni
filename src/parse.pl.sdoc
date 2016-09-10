@@ -86,7 +86,12 @@ BEGIN {
          my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
-sub pn($@) {my ($n, @ps) = @_; pmap fn "\$\$_[$n]", pseq @ps}
+sub pn($@)
+{ my ($n, @ps) = @_;
+  'ARRAY' eq ref $n ? pmap fn "[\@\$_[" . join(',', @$n) . "]]", pseq @ps
+                    : pmap fn "\$\$_[$n]", pseq @ps }
+
+sub pc($) {pn 0, $_[0], popt pempty}
 
 Regex parsing.
 Consumes the match, returning either the matched text or the first match group

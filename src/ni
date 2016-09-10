@@ -32,8 +32,8 @@ sub ni::boot_header
 sub ni::unsdoc
 { join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0] }
 
-sub ni::eval($$)
-{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
+sub ni::eval($;$)
+{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1] || "anon {$_[0]}");
   my @r = eval "package ni;$_[0]";
   $@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg, die $@ if $@;
   @r }

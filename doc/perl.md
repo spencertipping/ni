@@ -326,7 +326,7 @@ Here's what's going on.
 Of course, it's a lot easier to use the streaming count operator:
 
 ```bash
-$ ni /etc/passwd FWpsplit// r/[a-z]/CfBA
+$ ni /etc/passwd FWpsplit// r/[a-z]/Cx
 a	39
 b	36
 c	14

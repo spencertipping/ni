@@ -64,37 +64,35 @@ Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
-use constant neval   => pmap q{eval}, prx '=([^]]+)';
+A parsed column spec is an N-element array: [floor, cols...]. `floor` indicates
+the first column that would be selected by a `.` ("the rest").
+
+use constant neval   => pmap q{eval}, prx '=([^]=]+)';
 use constant integer => palt pmap(q{int},       neval),
                              pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                             pmap(q{0 + $_},    prx '\d+');
+                             pmap(q{0 + $_},    prx '\d+(?:[eE]\d+)?');
 use constant float   => pmap q{0 + $_}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => palt neval, integer, float;
 
-use constant colspec1 => prx '[A-Z]';
-use constant colspec  => prx '[-A-Z.]+';
+use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';
+use constant colspec_rest  => pmap q{-1}, prx '\.';
+use constant colspec_range => pmap q{[$$_[0] .. $$_[2]]},
+                              pseq colspec1, prx '-', colspec1;
+
+use constant colspec => pmap q{[max(@$_) + 1, @$_]},
+                        pmap q{[map ref() ? @$_ : $_, @$_]},
+                        prep palt(colspec_range, colspec1, colspec_rest), 1;
 
 Filenames, in general.
 Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
-our @files_to_gc;
-
-c
-END {unlink $_ for @files_to_gc}
-
-use constant tmpdir      => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile    => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant gc_tempfile => pmap q{
-  my $f = tmpdir . "/ni-gc-$<-$_";
-  push @files_to_gc, $f;
-  $f;
-}, prx '@#(\w*)';
-
-use constant filename => palt prc '^file:(.+)', tempfile, gc_tempfile,
+use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
+use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
+use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';

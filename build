@@ -16,6 +16,7 @@ cd $(dirname $0)
 
 ./ni --internal/lib core/col
 ./ni --internal/lib core/row
+./ni --internal/lib core/cell
 ./ni --internal/lib core/facet
 
 ./ni --internal/lib core/pl

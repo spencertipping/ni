@@ -8,7 +8,7 @@ var c  = $('#screen');
 var t  = $('#transform');
 var pr = $('#preview');
 
-t.val(document.location.hash.substr(1));
+t.val(decodeURIComponent(document.location.hash.substr(1)));
 
 var onscreen_ctx = c[0].getContext('2d');
 
@@ -69,8 +69,8 @@ two reasons: first, to decrease view latency; and second, to run in constant
 space. (The client does store some data, but there's an upper bound on how
 much.)
 
-t.keydown(function (e) {if (e.which === 13) refresh()});
-t.keyup  (function (e) {document.location.hash = t.val()});
+t.keydown(function (e) {if (e.which === 13 && e.shiftKey) {refresh(); return false}});
+t.keyup  (function (e) {document.location.hash = encodeURIComponent(t.val())});
 
 var incoming     = '';
 var anything_new = false;

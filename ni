@@ -32,8 +32,8 @@ sub ni::boot_header
 sub ni::unsdoc
 { join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0] }
 
-sub ni::eval($$)
-{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1]);
+sub ni::eval($;$)
+{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1] || "anon {$_[0]}");
   my @r = eval "package ni;$_[0]";
   $@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg, die $@ if $@;
   @r }
@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-41 ni.map.sdoc
+42 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -79,6 +79,7 @@ lib core/json
 lib core/net
 lib core/col
 lib core/row
+lib core/cell
 lib core/facet
 lib core/pl
 lib core/lisp
@@ -91,13 +92,14 @@ lib core/jsplot
 lib core/hadoop
 lib core/pyspark
 lib doc
-80 util.pl.sdoc
+81 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
 
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
+sub swap($$) {@_[0, 1] = @_[1, 0]}
 
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
@@ -204,7 +206,7 @@ sub dev_trace($) {
     @r;
   };
 }
-102 parse.pl.sdoc
+107 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -293,7 +295,12 @@ BEGIN {
          my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
-sub pn($@) {my ($n, @ps) = @_; pmap fn "\$\$_[$n]", pseq @ps}
+sub pn($@)
+{ my ($n, @ps) = @_;
+  'ARRAY' eq ref $n ? pmap fn "[\@\$_[" . join(',', @$n) . "]]", pseq @ps
+                    : pmap fn "\$\$_[$n]", pseq @ps }
+
+sub pc($) {pn 0, $_[0], popt pempty}
 
 Regex parsing.
 Consumes the match, returning either the matched text or the first match group
@@ -307,7 +314,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-100 common.pl.sdoc
+98 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -374,37 +381,35 @@ Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.
 
-use constant neval   => pmap q{eval}, prx '=([^]]+)';
+A parsed column spec is an N-element array: [floor, cols...]. `floor` indicates
+the first column that would be selected by a `.` ("the rest").
+
+use constant neval   => pmap q{eval}, prx '=([^]=]+)';
 use constant integer => palt pmap(q{int},       neval),
                              pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                             pmap(q{0 + $_},    prx '\d+');
+                             pmap(q{0 + $_},    prx '\d+(?:[eE]\d+)?');
 use constant float   => pmap q{0 + $_}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => palt neval, integer, float;
 
-use constant colspec1 => prx '[A-Z]';
-use constant colspec  => prx '[-A-Z.]+';
+use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';
+use constant colspec_rest  => pmap q{-1}, prx '\.';
+use constant colspec_range => pmap q{[$$_[0] .. $$_[2]]},
+                              pseq colspec1, prx '-', colspec1;
+
+use constant colspec => pmap q{[max(@$_) + 1, @$_]},
+                        pmap q{[map ref() ? @$_ : $_, @$_]},
+                        prep palt(colspec_range, colspec1, colspec_rest), 1;
 
 Filenames, in general.
 Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
 there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
-our @files_to_gc;
-
-c
-END {unlink $_ for @files_to_gc}
-
-use constant tmpdir      => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile    => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant gc_tempfile => pmap q{
-  my $f = tmpdir . "/ni-gc-$<-$_";
-  push @files_to_gc, $f;
-  $f;
-}, prx '@#(\w*)';
-
-use constant filename => palt prc '^file:(.+)', tempfile, gc_tempfile,
+use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
+use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
+use constant filename => palt prc '^file:(.+)', tempfile,
                               pcond q{-e}, prc '^[^][]+';
 
 use constant nefilename => palt filename, prc '^[^][]+';
@@ -537,7 +542,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-75 main.pl.sdoc
+80 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -563,6 +568,11 @@ defclispecial '--dev/self', q{print "$ni::self{$_[0]}\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
   parse pcli '', @_;
+};
+
+defclispecial '--dev/parse-one', q{
+  dev_trace 'ni::parse';
+  parse ni::eval($_[0], $_[0]), @_[1..$#_];
 };
 
 Extensions.
@@ -901,16 +911,16 @@ defshort '/ZN', pk sink_null_op();
 defshort '/ZD', pk decode_op();
 1 core/meta/lib
 meta.pl.sdoc
-32 core/meta/meta.pl.sdoc
+41 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
-defoperator 'meta_image', q{sappend {print image, "\n"}};
-defoperator 'meta_keys',  q{sappend {print "$_\n" for @keys}};
-defoperator 'meta_key',   q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
+defoperator meta_image => q{sappend {print image, "\n"}};
+defoperator meta_keys  => q{sappend {print "$_\n" for @keys}};
+defoperator meta_key   => q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
 
-defoperator 'meta_help', q{
+defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
   sappend {print $self{"doc/$topic.md"}, "\n"};
@@ -926,7 +936,7 @@ because it's more straightforward to model these as data sources.
 
 deflong '/meta_help', pmap q{meta_help_op $_}, prc '//help/?(.*)';
 
-defoperator 'meta_options', q{
+defoperator meta_options => q{
   for my $c (sort keys %contexts) {
     printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
     printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
@@ -934,6 +944,15 @@ defoperator 'meta_options', q{
 };
 
 deflong '/meta_options', pmap q{meta_options_op}, prc '//options';
+
+Inspection.
+This lets you get details about specific operators or parsing contexts.
+
+defoperator meta_op  => q{print "sub {$operators{$_[0]}}\n"};
+defoperator meta_ops => q{print "$_\n" for sort keys %operators};
+
+deflong '/meta_op',  pmap q{meta_op_op $_}, prc '//op/(.+)';
+deflong '/meta_ops', pmap q{meta_ops_op},   prc '//op[s/]$';
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2117,38 +2136,39 @@ defoperator ssh => q{
 defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq prc '[^][]*', pqfn '';
 1 core/col/lib
 col.pl.sdoc
-73 core/col/col.pl.sdoc
+84 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
 Column selection.
 Normally perl is fast at text manipulation, but on most UNIX systems
-`/usr/bin/cut` is at least an order of magnitude faster. We can use it if two
-conditions are met:
-
-| 1. All addressed columns are at index 8 (9 if one-based) or lower.
-  2. The addressed columns are in ascending order.
+`/usr/bin/cut` is at least an order of magnitude faster. We can use it if the
+column access order is strictly ascending and has no duplicates.
 
 sub col_cut {
   my ($floor, $rest, @fs) = @_;
   exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
-our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
+TODO optimization: limit the number of elements returned by split(). We can do
+this because we have the full column list available, though it may be more
+trouble than it's worth if we have to contend with stray tabs in the output.
+
+use constant cols_gen =>
+  gen q{@_ = split /\t/, $_, %limit; print join "\t", @_[%is]};
 
 defoperator cols => q{
-  # TODO: this function shouldn't be parsing column specs
-  my $ind   = grep /[^A-I.]/, @_;
-  my $asc   = join('', @_) eq join('', sort @_);
-  my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
-  my $floor = (sort {$b <=> $a} @cols)[0] + 1;
-  return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
-
-  my $body = $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols);
-  eval qq{while (<STDIN>) {$body}};
+  my ($floor, @cs) = @_;
+  my $asc = join('', @cs) eq join('', sort @cs);
+  my %dup; ++$dup{$_} for @cs;
+  return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
+    if $asc && !grep $_ > 1, values %dup;
+  exec 'perl', '-lne',
+       cols_gen->(limit => $floor + 1,
+                  is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);
 };
 
-our @col_alt = pmap q{cols_op split //, $_}, colspec;
+our @col_alt = pmap q{cols_op @$_}, colspec;
 
 defshort '/f', paltr @col_alt;
 
@@ -2158,9 +2178,19 @@ Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
 is that you're swapping the specified column(s) into the first N position(s).
 
-sub ni_colswap(@) {
-  # TODO after we do the colspec parsing refactor
-}
+defoperator colswap => q{
+  my ($floor, @cs) = @_;
+  my %cs; ++$cs{$_} for @cs;
+  die "ni colswap: . doesn't make sense"    if grep $_ == -1, @cs;
+  die "ni colswap: can't duplicate columns" if grep $_ > 1, values %cs;
+  my $n = 0;
+  my @cols = 0..$floor-1;
+  swap $cols[$n++], $cols[$_] for @cs;
+  exec 'perl', '-lne', cols_gen->(limit => $floor + 1,
+                                  is    => join ',', @cols, "$floor..\$#_");
+};
+
+defshort '/x', pmap q{ref $_ ? colswap_op @$_ : colswap_op 2, 1}, popt colspec;
 
 Column splitting.
 Adapters for input formats that don't have tab delimiters. Common ones are,
@@ -2243,7 +2273,7 @@ modifiers, which are optional, are any of these:
 use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
 
 sub sort_args {'-t', "\t",
-               map {my $i = ord($$_[0]) - 64;
+               map {my $i = $$_[0] + 1;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
 
@@ -2270,6 +2300,153 @@ defoperator count => q{
 
 defshort '/c', pmap q{count_op},                pnone;
 defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
+2 core/cell/lib
+murmurhash.pl.sdoc
+cell.pl.sdoc
+28 core/cell/murmurhash.pl.sdoc
+Pure-Perl MurmurHash3_32 implementation.
+This is used by some intification operators and based on the Wikipedia
+implementation. It's limited to 32 bits because otherwise ni will fail on 32-bit
+machines.
+
+use constant murmur_c1 => 0xcc9e2d51;
+use constant murmur_c2 => 0x1b873593;
+use constant murmur_n  => 0xe6546b64;
+
+sub murmurhash3($;$) {
+  use integer;
+  local $_;
+  my $h = $_[1] || 0;
+
+  for (unpack 'L*', $_[0]) {
+    $_ *= murmur_c1;
+    $h ^= ($_ << 15 | $_ >> 17 & 0x7fff) * murmur_c2 & 0xffffffff;
+    $h  = ($h << 13 | $h >> 19 & 0x1fff) * 5 + murmur_n;
+  }
+
+  my ($r) = unpack 'L<', substr($_[0], ~3 & length $_[0]) . "\0\0\0\0";
+  $r *= murmur_c1;
+  $h ^= ($r << 15 | $r >> 17 & 0x7fff) * murmur_c2 & 0xffffffff ^ length $_[0];
+  $h &= 0xffffffff;
+  $h  = ($h ^ $h >> 16) * 0x85ebca6b & 0xffffffff;
+  $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
+  return $h ^ $h >> 16;
+}
+114 core/cell/cell.pl.sdoc
+Cell-level operators.
+Cell-specific transformations that are often much shorter than the equivalent Perl
+code. They're also optimized for performance.
+
+defcontext 'cell';
+defshort '/,', pqfn 'cell';
+
+use constant cellspec => pmap q{$_ || [1, 0]}, popt colspec;
+
+Codegen.
+Most of these have exactly the same format and take a column spec.
+
+use constant cell_op_gen => gen q{
+  my ($cs, %args) = @_;
+  my ($floor, @cols) = @$cs;
+  my $limit = $floor + 1;
+  %begin;
+  while (<STDIN>) {
+    chomp;
+    my @xs = split /\t/, $_, $limit;
+    %each_line
+    %each for @cols;
+    print join("\t", @xs) . "\n";
+  }
+  %end
+};
+
+sub cell_eval($@) {
+  my ($h, @args) = @_;
+  fn(cell_op_gen->(%$h))->(@args);
+}
+
+Intification.
+Strategies to turn each distinct entry into a number. Particularly useful in a
+plotting context.
+
+defoperator intify_compact => q{
+  cell_eval {args  => 'undef',
+             begin => 'my %ids; my $n = 0',
+             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n)'}, @_;
+};
+
+defoperator intify_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+};
+
+defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec;
+defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec, popt integer;
+
+Numerical transformations.
+Trivial stuff that applies to each cell individually.
+
+use constant log_base => pmap q{$_ || exp 1}, popt number;
+
+defoperator cell_log => q{
+  my ($cs, $base) = @_;
+  my $lb = 1 / log $base;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = log(\$xs[\$_] || 1) * $lb"}, $cs;
+};
+
+defoperator cell_exp => q{
+  my ($cs, $base) = @_;
+  my $eb = log $base;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+};
+
+defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec, log_base;
+defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec, log_base;
+
+use constant jitter_bias => pmap q{dor $_, 0}, popt number;
+use constant jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
+                                                    popt pc number;
+
+defoperator jitter_uniform => q{
+  my ($cs, $mag, $bias) = @_;
+  my $adjust = $bias - $mag / 2;
+  cell_eval {args => 'undef', each => "\$xs[\$_] += rand() * $mag + $adjust"}, $cs;
+};
+
+defshort 'cell/j', pmap q{jitter_uniform_op @$_},
+                   pseq cellspec, jitter_mag, jitter_bias;
+
+use constant quant_spec => pmap q{$_ || 1}, popt number;
+
+defoperator quantize => q{
+  my ($cs, $q) = @_;
+  my $iq = 1 / $q;
+  cell_eval {args => 'undef',
+             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
+};
+
+defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec, quant_spec;
+
+Streaming numeric transformations.
+Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
+not cell operators, but in practice you tend to use them in the same context as
+things like log scaling.
+
+defoperator col_sum => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols',
+             each  => '$xs[$_] = $ns[$_] += $xs[$_]'}, @_;
+};
+
+defoperator col_delta => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols',
+             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
+};
+
+defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec;
+defshort 'cell/d', pmap q{col_delta_op $_}, cellspec;
 1 core/facet/lib
 facet.pl.sdoc
 20 core/facet/facet.pl.sdoc
@@ -3124,7 +3301,7 @@ defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator gnuplot => q{
   my ($args) = @_;
-  stee \*STDIN, siproc {exec 'gnuplot', '-persist', '-e', $args}, \*STDOUT;
+  exec 'gnuplot', '-persist', '-e', $args;
 };
 
 defplotalt 'g', pmap q{gnuplot_op $_}, $contexts{gnuplot};
@@ -3164,7 +3341,7 @@ var c  = $('#screen');
 var t  = $('#transform');
 var pr = $('#preview');
 
-t.val(document.location.hash.substr(1));
+t.val(decodeURIComponent(document.location.hash.substr(1)));
 
 var onscreen_ctx = c[0].getContext('2d');
 
@@ -3225,8 +3402,8 @@ two reasons: first, to decrease view latency; and second, to run in constant
 space. (The client does store some data, but there's an upper bound on how
 much.)
 
-t.keydown(function (e) {if (e.which === 13) refresh()});
-t.keyup  (function (e) {document.location.hash = t.val()});
+t.keydown(function (e) {if (e.which === 13 && e.shiftKey) {refresh(); return false}});
+t.keyup  (function (e) {document.location.hash = encodeURIComponent(t.val())});
 
 var incoming     = '';
 var anything_new = false;
@@ -3345,12 +3522,12 @@ refresh();
 <script>%js</script>
 </head>
 <body>
-<input id='transform'></input>
+<textarea id='transform'></textarea>
 <pre id='preview'></pre>
 <canvas id='screen'></canvas>
 </body>
 </html>
-48 core/jsplot/jsplot.pl.sdoc
+45 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -3383,22 +3560,19 @@ sub jsplot_stream($$@) {
   }
 }
 
-defoperator jsplot_server => q{
-  load 'core/http/ws.pm';
+sub jsplot_server {
   my ($port) = @_;
-  chomp(my @data = <STDIN>);
+  load 'core/http/ws.pm';
   http $port, sub {
     my ($url, $req, $reply) = @_;
-    return print "http://localhost:$port/\n" unless defined $reply;
-    return http_reply $reply, 200, jsplot_html if $url eq '/';
-    return jsplot_stream($reply, $req, @data, shell_unquote $1)
-      if $url =~ /^\/ni\/(.*)/;
-    http_reply $reply, 404, $url;
+    return print "http://localhost:$port/\n"             unless defined $reply;
+    return http_reply $reply, 200, jsplot_html           if $url eq '/';
+    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/(.*)/;
+    return http_reply $reply, 404, $url;
   };
-};
+}
 
-defplotalt 'j', pmap q{[file_write_op, jsplot_server_op $_ || 8090]},
-                popt integer;
+defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
@@ -3480,7 +3654,7 @@ row.md
 sql.md
 stream.md
 tutorial.md
-143 doc/col.md
+167 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -3536,6 +3710,15 @@ $ ni mult-table fAA     # first column, duplicated
 6	6
 7	7
 8	8
+$ ni mult-table fA-D    # first four columns
+1	2	3	4
+2	4	6	8
+3	6	9	12
+4	8	12	16
+5	10	15	20
+6	12	18	24
+7	14	21	28
+8	16	24	32
 ```
 
 You can also choose "the rest of the columns" using `.` within your column
@@ -3561,6 +3744,21 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
+```
+
+## Exchanging
+You can swap columns into leading positions using the `x` operator:
+
+```bash
+$ ni mult-table xC r2   # swap third column into first position
+3	2	1	4	5	6	7	8
+6	4	2	8	10	12	14	16
+$ ni mult-table xGHr2   # swap seventh, eighth columns into first two
+7	8	3	4	5	6	1	2
+14	16	6	8	10	12	2	4
+$ ni mult-table xr2     # swap first two columns
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
 ```
 
 ## Splitting
@@ -3837,7 +4035,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 ```
 2 doc/options.md
 # Complete ni operator listing
-## 
+**TODO**
 353 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
@@ -4167,7 +4365,7 @@ Here's what's going on.
 Of course, it's a lot easier to use the streaming count operator:
 
 ```bash
-$ ni /etc/passwd FWpsplit// r/[a-z]/CfBA
+$ ni /etc/passwd FWpsplit// r/[a-z]/Cx
 a	39
 b	36
 c	14
@@ -4674,11 +4872,11 @@ $ ni :biglist n100000Z r5
 4
 5
 ```
-31 doc/tutorial.md
+35 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
-ni parses its command arguments to build and run a shell pipeline. You can get
+ni parses its command arguments to build and run a data pipeline. You can get
 started by using it like a version of `less` that knows how to decompress
 things, but it can do a lot more; see the topics below.
 
@@ -4696,8 +4894,12 @@ $ ni //help/stream                      # view a help topic
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
 - [facet.md](facet.md)   (`ni //help/facet`):  the faceting operator
+- [visual.md](visual.md) (`ni //help/visual`): visualizing data
 
 ## Reference
+You can use `ni //options` to get a list of all parsing rules ni applies to the
+command line. The output format is a TSV of `context long/short name parser`.
+
 - [options.md](options.md) (`ni //help/options`): every CLI option and
   operator, each with example usage
 

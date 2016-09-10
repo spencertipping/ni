@@ -2,11 +2,11 @@ Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
-defoperator 'meta_image', q{sappend {print image, "\n"}};
-defoperator 'meta_keys',  q{sappend {print "$_\n" for @keys}};
-defoperator 'meta_key',   q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
+defoperator meta_image => q{sappend {print image, "\n"}};
+defoperator meta_keys  => q{sappend {print "$_\n" for @keys}};
+defoperator meta_key   => q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
 
-defoperator 'meta_help', q{
+defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
   sappend {print $self{"doc/$topic.md"}, "\n"};
@@ -22,7 +22,7 @@ because it's more straightforward to model these as data sources.
 
 deflong '/meta_help', pmap q{meta_help_op $_}, prc '//help/?(.*)';
 
-defoperator 'meta_options', q{
+defoperator meta_options => q{
   for my $c (sort keys %contexts) {
     printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
     printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
@@ -30,3 +30,12 @@ defoperator 'meta_options', q{
 };
 
 deflong '/meta_options', pmap q{meta_options_op}, prc '//options';
+
+Inspection.
+This lets you get details about specific operators or parsing contexts.
+
+defoperator meta_op  => q{print "sub {$operators{$_[0]}}\n"};
+defoperator meta_ops => q{print "$_\n" for sort keys %operators};
+
+deflong '/meta_op',  pmap q{meta_op_op $_}, prc '//op/(.+)';
+deflong '/meta_ops', pmap q{meta_ops_op},   prc '//op[s/]$';

@@ -30,19 +30,16 @@ sub jsplot_stream($$@) {
   }
 }
 
-defoperator jsplot_server => q{
-  load 'core/http/ws.pm';
+sub jsplot_server {
   my ($port) = @_;
-  chomp(my @data = <STDIN>);
+  load 'core/http/ws.pm';
   http $port, sub {
     my ($url, $req, $reply) = @_;
-    return print "http://localhost:$port/\n" unless defined $reply;
-    return http_reply $reply, 200, jsplot_html if $url eq '/';
-    return jsplot_stream($reply, $req, @data, shell_unquote $1)
-      if $url =~ /^\/ni\/(.*)/;
-    http_reply $reply, 404, $url;
+    return print "http://localhost:$port/\n"             unless defined $reply;
+    return http_reply $reply, 200, jsplot_html           if $url eq '/';
+    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/(.*)/;
+    return http_reply $reply, 404, $url;
   };
-};
+}
 
-defplotalt 'j', pmap q{[file_write_op, jsplot_server_op $_ || 8090]},
-                popt integer;
+defclispecial '--js', q{jsplot_server $_[0] || 8090};

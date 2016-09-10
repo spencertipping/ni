@@ -47,7 +47,7 @@ modifiers, which are optional, are any of these:
 use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
 
 sub sort_args {'-t', "\t",
-               map {my $i = ord($$_[0]) - 64;
+               map {my $i = $$_[0] + 1;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
 

@@ -3,32 +3,33 @@ In root context, ni interprets columns as being tab-delimited.
 
 Column selection.
 Normally perl is fast at text manipulation, but on most UNIX systems
-`/usr/bin/cut` is at least an order of magnitude faster. We can use it if two
-conditions are met:
-
-| 1. All addressed columns are at index 8 (9 if one-based) or lower.
-  2. The addressed columns are in ascending order.
+`/usr/bin/cut` is at least an order of magnitude faster. We can use it if the
+column access order is strictly ascending and has no duplicates.
 
 sub col_cut {
   my ($floor, $rest, @fs) = @_;
   exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
-our $cut_gen = gen q{chomp; @_ = split /\t/; print join("\t", @_[%is]), "\n"};
+TODO optimization: limit the number of elements returned by split(). We can do
+this because we have the full column list available, though it may be more
+trouble than it's worth if we have to contend with stray tabs in the output.
+
+use constant cols_gen =>
+  gen q{@_ = split /\t/, $_, %limit; print join "\t", @_[%is]};
 
 defoperator cols => q{
-  # TODO: this function shouldn't be parsing column specs
-  my $ind   = grep /[^A-I.]/, @_;
-  my $asc   = join('', @_) eq join('', sort @_);
-  my @cols  = map /^\.$/ ? -1 : ord($_) - 65, @_;
-  my $floor = (sort {$b <=> $a} @cols)[0] + 1;
-  return col_cut $floor, scalar(grep $_ eq '.', @_), @cols if $ind && $asc;
-
-  my $body = $cut_gen->(is => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cols);
-  eval qq{while (<STDIN>) {$body}};
+  my ($floor, @cs) = @_;
+  my $asc = join('', @cs) eq join('', sort @cs);
+  my %dup; ++$dup{$_} for @cs;
+  return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
+    if $asc && !grep $_ > 1, values %dup;
+  exec 'perl', '-lne',
+       cols_gen->(limit => $floor + 1,
+                  is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);
 };
 
-our @col_alt = pmap q{cols_op split //, $_}, colspec;
+our @col_alt = pmap q{cols_op @$_}, colspec;
 
 defshort '/f', paltr @col_alt;
 
@@ -38,9 +39,19 @@ Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
 is that you're swapping the specified column(s) into the first N position(s).
 
-sub ni_colswap(@) {
-  # TODO after we do the colspec parsing refactor
-}
+defoperator colswap => q{
+  my ($floor, @cs) = @_;
+  my %cs; ++$cs{$_} for @cs;
+  die "ni colswap: . doesn't make sense"    if grep $_ == -1, @cs;
+  die "ni colswap: can't duplicate columns" if grep $_ > 1, values %cs;
+  my $n = 0;
+  my @cols = 0..$floor-1;
+  swap $cols[$n++], $cols[$_] for @cs;
+  exec 'perl', '-lne', cols_gen->(limit => $floor + 1,
+                                  is    => join ',', @cols, "$floor..\$#_");
+};
+
+defshort '/x', pmap q{ref $_ ? colswap_op @$_ : colswap_op 2, 1}, popt colspec;
 
 Column splitting.
 Adapters for input formats that don't have tab delimiters. Common ones are,

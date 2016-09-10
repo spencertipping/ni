@@ -25,6 +25,11 @@ defclispecial '--dev/parse', q{
   parse pcli '', @_;
 };
 
+defclispecial '--dev/parse-one', q{
+  dev_trace 'ni::parse';
+  parse ni::eval($_[0], $_[0]), @_[1..$#_];
+};
+
 Extensions.
 Options to extend and modify the ni image.
 

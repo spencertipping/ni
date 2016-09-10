@@ -1,7 +1,7 @@
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
-ni parses its command arguments to build and run a shell pipeline. You can get
+ni parses its command arguments to build and run a data pipeline. You can get
 started by using it like a version of `less` that knows how to decompress
 things, but it can do a lot more; see the topics below.
 
@@ -19,8 +19,12 @@ $ ni //help/stream                      # view a help topic
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
 - [facet.md](facet.md)   (`ni //help/facet`):  the faceting operator
+- [visual.md](visual.md) (`ni //help/visual`): visualizing data
 
 ## Reference
+You can use `ni //options` to get a list of all parsing rules ni applies to the
+command line. The output format is a TSV of `context long/short name parser`.
+
 - [options.md](options.md) (`ni //help/options`): every CLI option and
   operator, each with example usage
 

@@ -53,6 +53,15 @@ $ ni mult-table fAA     # first column, duplicated
 6	6
 7	7
 8	8
+$ ni mult-table fA-D    # first four columns
+1	2	3	4
+2	4	6	8
+3	6	9	12
+4	8	12	16
+5	10	15	20
+6	12	18	24
+7	14	21	28
+8	16	24	32
 ```
 
 You can also choose "the rest of the columns" using `.` within your column
@@ -78,6 +87,21 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
+```
+
+## Exchanging
+You can swap columns into leading positions using the `x` operator:
+
+```bash
+$ ni mult-table xC r2   # swap third column into first position
+3	2	1	4	5	6	7	8
+6	4	2	8	10	12	14	16
+$ ni mult-table xGHr2   # swap seventh, eighth columns into first two
+7	8	3	4	5	6	1	2
+14	16	6	8	10	12	2	4
+$ ni mult-table xr2     # swap first two columns
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
 ```
 
 ## Splitting
