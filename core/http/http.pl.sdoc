@@ -40,8 +40,9 @@ sub http($$) {
   &$f;
   for (; $_ = '', safeaccept $client, $server; close $client) {
     next if cfork;
+    my $n = 1;
     close $server;
-    sysread $client, $_, 8192, length until /\r?\n\r?\n/;
+    $n = saferead $client, $_, 8192, length until /\r?\n\r?\n/ || !$n;
     &$f(uri_decode(/^GET (.*) HTTP\//), $_, $client);
     exit;
   }

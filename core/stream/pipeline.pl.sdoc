@@ -34,16 +34,16 @@ interrupted reads/writes. We run the risk of interruption because we have a
 SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
 handle this case properly.
 
-sub saferead($$$) {
-  my $n = undef;
+sub saferead($$$;$) {
+  my $n;
   do {
-    return $n if defined($n = sysread $_[0], $_[1], $_[2]);
+    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3]);
   } while $!{EINTR};
   return undef;
 }
 
 sub safewrite($$) {
-  my $n = undef;
+  my $n;
   do {
     return $n if defined($n = syswrite $_[0], $_[1]);
   } while $!{EINTR};

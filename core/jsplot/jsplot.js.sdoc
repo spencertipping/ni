@@ -6,24 +6,29 @@ $(function () {
 var w  = $(window);
 var c  = $('#screen').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false);
 var t  = $('#transform');
+var st = $('#status');
 var pr = $('#preview');
 
 var size_label = $('#sizelabel');
+
+$('.autohide').click(function () {$(this).toggleClass('pinned')});
 
 t.val(decodeURIComponent(document.location.hash.substr(1)));
 
 var ctx = c[0].getContext('2d');
 
 var wwl, whl;
-setInterval(function () {
-  var ww = w.width(), wh = w.height();
+var resize_stuff = function () {
+  var ww = w.width() - 2, wh = w.height() - 2;
+  var th = t.height() + 2;
+  pr.css({top: th + 1, height: wh - th - 2});
+  t .css({height: 0});
+  t .css({width: ww, height: t[0].scrollHeight - 2});
   if (ww !== wwl || wh !== whl) {
-    t .css({width: ww - 2 * t.offset().left});
-    pr.css({width: ww, height: wh, top: t.height() + 2 * t.offset().top});
-    c .attr({width: wwl = ww, height: whl = wh});
+    c.attr({width: wwl = ww, height: whl = wh});
     anything_new = true;
   }
-}, 50);
+};
 
 View coordinates.
 Stored as a transformation matrix + a base viewport distance.
@@ -119,10 +124,7 @@ much.)
 t.keydown(function (e) {if (e.which === 13 && !e.shiftKey) {refresh(); return false}});
 t.keyup  (function (e) {document.location.hash = encodeURIComponent(t.val())});
 
-var incoming       = '';
-var anything_new   = false;
-var last_data_time = 0;
-
+var anything_new = false;
 var ws = null;
 var refresh = function () {
   var ws_url = document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '') + 'ni/';
@@ -138,17 +140,14 @@ var refresh = function () {
 
   var continuation = '';
   var size = 0;
+  var incoming = '';
+  var last_data_time = 0;
+  var dim_status_timeout = null;
 
   ws.onmessage = function (e) {
     var m = continuation + e.data;
-
-    if (incoming.length < 65536) {
-      incoming += m;
-      pr.toggle(!/^[-+\.0-9eE\s]+\t[-+\.0-9eE\s]+/.test(incoming));
-      pr.text(incoming.split(/\n/).slice(0, whl / 10 | 0)
-                                  .map(function (x) {return x.substr(0, wwl / 5 | 0)})
-                                  .join('\n'));
-    }
+    if (incoming.length < 65536)
+      pr.text(incoming += e.data.substr(0, 65536));
 
     if (+new Date - last_data_time > 1000) {
       anything_new = true;
@@ -162,6 +161,11 @@ var refresh = function () {
       collect_point(lines[i].split(/\t/));
 
     size_label.text(n_points + " : " + ((size += e.data.length) >>> 10) + "K");
+    st.addClass('active');
+    dim_status_timeout == null || clearTimeout(dim_status_timeout);
+    dim_status_timeout = setTimeout(function () {
+      st.removeClass('active');
+    }, 500);
   };
 
   ws.onclose = function () {
@@ -223,6 +227,7 @@ var last_callin = +new Date;
 
 var render = function () {
   requestAnimationFrame(render);
+  resize_stuff();
   if (!anything_new) return;
 
   var t = +new Date;
