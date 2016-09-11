@@ -3489,7 +3489,7 @@ c.mousedown(function (e) {
   mx     = e.pageX;
   my     = e.pageY;
   mshift = e.shiftKey;
-  mctrl  = e.ctrlKey;
+  mctrl  = e.ctrlKey || e.metaKey;
 });
 
 var last_mousemove = 0;
