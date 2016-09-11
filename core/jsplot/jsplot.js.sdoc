@@ -26,8 +26,7 @@ setInterval(function () {
 }, 50);
 
 View coordinates.
-vr = view rotation, vp = view position, vs = view scaling. Everything is done
-in 3D whether we're looking at 2D or 3D data.
+Stored as a transformation matrix + a base viewport distance.
 
 var matrix    = function () {return [1, 0, 0, 0,
                                      0, 1, 0, 0,
@@ -36,7 +35,6 @@ var matrix    = function () {return [1, 0, 0, 0,
 
 var translate = function (x, y, z) {var r = matrix(); r[3] = x; r[7] = y; r[11] = z; return r};
 var scale     = function (x, y, z) {var r = matrix(); r[0] = x; r[5] = y; r[10] = z; return r};
-var rotate    = function (y, x)    {return mm(rotate_y(y), rotate_x(x))};
 
 var rotate_x = function (t) {
   var r = matrix(), s = Math.sin(t), c = Math.cos(t);
@@ -79,8 +77,11 @@ c.mousedown(function (e) {
   mctrl  = e.ctrlKey;
 });
 
+var last_mousemove = 0;
 $(document).mousemove(function (e) {
   if (mx === null) return;
+  if (+new Date - last_mousemove < 30) return;
+  last_mousemove = +new Date;
 
   var hh = wwl / 2;
   var vh = whl / 2;
@@ -91,8 +92,8 @@ $(document).mousemove(function (e) {
   else if (mctrl)
     distance *= Math.exp(2 * (e.pageY - my) / whl);
   else if (mshift)
-    vm = mm(rotate(-(e.pageX - mx) / wwl * Math.PI * 2,
-                    (e.pageY - my) / whl * Math.PI * 2), vm);
+    vm = mm(rotate_x((e.pageY - my) / whl * Math.PI * 2),
+            mm(vm, rotate_y(-(e.pageX - mx) / wwl * Math.PI * 2)));
   else
     vm = mm(translate((e.pageX - mx) / wwl, (my - e.pageY) / whl, 0), vm);
 
@@ -218,12 +219,15 @@ var collect_point = function (p) {
   }
 };
 
-setInterval(function () {
+var last_callin = +new Date;
+
+var render = function () {
+  requestAnimationFrame(render);
   if (!anything_new) return;
-  if (!partial) ctx.clearRect(0, 0, wwl, whl);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
 
   var t = +new Date;
+  if (!partial) ctx.clearRect(0, 0, wwl, whl);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
 
   var sx = 1 / (max_x - min_x || 1);
   var sy = 1 / (max_y - min_y || 1);
@@ -241,8 +245,12 @@ setInterval(function () {
       m20 = cm[8],  m21 = cm[9],  m22 = cm[10], m23 = cm[11] + distance,
       m30 = cm[12], m31 = cm[13], m32 = cm[14], m33 = cm[15];
 
-  for (var i = partial; (i &= 0xff) < 255 && +new Date - t < 15; ++i) {
-    for (; i < n_points; i += 256) {
+  var step = 17;
+  var end  = 255 * step & 0xff;
+
+  var n = Math.min(parsed.length / 4, n_points);
+  for (var i = partial; (i &= 0xff) != end && +new Date - t < 10; i += step) {
+    for (; i < n; i += 256) {
       var x = parsed[i * 4 + 0];
       var y = parsed[i * 4 + 1];
       var z = parsed[i * 4 + 2];
@@ -263,10 +271,13 @@ setInterval(function () {
     }
   }
 
-  partial = i === 255 ? 0 : i;
-  anything_new = i !== 255;
-}, 30);
+  partial = i === end ? 0 : i;
+  anything_new = i !== end;
+};
+
+requestAnimationFrame(render);
 
 refresh();
+t.focus();
 
 });

@@ -58,7 +58,7 @@ use constant log_base => pmap q{$_ || exp 1}, popt number;
 defoperator cell_log => q{
   my ($cs, $base) = @_;
   my $lb = 1 / log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = log(\$xs[\$_] || 1) * $lb"}, $cs;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
 };
 
 defoperator cell_exp => q{

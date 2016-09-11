@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use Benchmark qw/:all/;
+use List::Util qw/max min sum/;
+
+open my $fh, '< test-data/reddit-comments';
+my @jsons = <$fh>;
+close $fh;
+
+open my $log, '> json-indirect-single.log';
+
+sub mean {sum(@_) / @_}
+
+my $min_length  = min  map length, @jsons;
+my $max_length  = max  map length, @jsons;
+my $mean_length = mean map length, @jsons;
+
+my @keys = $jsons[0] =~ /"(\w+)":/g;
+my %pos_min;
+my %pos_max;
+my %pos_mean;
+
+for my $k (@keys) {
+  my $kr = qr/$k/;
+  my @ps = map /"$kr":/g && pos(), @jsons;
+  $pos_min{$k}  = min  @ps;
+  $pos_max{$k}  = max  @ps;
+  $pos_mean{$k} = mean @ps;
+  print $log join("\t", $k, @ps), "\n";
+}
+
+print STDERR "TODO\n";

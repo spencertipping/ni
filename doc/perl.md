@@ -74,10 +74,24 @@ $ ni /etc/passwd F::r3p'r F_ 0..3'
 root	x	0	0
 daemon	x	1	1
 bin	x	2	2
+$ ni /etc/passwd F::r3p'r F_ 1..3'
+x	0	0
+x	1	1
+x	2	2
 $ ni /etc/passwd F::r3p'r scalar F_'            # number of fields
 7
 7
 7
+```
+
+If you want to select field ranges to the end of the line (like Perl's
+`@_[1..$#_]` construct), `FM` is analogous to `$#_`:
+
+```bash
+$ ni /etc/passwd F::r3p'r F_ 3..FM'
+0	root	/root	/bin/bash
+1	daemon	/usr/sbin	/bin/sh
+2	bin	/bin	/bin/sh
 ```
 
 ### `r`, multiple rows, and return values

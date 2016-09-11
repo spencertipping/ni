@@ -21,7 +21,10 @@ Extracted values are flattened into a single array and returned. They're
 optimized for strings, numeric, and true/false/null; you can return other
 values, but it will be slower.
 
-
+use constant json_si_gen => gen q{
+  my $%pos_gs = %v =~ /"%k":/ && pos %v;
+  
+};
 
 sub json_extractor($) {
   
