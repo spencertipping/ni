@@ -14,4 +14,4 @@ $ ni --js
 http://localhost:8090
 ```
 
-**TODO: more stuff**
+## Using the web interface
