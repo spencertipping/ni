@@ -9,7 +9,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| ni p'$_' > /dev/null
+| pv | ni p'$_' > /dev/null
 
 tb=$(date +%s%N)
 perl -e '
@@ -17,7 +17,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| NFU_ALWAYS_VERBOSE= ./nfu -m '$_' > /dev/null
+| pv | NFU_ALWAYS_VERBOSE= ./nfu -m '$_' > /dev/null
 
 tc=$(date +%s%N)
 perl -e '
@@ -25,7 +25,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| perl -ne 'print' > /dev/null
+| pv | perl -ne 'print' > /dev/null
 
 td=$(date +%s%N)
 perl -e '
@@ -33,7 +33,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| ni p'a' > /dev/null
+| pv | ni p'a' > /dev/null
 
 te=$(date +%s%N)
 perl -e '
@@ -41,7 +41,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| ni p'r a' > /dev/null
+| pv | ni p'r a' > /dev/null
 
 tf=$(date +%s%N)
 perl -e '
@@ -49,7 +49,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| ni p'b' > /dev/null
+| pv | ni p'b' > /dev/null
 
 tg=$(date +%s%N)
 perl -e '
@@ -57,7 +57,7 @@ perl -e '
   $data .= $data until length $data >= 1048576;
   $data = substr $data, 0, 1048576;
   syswrite STDOUT, $data for 1..256' \
-| ni p'r b' > /dev/null
+| pv | ni p'r b' > /dev/null
 
 th=$(date +%s%N)
 

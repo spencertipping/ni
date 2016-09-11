@@ -77,5 +77,3 @@ track performance by commit.
    counterintuitively, is called by [src/ni.sdoc](../src/ni.sdoc), which is the
    header of the `./ni` script. (ni is a weird program in that it's
    self-modifying and can print its state without reading its source code.)
-
-

@@ -34,6 +34,12 @@ defshort '/sh:', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
+Quoted ni invocation.
+Just like nfu's @[] lambda syntax.
+
+defoperator ni => q{exec_ni @_};
+deflong '/@[]', pmap q{ni_op @$_}, pn 1, prx '@', plambda '';
+
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
 through a shell command.

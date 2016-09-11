@@ -1,0 +1,44 @@
+#!/bin/bash
+
+json_100mb() {
+  perl -e 'open my $fh, "< test-data/reddit-comments";
+           my $jsons = join "", <$fh>;
+           close $fh;
+           syswrite STDOUT, $jsons for 1..100 * 1048576 / length $jsons'
+}
+
+perl -MJSON::XS -e1
+ni test-data/reddit-comments > /dev/null
+jq . < /dev/null
+
+if [[ $1 == '--pp' ]]; then
+  perl -MJSON::PP -e1
+  ta=$(date +%s%N)
+  json_100mb | pv | perl -MJSON::PP -ne '
+    my $j = decode_json $_;
+    print join("\t", $j->{author}, $j->{controversiality}), "\n";
+  ' | sha256sum
+fi
+
+tb=$(date +%s%N)
+json_100mb | pv | perl -MJSON::XS -ne '
+  my $j = decode_json $_;
+  print join("\t", $j->{author}, $j->{controversiality}), "\n";
+' | sha256sum
+
+tc=$(date +%s%N)
+json_100mb | pv | jq -r '[.author, .controversiality] | @tsv' | sha256sum
+
+td=$(date +%s%N)
+json_100mb | pv | ni p'my $j = json_decode $_;
+                       r $j->{author}, $j->{controversiality};' | sha256sum
+
+te=$(date +%s%N)
+
+if [[ $1 == '--pp' ]]; then
+  echo -e "perl_json_pp_100M\t$(((tb - ta) / 1000000))ms"
+fi
+
+echo -e "perl_json_xs_100M\t$(((tc - tb) / 1000000))ms"
+echo -e "jq_100M\t$(((td - tc) / 1000000))ms"
+echo -e "ni_json_pp_100M\t$(((te - td) / 1000000))ms"

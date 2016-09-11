@@ -174,18 +174,19 @@ sub scat {
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
-If you do this, the ni subprocess won't receive anything on its standard input.
+If you do this, the ni subprocess won't receive any data on its standard input.
 
 sub sni_exec_list(@) {
   my $stdin = image_with 'transient/op' => json_encode([@_]);
   ($stdin, qw|perl - --internal/operate transient/op|);
 }
 
+sub exec_ni(@) {
+  my ($stdin, @argv) = sni_exec_list @_;
+  safewrite siproc {exec @argv}, $stdin;
+}
+
 sub sni(@) {
-  my ($stdin, @exec_list) = sni_exec_list @_;
-  soproc {
-    open my $fh, "| " . shell_quote @exec_list
-      or die "ni: sni failed to fork to perl: $!";
-    safewrite $fh, $stdin;
-  };
+  my @args = @_;
+  soproc {exec_ni @args};
 }

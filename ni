@@ -428,11 +428,11 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
 use constant filename => palt prc 'file:(.+)',
-                              prc '\.?/.*',
+                              prc '\.?/[^]]*',
                               tempfile,
-                              pcond q{-e}, prc '^[^][]+';
+                              pcond q{-e}, prc '[^][]+';
 
-use constant nefilename => palt filename, prc '^[^][]+';
+use constant nefilename => palt filename, prc '[^][]+';
 54 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
@@ -636,7 +636,7 @@ sub main {
 2 core/stream/lib
 pipeline.pl.sdoc
 ops.pl.sdoc
-191 core/stream/pipeline.pl.sdoc
+192 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -813,22 +813,23 @@ sub scat {
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
-If you do this, the ni subprocess won't receive anything on its standard input.
+If you do this, the ni subprocess won't receive any data on its standard input.
 
 sub sni_exec_list(@) {
   my $stdin = image_with 'transient/op' => json_encode([@_]);
   ($stdin, qw|perl - --internal/operate transient/op|);
 }
 
-sub sni(@) {
-  my ($stdin, @exec_list) = sni_exec_list @_;
-  soproc {
-    open my $fh, "| " . shell_quote @exec_list
-      or die "ni: sni failed to fork to perl: $!";
-    safewrite $fh, $stdin;
-  };
+sub exec_ni(@) {
+  my ($stdin, @argv) = sni_exec_list @_;
+  safewrite siproc {exec @argv}, $stdin;
 }
-97 core/stream/ops.pl.sdoc
+
+sub sni(@) {
+  my @args = @_;
+  soproc {exec_ni @args};
+}
+103 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -864,6 +865,12 @@ defshort '/$:',  pmap q{sh_op $_}, shell_command;
 defshort '/sh:', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
+
+Quoted ni invocation.
+Just like nfu's @[] lambda syntax.
+
+defoperator ni => q{exec_ni @_};
+deflong '/@[]', pmap q{ni_op @$_}, pn 1, prx '@', plambda '';
 
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
@@ -2243,7 +2250,7 @@ defshort '/F', pdspr %split_dsp;
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
 1 core/row/lib
 row.pl.sdoc
-76 core/row/row.pl.sdoc
+89 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2261,13 +2268,26 @@ defoperator row_sample => q{
 
 defoperator row_sort => q{exec 'sort', @_};
 
+defoperator row_cols_defined => q{
+  my ($floor, @cs) = @_;
+  my $limit = $floor + 1;
+  my $line;
+  line:
+  while (defined($line = <STDIN>)) {
+    chomp $line;
+    $_ || next line for (split /\t/, $line, $limit)[@cs];
+    print $line . "\n";
+  }
+};
+
 our @row_alt = (
   pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
   pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
   pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
   pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
   pmap(q{row_sample_op $_},                   prx '\.\d+'),
-  pmap(q{head_op '-n', $_},             integer));
+  pmap(q{head_op '-n', $_},             integer),
+  pmap(q{row_cols_defined_op @$_},      colspec_fixed));
 
 defshort '/r', paltr @row_alt;
 

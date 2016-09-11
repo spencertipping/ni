@@ -15,13 +15,26 @@ defoperator row_sample => q{
 
 defoperator row_sort => q{exec 'sort', @_};
 
+defoperator row_cols_defined => q{
+  my ($floor, @cs) = @_;
+  my $limit = $floor + 1;
+  my $line;
+  line:
+  while (defined($line = <STDIN>)) {
+    chomp $line;
+    $_ || next line for (split /\t/, $line, $limit)[@cs];
+    print $line . "\n";
+  }
+};
+
 our @row_alt = (
   pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
   pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
   pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
   pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
   pmap(q{row_sample_op $_},                   prx '\.\d+'),
-  pmap(q{head_op '-n', $_},             integer));
+  pmap(q{head_op '-n', $_},             integer),
+  pmap(q{row_cols_defined_op @$_},      colspec_fixed));
 
 defshort '/r', paltr @row_alt;
 
