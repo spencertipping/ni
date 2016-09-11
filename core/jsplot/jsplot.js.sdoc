@@ -82,6 +82,12 @@ c.mousedown(function (e) {
   mctrl  = e.ctrlKey || e.metaKey;
 });
 
+c.mousewheel(function (e) {
+  distance *= Math.exp(e.deltaY * -0.01);
+  partial = 0;
+  anything_new = true;
+});
+
 var last_mousemove = 0;
 $(document).mousemove(function (e) {
   if (mx === null) return;

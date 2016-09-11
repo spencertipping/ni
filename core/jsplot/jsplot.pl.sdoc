@@ -8,6 +8,7 @@ use constant jsplot_gen => gen $self{'core/jsplot/html'};
 use constant jsplot_html =>
   jsplot_gen->(css => $self{'core/jsplot/css'},
                js  => join '', @self{qw| core/jsplot/jquery.min.js
+                                         core/jsplot/jquery.mousewheel.min.js
                                          core/jsplot/jsplot.js |});
 
 JSPlot data streaming.
