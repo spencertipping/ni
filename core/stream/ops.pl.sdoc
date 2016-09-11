@@ -37,7 +37,7 @@ deflong '/fs', pmap q{cat_op $_}, filename;
 Quoted ni invocation.
 Just like nfu's @[] lambda syntax.
 
-defoperator ni => q{exec_ni @_};
+defoperator ni => q{my @xs = @_; sappend {exec_ni @xs}};
 deflong '/@[]', pmap q{ni_op @$_}, pn 1, prx '@', plambda '';
 
 Shell transformation.
