@@ -13,7 +13,7 @@ if they don't, it's likely a system-specific issue and you should definitely
 open an issue so I can resolve it.
 
 ni is designed to be extremely portable: it depends only on Perl v5.8.8 or
-later, and on POSIX.2001-specified shell utilities like `/bin/sort`. In
+later, and on POSIX.2001-specified shell utilities like `/usr/bin/sort`. In
 practice it means that ni should work out of the box on any system up to a
 decade old (and quite possibly older).
 
