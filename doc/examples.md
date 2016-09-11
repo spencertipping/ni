@@ -1,7 +1,7 @@
 # Examples of ni misuse
-All of these use `ni --js`.
+All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 
-## Co-occurrence of manpages in quasi-donut form
+## Co-occurrence of manpage words in quasi-donut form
 ![img](http://spencertipping.com/ni-example-cooccurrence-quasidonut.png)
 
 ```
@@ -65,6 +65,10 @@ case by just taking the maximum:
 $ ni /usr/share/man/man1 \<FWpF_ ,z Or1
 84480
 ```
+
+Alternatively, we can reverse-sort within the UI and use the preview window:
+
+![img](http://spencertipping.com/ni-example-cooccurrence-hhz-preview.png)
 
 ni provides a quasidonut constructor library in the form of two functions,
 `prec(rho, theta) = (x, y)` and `rpol(x, y) = (rho, theta)`. These convert

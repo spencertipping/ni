@@ -92,10 +92,12 @@ lib core/jsplot
 lib core/hadoop
 lib core/pyspark
 lib doc
-81 util.pl.sdoc
+83 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
+
+sub weval($) {my @r = eval "package ni;$_[0]"; print STDERR $@ if $@; @r}
 
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
@@ -798,9 +800,9 @@ directories are turned into readable listings. Files are automatically
 decompressed.
 
 sub scat {
+  local $| = 1;
   for my $f (@_) {
     if (-d $f) {
-      $| = 1;
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
@@ -900,7 +902,7 @@ sub tempfile_name() {
 }
 
 defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
-defoperator file_read  => q{chomp, scat $_ while <STDIN>};
+defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
   $file = tempfile_name unless defined $file;
@@ -4027,11 +4029,11 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 
 /github	/spencertipping	/ni
 ```
-85 doc/examples.md
+89 doc/examples.md
 # Examples of ni misuse
-All of these use `ni --js`.
+All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 
-## Co-occurrence of manpages in quasi-donut form
+## Co-occurrence of manpage words in quasi-donut form
 ![img](http://spencertipping.com/ni-example-cooccurrence-quasidonut.png)
 
 ```
@@ -4095,6 +4097,10 @@ case by just taking the maximum:
 $ ni /usr/share/man/man1 \<FWpF_ ,z Or1
 84480
 ```
+
+Alternatively, we can reverse-sort within the UI and use the preview window:
+
+![img](http://spencertipping.com/ni-example-cooccurrence-hhz-preview.png)
 
 ni provides a quasidonut constructor library in the form of two functions,
 `prec(rho, theta) = (x, y)` and `rpol(x, y) = (rho, theta)`. These convert

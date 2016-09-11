@@ -15,3 +15,6 @@ tempfile, `$:` for shell-gen, `::` for SSH gen, `@[]` for ni-gen.
 `--explain`, `--dev/parse-one`, etc. Maybe also come up with a better output
 format for things like `//options` and `--dev/parse`. Also document why some
 options are `--` and others are `//`.
+
+### `siproc` needs to capture children more carefully
+For example, the output of `ni . \<` is unstable.

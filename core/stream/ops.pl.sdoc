@@ -68,7 +68,7 @@ sub tempfile_name() {
 }
 
 defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
-defoperator file_read  => q{chomp, scat $_ while <STDIN>};
+defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
   $file = tempfile_name unless defined $file;

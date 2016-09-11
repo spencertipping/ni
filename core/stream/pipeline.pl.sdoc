@@ -159,9 +159,9 @@ directories are turned into readable listings. Files are automatically
 decompressed.
 
 sub scat {
+  local $| = 1;
   for my $f (@_) {
     if (-d $f) {
-      $| = 1;
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;

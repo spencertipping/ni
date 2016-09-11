@@ -1,4 +1,6 @@
 # Visualizing data
+See also [examples.md](examples.md).
+
 There are two ways to use ni to visualize things. One is to take a data stream
 and plot it with the `v` (visualize) operator, which is parameterized by the
 backend you want to use:
