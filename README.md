@@ -1,4 +1,6 @@
 # ni: portable, self-modifying APL for unstructured data
+**NOTE:** A work in progress, but finally coming together.
+
 ![ni!](http://spencertipping.com/ni.png)
 
 ```sh
