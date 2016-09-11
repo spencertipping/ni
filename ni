@@ -428,7 +428,7 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
 use constant filename => palt prc 'file:(.+)',
-                              prc '\.?/[^]]*',
+                              prc '\.?/(?:[^/]|$)[^]]*',
                               tempfile,
                               pcond q{-e}, prc '[^][]+';
 
@@ -941,7 +941,7 @@ Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
 defoperator meta_image => q{sappend {print image, "\n"}};
-defoperator meta_keys  => q{sappend {print "$_\n" for @keys}};
+defoperator meta_keys  => q{sappend {print "$_\n" for sort keys %self}};
 defoperator meta_key   => q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
 
 defoperator meta_help => q{
@@ -950,15 +950,15 @@ defoperator meta_help => q{
   sappend {print $self{"doc/$topic.md"}, "\n"};
 };
 
-deflong '/meta_key',  pmap q{meta_key_op $_}, prc '//([^][]+)$';
-deflong '/meta_keys', pmap q{meta_keys_op},   prc '//$';
-deflong '/meta_self', pmap q{meta_image_op},  prc '//ni';
+defshort '//',         pmap q{meta_key_op $_}, prc '[^][]+$';
+defshort '///ni',      pmap q{meta_image_op},  pnone;
+defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
-deflong '/meta_help', pmap q{meta_help_op $_}, prc '//help/?(.*)';
+defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
 
 defoperator meta_options => q{
   for my $c (sort keys %contexts) {
@@ -967,7 +967,7 @@ defoperator meta_options => q{
   }
 };
 
-deflong '/meta_options', pmap q{meta_options_op}, prc '//options';
+defshort '///options', pmap q{meta_options_op}, pnone;
 
 Inspection.
 This lets you get details about specific operators or parsing contexts.
@@ -975,8 +975,8 @@ This lets you get details about specific operators or parsing contexts.
 defoperator meta_op  => q{print "sub {$operators{$_[0]}}\n"};
 defoperator meta_ops => q{print "$_\n" for sort keys %operators};
 
-deflong '/meta_op',  pmap q{meta_op_op $_}, prc '//op/(.+)';
-deflong '/meta_ops', pmap q{meta_ops_op},   prc '//op[s/]$';
+defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
+defshort '///ops', pmap q{meta_ops_op},   pnone;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2255,7 +2255,7 @@ Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
 defoperator head => q{exec 'head', @_};
-defoperator tail => q{exec 'tail', @_};
+defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
@@ -2281,13 +2281,13 @@ defoperator row_cols_defined => q{
 };
 
 our @row_alt = (
-  pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
-  pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
-  pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
-  pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
-  pmap(q{row_sample_op $_},                   prx '\.\d+'),
-  pmap(q{head_op '-n', $_},             integer),
-  pmap(q{row_cols_defined_op @$_},      colspec_fixed));
+  pmap(q{tail_op '-n', '',  $_},       pn 1, prx '\+', integer),
+  pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',  integer),
+  pmap(q{row_every_op  $_},            pn 1, prx 'x',  number),
+  pmap(q{row_match_op  $_},            pn 1, prx '/',  regex),
+  pmap(q{row_sample_op $_},                  prx '\.\d+'),
+  pmap(q{head_op '-n', $_},            integer),
+  pmap(q{row_cols_defined_op @$_},     colspec_fixed));
 
 defshort '/r', paltr @row_alt;
 
@@ -3580,7 +3580,7 @@ var refresh = function () {
   var continuation = '';
   var size = 0;
   var incoming = '';
-  var last_data_time = 0;
+  var last_data_time = +new Date - 9000;
   var dim_status_timeout = null;
 
   ws.onmessage = function (e) {
@@ -3588,7 +3588,7 @@ var refresh = function () {
     if (incoming.length < 65536)
       pr.text(incoming += e.data.substr(0, 65536));
 
-    if (+new Date - last_data_time > 1000) {
+    if (+new Date - last_data_time > 10000) {
       anything_new = true;
       partial = 0;
       last_data_time = +new Date;
@@ -3693,6 +3693,8 @@ var render = function () {
   var step = 17;
   var end  = 255 * step & 0xff;
 
+  var vsize = Math.min(whl, wwl);
+
   var n = Math.min(parsed.length / 4, n_points);
   for (var i = partial; (i &= 0xff) != end && +new Date - t < 10; i += step) {
     for (; i < n; i += 256) {
@@ -3707,11 +3709,9 @@ var render = function () {
 
       if (zp > 0) {
         zp = 1 / zp;
-        var ps = Math.max(zp, 0.5);
-        ctx.fillRect(xp * zp * wwl + wwl/2,
-                     whl/2 - yp * zp * whl,
-                     ps,
-                     ps);
+        var ps = Math.min(Math.max(zp, 0.5), 1);
+        ctx.fillRect(wwl/2 + xp * zp * vsize,
+                     whl/2 - yp * zp * vsize, ps, ps);
       }
     }
   }
@@ -4027,11 +4027,92 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 
 /github	/spencertipping	/ni
 ```
-4 doc/examples.md
-# General ni examples
-Things that might give you ideas to be more dangerous.
+85 doc/examples.md
+# Examples of ni misuse
+All of these use `ni --js`.
 
-**TODO**
+## Co-occurrence of manpages in quasi-donut form
+![img](http://spencertipping.com/ni-example-cooccurrence-quasidonut.png)
+
+```
+http://localhost:8090/#%7B%22ni%22%3A%22%2Fusr%2Fshare%2Fman%2Fman1%20%5C%5C%3CFWp'r%20F_(%24_-2..%24_)%20for%202..FM'%20%2ChABzC%20p'r%20prec((a%20%26%200xffff)%20%2B%200xffff%2C%20int((b%20%26%200xffff)%20%2F%200xffff*270))%2C%20c'%20fACB%22%2C%22vm%22%3A%5B-0.9841092569237042%2C0%2C-0.17756398969608223%2C0.07311827956989259%2C0.03298935921795422%2C0.9825897456859218%2C-0.18283624873452747%2C0.4633668730031738%2C0.17447255547845722%2C-0.185788567121162%2C-0.9669756644878278%2C-0.06165651783795804%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A0.6482182956356948%7D
+```
+
+Here's the equivalent ni command:
+
+```sh
+$ ni /usr/share/man/man1 \<FWp'r F_($_-2..$_) for 2..FM' \
+  ,hABzC p'r prec((a & 0xffff) + 0xffff, int((b & 0xffff) / 0xffff*270)), c' \
+  fACB
+```
+
+### How it works
+- `/usr/share/man/man1` produces a list of filenames (all manpages in `man1`)
+- `\<` cats each file in a stream of filenames (all manpage text in `man1`)
+- `FW` splits on non-word characters
+- `p'r F_($_-2..$_) for 2..FM'` is a 3-wide sliding window of words per line:
+  - `2..FM` generates the index of the last word in each window
+  - `$_-2..$_` generates the indexes of all words in the current window
+  - `r F_(@indexes)` outputs a row of fields at numerically-specified
+    `@indexes`
+
+A preview of the output at this point:
+
+```sh
+$ ni /usr/share/man/man1 \<FWp'r F_($_-2..$_) for 2..FM' r10
+        DO      NOT
+DO      NOT     MODIFY
+NOT     MODIFY  THIS
+MODIFY  THIS    FILE
+THIS    FILE    It
+FILE    It      was
+It      was     generated
+was     generated       by
+generated       by      help2man
+by      help2man        1
+```
+
+Now we use cell operators to transform things into numbers.
+
+- `,`: the cell operator prefix, which continues until the next CLI argument:
+  - `hAB`: 32-bit murmurhash each cell in columns A and B (unbiased)
+  - `zC`: assign successive integers to distinct values in column C (biased)
+
+At this point we have a cube of word cooccurrence:
+
+![img](http://spencertipping.com/ni-example-cooccurrence-hhz-cube.png)
+
+```
+http://localhost:8090/#%7B%22ni%22%3A%22%2Fusr%2Fshare%2Fman%2Fman1%20%5C%5C%3CFWp'r%20F_(%24_-2..%24_)%20for%202..FM'%20%2ChABzC%22%2C%22vm%22%3A%5B-0.1455274825751139%2C0%2C-0.9893542094796254%2C-0.04019689987431912%2C0.4626508778259456%2C0.8839247529105698%2C-0.06805289441946762%2C-0.01019337018835886%2C0.874514675155316%2C-0.46762915990349385%2C-0.12863534407689978%2C-0.08768024724094528%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.6594267918484475%7D
+```
+
+I haven't implemented axes and range display yet, but `A` and `B` take on the
+full range of 32-bit integer values and `C` contains positive integers up to
+the number of distinct words we have -- we can calculate it easily, in this
+case by just taking the maximum:
+
+```sh
+$ ni /usr/share/man/man1 \<FWpF_ ,z Or1
+84480
+```
+
+ni provides a quasidonut constructor library in the form of two functions,
+`prec(rho, theta) = (x, y)` and `rpol(x, y) = (rho, theta)`. These convert
+between rectangular and polar coordinates. In this case we want `prec`, and
+here's what we're doing with it:
+
+```pl
+(a & 0xffff)            # low 16 bits of the hash (just to truncate; could be pretty much anything)
+(a & 0xffff) + 0xffff   # push to the upper half of the range [0, 0x1ffff]: this increases the radius and creates a ring
+
+(b & 0xffff) / 0xffff   # truncate b to the range [0, 1]
+... / 0xffff * 270      # now extend to the range [0, 270]: 3/4 of a donut
+
+r prec(rho, theta), c   # output x and y as points on circles, z is preserved
+```
+
+From there we just flip into the viewport coordinate system, where Z points
+away from the camera.
 17 doc/extend.md
 # Extending ni
 You can extend ni by writing a library. For example, suppose we want a new

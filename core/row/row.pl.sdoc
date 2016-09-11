@@ -2,7 +2,7 @@ Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
 defoperator head => q{exec 'head', @_};
-defoperator tail => q{exec 'tail', @_};
+defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
@@ -28,13 +28,13 @@ defoperator row_cols_defined => q{
 };
 
 our @row_alt = (
-  pmap(q{tail_op '-n', $_},             pn 1, prx '\+', integer),
-  pmap(q{tail_op '-n', '+' . ($_ + 1)}, pn 1, prx '-',  integer),
-  pmap(q{row_every_op  $_},             pn 1, prx 'x',  number),
-  pmap(q{row_match_op  $_},             pn 1, prx '/',  regex),
-  pmap(q{row_sample_op $_},                   prx '\.\d+'),
-  pmap(q{head_op '-n', $_},             integer),
-  pmap(q{row_cols_defined_op @$_},      colspec_fixed));
+  pmap(q{tail_op '-n', '',  $_},       pn 1, prx '\+', integer),
+  pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',  integer),
+  pmap(q{row_every_op  $_},            pn 1, prx 'x',  number),
+  pmap(q{row_match_op  $_},            pn 1, prx '/',  regex),
+  pmap(q{row_sample_op $_},                  prx '\.\d+'),
+  pmap(q{head_op '-n', $_},            integer),
+  pmap(q{row_cols_defined_op @$_},     colspec_fixed));
 
 defshort '/r', paltr @row_alt;
 

@@ -161,7 +161,7 @@ var refresh = function () {
   var continuation = '';
   var size = 0;
   var incoming = '';
-  var last_data_time = 0;
+  var last_data_time = +new Date - 9000;
   var dim_status_timeout = null;
 
   ws.onmessage = function (e) {
@@ -169,7 +169,7 @@ var refresh = function () {
     if (incoming.length < 65536)
       pr.text(incoming += e.data.substr(0, 65536));
 
-    if (+new Date - last_data_time > 1000) {
+    if (+new Date - last_data_time > 10000) {
       anything_new = true;
       partial = 0;
       last_data_time = +new Date;
@@ -274,6 +274,8 @@ var render = function () {
   var step = 17;
   var end  = 255 * step & 0xff;
 
+  var vsize = Math.min(whl, wwl);
+
   var n = Math.min(parsed.length / 4, n_points);
   for (var i = partial; (i &= 0xff) != end && +new Date - t < 10; i += step) {
     for (; i < n; i += 256) {
@@ -288,11 +290,9 @@ var render = function () {
 
       if (zp > 0) {
         zp = 1 / zp;
-        var ps = Math.max(zp, 0.5);
-        ctx.fillRect(xp * zp * wwl + wwl/2,
-                     whl/2 - yp * zp * whl,
-                     ps,
-                     ps);
+        var ps = Math.min(Math.max(zp, 0.5), 1);
+        ctx.fillRect(wwl/2 + xp * zp * vsize,
+                     whl/2 - yp * zp * vsize, ps, ps);
       }
     }
   }
