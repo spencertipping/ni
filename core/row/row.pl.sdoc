@@ -85,5 +85,8 @@ defoperator count => q{
   print "$n\t$last" if defined $last;
 };
 
+defoperator uniq => q{exec 'uniq'};
+
 defshort '/c', pmap q{count_op},                pnone;
 defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
+defshort '/U', pmap q{uniq_op},                 pnone;

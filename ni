@@ -2252,7 +2252,7 @@ defshort '/F', pdspr %split_dsp;
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
 1 core/row/lib
 row.pl.sdoc
-89 core/row/row.pl.sdoc
+92 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2340,8 +2340,11 @@ defoperator count => q{
   print "$n\t$last" if defined $last;
 };
 
+defoperator uniq => q{exec 'uniq'};
+
 defshort '/c', pmap q{count_op},                pnone;
 defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
+defshort '/U', pmap q{uniq_op},                 pnone;
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -2614,7 +2617,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-77 core/pl/stream.pm.sdoc
+84 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2643,11 +2646,18 @@ sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
        ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
        ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'q'}
+
+sub pr(;$) {
+  my $l = @_ ? $_[0] : $_;
+  $l = join "\t", @$l if 'ARRAY' eq ref $l;
+  $l =~ s/\n//g;
+  print "$l\n";
+  ();
+}
 
 Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
@@ -4030,7 +4040,7 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 
 /github	/spencertipping	/ni
 ```
-150 doc/examples.md
+237 doc/examples.md
 # Examples of ni misuse
 All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 If you're working through these on the command line, you can use `ni
@@ -4044,6 +4054,59 @@ $ ni --explain //ni FWpF_ plc C
 ["perl_mapper","lc"]
 [["row_sort"],["count"]]
 ```
+
+## Simple 2D letter/letter co-occurrence matrix
+![img](http://spencertipping.com/ni-example-letter-cooccurrence.png)
+
+```
+http://localhost:8090/#%7B%22ni%22%3A%22%2Fusr%2Fshare%2Fdict%2Fwords%20plc%20pr%2F%5Ba-z%5D%2Fg%20pcart%5BF_%5D%2C%5BF_%5D%20p'r%20map%20ord%2C%20F_'%20%2CjAB%2C%22%2C%22vm%22%3A%5B1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.1348179443582629%7D
+```
+
+Equivalent ni command:
+
+```sh
+$ ni /usr/share/dict/words plc pr/[a-z]/g pcart[F_],[F_] p'r map ord, F_'
+```
+
+### How it works
+- `/usr/share/dict/words`: cat the file; we get one word per line
+- `plc`: short for `p'lc $_'`: lowercase each line
+- `pr/[a-z]/g`: short for `p'r /[a-z]/g'`:
+  - `/[a-z]/g`: in list context, return every occurrence of a lowercase letter
+  - `r(@list)`: join with tabs and print an output line
+- `pcart[F_],[F_]`: short for `p'cart [F_], [F_]'`:
+  - `F_`: return a list of tab-delimited fields (the lowercase letters from
+    `pr/[a-z]/g`)
+  - `cart [@xs], [@ys], ...`: Cartesian product of N arrays: in this case,
+    returns `[$xi, $yi]` pairs, which represent every combination of lowercase
+    letters within this word
+  - `cart` returns array references, which ni automatically joins with tabs to
+    convert to output rows.
+
+At this point we have each pair of co-occurring letters on a single line,
+tab-delimited. The last step is to convert to ASCII:
+
+- `p'r map ord, F_`: convert each tab-delimited field to its ASCII value:
+  - `F_`: the list of fields
+  - `map ord, @list`: short for `map ord($_), @list`: convert each list element
+    to ASCII
+  - `r @list`: tab-join and write output line
+
+This gives us a long stream of integer pairs. If we plot them now, we'll get a
+bunch of dots on the screen:
+
+![img](http://spencertipping.com/ni-example-letter-cooccurrence-dots.png)
+
+If, however, we move each dot by a random vector chosen from a 0.9x0.9
+rectangle, we'll end up with stochastically-shaded squares with visible
+boundaries. This is a common thing to do when dot plotting, so ni provides the
+"jitter" cell operator.
+
+- `,`: enter cell-transform context (essentially a new namespace for letters)
+  - `jAB,`: jitter cells in columns A and B uniformly;
+    - `,`: ...by 0.9. ni provides this shorthand because it's common to do
+      this. (The alternative would be `,jAB.9`, but that's extra typing with a
+      lot of right-hand travel.)
 
 ## Simple 3D sine wave
 ![img](http://spencertipping.com/ni-example-simple-3dsine.png)
@@ -4094,6 +4157,40 @@ plotting interface scales the sine wave down vertically.
   - `id:0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
     occupy three columns each.
+
+## Simple ASCII co-occurrence of ni source code
+![img](http://spencertipping.com/ni-example-ascii-cooccurrence.png)
+
+```
+http://localhost:8090/#%7B%22ni%22%3A%22%2F%2Fni%20psplit%2F%2F%20pord%20p'r%20pl%203'%20%2CjABC.5%22%2C%22vm%22%3A%5B0.3052176877315164%2C0%2C-0.9522826067380442%2C0.025659824046920767%2C0.15198698116928847%2C0.9871813119337595%2C0.04871360101460337%2C-0.00521898518107074%2C0.9400755930513635%2C-0.15960281128089038%2C0.30130519740018513%2C-0.060644007110305605%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.4140702339178333%7D
+```
+
+Equivalent ni command:
+
+```sh
+$ ni //ni psplit// pord p'r pl 3'
+```
+
+### How it works
+- `//ni`: append ni's source code verbatim
+- `psplit//`: a compact form of `p'split //'`, which will return each character
+  on a separate line.
+- `pord`: a compact form of `p'ord $_'`, which will transform each line into
+  its ASCII value.
+- `p'r pl 3'`: non-destructively read the next three lines and place them on a
+  single row. `pl($n)` peeks `n` lines ahead, returning them as an array.
+
+At this point we have triples of ASCII values. The web UI provides some
+shading to handle point collisions, but it can only offer so much dynamic
+range; typically if you're relying on shading to tell you something, you'll
+want to jitter each data point a little. (See the 2D letter/letter
+co-occurrence from `/usr/share/dict/words` for an example.)
+
+- `,`: cell transformation context
+  - `jABC.5`: jitter columns A, B, and C by a random value whose range is
+    centered at 0 and is 0.5 across. ASCII values are integers, so jittering
+    each one by 0.5 preserves its identity while adding some spatial resolution
+    and better shading to the plot.
 
 ## Co-occurrence of manpage words in quasi-donut form
 ![img](http://spencertipping.com/ni-example-cooccurrence-quasidonut.png)

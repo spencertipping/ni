@@ -26,11 +26,18 @@ sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-sub pr(;$) {(my $l = @_ ? $_[0] : $_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
        ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
        ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'q'}
+
+sub pr(;$) {
+  my $l = @_ ? $_[0] : $_;
+  $l = join "\t", @$l if 'ARRAY' eq ref $l;
+  $l =~ s/\n//g;
+  print "$l\n";
+  ();
+}
 
 Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
