@@ -659,7 +659,7 @@ our %child_owners;
 sub await_children {
   local ($!, $?, $_);
   while (0 < ($_ = waitpid -1, WNOHANG)) {
-    $child_owners{$_}->child_exited($_, $?) if defined $child_owners{$_};
+    $child_owners{$_}->child_exited($?) if defined $child_owners{$_};
   }
   $SIG{CHLD} = \&await_children;
 };
