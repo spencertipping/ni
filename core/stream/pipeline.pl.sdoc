@@ -160,7 +160,7 @@ sub sdecode(;$) {
     $o->await;
   } else {
     safewrite \*STDOUT, $_;
-    sforward \*STDIN, \*STDOUT;
+    sio;
   }
 }
 

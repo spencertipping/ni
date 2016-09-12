@@ -20,13 +20,15 @@ Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
+sub meta_context_name($) {$_[0] || '<root>'}
+
 defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
 
 defoperator meta_options => q{
   sio;
   for my $c (sort keys %contexts) {
-    printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
-    printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
   }
 };
 

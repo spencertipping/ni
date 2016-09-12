@@ -1,0 +1,17 @@
+Ruby code element.
+This works just like the Perl code parser but is slightly less involved because
+there's no `BEGIN/END` substitution. We also don't need to take a code
+transform because no amount of wrapping will change whether an expression can
+be parsed.
+
+defparser 'rbcode', '', sub {
+  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  my ($self, $code, @xs) = @_;
+  my ($x, $status) = ('', 0);
+  $x .= ']' while $status = syntax_check 'ruby -c -', $code and $code =~ s/\]$//;
+  die <<EOF if $status;
+ni: failed to get closing bracket count for ruby code "$code$x"; this means
+    your code has a syntax error.
+EOF
+  length $x ? ($code, $x, @xs) : ($code, @xs);
+};

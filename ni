@@ -316,7 +316,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-118 common.pl.sdoc
+64 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -338,60 +338,6 @@ defparser 'generic_code', '',
        my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
        $balance ? (substr($code, 0, $balance), substr($code, $balance))
                 : ($code, @xs)};
-
-Code parsing.
-This is nontrivial due to the CLI reader problem. The idea is that we need to
-figure out how many closing brackets belong to the code, vs how many close a
-lambda. Depending on the language, the only way to do this may be to shell out
-to an interpreter.
-
-sub siproc(&);
-sub soproc(&);
-
-sub syntax_check($$) {
-  my ($check_cmd, $code) = @_;
-  my $r;
-  saferead(soproc {
-    safewrite(siproc {exec 'sh', '-c', $check_cmd . ' >/dev/null 2>&1; echo $?'}, $code);
-  }, $r, 8192);
-  0 + $r;
-}
-
-defparser 'rbcode', '',
-  sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
-       my ($self, $code, @xs, $x) = @_;
-       $x .= ']' while $_ = syntax_check('ruby -c -', $code)
-                       and $code =~ s/\]$//;
-       $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
-
-Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
-blocks to avoid executing side effects. We can guarantee that nothing will run
-(beyond `use` statements, which we assume are safe) by removing any
-occurrences of the string `BEGIN` and replacing them with something
-syntactically equivalent but less volatile -- in this case, `END`.
-
-Note that we can't use system() because ni automatically collects child processes.
-
-defparser 'plcode', '$',
-  sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
-       my ($self, $code, @xs, $x) = @_;
-       my $qcode = $code;
-       my $begin_warning = $qcode =~ s/BEGIN/ END /g;
-       my $codegen = $$self[1];
-       my $status = 0;
-       $x .= ']' while $status = syntax_check('perl -c -', &$codegen($qcode))
-                       and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-
-       print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code "$code", possibly
-    because BEGIN-block metaprogramming is disabled when ni tries to figure
-    this out. To avoid this, bypass bracket inference by terminating your code
-    with a single space, e.g:
-
-    p'[[some code]]'            # this may fail due to bracket inference
-    p'[[some code]] '           # this works by bypassing it
-EOF
-       $status ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -887,7 +833,7 @@ sub sdecode(;$) {
     $o->await;
   } else {
     safewrite \*STDOUT, $_;
-    sforward \*STDIN, \*STDOUT;
+    sio;
   }
 }
 
@@ -1044,9 +990,10 @@ defoperator decode    => q{sdecode};
 defshort '/Z',  compressor_spec;
 defshort '/ZN', pk sink_null_op();
 defshort '/ZD', pk decode_op();
-1 core/meta/lib
+2 core/meta/lib
 meta.pl.sdoc
-42 core/meta/meta.pl.sdoc
+map.pl.sdoc
+44 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -1069,13 +1016,15 @@ Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
 because it's more straightforward to model these as data sources.
 
+sub meta_context_name($) {$_[0] || '<root>'}
+
 defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
 
 defoperator meta_options => q{
   sio;
   for my $c (sort keys %contexts) {
-    printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
-    printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
+    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
   }
 };
 
@@ -1089,6 +1038,31 @@ defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
 
 defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
+24 core/meta/map.pl.sdoc
+Syntax mapping.
+We can inspect the parser dispatch tables within various contexts to get a
+character-level map of prefixes and to indicate which characters are available
+for additional operators.
+
+use constant qwerty_prefixes => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@%=$+_,.:';
+use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222334344444455544565565223';
+
+defoperator meta_short_availability => q{
+  sio;
+  print "--------" . qwerty_prefixes . "\n";
+  for my $c (sort keys %contexts) {
+    my $s = $short_refs{$c};
+    my %multi;
+    ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
+
+    print substr(meta_context_name $c, 0, 7) . "\t"
+        . join('', map $multi{$_} ? '.' : $$s{$_} ? '|' : ' ',
+                       split //, qwerty_prefixes)
+        . "\n";
+  }
+};
+
+defshort '///map/short', pmap q{meta_short_availability}, pnone;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2923,7 +2897,56 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-56 core/pl/pl.pl.sdoc
+105 core/pl/pl.pl.sdoc
+Perl parse element.
+A way to figure out where some Perl code ends, in most cases. This works
+because appending closing brackets to valid Perl code will always make it
+invalid. The same property holds across most code-to-code functions. This is
+how ni figures out whether a closing bracket is a lambda-terminator or a part
+of some row mapping code.
+
+sub syntax_check($$) {
+  my ($check_cmd, $code) = @_;
+  my $fh = siproc {sh "$check_cmd >/dev/null 2>&1"};
+  safewrite $fh, $code;
+  close $fh;
+  $fh->await;
+}
+
+We need to explicitly disable any BEGIN{} blocks to avoid executing side
+effects. We can guarantee that nothing will run (beyond `use` statements, which
+we assume are safe) by removing any occurrences of the string `BEGIN` and
+replacing them with something syntactically equivalent but less volatile -- in
+this case, `END`.
+
+c
+BEGIN {
+defparser 'plcode', '$', sub {
+  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  my ($self, $code, @xs) = @_;
+  my $safecode      = $code;
+  my $begin_warning = $safecode =~ s/BEGIN/ END /g;
+  my $codegen       = $$self[1];
+  my $status        = 0;
+  my $x             = '';
+  $x .= ']' while $status = syntax_check 'perl -c -', &$codegen($safecode)
+                  and ($safecode =~ s/\]$//, $code =~ s/\]$//);
+
+  die <<EOF if $status;
+ni: failed to get closing bracket count for perl code "$code$x", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out. To avoid this, make sure the shell argument containing your code
+    ends with something that isn't a closing bracket; e.g:
+
+    p'[[some code]]'            # this may fail due to bracket inference
+    p'[[some code]] '           # this works by bypassing it
+    [p'[some code] ' ]          # this works for ni lambdas
+EOF
+
+  length $x ? ($code, $x, @xs) : ($code, @xs);
+};
+}
+
 Perl wrapper.
 Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
@@ -4299,7 +4322,7 @@ $ ni nE3p'r a, $_ for 0..999' r'/0(\t|$)/' p'r a, sin(a/100)*sin(b/100), b'
 - `p'r a, $_ for 0..999'`: for each row, emit 1000 rows, one for each value in
   the second column. This emits the plane of input points for which we'll
   evaluate the product of two sines.
-- `r'/0(\t|$)/': punches holes in the plane to form a grid. I'll explain this
+- `r'/0(\t|$)/'`: punches holes in the plane to form a grid. I'll explain this
   below and show what it looks like if we omit it.
 - `p'r a, sin(a/100)*sin(b/100), b'`: the plane coordinates are `a` and `b`, so
   for each plane point we emit a 3D point at `<a, f(a, b), b>`.

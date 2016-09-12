@@ -1,3 +1,52 @@
+Perl parse element.
+A way to figure out where some Perl code ends, in most cases. This works
+because appending closing brackets to valid Perl code will always make it
+invalid. The same property holds across most code-to-code functions. This is
+how ni figures out whether a closing bracket is a lambda-terminator or a part
+of some row mapping code.
+
+sub syntax_check($$) {
+  my ($check_cmd, $code) = @_;
+  my $fh = siproc {sh "$check_cmd >/dev/null 2>&1"};
+  safewrite $fh, $code;
+  close $fh;
+  $fh->await;
+}
+
+We need to explicitly disable any BEGIN{} blocks to avoid executing side
+effects. We can guarantee that nothing will run (beyond `use` statements, which
+we assume are safe) by removing any occurrences of the string `BEGIN` and
+replacing them with something syntactically equivalent but less volatile -- in
+this case, `END`.
+
+c
+BEGIN {
+defparser 'plcode', '$', sub {
+  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  my ($self, $code, @xs) = @_;
+  my $safecode      = $code;
+  my $begin_warning = $safecode =~ s/BEGIN/ END /g;
+  my $codegen       = $$self[1];
+  my $status        = 0;
+  my $x             = '';
+  $x .= ']' while $status = syntax_check 'perl -c -', &$codegen($safecode)
+                  and ($safecode =~ s/\]$//, $code =~ s/\]$//);
+
+  die <<EOF if $status;
+ni: failed to get closing bracket count for perl code "$code$x", possibly
+    because BEGIN-block metaprogramming is disabled when ni tries to figure
+    this out. To avoid this, make sure the shell argument containing your code
+    ends with something that isn't a closing bracket; e.g:
+
+    p'[[some code]]'            # this may fail due to bracket inference
+    p'[[some code]] '           # this works by bypassing it
+    [p'[some code] ' ]          # this works for ni lambdas
+EOF
+
+  length $x ? ($code, $x, @xs) : ($code, @xs);
+};
+}
+
 Perl wrapper.
 Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row

@@ -20,60 +20,6 @@ defparser 'generic_code', '',
        $balance ? (substr($code, 0, $balance), substr($code, $balance))
                 : ($code, @xs)};
 
-Code parsing.
-This is nontrivial due to the CLI reader problem. The idea is that we need to
-figure out how many closing brackets belong to the code, vs how many close a
-lambda. Depending on the language, the only way to do this may be to shell out
-to an interpreter.
-
-sub siproc(&);
-sub soproc(&);
-
-sub syntax_check($$) {
-  my ($check_cmd, $code) = @_;
-  my $r;
-  saferead(soproc {
-    safewrite(siproc {exec 'sh', '-c', $check_cmd . ' >/dev/null 2>&1; echo $?'}, $code);
-  }, $r, 8192);
-  0 + $r;
-}
-
-defparser 'rbcode', '',
-  sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
-       my ($self, $code, @xs, $x) = @_;
-       $x .= ']' while $_ = syntax_check('ruby -c -', $code)
-                       and $code =~ s/\]$//;
-       $_ ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
-
-Perl code is similar to Ruby, but we need to explicitly disable any BEGIN{}
-blocks to avoid executing side effects. We can guarantee that nothing will run
-(beyond `use` statements, which we assume are safe) by removing any
-occurrences of the string `BEGIN` and replacing them with something
-syntactically equivalent but less volatile -- in this case, `END`.
-
-Note that we can't use system() because ni automatically collects child processes.
-
-defparser 'plcode', '$',
-  sub {return @_[1..$#_] unless $_[1] =~ /\]$/;
-       my ($self, $code, @xs, $x) = @_;
-       my $qcode = $code;
-       my $begin_warning = $qcode =~ s/BEGIN/ END /g;
-       my $codegen = $$self[1];
-       my $status = 0;
-       $x .= ']' while $status = syntax_check('perl -c -', &$codegen($qcode))
-                       and ($qcode =~ s/\]$//, $code =~ s/\]$//);
-
-       print STDERR <<EOF if $_ && $begin_warning;
-ni: failed to get closing bracket count for perl code "$code", possibly
-    because BEGIN-block metaprogramming is disabled when ni tries to figure
-    this out. To avoid this, bypass bracket inference by terminating your code
-    with a single space, e.g:
-
-    p'[[some code]]'            # this may fail due to bracket inference
-    p'[[some code]] '           # this works by bypassing it
-EOF
-       $status ? () : length $x ? ($code, $x, @xs) : ($code, @xs)};
-
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
 specific cases. These are documented somewhere in `doc/`.

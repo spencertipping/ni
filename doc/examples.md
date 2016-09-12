@@ -84,7 +84,7 @@ $ ni nE3p'r a, $_ for 0..999' r'/0(\t|$)/' p'r a, sin(a/100)*sin(b/100), b'
 - `p'r a, $_ for 0..999'`: for each row, emit 1000 rows, one for each value in
   the second column. This emits the plane of input points for which we'll
   evaluate the product of two sines.
-- `r'/0(\t|$)/': punches holes in the plane to form a grid. I'll explain this
+- `r'/0(\t|$)/'`: punches holes in the plane to form a grid. I'll explain this
   below and show what it looks like if we omit it.
 - `p'r a, sin(a/100)*sin(b/100), b'`: the plane coordinates are `a` and `b`, so
   for each plane point we emit a 3D point at `<a, f(a, b), b>`.

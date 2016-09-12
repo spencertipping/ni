@@ -7,6 +7,9 @@ Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
 
 ### JSON extractor
 
+### numpy and Octave support
+Ideally with binary-read capability, and ideally supporting data facets.
+
 ### Binary reads
 Simple `pack()`-style reads. This should be fairly trivial to implement.
 
