@@ -4,13 +4,14 @@
 ```sh
 $ git clone git://github.com/spencertipping/ni && cd ni
 $ ./ni --help                   # start here
-$ ./ni --js                     # or here (see doc/visual.md)
 ```
 
-Or start at [doc/README.md](doc/README.md) if you'd prefer to read the docs
-online. All of the examples are unit tests, so they should work as advertised;
-if they don't, it's likely a system-specific issue and you should definitely
-open an issue so I can resolve it.
+Some places to start:
+
+- [doc/README.md](doc/README.md): an overview of documentation topics, and a
+  fairly standard tutorial
+- [doc/examples.md](doc/examples.md): straight into the deep end with the web
+  UI
 
 ni is designed to be extremely portable: it depends only on Perl v5.8.8 or
 later, and on POSIX.2001-specified shell utilities like `/usr/bin/sort`. In
