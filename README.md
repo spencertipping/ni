@@ -1,10 +1,11 @@
 # ni: portable, self-modifying APL for unstructured data
-**NOTE:** A work in progress, but finally coming together.
+![ni!](http://spencertipping.com/ni-example-simple-3dsine.png)
 
-![ni!](http://spencertipping.com/ni.png)
+(See [doc/examples.md](doc/examples.md) for an explanation of the above.)
 
 ```sh
-$ ni --help                     # start here
+$ git clone git://github.com/spencertipping/ni && cd ni
+$ ./ni --help                   # start here
 ```
 
 Or start at [doc/README.md](doc/README.md) if you'd prefer to read the docs
@@ -24,8 +25,8 @@ big-data word count sorted by descending frequency:
 
 ```sh
 $ ni README.md FWpF_ CO         # run on POSIX tools locally
-$ ni README.md hFWpF_ cO        # run on hadoop streaming
-$ ni README.md PL[FWpF_ CO]     # run on local pyspark
+$ ni README.md hFWpF_ cO        # run on hadoop streaming (TODO)
+$ ni README.md PL[FWpF_ CO]     # run on local pyspark (TODO)
 ```
 
 - `FW`: fieldsplit on non-words
