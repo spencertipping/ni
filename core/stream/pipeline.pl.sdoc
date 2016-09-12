@@ -120,8 +120,7 @@ shell pipe).
 
 sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
 sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
-sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}}
-sub sprepend(&)  {&{$_[0]}; sforward \*STDIN, \*STDOUT}
+sub sio()        {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
@@ -157,6 +156,8 @@ sub sdecode(;$) {
     my $o = siproc {sh $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
+    close $o;
+    $o->await;
   } else {
     safewrite \*STDOUT, $_;
     sforward \*STDIN, \*STDOUT;

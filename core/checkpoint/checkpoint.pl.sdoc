@@ -11,7 +11,7 @@ sub checkpoint_create($$) {
 
 defoperator 'checkpoint', q{
   my ($file, $generator) = @_;
-  sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
+  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
 defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, pqfn '';

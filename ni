@@ -724,7 +724,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-205 core/stream/pipeline.pl.sdoc
+206 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -847,8 +847,7 @@ shell pipe).
 
 sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
 sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
-sub sappend(&)   {sforward \*STDIN, \*STDOUT; &{$_[0]}}
-sub sprepend(&)  {&{$_[0]}; sforward \*STDIN, \*STDOUT}
+sub sio()        {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
@@ -884,6 +883,8 @@ sub sdecode(;$) {
     my $o = siproc {sh $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
+    close $o;
+    $o->await;
   } else {
     safewrite \*STDOUT, $_;
     sforward \*STDIN, \*STDOUT;
@@ -930,7 +931,7 @@ sub sni(@) {
   my @args = @_;
   soproc {exec_ni @args};
 }
-114 core/stream/ops.pl.sdoc
+112 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -939,15 +940,15 @@ $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
-  sforward \*STDIN, \*STDOUT;
+  sio;
   0;
 };
 
 use constant shell_command => prc '.*';
 
-defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
-defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
-defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
+defoperator cat  => q{my ($f) = @_; sio; scat $f};
+defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
+defoperator sh   => q{my ($c) = @_; sio; exec $c};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -956,7 +957,7 @@ point, which can cause unexpected results and loss of precision.
 
 defoperator n => q{
   my ($l, $u) = @_;
-  sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
+  sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
 };
 
 defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
@@ -971,14 +972,13 @@ deflong '/fs', pmap q{cat_op $_}, filename;
 Quoted ni invocation.
 Just like nfu's @[] lambda syntax.
 
-defoperator ni_append  => q{my @xs = @_; sappend  {exec_ni @xs}};
+defoperator ni_append  => q{my @xs = @_; sio; exec_ni @xs};
 defoperator ni_prepend => q{
   my @xs = @_;
-  sprepend {
-    my $fh = sni @xs;
-    sforward $fh, \*STDOUT;
-    $fh->await;
-  };
+  my $fh = sni @xs;
+  sforward $fh, \*STDOUT;
+  $fh->await;
+  sio;
 };
 
 deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
@@ -993,8 +993,7 @@ defshort '/$=', pmap q{pipe_op $_}, shell_command;
 
 defoperator tee => q{
   my ($cmd) = @_;
-  open my $fh, "| $cmd" or die "ni: tee $cmd failed: $!";
-  stee \*STDIN, $fh, \*STDOUT;
+  stee \*STDIN, siproc {sh $cmd}, \*STDOUT;
 };
 defshort '/$^', pmap q{tee_op $_}, shell_command;
 
@@ -1047,19 +1046,19 @@ defshort '/ZN', pk sink_null_op();
 defshort '/ZD', pk decode_op();
 1 core/meta/lib
 meta.pl.sdoc
-41 core/meta/meta.pl.sdoc
+42 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
-defoperator meta_image => q{sappend {print image, "\n"}};
-defoperator meta_keys  => q{sappend {print "$_\n" for sort keys %self}};
-defoperator meta_key   => q{my @ks = @_; sappend {print "$_\n" for @self{@ks}}};
+defoperator meta_image => q{sio; print image, "\n"};
+defoperator meta_keys  => q{sio; print "$_\n" for sort keys %self};
+defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @self{@ks}};
 
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
-  sappend {print $self{"doc/$topic.md"}, "\n"};
+  sio; print $self{"doc/$topic.md"} . "\n";
 };
 
 defshort '//',         pmap q{meta_key_op $_}, prc '[^][]+$';
@@ -1073,6 +1072,7 @@ because it's more straightforward to model these as data sources.
 defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
 
 defoperator meta_options => q{
+  sio;
   for my $c (sort keys %contexts) {
     printf "%s\tlong\t%s\t%s\n",  $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
     printf "%s\tshort\t%s\t%s\n", $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
@@ -1084,8 +1084,8 @@ defshort '///options', pmap q{meta_options_op}, pnone;
 Inspection.
 This lets you get details about specific operators or parsing contexts.
 
-defoperator meta_op  => q{print "sub {$operators{$_[0]}}\n"};
-defoperator meta_ops => q{print "$_\n" for sort keys %operators};
+defoperator meta_op  => q{sio; print "sub {$operators{$_[0]}}\n"};
+defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
 
 defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
@@ -2139,7 +2139,7 @@ sub checkpoint_create($$) {
 
 defoperator 'checkpoint', q{
   my ($file, $generator) = @_;
-  sappend {-r $file ? scat $file : checkpoint_create $file, $generator};
+  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
 defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, pqfn '';

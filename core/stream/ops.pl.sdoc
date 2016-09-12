@@ -6,15 +6,15 @@ $main_operator = sub {
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
-  sforward \*STDIN, \*STDOUT;
+  sio;
   0;
 };
 
 use constant shell_command => prc '.*';
 
-defoperator cat  => q{my ($f) = @_; sappend {scat $f}};
-defoperator echo => q{my ($x) = @_; sappend {print "$x\n"}};
-defoperator sh   => q{my ($c) = @_; sappend {exec $c}};
+defoperator cat  => q{my ($f) = @_; sio; scat $f};
+defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
+defoperator sh   => q{my ($c) = @_; sio; exec $c};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -23,7 +23,7 @@ point, which can cause unexpected results and loss of precision.
 
 defoperator n => q{
   my ($l, $u) = @_;
-  sappend {for (my $i = $l; $i < $u; ++$i) {print "$i\n"}};
+  sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
 };
 
 defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
@@ -38,14 +38,13 @@ deflong '/fs', pmap q{cat_op $_}, filename;
 Quoted ni invocation.
 Just like nfu's @[] lambda syntax.
 
-defoperator ni_append  => q{my @xs = @_; sappend  {exec_ni @xs}};
+defoperator ni_append  => q{my @xs = @_; sio; exec_ni @xs};
 defoperator ni_prepend => q{
   my @xs = @_;
-  sprepend {
-    my $fh = sni @xs;
-    sforward $fh, \*STDOUT;
-    $fh->await;
-  };
+  my $fh = sni @xs;
+  sforward $fh, \*STDOUT;
+  $fh->await;
+  sio;
 };
 
 deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
@@ -60,8 +59,7 @@ defshort '/$=', pmap q{pipe_op $_}, shell_command;
 
 defoperator tee => q{
   my ($cmd) = @_;
-  open my $fh, "| $cmd" or die "ni: tee $cmd failed: $!";
-  stee \*STDIN, $fh, \*STDOUT;
+  stee \*STDIN, siproc {sh $cmd}, \*STDOUT;
 };
 defshort '/$^', pmap q{tee_op $_}, shell_command;
 
