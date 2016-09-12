@@ -1,11 +1,10 @@
 # ni: portable, self-modifying APL for unstructured data
-![ni!](http://spencertipping.com/ni-example-simple-3dsine.png)
-
-(See [doc/examples.md](doc/examples.md) for an explanation of the above.)
+![ni!](http://spencertipping.com/ni-readme.png)
 
 ```sh
 $ git clone git://github.com/spencertipping/ni && cd ni
 $ ./ni --help                   # start here
+$ ./ni --js                     # or here (see doc/visual.md)
 ```
 
 Or start at [doc/README.md](doc/README.md) if you'd prefer to read the docs
