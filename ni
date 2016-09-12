@@ -2614,7 +2614,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-76 core/pl/stream.pm.sdoc
+77 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2639,6 +2639,7 @@ our @F;
 our $l;
 
 sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
+sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]]}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
