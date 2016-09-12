@@ -91,8 +91,22 @@ sub forkopen($$) {
 
 sub siproc(&) {forkopen 0, $_[0]}
 sub soproc(&) {forkopen 1, $_[0]}
-sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f}, 0; open STDIN,  '<&=0'}
-sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f}, 1; open STDOUT, '>&=1'}
+
+sub sicons(&) {
+  my ($f) = @_;
+  my $fh = soproc {&$f};
+  move_fd fileno $fh, 0;
+  open STDIN, '<&=0';
+  $fh;
+}
+
+sub socons(&) {
+  my ($f) = @_;
+  my $fh = siproc {&$f};
+  move_fd fileno $fh, 1;
+  open STDOUT, '>&=1';
+  $fh;
+}
 
 Stream functions.
 These are called by pipelines to simplify things. For example, a common

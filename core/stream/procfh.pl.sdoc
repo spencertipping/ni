@@ -5,6 +5,8 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
+use strict;
+use warnings;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -15,9 +17,9 @@ our %child_owners;
 
 sub await_children {
   local ($!, $?, $_);
-  my $o;
-  exists($o = $child_owners{$_}) and $o->child_exited($_, $?)
-    while 0 < ($_ = waitpid -1, WNOHANG);
+  while (0 < ($_ = waitpid -1, WNOHANG)) {
+    $child_owners{$_}->child_exited($_, $?) if defined $child_owners{$_};
+  }
   $SIG{CHLD} = \&await_children;
 };
 $SIG{CHLD} = \&await_children;
@@ -33,24 +35,47 @@ sub new($$$) {
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;
-  my $r = bless {fh => $fh, pid => $pid, status => undef}, $class;
-  return $child_owners{$pid} = $r;
+  $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
 }
 
-sub DESTROY   {my ($self)       = @_; delete $child_owners{$$self{pid}}}
-sub kill($$)  {my ($self, $sig) = @_; kill $$self{pid}, $sig}
-sub fh($)     {my ($self)       = @_; $$self{fh}}
-sub pid($)    {my ($self)       = @_; $$self{pid}}
-sub status($) {my ($self)       = @_; $$self{status}}
+sub DESTROY   {
+  my ($self) = @_;
+  delete $child_owners{$$self{pid}} unless defined $$self{status};
+}
+
+sub fh($)     {my ($self) = @_; $$self{fh}}
+sub pid($)    {my ($self) = @_; $$self{pid}}
+sub status($) {my ($self) = @_; $$self{status}}
+
+sub kill($$) {
+  my ($self, $sig) = @_;
+  kill $$self{pid}, $sig unless defined $$self{status};
+}
+
+sub str($)
+{ my ($self) = @_;
+  sprintf "<fd %d, pid %d, status %s>",
+          fileno $$self{fh}, $$self{pid}, $$self{status} || 'none' }
+
+Child await.
+We have to stop the SIGCHLD handler while we wait for the child in question.
+Otherwise we run the risk of waitpid() blocking forever or catching the wrong
+process. This ends up being fine because this process can't create more
+children while waitpid() is waiting, so we might have some resource delays but
+we won't have a leak.
+
+We also don't have to worry about multithreading: only one await() call can
+happen per process.
 
 sub await($) {
-  # FIXME: allow other children to be caught while we're waiting
+  local ($?, $!, $SIG{CHLD});
   my ($self) = @_;
   return $$self{status} if defined $$self{status};
-  local $SIG{CHLD} = 'IGNORE';
-  my $status = ni::dor $$self{status}, waitpid $$self{pid}, 0;
-  $SIG{CHLD} = \&await_children;
-  $status;
+  $SIG{CHLD} = 'IGNORE';
+  return $$self{status} if defined $$self{status};
+  my $pid = waitpid $$self{pid}, 0;
+  $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  $$self{status};
 }
 
 sub child_exited($$) {

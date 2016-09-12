@@ -7,6 +7,7 @@ $main_operator = sub {
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
+  0;
 };
 
 use constant shell_command => prc '.*';
@@ -37,8 +38,18 @@ deflong '/fs', pmap q{cat_op $_}, filename;
 Quoted ni invocation.
 Just like nfu's @[] lambda syntax.
 
-defoperator ni => q{my @xs = @_; sappend {exec_ni @xs}};
-deflong '/@[]', pmap q{ni_op @$_}, pn 1, prx '@', plambda '';
+defoperator ni_append  => q{my @xs = @_; sappend  {exec_ni @xs}};
+defoperator ni_prepend => q{
+  my @xs = @_;
+  sprepend {
+    my $fh = sni @xs;
+    sforward $fh, \*STDOUT;
+    $fh->await;
+  };
+};
+
+deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
+deflong '/@^[]', pmap q{ni_prepend_op @$_}, pn 1, prx '@\^', plambda '';
 
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream

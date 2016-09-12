@@ -29,14 +29,6 @@ an evaluator," implying that the lambda will end up going into a ni process.
 format for things like `//options` and `--dev/parse`. Also document why some
 options are `--` and others are `//`.
 
-### `siproc` needs to capture children more carefully
-For example, the output of `ni . \<` is unstable. We also need to capture PIDs
-so we can send SIGINT from JSPlot. Otherwise children may run uselessly if they
-take a while to emit output.
-
-Use OO for filehandles returned by the stream API. If there are associated
-PIDs, then `$fh->kill(INT)` or similar.
-
 ### Throughput monitoring
 At the very least we should indicate that data is moving, and where (nfu-style
 pipeline monitoring). Need a protocol for this, possibly also a log collector.

@@ -564,7 +564,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-70 main.pl.sdoc
+69 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -576,7 +576,6 @@ Development options.
 Things useful for developing ni.
 
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
-defclispecial '--dev/self', q{print "$ni::self{$_[0]}\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
   parse pcli '', @_;
@@ -584,7 +583,7 @@ defclispecial '--dev/parse', q{
 
 defclispecial '--dev/parse-one', q{
   dev_trace 'ni::parse';
-  parse ni::eval($_[0], $_[0]), @_[1..$#_];
+  parse ni::eval($_[0]), @_[1..$#_];
 };
 
 Extensions.
@@ -635,10 +634,97 @@ sub main {
   print STDERR "  @rest\n";
   exit 1;
 }
-2 core/stream/lib
+3 core/stream/lib
+procfh.pl.sdoc
 pipeline.pl.sdoc
 ops.pl.sdoc
-192 core/stream/pipeline.pl.sdoc
+85 core/stream/procfh.pl.sdoc
+Process + filehandle combination.
+We can't use Perl's process-aware FHs because they block-wait for the process
+on close. There are some situations where we care about the exit code and
+others where we don't, and this class supports both cases.
+
+package ni::procfh;
+
+use strict;
+use warnings;
+use POSIX qw/:sys_wait_h/;
+
+Global child collector.
+Collect children regardless of whether anyone is listening for them. If we have
+an interested party, notify them.
+
+our %child_owners;
+
+sub await_children {
+  local ($!, $?, $_);
+  while (0 < ($_ = waitpid -1, WNOHANG)) {
+    $child_owners{$_}->child_exited($_, $?) if defined $child_owners{$_};
+  }
+  $SIG{CHLD} = \&await_children;
+};
+$SIG{CHLD} = \&await_children;
+
+Proc-filehandle class.
+Overloading *{} makes it possible for this to act like a real filehandle in
+every sense: fileno() works, syswrite() works, etc. The constructor takes care
+of numeric fds by promoting them into Perl fh references.
+
+use overload qw/*{} fh "" str/;
+sub new($$$) {
+  my ($class, $fd, $pid) = @_;
+  my $fh = ref($fd) ? $fd : undef;
+  open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
+    unless defined $fh;
+  $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
+}
+
+sub DESTROY   {
+  my ($self) = @_;
+  delete $child_owners{$$self{pid}} unless defined $$self{status};
+}
+
+sub fh($)     {my ($self) = @_; $$self{fh}}
+sub pid($)    {my ($self) = @_; $$self{pid}}
+sub status($) {my ($self) = @_; $$self{status}}
+
+sub kill($$) {
+  my ($self, $sig) = @_;
+  kill $$self{pid}, $sig unless defined $$self{status};
+}
+
+sub str($)
+{ my ($self) = @_;
+  sprintf "<fd %d, pid %d, status %s>",
+          fileno $$self{fh}, $$self{pid}, $$self{status} || 'none' }
+
+Child await.
+We have to stop the SIGCHLD handler while we wait for the child in question.
+Otherwise we run the risk of waitpid() blocking forever or catching the wrong
+process. This ends up being fine because this process can't create more
+children while waitpid() is waiting, so we might have some resource delays but
+we won't have a leak.
+
+We also don't have to worry about multithreading: only one await() call can
+happen per process.
+
+sub await($) {
+  local ($?, $!, $SIG{CHLD});
+  my ($self) = @_;
+  return $$self{status} if defined $$self{status};
+  $SIG{CHLD} = 'IGNORE';
+  return $$self{status} if defined $$self{status};
+  my $pid = waitpid $$self{pid}, 0;
+  $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  $$self{status};
+}
+
+sub child_exited($$) {
+  my ($self, $status) = @_;
+  $$self{status} = $status;
+  delete $child_owners{$$self{pid}};
+}
+205 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -648,14 +734,7 @@ I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
 use Errno qw/EINTR/;
-use POSIX qw/dup2 :sys_wait_h/;
-
-sub await_children {
-  local ($!, $?);
-  1 while 0 < waitpid -1, WNOHANG;
-  $SIG{CHLD} = \&await_children;
-};
-$SIG{CHLD} = \&await_children;
+use POSIX qw/dup2/;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
@@ -668,6 +747,8 @@ sub move_fd($$) {
   cdup2 $old, $new;
   close $old;
 }
+
+sub sh($) {exec 'sh', '-c', $_[0]}
 
 Safe reads/writes.
 This is required because older versions of Perl don't automatically retry
@@ -721,9 +802,10 @@ sub forkopen($$) {
   my ($fd, $f) = @_;
   cpipe my $r, my $w;
   my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
-  if (cfork) {
+  my $pid;
+  if ($pid = cfork) {
     close $child;
-    return $ret;
+    return ni::procfh->new($ret, $pid);
   } else {
     close $ret;
     move_fd fileno $child, $fd;
@@ -736,8 +818,22 @@ sub forkopen($$) {
 
 sub siproc(&) {forkopen 0, $_[0]}
 sub soproc(&) {forkopen 1, $_[0]}
-sub sicons(&) {my ($f) = @_; move_fd fileno soproc {&$f}, 0; open STDIN,  '<&=0'}
-sub socons(&) {my ($f) = @_; move_fd fileno siproc {&$f}, 1; open STDOUT, '>&=1'}
+
+sub sicons(&) {
+  my ($f) = @_;
+  my $fh = soproc {&$f};
+  move_fd fileno $fh, 0;
+  open STDIN, '<&=0';
+  $fh;
+}
+
+sub socons(&) {
+  my ($f) = @_;
+  my $fh = siproc {&$f};
+  move_fd fileno $fh, 1;
+  open STDOUT, '>&=1';
+  $fh;
+}
 
 Stream functions.
 These are called by pipelines to simplify things. For example, a common
@@ -785,7 +881,7 @@ sub sdecode(;$) {
               : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
 
   if (defined $decoder) {
-    open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
+    my $o = siproc {sh $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
   } else {
@@ -807,7 +903,10 @@ sub scat {
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
     } else {
-      sforward srfile $f, siproc {sdecode};
+      my $d = siproc {sdecode};
+      sforward srfile $f, $d;
+      close $d->fh;
+      $d->await;
     }
   }
 }
@@ -831,7 +930,7 @@ sub sni(@) {
   my @args = @_;
   soproc {exec_ni @args};
 }
-103 core/stream/ops.pl.sdoc
+114 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -841,6 +940,7 @@ $main_operator = sub {
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
   sforward \*STDIN, \*STDOUT;
+  0;
 };
 
 use constant shell_command => prc '.*';
@@ -871,8 +971,18 @@ deflong '/fs', pmap q{cat_op $_}, filename;
 Quoted ni invocation.
 Just like nfu's @[] lambda syntax.
 
-defoperator ni => q{my @xs = @_; sappend {exec_ni @xs}};
-deflong '/@[]', pmap q{ni_op @$_}, pn 1, prx '@', plambda '';
+defoperator ni_append  => q{my @xs = @_; sappend  {exec_ni @xs}};
+defoperator ni_prepend => q{
+  my @xs = @_;
+  sprepend {
+    my $fh = sni @xs;
+    sforward $fh, \*STDOUT;
+    $fh->await;
+  };
+};
+
+deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
+deflong '/@^[]', pmap q{ni_prepend_op @$_}, pn 1, prx '@\^', plambda '';
 
 Shell transformation.
 Pipe through a shell command. We also define a command to duplicate a stream
@@ -3755,7 +3865,7 @@ refresh();
 t.focus();
 
 });
-66 core/jsplot/jsplot.pl.sdoc
+70 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -3774,6 +3884,8 @@ This is the websocket connection that ni uses to stream data to the client. Any
 data we receive from the client indicates that the client is canceling the
 websocket request, so we need to break the pipe and kill off subprocesses.
 
+sub jsplot_log($@) {printf STDERR "ni js[$$]: $_[0]", @_[1..$#_]}
+
 sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
@@ -3783,7 +3895,7 @@ sub jsplot_stream($$@) {
     die "ni: jsplot failed to parse starting at @rest";
   }
 
-  printf STDERR "\nni --js: running %s\n", json_encode $ops;
+  jsplot_log "running %s\n", json_encode $ops;
 
   safewrite $reply, ws_header($req);
   my $ni_pipe = sni @$ops, http_websocket_encode_batch_op 65536;
@@ -3795,18 +3907,20 @@ sub jsplot_stream($$@) {
   my $n;
   my $total = 0;
   while ($n = saferead $ni_pipe, $_, 65536) {
-    printf STDERR "\rni --js: % 8dKiB", ($total += $n) >> 10;
+    jsplot_log "% 8dKiB\r", ($total += $n) >> 10;
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x81\x80/) {
-        print STDERR "\nni --js: closed worker pipe\n";
+        jsplot_log "SIGTERM to worker\n";
+        $ni_pipe->kill('TERM');
+        jsplot_log "awaiting worker exit\n";
+        jsplot_log "worker exited with %d\n", $ni_pipe->await;
         return;
       }
     }
     safewrite $reply, $_;
   }
-
-  print STDERR "\nni --js: done\n";
+  jsplot_log "done transferring data\n";
 }
 
 sub jsplot_server {
