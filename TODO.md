@@ -34,3 +34,21 @@ At the very least we should indicate that data is moving, and where (nfu-style
 pipeline monitoring). Need a protocol for this, possibly also a log collector.
 Standard error should be piped through the main process, so the pager should be
 a fork.
+
+### JSPlot
+#### Labeled points
+#### Labeled axes/grids/etc
+Must be client-side; this way it can happen after autoranging and during zooms.
+
+#### Render fourth dimension (most likely as hue or saturation)
+**NB:** this requires that the points be Z-ordered before they're drawn
+
+#### Custom autorange
+#### Outlier removal
+#### Precise zooming, view history
+#### Options to reset/generate view matrix
+Maybe a general refactor here. There are some inconsistencies in view rotation,
+for example, and the focal point is not always obvious.
+
+#### Client-side axis reordering
+Should be trivial since the data is all there.
