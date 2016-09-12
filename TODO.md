@@ -7,9 +7,6 @@ Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
 
 ### JSON extractor
 
-### `sort` optimizations
-`-S`, `--parallel`, etc.
-
 ### Binary reads
 Simple `pack()`-style reads. This should be fairly trivial to implement.
 

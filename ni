@@ -2377,7 +2377,7 @@ defoperator with => q{
 defshort '/w', pmap q{with_op @$_}, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-92 core/row/row.pl.sdoc
+119 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2392,8 +2392,6 @@ defoperator row_sample => q{
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
   }
 };
-
-defoperator row_sort => q{exec 'sort', @_};
 
 defoperator row_cols_defined => q{
   my ($floor, @cs) = @_;
@@ -2443,6 +2441,35 @@ sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
+
+Compatibility detection.
+GNU coreutils sort supports some useful options like `--buffer-size` and
+`--compress-program`. We should use these if they exist because they can make a
+huge difference when processing large datasets.
+
+Note that we localize compatibility detection down to the operator -- we don't
+do it system-wide or at parse time. The reason is that parameterized operators
+can be moved, potentially across machines; this really is the only way to do it
+reliably.
+
+sub sort_supports(@) {
+  my $args = shell_quote @_;
+  my $p    = siproc {sh "sort $args >/dev/null 2>&1"};
+  close $p;
+  return !$p->await;
+}
+
+sub sort_extra_args(@) {
+  my @r;
+  sort_supports @r, $_ and push @r, $_ for @_;
+  @r;
+}
+
+defoperator row_sort => q{
+  # TODO: support customization
+  exec 'sort', sort_extra_args('--compress-program=gzip',
+                               '--buffer-size=64M',
+                               '--parallel=4'), @_};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
 defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
