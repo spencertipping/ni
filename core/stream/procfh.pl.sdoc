@@ -68,10 +68,10 @@ We also don't have to worry about multithreading: only one await() call can
 happen per process.
 
 sub await($) {
-  local ($?, $!, $SIG{CHLD});
+  local ($?, $SIG{CHLD});
   my ($self) = @_;
   return $$self{status} if defined $$self{status};
-  $SIG{CHLD} = 'IGNORE';
+  $SIG{CHLD} = 'DEFAULT';
   return $$self{status} if defined $$self{status};
   my $pid = waitpid $$self{pid}, 0;
   $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
