@@ -13,8 +13,6 @@ defoperator row_sample => q{
   }
 };
 
-defoperator row_sort => q{exec 'sort', @_};
-
 defoperator row_cols_defined => q{
   my ($floor, @cs) = @_;
   my $limit = $floor + 1;
@@ -63,6 +61,16 @@ sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;
                     my $m = defined $$_[1] ? $$_[1] : '';
                     ('-k', "$i$m,$i")} @_}
+
+Compatibility detection.
+GNU coreutils sort supports some useful options like `--buffer-size` and
+`--compress-program`. We should use these if they exist because they can make a
+huge difference when processing large datasets.
+
+defoperator row_sort => q{
+  # TODO: compatibility detection
+  exec 'sort', @_
+};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
 defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
