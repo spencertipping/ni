@@ -5493,7 +5493,7 @@ $ ni :biglist n100000Z r5
 4
 5
 ```
-35 doc/tutorial.md
+38 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -5506,6 +5506,9 @@ $ ni data-source.gz                     # works like less
 $ cat data-source.gz | ni               # same here
 $ ni //help/stream                      # view a help topic
 ```
+
+## The deep end
+- [examples.md](examples.md) (`ni //help/examples`)
 
 ## Basics
 - [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data

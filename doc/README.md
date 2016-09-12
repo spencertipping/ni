@@ -11,6 +11,9 @@ $ cat data-source.gz | ni               # same here
 $ ni //help/stream                      # view a help topic
 ```
 
+## The deep end
+- [examples.md](examples.md) (`ni //help/examples`)
+
 ## Basics
 - [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
 - [row.md](row.md)       (`ni //help/row`):    row-level operators
