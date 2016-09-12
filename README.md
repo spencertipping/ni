@@ -8,9 +8,10 @@ $ ./ni --help                   # start here
 
 Some places to start:
 
-- doc/README.md: an overview of documentation topics, and a fairly standard
-  tutorial
-- doc/examples.md: straight into the deep end with the web UI
+- [doc/README.md](doc/README.md): an overview of documentation topics, and a
+  fairly standard tutorial
+- [doc/examples.md](doc/examples.md): straight into the deep end with the web
+  UI
 
 ni is designed to be extremely portable: it depends only on Perl v5.8.8 or
 later, and on POSIX.2001-specified shell utilities like `/usr/bin/sort`. In
