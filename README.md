@@ -8,9 +8,9 @@ $ ./ni --help                   # start here
 
 Some places to start:
 
-- [doc/README.md](blob/master/doc/README.md): an overview of documentation topics, and a
+- [doc/README.md](./doc/README.md): an overview of documentation topics, and a
   fairly standard tutorial
-- [doc/examples.md](blob/master/doc/examples.md): straight into the deep end with the web
+- [doc/examples.md](./doc/examples.md): straight into the deep end with the web
   UI
 
 ni is designed to be extremely portable: it depends only on Perl v5.8.8 or
