@@ -20,20 +20,35 @@ sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
   my ($ops) = cli @ni_args;
+  unless (defined $ops) {
+    my (undef, @rest) = parse pcli_debug '', @ni_args;
+    die "ni: jsplot failed to parse starting at @rest";
+  }
+
+  printf STDERR "\nni --js: running %s\n", json_encode $ops;
+
   safewrite $reply, ws_header($req);
-  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_batch_op 65536;
+  my $ni_pipe = sni @$ops, http_websocket_encode_batch_op 65536;
 
   my $incoming;
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  while (saferead $ni_pipe, $_, 65536) {
+  my $n;
+  my $total = 0;
+  while ($n = saferead $ni_pipe, $_, 65536) {
+    printf STDERR "\rni --js: % 8dKiB", ($total += $n) >> 10;
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
-      return if $incoming =~ /^\x81\x80/;
+      if ($incoming =~ /^\x81\x80/) {
+        print STDERR "\nni --js: closed worker pipe\n";
+        return;
+      }
     }
     safewrite $reply, $_;
   }
+
+  print STDERR "\nni --js: done\n";
 }
 
 sub jsplot_server {

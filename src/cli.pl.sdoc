@@ -45,7 +45,7 @@ represent:
 
 sub psuffix($)    {prep $contexts{$_[0]}}
 sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
-sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
+sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prx qr/\]/}
 sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
 
 sub pcli($)       {pn 0, pseries $_[0], pend}

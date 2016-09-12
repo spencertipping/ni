@@ -483,7 +483,7 @@ represent:
 
 sub psuffix($)    {prep $contexts{$_[0]}}
 sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
-sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prc qr/\]/}
+sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prx qr/\]/}
 sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
 
 sub pcli($)       {pn 0, pseries $_[0], pend}
@@ -3385,7 +3385,7 @@ if(k&&j[k]&&(e||j[k].data)||void 0!==d||"string"!=typeof b)return k||(k=i?a[h]=c
  * http://jquery.org/license
  */
 !function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a:a(jQuery)}(function(a){function b(b){var g=b||window.event,h=i.call(arguments,1),j=0,l=0,m=0,n=0,o=0,p=0;if(b=a.event.fix(g),b.type="mousewheel","detail"in g&&(m=-1*g.detail),"wheelDelta"in g&&(m=g.wheelDelta),"wheelDeltaY"in g&&(m=g.wheelDeltaY),"wheelDeltaX"in g&&(l=-1*g.wheelDeltaX),"axis"in g&&g.axis===g.HORIZONTAL_AXIS&&(l=-1*m,m=0),j=0===m?l:m,"deltaY"in g&&(m=-1*g.deltaY,j=m),"deltaX"in g&&(l=g.deltaX,0===m&&(j=-1*l)),0!==m||0!==l){if(1===g.deltaMode){var q=a.data(this,"mousewheel-line-height");j*=q,m*=q,l*=q}else if(2===g.deltaMode){var r=a.data(this,"mousewheel-page-height");j*=r,m*=r,l*=r}if(n=Math.max(Math.abs(m),Math.abs(l)),(!f||f>n)&&(f=n,d(g,n)&&(f/=40)),d(g,n)&&(j/=40,l/=40,m/=40),j=Math[j>=1?"floor":"ceil"](j/f),l=Math[l>=1?"floor":"ceil"](l/f),m=Math[m>=1?"floor":"ceil"](m/f),k.settings.normalizeOffset&&this.getBoundingClientRect){var s=this.getBoundingClientRect();o=b.clientX-s.left,p=b.clientY-s.top}return b.deltaX=l,b.deltaY=m,b.deltaFactor=f,b.offsetX=o,b.offsetY=p,b.deltaMode=0,h.unshift(b,j,l,m),e&&clearTimeout(e),e=setTimeout(c,200),(a.event.dispatch||a.event.handle).apply(this,h)}}function c(){f=null}function d(a,b){return k.settings.adjustOldDeltas&&"mousewheel"===a.type&&b%120===0}var e,f,g=["wheel","mousewheel","DOMMouseScroll","MozMousePixelScroll"],h="onwheel"in document||document.documentMode>=9?["wheel"]:["mousewheel","DomMouseScroll","MozMousePixelScroll"],i=Array.prototype.slice;if(a.event.fixHooks)for(var j=g.length;j;)a.event.fixHooks[g[--j]]=a.event.mouseHooks;var k=a.event.special.mousewheel={version:"3.1.12",setup:function(){if(this.addEventListener)for(var c=h.length;c;)this.addEventListener(h[--c],b,!1);else this.onmousewheel=b;a.data(this,"mousewheel-line-height",k.getLineHeight(this)),a.data(this,"mousewheel-page-height",k.getPageHeight(this))},teardown:function(){if(this.removeEventListener)for(var c=h.length;c;)this.removeEventListener(h[--c],b,!1);else this.onmousewheel=null;a.removeData(this,"mousewheel-line-height"),a.removeData(this,"mousewheel-page-height")},getLineHeight:function(b){var c=a(b),d=c["offsetParent"in a.fn?"offsetParent":"parent"]();return d.length||(d=a("body")),parseInt(d.css("fontSize"),10)||parseInt(c.css("fontSize"),10)||16},getPageHeight:function(b){return a(b).height()},settings:{adjustOldDeltas:!0,normalizeOffset:!0}};a.fn.extend({mousewheel:function(a){return a?this.bind("mousewheel",a):this.trigger("mousewheel")},unmousewheel:function(a){return this.unbind("mousewheel",a)}})});
-26 core/jsplot/css
+27 core/jsplot/css
 body {margin:0; color:#eee; background:#111; font-size:10pt;
       font-family:monospace; overflow: hidden}
 
@@ -3400,7 +3400,7 @@ body {margin:0; color:#eee; background:#111; font-size:10pt;
 
 #transform {background:none; margin:0; color:#eee; position:absolute;
             left:0; top:0; border:none; outline:none; padding:1px 0;
-            border-bottom:solid 1px transparent}
+            border-bottom:solid 1px transparent; font-family:monospace}
 
 #transform:focus,
 #transform:hover {background:rgba(17,17,17,0.75)}
@@ -3408,7 +3408,8 @@ body {margin:0; color:#eee; background:#111; font-size:10pt;
 
 #preview {z-index:1; color:transparent; max-width:1px; overflow-x:auto;
           position:absolute; left:0; padding-right:12px; overflow-y:show;
-          margin:0; background:rgba(17,17,17,0.75); cursor:default}
+          margin:0; background:rgba(17,17,17,0.75); cursor:default;
+          font-family:monospace}
 
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
@@ -3739,7 +3740,7 @@ refresh();
 t.focus();
 
 });
-51 core/jsplot/jsplot.pl.sdoc
+66 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -3762,20 +3763,35 @@ sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
   my ($ops) = cli @ni_args;
+  unless (defined $ops) {
+    my (undef, @rest) = parse pcli_debug '', @ni_args;
+    die "ni: jsplot failed to parse starting at @rest";
+  }
+
+  printf STDERR "\nni --js: running %s\n", json_encode $ops;
+
   safewrite $reply, ws_header($req);
-  my $ni_pipe = sni cli(@ni_args), http_websocket_encode_batch_op 65536;
+  my $ni_pipe = sni @$ops, http_websocket_encode_batch_op 65536;
 
   my $incoming;
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  while (saferead $ni_pipe, $_, 65536) {
+  my $n;
+  my $total = 0;
+  while ($n = saferead $ni_pipe, $_, 65536) {
+    printf STDERR "\rni --js: % 8dKiB", ($total += $n) >> 10;
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
-      return if $incoming =~ /^\x81\x80/;
+      if ($incoming =~ /^\x81\x80/) {
+        print STDERR "\nni --js: closed worker pipe\n";
+        return;
+      }
     }
     safewrite $reply, $_;
   }
+
+  print STDERR "\nni --js: done\n";
 }
 
 sub jsplot_server {
