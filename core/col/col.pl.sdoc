@@ -82,3 +82,18 @@ our %split_dsp = (
 defshort '/F', pdspr %split_dsp;
 
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
+
+Juxtaposition.
+You can juxtapose two data sources horizontally by using `w` for `with`.
+
+defoperator with => q{
+  my $fh = sni @_;
+  my $l;
+  while (<STDIN>) {
+    chomp;
+    return unless defined($l = <$fh>);
+    print "$_\t$l";
+  }
+};
+
+defshort '/w', pmap q{with_op @$_}, pqfn '';

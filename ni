@@ -2165,7 +2165,7 @@ defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
 defshort '/::',   pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
 1 core/col/lib
 col.pl.sdoc
-84 core/col/col.pl.sdoc
+99 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2250,6 +2250,21 @@ our %split_dsp = (
 defshort '/F', pdspr %split_dsp;
 
 sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
+
+Juxtaposition.
+You can juxtapose two data sources horizontally by using `w` for `with`.
+
+defoperator with => q{
+  my $fh = sni @_;
+  my $l;
+  while (<STDIN>) {
+    chomp;
+    return unless defined($l = <$fh>);
+    print "$_\t$l";
+  }
+};
+
+defshort '/w', pmap q{with_op @$_}, pqfn '';
 1 core/row/lib
 row.pl.sdoc
 92 core/row/row.pl.sdoc

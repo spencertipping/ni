@@ -7,14 +7,7 @@ I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
 use Errno qw/EINTR/;
-use POSIX qw/dup2 :sys_wait_h/;
-
-sub await_children {
-  local ($!, $?);
-  1 while 0 < waitpid -1, WNOHANG;
-  $SIG{CHLD} = \&await_children;
-};
-$SIG{CHLD} = \&await_children;
+use POSIX qw/dup2/;
 
 sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
@@ -27,6 +20,8 @@ sub move_fd($$) {
   cdup2 $old, $new;
   close $old;
 }
+
+sub sh($) {exec 'sh', '-c', $_[0]}
 
 Safe reads/writes.
 This is required because older versions of Perl don't automatically retry
@@ -80,9 +75,10 @@ sub forkopen($$) {
   my ($fd, $f) = @_;
   cpipe my $r, my $w;
   my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
-  if (cfork) {
+  my $pid;
+  if ($pid = cfork) {
     close $child;
-    return $ret;
+    return ni::procfh->new($ret, $pid);
   } else {
     close $ret;
     move_fd fileno $child, $fd;
@@ -144,7 +140,7 @@ sub sdecode(;$) {
               : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
 
   if (defined $decoder) {
-    open my $o, "| $decoder" or die "ni_decode: failed to open '$decoder': $!";
+    my $o = siproc {sh $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
   } else {
@@ -166,7 +162,10 @@ sub scat {
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
       closedir $d;
     } else {
-      sforward srfile $f, siproc {sdecode};
+      my $d = siproc {sdecode};
+      sforward srfile $f, $d;
+      close $d->fh;
+      $d->await;
     }
   }
 }

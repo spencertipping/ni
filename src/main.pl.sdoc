@@ -9,7 +9,6 @@ Development options.
 Things useful for developing ni.
 
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
-defclispecial '--dev/self', q{print "$ni::self{$_[0]}\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
   parse pcli '', @_;
@@ -17,7 +16,7 @@ defclispecial '--dev/parse', q{
 
 defclispecial '--dev/parse-one', q{
   dev_trace 'ni::parse';
-  parse ni::eval($_[0], $_[0]), @_[1..$#_];
+  parse ni::eval($_[0]), @_[1..$#_];
 };
 
 Extensions.

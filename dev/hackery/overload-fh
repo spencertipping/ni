@@ -1,0 +1,15 @@
+#!/usr/bin/env perl
+
+{
+package myfh;
+use overload qw/*{} get_fh/;
+sub new {bless {fh => $_[0]}}
+sub get_fh {my ($self) = @_; $$self{fh}}
+}
+
+my $new_stdin  = myfh::new \*STDIN;
+my $new_stdout = myfh::new \*STDOUT;
+syswrite $new_stdout, "it appears to work\n";
+
+die "but fileno does not (stdin)"  unless 0 == fileno $new_stdin;
+die "but fileno does not (stdout)" unless 1 == fileno $new_stdout;

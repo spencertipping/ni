@@ -1,0 +1,60 @@
+Process + filehandle combination.
+We can't use Perl's process-aware FHs because they block-wait for the process
+on close. There are some situations where we care about the exit code and
+others where we don't, and this class supports both cases.
+
+package ni::procfh;
+
+use POSIX qw/:sys_wait_h/;
+
+Global child collector.
+Collect children regardless of whether anyone is listening for them. If we have
+an interested party, notify them.
+
+our %child_owners;
+
+sub await_children {
+  local ($!, $?, $_);
+  my $o;
+  exists($o = $child_owners{$_}) and $o->child_exited($_, $?)
+    while 0 < ($_ = waitpid -1, WNOHANG);
+  $SIG{CHLD} = \&await_children;
+};
+$SIG{CHLD} = \&await_children;
+
+Proc-filehandle class.
+Overloading *{} makes it possible for this to act like a real filehandle in
+every sense: fileno() works, syswrite() works, etc. The constructor takes care
+of numeric fds by promoting them into Perl fh references.
+
+use overload qw/*{} fh "" str/;
+sub new($$$) {
+  my ($class, $fd, $pid) = @_;
+  my $fh = ref($fd) ? $fd : undef;
+  open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
+    unless defined $fh;
+  my $r = bless {fh => $fh, pid => $pid, status => undef}, $class;
+  return $child_owners{$pid} = $r;
+}
+
+sub DESTROY   {my ($self)       = @_; delete $child_owners{$$self{pid}}}
+sub kill($$)  {my ($self, $sig) = @_; kill $$self{pid}, $sig}
+sub fh($)     {my ($self)       = @_; $$self{fh}}
+sub pid($)    {my ($self)       = @_; $$self{pid}}
+sub status($) {my ($self)       = @_; $$self{status}}
+
+sub await($) {
+  # FIXME: allow other children to be caught while we're waiting
+  my ($self) = @_;
+  return $$self{status} if defined $$self{status};
+  local $SIG{CHLD} = 'IGNORE';
+  my $status = ni::dor $$self{status}, waitpid $$self{pid}, 0;
+  $SIG{CHLD} = \&await_children;
+  $status;
+}
+
+sub child_exited($$) {
+  my ($self, $status) = @_;
+  $$self{status} = $status;
+  delete $child_owners{$$self{pid}};
+}
