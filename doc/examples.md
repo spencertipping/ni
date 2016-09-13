@@ -3,15 +3,18 @@ All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 If you're working through these on the command line, you can use `ni
 --explain` to help figure out what's going on:
 
-```sh
+```bash
 $ ni --explain //ni FWpF_ plc gc
 ["meta_image"]
 ["split_regex","(?^:[^\\w\\n]+)"]
 ["perl_mapper","F_"]
 ["perl_mapper","lc"]
-["row_sort"]
+["row_sort","-t","\t"]
 ["count"]
 ```
+
+**NOTE:** Some of the screenshots here are from older versions of ni, so some
+details may have changed since.
 
 ## Simple 2D letter/letter co-occurrence matrix
 ![img](http://spencertipping.com/ni-example-letter-cooccurrence.png)
@@ -70,7 +73,7 @@ boundaries. This is a common thing to do when dot plotting, so ni provides the
 ![img](http://spencertipping.com/ni-example-simple-3dsine.png)
 
 ```
-http://localhost:8090/#%7B%22ni%22%3A%22nE3p'r%20a%2C%20%24_%20for%200..999'%20r'%2F0(%5C%5Ct%7C%24)%2F'%20p'r%20a%2C%20sin(a%2F100)*sin(b%2F100)%2C%20b'%20%40%5Bid%3A0%2C4%2C0%20id%3A0%2C-4%2C0%20FC%5D%22%2C%22vm%22%3A%5B0.9900140741662761%2C0%2C0.14096855306306652%2C0.038856304985337244%2C-0.043561678568934545%2C0.9510565162951593%2C0.30593117358776106%2C0.03263707571801566%2C-0.13406906098332957%2C-0.3090169943749491%2C0.9415593364597573%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A0.8750031755957807%7D
+http://localhost:8090/#%7B%22ni%22%3A%22nE3p'r%20a%2C%20%24_%20for%200..999'%20r'%2F0(%5C%5Ct%7C%24)%2F'%20p'r%20a%2C%20sin(a%2F100)*sin(b%2F100)%2C%20b'%20%2B%5Bid%3A0%2C4%2C0%20id%3A0%2C-4%2C0%20FC%5D%22%2C%22vm%22%3A%5B0.9900140741662761%2C0%2C0.14096855306306652%2C0.038856304985337244%2C-0.043561678568934545%2C0.9510565162951593%2C0.30593117358776106%2C0.03263707571801566%2C-0.13406906098332957%2C-0.3090169943749491%2C0.9415593364597573%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A0.8750031755957807%7D
 ```
 
 Equivalent ni command:
@@ -110,7 +113,7 @@ This uses a sub-ni instance to append some data to the stream. We just need two
 more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
-- `+[...]`: append the output of invoking ni on `...`:
+- `+[...]`: append a new stream:
   - `id:0,4,0`: append the literal text `0,4,0`
   - `id:0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
