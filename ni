@@ -81,15 +81,15 @@ lib core/net
 lib core/col
 lib core/row
 lib core/cell
-lib core/facet
 lib core/pl
+lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
 lib core/http
-lib core/plot
 lib core/gnuplot
 lib core/jsplot
+lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
@@ -2208,7 +2208,7 @@ faster.
 sub json_decode($) {
   local $_;
   my @v = [];
-  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|-?[\d.][-+eE0-9.]*/g) {
+  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|[-+eE\d.]+/g) {
     if (/^[[{]$/) {
       push @v, [];
     } elsif (/^\]$/) {
@@ -2388,7 +2388,7 @@ defoperator row_sample => q{
   srand($ENV{NI_SEED} || 42);
   $. = 0;
   while (<STDIN>) {
-    print, $. -= -log(1 - rand()) / $_[0] if $. > 0;
+    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
   }
 };
 
@@ -2642,29 +2642,6 @@ defoperator col_delta => q{
 
 defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op $_}, cellspec_fixed;
-1 core/facet/lib
-facet.pl.sdoc
-20 core/facet/facet.pl.sdoc
-Faceting support.
-A compound operation that prepends a new facet-value column, sorts by that
-value, and supports streaming aggregation within facet groups. It's specified
-this way for two reasons. First, it's convenient; but second, and more
-importantly, not all backends will have the right set of primitives to let you
-specify a facet the same way.
-
-The general syntax is like this:
-
-| $ ni n:100 @p'a % 10' 'r a, fr {$_ + b} 0'    # sum each group
-
-This generalizes easily to other programming environments, e.g. SQL GROUP BY:
-
-| $ ni ... [@'mod(x, 10)' 'sum(y)']
-
-our %facet_dsp;
-
-defshort '/@', pdspr %facet_dsp;
-
-sub deffacetalt($$) {$facet_dsp{$_[0]} = $_[1]}
 5 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
@@ -2766,7 +2743,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-85 core/pl/stream.pm.sdoc
+84 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2790,14 +2767,13 @@ our @q;
 our @F;
 our $l;
 
-sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]]}
-sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub rl():lvalue  {$l = @q ? shift @q : <STDIN>; @F = (); $l}
+sub pl($):lvalue {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
 sub FR($)  {F_($_[0]..FM)}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
        ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'q'}
 
@@ -2836,7 +2812,7 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
@@ -2921,7 +2897,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-105 core/pl/pl.pl.sdoc
+97 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3007,11 +2983,9 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
 
 sub perl_mapper($)  {perl_code $_[0], 'pr for row'}
 sub perl_grepper($) {perl_code $_[0], 'pr if row'}
-sub perl_facet($)   {perl_code $_[0], 'pr row . "\t$_"'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
-defoperator perl_facet   => q{stdin_to_perl perl_facet   $_[0]};
 
 our @perl_alt = pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
 
@@ -3021,12 +2995,152 @@ sub defperlalt($) {unshift @perl_alt, $_[0]}
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', pplcode \&perl_grepper;
+2 core/rb/lib
+prefix.rb
+rb.pl.sdoc
+72 core/rb/prefix.rb
+# ni ruby driver prefix
+# This is loaded prior to the short codegen segment in rb.pl.sdoc.
 
-deffacetalt 'p', pmap q{[perl_facet_op($$_[0]),
-                         row_sort_op('-k1b,1'),
-                         perl_mapper_op($$_[1])]},
-                 pseq pplcode \&perl_facet,
-                      pplcode \&perl_mapper;
+$have_json = true
+require 'json' rescue $have_json = false
+
+class Line
+  attr_reader :str
+
+  def initialize s
+    @str    = s
+    @fields = nil
+  end
+
+  def [] *x
+    fields[*x]
+  end
+
+  def fields
+    @fields ||= @str.split /\t/
+  end
+
+  def to_s
+    @str
+  end
+end
+
+# Some metaprogramming to get letter accessors
+Line.class_eval do
+  ('a'..'q').each do |l|
+    index = l[0].ord - 97
+    define_method    l   .to_sym, proc {fields[index]}
+    define_method "#{l}s".to_sym, proc {fields[index].to_s}
+    define_method "#{l}i".to_sym, proc {fields[index].to_i}
+    define_method "#{l}f".to_sym, proc {fields[index].to_f}
+    define_method "#{l}d".to_sym, proc {fields[index].to_f}
+  end
+end
+
+def r *xs
+  xs.join "\t"
+end
+
+# Readahead support
+$q = []
+$l = nil
+
+def next_line
+  return $q.shift unless $q.empty?
+  Line.new STDIN.readline.chomp! rescue nil
+end
+
+def rw
+  r = [$l]
+  l = nil
+  r << l while l = next_line and yield l
+  $q << l if l
+  r
+end
+
+def ru
+  r = [$l]
+  l = nil
+  r << l until !(l = next_line) or yield l
+  $q << l if l
+  r
+end
+
+def re &f
+  v = f.call $l
+  rw {|l| f.call(l) == v}
+end
+69 core/rb/rb.pl.sdoc
+Ruby code element.
+This works just like the Perl code parser but is slightly less involved because
+there's no `BEGIN/END` substitution. We also don't need to take a code
+transform because no amount of wrapping will change whether an expression can
+be parsed.
+
+defparser 'rbcode', '', sub {
+  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  my ($self, $code, @xs) = @_;
+  my ($x, $status) = ('', 0);
+  $x .= ']' while $status = syntax_check 'ruby -c -', $code and $code =~ s/\]$//;
+  die <<EOF if $status;
+ni: failed to get closing bracket count for ruby code "$code$x"; this means
+    your code has a syntax error.
+EOF
+  length $x ? ($code, $x, @xs) : ($code, @xs);
+};
+
+Ruby wrapper.
+
+use constant ruby_mapgen => gen q{
+  %prefix
+  STDIN.close
+  STDIN = IO.new 3
+  class Line
+    def row
+      %body
+    end
+  end
+
+  def map_mode! x
+    if x.is_a? Enumerable
+      x.each do |v|
+        v = r *v if v.is_a? Enumerable
+        puts v.gsub!(/\n/, '')
+      end
+    elsif !x.nil?
+      puts x.to_s.gsub!(/\n/, '')
+    end
+  end
+
+  while $l = next_line
+    $l = Line.new $l
+    x = $l.row
+    %each
+  end
+};
+
+use constant ruby_prefix => join "\n", @self{qw| core/rb/prefix.rb |};
+
+sub stdin_to_ruby($) {
+  move_fd 0, 3;
+  safewrite siproc {exec 'ruby', '-'}, $_[0];
+}
+
+sub ruby_code($$) {ruby_mapgen->(prefix => ruby_prefix,
+                                 body   => $_[0],
+                                 each   => $_[1])}
+
+sub ruby_mapper($)  {ruby_code $_[0], 'map_mode! x'}
+sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
+
+our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
+
+defshort '/m', paltr @ruby_alt;
+
+sub defrubyalt($) {unshift @ruby_alt, $_[0]}
+
+defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
@@ -3536,18 +3650,6 @@ defoperator http_websocket_encode_batch => q{
 
 deflong '/http/wse',       pmap q{http_websocket_encode_op},                prc '--http/wse$';
 deflong '/http/wse-batch', pmap q{http_websocket_encode_batch_op $_}, pn 1, prc '--http/wse-batch$', popt integer;
-1 core/plot/lib
-plot.pl.sdoc
-9 core/plot/plot.pl.sdoc
-Plot operator.
-This delegates to other operators using a chalt. The mnemonic is "v" for
-"visualize."
-
-our %plot_dsp;
-
-defshort '/v', pdspr %plot_dsp;
-
-sub defplotalt($$) {$plot_dsp{$_[0]} = $_[1]}
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
 12 core/gnuplot/gnuplot.pl.sdoc
@@ -3562,7 +3664,7 @@ defoperator gnuplot => q{
   exec 'gnuplot', '-persist', '-e', $args;
 };
 
-defplotalt 'g', pmap q{gnuplot_op $_}, $contexts{gnuplot};
+defshort '/G', $contexts{gnuplot};
 6 core/jsplot/lib
 jquery.min.js
 jquery.mousewheel.min.js
@@ -4010,6 +4112,35 @@ sub jsplot_server {
 }
 
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
+1 core/docker/lib
+docker.pl.sdoc
+26 core/docker/docker.pl.sdoc
+Pipeline dockerization.
+Creates a transient container to execute a part of your pipeline. The image you
+specify needs to have Perl installed, but that's about it.
+
+our @docker_alt;
+defshort '/C', paltr @docker_alt;
+
+sub defdockeralt($) {unshift @docker_alt, $_[0]}
+
+defoperator docker_run_image => q{
+  my ($image, @f) = @_;
+  my ($stdin, @args) = sni_exec_list @f;
+  my $fh = siproc {exec qw|docker run --rm -i|, $image, @args};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+Prebuilt image case.
+This is what happens by default, and looks like `ni Cubuntu[g]`.
+
+use constant docker_image_name => prx '[^][]+';
+
+defdockeralt pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
+                  pseq pc docker_image_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
@@ -4273,7 +4404,7 @@ All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 If you're working through these on the command line, you can use `ni
 --explain` to help figure out what's going on:
 
-```bash
+```sh
 $ ni --explain //ni FWpF_ plc gc
 ["meta_image"]
 ["split_regex","(?^:[^\\w\\n]+)"]
@@ -4895,7 +5026,7 @@ The line array returned by `ru` is just an array of flat, tab-delimited strings
 column-accessor functions `a_`, `b_`, etc:
 
 ```bash
-$ ni n10p'r map a*$_, 1..10' | tee mult-table
+$ ni n10p'r map a*$_, 1..10' =\>mult-table
 1	2	3	4	5	6	7	8	9	10
 2	4	6	8	10	12	14	16	18	20
 3	6	9	12	15	18	21	24	27	30
@@ -4997,7 +5128,7 @@ $ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 And here's the easy way, using `rc`:
 
 ```bash
-$ ni n100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 5050	50.5	1	100
 ```
 
@@ -5008,11 +5139,10 @@ string**, and (3) the finalizer (which is why `rmean` can return a single
 number despite its intermediate state being the separated sum and number).
 
 Compound reducers are compiled functions, which means their arguments are
-expressed as strings representing quoted code. This is why we use `A` rather
-than `a` in the example above: `A` evaluates to the string `'a'`, which is
-spliced into a function body along with the other reducer expressions and
-compiled. The result is a very efficient reducer function that ends up looking
-like this:
+expressed as strings representing quoted code. This is why we use `"a"` rather
+than `a` in the example above: the string `'a' is spliced into a function body
+along with the other reducer expressions and compiled. The result is a very
+efficient reducer function that ends up looking like this:
 
 ```pl
 sub {($_[0] + a, $_[1] + a, $_[2] + 1, min($_[3], a), max($_[4], a))}
@@ -5064,13 +5194,14 @@ Here's what's going on.
   - `rfn q{ ++${%1}{a()} && %1 }, {}`: a reducer whose initial state is the
     empty hash `{}`, and whose reducer function does the following:
     - `q{ ++${%1}{a()} ...}`: `%1` is the reduced quantity, and `a()` is the
-      first column of the line. We're incrementing the entry within the `%{%1}`
-      hash.
+      first column of the line. (We wouldn't normally need parens, but if we
+      omit them here Perl will assume `a` itself is the key.) We're
+      incrementing the entry within the `%{%1}` hash.
     - `&& %1` is a way to return the hash reference as the reduced value (since
       we're modifying it in place). We need to do this without using a comma
       because each reducer function is evaluated in list context.
 
-Of course, it's a lot easier to use the streaming count operator:
+Of course, in this case it's a lot easier to use the streaming count operator:
 
 ```bash
 $ ni /etc/passwd FWpsplit// r/[a-z]/gcx
@@ -5330,7 +5461,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-339 doc/stream.md
+367 doc/stream.md
 # Stream operations
 `bash` and `ni` are both pipeline constructors: they string processes together
 by connecting one's stdin to another's stdout. For example, here's word count
@@ -5344,7 +5475,7 @@ $ ni  file FW pF_                             g     c
 
 ni's pipe symbols are implied: `ni g c` is the same as `ni g | ni c`.
 
-```bash
+```sh
 $ ni --explain FW pF_ g c
 ["split_regex","(?^:[^\\w\\n]+)"]
 ["perl_mapper","F_"]
@@ -5463,6 +5594,34 @@ ni has four operators that combine streams:
 - `^`: prepend a stream to this one
 - `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
+
+Visually, here's what these stream combiners do:
+
+```
+$ ni n10 n5 g           # stdin --> n10 --> n5 --> g --> stdout
+
+
+                        #                  /dev/null --> n5 --> g
+                        #                  ----------------------
+                        #                           |
+$ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
+
+
+                        #                        ni stdin --> n10
+                        #                        ----------------
+                        #                             |
+$ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
+
+
+                        #                  n5 --> g
+                        #                 /        \
+$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
+
+
+                        #                  n5 --> g --> /dev/null
+                        #                 /
+$ ni n10 =[n5 g]        # ni stdin --> n10 -----------> ni stdout
+```
 
 ```bash
 $ { echo hello; echo world; } > hw

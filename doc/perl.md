@@ -177,7 +177,7 @@ The line array returned by `ru` is just an array of flat, tab-delimited strings
 column-accessor functions `a_`, `b_`, etc:
 
 ```bash
-$ ni n10p'r map a*$_, 1..10' | tee mult-table
+$ ni n10p'r map a*$_, 1..10' =\>mult-table
 1	2	3	4	5	6	7	8	9	10
 2	4	6	8	10	12	14	16	18	20
 3	6	9	12	15	18	21	24	27	30
@@ -279,7 +279,7 @@ $ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 And here's the easy way, using `rc`:
 
 ```bash
-$ ni n100p'r rc \&sr, rsum A, rmean A, rmin A, rmax A'
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 5050	50.5	1	100
 ```
 
@@ -290,11 +290,10 @@ string**, and (3) the finalizer (which is why `rmean` can return a single
 number despite its intermediate state being the separated sum and number).
 
 Compound reducers are compiled functions, which means their arguments are
-expressed as strings representing quoted code. This is why we use `A` rather
-than `a` in the example above: `A` evaluates to the string `'a'`, which is
-spliced into a function body along with the other reducer expressions and
-compiled. The result is a very efficient reducer function that ends up looking
-like this:
+expressed as strings representing quoted code. This is why we use `"a"` rather
+than `a` in the example above: the string `'a' is spliced into a function body
+along with the other reducer expressions and compiled. The result is a very
+efficient reducer function that ends up looking like this:
 
 ```pl
 sub {($_[0] + a, $_[1] + a, $_[2] + 1, min($_[3], a), max($_[4], a))}
@@ -346,13 +345,14 @@ Here's what's going on.
   - `rfn q{ ++${%1}{a()} && %1 }, {}`: a reducer whose initial state is the
     empty hash `{}`, and whose reducer function does the following:
     - `q{ ++${%1}{a()} ...}`: `%1` is the reduced quantity, and `a()` is the
-      first column of the line. We're incrementing the entry within the `%{%1}`
-      hash.
+      first column of the line. (We wouldn't normally need parens, but if we
+      omit them here Perl will assume `a` itself is the key.) We're
+      incrementing the entry within the `%{%1}` hash.
     - `&& %1` is a way to return the hash reference as the reduced value (since
       we're modifying it in place). We need to do this without using a comma
       because each reducer function is evaluated in list context.
 
-Of course, it's a lot easier to use the streaming count operator:
+Of course, in this case it's a lot easier to use the streaming count operator:
 
 ```bash
 $ ni /etc/passwd FWpsplit// r/[a-z]/gcx

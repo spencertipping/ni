@@ -9,4 +9,4 @@ defoperator gnuplot => q{
   exec 'gnuplot', '-persist', '-e', $args;
 };
 
-defplotalt 'g', pmap q{gnuplot_op $_}, $contexts{gnuplot};
+defshort '/G', $contexts{gnuplot};

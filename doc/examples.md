@@ -3,7 +3,7 @@ All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 If you're working through these on the command line, you can use `ni
 --explain` to help figure out what's going on:
 
-```bash
+```sh
 $ ni --explain //ni FWpF_ plc gc
 ["meta_image"]
 ["split_regex","(?^:[^\\w\\n]+)"]

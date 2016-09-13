@@ -1,9 +1,0 @@
-Plot operator.
-This delegates to other operators using a chalt. The mnemonic is "v" for
-"visualize."
-
-our %plot_dsp;
-
-defshort '/v', pdspr %plot_dsp;
-
-sub defplotalt($$) {$plot_dsp{$_[0]} = $_[1]}

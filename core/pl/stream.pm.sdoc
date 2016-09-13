@@ -21,14 +21,13 @@ our @q;
 our @F;
 our $l;
 
-sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
-sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]]}
-sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub rl():lvalue  {$l = @q ? shift @q : <STDIN>; @F = (); $l}
+sub pl($):lvalue {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
 sub FR($)  {F_($_[0]..FM)}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
        ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'q'}
 
@@ -67,7 +66,7 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {eval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant

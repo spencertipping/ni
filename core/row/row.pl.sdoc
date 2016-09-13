@@ -10,7 +10,7 @@ defoperator row_sample => q{
   srand($ENV{NI_SEED} || 42);
   $. = 0;
   while (<STDIN>) {
-    print, $. -= -log(1 - rand()) / $_[0] if $. > 0;
+    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
   }
 };
 

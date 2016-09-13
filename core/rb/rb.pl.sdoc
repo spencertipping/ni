@@ -15,3 +15,55 @@ ni: failed to get closing bracket count for ruby code "$code$x"; this means
 EOF
   length $x ? ($code, $x, @xs) : ($code, @xs);
 };
+
+Ruby wrapper.
+
+use constant ruby_mapgen => gen q{
+  %prefix
+  STDIN.close
+  STDIN = IO.new 3
+  class Line
+    def row
+      %body
+    end
+  end
+
+  def map_mode! x
+    if x.is_a? Enumerable
+      x.each do |v|
+        v = r *v if v.is_a? Enumerable
+        puts v.gsub!(/\n/, '')
+      end
+    elsif !x.nil?
+      puts x.to_s.gsub!(/\n/, '')
+    end
+  end
+
+  while $l = next_line
+    $l = Line.new $l
+    x = $l.row
+    %each
+  end
+};
+
+use constant ruby_prefix => join "\n", @self{qw| core/rb/prefix.rb |};
+
+sub stdin_to_ruby($) {
+  move_fd 0, 3;
+  safewrite siproc {exec 'ruby', '-'}, $_[0];
+}
+
+sub ruby_code($$) {ruby_mapgen->(prefix => ruby_prefix,
+                                 body   => $_[0],
+                                 each   => $_[1])}
+
+sub ruby_mapper($)  {ruby_code $_[0], 'map_mode! x'}
+sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
+
+our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
+
+defshort '/m', paltr @ruby_alt;
+
+sub defrubyalt($) {unshift @ruby_alt, $_[0]}
+
+defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;

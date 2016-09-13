@@ -11,7 +11,7 @@ $ ni  file FW pF_                             g     c
 
 ni's pipe symbols are implied: `ni g c` is the same as `ni g | ni c`.
 
-```bash
+```sh
 $ ni --explain FW pF_ g c
 ["split_regex","(?^:[^\\w\\n]+)"]
 ["perl_mapper","F_"]
@@ -130,6 +130,34 @@ ni has four operators that combine streams:
 - `^`: prepend a stream to this one
 - `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
+
+Visually, here's what these stream combiners do:
+
+```
+$ ni n10 n5 g           # stdin --> n10 --> n5 --> g --> stdout
+
+
+                        #                  /dev/null --> n5 --> g
+                        #                  ----------------------
+                        #                           |
+$ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
+
+
+                        #                        ni stdin --> n10
+                        #                        ----------------
+                        #                             |
+$ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
+
+
+                        #                  n5 --> g
+                        #                 /        \
+$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
+
+
+                        #                  n5 --> g --> /dev/null
+                        #                 /
+$ ni n10 =[n5 g]        # ni stdin --> n10 -----------> ni stdout
+```
 
 ```bash
 $ { echo hello; echo world; } > hw
