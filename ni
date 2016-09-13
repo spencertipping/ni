@@ -2208,7 +2208,7 @@ faster.
 sub json_decode($) {
   local $_;
   my @v = [];
-  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|-?\d[-+eE0-9.]*/g) {
+  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|-?[\d.][-+eE0-9.]*/g) {
     if (/^[[{]$/) {
       push @v, [];
     } elsif (/^\]$/) {
@@ -2252,7 +2252,7 @@ sub json_encode($) {
 }
 1 core/net/lib
 net.pl.sdoc
-17 core/net/net.pl.sdoc
+18 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2261,15 +2261,16 @@ be writable.
 defoperator ssh => q{
   my ($host, $lambda) = @_;
   my ($stdin, @exec) = sni_exec_list @$lambda;
-  open my $fh, "| ssh " . shell_quote($host, [@exec])
-    or die "ni: ssh failed to fork: $!";
+  my $fh = siproc {exec 'ssh', $host, shell_quote @exec};
   safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
 };
 
 use constant ssh_host => prc '[^][/,]+';
 
-defshort '/ssh:', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
-defshort '/::',   pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
+defshort '/s', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
 1 core/col/lib
 col.pl.sdoc
 99 core/col/col.pl.sdoc
@@ -2374,7 +2375,7 @@ defoperator with => q{
 defshort '/w', pmap q{with_op @$_}, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-117 core/row/row.pl.sdoc
+118 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2385,8 +2386,9 @@ defoperator row_every => q{$. % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
   srand($ENV{NI_SEED} || 42);
+  $. = 0;
   while (<STDIN>) {
-    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+    print, $. -= -log(1 - rand()) / $_[0] if $. > 0;
   }
 };
 

@@ -8,8 +8,9 @@ defoperator row_every => q{$. % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
   srand($ENV{NI_SEED} || 42);
+  $. = 0;
   while (<STDIN>) {
-    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+    print, $. -= -log(1 - rand()) / $_[0] if $. > 0;
   }
 };
 

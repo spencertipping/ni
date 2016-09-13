@@ -26,7 +26,7 @@ faster.
 sub json_decode($) {
   local $_;
   my @v = [];
-  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|-?\d[-+eE0-9.]*/g) {
+  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|[-+eE\d.]+/g) {
     if (/^[[{]$/) {
       push @v, [];
     } elsif (/^\]$/) {
