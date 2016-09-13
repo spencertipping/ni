@@ -29,7 +29,7 @@ Operator | Example     | Description
 `%`      | `%[\>f zn]` | Duplicates stream
 `\>`     | `\>file`    | Sinks stream into resource, emits resource name
 `\<`     | `\<`        | Opposite of `\>`
----------|-------------|------------
+         |             |
 `a`      |             |
 `b`      | `bL40`      | Block-read and unpack binary data
 `c`      | `c`         | `uniq -c`, but emits proper TSV format
@@ -56,7 +56,7 @@ Operator | Example     | Description
 `x`      | `xC`        | Exchange first fields with others
 `y`      |             |
 `z`      | `z4`        | Compress or decompress
----------|-------------|------------
+         |             |
 `A`      |             |
 `B`      |             |
 `C`      |             |
@@ -83,4 +83,3 @@ Operator | Example     | Description
 `X`      |             |
 `Y`      |             |
 `Z`      |             |
----------|-------------|-----------
