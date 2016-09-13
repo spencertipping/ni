@@ -4679,31 +4679,8 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-92 doc/options.md
+69 doc/options.md
 # Complete ni operator listing
-## General patterns in streaming contexts
-### Stream manipulation
-- `+`: append a data source
-- `^`: prepend a data source
-- `%`: duplicate stream through a process (like `tee`)
-- `\>`: convert stream to named resource
-- `\<`: convert named resource(s) to stream
-
-### Row/column/cell operations
-- `d`: destructure objects of some kind (JSON, XML, etc)
-- `f`: select/rearrange columns
-- `m'code'`: map using quoted code in whatever language is appropriate
-- `r`: select rows by specified criterion
-- `x`: exchange values (e.g. key/value, columns, etc)
-
-### Sorting/grouping/partitioning
-- `g`: group by key or fields
-- `c`: count grouped rows
-- `u`: uniq
-- `o`: total order
-- `O`: reverse total order
-
-## Root (toplevel) context
 Operator | Example      | Description
 ---------|--------------|------------
 `+`      | `+p'foo'`    | Appends a data source evaluated with no input
@@ -4732,7 +4709,7 @@ Operator | Example      | Description
 `k`      |              |
 `l`      | `l'(1+ a)'`  | Map over rows using Common Lisp
 `m`      | `m'a + 1'`   | Map over rows using Ruby
-`n`      | `n'svd(x)'`  | Map over data using NumPy
+`n`      | `n'svd(x)'`  | Map over matrices using NumPy
 `o`      | `oC`         | Numeric sort ascending
 `p`      | `p'a + 1'`   | Map over rows using Perl
 `q`      |              |
@@ -4756,7 +4733,7 @@ Operator | Example      | Description
 `H`      | `H c`        | Send named files through hadoop
 `I`      |              |
 `J`      |              |
-`K`      | `K`          | Kills all data in the stream
+`K`      |              |
 `L`      |              |
 `M`      |              |
 `N`      |              |
