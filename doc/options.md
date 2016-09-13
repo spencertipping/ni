@@ -8,7 +8,7 @@
 - `\<`: convert named resource(s) to stream
 
 ### Row/column/cell operations
-- `e`: extract fields from objects of some kind (JSON, structures, etc)
+- `d`: destructure objects of some kind (JSON, XML, etc)
 - `f`: select/rearrange columns
 - `m'code'`: map using quoted code in whatever language is appropriate
 - `r`: select rows by specified criterion
@@ -29,21 +29,25 @@ Operator | Example     | Description
 `%`      | `%[\>f zn]` | Duplicates stream
 `\>`     | `\>file`    | Sinks stream into resource, emits resource name
 `\<`     | `\<`        | Opposite of `\>`
+`=`      |             |
+`-`      |             |
+`,`      | `,jAB`      | Enter cell context
+`.`      |             |
          |             |
 `a`      |             |
 `b`      | `bL40`      | Block-read and unpack binary data
 `c`      | `c`         | `uniq -c`, but emits proper TSV format
-`d`      |             |
-`e`      | `e.foo`     | Extract fields from structured text data (JSON/XML)
+`d`      | `d.foo`     | Destructure JSON or XML
+`e`      | `e[tac]`    | Exec shell command
 `f`      | `fACB`      | Reorder, duplicate, or drop fields by column
 `g`      | `gA`        | Sort by all or selected columns
 `h`      | `h c`       | Evaluate two lambdas using hadoop
 `i`      |             |
-`j`      | `j foo`     | Join streams on field values
+`j`      | `j foo`     | Join sorted streams on field values
 `k`      |             |
 `l`      | `l'(1+ a)'` | Map over rows using Common Lisp
 `m`      | `m'a + 1'`  | Map over rows using Ruby
-`n`      |             |
+`n`      | `n'svd(x)'` | Map over data using NumPy
 `o`      | `oC`        | Numeric sort ascending
 `p`      | `p'a + 1'`  | Map over rows using Perl
 `q`      |             |
@@ -61,7 +65,7 @@ Operator | Example     | Description
 `B`      |             |
 `C`      |             |
 `D`      |             |
-`E`      |             |
+`E`      | `e.foo`     | Extract fields from structured text data (JSON/XML)
 `F`      | `FC`        | Parse data into fields
 `G`      |             |
 `H`      |             |
