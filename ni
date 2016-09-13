@@ -4723,7 +4723,7 @@ Operator | Example     | Description
 `i`      |             |
 `j`      | `j foo`     | Join streams on field values
 `k`      |             |
-`l`      | `l'(1+ a)'  | Map over rows using Common Lisp
+`l`      | `l'(1+ a)'` | Map over rows using Common Lisp
 `m`      | `m'a + 1'`  | Map over rows using Ruby
 `n`      |             |
 `o`      | `oC`        | Numeric sort ascending
