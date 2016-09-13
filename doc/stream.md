@@ -1,4 +1,28 @@
 # Stream operations
+`bash` and `ni` are both pipeline constructors: they string processes together
+by connecting one's stdin to another's stdout. For example, here's word count
+implemented first in bash, then in ni (with the corresponding options
+vertically aligned):
+
+```
+$ cat file |perl -lne 'print for split /\W+/' |sort |uniq -c
+$ ni  file FW pF_                             g     c
+```
+
+ni's pipe symbols are implied: `ni g c` is the same as `ni g | ni c`.
+
+```bash
+$ ni --explain FW pF_ g c
+["split_regex","(?^:[^\\w\\n]+)"]
+["perl_mapper","F_"]
+["row_sort","-t","\t"]
+["count"]
+```
+
+## Files
+Files append themselves to the data stream (the bash equivalent would be
+`|cat - file`):
+
 ```bash
 $ echo test > foo
 $ ni foo
@@ -99,6 +123,37 @@ can't parse something, though.
 See [row.md](row.md) (`ni //help/row`) for details about row-reordering
 operators like sorting.
 
+## Stream combiners
+ni has four operators that combine streams:
+
+- `+`: append a stream to this one
+- `^`: prepend a stream to this one
+- `%`: duplicate this stream through a process, and include output
+- `=`: duplicate this stream through a process, discarding its output
+
+```bash
+$ { echo hello; echo world; } > hw
+$ ni n3 +hw
+1
+2
+3
+hello
+world
+$ ni n3 ^hw
+hello
+world
+1
+2
+3
+$ ni hw %e[wc -l]               # output from 'wc -l' is included
+hello
+world
+2
+$ ni hw =e[wc -l]               # output from 'wc -l' is gone
+hello
+world
+```
+
 ## Writing files
 You can write a file in two ways. One is, of course, using shell redirection:
 
@@ -119,7 +174,7 @@ $ ni file2
 1
 2
 3
-$ ni n3 =\>file3                # duplicates output
+$ ni n3 =\>file3                # eats the filename because \> happens inside =
 1
 2
 3
