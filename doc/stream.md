@@ -60,6 +60,13 @@ $ ni n3e'sort -r'
 2
 1
 $ ni n3e[ sort -r ]             # easy way to quote arguments
+3
+2
+1
+$ ni n3e[sort -r]
+3
+2
+1
 ```
 
 And, of course, ni has shorthands for doing all of the above:
@@ -103,7 +110,7 @@ $ ni file
 3
 ```
 
-The other way is to use one of ni's two file-writing operators:
+The other way is to use ni's `\>` operator:
 
 ```bash
 $ ni n3 \>file2                 # writes the filename to the terminal
@@ -122,8 +129,8 @@ $ ni file3
 3
 ```
 
-The `<` operator inverts `>` by reading files; it's conceptually equivalent to
-`xargs cat`:
+The `\<` operator inverts `\>` by reading files; it's conceptually equivalent
+to `xargs cat`:
 
 ```bash
 $ ni n4 \>file3 \<
@@ -270,8 +277,8 @@ lambda is contained within the `checkpoint` array:
 
 ```bash
 $ ni --explain :biglist n100000z r5
-["checkpoint","biglist",[["n",1,100001],["pipe","gzip"]]]
+["checkpoint","biglist",[["n",1,100001],["sh","gzip"]]]
 ["head","-n",5]
 $ ni --explain :biglist n100000zr5
-["checkpoint","biglist",[["n",1,100001],["pipe","gzip"],["head","-n",5]]]
+["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```

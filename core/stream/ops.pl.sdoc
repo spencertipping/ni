@@ -10,11 +10,15 @@ $main_operator = sub {
   0;
 };
 
-use constant shell_command => prc '.*';
+use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$'),    prc '\]$';
+use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda),
+                                     pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                     prx '.*';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
-defoperator sh   => q{my ($c) = @_; sio; exec $c};
+defoperator sh   => q{my ($c) = @_; sh $c};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -30,38 +34,50 @@ defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 
-defshort '/$:',  pmap q{sh_op $_}, shell_command;
-defshort '/sh:', pmap q{sh_op $_}, shell_command;
+defshort '/e', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
-Quoted ni invocation.
-Just like nfu's @[] lambda syntax.
+Stream mixing/forking.
+Append, prepend, duplicate, divert.
 
-defoperator ni_append  => q{my @xs = @_; sio; exec_ni @xs};
-defoperator ni_prepend => q{
+defoperator append => q{
   my @xs = @_;
-  my $fh = sni @xs;
-  sforward $fh, \*STDOUT;
+  sio;
+  my $fh = siproc {exec_ni @xs};
+  close $fh;
+  $fh->await;
+};
+
+defoperator prepend => q{
+  my @xs = @_;
+  my $fh = siproc {exec_ni @xs};
+  close $fh;
   $fh->await;
   sio;
 };
 
-deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
-deflong '/@^[]', pmap q{ni_prepend_op @$_}, pn 1, prx '@\^', plambda '';
-
-Shell transformation.
-Pipe through a shell command. We also define a command to duplicate a stream
-through a shell command.
-
-defoperator pipe => q{exec $_[0] or die "ni: failed to exec $_[0]: $!"};
-defshort '/$=', pmap q{pipe_op $_}, shell_command;
-
-defoperator tee => q{
-  my ($cmd) = @_;
-  stee \*STDIN, siproc {sh $cmd}, \*STDOUT;
+defoperator duplicate => q{
+  my @xs = @_;
+  my $fh = siproc {exec_ni @xs};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
 };
-defshort '/$^', pmap q{tee_op $_}, shell_command;
+
+defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+defoperator divert => q{
+  my @xs = @_;
+  my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/+', pmap q{append_op    @$_}, pqfn '';
+defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
+defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
+defshort '/=', pmap q{divert_op    @$_}, pqfn '';
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -76,7 +92,6 @@ sub tempfile_name() {
   $r;
 }
 
-defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
@@ -85,9 +100,8 @@ defoperator file_write => q{
   print "$file\n";
 };
 
-defshort '/>%', pmap q{file_tee_op $_},   nefilename;
-defshort '/>',  pmap q{file_write_op $_}, nefilename;
-defshort '/<',  pmap q{file_read_op},     pnone;
+defshort '/>', pmap q{file_write_op $_}, nefilename;
+defshort '/<', pmap q{file_read_op},     pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
@@ -101,12 +115,11 @@ use constant compressor_name => prx '[gxo4b]';
 use constant compressor_spec =>
   pmap q{my ($c, $level) = @$_;
          $c = $compressors{$c || 'g'};
-         defined $level ? pipe_op "$c -$level" : pipe_op $c},
+         defined $level ? sh_op "$c -$level" : sh_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
-defoperator decode    => q{sdecode};
+defoperator decode => q{sdecode};
 
-defshort '/Z',  compressor_spec;
-defshort '/ZN', pk sink_null_op();
-defshort '/ZD', pk decode_op();
+defshort '/z',  compressor_spec;
+defshort '/zn', pk sink_null_op();
+defshort '/zd', pk decode_op();

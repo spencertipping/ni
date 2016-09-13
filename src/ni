@@ -45,6 +45,7 @@ sub ni::set
 
 ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
+$ni::data = \*DATA;
 ni::eval 'exit main @ARGV', 'main';
 _
 die $@;

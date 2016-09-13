@@ -25,6 +25,7 @@ sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]]}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
+sub FR($)  {F_($_[0]..FM)}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
        ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';

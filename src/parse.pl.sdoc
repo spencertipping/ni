@@ -102,6 +102,9 @@ BEGIN {
   defparser 'rx', '$',
     sub {my ($self, $x, @xs) = @_;
          $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+
+  defparser 'nx', '$',
+    sub {my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}

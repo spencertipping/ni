@@ -182,7 +182,7 @@ $ ni word-list gcr10            # sort first to group words
 1	AUTHORS
 1	BE
 $ ni word-list gcOr10           # by descending count
-29	ni
+30	ni
 22	lib
 22	core
 21	_

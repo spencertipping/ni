@@ -45,6 +45,7 @@ sub ni::set
 
 ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
 while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
+$ni::data = \*DATA;
 ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
@@ -208,7 +209,7 @@ sub dev_trace($) {
     @r;
   };
 }
-107 parse.pl.sdoc
+110 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -313,6 +314,9 @@ BEGIN {
   defparser 'rx', '$',
     sub {my ($self, $x, @xs) = @_;
          $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+
+  defparser 'nx', '$',
+    sub {my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
@@ -436,7 +440,7 @@ sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 
 sub cli(@) {my ($r) = parse pcli '', @_; $r}
-24 op.pl.sdoc
+25 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -444,6 +448,7 @@ provides an intermediate representation that can be inspected and serialized.
 our %operators;
 sub defoperator($$) {
   my ($name, $f) = @_;
+  die "ni: cannot redefine operator $name" if exists $operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
   ni::eval "sub ${name}_run(@) {\$operators{\$name}->(\@_)}",
@@ -510,7 +515,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-69 main.pl.sdoc
+62 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -537,13 +542,6 @@ Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
 defclispecial '--lib', q{intern_lib shift; goto \&main};
-
-Internal interfacing.
-Functions used by ni internally.
-
-defclispecial '--internal/operate', q{
-  &$main_operator(flatten_operators json_decode($self{$_[0]}));
-};
 
 Documentation.
 
@@ -670,7 +668,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-206 core/stream/pipeline.pl.sdoc
+218 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -861,7 +859,15 @@ sub scat {
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
-If you do this, the ni subprocess won't receive any data on its standard input.
+If you do this, ni's standard input will come from a continuation of __DATA__.
+
+defclispecial '--internal/operate', q{
+  my ($k) = @_;
+  my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
+  print $fh $_ while <$data>;
+  close $fh;
+  exit $fh->await;
+};
 
 sub sni_exec_list(@) {
   my $stdin = image_with 'transient/op' => json_encode([@_]);
@@ -870,14 +876,18 @@ sub sni_exec_list(@) {
 
 sub exec_ni(@) {
   my ($stdin, @argv) = sni_exec_list @_;
-  safewrite siproc {exec @argv}, $stdin;
+  my $fh = siproc {exec @argv};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  exit $fh->await;
 }
 
 sub sni(@) {
   my @args = @_;
-  soproc {exec_ni @args};
+  soproc {close STDIN; exec_ni @args};
 }
-112 core/stream/ops.pl.sdoc
+125 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -890,11 +900,15 @@ $main_operator = sub {
   0;
 };
 
-use constant shell_command => prc '.*';
+use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$'),    prc '\]$';
+use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda),
+                                     pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                     prx '.*';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
-defoperator sh   => q{my ($c) = @_; sio; exec $c};
+defoperator sh   => q{my ($c) = @_; sh $c};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -910,38 +924,50 @@ defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 
-defshort '/$:',  pmap q{sh_op $_}, shell_command;
-defshort '/sh:', pmap q{sh_op $_}, shell_command;
+defshort '/e', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
-Quoted ni invocation.
-Just like nfu's @[] lambda syntax.
+Stream mixing/forking.
+Append, prepend, duplicate, divert.
 
-defoperator ni_append  => q{my @xs = @_; sio; exec_ni @xs};
-defoperator ni_prepend => q{
+defoperator append => q{
   my @xs = @_;
-  my $fh = sni @xs;
-  sforward $fh, \*STDOUT;
+  sio;
+  my $fh = siproc {exec_ni @xs};
+  close $fh;
+  $fh->await;
+};
+
+defoperator prepend => q{
+  my @xs = @_;
+  my $fh = siproc {exec_ni @xs};
+  close $fh;
   $fh->await;
   sio;
 };
 
-deflong '/@[]',  pmap q{ni_append_op @$_},  pn 1, prx '@',   plambda '';
-deflong '/@^[]', pmap q{ni_prepend_op @$_}, pn 1, prx '@\^', plambda '';
-
-Shell transformation.
-Pipe through a shell command. We also define a command to duplicate a stream
-through a shell command.
-
-defoperator pipe => q{exec $_[0] or die "ni: failed to exec $_[0]: $!"};
-defshort '/$=', pmap q{pipe_op $_}, shell_command;
-
-defoperator tee => q{
-  my ($cmd) = @_;
-  stee \*STDIN, siproc {sh $cmd}, \*STDOUT;
+defoperator duplicate => q{
+  my @xs = @_;
+  my $fh = siproc {exec_ni @xs};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
 };
-defshort '/$^', pmap q{tee_op $_}, shell_command;
+
+defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+defoperator divert => q{
+  my @xs = @_;
+  my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/+', pmap q{append_op    @$_}, pqfn '';
+defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
+defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
+defshort '/=', pmap q{divert_op    @$_}, pqfn '';
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -956,7 +982,6 @@ sub tempfile_name() {
   $r;
 }
 
-defoperator file_tee   => q{stee \*STDIN, swfile($_[0]), \*STDOUT};
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
@@ -965,9 +990,8 @@ defoperator file_write => q{
   print "$file\n";
 };
 
-defshort '/>%', pmap q{file_tee_op $_},   nefilename;
-defshort '/>',  pmap q{file_write_op $_}, nefilename;
-defshort '/<',  pmap q{file_read_op},     pnone;
+defshort '/>', pmap q{file_write_op $_}, nefilename;
+defshort '/<', pmap q{file_read_op},     pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
@@ -981,15 +1005,14 @@ use constant compressor_name => prx '[gxo4b]';
 use constant compressor_spec =>
   pmap q{my ($c, $level) = @$_;
          $c = $compressors{$c || 'g'};
-         defined $level ? pipe_op "$c -$level" : pipe_op $c},
+         defined $level ? sh_op "$c -$level" : sh_op $c},
   pseq popt compressor_name, popt integer;
 
-defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
-defoperator decode    => q{sdecode};
+defoperator decode => q{sdecode};
 
-defshort '/Z',  compressor_spec;
-defshort '/ZN', pk sink_null_op();
-defshort '/ZD', pk decode_op();
+defshort '/z',  compressor_spec;
+defshort '/zn', pk sink_null_op();
+defshort '/zd', pk decode_op();
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
@@ -2351,7 +2374,7 @@ defoperator with => q{
 defshort '/w', pmap q{with_op @$_}, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-119 core/row/row.pl.sdoc
+117 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2407,13 +2430,13 @@ modifiers, which are optional, are any of these:
 
 | g     general numeric sort (not available for all 'sort' versions)
   n     numeric sort
-  r     reverse
+  -     reverse (I would use 'r', but it conflicts with the row operator)
 
-use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
+use constant sortspec => prep pseq colspec1, popt prx '[-gn]+';
 
 sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;
-                    my $m = defined $$_[1] ? $$_[1] : '';
+                    (my $m = defined $$_[1] ? $$_[1] : '') =~ s/-/r/g;
                     ('-k', "$i$m,$i")} @_}
 
 Compatibility detection.
@@ -2446,7 +2469,6 @@ defoperator row_sort => q{
                                '--parallel=4'), @_};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
-defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
@@ -2468,9 +2490,8 @@ defoperator count => q{
 
 defoperator uniq => q{exec 'uniq'};
 
-defshort '/c', pmap q{count_op},                pnone;
-defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
-defshort '/U', pmap q{uniq_op},                 pnone;
+defshort '/c', pmap q{count_op}, pnone;
+defshort '/u', pmap q{uniq_op},  pnone;
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -2743,7 +2764,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-84 core/pl/stream.pm.sdoc
+85 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2771,6 +2792,7 @@ sub rl()   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $_}
 sub pl($)  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]]}
 sub F_(@)  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
 sub FM()   {scalar(F_) - 1}
+sub FR($)  {F_($_[0]..FM)}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
 BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
        ceval sprintf 'sub %s() {"%s"}', uc, $_ for 'a'..'q';
@@ -3327,7 +3349,11 @@ use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
                  pseq sql_table, popt pqfn 'sql';
 
-our @sql_row_alt;
+our @sql_row_alt = (
+  pmap(q{['take',   $_]}, integer),
+  pmap(q{['filter', $_]}, sqlcode),
+);
+
 our @sql_join_alt = (
   pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
   pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
@@ -3335,11 +3361,10 @@ our @sql_join_alt = (
   pmap(q{['ijoin', $_]}, $sql_query),
 );
 
-defshort 'sql/s', pmap q{['map',    $_]}, sqlcode;
-defshort 'sql/w', pmap q{['filter', $_]}, sqlcode;
+defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/r', paltr @sql_row_alt;
 defshort 'sql/j', paltr @sql_join_alt;
-defshort 'sql/G', pk ['uniq'];
+defshort 'sql/u', pk ['uniq'];
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
 defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
@@ -3348,9 +3373,6 @@ defshort 'sql/O', pmap q{['order_by', "$_ DESC"]}, sqlcode;
 defshort 'sql/+', pmap q{['union',      $_]}, $sql_query;
 defshort 'sql/*', pmap q{['intersect',  $_]}, $sql_query;
 defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
-
-defshort 'sql/@', pmap q{+{select => $$_[1], group_by => $$_[0]}},
-                       pseq sqlcode, sqlcode;
 
 Global operator.
 SQL stuff is accessed using Q, which delegates to a sub-parser that handles
@@ -4054,11 +4076,10 @@ defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
 
 defshort '/P', pmap q{pyspark_op @$_},
                pseq pdspr(%spark_profiles), $pyspark_rdd;
-12 doc/lib
+11 doc/lib
 col.md
 examples.md
 extend.md
-facet.md
 libraries.md
 lisp.md
 options.md
@@ -4067,7 +4088,7 @@ row.md
 sql.md
 stream.md
 tutorial.md
-167 doc/col.md
+176 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -4157,6 +4178,15 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
+$ ni mult-table x       # even easier (see below)
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
+6	3	9	12	15	18	21	24
+8	4	12	16	20	24	28	32
+10	5	15	20	25	30	35	40
+12	6	18	24	30	36	42	48
+14	7	21	28	35	42	49	56
+16	8	24	32	40	48	56	64
 ```
 
 ## Exchanging
@@ -4235,19 +4265,20 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 
 /github	/spencertipping	/ni
 ```
-237 doc/examples.md
+238 doc/examples.md
 # Examples of ni misuse
 All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
 If you're working through these on the command line, you can use `ni
 --explain` to help figure out what's going on:
 
 ```sh
-$ ni --explain //ni FWpF_ plc C
+$ ni --explain //ni FWpF_ plc gc
 ["meta_image"]
 ["split_regex","(?^:[^\\w\\n]+)"]
 ["perl_mapper","F_"]
 ["perl_mapper","lc"]
-[["row_sort"],["count"]]
+["row_sort"]
+["count"]
 ```
 
 ## Simple 2D letter/letter co-occurrence matrix
@@ -4347,7 +4378,7 @@ This uses a sub-ni instance to append some data to the stream. We just need two
 more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
-- `@[...]`: append the output of invoking ni on `...`:
+- `+[...]`: append the output of invoking ni on `...`:
   - `id:0,4,0`: append the literal text `0,4,0`
   - `id:0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
@@ -4491,76 +4522,6 @@ $ ni --lib my-library n100N
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
-69 doc/facet.md
-# Faceting
-ni supports an operator that facets rows: that is, it groups them by some
-function and aggregates within each group. How this is implemented depends on
-the backend; map/reduce workflows do this automatically with the shuffle step,
-whereas multiple POSIX tools are required. The facet operator handles this
-appropriately in each context.
-
-The basic format of the facet operator is like this:
-
-```sh
-$ ni ... @<language><key-expr> <reducer>
-```
-
-For example, here's a Perl facet to implement word count:
-
-```bash
-$ ni @pa 'r a, rca rsum 1' <<'EOF'
-foo
-bar
-foo
-bif
-EOF
-bar	1
-bif	1
-foo	2
-```
-
-Structurally, here's what's going on:
-
-- `@p`: facet with Perl code
-- `a`: use the first column value as the faceting key (this is Perl code)
-- `r ...`: make a TSV row from an array of values...
-  - `a`: ...the first of which is the faceting key (which is always `a` because
-    the facet column is prepended to the data)
-  - `rca ...`: return an array of streaming reductions within each facet on
-    column A
-    - `rsum 1`: the first (and only) of which is a sum of the constant 1 for
-      each reduced item
-
-## Perl
-See [perl.md](perl.md) (`ni //help/perl`) for information about the libraries
-ni provides for Perl code.
-
-To get a list of users faceted by login shell:
-
-```bash
-$ ni /etc/passwd F::@pg 'r a, @{rca rarr B}'
-/bin/bash	root
-/bin/false	syslog
-/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
-/bin/sync	sync
-```
-
-Here, `rarr B` means "collect faceted values into an array reference", and in
-this case the value is column B. (`B` is in uppercase because `rarr` takes a
-string argument rather than a code block; this is for performance reasons, and
-[perl.md](perl.md) (`ni //help/perl`) discusses the details behind it.)
-
-A lot of faceting workflows can be more easily expressed as a sort/reduce in
-code, particularly if you're not computing a new value for the key. For
-example, the above query can be written more concisely this way:
-
-```bash
-$ ni /etc/passwd F::gGp'r g, a_ reg'
-/bin/bash	root
-/bin/false	syslog
-/bin/sh	backup	bin	daemon	games	gnats	irc	libuuid	list	lp	mail	man	news	nobody	proxy	sys	uucp	www-data
-/bin/sync	sync
-```
 28 doc/libraries.md
 # Libraries
 A library is just a directory with a `lib` file in it. `lib` lists the names of
@@ -4692,7 +4653,7 @@ Operator | Example      | Description
 `-`      |              |
 `,`      | `,jAB`       | Enter cell context
 `.`      |              |
-`:`      |              |
+`:`      | `:foo[nE8z]` | Checkpointed stream
 `@`      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |              |
@@ -4709,7 +4670,7 @@ Operator | Example      | Description
 `k`      |              |
 `l`      | `l'(1+ a)'`  | Map over rows using Common Lisp
 `m`      | `m'a + 1'`   | Map over rows using Ruby
-`n`      | `n'svd(x)'`  | Map over matrices using NumPy
+`n`      | `n10`        | Generate or prepend line numbers
 `o`      | `oC`         | Numeric sort ascending
 `p`      | `p'a + 1'`   | Map over rows using Perl
 `q`      |              |
@@ -4734,13 +4695,13 @@ Operator | Example      | Description
 `I`      |              |
 `J`      |              |
 `K`      |              |
-`L`      |              |
-`M`      |              |
-`N`      |              |
+`L`      | `L'(1+ a)'`  | (Reserved for Lisp driver)
+`M`      | `M'svd(x)'`  | Faceted Octave matrix interop
+`N`      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | `OD`         | Numeric sort descending
 `P`      | `Plg`        | Evaluate Pyspark lambda context
 `Q`      |              |
-`R`      | `R'a+1'`     | R interop
+`R`      | `R'a+1'`     | Faceted R matrix interop
 `S`      |              |
 `T`      |              |
 `U`      |              |
@@ -4749,7 +4710,7 @@ Operator | Example      | Description
 `X`      |              |
 `Y`      |              |
 `Z`      |              |
-378 doc/perl.md
+382 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -4841,6 +4802,10 @@ If you want to select field ranges to the end of the line (like Perl's
 
 ```bash
 $ ni /etc/passwd F::r3p'r F_ 3..FM'
+0	root	/root	/bin/bash
+1	daemon	/usr/sbin	/bin/sh
+2	bin	/bin	/bin/sh
+$ ni /etc/passwd F::r3p'r FR 3'         # FR(n) == F_(n..FM)
 0	root	/root	/bin/bash
 1	daemon	/usr/sbin	/bin/sh
 2	bin	/bin	/bin/sh
@@ -5103,7 +5068,7 @@ Here's what's going on.
 Of course, it's a lot easier to use the streaming count operator:
 
 ```bash
-$ ni /etc/passwd FWpsplit// r/[a-z]/Cx
+$ ni /etc/passwd FWpsplit// r/[a-z]/gcx
 a	39
 b	36
 c	14
@@ -5128,7 +5093,7 @@ w	12
 x	23
 y	12
 ```
-181 doc/row.md
+195 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -5217,7 +5182,7 @@ $ ni n100n10gr4                 # g = 'group'
 1
 10
 10
-$ ni n100n100Gr4                # G = 'group uniq'
+$ ni n100n100gur4               # u = 'uniq'
 1
 10
 100
@@ -5260,33 +5225,36 @@ Now we can sort by the second column, which ni refers to as `B` (in general, ni
 uses spreadsheet notation: columns are letters, rows are numbers):
 
 ```bash
-$ ni data oB r4
+$ ni data oBr4
 11	-0.999990206550703	2.39789527279837
 55	-0.99975517335862	4.00733318523247
 99	-0.999206834186354	4.59511985013459
 80	-0.993888653923375	4.38202663467388
 ```
 
-This is an example of required whitespace between `oB` and `r4`; columns can be
-suffixed with `g`, `n`, and/or `r` modifiers to modify how they are sorted
-(these behave as described for `sort`'s `-k` option), and ni prefers this
-interpretation:
+Columns can be suffixed with `g`, `n`, and/or `-` modifiers to modify how they
+are sorted (these behave as described for `sort`'s `-k` option), and ni prefers
+this interpretation:
 
 ```bash
-$ ni data oBr r4                # r suffix = reverse sort
-33	0.999911860107267	3.49650756146648
-77	0.999520158580731	4.34380542185368
-58	0.992872648084537	4.06044301054642
-14	0.99060735569487	2.63905732961526
+$ ni data oBg r4                # 'g' is a modifier of B, not another sort
+11	-0.999990206550703	2.39789527279837
+55	-0.99975517335862	4.00733318523247
+99	-0.999206834186354	4.59511985013459
+80	-0.993888653923375	4.38202663467388
+$ ni data oB g r4               # 'g' is a sorting operator
+1	0.841470984807897	0
+10	-0.54402111088937	2.30258509299405
+100	-0.506365641109759	4.60517018598809
+11	-0.999990206550703	2.39789527279837
 ```
 
 ## Counting
-ni gives you the `c` and `C` operators to count runs of identical rows (just
-like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
-streaming count.
+ni gives you the `c` operator to count runs of identical rows (just
+like `uniq -c`).
 
 ```bash
-$ ni //ni FWpF_ r/[^0-9]/r500 > word-list
+$ ni //ni FWpF_ r/^\\D/r500 > word-list
 $ ni word-list cr10             # unsorted count
 1	usr
 1	bin
@@ -5298,7 +5266,7 @@ $ ni word-list cr10             # unsorted count
 1	_
 1	ni
 1	https
-$ ni word-list Cr10             # sort first to group words
+$ ni word-list gcr10            # sort first to group words
 2	A
 1	ACTION
 1	AN
@@ -5309,6 +5277,17 @@ $ ni word-list Cr10             # sort first to group words
 1	AS
 1	AUTHORS
 1	BE
+$ ni word-list gcOr10           # by descending count
+30	ni
+22	lib
+22	core
+21	_
+13	sdoc
+12	the
+11	pl
+9	to
+9	resource
+9	eval
 ```
 35 doc/sql.md
 # SQL interop
@@ -5337,16 +5316,16 @@ INSERT INTO foo(x, y) VALUES (1, 2);
 INSERT INTO foo(x, y) VALUES (3, 4);
 INSERT INTO foo(x, y) VALUES (5, 6);
 EOF
-$ ni --lib sqlite-profile QStest.db foo[wx=3]
+$ ni --lib sqlite-profile QStest.db foo[rx=3]
 3	4
-$ ni --lib sqlite-profile QStest.db foo wx=3
+$ ni --lib sqlite-profile QStest.db foo rx=3
 3	4
 $ ni --lib sqlite-profile QStest.db foo Ox
 5	6
 3	4
 1	2
 ```
-263 doc/stream.md
+284 doc/stream.md
 # Stream operations
 ```bash
 $ echo test > foo
@@ -5357,7 +5336,8 @@ test
 test
 ```
 
-ni transparently decompresses common formats, regardless of file extension:
+ni automatically decompresses common formats (gz, lzo, lz4, xz, bzip2),
+regardless of file extension:
 
 ```bash
 $ echo test | gzip > fooz
@@ -5371,7 +5351,7 @@ test
 In addition to files, ni can generate data in a few ways:
 
 ```bash
-$ ni $:'seq 4'                  # shell command stdout
+$ ni +e'seq 4'                  # append output of shell command "seq 4"
 1
 2
 3
@@ -5399,11 +5379,19 @@ $ ni n3 | sort
 1
 2
 3
-$ ni n3 $=sort                  # $= filters through a command
+$ ni n3 e'sort'                 # without +, e acts as a filter
 1
 2
 3
-$ ni n3 $='sort -r'
+$ ni n3e'sort -r'
+3
+2
+1
+$ ni n3e[ sort -r ]             # easy way to quote arguments
+3
+2
+1
+$ ni n3e[sort -r]
 3
 2
 1
@@ -5420,7 +5408,7 @@ $ ni n3g        # no need for whitespace
 1
 2
 3
-$ ni n3gAr      # reverse-sort by first field
+$ ni n3gA-      # reverse-sort by first field
 3
 2
 1
@@ -5450,7 +5438,7 @@ $ ni file
 3
 ```
 
-The other way is to use one of ni's two file-writing operators:
+The other way is to use ni's `\>` operator:
 
 ```bash
 $ ni n3 \>file2                 # writes the filename to the terminal
@@ -5459,7 +5447,7 @@ $ ni file2
 1
 2
 3
-$ ni n3 \>%file3                # duplicates output
+$ ni n3 =\>file3                # duplicates output
 1
 2
 3
@@ -5469,8 +5457,8 @@ $ ni file3
 3
 ```
 
-The `<` operator inverts `>` by reading files; it's conceptually equivalent to
-`xargs cat`:
+The `\<` operator inverts `\>` by reading files; it's conceptually equivalent
+to `xargs cat`:
 
 ```bash
 $ ni n4 \>file3 \<
@@ -5480,62 +5468,62 @@ $ ni n4 \>file3 \<
 4
 ```
 
-If you want to write a compressed file, you can use the `Z` operator:
+If you want to write a compressed file, you can use the `z` operator:
 
 ```bash
-$ ni n3Z >file3.gz
+$ ni n3z >file3.gz
 $ zcat file3.gz
 1
 2
 3
 ```
 
-`Z` lets you specify which compressor you want to use; for example:
+`z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip Z | gzip -dc               # gzip by default
+$ ni id:gzip z | gzip -dc               # gzip by default
 gzip
-$ ni id:gzip Zg | gzip -dc              # explicitly specify
+$ ni id:gzip zg | gzip -dc              # explicitly specify
 gzip
-$ ni id:gzip Zg9 | gzip -dc             # specify compression level
+$ ni id:gzip zg9 | gzip -dc             # specify compression level
 gzip
-$ ni id:xz Zx | xz -dc
+$ ni id:xz zx | xz -dc
 xz
-$ ni id:lzo Zo | lzop -dc
+$ ni id:lzo zo | lzop -dc
 lzo
-$ ni id:bzip2 Zb | bzip2 -dc
+$ ni id:bzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 Z4 | lz4 -dc
+$ ni id:lz4 z4 | lz4 -dc
 lz4
 ```
 
-ni also provides a universal decompression operator `ZD`, though you'll rarely
-need it because any external data will be decoded automatically. `ZD` has no
+ni also provides a universal decompression operator `zd`, though you'll rarely
+need it because any external data will be decoded automatically. `zd` has no
 effect if the data isn't compressed.
 
 ```bash
-$ ni n4 Z ZD
+$ ni n4 z zd
 1
 2
 3
 4
-$ ni n4 ZD
+$ ni n4 zd
 1
 2
 3
 4
 ```
 
-Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
-compression by writing data to `/dev/null`:
+Not to be outdone, ni provides the ultimate lossy compressor, `zn`, which
+achieves 100% compression by writing data to `/dev/null`:
 
 ```bash
-$ ni n4 ZN | wc -c
+$ ni n4 zn | wc -c
 0
 ```
 
@@ -5585,13 +5573,13 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000Z]r5
+$ ni :biglist[n100000z]r5
 1
 2
 3
 4
 5
-$ ni :biglist[n100000Z]r5
+$ ni :biglist[n100000z]r5
 1
 2
 3
@@ -5600,15 +5588,27 @@ $ ni :biglist[n100000Z]r5
 ```
 
 Checkpointing, like most operators that accept lambda expressions, can also be
-written with the lambda implicit:
+written with the lambda implicit. In this case the lambda ends when you break
+the operators using whitespace:
 
 ```bash
-$ ni :biglist n100000Z r5
+$ ni :biglist n100000z r5
 1
 2
 3
 4
 5
+```
+
+You can use `ni --explain` to see how ni parses something; in this case the
+lambda is contained within the `checkpoint` array:
+
+```bash
+$ ni --explain :biglist n100000z r5
+["checkpoint","biglist",[["n",1,100001],["sh","gzip"]]]
+["head","-n",5]
+$ ni --explain :biglist n100000zr5
+["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
 38 doc/tutorial.md
 # ni tutorial

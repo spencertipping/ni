@@ -96,7 +96,11 @@ use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
                  pseq sql_table, popt pqfn 'sql';
 
-our @sql_row_alt;
+our @sql_row_alt = (
+  pmap(q{['take',   $_]}, integer),
+  pmap(q{['filter', $_]}, sqlcode),
+);
+
 our @sql_join_alt = (
   pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
   pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
@@ -104,11 +108,10 @@ our @sql_join_alt = (
   pmap(q{['ijoin', $_]}, $sql_query),
 );
 
-defshort 'sql/s', pmap q{['map',    $_]}, sqlcode;
-defshort 'sql/w', pmap q{['filter', $_]}, sqlcode;
+defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/r', paltr @sql_row_alt;
 defshort 'sql/j', paltr @sql_join_alt;
-defshort 'sql/G', pk ['uniq'];
+defshort 'sql/u', pk ['uniq'];
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
 defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
@@ -117,9 +120,6 @@ defshort 'sql/O', pmap q{['order_by', "$_ DESC"]}, sqlcode;
 defshort 'sql/+', pmap q{['union',      $_]}, $sql_query;
 defshort 'sql/*', pmap q{['intersect',  $_]}, $sql_query;
 defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
-
-defshort 'sql/@', pmap q{+{select => $$_[1], group_by => $$_[0]}},
-                       pseq sqlcode, sqlcode;
 
 Global operator.
 SQL stuff is accessed using Q, which delegates to a sub-parser that handles

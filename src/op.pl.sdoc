@@ -5,6 +5,7 @@ provides an intermediate representation that can be inspected and serialized.
 our %operators;
 sub defoperator($$) {
   my ($name, $f) = @_;
+  die "ni: cannot redefine operator $name" if exists $operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
   ni::eval "sub ${name}_run(@) {\$operators{\$name}->(\@_)}",

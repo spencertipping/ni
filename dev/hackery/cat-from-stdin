@@ -1,0 +1,10 @@
+#!/bin/bash
+{
+cat <<'EOF'
+print while <STDIN>;
+__DATA__
+EOF
+for i in `seq 100000`; do
+  cat ../test-data/reddit-comments
+done
+} | perl - | pv > /dev/null

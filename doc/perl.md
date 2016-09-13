@@ -93,6 +93,9 @@ $ ni /etc/passwd F::r3p'r F_ 3..FM'
 1	daemon	/usr/sbin	/bin/sh
 2	bin	/bin	/bin/sh
 $ ni /etc/passwd F::r3p'r FR 3'         # FR(n) == F_(n..FM)
+0	root	/root	/bin/bash
+1	daemon	/usr/sbin	/bin/sh
+2	bin	/bin	/bin/sh
 ```
 
 ### `r`, multiple rows, and return values

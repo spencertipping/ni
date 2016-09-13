@@ -53,13 +53,13 @@ modifiers, which are optional, are any of these:
 
 | g     general numeric sort (not available for all 'sort' versions)
   n     numeric sort
-  r     reverse
+  -     reverse (I would use 'r', but it conflicts with the row operator)
 
-use constant sortspec => prep pseq colspec1, popt prx '[gnr]+';
+use constant sortspec => prep pseq colspec1, popt prx '[-gn]+';
 
 sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;
-                    my $m = defined $$_[1] ? $$_[1] : '';
+                    (my $m = defined $$_[1] ? $$_[1] : '') =~ s/-/r/g;
                     ('-k', "$i$m,$i")} @_}
 
 Compatibility detection.
@@ -92,7 +92,6 @@ defoperator row_sort => q{
                                '--parallel=4'), @_};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
-defshort '/G', pmap q{row_sort_op '-u',  sort_args @$_}, sortspec;
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
@@ -114,6 +113,5 @@ defoperator count => q{
 
 defoperator uniq => q{exec 'uniq'};
 
-defshort '/c', pmap q{count_op},                pnone;
-defshort '/C', pmap q{[row_sort_op, count_op]}, pnone;
-defshort '/U', pmap q{uniq_op},                 pnone;
+defshort '/c', pmap q{count_op}, pnone;
+defshort '/u', pmap q{uniq_op},  pnone;

@@ -1,0 +1,11 @@
+#!/bin/bash
+{
+cat <<'EOF'
+print STDERR "fileno of DATA is " . fileno(DATA) . "\n";
+print while <DATA>;
+__DATA__
+EOF
+for i in `seq 100000`; do
+  cat ../test-data/reddit-comments
+done
+} | perl - | pv > /dev/null
