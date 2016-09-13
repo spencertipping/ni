@@ -92,6 +92,7 @@ $ ni /etc/passwd F::r3p'r F_ 3..FM'
 0	root	/root	/bin/bash
 1	daemon	/usr/sbin	/bin/sh
 2	bin	/bin	/bin/sh
+$ ni /etc/passwd F::r3p'r FR 3'         # FR(n) == F_(n..FM)
 ```
 
 ### `r`, multiple rows, and return values
@@ -351,7 +352,7 @@ Here's what's going on.
 Of course, it's a lot easier to use the streaming count operator:
 
 ```bash
-$ ni /etc/passwd FWpsplit// r/[a-z]/Cx
+$ ni /etc/passwd FWpsplit// r/[a-z]/gcx
 a	39
 b	36
 c	14

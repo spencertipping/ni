@@ -8,7 +8,8 @@ test
 test
 ```
 
-ni transparently decompresses common formats, regardless of file extension:
+ni automatically decompresses common formats (gz, lzo, lz4, xz, bzip2),
+regardless of file extension:
 
 ```bash
 $ echo test | gzip > fooz
@@ -22,7 +23,7 @@ test
 In addition to files, ni can generate data in a few ways:
 
 ```bash
-$ ni $:'seq 4'                  # shell command stdout
+$ ni +e'seq 4'                  # append output of shell command "seq 4"
 1
 2
 3
@@ -50,14 +51,15 @@ $ ni n3 | sort
 1
 2
 3
-$ ni n3 $=sort                  # $= filters through a command
+$ ni n3 e'sort'                 # without +, e acts as a filter
 1
 2
 3
-$ ni n3 $='sort -r'
+$ ni n3e'sort -r'
 3
 2
 1
+$ ni n3e[ sort -r ]             # easy way to quote arguments
 ```
 
 And, of course, ni has shorthands for doing all of the above:
@@ -71,7 +73,7 @@ $ ni n3g        # no need for whitespace
 1
 2
 3
-$ ni n3gAr      # reverse-sort by first field
+$ ni n3gA-      # reverse-sort by first field
 3
 2
 1
@@ -110,7 +112,7 @@ $ ni file2
 1
 2
 3
-$ ni n3 \>%file3                # duplicates output
+$ ni n3 =\>file3                # duplicates output
 1
 2
 3
@@ -131,62 +133,62 @@ $ ni n4 \>file3 \<
 4
 ```
 
-If you want to write a compressed file, you can use the `Z` operator:
+If you want to write a compressed file, you can use the `z` operator:
 
 ```bash
-$ ni n3Z >file3.gz
+$ ni n3z >file3.gz
 $ zcat file3.gz
 1
 2
 3
 ```
 
-`Z` lets you specify which compressor you want to use; for example:
+`z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip Z | gzip -dc               # gzip by default
+$ ni id:gzip z | gzip -dc               # gzip by default
 gzip
-$ ni id:gzip Zg | gzip -dc              # explicitly specify
+$ ni id:gzip zg | gzip -dc              # explicitly specify
 gzip
-$ ni id:gzip Zg9 | gzip -dc             # specify compression level
+$ ni id:gzip zg9 | gzip -dc             # specify compression level
 gzip
-$ ni id:xz Zx | xz -dc
+$ ni id:xz zx | xz -dc
 xz
-$ ni id:lzo Zo | lzop -dc
+$ ni id:lzo zo | lzop -dc
 lzo
-$ ni id:bzip2 Zb | bzip2 -dc
+$ ni id:bzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 Z4 | lz4 -dc
+$ ni id:lz4 z4 | lz4 -dc
 lz4
 ```
 
-ni also provides a universal decompression operator `ZD`, though you'll rarely
-need it because any external data will be decoded automatically. `ZD` has no
+ni also provides a universal decompression operator `zd`, though you'll rarely
+need it because any external data will be decoded automatically. `zd` has no
 effect if the data isn't compressed.
 
 ```bash
-$ ni n4 Z ZD
+$ ni n4 z zd
 1
 2
 3
 4
-$ ni n4 ZD
+$ ni n4 zd
 1
 2
 3
 4
 ```
 
-Finally, ni provides the ultimate lossy compressor, `ZN`, which achieves 100%
-compression by writing data to `/dev/null`:
+Not to be outdone, ni provides the ultimate lossy compressor, `zn`, which
+achieves 100% compression by writing data to `/dev/null`:
 
 ```bash
-$ ni n4 ZN | wc -c
+$ ni n4 zn | wc -c
 0
 ```
 
@@ -236,13 +238,13 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000Z]r5
+$ ni :biglist[n100000z]r5
 1
 2
 3
 4
 5
-$ ni :biglist[n100000Z]r5
+$ ni :biglist[n100000z]r5
 1
 2
 3
@@ -251,13 +253,25 @@ $ ni :biglist[n100000Z]r5
 ```
 
 Checkpointing, like most operators that accept lambda expressions, can also be
-written with the lambda implicit:
+written with the lambda implicit. In this case the lambda ends when you break
+the operators using whitespace:
 
 ```bash
-$ ni :biglist n100000Z r5
+$ ni :biglist n100000z r5
 1
 2
 3
 4
 5
+```
+
+You can use `ni --explain` to see how ni parses something; in this case the
+lambda is contained within the `checkpoint` array:
+
+```bash
+$ ni --explain :biglist n100000z r5
+["checkpoint","biglist",[["n",1,100001],["pipe","gzip"]]]
+["head","-n",5]
+$ ni --explain :biglist n100000zr5
+["checkpoint","biglist",[["n",1,100001],["pipe","gzip"],["head","-n",5]]]
 ```

@@ -10,7 +10,7 @@ Operator | Example      | Description
 `-`      |              |
 `,`      | `,jAB`       | Enter cell context
 `.`      |              |
-`:`      |              |
+`:`      | `:foo[nE8z]` | Checkpointed stream
 `@`      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |              |
@@ -27,7 +27,7 @@ Operator | Example      | Description
 `k`      |              |
 `l`      | `l'(1+ a)'`  | Map over rows using Common Lisp
 `m`      | `m'a + 1'`   | Map over rows using Ruby
-`n`      | `n'svd(x)'`  | Map over matrices using NumPy
+`n`      | `n10`        | Generate or prepend line numbers
 `o`      | `oC`         | Numeric sort ascending
 `p`      | `p'a + 1'`   | Map over rows using Perl
 `q`      |              |
@@ -52,13 +52,13 @@ Operator | Example      | Description
 `I`      |              |
 `J`      |              |
 `K`      |              |
-`L`      |              |
-`M`      |              |
-`N`      |              |
+`L`      | `L'(1+ a)'`  | (Reserved for Lisp driver)
+`M`      | `M'svd(x)'`  | Faceted Octave matrix interop
+`N`      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | `OD`         | Numeric sort descending
 `P`      | `Plg`        | Evaluate Pyspark lambda context
 `Q`      |              |
-`R`      | `R'a+1'`     | R interop
+`R`      | `R'a+1'`     | Faceted R matrix interop
 `S`      |              |
 `T`      |              |
 `U`      |              |

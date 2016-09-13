@@ -87,6 +87,15 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
+$ ni mult-table x       # even easier (see below)
+2	1	3	4	5	6	7	8
+4	2	6	8	10	12	14	16
+6	3	9	12	15	18	21	24
+8	4	12	16	20	24	28	32
+10	5	15	20	25	30	35	40
+12	6	18	24	30	36	42	48
+14	7	21	28	35	42	49	56
+16	8	24	32	40	48	56	64
 ```
 
 ## Exchanging

@@ -4,12 +4,13 @@ If you're working through these on the command line, you can use `ni
 --explain` to help figure out what's going on:
 
 ```sh
-$ ni --explain //ni FWpF_ plc C
+$ ni --explain //ni FWpF_ plc gc
 ["meta_image"]
 ["split_regex","(?^:[^\\w\\n]+)"]
 ["perl_mapper","F_"]
 ["perl_mapper","lc"]
-[["row_sort"],["count"]]
+["row_sort"]
+["count"]
 ```
 
 ## Simple 2D letter/letter co-occurrence matrix
@@ -109,7 +110,7 @@ This uses a sub-ni instance to append some data to the stream. We just need two
 more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
-- `@[...]`: append the output of invoking ni on `...`:
+- `+[...]`: append the output of invoking ni on `...`:
   - `id:0,4,0`: append the literal text `0,4,0`
   - `id:0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points

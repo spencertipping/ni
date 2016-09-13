@@ -86,7 +86,7 @@ $ ni n100n10gr4                 # g = 'group'
 1
 10
 10
-$ ni n100n100Gr4                # G = 'group uniq'
+$ ni n100n100gur4               # u = 'uniq'
 1
 10
 100
@@ -129,33 +129,36 @@ Now we can sort by the second column, which ni refers to as `B` (in general, ni
 uses spreadsheet notation: columns are letters, rows are numbers):
 
 ```bash
-$ ni data oB r4
+$ ni data oBr4
 11	-0.999990206550703	2.39789527279837
 55	-0.99975517335862	4.00733318523247
 99	-0.999206834186354	4.59511985013459
 80	-0.993888653923375	4.38202663467388
 ```
 
-This is an example of required whitespace between `oB` and `r4`; columns can be
-suffixed with `g`, `n`, and/or `r` modifiers to modify how they are sorted
-(these behave as described for `sort`'s `-k` option), and ni prefers this
-interpretation:
+Columns can be suffixed with `g`, `n`, and/or `-` modifiers to modify how they
+are sorted (these behave as described for `sort`'s `-k` option), and ni prefers
+this interpretation:
 
 ```bash
-$ ni data oBr r4                # r suffix = reverse sort
-33	0.999911860107267	3.49650756146648
-77	0.999520158580731	4.34380542185368
-58	0.992872648084537	4.06044301054642
-14	0.99060735569487	2.63905732961526
+$ ni data oBg r4                # 'g' is a modifier of B, not another sort
+11	-0.999990206550703	2.39789527279837
+55	-0.99975517335862	4.00733318523247
+99	-0.999206834186354	4.59511985013459
+80	-0.993888653923375	4.38202663467388
+$ ni data oB g r4               # 'g' is a sorting operator
+1	0.841470984807897	0
+10	-0.54402111088937	2.30258509299405
+100	-0.506365641109759	4.60517018598809
+11	-0.999990206550703	2.39789527279837
 ```
 
 ## Counting
-ni gives you the `c` and `C` operators to count runs of identical rows (just
-like `uniq -c`). The `C` operator first sorts the input, whereas `c` is a
-streaming count.
+ni gives you the `c` operator to count runs of identical rows (just
+like `uniq -c`).
 
 ```bash
-$ ni //ni FWpF_ r/[^0-9]/r500 > word-list
+$ ni //ni FWpF_ r/^\\D/r500 > word-list
 $ ni word-list cr10             # unsorted count
 1	usr
 1	bin
@@ -167,7 +170,7 @@ $ ni word-list cr10             # unsorted count
 1	_
 1	ni
 1	https
-$ ni word-list Cr10             # sort first to group words
+$ ni word-list gcr10            # sort first to group words
 2	A
 1	ACTION
 1	AN
@@ -178,4 +181,15 @@ $ ni word-list Cr10             # sort first to group words
 1	AS
 1	AUTHORS
 1	BE
+$ ni word-list gcOr10           # by descending count
+29	ni
+22	lib
+22	core
+21	_
+13	sdoc
+12	the
+11	pl
+9	to
+9	resource
+9	eval
 ```
