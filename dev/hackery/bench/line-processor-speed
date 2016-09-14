@@ -2,12 +2,43 @@
 
 n=2000
 
+d1() {
+  for i in `seq $n`; do
+    cat test-data/reddit-comments
+  done | pv
+}
+
+d2() {
+  perl -e '
+    my $data = `ni //ni`;
+    $data .= $data until length $data >= 1048576;
+    $data = substr $data, 0, 1048576;
+    syswrite STDOUT, $data for 1..256' \
+  | pv
+}
+
+d3() {
+  for i in `seq $n`; do
+    cat test-data/nyc-taxi
+  done | pv
+}
+
 testcase() {
   echo "$1 $2"
-  time for i in `seq $n`; do
-    cat test-data/reddit-comments
-  done | pv | perl $1 -e "$2" > /dev/null
+  time d1 | perl $1 -e "$2" > /dev/null
+  time d2 | perl $1 -e "$2" > /dev/null
+  time d3 | perl $1 -e "$2" > /dev/null
 }
+
+testcase '' 'sub rl():lvalue {chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_} while (defined rl) {print join("\t", @F), "\n"}'
+testcase '' 'sub rl():lvalue {$l = $_ = @q ? shift @q : <STDIN>; @F = split /\t/; $l} while (defined rl) {print join "\t", @F}'
+testcase '' 'sub rl():lvalue {$_ = @q ? shift @q : <STDIN>; @F = split /\t/; $_} while (defined rl) {print join "\t", @F}'
+
+testcase '' 'sub r(@) {print join("\t", @_), "\n"; ()} while (<STDIN>) {print for r(split /\t/)}'
+testcase '' 'sub a() {@F ? @F[0] : (split/\t/)[0]} while (<STDIN>) {@F = split /\t/; print a + 1, "\n"}'
+testcase '' 'sub a() {@F[0]} while (<STDIN>) {@F = split /\t/; print a + 1, "\n"}'
+
+testcase -n '1'
 
 testcase -n 'print for split /\t/'
 testcase -n '@xs = split /\t/; print for @xs'
