@@ -3946,49 +3946,57 @@ if(k&&j[k]&&(e||j[k].data)||void 0!==d||"string"!=typeof b)return k||(k=i?a[h]=c
  * http://jquery.org/license
  */
 !function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a:a(jQuery)}(function(a){function b(b){var g=b||window.event,h=i.call(arguments,1),j=0,l=0,m=0,n=0,o=0,p=0;if(b=a.event.fix(g),b.type="mousewheel","detail"in g&&(m=-1*g.detail),"wheelDelta"in g&&(m=g.wheelDelta),"wheelDeltaY"in g&&(m=g.wheelDeltaY),"wheelDeltaX"in g&&(l=-1*g.wheelDeltaX),"axis"in g&&g.axis===g.HORIZONTAL_AXIS&&(l=-1*m,m=0),j=0===m?l:m,"deltaY"in g&&(m=-1*g.deltaY,j=m),"deltaX"in g&&(l=g.deltaX,0===m&&(j=-1*l)),0!==m||0!==l){if(1===g.deltaMode){var q=a.data(this,"mousewheel-line-height");j*=q,m*=q,l*=q}else if(2===g.deltaMode){var r=a.data(this,"mousewheel-page-height");j*=r,m*=r,l*=r}if(n=Math.max(Math.abs(m),Math.abs(l)),(!f||f>n)&&(f=n,d(g,n)&&(f/=40)),d(g,n)&&(j/=40,l/=40,m/=40),j=Math[j>=1?"floor":"ceil"](j/f),l=Math[l>=1?"floor":"ceil"](l/f),m=Math[m>=1?"floor":"ceil"](m/f),k.settings.normalizeOffset&&this.getBoundingClientRect){var s=this.getBoundingClientRect();o=b.clientX-s.left,p=b.clientY-s.top}return b.deltaX=l,b.deltaY=m,b.deltaFactor=f,b.offsetX=o,b.offsetY=p,b.deltaMode=0,h.unshift(b,j,l,m),e&&clearTimeout(e),e=setTimeout(c,200),(a.event.dispatch||a.event.handle).apply(this,h)}}function c(){f=null}function d(a,b){return k.settings.adjustOldDeltas&&"mousewheel"===a.type&&b%120===0}var e,f,g=["wheel","mousewheel","DOMMouseScroll","MozMousePixelScroll"],h="onwheel"in document||document.documentMode>=9?["wheel"]:["mousewheel","DomMouseScroll","MozMousePixelScroll"],i=Array.prototype.slice;if(a.event.fixHooks)for(var j=g.length;j;)a.event.fixHooks[g[--j]]=a.event.mouseHooks;var k=a.event.special.mousewheel={version:"3.1.12",setup:function(){if(this.addEventListener)for(var c=h.length;c;)this.addEventListener(h[--c],b,!1);else this.onmousewheel=b;a.data(this,"mousewheel-line-height",k.getLineHeight(this)),a.data(this,"mousewheel-page-height",k.getPageHeight(this))},teardown:function(){if(this.removeEventListener)for(var c=h.length;c;)this.removeEventListener(h[--c],b,!1);else this.onmousewheel=null;a.removeData(this,"mousewheel-line-height"),a.removeData(this,"mousewheel-page-height")},getLineHeight:function(b){var c=a(b),d=c["offsetParent"in a.fn?"offsetParent":"parent"]();return d.length||(d=a("body")),parseInt(d.css("fontSize"),10)||parseInt(c.css("fontSize"),10)||16},getPageHeight:function(b){return a(b).height()},settings:{adjustOldDeltas:!0,normalizeOffset:!0}};a.fn.extend({mousewheel:function(a){return a?this.bind("mousewheel",a):this.trigger("mousewheel")},unmousewheel:function(a){return this.unbind("mousewheel",a)}})});
-23 core/jsplot/axis.waul.sdoc
+30 core/jsplot/axis.waul.sdoc
 A column vector of numeric data.
 Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
 evenly). Because multiple axes need to be coordinated, all random numbers used for sampling are parameters rather than generated here.
+
+If you want focused nonuniform sampling, you can do it like this:
+
+| var r = Math.random();
+  r *= axis.focus(data_point, focus_center, focus_scale);
+  // same for other axes
+  axis.push(data_point, r);
+
+Focusing biases the probability of accepting points so that data closer to the focal plane(s) is preferred.
 
 caterwaul(':all')(function () {
   axis(capacity) = {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} /-caterwaul.merge/ axis_methods,
   axis /-caterwaul.merge/ static_methods,
 
-  where[static_methods = capture[focus(x, c, s)         = Math.abs(x - c) / s],
+  where[static_methods = capture[focus(x, c, s)     = Math.abs(x - c) / s],
 
-        axis_methods   = capture[reset()                = this -se [this.n = 0, this.min = this.max = null],
-                                 set(i, x)              = this -se [this.min = this.min == null ? x : this.min /-Math.min/ x,
-                                                                    this.max = this.max == null ? x : this.max /-Math.max/ x,
-                                                                    this.data[i] = x],
+        axis_methods   = capture[reset()            = this -se [this.n = 0, this.min = this.max = null],
+                                 set(i, x)          = this -se [this.min = this.min == null ? x : this.min /-Math.min/ x,
+                                                                this.max = this.max == null ? x : this.max /-Math.max/ x,
+                                                                this.data[i] = x],
 
-                                 center()               = (this.max + this.min) / 2,
-                                 range()                = this.max - this.min,
-                                 at(x)                  = this.min + x * this.range(),
+                                 center()           = (this.max + this.min) / 2,
+                                 range()            = this.max - this.min,
+                                 at(x)              = this.min + x * this.range(),
 
-                                 push(x, r, w)          = this.n < this.c ? this.set(this.n++, x)
-                                                        : w ? this /x /r /~windowed_push/ w : this /x /~uniform_push/ r,
-                                 uniform_push(x, r)     = this.set(r * this.n | 0, x) -when [r * this.n < this.c],
-                                 windowed_push(x, r, w) = TODO()]]})();
-19 core/jsplot/matrix.waul.sdoc
+                                 push(x, r)         = this.n < this.c ? this.set(this.n++, x) : this /x /~uniform_push/ r,
+                                 uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
+20 core/jsplot/matrix.waul.sdoc
 Matrices.
 Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
 transformation.
 
 caterwaul(':all')(function () {
   matrix(x) = (x ? +x -seq : n[16] *[+((x>>2) == (x&3))] -seq) -se- it /-caterwaul.merge/ matrix_methods,
-  matrix /-caterwaul.merge/ constructors,
+  matrix /-caterwaul.merge/ static_methods,
 
-  where[constructors   = capture[translate(x, y, z) = matrix() -se [it[3] = x, it[7] = y, it[11] = z],
-                                 scale(x, y, z)     = matrix() -se [it[0] = x, it[5] = y, it[10] = z],
-                                 rotate_x(t)        = matrix() -se [it[5] = it[10] = c, it[6] = -(it[9] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
-                                 rotate_y(t)        = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]]],
+  where[static_methods = capture[translate(x, y, z)   = matrix() -se [it[3] = x, it[7] = y, it[11] = z],
+                                 scale(x, y, z)       = matrix() -se [it[0] = x, it[5] = y, it[10] = z],
+                                 rotate_x(t)          = matrix() -se [it[5] = it[10] = c, it[6] = -(it[9] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
+                                 rotate_y(t)          = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
+                                 prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
 
         compile        = caterwaul(':all'),
-        matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[yi<<2 | xi&3] * b[xi<<2&12 | yi]] -seq] /seq /!matrix,
-                                 transform       (v, a=this) = v *[a[xi<<2|0]*v[0] + a[xi<<2|1]*v[1] + a[xi<<2|2]*v[2] + a[xi<<2|3]*v[3]] -seq,
-                                 transformer_form(d, a=this) = qs[given[x, y, z] in _a*x + _b*y + _c*z + w]
-                                                               /~replace/ {_a: a[d<<2|0], _b: a[d<<2|1], _c: a[d<<2|2], d: a[d<<2|3]},
+        matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[xi&12 | yi] * b[yi<<2 | xi&3]] -seq] /seq /!matrix,
+                                 transform       (v, a=this) = v *[n[4] /s[0][s0 + a[xi<<2|s]*v[s]] -seq] -seq,
+                                 transformer_form(d, a=this) = qs[given[x, y, z] in _a*x + _b*y + _c*z + _d]
+                                                               /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
                                  transformer     (d, a=this) = this.transformer_form(d).toString() /!compile]]})();
 37 core/jsplot/css
 body {margin:0; color:#eee; background:#111; font-size:10pt;
