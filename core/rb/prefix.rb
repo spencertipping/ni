@@ -25,23 +25,18 @@ class Symbol
 end
 
 class Line
-  attr_reader :str
+  attr_reader :fields
 
   def initialize s
-    @str    = s
-    @fields = nil
+    @fields = s.split /\t/
   end
 
   def [] *x
     fields[*x]
   end
 
-  def fields
-    @fields ||= @str.split(/\t/)
-  end
-
   def to_s
-    @str
+    fields.join "\t"
   end
 end
 
@@ -64,10 +59,6 @@ Enumerable.class_eval do
     define_method "#{l}i".to_sym, proc {map {|x| fields[index].to_i}}
     define_method "#{l}f".to_sym, proc {map {|x| fields[index].to_f}}
   end
-end
-
-def pr x
-  puts x.to_s.gsub(/\n/, '')
 end
 
 def r *xs

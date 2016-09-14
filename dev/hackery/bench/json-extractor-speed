@@ -1,0 +1,13 @@
+#!/bin/bash
+cd $(dirname $0)
+n=1000
+
+echo 'ni D:author,:controversiality'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | ni D:author,:controversiality | { head -n5; sha256sum -; }
+
+echo 'ni D:body'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | ni D:body | { head -n5; sha256sum -; }

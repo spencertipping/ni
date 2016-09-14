@@ -2178,8 +2178,9 @@ sub gen($) {
     join '', @r;
   };
 }
-1 core/json/lib
+2 core/json/lib
 json.pl.sdoc
+extract.pl.sdoc
 70 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
@@ -2251,6 +2252,56 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
+49 core/json/extract.pl.sdoc
+Targeted extraction.
+ni gives you ways to decode JSON, but you aren't likely to have data stored as
+JSON objects in the middle of data pipelines. It's more of an archival format,
+so the goal is to unpack stuff quickly. ni gives you a way of doing this that
+is usually much faster than running the full decoder. (And also requires less
+typing.)
+
+The set of operations is basically this:
+
+| .foo          # direct object key access (not very fast)
+  ..foo         # multiple indirect object key access (fast-ish)
+  :foo          # single indirect object key access (very fast)
+  [0]           # array access (slow)
+  []            # array flatten (slow)
+
+Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
+every 'bar' key within the first element of the 'foo' field of the root
+object".
+
+Extracted values are flattened into a single array and returned. They're
+optimized for strings, numeric, and true/false/null; you can return other
+values, but it will be slower.
+
+# TODO: replace all of this
+
+use constant json_si_gen => gen q#
+  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
+               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
+               : /\G([^][{},]+)/              ? "" . $1
+               : undef
+               : undef) #;
+
+sub json_extractor($) {
+  my @pieces = split /\s*,\s*/, $_[0];
+  die "ni: json_extractor is not really written yet"
+    if grep !/^:\w+$/, @pieces;
+
+  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+                 map sr($_, qr/^:/, ''), @pieces;
+  join ',', @compiled;
+}
+
+defoperator destructure => q{
+  ni::eval gen(q{binmode STDOUT, ":encoding(utf-8)";
+                 while (<STDIN>) {print join("\t", %e), "\n"}})
+            ->(e => json_extractor $_[0]);
+};
+
+defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
 1 core/net/lib
 net.pl.sdoc
 18 core/net/net.pl.sdoc
@@ -2744,7 +2795,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-81 core/pl/stream.pm.sdoc
+66 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2763,31 +2814,16 @@ conjunction with the line-reading functions `rw`, `ru`, and `re`.
 
 our @q;
 our @F;
-our $l;
 
-sub rl():lvalue   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $l}
+sub rl():lvalue   {chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
 sub pl($):lvalue  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
-sub FM()          {scalar(F_) - 1}
-sub FR($):lvalue  {F_($_[0]..FM)}
-sub r(@)          {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {ceval sprintf 'sub %s():lvalue {F_ %d}', $_, ord($_) - 97 for 'b'..'l';
+sub F_(@):lvalue  {@_ ? @F[@_] : @F}
+sub FM()          {$#F}
+sub FR($):lvalue  {@F[$_[0]..$#F]}
+sub r(@)          {my $l = join "\t", @_; print $l, "\n"; ()}
+BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'l'}
-
-sub pr(;$) {
-  my $l = @_ ? $_[0] : $_;
-  $l = join "\t", @$l if 'ARRAY' eq ref $l;
-  $l =~ s/\n//g;
-  print "$l\n";
-  ();
-}
-
-Optimize access to the first field; in particular, no need to fully populate @F
-since no seeking needs to happen. This should improve performance for faceting
-workflows.
-
-sub a():lvalue {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
@@ -2807,8 +2843,8 @@ function:
 
 The other is to use the faceting functions defined in facet.pm.
 
-sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
-sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
+sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
+sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
 
@@ -2979,8 +3015,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code $_[0], 'pr for row'}
-sub perl_grepper($) {perl_code $_[0], 'pr if row'}
+sub perl_mapper($)  {perl_code $_[0], 'print "$_\n" for row'}
+sub perl_grepper($) {perl_code $_[0], 'print "$_\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -2996,7 +3032,7 @@ defrowalt pmap q{perl_grepper_op $_},
 2 core/rb/lib
 prefix.rb
 rb.pl.sdoc
-105 core/rb/prefix.rb
+96 core/rb/prefix.rb
 # ni ruby driver prefix
 # This is loaded prior to the short codegen segment in rb.pl.sdoc.
 
@@ -3024,23 +3060,18 @@ class Symbol
 end
 
 class Line
-  attr_reader :str
+  attr_reader :fields
 
   def initialize s
-    @str    = s
-    @fields = nil
+    @fields = s.split /\t/
   end
 
   def [] *x
     fields[*x]
   end
 
-  def fields
-    @fields ||= @str.split(/\t/)
-  end
-
   def to_s
-    @str
+    fields.join "\t"
   end
 end
 
@@ -3063,10 +3094,6 @@ Enumerable.class_eval do
     define_method "#{l}i".to_sym, proc {map {|x| fields[index].to_i}}
     define_method "#{l}f".to_sym, proc {map {|x| fields[index].to_f}}
   end
-end
-
-def pr x
-  puts x.to_s.gsub(/\n/, '')
 end
 
 def r *xs
@@ -3140,10 +3167,10 @@ use constant ruby_mapgen => gen q{
     if x.is_a? Enumerable
       x.each do |v|
         v = r *v if v.is_a? Enumerable
-        pr v
+        puts v
       end
     elsif !x.nil?
-      pr x
+      puts x
     end
   end
 

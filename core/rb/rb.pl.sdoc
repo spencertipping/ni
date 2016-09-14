@@ -35,10 +35,10 @@ use constant ruby_mapgen => gen q{
     if x.is_a? Enumerable
       x.each do |v|
         v = r *v if v.is_a? Enumerable
-        pr v
+        puts v
       end
     elsif !x.nil?
-      pr x
+      puts x
     end
   end
 
