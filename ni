@@ -5367,7 +5367,7 @@ $ ni n100n100gur4               # u = 'uniq'
 
 The idea behind `g` as `group` is that this is what you do prior to an
 aggregation; i.e. to group related rows together so you can stream into a
-reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
+reducer.
 
 ni also has two `order` operators that sort numerically:
 
@@ -5869,7 +5869,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-38 doc/tutorial.md
+37 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -5893,7 +5893,6 @@ $ ni //help/stream                      # view a help topic
 - [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
-- [facet.md](facet.md)   (`ni //help/facet`):  the faceting operator
 - [visual.md](visual.md) (`ni //help/visual`): visualizing data
 
 ## Reference

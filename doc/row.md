@@ -95,7 +95,7 @@ $ ni n100n100gur4               # u = 'uniq'
 
 The idea behind `g` as `group` is that this is what you do prior to an
 aggregation; i.e. to group related rows together so you can stream into a
-reducer (covered in more detail in [facet.md](facet.md) (`ni //help/facet`)).
+reducer.
 
 ni also has two `order` operators that sort numerically:
 

@@ -21,7 +21,6 @@ $ ni //help/stream                      # view a help topic
 - [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
-- [facet.md](facet.md)   (`ni //help/facet`):  the faceting operator
 - [visual.md](visual.md) (`ni //help/visual`): visualizing data
 
 ## Reference
