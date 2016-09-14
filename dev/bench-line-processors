@@ -1,0 +1,43 @@
+#!/bin/bash
+date > /dev/null
+ni < /dev/null > /dev/null
+./nfu < /dev/null > /dev/null
+
+ta=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..256' \
+| pv | ni p'$_' > /dev/null
+
+tb=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..256' \
+| pv | ni m'$l' > /dev/null
+
+tc=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..256' \
+| pv | ni m'a' > /dev/null
+
+td=$(date +%s%N)
+perl -e '
+  my $data = `ni //ni`;
+  $data .= $data until length $data >= 1048576;
+  $data = substr $data, 0, 1048576;
+  syswrite STDOUT, $data for 1..256' \
+| pv | ni m'r a' > /dev/null
+
+te=$(date +%s%N)
+
+echo -e "ni_perl_256M\t$(((tb - ta) / 1000000))\tms"
+echo -e "ni_ruby_256M\t$(((tc - tb) / 1000000))\tms"
+echo -e "ni_ruby_a_256M\t$(((td - tc) / 1000000))\tms"
+echo -e "ni_ruby_ra_256M\t$(((te - td) / 1000000))\tms"

@@ -10,9 +10,6 @@ situations. For example:
 
 | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
-Uppercase letters are quoted fields: A == 'a'. This is useful when defining
-lazy facets (see facet.pm.sdoc).
-
 Lowercase letters followed by underscores are field-extractors that can take an
 array of lines and return an array of field values. These are useful in
 conjunction with the line-reading functions `rw`, `ru`, and `re`.
@@ -21,15 +18,15 @@ our @q;
 our @F;
 our $l;
 
-sub rl():lvalue  {$l = @q ? shift @q : <STDIN>; @F = (); $l}
-sub pl($):lvalue {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
-sub FM()   {scalar(F_) - 1}
-sub FR($)  {F_($_[0]..FM)}
-sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
-                     $_, ord($_) - 97 for 'a'..'q'}
+sub rl():lvalue   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $l}
+sub pl($):lvalue  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub FM()          {scalar(F_) - 1}
+sub FR($):lvalue  {F_($_[0]..FM)}
+sub r(@)          {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+BEGIN {ceval sprintf 'sub %s():lvalue {F_ %d}', $_, ord($_) - 97 for 'b'..'l';
+       ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
+                     $_, ord($_) - 97 for 'a'..'l'}
 
 sub pr(;$) {
   my $l = @_ ? $_[0] : $_;
@@ -43,7 +40,7 @@ Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
 workflows.
 
-sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
+sub a():lvalue {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
@@ -66,7 +63,7 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
@@ -79,6 +76,6 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
 BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
-                     $_, $_ for 'a'..'q'}
+                     $_, $_ for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}

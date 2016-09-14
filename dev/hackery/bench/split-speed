@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo 'perl print for split /\t/'
+time for i in `seq 10000`; do
+  cat test-data/reddit-comments
+done | pv | perl -ne 'print for split /\t/' > /dev/null
+
+echo 'perl @xs = split /\t/; print for @xs'
+time for i in `seq 10000`; do
+  cat test-data/reddit-comments
+done | pv | perl -ne '@xs = split /\t/; print for @xs' > /dev/null
+
+echo 'perl print for @{[split /\t/]}'
+time for i in `seq 10000`; do
+  cat test-data/reddit-comments
+done | pv | perl -ne 'print for @{[split /\t/]}' > /dev/null
+
+echo 'perl sub p {print for @_} p(split /\t/)'
+time for i in `seq 10000`; do
+  cat test-data/reddit-comments
+done | pv | perl -ne 'sub p {print for @_} p(split /\t/)' > /dev/null

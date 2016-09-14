@@ -4,6 +4,8 @@ there's no `BEGIN/END` substitution. We also don't need to take a code
 transform because no amount of wrapping will change whether an expression can
 be parsed.
 
+c
+BEGIN {
 defparser 'rbcode', '', sub {
   return @_[1..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
@@ -15,13 +17,14 @@ ni: failed to get closing bracket count for ruby code "$code$x"; this means
 EOF
   length $x ? ($code, $x, @xs) : ($code, @xs);
 };
+}
 
 Ruby wrapper.
 
 use constant ruby_mapgen => gen q{
   %prefix
   STDIN.close
-  STDIN = IO.new 3
+  $in = IO.new(3)
   class Line
     def row
       %body
@@ -32,15 +35,14 @@ use constant ruby_mapgen => gen q{
     if x.is_a? Enumerable
       x.each do |v|
         v = r *v if v.is_a? Enumerable
-        puts v.gsub!(/\n/, '')
+        pr v
       end
     elsif !x.nil?
-      puts x.to_s.gsub!(/\n/, '')
+      pr x
     end
   end
 
   while $l = next_line
-    $l = Line.new $l
     x = $l.row
     %each
   end
@@ -59,6 +61,9 @@ sub ruby_code($$) {ruby_mapgen->(prefix => ruby_prefix,
 
 sub ruby_mapper($)  {ruby_code $_[0], 'map_mode! x'}
 sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
+
+defoperator ruby_mapper  => q{stdin_to_ruby ruby_mapper  $_[0]};
+defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
 our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
 

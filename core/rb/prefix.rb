@@ -2,7 +2,27 @@
 # This is loaded prior to the short codegen segment in rb.pl.sdoc.
 
 $have_json = true
-require 'json' rescue $have_json = false
+begin
+  require 'json'
+rescue ScriptError
+  $have_json = false
+end
+
+# Portability stuff.
+# Old versions of Ruby have "a"[0] == 97, new versions have "a"[0] == "a". This
+# makes it always safe to say "a"[0].ord.
+class Numeric
+  def ord; self; end
+end
+
+# Add to_proc conversion to symbols, which makes it possible to write
+# map(&:foo).
+class Symbol
+  def to_proc
+    x = self
+    proc {|v| v.send(x)}
+  end
+end
 
 class Line
   attr_reader :str
@@ -17,7 +37,7 @@ class Line
   end
 
   def fields
-    @fields ||= @str.split /\t/
+    @fields ||= @str.split(/\t/)
   end
 
   def to_s
@@ -33,12 +53,25 @@ Line.class_eval do
     define_method "#{l}s".to_sym, proc {fields[index].to_s}
     define_method "#{l}i".to_sym, proc {fields[index].to_i}
     define_method "#{l}f".to_sym, proc {fields[index].to_f}
-    define_method "#{l}d".to_sym, proc {fields[index].to_f}
   end
 end
 
+Enumerable.class_eval do
+  ('a'..'q').each do |l|
+    index = l[0].ord - 97
+    define_method    l   .to_sym, proc {map {|x| x.fields[index]}}
+    define_method "#{l}s".to_sym, proc {map {|x| fields[index].to_s}}
+    define_method "#{l}i".to_sym, proc {map {|x| fields[index].to_i}}
+    define_method "#{l}f".to_sym, proc {map {|x| fields[index].to_f}}
+  end
+end
+
+def pr x
+  puts x.to_s.gsub(/\n/, '')
+end
+
 def r *xs
-  xs.join "\t"
+  xs.join("\t")
 end
 
 # Readahead support
@@ -47,7 +80,7 @@ $l = nil
 
 def next_line
   return $q.shift unless $q.empty?
-  Line.new STDIN.readline.chomp! rescue nil
+  Line.new($in.readline.chomp!) rescue nil
 end
 
 def rw

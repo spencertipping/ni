@@ -3,7 +3,7 @@ Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
 introduced in v5.7.3, so we can't rely on it being there.
 
-sub ceval {eval $_[0]; die $@ if $@}
+sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}

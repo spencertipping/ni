@@ -3,6 +3,9 @@
 internal libraries you use to extend ni. For the latter, see
 [extend.md](extend.md) (`ni //help/extend`).
 
+For a data transformer you're more likely to use and like, see
+[ruby.md](ruby.md).
+
 ni provides the `p` operator to execute a Perl line processor on the current
 data stream. For example:
 
@@ -27,9 +30,11 @@ $ ni :plfoo[n4p'a*a']
 ```
 
 ## Basic stuff
-`a` to `q` are one-letter functions that return the first 17 tab-delimited
-values from the current line. `r(...)` is a function that takes a list of
-values and prints a tab-delimited row. For example:
+`a` to `l` are one-letter functions that return the first 12 tab-delimited
+values from the current line. (12 wasn't chosen arbitrarily; the letter `m` is
+Perl syntax for regular expressions, so we can't use it.) `r(...)` is a
+function that takes a list of values and prints a tab-delimited row. For
+example:
 
 ```bash
 $ ni n4p'r a, a + 1'                    # generate two columns

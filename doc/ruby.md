@@ -4,7 +4,7 @@ data. The Ruby and [Perl](perl.md) drivers work very differently, in part to
 reflect the cultural differences between the two languages.
 
 ```bash
-$ ni n5m'a * a'                 # square some numbers
+$ ni n5m'ai * ai'               # square some numbers
 1
 4
 9
@@ -15,7 +15,7 @@ $ ni n5m'a * a'                 # square some numbers
 Like `p`, `m` has lambda-end detection using Ruby syntax checking:
 
 ```bash
-$ ni :rbfoo[n4m'a*a']
+$ ni :rbfoo[n4m'ai*ai']
 1
 4
 9
@@ -25,15 +25,19 @@ $ ni :rbfoo[n4m'a*a']
 ## Basic stuff
 `a` to `q` are one-letter functions that return the first 17 tab-delimited
 values from the current line. `r(...)` is a function that takes a list of
-values and prints a tab-delimited row. For example:
+values and returns a tab-delimited row. You can suffix a value to coerce it:
+
+- `f`: `to_f`
+- `i`: `to_i`
+- `s`: `to_s`
 
 ```bash
-$ ni n4m'r a, a + 1'                    # generate two columns
+$ ni n4m'r a, ai + 1'                   # generate two columns
 1	2
 2	3
 3	4
 4	5
-$ ni n4m'r a, a + 1' m'r a + b'         # ... and sum them
+$ ni n4m'r a, ai + 1' m'r ai + bi'      # ... and sum them
 3
 5
 7
@@ -43,109 +47,69 @@ $ ni n4m'r a, a + 1' m'r a + b'         # ... and sum them
 Note that whitespace is required after every `m'code'` operator; otherwise ni
 will assume that everything following your quoted code is also Ruby.
 
-### `line`: the current line
-
-
-### `F_`: the array of fields
-The Ruby code given to `m` is invoked on each line of input, which is stored
-both in `$l` and, for convenience, in `$_`. ni doesn't split `$l` into fields
-until you call `F_`, at which point the split happens and the fields are
-cached for efficiency.
-
-`F_(...)` takes one or more column indexes (as zero-based integers) and returns
-the field values. If you don't pass in anything, it returns all of the fields
-for the line. For example:
+### `fields`: the array of fields
+The Ruby code given to `m` is invoked on each line of input, which is stored in
+`$l` and is the receiver. `$l` isn't split into fields until you call `fields`,
+at which point the split happens and the fields are cached for efficiency.
 
 ```bash
 $ ni /etc/passwd F::r3
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 bin	x	2	2	bin	/bin	/bin/sh
-$ ni /etc/passwd F::r3m'r F_ 0..3'
+$ ni /etc/passwd F::r3m'r fields[0..3]'
 root	x	0	0
 daemon	x	1	1
 bin	x	2	2
-$ ni /etc/passwd F::r3m'r F_ 1..3'
+$ ni /etc/passwd F::r3m'r fields[1..3]'
 x	0	0
 x	1	1
 x	2	2
-$ ni /etc/passwd F::r3m'r F_.size'              # number of fields
+$ ni /etc/passwd F::r3m'r fields.size'
 7
 7
 7
 ```
 
 ### `r`, multiple rows, and return values
-Counterintuitively, `r(...)` doesn't return a value; it returns an empty list
-and side-effectfully prints a row. It works this way because that allows you to
-generate arbitrarily many rows in constant space.
-
-This design is also what makes it possible to omit `r` altogether; then you're
-returning one or more values, each of which will become a row of output:
+If your code returns an Enumerable, you'll get an output line for each entry.
+If it returns a string, you'll have a single output line. `r()` is a function
+that joins on tabs and returns the result (unlike the `r` function in the Perl
+driver):
 
 ```bash
-$ ni n2m'a, a + 100'                    # return without "r"
+$ ni n2m'[a, ai + 100]'                 # multiple lines
 1
 101
 2
 102
-$ ni n2m'r a, a + 100'                  # use "r" for side effect, return ()
+$ ni n2m'r a, ai + 100'                 # multiple columns
 1	101
 2	102
-$ ni n3m'(1..a).each {|x| r x}; nil'    # use r imperatively, explicit return
-1
-1
-2
-1
-2
-3
-$ ni n3m'(1..a).each {|x| r x}'         # use r imperatively, implicit return
-1
-1
-1
-2
-1
-2
-1
-2
-3
-1
-2
-3
 ```
 
-The last example has extra lines because `each` returns the receiver. You can
-suppress any implicit returns using `;nil` at the end of your mapper code.
-
-Whether you use `r` or implicit returns, ni will remove newlines from every
-string you give it. This makes it easier to use backticks without any
-filtering.
+ni will remove newlines from every string you give it. This makes it easier to
+use backticks without any filtering.
 
 ## Buffered readahead
-`m` code can read forwards in the input stream. This is trivially possible by
-calling `rl()` ("read line"), which destructively advances to the next line and
-returns it; but more likely you'd use one of these instead:
+`m` code can read forwards in the input stream:
 
-- `lines = rw {condition}`: read lines while a condition is met
-- `lines = ru {condition}`: read lines until a condition is met
-- `lines = re {a + b}`: read lines while `a + b` is equal
-
-**NOTE:** `rw`, `ru`, and `re` are destructive operators in that they consume
-lines and destroy the context for `a`, `b`, etc.
+- `lines = rw {|l| condition}`: read lines while a condition is met
+- `lines = ru {|l| condition}`: read lines until a condition is met
+- `lines = re {|l| l.ai + l.bi}`: read lines while `ai + bi` is equal
 
 ```bash
-$ ni n10m'r ru {a%4 == 0}'              # read forward until a multiple of 4
+$ ni n10m'r ru {|l| l.ai%4 == 0}'       # read forward until a multiple of 4
 1	2	3
 4	5	6	7
 8	9	10
 ```
 
-The line array returned by `ru` is just an array of flat, tab-delimited strings
-(verbatim lines from standard input), but you can extract fields using the
-column-accessor functions `a_`, `b_`, etc:
+`ru`, etc return arrays of Line objects, and there are two ways to break them
+into columns. Let's generate some columnar data:
 
 ```bash
-$ ni n10m'r (1..10).map {|x| a*x}' =\>mult-table
+$ ni n10m'r (1..10).map {|x| ai*x}' =\>mult-table
 1	2	3	4	5	6	7	8	9	10
 2	4	6	8	10	12	14	16	18	20
 3	6	9	12	15	18	21	24	27	30
@@ -156,18 +120,22 @@ $ ni n10m'r (1..10).map {|x| a*x}' =\>mult-table
 8	16	24	32	40	48	56	64	72	80
 9	18	27	36	45	54	63	72	81	90
 10	20	30	40	50	60	70	80	90	100
-$ ni mult-table m'r g_ ru {a%4 == 0}'   # extract seventh column from each line
+```
+
+The first way is to access the fields on each line individually:
+
+```bash
+$ ni mult-table m'r ru {|l| l.ai%4 == 0}.map(&:g)'      # access column G
 7	14	21
 28	35	42	49
 56	63	70
 ```
 
-`a_` etc are defined like this:
+The other way is to invoke field accessor methods on the whole array:
 
-```pl
-def a_ x
-  return x.split(/\t/)[0] if x.is_a? String
-  return x.map {|l| l.split(/\t/)[0]}
-end
-...
+```bash
+$ ni mult-table m'r ru {|l| l.ai%4 == 0}.g'
+7	14	21
+28	35	42	49
+56	63	70
 ```

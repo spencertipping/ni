@@ -2654,7 +2654,7 @@ Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
 introduced in v5.7.3, so we can't rely on it being there.
 
-sub ceval {eval $_[0]; die $@ if $@}
+sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
@@ -2743,7 +2743,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-84 core/pl/stream.pm.sdoc
+81 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -2756,9 +2756,6 @@ situations. For example:
 
 | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
-Uppercase letters are quoted fields: A == 'a'. This is useful when defining
-lazy facets (see facet.pm.sdoc).
-
 Lowercase letters followed by underscores are field-extractors that can take an
 array of lines and return an array of field values. These are useful in
 conjunction with the line-reading functions `rw`, `ru`, and `re`.
@@ -2767,15 +2764,15 @@ our @q;
 our @F;
 our $l;
 
-sub rl():lvalue  {$l = @q ? shift @q : <STDIN>; @F = (); $l}
-sub pl($):lvalue {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
-sub FM()   {scalar(F_) - 1}
-sub FR($)  {F_($_[0]..FM)}
-sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
-BEGIN {ceval sprintf 'sub %s() {F_ %d}', $_, ord($_) - 97 for 'b'..'q';
-       ceval sprintf 'sub %s_  {local $_; map((split /\t/)[%d], @_)}',
-                     $_, ord($_) - 97 for 'a'..'q'}
+sub rl():lvalue   {$l = $_ = @q ? shift @q : <STDIN>; @F = (); $l}
+sub pl($):lvalue  {push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue  {chomp $l, @F = split /\t/, $l unless @F; @_ ? @F[@_] : @F}
+sub FM()          {scalar(F_) - 1}
+sub FR($):lvalue  {F_($_[0]..FM)}
+sub r(@)          {(my $l = join "\t", @_) =~ s/\n//g; print "$l\n"; ()}
+BEGIN {ceval sprintf 'sub %s():lvalue {F_ %d}', $_, ord($_) - 97 for 'b'..'l';
+       ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
+                     $_, ord($_) - 97 for 'a'..'l'}
 
 sub pr(;$) {
   my $l = @_ ? $_[0] : $_;
@@ -2789,7 +2786,7 @@ Optimize access to the first field; in particular, no need to fully populate @F
 since no seeking needs to happen. This should improve performance for faceting
 workflows.
 
-sub a() {@F ? $F[0] : substr $l, 0, index $l, "\t"}
+sub a():lvalue {@F ? $F[0] : substr $l, 0, index $l, "\t"}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
@@ -2812,7 +2809,7 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($l); push @r, $l while  defined rl && &{$_[0]}; push @q, $l if defined $l; @r}
 sub ru(&) {my @r = ($l); push @r, $l until !defined rl || &{$_[0]}; push @q, $l if defined $l; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'q'}
+BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
@@ -2825,7 +2822,7 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
 BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
-                     $_, $_ for 'a'..'q'}
+                     $_, $_ for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 68 core/pl/reducers.pm.sdoc
@@ -2998,12 +2995,32 @@ defrowalt pmap q{perl_grepper_op $_},
 2 core/rb/lib
 prefix.rb
 rb.pl.sdoc
-72 core/rb/prefix.rb
+105 core/rb/prefix.rb
 # ni ruby driver prefix
 # This is loaded prior to the short codegen segment in rb.pl.sdoc.
 
 $have_json = true
-require 'json' rescue $have_json = false
+begin
+  require 'json'
+rescue ScriptError
+  $have_json = false
+end
+
+# Portability stuff.
+# Old versions of Ruby have "a"[0] == 97, new versions have "a"[0] == "a". This
+# makes it always safe to say "a"[0].ord.
+class Numeric
+  def ord; self; end
+end
+
+# Add to_proc conversion to symbols, which makes it possible to write
+# map(&:foo).
+class Symbol
+  def to_proc
+    x = self
+    proc {|v| v.send(x)}
+  end
+end
 
 class Line
   attr_reader :str
@@ -3018,7 +3035,7 @@ class Line
   end
 
   def fields
-    @fields ||= @str.split /\t/
+    @fields ||= @str.split(/\t/)
   end
 
   def to_s
@@ -3034,12 +3051,25 @@ Line.class_eval do
     define_method "#{l}s".to_sym, proc {fields[index].to_s}
     define_method "#{l}i".to_sym, proc {fields[index].to_i}
     define_method "#{l}f".to_sym, proc {fields[index].to_f}
-    define_method "#{l}d".to_sym, proc {fields[index].to_f}
   end
 end
 
+Enumerable.class_eval do
+  ('a'..'q').each do |l|
+    index = l[0].ord - 97
+    define_method    l   .to_sym, proc {map {|x| x.fields[index]}}
+    define_method "#{l}s".to_sym, proc {map {|x| fields[index].to_s}}
+    define_method "#{l}i".to_sym, proc {map {|x| fields[index].to_i}}
+    define_method "#{l}f".to_sym, proc {map {|x| fields[index].to_f}}
+  end
+end
+
+def pr x
+  puts x.to_s.gsub(/\n/, '')
+end
+
 def r *xs
-  xs.join "\t"
+  xs.join("\t")
 end
 
 # Readahead support
@@ -3048,7 +3078,7 @@ $l = nil
 
 def next_line
   return $q.shift unless $q.empty?
-  Line.new STDIN.readline.chomp! rescue nil
+  Line.new($in.readline.chomp!) rescue nil
 end
 
 def rw
@@ -3071,13 +3101,15 @@ def re &f
   v = f.call $l
   rw {|l| f.call(l) == v}
 end
-69 core/rb/rb.pl.sdoc
+74 core/rb/rb.pl.sdoc
 Ruby code element.
 This works just like the Perl code parser but is slightly less involved because
 there's no `BEGIN/END` substitution. We also don't need to take a code
 transform because no amount of wrapping will change whether an expression can
 be parsed.
 
+c
+BEGIN {
 defparser 'rbcode', '', sub {
   return @_[1..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
@@ -3089,13 +3121,14 @@ ni: failed to get closing bracket count for ruby code "$code$x"; this means
 EOF
   length $x ? ($code, $x, @xs) : ($code, @xs);
 };
+}
 
 Ruby wrapper.
 
 use constant ruby_mapgen => gen q{
   %prefix
   STDIN.close
-  STDIN = IO.new 3
+  $in = IO.new(3)
   class Line
     def row
       %body
@@ -3106,15 +3139,14 @@ use constant ruby_mapgen => gen q{
     if x.is_a? Enumerable
       x.each do |v|
         v = r *v if v.is_a? Enumerable
-        puts v.gsub!(/\n/, '')
+        pr v
       end
     elsif !x.nil?
-      puts x.to_s.gsub!(/\n/, '')
+      pr x
     end
   end
 
   while $l = next_line
-    $l = Line.new $l
     x = $l.row
     %each
   end
@@ -3133,6 +3165,9 @@ sub ruby_code($$) {ruby_mapgen->(prefix => ruby_prefix,
 
 sub ruby_mapper($)  {ruby_code $_[0], 'map_mode! x'}
 sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
+
+defoperator ruby_mapper  => q{stdin_to_ruby ruby_mapper  $_[0]};
+defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
 our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
 
@@ -4846,11 +4881,14 @@ Operator | Example      | Description
 `X`      |              |
 `Y`      |              |
 `Z`      |              |
-382 doc/perl.md
+387 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
 [extend.md](extend.md) (`ni //help/extend`).
+
+For a data transformer you're more likely to use and like, see
+[ruby.md](ruby.md).
 
 ni provides the `p` operator to execute a Perl line processor on the current
 data stream. For example:
@@ -4876,9 +4914,11 @@ $ ni :plfoo[n4p'a*a']
 ```
 
 ## Basic stuff
-`a` to `q` are one-letter functions that return the first 17 tab-delimited
-values from the current line. `r(...)` is a function that takes a list of
-values and prints a tab-delimited row. For example:
+`a` to `l` are one-letter functions that return the first 12 tab-delimited
+values from the current line. (12 wasn't chosen arbitrarily; the letter `m` is
+Perl syntax for regular expressions, so we can't use it.) `r(...)` is a
+function that takes a list of values and prints a tab-delimited row. For
+example:
 
 ```bash
 $ ni n4p'r a, a + 1'                    # generate two columns
