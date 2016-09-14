@@ -15,7 +15,7 @@ use constant jsplot_html =>
                                          core/jsplot/matrix.waul
                                          core/jsplot/socket.waul
                                          core/jsplot/render.waul
-                                         core/jsplot/jsplot.js |});
+                                         core/jsplot/interface.waul |});
 
 JSPlot data streaming.
 This is the websocket connection that ni uses to stream data to the client. Any
