@@ -25,6 +25,8 @@ caterwaul(':all')(function () {
                                  center()           = (this.max + this.min) / 2,
                                  range()            = this.max - this.min,
                                  at(x)              = this.min + x * this.range(),
+                                 end()              = this.n /-Math.min/ this.c,
+                                 p(i)               = this.data[i],
 
                                  push(x, r)         = this.n < this.c ? this.set(this.n++, x) : this /x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();

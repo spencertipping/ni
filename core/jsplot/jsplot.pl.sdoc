@@ -13,6 +13,8 @@ use constant jsplot_html =>
                                          core/jsplot/jquery.mousewheel.min.js
                                          core/jsplot/axis.waul
                                          core/jsplot/matrix.waul
+                                         core/jsplot/socket.waul
+                                         core/jsplot/render.waul
                                          core/jsplot/jsplot.js |});
 
 JSPlot data streaming.
