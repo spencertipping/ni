@@ -207,12 +207,12 @@ sub exec_ni(@) {
   my ($stdin, @argv) = sni_exec_list @_;
   my $fh = siproc {exec @argv};
   safewrite $fh, $stdin;
-  sforward \*STDIN, $fh unless eof STDIN;
+  sforward \*STDIN, $fh;
   close $fh;
   exit $fh->await;
 }
 
 sub sni(@) {
   my @args = @_;
-  soproc {close STDIN; exec_ni @args};
+  soproc {close STDIN; close 0; exec_ni @args};
 }

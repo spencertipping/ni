@@ -1,0 +1,23 @@
+A column vector of numeric data.
+Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
+evenly). Because multiple axes need to be coordinated, all random numbers used for sampling are parameters rather than generated here.
+
+caterwaul(':all')(function () {
+  axis(capacity) = {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} /-caterwaul.merge/ axis_methods,
+  axis /-caterwaul.merge/ static_methods,
+
+  where[static_methods = capture[focus(x, c, s)         = Math.abs(x - c) / s],
+
+        axis_methods   = capture[reset()                = this -se [this.n = 0, this.min = this.max = null],
+                                 set(i, x)              = this -se [this.min = this.min == null ? x : this.min /-Math.min/ x,
+                                                                    this.max = this.max == null ? x : this.max /-Math.max/ x,
+                                                                    this.data[i] = x],
+
+                                 center()               = (this.max + this.min) / 2,
+                                 range()                = this.max - this.min,
+                                 at(x)                  = this.min + x * this.range(),
+
+                                 push(x, r, w)          = this.n < this.c ? this.set(this.n++, x)
+                                                        : w ? this /x /r /~windowed_push/ w : this /x /~uniform_push/ r,
+                                 uniform_push(x, r)     = this.set(r * this.n | 0, x) -when [r * this.n < this.c],
+                                 windowed_push(x, r, w) = TODO()]]})();

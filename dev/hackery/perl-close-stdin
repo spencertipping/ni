@@ -1,0 +1,9 @@
+#!/bin/bash
+{ echo foo; sleep 1; seq 100; } | perl -e '
+  $_ = <STDIN>;
+  print $_;
+  close STDIN;
+  print "uh oh: $_" while <STDIN>;
+'
+
+

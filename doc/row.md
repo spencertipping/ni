@@ -183,8 +183,8 @@ $ ni word-list gcr10            # sort first to group words
 1	BE
 $ ni word-list gcOr10           # by descending count
 30	ni
-22	lib
-22	core
+23	lib
+23	core
 21	_
 13	sdoc
 12	the
