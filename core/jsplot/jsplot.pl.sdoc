@@ -7,7 +7,9 @@ use constant jsplot_gen => gen $self{'core/jsplot/html'};
 
 use constant jsplot_html =>
   jsplot_gen->(css => $self{'core/jsplot/css'},
-               js  => join '', @self{qw| core/jsplot/jquery.min.js
+               js  => join '', @self{qw| core/caterwaul/caterwaul.min.js
+                                         core/caterwaul/caterwaul.std.min.js
+                                         core/jsplot/jquery.min.js
                                          core/jsplot/jquery.mousewheel.min.js
                                          core/jsplot/jsplot.js |});
 
@@ -53,6 +55,8 @@ sub jsplot_stream($$@) {
     safewrite $reply, $_;
   }
   jsplot_log "done transferring data\n";
+  $ni_pipe->await;
+  jsplot_log "worker exited with %d\n";
 }
 
 sub jsplot_server {

@@ -24,8 +24,10 @@ cd $(dirname $0)
 ./ni --internal/lib core/sql
 ./ni --internal/lib core/python
 
-./ni --internal/lib core/http
 ./ni --internal/lib core/gnuplot
+
+./ni --internal/lib core/http
+./ni --internal/lib core/caterwaul
 ./ni --internal/lib core/jsplot
 
 ./ni --internal/lib core/docker

@@ -195,7 +195,7 @@ defclispecial '--internal/operate', q{
   my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
   print $fh $_ while <$data>;
   close $fh;
-  exit $fh->await;
+  $fh->await;
 };
 
 sub sni_exec_list(@) {
@@ -207,7 +207,7 @@ sub exec_ni(@) {
   my ($stdin, @argv) = sni_exec_list @_;
   my $fh = siproc {exec @argv};
   safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
+  sforward \*STDIN, $fh unless eof STDIN;
   close $fh;
   exit $fh->await;
 }
