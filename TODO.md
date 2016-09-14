@@ -1,10 +1,3 @@
-### Mnemonic operator refactor
-All kinds of confusing stuff happening right now: `@` can be faceting or a
-tempfile, `$:` for shell-gen, `::` for SSH gen, `@[]` for ni-gen.
-
-The grammar should be a lot more regular: the metaphor should be "this thing is
-an evaluator," implying that the lambda will end up going into a ni process.
-
 ### Minor refactor of Perl API
 Nothing major here, but let's fix up the names a little and add some things
 like "from here to EOL".
@@ -14,7 +7,8 @@ I think it counts the newline with the length, which is wrong.
 
 ### Optimized line processor
 Right now we're slower than nfu, which is terrible. ni should be able to go
-much faster.
+much faster. (Line splitting by itself is ~200MiB/s, whereas nfu is ~27MiB/s
+and ni is ~18MiB/s -- time to figure out what's going on here.)
 
 ### Optimization in general
 Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
