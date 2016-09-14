@@ -1,0 +1,25 @@
+#!/bin/bash
+
+n=2000
+
+testcase() {
+  echo "$1 $2"
+  time for i in `seq $n`; do
+    cat test-data/reddit-comments
+  done | pv | perl $1 -e "$2" > /dev/null
+}
+
+testcase -n 'print for split /\t/'
+testcase -n '@xs = split /\t/; print for @xs'
+testcase -n 'print for @{[split /\t/]}'
+testcase -n 'sub p {print for @_} p(split /\t/)'
+testcase -n 'my $p = sub {print for @_}; &$p(split /\t/)'
+
+testcase -n 'my $p = sub {my @xs = @_; print for @xs}; &$p(split /\t/)'
+testcase -n 'my $p = sub {print join "\t", @_}; &$p(split /\t/)'
+testcase '' 'while (<STDIN>) {my $p = sub {print join "\t", @_}; &$p(split /\t/)}'
+testcase '' 'my $p = sub {print join "\t", @_}; while (<STDIN>) {&$p(split /\t/)}'
+testcase '' 'my $p = sub {s/\n//g for @_; print join "\t", @_}; while (<STDIN>) {&$p(split /\t/)}'
+testcase '' 'my $p = sub {(my $s = join "\t", @_) =~ s/\n//g; print "$s\n"}; while (<STDIN>) {&$p(split /\t/)}'
+
+testcase '' 'my @q; my $p = sub {print join "\t", @_}; while (defined($_ = @q ? shift @q : <STDIN>)) {&$p(split /\t/)}'

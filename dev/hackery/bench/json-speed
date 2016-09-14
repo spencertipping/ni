@@ -1,0 +1,24 @@
+#!/bin/bash
+cd $(dirname $0)
+n=1000
+
+echo 'cat'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | cat | sha256sum -
+
+echo 'ni D:author,:controversiality'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | ni D:author,:controversiality | { head -n5; sha256sum -; }
+
+echo 'jq -r [.author,.controversiality]|@tsv'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | jq -r '[.author, .controversiality]|@tsv' | { head -n5; sha256sum -; }
+
+echo 'ni perl full parse'
+time for i in `seq $n`; do
+  cat test-data/reddit-comments
+done | pv | ni p'my $j = json_decode a; r $$j{author}, $$j{controversiality}' \
+  | { head -n5; sha256sum -; }

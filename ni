@@ -2178,8 +2178,9 @@ sub gen($) {
     join '', @r;
   };
 }
-1 core/json/lib
+2 core/json/lib
 json.pl.sdoc
+extract.pl.sdoc
 70 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
@@ -2251,6 +2252,56 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
+49 core/json/extract.pl.sdoc
+Targeted extraction.
+ni gives you ways to decode JSON, but you aren't likely to have data stored as
+JSON objects in the middle of data pipelines. It's more of an archival format,
+so the goal is to unpack stuff quickly. ni gives you a way of doing this that
+is usually much faster than running the full decoder. (And also requires less
+typing.)
+
+The set of operations is basically this:
+
+| .foo          # direct object key access (not very fast)
+  ..foo         # multiple indirect object key access (fast-ish)
+  :foo          # single indirect object key access (very fast)
+  [0]           # array access (slow)
+  []            # array flatten (slow)
+
+Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
+every 'bar' key within the first element of the 'foo' field of the root
+object".
+
+Extracted values are flattened into a single array and returned. They're
+optimized for strings, numeric, and true/false/null; you can return other
+values, but it will be slower.
+
+# TODO: replace all of this
+
+use constant json_si_gen => gen q#
+  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
+               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
+               : /\G([^][{},]+)/              ? "" . $1
+               : undef
+               : undef) #;
+
+sub json_extractor($) {
+  my @pieces = split /\s*,\s*/, $_[0];
+  die "ni: json_extractor is not really written yet"
+    if grep !/^:\w+$/, @pieces;
+
+  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+                 map sr($_, qr/^:/, ''), @pieces;
+  join ',', @compiled;
+}
+
+defoperator destructure => q{
+  ni::eval gen(q{binmode STDOUT, ":encoding(utf-8)";
+                 while (<STDIN>) {print join("\t", %e), "\n"}})
+            ->(e => json_extractor $_[0]);
+};
+
+defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
 1 core/net/lib
 net.pl.sdoc
 18 core/net/net.pl.sdoc
@@ -3986,7 +4037,7 @@ caterwaul(':all')(function () {
 
         compile        = caterwaul(':all'),
         matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[yi<<2 | xi&3] * b[xi<<2&12 | yi]] -seq] /seq /!matrix,
-                                 transform       (v, a=this) = v *[a[xi<<2|0]*v[0] + a[xi<<2|1]*v[1] + a[xi<<2|2]*v[2] + a[xi<<2|3]*v[3]] -seq,
+                                 transform       (v, a=this) = v *[n[4] /s[0][s0 + a[xi<<2|s]*v[s]] -seq] -seq,
                                  transformer_form(d, a=this) = qs[given[x, y, z] in _a*x + _b*y + _c*z + w]
                                                                /~replace/ {_a: a[d<<2|0], _b: a[d<<2|1], _c: a[d<<2|2], d: a[d<<2|3]},
                                  transformer     (d, a=this) = this.transformer_form(d).toString() /!compile]]})();
