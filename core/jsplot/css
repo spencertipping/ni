@@ -1,27 +1,37 @@
 body {margin:0; color:#eee; background:#111; font-size:10pt;
       font-family:monospace; overflow: hidden}
 
+#screen, #overlay {position:absolute}
+
 ::-webkit-scrollbar {width:12px; height:4px}
 ::-webkit-scrollbar-track {background:rgba(255,255,255,0.1)}
 ::-webkit-scrollbar-thumb {background:rgba(255,255,255,0.5)}
 
-*:focus, *:hover, .pinned, .active {opacity: 1 !important}
+*:focus, *:hover, .pinned, .active {opacity:1 !important}
 
 #status {position:absolute; right:2px; bottom:2px; width:300px;
-         opacity:0.2; text-align:right}
+         opacity:0.2; text-align:right; z-index:9}
 
 #transform {background:none; margin:0; color:#eee; position:absolute;
             left:0; top:0; border:none; outline:none; padding:1px 0;
-            border-bottom:solid 1px transparent; font-family:monospace}
+            border-bottom:solid 1px transparent; font-family:monospace;
+            z-index:9}
 
 #transform:focus,
 #transform:hover {background:rgba(17,17,17,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
 
-#preview {z-index:1; color:transparent; max-width:1px; overflow-x:auto;
+#preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto;
           position:absolute; left:0; padding-right:12px; overflow-y:show;
           margin:0; background:rgba(17,17,17,0.75); cursor:default;
           font-family:monospace}
 
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
+
+#controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
+           background:rgba(17,17,17,0.75)}
+#controls canvas {display:block; height:48px; width:600px; margin-left:4px}
+
+#controls:hover, #controls.pinned {width:600px}
+#controls.pinned {border-left:solid 1px #f60}

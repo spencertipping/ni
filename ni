@@ -3721,35 +3721,45 @@ if(k&&j[k]&&(e||j[k].data)||void 0!==d||"string"!=typeof b)return k||(k=i?a[h]=c
  * http://jquery.org/license
  */
 !function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a:a(jQuery)}(function(a){function b(b){var g=b||window.event,h=i.call(arguments,1),j=0,l=0,m=0,n=0,o=0,p=0;if(b=a.event.fix(g),b.type="mousewheel","detail"in g&&(m=-1*g.detail),"wheelDelta"in g&&(m=g.wheelDelta),"wheelDeltaY"in g&&(m=g.wheelDeltaY),"wheelDeltaX"in g&&(l=-1*g.wheelDeltaX),"axis"in g&&g.axis===g.HORIZONTAL_AXIS&&(l=-1*m,m=0),j=0===m?l:m,"deltaY"in g&&(m=-1*g.deltaY,j=m),"deltaX"in g&&(l=g.deltaX,0===m&&(j=-1*l)),0!==m||0!==l){if(1===g.deltaMode){var q=a.data(this,"mousewheel-line-height");j*=q,m*=q,l*=q}else if(2===g.deltaMode){var r=a.data(this,"mousewheel-page-height");j*=r,m*=r,l*=r}if(n=Math.max(Math.abs(m),Math.abs(l)),(!f||f>n)&&(f=n,d(g,n)&&(f/=40)),d(g,n)&&(j/=40,l/=40,m/=40),j=Math[j>=1?"floor":"ceil"](j/f),l=Math[l>=1?"floor":"ceil"](l/f),m=Math[m>=1?"floor":"ceil"](m/f),k.settings.normalizeOffset&&this.getBoundingClientRect){var s=this.getBoundingClientRect();o=b.clientX-s.left,p=b.clientY-s.top}return b.deltaX=l,b.deltaY=m,b.deltaFactor=f,b.offsetX=o,b.offsetY=p,b.deltaMode=0,h.unshift(b,j,l,m),e&&clearTimeout(e),e=setTimeout(c,200),(a.event.dispatch||a.event.handle).apply(this,h)}}function c(){f=null}function d(a,b){return k.settings.adjustOldDeltas&&"mousewheel"===a.type&&b%120===0}var e,f,g=["wheel","mousewheel","DOMMouseScroll","MozMousePixelScroll"],h="onwheel"in document||document.documentMode>=9?["wheel"]:["mousewheel","DomMouseScroll","MozMousePixelScroll"],i=Array.prototype.slice;if(a.event.fixHooks)for(var j=g.length;j;)a.event.fixHooks[g[--j]]=a.event.mouseHooks;var k=a.event.special.mousewheel={version:"3.1.12",setup:function(){if(this.addEventListener)for(var c=h.length;c;)this.addEventListener(h[--c],b,!1);else this.onmousewheel=b;a.data(this,"mousewheel-line-height",k.getLineHeight(this)),a.data(this,"mousewheel-page-height",k.getPageHeight(this))},teardown:function(){if(this.removeEventListener)for(var c=h.length;c;)this.removeEventListener(h[--c],b,!1);else this.onmousewheel=null;a.removeData(this,"mousewheel-line-height"),a.removeData(this,"mousewheel-page-height")},getLineHeight:function(b){var c=a(b),d=c["offsetParent"in a.fn?"offsetParent":"parent"]();return d.length||(d=a("body")),parseInt(d.css("fontSize"),10)||parseInt(c.css("fontSize"),10)||16},getPageHeight:function(b){return a(b).height()},settings:{adjustOldDeltas:!0,normalizeOffset:!0}};a.fn.extend({mousewheel:function(a){return a?this.bind("mousewheel",a):this.trigger("mousewheel")},unmousewheel:function(a){return this.unbind("mousewheel",a)}})});
-27 core/jsplot/css
+37 core/jsplot/css
 body {margin:0; color:#eee; background:#111; font-size:10pt;
       font-family:monospace; overflow: hidden}
+
+#screen, #overlay {position:absolute}
 
 ::-webkit-scrollbar {width:12px; height:4px}
 ::-webkit-scrollbar-track {background:rgba(255,255,255,0.1)}
 ::-webkit-scrollbar-thumb {background:rgba(255,255,255,0.5)}
 
-*:focus, *:hover, .pinned, .active {opacity: 1 !important}
+*:focus, *:hover, .pinned, .active {opacity:1 !important}
 
 #status {position:absolute; right:2px; bottom:2px; width:300px;
-         opacity:0.2; text-align:right}
+         opacity:0.2; text-align:right; z-index:9}
 
 #transform {background:none; margin:0; color:#eee; position:absolute;
             left:0; top:0; border:none; outline:none; padding:1px 0;
-            border-bottom:solid 1px transparent; font-family:monospace}
+            border-bottom:solid 1px transparent; font-family:monospace;
+            z-index:9}
 
 #transform:focus,
 #transform:hover {background:rgba(17,17,17,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
 
-#preview {z-index:1; color:transparent; max-width:1px; overflow-x:auto;
+#preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto;
           position:absolute; left:0; padding-right:12px; overflow-y:show;
           margin:0; background:rgba(17,17,17,0.75); cursor:default;
           font-family:monospace}
 
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
-16 core/jsplot/html
+
+#controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
+           background:rgba(17,17,17,0.75)}
+#controls canvas {display:block; height:48px; width:600px; margin-left:4px}
+
+#controls:hover, #controls.pinned {width:600px}
+#controls.pinned {border-left:solid 1px #f60}
+22 core/jsplot/html
 <!doctype html>
 <html>
 <head>
@@ -3761,47 +3771,81 @@ body {margin:0; color:#eee; background:#111; font-size:10pt;
 <textarea spellcheck='false' id='transform'></textarea>
 <pre id='preview' class='autohide'></pre>
 <canvas id='screen'></canvas>
+<canvas id='overlay'></canvas>
+<div id='controls' class='autohide'>
+  <canvas id='xrange'></canvas>
+  <canvas id='yrange'></canvas>
+  <canvas id='zrange'></canvas>
+</div>
 <div id='status'>
   <label id='sizelabel'></label>
 </div>
 </body>
 </html>
-309 core/jsplot/jsplot.js.sdoc
+472 core/jsplot/jsplot.js.sdoc
 JSPlot.
 A plotting library that allows you to live-transform the data, and that
 supports incremental rendering in not much space.
 
 $(function () {
+var tau = 2 * Math.PI;
+
 var w  = $(window);
-var c  = $('#screen').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false);
+var c  = $('#screen');
+var o  = $('#overlay');
 var t  = $('#transform');
 var st = $('#status');
 var pr = $('#preview');
 
+var cs = $('#controls');
+var xr = $('#xrange');
+var yr = $('#yrange');
+var zr = $('#zrange');
+
 var size_label = $('#sizelabel');
 
+var ctx = c[0].getContext('2d');
+var otx = o[0].getContext('2d');
+var xrc = xr[0].getContext('2d');
+var yrc = yr[0].getContext('2d');
+var zrc = zr[0].getContext('2d');
+
+$('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false);
 $('.autohide').click(function () {$(this).toggleClass('pinned')});
+
+xr.mousemove(function (e) {
+  overlay_x = ((e.pageX - $(this).offset().left) / $(this).width() - 0.5) / settings.s[0] - settings.f[0];
+  render_overlay();
+}).mouseout(function () {overlay_x = null; render_overlay()});
+
+yr.mousemove(function (e) {
+  overlay_y = ((e.pageX - $(this).offset().left) / $(this).width() - 0.5) / settings.s[1] - settings.f[1];
+  render_overlay();
+}).mouseout(function () {overlay_y = null; render_overlay()});
+
+zr.mousemove(function (e) {
+  overlay_z = ((e.pageX - $(this).offset().left) / $(this).width() - 0.5) / settings.s[2] - settings.f[2];
+  render_overlay();
+}).mouseout(function () {overlay_z = null; render_overlay()});
 
 var settings;
 var save_settings = function () {
   document.location.hash = encodeURIComponent(JSON.stringify(settings));
 };
 
-(function () {
-  var bookmark = decodeURIComponent(document.location.hash.substr(1));
-  try {
-    settings = JSON.parse(bookmark);
-  } catch (e) {
-    settings = {ni: bookmark || '',
-                vm: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-                d:  1.4};
-    save_settings();
-  }
-
-  t.val(settings.ni);
-})();
-
-var ctx = c[0].getContext('2d');
+var bookmark = decodeURIComponent(document.location.hash.substr(1));
+try {
+  settings = JSON.parse(bookmark);
+} catch (e) {
+  settings = {ni: bookmark || '',
+              r:  [0, 0],
+              s:  [1, 1, 1],
+              c:  [0, 0, 0],
+              f:  [0, 0, 0],
+              d:  1.4};
+  save_settings();
+}
+t.val(settings.ni);
 
 var wwl, whl;
 var resize_stuff = function () {
@@ -3812,6 +3856,10 @@ var resize_stuff = function () {
   t .css({width: ww, height: t[0].scrollHeight - 2});
   if (ww !== wwl || wh !== whl) {
     c.attr({width: wwl = ww, height: whl = wh});
+    o.attr({width: wwl = ww, height: whl = wh});
+    xr.attr({width: xr.width(), height: xr.height()});
+    yr.attr({width: yr.width(), height: yr.height()});
+    zr.attr({width: zr.width(), height: zr.height()});
     anything_new = true;
   }
 };
@@ -3854,17 +3902,64 @@ var mm = function (a, b) {
 
 var mx = null, my = null, mshift = false, mctrl = false;
 
-c.mousedown(function (e) {
+var view_matrix = function () {
+  return mm(mm(translate(settings.c[0], settings.c[1], settings.c[2]),
+               mm(rotate_x(-settings.r[1] * tau),
+                  rotate_y(-settings.r[0] * tau))),
+            mm(scale(settings.s[0], settings.s[1], settings.s[2]),
+               translate(settings.f[0], settings.f[1], settings.f[2])));
+};
+
+o.mousedown(function (e) {
   mx     = e.pageX;
   my     = e.pageY;
   mshift = e.shiftKey;
   mctrl  = e.ctrlKey || e.metaKey;
 });
 
-c.mousewheel(function (e) {
+o.mousewheel(function (e) {
   settings.d *= Math.exp(e.deltaY * -0.01);
   partial = 0;
   anything_new = true;
+  save_settings();
+});
+
+xr.mousewheel(function (e) {
+  var d = (e.pageX - $(this).offset().left) / $(this).width() - 0.5;
+
+  settings.f[0] -= d / settings.s[0];
+  settings.s[0] *= Math.exp(e.deltaY * 0.01);
+  settings.f[0] += d / settings.s[0];
+
+  partial = 0;
+  anything_new = true;
+  render_overlay();
+  save_settings();
+});
+
+yr.mousewheel(function (e) {
+  var d = (e.pageX - $(this).offset().left) / $(this).width() - 0.5;
+
+  settings.f[1] -= d / settings.s[1];
+  settings.s[1] *= Math.exp(e.deltaY * 0.01);
+  settings.f[1] += d / settings.s[1];
+
+  partial = 0;
+  anything_new = true;
+  render_overlay();
+  save_settings();
+});
+
+zr.mousewheel(function (e) {
+  var d = (e.pageX - $(this).offset().left) / $(this).width() - 0.5;
+
+  settings.f[2] -= d / settings.s[2];
+  settings.s[2] *= Math.exp(e.deltaY * 0.01);
+  settings.f[2] += d / settings.s[2];
+
+  partial = 0;
+  anything_new = true;
+  render_overlay();
   save_settings();
 });
 
@@ -3877,18 +3972,15 @@ $(document).mousemove(function (e) {
   var hh = wwl / 2;
   var vh = whl / 2;
 
-  if (mctrl && mshift)
-    settings.vm = mm(settings.vm,
-      scale(Math.exp(4 * (Math.abs(e.pageX - hh) - Math.abs(mx - hh)) / wwl),
-            Math.exp(4 * (Math.abs(e.pageY - vh) - Math.abs(my - vh)) / whl), 1));
-  else if (mctrl)
+  if (mctrl)
     settings.d *= Math.exp(2 * (e.pageY - my) / whl);
   else if (mshift)
-    settings.vm = mm(rotate_x((e.pageY - my) / whl * Math.PI * 2),
-                  mm(settings.vm, rotate_y(-(e.pageX - mx) / wwl * Math.PI * 2)));
+    settings.r = [settings.r[0] + (e.pageX - mx) / whl,
+                  settings.r[1] - (e.pageY - my) / wwl];
   else
-    settings.vm = mm(translate((e.pageX - mx) / wwl, (my - e.pageY) / whl, 0),
-                     settings.vm);
+    settings.c = [settings.c[0] + (e.pageX - mx) / wwl,
+                  settings.c[1] - (e.pageY - my) / whl,
+                  settings.c[2]];
 
   mx = e.pageX;
   my = e.pageY;
@@ -4012,18 +4104,24 @@ var collect_point = function (p) {
   }
 };
 
-var last_callin = +new Date;
+var project = function (x, y, z, cm) {
+  var wp = 1 / (cm[12]*x + cm[13]*y + cm[14]*z + cm[15]);
+  var xp = wp * (cm[0]*x + cm[1] *y + cm[2] *z + cm[3]);
+  var yp = wp * (cm[4]*x + cm[5] *y + cm[6] *z + cm[7]);
+  var zp = wp * (cm[8]*x + cm[9] *y + cm[10]*z + cm[11]);
+  if (zp > 0) {
+    zp = 1 / zp;
+    return [xp*zp, yp*zp, zp];
+  }
+};
 
-var render = function () {
-  requestAnimationFrame(render);
-  resize_stuff();
-  if (!anything_new) return;
+var overlay_x = null;
+var overlay_y = null;
+var overlay_z = null;
 
-  var t = +new Date;
-  if (!partial) ctx.clearRect(0, 0, wwl, whl);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+var render_scale = function () {return Math.min(whl, wwl)};
 
-  var vm = settings.vm;
+var camera_matrix = function () {
   var sx = 1 / (max_x - min_x || 1);
   var sy = 1 / (max_y - min_y || 1);
   var sz = 1 / (max_z - min_z || 1);
@@ -4032,18 +4130,95 @@ var render = function () {
   var cy = (max_y + min_y) / 2;
   var cz = (max_z + min_z) / 2;
 
-  var cm = mm(vm, mm(scale(sx, sy, sz),
-                     translate(-cx, -cy, -cz)));
+  return mm(translate(0, 0, settings.d),
+            mm(view_matrix(), mm(scale(sx, sy, sz),
+                                 translate(-cx, -cy, -cz))));
+};
 
+var overlay_line = function (scale, p1, p2, cm) {
+  var pp1 = project(p1[0], p1[1], p1[2], cm);
+  var pp2 = project(p2[0], p2[1], p2[2], cm);
+  if (pp1 && pp2) {
+    otx.beginPath();
+    otx.moveTo(wwl/2 + scale*pp1[0], whl/2 - scale*pp1[1]);
+    otx.lineTo(wwl/2 + scale*pp2[0], whl/2 - scale*pp2[1]);
+    otx.stroke();
+  }
+};
+
+var render_overlay = function () {
+  otx.clearRect(0, 0, wwl, whl);
+  otx.fillStyle = otx.strokeStyle = 'rgba(255, 96, 0, 0.5)';
+
+  var vsize       = render_scale();
+  var grid_points = 100;
+  var cm          = mm(translate(0, 0, settings.d), view_matrix());
+
+  for (var i = 0; i <= grid_points; ++i) {
+    var a = -0.5;
+    var b =  0.5;
+    var c = -0.5 + i / grid_points;
+
+    if (overlay_x != null) {
+      overlay_line(vsize, [overlay_x, a, c], [overlay_x, b, c], cm);
+      overlay_line(vsize, [overlay_x, c, a], [overlay_x, c, b], cm);
+    }
+
+    if (overlay_y != null) {
+      overlay_line(vsize, [a, overlay_y, c], [b, overlay_y, c], cm);
+      overlay_line(vsize, [c, overlay_y, a], [c, overlay_y, b], cm);
+    }
+
+    if (overlay_z != null) {
+      overlay_line(vsize, [a, c, overlay_z], [b, c, overlay_z], cm);
+      overlay_line(vsize, [c, a, overlay_z], [c, b, overlay_z], cm);
+    }
+  }
+};
+
+var render = function () {
+  requestAnimationFrame(render);
+  resize_stuff();
+
+  if (!anything_new) return;
+
+  var t = +new Date;
+  if (!partial) {
+    ctx.clearRect(0, 0, wwl, whl);
+    xrc.clearRect(0, 0, xr.width(), xr.height());
+    yrc.clearRect(0, 0, yr.width(), yr.height());
+    zrc.clearRect(0, 0, zr.width(), zr.height());
+  }
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  xrc.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  yrc.fillStyle = 'rgba(255, 255, 255, 0.1)';
+  zrc.fillStyle = 'rgba(255, 255, 255, 0.1)';
+
+  var sx = 1 / (max_x - min_x || 1);
+  var sy = 1 / (max_y - min_y || 1);
+  var sz = 1 / (max_z - min_z || 1);
+
+  var osx = settings.s[0];
+  var osy = settings.s[1];
+  var osz = settings.s[2];
+
+  var ocx = settings.f[0];
+  var ocy = settings.f[1];
+  var ocz = settings.f[2];
+
+  var cm = camera_matrix();
   var m00 = cm[0],  m01 = cm[1],  m02 = cm[2],  m03 = cm[3],
       m10 = cm[4],  m11 = cm[5],  m12 = cm[6],  m13 = cm[7],
-      m20 = cm[8],  m21 = cm[9],  m22 = cm[10], m23 = cm[11] + settings.d,
+      m20 = cm[8],  m21 = cm[9],  m22 = cm[10], m23 = cm[11],
       m30 = cm[12], m31 = cm[13], m32 = cm[14], m33 = cm[15];
 
   var step = 17;
   var end  = 255 * step & 0xff;
 
-  var vsize = Math.min(whl, wwl);
+  var vsize = render_scale();
+
+  var range_w = xr.width();
+  var range_h = xr.height();
 
   var n = Math.min(parsed.length / 4, n_points);
   for (var i = partial; (i &= 0xff) != end && +new Date - t < 10; i += step) {
@@ -4051,6 +4226,10 @@ var render = function () {
       var x = parsed[i * 4 + 0];
       var y = parsed[i * 4 + 1];
       var z = parsed[i * 4 + 2];
+
+      xrc.fillRect((((x - min_x) * sx - 0.5 + ocx) * osx + 0.5) * range_w, Math.random() * range_h, 1, 1);
+      yrc.fillRect((((y - min_y) * sy - 0.5 + ocy) * osy + 0.5) * range_w, Math.random() * range_h, 1, 1);
+      zrc.fillRect((((z - min_z) * sz - 0.5 + ocz) * osz + 0.5) * range_w, Math.random() * range_h, 1, 1);
 
       var wp = 1 / (m30*x + m31*y + m32*z + m33);
       var xp = wp * (m00*x + m01*y + m02*z + m03);
