@@ -634,7 +634,7 @@ sub status($) {my ($self) = @_; $$self{status}}
 
 sub kill($$) {
   my ($self, $sig) = @_;
-  kill $$self{pid}, $sig unless defined $$self{status};
+  kill $sig, $$self{pid} unless defined $$self{status};
 }
 
 sub str($)
