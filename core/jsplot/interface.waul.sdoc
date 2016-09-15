@@ -8,7 +8,7 @@ $(caterwaul(':all')(function ($) {
                            status  = $('#status'),    lh = 0, my = null, mc = false,
                            preview = $('#preview'),
 
-        default_settings       = {ni: "//ni psplit// pord p'r pl 3' p'($_)x40' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+        default_settings       = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
                                   r: [0, -0.0051], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
