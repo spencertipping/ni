@@ -2,27 +2,55 @@ Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau     = Math.PI * 2,
-        w       = $(window),
-        screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-        tr      = $('#transform'), lw = 0,
-        status  = $('#status'),    lh = 0,
-        preview = $('#preview'),
+  where[tau = Math.PI * 2, screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        w   = $(window),   overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+                           tr      = $('#transform'), lw = 0, mx = null, ms = false, lme = 0,
+                           status  = $('#status'),    lh = 0, my = null, mc = false,
+                           preview = $('#preview'),
+
+        default_settings       = {ni: "n1000p'r a, sin(a/400), cos(a/300)'", r: [0, 0], s: [1, 1, 1], c: [0, 0, 0], f: [0, 0, 0], d: 1.4},
+        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
+                                   : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
+        set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
+
+        drag(dx, dy, s, c)     = c ? 'd' /-set/ (settings().d * Math.exp(2 * dy / lh))
+                               : s ? 'r' /-set/ [r[0] + dx / lw, r[1] - dy / lh]       -where [r = settings().r]
+                               :     'c' /-set/ [c[0] + dx / lw, c[1] - dy / lh, c[2]] -where [c = settings().c],
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
+        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val()]
+                                        /~val/ settings().ni
+                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
+                                            /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)) -then- update_screen()]
+                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms, mc), mx = x, my = y, update_screen(), lme = +new Date,
+                                                                   where [x = e.pageX, y = e.pageY], when [mx != null && +new Date - lme > 30]]
+                                               /~mouseup/ given.e [mx = null, update_screen()]
+                          -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
+                          -then- given.e [overlay.add(screen) /~attr/ {width: lw, height: lh}
+                                   -then- tr /~css/ {height: 0} /~css/ {width: lw, height: tr[0].scrollHeight - 2} -when- size_changed()] /-setInterval/ 50
+                          -then- tr.val() /!visualize,
 
-        setup_event_handlers() = tr    /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                          -then- overlay /~click/ given.e [update_screen()]
-                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -when [size_changed()]] /-setInterval/ 50,
+        data_state           = {axes: null, last_render: 0, preview: ''},
+        reset_data_state()   = data_state = {axes: null, last_render: 0, preview: ''} -se- preview /~text/ '',
 
-        data_state         = {axes: null, last_update: 0},
-        view_state         = {last_update: 0},
-        reset_data_state() = data_state = {axes: null, last_update: +new Date},
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > 1000]
+                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n"))],
+
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
-                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[axis(1048576)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq,
+                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[1048576*4 /!axis] -seq] -unless- data_state.axes,
+                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq -then- data_was_revised(lines),
                                    populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
 
-        update_screen()    = render(data_state.axes, matrix(), sc, screen.width(), screen.height()) -when- data_state.axes]}));
+        object_matrix()    = matrix.prod(matrix.translate(c[0], c[1], c[2]), matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
+                                         matrix.scale(s[0], s[1], s[2]),
+                                         matrix.translate(f[0], f[1], f[2])) -where [st = settings(), c = st.c, r = st.r, s = st.s, f = st.f],
+
+        normalize_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
+                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
+                                                   cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
+
+        camera_matrix()    = matrix.translate(0, 0, settings().d) /~dot/ object_matrix() /~dot/ normalize_matrix(),
+        update_screen()    = render(data_state.axes, camera_matrix(), sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -when- data_state.axes]}));

@@ -22,7 +22,7 @@ caterwaul(':all')(function () {
                                                                 this.max = this.max == null ? x : this.max /-Math.max/ x,
                                                                 this.data[i] = x],
 
-                                 center()           = (this.max + this.min) / 2,
+                                 offset()           = (this.max + this.min) / 2,
                                  range()            = this.max - this.min,
                                  at(x)              = this.min + x * this.range(),
                                  end()              = this.n /-Math.min/ this.c,

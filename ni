@@ -4001,7 +4001,7 @@ caterwaul(':all')(function () {
                                                                 this.max = this.max == null ? x : this.max /-Math.max/ x,
                                                                 this.data[i] = x],
 
-                                 center()           = (this.max + this.min) / 2,
+                                 offset()           = (this.max + this.min) / 2,
                                  range()            = this.max - this.min,
                                  at(x)              = this.min + x * this.range(),
                                  end()              = this.n /-Math.min/ this.c,
@@ -4039,10 +4039,10 @@ caterwaul(':all')(function () {
 
   where[existing_connection         = null,
         cancel_existing()           = existing_connection /~send/ '' -rescue- null -then- existing_connection.close() -when.existing_connection,
-        ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{encodeURIComponent(cmd)}",
+        ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-28 core/jsplot/render.waul.sdoc
+27 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -4050,56 +4050,83 @@ details are all hidden inside a render request.
 caterwaul(':all')(function () {
   render(axes, vm, ctx, w, h, cb) = start_rendering(axes, vm, ctx, w, h)
 
-  -where[state                                = capture[ctx = null, w = 0, h = 0, i = 17, a = null, vm = null, cb = null, vt = null],
-         start_rendering(axes, vm, ctx, w, h) = ctx.clearRect(0, 0, w, h) -then- reset_alphas(ctx, w, h)
-                                              -then- state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq}]
-                                              -then- render_part /!requestAnimationFrame,
+  -where[state                                = capture[ctx = null, w = 0, h = 0, i = 17, a = null, vm = null, cb = null, vt = null, id = null],
+         start_rendering(axes, vm, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq,
+                                                           id: ctx.clearRect(0, 0, w, h) -re- ctx.getImageData(0, 0, w, h)}]
+                                              -then- reset_alphas(ctx, w, h) -then- render_part /!requestAnimationFrame,
 
-         reset_alphas = function (c, w, h) {for (var i = 0, id = c.getImageData(0, 0, w, h); i < w*h; ++i) id.data[i<<2|3] = 128; c.putImageData(id, 0, 0)},
-         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1,    ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
-                                         id = state.ctx.getImageData(0, 0, state.w, state.h), az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
-                                         s = state.w /-Math.min/ state.h >> 1, n = state.a[0].end(), use_hue = !!aw, width = state.w, height = state.h;
+         reset_alphas = function (c, w, h) {for (var i = 0, id = state.id.data; i < w*h; ++i) id[i<<2|3] = 192; c.putImageData(state.id, 0, 0)},
+         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1, ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
+                                         id = state.id.data,                               az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
+                                         s  = state.w /-Math.min/ state.h >> 1, n = state.a[0].end(), use_hue = !!aw, width = state.w, height = state.h;
                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
-                                     { var w  = aw ? i /!aw.p : 0,  x  = ax ? i /!ax.p : 0,   y  = ay ? i /!ay.p : 0,   z  = az ? i /!az.p : 0,
-                                           wi = 1 / wt(x, y, z, 1), xp = wi * xt(x, y, z, 1), yp = wi * yt(x, y, z, 1), zp = wi * zt(x, y, z, 1);
-                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min|     Math.abs(.5  - w) : 1,
-                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - Math.abs(1/3 - w) : 1,
-                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - Math.abs(2/3 - w) : 1,
+                                     { var w  = aw ? i /!aw.p : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
+                                           wi = 1 / wt(x, y, z),   xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - 3*(1/3 - Math.abs(.5  - w)) : 1,
+                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(1/3 - w)) : 1,
+                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(2/3 - w)) : 1,
                                                         sx = cx + xp/zp*s | 0, sy = cy - yp/zp*s | 0, pi = sy*width + sx << 2;
                                          if (sx >= 0 && sx < width && sy >= 0 && sy < height)
-                                         { var a = 1 | (id.data[pi|3]>>>=1); id.data[pi|0] += a*r|0; id.data[pi|1] += a*g|0; id.data[pi|2] += a*b|0;
-                                           id.data[pi|3] |= 128 }}}
-                                     state.ctx.putImageData(id, 0, 0);
-                                     if (state.i = i) render_part /!requestAnimationFrame}]})();
-28 core/jsplot/interface.waul.sdoc
+                                         { var a = 255^id[pi|3]>>>1; id[pi|0] += a*r|0; id[pi|1] += a*g|0; id[pi|2] += a*b|0; id[pi|3] = 255^a|128 }}}
+                                     state.ctx.putImageData(state.id, 0, 0);
+                                     if (state.i = i) render_part /!requestAnimationFrame; else state.id = null}]})();
+56 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau     = Math.PI * 2,
-        w       = $(window),
-        screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-        tr      = $('#transform'), lw = 0,
-        status  = $('#status'),    lh = 0,
-        preview = $('#preview'),
+  where[tau = Math.PI * 2, screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        w   = $(window),   overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+                           tr      = $('#transform'), lw = 0, mx = null, ms = false, lme = 0,
+                           status  = $('#status'),    lh = 0, my = null, mc = false,
+                           preview = $('#preview'),
+
+        default_settings       = {ni: "n1000p'r a, sin(a/400), cos(a/300)'", r: [0, 0], s: [1, 1, 1], c: [0, 0, 0], f: [0, 0, 0], d: 1.4},
+        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
+                                   : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
+        set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
+
+        drag(dx, dy, s, c)     = c ? 'd' /-set/ (settings().d * Math.exp(2 * dy / lh))
+                               : s ? 'r' /-set/ [r[0] + dx / lw, r[1] - dy / lh]       -where [r = settings().r]
+                               :     'c' /-set/ [c[0] + dx / lw, c[1] - dy / lh, c[2]] -where [c = settings().c],
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
+        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val()]
+                                        /~val/ settings().ni
+                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
+                                            /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)) -then- update_screen()]
+                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms, mc), mx = x, my = y, update_screen(), lme = +new Date,
+                                                                   where [x = e.pageX, y = e.pageY], when [mx != null && +new Date - lme > 30]]
+                                               /~mouseup/ given.e [mx = null, update_screen()]
+                          -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
+                          -then- given.e [overlay.add(screen) /~attr/ {width: lw, height: lh}
+                                   -then- tr /~css/ {height: 0} /~css/ {width: lw, height: tr[0].scrollHeight - 2} -when- size_changed()] /-setInterval/ 50
+                          -then- tr.val() /!visualize,
 
-        setup_event_handlers() = tr    /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                          -then- overlay /~click/ given.e [update_screen()]
-                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -when [size_changed()]] /-setInterval/ 50,
+        data_state           = {axes: null, last_render: 0, preview: ''},
+        reset_data_state()   = data_state = {axes: null, last_render: 0, preview: ''} -se- preview /~text/ '',
 
-        data_state         = {axes: null, last_update: 0},
-        view_state         = {last_update: 0},
-        reset_data_state() = data_state = {axes: null, last_update: +new Date},
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > 1000]
+                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n"))],
+
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
-                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[axis(1048576)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq,
+                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[1048576*4 /!axis] -seq] -unless- data_state.axes,
+                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq -then- data_was_revised(lines),
                                    populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
 
-        update_screen()    = render(data_state.axes, matrix(), sc, screen.width(), screen.height()) -when- data_state.axes]}));
+        object_matrix()    = matrix.prod(matrix.translate(c[0], c[1], c[2]), matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
+                                         matrix.scale(s[0], s[1], s[2]),
+                                         matrix.translate(f[0], f[1], f[2])) -where [st = settings(), c = st.c, r = st.r, s = st.s, f = st.f],
+
+        normalize_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
+                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
+                                                   cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
+
+        camera_matrix()    = matrix.translate(0, 0, settings().d) /~dot/ object_matrix() /~dot/ normalize_matrix(),
+        update_screen()    = render(data_state.axes, camera_matrix(), sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -when- data_state.axes]}));
 37 core/jsplot/css
 body {margin:0; color:#eee; background:#111; font-size:10pt;
       font-family:monospace; overflow: hidden}
