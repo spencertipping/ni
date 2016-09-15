@@ -3,25 +3,51 @@ Rendering is treated like an asynchronous operation against the axis buffers. It
 details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
-  render(axes, vm, ctx, w, h, cb) = start_rendering(axes, vm, ctx, w, h)
+  render(axes, vm, l, ctx, w, h, cb) = start_rendering(axes, vm, l, ctx, w, h),
 
-  -where[state                                = capture[ctx = null, w = 0, h = 0, i = 17, a = null, vm = null, cb = null, vt = null, id = null],
-         start_rendering(axes, vm, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq,
-                                                           id: ctx.clearRect(0, 0, w, h) -re- ctx.getImageData(0, 0, w, h)}]
-                                              -then- reset_alphas(ctx, w, h) -then- render_part /!requestAnimationFrame,
+  where[state                                   = null,
+        last_render                             = 0,
+        start_rendering(axes, vm, l, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
+                                                             id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                                  ? state.id
+                                                                  : ctx.getImageData(0, 0, w, h)) -se- it /!clear_pixels}]
+                                                -then- render_part /!requestAnimationFrame,
 
-         reset_alphas = function (c, w, h) {for (var i = 0, id = state.id.data; i < w*h; ++i) id[i<<2|3] = 192; c.putImageData(state.id, 0, 0)},
-         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1, ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
-                                         id = state.id.data,                               az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
-                                         s  = state.w /-Math.min/ state.h >> 1, n = state.a[0].end(), use_hue = !!aw, width = state.w, height = state.h;
-                                     for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
-                                     { var w  = aw ? i /!aw.p : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
-                                           wi = 1 / wt(x, y, z),   xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
-                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - 3*(1/3 - Math.abs(.5  - w)) : 1,
-                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(1/3 - w)) : 1,
-                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(2/3 - w)) : 1,
-                                                        sx = cx + xp/zp*s | 0, sy = cy - yp/zp*s | 0, pi = sy*width + sx << 2;
-                                         if (sx >= 0 && sx < width && sy >= 0 && sy < height)
-                                         { var a = 255^id[pi|3]>>>1; id[pi|0] += a*r|0; id[pi|1] += a*g|0; id[pi|2] += a*b|0; id[pi|3] = 255^a|128 }}}
-                                     state.ctx.putImageData(state.id, 0, 0);
-                                     if (state.i = i) render_part /!requestAnimationFrame; else state.id = null}]})();
+Shading.
+Two things of note happening here. First, we use HSV shading for the fourth axis if it exists. I'm using the HSV cube projection, which is convenient here
+because it doesn't require any trig functions.
+
+Second, and more interestingly, everything is rendered as direct pixel writes because changing the context's fill or stroke color is too slow. This isn't
+entirely trivial because we're rendering luminous volume, which has the property that brightness ~ log(thickness), or in this case log(#overlapping points). An
+approximation to this is to add an exponentially-decreasing amount each time we shade a pixel, which we do by storing a pixel's illumination value in its alpha
+channel. The incremental illumination is divided by the current illumination.
+
+We also calculate a "target luminosity", which helps to normalize the shading density per pixel. This is based on the ratio of data to screen pixels: if we end
+up shading 10% of all screen pixels, then the average overlap should be three. So we want, on average, about one full shade per 3 pixels. (Nothing special
+about these numbers; it just seemed about right when I was thinking about it.)
+
+        clear_pixels = function (id) {id.data.fill(0)},
+
+        render_part  = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
+                                          id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
+                                          s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
+                                          l  = state.l * (width*height / 3) / n;
+                                      if (state.i) render_part /!requestAnimationFrame;
+                                      if (rt - last_render < 5) return; else last_render = rt;
+                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
+                                      { var w  = aw ? i /!aw.pnorm : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
+                                            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+                                        if (zp > 0) {var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
+                                          if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
+                                          { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
+                                            if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
+                                                        { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
+                                                              li = l * zi*zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }
+                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi*zi * 256 / (64 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
+                                      state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
+                                      state.i = i}]})();

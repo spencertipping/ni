@@ -3976,7 +3976,7 @@ if(k&&j[k]&&(e||j[k].data)||void 0!==d||"string"!=typeof b)return k||(k=i?a[h]=c
  * http://jquery.org/license
  */
 !function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a:a(jQuery)}(function(a){function b(b){var g=b||window.event,h=i.call(arguments,1),j=0,l=0,m=0,n=0,o=0,p=0;if(b=a.event.fix(g),b.type="mousewheel","detail"in g&&(m=-1*g.detail),"wheelDelta"in g&&(m=g.wheelDelta),"wheelDeltaY"in g&&(m=g.wheelDeltaY),"wheelDeltaX"in g&&(l=-1*g.wheelDeltaX),"axis"in g&&g.axis===g.HORIZONTAL_AXIS&&(l=-1*m,m=0),j=0===m?l:m,"deltaY"in g&&(m=-1*g.deltaY,j=m),"deltaX"in g&&(l=g.deltaX,0===m&&(j=-1*l)),0!==m||0!==l){if(1===g.deltaMode){var q=a.data(this,"mousewheel-line-height");j*=q,m*=q,l*=q}else if(2===g.deltaMode){var r=a.data(this,"mousewheel-page-height");j*=r,m*=r,l*=r}if(n=Math.max(Math.abs(m),Math.abs(l)),(!f||f>n)&&(f=n,d(g,n)&&(f/=40)),d(g,n)&&(j/=40,l/=40,m/=40),j=Math[j>=1?"floor":"ceil"](j/f),l=Math[l>=1?"floor":"ceil"](l/f),m=Math[m>=1?"floor":"ceil"](m/f),k.settings.normalizeOffset&&this.getBoundingClientRect){var s=this.getBoundingClientRect();o=b.clientX-s.left,p=b.clientY-s.top}return b.deltaX=l,b.deltaY=m,b.deltaFactor=f,b.offsetX=o,b.offsetY=p,b.deltaMode=0,h.unshift(b,j,l,m),e&&clearTimeout(e),e=setTimeout(c,200),(a.event.dispatch||a.event.handle).apply(this,h)}}function c(){f=null}function d(a,b){return k.settings.adjustOldDeltas&&"mousewheel"===a.type&&b%120===0}var e,f,g=["wheel","mousewheel","DOMMouseScroll","MozMousePixelScroll"],h="onwheel"in document||document.documentMode>=9?["wheel"]:["mousewheel","DomMouseScroll","MozMousePixelScroll"],i=Array.prototype.slice;if(a.event.fixHooks)for(var j=g.length;j;)a.event.fixHooks[g[--j]]=a.event.mouseHooks;var k=a.event.special.mousewheel={version:"3.1.12",setup:function(){if(this.addEventListener)for(var c=h.length;c;)this.addEventListener(h[--c],b,!1);else this.onmousewheel=b;a.data(this,"mousewheel-line-height",k.getLineHeight(this)),a.data(this,"mousewheel-page-height",k.getPageHeight(this))},teardown:function(){if(this.removeEventListener)for(var c=h.length;c;)this.removeEventListener(h[--c],b,!1);else this.onmousewheel=null;a.removeData(this,"mousewheel-line-height"),a.removeData(this,"mousewheel-page-height")},getLineHeight:function(b){var c=a(b),d=c["offsetParent"in a.fn?"offsetParent":"parent"]();return d.length||(d=a("body")),parseInt(d.css("fontSize"),10)||parseInt(c.css("fontSize"),10)||16},getPageHeight:function(b){return a(b).height()},settings:{adjustOldDeltas:!0,normalizeOffset:!0}};a.fn.extend({mousewheel:function(a){return a?this.bind("mousewheel",a):this.trigger("mousewheel")},unmousewheel:function(a){return this.unbind("mousewheel",a)}})});
-32 core/jsplot/axis.waul.sdoc
+34 core/jsplot/axis.waul.sdoc
 A column vector of numeric data.
 Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
 evenly). Because multiple axes need to be coordinated, all random numbers used for sampling are parameters rather than generated here.
@@ -3991,8 +3991,9 @@ If you want focused nonuniform sampling, you can do it like this:
 Focusing biases the probability of accepting points so that data closer to the focal plane(s) is preferred.
 
 caterwaul(':all')(function () {
-  axis(capacity) = {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} /-caterwaul.merge/ axis_methods,
-  axis /-caterwaul.merge/ static_methods,
+  axis(capacity) = this /-caterwaul.merge/ {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} -re- undefined,
+  axis.prototype /-caterwaul.merge/ axis_methods,
+  axis           /-caterwaul.merge/ static_methods,
 
   where[static_methods = capture[focus(x, c, s)     = Math.abs(x - c) / s],
 
@@ -4006,10 +4007,11 @@ caterwaul(':all')(function () {
                                  at(x)              = this.min + x * this.range(),
                                  end()              = this.n /-Math.min/ this.c,
                                  p(i)               = this.data[i],
+                                 pnorm(i)           = (this.data[i] - this.offset()) / this.range() + 0.5,
 
-                                 push(x, r)         = this.n < this.c ? this.set(this.n++, x) : this /x /~uniform_push/ r,
+                                 push(x, r)         = this.n++ < this.c ? this.set(this.n, x) : this /x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
-20 core/jsplot/matrix.waul.sdoc
+19 core/jsplot/matrix.waul.sdoc
 Matrices.
 Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
 transformation.
@@ -4024,12 +4026,11 @@ caterwaul(':all')(function () {
                                  rotate_y(t)          = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
 
-        compile        = caterwaul(':all'),
         matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[xi&12 | yi] * b[yi<<2 | xi&3]] -seq] /seq /!matrix,
                                  transform       (v, a=this) = v *[n[4] /s[0][s0 + a[xi<<2|s]*v[s]] -seq] -seq,
-                                 transformer_form(d, a=this) = qs[given[x, y, z] in _a*x + _b*y + _c*z + _d]
+                                 transformer_form(d, a=this) = qse[given[x, y, z] in _a*x + _b*y + _c*z + _d]
                                                                /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
-                                 transformer     (d, a=this) = this.transformer_form(d).toString() /!compile]]})();
+                                 transformer     (d, a=this) = this.transformer_form(d) /!caterwaul.compile]]})();
 11 core/jsplot/socket.waul.sdoc
 Web socket interface.
 Manages downloads from the server, tracks state, invokes a callback for each batch of new data.
@@ -4042,46 +4043,72 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-27 core/jsplot/render.waul.sdoc
+53 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
-  render(axes, vm, ctx, w, h, cb) = start_rendering(axes, vm, ctx, w, h)
+  render(axes, vm, l, ctx, w, h, cb) = start_rendering(axes, vm, l, ctx, w, h),
 
-  -where[state                                = capture[ctx = null, w = 0, h = 0, i = 17, a = null, vm = null, cb = null, vt = null, id = null],
-         start_rendering(axes, vm, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq,
-                                                           id: ctx.clearRect(0, 0, w, h) -re- ctx.getImageData(0, 0, w, h)}]
-                                              -then- reset_alphas(ctx, w, h) -then- render_part /!requestAnimationFrame,
+  where[state                                   = null,
+        last_render                             = 0,
+        start_rendering(axes, vm, l, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
+                                                             id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                                  ? state.id
+                                                                  : ctx.getImageData(0, 0, w, h)) -se- it /!clear_pixels}]
+                                                -then- render_part /!requestAnimationFrame,
 
-         reset_alphas = function (c, w, h) {for (var i = 0, id = state.id.data; i < w*h; ++i) id[i<<2|3] = 192; c.putImageData(state.id, 0, 0)},
-         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1, ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
-                                         id = state.id.data,                               az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
-                                         s  = state.w /-Math.min/ state.h >> 1, n = state.a[0].end(), use_hue = !!aw, width = state.w, height = state.h;
-                                     for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
-                                     { var w  = aw ? i /!aw.p : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
-                                           wi = 1 / wt(x, y, z),   xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
-                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - 3*(1/3 - Math.abs(.5  - w)) : 1,
-                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(1/3 - w)) : 1,
-                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 3*(1/3 - Math.abs(2/3 - w)) : 1,
-                                                        sx = cx + xp/zp*s | 0, sy = cy - yp/zp*s | 0, pi = sy*width + sx << 2;
-                                         if (sx >= 0 && sx < width && sy >= 0 && sy < height)
-                                         { var a = 255^id[pi|3]>>>1; id[pi|0] += a*r|0; id[pi|1] += a*g|0; id[pi|2] += a*b|0; id[pi|3] = 255^a|128 }}}
-                                     state.ctx.putImageData(state.id, 0, 0);
-                                     if (state.i = i) render_part /!requestAnimationFrame; else state.id = null}]})();
-56 core/jsplot/interface.waul.sdoc
+Shading.
+Two things of note happening here. First, we use HSV shading for the fourth axis if it exists. I'm using the HSV cube projection, which is convenient here
+because it doesn't require any trig functions.
+
+Second, and more interestingly, everything is rendered as direct pixel writes because changing the context's fill or stroke color is too slow. This isn't
+entirely trivial because we're rendering luminous volume, which has the property that brightness ~ log(thickness), or in this case log(#overlapping points). An
+approximation to this is to add an exponentially-decreasing amount each time we shade a pixel, which we do by storing a pixel's illumination value in its alpha
+channel. The incremental illumination is divided by the current illumination.
+
+We also calculate a "target luminosity", which helps to normalize the shading density per pixel. This is based on the ratio of data to screen pixels: if we end
+up shading 10% of all screen pixels, then the average overlap should be three. So we want, on average, about one full shade per 3 pixels. (Nothing special
+about these numbers; it just seemed about right when I was thinking about it.)
+
+        clear_pixels = function (id) {id.data.fill(0)},
+
+        render_part  = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
+                                          id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
+                                          s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
+                                          l  = state.l * (width*height / 3) / n;
+                                      if (state.i) render_part /!requestAnimationFrame;
+                                      if (rt - last_render < 5) return; else last_render = rt;
+                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
+                                      { var w  = aw ? i /!aw.pnorm : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
+                                            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+                                        if (zp > 0) {var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
+                                          if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
+                                          { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
+                                            if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
+                                                        { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
+                                                              li = l * zi*zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }
+                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi*zi * 256 / (64 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
+                                      state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
+                                      state.i = i}]})();
+67 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
   where[tau = Math.PI * 2, screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
         w   = $(window),   overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-                           tr      = $('#transform'), lw = 0, mx = null, ms = false, lme = 0,
+                           tr      = $('#transform'), lw = 0, mx = null, ms = false,
                            status  = $('#status'),    lh = 0, my = null, mc = false,
                            preview = $('#preview'),
 
-        default_settings       = {ni: "n1000p'r a, sin(a/400), cos(a/300)'", r: [0, 0], s: [1, 1, 1], c: [0, 0, 0], f: [0, 0, 0], d: 1.4},
+        default_settings       = {ni: "//ni psplit// pord p'r pl 3' fABCB ,jABC.5", r: [0, 0], s: [1, 1, 1], c: [0, 0, 0], f: [0, 0, 0], d: 1.4},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
                                    : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
@@ -4091,28 +4118,38 @@ $(caterwaul(':all')(function ($) {
                                :     'c' /-set/ [c[0] + dx / lw, c[1] - dy / lh, c[2]] -where [c = settings().c],
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
+        resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
+        resize_other_stuff()   = tr      /~css/ {height: 0} /~css/ {height: tr[0].scrollHeight - 2, width: lw-2}
+                          -then- preview /~css/ {top: tr.height() + 3, bottom: 1},
+        handle_resizes()       = resize_canvases() -when- size_changed() -then- resize_other_stuff(),
+
+        status_timeout         = null,
+        update_status(t)       = status /~text/ t /~addClass/ 'active' -then- status_timeout /!clearTimeout /when.status_timeout
+                                                                       -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
+
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                                       /~keyup/ given.e ['ni' /-set/ tr.val()]
                                         /~val/ settings().ni
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
-                                            /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)) -then- update_screen()]
-                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms, mc), mx = x, my = y, update_screen(), lme = +new Date,
-                                                                   where [x = e.pageX, y = e.pageY], when [mx != null && +new Date - lme > 30]]
-                                               /~mouseup/ given.e [mx = null, update_screen()]
+                                            /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)), update_screen()]
+                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms, mc), mx = x, my = y, update_screen(),
+                                                                   where [x = e.pageX, y = e.pageY], when.mx]
+                                               /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
-                          -then- given.e [overlay.add(screen) /~attr/ {width: lw, height: lh}
-                                   -then- tr /~css/ {height: 0} /~css/ {width: lw, height: tr[0].scrollHeight - 2} -when- size_changed()] /-setInterval/ 50
+                          -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- tr.val() /!visualize,
 
-        data_state           = {axes: null, last_render: 0, preview: ''},
-        reset_data_state()   = data_state = {axes: null, last_render: 0, preview: ''} -se- preview /~text/ '',
+        data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
+        reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
 
-        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > 1000]
-                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n"))],
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > 5000]
+                      -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
+                             /!update_status
+                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n") + "\n")],
 
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
-                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[1048576*4 /!axis] -seq] -unless- data_state.axes,
+                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[new axis(1048576*4)] -seq] -unless- data_state.axes,
                                    handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq -then- data_was_revised(lines),
                                    populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
 
@@ -4125,10 +4162,11 @@ $(caterwaul(':all')(function ($) {
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
 
         camera_matrix()    = matrix.translate(0, 0, settings().d) /~dot/ object_matrix() /~dot/ normalize_matrix(),
-        update_screen()    = render(data_state.axes, camera_matrix(), sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
-                      -when- data_state.axes]}));
+        update_screen()    = handle_resizes()
+                      -then- render(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -when [data_state.axes && +new Date - data_state.last_render > 30]]}));
 37 core/jsplot/css
-body {margin:0; color:#eee; background:#111; font-size:10pt;
+body {margin:0; color:#eee; background:black; font-size:10pt;
       font-family:monospace; overflow: hidden}
 
 #screen, #overlay {position:absolute}

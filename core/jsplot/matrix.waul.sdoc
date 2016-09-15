@@ -12,9 +12,8 @@ caterwaul(':all')(function () {
                                  rotate_y(t)          = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
 
-        compile        = caterwaul(':all'),
         matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[xi&12 | yi] * b[yi<<2 | xi&3]] -seq] /seq /!matrix,
                                  transform       (v, a=this) = v *[n[4] /s[0][s0 + a[xi<<2|s]*v[s]] -seq] -seq,
-                                 transformer_form(d, a=this) = qs[given[x, y, z] in _a*x + _b*y + _c*z + _d]
+                                 transformer_form(d, a=this) = qse[given[x, y, z] in _a*x + _b*y + _c*z + _d]
                                                                /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
-                                 transformer     (d, a=this) = this.transformer_form(d).toString() /!compile]]})();
+                                 transformer     (d, a=this) = this.transformer_form(d) /!caterwaul.compile]]})();
