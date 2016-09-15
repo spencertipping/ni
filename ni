@@ -4125,7 +4125,7 @@ $(caterwaul(':all')(function ($) {
 
         default_settings       = {ni: "//ni psplit// pord p'r pl 3' p'($_)x40' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  r: [0, -0.0078], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
+                                  r: [0, -0.0051], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
                                    : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
@@ -4159,7 +4159,7 @@ $(caterwaul(':all')(function ($) {
         data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
         reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
 
-        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > 5000]
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.axes[0].end() / 100]
                       -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
                              /!update_status
                       -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n") + "\n")],
