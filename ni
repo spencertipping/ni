@@ -3015,8 +3015,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code $_[0], 'print "$_\n" for row'}
-sub perl_grepper($) {perl_code $_[0], 'print "$_\n" if row'}
+sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -4122,11 +4122,11 @@ $(caterwaul(':all')(function ($) {
                            status  = $('#status'),    lh = 0, my = null, mc = false,
                            preview = $('#preview'),
 
-        default_settings       = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
                                   r: [0, -0.0051], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
-                                   : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
+                                   : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
 
         drag(dx, dy, s, c)     = c ? 'd' /-set/ (settings().d * Math.exp(2 * dy / lh))
@@ -5055,7 +5055,7 @@ Operator | Example      | Description
 `X`      |              |
 `Y`      |              |
 `Z`      |              |
-387 doc/perl.md
+393 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -5213,8 +5213,14 @@ The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
 end of your mapper code.
 
-Whether you use `r` or implicit returns, ni will remove newlines from every
-string you give it. This makes it easier to use `qx` without any filtering.
+As a shorthand, any array references you return will become rows:
+
+```bash
+$ ni n3p'[a, a+1, a+2]'
+1	2	3
+2	3	4
+3	4	5
+```
 
 ## Buffered readahead
 `p` code can read forwards in the input stream. This is trivially possible by

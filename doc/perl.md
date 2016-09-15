@@ -155,8 +155,14 @@ The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
 end of your mapper code.
 
-Whether you use `r` or implicit returns, ni will remove newlines from every
-string you give it. This makes it easier to use `qx` without any filtering.
+As a shorthand, any array references you return will become rows:
+
+```bash
+$ ni n3p'[a, a+1, a+2]'
+1	2	3
+2	3	4
+3	4	5
+```
 
 ## Buffered readahead
 `p` code can read forwards in the input stream. This is trivially possible by
