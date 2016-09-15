@@ -1,5 +1,5 @@
 # ni: portable, self-modifying APL for unstructured data
-![ni!](http://spencertipping.com/ni-readme.png)
+![ni!](http://spencertipping.com/ni-chroma-rendering.png)
 
 ```sh
 $ git clone git://github.com/spencertipping/ni && cd ni
