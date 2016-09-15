@@ -4040,9 +4040,9 @@ caterwaul(':all')(function () {
   where[existing_connection         = null,
         cancel_existing()           = existing_connection /~send/ '' -rescue- null -then- existing_connection.close() -when.existing_connection,
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{encodeURIComponent(cmd)}",
-        ws_connect(cmd, f)          = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
+        ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-29 core/jsplot/render.waul.sdoc
+28 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -4056,23 +4056,22 @@ caterwaul(':all')(function () {
                                               -then- render_part /!requestAnimationFrame,
 
          reset_alphas = function (c, w, h) {for (var i = 0, id = c.getImageData(0, 0, w, h); i < w*h; ++i) id.data[i<<2|3] = 128; c.putImageData(id, 0, 0)},
-         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1, ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
-                                         id = ctx.getImageData(0, 0, state.w, state.h),    az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
+         render_part  = function () {var t  = +new Date, cx = state.w>>1, cy = state.h>>1,    ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1],
+                                         id = state.ctx.getImageData(0, 0, state.w, state.h), az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3],
                                          s = state.w /-Math.min/ state.h >> 1, n = state.a[0].end(), use_hue = !!aw, width = state.w, height = state.h;
-                                      console.log('n = ', n);
                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
                                      { var w  = aw ? i /!aw.p : 0,  x  = ax ? i /!ax.p : 0,   y  = ay ? i /!ay.p : 0,   z  = az ? i /!az.p : 0,
                                            wi = 1 / wt(x, y, z, 1), xp = wi * xt(x, y, z, 1), yp = wi * yt(x, y, z, 1), zp = wi * zt(x, y, z, 1);
-                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min|       Math.abs(.5  - w) : 1,
-                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1/3 - Math.abs(1/3 - w) : 1,
-                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 2/3 - Math.abs(2/3 - w) : 1,
+                                       if (zp > 0) {var r  = use_hue ? 0 |-Math.max| 1 |-Math.min|     Math.abs(.5  - w) : 1,
+                                                        g  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - Math.abs(1/3 - w) : 1,
+                                                        b  = use_hue ? 0 |-Math.max| 1 |-Math.min| 1 - Math.abs(2/3 - w) : 1,
                                                         sx = cx + xp/zp*s | 0, sy = cy - yp/zp*s | 0, pi = sy*width + sx << 2;
-                                           console.log(sx, sy);
                                          if (sx >= 0 && sx < width && sy >= 0 && sy < height)
-                                         { var a = id.data[pi|3]>>>=1; id.data[pi|0] += a*r|0; id.data[pi|1] += a*g|0; id.data[pi|2] += a*b|0;
+                                         { var a = 1 | (id.data[pi|3]>>>=1); id.data[pi|0] += a*r|0; id.data[pi|1] += a*g|0; id.data[pi|2] += a*b|0;
                                            id.data[pi|3] |= 128 }}}
+                                     state.ctx.putImageData(id, 0, 0);
                                      if (state.i = i) render_part /!requestAnimationFrame}]})();
-26 core/jsplot/interface.waul.sdoc
+28 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -4081,13 +4080,15 @@ $(caterwaul(':all')(function ($) {
         w       = $(window),
         screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
         overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-        tr      = $('#transform'),
-        status  = $('#status'),
+        tr      = $('#transform'), lw = 0,
+        status  = $('#status'),    lh = 0,
         preview = $('#preview'),
+
+        size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
 
         setup_event_handlers() = tr    /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                           -then- overlay /~click/ given.e [update_screen()]
-                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -then- update_screen()] /-setInterval/ 250,
+                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -when [size_changed()]] /-setInterval/ 50,
 
         data_state         = {axes: null, last_update: 0},
         view_state         = {last_update: 0},
@@ -4096,7 +4097,7 @@ $(caterwaul(':all')(function ($) {
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
                                    update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[axis(1048576)] -seq] -unless- data_state.axes,
                                    handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq,
-                                   populate_axes(ls)  = ls /!update_n_axes -then- data_state.axes *!a[a.push(+ls[ai] || 0, r)] /seq -where [r = Math.random()]],
+                                   populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
 
         update_screen()    = render(data_state.axes, matrix(), sc, screen.width(), screen.height()) -when- data_state.axes]}));
 37 core/jsplot/css

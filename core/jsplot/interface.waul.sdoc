@@ -6,13 +6,15 @@ $(caterwaul(':all')(function ($) {
         w       = $(window),
         screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
         overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-        tr      = $('#transform'),
-        status  = $('#status'),
+        tr      = $('#transform'), lw = 0,
+        status  = $('#status'),    lh = 0,
         preview = $('#preview'),
+
+        size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
 
         setup_event_handlers() = tr    /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                           -then- overlay /~click/ given.e [update_screen()]
-                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -then- update_screen()] /-setInterval/ 250,
+                          -then- given.e [overlay.add(screen) /~attr/ {width: w.width(), height: w.height()} -when [size_changed()]] /-setInterval/ 50,
 
         data_state         = {axes: null, last_update: 0},
         view_state         = {last_update: 0},
@@ -21,6 +23,6 @@ $(caterwaul(':all')(function ($) {
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
                                    update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[axis(1048576)] -seq] -unless- data_state.axes,
                                    handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq,
-                                   populate_axes(ls)  = ls /!update_n_axes -then- data_state.axes *!a[a.push(+ls[ai] || 0, r)] /seq -where [r = Math.random()]],
+                                   populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
 
         update_screen()    = render(data_state.axes, matrix(), sc, screen.width(), screen.height()) -when- data_state.axes]}));
