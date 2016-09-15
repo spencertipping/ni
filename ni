@@ -4011,7 +4011,7 @@ caterwaul(':all')(function () {
 
                                  push(x, r)         = this.n++ < this.c ? this.set(this.n, x) : this /x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
-19 core/jsplot/matrix.waul.sdoc
+34 core/jsplot/matrix.waul.sdoc
 Matrices.
 Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
 transformation.
@@ -4027,6 +4027,21 @@ caterwaul(':all')(function () {
                                  prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
 
         matrix_methods = capture[dot             (b, a=this) = a *[n[4] /y[0][y0 + a[xi&12 | yi] * b[yi<<2 | xi&3]] -seq] /seq /!matrix,
+                                 plus            (b, a=this) = a *[b[xi] + x]                                             /seq /!matrix,
+                                 trace              (a=this) = a[0] + a[5] + a[10] + a[15],
+                                 det                (a=this) = this.det_ -dcq [(t1 - t2 + t3 + t4 - t5) / 24
+                                                                       -where [tr1 = a.trace(),  t1 = tr1 /-Math.pow/ 4,
+                                                            a2 = a  /~dot/ a,  tr2 = a2.trace(), t2 = 6 * tr2 * tr1*tr1,
+                                                            a3 = a2 /~dot/ a,  tr3 = a3.trace(), t3 = 3 * tr2*tr2,
+                                                            a4 = a2 /~dot/ a2, tr4 = a4.trace(), t4 = 8 * tr3*tr1, t5 = 6 * tr4]],
+
+                                 scaled_by       (y, a=this) = a *[x * y] /seq /!matrix,
+                                 inv                (a=this) = this.inv_ -dcq [(matrix().scaled_by(1/6*t1) |~plus| a.scaled_by(-0.5*t2)
+                                                                                  |~plus| a2.scaled_by(t3) |~plus| a3.scaled_by(-1)) /~scaled_by/ (1/a.det())
+                                                                       -where [a2 = a /~dot/ a,    a3 = a2 /~dot/ a,
+                                        tr1 = a.trace(),                      tr2 = a2.trace(),   tr3 = a3.trace(),
+                                        t1  = tr1*tr1*tr1 - 3*tr1*tr2 + 2*tr3, t2 = tr1*tr1 - tr2, t3 = tr1]],
+
                                  transform       (v, a=this) = v *[n[4] /s[0][s0 + a[xi<<2|s]*v[s]] -seq] -seq,
                                  transformer_form(d, a=this) = qse[given[x, y, z] in _a*x + _b*y + _c*z + _d]
                                                                /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
@@ -4097,7 +4112,7 @@ about these numbers; it just seemed about right when I was thinking about it.)
                                                           id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
                                       state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
                                       state.i = i}]})();
-67 core/jsplot/interface.waul.sdoc
+69 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -4108,7 +4123,9 @@ $(caterwaul(':all')(function ($) {
                            status  = $('#status'),    lh = 0, my = null, mc = false,
                            preview = $('#preview'),
 
-        default_settings       = {ni: "//ni psplit// pord p'r pl 3' fABCB ,jABC.5", r: [0, 0], s: [1, 1, 1], c: [0, 0, 0], f: [0, 0, 0], d: 1.4},
+        default_settings       = {ni: "//ni psplit// pord p'r pl 3' p'($_)x40' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+                                      + ",qABCD0.01 p'r a, - c, b, d'",
+                                  r: [0, -0.0078], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
                                    : document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {} /-$.extend/ default_settings,
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
@@ -4186,19 +4203,19 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
             z-index:9}
 
 #transform:focus,
-#transform:hover {background:rgba(17,17,17,0.75)}
+#transform:hover {background:rgba(0,0,0,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
 
 #preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto;
           position:absolute; left:0; padding-right:12px; overflow-y:show;
-          margin:0; background:rgba(17,17,17,0.75); cursor:default;
+          margin:0; background:rgba(0,0,0,0.75); cursor:default;
           font-family:monospace}
 
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
 
 #controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
-           background:rgba(17,17,17,0.75)}
+           background:rgba(0,0,0,0.75)}
 #controls canvas {display:block; height:48px; width:600px; margin-left:4px}
 
 #controls:hover, #controls.pinned {width:600px}

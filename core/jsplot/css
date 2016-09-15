@@ -18,19 +18,19 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
             z-index:9}
 
 #transform:focus,
-#transform:hover {background:rgba(17,17,17,0.75)}
+#transform:hover {background:rgba(0,0,0,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
 
 #preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto;
           position:absolute; left:0; padding-right:12px; overflow-y:show;
-          margin:0; background:rgba(17,17,17,0.75); cursor:default;
+          margin:0; background:rgba(0,0,0,0.75); cursor:default;
           font-family:monospace}
 
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
 
 #controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
-           background:rgba(17,17,17,0.75)}
+           background:rgba(0,0,0,0.75)}
 #controls canvas {display:block; height:48px; width:600px; margin-left:4px}
 
 #controls:hover, #controls.pinned {width:600px}
