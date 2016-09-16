@@ -1,0 +1,41 @@
+Matrix conversions.
+Dense to sparse creates a (row, column, value) stream from your data. Sparse to
+dense inverts that. You can specify where the matrix data begins using a column
+identifier; this is useful when your matrices are prefixed with keys.
+
+defoperator dense_to_sparse => q{
+  my ($col) = @_;
+  $col ||= 0;
+  my $n = 0;
+  while (<STDIN>) {
+    chomp;
+    my @fs = split /\t/;
+    my @k = $col ? @fs[0..$col-1] : ();
+    print join("\t", @k, $n, $_, $fs[$_]), "\n" for $col..$#fs;
+    ++$n;
+  }
+};
+
+defoperator sparse_to_dense => q{
+  my ($col) = @_;
+  $col ||= 0;
+  my $n = 0;
+  my @q;
+  while (defined($_ = @q ? shift @q : <STDIN>)) {
+    chomp;
+    my @r = split /\t/, $_, $col + 3;
+    my $k = join "\t", @r[0..$col];
+    my $kr = qr/\Q$k\E/;
+    my @fs = $col ? @r[0..$col-1] : ();
+    $fs[$r[$col+1]] = $r[$col+2];
+    $fs[$1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
+    push @q, $_ if defined;
+    print join("\t", map defined ? $_ : '', @fs), "\n";
+  }
+};
+
+defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
+defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
+
+General binary matrix interop.
+Conversions to and from binary matrices used by Octave/NumPy/etc.

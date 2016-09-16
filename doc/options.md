@@ -7,9 +7,10 @@ Operator | Example      | Description
 `=`      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | `\>file`     | Sinks stream into resource, emits resource name
 `\<`     | `\<`         | Opposite of `\>`
+`.`      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |              |
+`_`      |              |
 `,`      | `,jAB`       | Enter cell context
-`.`      |              |
 `:`      | `:foo[nE8z]` | Checkpointed stream
 `@`      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | `\>foo \##`  | Cat **and then obliterate** named resource(s)
@@ -36,7 +37,7 @@ Operator | Example      | Description
 `t`      |              |
 `u`      | `u`          | Just like `uniq`
 `v`      | `vCplc`      | Vertically transform a range of columns
-`w`      |              |
+`w`      | `wn100`      | "With": horizontally juxtapose two streams
 `x`      | `xC`         | Exchange first fields with others
 `y`      |              |
 `z`      | `z4`         | Compress or decompress
@@ -64,6 +65,6 @@ Operator | Example      | Description
 `U`      |              |
 `V`      | `VB`         | Pivot and collect on field B
 `W`      |              |
-`X`      |              |
-`Y`      |              |
+`X`      | `X`          | Sparse to dense matrix conversion
+`Y`      | `Y`          | Dense to sparse matrix conversion
 `Z`      |              |

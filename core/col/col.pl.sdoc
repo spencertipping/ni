@@ -97,3 +97,38 @@ defoperator with => q{
 };
 
 defshort '/w', pmap q{with_op @$_}, pqfn '';
+
+Vertical transformation.
+This is useful when you want to apply a streaming transformation to a specific
+set of columns. For example, if you have five columns and want to lowercase the
+middle one:
+
+| ni vCplc              # lowercase column C
+
+WARNING: your process needs to output exactly one line per input. If the driver
+is forced to buffer too much memory it will exit with an error message, killing
+your pipeline.
+
+use constant vertical_buffer_limit => 64 << 20;
+
+defoperator vertical_apply => q{
+  my ($colspec, $lambda) = @_;
+  my ($limit, @cols) = @$colspec;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  my ($i, $o) = sioproc {exec @exec};
+  safewrite $i, $stdin;
+
+  fh_nonblock $i;
+  fh_nonblock $o;
+
+  # select() is required here so we block on the line processor
+
+  my @q = ($_ = <STDIN>);
+  safewrite $i, $_;
+  while (@q) {
+    print STDERR "TODO\n";
+    exit;
+  }
+
+};
+

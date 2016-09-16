@@ -1,0 +1,11 @@
+#!/bin/bash
+perl -e '
+  my $w;
+  vec($w, 1, 1) = 1;
+  my $n = select undef, my $wout=$w, undef, 0;
+  print STDERR "select returned $n\n";
+
+  print STDERR "writing 65536 bytes\n";
+  syswrite STDOUT, " " x 65536;
+  print STDERR "done\n";
+' | { sleep 1; }

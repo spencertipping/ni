@@ -1,0 +1,19 @@
+#!/bin/bash
+perl -e '
+  use Fcntl qw/:DEFAULT/;
+  my $w;
+  vec($w, 1, 1) = 1;
+  my $n = select undef, my $wout=$w, undef, 0;
+  print STDERR "select returned $n\n";
+
+  my $flags = fcntl STDOUT, F_GETFL, 0 or die "fcntl get failed: $!";
+  fcntl STDOUT, F_SETFL, $flags | O_NONBLOCK or die "fcntl set failed: $!";
+
+  print STDERR "writing 1048576 bytes\n";
+  my $sn = syswrite STDOUT, " " x 1048576 or die "syswrite failed: $!";
+  print STDERR "wrote $sn bytes\n";
+
+  print STDERR "writing 1048576 bytes\n";
+  defined($sn = syswrite STDOUT, " " x 1048576) or die "syswrite failed: $!";
+  print STDERR "wrote $sn bytes\n";
+' | { sleep 1; }

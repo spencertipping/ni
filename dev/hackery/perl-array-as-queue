@@ -1,0 +1,9 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+cmpthese 2000, {
+  shift => sub {my @q = 1..10000; shift @q while @q},
+  pop   => sub {my @q = 1..10000; pop @q while @q},
+
+  shift_enqueue => sub {my @q; for (1..333) {push @q, 1..30; shift @q while @q}},
+  pop_enqueue   => sub {my @q; for (1..333) {push @q, 1..30; pop @q while @q}},
+};

@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-43 ni.map.sdoc
+44 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -86,6 +86,7 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
+lib core/matrix
 lib core/gnuplot
 lib core/http
 lib core/caterwaul
@@ -580,10 +581,21 @@ sub main {
   print STDERR "  @rest\n";
   exit 1;
 }
-3 core/stream/lib
+4 core/stream/lib
+fh.pl.sdoc
 procfh.pl.sdoc
 pipeline.pl.sdoc
 ops.pl.sdoc
+9 core/stream/fh.pl.sdoc
+Filehandle functions.
+
+use Fcntl qw/:DEFAULT/;
+
+sub fh_nonblock($) {
+  my ($fh) = @_;
+  my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
+  fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
+}
 85 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
@@ -670,7 +682,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-218 core/stream/pipeline.pl.sdoc
+239 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -757,6 +769,27 @@ sub forkopen($$) {
     move_fd fileno $child, $fd;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
+    &$f;
+    exit;
+  }
+}
+
+sub sioproc(&) {
+  my ($f) = @_;
+  cpipe my $proc_in, my $w;
+  cpipe my $r, my $proc_out;
+  my $pid;
+  if ($pid = cfork) {
+    close $proc_in;
+    close $proc_out;
+    return ($w, ni::procfh->new($r, $pid));
+  } else {
+    close $w;
+    close $r;
+    move_fd fileno $proc_in, 0;
+    move_fd fileno $proc_out, 1;
+    open STDIN,  '<&=0';
+    open STDOUT, '>&=1';
     &$f;
     exit;
   }
@@ -889,7 +922,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-131 core/stream/ops.pl.sdoc
+183 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -976,6 +1009,58 @@ defshort '/+', pmap q{append_op    @$_}, pqfn '';
 defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
 defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
 defshort '/=', pmap q{divert_op    @$_}, pqfn '';
+
+Interleaving.
+Append/prepend will block one of the two data sources until the other
+completes. Sometimes, though, you want to stream both at once. Interleaving
+makes that possible, and you can optionally specify the mixture ratio, which is
+the number of interleaved rows per input row. (Negative numbers are interpreted
+as reciprocals, so -2 means two stdin rows for every interleaved.)
+
+defoperator interleave => q{
+  my ($ratio, $lambda) = @_;
+  my $fh = soproc {close STDIN; exec_ni @$lambda};
+
+  if ($ratio) {
+    $ratio = 1/-$ratio if $ratio < 0;
+    my ($n1, $n2) = (0, 0);
+    while (1) {
+      ++$n1, defined($_ = <STDIN>) || goto done, print while $n1 <= $n2 * $ratio;
+      ++$n2, defined($_ = <$fh>)   || goto done, print while $n1 >= $n2 * $ratio;
+    }
+  } else {
+    my $rmask;
+    my ($stdin_ok,  $ni_ok) = (1, 1);
+    my ($stdin_buf, $ni_buf);
+    while ($stdin_ok || $ni_ok) {
+      vec($rmask, fileno STDIN, 1) = $stdin_ok;
+      vec($rmask, fileno $fh,   1) = $ni_ok;
+      my $n = select my $rout = $rmask, undef, undef, 0.01;
+      if (vec $rout, fileno STDIN, 1) {
+        $stdin_ok = !!saferead \*STDIN, $stdin_buf, 1048576, length $stdin_buf;
+        my $i = 1 + rindex $stdin_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $stdin_buf, 0, $i;
+          $stdin_buf = substr $stdin_buf, $i;
+        }
+      }
+      if (vec $rout, fileno $fh, 1) {
+        $ni_ok = !!saferead $fh, $ni_buf, 1048576, length $ni_buf;
+        my $i = 1 + rindex $ni_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $ni_buf, 0, $i;
+          $ni_buf = substr $ni_buf, $i;
+        }
+      }
+    }
+  }
+
+  done:
+  close $fh;
+  $fh->await;
+};
+
+defshort '/.', pmap q{interleave_op @$_}, pseq popt number, pqfn '';
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -2311,7 +2396,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
 1 core/net/lib
 net.pl.sdoc
-18 core/net/net.pl.sdoc
+28 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2330,9 +2415,19 @@ defoperator ssh => q{
 use constant ssh_host => prc '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
+
+HTTP.
+Use curl if we have it. HTTP urls append themselves to the stream by default;
+if you want to POST, you should use the \> operator. (TODO)
+
+use constant purl => prc '.*';
+
+defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
+defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
+defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
 1 core/col/lib
 col.pl.sdoc
-99 core/col/col.pl.sdoc
+133 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2432,6 +2527,40 @@ defoperator with => q{
 };
 
 defshort '/w', pmap q{with_op @$_}, pqfn '';
+
+Vertical transformation.
+This is useful when you want to apply a streaming transformation to a specific
+set of columns. For example, if you have five columns and want to lowercase the
+middle one:
+
+| ni vCplc              # lowercase column C
+
+WARNING: your process needs to output exactly one line per input. If the driver
+is forced to buffer too much memory it will exit with an error message, killing
+your pipeline.
+
+use constant vertical_buffer_limit => 64 << 20;
+
+defoperator vertical_apply => q{
+  my ($colspec, $lambda) = @_;
+  my ($limit, @cols) = @$colspec;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  my ($i, $o) = sioproc {exec @exec};
+  safewrite $i, $stdin;
+
+  fh_nonblock $i;
+  fh_nonblock $o;
+
+  # select() is required here so we block on the line processor
+
+  my @q = ($_ = <STDIN>);
+  safewrite $i, $_;
+  while (@q) {
+    print STDERR "TODO\n";
+    exit;
+  }
+
+};
 1 core/row/lib
 row.pl.sdoc
 118 core/row/row.pl.sdoc
@@ -3618,6 +3747,50 @@ and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
 use constant pycode => pmap q{pydent $_}, generic_code;
+1 core/matrix/lib
+matrix.pl.sdoc
+41 core/matrix/matrix.pl.sdoc
+Matrix conversions.
+Dense to sparse creates a (row, column, value) stream from your data. Sparse to
+dense inverts that. You can specify where the matrix data begins using a column
+identifier; this is useful when your matrices are prefixed with keys.
+
+defoperator dense_to_sparse => q{
+  my ($col) = @_;
+  $col ||= 0;
+  my $n = 0;
+  while (<STDIN>) {
+    chomp;
+    my @fs = split /\t/;
+    my @k = $col ? @fs[0..$col-1] : ();
+    print join("\t", @k, $n, $_, $fs[$_]), "\n" for $col..$#fs;
+    ++$n;
+  }
+};
+
+defoperator sparse_to_dense => q{
+  my ($col) = @_;
+  $col ||= 0;
+  my $n = 0;
+  my @q;
+  while (defined($_ = @q ? shift @q : <STDIN>)) {
+    chomp;
+    my @r = split /\t/, $_, $col + 3;
+    my $k = join "\t", @r[0..$col];
+    my $kr = qr/\Q$k\E/;
+    my @fs = $col ? @r[0..$col-1] : ();
+    $fs[$r[$col+1]] = $r[$col+2];
+    $fs[$1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
+    push @q, $_ if defined;
+    print join("\t", map defined ? $_ : '', @fs), "\n";
+  }
+};
+
+defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
+defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
+
+General binary matrix interop.
+Conversions to and from binary matrices used by Octave/NumPy/etc.
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
 12 core/gnuplot/gnuplot.pl.sdoc
@@ -4084,7 +4257,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-52 core/jsplot/render.waul.sdoc
+50 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -4096,7 +4269,7 @@ caterwaul(':all')(function () {
   -where[start_rendering(axes, vm, l, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
                                                               id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
                                                                    ? state.id
-                                                                   : ctx.getImageData(0, 0, w, h)) -se- it /!clear_pixels}]
+                                                                   : ctx.getImageData(0, 0, w, h)) -se- it.data.fill(0)}]
                                                  -then- render_part /!requestAnimationFrame,
 
 Shading.
@@ -4112,31 +4285,29 @@ We also calculate a "target luminosity", which helps to normalize the shading de
 up shading 10% of all screen pixels, then the average overlap should be three. So we want, on average, about one full shade per 3 pixels. (Nothing special
 about these numbers; it just seemed about right when I was thinking about it.)
 
-         clear_pixels = function (id) {id.data.fill(0)},
-
-         render_part  = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
-                                           id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
-                                           s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
-                                           l  = state.l * (width*height / 3) / n;
-                                       if (state.i) render_part /!requestAnimationFrame;
-                                       if (rt - last_render < 5) return; else last_render = rt;
-                                       for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
-                                       { var w  = aw ? i /!aw.pnorm : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
-                                             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
-                                         if (zp > 0) {var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                          g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                          b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                          zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
-                                           if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
-                                           { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
-                                             if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
-                                                         { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
-                                                               li = l * zi*zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                           id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }
-                                             else        { var pi = sy*width + sx << 2, li = l * zi*zi*zi * 256 / (64 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                           id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
-                                       state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
-                                       state.i = i}]})();
+         render_part = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
+                                          id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
+                                          s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
+                                          l  = state.l * (width*height / 3) / n;
+                                      if (state.i) render_part /!requestAnimationFrame;
+                                      if (rt - last_render < 5) return; else last_render = rt;
+                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
+                                      { var w  = aw ? i /!aw.pnorm : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
+                                            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+                                        if (zp > 0) {var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+                                                         zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
+                                          if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
+                                          { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
+                                            if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
+                                                        { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
+                                                              li = l * zi*zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }
+                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi*zi * 256 / (64 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
+                                      state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
+                                      state.i = i}]})();
 9 core/jsplot/view.waul.sdoc
 View matrix controls.
 A tree of object-transformation matrices you can use to explore the data. The whole structure uses modus to serialize to and from a JSON object.
@@ -5022,7 +5193,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-69 doc/options.md
+70 doc/options.md
 # Complete ni operator listing
 Operator | Example      | Description
 ---------|--------------|------------
@@ -5032,9 +5203,10 @@ Operator | Example      | Description
 `=`      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | `\>file`     | Sinks stream into resource, emits resource name
 `\<`     | `\<`         | Opposite of `\>`
+`.`      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |              |
+`_`      |              |
 `,`      | `,jAB`       | Enter cell context
-`.`      |              |
 `:`      | `:foo[nE8z]` | Checkpointed stream
 `@`      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | `\>foo \##`  | Cat **and then obliterate** named resource(s)
@@ -5061,7 +5233,7 @@ Operator | Example      | Description
 `t`      |              |
 `u`      | `u`          | Just like `uniq`
 `v`      | `vCplc`      | Vertically transform a range of columns
-`w`      |              |
+`w`      | `wn100`      | "With": horizontally juxtapose two streams
 `x`      | `xC`         | Exchange first fields with others
 `y`      |              |
 `z`      | `z4`         | Compress or decompress
@@ -5089,8 +5261,8 @@ Operator | Example      | Description
 `U`      |              |
 `V`      | `VB`         | Pivot and collect on field B
 `W`      |              |
-`X`      |              |
-`Y`      |              |
+`X`      | `X`          | Sparse to dense matrix conversion
+`Y`      | `Y`          | Dense to sparse matrix conversion
 `Z`      |              |
 393 doc/perl.md
 # Perl interface

@@ -85,6 +85,58 @@ defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
 defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
 defshort '/=', pmap q{divert_op    @$_}, pqfn '';
 
+Interleaving.
+Append/prepend will block one of the two data sources until the other
+completes. Sometimes, though, you want to stream both at once. Interleaving
+makes that possible, and you can optionally specify the mixture ratio, which is
+the number of interleaved rows per input row. (Negative numbers are interpreted
+as reciprocals, so -2 means two stdin rows for every interleaved.)
+
+defoperator interleave => q{
+  my ($ratio, $lambda) = @_;
+  my $fh = soproc {close STDIN; exec_ni @$lambda};
+
+  if ($ratio) {
+    $ratio = 1/-$ratio if $ratio < 0;
+    my ($n1, $n2) = (0, 0);
+    while (1) {
+      ++$n1, defined($_ = <STDIN>) || goto done, print while $n1 <= $n2 * $ratio;
+      ++$n2, defined($_ = <$fh>)   || goto done, print while $n1 >= $n2 * $ratio;
+    }
+  } else {
+    my $rmask;
+    my ($stdin_ok,  $ni_ok) = (1, 1);
+    my ($stdin_buf, $ni_buf);
+    while ($stdin_ok || $ni_ok) {
+      vec($rmask, fileno STDIN, 1) = $stdin_ok;
+      vec($rmask, fileno $fh,   1) = $ni_ok;
+      my $n = select my $rout = $rmask, undef, undef, 0.01;
+      if (vec $rout, fileno STDIN, 1) {
+        $stdin_ok = !!saferead \*STDIN, $stdin_buf, 1048576, length $stdin_buf;
+        my $i = 1 + rindex $stdin_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $stdin_buf, 0, $i;
+          $stdin_buf = substr $stdin_buf, $i;
+        }
+      }
+      if (vec $rout, fileno $fh, 1) {
+        $ni_ok = !!saferead $fh, $ni_buf, 1048576, length $ni_buf;
+        my $i = 1 + rindex $ni_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $ni_buf, 0, $i;
+          $ni_buf = substr $ni_buf, $i;
+        }
+      }
+    }
+  }
+
+  done:
+  close $fh;
+  $fh->await;
+};
+
+defshort '/.', pmap q{interleave_op @$_}, pseq popt number, pqfn '';
+
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
 done with the `>` operator, which is typically written as `\>`. The difference

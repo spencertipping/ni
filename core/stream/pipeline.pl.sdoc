@@ -89,6 +89,27 @@ sub forkopen($$) {
   }
 }
 
+sub sioproc(&) {
+  my ($f) = @_;
+  cpipe my $proc_in, my $w;
+  cpipe my $r, my $proc_out;
+  my $pid;
+  if ($pid = cfork) {
+    close $proc_in;
+    close $proc_out;
+    return ($w, ni::procfh->new($r, $pid));
+  } else {
+    close $w;
+    close $r;
+    move_fd fileno $proc_in, 0;
+    move_fd fileno $proc_out, 1;
+    open STDIN,  '<&=0';
+    open STDOUT, '>&=1';
+    &$f;
+    exit;
+  }
+}
+
 sub siproc(&) {forkopen 0, $_[0]}
 sub soproc(&) {forkopen 1, $_[0]}
 
