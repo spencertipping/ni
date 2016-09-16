@@ -64,6 +64,7 @@ $(caterwaul(':all')(function ($) {
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
 
         camera_matrix()    = matrix.translate(0, 0, settings().d) /~dot/ object_matrix() /~dot/ normalize_matrix(),
+        renderer           = render(),
         update_screen()    = handle_resizes()
-                      -then- render(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -then- renderer(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]]}));

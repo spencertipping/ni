@@ -10,11 +10,7 @@
 <pre id='preview' class='autohide'></pre>
 <canvas id='screen'></canvas>
 <canvas id='overlay'></canvas>
-<div id='controls' class='autohide'>
-  <canvas id='xrange'></canvas>
-  <canvas id='yrange'></canvas>
-  <canvas id='zrange'></canvas>
-</div>
+<div id='controls' class='autohide'></div>
 <div id='status'>
   <label id='sizelabel'></label>
 </div>

@@ -41,9 +41,6 @@ a fork.
 #### Labeled axes/grids/etc
 Must be client-side; this way it can happen after autoranging and during zooms.
 
-#### Render fourth dimension (most likely as hue or saturation)
-**NB:** this requires that the points be Z-ordered before they're drawn
-
 #### Custom autorange
 #### Outlier removal
 #### Precise zooming, view history

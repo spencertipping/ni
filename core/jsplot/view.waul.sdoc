@@ -1,0 +1,9 @@
+View matrix controls.
+A tree of object-transformation matrices you can use to explore the data. The whole structure uses modus to serialize to and from a JSON object.
+
+TODO: figure all of this out. There's a lot here: can we connect these to the view? Can we access higher dimensions? (Probably not since that requires more
+buffering.) Write up a design.
+
+caterwaul(':all')(function ($) {
+
+})(jQuery);
