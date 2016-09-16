@@ -30,7 +30,13 @@ defoperator n => q{
   sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
 };
 
-defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
+defoperator number_lines => q{
+  my $n = 0;
+  print ++$n, "\t", $_ while <STDIN>;
+};
+
+defshort '/n', palt pmap(q{n_op 1, $_ + 1}, number),
+                    pmap q{number_lines_op}, pnone;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 

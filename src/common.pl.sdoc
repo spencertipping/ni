@@ -33,7 +33,8 @@ use constant integer => palt pmap(q{int},       neval),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                              pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?');
-use constant float   => pmap q{0 + $_}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant float   => pmap q{0 + $_},
+                        pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => palt neval, integer, float;
 
 use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';

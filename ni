@@ -321,7 +321,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-64 common.pl.sdoc
+65 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -357,7 +357,8 @@ use constant integer => palt pmap(q{int},       neval),
                              pmap(q{1 << $_},   prx 'B(\d+)'),
                              pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                              pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?');
-use constant float   => pmap q{0 + $_}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
+use constant float   => pmap q{0 + $_},
+                        pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
 use constant number  => palt neval, integer, float;
 
 use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';
@@ -888,7 +889,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-125 core/stream/ops.pl.sdoc
+131 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -921,7 +922,13 @@ defoperator n => q{
   sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
 };
 
-defshort '/n',   pmap q{n_op 1, $_ + 1}, number;
+defoperator number_lines => q{
+  my $n = 0;
+  print ++$n, "\t", $_ while <STDIN>;
+};
+
+defshort '/n', palt pmap(q{n_op 1, $_ + 1}, number),
+                    pmap q{number_lines_op}, pnone;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 
@@ -4140,7 +4147,7 @@ buffering.) Write up a design.
 caterwaul(':all')(function ($) {
 
 })(jQuery);
-70 core/jsplot/interface.waul.sdoc
+71 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -4154,7 +4161,7 @@ $(caterwaul(':all')(function ($) {
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
                                   r: [0, -0.0051], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
-        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURIComponent]
+        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURI]
                                    : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
 
@@ -4182,6 +4189,7 @@ $(caterwaul(':all')(function ($) {
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
+                          -then- $(window) /~resize/ handle_resizes
                           -then- tr.val() /!visualize,
 
         data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
