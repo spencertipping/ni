@@ -11,7 +11,7 @@ defoperator sqlite => q{
   exec 'sqlite', '-separator', "\t", $db, $query;
 };
 defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
-                        pseq filename, $sql_query;
+                        pseq pc filename, $sql_query;
 EOF
 ```
 

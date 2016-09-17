@@ -3,19 +3,36 @@ Emits a series of 4D point coordinates to visualize the connections in ni's
 source. It does this by indexing the words in each $self key and assigning
 hierarchically-distributed locations to groups of related attributes.
 
-defoperator meta_spatial_op => q{
-  BEGIN {ni::eval $self{'core/pl/math.pm'}}
+defoperator meta_spatial => q{
+  load 'core/pl/math.pm';
 
-  my @ks = grep !/\.sdoc$/, keys %self;
-  my (%l1, %l2, %l3);
-  for (@ks) {
-    my ($t1, $t2, $t3) = ('', '', split /\//)[-3..-1];
-    $l1{$t1} ||= $l1{' '}++;
-    $l2{$t2} ||= $l2{' '}++;
-    $l3{$t3} ||= $l3{' '}++;
+  my @ks = grep !/\.js$|\.sdoc$/, keys %self;
+  my @r  = map {(/\/(\w+)\// ? ord $1 + 40*length $1 : 0) + (/\// ? 120 : 20)} @ks;
+  my @z  = map sum(map ord()/128, split //), @ks;
+
+  for my $ki (0..$#ks) {
+    my @ls = split /\n/, $self{$ks[$ki]};
+    my $zscale = log 1 + length $self{$ks[$ki]};
+
+    for my $li (0..$#ls) {
+      my $dz     = $li/@ls * $zscale;
+      my @ws     = split /\W+/, $ls[$li];
+      my $rscale = log 1 + length $ls[$li];
+      my $l      = max map length, @ws;
+
+      for my $wi (0..$#ws) {
+        my $w  = $ws[$wi];
+        my $t  = ord($w) / 127;
+        my $dt = length($w) / $l;
+        my $zr = 0.5/@ls * $zscale;
+
+        for (1..100) {
+          my ($x, $y) = prec($r[$ki] + $wi/@ws * $rscale, $dz + 300*$ki/@ks + $t + rand()*$dt);
+          print join("\t", $x, $z[$ki] + rand()*$zr, $y, 400*sin($x/100)*sin($y/100) + ord $w), "\n";
+        }
+      }
+    }
   }
-
-  print "TODO spatial\n";
 };
 
 defshort '///spatial', pmap q{meta_spatial_op}, pnone;

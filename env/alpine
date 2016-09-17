@@ -3,9 +3,12 @@ RUN echo '@edge http://nl.alpinelinux.org/alpine/edge/main' \
       >> /etc/apk/repositories
 RUN echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
       >> /etc/apk/repositories
+RUN echo '@community http://nl.alpinelinux.org/alpine/edge/community' \
+      >> /etc/apk/repositories
 RUN apk update
 RUN apk add bash curl perl sqlite sbcl@testing
 RUN apk add bzip2 lzo lz4 xz strace ruby
+RUN apk add py-numpy@community
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd

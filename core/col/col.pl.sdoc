@@ -106,12 +106,8 @@ middle one:
 | ni vCplc              # lowercase column C
 
 WARNING: your process needs to output exactly one line per input. If the driver
-is forced to buffer too much memory it will exit with an error message, killing
-your pipeline.
-
-sub array_memory {local $_; my $n = 0; $n += length for @_; $n}
-
-use constant vertical_buffer_limit => 64 << 20;
+is forced to buffer too much memory it will hang waiting for the process to
+catch up.
 
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
@@ -121,35 +117,56 @@ defoperator vertical_apply => q{
   safewrite $i, $stdin;
 
   vec(my $rbits, fileno $o, 1) = 1;
+  vec(my $wbits, fileno $i, 1) = 1;
+  fh_nonblock $i;
 
-  my $in_buf;
-
-  # TODO: MIMO line processing here; select() is expensive.
+  my $read_buf;
+  my $write_buf;
+  my @queued;
   my @awaiting_completion;
-  while (<STDIN>) {
-    chomp;
-    die "ni: vertical_apply's internal queue has reached the 64MB memory limit"
-      . " (which means the line processor is running behind)"
-      if @awaiting_completion &&
-         vertical_buffer_limit <= array_memory @awaiting_completion, $_;
+  my $stdin_ok = my $proc_ok = 1;
+  while ($stdin_ok || $proc_ok) {
+    my $l = sum map length, @queued;
+    $_ = '';
+    chomp, push @queued, $_ while ($l += length) <= 1048576
+                              and $stdin_ok &&= defined($_ = <STDIN>);
 
-    push @awaiting_completion, $_;
-    safewrite $i, join("\t", (split /\t/, $_, $limit)[@cols]) . "\n";
+    while (@queued && sum(map length, @awaiting_completion) < 1048576
+                   && select undef, my $wout=$wbits, undef, 0.001) {
+      my $n = 0;
+      my @chopped;
+      push @chopped, join "\t", (split /\t/, $queued[$n++], $limit)[@cols]
+        while $n < @queued && 8192 > sum map 1 + length, @chopped;
+      ++$n unless $n;
+      push @awaiting_completion, @queued[0..$n-1];
+      @queued = @queued[$n..$#queued];
+      my $s  = $write_buf . join '', map "$_\n", @chopped;
+      my $sn = safewrite $i, $s;
+      $write_buf = substr $s, $sn;
+    }
 
-    saferead $o, $in_buf, 8192, length $in_buf
-      while select my $rout=$rbits, undef, undef, 0;
+    close $i if !@queued && !$stdin_ok;
 
-    my @lines = split /\n/, $in_buf . " ";
-    $in_buf = substr pop(@lines), 0, -1;
+    $proc_ok &&= saferead $o, $read_buf, 8192, length $read_buf
+      while $proc_ok && select my $rout=$rbits, undef, undef, 0.001;
 
+    my @lines = split /\n/, $read_buf . " ";
+    $proc_ok ? $read_buf = substr pop(@lines), 0, -1 : pop @lines;
     for (@lines) {
       die "ni: vertical apply's process emitted too many lines: $_"
         unless @awaiting_completion;
       my @fs = split /\t/, shift @awaiting_completion;
-      @fs[@cols] = split /\t/;
-      print join("\t", @fs), "\n";
+      @fs[@cols] = my @cs = split /\t/;
+      print join("\t", @fs, @cs[@fs..$#cs]), "\n";
     }
   }
+
+  die "ni: vertical apply's process ultimately lost "
+    . scalar(@awaiting_completion) . " line(s)"
+  if @awaiting_completion;
+
+  close $o;
+  $o->await;
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';

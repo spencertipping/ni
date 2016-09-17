@@ -95,7 +95,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-83 util.pl.sdoc
+85 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -105,6 +105,8 @@ sub weval($) {my @r = eval "package ni;$_[0]"; print STDERR $@ if $@; @r}
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub swap($$) {@_[0, 1] = @_[1, 0]}
+
+sub sum {local $_; my $x; $x += $_ for @_; $x}
 
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
@@ -382,12 +384,12 @@ there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
 
 use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
 use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant filename => palt prc 'file:(.+)',
-                              prc '\.?/(?:[^/]|$)[^]]*',
+use constant filename => palt prx 'file:(.+)',
+                              prx '\.?/(?:[^/]|$)[^]]*',
                               tempfile,
-                              pcond q{-e}, prc '[^][]+';
+                              pcond q{-e}, prx '[^][]+';
 
-use constant nefilename => palt filename, prc '[^][]+';
+use constant nefilename => palt filename, prx '[^][]+';
 54 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
@@ -1180,25 +1182,42 @@ defoperator meta_short_availability => q{
 };
 
 defshort '///map/short', pmap q{meta_short_availability}, pnone;
-21 core/meta/spatial.pl.sdoc
+38 core/meta/spatial.pl.sdoc
 Spatial map of ni's source code.
 Emits a series of 4D point coordinates to visualize the connections in ni's
 source. It does this by indexing the words in each $self key and assigning
 hierarchically-distributed locations to groups of related attributes.
 
-defoperator meta_spatial_op => q{
-  BEGIN {ni::eval $self{'core/pl/math.pm'}}
+defoperator meta_spatial => q{
+  load 'core/pl/math.pm';
 
-  my @ks = grep !/\.sdoc$/, keys %self;
-  my (%l1, %l2, %l3);
-  for (@ks) {
-    my ($t1, $t2, $t3) = ('', '', split /\//)[-3..-1];
-    $l1{$t1} ||= $l1{' '}++;
-    $l2{$t2} ||= $l2{' '}++;
-    $l3{$t3} ||= $l3{' '}++;
+  my @ks = grep !/\.js$|\.sdoc$/, keys %self;
+  my @r  = map {(/\/(\w+)\// ? ord $1 + 40*length $1 : 0) + (/\// ? 120 : 20)} @ks;
+  my @z  = map sum(map ord()/128, split //), @ks;
+
+  for my $ki (0..$#ks) {
+    my @ls = split /\n/, $self{$ks[$ki]};
+    my $zscale = log 1 + length $self{$ks[$ki]};
+
+    for my $li (0..$#ls) {
+      my $dz     = $li/@ls * $zscale;
+      my @ws     = split /\W+/, $ls[$li];
+      my $rscale = log 1 + length $ls[$li];
+      my $l      = max map length, @ws;
+
+      for my $wi (0..$#ws) {
+        my $w  = $ws[$wi];
+        my $t  = ord($w) / 127;
+        my $dt = length($w) / $l;
+        my $zr = 0.5/@ls * $zscale;
+
+        for (1..100) {
+          my ($x, $y) = prec($r[$ki] + $wi/@ws * $rscale, $dz + 300*$ki/@ks + $t + rand()*$dt);
+          print join("\t", $x, $z[$ki] + rand()*$zr, $y, 400*sin($x/100)*sin($y/100) + ord $w), "\n";
+        }
+      }
+    }
   }
-
-  print "TODO spatial\n";
 };
 
 defshort '///spatial', pmap q{meta_spatial_op}, pnone;
@@ -2255,7 +2274,7 @@ defoperator 'checkpoint', q{
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op $$_[0], $$_[1]}, pseq nefilename, pqfn '';
+defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
 1 core/gen/lib
 gen.pl.sdoc
 34 core/gen/gen.pl.sdoc
@@ -2450,7 +2469,7 @@ defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
 defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
 1 core/col/lib
 col.pl.sdoc
-155 core/col/col.pl.sdoc
+172 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2559,12 +2578,8 @@ middle one:
 | ni vCplc              # lowercase column C
 
 WARNING: your process needs to output exactly one line per input. If the driver
-is forced to buffer too much memory it will exit with an error message, killing
-your pipeline.
-
-sub array_memory {local $_; my $n = 0; $n += length for @_; $n}
-
-use constant vertical_buffer_limit => 64 << 20;
+is forced to buffer too much memory it will hang waiting for the process to
+catch up.
 
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
@@ -2574,35 +2589,56 @@ defoperator vertical_apply => q{
   safewrite $i, $stdin;
 
   vec(my $rbits, fileno $o, 1) = 1;
+  vec(my $wbits, fileno $i, 1) = 1;
+  fh_nonblock $i;
 
-  my $in_buf;
-
-  # TODO: MIMO line processing here; select() is expensive.
+  my $read_buf;
+  my $write_buf;
+  my @queued;
   my @awaiting_completion;
-  while (<STDIN>) {
-    chomp;
-    die "ni: vertical_apply's internal queue has reached the 64MB memory limit"
-      . " (which means the line processor is running behind)"
-      if @awaiting_completion &&
-         vertical_buffer_limit <= array_memory @awaiting_completion, $_;
+  my $stdin_ok = my $proc_ok = 1;
+  while ($stdin_ok || $proc_ok) {
+    my $l = sum map length, @queued;
+    $_ = '';
+    chomp, push @queued, $_ while ($l += length) <= 1048576
+                              and $stdin_ok &&= defined($_ = <STDIN>);
 
-    push @awaiting_completion, $_;
-    safewrite $i, join("\t", (split /\t/, $_, $limit)[@cols]) . "\n";
+    while (@queued && sum(map length, @awaiting_completion) < 1048576
+                   && select undef, my $wout=$wbits, undef, 0.001) {
+      my $n = 0;
+      my @chopped;
+      push @chopped, join "\t", (split /\t/, $queued[$n++], $limit)[@cols]
+        while $n < @queued && 8192 > sum map 1 + length, @chopped;
+      ++$n unless $n;
+      push @awaiting_completion, @queued[0..$n-1];
+      @queued = @queued[$n..$#queued];
+      my $s  = $write_buf . join '', map "$_\n", @chopped;
+      my $sn = safewrite $i, $s;
+      $write_buf = substr $s, $sn;
+    }
 
-    saferead $o, $in_buf, 8192, length $in_buf
-      while select my $rout=$rbits, undef, undef, 0;
+    close $i if !@queued && !$stdin_ok;
 
-    my @lines = split /\n/, $in_buf . " ";
-    $in_buf = substr pop(@lines), 0, -1;
+    $proc_ok &&= saferead $o, $read_buf, 8192, length $read_buf
+      while $proc_ok && select my $rout=$rbits, undef, undef, 0.001;
 
+    my @lines = split /\n/, $read_buf . " ";
+    $proc_ok ? $read_buf = substr pop(@lines), 0, -1 : pop @lines;
     for (@lines) {
       die "ni: vertical apply's process emitted too many lines: $_"
         unless @awaiting_completion;
       my @fs = split /\t/, shift @awaiting_completion;
-      @fs[@cols] = split /\t/;
-      print join("\t", @fs), "\n";
+      @fs[@cols] = my @cs = split /\t/;
+      print join("\t", @fs, @cs[@fs..$#cs]), "\n";
     }
   }
+
+  die "ni: vertical apply's process ultimately lost "
+    . scalar(@awaiting_completion) . " line(s)"
+  if @awaiting_completion;
+
+  close $o;
+  $o->await;
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
@@ -2881,18 +2917,13 @@ math.pm.sdoc
 stream.pm.sdoc
 reducers.pm.sdoc
 pl.pl.sdoc
-60 core/pl/util.pm.sdoc
+55 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
 introduced in v5.7.3, so we can't rely on it being there.
 
 sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
-
-sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
-sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
-
-sub mean {scalar @_ && sum(@_) / @_}
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
@@ -2942,7 +2973,7 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-33 core/pl/math.pm.sdoc
+37 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
 
@@ -2950,6 +2981,10 @@ use constant tau => 2 * 3.14159265358979323846264;
 
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
+
+sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
+sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+sub mean {scalar @_ && sum(@_) / @_}
 
 sub log2 {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
@@ -3794,7 +3829,7 @@ particularly common.
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-91 core/matrix/matrix.pl.sdoc
+106 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3803,13 +3838,28 @@ identifier; this is useful when your matrices are prefixed with keys.
 defoperator dense_to_sparse => q{
   my ($col) = @_;
   $col ||= 0;
+  my @q;
   my $n = 0;
-  while (<STDIN>) {
+  while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @fs = split /\t/;
-    my @k = $col ? @fs[0..$col-1] : ();
-    print join("\t", @k, $n, $_, $fs[$_]), "\n" for $col..$#fs;
-    ++$n;
+    if ($col) {
+      $n = 0;
+      my $k  = join "\t", @fs[0..$col-1];
+      my $kr = qr/\Q$k\E/;
+      print join("\t", $k, $n, $_ - $col, $fs[$_]), "\n" for $col..$#fs;
+      my $l;
+      while (defined($l = <STDIN>) && $l =~ /^$kr\t/) {
+        ++$n;
+        chomp $l;
+        @fs = split /\t/, $l;
+        print join("\t", $k, $n, $_ - $col, $fs[$_]), "\n" for $col..$#fs;
+      }
+      push @q, $l if defined $l;
+    } else {
+      print join("\t", $n, $_, $fs[$_]), "\n" for 0..$#fs;
+      ++$n;
+    }
   }
 };
 
@@ -4734,7 +4784,7 @@ row.md
 sql.md
 stream.md
 tutorial.md
-176 doc/col.md
+198 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -4910,6 +4960,28 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
 
 /github	/spencertipping	/ni
+```
+
+## Vertical operator application
+A situation that comes up a lot in real-world workflows is that you want to
+apply some mapper code to a specific column. For example, if we want to
+uppercase the third column of a dataset, we can do it like this:
+
+```bash
+$ ni //ni r3FW p'r a, b, uc(c), FR 3'
+	usr	BIN	env	perl
+	ni	SELF	license	_
+ni	https	GITHUB	com	spencertipping	ni
+```
+
+But that requires a lot of keystrokes. More concise is to use `v` to pipe
+column C to a separate ni process:
+
+```bash
+$ ni //ni r3FW vCpuc
+	usr	BIN	env	perl
+	ni	SELF	license	_
+ni	https	GITHUB	com	spencertipping	ni
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -5964,7 +6036,7 @@ defoperator sqlite => q{
   exec 'sqlite', '-separator', "\t", $db, $query;
 };
 defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
-                        pseq filename, $sql_query;
+                        pseq pc filename, $sql_query;
 EOF
 ```
 

@@ -6,13 +6,28 @@ identifier; this is useful when your matrices are prefixed with keys.
 defoperator dense_to_sparse => q{
   my ($col) = @_;
   $col ||= 0;
+  my @q;
   my $n = 0;
-  while (<STDIN>) {
+  while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @fs = split /\t/;
-    my @k = $col ? @fs[0..$col-1] : ();
-    print join("\t", @k, $n, $_, $fs[$_]), "\n" for $col..$#fs;
-    ++$n;
+    if ($col) {
+      $n = 0;
+      my $k  = join "\t", @fs[0..$col-1];
+      my $kr = qr/\Q$k\E/;
+      print join("\t", $k, $n, $_ - $col, $fs[$_]), "\n" for $col..$#fs;
+      my $l;
+      while (defined($l = <STDIN>) && $l =~ /^$kr\t/) {
+        ++$n;
+        chomp $l;
+        @fs = split /\t/, $l;
+        print join("\t", $k, $n, $_ - $col, $fs[$_]), "\n" for $col..$#fs;
+      }
+      push @q, $l if defined $l;
+    } else {
+      print join("\t", $n, $_, $fs[$_]), "\n" for 0..$#fs;
+      ++$n;
+    }
   }
 };
 

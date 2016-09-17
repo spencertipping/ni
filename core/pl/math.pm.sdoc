@@ -6,6 +6,10 @@ use constant tau => 2 * 3.14159265358979323846264;
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
 
+sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
+sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
+sub mean {scalar @_ && sum(@_) / @_}
+
 sub log2 {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}

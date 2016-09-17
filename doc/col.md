@@ -174,3 +174,25 @@ $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 
 /github	/spencertipping	/ni
 ```
+
+## Vertical operator application
+A situation that comes up a lot in real-world workflows is that you want to
+apply some mapper code to a specific column. For example, if we want to
+uppercase the third column of a dataset, we can do it like this:
+
+```bash
+$ ni //ni r3FW p'r a, b, uc(c), FR 3'
+	usr	BIN	env	perl
+	ni	SELF	license	_
+ni	https	GITHUB	com	spencertipping	ni
+```
+
+But that requires a lot of keystrokes. More concise is to use `v` to pipe
+column C to a separate ni process:
+
+```bash
+$ ni //ni r3FW vCpuc
+	usr	BIN	env	perl
+	ni	SELF	license	_
+ni	https	GITHUB	com	spencertipping	ni
+```
