@@ -1,0 +1,21 @@
+Spatial map of ni's source code.
+Emits a series of 4D point coordinates to visualize the connections in ni's
+source. It does this by indexing the words in each $self key and assigning
+hierarchically-distributed locations to groups of related attributes.
+
+defoperator meta_spatial_op => q{
+  BEGIN {ni::eval $self{'core/pl/math.pm'}}
+
+  my @ks = grep !/\.sdoc$/, keys %self;
+  my (%l1, %l2, %l3);
+  for (@ks) {
+    my ($t1, $t2, $t3) = ('', '', split /\//)[-3..-1];
+    $l1{$t1} ||= $l1{' '}++;
+    $l2{$t2} ||= $l2{' '}++;
+    $l3{$t3} ||= $l3{' '}++;
+  }
+
+  print "TODO spatial\n";
+};
+
+defshort '///spatial', pmap q{meta_spatial_op}, pnone;

@@ -12,7 +12,7 @@ defoperator meta_help => q{
   sio; print $self{"doc/$topic.md"} . "\n";
 };
 
-defshort '//',         pmap q{meta_key_op $_}, prc '[^][]+$';
+defshort '///',        pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 

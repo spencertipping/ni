@@ -1106,9 +1106,10 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-2 core/meta/lib
+3 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
+spatial.pl.sdoc
 44 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
@@ -1124,7 +1125,7 @@ defoperator meta_help => q{
   sio; print $self{"doc/$topic.md"} . "\n";
 };
 
-defshort '//',         pmap q{meta_key_op $_}, prc '[^][]+$';
+defshort '///',        pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
@@ -1179,6 +1180,28 @@ defoperator meta_short_availability => q{
 };
 
 defshort '///map/short', pmap q{meta_short_availability}, pnone;
+21 core/meta/spatial.pl.sdoc
+Spatial map of ni's source code.
+Emits a series of 4D point coordinates to visualize the connections in ni's
+source. It does this by indexing the words in each $self key and assigning
+hierarchically-distributed locations to groups of related attributes.
+
+defoperator meta_spatial_op => q{
+  BEGIN {ni::eval $self{'core/pl/math.pm'}}
+
+  my @ks = grep !/\.sdoc$/, keys %self;
+  my (%l1, %l2, %l3);
+  for (@ks) {
+    my ($t1, $t2, $t3) = ('', '', split /\//)[-3..-1];
+    $l1{$t1} ||= $l1{' '}++;
+    $l2{$t2} ||= $l2{' '}++;
+    $l3{$t3} ||= $l3{' '}++;
+  }
+
+  print "TODO spatial\n";
+};
+
+defshort '///spatial', pmap q{meta_spatial_op}, pnone;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
