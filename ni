@@ -3804,7 +3804,7 @@ defoperator sparse_to_dense => q{
     $fs[$r[$col+1]] = $r[$col+2];
     $fs[$1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
-    print join("\t", map defined ? $_ : '', @fs), "\n";
+    print join("\t", map defined() ? $_ : '', @fs), "\n";
   }
 };
 
