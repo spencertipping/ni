@@ -3829,7 +3829,7 @@ particularly common.
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-106 core/matrix/matrix.pl.sdoc
+110 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3841,8 +3841,7 @@ defoperator dense_to_sparse => q{
   my @q;
   my $n = 0;
   while (defined($_ = @q ? shift @q : <STDIN>)) {
-    chomp;
-    my @fs = split /\t/;
+    chomp(my @fs = split /\t/);
     if ($col) {
       $n = 0;
       my $k  = join "\t", @fs[0..$col-1];
@@ -3851,8 +3850,7 @@ defoperator dense_to_sparse => q{
       my $l;
       while (defined($l = <STDIN>) && $l =~ /^$kr\t/) {
         ++$n;
-        chomp $l;
-        @fs = split /\t/, $l;
+        chomp(@fs = split /\t/, $l);
         print join("\t", $k, $n, $_ - $col, $fs[$_]), "\n" for $col..$#fs;
       }
       push @q, $l if defined $l;
@@ -3868,14 +3866,17 @@ defoperator sparse_to_dense => q{
   $col ||= 0;
   my $n = 0;
   my @q;
+  my $row = -1;
   while (defined($_ = @q ? shift @q : <STDIN>)) {
+    ++$row;
     chomp;
     my @r = split /\t/, $_, $col + 3;
     my $k = join "\t", @r[0..$col];
     my $kr = qr/\Q$k\E/;
     my @fs = $col ? @r[0..$col-1] : ();
-    $fs[$r[$col+1]] = $r[$col+2];
-    $fs[$1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
+    ++$row, print "\n" until $row >= $r[$col];
+    $fs[$col + $r[$col+1]] = $r[$col+2];
+    $fs[$col + $1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
     print join("\t", map defined() ? $_ : '', @fs), "\n";
   }
@@ -3910,14 +3911,17 @@ defoperator numpy_dense => q{
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @r = split /\t/;
-    my $k = $col ? join("\t", $r[0..$col-1]) : ();
-    $cols = @r - $col;
+    my $k = $col ? join("\t", @r[0..$col-1]) : ();
     $rows = 1;
+    my @m = [@r[$col..$#r]];
     my $kr = qr/\Q$k\E/;
-    ++$rows, push @r, split /\t/, substr $_, length $1
+    ++$rows, push @m, [split /\t/, substr $_, length $1]
       while defined($_ = <STDIN>) && /^($kr\t)/;
     push @q, $_ if defined;
-    safewrite $i, pack "NNF*", $rows, $cols, @r;
+
+    $cols = max map scalar(@$_), @m;
+    safewrite $i, pack "NNF*", $rows, $cols,
+      map {(@$_, (0) x ($cols - @$_))} @m;
 
     saferead $o, $_, 8;
     ($rows, $cols) = unpack "NN", $_;
