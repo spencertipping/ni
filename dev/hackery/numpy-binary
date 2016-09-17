@@ -5,6 +5,6 @@ perl -e 'syswrite STDOUT, pack "F*", 1..128' \
 import numpy as np
 from sys import stdin, stdout
 np_data = np.fromfile(stdin, dtype = np.dtype("d"), count = 128)
-np_data.tofile(stdout)' \
+np_data.reshape(64, 2).tofile(stdout)' \
   | perl -e 'sysread STDIN, $_, 1048576;
              print "$_\n" for unpack "F*"'

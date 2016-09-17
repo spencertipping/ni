@@ -1,0 +1,7 @@
+#!/bin/bash
+
+true | python -c '
+import numpy as np
+from sys import stdin, stdout
+np_data = np.fromfile(stdin, dtype = np.dtype("d"), count = 128)
+print np_data'

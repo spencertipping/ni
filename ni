@@ -3746,10 +3746,10 @@ Counts brackets, excluding those inside quoted strings. This is more efficient
 and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
-use constant pycode => pmap q{pydent $_}, generic_code;
+use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-41 core/matrix/matrix.pl.sdoc
+89 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3789,8 +3789,56 @@ defoperator sparse_to_dense => q{
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
 
-General binary matrix interop.
-Conversions to and from binary matrices used by Octave/NumPy/etc.
+NumPy interop.
+Partitioned by the first row value and sent in as dense matrices.
+
+use constant numpy_gen => gen pydent q{
+  from numpy import *
+  from sys   import stdin, stdout
+  while True:
+    dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+    if len(dimensions) == 0: exit()
+    x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
+        .reshape(dimensions)
+    %body
+    x = array(x)
+    array(x.shape).astype(dtype(">u4")).tofile(stdout)
+    x.astype(dtype("d")).tofile(stdout)
+    stdout.flush()};
+
+defoperator numpy_dense => q{
+  my ($f) = @_;
+  my ($i, $o) = sioproc {exec 'python', '-c', numpy_gen->(body => $f)};
+  my @q;
+  my ($rows, $cols);
+  while (defined($_ = @q ? shift @q : <STDIN>)) {
+    chomp;
+    my ($k, @r) = split /\t/;
+    $cols = @r;
+    $rows = 1;
+    my $kr = qr/\Q$k\E/;
+    ++$rows, push @r, split /\t/, substr $_, length $1
+      while defined($_ = <STDIN>) && /^($kr\t)/;
+    push @q, $_ if defined;
+    safewrite $i, pack "NNF*", $rows, $cols, @r;
+
+    saferead $o, $_, 8;
+    ($rows, $cols) = unpack "NN", $_;
+
+    $_ = '';
+    saferead $o, $_, $rows*$cols*8 - length(), length
+      until $rows*$cols*8 == length;
+    for my $r (0..$rows-1) {
+      print join("\t", $k, unpack "F$cols", substr $_, $r*$cols*8), "\n";
+    }
+  }
+
+  close $i;
+  close $o;
+  $o->await;
+};
+
+defshort '/N', pmap q{numpy_dense_op $_}, pycode;
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
 12 core/gnuplot/gnuplot.pl.sdoc
