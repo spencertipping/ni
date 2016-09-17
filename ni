@@ -924,7 +924,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-183 core/stream/ops.pl.sdoc
+198 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1087,6 +1087,21 @@ defoperator file_write => q{
 
 defshort '/>', pmap q{file_write_op $_}, nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
+
+Resource stream encoding.
+This makes it possible to serialize a directory structure into a single stream.
+ni uses this format internally to store its k/v state.
+
+defoperator encode_resource_stream => q{
+  while (<STDIN>) {
+    chomp;
+    my $s = rfc $_;
+    my $line_count = split /\n/, "$s ";
+    print "$line_count $_\n", $s, "\n";
+  }
+};
+
+defshort '/>R', pmap q{encode_resource_stream_op}, pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
