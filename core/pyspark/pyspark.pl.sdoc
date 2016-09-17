@@ -29,11 +29,11 @@ our @pyspark_row_alt = (
   (pmap q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
   (pmap q{gen "%v.filter($_)"}, pyspark_fn));
 
-deflong 'pyspark/stream/n',
-  pmap q{gen "sc.parallelize(range($_))"}, pn 1, prx 'n', number;
+defshort 'pyspark/n',  pmap q{gen "sc.parallelize(range(1, 1+$_))"}, integer;
+defshort 'pyspark/n0', pmap q{gen "sc.parallelize(range($_))"}, integer;
 
-deflong 'pyspark/stream/pipe',
-  pmap q{gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
+defshort 'pyspark/e',
+  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
 
 defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
 defshort 'pyspark/r', paltr @pyspark_row_alt;

@@ -53,8 +53,9 @@ $(caterwaul(':all')(function ($) {
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
                                    update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[new axis(1048576*4)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq -then- data_was_revised(lines),
-                                   populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
+                                   handle_data(lines) = lines *[x.split(/\t/)] /seq /!populate_axes -then- data_was_revised(lines),
+                                   populate_axes(ls)  = ls /!update_n_axes -then-
+                                                        ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
         object_matrix()    = matrix.prod(matrix.translate(c[0], c[1], c[2]), matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
                                          matrix.scale(s[0], s[1], s[2]),

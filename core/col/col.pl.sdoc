@@ -109,6 +109,8 @@ WARNING: your process needs to output exactly one line per input. If the driver
 is forced to buffer too much memory it will exit with an error message, killing
 your pipeline.
 
+sub array_memory {local $_; my $n = 0; $n += length for @_; $n}
+
 use constant vertical_buffer_limit => 64 << 20;
 
 defoperator vertical_apply => q{
@@ -118,17 +120,36 @@ defoperator vertical_apply => q{
   my ($i, $o) = sioproc {exec @exec};
   safewrite $i, $stdin;
 
-  fh_nonblock $i;
-  fh_nonblock $o;
+  vec(my $rbits, fileno $o, 1) = 1;
 
-  # select() is required here so we block on the line processor
+  my $in_buf;
 
-  my @q = ($_ = <STDIN>);
-  safewrite $i, $_;
-  while (@q) {
-    print STDERR "TODO\n";
-    exit;
+  # TODO: MIMO line processing here; select() is expensive.
+  my @awaiting_completion;
+  while (<STDIN>) {
+    chomp;
+    die "ni: vertical_apply's internal queue has reached the 64MB memory limit"
+      . " (which means the line processor is running behind)"
+      if @awaiting_completion &&
+         vertical_buffer_limit <= array_memory @awaiting_completion, $_;
+
+    push @awaiting_completion, $_;
+    safewrite $i, join("\t", (split /\t/, $_, $limit)[@cols]) . "\n";
+
+    saferead $o, $in_buf, 8192, length $in_buf
+      while select my $rout=$rbits, undef, undef, 0;
+
+    my @lines = split /\n/, $in_buf . " ";
+    $in_buf = substr pop(@lines), 0, -1;
+
+    for (@lines) {
+      die "ni: vertical apply's process emitted too many lines: $_"
+        unless @awaiting_completion;
+      my @fs = split /\t/, shift @awaiting_completion;
+      @fs[@cols] = split /\t/;
+      print join("\t", @fs), "\n";
+    }
   }
-
 };
 
+defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';

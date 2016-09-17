@@ -55,14 +55,16 @@ use constant numpy_gen => gen pydent q{
     stdout.flush()};
 
 defoperator numpy_dense => q{
-  my ($f) = @_;
+  my ($col, $f) = @_;
+  $col ||= 0;
   my ($i, $o) = sioproc {exec 'python', '-c', numpy_gen->(body => $f)};
   my @q;
   my ($rows, $cols);
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
-    my ($k, @r) = split /\t/;
-    $cols = @r;
+    my @r = split /\t/;
+    my $k = $col ? join("\t", $r[0..$col-1]) : ();
+    $cols = @r - $col;
     $rows = 1;
     my $kr = qr/\Q$k\E/;
     ++$rows, push @r, split /\t/, substr $_, length $1
@@ -75,9 +77,9 @@ defoperator numpy_dense => q{
 
     $_ = '';
     saferead $o, $_, $rows*$cols*8 - length(), length
-      until $rows*$cols*8 == length;
+      until length == $rows*$cols*8;
     for my $r (0..$rows-1) {
-      print join("\t", $k, unpack "F$cols", substr $_, $r*$cols*8), "\n";
+      print join("\t", $col ? ($k) : (), unpack "F$cols", substr $_, $r*$cols*8), "\n";
     }
   }
 
@@ -86,4 +88,4 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op $_}, pycode;
+defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;

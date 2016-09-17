@@ -61,5 +61,5 @@ defoperator http_websocket_encode_batch => q{
   safewrite \*STDOUT, ws_encode($_) while saferead \*STDIN, $_, $_[0] || 8192;
 };
 
-deflong '/http/wse',       pmap q{http_websocket_encode_op},                prc '--http/wse$';
-deflong '/http/wse-batch', pmap q{http_websocket_encode_batch_op $_}, pn 1, prc '--http/wse-batch$', popt integer;
+defshort '/--http/wse',       pmap q{http_websocket_encode_op}, pnone;
+defshort '/--http/wse-batch', pmap q{http_websocket_encode_batch_op $_}, popt integer;

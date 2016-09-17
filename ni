@@ -2427,7 +2427,7 @@ defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
 defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
 1 core/col/lib
 col.pl.sdoc
-133 core/col/col.pl.sdoc
+155 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2539,6 +2539,8 @@ WARNING: your process needs to output exactly one line per input. If the driver
 is forced to buffer too much memory it will exit with an error message, killing
 your pipeline.
 
+sub array_memory {local $_; my $n = 0; $n += length for @_; $n}
+
 use constant vertical_buffer_limit => 64 << 20;
 
 defoperator vertical_apply => q{
@@ -2548,19 +2550,39 @@ defoperator vertical_apply => q{
   my ($i, $o) = sioproc {exec @exec};
   safewrite $i, $stdin;
 
-  fh_nonblock $i;
-  fh_nonblock $o;
+  vec(my $rbits, fileno $o, 1) = 1;
 
-  # select() is required here so we block on the line processor
+  my $in_buf;
 
-  my @q = ($_ = <STDIN>);
-  safewrite $i, $_;
-  while (@q) {
-    print STDERR "TODO\n";
-    exit;
+  # TODO: MIMO line processing here; select() is expensive.
+  my @awaiting_completion;
+  while (<STDIN>) {
+    chomp;
+    die "ni: vertical_apply's internal queue has reached the 64MB memory limit"
+      . " (which means the line processor is running behind)"
+      if @awaiting_completion &&
+         vertical_buffer_limit <= array_memory @awaiting_completion, $_;
+
+    push @awaiting_completion, $_;
+    safewrite $i, join("\t", (split /\t/, $_, $limit)[@cols]) . "\n";
+
+    saferead $o, $in_buf, 8192, length $in_buf
+      while select my $rout=$rbits, undef, undef, 0;
+
+    my @lines = split /\n/, $in_buf . " ";
+    $in_buf = substr pop(@lines), 0, -1;
+
+    for (@lines) {
+      die "ni: vertical apply's process emitted too many lines: $_"
+        unless @awaiting_completion;
+      my @fs = split /\t/, shift @awaiting_completion;
+      @fs[@cols] = split /\t/;
+      print join("\t", @fs), "\n";
+    }
   }
-
 };
+
+defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
 1 core/row/lib
 row.pl.sdoc
 118 core/row/row.pl.sdoc
@@ -3749,7 +3771,7 @@ particularly common.
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-89 core/matrix/matrix.pl.sdoc
+91 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3807,14 +3829,16 @@ use constant numpy_gen => gen pydent q{
     stdout.flush()};
 
 defoperator numpy_dense => q{
-  my ($f) = @_;
+  my ($col, $f) = @_;
+  $col ||= 0;
   my ($i, $o) = sioproc {exec 'python', '-c', numpy_gen->(body => $f)};
   my @q;
   my ($rows, $cols);
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
-    my ($k, @r) = split /\t/;
-    $cols = @r;
+    my @r = split /\t/;
+    my $k = $col ? join("\t", $r[0..$col-1]) : ();
+    $cols = @r - $col;
     $rows = 1;
     my $kr = qr/\Q$k\E/;
     ++$rows, push @r, split /\t/, substr $_, length $1
@@ -3827,9 +3851,9 @@ defoperator numpy_dense => q{
 
     $_ = '';
     saferead $o, $_, $rows*$cols*8 - length(), length
-      until $rows*$cols*8 == length;
+      until length == $rows*$cols*8;
     for my $r (0..$rows-1) {
-      print join("\t", $k, unpack "F$cols", substr $_, $r*$cols*8), "\n";
+      print join("\t", $col ? ($k) : (), unpack "F$cols", substr $_, $r*$cols*8), "\n";
     }
   }
 
@@ -3838,7 +3862,7 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op $_}, pycode;
+defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
 12 core/gnuplot/gnuplot.pl.sdoc
@@ -3954,8 +3978,8 @@ defoperator http_websocket_encode_batch => q{
   safewrite \*STDOUT, ws_encode($_) while saferead \*STDIN, $_, $_[0] || 8192;
 };
 
-deflong '/http/wse',       pmap q{http_websocket_encode_op},                prc '--http/wse$';
-deflong '/http/wse-batch', pmap q{http_websocket_encode_batch_op $_}, pn 1, prc '--http/wse-batch$', popt integer;
+defshort '/--http/wse',       pmap q{http_websocket_encode_op}, pnone;
+defshort '/--http/wse-batch', pmap q{http_websocket_encode_batch_op $_}, popt integer;
 3 core/caterwaul/lib
 caterwaul.min.js
 caterwaul.std.min.js
@@ -4350,10 +4374,10 @@ about these numbers; it just seemed about right when I was thinking about it.)
                                           { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
                                             if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
                                                         { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
-                                                              li = l * zi*zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }
-                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi*zi * 256 / (64 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li }}}}
+                                                              li = l * zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li|0 }
+                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
+                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li|0 }}}}
                                       state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
                                       state.i = i}]})();
 9 core/jsplot/view.waul.sdoc
@@ -4366,7 +4390,7 @@ buffering.) Write up a design.
 caterwaul(':all')(function ($) {
 
 })(jQuery);
-71 core/jsplot/interface.waul.sdoc
+72 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -4422,8 +4446,9 @@ $(caterwaul(':all')(function ($) {
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                            -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
                                    update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[new axis(1048576*4)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *![x.split(/\t/) /!populate_axes] -seq -then- data_was_revised(lines),
-                                   populate_axes(l)   = l /!update_n_axes -then- data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]],
+                                   handle_data(lines) = lines *[x.split(/\t/)] /seq /!populate_axes -then- data_was_revised(lines),
+                                   populate_axes(ls)  = ls /!update_n_axes -then-
+                                                        ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
         object_matrix()    = matrix.prod(matrix.translate(c[0], c[1], c[2]), matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
                                          matrix.scale(s[0], s[1], s[2]),
@@ -4644,11 +4669,11 @@ our @pyspark_row_alt = (
   (pmap q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
   (pmap q{gen "%v.filter($_)"}, pyspark_fn));
 
-deflong 'pyspark/stream/n',
-  pmap q{gen "sc.parallelize(range($_))"}, pn 1, prx 'n', number;
+defshort 'pyspark/n',  pmap q{gen "sc.parallelize(range(1, 1+$_))"}, integer;
+defshort 'pyspark/n0', pmap q{gen "sc.parallelize(range($_))"}, integer;
 
-deflong 'pyspark/stream/pipe',
-  pmap q{gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
+defshort 'pyspark/e',
+  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
 
 defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
 defshort 'pyspark/r', paltr @pyspark_row_alt;
