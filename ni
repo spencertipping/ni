@@ -3798,7 +3798,7 @@ sub pydent($) {
   my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
 
   $indent = min $indent - 1, @indents[2..$#indents]
-    if $lines[0] =~ /:\s*(#.*)?$/ && @lines > 2;
+    if $lines[0] =~ /:\s*(#.*)?$/ && @lines >= 2;
 
   my $spaces = ' ' x $indent;
   $lines[$_] =~ s/^$spaces// for 1..$#lines;
@@ -3820,7 +3820,7 @@ particularly common.
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-110 core/matrix/matrix.pl.sdoc
+111 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3887,7 +3887,7 @@ use constant numpy_gen => gen pydent q{
     if len(dimensions) == 0: exit()
     x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
-    %body
+  %body
     x = array(x)
     array(x.shape).astype(dtype(">u4")).tofile(stdout)
     x.astype(dtype("d")).tofile(stdout)
@@ -3896,7 +3896,8 @@ use constant numpy_gen => gen pydent q{
 defoperator numpy_dense => q{
   my ($col, $f) = @_;
   $col ||= 0;
-  my ($i, $o) = sioproc {exec 'python', '-c', numpy_gen->(body => $f)};
+  my ($i, $o) = sioproc {exec 'python', '-c',
+                           numpy_gen->(body => indent $f, 2)};
   my @q;
   my ($rows, $cols);
   while (defined($_ = @q ? shift @q : <STDIN>)) {

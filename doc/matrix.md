@@ -165,12 +165,12 @@ Now the matrix is in a form that NumPy can process. The `N` operator
 automatically zero-fills to the right to make sure the matrix is rectangular
 (as opposed to the ragged edges we have above).
 
-I'm appending `YB,qD.01 XB` to quantize each matrix value to 0.01; this makes
+I'm appending `YB,qD.01XB` to quantize each matrix value to 0.01; this makes
 the test reproducible by increasing the epsilon.
 
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
-     NB'x = linalg.svd(x)[2]' YB,qD.01 XB r10
+     NB'x = linalg.svd(x)[2]' YB,qD.01XB r10
 a	0	0	1	0	0	0	0.01	0
 a	0	0	0	-0.99	0	0	0	0
 a	0	0	0	0	1	0	0	0
@@ -181,4 +181,34 @@ a	0	1	0	0	0	0	0	0
 a	1	0	0	0	0	0	0	0
 b	0	0	-0.99
 b	0	1	0
+```
+
+You can use multiline code with Python and ni will fix the indentation so
+everything works. For example:
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
+     NB'u, s, v = linalg.svd(x)
+        x = dot(u, diag(s))' YB,qD.01XB r10
+a	2	0	0	0	0	-0.01	0	0
+a	0	-0.99	0	0	0	0	0	0
+a	0	0	1	0	0	0	0	0
+a	1	0	0	0	0	0	0	0
+a	9	0	0	0	0	-0.09	0	0
+a	0	0	0	1	0	0	0	0
+a	1.01	0	0	0	0	0.99	0	0
+a	0	0	0	0	1	0	0	0
+b	-1.99	0
+b	-0.99	0
+```
+
+It also works with blocks that require indentation:
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
+     NB'if True:
+          x = x + 1' r3
+a	1	1	3	1	1	1	1	1
+a	1	1	1	2	1	1	1	1
+a	1	1	1	1	2	1	1	1
 ```

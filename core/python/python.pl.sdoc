@@ -24,7 +24,7 @@ sub pydent($) {
   my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
 
   $indent = min $indent - 1, @indents[2..$#indents]
-    if $lines[0] =~ /:\s*(#.*)?$/ && @lines > 2;
+    if $lines[0] =~ /:\s*(#.*)?$/ && @lines >= 2;
 
   my $spaces = ' ' x $indent;
   $lines[$_] =~ s/^$spaces// for 1..$#lines;
