@@ -3,6 +3,13 @@ Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 $main_operator = sub {
+  # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+  # buffer so no child process gets bogus data.
+  move_fd 0, 3;
+  close STDIN;
+  move_fd 3, 0;
+  open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;

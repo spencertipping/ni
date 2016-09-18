@@ -941,12 +941,19 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-196 core/stream/ops.pl.sdoc
+203 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 $main_operator = sub {
+  # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+  # buffer so no child process gets bogus data.
+  move_fd 0, 3;
+  close STDIN;
+  move_fd 3, 0;
+  open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
   exec 'less' or exec 'more' if -t STDOUT;
@@ -1141,7 +1148,7 @@ defshort '/zd', pk decode_op();
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-44 core/meta/meta.pl.sdoc
+64 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -1186,6 +1193,26 @@ defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
 
 defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
+
+The backdoor.
+Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
+code within this process, and behaves like a normal streaming operator.
+
+defoperator dev_backdoor => q{ni::eval $_[0]};
+defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
+
+# Used for regression testing
+defoperator dev_local_operate => q{
+  my ($lambda) = @_;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  my $fh = siproc {exec @exec};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, pqfn '';
 24 core/meta/map.pl.sdoc
 Syntax mapping.
 We can inspect the parser dispatch tables within various contexts to get a
@@ -2818,8 +2845,8 @@ sub murmurhash3($;$) {
 }
 115 core/cell/cell.pl.sdoc
 Cell-level operators.
-Cell-specific transformations that are often much shorter than the equivalent Perl
-code. They're also optimized for performance.
+Cell-specific transformations that are often much shorter than the equivalent
+Perl code. They're also optimized for performance.
 
 defcontext 'cell';
 defshort '/,', pqfn 'cell';

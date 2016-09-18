@@ -27,8 +27,5 @@ Must be client-side; this way it can happen after autoranging and during zooms.
 #### Outlier removal
 #### Precise zooming, view history
 #### Options to reset/generate view matrix
-Maybe a general refactor here. There are some inconsistencies in view rotation,
-for example, and the focal point is not always obvious.
-
 #### Client-side axis reordering
 Should be trivial since the data is all there.

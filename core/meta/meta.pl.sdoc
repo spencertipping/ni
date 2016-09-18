@@ -42,3 +42,23 @@ defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
 
 defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
+
+The backdoor.
+Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
+code within this process, and behaves like a normal streaming operator.
+
+defoperator dev_backdoor => q{ni::eval $_[0]};
+defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
+
+# Used for regression testing
+defoperator dev_local_operate => q{
+  my ($lambda) = @_;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  my $fh = siproc {exec @exec};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, pqfn '';

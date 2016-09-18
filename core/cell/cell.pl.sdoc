@@ -1,6 +1,6 @@
 Cell-level operators.
-Cell-specific transformations that are often much shorter than the equivalent Perl
-code. They're also optimized for performance.
+Cell-specific transformations that are often much shorter than the equivalent
+Perl code. They're also optimized for performance.
 
 defcontext 'cell';
 defshort '/,', pqfn 'cell';
