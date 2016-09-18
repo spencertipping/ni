@@ -14,11 +14,11 @@ string literals and backslash escapes.
 
 defparser 'generic_code', '',
   sub {my ($self, $code, @xs) = @_;
-       return ($code, @xs) unless $code =~ /\]$/;
+       return ($code, '', @xs) unless $code =~ /\]$/;
        (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
        my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
-       $balance ? (substr($code, 0, $balance), substr($code, $balance))
-                : ($code, @xs)};
+       $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
+                : ($code, '', @xs)};
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for

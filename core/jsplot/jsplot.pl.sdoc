@@ -20,6 +20,15 @@ use constant jsplot_html =>
                                          core/jsplot/view.waul
                                          core/jsplot/interface.waul |});
 
+Parsing.
+This entry point provides a realtime CLI parse for the UI.
+
+sub jsplot_parse($$@) {
+  my ($reply, $req, @ni_args) = @_;
+  my ($ops, @rest) = parse pcli_debug '', @ni_args;
+  http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
+}
+
 JSPlot data streaming.
 This is the websocket connection that ni uses to stream data to the client. Any
 data we receive from the client indicates that the client is canceling the
@@ -73,7 +82,8 @@ sub jsplot_server {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n"             unless defined $reply;
     return http_reply $reply, 200, jsplot_html           if $url eq '/';
-    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/(.*)/;
+    return jsplot_parse($reply, $req, shell_unquote $1)  if $url =~ /^\/parse\/([\s\S]*)/;
+    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/([\s\S]*)/;
     return http_reply $reply, 404, $url;
   };
 }

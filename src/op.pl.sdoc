@@ -23,3 +23,16 @@ sub flatten_operators($) {
   return $_[0] unless ref $name;
   map flatten_operators($_), @{$_[0]};
 }
+
+Ni operators.
+Some operators are most easily specified in terms of ni commands.
+
+sub defnioperator($$) {
+  my ($name, $op) = @_;
+  my ($ops) = cli shell_unquote $op;
+  if (!defined $ops) {
+    my (undef, @rest) = parse pcli_debug '', shell_unquote $op;
+    die "ni: defnioperator parse failed starting at @rest";
+  }
+  *{"${name}_op"} = sub() {$ops};
+}

@@ -95,7 +95,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-85 util.pl.sdoc
+87 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -156,7 +156,9 @@ sub shell_unquote_one($) {
 
 sub shell_unquote($) {
   local $_;
-  my @ps = $_[0] =~ /"(?:[^"\\]+|\\[\s\S])*"|'[^']*'|\\[\s\S]|[^\s"'\\]+|\s+/g;
+  my $c = $_[0];
+  1 while $c =~ s/^\s+|\s+$//g || $c =~ s/(?:^|\s)#.*/$1/gm;
+  my @ps = $c =~ /"(?:[^"\\]+|\\[\s\S])*"|'[^']*'|\\[\s\S]|[^\s"'\\]+|\s+/g;
   my @s  = (-1, grep($ps[$_] =~ /^\s/, 0..$#ps), scalar @ps);
   map join('', map shell_unquote_one $_, @ps[$s[$_]+1 .. $s[$_+1]-1]), 0..$#s-1;
 }
@@ -341,11 +343,11 @@ string literals and backslash escapes.
 
 defparser 'generic_code', '',
   sub {my ($self, $code, @xs) = @_;
-       return ($code, @xs) unless $code =~ /\]$/;
+       return ($code, '', @xs) unless $code =~ /\]$/;
        (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
        my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
-       $balance ? (substr($code, 0, $balance), substr($code, $balance))
-                : ($code, @xs)};
+       $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
+                : ($code, '', @xs)};
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -445,7 +447,7 @@ sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 
 sub cli(@) {my ($r) = parse pcli '', @_; $r}
-25 op.pl.sdoc
+38 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -470,6 +472,19 @@ sub flatten_operators($) {
   my ($name) = @{$_[0]};
   return $_[0] unless ref $name;
   map flatten_operators($_), @{$_[0]};
+}
+
+Ni operators.
+Some operators are most easily specified in terms of ni commands.
+
+sub defnioperator($$) {
+  my ($name, $op) = @_;
+  my ($ops) = cli shell_unquote $op;
+  if (!defined $ops) {
+    my (undef, @rest) = parse pcli_debug '', shell_unquote $op;
+    die "ni: defnioperator parse failed starting at @rest";
+  }
+  *{"${name}_op"} = sub() {$ops};
 }
 48 self.pl.sdoc
 Image functions.
@@ -1123,10 +1138,9 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-3 core/meta/lib
+2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-spatial.pl.sdoc
 44 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
@@ -1197,45 +1211,6 @@ defoperator meta_short_availability => q{
 };
 
 defshort '///map/short', pmap q{meta_short_availability}, pnone;
-38 core/meta/spatial.pl.sdoc
-Spatial map of ni's source code.
-Emits a series of 4D point coordinates to visualize the connections in ni's
-source. It does this by indexing the words in each $self key and assigning
-hierarchically-distributed locations to groups of related attributes.
-
-defoperator meta_spatial => q{
-  load 'core/pl/math.pm';
-
-  my @ks = grep !/\.js$|\.sdoc$/, keys %self;
-  my @r  = map {(/\/(\w+)\// ? ord $1 + 40*length $1 : 0) + (/\// ? 120 : 20)} @ks;
-  my @z  = map sum(map ord()/128, split //), @ks;
-
-  for my $ki (0..$#ks) {
-    my @ls = split /\n/, $self{$ks[$ki]};
-    my $zscale = log 1 + length $self{$ks[$ki]};
-
-    for my $li (0..$#ls) {
-      my $dz     = $li/@ls * $zscale;
-      my @ws     = split /\W+/, $ls[$li];
-      my $rscale = log 1 + length $ls[$li];
-      my $l      = max map length, @ws;
-
-      for my $wi (0..$#ws) {
-        my $w  = $ws[$wi];
-        my $t  = ord($w) / 127;
-        my $dt = length($w) / $l;
-        my $zr = 0.5/@ls * $zscale;
-
-        for (1..100) {
-          my ($x, $y) = prec($r[$ki] + $wi/@ws * $rscale, $dz + 300*$ki/@ks + $t + rand()*$dt);
-          print join("\t", $x, $z[$ki] + rand()*$zr, $y, 400*sin($x/100)*sin($y/100) + ord $w), "\n";
-        }
-      }
-    }
-  }
-};
-
-defshort '///spatial', pmap q{meta_spatial_op}, pnone;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2471,7 +2446,7 @@ defoperator ssh => q{
 
 use constant ssh_host => prc '[^][/,]+';
 
-defshort '/s', pmap q{ssh_op $$_[0], $$_[1]}, pseq ssh_host, pqfn '';
+defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
 
 HTTP.
 Use curl if we have it. HTTP urls append themselves to the stream by default;
@@ -3026,7 +3001,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-66 core/pl/stream.pm.sdoc
+67 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -3046,7 +3021,8 @@ conjunction with the line-reading functions `rw`, `ru`, and `re`.
 our @q;
 our @F;
 
-sub rl():lvalue   {chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
+sub rl(;$):lvalue {return map rl(), 1..$_[0] if @_;
+                   chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
 sub pl($):lvalue  {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
 sub F_(@):lvalue  {@_ ? @F[@_] : @F}
 sub FM()          {$#F}
@@ -3187,7 +3163,7 @@ this case, `END`.
 c
 BEGIN {
 defparser 'plcode', '$', sub {
-  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my $safecode      = $code;
   my $begin_warning = $safecode =~ s/BEGIN/ END /g;
@@ -3208,7 +3184,7 @@ ni: failed to get closing bracket count for perl code "$code$x", possibly
     [p'[some code] ' ]          # this works for ni lambdas
 EOF
 
-  length $x ? ($code, $x, @xs) : ($code, @xs);
+  ($code, $x, @xs);
 };
 }
 
@@ -3370,7 +3346,7 @@ be parsed.
 c
 BEGIN {
 defparser 'rbcode', '', sub {
-  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my ($x, $status) = ('', 0);
   $x .= ']' while $status = syntax_check 'ruby -c -', $code and $code =~ s/\]$//;
@@ -3378,7 +3354,7 @@ defparser 'rbcode', '', sub {
 ni: failed to get closing bracket count for ruby code "$code$x"; this means
     your code has a syntax error.
 EOF
-  length $x ? ($code, $x, @xs) : ($code, @xs);
+  ($code, $x, @xs);
 };
 }
 
@@ -4515,7 +4491,7 @@ $(caterwaul(':all')(function ($) {
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val()]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
                                         /~val/ settings().ni
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
                                             /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)), update_screen()]
@@ -4612,7 +4588,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 </div>
 </body>
 </html>
-81 core/jsplot/jsplot.pl.sdoc
+91 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -4634,6 +4610,15 @@ use constant jsplot_html =>
                                          core/jsplot/render.waul
                                          core/jsplot/view.waul
                                          core/jsplot/interface.waul |});
+
+Parsing.
+This entry point provides a realtime CLI parse for the UI.
+
+sub jsplot_parse($$@) {
+  my ($reply, $req, @ni_args) = @_;
+  my ($ops, @rest) = parse pcli_debug '', @ni_args;
+  http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
+}
 
 JSPlot data streaming.
 This is the websocket connection that ni uses to stream data to the client. Any
@@ -4688,7 +4673,8 @@ sub jsplot_server {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n"             unless defined $reply;
     return http_reply $reply, 200, jsplot_html           if $url eq '/';
-    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/(.*)/;
+    return jsplot_parse($reply, $req, shell_unquote $1)  if $url =~ /^\/parse\/([\s\S]*)/;
+    return jsplot_stream($reply, $req, shell_unquote $1) if $url =~ /^\/ni\/([\s\S]*)/;
     return http_reply $reply, 404, $url;
   };
 }
@@ -6006,40 +5992,40 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni //ni FWpF_ r/^\\D/r500 > word-list
+$ ni //license FWpF_ > word-list
 $ ni word-list cr10             # unsorted count
-1	usr
-1	bin
-1	env
-1	perl
-1	ni
-1	self
-1	license
-1	_
 1	ni
 1	https
+1	github
+1	com
+1	spencertipping
+1	ni
+1	Copyright
+1	c
+1	2016
+1	Spencer
 $ ni word-list gcr10            # sort first to group words
-2	A
+1	2016
+1	A
 1	ACTION
 1	AN
 1	AND
 2	ANY
-1	ARGV
 1	ARISING
 1	AS
 1	AUTHORS
 1	BE
 $ ni word-list gcOr10           # by descending count
-30	ni
-24	lib
-24	core
-21	_
-13	sdoc
-12	the
-11	pl
-9	to
-9	resource
-9	eval
+7	to
+7	the
+7	OR
+6	THE
+5	Software
+4	of
+4	and
+4	OF
+4	IN
+3	SOFTWARE
 ```
 35 doc/sql.md
 # SQL interop

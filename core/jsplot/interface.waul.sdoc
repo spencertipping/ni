@@ -30,7 +30,7 @@ $(caterwaul(':all')(function ($) {
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val()]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
                                         /~val/ settings().ni
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
                                             /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)), update_screen()]

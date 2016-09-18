@@ -7,7 +7,7 @@ be parsed.
 c
 BEGIN {
 defparser 'rbcode', '', sub {
-  return @_[1..$#_] unless $_[1] =~ /\]$/;
+  return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my ($x, $status) = ('', 0);
   $x .= ']' while $status = syntax_check 'ruby -c -', $code and $code =~ s/\]$//;
@@ -15,7 +15,7 @@ defparser 'rbcode', '', sub {
 ni: failed to get closing bracket count for ruby code "$code$x"; this means
     your code has a syntax error.
 EOF
-  length $x ? ($code, $x, @xs) : ($code, @xs);
+  ($code, $x, @xs);
 };
 }
 

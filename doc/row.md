@@ -158,38 +158,38 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni //ni FWpF_ r/^\\D/r500 > word-list
+$ ni //license FWpF_ > word-list
 $ ni word-list cr10             # unsorted count
-1	usr
-1	bin
-1	env
-1	perl
-1	ni
-1	self
-1	license
-1	_
 1	ni
 1	https
+1	github
+1	com
+1	spencertipping
+1	ni
+1	Copyright
+1	c
+1	2016
+1	Spencer
 $ ni word-list gcr10            # sort first to group words
-2	A
+1	2016
+1	A
 1	ACTION
 1	AN
 1	AND
 2	ANY
-1	ARGV
 1	ARISING
 1	AS
 1	AUTHORS
 1	BE
 $ ni word-list gcOr10           # by descending count
-30	ni
-24	lib
-24	core
-21	_
-13	sdoc
-12	the
-11	pl
-9	to
-9	resource
-9	eval
+7	to
+7	the
+7	OR
+6	THE
+5	Software
+4	of
+4	and
+4	OF
+4	IN
+3	SOFTWARE
 ```
