@@ -3,6 +3,7 @@ RUN apt-get update
 RUN apt-get install -qqy sbcl sqlite curl
 RUN apt-get install -qqy bzip2 lzop liblz4-tool xz-utils strace ruby
 RUN apt-get install -y python-numpy
+RUN apt-get install -y netcat-openbsd
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data

@@ -60,7 +60,10 @@ use constant numpy_gen => gen pydent q{
   from numpy import *
   from sys   import stdin, stdout
   while True:
-    dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+    try:
+      dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+    except MemoryError:
+      dimensions = ()
     if len(dimensions) == 0: exit()
     x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)

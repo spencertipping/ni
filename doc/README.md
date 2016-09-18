@@ -14,14 +14,21 @@ $ ni //help/stream                      # view a help topic
 ## The deep end
 - [examples.md](examples.md) (`ni //help/examples`)
 
-## Basics
+## Essentials
 - [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
 - [row.md](row.md)       (`ni //help/row`):    row-level operators
 - [col.md](col.md)       (`ni //help/col`):    column-level operators
 - [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
-- [visual.md](visual.md) (`ni //help/visual`): visualizing data
+
+## Stuff worth knowing about
+- [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
+- [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
+- [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
+- [container.md](container.md) (`ni //help/container`): Dockerizing stuff
+- [json.md](json.md)           (`ni //help/json`):      working with JSON
+- [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
 You can use `ni //options` to get a list of all parsing rules ni applies to the

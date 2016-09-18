@@ -9,10 +9,12 @@ cd $(dirname $0)
 ./ni --internal/lib core/stream
 ./ni --internal/lib core/meta
 ./ni --internal/lib core/deps
-./ni --internal/lib core/checkpoint
 ./ni --internal/lib core/gen
 ./ni --internal/lib core/json
+
+./ni --internal/lib core/checkpoint
 ./ni --internal/lib core/net
+./ni --internal/lib core/buffer
 
 ./ni --internal/lib core/col
 ./ni --internal/lib core/row

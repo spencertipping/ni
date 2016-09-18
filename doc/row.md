@@ -6,6 +6,7 @@ anything else. They include:
 - Take first/last N
 - Take uniform-random or periodic sample
 - Rows matching regex
+- Rows containing specified fields
 - Rows satisfying code
 - Reorder rows
 - Count identical rows
@@ -27,6 +28,10 @@ $ ni n10r-7                     # drop first 7
 9
 10
 ```
+
+Using commands like `r10` can break pipes and cause you to get less data than
+you might expect; see "pipe signals" in [warnings.md](warnings.md) (`ni
+//help/warnings`) for details.
 
 ## Sampling
 ```bash
@@ -58,6 +63,39 @@ $ ni n1000r/[^1]$/r3
 
 These regexes are evaluated by Perl, which is likely to be faster than `grep`
 for nontrivial patterns.
+
+## Column assertion
+In real-world data pipelines it's common to have cases where you have missing
+data. To remove those, you can select only rows which provide a nonempty value
+for one or more columns:
+
+```bash
+$ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
+1	
+2	
+3	
+4	
+5	
+6	
+7	
+8	
+9	
+1	0
+1	1
+1	2
+1	3
+1	4
+1	5
+$ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
+1	0
+1	1
+1	2
+1	3
+1	4
+1	5
+1	6
+1	7
+```
 
 ## Code
 `rp` means "select rows for which this Perl expression returns true".

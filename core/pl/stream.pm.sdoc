@@ -17,13 +17,13 @@ conjunction with the line-reading functions `rw`, `ru`, and `re`.
 our @q;
 our @F;
 
-sub rl(;$):lvalue {return map rl(), 1..$_[0] if @_;
-                   chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
-sub pl($):lvalue  {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue  {@_ ? @F[@_] : @F}
-sub FM()          {$#F}
-sub FR($):lvalue  {@F[$_[0]..$#F]}
-sub r(@)          {my $l = join "\t", @_; print $l, "\n"; ()}
+sub rl(;$) {return map rl(), 1..$_[0] if @_;
+            chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
+sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue {@_ ? @F[@_] : @F}
+sub FM()         {$#F}
+sub FR($):lvalue {@F[$_[0]..$#F]}
+sub r(@)         {my $l = join "\t", @_; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'l'}

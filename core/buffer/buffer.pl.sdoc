@@ -1,0 +1,21 @@
+Buffering operators.
+Buffering a stream causes it to be forced in its entirety. Buffering does not
+imply, however, that the stream will be consumed at any particular rate; some
+buffers may be size-limited, at which point writes will block until there's
+space available.
+
+our %buffer_dsp;
+
+defshort '/B', pdspr %buffer_dsp;
+
+sub defbufferalt($$) {$buffer_dsp{$_[0]} = $_[1]}
+
+Null buffer.
+Forwards data 1:1, but ignores pipe signals on its output.
+
+defoperator buffer_null_op => q{
+  local $SIG{PIPE} = 'IGNORE';
+  sio;
+};
+
+defbufferalt 'n', pmap q{buffer_null_op}, pnone;

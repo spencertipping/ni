@@ -1,7 +1,9 @@
 # Ruby interface
 The `m` operator (for "map") lets you use a Ruby line processor to transform
-data. The Ruby and [Perl](perl.md) drivers work very differently, in part to
-reflect the cultural differences between the two languages.
+data. The Ruby and [Perl](perl.md) drivers work differently, in part to reflect
+the cultural differences between the two languages. It also doesn't rely on new
+Ruby features like `Enumerable::Lazy`, because it's tested to be compatible
+back to Ruby 1.8.7.
 
 ```bash
 $ ni n5m'ai * ai'               # square some numbers

@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-44 ni.map.sdoc
+45 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -74,10 +74,11 @@ resource main.pl.sdoc
 lib core/stream
 lib core/meta
 lib core/deps
-lib core/checkpoint
 lib core/gen
 lib core/json
+lib core/checkpoint
 lib core/net
+lib core/buffer
 lib core/col
 lib core/row
 lib core/cell
@@ -2245,26 +2246,6 @@ sub load {
 }
 
 1;
-1 core/checkpoint/lib
-checkpoint.pl.sdoc
-17 core/checkpoint/checkpoint.pl.sdoc
-Checkpoint files.
-You can break a long pipeline into a series of smaller files using
-checkpointing, whose operator is `:`. The idea is to cache intermediate
-results. A checkpoint specifies a file and a lambda whose output it should
-capture.
-
-sub checkpoint_create($$) {
-  stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
-  rename "$_[0].part", $_[0];
-}
-
-defoperator 'checkpoint', q{
-  my ($file, $generator) = @_;
-  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
-};
-
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
 1 core/gen/lib
 gen.pl.sdoc
 34 core/gen/gen.pl.sdoc
@@ -2376,7 +2357,7 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
-49 core/json/extract.pl.sdoc
+50 core/json/extract.pl.sdoc
 Targeted extraction.
 ni gives you ways to decode JSON, but you aren't likely to have data stored as
 JSON objects in the middle of data pipelines. It's more of an archival format,
@@ -2420,12 +2401,33 @@ sub json_extractor($) {
 }
 
 defoperator destructure => q{
-  ni::eval gen(q{binmode STDOUT, ":encoding(utf-8)";
+  ni::eval gen(q{eval {binmode STDOUT, ":encoding(utf-8)"};
+                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
                  while (<STDIN>) {print join("\t", %e), "\n"}})
             ->(e => json_extractor $_[0]);
 };
 
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
+1 core/checkpoint/lib
+checkpoint.pl.sdoc
+17 core/checkpoint/checkpoint.pl.sdoc
+Checkpoint files.
+You can break a long pipeline into a series of smaller files using
+checkpointing, whose operator is `:`. The idea is to cache intermediate
+results. A checkpoint specifies a file and a lambda whose output it should
+capture.
+
+sub checkpoint_create($$) {
+  stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
+  rename "$_[0].part", $_[0];
+}
+
+defoperator 'checkpoint', q{
+  my ($file, $generator) = @_;
+  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
+};
+
+defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
 1 core/net/lib
 net.pl.sdoc
 28 core/net/net.pl.sdoc
@@ -2457,6 +2459,30 @@ use constant purl => prc '.*';
 defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
 defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
 defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
+1 core/buffer/lib
+buffer.pl.sdoc
+21 core/buffer/buffer.pl.sdoc
+Buffering operators.
+Buffering a stream causes it to be forced in its entirety. Buffering does not
+imply, however, that the stream will be consumed at any particular rate; some
+buffers may be size-limited, at which point writes will block until there's
+space available.
+
+our %buffer_dsp;
+
+defshort '/B', pdspr %buffer_dsp;
+
+sub defbufferalt($$) {$buffer_dsp{$_[0]} = $_[1]}
+
+Null buffer.
+Forwards data 1:1, but ignores pipe signals on its output.
+
+defoperator buffer_null_op => q{
+  local $SIG{PIPE} = 'IGNORE';
+  sio;
+};
+
+defbufferalt 'n', pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
 172 core/col/col.pl.sdoc
@@ -2634,11 +2660,16 @@ defoperator vertical_apply => q{
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-118 core/row/row.pl.sdoc
+123 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-defoperator head => q{exec 'head', @_};
+NB: the "head" operator is indirected through POSIX sh because head sometimes
+segfaults (?) and causes nonzero exit codes. This intermittently breaks unit
+tests (about 5% of the time I think). Ultimately it's probably worth finding
+the root cause.
+
+defoperator head => q{sh sprintf 'head %s; true', shell_quote @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
@@ -2658,7 +2689,7 @@ defoperator row_cols_defined => q{
   line:
   while (defined($line = <STDIN>)) {
     chomp $line;
-    $_ || next line for (split /\t/, $line, $limit)[@cs];
+    length || next line for (split /\t/, $line, $limit)[@cs];
     print $line . "\n";
   }
 };
@@ -3021,13 +3052,13 @@ conjunction with the line-reading functions `rw`, `ru`, and `re`.
 our @q;
 our @F;
 
-sub rl(;$):lvalue {return map rl(), 1..$_[0] if @_;
-                   chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
-sub pl($):lvalue  {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue  {@_ ? @F[@_] : @F}
-sub FM()          {$#F}
-sub FR($):lvalue  {@F[$_[0]..$#F]}
-sub r(@)          {my $l = join "\t", @_; print $l, "\n"; ()}
+sub rl(;$) {return map rl(), 1..$_[0] if @_;
+            chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
+sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@):lvalue {@_ ? @F[@_] : @F}
+sub FM()         {$#F}
+sub FR($):lvalue {@F[$_[0]..$#F]}
+sub r(@)         {my $l = join "\t", @_; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
                      $_, ord($_) - 97 for 'a'..'l'}
@@ -3820,7 +3851,7 @@ particularly common.
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
 1 core/matrix/lib
 matrix.pl.sdoc
-111 core/matrix/matrix.pl.sdoc
+114 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3883,7 +3914,10 @@ use constant numpy_gen => gen pydent q{
   from numpy import *
   from sys   import stdin, stdout
   while True:
-    dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+    try:
+      dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+    except MemoryError:
+      dimensions = ()
     if len(dimensions) == 0: exit()
     x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
@@ -4778,18 +4812,25 @@ defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
 
 defshort '/P', pmap q{pyspark_op @$_},
                pseq pdspr(%spark_profiles), $pyspark_rdd;
-11 doc/lib
+18 doc/lib
 col.md
+container.md
 examples.md
 extend.md
+json.md
 libraries.md
 lisp.md
+matrix.md
+net.md
 options.md
 perl.md
 row.md
+ruby.md
 sql.md
 stream.md
 tutorial.md
+visual.md
+warnings.md
 198 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
@@ -4988,6 +5029,31 @@ $ ni //ni r3FW vCpuc
 	usr	BIN	env	perl
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
+```
+24 doc/container.md
+# Containerized pipelines
+Some ni operators depend on tools you may not want to install on your machine.
+If you want to use those operators anyway, though, you can run them inside a
+Docker container with the tools installed. ni provides the `C` operator to
+containerize a stream transformation:
+
+```sh
+$ ni //ni Cubuntu[gc] r10
+```
+
+The above is executed roughly like this, except that ni pipes itself into Perl
+rather than invoking itself by name:
+
+```sh
+$ ni //ni \
+  | docker run --rm -i ubuntu ni gc \
+  | ni r10
+```
+
+A common use case is for something like NumPy:
+
+```sh
+$ ni n100 Cadreeve/numpy[N'x = x + 1']
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -5249,6 +5315,79 @@ $ ni --lib my-library n100wc
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
+72 doc/json.md
+# JSON operators
+## Background
+Perl has a standard JSON library since 5.14, but it's written in pure Perl and
+decodes at about 1MiB/s (vs the ~60MiB/s for the native version, but that isn't
+installed by default). Older versions of Perl don't include any JSON support at
+all.
+
+To work around this, ni implements a medium-speed pure Perl JSON parser
+(~5MiB/s) and some very fast alternatives for cases where you don't need to do
+a full object parse.
+
+Internally, ni uses its own JSON library for pipeline serialization and to
+generate the output of `--explain`.
+
+## Full encode/decode
+### Perl driver
+```bash
+$ ni //license FWp'json_encode [F_]' r4
+["ni","https","github","com","spencertipping","ni"]
+["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
+[]
+["Permission","is","hereby","granted","free","of","charge","to","any","person","obtaining","a","copy"]
+```
+
+`json_decode` inverts and always returns a reference:
+
+```bash
+$ ni //license FWp'json_encode [F_]' p'r @{json_decode a}' r4
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer	Tipping	MIT	license
+
+Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+```
+
+### Ruby driver
+**TODO**: this is necessary because older Rubies don't provide any JSON
+support.
+
+## Sparse extraction
+It's uncommon to need every field in a JSON object, particularly when you're
+testing specific hypotheses on rich data. This makes it likely that JSON
+decoding will be pipeline bottleneck simply due to the ratio of bytes
+pre-vs-post-decode. ni helps to mitigate this by providing a very fast
+destructuring operator that works like `jq` (but 2-3x faster):
+
+```bash
+$ ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \
+     =\>jsons Bn r5     # Bn is important when writing files: see warnings.md
+{"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
+{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"ni"}
+{"context":{"w1":"com","w2":"ni"},"type":"trigram","word":"c"}
+{"context":{"w1":"ni","w2":"c"},"type":"trigram","word":"Spencer"}
+{"context":{"w1":"c","w2":"Spencer"},"type":"trigram","word":"MIT"}
+```
+
+A destructuring specification consists of a comma-delimited list of extractors:
+
+```bash
+$ ni jsons D:w1,:w2,:word r5
+https	github	com
+github	com	ni
+com	ni	c
+ni	c	Spencer
+c	Spencer	MIT
+```
+
+### Types of extractors
+The example above used the `:field` extractor, which means "find the first
+occurrence of a field called `field`, and return its value."
 28 doc/libraries.md
 # Libraries
 A library is just a directory with a `lib` file in it. `lib` lists the names of
@@ -5367,6 +5506,268 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
+214 doc/matrix.md
+# Matrix operations
+ni provides a handful of operations that make it easy to work with sparse and
+dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
+dense), which work like this:
+
+```bash
+$ ni //ni FWr10                         # this is a dense matrix of words
+	usr	bin	env	perl
+	ni	self	license	_	
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer	Tipping	MIT	license
+
+Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+of	this	software	and	associated	documentation	files	the	Software	to	deal
+in	the	Software	without	restriction	including	without	limitation	the	rights
+to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
+copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
+```
+
+A sparse matrix is represented as a series of `row col value` tuples:
+
+```bash
+$ ni //ni FW Yr10
+0	0	
+0	1	usr
+0	2	bin
+0	3	env
+0	4	perl
+1	0	
+1	1	ni
+1	2	self
+1	3	license
+1	4	_
+```
+
+`X` inverts `Y` exactly:
+
+```bash
+$ ni //ni FW Y X r10
+	usr	bin	env	perl
+	ni	self	license	_	
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer	Tipping	MIT	license
+
+Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+of	this	software	and	associated	documentation	files	the	Software	to	deal
+in	the	Software	without	restriction	including	without	limitation	the	rights
+to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
+copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
+```
+
+## NumPy interop
+You can transform dense matrices with NumPy using the `N` operator. Your code
+is evaluated in an imperative context and side-effectfully transforms the input
+matrix, which is called `x`.
+
+```bash
+$ ni n10p'r map a*$_, 1..10'
+1	2	3	4	5	6	7	8	9	10
+2	4	6	8	10	12	14	16	18	20
+3	6	9	12	15	18	21	24	27	30
+4	8	12	16	20	24	28	32	36	40
+5	10	15	20	25	30	35	40	45	50
+6	12	18	24	30	36	42	48	54	60
+7	14	21	28	35	42	49	56	63	70
+8	16	24	32	40	48	56	64	72	80
+9	18	27	36	45	54	63	72	81	90
+10	20	30	40	50	60	70	80	90	100
+$ ni n10p'r map a*$_, 1..10' N'x = x + 1'
+2	3	4	5	6	7	8	9	10	11
+3	5	7	9	11	13	15	17	19	21
+4	7	10	13	16	19	22	25	28	31
+5	9	13	17	21	25	29	33	37	41
+6	11	16	21	26	31	36	41	46	51
+7	13	19	25	31	37	43	49	55	61
+8	15	22	29	36	43	50	57	64	71
+9	17	25	33	41	49	57	65	73	81
+10	19	28	37	46	55	64	73	82	91
+11	21	31	41	51	61	71	81	91	101
+```
+
+## Partitioned matrices
+The operations above caused the entire input stream to be read into memory,
+which is not very scalable. Each matrix operator allows you to specify that the
+first N columns represent a partition identifier: if you indicate this, then
+each matrix ends when the partition fields change.
+
+For example, suppose we've got a bunch of words and we want to partition our
+analysis by the first letter. We start by splitting that into its own column:
+
+```bash
+$ ni //license plc FWpF_ p'r/(.)(.*)/' g r10
+2	016
+a	
+a	
+a	bove
+a	ction
+a	ll
+a	n
+a	nd
+a	nd
+a	nd
+```
+
+Now we can apply matrix operators with the `B` qualifier, indicating that
+matrices start at column B and everything left of that is the partition ID.
+Let's form letter occurrence matrices by expanding into sparse form.
+
+```bash
+$ ni //license plc FWpF_ p'r split//' g r10             # split all letters
+2	0	1	6
+a
+a
+a	b	o	v	e
+a	c	t	i	o	n
+a	l	l
+a	n
+a	n	d
+a	n	d
+a	n	d
+$ ni //license plc FWpF_ p'r split//' g YB r10          # into sparse form
+2	0	0	0
+2	0	1	1
+2	0	2	6
+a	1	0	b
+a	1	1	o
+a	1	2	v
+a	1	3	e
+a	2	0	c
+a	2	1	t
+a	2	2	i
+$ ni //license plc FWpF_ p'r split//' gYB fABD gcfBCDA r10
+2	0	6	1
+a			2
+a	b	v	1
+a	c	i	1
+a	l		1
+a	n		9
+a	r	s	1
+a	s		1
+a	s	o	1
+a	u	h	1
+```
+
+At this point we have partitioned sparse matrices, and each row has the form
+`first-letter row-number subsequent-letter frequency`. We can convert these to
+dense matrices by using `,z` to assign a number to each subsequent letter (so
+that each gets a unique column index), then sorting and using `X`.
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA ,zC o XB r10
+a			2
+a				1
+a					1
+a			1
+a			9
+a						1
+a			1				1
+a								1
+b			2
+b			1
+```
+
+Now the matrix is in a form that NumPy can process. The `N` operator
+automatically zero-fills to the right to make sure the matrix is rectangular
+(as opposed to the ragged edges we have above).
+
+I'm appending `YB,qD.01XB` to quantize each matrix value to 0.01; this makes
+the test reproducible by increasing the epsilon.
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
+     NB'x = linalg.svd(x)[2]' YB,qD.01XB r10
+a	0	0	1	0	0	0	0.01	0
+a	0	0	0	-0.99	0	0	0	0
+a	0	0	0	0	1	0	0	0
+a	0	0	0	0	0	1	0	0
+a	0	0	0	0	0	0	0	1
+a	0	0	0	0	0	0	1	0
+a	0	1	0	0	0	0	0	0
+a	1	0	0	0	0	0	0	0
+b	0	0	-0.99
+b	0	1	0
+```
+
+You can use multiline code with Python and ni will fix the indentation so
+everything works. For example:
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
+     NB'u, s, v = linalg.svd(x)
+        x = dot(u, diag(s))' YB,qD.01XB r10
+a	2	0	0	0	0	-0.01	0	0
+a	0	-0.99	0	0	0	0	0	0
+a	0	0	1	0	0	0	0	0
+a	1	0	0	0	0	0	0	0
+a	9	0	0	0	0	-0.09	0	0
+a	0	0	0	1	0	0	0	0
+a	1.01	0	0	0	0	0.99	0	0
+a	0	0	0	0	1	0	0	0
+b	-1.99	0
+b	-0.99	0
+```
+
+It also works with blocks that require indentation:
+
+```bash
+$ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
+     NB'if True:
+          x = x + 1' r3
+a	1	1	3	1	1	1	1	1
+a	1	1	1	2	1	1	1	1
+a	1	1	1	1	2	1	1	1
+```
+46 doc/net.md
+# Network operators
+## HTTP
+ni uses `curl` to retrieve HTTP/HTTPS urls. For example:
+
+```bash
+$ nc -l 1400 <<'EOF' > /dev/null &      # an enterprise-grade web server
+HTTP/1.1 200 OK
+Content-length: 12
+
+Hello world
+EOF
+$ sleep 1; ni http://localhost:1400 n3
+Hello world
+1
+2
+3
+```
+
+(The `sleep 1` before the ni command is to give the webserver's J2EE stack time
+to boot up, which helps the tests work consistently.)
+
+## SSH
+You can move a part of your pipeline to another machine via SSH. ni will run
+itself on that machine by sending itself over STDIN to `perl`, so it works
+whether or not ni exists on the remote system, and whether or not the remote
+disk is writable.
+
+The SSH operator is `s` and looks like this:
+
+```sh
+$ ni //license shostname[gc FW p'r a, length b'] r10
+```
+
+Conceptually, here's how ni executes the above:
+
+```
+$ ni //license \
+  | ssh hostname "ni gc FW p'r a, length b'" \
+  | ni r10
+```
+
+You can, of course, nest SSH operators:
+
+```sh
+$ ni //license shost1[shost2[gc]] r10
+```
 70 doc/options.md
 # Complete ni operator listing
 Operator | Example      | Description
@@ -5413,7 +5814,7 @@ Operator | Example      | Description
 `z`      | `z4`         | Compress or decompress
          |              |
 `A`      |              |
-`B`      |              |
+`B`      | `Bn`         | Buffer a stream
 `C`      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | `D.foo`      | Destructure structured text data (JSON/XML)
 `E`      |              |
@@ -5832,7 +6233,7 @@ w	12
 x	23
 y	12
 ```
-195 doc/row.md
+233 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -5841,6 +6242,7 @@ anything else. They include:
 - Take first/last N
 - Take uniform-random or periodic sample
 - Rows matching regex
+- Rows containing specified fields
 - Rows satisfying code
 - Reorder rows
 - Count identical rows
@@ -5862,6 +6264,10 @@ $ ni n10r-7                     # drop first 7
 9
 10
 ```
+
+Using commands like `r10` can break pipes and cause you to get less data than
+you might expect; see "pipe signals" in [warnings.md](warnings.md) (`ni
+//help/warnings`) for details.
 
 ## Sampling
 ```bash
@@ -5893,6 +6299,39 @@ $ ni n1000r/[^1]$/r3
 
 These regexes are evaluated by Perl, which is likely to be faster than `grep`
 for nontrivial patterns.
+
+## Column assertion
+In real-world data pipelines it's common to have cases where you have missing
+data. To remove those, you can select only rows which provide a nonempty value
+for one or more columns:
+
+```bash
+$ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
+1	
+2	
+3	
+4	
+5	
+6	
+7	
+8	
+9	
+1	0
+1	1
+1	2
+1	3
+1	4
+1	5
+$ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
+1	0
+1	1
+1	2
+1	3
+1	4
+1	5
+1	6
+1	7
+```
 
 ## Code
 `rp` means "select rows for which this Perl expression returns true".
@@ -6027,6 +6466,150 @@ $ ni word-list gcOr10           # by descending count
 4	OF
 4	IN
 3	SOFTWARE
+```
+143 doc/ruby.md
+# Ruby interface
+The `m` operator (for "map") lets you use a Ruby line processor to transform
+data. The Ruby and [Perl](perl.md) drivers work differently, in part to reflect
+the cultural differences between the two languages. It also doesn't rely on new
+Ruby features like `Enumerable::Lazy`, because it's tested to be compatible
+back to Ruby 1.8.7.
+
+```bash
+$ ni n5m'ai * ai'               # square some numbers
+1
+4
+9
+16
+25
+```
+
+Like `p`, `m` has lambda-end detection using Ruby syntax checking:
+
+```bash
+$ ni :rbfoo[n4m'ai*ai']
+1
+4
+9
+16
+```
+
+## Basic stuff
+`a` to `q` are one-letter functions that return the first 17 tab-delimited
+values from the current line. `r(...)` is a function that takes a list of
+values and returns a tab-delimited row. You can suffix a value to coerce it:
+
+- `f`: `to_f`
+- `i`: `to_i`
+- `s`: `to_s`
+
+```bash
+$ ni n4m'r a, ai + 1'                   # generate two columns
+1	2
+2	3
+3	4
+4	5
+$ ni n4m'r a, ai + 1' m'r ai + bi'      # ... and sum them
+3
+5
+7
+9
+```
+
+Note that whitespace is required after every `m'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Ruby.
+
+### `fields`: the array of fields
+The Ruby code given to `m` is invoked on each line of input, which is stored in
+`$l` and is the receiver. `$l` isn't split into fields until you call `fields`,
+at which point the split happens and the fields are cached for efficiency.
+
+```bash
+$ ni /etc/passwd F::r3
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+bin	x	2	2	bin	/bin	/bin/sh
+$ ni /etc/passwd F::r3m'r fields[0..3]'
+root	x	0	0
+daemon	x	1	1
+bin	x	2	2
+$ ni /etc/passwd F::r3m'r fields[1..3]'
+x	0	0
+x	1	1
+x	2	2
+$ ni /etc/passwd F::r3m'r fields.size'
+7
+7
+7
+```
+
+### `r`, multiple rows, and return values
+If your code returns an Enumerable, you'll get an output line for each entry.
+If it returns a string, you'll have a single output line. `r()` is a function
+that joins on tabs and returns the result (unlike the `r` function in the Perl
+driver):
+
+```bash
+$ ni n2m'[a, ai + 100]'                 # multiple lines
+1
+101
+2
+102
+$ ni n2m'r a, ai + 100'                 # multiple columns
+1	101
+2	102
+```
+
+ni will remove newlines from every string you give it. This makes it easier to
+use backticks without any filtering.
+
+## Buffered readahead
+`m` code can read forwards in the input stream:
+
+- `lines = rw {|l| condition}`: read lines while a condition is met
+- `lines = ru {|l| condition}`: read lines until a condition is met
+- `lines = re {|l| l.ai + l.bi}`: read lines while `ai + bi` is equal
+
+```bash
+$ ni n10m'r ru {|l| l.ai%4 == 0}'       # read forward until a multiple of 4
+1	2	3
+4	5	6	7
+8	9	10
+```
+
+`ru`, etc return arrays of Line objects, and there are two ways to break them
+into columns. Let's generate some columnar data:
+
+```bash
+$ ni n10m'r (1..10).map {|x| ai*x}' =\>mult-table
+1	2	3	4	5	6	7	8	9	10
+2	4	6	8	10	12	14	16	18	20
+3	6	9	12	15	18	21	24	27	30
+4	8	12	16	20	24	28	32	36	40
+5	10	15	20	25	30	35	40	45	50
+6	12	18	24	30	36	42	48	54	60
+7	14	21	28	35	42	49	56	63	70
+8	16	24	32	40	48	56	64	72	80
+9	18	27	36	45	54	63	72	81	90
+10	20	30	40	50	60	70	80	90	100
+```
+
+The first way is to access the fields on each line individually:
+
+```bash
+$ ni mult-table m'r ru {|l| l.ai%4 == 0}.map(&:g)'      # access column G
+7	14	21
+28	35	42	49
+56	63	70
+```
+
+The other way is to invoke field accessor methods on the whole array:
+
+```bash
+$ ni mult-table m'r ru {|l| l.ai%4 == 0}.g'
+7	14	21
+28	35	42	49
+56	63	70
 ```
 35 doc/sql.md
 # SQL interop
@@ -6432,7 +7015,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-37 doc/tutorial.md
+44 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -6449,14 +7032,21 @@ $ ni //help/stream                      # view a help topic
 ## The deep end
 - [examples.md](examples.md) (`ni //help/examples`)
 
-## Basics
+## Essentials
 - [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
 - [row.md](row.md)       (`ni //help/row`):    row-level operators
 - [col.md](col.md)       (`ni //help/col`):    column-level operators
 - [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
 - [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
 - [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
-- [visual.md](visual.md) (`ni //help/visual`): visualizing data
+
+## Stuff worth knowing about
+- [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
+- [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
+- [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
+- [container.md](container.md) (`ni //help/container`): Dockerizing stuff
+- [json.md](json.md)           (`ni //help/json`):      working with JSON
+- [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
 You can use `ni //options` to get a list of all parsing rules ni applies to the
@@ -6470,4 +7060,113 @@ command line. The output format is a TSV of `context long/short name parser`.
   extension
 - [libraries.md](libraries.md) (`ni //help/libraries`): how to load/use a
   library
+30 doc/visual.md
+# Visualizing data
+See also [examples.md](examples.md).
+
+```sh
+$ ni --js
+http://localhost:8090
+```
+
+## Using the web interface
+You can view the example in the screenshots by opening the following link on
+your system while running `ni --js`:
+
+```
+http://localhost:8090/#%7B%22ni%22%3A%22n2E2p'r%20%24_%2C%20a%20for%200..199'%20p'r(a*10%20%2B%20%24_%2C%20b*10)%2C%20r(a*10%2C%20b*10%20%2B%20%24_)%20for%200..9'%20p'r%20a%2C%20sin(1%20%2B%20a%20%2F%20340)%20*%20cos(b*b%20%2F%2030000)%20%2B%20sin((a%20%2B%2050)*b%20%2F%20120000)%2C%20b'%22%2C%22vm%22%3A%5B1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.4%7D
+```
+
+![web ui](http://spencertipping.com/ni-jsplot-sinewave.png)
+
+The UI consists of three main components: the ni command editor (top), the plot
+(center), and a data preview (left). The data preview is normally hidden, but
+you can hover over the left side of the screen to pop it out (click it to
+toggle locking):
+
+![data preview](http://spencertipping.com/ni-jsplot-sinewave2.png)
+
+The view angle can be panned, rotated, and zoomed:
+
+- **mouse drag:** pan
+- **shift + drag:** 3D rotate
+- **ctrl + drag, alt + drag, mousewheel:** zoom
+77 doc/warnings.md
+# Things to look out for
+![img](http://spencertipping.com/ni.png)
+
+![img](http://spencertipping.com/ni2.png)
+
+## `r` and pipe signals
+Internally, commands like `r10` will read ten rows and then break the input
+pipe, causing the writing process to receive a `SIGPIPE` and terminate.
+Normally this is what you want to happen, particularly when the process would
+otherwise generate data forever. But there are some situations where it causes
+problems; for example:
+
+```bash
+$ ni n1000000 =\>not-a-million-things r5
+1
+2
+3
+4
+5
+$ echo $(( $(cat not-a-million-things 2>/dev/null | wc -l) < 1000000 ))
+1
+```
+
+(The output file might not even get created, depending on when the pipe signal
+arrives.)
+
+Here's what I got the last time I tried it:
+
+```sh
+$ wc -l not-a-million-things
+3100 not-a-million-things
+```
+
+This happens because the ni process implementing `=` does basically this:
+
+```
+while data = read stdin:
+  write data to stdout          # connected to r5
+  write data to child process   # connected to \>not-a-million-things
+```
+
+Once `r5` (which is implemented with `head -n5`) receives enough data, it
+exits, closing its input stream. This causes the next write to generate a pipe
+signal and kill the process.
+
+### Workaround
+`r` is designed to break pipes, so you need to prepend an operator that will
+either buffer or consume the stream first. Any sorting operator will do this
+automatically:
+
+```bash
+$ ni n1000000 =\>a-million-things gr5
+1
+10
+100
+1000
+10000
+$ wc -l < a-million-things
+1000000
+```
+
+If you weren't planning to sort your data, though, a better alternative is to
+use `B`, the buffering operator, with a null buffer:
+
+```bash
+$ ni n1000000 =\>a-million-things Bn r5
+1
+2
+3
+4
+5
+$ wc -l < a-million-things
+1000000
+```
+
+The null buffer has no storage overhead; it just forwards data as it arrives
+and ignores broken pipes.
 __END__

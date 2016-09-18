@@ -5,11 +5,6 @@ like "from here to EOL".
 ### `rA` sometimes doesn't work correctly
 I think it counts the newline with the length, which is wrong.
 
-### Optimized line processor
-Right now we're slower than nfu, which is terrible. ni should be able to go
-much faster. (Line splitting by itself is ~200MiB/s, whereas nfu is ~27MiB/s
-and ni is ~18MiB/s -- time to figure out what's going on here.)
-
 ### Optimization in general
 Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
 

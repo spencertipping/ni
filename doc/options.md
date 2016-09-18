@@ -43,7 +43,7 @@ Operator | Example      | Description
 `z`      | `z4`         | Compress or decompress
          |              |
 `A`      |              |
-`B`      |              |
+`B`      | `Bn`         | Buffer a stream
 `C`      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | `D.foo`      | Destructure structured text data (JSON/XML)
 `E`      |              |
