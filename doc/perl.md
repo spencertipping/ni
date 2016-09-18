@@ -29,6 +29,20 @@ $ ni :plfoo[n4p'a*a']
 16
 ```
 
+**NOTE:** The Perl driver won't execute your code at all if the input stream is
+empty. If you're using the Perl driver to generate data, you need to feed it a
+row using, e.g. `n1`:
+
+```bash
+$ ni +p'1..5'                   # nothing happens here
+$ ni +n1p'1..5'                 # the single input row causes `p` to run
+1
+2
+3
+4
+5
+```
+
 ## Basic stuff
 `a` to `l` are one-letter functions that return the first 12 tab-delimited
 values from the current line. (12 wasn't chosen arbitrarily; the letter `m` is
@@ -153,7 +167,22 @@ $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 
 The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code.
+end of your mapper code. If you end your code with `#`, ni will add this for
+you -- but without breaking any quotation constructs that rely on the `#`:
+
+```bash
+$ ni n3p'r $_ for 1..a#'                # auto-return nothing
+1
+1
+2
+1
+2
+3
+$ ni n3p'r qw#foo#'                     # not broken by this code transform
+foo
+foo
+foo
+```
 
 As a shorthand, any array references you return will become rows:
 

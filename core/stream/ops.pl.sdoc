@@ -50,15 +50,13 @@ Append, prepend, duplicate, divert.
 defoperator append => q{
   my @xs = @_;
   sio;
-  my $fh = siproc {exec_ni @xs};
-  close $fh;
-  $fh->await;
+  close STDIN;
+  exec_ni @xs;
 };
 
 defoperator prepend => q{
   my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  close $fh;
+  close(my $fh = siproc {close STDIN; exec_ni @xs});
   $fh->await;
   sio;
 };

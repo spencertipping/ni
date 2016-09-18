@@ -1,0 +1,31 @@
+Binary byte stream driver.
+Functions that read data in blocks. The lookahead is 8192 bytes by default, but
+you can peek further using the 'pb' function.
+
+our $stdin_ok = 1;
+our $offset = 0;
+
+sub bi() {$offset}
+
+sub pb($) {
+  $stdin_ok &&= sysread STDIN, $_, $_[0], length
+    if $stdin_ok && length() < $_[0];
+  substr $_, 0, $_[0];
+}
+
+sub available() {length pb 8192}
+
+sub rb($) {
+  pb $_[0] if length() < $_[0];
+  my $r = substr $_, 0, $_[0];
+  $_ = substr $_, $_[0];
+  $offset += $_[0];
+  $r;
+}
+
+sub rp(@) {
+  my @xs = unpack $_[0], $_;
+  my $s  = pack $_[0], @xs;
+  rb length $s;
+  @xs;
+}

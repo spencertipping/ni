@@ -26,6 +26,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/sql
 ./ni --internal/lib core/python
 
+./ni --internal/lib core/binary
 ./ni --internal/lib core/matrix
 ./ni --internal/lib core/gnuplot
 

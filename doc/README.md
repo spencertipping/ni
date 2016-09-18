@@ -26,6 +26,7 @@ $ ni //help/stream                      # view a help topic
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
 - [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
 - [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
+- [binary.md](binary.md)       (`ni //help/binary`):    decoding binary streams
 - [container.md](container.md) (`ni //help/container`): Dockerizing stuff
 - [json.md](json.md)           (`ni //help/json`):      working with JSON
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for

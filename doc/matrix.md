@@ -79,6 +79,25 @@ $ ni n10p'r map a*$_, 1..10' N'x = x + 1'
 11	21	31	41	51	61	71	81	91	101
 ```
 
+`N` gets the full input stream unless you use a partition:
+
+```bash
+$ ni n4N'x = x.T'
+1	2	3	4
+```
+
+This example raises an important issue: ni always imports NumPy arrays as 2D
+objects, never 1D (even if it's just a column of numbers). It will, however,
+promote any 1D arrays into column vectors.
+
+```bash
+$ ni n4N'x = reshape(x, (-1))'
+1
+2
+3
+4
+```
+
 ## Partitioned matrices
 The operations above caused the entire input stream to be read into memory,
 which is not very scalable. Each matrix operator allows you to specify that the

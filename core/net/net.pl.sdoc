@@ -24,5 +24,5 @@ if you want to POST, you should use the \> operator. (TODO)
 use constant purl => prc '.*';
 
 defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
-defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
-defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
+defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
+defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;

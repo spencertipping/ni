@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-45 ni.map.sdoc
+46 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -87,6 +87,7 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
+lib core/binary
 lib core/matrix
 lib core/gnuplot
 lib core/http
@@ -940,7 +941,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-198 core/stream/ops.pl.sdoc
+196 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -993,15 +994,13 @@ Append, prepend, duplicate, divert.
 defoperator append => q{
   my @xs = @_;
   sio;
-  my $fh = siproc {exec_ni @xs};
-  close $fh;
-  $fh->await;
+  close STDIN;
+  exec_ni @xs;
 };
 
 defoperator prepend => q{
   my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  close $fh;
+  close(my $fh = siproc {close STDIN; exec_ni @xs});
   $fh->await;
   sio;
 };
@@ -2457,8 +2456,8 @@ if you want to POST, you should use the \> operator. (TODO)
 use constant purl => prc '.*';
 
 defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
-defshort '/http://',  pmap q{http_get_op "http://$_"},  purl;
-defshort '/https://', pmap q{http_get_op "https://$_"}, purl;
+defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
+defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;
 1 core/buffer/lib
 buffer.pl.sdoc
 21 core/buffer/buffer.pl.sdoc
@@ -3169,7 +3168,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-97 core/pl/pl.pl.sdoc
+105 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3224,6 +3223,8 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
+sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
+
 use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
@@ -3236,16 +3237,22 @@ use constant perl_mapgen => gen q{
   }
 };
 
-use constant perl_prefix =>
-  join "\n", @self{qw| core/pl/util.pm
-                       core/pl/math.pm
-                       core/pl/stream.pm
-                       core/gen/gen.pl
-                       core/json/json.pl
-                       core/pl/reducers.pm |};
+our @perl_prefix_keys = qw| core/pl/util.pm
+                            core/pl/math.pm
+                            core/pl/stream.pm
+                            core/gen/gen.pl
+                            core/json/json.pl
+                            core/pl/reducers.pm |;
+
+sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
+
+sub perl_prefix() {join "\n", @self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
-  move_fd 0, 3;
+  eval {move_fd 0, 3};
+  die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
+    . "    this usually means you're running in a context with no STDIN"
+  if $@;
   safewrite siproc {exec 'perl', '-'}, $_[0];
 }
 
@@ -3253,8 +3260,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -3849,9 +3856,88 @@ and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
 use constant pycode => pmap q{pydent $_}, pgeneric_code;
+3 core/binary/lib
+bytestream.pm.sdoc
+bytewriter.pm.sdoc
+binary.pl.sdoc
+31 core/binary/bytestream.pm.sdoc
+Binary byte stream driver.
+Functions that read data in blocks. The lookahead is 8192 bytes by default, but
+you can peek further using the 'pb' function.
+
+our $stdin_ok = 1;
+our $offset = 0;
+
+sub bi() {$offset}
+
+sub pb($) {
+  $stdin_ok &&= sysread STDIN, $_, $_[0], length
+    if $stdin_ok && length() < $_[0];
+  substr $_, 0, $_[0];
+}
+
+sub available() {length pb 8192}
+
+sub rb($) {
+  pb $_[0] if length() < $_[0];
+  my $r = substr $_, 0, $_[0];
+  $_ = substr $_, $_[0];
+  $offset += $_[0];
+  $r;
+}
+
+sub rp(@) {
+  my @xs = unpack $_[0], $_;
+  my $s  = pack $_[0], @xs;
+  rb length $s;
+  @xs;
+}
+7 core/binary/bytewriter.pm.sdoc
+Byte writer.
+Convenience functions that make it easier to write binary data to standard out.
+This library gets added to the perl prefix, so these functions are available in
+perl mappers.
+
+sub ws($)  {print $_[0]; ()}
+sub wp($@) {ws pack $_[0], @_[1..$#_]}
+34 core/binary/binary.pl.sdoc
+Binary import operator.
+An operator that reads data in terms of bytes rather than lines. This is done
+in a Perl context with functions that manage a queue of data in `$_`.
+
+use constant binary_perlgen => gen q{
+  %prefix
+  close STDIN;
+  open STDIN, '<&=3';
+  while (available) {
+    %body
+  }
+};
+
+defperlprefix 'core/binary/bytewriter.pm';
+
+our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
+
+sub binary_perl_prefix() {join "\n", perl_prefix,
+                                     @self{@binary_perl_prefix_keys}}
+
+sub defbinaryperlprefix($) {push @binary_perl_prefix_keys, $_[0]}
+
+sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
+                                            body   => $_[0])}
+
+defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
+
+our %binary_dsp;
+
+defshort '/b', pdspr %binary_dsp;
+
+sub defbinaryalt($$) {$binary_dsp{$_[0]} = $_[1]}
+
+defbinaryalt p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-114 core/matrix/matrix.pl.sdoc
+115 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -3916,13 +4002,14 @@ use constant numpy_gen => gen pydent q{
   while True:
     try:
       dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
-    except MemoryError:
+    except:
       dimensions = ()
     if len(dimensions) == 0: exit()
     x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
   %body
-    x = array(x)
+    if type(x) != ndarray: x = array(x)
+    if len(x.shape) != 2: x = reshape(x, (-1, 1))
     array(x.shape).astype(dtype(">u4")).tofile(stdout)
     x.astype(dtype("d")).tofile(stdout)
     stdout.flush()};
@@ -3941,8 +4028,8 @@ defoperator numpy_dense => q{
     $rows = 1;
     my @m = [@r[$col..$#r]];
     my $kr = qr/\Q$k\E/;
-    ++$rows, push @m, [split /\t/, substr $_, length $1]
-      while defined($_ = <STDIN>) && /^($kr\t)/;
+    ++$rows, push @m, [split /\t/, $col ? substr $_, length $1 : $_]
+      while defined($_ = <STDIN>) and !$col || /^($kr\t)/;
     push @q, $_ if defined;
 
     $cols = max map scalar(@$_), @m;
@@ -4812,7 +4899,8 @@ defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
 
 defshort '/P', pmap q{pyspark_op @$_},
                pseq pdspr(%spark_profiles), $pyspark_rdd;
-18 doc/lib
+19 doc/lib
+binary.md
 col.md
 container.md
 examples.md
@@ -4831,6 +4919,67 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
+60 doc/binary.md
+# Binary decoding
+ni's row transform operators won't work on binary data because they seek to the
+nearest newline. If you want to parse binary data, you should use the `b`
+operator, which does block reads and provides a byte cursor.
+
+## Generating binary data
+You can't use `r()` to emit binary unless you want newlines, but you can print
+bytes directly to standard output using `wp` (write-packed) or `ws` (write
+string). For example, let's synthesize a one-second wav file:
+
+```bash
+$ ni n1p'wp "A4VA8VvvVVvvA4V",
+         qw|RIFF 176436 WAVEfmt 16 1 2 44100 176400 4 16 data 176400|' \
+     +n44100p'my $v = 32767 * sin a*440*tau/44100;
+              wp "ss", $v, $v' \
+  > test.wav
+```
+
+Note that normally you'd specify the endian-ness of `s` by saying `s<` instead.
+However, old versions of Perl don't support endian modifiers so I have to leave
+it out of the examples here.
+
+## Perl decoder
+The decoding interface consists of four functions:
+
+- `$offset = bi`: absolute offset of the next byte
+- `$bytes = pb(n)`: peek and return N bytes
+- `$bytes = rb(n)`: consume and return N bytes
+- `@value = rp("packstring")`: read, unpack, and consume bytes by pack pattern
+
+For example, we can decode samples from the WAV file above. `bp` means "binary
+read with perl":
+
+```bash
+$ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
+                 r rp "ss"' r10
+2052	2052
+4097	4097
+6126	6126
+8130	8130
+10103	10103
+12036	12036
+13921	13921
+15752	15752
+17521	17521
+19222	19222
+```
+
+If we wanted to find the dominant frequencies, for example (the `,qB.01`
+quantizes the magnitudes so the test case doesn't depend on float rounding):
+
+```bash
+$ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
+     n rp'a <= 22050' OB r5,qB.01
+441	45263289.95
+14941	755.22
+7341	745.63
+8461	667.75
+12181	620.78
+```
 198 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
@@ -5506,7 +5655,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-214 doc/matrix.md
+233 doc/matrix.md
 # Matrix operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
@@ -5586,6 +5735,25 @@ $ ni n10p'r map a*$_, 1..10' N'x = x + 1'
 9	17	25	33	41	49	57	65	73	81
 10	19	28	37	46	55	64	73	82	91
 11	21	31	41	51	61	71	81	91	101
+```
+
+`N` gets the full input stream unless you use a partition:
+
+```bash
+$ ni n4N'x = x.T'
+1	2	3	4
+```
+
+This example raises an important issue: ni always imports NumPy arrays as 2D
+objects, never 1D (even if it's just a column of numbers). It will, however,
+promote any 1D arrays into column vectors.
+
+```bash
+$ ni n4N'x = reshape(x, (-1))'
+1
+2
+3
+4
 ```
 
 ## Partitioned matrices
@@ -5839,7 +6007,7 @@ Operator | Example      | Description
 `X`      | `X`          | Sparse to dense matrix conversion
 `Y`      | `Y`          | Dense to sparse matrix conversion
 `Z`      |              |
-393 doc/perl.md
+422 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -5869,6 +6037,20 @@ $ ni :plfoo[n4p'a*a']
 4
 9
 16
+```
+
+**NOTE:** The Perl driver won't execute your code at all if the input stream is
+empty. If you're using the Perl driver to generate data, you need to feed it a
+row using, e.g. `n1`:
+
+```bash
+$ ni +p'1..5'                   # nothing happens here
+$ ni +n1p'1..5'                 # the single input row causes `p` to run
+1
+2
+3
+4
+5
 ```
 
 ## Basic stuff
@@ -5995,7 +6177,22 @@ $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 
 The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code.
+end of your mapper code. If you end your code with `#`, ni will add this for
+you -- but without breaking any quotation constructs that rely on the `#`:
+
+```bash
+$ ni n3p'r $_ for 1..a#'                # auto-return nothing
+1
+1
+2
+1
+2
+3
+$ ni n3p'r qw#foo#'                     # not broken by this code transform
+foo
+foo
+foo
+```
 
 As a shorthand, any array references you return will become rows:
 
@@ -7015,7 +7212,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-44 doc/tutorial.md
+45 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -7044,6 +7241,7 @@ $ ni //help/stream                      # view a help topic
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
 - [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
 - [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
+- [binary.md](binary.md)       (`ni //help/binary`):    decoding binary streams
 - [container.md](container.md) (`ni //help/container`): Dockerizing stuff
 - [json.md](json.md)           (`ni //help/json`):      working with JSON
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for

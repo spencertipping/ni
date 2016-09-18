@@ -52,6 +52,8 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
+sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
+
 use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
@@ -64,16 +66,22 @@ use constant perl_mapgen => gen q{
   }
 };
 
-use constant perl_prefix =>
-  join "\n", @self{qw| core/pl/util.pm
-                       core/pl/math.pm
-                       core/pl/stream.pm
-                       core/gen/gen.pl
-                       core/json/json.pl
-                       core/pl/reducers.pm |};
+our @perl_prefix_keys = qw| core/pl/util.pm
+                            core/pl/math.pm
+                            core/pl/stream.pm
+                            core/gen/gen.pl
+                            core/json/json.pl
+                            core/pl/reducers.pm |;
+
+sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
+
+sub perl_prefix() {join "\n", @self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
-  move_fd 0, 3;
+  eval {move_fd 0, 3};
+  die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
+    . "    this usually means you're running in a context with no STDIN"
+  if $@;
   safewrite siproc {exec 'perl', '-'}, $_[0];
 }
 
@@ -81,8 +89,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
