@@ -70,7 +70,7 @@ data. To remove those, you can select only rows which provide a nonempty value
 for one or more columns:
 
 ```bash
-$ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
+$ ni n1000p'r/(.)(.*)/' r15     # until 10, the second field is empty
 1	
 2	
 3	
@@ -86,7 +86,7 @@ $ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
 1	3
 1	4
 1	5
-$ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
+$ ni n1000p'r/(.)(.*)/' rB r8   # rB = "rows for which field B exists"
 1	0
 1	1
 1	2
@@ -95,6 +95,16 @@ $ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
 1	5
 1	6
 1	7
+```
+
+```bash
+$ ni n10rB | wc -l              # no field B here, so no output
+0
+```
+
+```bash
+$ ni n10p'r a; ""' rA | wc -l   # remove blank lines
+10
 ```
 
 ## Code

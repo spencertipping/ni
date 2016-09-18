@@ -2659,7 +2659,7 @@ defoperator vertical_apply => q{
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-123 core/row/row.pl.sdoc
+124 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2688,7 +2688,8 @@ defoperator row_cols_defined => q{
   line:
   while (defined($line = <STDIN>)) {
     chomp $line;
-    length || next line for (split /\t/, $line, $limit)[@cs];
+    next line unless length $line;
+    defined && length || next line for (split /\t/, $line, $limit)[@cs];
     print $line . "\n";
   }
 };
@@ -6430,7 +6431,7 @@ w	12
 x	23
 y	12
 ```
-233 doc/row.md
+243 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -6503,7 +6504,7 @@ data. To remove those, you can select only rows which provide a nonempty value
 for one or more columns:
 
 ```bash
-$ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
+$ ni n1000p'r/(.)(.*)/' r15     # until 10, the second field is empty
 1	
 2	
 3	
@@ -6519,7 +6520,7 @@ $ ni n1000p'r/(.)(.*)/' r15             # until 10, the second field is empty
 1	3
 1	4
 1	5
-$ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
+$ ni n1000p'r/(.)(.*)/' rB r8   # rB = "rows for which field B exists"
 1	0
 1	1
 1	2
@@ -6528,6 +6529,16 @@ $ ni n1000p'r/(.)(.*)/' rB r8           # rB = "rows for which field B exists"
 1	5
 1	6
 1	7
+```
+
+```bash
+$ ni n10rB | wc -l              # no field B here, so no output
+0
+```
+
+```bash
+$ ni n10p'r a; ""' rA | wc -l   # remove blank lines
+10
 ```
 
 ## Code

@@ -1,20 +1,7 @@
-### Minor refactor of Perl API
-Nothing major here, but let's fix up the names a little and add some things
-like "from here to EOL".
-
-### `rA` sometimes doesn't work correctly
-I think it counts the newline with the length, which is wrong.
-
 ### Optimization in general
 Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
 
 ### JSON extractor
-
-### numpy and Octave support
-Ideally with binary-read capability, and ideally supporting data facets.
-
-### Binary reads
-Simple `pack()`-style reads. This should be fairly trivial to implement.
 
 ### Join operator
 This doesn't exist yet. nfu had one but it was awful; this one should support

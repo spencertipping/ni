@@ -26,7 +26,8 @@ defoperator row_cols_defined => q{
   line:
   while (defined($line = <STDIN>)) {
     chomp $line;
-    length || next line for (split /\t/, $line, $limit)[@cs];
+    next line unless length $line;
+    defined && length || next line for (split /\t/, $line, $limit)[@cs];
     print $line . "\n";
   }
 };
