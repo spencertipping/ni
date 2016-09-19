@@ -25,3 +25,9 @@ a little so we get more consistent behavior from it. Specifically, luminosity
 should be linear: no minimum shading. (Also, empirically track total
 luminosity, visibility rate, and collision rate to get more accurate response.
 Volume slicing shouldn't net-darken the screen, for example.)
+
+**NOTE:** Axis/grids should be based on reverse-transforming the view matrix
+because otherwise we'll potentially render tons of offscreen stuff.
+
+It isn't worth replacing randomness with determinism in the data-sampling
+logic because view focus would change the outcomes either way.
