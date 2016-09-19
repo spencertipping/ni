@@ -488,14 +488,19 @@ sub defnioperator($$) {
   }
   *{"${name}_op"} = sub() {$ops};
 }
-48 self.pl.sdoc
+52 self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
+sub lib_entries($$) {
+  local $_;
+  my ($name, $text) = @_;
+  map "$name/$_", grep {s/#.*//; length} split /\n/, $text;
+}
+
 sub quote_resource {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
-sub quote_library  {map {my $l = $_;
-                         quote_resource "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
+sub quote_library  {map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_}
 
 sub read_map {join '', map "$_\n",
                        (map {my ($c, @a) = split /\s+/;
@@ -508,8 +513,7 @@ sub read_map {join '', map "$_\n",
 
 sub intern_lib($) {
   my ($l) = @_;
-  set "$l/$_", rfc "$l/$_"
-    for grep length, split /\n/, ($self{"$l/lib"} = rfc "$l/lib");
+  set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
 }
 
 sub modify_self($) {
@@ -4436,16 +4440,19 @@ caterwaul.module("ui.jquery",(function(qs,qs1,qs2,qs3,qs4,qs5,qs6,qs7,qs8,qs9,qs
 }))]}).call(this);return(jquery_macros).concat(string_macros)}).call(this)})),it}).call(this,(caterwaul_function))}});result.caterwaul_expression_ref_table={qs:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_expression"))'),qs1:('new caterwaul.syntax( "jQuery")'),qs2:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_thing"))'),qs3:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element"))'),qs4:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs5:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "addClass")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_class")))'),qs6:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_attr") ,new caterwaul.syntax( "_val"))) .prefix( " "))'),qs7:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "attr")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_attr")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qs8:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_name") ,new caterwaul.syntax( "_val")))) .prefix( " "))'),qs9:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "data")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_name")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qsa:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_method") ,new caterwaul.syntax( "_args"))) .prefix( " "))'),qsb:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "_method")) ,new caterwaul.syntax( "_args"))'),qsc:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_event") ,new caterwaul.syntax( "_args")))) .prefix( " "))'),qsd:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "bind")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_event")) ,new caterwaul.syntax( "_args") .prefix( " ")))'),qse:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "%" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_function")) .prefix( " "))'),qsf:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "_function") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qsg:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsh:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_children")))'),qsi:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsj:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_children"))'),qsk:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_tree") .prefix( " ")) .prefix( " "))'),qsl:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_tree")) ,new caterwaul.syntax( "toString")) ,new caterwaul.syntax( "")))'),qsm:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsn:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_child")))'),qso:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">=" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsp:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_child"))'),qsq:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")))'),qsr:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qss:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qst:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qsu:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "-" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qsv:('new caterwaul.syntax( "-" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " ")'),qsw:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsx:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "filter")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qsy:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsz:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "find")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs10:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qs11:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "parents")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs12:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs13:('new caterwaul.syntax( "(" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs14:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[" ,new caterwaul.syntax( "_element")))'),qs15:('new caterwaul.syntax( "[" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs16:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "u+" ,new caterwaul.syntax( "_expression")))'),qs17:('new caterwaul.syntax( "_expression")'),qs18:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "TS") ,new caterwaul.syntax( "_identifier"))'),qs19:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_identifier"))'),qs1a:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_identifier"))'),qs1b:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_element"))'),qs1c:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs1d:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_attributes")))'),qs1e:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "=" ,new caterwaul.syntax( "_attribute") ,new caterwaul.syntax( "_value") .prefix( " ")) .prefix( " "))'),qs1f:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs1g:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1h:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "    ")))'),qs1i:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "  ")) .prefix( " "))'),qs1j:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qs1k:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1l:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2")))'),qs1m:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_selector")) .prefix( " "))'),qs1n:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_selector") ,new caterwaul.syntax( "_value"))) .prefix( " "))')};
 return(result)}).call(this,new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_expression")),new caterwaul.syntax("jQuery"),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_thing")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("addClass")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_attr"),new caterwaul.syntax("_val")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("attr")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_attr")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_name"),new caterwaul.syntax("_val"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("data")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_name")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_method"),new caterwaul.syntax("_args")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("_method")),new caterwaul.syntax("_args")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_event"),new caterwaul.syntax("_args"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("bind")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_event")),(new caterwaul.syntax("_args")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("%",new caterwaul.syntax("_element"),new caterwaul.syntax("_function"))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax("_function"),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("()",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_children"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_children")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_tree")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("(",new caterwaul.syntax("_tree")),new caterwaul.syntax("toString")),new caterwaul.syntax(""))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_child"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">=",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_child")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("-",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),(new caterwaul.syntax("-",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" "),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("filter")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("find")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("parents")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("(",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[",new caterwaul.syntax("_element"))),new caterwaul.syntax("[",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("u+",new caterwaul.syntax("_expression"))),new caterwaul.syntax("_expression"),new caterwaul.syntax("[]",new caterwaul.syntax("TS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_attributes"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("=",new caterwaul.syntax("_attribute"),(new caterwaul.syntax("_value")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("    "))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("  "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("()",new caterwaul.syntax("_element1"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("_selector"))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_selector"),new caterwaul.syntax("_value")))).prefix(" "))));
 caterwaul.module("ui",function($){$.all.push("jquery")});
-12 core/jsplot/lib
+15 core/jsplot/lib
 jquery.min.js
 jquery.mousewheel.min.js
 modus.js
+flotsam.js
+
 axis.waul.sdoc
 matrix.waul.sdoc
 socket.waul.sdoc
 render.waul.sdoc
 view.waul.sdoc
 interface.waul.sdoc
+
 css
 html
 jsplot.pl.sdoc
@@ -4465,6 +4472,170 @@ if(k&&j[k]&&(e||j[k].data)||void 0!==d||"string"!=typeof b)return k||(k=i?a[h]=c
 !function(a){"function"==typeof define&&define.amd?define(["jquery"],a):"object"==typeof exports?module.exports=a:a(jQuery)}(function(a){function b(b){var g=b||window.event,h=i.call(arguments,1),j=0,l=0,m=0,n=0,o=0,p=0;if(b=a.event.fix(g),b.type="mousewheel","detail"in g&&(m=-1*g.detail),"wheelDelta"in g&&(m=g.wheelDelta),"wheelDeltaY"in g&&(m=g.wheelDeltaY),"wheelDeltaX"in g&&(l=-1*g.wheelDeltaX),"axis"in g&&g.axis===g.HORIZONTAL_AXIS&&(l=-1*m,m=0),j=0===m?l:m,"deltaY"in g&&(m=-1*g.deltaY,j=m),"deltaX"in g&&(l=g.deltaX,0===m&&(j=-1*l)),0!==m||0!==l){if(1===g.deltaMode){var q=a.data(this,"mousewheel-line-height");j*=q,m*=q,l*=q}else if(2===g.deltaMode){var r=a.data(this,"mousewheel-page-height");j*=r,m*=r,l*=r}if(n=Math.max(Math.abs(m),Math.abs(l)),(!f||f>n)&&(f=n,d(g,n)&&(f/=40)),d(g,n)&&(j/=40,l/=40,m/=40),j=Math[j>=1?"floor":"ceil"](j/f),l=Math[l>=1?"floor":"ceil"](l/f),m=Math[m>=1?"floor":"ceil"](m/f),k.settings.normalizeOffset&&this.getBoundingClientRect){var s=this.getBoundingClientRect();o=b.clientX-s.left,p=b.clientY-s.top}return b.deltaX=l,b.deltaY=m,b.deltaFactor=f,b.offsetX=o,b.offsetY=p,b.deltaMode=0,h.unshift(b,j,l,m),e&&clearTimeout(e),e=setTimeout(c,200),(a.event.dispatch||a.event.handle).apply(this,h)}}function c(){f=null}function d(a,b){return k.settings.adjustOldDeltas&&"mousewheel"===a.type&&b%120===0}var e,f,g=["wheel","mousewheel","DOMMouseScroll","MozMousePixelScroll"],h="onwheel"in document||document.documentMode>=9?["wheel"]:["mousewheel","DomMouseScroll","MozMousePixelScroll"],i=Array.prototype.slice;if(a.event.fixHooks)for(var j=g.length;j;)a.event.fixHooks[g[--j]]=a.event.mouseHooks;var k=a.event.special.mousewheel={version:"3.1.12",setup:function(){if(this.addEventListener)for(var c=h.length;c;)this.addEventListener(h[--c],b,!1);else this.onmousewheel=b;a.data(this,"mousewheel-line-height",k.getLineHeight(this)),a.data(this,"mousewheel-page-height",k.getPageHeight(this))},teardown:function(){if(this.removeEventListener)for(var c=h.length;c;)this.removeEventListener(h[--c],b,!1);else this.onmousewheel=null;a.removeData(this,"mousewheel-line-height"),a.removeData(this,"mousewheel-page-height")},getLineHeight:function(b){var c=a(b),d=c["offsetParent"in a.fn?"offsetParent":"parent"]();return d.length||(d=a("body")),parseInt(d.css("fontSize"),10)||parseInt(c.css("fontSize"),10)||16},getPageHeight:function(b){return a(b).height()},settings:{adjustOldDeltas:!0,normalizeOffset:!0}};a.fn.extend({mousewheel:function(a){return a?this.bind("mousewheel",a):this.trigger("mousewheel")},unmousewheel:function(a){return this.unbind("mousewheel",a)}})});
 1 core/jsplot/modus.js
 caterwaul.module( 'modus' , function ($) { $ = jQuery; var original_jquery_val = $.fn.val; (function () {var use_named_combinator =function (receiver, args) { ; return $.modus[args[0]] .apply(receiver, Array.prototype.slice.call(args, 1))} ; return $.fn.val =function () {var args = arguments; return(function (it) {return it ? args.length ? it.setter.apply(this, args): it.getter.call(this): original_jquery_val.apply(this, args)}) .call(this, ( this.data( 'modus')))} , $.fn.modus =function (getter, setter) { ; return getter.constructor === String ? use_named_combinator(this, arguments): this.data( 'modus' , {getter: getter, setter: setter})}}) .call(this) , $.modus = { util: {} , val:function () { ; return original_jquery_val.apply(this, arguments)} , delegate:function (getter, setter) { ; return{first:function () { ; return this} , val:function () { ; return arguments.length ? ( setter.apply(this, arguments) , this): getter.apply(this, arguments)}}} , proxy:function (element) { ; return this.modus(function (_) {return find(this, element) .val()} ,function (_) {return(find(this, element) .first() .val(_) , this)})} , list:function (new_element) { ; return this.modus(function (_) {return(function (xs) {var x, x0, xi, xl, xr;for (var xr = new xs.constructor() , xi = 0, xl = xs.length; xi < xl; ++xi) x = xs[xi] , xr.push( ($(x) .val())) ; return xr}) .call(this,Array.prototype.slice.call( (this.children())))} ,function (_) {return(function (it) {return(function (xs) {var x, x0, xi, xl, xr;for (var xi = 0, xl = xs.length; xi < xl; ++xi) x = xs[xi] , (it.append(new_element(x, xi) .val(x))) ; return xs}) .call(this, _) , it}) .call(this, (this.empty()))})} , composite:function (paths) { ; return this.modus(function (_) {return(function (xs) {var x, x0, xi, xl, xr;var xr = new xs.constructor() ; for (var k in xs) if (Object.prototype.hasOwnProperty.call(xs, k)) x = xs[k] , xr[k] = (find(this, x) .first() .val()) ; return xr}) .call(this,paths)} ,function (_) {return( (function (xs) {var x, x0, xi, xl, xr;for (var x in xs) if (Object.prototype.hasOwnProperty.call(xs, x))find(this, paths[x]) .first() .val(_[x]) ; return xs}) .call(this,paths) ,this)})} , where:find =function (container, path) { ; return path.constructor === String ? ( container.filter(path)) .add( container.find(path)): path.constructor === Function ? path(container): path.constructor === jQuery ? path: (function () {throw new Error( ( 'invalid modus path: ' + (path) + ''))}) .call(this)}}}) ;
+163 core/jsplot/flotsam.js
+/**
+ * Flotsam encoder/decoder. For example:
+ *
+ * var xs = [1.0, 2.0, Math.PI];
+ * var s  = flotsam.encode(xs);
+ * var ys = flotsam.decode(s);
+ */
+flotsam = (function () {
+
+var flotsam = {};
+
+/** Set to true if the environment supports typed arrays, false otherwise. */
+flotsam.typed_array_support = typeof Float64Array !== 'undefined';
+
+/**
+ * Encodes an array of numbers and returns a string. Throws an error if any
+ * number is infinite or NaN. xs may be a normal or typed array.
+ */
+flotsam.encode = function (xs) {
+  // According to jsperf.com, consing strings one element at a time is faster
+  // than building an array and joining.
+  var result = '';
+  for (var i = 0, l = xs.length; i < l; ++i)
+    result += flotsam.encode_single(xs[i]);
+  return result;
+};
+
+/**
+ * Decodes a string into an array of numbers. Uses a Float64Array if supported,
+ * otherwise uses a regular Javascript array.
+ */
+flotsam.decode = function (s) {
+  var result = flotsam.typed_array_support
+             ? new Float64Array(s.length / 10)
+             : new Array(s.length / 10);
+  for (var i = 0, l = result.length; i < l; ++i)
+    result[i] = flotsam.decode_single(s, i);
+  return result;
+};
+
+// Floating point constants
+///////////////////////////
+
+var float_powers = flotsam.typed_array_support
+                 ? new Float64Array(2048)
+                 : new Array(2048);
+float_powers[1023] = 1.0;
+for (var i = 1024, base = 1.0; i <  2047; ++i) float_powers[i] = base *= 2.0;
+for (var i = 1022, base = 1.0; i >= 1;    --i) float_powers[i] = base *= 0.5;
+
+// Same exponent, different interpretation.
+float_powers[0]    = float_powers[1];
+float_powers[2047] = float_powers[2046];
+
+var mantissa_norm = float_powers[1023 + 52];
+
+var base94_decode = flotsam.typed_array_support
+                  ? new Float64Array(128 * 8)
+                  : new Array(128 * 8);
+var base = 1;
+for (var i = 0; i < 8; ++i) {
+  for (var j = 0; j < 94; ++j)
+    base94_decode[i << 7 | j + 32] = base * j / mantissa_norm;
+  base *= 94;
+}
+
+var digits = new Array(94);
+for (var i = 0; i < 94; ++i) digits[i] = String.fromCharCode(i + 32);
+
+var digit_pairs = new Array(94 * 94);
+for (var i = 0; i < 94; ++i)
+  for (var j = 0; j < 94; ++j)
+    digit_pairs[j * 94 + i] = digits[i] + digits[j];
+
+/**
+ * Encodes a single number as a 10-character string. We could in theory use
+ * typed array aliasing to expose the bits in the float, but doing this exposes
+ * the library to byte ordering issues. Instead, we just use a certain subset
+ * of floating-point operations that are likely to be lossless.
+ */
+flotsam.encode_single = function (x) {
+  // Enabling the following decreases performance by about 10%, but is useful
+  // if you're unsure of your inputs.
+  /*
+    if (!isFinite(x) || isNaN(x))
+      throw new Error(
+        'Flotsam encode_single cannot be used with +/- infinity or NaN');
+  */
+
+  if (x === 0) return '          ';
+
+  var sign = x < 0;
+  if (sign) x = -x;
+
+  // Binary-split for the observed exponent. We converge on the exact value in
+  // 11 iterations.
+  var l = 0, u = 2048, m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;      // 1
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;      // 6
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;
+  if (x < float_powers[m = l + u >> 1]) u = m; else l = m;      // 11
+
+  var exponent = l;
+
+  // At this point we have an exponent such that float_powers[exponent] is no
+  // larger than the quantity, with equality iff all mantissa bits are zero. So
+  // exponent is the logical position of the implied high bit, or zero for
+  // subnormal numbers.
+  //
+  // In order to get to the bits, we need to first shift the number to set the
+  // exponent to 1023 (the encoding of 0). Then we subtract off the implied
+  // mantissa norm, at which point we have just the remaining bits that we can
+  // access by casting to an integer or using FP modular arithmetic.
+  var mantissa = exponent !== 0
+               ? (x * float_powers[2046 - exponent] - 1.0) * mantissa_norm
+               :  x * float_powers[2045]                   * mantissa_norm;
+
+  var result   = digits[sign << 5 | exponent >> 6 & 0x1f]
+               + digits[            exponent      & 0x3f];
+
+  var d78 =  mantissa                        * (1.0 / 689869781056) | 0;
+  var d56 = (mantissa -= d78 * 689869781056) * (1.0 / 78074896)     | 0;
+  var d34 = (mantissa -= d56 * 78074896)     * (1.0 / 8836)         | 0;
+  var d12 = (mantissa -= d34 * 8836)                                | 0;
+  return result + (digit_pairs[d12] + digit_pairs[d34]
+                +  digit_pairs[d56] + digit_pairs[d78]);
+};
+
+/**
+ * Decodes a single number from the position specified within the given string.
+ * The position is the logical element position, not the character offset.
+ */
+flotsam.decode_single = function (s, n) {
+  var i             = n * 10;
+  var sign_exponent = s.charCodeAt(i)     - 32 << 6
+                    | s.charCodeAt(i + 1) - 32;
+  var exponent      = sign_exponent & 0x7ff;
+
+  var result = base94_decode[0 << 7 | s.charCodeAt(i + 2)]
+             + base94_decode[1 << 7 | s.charCodeAt(i + 3)]
+             + base94_decode[2 << 7 | s.charCodeAt(i + 4)]
+             + base94_decode[3 << 7 | s.charCodeAt(i + 5)]
+             + base94_decode[4 << 7 | s.charCodeAt(i + 6)]
+             + base94_decode[5 << 7 | s.charCodeAt(i + 7)]
+             + base94_decode[6 << 7 | s.charCodeAt(i + 8)]
+             + base94_decode[7 << 7 | s.charCodeAt(i + 9)]
+             + (exponent ? 1 : 0);
+
+  if (sign_exponent & 0x800) result = -result;
+  result *= float_powers[exponent];
+  return result;
+};
+
+return flotsam;
+
+})();
 34 core/jsplot/axis.waul.sdoc
 A column vector of numeric data.
 Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
@@ -4480,7 +4651,7 @@ If you want focused nonuniform sampling, you can do it like this:
 Focusing biases the probability of accepting points so that data closer to the focal plane(s) is preferred.
 
 caterwaul(':all')(function () {
-  axis(capacity) = this /-caterwaul.merge/ {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} -re- undefined,
+  axis(capacity) = this /-caterwaul.merge/ {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} -re- void 0,
   axis.prototype /-caterwaul.merge/ axis_methods,
   axis           /-caterwaul.merge/ static_methods,
 

@@ -16,7 +16,8 @@ Some places to start reading:
 ## For ni developers
 - `./boot`: create the base `ni` image with no extensions. This image does
   almost nothing and is effectively unusable.
-- `bugs/`: documentation and tests for all bugs I've found, starting 2016.0918.
+- `bugs/`: documentation and tests for all nontrivial bugs I've found, starting
+  2016.0918.
 - `./build`: run `./boot`, then extend with a bunch of libraries. See [the dev
   docs](dev/) for information about how this works.
 - `core/`: all of the core libraries installed by `./build` onto the base

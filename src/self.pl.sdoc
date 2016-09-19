@@ -2,9 +2,14 @@ Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
+sub lib_entries($$) {
+  local $_;
+  my ($name, $text) = @_;
+  map "$name/$_", grep {s/#.*//; length} split /\n/, $text;
+}
+
 sub quote_resource {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
-sub quote_library  {map {my $l = $_;
-                         quote_resource "$_/lib", map "$l/$_", split /\n/, $self{"$_/lib"}} @_}
+sub quote_library  {map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_}
 
 sub read_map {join '', map "$_\n",
                        (map {my ($c, @a) = split /\s+/;
@@ -17,8 +22,7 @@ sub read_map {join '', map "$_\n",
 
 sub intern_lib($) {
   my ($l) = @_;
-  set "$l/$_", rfc "$l/$_"
-    for grep length, split /\n/, ($self{"$l/lib"} = rfc "$l/lib");
+  set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
 }
 
 sub modify_self($) {

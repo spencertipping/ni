@@ -1,12 +1,15 @@
 jquery.min.js
 jquery.mousewheel.min.js
 modus.js
+flotsam.js
+
 axis.waul.sdoc
 matrix.waul.sdoc
 socket.waul.sdoc
 render.waul.sdoc
 view.waul.sdoc
 interface.waul.sdoc
+
 css
 html
 jsplot.pl.sdoc
