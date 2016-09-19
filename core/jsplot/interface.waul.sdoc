@@ -26,8 +26,12 @@ $(caterwaul(':all')(function ($) {
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
         drag(dx, dy, s, c)     = c ? 'd' |-set| settings().d * Math.exp(2 * dy / lh)
-                               : s ? 'r' |-set| [r[0] + dx / lw,     r[1] - dy / lh]           -where [r = settings().r]
-                               :     'c' |-set| [c[0] + dx / lw * d, c[1] - dy / lh * d, c[2]] -where [d = settings().d, c = settings().c],
+                               : s ? 'r' |-set| settings().r /-v2plus/ [dx / lh, -dy / lh]
+                               :     'f' |-set| f /-v3plus/ udf /-v3times/ (data_state.axes.length === 3 ? [1, 1, 1] : [1, 1, 0])
+                                                -where [udx = 2*dx / lh, udy = 2*dy / lh,
+                                                        df  = view_matrix().inv() /~transform/ [udx, -udy, 0, 1],
+                                                        udf = df /-v3scale/ df[3],
+                                                        f   = settings().f],
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                                       /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
@@ -57,16 +61,20 @@ $(caterwaul(':all')(function ($) {
                                    populate_axes(ls)  = ls /!update_n_axes -then-
                                                         ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
-        object_matrix()    = matrix.prod(matrix.translate(c[0], c[1], c[2]), matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
-                                         matrix.scale(s[0], s[1], s[2]),
-                                         matrix.translate(f[0], f[1], f[2])) -where [st = settings(), c = st.c, r = st.r, s = st.s, f = st.f],
+        view_matrix()      = matrix.prod(matrix.scale(1/d, 1/d, 1/d),
+                                         matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
+                                         matrix.scale(s[0], s[1], s[2])) -where [st = settings(), d = st.d, r = st.r, s = st.s],
 
-        normalize_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
-                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
+        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/
+                             matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
+                      -where[f  = settings().f,
+                             as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
 
-        camera_matrix()    = matrix.translate(0, 0, settings().d) /~dot/ object_matrix() /~dot/ normalize_matrix(),
+        camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
         update_screen()    = handle_resizes()
                       -then- renderer(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
-                      -when [data_state.axes && +new Date - data_state.last_render > 30]]}));
+                      -when [data_state.axes && +new Date - data_state.last_render > 30]],
+
+  using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

@@ -1,8 +1,6 @@
 ### Optimization in general
 Rewrite the SHA-1 pure-perl implementation to be something smaller than 30K.
 
-### JSON extractor
-
 ### Join operator
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.

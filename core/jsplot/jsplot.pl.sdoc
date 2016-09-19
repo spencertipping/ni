@@ -13,6 +13,8 @@ use constant jsplot_html =>
                                          core/caterwaul/caterwaul.std.min.js
                                          core/caterwaul/caterwaul.ui.min.js
                                          core/jsplot/modus.js
+                                         core/jsplot/flotsam.js
+                                         core/jsplot/vector.js
                                          core/jsplot/axis.waul
                                          core/jsplot/matrix.waul
                                          core/jsplot/socket.waul
