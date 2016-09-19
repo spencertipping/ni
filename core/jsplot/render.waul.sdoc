@@ -4,28 +4,37 @@ details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
   render(state = null, last_render = 0)
-        (axes, vm, l, ctx, w, h, cb) = start_rendering(axes, vm, l, ctx, w, h)
+        (axes, vm, l, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
+                                                  id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                       ? state.id
+                                                       : ctx.getImageData(0, 0, w, h)) -se- it.data.fill(0)}]
+                                -then- render_part /!requestAnimationFrame
 
-  -where[start_rendering(axes, vm, l, ctx, w, h) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
-                                                              id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
-                                                                   ? state.id
-                                                                   : ctx.getImageData(0, 0, w, h)) -se- it.data.fill(0)}]
-                                                 -then- render_part /!requestAnimationFrame,
+Render function.
+This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
 
-Shading.
-Two things of note happening here. First, we use HSV shading for the fourth axis if it exists. I'm using the HSV cube projection, which is convenient here
-because it doesn't require any trig functions.
+Rendering happens "asynchronously" -- that is, it's a time-bounded, reentrant process. The outermost loop governing the whole rendering process is driven by
+requestAnimationFrame(), which calls into render_part(). render_part() runs for about 20ms, rendering 1/256th "random" slices of the data until it runs out of
+time. The assumption here is that 1/256th of the data takes under 20ms, which empirically has been true on my machine.
 
-Second, and more interestingly, everything is rendered as direct pixel writes because changing the context's fill or stroke color is too slow. This isn't
-entirely trivial because we're rendering luminous volume, which has the property that brightness ~ log(thickness), or in this case log(#overlapping points). An
-approximation to this is to add an exponentially-decreasing amount each time we shade a pixel, which we do by storing a pixel's illumination value in its alpha
-channel. The incremental illumination is divided by the current illumination.
+The renderer works by modifying RGBA values in an ImageData object, which is a little tricky because all of the drawing operations need to be translucent:
+conceptually we're rendering a volume rather than an opaque object. We also log-scale(-ish) the light output on the screen, so brightness(pixel) ~ log(volume
+depth). This is all done without storing any extra per-pixel state. Here's a full list of the shader properties we want:
 
-We also calculate a "target luminosity", which helps to normalize the shading density per pixel. This is based on the ratio of data to screen pixels: if we end
-up shading 10% of all screen pixels, then the average overlap should be three. So we want, on average, about one full shade per 3 pixels. (Nothing special
-about these numbers; it just seemed about right when I was thinking about it.)
+| 1. Singly-shaded pixels should be visible: i.e. rendered at rgb >= 64 (except for obvious counter-cases like slice focusing or distant points).
+  2. Multiply-shaded pixels should converge to full luminosity _and preserve color_, with luminosity ~ log(total volume depth).
+  3. Pixels should eventually saturate to white, losing color resolution as they gain luminosity. This should approximately double the dynamic range.
+  4. The algorithm should be properly additive so that antialiasing works (we want 2x2 subpixel rendering).
+  5. A bunch of very dim points should converge to the right color average (i.e. we can't lose too much detail to 8-bit quantization).
+  6. The total onscreen brightness should remain about the same regardless of how many points are on the screen (otherwise zooming would dim the display).
 
-         render_part = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
+So here's roughly how this all works. The RGB channels store full-value color all the time: this is a brightness-weighted average of the colors drawn into that
+pixel. Brightness is stored in the alpha channel and converges to 255 by a halving sequence (128, 192, 224, ...) if all points are rendered at the same
+intensity.
+
+Point intensity is randomized for every pixel shading operation. (TODO: explain this)
+
+  -where[render_part = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
                                           id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
                                           s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
                                           l  = state.l * (width*height / 3) / n;
