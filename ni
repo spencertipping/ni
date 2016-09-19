@@ -2959,11 +2959,12 @@ defoperator col_delta => q{
 
 defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op $_}, cellspec_fixed;
-5 core/pl/lib
+6 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
 stream.pm.sdoc
 reducers.pm.sdoc
+geohash.pm.sdoc
 pl.pl.sdoc
 55 core/pl/util.pm.sdoc
 Utility library functions.
@@ -3196,7 +3197,62 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-105 core/pl/pl.pl.sdoc
+54 core/pl/geohash.pm.sdoc
+Fast, portable geohash encoder.
+A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
+Perl builds.
+
+our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
+our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
+
+sub morton_gap($) {
+  my ($x) = @_;
+  $x |= $x << 8;  $x &= 0x00ff00ff;
+  $x |= $x << 4;  $x &= 0x0f0f0f0f;
+  $x |= $x << 2;  $x &= 0x33333333;
+  return ($x | $x << 1) & 0x55555555;
+}
+
+sub morton_ungap($) {
+  my ($x) = @_;  $x &= 0x55555555;
+  $x ^= $x >> 1; $x &= 0x33333333;
+  $x ^= $x >> 2; $x &= 0x0f0f0f0f;
+  $x ^= $x >> 4; $x &= 0x00ff00ff;
+  return ($x ^= $x >> 8) & 0x0000ffff;
+}
+
+sub geohash_encode {
+  local $_;
+  my ($lat, $lng, $precision) = (@_, 12);
+  my $unit_lat = ($lat + 90)  / 180;
+  my $unit_lng = ($lng + 180) / 360;
+  my $high_30  = morton_gap($unit_lat * 0x8000)
+               | morton_gap($unit_lng * 0x8000) << 1;
+  my $low_30   = morton_gap($unit_lat * 0x40000000 & 0x7fff)
+               | morton_gap($unit_lng * 0x40000000 & 0x7fff) << 1;
+
+  my $gh12 = join '', map($geohash_alphabet[$high_30 >> 30 - 5*$_ & 31], 1..6),
+                      map($geohash_alphabet[$low_30  >> 30 - 5*$_ & 31], 1..6);
+  substr $gh12, 0, $precision;
+}
+
+sub geohash_decode {
+  local $_;
+  my $gh12 = $_[0] . "0" x 12;
+  my ($low_30, $high_30) = (0, 0);
+  for (0..5) {
+    $low_30  = $low_30  << 5 | $geohash_decode{lc substr $gh12, $_ + 6, 1};
+    $high_30 = $high_30 << 5 | $geohash_decode{lc substr $gh12, $_    , 1};
+  }
+  my $lat_int = morton_ungap($low_30)      | morton_ungap($high_30)      << 15;
+  my $lng_int = morton_ungap($low_30 >> 1) | morton_ungap($high_30 >> 1) << 15;
+  ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
+}
+
+c
+BEGIN {*ghe = \&geohash_encode;
+       *ghd = \&geohash_decode}
+106 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3268,6 +3324,7 @@ use constant perl_mapgen => gen q{
 our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
+                            core/pl/geohash.pm
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
@@ -5964,77 +6021,85 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-70 doc/options.md
+78 doc/options.md
 # Complete ni operator listing
-Operator | Example      | Description
----------|--------------|------------
-`+`      | `+p'foo'`    | Appends a data source evaluated with no input
-`^`      | `^file`      | Prepends a data source
-`%`      | `%[\>f K]`   | Duplicate stream, interleaving fork output
-`=`      | `=\>f`       | Duplicate stream, ignoring fork output
-`\>`     | `\>file`     | Sinks stream into resource, emits resource name
-`\<`     | `\<`         | Opposite of `\>`
-`.`      | `.n100`      | Interleave lines, optionally with a bias ratio
-`-`      |              |
-`_`      |              |
-`,`      | `,jAB`       | Enter cell context
-`:`      | `:foo[nE8z]` | Checkpointed stream
-`@`      | `@foo[\>@a]` | Enter named-gensym context
-`\##`    | `\>foo \##`  | Cat **and then obliterate** named resource(s)
-         |              |
-`a`      |              |
-`b`      | `bL40`       | Block-read and unpack binary data
-`c`      | `c`          | `uniq -c`, but emits proper TSV format
-`d`      |              |
-`e`      | `e[tac]`     | Exec shell command
-`f`      | `fACB`       | Reorder, duplicate, or drop fields by column
-`g`      | `gA`         | Sort by all or selected columns
-`h`      |              |
-`i`      |              |
-`j`      | `j foo`      | Join sorted streams on field values
-`k`      |              |
-`l`      | `l'(1+ a)'`  | Map over rows using Common Lisp
-`m`      | `m'a + 1'`   | Map over rows using Ruby
-`n`      | `n10`        | Generate or prepend line numbers
-`o`      | `oC`         | Numeric sort ascending
-`p`      | `p'a + 1'`   | Map over rows using Perl
-`q`      |              |
-`r`      | `r10`        | Select rows by criterion
-`s`      | `sfoo[n10]`  | Evaluate a lambda on another machine using SSH
-`t`      |              |
-`u`      | `u`          | Just like `uniq`
-`v`      | `vCplc`      | Vertically transform a range of columns
-`w`      | `wn100`      | "With": horizontally juxtapose two streams
-`x`      | `xC`         | Exchange first fields with others
-`y`      |              |
-`z`      | `z4`         | Compress or decompress
-         |              |
-`A`      |              |
-`B`      | `Bn`         | Buffer a stream
-`C`      | `Cubuntu[g]` | Containerize a pipeline with Docker
-`D`      | `D.foo`      | Destructure structured text data (JSON/XML)
-`E`      |              |
-`F`      | `FC`         | Parse data into fields
-`G`      |              |
-`H`      | `H c`        | Send named files through hadoop
-`I`      |              |
-`J`      |              |
-`K`      |              |
-`L`      | `L'(1+ a)'`  | (Reserved for Lisp driver)
-`M`      | `M'svd(x)'`  | Faceted Octave matrix interop
-`N`      | `N'svd(x)'`  | Faceted NumPy matrix interop
-`O`      | `OD`         | Numeric sort descending
-`P`      | `Plg`        | Evaluate Pyspark lambda context
-`Q`      |              |
-`R`      | `R'a+1'`     | Faceted R matrix interop
-`S`      |              |
-`T`      |              |
-`U`      |              |
-`V`      | `VB`         | Pivot and collect on field B
-`W`      |              |
-`X`      | `X`          | Sparse to dense matrix conversion
-`Y`      | `Y`          | Dense to sparse matrix conversion
-`Z`      |              |
+Implementation status:
+- T: implemented and automatically tested
+- M: implemented and manually tested (so it might be broken)
+- P: partially implemented
+- I: implemented
+- U: unimplemented
+
+Operator | Status | Example      | Description
+---------|--------|--------------|------------
+`+`      | T      | `+p'foo'`    | Appends a data source evaluated with no input
+`^`      | T      | `^file`      | Prepends a data source
+`%`      | T      | `%[\>f K]`   | Duplicate stream, interleaving fork output
+`=`      | T      | `=\>f`       | Duplicate stream, ignoring fork output
+`\>`     | T      | `\>file`     | Sinks stream into resource, emits resource name
+`\>R`    | M      | `\>R`        | Converts a stream of resource names into a packed resource stream
+`\<`     | T      | `\<`         | Opposite of `\>`
+`.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
+`-`      |        |              |
+`_`      |        |              |
+`,`      | T      | `,jAB`       | Enter cell context
+`:`      | T      | `:foo[nE8z]` | Checkpointed stream
+`@`      | U      | `@foo[\>@a]` | Enter named-gensym context
+`\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
+         |        |              |
+`a`      |        |              |
+`b`      | T      | `bL40`       | Block-read and unpack binary data
+`c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
+`d`      |        |              |
+`e`      | T      | `e[tac]`     | Exec shell command
+`f`      | T      | `fACB`       | Reorder, duplicate, or drop fields by column
+`g`      | T      | `gA`         | Sort by all or selected columns
+`h`      |        |              |
+`i`      |        |              |
+`j`      | U      | `j foo`      | Join sorted streams on field values
+`k`      |        |              |
+`l`      | T      | `l'(1+ a)'`  | Map over rows using Common Lisp
+`m`      | T      | `m'a + 1'`   | Map over rows using Ruby
+`n`      | T      | `n10`        | Generate or prepend line numbers
+`o`      | T      | `oC`         | Numeric sort ascending
+`p`      | T      | `p'a + 1'`   | Map over rows using Perl
+`q`      |        |              |
+`r`      | T      | `r10`        | Select rows by criterion
+`s`      | M      | `sfoo[n10]`  | Evaluate a lambda on another machine using SSH
+`t`      |        |              |
+`u`      | T      | `u`          | Just like `uniq`
+`v`      | T      | `vCplc`      | Vertically transform a range of columns
+`w`      | I      | `wn100`      | "With": horizontally juxtapose two streams
+`x`      | T      | `xC`         | Exchange first fields with others
+`y`      |        |              |
+`z`      | T      | `z4`         | Compress or decompress
+         |        |              |
+`A`      |        |              |
+`B`      | T      | `Bn`         | Buffer a stream
+`C`      | M      | `Cubuntu[g]` | Containerize a pipeline with Docker
+`D`      | PT     | `D.foo`      | Destructure structured text data (JSON/XML)
+`E`      |        |              |
+`F`      | T      | `FC`         | Parse data into fields
+`G`      |        |              |
+`H`      | U      | `H c`        | Send named files through hadoop
+`I`      |        |              |
+`J`      |        |              |
+`K`      |        |              |
+`L`      | U      | `L'(1+ a)'`  | (Reserved for Lisp driver)
+`M`      | U      | `M'svd(x)'`  | Faceted Octave matrix interop
+`N`      | T      | `N'svd(x)'`  | Faceted NumPy matrix interop
+`O`      | T      | `OD`         | Numeric sort descending
+`P`      | P      | `Plg`        | Evaluate Pyspark lambda context
+`Q`      |        |              |
+`R`      | U      | `R'a+1'`     | Faceted R matrix interop
+`S`      |        |              |
+`T`      |        |              |
+`U`      |        |              |
+`V`      | U      | `VB`         | Pivot and collect on field B
+`W`      |        |              |
+`X`      | T      | `X`          | Sparse to dense matrix conversion
+`Y`      | T      | `Y`          | Dense to sparse matrix conversion
+`Z`      |        |              |
 422 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
