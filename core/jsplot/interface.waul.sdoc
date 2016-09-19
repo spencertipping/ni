@@ -15,10 +15,6 @@ $(caterwaul(':all')(function ($) {
                                    : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
 
-        drag(dx, dy, s, c)     = c ? 'd' /-set/ (settings().d * Math.exp(2 * dy / lh))
-                               : s ? 'r' /-set/ [r[0] + dx / lw, r[1] - dy / lh]       -where [r = settings().r]
-                               :     'c' /-set/ [c[0] + dx / lw, c[1] - dy / lh, c[2]] -where [c = settings().c],
-
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
         resize_other_stuff()   = tr      /~css/ {height: 0} /~css/ {height: tr[0].scrollHeight - 2, width: lw-2}
@@ -28,6 +24,10 @@ $(caterwaul(':all')(function ($) {
         status_timeout         = null,
         update_status(t)       = status /~text/ t /~addClass/ 'active' -then- status_timeout /!clearTimeout /when.status_timeout
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
+
+        drag(dx, dy, s, c)     = c ? 'd' |-set| settings().d * Math.exp(2 * dy / lh)
+                               : s ? 'r' |-set| [r[0] + dx / lw,     r[1] - dy / lh]           -where [r = settings().r]
+                               :     'c' |-set| [c[0] + dx / lw * d, c[1] - dy / lh * d, c[2]] -where [d = settings().d, c = settings().c],
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                                       /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
@@ -39,7 +39,7 @@ $(caterwaul(':all')(function ($) {
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
-                          -then- $(window) /~resize/ handle_resizes
+                          -then- handle_resizes /-setInterval/ 50
                           -then- tr.val() /!visualize,
 
         data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
