@@ -39,7 +39,7 @@ about these numbers; it just seemed about right when I was thinking about it.)
                                                          b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
                                                          zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
                                           if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
-                                          { tx -= sx; ty -= sy; zi = zi /-Math.min/ 4;
+                                          { tx -= sx; ty -= sy;
                                             if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
                                                         { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                                                               li = l * zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;

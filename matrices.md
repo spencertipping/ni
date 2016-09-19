@@ -19,3 +19,9 @@ I also need to think about how this will work with point labeling.
 
 While I'm changing the matrix stuff, I should probably also add some things
 like Z-plane volume slicing. Inspecting dense volumes isn't easy right now.
+
+Another thing. The renderer isn't strictly additive: I need to change the math
+a little so we get more consistent behavior from it. Specifically, luminosity
+should be linear: no minimum shading. (Also, empirically track total
+luminosity, visibility rate, and collision rate to get more accurate response.
+Volume slicing shouldn't net-darken the screen, for example.)
