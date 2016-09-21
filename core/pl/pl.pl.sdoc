@@ -55,6 +55,7 @@ transformer.
 sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
 
 use constant perl_mapgen => gen q{
+  package ni::pl;
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";

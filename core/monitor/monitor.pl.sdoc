@@ -1,0 +1,43 @@
+Pipeline monitoring.
+nfu provided a simple throughput/data count for each pipeline stage. ni can do
+much more, for instance determining the cause of a bottleneck and previewing
+data. The monitor process is implemented using a semi-binary stderr protocol
+that works like this:
+
+| ni!\002                         <- ni control symbol
+         0x50 0x01                <- packet length of 336 (unsigned LE)
+                  336 bytes...    <- packet data
+                              \n  <- packet terminator (after data bytes)
+
+Packet data is in JSON and looks like this:
+
+| {
+    "stdin": {
+      "bytes": 182512,
+      "time": 
+      "iotime": 4.91,           # this may be quantized to 1 second
+      "preview": "...",         # up to 1KiB of data
+    },
+    "stdout": {
+      ...                       # same as stdin
+    },
+    "stderr": {
+      "data": "..."             # any new stderr stuff since last report
+    }
+  }
+
+Bottleneck detection.
+The total time taken by a process is t(read IO) + t(processing) + t(write IO).
+Because the monitor is a separate pipeline operation/process, we can't see into
+t(processing); but we can at least find out whether input or output is taking
+longer.
+
+Not all systems support Time::HiRes, so load it if we can. We can still report
+on timings without it; we'll just have much higher-variance numbers.
+
+package ni::monitor;
+
+c
+BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+
+

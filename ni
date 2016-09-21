@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-46 ni.map.sdoc
+47 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -72,6 +72,7 @@ resource op.pl.sdoc
 resource self.pl.sdoc
 resource main.pl.sdoc
 lib core/stream
+lib core/monitor
 lib core/meta
 lib core/deps
 lib core/gen
@@ -1145,6 +1146,32 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
+1 core/monitor/lib
+monitor.pl.sdoc
+23 core/monitor/monitor.pl.sdoc
+Pipeline monitoring.
+nfu provided a simple throughput/data count for each pipeline stage. ni can do
+much more, for instance determining the cause of a bottleneck and previewing
+data. The monitor process is implemented using a semi-binary stderr protocol
+that works like this:
+
+| ni!\002                         <- ni control symbol
+         0x50 0x01                <- packet length of 336 (unsigned LE)
+                  336 bytes...    <- packet data
+                              \n  <- packet terminator (after data bytes)
+
+Bottleneck detection.
+The total time taken by a process is t(read IO) + t(processing) + t(write IO).
+Because the monitor is a separate pipeline operation/process, we can't see into
+t(processing); but we can at least find out whether input or output is taking
+longer.
+
+Not all systems support Time::HiRes, so load it if we can. We can still report
+on timings without it; we'll just have much higher-variance numbers.
+
+c
+BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
@@ -2312,7 +2339,7 @@ sub gen($) {
 2 core/json/lib
 json.pl.sdoc
 extract.pl.sdoc
-70 core/json/json.pl.sdoc
+75 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
 installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -2382,6 +2409,11 @@ sub json_encode($) {
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
+}
+
+if (__PACKAGE__ eq 'ni::pl') {
+  *je = \&json_encode;
+  *jd = \&json_decode;
 }
 50 core/json/extract.pl.sdoc
 Targeted extraction.
@@ -3197,7 +3229,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-54 core/pl/geohash.pm.sdoc
+53 core/pl/geohash.pm.sdoc
 Fast, portable geohash encoder.
 A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
 Perl builds.
@@ -3249,10 +3281,9 @@ sub geohash_decode {
   ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
 }
 
-c
-BEGIN {*ghe = \&geohash_encode;
-       *ghd = \&geohash_decode}
-106 core/pl/pl.pl.sdoc
+*ghe = \&geohash_encode;
+*ghd = \&geohash_decode;
+107 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3310,6 +3341,7 @@ transformer.
 sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
 
 use constant perl_mapgen => gen q{
+  package ni::pl;
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";

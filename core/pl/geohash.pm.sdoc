@@ -49,6 +49,5 @@ sub geohash_decode {
   ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
 }
 
-c
-BEGIN {*ghe = \&geohash_encode;
-       *ghd = \&geohash_decode}
+*ghe = \&geohash_encode;
+*ghd = \&geohash_decode;
