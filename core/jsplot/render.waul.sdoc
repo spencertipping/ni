@@ -77,26 +77,28 @@ Here's the calculation:
                   var pi = (sy+dy)*width + sx+dx << 2,
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
-                      li = l * zi*zi * op * (256 - lp),
-                      d  = sr / (li + lp);
+                      ci = l * op * (256 - lp),
+                      li = ci * zi*zi,
+                      d  = sr / (ci + lp);
 
                   total_shade += li;
-                  id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
-                  id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
-                  id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
                   id[pi|3] += li;
+                  id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
+                  id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
+                  id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
                 }
             else {
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
-                  li = l * zi*zi * (256 - lp),
-                  d  = sr / (li + lp);
+                  ci = l * (256 - lp),
+                  li = ci * zi*zi,
+                  d  = sr / (ci + lp);
 
               total_shade += li;
-              id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
-              id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
-              id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
               id[pi|3] += li;
+              id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
+              id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
+              id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
             }
           }
         }

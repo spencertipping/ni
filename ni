@@ -4728,7 +4728,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-113 core/jsplot/render.waul.sdoc
+115 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -4808,26 +4808,28 @@ Here's the calculation:
                   var pi = (sy+dy)*width + sx+dx << 2,
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
-                      li = l * zi*zi * op * (256 - lp),
-                      d  = sr / (li + lp);
+                      ci = l * op * (256 - lp),
+                      li = ci * zi*zi,
+                      d  = sr / (ci + lp);
 
                   total_shade += li;
-                  id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
-                  id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
-                  id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
                   id[pi|3] += li;
+                  id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
+                  id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
+                  id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
                 }
             else {
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
-                  li = l * zi*zi * (256 - lp),
-                  d  = sr / (li + lp);
+                  ci = l * (256 - lp),
+                  li = ci * zi*zi,
+                  d  = sr / (ci + lp);
 
               total_shade += li;
-              id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
-              id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
-              id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
               id[pi|3] += li;
+              id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
+              id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
+              id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
             }
           }
         }
