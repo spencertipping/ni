@@ -2500,14 +2500,14 @@ defoperator monitor => q{
         ? substr sgr($1, qr/\t/, '  '), 0, ($ENV{COLUMNS} || 80) - 20
         : substr $monitor_name, 0, 60;
 
-      my $factor = $itime / ($otime || 1);
+      my $factor_log = log($itime / ($otime || 1)) / log 2;
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
           $monitor_id,
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
-          $factor,
+          $factor_log * 10,
           $preview;
     }
   }
@@ -4867,7 +4867,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-115 core/jsplot/render.waul.sdoc
+114 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -4925,7 +4925,6 @@ Here's the calculation:
         t  = +new Date, sr = state.saturation_rate;
 
     if (state.i < slice_size) request_frame();
-    if (t - last_render < 5)  return;
     if (state.i === 0)        id.fill(0);
 
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {

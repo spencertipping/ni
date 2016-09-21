@@ -55,7 +55,6 @@ Here's the calculation:
         t  = +new Date, sr = state.saturation_rate;
 
     if (state.i < slice_size) request_frame();
-    if (t - last_render < 5)  return;
     if (state.i === 0)        id.fill(0);
 
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
