@@ -72,11 +72,11 @@ resource op.pl.sdoc
 resource self.pl.sdoc
 resource main.pl.sdoc
 lib core/stream
-lib core/monitor
 lib core/meta
 lib core/deps
 lib core/gen
 lib core/json
+lib core/monitor
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -616,7 +616,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-85 core/stream/procfh.pl.sdoc
+97 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -643,6 +643,18 @@ sub await_children {
 };
 $SIG{CHLD} = \&await_children;
 
+Signal forwarding.
+Propagate termination signals to children and run finalizers. This makes it so
+that non-writing pipelines like `ni n100000000gzn` still die out without
+waiting for the SIGPIPE.
+
+sub kill_children {
+  kill 'TERM', keys %child_owners;
+  exit 1;
+}
+
+$SIG{INT} = $SIG{TERM} = \&kill_children;
+
 Proc-filehandle class.
 Overloading *{} makes it possible for this to act like a real filehandle in
 every sense: fileno() works, syswrite() works, etc. The constructor takes care
@@ -657,7 +669,7 @@ sub new($$$) {
   $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
 }
 
-sub DESTROY   {
+sub DESTROY {
   my ($self) = @_;
   delete $child_owners{$$self{pid}} unless defined $$self{status};
 }
@@ -942,7 +954,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-203 core/stream/ops.pl.sdoc
+210 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -957,9 +969,16 @@ $main_operator = sub {
 
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
-  exec 'less' or exec 'more' if -t STDOUT;
-  sio;
-  0;
+
+  if (-t STDOUT) {
+    my $fh = siproc {exec 'less' or exec 'more'};
+    sforward \*STDIN, $fh;
+    close $fh;
+    $fh->await;
+  } else {
+    sio;
+    0;
+  }
 };
 
 use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
@@ -1146,32 +1165,6 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-1 core/monitor/lib
-monitor.pl.sdoc
-23 core/monitor/monitor.pl.sdoc
-Pipeline monitoring.
-nfu provided a simple throughput/data count for each pipeline stage. ni can do
-much more, for instance determining the cause of a bottleneck and previewing
-data. The monitor process is implemented using a semi-binary stderr protocol
-that works like this:
-
-| ni!\002                         <- ni control symbol
-         0x50 0x01                <- packet length of 336 (unsigned LE)
-                  336 bytes...    <- packet data
-                              \n  <- packet terminator (after data bytes)
-
-Bottleneck detection.
-The total time taken by a process is t(read IO) + t(processing) + t(write IO).
-Because the monitor is a separate pipeline operation/process, we can't see into
-t(processing); but we can at least find out whether input or output is taking
-longer.
-
-Not all systems support Time::HiRes, so load it if we can. We can still report
-on timings without it; we'll just have much higher-variance numbers.
-
-c
-BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
-
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
@@ -2466,6 +2459,63 @@ defoperator destructure => q{
 };
 
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
+1 core/monitor/lib
+monitor.pl.sdoc
+54 core/monitor/monitor.pl.sdoc
+Pipeline monitoring.
+nfu provided a simple throughput/data count for each pipeline stage. ni can do
+much more, for instance determining the cause of a bottleneck and previewing
+data.
+
+sub unit_bytes($) {
+  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
+  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
+  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
+  return ($_[0] >> 40), "T";
+}
+
+defoperator monitor => q{
+  BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
+  my ($itime, $otime, $bytes) = (0, 0, 0);
+  my $last_update = 0;
+  my $start_time = time;
+  while (1) {
+    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
+    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t3 = time;
+
+    $itime += $t2 - $t1;
+    $otime += $t3 - $t2;
+    last unless $n;
+
+    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+      $last_update = $t3;
+      my $runtime = $t3 - $start_time || 1;
+      my $preview = $t3 & 3 && /\n(.*)\n/
+        ? substr sgr($1, qr/\t/, '  '), 0, ($ENV{COLUMNS} || 80) - 20
+        : substr $monitor_name, 0, 60;
+
+      my $factor = $itime / ($otime || 1);
+
+      safewrite \*STDERR,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
+          $monitor_id,
+          unit_bytes $bytes,
+          unit_bytes $bytes / $runtime,
+          $factor,
+          $preview;
+    }
+  }
+};
+
+my $original_main_operator = $main_operator;
+$main_operator = sub {
+  my $n_ops = @_;
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  &$original_main_operator(
+    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+};
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -4827,7 +4877,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 </div>
 </body>
 </html>
-91 core/jsplot/jsplot.pl.sdoc
+88 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -4884,10 +4934,7 @@ sub jsplot_stream($$@) {
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  my $n;
-  my $total = 0;
-  while ($n = saferead $ni_pipe, $_, 65536) {
-    jsplot_log "% 8dKiB\r", ($total += $n) >> 10;
+  while (saferead $ni_pipe, $_, 65536) {
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x81\x80/) {

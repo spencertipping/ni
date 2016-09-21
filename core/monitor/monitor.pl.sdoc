@@ -1,43 +1,54 @@
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
-data. The monitor process is implemented using a semi-binary stderr protocol
-that works like this:
+data.
 
-| ni!\002                         <- ni control symbol
-         0x50 0x01                <- packet length of 336 (unsigned LE)
-                  336 bytes...    <- packet data
-                              \n  <- packet terminator (after data bytes)
+sub unit_bytes($) {
+  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
+  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
+  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
+  return ($_[0] >> 40), "T";
+}
 
-Packet data is in JSON and looks like this:
+defoperator monitor => q{
+  BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
+  my ($itime, $otime, $bytes) = (0, 0, 0);
+  my $last_update = 0;
+  my $start_time = time;
+  while (1) {
+    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
+    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t3 = time;
 
-| {
-    "stdin": {
-      "bytes": 182512,
-      "time": 
-      "iotime": 4.91,           # this may be quantized to 1 second
-      "preview": "...",         # up to 1KiB of data
-    },
-    "stdout": {
-      ...                       # same as stdin
-    },
-    "stderr": {
-      "data": "..."             # any new stderr stuff since last report
+    $itime += $t2 - $t1;
+    $otime += $t3 - $t2;
+    last unless $n;
+
+    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+      $last_update = $t3;
+      my $runtime = $t3 - $start_time || 1;
+      my $preview = $t3 & 3 && /\n(.*)\n/
+        ? substr sgr($1, qr/\t/, '  '), 0, ($ENV{COLUMNS} || 80) - 20
+        : substr $monitor_name, 0, 60;
+
+      my $factor = $itime / ($otime || 1);
+
+      safewrite \*STDERR,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
+          $monitor_id,
+          unit_bytes $bytes,
+          unit_bytes $bytes / $runtime,
+          $factor,
+          $preview;
     }
   }
+};
 
-Bottleneck detection.
-The total time taken by a process is t(read IO) + t(processing) + t(write IO).
-Because the monitor is a separate pipeline operation/process, we can't see into
-t(processing); but we can at least find out whether input or output is taking
-longer.
-
-Not all systems support Time::HiRes, so load it if we can. We can still report
-on timings without it; we'll just have much higher-variance numbers.
-
-package ni::monitor;
-
-c
-BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
-
-
+my $original_main_operator = $main_operator;
+$main_operator = sub {
+  my $n_ops = @_;
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  &$original_main_operator(
+    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+};

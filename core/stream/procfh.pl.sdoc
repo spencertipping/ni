@@ -24,6 +24,18 @@ sub await_children {
 };
 $SIG{CHLD} = \&await_children;
 
+Signal forwarding.
+Propagate termination signals to children and run finalizers. This makes it so
+that non-writing pipelines like `ni n100000000gzn` still die out without
+waiting for the SIGPIPE.
+
+sub kill_children {
+  kill 'TERM', keys %child_owners;
+  exit 1;
+}
+
+$SIG{INT} = $SIG{TERM} = \&kill_children;
+
 Proc-filehandle class.
 Overloading *{} makes it possible for this to act like a real filehandle in
 every sense: fileno() works, syswrite() works, etc. The constructor takes care
@@ -38,7 +50,7 @@ sub new($$$) {
   $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
 }
 
-sub DESTROY   {
+sub DESTROY {
   my ($self) = @_;
   delete $child_owners{$$self{pid}} unless defined $$self{status};
 }

@@ -12,9 +12,16 @@ $main_operator = sub {
 
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
-  exec 'less' or exec 'more' if -t STDOUT;
-  sio;
-  0;
+
+  if (-t STDOUT) {
+    my $fh = siproc {exec 'less' or exec 'more'};
+    sforward \*STDIN, $fh;
+    close $fh;
+    $fh->await;
+  } else {
+    sio;
+    0;
+  }
 };
 
 use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
