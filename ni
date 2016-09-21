@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-46 ni.map.sdoc
+47 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -76,6 +76,7 @@ lib core/meta
 lib core/deps
 lib core/gen
 lib core/json
+lib core/monitor
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -619,7 +620,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-85 core/stream/procfh.pl.sdoc
+97 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -646,6 +647,18 @@ sub await_children {
 };
 $SIG{CHLD} = \&await_children;
 
+Signal forwarding.
+Propagate termination signals to children and run finalizers. This makes it so
+that non-writing pipelines like `ni n100000000gzn` still die out without
+waiting for the SIGPIPE.
+
+sub kill_children {
+  kill 'TERM', keys %child_owners;
+  exit 1;
+}
+
+$SIG{INT} = $SIG{TERM} = \&kill_children;
+
 Proc-filehandle class.
 Overloading *{} makes it possible for this to act like a real filehandle in
 every sense: fileno() works, syswrite() works, etc. The constructor takes care
@@ -660,7 +673,7 @@ sub new($$$) {
   $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
 }
 
-sub DESTROY   {
+sub DESTROY {
   my ($self) = @_;
   delete $child_owners{$$self{pid}} unless defined $$self{status};
 }
@@ -945,7 +958,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-203 core/stream/ops.pl.sdoc
+210 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -960,9 +973,16 @@ $main_operator = sub {
 
   -t STDIN ? close STDIN : sicons {sdecode};
   @$_ && sicons {operate @$_} for @_;
-  exec 'less' or exec 'more' if -t STDOUT;
-  sio;
-  0;
+
+  if (-t STDOUT) {
+    my $fh = siproc {exec 'less' or exec 'more'};
+    sforward \*STDIN, $fh;
+    close $fh;
+    $fh->await;
+  } else {
+    sio;
+    0;
+  }
 };
 
 use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
@@ -2316,7 +2336,7 @@ sub gen($) {
 2 core/json/lib
 json.pl.sdoc
 extract.pl.sdoc
-70 core/json/json.pl.sdoc
+75 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
 installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -2387,6 +2407,11 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
+
+if (__PACKAGE__ eq 'ni::pl') {
+  *je = \&json_encode;
+  *jd = \&json_decode;
+}
 50 core/json/extract.pl.sdoc
 Targeted extraction.
 ni gives you ways to decode JSON, but you aren't likely to have data stored as
@@ -2438,6 +2463,63 @@ defoperator destructure => q{
 };
 
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
+1 core/monitor/lib
+monitor.pl.sdoc
+54 core/monitor/monitor.pl.sdoc
+Pipeline monitoring.
+nfu provided a simple throughput/data count for each pipeline stage. ni can do
+much more, for instance determining the cause of a bottleneck and previewing
+data.
+
+sub unit_bytes($) {
+  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
+  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
+  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
+  return ($_[0] >> 40), "T";
+}
+
+defoperator monitor => q{
+  BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
+  my ($itime, $otime, $bytes) = (0, 0, 0);
+  my $last_update = 0;
+  my $start_time = time;
+  while (1) {
+    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
+    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t3 = time;
+
+    $itime += $t2 - $t1;
+    $otime += $t3 - $t2;
+    last unless $n;
+
+    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+      $last_update = $t3;
+      my $runtime = $t3 - $start_time || 1;
+      my $preview = $t3 & 3 && /\n(.*)\n/
+        ? substr sgr($1, qr/\t/, '  '), 0, ($ENV{COLUMNS} || 80) - 20
+        : substr $monitor_name, 0, 60;
+
+      my $factor = $itime / ($otime || 1);
+
+      safewrite \*STDERR,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
+          $monitor_id,
+          unit_bytes $bytes,
+          unit_bytes $bytes / $runtime,
+          $factor,
+          $preview;
+    }
+  }
+};
+
+my $original_main_operator = $main_operator;
+$main_operator = sub {
+  my $n_ops = @_;
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  &$original_main_operator(
+    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+};
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -2970,11 +3052,12 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
-5 core/pl/lib
+6 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
 stream.pm.sdoc
 reducers.pm.sdoc
+geohash.pm.sdoc
 pl.pl.sdoc
 55 core/pl/util.pm.sdoc
 Utility library functions.
@@ -3207,7 +3290,61 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-105 core/pl/pl.pl.sdoc
+53 core/pl/geohash.pm.sdoc
+Fast, portable geohash encoder.
+A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
+Perl builds.
+
+our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
+our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
+
+sub morton_gap($) {
+  my ($x) = @_;
+  $x |= $x << 8;  $x &= 0x00ff00ff;
+  $x |= $x << 4;  $x &= 0x0f0f0f0f;
+  $x |= $x << 2;  $x &= 0x33333333;
+  return ($x | $x << 1) & 0x55555555;
+}
+
+sub morton_ungap($) {
+  my ($x) = @_;  $x &= 0x55555555;
+  $x ^= $x >> 1; $x &= 0x33333333;
+  $x ^= $x >> 2; $x &= 0x0f0f0f0f;
+  $x ^= $x >> 4; $x &= 0x00ff00ff;
+  return ($x ^= $x >> 8) & 0x0000ffff;
+}
+
+sub geohash_encode {
+  local $_;
+  my ($lat, $lng, $precision) = (@_, 12);
+  my $unit_lat = ($lat + 90)  / 180;
+  my $unit_lng = ($lng + 180) / 360;
+  my $high_30  = morton_gap($unit_lat * 0x8000)
+               | morton_gap($unit_lng * 0x8000) << 1;
+  my $low_30   = morton_gap($unit_lat * 0x40000000 & 0x7fff)
+               | morton_gap($unit_lng * 0x40000000 & 0x7fff) << 1;
+
+  my $gh12 = join '', map($geohash_alphabet[$high_30 >> 30 - 5*$_ & 31], 1..6),
+                      map($geohash_alphabet[$low_30  >> 30 - 5*$_ & 31], 1..6);
+  substr $gh12, 0, $precision;
+}
+
+sub geohash_decode {
+  local $_;
+  my $gh12 = $_[0] . "0" x 12;
+  my ($low_30, $high_30) = (0, 0);
+  for (0..5) {
+    $low_30  = $low_30  << 5 | $geohash_decode{lc substr $gh12, $_ + 6, 1};
+    $high_30 = $high_30 << 5 | $geohash_decode{lc substr $gh12, $_    , 1};
+  }
+  my $lat_int = morton_ungap($low_30)      | morton_ungap($high_30)      << 15;
+  my $lng_int = morton_ungap($low_30 >> 1) | morton_ungap($high_30 >> 1) << 15;
+  ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
+}
+
+*ghe = \&geohash_encode;
+*ghd = \&geohash_decode;
+107 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3265,6 +3402,7 @@ transformer.
 sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
 
 use constant perl_mapgen => gen q{
+  package ni::pl;
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
@@ -3279,6 +3417,7 @@ use constant perl_mapgen => gen q{
 our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
+                            core/pl/geohash.pm
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
@@ -4993,7 +5132,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 </div>
 </body>
 </html>
-93 core/jsplot/jsplot.pl.sdoc
+90 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -5052,10 +5191,7 @@ sub jsplot_stream($$@) {
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  my $n;
-  my $total = 0;
-  while ($n = saferead $ni_pipe, $_, 65536) {
-    jsplot_log "% 8dKiB\r", ($total += $n) >> 10;
+  while (saferead $ni_pipe, $_, 65536) {
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x81\x80/) {

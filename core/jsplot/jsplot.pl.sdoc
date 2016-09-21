@@ -56,10 +56,7 @@ sub jsplot_stream($$@) {
   my $rmask   = '';
   vec($rmask, fileno $reply, 1) = 1;
 
-  my $n;
-  my $total = 0;
-  while ($n = saferead $ni_pipe, $_, 65536) {
-    jsplot_log "% 8dKiB\r", ($total += $n) >> 10;
+  while (saferead $ni_pipe, $_, 65536) {
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x81\x80/) {

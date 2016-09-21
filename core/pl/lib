@@ -2,4 +2,5 @@ util.pm.sdoc
 math.pm.sdoc
 stream.pm.sdoc
 reducers.pm.sdoc
+geohash.pm.sdoc
 pl.pl.sdoc

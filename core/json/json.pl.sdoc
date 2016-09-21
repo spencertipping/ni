@@ -68,3 +68,8 @@ sub json_encode($) {
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
   looks_like_number $v ? $v : json_escape $v;
 }
+
+if (__PACKAGE__ eq 'ni::pl') {
+  *je = \&json_encode;
+  *jd = \&json_decode;
+}

@@ -1,0 +1,54 @@
+Pipeline monitoring.
+nfu provided a simple throughput/data count for each pipeline stage. ni can do
+much more, for instance determining the cause of a bottleneck and previewing
+data.
+
+sub unit_bytes($) {
+  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
+  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
+  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
+  return ($_[0] >> 40), "T";
+}
+
+defoperator monitor => q{
+  BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
+  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
+  my ($itime, $otime, $bytes) = (0, 0, 0);
+  my $last_update = 0;
+  my $start_time = time;
+  while (1) {
+    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
+    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t3 = time;
+
+    $itime += $t2 - $t1;
+    $otime += $t3 - $t2;
+    last unless $n;
+
+    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+      $last_update = $t3;
+      my $runtime = $t3 - $start_time || 1;
+      my $preview = $t3 & 3 && /\n(.*)\n/
+        ? substr sgr($1, qr/\t/, '  '), 0, ($ENV{COLUMNS} || 80) - 20
+        : substr $monitor_name, 0, 60;
+
+      my $factor = $itime / ($otime || 1);
+
+      safewrite \*STDERR,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
+          $monitor_id,
+          unit_bytes $bytes,
+          unit_bytes $bytes / $runtime,
+          $factor,
+          $preview;
+    }
+  }
+};
+
+my $original_main_operator = $main_operator;
+$main_operator = sub {
+  my $n_ops = @_;
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  &$original_main_operator(
+    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+};
