@@ -111,5 +111,12 @@ defoperator col_delta => q{
              each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
 };
 
-defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec_fixed;
-defshort 'cell/d', pmap q{col_delta_op $_}, cellspec_fixed;
+defoperator col_average => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols; $. = 0',
+             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
+};
+
+defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
+defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
+defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;

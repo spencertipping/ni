@@ -65,16 +65,17 @@ $(caterwaul(':all')(function ($) {
                                          matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
                                          matrix.scale(s[0], s[1], s[2])) -where [st = settings(), d = st.d, r = st.r, s = st.s],
 
-        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/
-                             matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
-                      -where[f  = settings().f,
-                             as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
+        autoscale_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
+                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
+
+        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/ autoscale_matrix() -where[f = settings().f],
 
         camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
         update_screen()    = handle_resizes()
-                      -then- renderer(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -then- renderer(data_state.axes, camera_matrix(), 1, 0.03, sc, screen.width(), screen.height())
+                      -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

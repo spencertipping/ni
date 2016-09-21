@@ -2847,7 +2847,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-115 core/cell/cell.pl.sdoc
+122 core/cell/cell.pl.sdoc
 Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
@@ -2961,8 +2961,15 @@ defoperator col_delta => q{
              each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
 };
 
-defshort 'cell/s', pmap q{col_sum_op   $_}, cellspec_fixed;
-defshort 'cell/d', pmap q{col_delta_op $_}, cellspec_fixed;
+defoperator col_average => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols; $. = 0',
+             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
+};
+
+defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
+defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
+defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 5 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
@@ -4721,25 +4728,26 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-59 core/jsplot/render.waul.sdoc
+113 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
-  render(state = null, last_render = 0)
-        (axes, vm, l, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 17, vt: n[4] *[vm.transformer(x)] -seq, l: l,
-                                                  id: (state && state.id && state.ctx === ctx && state.w === w && state.h === h
-                                                       ? state.id
-                                                       : ctx.getImageData(0, 0, w, h)) -se- it.data.fill(0)}]
-                                -then- render_part /!requestAnimationFrame
+  render(state = null, last_render = 0, frames_requested = 0)
+        (axes, vm, l0, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
+                                                       total_shade: 0, saturation_rate: sr /!Math.exp,
+                                                       id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                             ? state.id
+                                                             : ctx.getImageData(0, 0, w, h)}]
+                                            -then- request_frame()
 
 Render function.
 This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
 
 Rendering happens "asynchronously" -- that is, it's a time-bounded, reentrant process. The outermost loop governing the whole rendering process is driven by
-requestAnimationFrame(), which calls into render_part(). render_part() runs for about 20ms, rendering 1/256th "random" slices of the data until it runs out of
-time. The assumption here is that 1/256th of the data takes under 20ms, which empirically has been true on my machine.
+requestAnimationFrame(), which calls into render_part(). render_part() runs for about 20ms, rendering 1/4096th "random" slices of the data until it runs out of
+time. The assumption here is that 1/4096th of the data takes under 20ms, which empirically has been true on my machine.
 
 The renderer works by modifying RGBA values in an ImageData object, which is a little tricky because all of the drawing operations need to be translucent:
 conceptually we're rendering a volume rather than an opaque object. We also log-scale(-ish) the light output on the screen, so brightness(pixel) ~ log(volume
@@ -4753,34 +4761,87 @@ depth). This is all done without storing any extra per-pixel state. Here's a ful
   6. The total onscreen brightness should remain about the same regardless of how many points are on the screen (otherwise zooming would dim the display).
 
 So here's roughly how this all works. The RGB channels store full-value color all the time: this is a brightness-weighted average of the colors drawn into that
-pixel. Brightness is stored in the alpha channel and converges to 255 by a halving sequence (128, 192, 224, ...) if all points are rendered at the same
-intensity.
+pixel. Brightness is stored in the alpha channel and converges to 255 by an exponential series if all points are rendered at the same intensity.
 
-Point intensity is randomized for every pixel shading operation. (TODO: explain this)
+Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
+constantly low.
 
-  -where[render_part = function (rt) {var t  = +new Date,     ax=state.a[0], ay=state.a[1], xt=state.vt[0], yt=state.vt[1], width  = state.id.width,
-                                          id = state.id.data, az=state.a[2], aw=state.a[3], zt=state.vt[2], wt=state.vt[3], height = state.id.height,
-                                          s  = width /-Math.min/ height >> 1, n = state.a[0].end(), use_hue = !!aw, cx = width>>1, cy = height>>1,
-                                          l  = state.l * (width*height / 3) / n;
-                                      if (state.i) render_part /!requestAnimationFrame;
-                                      if (rt - last_render < 5) return; else last_render = rt;
-                                      for (var i = state.i; (i &= 0xff) && +new Date - t < 20; i += 17) for (; i < n; i += 256)
-                                      { var w  = aw ? i /!aw.pnorm : 0, x  = ax ? i /!ax.p : 0, y  = ay ? i /!ay.p : 0, z  = az ? i /!az.p : 0,
-                                            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
-                                        if (zp > 0) {var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                         g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                         b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
-                                                         zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
-                                          if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1)
-                                          { tx -= sx; ty -= sy;
-                                            if (zi > 2) for (var dx = 0; dx <= 1; ++dx) for (var dy = 0; dy <= 1; ++dy)
-                                                        { var pi = (sy+dy)*width + sx+dx << 2, op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
-                                                              li = l * zi*zi * op * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li|0 }
-                                            else        { var pi = sy*width + sx << 2, li = l * zi*zi * 256 / (32 + ((id[pi|3] |= 128) & 127)) |-Math.max| 8;
-                                                          id[pi|0] += r*li|3; id[pi|1] += g*li|3; id[pi|2] += b*li|3; id[pi|3] += li|0 }}}}
-                                      state.ctx.clearRect(0, 0, width, height); state.ctx.putImageData(state.id, 0, 0);
-                                      state.i = i}]})();
+  -where[slice_size      = 256,
+         request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
+         render_part     = function () {
+
+Render state.
+Local variables for the axes and coordinate transformations, some misc stuff, and our luminosity adjustment and shade tracking. The luminosity adjustment is
+modified each iteration as we figure out how dense our shading is empirically; state.l0, the "target luminosity", is measured in full shades per screen pixel.
+Here's the calculation:
+
+| initial_l = target_shade_per_pixel * pixels / data_points;
+  next_l    = target_shade_per_pixel * pixels / (actual_shading_last_time / actual_layers_last_time * 256);
+
+    --frames_requested;
+    var ax = state.a[0], ay = state.a[1], xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
+        az = state.a[2], aw = state.a[3], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
+        id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
+        l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
+        t  = +new Date, sr = state.saturation_rate;
+
+    if (state.i < slice_size) request_frame();
+    if (t - last_render < 5)  return;
+    if (state.i === 0)        id.fill(0);
+
+    for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
+      for (var j = state.i * 61 & slice_size - 1; j < n; j += slice_size) {
+        var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
+            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+
+        if (zp > 0) {
+          var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+              g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+              b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
+              zi = 1/zp, tx = cx + xp*zi*s, ty = cy - yp*zi*s, sx = tx|0, sy = ty|0;
+
+          if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1) {
+            tx -= sx; ty -= sy;
+            if (zi > 1)
+              for (var dx = 0; dx <= 1; ++dx)
+                for (var dy = 0; dy <= 1; ++dy) {
+                  var pi = (sy+dy)*width + sx+dx << 2,
+                      op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
+                      lp = id[pi|3] || 64,
+                      li = l * zi*zi * op * (256 - lp),
+                      d  = sr / (li + lp);
+
+                  total_shade += li;
+                  id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
+                  id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
+                  id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
+                  id[pi|3] += li;
+                }
+            else {
+              var pi = sy*width + sx << 2,
+                  lp = id[pi|3] || 64,
+                  li = l * zi*zi * (256 - lp),
+                  d  = sr / (li + lp);
+
+              total_shade += li;
+              id[pi|0] = (id[pi|0] * lp + r * 256 * li) * d;
+              id[pi|1] = (id[pi|1] * lp + g * 256 * li) * d;
+              id[pi|2] = (id[pi|2] * lp + b * 256 * li) * d;
+              id[pi|3] += li;
+            }
+          }
+        }
+      }
+
+      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * slice_size);
+    }
+
+    last_render = +new Date;
+
+    state.l           = l;
+    state.total_shade = total_shade;
+    state.ctx.putImageData(state.id, 0, 0);
+  }]})();
 9 core/jsplot/view.waul.sdoc
 View matrix controls.
 A tree of object-transformation matrices you can use to explore the data. The whole structure uses modus to serialize to and from a JSON object.
@@ -4791,7 +4852,7 @@ buffering.) Write up a design.
 caterwaul(':all')(function ($) {
 
 })(jQuery);
-80 core/jsplot/interface.waul.sdoc
+81 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -4859,16 +4920,17 @@ $(caterwaul(':all')(function ($) {
                                          matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
                                          matrix.scale(s[0], s[1], s[2])) -where [st = settings(), d = st.d, r = st.r, s = st.s],
 
-        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/
-                             matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
-                      -where[f  = settings().f,
-                             as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
+        autoscale_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
+                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
+
+        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/ autoscale_matrix() -where[f = settings().f],
 
         camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
         update_screen()    = handle_resizes()
-                      -then- renderer(data_state.axes, camera_matrix(), 1, sc, screen.width(), screen.height()) -then- data_state.last_render /eq[+new Date]
+                      -then- renderer(data_state.axes, camera_matrix(), 1, 0.03, sc, screen.width(), screen.height())
+                      -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
