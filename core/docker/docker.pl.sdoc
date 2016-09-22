@@ -2,11 +2,6 @@ Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
 
-our @docker_alt;
-defshort '/C', paltr @docker_alt;
-
-sub defdockeralt($) {unshift @docker_alt, $_[0]}
-
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
   my ($stdin, @args) = sni_exec_list @f;
@@ -22,5 +17,7 @@ This is what happens by default, and looks like `ni Cubuntu[g]`.
 
 use constant docker_image_name => prx '[^][]+';
 
-defdockeralt pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
-                  pseq pc docker_image_name, pqfn '';
+defshort '/C',
+  defalt 'dockeralt', 'alternatives for the /C containerize operator',
+    pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
+         pseq pc docker_image_name, pqfn '';

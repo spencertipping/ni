@@ -15,6 +15,7 @@ RUN apt-get install -y apt-transport-https ca-certificates \
 RUN apt-get install -y docker-engine=1.11.2-0~precise
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
+
 VOLUME /data
 WORKDIR /data
 CMD /bin/bash

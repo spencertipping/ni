@@ -58,6 +58,14 @@ sub line_continues {
 my $argv = @ARGV;
 while (<>) {
   $. = 1, $argv = @ARGV unless $argv == @ARGV;
+
+  if (/^\`\`\`lazytest$/) {
+    print "LAZYTEST_EOF\n";
+    print until ($_ = <>) =~ /^\`\`\`$/;
+    print "cat <<'LAZYTEST_EOF'\n";
+    next;
+  }
+
   next unless (/^\`\`\`bash/../^\`\`\`$/) && !/^\`\`\`/;
 
   if (s/^\$\s+//) {

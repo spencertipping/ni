@@ -29,11 +29,9 @@ defoperator cols => q{
                   is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);
 };
 
-our @col_alt = pmap q{cols_op @$_}, colspec;
-
-defshort '/f', paltr @col_alt;
-
-sub defcolalt($) {unshift @col_alt, $_[0]}
+defshort '/f',
+  defalt 'colalt', 'list of alternatives for /f field-select operator',
+    pmap q{cols_op @$_}, colspec;
 
 Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
@@ -69,19 +67,15 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
 defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-our %split_dsp = (
-  'C' => pmap(q{split_chr_op   ','},               pnone),
-  'P' => pmap(q{split_chr_op   '|'},               pnone),
-  'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
-  'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
-  '/' => pmap(q{split_regex_op $_},                regex),
-  ':' => pmap(q{split_chr_op   $_},                prx '^.'),
-  'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex),
-);
-
-defshort '/F', pdspr %split_dsp;
-
-sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
+defshort '/F',
+  defdsp 'splitalt', 'dispatch table for /F split operator',
+    'C' => pmap(q{split_chr_op   ','},               pnone),
+    'P' => pmap(q{split_chr_op   '|'},               pnone),
+    'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
+    'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
+    '/' => pmap(q{split_regex_op $_},                regex),
+    ':' => pmap(q{split_chr_op   $_},                prx '^.'),
+    'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex);
 
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.

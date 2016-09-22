@@ -52,3 +52,23 @@ sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 
 sub cli(@) {my ($r) = parse pcli '', @_; $r}
+
+Extensible parse elements.
+These patterns come up a lot, and it's worth being able to autogenerate their
+documentation.
+
+sub defalt($$@) {
+  my ($name, $doc, @entries) = @_;
+  my $vname = __PACKAGE__ . "::$name";
+  @{$vname} = @entries;
+  *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
+  paltr @{$vname};
+}
+
+sub defdsp($$%) {
+  my ($name, $doc, %entries) = @_;
+  my $vname = __PACKAGE__ . "::$name";
+  %{$vname} = %entries;
+  *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
+  pdspr %{$vname};
+}

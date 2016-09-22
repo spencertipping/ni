@@ -1,4 +1,10 @@
 # Containerized pipelines
+```lazytest
+# These tests only get run in environments where docker is installed
+# (centos 5 uses i386 libraries and doesn't support docker, for example).
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
 Some ni operators depend on tools you may not want to install on your machine.
 If you want to use those operators anyway, though, you can run them inside a
 Docker container with the tools installed. ni provides the `C` operator to
@@ -35,4 +41,8 @@ $ ni n100 Cni-test/numpy[N'x = x + 1'] r4
 3
 4
 5
+```
+
+```lazytest
+fi                      # $HAVE_DOCKER (lazytest condition)
 ```

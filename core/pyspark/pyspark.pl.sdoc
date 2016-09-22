@@ -24,21 +24,21 @@ use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
 
 our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
 
-our @pyspark_row_alt = (
-  (pmap q{gen "%v.sample(False, $_)"}, integer),
-  (pmap q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
-  (pmap q{gen "%v.filter($_)"}, pyspark_fn));
-
 defshort 'pyspark/n',  pmap q{gen "sc.parallelize(range(1, 1+$_))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "sc.parallelize(range($_))"}, integer;
 
 defshort 'pyspark/e',
-  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
+  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '([^]]+)';
 
 defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
-defshort 'pyspark/r', paltr @pyspark_row_alt;
-defshort 'pyspark/G', pk gen "%v.distinct()";
+defshort 'pyspark/r',
+  defalt 'pysparkrowalt', 'alternatives for pyspark/r row operator',
+    pmap(q{gen "%v.sample(False, $_)"}, integer),
+    pmap(q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
+    pmap(q{gen "%v.filter($_)"}, pyspark_fn);
+
 defshort 'pyspark/g', pk gen "%v.sortByKey()";
+defshort 'pyspark/u', pk gen "%v.distinct()";
 
 defshort 'pyspark/+', pmap q{gen "%v.union($_)"}, $pyspark_rdd;
 defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, $pyspark_rdd;
@@ -48,14 +48,12 @@ A profile contains the code required to initialize the SparkContext and any
 other variables relevant to the process. Each is referenced by a single
 character and stored in the %spark_profiles table.
 
-our %spark_profiles = (
-  L => pk gen pydent q{from pyspark import SparkContext
-                       sc = SparkContext("local", "%name")
-                       %body});
+defoperator pyspark_preview => q{sio; print "$_[0]\n"};
 
-sub defsparkprofile($$) {$spark_profiles{$_[0]} = $_[1]}
+defshort '/P',
+  defdsp 'sparkprofile', 'dispatch for pyspark profiles',
+    'dev/compile' => pmap q{pyspark_preview_op $_}, $pyspark_rdd;
 
-defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
-
-defshort '/P', pmap q{pyspark_op @$_},
-               pseq pdspr(%spark_profiles), $pyspark_rdd;
+L => pk pydent q{from pyspark import SparkContext
+                 sc = SparkContext("local", "%name")
+                 %body};

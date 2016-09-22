@@ -25,10 +25,6 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
-our %binary_dsp;
-
-defshort '/b', pdspr %binary_dsp;
-
-sub defbinaryalt($$) {$binary_dsp{$_[0]} = $_[1]}
-
-defbinaryalt p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
+defshort '/b',
+  defdsp 'binaryalt', 'dispatch table for the /b binary operator',
+    p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
