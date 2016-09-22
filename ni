@@ -5294,8 +5294,9 @@ defshort '/C',
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
 Hadoop contexts.
-1 core/pyspark/lib
+2 core/pyspark/lib
 pyspark.pl.sdoc
+local.pl.sdoc
 54 core/pyspark/pyspark.pl.sdoc
 Pyspark interop.
 We need to define a context for CLI arguments so we can convert ni pipelines
@@ -5320,7 +5321,7 @@ c
 BEGIN {defcontext 'pyspark'}
 
 use constant pyspark_fn  => pmap q{pyspark_lambda $_}, pycode;
-use constant pyspark_rdd => pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
+use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pqfn 'pyspark';
 
 defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;
@@ -5351,6 +5352,43 @@ defoperator pyspark_preview => q{sio; print "$_[0]\n"};
 defshort '/P',
   defdsp 'sparkprofile', 'dispatch for pyspark profiles',
     'dev/compile' => pmap q{pyspark_preview_op $_}, pyspark_rdd;
+36 core/pyspark/local.pl.sdoc
+Local PySpark profile.
+Provides a way to stream data into and out of a context.
+
+use constant pyspark_text_io_gen => gen pydent q{
+  from pyspark import SparkConf, SparkContext
+  %prefix
+  conf = SparkConf().setAppName(%name).setMaster(%master)
+  sc = SparkContext(conf=conf)
+  if len(%input_path) > 0:
+    input = sc.textFile(%input_path)
+  else:
+    input = sc.parallelize([])
+  output = %body
+  output.saveAsTextFile(%output_path)
+};
+
+defoperator pyspark_local_text => q{
+  my ($fn) = @_;
+  my $inpath   = join ',', map sr("file://$_", qr/\n$/, ''), <STDIN>;
+  my $outpath  = "/tmp/ni-$$-out";
+  my $tempfile = "/tmp/ni-$$-temp.py";
+  safewrite swfile($tempfile),
+    pyspark_text_io_gen->(
+      master      => pyquote 'local[*]',
+      name        => pyquote "ni $inpath -> $outpath",
+      input_path  => pyquote $inpath,
+      output_path => pyquote "file://$outpath",
+      body        => $fn);
+  local $SIG{CHLD} = 'DEFAULT';
+  die "ni: pyspark failed with $_" if $_ = system 'spark-submit', $tempfile;
+  print "$outpath\n";
+};
+
+defsparkprofile L => pmap q{[pyspark_local_text_op($_),
+                             file_read_op,
+                             row_match_op '/part-']}, pyspark_rdd;
 20 doc/lib
 binary.md
 col.md
@@ -6959,7 +6997,7 @@ w	12
 x	23
 y	12
 ```
-27 doc/pyspark.md
+28 doc/pyspark.md
 # PySpark interop
 ```lazytest
 # All of these tests require Docker, so skip if we don't have it
@@ -6968,10 +7006,11 @@ if ! [[ $SKIP_DOCKER ]]; then
 
 ni's `P` operator compiles a series of stream operators into PySpark. It takes
 a context as its first argument, then a lambda of stream operations. Like other
-ni commands, data is streamed into and out of the PySpark context. For example:
+ni commands, data is streamed into and out of the PySpark context. For example,
+using the `L` (for "local") Spark profile:
 
 ```bash
-$ ni Csequenceiq/spark[PL[n10]]
+$ ni Cgettyimages/spark[PL[n10] \<o]
 1
 2
 3
