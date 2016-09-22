@@ -10,6 +10,23 @@ $ ni n4l'(+ a 2)'
 6
 ```
 
+If you don't have SBCL installed locally, you can use the `C` (containerize)
+operator to run a Docker image:
+
+```bash
+$ docker build -q -t ni-test/sbcl - <<EOF > /dev/null
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install -y sbcl
+CMD /bin/bash
+EOF
+$ ni Cni-test/sbcl[n4l'(+ a 2)']
+3
+4
+5
+6
+```
+
 ## Basic stuff
 `a` to `q` are one-letter functions that return the first 17 tab-delimited
 values from the current line. `(r ...)` is a function that takes a list of

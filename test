@@ -10,15 +10,20 @@ envs=( alpine
        ubuntu-16.04 )
 
 ./build
-./lazytest $(find doc bugs -name '*.md') > dev/tests.sh
+{
+  echo cd /tmp
+  echo export NI_NO_MONITOR=yes
+  ./lazytest $(find doc bugs -name '*.md')
+} > dev/tests.sh
 
-tests() { echo 'cd /tmp; bash /data/dev/tests.sh'; }
-image() { docker build -q -f env/$1 .; }
+tests() { echo 'bash /data/dev/tests.sh'; }
+image() { docker build -q -f env/$1 -t ni/env-$1 .; }
 
 default_image=ubuntu-16.04
 
+docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
-docker_opts="$docker_magic -i -m 256M --name ni-test --rm -v $PWD:/data:ro"
+docker_opts="$docker_magic $docker_dind -i -m 256M --name ni-test-$$ --rm -v $PWD:/data:ro"
 
 c=$1
 shift
@@ -28,7 +33,7 @@ case $c in
     echo
     echo "BUILDING $e"
     echo
-    docker build -f env/$e .
+    docker build -f env/$e -t ni/env-$e .
   done
   ;;
 

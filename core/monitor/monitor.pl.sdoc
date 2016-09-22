@@ -35,8 +35,8 @@ defoperator monitor => q{
       my $factor = $itime / ($otime || 1);
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
-          $monitor_id,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
+          $monitor_id + 1,
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
           $factor,
@@ -48,7 +48,7 @@ defoperator monitor => q{
 my $original_main_operator = $main_operator;
 $main_operator = sub {
   my $n_ops = @_;
-  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITOR};
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };

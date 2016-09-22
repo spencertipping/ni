@@ -2499,8 +2499,8 @@ defoperator monitor => q{
       my $factor = $itime / ($otime || 1);
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s %3d %s\n",
-          $monitor_id,
+        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
+          $monitor_id + 1,
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
           $factor,
@@ -2512,7 +2512,7 @@ defoperator monitor => q{
 my $original_main_operator = $main_operator;
 $main_operator = sub {
   my $n_ops = @_;
-  return &$original_main_operator(@_) if $ENV{NI_NO_MONITORS};
+  return &$original_main_operator(@_) if $ENV{NI_NO_MONITOR};
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };
@@ -5343,30 +5343,44 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
-24 doc/container.md
+38 doc/container.md
 # Containerized pipelines
 Some ni operators depend on tools you may not want to install on your machine.
 If you want to use those operators anyway, though, you can run them inside a
 Docker container with the tools installed. ni provides the `C` operator to
 containerize a stream transformation:
 
-```sh
-$ ni //ni Cubuntu[gc] r10
+```bash
+$ ni nE4 Cubuntu[gr4] O
+1000
+100
+10
+1
 ```
 
 The above is executed roughly like this, except that ni pipes itself into Perl
 rather than invoking itself by name:
 
 ```sh
-$ ni //ni \
-  | docker run --rm -i ubuntu ni gc \
-  | ni r10
+$ ni nE4 \
+  | docker run --rm -i ubuntu ni gr4 \
+  | ni O
 ```
 
 A common use case is for something like NumPy:
 
-```sh
-$ ni n100 Cadreeve/numpy[N'x = x + 1']
+```bash
+$ docker build -q -t ni-test/numpy - <<EOF > /dev/null
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install -y python-numpy
+CMD /bin/bash
+EOF
+$ ni n100 Cni-test/numpy[N'x = x + 1'] r4
+2
+3
+4
+5
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -5730,13 +5744,30 @@ ni --extend site-lib2
 
 `--extend` is idempotent, and you can use it to install a newer version of an
 already-included library.
-88 doc/lisp.md
+105 doc/lisp.md
 # Common Lisp driver
 ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
 
 ```bash
 $ ni n4l'(+ a 2)'
+3
+4
+5
+6
+```
+
+If you don't have SBCL installed locally, you can use the `C` (containerize)
+operator to run a Docker image:
+
+```bash
+$ docker build -q -t ni-test/sbcl - <<EOF > /dev/null
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install -y sbcl
+CMD /bin/bash
+EOF
+$ ni Cni-test/sbcl[n4l'(+ a 2)']
 3
 4
 5
