@@ -4,21 +4,35 @@ If you want to use those operators anyway, though, you can run them inside a
 Docker container with the tools installed. ni provides the `C` operator to
 containerize a stream transformation:
 
-```sh
-$ ni //ni Cubuntu[gc] r10
+```bash
+$ ni nE4 Cubuntu[gr4] O
+1000
+100
+10
+1
 ```
 
 The above is executed roughly like this, except that ni pipes itself into Perl
 rather than invoking itself by name:
 
 ```sh
-$ ni //ni \
-  | docker run --rm -i ubuntu ni gc \
-  | ni r10
+$ ni nE4 \
+  | docker run --rm -i ubuntu ni gr4 \
+  | ni O
 ```
 
 A common use case is for something like NumPy:
 
-```sh
-$ ni n100 Cadreeve/numpy[N'x = x + 1']
+```bash
+$ docker build -q -t ni-test/numpy - <<EOF > /dev/null
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install -y python-numpy
+CMD /bin/bash
+EOF
+$ ni n100 Cni-test/numpy[N'x = x + 1'] r4
+2
+3
+4
+5
 ```
