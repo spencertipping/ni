@@ -2,6 +2,11 @@ Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
 
+Prebuilt image case.
+This is what happens by default, and looks like `ni Cubuntu[g]`.
+
+use constant docker_image_name => prx '[^][]+';
+
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
   my ($stdin, @args) = sni_exec_list @f;
@@ -12,12 +17,51 @@ defoperator docker_run_image => q{
   $fh->await;
 };
 
-Prebuilt image case.
-This is what happens by default, and looks like `ni Cubuntu[g]`.
+On-demand images.
+These are untagged images built on the fly.
 
-use constant docker_image_name => prx '[^][]+';
+defoperator docker_run_dynamic => q{
+  my ($dockerfile, @f) = @_;
+  my ($stdin, @args) = sni_exec_list @f;
+  my $fh = siproc {
+    my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
+    my $quoted_args       = shell_quote @args;
+    my $image_name        = "\`$quoted_dockerfile | docker build -q -"
+                          . " || printf %s --IMAGE_BUILD_ERROR\`";
+    sh "docker run --rm -i $image_name $quoted_args";
+  };
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+sub alpine_dockerfile {
+  join "\n", 'FROM alpine',
+             q{RUN echo '@edge http://nl.alpinelinux.org/alpine/edge/main' \
+                   >> /etc/apk/repositories \
+                && echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
+                   >> /etc/apk/repositories \
+                && echo '@community http://nl.alpinelinux.org/alpine/edge/community' \
+                   >> /etc/apk/repositories \
+                && apk update \
+                && apk add perl},
+             map "RUN apk add $_", @_;
+}
+
+sub ubuntu_dockerfile {
+  join "\n", 'FROM ubuntu',
+             'RUN apt-get update',
+             map "RUN apt-get install -y $_", @_;
+}
+
+use constant docker_package_list => pmap q{[/\+([^][+]+)/g]}, prx '[^][]+';
 
 defshort '/C',
   defalt 'dockeralt', 'alternatives for the /C containerize operator',
-    pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
-         pseq pc docker_image_name, pqfn '';
+    pmap(q{docker_run_dynamic_op alpine_dockerfile(@{$$_[0]}), @{$$_[1]}},
+         pseq pn(1, prx 'A', docker_package_list), pqfn ''),
+    pmap(q{docker_run_dynamic_op ubuntu_dockerfile(@{$$_[0]}), @{$$_[1]}},
+         pseq pn(1, prx 'U', docker_package_list), pqfn ''),
+    pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
+         pseq pc docker_image_name, pqfn '');
