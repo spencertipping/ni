@@ -2,11 +2,12 @@ Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau = Math.PI * 2, screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        w   = $(window),   overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-                           tr      = $('#transform'), lw = 0, mx = null, ms = false,
-                           status  = $('#status'),    lh = 0, my = null, mc = false,
-                           preview = $('#preview'),
+  where[tau = Math.PI * 2, screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        w   = $(window),   overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+                           tr       = $('#transform'), lw = 0, mx = null, ms = false,
+                           status   = $('#status'),    lh = 0, my = null, mc = false,
+                           preview  = $('#preview'),
+                           controls = $('#controls'),
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
@@ -77,5 +78,10 @@ $(caterwaul(':all')(function ($) {
                       -then- renderer(data_state.axes, camera_matrix(), 1, 0.03, sc, screen.width(), screen.height())
                       -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]],
+
+  where[ui_number(v)   = jquery[input.number /modus(get, set)] -where [get(e) = +e.modus('val'), set(x) = this.modus('val', +x)],
+        ui_rotate_x(v) = jquery in div.transformation[ui_number(v)] /modus('delegate', '.number'),
+        // TODO
+        ],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

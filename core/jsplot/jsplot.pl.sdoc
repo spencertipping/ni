@@ -19,7 +19,6 @@ use constant jsplot_html =>
                                          core/jsplot/matrix.waul
                                          core/jsplot/socket.waul
                                          core/jsplot/render.waul
-                                         core/jsplot/view.waul
                                          core/jsplot/interface.waul |});
 
 Parsing.

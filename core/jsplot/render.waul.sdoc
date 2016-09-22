@@ -45,7 +45,7 @@ modified each iteration as we figure out how dense our shading is empirically; s
 Here's the calculation:
 
 | initial_l = target_shade_per_pixel * pixels / data_points;
-  next_l    = target_shade_per_pixel * pixels / (actual_shading_last_time / actual_layers_last_time * 256);
+  next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
 
     --frames_requested;
     var ax = state.a[0], ay = state.a[1], xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
