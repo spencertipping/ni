@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-47 ni.map.sdoc
+48 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -77,6 +77,7 @@ lib core/deps
 lib core/gen
 lib core/json
 lib core/monitor
+lib core/uri
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -2536,6 +2537,90 @@ $main_operator = sub {
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };
+1 core/uri/lib
+uri.pl.sdoc
+81 core/uri/uri.pl.sdoc
+Resources identified by URI.
+A way for ni to interface with URIs. URIs are self-quoting, unlike files; to
+read them you need to use the `\<` operator or prefix:
+
+| ni http://google.com          # prints "http://google.com"
+  ni http://google.com \<       # prints contents of google.com
+  ni \<http://google.com        # prints contents of google.com
+
+c
+BEGIN {
+
+deflong '/resource',
+  defdsp 'resourcealt', 'dispatch table for URI prefixes';
+
+for my $op (qw/read write exists tmp nuke/) {
+  %{"ni::resource_$op"} = ();
+  *{"ni::resource_$op"} = sub ($) {
+    my ($r) = @_;
+    my $scheme = sr $r, qr|://.*|, '';
+    my $f = ${"ni::resource_$op"}{$scheme} or
+      die "ni: $scheme resources don't support the $op operation";
+    &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+  };
+}
+
+}
+
+defoperator resource_quote => q{sio; print "$_[0]\n"};
+defoperator resource_append => q{
+  sio;
+  sforward resource_read $_[0], \*STDOUT;
+};
+
+sub defresource($%) {
+  my ($scheme, %opts) = @_;
+  defresourcealt("$scheme://",
+    pmap q{resource_quote_op "$scheme://$_"}, prc qr|\Q$scheme://\E(.*)|);
+  defresourcealt("<$scheme://",
+    pmap q{resource_append_op "$scheme://$_"}, prc qr|\Q<$scheme://\E(.*)|);
+
+  $resource_read{$scheme}   = fn $opts{read}   if exists $opts{read};
+  $resource_write{$scheme}  = fn $opts{write}  if exists $opts{write};
+  $resource_exists{$scheme} = fn $opts{exists} if exists $opts{exists};
+  $resource_tmp{$scheme}    = fn $opts{tmp}    if exists $opts{tmp};
+  $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
+}
+
+Filesystem resources.
+Things that behave like files: local files, HDFS, S3, sftp, etc.
+
+defresource 'file',
+  read   => q{srfile $_[1]},
+  write  => q{swfile $_[1]},
+  exists => q{-e $_[1]},
+  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
+  nuke   => q{unlink $_[1]};
+
+defresource 'hdfs',
+  read   => q{soproc {exec 'hdfs', 'fs', '-cat', $_[1]}},
+  write  => q{siproc {sh "hdfs fs -put - " . shell_quote($_[1]) . " 1>&2"}},
+  exists => q{local $_;
+              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]};
+              saferead $fh, $_, 8192;
+              close $fh;
+              !$fh->await},
+  tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
+              . "/ni.$<." . noise_str 32},
+  nuke   => q{exec 'hdfs', 'fs', '-rm', '-r', $_[1]};
+
+defresource 's3cmd',
+  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'}},
+  write  => q{siproc {exec 's3cmd', 'put', "s3://$_[1]", '-'}};
+  # TODO
+
+Network resources.
+
+defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]}},
+                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]}};
+
+defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]}},
+                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]}};
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc

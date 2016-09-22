@@ -12,6 +12,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/gen
 ./ni --internal/lib core/json
 ./ni --internal/lib core/monitor
+./ni --internal/lib core/uri
 
 ./ni --internal/lib core/checkpoint
 ./ni --internal/lib core/net
