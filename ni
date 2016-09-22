@@ -4966,10 +4966,15 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-23 core/docker/docker.pl.sdoc
+67 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
+
+Prebuilt image case.
+This is what happens by default, and looks like `ni Cubuntu[g]`.
+
+use constant docker_image_name => prx '[^][]+';
 
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
@@ -4981,22 +4986,61 @@ defoperator docker_run_image => q{
   $fh->await;
 };
 
-Prebuilt image case.
-This is what happens by default, and looks like `ni Cubuntu[g]`.
+On-demand images.
+These are untagged images built on the fly.
 
-use constant docker_image_name => prx '[^][]+';
+defoperator docker_run_dynamic => q{
+  my ($dockerfile, @f) = @_;
+  my ($stdin, @args) = sni_exec_list @f;
+  my $fh = siproc {
+    my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
+    my $quoted_args       = shell_quote @args;
+    my $image_name        = "\`$quoted_dockerfile | docker build -q -"
+                          . " || printf %s --IMAGE_BUILD_ERROR\`";
+    sh "docker run --rm -i $image_name $quoted_args";
+  };
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+sub alpine_dockerfile {
+  join "\n", 'FROM alpine',
+             q{RUN echo '@edge http://nl.alpinelinux.org/alpine/edge/main' \
+                   >> /etc/apk/repositories \
+                && echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
+                   >> /etc/apk/repositories \
+                && echo '@community http://nl.alpinelinux.org/alpine/edge/community' \
+                   >> /etc/apk/repositories \
+                && apk update \
+                && apk add perl},
+             map "RUN apk add $_", @_;
+}
+
+sub ubuntu_dockerfile {
+  join "\n", 'FROM ubuntu',
+             'RUN apt-get update',
+             map "RUN apt-get install -y $_", @_;
+}
+
+use constant docker_package_list => pmap q{[/\+([^][+]+)/g]}, prx '[^][]+';
 
 defshort '/C',
   defalt 'dockeralt', 'alternatives for the /C containerize operator',
-    pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
-         pseq pc docker_image_name, pqfn '';
+    pmap(q{docker_run_dynamic_op alpine_dockerfile(@{$$_[0]}), @{$$_[1]}},
+         pseq pn(1, prx 'A', docker_package_list), pqfn ''),
+    pmap(q{docker_run_dynamic_op ubuntu_dockerfile(@{$$_[0]}), @{$$_[1]}},
+         pseq pn(1, prx 'U', docker_package_list), pqfn ''),
+    pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
+         pseq pc docker_image_name, pqfn '');
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
 Hadoop contexts.
 1 core/pyspark/lib
 pyspark.pl.sdoc
-59 core/pyspark/pyspark.pl.sdoc
+54 core/pyspark/pyspark.pl.sdoc
 Pyspark interop.
 We need to define a context for CLI arguments so we can convert ni pipelines
 into pyspark code. This ends up being fairly straightforward because Spark
@@ -5009,38 +5053,37 @@ profile. This governs everything from `spark-submit` CLI options to
 SparkContext init.
 
 Pyspark operators.
-These exist in their own parsing context, which we hook in below by using
-contexts->{pyspark}{...}. Rather than compiling directly to Python code, we
-generate a series of gens, each of which refers to a '%v' quantity that
-signifies the value being transformed.
+These exist in their own parsing context. Rather than compiling directly to
+Python code, we generate a series of gens, each of which refers to a '%v'
+quantity that signifies the value being transformed.
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
 sub pyspark_lambda($) {$_[0]}
 
-defcontext 'pyspark';
+c
+BEGIN {defcontext 'pyspark'}
 
-use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
+use constant pyspark_fn  => pmap q{pyspark_lambda $_}, pycode;
+use constant pyspark_rdd => pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
 
-our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
-
-defshort 'pyspark/n',  pmap q{gen "sc.parallelize(range(1, 1+$_))"}, integer;
-defshort 'pyspark/n0', pmap q{gen "sc.parallelize(range($_))"}, integer;
+defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
+defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;
 
 defshort 'pyspark/e',
   pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '([^]]+)';
 
-defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
+defshort 'pyspark/m', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
 defshort 'pyspark/r',
   defalt 'pysparkrowalt', 'alternatives for pyspark/r row operator',
-    pmap(q{gen "%v.sample(False, $_)"}, integer),
+    pmap(q{gen "%v.sample(False, $_)"},     integer),
     pmap(q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
-    pmap(q{gen "%v.filter($_)"}, pyspark_fn);
+    pmap(q{gen "%v.filter($_)"},            pyspark_fn);
 
 defshort 'pyspark/g', pk gen "%v.sortByKey()";
 defshort 'pyspark/u', pk gen "%v.distinct()";
 
-defshort 'pyspark/+', pmap q{gen "%v.union($_)"}, $pyspark_rdd;
-defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, $pyspark_rdd;
+defshort 'pyspark/+', pmap q{gen "%v.union($_)"},     pyspark_rdd;
+defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, pyspark_rdd;
 
 Configuration management.
 A profile contains the code required to initialize the SparkContext and any
@@ -5051,11 +5094,7 @@ defoperator pyspark_preview => q{sio; print "$_[0]\n"};
 
 defshort '/P',
   defdsp 'sparkprofile', 'dispatch for pyspark profiles',
-    'dev/compile' => pmap q{pyspark_preview_op $_}, $pyspark_rdd;
-
-L => pk pydent q{from pyspark import SparkContext
-                 sc = SparkContext("local", "%name")
-                 %body};
+    'dev/compile' => pmap q{pyspark_preview_op $_}, pyspark_rdd;
 20 doc/lib
 binary.md
 col.md
@@ -5337,7 +5376,7 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
-48 doc/container.md
+67 doc/container.md
 # Containerized pipelines
 ```lazytest
 # These tests only get run in environments where docker is installed
@@ -5381,6 +5420,25 @@ $ ni n100 Cni-test/numpy[N'x = x + 1'] r4
 3
 4
 5
+```
+
+## Dynamic images
+The examples above are a little awkward in that (1) they require you to tag the
+docker images, and (2) they require a separate command to build them in the
+first place. To get around this, ni lets you define image generators and
+includes predefined ones for Ubuntu and Alpine:
+
+```bash
+$ ni n100 CU+python-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
+3
+4
+5
+6
+$ ni n100 CA+py-numpy@community+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
+3
+4
+5
+6
 ```
 
 ```lazytest

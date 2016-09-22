@@ -43,6 +43,25 @@ $ ni n100 Cni-test/numpy[N'x = x + 1'] r4
 5
 ```
 
+## Dynamic images
+The examples above are a little awkward in that (1) they require you to tag the
+docker images, and (2) they require a separate command to build them in the
+first place. To get around this, ni lets you define image generators and
+includes predefined ones for Ubuntu and Alpine:
+
+```bash
+$ ni n100 CU+python-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
+3
+4
+5
+6
+$ ni n100 CA+py-numpy@community+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
+3
+4
+5
+6
+```
+
 ```lazytest
 fi                      # $HAVE_DOCKER (lazytest condition)
 ```
