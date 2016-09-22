@@ -123,7 +123,7 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
-use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+';
+use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
 sub noise_str($) {join '', map noise_char, 1..$_[0]}
 
@@ -5054,7 +5054,7 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-67 core/docker/docker.pl.sdoc
+81 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
@@ -5075,7 +5075,14 @@ defoperator docker_run_image => q{
 };
 
 On-demand images.
-These are untagged images built on the fly.
+These are untagged images built on the fly. NB: workaround here for old/buggy
+versions of the docker client; here's what's going on.
+
+Normally you'd use `docker build -q` and get an image ID, but some older docker
+clients ignore the `-q` option and emit full verbose output (and, in
+unexpectedly barbaric fashion, they also emit this verbosity to standard out,
+not standard error). So we instead go through the silliness of tagging and then
+untagging the image.
 
 defoperator docker_run_dynamic => q{
   my ($dockerfile, @f) = @_;
@@ -5083,9 +5090,16 @@ defoperator docker_run_dynamic => q{
   my $fh = siproc {
     my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
     my $quoted_args       = shell_quote @args;
-    my $image_name        = "\`$quoted_dockerfile | docker build -q -"
-                          . " || printf %s --IMAGE_BUILD_ERROR\`";
-    sh "docker run --rm -i $image_name $quoted_args";
+    my $image_name        = "ni-tmp-" . lc noise_str 32;
+    sh qq{image_name=\`$quoted_dockerfile | docker build -q -\`
+          if [ \${#image_name} -gt 80 ]; then \\
+            $quoted_dockerfile | docker build -q -t $image_name - >&2
+            image_name=$image_name
+            docker run --rm -i \$image_name $quoted_args
+            docker rmi --no-prune=true \$image_name
+          else
+            docker run --rm -i \$image_name $quoted_args
+          fi};
   };
   safewrite $fh, $stdin;
   sforward \*STDIN, $fh;
