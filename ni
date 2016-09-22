@@ -809,8 +809,8 @@ So that's why we do these redundant open STDIN and STDOUT operations. At some
 point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
 moment that seems like more trouble than it's worth.
 
-sub forkopen($$) {
-  my ($fd, $f) = @_;
+sub forkopen {
+  my ($fd, $f, @args) = @_;
   cpipe my $r, my $w;
   my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
   my $pid;
@@ -822,13 +822,13 @@ sub forkopen($$) {
     move_fd fileno $child, $fd;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub sioproc(&) {
-  my ($f) = @_;
+sub sioproc(&@) {
+  my ($f, @args) = @_;
   cpipe my $proc_in, my $w;
   cpipe my $r, my $proc_out;
   my $pid;
@@ -843,25 +843,25 @@ sub sioproc(&) {
     move_fd fileno $proc_out, 1;
     open STDIN,  '<&=0';
     open STDOUT, '>&=1';
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub siproc(&) {forkopen 0, $_[0]}
-sub soproc(&) {forkopen 1, $_[0]}
+sub siproc(&@) {forkopen 0, @_}
+sub soproc(&@) {forkopen 1, @_}
 
-sub sicons(&) {
-  my ($f) = @_;
-  my $fh = soproc {&$f};
+sub sicons(&@) {
+  my ($f, @args) = @_;
+  my $fh = soproc {&$f(@args)};
   move_fd fileno $fh, 0;
   open STDIN, '<&=0';
   $fh;
 }
 
-sub socons(&) {
-  my ($f) = @_;
-  my $fh = siproc {&$f};
+sub socons(&@) {
+  my ($f, @args) = @_;
+  my $fh = siproc {&$f(@args)};
   move_fd fileno $fh, 1;
   open STDOUT, '>&=1';
   $fh;
@@ -2539,14 +2539,18 @@ $main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-81 core/uri/uri.pl.sdoc
+94 core/uri/uri.pl.sdoc
 Resources identified by URI.
-A way for ni to interface with URIs. URIs are self-quoting, unlike files; to
-read them you need to use the `\<` operator or prefix:
+A way for ni to interface with URIs. URIs are self-appending like files; to
+quote them you should use the `\'` prefix:
 
-| ni http://google.com          # prints "http://google.com"
-  ni http://google.com \<       # prints contents of google.com
-  ni \<http://google.com        # prints contents of google.com
+| ni http://google.com          # prints contents of google.com
+  ni \'http://google.com        # prints "http://google.com"
+
+If you've got a lot of resources, you can use `\'` with a lambda to quote all
+of them:
+
+| ni \'[ http://foo.com http://bar.com ]
 
 c
 BEGIN {
@@ -2558,7 +2562,7 @@ for my $op (qw/read write exists tmp nuke/) {
   %{"ni::resource_$op"} = ();
   *{"ni::resource_$op"} = sub ($) {
     my ($r) = @_;
-    my $scheme = sr $r, qr|://.*|, '';
+    my ($scheme) = $r =~ /^([^:]+):/;
     my $f = ${"ni::resource_$op"}{$scheme} or
       die "ni: $scheme resources don't support the $op operation";
     &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
@@ -2573,12 +2577,17 @@ defoperator resource_append => q{
   sforward resource_read $_[0], \*STDOUT;
 };
 
+defoperator resource_quote_many => q{sio; print "$_\n" for @_};
+
+defshort "/'", pmap q{resource_quote_many_op @$_},
+  pn 1, prc qr/\[/, prep(prc '[^]].*'), prc qr/\]/;
+
 sub defresource($%) {
   my ($scheme, %opts) = @_;
+  defresourcealt("'$scheme://",
+    pmap qq{resource_quote_op "$scheme://\$_"}, prc '.*');
   defresourcealt("$scheme://",
-    pmap q{resource_quote_op "$scheme://$_"}, prc qr|\Q$scheme://\E(.*)|);
-  defresourcealt("<$scheme://",
-    pmap q{resource_append_op "$scheme://$_"}, prc qr|\Q<$scheme://\E(.*)|);
+    pmap qq{resource_append_op "$scheme://\$_"}, prc '.*');
 
   $resource_read{$scheme}   = fn $opts{read}   if exists $opts{read};
   $resource_write{$scheme}  = fn $opts{write}  if exists $opts{write};
@@ -2597,11 +2606,15 @@ defresource 'file',
   tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
   nuke   => q{unlink $_[1]};
 
+defresource 'sftp',
+  read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
+              soproc {exec 'ssh', $host, 'cat', $path}};
+
 defresource 'hdfs',
-  read   => q{soproc {exec 'hdfs', 'fs', '-cat', $_[1]}},
-  write  => q{siproc {sh "hdfs fs -put - " . shell_quote($_[1]) . " 1>&2"}},
+  read   => q{soproc {exec 'hdfs', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh "hdfs fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
-              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]};
+              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
@@ -2610,17 +2623,17 @@ defresource 'hdfs',
   nuke   => q{exec 'hdfs', 'fs', '-rm', '-r', $_[1]};
 
 defresource 's3cmd',
-  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'}},
-  write  => q{siproc {exec 's3cmd', 'put', "s3://$_[1]", '-'}};
+  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
+  write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
   # TODO
 
 Network resources.
 
-defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]}},
-                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]}};
+defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
-defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]}},
-                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]}};
+defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -2643,7 +2656,7 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
 1 core/net/lib
 net.pl.sdoc
-28 core/net/net.pl.sdoc
+18 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2662,16 +2675,6 @@ defoperator ssh => q{
 use constant ssh_host => prc '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
-
-HTTP.
-Use curl if we have it. HTTP urls append themselves to the stream by default;
-if you want to POST, you should use the \> operator. (TODO)
-
-use constant purl => prc '.*';
-
-defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
-defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
-defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;
 1 core/buffer/lib
 buffer.pl.sdoc
 17 core/buffer/buffer.pl.sdoc

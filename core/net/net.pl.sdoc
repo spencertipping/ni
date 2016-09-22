@@ -16,13 +16,3 @@ defoperator ssh => q{
 use constant ssh_host => prc '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
-
-HTTP.
-Use curl if we have it. HTTP urls append themselves to the stream by default;
-if you want to POST, you should use the \> operator. (TODO)
-
-use constant purl => prc '.*';
-
-defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
-defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
-defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;
