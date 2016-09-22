@@ -65,10 +65,8 @@ sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
 defoperator ruby_mapper  => q{stdin_to_ruby ruby_mapper  $_[0]};
 defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
-our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
-
-defshort '/m', paltr @ruby_alt;
-
-sub defrubyalt($) {unshift @ruby_alt, $_[0]}
+defshort '/m',
+  defalt 'rubyalt', 'alternatives for the /m ruby operator',
+    pmap q{ruby_mapper_op $_}, prbcode;
 
 defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;

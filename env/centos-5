@@ -5,9 +5,10 @@ RUN yum install -y numpy
 RUN yum install -y nc
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 ADD ni /usr/bin/
-ADD dev/docker /usr/bin/
-ADD dev/libapparmor.so.1 /lib/
 ADD dev/test-data/etc-passwd /etc/passwd
+
+ENV SKIP_DOCKER=yes
+
 VOLUME /data
 WORKDIR /data
 CMD /bin/bash

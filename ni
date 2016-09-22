@@ -395,7 +395,7 @@ use constant filename => palt prx 'file:(.+)',
                               pcond q{-e}, prx '[^][]+';
 
 use constant nefilename => palt filename, prx '[^][]+';
-54 cli.pl.sdoc
+74 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -450,6 +450,26 @@ sub pcli($)       {pn 0, pseries $_[0], pend}
 sub pcli_debug($) {pseries $_[0]}
 
 sub cli(@) {my ($r) = parse pcli '', @_; $r}
+
+Extensible parse elements.
+These patterns come up a lot, and it's worth being able to autogenerate their
+documentation.
+
+sub defalt($$@) {
+  my ($name, $doc, @entries) = @_;
+  my $vname = __PACKAGE__ . "::$name";
+  @{$vname} = @entries;
+  *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
+  paltr @{$vname};
+}
+
+sub defdsp($$%) {
+  my ($name, $doc, %entries) = @_;
+  my $vname = __PACKAGE__ . "::$name";
+  %{$vname} = %entries;
+  *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
+  pdspr %{$vname};
+}
 38 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
@@ -2569,18 +2589,12 @@ defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
 defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;
 1 core/buffer/lib
 buffer.pl.sdoc
-21 core/buffer/buffer.pl.sdoc
+17 core/buffer/buffer.pl.sdoc
 Buffering operators.
 Buffering a stream causes it to be forced in its entirety. Buffering does not
 imply, however, that the stream will be consumed at any particular rate; some
 buffers may be size-limited, at which point writes will block until there's
 space available.
-
-our %buffer_dsp;
-
-defshort '/B', pdspr %buffer_dsp;
-
-sub defbufferalt($$) {$buffer_dsp{$_[0]} = $_[1]}
 
 Null buffer.
 Forwards data 1:1, but ignores pipe signals on its output.
@@ -2590,10 +2604,12 @@ defoperator buffer_null_op => q{
   sio;
 };
 
-defbufferalt 'n', pmap q{buffer_null_op}, pnone;
+defshort '/B',
+  defdsp 'bufferalt', 'dispatch table for /B buffer operator',
+    n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-172 core/col/col.pl.sdoc
+166 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2625,11 +2641,9 @@ defoperator cols => q{
                   is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);
 };
 
-our @col_alt = pmap q{cols_op @$_}, colspec;
-
-defshort '/f', paltr @col_alt;
-
-sub defcolalt($) {unshift @col_alt, $_[0]}
+defshort '/f',
+  defalt 'colalt', 'list of alternatives for /f field-select operator',
+    pmap q{cols_op @$_}, colspec;
 
 Column swapping.
 This is such a common thing to do that it gets its own operator `x`. The idea
@@ -2665,19 +2679,15 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
 defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-our %split_dsp = (
-  'C' => pmap(q{split_chr_op   ','},               pnone),
-  'P' => pmap(q{split_chr_op   '|'},               pnone),
-  'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
-  'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
-  '/' => pmap(q{split_regex_op $_},                regex),
-  ':' => pmap(q{split_chr_op   $_},                prx '^.'),
-  'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex),
-);
-
-defshort '/F', pdspr %split_dsp;
-
-sub defsplitalt($$) {$split_dsp{$_[0]} = $_[1]}
+defshort '/F',
+  defdsp 'splitalt', 'dispatch table for /F split operator',
+    'C' => pmap(q{split_chr_op   ','},               pnone),
+    'P' => pmap(q{split_chr_op   '|'},               pnone),
+    'S' => pmap(q{split_regex_op qr/\s+/},           pnone),
+    'W' => pmap(q{split_regex_op qr/[^\w\n]+/},      pnone),
+    '/' => pmap(q{split_regex_op $_},                regex),
+    ':' => pmap(q{split_chr_op   $_},                prx '^.'),
+    'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex);
 
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.
@@ -2768,7 +2778,7 @@ defoperator vertical_apply => q{
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
 1 core/row/lib
 row.pl.sdoc
-124 core/row/row.pl.sdoc
+121 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -2803,18 +2813,15 @@ defoperator row_cols_defined => q{
   }
 };
 
-our @row_alt = (
-  pmap(q{tail_op '-n', '',  $_},       pn 1, prx '\+', integer),
-  pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',  integer),
-  pmap(q{row_every_op  $_},            pn 1, prx 'x',  number),
-  pmap(q{row_match_op  $_},            pn 1, prx '/',  regex),
-  pmap(q{row_sample_op $_},                  prx '\.\d+'),
-  pmap(q{head_op '-n', $_},            integer),
-  pmap(q{row_cols_defined_op @$_},     colspec_fixed));
-
-defshort '/r', paltr @row_alt;
-
-sub defrowalt($) {unshift @row_alt, $_[0]}
+defshort '/r',
+  defalt 'rowalt', 'alternatives for the /r row operator',
+    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '\+', integer),
+    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',  integer),
+    pmap(q{row_every_op  $_},            pn 1, prx 'x',  number),
+    pmap(q{row_match_op  $_},            pn 1, prx '/',  regex),
+    pmap(q{row_sample_op $_},                  prx '\.\d+'),
+    pmap(q{head_op '-n', $_},            integer),
+    pmap(q{row_cols_defined_op @$_},     colspec_fixed);
 
 Sorting.
 ni has four sorting operators, each of which can take modifiers:
@@ -3333,7 +3340,7 @@ sub geohash_decode {
 
 *ghe = \&geohash_encode;
 *ghd = \&geohash_decode;
-107 core/pl/pl.pl.sdoc
+105 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3433,11 +3440,9 @@ sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
-our @perl_alt = pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
-
-defshort '/p', paltr @perl_alt;
-
-sub defperlalt($) {unshift @perl_alt, $_[0]}
+defshort '/p',
+  defalt 'perlalt', 'alternatives for /p perl operator',
+    pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', pplcode \&perl_grepper;
@@ -3541,7 +3546,7 @@ def re &f
   v = f.call $l
   rw {|l| f.call(l) == v}
 end
-74 core/rb/rb.pl.sdoc
+72 core/rb/rb.pl.sdoc
 Ruby code element.
 This works just like the Perl code parser but is slightly less involved because
 there's no `BEGIN/END` substitution. We also don't need to take a code
@@ -3609,11 +3614,9 @@ sub ruby_grepper($) {ruby_code $_[0], 'puts $l if x'}
 defoperator ruby_mapper  => q{stdin_to_ruby ruby_mapper  $_[0]};
 defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
-our @ruby_alt = pmap q{ruby_mapper_op $_}, prbcode;
-
-defshort '/m', paltr @ruby_alt;
-
-sub defrubyalt($) {unshift @ruby_alt, $_[0]}
+defshort '/m',
+  defalt 'rubyalt', 'alternatives for the /m ruby operator',
+    pmap q{ruby_mapper_op $_}, prbcode;
 
 defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;
 2 core/lisp/lib
@@ -3841,7 +3844,7 @@ defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
           pn 1, prx 'l', lispcode;
 1 core/sql/lib
 sql.pl.sdoc
-132 core/sql/sql.pl.sdoc
+131 core/sql/sql.pl.sdoc
 SQL parsing context.
 Translates ni CLI grammar to a SELECT query. This is a little interesting
 because SQL has a weird structure to it; to help with this I've also got a
@@ -3940,22 +3943,20 @@ use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
                  pseq sql_table, popt pqfn 'sql';
 
-our @sql_row_alt = (
-  pmap(q{['take',   $_]}, integer),
-  pmap(q{['filter', $_]}, sqlcode),
-);
-
-our @sql_join_alt = (
-  pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
-  pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
-  pmap(q{['njoin', $_]}, pn 1, prx 'N', $sql_query),
-  pmap(q{['ijoin', $_]}, $sql_query),
-);
-
 defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
-defshort 'sql/r', paltr @sql_row_alt;
-defshort 'sql/j', paltr @sql_join_alt;
 defshort 'sql/u', pk ['uniq'];
+
+defshort 'sql/r',
+  defalt 'sqlrowalt', 'alternatives for sql/r row operator',
+    pmap(q{['take',   $_]}, integer),
+    pmap(q{['filter', $_]}, sqlcode);
+
+defshort 'sql/j',
+  defalt 'sqljoinalt', 'alternatives for sql/j join operator',
+    pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
+    pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
+    pmap(q{['njoin', $_]}, pn 1, prx 'N', $sql_query),
+    pmap(q{['ijoin', $_]}, $sql_query);
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
 defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
@@ -3967,13 +3968,14 @@ defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
 
 Global operator.
 SQL stuff is accessed using Q, which delegates to a sub-parser that handles
-configuration/connections.
+configuration/connections. The dev/compile delegate is provided so you can see
+the SQL code being generated.
 
-our %sql_profiles;
+defoperator sql_preview => q{sio; print "$_[0]\n"};
 
-defshort '/Q', pdspr %sql_profiles;
-
-sub defsqlprofile($$) {$sql_profiles{$_[0]} = $_[1]}
+defshort '/Q',
+  defdsp 'sqlprofile', 'dispatch for SQL profiles',
+    'dev/compile' => pmap q{sql_preview_op($_[0])}, $sql_query;
 1 core/python/lib
 python.pl.sdoc
 46 core/python/python.pl.sdoc
@@ -4067,7 +4069,7 @@ perl mappers.
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-34 core/binary/binary.pl.sdoc
+30 core/binary/binary.pl.sdoc
 Binary import operator.
 An operator that reads data in terms of bytes rather than lines. This is done
 in a Perl context with functions that manage a queue of data in `$_`.
@@ -4095,13 +4097,9 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
-our %binary_dsp;
-
-defshort '/b', pdspr %binary_dsp;
-
-sub defbinaryalt($$) {$binary_dsp{$_[0]} = $_[1]}
-
-defbinaryalt p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
+defshort '/b',
+  defdsp 'binaryalt', 'dispatch table for the /b binary operator',
+    p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
 115 core/matrix/matrix.pl.sdoc
@@ -4968,15 +4966,10 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-26 core/docker/docker.pl.sdoc
+23 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
-
-our @docker_alt;
-defshort '/C', paltr @docker_alt;
-
-sub defdockeralt($) {unshift @docker_alt, $_[0]}
 
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
@@ -4993,15 +4986,17 @@ This is what happens by default, and looks like `ni Cubuntu[g]`.
 
 use constant docker_image_name => prx '[^][]+';
 
-defdockeralt pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
-                  pseq pc docker_image_name, pqfn '';
+defshort '/C',
+  defalt 'dockeralt', 'alternatives for the /C containerize operator',
+    pmap q{docker_run_image_op $$_[0], @{$$_[1]}},
+         pseq pc docker_image_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
 Hadoop contexts.
 1 core/pyspark/lib
 pyspark.pl.sdoc
-61 core/pyspark/pyspark.pl.sdoc
+59 core/pyspark/pyspark.pl.sdoc
 Pyspark interop.
 We need to define a context for CLI arguments so we can convert ni pipelines
 into pyspark code. This ends up being fairly straightforward because Spark
@@ -5028,21 +5023,21 @@ use constant pyspark_fn => pmap q{pyspark_lambda $_}, pycode;
 
 our $pyspark_rdd = pmap q{pyspark_compile 'sc', @$_}, pqfn 'pyspark';
 
-our @pyspark_row_alt = (
-  (pmap q{gen "%v.sample(False, $_)"}, integer),
-  (pmap q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
-  (pmap q{gen "%v.filter($_)"}, pyspark_fn));
-
 defshort 'pyspark/n',  pmap q{gen "sc.parallelize(range(1, 1+$_))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "sc.parallelize(range($_))"}, integer;
 
 defshort 'pyspark/e',
-  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '\$=([^]]+)';
+  pmap q{TODO(); gen "%v.pipe(" . pyquote($_) . ")"}, prx '([^]]+)';
 
 defshort 'pyspark/p', pmap q{gen "%v.map(lambda x: $_)"}, pyspark_fn;
-defshort 'pyspark/r', paltr @pyspark_row_alt;
-defshort 'pyspark/G', pk gen "%v.distinct()";
+defshort 'pyspark/r',
+  defalt 'pysparkrowalt', 'alternatives for pyspark/r row operator',
+    pmap(q{gen "%v.sample(False, $_)"}, integer),
+    pmap(q{gen "%v.takeSample(False, $_)"}, prx '\.(\d+)'),
+    pmap(q{gen "%v.filter($_)"}, pyspark_fn);
+
 defshort 'pyspark/g', pk gen "%v.sortByKey()";
+defshort 'pyspark/u', pk gen "%v.distinct()";
 
 defshort 'pyspark/+', pmap q{gen "%v.union($_)"}, $pyspark_rdd;
 defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, $pyspark_rdd;
@@ -5052,18 +5047,16 @@ A profile contains the code required to initialize the SparkContext and any
 other variables relevant to the process. Each is referenced by a single
 character and stored in the %spark_profiles table.
 
-our %spark_profiles = (
-  L => pk gen pydent q{from pyspark import SparkContext
-                       sc = SparkContext("local", "%name")
-                       %body});
+defoperator pyspark_preview => q{sio; print "$_[0]\n"};
 
-sub defsparkprofile($$) {$spark_profiles{$_[0]} = $_[1]}
+defshort '/P',
+  defdsp 'sparkprofile', 'dispatch for pyspark profiles',
+    'dev/compile' => pmap q{pyspark_preview_op $_}, $pyspark_rdd;
 
-defoperator pyspark => q{print STDERR "TODO: pyspark\n"};
-
-defshort '/P', pmap q{pyspark_op @$_},
-               pseq pdspr(%spark_profiles), $pyspark_rdd;
-19 doc/lib
+L => pk pydent q{from pyspark import SparkContext
+                 sc = SparkContext("local", "%name")
+                 %body};
+20 doc/lib
 binary.md
 col.md
 container.md
@@ -5076,6 +5069,7 @@ matrix.md
 net.md
 options.md
 perl.md
+pyspark.md
 row.md
 ruby.md
 sql.md
@@ -5343,8 +5337,14 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
-38 doc/container.md
+48 doc/container.md
 # Containerized pipelines
+```lazytest
+# These tests only get run in environments where docker is installed
+# (centos 5 uses i386 libraries and doesn't support docker, for example).
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
 Some ni operators depend on tools you may not want to install on your machine.
 If you want to use those operators anyway, though, you can run them inside a
 Docker container with the tools installed. ni provides the `C` operator to
@@ -5381,6 +5381,10 @@ $ ni n100 Cni-test/numpy[N'x = x + 1'] r4
 3
 4
 5
+```
+
+```lazytest
+fi                      # $HAVE_DOCKER (lazytest condition)
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -5744,7 +5748,7 @@ ni --extend site-lib2
 
 `--extend` is idempotent, and you can use it to install a newer version of an
 already-included library.
-105 doc/lisp.md
+113 doc/lisp.md
 # Common Lisp driver
 ni supports Common Lisp via SBCL, which is available using the `l` and `L`
 operators. For example:
@@ -5760,6 +5764,10 @@ $ ni n4l'(+ a 2)'
 If you don't have SBCL installed locally, you can use the `C` (containerize)
 operator to run a Docker image:
 
+```lazytest
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
 ```bash
 $ docker build -q -t ni-test/sbcl - <<EOF > /dev/null
 FROM ubuntu
@@ -5772,6 +5780,10 @@ $ ni Cni-test/sbcl[n4l'(+ a 2)']
 4
 5
 6
+```
+
+```lazytest
+fi                      # $HAVE_DOCKER
 ```
 
 ## Basic stuff
@@ -6632,6 +6644,34 @@ v	12
 w	12
 x	23
 y	12
+```
+27 doc/pyspark.md
+# PySpark interop
+```lazytest
+# All of these tests require Docker, so skip if we don't have it
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
+ni's `P` operator compiles a series of stream operators into PySpark. It takes
+a context as its first argument, then a lambda of stream operations. Like other
+ni commands, data is streamed into and out of the PySpark context. For example:
+
+```bash
+$ ni Csequenceiq/spark[PL[n10]]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
+
+```lazytest
+fi              # $SKIP_DOCKER
 ```
 243 doc/row.md
 # Row operations

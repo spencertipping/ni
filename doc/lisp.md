@@ -13,6 +13,10 @@ $ ni n4l'(+ a 2)'
 If you don't have SBCL installed locally, you can use the `C` (containerize)
 operator to run a Docker image:
 
+```lazytest
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
 ```bash
 $ docker build -q -t ni-test/sbcl - <<EOF > /dev/null
 FROM ubuntu
@@ -25,6 +29,10 @@ $ ni Cni-test/sbcl[n4l'(+ a 2)']
 4
 5
 6
+```
+
+```lazytest
+fi                      # $HAVE_DOCKER
 ```
 
 ## Basic stuff

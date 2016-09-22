@@ -9,11 +9,16 @@ envs=( alpine
        ubuntu-14.04
        ubuntu-16.04 )
 
+if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
+  test_set=$2
+  shift 2
+fi
+
 ./build
 {
   echo cd /tmp
   echo export NI_NO_MONITOR=yes
-  ./lazytest $(find doc bugs -name '*.md')
+  ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
 } > dev/tests.sh
 
 tests() { echo 'bash /data/dev/tests.sh'; }
