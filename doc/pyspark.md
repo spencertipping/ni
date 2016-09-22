@@ -6,10 +6,11 @@ if ! [[ $SKIP_DOCKER ]]; then
 
 ni's `P` operator compiles a series of stream operators into PySpark. It takes
 a context as its first argument, then a lambda of stream operations. Like other
-ni commands, data is streamed into and out of the PySpark context. For example:
+ni commands, data is streamed into and out of the PySpark context. For example,
+using the `L` (for "local") Spark profile:
 
 ```bash
-$ ni Csequenceiq/spark[PL[n10]]
+$ ni Cgettyimages/spark[PL[n10] \<o]
 1
 2
 3
