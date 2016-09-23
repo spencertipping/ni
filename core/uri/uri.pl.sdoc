@@ -1,0 +1,94 @@
+Resources identified by URI.
+A way for ni to interface with URIs. URIs are self-appending like files; to
+quote them you should use the `\'` prefix:
+
+| ni http://google.com          # prints contents of google.com
+  ni \'http://google.com        # prints "http://google.com"
+
+If you've got a lot of resources, you can use `\'` with a lambda to quote all
+of them:
+
+| ni \'[ http://foo.com http://bar.com ]
+
+c
+BEGIN {
+
+deflong '/resource',
+  defdsp 'resourcealt', 'dispatch table for URI prefixes';
+
+for my $op (qw/read write exists tmp nuke/) {
+  %{"ni::resource_$op"} = ();
+  *{"ni::resource_$op"} = sub ($) {
+    my ($r) = @_;
+    my ($scheme) = $r =~ /^([^:]+):/;
+    my $f = ${"ni::resource_$op"}{$scheme} or
+      die "ni: $scheme resources don't support the $op operation";
+    &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+  };
+}
+
+}
+
+defoperator resource_quote => q{sio; print "$_[0]\n"};
+defoperator resource_append => q{
+  sio;
+  sforward resource_read $_[0], \*STDOUT;
+};
+
+defoperator resource_quote_many => q{sio; print "$_\n" for @_};
+
+defshort "/'", pmap q{resource_quote_many_op @$_},
+  pn 1, prc qr/\[/, prep(prc '[^]].*'), prc qr/\]/;
+
+sub defresource($%) {
+  my ($scheme, %opts) = @_;
+  defresourcealt("'$scheme://",
+    pmap qq{resource_quote_op "$scheme://\$_"}, prc '.*');
+  defresourcealt("$scheme://",
+    pmap qq{resource_append_op "$scheme://\$_"}, prc '.*');
+
+  $resource_read{$scheme}   = fn $opts{read}   if exists $opts{read};
+  $resource_write{$scheme}  = fn $opts{write}  if exists $opts{write};
+  $resource_exists{$scheme} = fn $opts{exists} if exists $opts{exists};
+  $resource_tmp{$scheme}    = fn $opts{tmp}    if exists $opts{tmp};
+  $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
+}
+
+Filesystem resources.
+Things that behave like files: local files, HDFS, S3, sftp, etc.
+
+defresource 'file',
+  read   => q{srfile $_[1]},
+  write  => q{swfile $_[1]},
+  exists => q{-e $_[1]},
+  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
+  nuke   => q{unlink $_[1]};
+
+defresource 'sftp',
+  read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
+              soproc {exec 'ssh', $host, 'cat', $path}};
+
+defresource 'hdfs',
+  read   => q{soproc {exec 'hadoop', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh "hadoop fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  exists => q{local $_;
+              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
+              saferead $fh, $_, 8192;
+              close $fh;
+              !$fh->await},
+  tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
+              . "/ni.$<." . noise_str 32},
+  nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+
+defresource 's3cmd',
+  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
+  write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
+  # TODO
+
+Network resources.
+
+defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+
+defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};

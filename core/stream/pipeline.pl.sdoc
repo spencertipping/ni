@@ -71,8 +71,8 @@ So that's why we do these redundant open STDIN and STDOUT operations. At some
 point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
 moment that seems like more trouble than it's worth.
 
-sub forkopen($$) {
-  my ($fd, $f) = @_;
+sub forkopen {
+  my ($fd, $f, @args) = @_;
   cpipe my $r, my $w;
   my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
   my $pid;
@@ -84,13 +84,13 @@ sub forkopen($$) {
     move_fd fileno $child, $fd;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub sioproc(&) {
-  my ($f) = @_;
+sub sioproc(&@) {
+  my ($f, @args) = @_;
   cpipe my $proc_in, my $w;
   cpipe my $r, my $proc_out;
   my $pid;
@@ -105,25 +105,25 @@ sub sioproc(&) {
     move_fd fileno $proc_out, 1;
     open STDIN,  '<&=0';
     open STDOUT, '>&=1';
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub siproc(&) {forkopen 0, $_[0]}
-sub soproc(&) {forkopen 1, $_[0]}
+sub siproc(&@) {forkopen 0, @_}
+sub soproc(&@) {forkopen 1, @_}
 
-sub sicons(&) {
-  my ($f) = @_;
-  my $fh = soproc {&$f};
+sub sicons(&@) {
+  my ($f, @args) = @_;
+  my $fh = soproc {&$f(@args)};
   move_fd fileno $fh, 0;
   open STDIN, '<&=0';
   $fh;
 }
 
-sub socons(&) {
-  my ($f) = @_;
-  my $fh = siproc {&$f};
+sub socons(&@) {
+  my ($f, @args) = @_;
+  my $fh = siproc {&$f(@args)};
   move_fd fileno $fh, 1;
   open STDOUT, '>&=1';
   $fh;

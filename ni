@@ -50,7 +50,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-47 ni.map.sdoc
+48 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -77,6 +77,7 @@ lib core/deps
 lib core/gen
 lib core/json
 lib core/monitor
+lib core/uri
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -122,7 +123,7 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
-use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+';
+use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
 sub noise_str($) {join '', map noise_char, 1..$_[0]}
 
@@ -812,8 +813,8 @@ So that's why we do these redundant open STDIN and STDOUT operations. At some
 point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
 moment that seems like more trouble than it's worth.
 
-sub forkopen($$) {
-  my ($fd, $f) = @_;
+sub forkopen {
+  my ($fd, $f, @args) = @_;
   cpipe my $r, my $w;
   my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
   my $pid;
@@ -825,13 +826,13 @@ sub forkopen($$) {
     move_fd fileno $child, $fd;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub sioproc(&) {
-  my ($f) = @_;
+sub sioproc(&@) {
+  my ($f, @args) = @_;
   cpipe my $proc_in, my $w;
   cpipe my $r, my $proc_out;
   my $pid;
@@ -846,25 +847,25 @@ sub sioproc(&) {
     move_fd fileno $proc_out, 1;
     open STDIN,  '<&=0';
     open STDOUT, '>&=1';
-    &$f;
+    &$f(@args);
     exit;
   }
 }
 
-sub siproc(&) {forkopen 0, $_[0]}
-sub soproc(&) {forkopen 1, $_[0]}
+sub siproc(&@) {forkopen 0, @_}
+sub soproc(&@) {forkopen 1, @_}
 
-sub sicons(&) {
-  my ($f) = @_;
-  my $fh = soproc {&$f};
+sub sicons(&@) {
+  my ($f, @args) = @_;
+  my $fh = soproc {&$f(@args)};
   move_fd fileno $fh, 0;
   open STDIN, '<&=0';
   $fh;
 }
 
-sub socons(&) {
-  my ($f) = @_;
-  my $fh = siproc {&$f};
+sub socons(&@) {
+  my ($f, @args) = @_;
+  my $fh = siproc {&$f(@args)};
   move_fd fileno $fh, 1;
   open STDOUT, '>&=1';
   $fh;
@@ -2540,6 +2541,103 @@ $main_operator = sub {
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };
+1 core/uri/lib
+uri.pl.sdoc
+94 core/uri/uri.pl.sdoc
+Resources identified by URI.
+A way for ni to interface with URIs. URIs are self-appending like files; to
+quote them you should use the `\'` prefix:
+
+| ni http://google.com          # prints contents of google.com
+  ni \'http://google.com        # prints "http://google.com"
+
+If you've got a lot of resources, you can use `\'` with a lambda to quote all
+of them:
+
+| ni \'[ http://foo.com http://bar.com ]
+
+c
+BEGIN {
+
+deflong '/resource',
+  defdsp 'resourcealt', 'dispatch table for URI prefixes';
+
+for my $op (qw/read write exists tmp nuke/) {
+  %{"ni::resource_$op"} = ();
+  *{"ni::resource_$op"} = sub ($) {
+    my ($r) = @_;
+    my ($scheme) = $r =~ /^([^:]+):/;
+    my $f = ${"ni::resource_$op"}{$scheme} or
+      die "ni: $scheme resources don't support the $op operation";
+    &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+  };
+}
+
+}
+
+defoperator resource_quote => q{sio; print "$_[0]\n"};
+defoperator resource_append => q{
+  sio;
+  sforward resource_read $_[0], \*STDOUT;
+};
+
+defoperator resource_quote_many => q{sio; print "$_\n" for @_};
+
+defshort "/'", pmap q{resource_quote_many_op @$_},
+  pn 1, prc qr/\[/, prep(prc '[^]].*'), prc qr/\]/;
+
+sub defresource($%) {
+  my ($scheme, %opts) = @_;
+  defresourcealt("'$scheme://",
+    pmap qq{resource_quote_op "$scheme://\$_"}, prc '.*');
+  defresourcealt("$scheme://",
+    pmap qq{resource_append_op "$scheme://\$_"}, prc '.*');
+
+  $resource_read{$scheme}   = fn $opts{read}   if exists $opts{read};
+  $resource_write{$scheme}  = fn $opts{write}  if exists $opts{write};
+  $resource_exists{$scheme} = fn $opts{exists} if exists $opts{exists};
+  $resource_tmp{$scheme}    = fn $opts{tmp}    if exists $opts{tmp};
+  $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
+}
+
+Filesystem resources.
+Things that behave like files: local files, HDFS, S3, sftp, etc.
+
+defresource 'file',
+  read   => q{srfile $_[1]},
+  write  => q{swfile $_[1]},
+  exists => q{-e $_[1]},
+  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
+  nuke   => q{unlink $_[1]};
+
+defresource 'sftp',
+  read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
+              soproc {exec 'ssh', $host, 'cat', $path}};
+
+defresource 'hdfs',
+  read   => q{soproc {exec 'hadoop', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh "hadoop fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  exists => q{local $_;
+              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
+              saferead $fh, $_, 8192;
+              close $fh;
+              !$fh->await},
+  tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
+              . "/ni.$<." . noise_str 32},
+  nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+
+defresource 's3cmd',
+  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
+  write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
+  # TODO
+
+Network resources.
+
+defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+
+defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -2562,7 +2660,7 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
 1 core/net/lib
 net.pl.sdoc
-28 core/net/net.pl.sdoc
+18 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2581,16 +2679,6 @@ defoperator ssh => q{
 use constant ssh_host => prc '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
-
-HTTP.
-Use curl if we have it. HTTP urls append themselves to the stream by default;
-if you want to POST, you should use the \> operator. (TODO)
-
-use constant purl => prc '.*';
-
-defoperator http_get => q{sio; exec 'curl', '-sS', $_[0]};
-defshort '/http://',  pmap q{[http_get_op("http://$_"),  decode_op]}, purl;
-defshort '/https://', pmap q{[http_get_op("https://$_"), decode_op]}, purl;
 1 core/buffer/lib
 buffer.pl.sdoc
 17 core/buffer/buffer.pl.sdoc
@@ -4584,7 +4672,7 @@ caterwaul.module("ui.jquery",(function(qs,qs1,qs2,qs3,qs4,qs5,qs6,qs7,qs8,qs9,qs
 }))]}).call(this);return(jquery_macros).concat(string_macros)}).call(this)})),it}).call(this,(caterwaul_function))}});result.caterwaul_expression_ref_table={qs:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_expression"))'),qs1:('new caterwaul.syntax( "jQuery")'),qs2:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_thing"))'),qs3:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element"))'),qs4:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs5:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "addClass")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_class")))'),qs6:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_attr") ,new caterwaul.syntax( "_val"))) .prefix( " "))'),qs7:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "attr")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_attr")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qs8:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_name") ,new caterwaul.syntax( "_val")))) .prefix( " "))'),qs9:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "data")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_name")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qsa:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_method") ,new caterwaul.syntax( "_args"))) .prefix( " "))'),qsb:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "_method")) ,new caterwaul.syntax( "_args"))'),qsc:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_event") ,new caterwaul.syntax( "_args")))) .prefix( " "))'),qsd:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "bind")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_event")) ,new caterwaul.syntax( "_args") .prefix( " ")))'),qse:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "%" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_function")) .prefix( " "))'),qsf:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "_function") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qsg:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsh:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_children")))'),qsi:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsj:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_children"))'),qsk:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_tree") .prefix( " ")) .prefix( " "))'),qsl:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_tree")) ,new caterwaul.syntax( "toString")) ,new caterwaul.syntax( "")))'),qsm:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsn:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_child")))'),qso:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">=" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsp:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_child"))'),qsq:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")))'),qsr:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qss:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qst:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qsu:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "-" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qsv:('new caterwaul.syntax( "-" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " ")'),qsw:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsx:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "filter")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qsy:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsz:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "find")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs10:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qs11:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "parents")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs12:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs13:('new caterwaul.syntax( "(" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs14:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[" ,new caterwaul.syntax( "_element")))'),qs15:('new caterwaul.syntax( "[" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs16:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "u+" ,new caterwaul.syntax( "_expression")))'),qs17:('new caterwaul.syntax( "_expression")'),qs18:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "TS") ,new caterwaul.syntax( "_identifier"))'),qs19:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_identifier"))'),qs1a:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_identifier"))'),qs1b:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_element"))'),qs1c:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs1d:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_attributes")))'),qs1e:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "=" ,new caterwaul.syntax( "_attribute") ,new caterwaul.syntax( "_value") .prefix( " ")) .prefix( " "))'),qs1f:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs1g:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1h:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "    ")))'),qs1i:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "  ")) .prefix( " "))'),qs1j:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qs1k:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1l:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2")))'),qs1m:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_selector")) .prefix( " "))'),qs1n:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_selector") ,new caterwaul.syntax( "_value"))) .prefix( " "))')};
 return(result)}).call(this,new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_expression")),new caterwaul.syntax("jQuery"),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_thing")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("addClass")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_attr"),new caterwaul.syntax("_val")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("attr")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_attr")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_name"),new caterwaul.syntax("_val"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("data")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_name")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_method"),new caterwaul.syntax("_args")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("_method")),new caterwaul.syntax("_args")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_event"),new caterwaul.syntax("_args"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("bind")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_event")),(new caterwaul.syntax("_args")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("%",new caterwaul.syntax("_element"),new caterwaul.syntax("_function"))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax("_function"),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("()",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_children"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_children")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_tree")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("(",new caterwaul.syntax("_tree")),new caterwaul.syntax("toString")),new caterwaul.syntax(""))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_child"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">=",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_child")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("-",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),(new caterwaul.syntax("-",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" "),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("filter")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("find")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("parents")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("(",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[",new caterwaul.syntax("_element"))),new caterwaul.syntax("[",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("u+",new caterwaul.syntax("_expression"))),new caterwaul.syntax("_expression"),new caterwaul.syntax("[]",new caterwaul.syntax("TS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_attributes"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("=",new caterwaul.syntax("_attribute"),(new caterwaul.syntax("_value")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("    "))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("  "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("()",new caterwaul.syntax("_element1"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("_selector"))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_selector"),new caterwaul.syntax("_value")))).prefix(" "))));
 caterwaul.module("ui",function($){$.all.push("jquery")});
-16 core/jsplot/lib
+15 core/jsplot/lib
 jquery.min.js
 jquery.mousewheel.min.js
 modus.js
@@ -4595,7 +4683,6 @@ axis.waul.sdoc
 matrix.waul.sdoc
 socket.waul.sdoc
 render.waul.sdoc
-view.waul.sdoc
 interface.waul.sdoc
 
 css
@@ -4913,7 +5000,7 @@ modified each iteration as we figure out how dense our shading is empirically; s
 Here's the calculation:
 
 | initial_l = target_shade_per_pixel * pixels / data_points;
-  next_l    = target_shade_per_pixel * pixels / (actual_shading_last_time / actual_layers_last_time * 256);
+  next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
 
     --frames_requested;
     var ax = state.a[0], ay = state.a[1], xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
@@ -4980,26 +5067,17 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-9 core/jsplot/view.waul.sdoc
-View matrix controls.
-A tree of object-transformation matrices you can use to explore the data. The whole structure uses modus to serialize to and from a JSON object.
-
-TODO: figure all of this out. There's a lot here: can we connect these to the view? Can we access higher dimensions? (Probably not since that requires more
-buffering.) Write up a design.
-
-caterwaul(':all')(function ($) {
-
-})(jQuery);
-81 core/jsplot/interface.waul.sdoc
+87 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau = Math.PI * 2, screen  = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        w   = $(window),   overlay = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-                           tr      = $('#transform'), lw = 0, mx = null, ms = false,
-                           status  = $('#status'),    lh = 0, my = null, mc = false,
-                           preview = $('#preview'),
+  where[tau = Math.PI * 2, screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        w   = $(window),   overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+                           tr       = $('#transform'), lw = 0, mx = null, ms = false,
+                           status   = $('#status'),    lh = 0, my = null, mc = false,
+                           preview  = $('#preview'),
+                           controls = $('#controls'),
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
@@ -5071,6 +5149,11 @@ $(caterwaul(':all')(function ($) {
                       -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]],
 
+  where[ui_number(v)   = jquery[input.number /modus(get, set)] -where [get(e) = +e.modus('val'), set(x) = this.modus('val', +x)],
+        ui_rotate_x(v) = jquery in div.transformation[ui_number(v)] /modus('delegate', '.number'),
+        // TODO
+        ],
+
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
 37 core/jsplot/css
 body {margin:0; color:#eee; background:black; font-size:10pt;
@@ -5129,7 +5212,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 </div>
 </body>
 </html>
-90 core/jsplot/jsplot.pl.sdoc
+89 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -5151,7 +5234,6 @@ use constant jsplot_html =>
                                          core/jsplot/matrix.waul
                                          core/jsplot/socket.waul
                                          core/jsplot/render.waul
-                                         core/jsplot/view.waul
                                          core/jsplot/interface.waul |});
 
 Parsing.
@@ -5222,7 +5304,7 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-67 core/docker/docker.pl.sdoc
+81 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
@@ -5243,7 +5325,14 @@ defoperator docker_run_image => q{
 };
 
 On-demand images.
-These are untagged images built on the fly.
+These are untagged images built on the fly. NB: workaround here for old/buggy
+versions of the docker client; here's what's going on.
+
+Normally you'd use `docker build -q` and get an image ID, but some older docker
+clients ignore the `-q` option and emit full verbose output (and, in
+unexpectedly barbaric fashion, they also emit this verbosity to standard out,
+not standard error). So we instead go through the silliness of tagging and then
+untagging the image.
 
 defoperator docker_run_dynamic => q{
   my ($dockerfile, @f) = @_;
@@ -5251,9 +5340,16 @@ defoperator docker_run_dynamic => q{
   my $fh = siproc {
     my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
     my $quoted_args       = shell_quote @args;
-    my $image_name        = "\`$quoted_dockerfile | docker build -q -"
-                          . " || printf %s --IMAGE_BUILD_ERROR\`";
-    sh "docker run --rm -i $image_name $quoted_args";
+    my $image_name        = "ni-tmp-" . lc noise_str 32;
+    sh qq{image_name=\`$quoted_dockerfile | docker build -q -\`
+          if [ \${#image_name} -gt 80 ]; then \\
+            $quoted_dockerfile | docker build -q -t $image_name - >&2
+            image_name=$image_name
+            docker run --rm -i \$image_name $quoted_args
+            docker rmi --no-prune=true \$image_name
+          else
+            docker run --rm -i \$image_name $quoted_args
+          fi};
   };
   safewrite $fh, $stdin;
   sforward \*STDIN, $fh;

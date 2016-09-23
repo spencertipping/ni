@@ -21,7 +21,7 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
-use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+';
+use constant noise_chars => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
 sub noise_str($) {join '', map noise_char, 1..$_[0]}
 

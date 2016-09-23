@@ -1,8 +1,3 @@
-### Unit tests
-There are a bunch of test environments, but some limitations; e.g. getting
-docker to work on Centos 5 is probably a non-starter. It's worth testing ni on
-centos 5, but skip the docker stuff.
-
 ### Join operator
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.
