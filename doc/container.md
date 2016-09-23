@@ -65,3 +65,21 @@ $ ni n100 CA+py-numpy@community+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 ```lazytest
 fi                      # $HAVE_DOCKER (lazytest condition)
 ```
+
+## Running in an existing container
+ni can run `docker exec` and do the same interop it does when it creates a new
+container.
+
+```bash
+$ docker run --detach -i --name ni-test-container ubuntu >/dev/null
+$ ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
+1
+10
+100
+11
+$ [[ -e /tmp/in-container ]] || echo 'file not in host (good)'
+file not in host (good)
+$ ni Eni-test-container[/tmp/in-container] | wc -l
+100
+$ docker rm -f ni-test-container >/dev/null
+```

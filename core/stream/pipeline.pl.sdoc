@@ -213,6 +213,9 @@ If you do this, ni's standard input will come from a continuation of __DATA__.
 
 defclispecial '--internal/operate', q{
   my ($k) = @_;
+  $ENV{sr $_, qr|^transient/env/|, ''} ||= $self{$_}
+    for grep m|^transient/env/|, keys %self;
+
   my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
   print $fh $_ while <$data>;
   close $fh;
@@ -220,7 +223,8 @@ defclispecial '--internal/operate', q{
 };
 
 sub sni_exec_list(@) {
-  my $stdin = image_with 'transient/op' => json_encode([@_]);
+  my $stdin = image_with 'transient/op' => json_encode([@_]),
+                         map {; "transient/env/$_" => $ENV{$_}} keys %ENV;
   ($stdin, qw|perl - --internal/operate transient/op|);
 }
 

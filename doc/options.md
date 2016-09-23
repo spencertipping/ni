@@ -6,6 +6,16 @@ Implementation status:
 - I: implemented
 - U: unimplemented
 
+## Resources
+Scheme     | Status | Example
+-----------|--------|--------
+`file://`  | M      | `file:///usr/share/dict/words`
+`hdfs://`  | M      | `hdfs:///user/x/foobar`
+`http://`  | T      | `http://localhost:8090`
+`https://` | M      | `https://en.wikipedia.org`
+`s3cmd://` | I      | `s3cmd://some/path/to/object`
+
+## Stream operators
 Operator | Status | Example      | Description
 ---------|--------|--------------|------------
 `+`      | T      | `+p'foo'`    | Appends a data source evaluated with no input
@@ -52,9 +62,9 @@ Operator | Status | Example      | Description
          |        |              |
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
-`C`      | M      | `Cubuntu[g]` | Containerize a pipeline with Docker
+`C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | PT     | `D.foo`      | Destructure structured text data (JSON/XML)
-`E`      |        |              |
+`E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
 `H`      | U      | `H c`        | Send named files through hadoop
@@ -65,7 +75,7 @@ Operator | Status | Example      | Description
 `M`      | U      | `M'svd(x)'`  | Faceted Octave matrix interop
 `N`      | T      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | T      | `OD`         | Numeric sort descending
-`P`      | P      | `Plg`        | Evaluate Pyspark lambda context
+`P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
 `S`      |        |              |

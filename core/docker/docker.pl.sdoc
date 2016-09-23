@@ -79,3 +79,22 @@ defshort '/C',
          pseq pn(1, prx 'U', docker_package_list), pqfn ''),
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
          pseq pc docker_image_name, pqfn '');
+
+Execution within existing containers.
+Same idea as running a new Docker, but creates a process within an existing
+container.
+
+use constant docker_container_name => docker_image_name;
+
+defoperator docker_exec => q{
+  my ($container, @f) = @_;
+  my ($stdin, @args) = sni_exec_list @f;
+  my $fh = siproc {exec qw|docker exec -i|, $container, @args};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
+               pseq docker_container_name, pqfn '';

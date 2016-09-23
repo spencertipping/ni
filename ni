@@ -739,7 +739,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-239 core/stream/pipeline.pl.sdoc
+243 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -955,6 +955,9 @@ If you do this, ni's standard input will come from a continuation of __DATA__.
 
 defclispecial '--internal/operate', q{
   my ($k) = @_;
+  $ENV{sr $_, qr|^transient/env/|, ''} ||= $self{$_}
+    for grep m|^transient/env/|, keys %self;
+
   my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
   print $fh $_ while <$data>;
   close $fh;
@@ -962,7 +965,8 @@ defclispecial '--internal/operate', q{
 };
 
 sub sni_exec_list(@) {
-  my $stdin = image_with 'transient/op' => json_encode([@_]);
+  my $stdin = image_with 'transient/op' => json_encode([@_]),
+                         map {; "transient/env/$_" => $ENV{$_}} keys %ENV;
   ($stdin, qw|perl - --internal/operate transient/op|);
 }
 
@@ -5067,7 +5071,7 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-87 core/jsplot/interface.waul.sdoc
+124 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -5081,7 +5085,7 @@ $(caterwaul(':all')(function ($) {
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  r: [0, -0.0051], s: [1, 1, 1], c: [0, -0.28, 0], f: [0, 0, 0], d: 0.6},
+                                  r: [0, -0.0051], s: [1, 1, 1], f: [0, 0, 0], d: 0.6},
         settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURI]
                                    : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
@@ -5096,22 +5100,34 @@ $(caterwaul(':all')(function ($) {
         update_status(t)       = status /~text/ t /~addClass/ 'active' -then- status_timeout /!clearTimeout /when.status_timeout
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
-        drag(dx, dy, s, c)     = c ? 'd' |-set| settings().d * Math.exp(2 * dy / lh)
-                               : s ? 'r' |-set| settings().r /-v2plus/ [dx / lh, -dy / lh]
-                               :     'f' |-set| f /-v3plus/ udf /-v3times/ (data_state.axes.length === 3 ? [1, 1, 1] : [1, 1, 0])
-                                                -where [udx = 2*dx / lh, udy = 2*dy / lh,
-                                                        df  = view_matrix().inv() /~transform/ [udx, -udy, 0, 1],
-                                                        udf = df /-v3scale/ df[3],
-                                                        f   = settings().f],
+        object_mode            = false,         // MOCK
+        toggle_object_mode()   = console.log("object mode:", object_mode = !object_mode),
+
+        wheel(dx, dy, s)       = object_mode ? 's' |-set| settings().s /-v3times/ [Math.exp(sx * 0.01 * (d[0] >= d[2])),
+                                                                                   Math.exp(sy * 0.01),
+                                                                                   Math.exp(sx * 0.01 * (d[2] >= d[0]))]
+                                                          -where [d = object_deltas(1, 0) *Math.abs -seq, sx = s ? dy || dx : dx, sy = s ? 0 : dy]
+                                             : 'd' |-set| settings().d * Math.exp(dy * -0.01),
+
+        plane_lock(v)          = v *[xi === min_i ? 0 : x] -seq -where [min_i = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
+        axis_lock(v)           = v *[xi === max_i ? x : 0] -seq -where [max_i = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
+        w_norm(v)              = v |-v4scale| 1/v[3],
+        object_deltas(dx, dy)  = view_matrix().inv() /~transform/ [dx, -dy, 0, lh/2] /!w_norm,
+
+        drag(dx, dy, s)        = s ? 'r' |-set| settings().r /-v2plus/ [dx / lh, -dy / lh]
+                                   : object_mode ? 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
+                                                 : 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
+                                                                           /-v3times/ (data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0]),
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
                                       /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
                                         /~val/ settings().ni
-                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, mc = e.ctrlKey]
-                                            /~mousewheel/ given.e ['d' /-set/ (settings().d * Math.exp(e.deltaY * -0.01)), update_screen()]
-                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms, mc), mx = x, my = y, update_screen(),
+                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
+                                            /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
+                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen(),
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
+                                               /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false : true]
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50
@@ -5133,14 +5149,16 @@ $(caterwaul(':all')(function ($) {
                                                         ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
         view_matrix()      = matrix.prod(matrix.scale(1/d, 1/d, 1/d),
-                                         matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau),
-                                         matrix.scale(s[0], s[1], s[2])) -where [st = settings(), d = st.d, r = st.r, s = st.s],
+                                         matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau)) -where [st = settings(), d = st.d, r = st.r],
 
         autoscale_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
                       -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
                                                    cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
 
-        object_matrix()    = matrix.translate(f[0], f[1], f[2]) /~dot/ autoscale_matrix() -where[f = settings().f],
+        scale_matrix()     = matrix.scale(s[0], s[1], s[2]) -where [s = settings().s],
+        object_matrix()    = matrix.prod(scale_matrix(),
+                                         matrix.translate(f[0], f[1], f[2]),
+                                         autoscale_matrix()) -where[f = settings().f],
 
         camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
@@ -5149,8 +5167,31 @@ $(caterwaul(':all')(function ($) {
                       -then- data_state.last_render /eq[+new Date]
                       -when [data_state.axes && +new Date - data_state.last_render > 30]],
 
-  where[ui_number(v)   = jquery[input.number /modus(get, set)] -where [get(e) = +e.modus('val'), set(x) = this.modus('val', +x)],
-        ui_rotate_x(v) = jquery in div.transformation[ui_number(v)] /modus('delegate', '.number'),
+UI representation of transformation matrices.
+The camera and object matrices are multiplied immediately before we render things onto the screen. Rather than presenting the user with opaque transformation
+matrices, we factor it out into a few different components:
+
+| object = focus(translation) * zoom(scale)
+  camera = distance(translation) * azimuth/elevation(rotation)
+
+So we have stacks of these four transformations that can be manipulated independently. There are two manipulation modes you can use, camera-centric and
+object-centric. They behave like this:
+
+| camera-centric: drag to pan using view plane, mousewheel to adjust camera distance, shift-drag to adjust camera rotation
+  object-centric: drag to pan along axes, mousewheel to scale along axes, shift-drag to adjust camera rotation
+
+  where[parse_number(x)     = +eval(x),
+        ui_number(v)        = jquery[input.number /modus(get, set) /val(v)] -where [get(e) = e.modus('val') /!parse_number,
+                                                                                    set(x) = this.modus('val', x)],
+
+        ui_distance(v)      = jquery[div.distance[ui_number(v)] /modus('proxy', '.number')],
+        ui_translation(v)   = jquery[div.translate /modus('list', ui_number) /val(v)],
+        ui_scale(v)         = jquery[div.scale     /modus('list', ui_number) /val(v)],
+        ui_rotate(v)        = jquery[div.rotate    /modus('list', ui_number) /val(v)],
+
+        ui_camera_matrix(v) = jquery[div.camera[ui_distance(), ui_rotate()] /modus('composite', {d: '.distance',  r: '.rotate'}) /val(v)],
+        ui_object_matrix(v) = jquery[div.object[ui_translate(), ui_scale()] /modus('composite', {t: '.translate', s: '.scale'})  /val(v)]
+
         // TODO
         ],
 
@@ -5304,7 +5345,7 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-81 core/docker/docker.pl.sdoc
+100 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
@@ -5386,6 +5427,25 @@ defshort '/C',
          pseq pn(1, prx 'U', docker_package_list), pqfn ''),
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
          pseq pc docker_image_name, pqfn '');
+
+Execution within existing containers.
+Same idea as running a new Docker, but creates a process within an existing
+container.
+
+use constant docker_container_name => docker_image_name;
+
+defoperator docker_exec => q{
+  my ($container, @f) = @_;
+  my ($stdin, @args) = sni_exec_list @f;
+  my $fh = siproc {exec qw|docker exec -i|, $container, @args};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
+               pseq docker_container_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc
@@ -5766,7 +5826,7 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
-67 doc/container.md
+85 doc/container.md
 # Containerized pipelines
 ```lazytest
 # These tests only get run in environments where docker is installed
@@ -5833,6 +5893,24 @@ $ ni n100 CA+py-numpy@community+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 
 ```lazytest
 fi                      # $HAVE_DOCKER (lazytest condition)
+```
+
+## Running in an existing container
+ni can run `docker exec` and do the same interop it does when it creates a new
+container.
+
+```bash
+$ docker run --detach -i --name ni-test-container ubuntu >/dev/null
+$ ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
+1
+10
+100
+11
+$ [[ -e /tmp/in-container ]] || echo 'file not in host (good)'
+file not in host (good)
+$ ni Eni-test-container[/tmp/in-container] | wc -l
+100
+$ docker rm -f ni-test-container >/dev/null
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -6591,7 +6669,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-78 doc/options.md
+88 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -6600,6 +6678,16 @@ Implementation status:
 - I: implemented
 - U: unimplemented
 
+## Resources
+Scheme     | Status | Example
+-----------|--------|--------
+`file://`  | M      | `file:///usr/share/dict/words`
+`hdfs://`  | M      | `hdfs:///user/x/foobar`
+`http://`  | T      | `http://localhost:8090`
+`https://` | M      | `https://en.wikipedia.org`
+`s3cmd://` | I      | `s3cmd://some/path/to/object`
+
+## Stream operators
 Operator | Status | Example      | Description
 ---------|--------|--------------|------------
 `+`      | T      | `+p'foo'`    | Appends a data source evaluated with no input
@@ -6646,9 +6734,9 @@ Operator | Status | Example      | Description
          |        |              |
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
-`C`      | M      | `Cubuntu[g]` | Containerize a pipeline with Docker
+`C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | PT     | `D.foo`      | Destructure structured text data (JSON/XML)
-`E`      |        |              |
+`E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
 `H`      | U      | `H c`        | Send named files through hadoop
@@ -6659,7 +6747,7 @@ Operator | Status | Example      | Description
 `M`      | U      | `M'svd(x)'`  | Faceted Octave matrix interop
 `N`      | T      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | T      | `OD`         | Numeric sort descending
-`P`      | P      | `Plg`        | Evaluate Pyspark lambda context
+`P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
 `S`      |        |              |
