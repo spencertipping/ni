@@ -2611,8 +2611,8 @@ defresource 'sftp',
               soproc {exec 'ssh', $host, 'cat', $path}};
 
 defresource 'hdfs',
-  read   => q{soproc {exec 'hdfs', 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh "hdfs fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  read   => q{soproc {exec 'hadoop', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh "hadoop fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
               my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
@@ -2620,7 +2620,7 @@ defresource 'hdfs',
               !$fh->await},
   tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
               . "/ni.$<." . noise_str 32},
-  nuke   => q{exec 'hdfs', 'fs', '-rm', '-r', $_[1]};
+  nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
 
 defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
