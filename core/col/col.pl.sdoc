@@ -80,7 +80,7 @@ defshort '/F',
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.
 
-defoperator with => q{
+defoperator with_right => q{
   my $fh = sni @_;
   my $l;
   while (<STDIN>) {
@@ -90,7 +90,18 @@ defoperator with => q{
   }
 };
 
-defshort '/w', pmap q{with_op @$_}, pqfn '';
+defoperator with_left => q{
+  my $fh = sni @_;
+  my $l;
+  while (<STDIN>) {
+    return unless defined($l = <$fh>);
+    chomp $l;
+    print "$l\t$_";
+  }
+};
+
+defshort '/w', pmap q{with_right_op @$_}, pqfn '';
+defshort '/W', pmap q{with_left_op  @$_}, pqfn '';
 
 Vertical transformation.
 This is useful when you want to apply a streaming transformation to a specific

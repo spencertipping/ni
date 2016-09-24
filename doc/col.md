@@ -196,3 +196,25 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
+
+## Left/right juxtaposition
+ni has the `+` and `^` operators to join streams vertically, but you can also
+join them horizontally, row by row. This is done using `w` and `W` (for
+"with"):
+
+```bash
+$ ni //ni r3FWfB
+usr
+ni
+https
+$ ni //ni r3FWfB wn100          # right-join numbers
+usr	1
+ni	2
+https	3
+$ ni //ni r3FWfB Wn100          # left-join numbers
+1	usr
+2	ni
+3	https
+```
+
+As shown above, the output stream is only as long as the shorter input.

@@ -55,7 +55,7 @@ Operator | Status | Example      | Description
 `t`      |        |              |
 `u`      | T      | `u`          | Just like `uniq`
 `v`      | T      | `vCplc`      | Vertically transform a range of columns
-`w`      | I      | `wn100`      | "With": horizontally juxtapose two streams
+`w`      | T      | `wn100`      | "With": join a stream rightwards
 `x`      | T      | `xC`         | Exchange first fields with others
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
@@ -82,7 +82,7 @@ Operator | Status | Example      | Description
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
-`W`      |        |              |
+`W`      | T      | `Wn100`      | "With": join a stream leftwards
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |

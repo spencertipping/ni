@@ -2711,7 +2711,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-166 core/col/col.pl.sdoc
+177 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2794,7 +2794,7 @@ defshort '/F',
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.
 
-defoperator with => q{
+defoperator with_right => q{
   my $fh = sni @_;
   my $l;
   while (<STDIN>) {
@@ -2804,7 +2804,18 @@ defoperator with => q{
   }
 };
 
-defshort '/w', pmap q{with_op @$_}, pqfn '';
+defoperator with_left => q{
+  my $fh = sni @_;
+  my $l;
+  while (<STDIN>) {
+    return unless defined($l = <$fh>);
+    chomp $l;
+    print "$l\t$_";
+  }
+};
+
+defshort '/w', pmap q{with_right_op @$_}, pqfn '';
+defshort '/W', pmap q{with_left_op  @$_}, pqfn '';
 
 Vertical transformation.
 This is useful when you want to apply a streaming transformation to a specific
@@ -5681,7 +5692,7 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
-198 doc/col.md
+220 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -5880,6 +5891,28 @@ $ ni //ni r3FW vCpuc
 	ni	SELF	license	_
 ni	https	GITHUB	com	spencertipping	ni
 ```
+
+## Left/right juxtaposition
+ni has the `+` and `^` operators to join streams vertically, but you can also
+join them horizontally, row by row. This is done using `w` and `W` (for
+"with"):
+
+```bash
+$ ni //ni r3FWfB
+usr
+ni
+https
+$ ni //ni r3FWfB wn100          # right-join numbers
+usr	1
+ni	2
+https	3
+$ ni //ni r3FWfB Wn100          # left-join numbers
+1	usr
+2	ni
+3	https
+```
+
+As shown above, the output stream is only as long as the shorter input.
 85 doc/container.md
 # Containerized pipelines
 ```lazytest
@@ -6781,7 +6814,7 @@ Operator | Status | Example      | Description
 `t`      |        |              |
 `u`      | T      | `u`          | Just like `uniq`
 `v`      | T      | `vCplc`      | Vertically transform a range of columns
-`w`      | I      | `wn100`      | "With": horizontally juxtapose two streams
+`w`      | T      | `wn100`      | "With": join a stream rightwards
 `x`      | T      | `xC`         | Exchange first fields with others
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
@@ -6808,7 +6841,7 @@ Operator | Status | Example      | Description
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
-`W`      |        |              |
+`W`      | T      | `Wn100`      | "With": join a stream leftwards
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
