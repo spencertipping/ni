@@ -10,7 +10,10 @@
 <pre id='preview' class='autohide'></pre>
 <canvas id='screen'></canvas>
 <canvas id='overlay'></canvas>
-<div id='controls' class='autohide'></div>
+<div id='controls' class='autohide'>
+  <label id='camera-mode'>camera</label>
+  <label id='object-mode'>object</label>
+</div>
 <div id='status'>
   <label id='sizelabel'></label>
 </div>

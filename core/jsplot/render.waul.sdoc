@@ -58,8 +58,6 @@ Here's the calculation:
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
-    console.log('l = #{state.l}');
-
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
@@ -80,7 +78,7 @@ Here's the calculation:
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
                       ci = l * op * (256 - lp),
-                      li = ci, // * zi*zi,
+                      li = ci * zi*zi,
                       d  = sr / (ci + lp);
 
                   total_shade += li;
@@ -93,7 +91,7 @@ Here's the calculation:
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
                   ci = l * (256 - lp),
-                  li = ci, // * zi*zi,
+                  li = ci * zi*zi,
                   d  = sr / (ci + lp);
 
               total_shade += li;

@@ -32,7 +32,7 @@ defoperator monitor => q{
       my $preview;
       if ($t3 & 3 && /\n(.*)\n/) {
         ($preview = substr $1, 0, $width - 20) =~ s/\t/  /g;
-        $preview =~ s/[\x00-\x1f]/./g;
+        $preview =~ s/[[:cntrl:]]/./g;
         $preview = substr $preview, 0, $width - 20;
       } else {
         $preview = substr $monitor_name, 0, $width - 20;

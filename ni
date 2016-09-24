@@ -2525,7 +2525,7 @@ defoperator monitor => q{
       my $preview;
       if ($t3 & 3 && /\n(.*)\n/) {
         ($preview = substr $1, 0, $width - 20) =~ s/\t/  /g;
-        $preview =~ s/[\x00-\x1f]/./g;
+        $preview =~ s/[[:cntrl:]]/./g;
         $preview = substr $preview, 0, $width - 20;
       } else {
         $preview = substr $monitor_name, 0, $width - 20;
@@ -4963,7 +4963,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-117 core/jsplot/render.waul.sdoc
+115 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -5024,8 +5024,6 @@ Here's the calculation:
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
-    console.log('l = #{state.l}');
-
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
@@ -5046,7 +5044,7 @@ Here's the calculation:
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
                       ci = l * op * (256 - lp),
-                      li = ci, // * zi*zi,
+                      li = ci * zi*zi,
                       d  = sr / (ci + lp);
 
                   total_shade += li;
@@ -5059,7 +5057,7 @@ Here's the calculation:
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
                   ci = l * (256 - lp),
-                  li = ci, // * zi*zi,
+                  li = ci * zi*zi,
                   d  = sr / (ci + lp);
 
               total_shade += li;
@@ -5081,77 +5079,75 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-50 core/jsplot/camera.waul.sdoc
+48 core/jsplot/camera.waul.sdoc
 Camera state, geometry, and UI.
 The camera contains an object matrix, a view matrix, and some render settings.
 
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
                                                      sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number'})
-                     >  div.top(div.vector.brightness >= log_number() /~attr/ {title: 'view brightness'},
-                                div.vector.saturation >= log_number() /~attr/ {title: 'white-saturation rate'},
-                                div.vector.distance   >= log_number() /~attr/ {title: 'camera distance'})
-                     >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'object translation matrix'}
-                     >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'object scale matrix'}
-                     >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'camera rotation matrix'}] -se- it.val(v) /when.v,
+                     >  div.vector.brightness[log_number() /~attr/ {title: 'View brightness'}]
+                     >  div.vector.saturation[log_number() /~attr/ {title: 'White-saturation rate'}]
+                     >  div.vector.distance  [log_number() /~attr/ {title: 'Camera distance'}]
+                     >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'Object translation'}
+                     >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'Object scale'}
+                     >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'Camera rotation'}] -se- it.val(v) /when.v,
 
-  camera /-$.extend/ wcapture [object_matrix(o)       = matrix.prod(o.ot /!matrix.translate, o.os /!matrix.scale),
-                               object_delta_matrix(o) = o.os /!matrix.scale,
-                               camera_matrix(o)       = matrix.prod([0, 0, o.cd]        /!matrix.translate,
-                                                                    o.cr[0] / 360 * tau /!matrix.rotate_x,
-                                                                    o.cr[1] / 360 * tau /!matrix.rotate_y),
-                               norm(v)                = v |-v4scale| 1/v[3],
-                               m(o)                   = object_matrix(o)       /~dot/ camera_matrix(o),
-                               dm(o)                  = object_delta_matrix(o) /~dot/ camera_matrix(o),
-
-                               edit(o, k, v)          = {} /-$.extend/ o -se [it[k] = v],
+  camera /-$.extend/ wcapture [object_matrix(o)       = matrix.prod(o.os /!matrix.scale, o.ot /!matrix.translate),
+                               camera_matrix(o)       = matrix.prod([0, 0, 1]                /!matrix.translate,
+                                                                    [1/o.cd, 1/o.cd, 1/o.cd] /!matrix.scale,
+                                                                    o.cr[0] / 360 * tau      /!matrix.rotate_x,
+                                                                    o.cr[1] / 360 * tau      /!matrix.rotate_y),
+                               norm(v)                = v[3] ? v |-v4scale| 1/v[3] : v,
+                               m(o)                   = camera_matrix(o) /~dot/ object_matrix(o),
 
                                plane_lock(v)          = v *[xi === mi ? 0 : x] -seq -where [mi = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
                                axis_lock(v)           = v *[xi === mi ? x : 0] -seq -where [mi = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
 
-                               dv_obj_locked(f)(o, v) = object_delta_matrix(o).inv() |~transform| camera_matrix(o).inv() /~transform/ v /!f,
-                               dv_obj(o, v)           = camera_matrix(o).inv() /~transform/ v /!norm,
-                               dv(o, v)               = dm(o).inv()            /~transform/ v /!norm,
-                               v(o, v)                = m(o).inv()             /~transform/ v /!norm],
+                               iv_obj_locked(f)(o, v) = object_matrix(o).inv() /~transform/ f(camera_matrix(o).inv() /~transform/ v) /!norm,
+                               iv_obj(o, v)           = camera_matrix(o).inv() /~transform/ v /!norm,
+                               iv(o, v)               = m(o).inv()             /~transform/ v /!norm],
 
   $(given.e in $(document).on('mousewheel', '.log-number', given.e in $(this).val($(this).val() * Math.exp(e.deltaY * 0.01)).change())
-        -then- $(document).on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.001, e.deltaX * 0.001]).change())
-        -then- $(document).on('change',     '.number',     given.e in $(this).val($(this).val()))),
+                          .on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.1, e.deltaX * 0.1]).change())
+                          .on('change',     '.number',     given.e in $(this).val($(this).val()))
+                          .on('focus',      '.number',     given.e in $(this).select())),
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
-        number_ui(v)    = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval,
-                                                                            s(v) = this.modus('val', +v /~toFixed/ 6)],
-        log_number      = number_ui /-tagged/ 'log-number',
-        linear_number   = number_ui /-tagged/ 'linear-number',
+        number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
+                                                                            s(v) = this.modus('val', +v /!n/~toFixed/ 6)],
+        log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
+        linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
+        angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
         vector_ui(c)(v) = jquery[div.vector /modus('list', c)],
 
         translation_ui  = vector_ui(linear_number) /-tagged/ 'translation',
         scale_ui        = vector_ui(log_number)    /-tagged/ 'scale',
-        rotation_ui     = vector_ui(linear_number) /-tagged/ 'rotation',
+        rotation_ui     = vector_ui(angle_number)  /-tagged/ 'rotation',
 
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-91 core/jsplot/interface.waul.sdoc
+93 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
+
+  $.fn.activate() = $(this) /~addClass/ 'active' -se [it /~data/ 'activation-timeout' /!clearTimeout,
+                                                      it |'activation-timeout' |~data| "it /~removeClass/ 'active'".qf /-setTimeout/ 500],
+
   where[screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
         overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
         tr       = $('#transform'), lw = 0, mx = null, ms = false,
         status   = $('#status'),    lh = 0, my = null, mc = false,
         preview  = $('#preview'),
-        controls = $('#controls').modus('proxy', '.camera'),
-        w        = $(window).modus('composite', {ni: '#transform', v: '#controls'}),
+        controls = $('#controls').modus('proxy', '.camera') /~addClass/ 'camera-mode noshift',
+        w        = $(window).modus('composite', {ni: tr, v: controls}),
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  cr: [0, -0.0051], os: [1, 1, 1], ot: [0, 0, 0], cd: 0.6, br: 1, sa: 0.03},
-        settings(x)            = x ? w /~val/ x -then- document.location.hash /eq[x /!JSON.stringify /!encodeURI]
-                                   : w.val(),
-        set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
-        modify(k, f, v)        = k |-set| settings()[k] /-f/ v,
+                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
@@ -5159,50 +5155,52 @@ $(caterwaul(':all')(function ($) {
                           -then- preview /~css/ {top: tr.height() + 3, bottom: 1},
         handle_resizes()       = resize_canvases() -when- size_changed() -then- resize_other_stuff(),
 
-        status_timeout         = null,
-        update_status(t)       = status /~text/ t /~addClass/ 'active' -then- status_timeout /!clearTimeout /when.status_timeout
-                                                                       -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
+        update_status(t)       = status.text(t).activate(),
 
         object_mode            = false,         // MOCK
-        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode),
+        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode)
+                                         .toggleClass('camera-mode', !object_mode),
 
-        wheel(dx, dy, s)       = object_mode ? 'os' | v3times |-modify| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
-                                                                         Math.exp(sy * 0.01),
-                                                                         Math.exp(sx * 0.01 * (d[2] >= d[0]))]
-                                                               -where [d = object_deltas(1, 0) *Math.abs -seq,
-                                                                       sx = s ? dy || dx : dx,
-                                                                       sy = s ? 0        : dy]
-
-                                             : 'cd' | a*b -given[a, b] |-modify| Math.exp(dy * -0.01),
+        view_change(k, f, v)   = w.val(w.val() -se [it.v[k] = it.v[k] /-f/ v]),
 
         data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
-        drag(dx, dy, s)        = s ? 'cr' | v2plus |-modify| [dy * 360 / lh, -dx * 360 / lh]
-                                   : object_mode ? 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
-                                                                             /-v3times/ data_lock_vector()
-                                                 : 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
-                                                                             /-v3times/ data_lock_vector(),
+        screen_scale()         = (lw /-Math.min/ lh) / 2,
+        drag(dx, dy, s)        = s ? 'cr' /v2plus /-view_change/ [dy * 180 / screen_scale(), -dx * 180 / screen_scale()]
+                                   : w.val() /se    [it.v.ot = it.v.ot /-v3plus/ modify(it.v, [dx / screen_scale(), -dy / screen_scale(), 0, 0])
+                                                                       /-v3times/ data_lock_vector()]
+                                             /where [modify = object_mode ? camera.iv_obj_locked(camera.axis_lock) : camera.iv]
+                                             /!w.val,
+
+        wheel(dx, dy, s)       = object_mode ? 'os' |v3times |-view_change| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
+                                                                             Math.exp(sy * 0.01),
+                                                                             Math.exp(sx * 0.01 * (d[2] >= d[0]))]
+                                                                     -where [d = camera.iv_obj(w.val().v, [1, 0, 0, 0]) *Math.abs -seq,
+                                                                             sx = s ? dy || dx : dx,
+                                                                             sy = s ? 0        : dy]
+                                             : 'cd' |a*b -given[a, b] |-view_change| Math.exp(dy * -0.01),
 
         check_syntax(v)        = $.get('/parse/#{v /!encodeURIComponent}', "console.log(_)".qf),
 
-        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes() -then- tr.val() /!check_syntax]
-                                        /~val/ settings().ni
+        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? w.val().ni /!visualize -then- false : true]
+                                      /~keyup/ given.e [$(this).change() -then- w.val().ni /!check_syntax]
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
                                             /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
                           -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen(),
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
-                                               /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false : true]
-                          -then- controls /~append/ camera(default_settings()).change(update_screen)
-                                             /~val/ $.extend(default_settings(),
-                                                             document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
+                                               /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false
+                                                                 : e.which === 16 ? controls /~addClass/ 'shift' : true]
+                                                 /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
+                          -then- controls /~append/ camera().change(update_screen)
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50
+                          -then- "document.location.hash = $(this).val() /!JSON.stringify /!encodeURI".qf /-setInterval/ 50
+                          -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
         reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
+        data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.axes[0].end() / 100]
                       -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
@@ -5218,15 +5216,14 @@ $(caterwaul(':all')(function ($) {
 
         renderer           = render(),
         update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.axes, c /!camera.m, c.brightness, c.saturation, sc, screen.width(), screen.height())
+                     -then-  renderer(data_state.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.axes && +new Date - data_state.last_render > 30]
-                     -where [c = controls.val()]],
+                     -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
-50 core/jsplot/css
-body {margin:0; color:#eee; background:black; font-size:10pt;
-      font-family:monospace; overflow: hidden}
+61 core/jsplot/css
+body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monospace; overflow: hidden}
 
 #screen, #overlay {position:absolute}
 
@@ -5236,46 +5233,58 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 
 *:focus, *:hover, .pinned, .active {opacity:1 !important}
 
-#status {position:absolute; right:2px; bottom:2px; width:300px;
-         opacity:0.2; text-align:right; z-index:9}
+#status {position:absolute; right:2px; bottom:2px; width:300px; opacity:0.2; text-align:right; z-index:9}
 
-#transform {background:none; margin:0; color:#eee; position:absolute;
-            left:0; top:0; border:none; outline:none; padding:1px 0;
-            border-bottom:solid 1px transparent; font-family:monospace;
-            z-index:9}
+#transform {background:none; margin:0; color:#eee; position:absolute; left:0; top:0; border:none; outline:none; padding:1px 0;
+            border-bottom:solid 1px transparent; font-family:monospace; z-index:9}
 
 #transform:focus,
 #transform:hover {background:rgba(0,0,0,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
 
-#preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto;
-          position:absolute; left:0; padding-right:12px; overflow-y:show;
-          margin:0; background:rgba(0,0,0,0.75); cursor:default;
-          font-family:monospace}
-
+#preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto; position:absolute; left:0; padding-right:12px; overflow-y:show; margin:0;
+          background:rgba(0,0,0,0.75); cursor:default; font-family:monospace}
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
 
-#controls {position:absolute; width:300px; right:-288px; bottom:14pt; z-index:9;
-           background:rgba(0,0,0,0.75); padding-left:4px}
-
+#controls {position:absolute; width:192px; right:-184px; bottom:14pt; z-index:9; background:rgba(0,0,0,0.75); border-top:solid 1px transparent}
 #controls:hover, #controls.pinned {right:0}
-#controls.pinned {border-left:solid 1px #f60}
+#controls.pinned {border-top:solid 1px #f60}
 
-.number {background:none; border:none; margin:0; color:#eee;
-         font-family:sans-serif; width:12ex; cursor:default}
+.number {background:none; border:none; margin:0; color:#eee; padding:4px; font-family:sans-serif; font-size:14pt; width:132px; cursor:default}
 
-.vector {border-top:solid 1px rgba(255,255,255,0.5)}
-.vector > * {display:block}
+.vector     {display:inline-block; padding:4px; border-left:solid 8px rgba(96,96,96,0.5); background:rgba(64,64,64,0.25); margin:2px 0}
+.vector > * {display:inline-block}
 
-#controls .object-translation .number {color:#f60}
-#controls .object-scale       .number {color:#666}
-#controls .distance.number            {color:#f60}
+.object-translation::before {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'+'; padding:4px}
+.object-scale::before       {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'x'; padding:4px}
+.camera-rotation::before    {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'R'; padding:4px}
+.distance::before           {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'D'; padding:4px}
+.brightness::before         {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'B'; padding:4px}
+.saturation::before         {float:right; font-size:14pt; color:rgba(192,192,192,0.5); content:'S'; padding:4px}
 
-#controls.object-mode .object-translation .number {color:#f60}
-#controls.object-mode .object-scale       .number {color:#f60}
-#controls.object-mode .distance.number            {color:#666}
-18 core/jsplot/html
+#controls > label {font-family:sans-serif; font-size:14pt; color:rgba(96,96,96,0.5)}
+#controls > label::before {color:rgba(192,192,192,0.5); content:' [ '}
+#controls > label::after  {color:rgba(192,192,192,0.5); content:' ] '}
+#controls.camera-mode > #camera-mode {color:#f60}
+#controls.object-mode > #object-mode {color:#f60}
+
+#controls.camera-mode.noshift .vector.object-translation {border-left:solid 8px #f60}
+#controls.camera-mode.noshift .distance                  {border-left:solid 8px #f60}
+
+#controls.camera-mode.shift .vector.object-translation {border-left:solid 8px rgba(96,96,96,0.5)}
+#controls.camera-mode.shift .vector.camera-rotation    {border-left:solid 8px #f60}
+#controls.camera-mode.shift .distance                  {border-left:solid 8px rgba(96,96,96,0.5)}
+
+#controls.object-mode.noshift .vector.object-translation {border-left:solid 8px #f60}
+#controls.object-mode.noshift .vector.object-scale       {border-left:solid 8px #f60}
+#controls.object-mode.noshift .distance                  {border-left:solid 8px rgba(96,96,96,0.5)}
+
+#controls.object-mode.shift .vector.object-translation {border-left:solid 8px rgba(96,96,96,0.5)}
+#controls.object-mode.shift .vector.object-scale       {border-left:solid 8px #f60}
+#controls.object-mode.shift .vector.camera-rotation    {border-left:solid 8px #f60}
+#controls.object-mode.shift .distance                  {border-left:solid 8px rgba(96,96,96,0.5)}
+21 core/jsplot/html
 <!doctype html>
 <html>
 <head>
@@ -5288,7 +5297,10 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 <pre id='preview' class='autohide'></pre>
 <canvas id='screen'></canvas>
 <canvas id='overlay'></canvas>
-<div id='controls' class='autohide'></div>
+<div id='controls' class='autohide'>
+  <label id='camera-mode'>camera</label>
+  <label id='object-mode'>object</label>
+</div>
 <div id='status'>
   <label id='sizelabel'></label>
 </div>

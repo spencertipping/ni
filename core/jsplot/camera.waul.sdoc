@@ -4,46 +4,44 @@ The camera contains an object matrix, a view matrix, and some render settings.
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
                                                      sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number'})
-                     >  div.top(div.vector.brightness >= log_number() /~attr/ {title: 'view brightness'},
-                                div.vector.saturation >= log_number() /~attr/ {title: 'white-saturation rate'},
-                                div.vector.distance   >= log_number() /~attr/ {title: 'camera distance'})
-                     >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'object translation matrix'}
-                     >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'object scale matrix'}
-                     >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'camera rotation matrix'}] -se- it.val(v) /when.v,
+                     >  div.vector.brightness[log_number() /~attr/ {title: 'View brightness'}]
+                     >  div.vector.saturation[log_number() /~attr/ {title: 'White-saturation rate'}]
+                     >  div.vector.distance  [log_number() /~attr/ {title: 'Camera distance'}]
+                     >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'Object translation'}
+                     >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'Object scale'}
+                     >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'Camera rotation'}] -se- it.val(v) /when.v,
 
-  camera /-$.extend/ wcapture [object_matrix(o)       = matrix.prod(o.ot /!matrix.translate, o.os /!matrix.scale),
-                               object_delta_matrix(o) = o.os /!matrix.scale,
-                               camera_matrix(o)       = matrix.prod([0, 0, o.cd]        /!matrix.translate,
-                                                                    o.cr[0] / 360 * tau /!matrix.rotate_x,
-                                                                    o.cr[1] / 360 * tau /!matrix.rotate_y),
-                               norm(v)                = v |-v4scale| 1/v[3],
-                               m(o)                   = object_matrix(o)       /~dot/ camera_matrix(o),
-                               dm(o)                  = object_delta_matrix(o) /~dot/ camera_matrix(o),
-
-                               edit(o, k, v)          = {} /-$.extend/ o -se [it[k] = v],
+  camera /-$.extend/ wcapture [object_matrix(o)       = matrix.prod(o.os /!matrix.scale, o.ot /!matrix.translate),
+                               camera_matrix(o)       = matrix.prod([0, 0, 1]                /!matrix.translate,
+                                                                    [1/o.cd, 1/o.cd, 1/o.cd] /!matrix.scale,
+                                                                    o.cr[0] / 360 * tau      /!matrix.rotate_x,
+                                                                    o.cr[1] / 360 * tau      /!matrix.rotate_y),
+                               norm(v)                = v[3] ? v |-v4scale| 1/v[3] : v,
+                               m(o)                   = camera_matrix(o) /~dot/ object_matrix(o),
 
                                plane_lock(v)          = v *[xi === mi ? 0 : x] -seq -where [mi = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
                                axis_lock(v)           = v *[xi === mi ? x : 0] -seq -where [mi = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
 
-                               dv_obj_locked(f)(o, v) = object_delta_matrix(o).inv() |~transform| camera_matrix(o).inv() /~transform/ v /!f,
-                               dv_obj(o, v)           = camera_matrix(o).inv() /~transform/ v /!norm,
-                               dv(o, v)               = dm(o).inv()            /~transform/ v /!norm,
-                               v(o, v)                = m(o).inv()             /~transform/ v /!norm],
+                               iv_obj_locked(f)(o, v) = object_matrix(o).inv() /~transform/ f(camera_matrix(o).inv() /~transform/ v) /!norm,
+                               iv_obj(o, v)           = camera_matrix(o).inv() /~transform/ v /!norm,
+                               iv(o, v)               = m(o).inv()             /~transform/ v /!norm],
 
   $(given.e in $(document).on('mousewheel', '.log-number', given.e in $(this).val($(this).val() * Math.exp(e.deltaY * 0.01)).change())
-        -then- $(document).on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.001, e.deltaX * 0.001]).change())
-        -then- $(document).on('change',     '.number',     given.e in $(this).val($(this).val()))),
+                          .on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.1, e.deltaX * 0.1]).change())
+                          .on('change',     '.number',     given.e in $(this).val($(this).val()))
+                          .on('focus',      '.number',     given.e in $(this).select())),
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
-        number_ui(v)    = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval,
-                                                                            s(v) = this.modus('val', +v /~toFixed/ 6)],
-        log_number      = number_ui /-tagged/ 'log-number',
-        linear_number   = number_ui /-tagged/ 'linear-number',
+        number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
+                                                                            s(v) = this.modus('val', +v /!n/~toFixed/ 6)],
+        log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
+        linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
+        angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
         vector_ui(c)(v) = jquery[div.vector /modus('list', c)],
 
         translation_ui  = vector_ui(linear_number) /-tagged/ 'translation',
         scale_ui        = vector_ui(log_number)    /-tagged/ 'scale',
-        rotation_ui     = vector_ui(linear_number) /-tagged/ 'rotation',
+        rotation_ui     = vector_ui(angle_number)  /-tagged/ 'rotation',
 
         tau             = Math.PI * 2],
 

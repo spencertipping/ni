@@ -2,21 +2,21 @@ Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
+
+  $.fn.activate() = $(this) /~addClass/ 'active' -se [it /~data/ 'activation-timeout' /!clearTimeout,
+                                                      it |'activation-timeout' |~data| "it /~removeClass/ 'active'".qf /-setTimeout/ 500],
+
   where[screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
         overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
         tr       = $('#transform'), lw = 0, mx = null, ms = false,
         status   = $('#status'),    lh = 0, my = null, mc = false,
         preview  = $('#preview'),
-        controls = $('#controls').modus('proxy', '.camera'),
-        w        = $(window).modus('composite', {ni: '#transform', v: '#controls'}),
+        controls = $('#controls').modus('proxy', '.camera') /~addClass/ 'camera-mode noshift',
+        w        = $(window).modus('composite', {ni: tr, v: controls}),
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  cr: [0, -0.0051], os: [1, 1, 1], ot: [0, 0, 0], cd: 0.6, br: 1, sa: 0.03},
-        settings(x)            = x ? w /~val/ x -then- document.location.hash /eq[x /!JSON.stringify /!encodeURI]
-                                   : w.val(),
-        set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
-        modify(k, f, v)        = k |-set| settings()[k] /-f/ v,
+                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
@@ -24,50 +24,52 @@ $(caterwaul(':all')(function ($) {
                           -then- preview /~css/ {top: tr.height() + 3, bottom: 1},
         handle_resizes()       = resize_canvases() -when- size_changed() -then- resize_other_stuff(),
 
-        status_timeout         = null,
-        update_status(t)       = status /~text/ t /~addClass/ 'active' -then- status_timeout /!clearTimeout /when.status_timeout
-                                                                       -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
+        update_status(t)       = status.text(t).activate(),
 
         object_mode            = false,         // MOCK
-        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode),
+        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode)
+                                         .toggleClass('camera-mode', !object_mode),
 
-        wheel(dx, dy, s)       = object_mode ? 'os' | v3times |-modify| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
-                                                                         Math.exp(sy * 0.01),
-                                                                         Math.exp(sx * 0.01 * (d[2] >= d[0]))]
-                                                               -where [d = object_deltas(1, 0) *Math.abs -seq,
-                                                                       sx = s ? dy || dx : dx,
-                                                                       sy = s ? 0        : dy]
-
-                                             : 'cd' | a*b -given[a, b] |-modify| Math.exp(dy * -0.01),
+        view_change(k, f, v)   = w.val(w.val() -se [it.v[k] = it.v[k] /-f/ v]),
 
         data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
-        drag(dx, dy, s)        = s ? 'cr' | v2plus |-modify| [dy * 360 / lh, -dx * 360 / lh]
-                                   : object_mode ? 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
-                                                                             /-v3times/ data_lock_vector()
-                                                 : 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
-                                                                             /-v3times/ data_lock_vector(),
+        screen_scale()         = (lw /-Math.min/ lh) / 2,
+        drag(dx, dy, s)        = s ? 'cr' /v2plus /-view_change/ [dy * 180 / screen_scale(), -dx * 180 / screen_scale()]
+                                   : w.val() /se    [it.v.ot = it.v.ot /-v3plus/ modify(it.v, [dx / screen_scale(), -dy / screen_scale(), 0, 0])
+                                                                       /-v3times/ data_lock_vector()]
+                                             /where [modify = object_mode ? camera.iv_obj_locked(camera.axis_lock) : camera.iv]
+                                             /!w.val,
+
+        wheel(dx, dy, s)       = object_mode ? 'os' |v3times |-view_change| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
+                                                                             Math.exp(sy * 0.01),
+                                                                             Math.exp(sx * 0.01 * (d[2] >= d[0]))]
+                                                                     -where [d = camera.iv_obj(w.val().v, [1, 0, 0, 0]) *Math.abs -seq,
+                                                                             sx = s ? dy || dx : dx,
+                                                                             sy = s ? 0        : dy]
+                                             : 'cd' |a*b -given[a, b] |-view_change| Math.exp(dy * -0.01),
 
         check_syntax(v)        = $.get('/parse/#{v /!encodeURIComponent}', "console.log(_)".qf),
 
-        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes() -then- tr.val() /!check_syntax]
-                                        /~val/ settings().ni
+        setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? w.val().ni /!visualize -then- false : true]
+                                      /~keyup/ given.e [$(this).change() -then- w.val().ni /!check_syntax]
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
                                             /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
                           -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen(),
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
-                                               /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false : true]
-                          -then- controls /~append/ camera(default_settings()).change(update_screen)
-                                             /~val/ $.extend(default_settings(),
-                                                             document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
+                                               /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false
+                                                                 : e.which === 16 ? controls /~addClass/ 'shift' : true]
+                                                 /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
+                          -then- controls /~append/ camera().change(update_screen)
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50
+                          -then- "document.location.hash = $(this).val() /!JSON.stringify /!encodeURI".qf /-setInterval/ 50
+                          -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        data_state           = {axes: null, bytes: 0, last_render: 0, preview: ''},
         reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
+        data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.axes[0].end() / 100]
                       -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
@@ -83,9 +85,9 @@ $(caterwaul(':all')(function ($) {
 
         renderer           = render(),
         update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.axes, c /!camera.m, c.brightness, c.saturation, sc, screen.width(), screen.height())
+                     -then-  renderer(data_state.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.axes && +new Date - data_state.last_render > 30]
-                     -where [c = controls.val()]],
+                     -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
