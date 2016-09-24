@@ -29,9 +29,22 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
 
-#controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
-           background:rgba(0,0,0,0.75)}
-#controls canvas {display:block; height:48px; width:600px; margin-left:4px}
+#controls {position:absolute; width:300px; right:-288px; bottom:14pt; z-index:9;
+           background:rgba(0,0,0,0.75); padding-left:4px}
 
-#controls:hover, #controls.pinned {width:600px}
+#controls:hover, #controls.pinned {right:0}
 #controls.pinned {border-left:solid 1px #f60}
+
+.number {background:none; border:none; margin:0; color:#eee;
+         font-family:sans-serif; width:12ex; cursor:default}
+
+.vector {border-top:solid 1px rgba(255,255,255,0.5)}
+.vector > * {display:block}
+
+#controls .object-translation .number {color:#f60}
+#controls .object-scale       .number {color:#666}
+#controls .distance.number            {color:#f60}
+
+#controls.object-mode .object-translation .number {color:#f60}
+#controls.object-mode .object-scale       .number {color:#f60}
+#controls.object-mode .distance.number            {color:#666}

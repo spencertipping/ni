@@ -13,6 +13,6 @@ defoperator ssh => q{
   $fh->await;
 };
 
-use constant ssh_host => prc '[^][/,]+';
+use constant ssh_host => prx '[^][/,]+';
 
-defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
+defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, pqfn '';

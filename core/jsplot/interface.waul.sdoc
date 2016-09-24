@@ -2,19 +2,21 @@ Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau = Math.PI * 2, screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        w   = $(window),   overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-                           tr       = $('#transform'), lw = 0, mx = null, ms = false,
-                           status   = $('#status'),    lh = 0, my = null, mc = false,
-                           preview  = $('#preview'),
-                           controls = $('#controls'),
+  where[screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+        tr       = $('#transform'), lw = 0, mx = null, ms = false,
+        status   = $('#status'),    lh = 0, my = null, mc = false,
+        preview  = $('#preview'),
+        controls = $('#controls').modus('proxy', '.camera'),
+        w        = $(window).modus('composite', {ni: '#transform', v: '#controls'}),
 
-        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  r: [0, -0.0051], s: [1, 1, 1], f: [0, 0, 0], d: 0.6},
-        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURI]
-                                   : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
+                                  cr: [0, -0.0051], os: [1, 1, 1], ot: [0, 0, 0], cd: 0.6, br: 1, sa: 0.03},
+        settings(x)            = x ? w /~val/ x -then- document.location.hash /eq[x /!JSON.stringify /!encodeURI]
+                                   : w.val(),
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
+        modify(k, f, v)        = k |-set| settings()[k] /-f/ v,
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
@@ -27,26 +29,28 @@ $(caterwaul(':all')(function ($) {
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
         object_mode            = false,         // MOCK
-        toggle_object_mode()   = console.log("object mode:", object_mode = !object_mode),
+        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode),
 
-        wheel(dx, dy, s)       = object_mode ? 's' |-set| settings().s /-v3times/ [Math.exp(sx * 0.01 * (d[0] >= d[2])),
-                                                                                   Math.exp(sy * 0.01),
-                                                                                   Math.exp(sx * 0.01 * (d[2] >= d[0]))]
-                                                          -where [d = object_deltas(1, 0) *Math.abs -seq, sx = s ? dy || dx : dx, sy = s ? 0 : dy]
-                                             : 'd' |-set| settings().d * Math.exp(dy * -0.01),
+        wheel(dx, dy, s)       = object_mode ? 'os' | v3times |-modify| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
+                                                                         Math.exp(sy * 0.01),
+                                                                         Math.exp(sx * 0.01 * (d[2] >= d[0]))]
+                                                               -where [d = object_deltas(1, 0) *Math.abs -seq,
+                                                                       sx = s ? dy || dx : dx,
+                                                                       sy = s ? 0        : dy]
 
-        plane_lock(v)          = v *[xi === min_i ? 0 : x] -seq -where [min_i = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
-        axis_lock(v)           = v *[xi === max_i ? x : 0] -seq -where [max_i = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
-        w_norm(v)              = v |-v4scale| 1/v[3],
-        object_deltas(dx, dy)  = view_matrix().inv() /~transform/ [dx, -dy, 0, lh/2] /!w_norm,
+                                             : 'cd' | a*b -given[a, b] |-modify| Math.exp(dy * -0.01),
 
-        drag(dx, dy, s)        = s ? 'r' |-set| settings().r /-v2plus/ [dx / lh, -dy / lh]
-                                   : object_mode ? 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
-                                                 : 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
-                                                                           /-v3times/ (data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0]),
+        data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
+        drag(dx, dy, s)        = s ? 'cr' | v2plus |-modify| [dy * 360 / lh, -dx * 360 / lh]
+                                   : object_mode ? 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
+                                                                             /-v3times/ data_lock_vector()
+                                                 : 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
+                                                                             /-v3times/ data_lock_vector(),
+
+        check_syntax(v)        = $.get('/parse/#{v /!encodeURIComponent}', "console.log(_)".qf),
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes() -then- tr.val() /!check_syntax]
                                         /~val/ settings().ni
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
                                             /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
@@ -54,6 +58,9 @@ $(caterwaul(':all')(function ($) {
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                                                /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false : true]
+                          -then- controls /~append/ camera(default_settings()).change(update_screen)
+                                             /~val/ $.extend(default_settings(),
+                                                             document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50
@@ -74,51 +81,11 @@ $(caterwaul(':all')(function ($) {
                                    populate_axes(ls)  = ls /!update_n_axes -then-
                                                         ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
-        view_matrix()      = matrix.prod(matrix.scale(1/d, 1/d, 1/d),
-                                         matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau)) -where [st = settings(), d = st.d, r = st.r],
-
-        autoscale_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
-                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
-                                                   cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
-
-        scale_matrix()     = matrix.scale(s[0], s[1], s[2]) -where [s = settings().s],
-        object_matrix()    = matrix.prod(scale_matrix(),
-                                         matrix.translate(f[0], f[1], f[2]),
-                                         autoscale_matrix()) -where[f = settings().f],
-
-        camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
         update_screen()    = handle_resizes()
-                      -then- renderer(data_state.axes, camera_matrix(), 1, 0.03, sc, screen.width(), screen.height())
-                      -then- data_state.last_render /eq[+new Date]
-                      -when [data_state.axes && +new Date - data_state.last_render > 30]],
-
-UI representation of transformation matrices.
-The camera and object matrices are multiplied immediately before we render things onto the screen. Rather than presenting the user with opaque transformation
-matrices, we factor it out into a few different components:
-
-| object = focus(translation) * zoom(scale)
-  camera = distance(translation) * azimuth/elevation(rotation)
-
-So we have stacks of these four transformations that can be manipulated independently. There are two manipulation modes you can use, camera-centric and
-object-centric. They behave like this:
-
-| camera-centric: drag to pan using view plane, mousewheel to adjust camera distance, shift-drag to adjust camera rotation
-  object-centric: drag to pan along axes, mousewheel to scale along axes, shift-drag to adjust camera rotation
-
-  where[parse_number(x)     = +eval(x),
-        ui_number(v)        = jquery[input.number /modus(get, set) /val(v)] -where [get(e) = e.modus('val') /!parse_number,
-                                                                                    set(x) = this.modus('val', x)],
-
-        ui_distance(v)      = jquery[div.distance[ui_number(v)] /modus('proxy', '.number')],
-        ui_translation(v)   = jquery[div.translate /modus('list', ui_number) /val(v)],
-        ui_scale(v)         = jquery[div.scale     /modus('list', ui_number) /val(v)],
-        ui_rotate(v)        = jquery[div.rotate    /modus('list', ui_number) /val(v)],
-
-        ui_camera_matrix(v) = jquery[div.camera[ui_distance(), ui_rotate()] /modus('composite', {d: '.distance',  r: '.rotate'}) /val(v)],
-        ui_object_matrix(v) = jquery[div.object[ui_translate(), ui_scale()] /modus('composite', {t: '.translate', s: '.scale'})  /val(v)]
-
-        // TODO
-        ],
+                     -then-  renderer(data_state.axes, c /!camera.m, c.brightness, c.saturation, sc, screen.width(), screen.height())
+                     -then-  data_state.last_render /eq[+new Date]
+                     -when  [data_state.axes && +new Date - data_state.last_render > 30]
+                     -where [c = controls.val()]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

@@ -2686,9 +2686,9 @@ defoperator ssh => q{
   $fh->await;
 };
 
-use constant ssh_host => prc '[^][/,]+';
+use constant ssh_host => prx '[^][/,]+';
 
-defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host, pqfn '';
+defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, pqfn '';
 1 core/buffer/lib
 buffer.pl.sdoc
 17 core/buffer/buffer.pl.sdoc
@@ -4682,7 +4682,7 @@ caterwaul.module("ui.jquery",(function(qs,qs1,qs2,qs3,qs4,qs5,qs6,qs7,qs8,qs9,qs
 }))]}).call(this);return(jquery_macros).concat(string_macros)}).call(this)})),it}).call(this,(caterwaul_function))}});result.caterwaul_expression_ref_table={qs:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_expression"))'),qs1:('new caterwaul.syntax( "jQuery")'),qs2:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_thing"))'),qs3:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element"))'),qs4:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs5:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "addClass")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_class")))'),qs6:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_attr") ,new caterwaul.syntax( "_val"))) .prefix( " "))'),qs7:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "attr")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_attr")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qs8:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "*" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_name") ,new caterwaul.syntax( "_val")))) .prefix( " "))'),qs9:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "data")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_name")) ,new caterwaul.syntax( "_val") .prefix( " ")))'),qsa:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_method") ,new caterwaul.syntax( "_args"))) .prefix( " "))'),qsb:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "_method")) ,new caterwaul.syntax( "_args"))'),qsc:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "u!" ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_event") ,new caterwaul.syntax( "_args")))) .prefix( " "))'),qsd:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "bind")) ,new caterwaul.syntax( "," ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_event")) ,new caterwaul.syntax( "_args") .prefix( " ")))'),qse:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "%" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_function")) .prefix( " "))'),qsf:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "_function") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qsg:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsh:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_children")))'),qsi:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_children")))'),qsj:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_children"))'),qsk:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_tree") .prefix( " ")) .prefix( " "))'),qsl:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_tree")) ,new caterwaul.syntax( "toString")) ,new caterwaul.syntax( "")))'),qsm:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsn:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_child")))'),qso:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">=" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_child") .prefix( " ")) .prefix( " "))'),qsp:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "append")) ,new caterwaul.syntax( "_child"))'),qsq:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")))'),qsr:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qss:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qst:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "add")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element2")))'),qsu:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "-" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qsv:('new caterwaul.syntax( "-" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element1")) ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " ")'),qsw:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsx:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "filter")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qsy:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qsz:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "find")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs10:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "<<" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_pattern") .prefix( " ")) .prefix( " "))'),qs11:('new caterwaul.syntax( "()" ,new caterwaul.syntax( "." ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")) ,new caterwaul.syntax( "parents")) ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_pattern")))'),qs12:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs13:('new caterwaul.syntax( "(" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs14:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "[" ,new caterwaul.syntax( "_element")))'),qs15:('new caterwaul.syntax( "[" ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "_element")))'),qs16:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "J") ,new caterwaul.syntax( "u+" ,new caterwaul.syntax( "_expression")))'),qs17:('new caterwaul.syntax( "_expression")'),qs18:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "TS") ,new caterwaul.syntax( "_identifier"))'),qs19:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "S") ,new caterwaul.syntax( "_identifier"))'),qs1a:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "PS") ,new caterwaul.syntax( "_identifier"))'),qs1b:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "_element"))'),qs1c:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "." ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_class")))'),qs1d:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "[]" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_attributes")))'),qs1e:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "=" ,new caterwaul.syntax( "_attribute") ,new caterwaul.syntax( "_value") .prefix( " ")) .prefix( " "))'),qs1f:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "(" ,new caterwaul.syntax( "_element")))'),qs1g:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "+" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1h:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "," ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "    ")))'),qs1i:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "  ")) .prefix( " "))'),qs1j:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">>>" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( " ")) .prefix( " "))'),qs1k:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( ">" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2") .prefix( "   ")) .prefix( " "))'),qs1l:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_element1") ,new caterwaul.syntax( "_element2")))'),qs1m:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "_selector")) .prefix( " "))'),qs1n:('new caterwaul.syntax( "[]" ,new caterwaul.syntax( "P") ,new caterwaul.syntax( "/" ,new caterwaul.syntax( "_element") ,new caterwaul.syntax( "()" ,new caterwaul.syntax( "_selector") ,new caterwaul.syntax( "_value"))) .prefix( " "))')};
 return(result)}).call(this,new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_expression")),new caterwaul.syntax("jQuery"),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_thing")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("addClass")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_attr"),new caterwaul.syntax("_val")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("attr")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_attr")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("*",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_name"),new caterwaul.syntax("_val"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("data")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_name")),(new caterwaul.syntax("_val")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_method"),new caterwaul.syntax("_args")))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("_method")),new caterwaul.syntax("_args")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("u!",new caterwaul.syntax("()",new caterwaul.syntax("_event"),new caterwaul.syntax("_args"))))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("bind")),new caterwaul.syntax(",",new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_event")),(new caterwaul.syntax("_args")).prefix(" "))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("%",new caterwaul.syntax("_element"),new caterwaul.syntax("_function"))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax("_function"),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("()",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_children"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_children"))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_children")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_tree")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("(",new caterwaul.syntax("_tree")),new caterwaul.syntax("toString")),new caterwaul.syntax(""))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_child"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">=",new caterwaul.syntax("_element"),(new caterwaul.syntax("_child")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("append")),new caterwaul.syntax("_child")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),new caterwaul.syntax("add")),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("-",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),(new caterwaul.syntax("-",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element1")),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" "),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("filter")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("find")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),(new caterwaul.syntax("<<",new caterwaul.syntax("_element"),(new caterwaul.syntax("_pattern")).prefix(" "))).prefix(" ")),new caterwaul.syntax("()",new caterwaul.syntax(".",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element")),new caterwaul.syntax("parents")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_pattern"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("(",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("[",new caterwaul.syntax("_element"))),new caterwaul.syntax("[",new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("J"),new caterwaul.syntax("u+",new caterwaul.syntax("_expression"))),new caterwaul.syntax("_expression"),new caterwaul.syntax("[]",new caterwaul.syntax("TS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("S"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("PS"),new caterwaul.syntax("_identifier")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("_element")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(".",new caterwaul.syntax("_element"),new caterwaul.syntax("_class"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("[]",new caterwaul.syntax("_element"),new caterwaul.syntax("_attributes"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("=",new caterwaul.syntax("_attribute"),(new caterwaul.syntax("_value")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("(",new caterwaul.syntax("_element"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("+",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax(",",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("    "))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("  "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">>>",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix(" "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax(">",new caterwaul.syntax("_element1"),(new caterwaul.syntax("_element2")).prefix("   "))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),new caterwaul.syntax("()",new caterwaul.syntax("_element1"),new caterwaul.syntax("_element2"))),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("_selector"))).prefix(" ")),new caterwaul.syntax("[]",new caterwaul.syntax("P"),(new caterwaul.syntax("/",new caterwaul.syntax("_element"),new caterwaul.syntax("()",new caterwaul.syntax("_selector"),new caterwaul.syntax("_value")))).prefix(" "))));
 caterwaul.module("ui",function($){$.all.push("jquery")});
-15 core/jsplot/lib
+16 core/jsplot/lib
 jquery.min.js
 jquery.mousewheel.min.js
 modus.js
@@ -4693,6 +4693,7 @@ axis.waul.sdoc
 matrix.waul.sdoc
 socket.waul.sdoc
 render.waul.sdoc
+camera.waul.sdoc
 interface.waul.sdoc
 
 css
@@ -4924,8 +4925,8 @@ caterwaul(':all')(function () {
   matrix(x) = (x ? +x -seq : n[16] *[+((x>>2) == (x&3))] -seq) -se- it /-caterwaul.merge/ matrix_methods,
   matrix /-caterwaul.merge/ static_methods,
 
-  where[static_methods = capture[translate(x, y, z)   = matrix() -se [it[3] = x, it[7] = y, it[11] = z],
-                                 scale(x, y, z)       = matrix() -se [it[0] = x, it[5] = y, it[10] = z],
+  where[static_methods = capture[translate(v)         = matrix() -se [it[3] = v[0], it[7] = v[1], it[11] = v[2]],
+                                 scale(v)             = matrix() -se [it[0] = v[0], it[5] = v[1], it[10] = v[2]],
                                  rotate_x(t)          = matrix() -se [it[5] = it[10] = c, it[6] = -(it[9] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  rotate_y(t)          = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
@@ -4962,7 +4963,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-114 core/jsplot/render.waul.sdoc
+117 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -5000,7 +5001,8 @@ pixel. Brightness is stored in the alpha channel and converges to 255 by an expo
 Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
 constantly low.
 
-  -where[slice_size      = 256,
+  -where[slice_size      = 1024,
+         slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
 
@@ -5022,8 +5024,10 @@ Here's the calculation:
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
+    console.log('l = #{state.l}');
+
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
-      for (var j = state.i * 61 & slice_size - 1; j < n; j += slice_size) {
+      for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
 
@@ -5042,7 +5046,7 @@ Here's the calculation:
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
                       ci = l * op * (256 - lp),
-                      li = ci * zi*zi,
+                      li = ci, // * zi*zi,
                       d  = sr / (ci + lp);
 
                   total_shade += li;
@@ -5055,7 +5059,7 @@ Here's the calculation:
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
                   ci = l * (256 - lp),
-                  li = ci * zi*zi,
+                  li = ci, // * zi*zi,
                   d  = sr / (ci + lp);
 
               total_shade += li;
@@ -5077,24 +5081,77 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-124 core/jsplot/interface.waul.sdoc
+50 core/jsplot/camera.waul.sdoc
+Camera state, geometry, and UI.
+The camera contains an object matrix, a view matrix, and some render settings.
+
+caterwaul(':all')(function ($) {
+  camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
+                                                     sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number'})
+                     >  div.top(div.vector.brightness >= log_number() /~attr/ {title: 'view brightness'},
+                                div.vector.saturation >= log_number() /~attr/ {title: 'white-saturation rate'},
+                                div.vector.distance   >= log_number() /~attr/ {title: 'camera distance'})
+                     >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'object translation matrix'}
+                     >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'object scale matrix'}
+                     >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'camera rotation matrix'}] -se- it.val(v) /when.v,
+
+  camera /-$.extend/ wcapture [object_matrix(o)       = matrix.prod(o.ot /!matrix.translate, o.os /!matrix.scale),
+                               object_delta_matrix(o) = o.os /!matrix.scale,
+                               camera_matrix(o)       = matrix.prod([0, 0, o.cd]        /!matrix.translate,
+                                                                    o.cr[0] / 360 * tau /!matrix.rotate_x,
+                                                                    o.cr[1] / 360 * tau /!matrix.rotate_y),
+                               norm(v)                = v |-v4scale| 1/v[3],
+                               m(o)                   = object_matrix(o)       /~dot/ camera_matrix(o),
+                               dm(o)                  = object_delta_matrix(o) /~dot/ camera_matrix(o),
+
+                               edit(o, k, v)          = {} /-$.extend/ o -se [it[k] = v],
+
+                               plane_lock(v)          = v *[xi === mi ? 0 : x] -seq -where [mi = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
+                               axis_lock(v)           = v *[xi === mi ? x : 0] -seq -where [mi = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
+
+                               dv_obj_locked(f)(o, v) = object_delta_matrix(o).inv() |~transform| camera_matrix(o).inv() /~transform/ v /!f,
+                               dv_obj(o, v)           = camera_matrix(o).inv() /~transform/ v /!norm,
+                               dv(o, v)               = dm(o).inv()            /~transform/ v /!norm,
+                               v(o, v)                = m(o).inv()             /~transform/ v /!norm],
+
+  $(given.e in $(document).on('mousewheel', '.log-number', given.e in $(this).val($(this).val() * Math.exp(e.deltaY * 0.01)).change())
+        -then- $(document).on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.001, e.deltaX * 0.001]).change())
+        -then- $(document).on('change',     '.number',     given.e in $(this).val($(this).val()))),
+
+  where[tagged(f, c)(v) = f(v) /~addClass/ c,
+        number_ui(v)    = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval,
+                                                                            s(v) = this.modus('val', +v /~toFixed/ 6)],
+        log_number      = number_ui /-tagged/ 'log-number',
+        linear_number   = number_ui /-tagged/ 'linear-number',
+        vector_ui(c)(v) = jquery[div.vector /modus('list', c)],
+
+        translation_ui  = vector_ui(linear_number) /-tagged/ 'translation',
+        scale_ui        = vector_ui(log_number)    /-tagged/ 'scale',
+        rotation_ui     = vector_ui(linear_number) /-tagged/ 'rotation',
+
+        tau             = Math.PI * 2],
+
+  using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
+91 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
-  where[tau = Math.PI * 2, screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
-        w   = $(window),   overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
-                           tr       = $('#transform'), lw = 0, mx = null, ms = false,
-                           status   = $('#status'),    lh = 0, my = null, mc = false,
-                           preview  = $('#preview'),
-                           controls = $('#controls'),
+  where[screen   = $('#screen'),    sc = screen[0]  /~getContext/ '2d',
+        overlay  = $('#overlay'),   oc = overlay[0] /~getContext/ '2d',
+        tr       = $('#transform'), lw = 0, mx = null, ms = false,
+        status   = $('#status'),    lh = 0, my = null, mc = false,
+        preview  = $('#preview'),
+        controls = $('#controls').modus('proxy', '.camera'),
+        w        = $(window).modus('composite', {ni: '#transform', v: '#controls'}),
 
-        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' p'($_)x16' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + ",qABCD0.01 p'r a, - c, b, d'",
-                                  r: [0, -0.0051], s: [1, 1, 1], f: [0, 0, 0], d: 0.6},
-        settings(x)            = x ? document.location.hash /eq[x /!JSON.stringify /!encodeURI]
-                                   : default_settings() |-$.extend| document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {},
+                                  cr: [0, -0.0051], os: [1, 1, 1], ot: [0, 0, 0], cd: 0.6, br: 1, sa: 0.03},
+        settings(x)            = x ? w /~val/ x -then- document.location.hash /eq[x /!JSON.stringify /!encodeURI]
+                                   : w.val(),
         set(k, v)              = settings() /-$.extend/ ({} -se- it[k] /eq.v) /!settings,
+        modify(k, f, v)        = k |-set| settings()[k] /-f/ v,
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
@@ -5107,26 +5164,28 @@ $(caterwaul(':all')(function ($) {
                                                                        -then- status_timeout /eq["status /~removeClass/ 'active'".qf /-setTimeout/ 500],
 
         object_mode            = false,         // MOCK
-        toggle_object_mode()   = console.log("object mode:", object_mode = !object_mode),
+        toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode),
 
-        wheel(dx, dy, s)       = object_mode ? 's' |-set| settings().s /-v3times/ [Math.exp(sx * 0.01 * (d[0] >= d[2])),
-                                                                                   Math.exp(sy * 0.01),
-                                                                                   Math.exp(sx * 0.01 * (d[2] >= d[0]))]
-                                                          -where [d = object_deltas(1, 0) *Math.abs -seq, sx = s ? dy || dx : dx, sy = s ? 0 : dy]
-                                             : 'd' |-set| settings().d * Math.exp(dy * -0.01),
+        wheel(dx, dy, s)       = object_mode ? 'os' | v3times |-modify| [Math.exp(sx * 0.01 * (d[0] >= d[2])),
+                                                                         Math.exp(sy * 0.01),
+                                                                         Math.exp(sx * 0.01 * (d[2] >= d[0]))]
+                                                               -where [d = object_deltas(1, 0) *Math.abs -seq,
+                                                                       sx = s ? dy || dx : dx,
+                                                                       sy = s ? 0        : dy]
 
-        plane_lock(v)          = v *[xi === min_i ? 0 : x] -seq -where [min_i = n[3] /[v[x] /!Math.abs < v[x0] /!Math.abs ? x : x0] -seq],
-        axis_lock(v)           = v *[xi === max_i ? x : 0] -seq -where [max_i = n[3] /[v[x] /!Math.abs > v[x0] /!Math.abs ? x : x0] -seq],
-        w_norm(v)              = v |-v4scale| 1/v[3],
-        object_deltas(dx, dy)  = view_matrix().inv() /~transform/ [dx, -dy, 0, lh/2] /!w_norm,
+                                             : 'cd' | a*b -given[a, b] |-modify| Math.exp(dy * -0.01),
 
-        drag(dx, dy, s)        = s ? 'r' |-set| settings().r /-v2plus/ [dx / lh, -dy / lh]
-                                   : object_mode ? 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
-                                                 : 'f' |-set| settings().f /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
-                                                                           /-v3times/ (data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0]),
+        data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
+        drag(dx, dy, s)        = s ? 'cr' | v2plus |-modify| [dy * 360 / lh, -dx * 360 / lh]
+                                   : object_mode ? 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(axis_lock(object_deltas(dx, dy)))
+                                                                             /-v3times/ data_lock_vector()
+                                                 : 'ot' |-set| settings().ot /-v3plus/ scale_matrix().inv().transform(object_deltas(dx, dy))
+                                                                             /-v3times/ data_lock_vector(),
+
+        check_syntax(v)        = $.get('/parse/#{v /!encodeURIComponent}', "console.log(_)".qf),
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? visualize(tr.val()) -then- false : true]
-                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes()]
+                                      /~keyup/ given.e ['ni' /-set/ tr.val() -then- handle_resizes() -then- tr.val() /!check_syntax]
                                         /~val/ settings().ni
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
                                             /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
@@ -5134,6 +5193,9 @@ $(caterwaul(':all')(function ($) {
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                                                /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false : true]
+                          -then- controls /~append/ camera(default_settings()).change(update_screen)
+                                             /~val/ $.extend(default_settings(),
+                                                             document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50
@@ -5154,55 +5216,15 @@ $(caterwaul(':all')(function ($) {
                                    populate_axes(ls)  = ls /!update_n_axes -then-
                                                         ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
 
-        view_matrix()      = matrix.prod(matrix.scale(1/d, 1/d, 1/d),
-                                         matrix.rotate_x(-r[1]*tau), matrix.rotate_y(-r[0]*tau)) -where [st = settings(), d = st.d, r = st.r],
-
-        autoscale_matrix() = matrix.scale(1/sx, 1/sy, 1/sz) /~dot/ matrix.translate(-cx, -cy, -cz)
-                      -where[as = data_state.axes, sx = as[0] && as[0].range() || 1, sy = as[1] && as[1].range() || 1, sz = as[2] && as[2].range() || 1,
-                                                   cx = as[0] ? as[0].offset() : 0,  cy = as[1] ? as[1].offset() : 0,  cz = as[2] ? as[2].offset() : 0],
-
-        scale_matrix()     = matrix.scale(s[0], s[1], s[2]) -where [s = settings().s],
-        object_matrix()    = matrix.prod(scale_matrix(),
-                                         matrix.translate(f[0], f[1], f[2]),
-                                         autoscale_matrix()) -where[f = settings().f],
-
-        camera_matrix()    = matrix.translate(0, 0, 1) /~dot/ view_matrix() /~dot/ object_matrix(),
         renderer           = render(),
         update_screen()    = handle_resizes()
-                      -then- renderer(data_state.axes, camera_matrix(), 1, 0.03, sc, screen.width(), screen.height())
-                      -then- data_state.last_render /eq[+new Date]
-                      -when [data_state.axes && +new Date - data_state.last_render > 30]],
-
-UI representation of transformation matrices.
-The camera and object matrices are multiplied immediately before we render things onto the screen. Rather than presenting the user with opaque transformation
-matrices, we factor it out into a few different components:
-
-| object = focus(translation) * zoom(scale)
-  camera = distance(translation) * azimuth/elevation(rotation)
-
-So we have stacks of these four transformations that can be manipulated independently. There are two manipulation modes you can use, camera-centric and
-object-centric. They behave like this:
-
-| camera-centric: drag to pan using view plane, mousewheel to adjust camera distance, shift-drag to adjust camera rotation
-  object-centric: drag to pan along axes, mousewheel to scale along axes, shift-drag to adjust camera rotation
-
-  where[parse_number(x)     = +eval(x),
-        ui_number(v)        = jquery[input.number /modus(get, set) /val(v)] -where [get(e) = e.modus('val') /!parse_number,
-                                                                                    set(x) = this.modus('val', x)],
-
-        ui_distance(v)      = jquery[div.distance[ui_number(v)] /modus('proxy', '.number')],
-        ui_translation(v)   = jquery[div.translate /modus('list', ui_number) /val(v)],
-        ui_scale(v)         = jquery[div.scale     /modus('list', ui_number) /val(v)],
-        ui_rotate(v)        = jquery[div.rotate    /modus('list', ui_number) /val(v)],
-
-        ui_camera_matrix(v) = jquery[div.camera[ui_distance(), ui_rotate()] /modus('composite', {d: '.distance',  r: '.rotate'}) /val(v)],
-        ui_object_matrix(v) = jquery[div.object[ui_translate(), ui_scale()] /modus('composite', {t: '.translate', s: '.scale'})  /val(v)]
-
-        // TODO
-        ],
+                     -then-  renderer(data_state.axes, c /!camera.m, c.brightness, c.saturation, sc, screen.width(), screen.height())
+                     -then-  data_state.last_render /eq[+new Date]
+                     -when  [data_state.axes && +new Date - data_state.last_render > 30]
+                     -where [c = controls.val()]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
-37 core/jsplot/css
+50 core/jsplot/css
 body {margin:0; color:#eee; background:black; font-size:10pt;
       font-family:monospace; overflow: hidden}
 
@@ -5234,12 +5256,25 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 #preview:hover, #preview.pinned {color:#eee; max-width:100%}
 #preview.pinned {border-right:solid 1px #f60}
 
-#controls {position:absolute; width:12px; right:0; bottom:14pt; z-index:9;
-           background:rgba(0,0,0,0.75)}
-#controls canvas {display:block; height:48px; width:600px; margin-left:4px}
+#controls {position:absolute; width:300px; right:-288px; bottom:14pt; z-index:9;
+           background:rgba(0,0,0,0.75); padding-left:4px}
 
-#controls:hover, #controls.pinned {width:600px}
+#controls:hover, #controls.pinned {right:0}
 #controls.pinned {border-left:solid 1px #f60}
+
+.number {background:none; border:none; margin:0; color:#eee;
+         font-family:sans-serif; width:12ex; cursor:default}
+
+.vector {border-top:solid 1px rgba(255,255,255,0.5)}
+.vector > * {display:block}
+
+#controls .object-translation .number {color:#f60}
+#controls .object-scale       .number {color:#666}
+#controls .distance.number            {color:#f60}
+
+#controls.object-mode .object-translation .number {color:#f60}
+#controls.object-mode .object-scale       .number {color:#f60}
+#controls.object-mode .distance.number            {color:#666}
 18 core/jsplot/html
 <!doctype html>
 <html>
@@ -5259,7 +5294,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt;
 </div>
 </body>
 </html>
-89 core/jsplot/jsplot.pl.sdoc
+90 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -5281,6 +5316,7 @@ use constant jsplot_html =>
                                          core/jsplot/matrix.waul
                                          core/jsplot/socket.waul
                                          core/jsplot/render.waul
+                                         core/jsplot/camera.waul
                                          core/jsplot/interface.waul |});
 
 Parsing.
@@ -5428,9 +5464,9 @@ use constant docker_package_list => pmap q{[/\+([^][+]+)/g]}, prx '[^][]+';
 defshort '/C',
   defalt 'dockeralt', 'alternatives for the /C containerize operator',
     pmap(q{docker_run_dynamic_op alpine_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prx 'A', docker_package_list), pqfn ''),
+         pseq pn(1, prc 'A', pc docker_package_list), pqfn ''),
     pmap(q{docker_run_dynamic_op ubuntu_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prx 'U', docker_package_list), pqfn ''),
+         pseq pn(1, prc 'U', pc docker_package_list), pqfn ''),
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
          pseq pc docker_image_name, pqfn '');
 
@@ -5451,7 +5487,7 @@ defoperator docker_exec => q{
 };
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
-               pseq docker_container_name, pqfn '';
+               pseq pc docker_container_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
 1 core/hadoop/hadoop.pl.sdoc

@@ -74,9 +74,9 @@ use constant docker_package_list => pmap q{[/\+([^][+]+)/g]}, prx '[^][]+';
 defshort '/C',
   defalt 'dockeralt', 'alternatives for the /C containerize operator',
     pmap(q{docker_run_dynamic_op alpine_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prx 'A', docker_package_list), pqfn ''),
+         pseq pn(1, prc 'A', pc docker_package_list), pqfn ''),
     pmap(q{docker_run_dynamic_op ubuntu_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prx 'U', docker_package_list), pqfn ''),
+         pseq pn(1, prc 'U', pc docker_package_list), pqfn ''),
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
          pseq pc docker_image_name, pqfn '');
 
@@ -97,4 +97,4 @@ defoperator docker_exec => q{
 };
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
-               pseq docker_container_name, pqfn '';
+               pseq pc docker_container_name, pqfn '';

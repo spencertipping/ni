@@ -35,7 +35,8 @@ pixel. Brightness is stored in the alpha channel and converges to 255 by an expo
 Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
 constantly low.
 
-  -where[slice_size      = 256,
+  -where[slice_size      = 1024,
+         slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
 
@@ -57,8 +58,10 @@ Here's the calculation:
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
+    console.log('l = #{state.l}');
+
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
-      for (var j = state.i * 61 & slice_size - 1; j < n; j += slice_size) {
+      for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
 
@@ -77,7 +80,7 @@ Here's the calculation:
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
                       ci = l * op * (256 - lp),
-                      li = ci * zi*zi,
+                      li = ci, // * zi*zi,
                       d  = sr / (ci + lp);
 
                   total_shade += li;
@@ -90,7 +93,7 @@ Here's the calculation:
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
                   ci = l * (256 - lp),
-                  li = ci * zi*zi,
+                  li = ci, // * zi*zi,
                   d  = sr / (ci + lp);
 
               total_shade += li;

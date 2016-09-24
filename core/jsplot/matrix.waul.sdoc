@@ -6,8 +6,8 @@ caterwaul(':all')(function () {
   matrix(x) = (x ? +x -seq : n[16] *[+((x>>2) == (x&3))] -seq) -se- it /-caterwaul.merge/ matrix_methods,
   matrix /-caterwaul.merge/ static_methods,
 
-  where[static_methods = capture[translate(x, y, z)   = matrix() -se [it[3] = x, it[7] = y, it[11] = z],
-                                 scale(x, y, z)       = matrix() -se [it[0] = x, it[5] = y, it[10] = z],
+  where[static_methods = capture[translate(v)         = matrix() -se [it[3] = v[0], it[7] = v[1], it[11] = v[2]],
+                                 scale(v)             = matrix() -se [it[0] = v[0], it[5] = v[1], it[10] = v[2]],
                                  rotate_x(t)          = matrix() -se [it[5] = it[10] = c, it[6] = -(it[9] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  rotate_y(t)          = matrix() -se [it[0] = it[10] = c, it[2] = -(it[8] = -s), where [s = t /!Math.sin, c = t /!Math.cos]],
                                  prod(xs = arguments) = xs /[x0 /~dot/ x] -seq],
