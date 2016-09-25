@@ -38,7 +38,7 @@ plotting context.
 defoperator intify_compact => q{
   cell_eval {args  => 'undef',
              begin => 'my %ids; my $n = 0',
-             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n)'}, @_;
+             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n) - 1'}, @_;
 };
 
 defoperator intify_hash => q{

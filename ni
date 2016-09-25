@@ -3216,7 +3216,7 @@ plotting context.
 defoperator intify_compact => q{
   cell_eval {args  => 'undef',
              begin => 'my %ids; my $n = 0',
-             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n)'}, @_;
+             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n) - 1'}, @_;
 };
 
 defoperator intify_hash => q{
@@ -6862,16 +6862,16 @@ that each gets a unique column index), then sorting and using `X`.
 
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA ,zC o XB r10
-a			2
-a				1
-a					1
+a		2
 a			1
-a			9
-a						1
-a			1				1
-a								1
-b			2
-b			1
+a				1
+a		1
+a		9
+a					1
+a		1				1
+a							1
+b		2
+b		1
 ```
 
 Now the matrix is in a form that NumPy can process. The `N` operator
@@ -6884,16 +6884,16 @@ the test reproducible by increasing the epsilon.
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
      NB'x = linalg.svd(x)[2]' YB,qD.01XB r10
-a	0	0	1	0	0	0	0.01	0
-a	0	0	0	-0.99	0	0	0	0
-a	0	0	0	0	1	0	0	0
-a	0	0	0	0	0	1	0	0
-a	0	0	0	0	0	0	0	1
-a	0	0	0	0	0	0	1	0
-a	0	1	0	0	0	0	0	0
-a	1	0	0	0	0	0	0	0
-b	0	0	-0.99
-b	0	1	0
+a	0	-0.99	0	0	0	0	0
+a	0	0	0	-0.99	0	0	0
+a	0	0	0	0	0	0	-0.99
+a	0	0	0	0	1	0	0
+a	0	0	1	0	0	0	0
+a	0	0.01	0	0	0	-0.99	0
+a	1	0	0	0	0	0	0
+b	0	1
+b	-0.99	0
+c	0	-0.17	0	-0.35	0	0	0	0	-0.16	-0.16	-0.16	-0.86
 ```
 
 You can use multiline code with Python and ni will fix the indentation so
@@ -6901,18 +6901,18 @@ everything works. For example:
 
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
-     NB'u, s, v = linalg.svd(x)
+     NB'u, s, v = linalg.svd(x, full_matrices=False)
         x = dot(u, diag(s))' YB,qD.01XB r10
-a	2	0	0	0	0	-0.01	0	0
-a	0	-0.99	0	0	0	0	0	0
-a	0	0	1	0	0	0	0	0
-a	1	0	0	0	0	0	0	0
-a	9	0	0	0	0	-0.09	0	0
-a	0	0	0	1	0	0	0	0
-a	1.01	0	0	0	0	0.99	0	0
-a	0	0	0	0	1	0	0	0
-b	-1.99	0
-b	-0.99	0
+a	-1.99	0	0	0	0	0.02	0
+a	0	0	0	0	1	0	0
+a	0	-0.99	0	0	0	0	0
+a	-0.99	0	0	0	0	0.01	0
+a	-8.99	0	0	0	0	0.1	0
+a	0	0	0	1	0	0	0
+a	-1	0	0	0	0	-0.98	0
+a	0	0	-0.99	0	0	0	0
+b	2	0
+b	1	0
 ```
 
 It also works with blocks that require indentation:
@@ -6921,9 +6921,9 @@ It also works with blocks that require indentation:
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
      NB'if True:
           x = x + 1' r3
-a	1	1	3	1	1	1	1	1
-a	1	1	1	2	1	1	1	1
-a	1	1	1	1	2	1	1	1
+a	1	3	1	1	1	1	1
+a	1	1	2	1	1	1	1
+a	1	1	1	2	1	1	1
 ```
 46 doc/net.md
 # Network operators
