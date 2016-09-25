@@ -1,48 +1,41 @@
 Row-based process scaling.
-Allows you to alleviate process bottlenecks by distributing rows across
-multiple workers.
+Allows you to bypass process bottlenecks by distributing rows across multiple
+workers.
 
 c
 BEGIN {defshort '/S', defalt 'scalealt', 'row scaling alternation list'}
 
 Fixed scaling.
 The simplest option: specify N workers and a lambda, and the lambda will be
-replicated that many times. Incoming rows are broken into chunks of rows and
+replicated that many times. Incoming data is broken into chunks of rows and
 written to any worker that's available.
 
 defoperator row_fixed_scale => q{
   my ($n, $f) = @_;
-  $ENV{NI_NO_MONITORS} = 'yes';
+  $ENV{NI_NO_MONITOR} = 'yes';
   my @workers = map {siproc {exec_ni @$f}} 1..$n;
   my $ws;
-  vec($ws, fileno $_, 1) = 1 for @workers;
-
   my $leftover;
+  my @queue;
+  my $eof;
 
-  while (1) {
-    $_ = '';
-    my $nlp;
-    my $n = 1;
-    $n = saferead \*STDIN, $_, 65536, length
-      until !$n || 0 <= ($nlp = rindex $_, "\n");
-
-    if ($nlp >= 0) {
-      $leftover = substr $_, $nlp + 1;
-      $_ = substr $_, 0, $nlp + 1;
-    } else {
-      $leftover = '';
-    }
-
-    select undef, my $wo = $ws, undef, undef;
-    for my $w (@workers) {
-      if (vec $wo, fileno $w, 1) {
-        safewrite $w, $_;
-        last;
+  vec($ws, fileno $_, 1) = 1 for @workers;
+  until ($eof) {
+    my $wn = select undef, my $wo = $ws, undef, undef;
+    while (@queue < $wn && !$eof) {
+      if ($eof = !saferead \*STDIN, $leftover, 8192, length $leftover) {
+        push @queue, $leftover if length $leftover;
+      } else {
+        my $np = rindex $leftover, "\n";
+        if ($np > 0) {
+          push @queue, substr $leftover, 0, $np + 1;
+          $leftover = substr $leftover, $np + 1;
+        }
       }
     }
 
-    $_ = $leftover;
-    last unless $n;
+    @queue and vec $wo, fileno $_, 1 and safewrite $_, shift @queue
+      for @workers;
   }
 
   close $_ for @workers;

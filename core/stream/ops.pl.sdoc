@@ -2,6 +2,8 @@ Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
+our $pager_fh;
+
 $main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
   # buffer so no child process gets bogus data.
@@ -14,20 +16,42 @@ $main_operator = sub {
   @$_ && sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
-    my $fh = siproc {exec 'less' or exec 'more'};
-    sforward \*STDIN, $fh;
-    close $fh;
-    $fh->await;
+    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+    sforward \*STDIN, $pager_fh;
+    close $pager_fh;
+    $pager_fh->await;
   } else {
     sio;
     0;
   }
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$'),    prc '\]$';
-use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda),
-                                     pmap(q{shell_quote @$_}, shell_lambda_ws),
+Pagers and kill signals.
+`less` resets a number of terminal settings, including character buffering and
+no-echo. If we kill it directly with a signal, it will exit without restoring a
+shell-friendly terminal state, requiring the user to run `reset` to fix it. So
+in an interrupt context we try to give the pager a chance to exit gracefully by
+closing its input stream and having the user use `q` or similar.
+
+$SIG{TERM} = sub {
+  close $pager_fh if $pager_fh;
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
+
+$SIG{INT} = sub {
+  if ($pager_fh) {
+    close $pager_fh;
+    $pager_fh->await;
+  }
+  ni::procfh::kill_children 'INT';
+  exit 1;
+};
+
+use constant shell_lambda    => pn 1, prx '\[',  prep(1, prc '.*[^]]'), prx '\]';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(1, pnx '\]$'),    prc '\]$';
+use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                     pmap(q{shell_quote @$_}, shell_lambda),
                                      prx '.*';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};

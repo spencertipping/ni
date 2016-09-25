@@ -641,7 +641,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-97 core/stream/procfh.pl.sdoc
+92 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -673,12 +673,7 @@ Propagate termination signals to children and run finalizers. This makes it so
 that non-writing pipelines like `ni n100000000gzn` still die out without
 waiting for the SIGPIPE.
 
-sub kill_children {
-  kill 'TERM', keys %child_owners;
-  exit 1;
-}
-
-$SIG{INT} = $SIG{TERM} = \&kill_children;
+sub kill_children($) {kill $_[0], keys %child_owners}
 
 Proc-filehandle class.
 Overloading *{} makes it possible for this to act like a real filehandle in
@@ -959,7 +954,7 @@ defclispecial '--internal/operate', q{
     for grep m|^transient/env/|, keys %self;
 
   my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
-  print $fh $_ while <$data>;
+  print $fh $_ while read $data, $_, 8192;
   close $fh;
   $fh->await;
 };
@@ -983,10 +978,12 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-210 core/stream/ops.pl.sdoc
+234 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
+
+our $pager_fh;
 
 $main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
@@ -1000,20 +997,42 @@ $main_operator = sub {
   @$_ && sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
-    my $fh = siproc {exec 'less' or exec 'more'};
-    sforward \*STDIN, $fh;
-    close $fh;
-    $fh->await;
+    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+    sforward \*STDIN, $pager_fh;
+    close $pager_fh;
+    $pager_fh->await;
   } else {
     sio;
     0;
   }
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]'), prx '\]$';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$'),    prc '\]$';
-use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda),
-                                     pmap(q{shell_quote @$_}, shell_lambda_ws),
+Pagers and kill signals.
+`less` resets a number of terminal settings, including character buffering and
+no-echo. If we kill it directly with a signal, it will exit without restoring a
+shell-friendly terminal state, requiring the user to run `reset` to fix it. So
+in an interrupt context we try to give the pager a chance to exit gracefully by
+closing its input stream and having the user use `q` or similar.
+
+$SIG{TERM} = sub {
+  close $pager_fh if $pager_fh;
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
+
+$SIG{INT} = sub {
+  if ($pager_fh) {
+    close $pager_fh;
+    $pager_fh->await;
+  }
+  ni::procfh::kill_children 'INT';
+  exit 1;
+};
+
+use constant shell_lambda    => pn 1, prx '\[',  prep(1, prc '.*[^]]'), prx '\]';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(1, pnx '\]$'),    prc '\]$';
+use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                     pmap(q{shell_quote @$_}, shell_lambda),
                                      prx '.*';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
@@ -3016,52 +3035,45 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-52 core/row/scale.pl.sdoc
+45 core/row/scale.pl.sdoc
 Row-based process scaling.
-Allows you to alleviate process bottlenecks by distributing rows across
-multiple workers.
+Allows you to bypass process bottlenecks by distributing rows across multiple
+workers.
 
 c
 BEGIN {defshort '/S', defalt 'scalealt', 'row scaling alternation list'}
 
 Fixed scaling.
 The simplest option: specify N workers and a lambda, and the lambda will be
-replicated that many times. Incoming rows are broken into chunks of rows and
+replicated that many times. Incoming data is broken into chunks of rows and
 written to any worker that's available.
 
 defoperator row_fixed_scale => q{
   my ($n, $f) = @_;
-  $ENV{NI_NO_MONITORS} = 'yes';
+  $ENV{NI_NO_MONITOR} = 'yes';
   my @workers = map {siproc {exec_ni @$f}} 1..$n;
   my $ws;
-  vec($ws, fileno $_, 1) = 1 for @workers;
-
   my $leftover;
+  my @queue;
+  my $eof;
 
-  while (1) {
-    $_ = '';
-    my $nlp;
-    my $n = 1;
-    $n = saferead \*STDIN, $_, 65536, length
-      until !$n || 0 <= ($nlp = rindex $_, "\n");
-
-    if ($nlp >= 0) {
-      $leftover = substr $_, $nlp + 1;
-      $_ = substr $_, 0, $nlp + 1;
-    } else {
-      $leftover = '';
-    }
-
-    select undef, my $wo = $ws, undef, undef;
-    for my $w (@workers) {
-      if (vec $wo, fileno $w, 1) {
-        safewrite $w, $_;
-        last;
+  vec($ws, fileno $_, 1) = 1 for @workers;
+  until ($eof) {
+    my $wn = select undef, my $wo = $ws, undef, undef;
+    while (@queue < $wn && !$eof) {
+      if ($eof = !saferead \*STDIN, $leftover, 8192, length $leftover) {
+        push @queue, $leftover if length $leftover;
+      } else {
+        my $np = rindex $leftover, "\n";
+        if ($np > 0) {
+          push @queue, substr $leftover, 0, $np + 1;
+          $leftover = substr $leftover, $np + 1;
+        }
       }
     }
 
-    $_ = $leftover;
-    last unless $n;
+    @queue and vec $wo, fileno $_, 1 and safewrite $_, shift @queue
+      for @workers;
   }
 
   close $_ for @workers;
@@ -3516,7 +3528,7 @@ sub geohash_decode {
 
 *ghe = \&geohash_encode;
 *ghd = \&geohash_decode;
-105 core/pl/pl.pl.sdoc
+106 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3578,6 +3590,7 @@ use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
+  $|++;
   sub row {
     %body
   }
@@ -3610,8 +3623,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_ . "\n" for row'}
+sub perl_grepper($) {perl_code                   $_[0], 'print $_ . "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -5738,7 +5751,7 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-20 doc/lib
+21 doc/lib
 binary.md
 col.md
 container.md
@@ -5754,6 +5767,7 @@ perl.md
 pyspark.md
 row.md
 ruby.md
+scale.md
 sql.md
 stream.md
 tutorial.md
@@ -6965,7 +6979,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      | U      | `S16[plc]`   | Scale across multiple processes
+`S`      | M      | `S16[plc]`   | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
@@ -7813,6 +7827,26 @@ $ ni mult-table m'r ru {|l| l.ai%4 == 0}.g'
 28	35	42	49
 56	63	70
 ```
+19 doc/scale.md
+# Pipeline scaling
+The scaling operator `S` lets you work around bottlenecks by adding horizontal
+scale to a section of your pipeline. For example, suppose we have this:
+
+```bash
+$ ni nE5 p'sin(a/100)' > slow-sine-table
+```
+
+On a multicore machine, this will run more slowly than it should because
+`p` processes data serially. We can parallelize it across multiple processes
+like this:
+
+```bash
+$ ni nE5 S4[p'sin(a/100)'] > parallel-sine-table
+$ diff <(ni slow-sine-table o) <(ni parallel-sine-table o)
+```
+
+`S` works by reading blocks of input and finding line boundaries. It then sends
+groups of lines to the child processes as their input fds become available.
 35 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL

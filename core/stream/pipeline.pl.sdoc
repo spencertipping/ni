@@ -217,7 +217,7 @@ defclispecial '--internal/operate', q{
     for grep m|^transient/env/|, keys %self;
 
   my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
-  print $fh $_ while <$data>;
+  print $fh $_ while read $data, $_, 8192;
   close $fh;
   $fh->await;
 };

@@ -29,12 +29,7 @@ Propagate termination signals to children and run finalizers. This makes it so
 that non-writing pipelines like `ni n100000000gzn` still die out without
 waiting for the SIGPIPE.
 
-sub kill_children {
-  kill 'TERM', keys %child_owners;
-  exit 1;
-}
-
-$SIG{INT} = $SIG{TERM} = \&kill_children;
+sub kill_children($) {kill $_[0], keys %child_owners}
 
 Proc-filehandle class.
 Overloading *{} makes it possible for this to act like a real filehandle in
