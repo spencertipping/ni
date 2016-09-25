@@ -29,6 +29,7 @@ $ ni //help/stream                      # view a help topic
 - [binary.md](binary.md)       (`ni //help/binary`):    decoding binary streams
 - [container.md](container.md) (`ni //help/container`): Dockerizing stuff
 - [json.md](json.md)           (`ni //help/json`):      working with JSON
+- [scale.md](scale.md)         (`ni //help/scale`):     horizontal scaling
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
