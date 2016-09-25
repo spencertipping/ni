@@ -978,7 +978,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-228 core/stream/ops.pl.sdoc
+230 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1026,6 +1026,8 @@ $SIG{INT} = sub {
     $pager_fh->await;
   }
   ni::procfh::kill_children 'INT';
+  sleep 1;
+  ni::procfh::kill_children 'TERM';
   exit 1;
 };
 
@@ -6691,7 +6693,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-233 doc/matrix.md
+230 doc/matrix.md
 # Matrix operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
@@ -6878,22 +6880,19 @@ Now the matrix is in a form that NumPy can process. The `N` operator
 automatically zero-fills to the right to make sure the matrix is rectangular
 (as opposed to the ragged edges we have above).
 
-I'm appending `YB,qD.01XB` to quantize each matrix value to 0.01; this makes
-the test reproducible by increasing the epsilon.
-
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
-     NB'x = linalg.svd(x)[2]' YB,qD.01XB r10
-a	0	-0.99	0	0	0	0	0
-a	0	0	0	-0.99	0	0	0
-a	0	0	0	0	0	0	-0.99
-a	0	0	0	0	1	0	0
-a	0	0	1	0	0	0	0
-a	0	0.01	0	0	0	-0.99	0
-a	1	0	0	0	0	0	0
-b	0	1
-b	-0.99	0
-c	0	-0.17	0	-0.35	0	0	0	0	-0.16	-0.16	-0.16	-0.86
+     NB'x *= 2' YB,qD.01XB r10
+a	0	4	0	0	0	0	0
+a	0	0	2	0	0	0	0
+a	0	0	0	2	0	0	0
+a	0	2	0	0	0	0	0
+a	0	18	0	0	0	0	0
+a	0	0	0	0	2	0	0
+a	0	2	0	0	0	2	0
+a	0	0	0	0	0	0	2
+b	0	4
+b	0	2
 ```
 
 You can use multiline code with Python and ni will fix the indentation so
@@ -6901,18 +6900,18 @@ everything works. For example:
 
 ```bash
 $ ni //license plc FWpF_ p'r split//' gYBfABDgcfBCDA,zCo XB \
-     NB'u, s, v = linalg.svd(x, full_matrices=False)
-        x = dot(u, diag(s))' YB,qD.01XB r10
-a	-1.99	0	0	0	0	0.02	0
-a	0	0	0	0	1	0	0
-a	0	-0.99	0	0	0	0	0
-a	-0.99	0	0	0	0	0.01	0
-a	-8.99	0	0	0	0	0.1	0
-a	0	0	0	1	0	0	0
-a	-1	0	0	0	0	-0.98	0
-a	0	0	-0.99	0	0	0	0
-b	2	0
-b	1	0
+     NB'x *= 2
+        x += 1' r10
+a	1	5	1	1	1	1	1
+a	1	1	3	1	1	1	1
+a	1	1	1	3	1	1	1
+a	1	3	1	1	1	1	1
+a	1	19	1	1	1	1	1
+a	1	1	1	1	3	1	1
+a	1	3	1	1	1	3	1
+a	1	1	1	1	1	1	3
+b	1	5
+b	1	3
 ```
 
 It also works with blocks that require indentation:

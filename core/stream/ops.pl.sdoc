@@ -45,6 +45,8 @@ $SIG{INT} = sub {
     $pager_fh->await;
   }
   ni::procfh::kill_children 'INT';
+  sleep 1;
+  ni::procfh::kill_children 'TERM';
   exit 1;
 };
 
