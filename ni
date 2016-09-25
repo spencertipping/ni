@@ -978,7 +978,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-230 core/stream/ops.pl.sdoc
+234 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1017,6 +1017,8 @@ closing its input stream and having the user use `q` or similar.
 $SIG{TERM} = sub {
   close $pager_fh if $pager_fh;
   ni::procfh::kill_children 'TERM';
+  sleep 1;
+  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 
@@ -1028,6 +1030,8 @@ $SIG{INT} = sub {
   ni::procfh::kill_children 'INT';
   sleep 1;
   ni::procfh::kill_children 'TERM';
+  sleep 1;
+  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 

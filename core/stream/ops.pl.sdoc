@@ -36,6 +36,8 @@ closing its input stream and having the user use `q` or similar.
 $SIG{TERM} = sub {
   close $pager_fh if $pager_fh;
   ni::procfh::kill_children 'TERM';
+  sleep 1;
+  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 
@@ -47,6 +49,8 @@ $SIG{INT} = sub {
   ni::procfh::kill_children 'INT';
   sleep 1;
   ni::procfh::kill_children 'TERM';
+  sleep 1;
+  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 
