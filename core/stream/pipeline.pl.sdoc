@@ -192,7 +192,7 @@ decompressed and globs are automatically deglobbed.
 
 sub scat {
   local $| = 1;
-  for my $f (map -e ? $_ : glob($_), @_) {
+  for my $f (map -e($_) ? $_ : glob($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;

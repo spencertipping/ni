@@ -5887,7 +5887,7 @@ quantizes the magnitudes so the test case doesn't depend on float rounding):
 
 ```bash
 $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
-     n rp'a <= 22050' OB r5,qB.01
+     Wn rp'a <= 22050' OB r5,qB.01
 441	45263289.95
 14941	755.22
 7341	745.63
