@@ -69,5 +69,5 @@ sub hadoop_lambda_file($$) {
 }
 
 defoperator hadoop_streaming => q{
-  my ($map, $combine, $reduce) = @_;
+  my ($conf, $map, $combine, $reduce) = @_;
 };

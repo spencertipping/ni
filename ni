@@ -2891,8 +2891,9 @@ defoperator vertical_apply => q{
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
-1 core/row/lib
+2 core/row/lib
 row.pl.sdoc
+scale.pl.sdoc
 121 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
@@ -3015,6 +3016,59 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+52 core/row/scale.pl.sdoc
+Row-based process scaling.
+Allows you to alleviate process bottlenecks by distributing rows across
+multiple workers.
+
+c
+BEGIN {defshort '/S', defalt 'scalealt', 'row scaling alternation list'}
+
+Fixed scaling.
+The simplest option: specify N workers and a lambda, and the lambda will be
+replicated that many times. Incoming rows are broken into chunks of rows and
+written to any worker that's available.
+
+defoperator row_fixed_scale => q{
+  my ($n, $f) = @_;
+  $ENV{NI_NO_MONITORS} = 'yes';
+  my @workers = map {siproc {exec_ni @$f}} 1..$n;
+  my $ws;
+  vec($ws, fileno $_, 1) = 1 for @workers;
+
+  my $leftover;
+
+  while (1) {
+    $_ = '';
+    my $nlp;
+    my $n = 1;
+    $n = saferead \*STDIN, $_, 65536, length
+      until !$n || 0 <= ($nlp = rindex $_, "\n");
+
+    if ($nlp >= 0) {
+      $leftover = substr $_, $nlp + 1;
+      $_ = substr $_, 0, $nlp + 1;
+    } else {
+      $leftover = '';
+    }
+
+    select undef, my $wo = $ws, undef, undef;
+    for my $w (@workers) {
+      if (vec $wo, fileno $w, 1) {
+        safewrite $w, $_;
+        last;
+      }
+    }
+
+    $_ = $leftover;
+    last unless $n;
+  }
+
+  close $_ for @workers;
+  $_->await for @workers;
+};
+
+defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -5587,7 +5641,7 @@ sub hadoop_lambda_file($$) {
 }
 
 defoperator hadoop_streaming => q{
-  my ($map, $combine, $reduce) = @_;
+  my ($conf, $map, $combine, $reduce) = @_;
 };
 2 core/pyspark/lib
 pyspark.pl.sdoc
@@ -6911,7 +6965,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      |        |              |
+`S`      | U      | `S16[plc]`   | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
