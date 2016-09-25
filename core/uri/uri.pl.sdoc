@@ -57,11 +57,13 @@ sub defresource($%) {
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
+sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
+
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
+  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
@@ -77,7 +79,7 @@ defresource 'hdfs',
               close $fh;
               !$fh->await},
   tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
-              . "/ni.$<." . noise_str 32},
+              . "/" . uri_temp_noise},
   nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
 
 defresource 's3cmd',

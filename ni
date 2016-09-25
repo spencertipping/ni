@@ -2553,7 +2553,7 @@ $main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-94 core/uri/uri.pl.sdoc
+96 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2613,11 +2613,13 @@ sub defresource($%) {
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
+sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
+
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/ni.$<." . noise_str 32},
+  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
@@ -2633,7 +2635,7 @@ defresource 'hdfs',
               close $fh;
               !$fh->await},
   tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
-              . "/ni.$<." . noise_str 32},
+              . "/" . uri_temp_noise},
   nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
 
 defresource 's3cmd',
@@ -5513,8 +5515,80 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
-1 core/hadoop/hadoop.pl.sdoc
-Hadoop contexts.
+73 core/hadoop/hadoop.pl.sdoc
+Hadoop operator.
+The entry point for running various kinds of Hadoop jobs.
+
+c
+BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
+
+Streaming.
+We need to be able to find the Streaming jar, which is slightly nontrivial. The
+hadoop docs suggest that $HADOOP_HOME has something to do with it, but I've
+seen installations that had no such environment variable and everything worked
+fine. Here's what we can do:
+
+| 1. Use $NI_HADOOP_STREAMING_JAR if it's set
+  2. Use `locate hadoop-streaming*.jar` if we have `locate`
+  3. Use `find /usr /opt -name hadoop-streaming*.jar`, see if it's there
+  4. Use `find / -name hadoop-streaming*.jar`, hope it's there
+
+If those don't work, then we are officially SOL and you'll have to set
+NI_HADOOP_STREAMING_JAR.
+
+sub hadoop_streaming_jar {
+  local $SIG{CHLD} = 'DEFAULT';
+  $ENV{NI_HADOOP_STREAMING_JAR}
+  || (split /\n/, `locate 'hadoop-streaming*.jar' \
+                   || find /usr    -name 'hadoop-streaming*.jar' \
+                   || find /opt    -name 'hadoop-streaming*.jar' \
+                   || find / -xdev -name 'hadoop-streaming*.jar'`)[0]
+  || die "ni: cannot find hadoop streaming jar "
+       . "(you can fix this by setting \$NI_HADOOP_STREAMING_JAR)";
+}
+
+Input type autodetection.
+Technically, hadoop operators take one or more HFDS input paths on stdin -- but
+of course ni isn't going to just give up if we appear to have something else.
+If we have something that obviously isn't an HDFS path, we upload that stream
+into a temporary HDFS location and run against that.
+
+sub hdfs_input_path {
+  local $_;
+  my $n;
+  die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
+  if (/^hdfs:\/\//) {
+    $n = saferead \*STDIN, $_, 8192, length while $n;
+    grep length, split /\n/;
+  } else {
+    my $hdfs_tmp    = resource_tmp 'hdfs://';
+    my $hdfs_writer = resource_write $hdfs_tmp;
+    safewrite $hdfs_writer, $_;
+    safewrite $hdfs_writer, $_ while saferead \*STDIN, $_, 8192;
+    close $hdfs_writer;
+    $hdfs_writer->await;
+    $hdfs_tmp;
+  }
+}
+
+sub hadoop_lambda_file($$) {
+  my ($name, $lambda) = @_;
+  my $tmp = resource_tmp('file://') . $name;
+  my $w   = resource_writer $tmp;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  safewrite $w, $stdin;
+  close $w;
+  $exec[1] eq '-'
+    ? ($exec[1] = $tmp) =~ s/^.*\///
+    : die "ni: sni_exec_list has produced @exec; hadoop_lambda_file expected "
+        . "- as the second argument in this list (the goal is to change the "
+        . "command to have perl read its input from a file rather than stdin)";
+  ($tmp, @exec);
+}
+
+defoperator hadoop_streaming => q{
+  my ($map, $combine, $reduce) = @_;
+};
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
