@@ -925,11 +925,11 @@ sub sdecode(;$) {
 File/directory cat.
 cat exists to turn filesystem objects into text. Files are emitted and
 directories are turned into readable listings. Files are automatically
-decompressed.
+decompressed and globs are automatically deglobbed.
 
 sub scat {
   local $| = 1;
-  for my $f (@_) {
+  for my $f (map -e ? $_ : glob($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
@@ -3086,7 +3086,7 @@ defoperator row_fixed_scale => q{
         next unless vec $r, fileno $wo[$_], 1;
 
         my $l = length $stdout[$_];
-        if (saferead $wo[$_], $stdout[$_], 65536, length $stdout[$_]) {
+        if (saferead $wo[$_], $stdout[$_], 8192, length $stdout[$_]) {
           my $np = rindex substr($stdout[$_], $l), "\n";
           if ($np >= 0) {
             $np += $l;
@@ -3116,7 +3116,7 @@ defoperator row_fixed_scale => q{
 
     while (@queue < $n && !$eof) {
       my $l = length $stdin;
-      if ($eof = !saferead \*STDIN, $stdin, 65536, length $stdin) {
+      if ($eof = !saferead \*STDIN, $stdin, 8192, length $stdin) {
         push @queue, $stdin if length $stdin;
         $stdin = undef;
       } else {
@@ -5285,8 +5285,8 @@ $(caterwaul(':all')(function ($) {
         controls = $('#controls').modus('proxy', '.camera') /~addClass/ 'camera-mode noshift',
         w        = $(window).modus('composite', {ni: tr, v: controls}),
 
-        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
-                                      + ",qABCD0.01 p'r a, - c, b, d'",
+        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 S8p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+                                      + "S8,qABCD0.01 p'r a, - c, b, d'",
                                   v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
@@ -8324,7 +8324,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-45 doc/tutorial.md
+46 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -8356,6 +8356,7 @@ $ ni //help/stream                      # view a help topic
 - [binary.md](binary.md)       (`ni //help/binary`):    decoding binary streams
 - [container.md](container.md) (`ni //help/container`): Dockerizing stuff
 - [json.md](json.md)           (`ni //help/json`):      working with JSON
+- [scale.md](scale.md)         (`ni //help/scale`):     horizontal scaling
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference

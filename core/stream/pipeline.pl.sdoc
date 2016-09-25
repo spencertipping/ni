@@ -188,11 +188,11 @@ sub sdecode(;$) {
 File/directory cat.
 cat exists to turn filesystem objects into text. Files are emitted and
 directories are turned into readable listings. Files are automatically
-decompressed.
+decompressed and globs are automatically deglobbed.
 
 sub scat {
   local $| = 1;
-  for my $f (@_) {
+  for my $f (map -e ? $_ : glob($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;

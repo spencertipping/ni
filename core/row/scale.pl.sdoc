@@ -53,7 +53,7 @@ defoperator row_fixed_scale => q{
         next unless vec $r, fileno $wo[$_], 1;
 
         my $l = length $stdout[$_];
-        if (saferead $wo[$_], $stdout[$_], 65536, length $stdout[$_]) {
+        if (saferead $wo[$_], $stdout[$_], 8192, length $stdout[$_]) {
           my $np = rindex substr($stdout[$_], $l), "\n";
           if ($np >= 0) {
             $np += $l;
@@ -83,7 +83,7 @@ defoperator row_fixed_scale => q{
 
     while (@queue < $n && !$eof) {
       my $l = length $stdin;
-      if ($eof = !saferead \*STDIN, $stdin, 65536, length $stdin) {
+      if ($eof = !saferead \*STDIN, $stdin, 8192, length $stdin) {
         push @queue, $stdin if length $stdin;
         $stdin = undef;
       } else {
