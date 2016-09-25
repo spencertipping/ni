@@ -10,36 +10,102 @@ The simplest option: specify N workers and a lambda, and the lambda will be
 replicated that many times. Incoming data is broken into chunks of rows and
 written to any worker that's available.
 
+Some notes on the subtleties here.
+Conceptually what we're doing is simple: read a batch of rows, send them to any
+process we can write to, and read outputs as they become available. In practice
+there are some details that complicate things.
+
+First, it's entirely possible that our lines are longer than the pipe buffer
+size -- so there's no guarantee that a single line-write operation will be
+nonblocking. Second, the command may interleave inputs and outputs arbitrarily;
+for example, `syswrite STDOUT, $_ while sysread STDIN, $_, 1` is a valid thing
+for a program to do.
+
+Third, we want to strike a balance between vectorizing stuff and blocking on
+pipe-writes. Any blocking done by the distributor process is downtime if there
+are available fds.
+
 defoperator row_fixed_scale => q{
+  use strict;
+  use warnings;
+
   my ($n, $f) = @_;
   $ENV{NI_NO_MONITOR} = 'yes';
-  my @workers = map {siproc {exec_ni @$f}} 1..$n;
-  my $ws;
-  my $leftover;
+
+  my (@wi, @wo);
+  my ($wb, $rb, $w, $r);
+  for (1..$n) {
+    my ($i, $o) = sioproc {exec_ni @$f};
+    push @wi, $i;
+    push @wo, $o;
+    vec($wb, fileno $i, 1) = 1;
+    vec($rb, fileno $o, 1) = 1;
+  }
+
+  my $stdout_reader = siproc {
+    my @stdout = ('') x $n;
+    close $_ for @wi;
+    while ($n) {
+      select $r = $rb, undef, undef, undef;
+
+      for (0..$#wo) {
+        next unless defined $wo[$_];
+        next unless vec $r, fileno $wo[$_], 1;
+
+        my $l = length $stdout[$_];
+        if (saferead $wo[$_], $stdout[$_], 65536, length $stdout[$_]) {
+          my $np = rindex substr($stdout[$_], $l), "\n";
+          if ($np >= 0) {
+            $np += $l;
+            safewrite \*STDOUT, substr $stdout[$_], 0, $np + 1;
+            $stdout[$_] = substr $stdout[$_], $np + 1;
+          }
+        } else {
+          --$n;
+          vec($rb, fileno $wo[$_], 1) = 0;
+          close $wo[$_];
+
+          safewrite \*STDOUT, $stdout[$_] if length $stdout[$_];
+          $stdout[$_] = $wo[$_] = $wi[$_] = undef;
+        }
+      }
+    }
+  };
+
+  close $stdout_reader;
+  close $_ for @wo;
+
+  my $stdin = '';
   my @queue;
   my $eof;
+  until (!@queue && $eof) {
+    select undef, $w = $wb, undef, undef;
 
-  vec($ws, fileno $_, 1) = 1 for @workers;
-  until ($eof) {
-    my $wn = select undef, my $wo = $ws, undef, undef;
-    while (@queue < $wn && !$eof) {
-      if ($eof = !saferead \*STDIN, $leftover, 8192, length $leftover) {
-        push @queue, $leftover if length $leftover;
+    while (@queue < $n && !$eof) {
+      my $l = length $stdin;
+      if ($eof = !saferead \*STDIN, $stdin, 65536, length $stdin) {
+        push @queue, $stdin if length $stdin;
+        $stdin = undef;
       } else {
-        my $np = rindex $leftover, "\n";
-        if ($np > 0) {
-          push @queue, substr $leftover, 0, $np + 1;
-          $leftover = substr $leftover, $np + 1;
+        my $np = rindex substr($stdin, $l), "\n";
+        if ($np >= 0) {
+          $np += $l;
+          push @queue, substr $stdin, 0, $np + 1;
+          $stdin = substr $stdin, $np + 1;
         }
       }
     }
 
-    @queue and vec $wo, fileno $_, 1 and safewrite $_, shift @queue
-      for @workers;
+    for (@wi) {
+      last unless @queue;
+      next unless defined and vec $w, fileno $_, 1;
+      safewrite $_, shift @queue;
+    }
   }
 
-  close $_ for @workers;
-  $_->await for @workers;
+  defined and close $_ for @wi;
+  $_->await for @wo;
+  $stdout_reader->await;
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';

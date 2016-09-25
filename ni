@@ -978,7 +978,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-234 core/stream/ops.pl.sdoc
+228 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1029,11 +1029,11 @@ $SIG{INT} = sub {
   exit 1;
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(1, prc '.*[^]]'), prx '\]';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(1, pnx '\]$'),    prc '\]$';
+use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
 use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
                                      pmap(q{shell_quote @$_}, shell_lambda),
-                                     prx '.*';
+                                     prx '[^][]+';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -1046,16 +1046,10 @@ point, which can cause unexpected results and loss of precision.
 
 defoperator n => q{
   my ($l, $u) = @_;
-  sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
+  sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
 };
 
-defoperator number_lines => q{
-  my $n = 0;
-  print ++$n, "\t", $_ while <STDIN>;
-};
-
-defshort '/n', palt pmap(q{n_op 1, $_ + 1}, number),
-                    pmap q{number_lines_op}, pnone;
+defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 
@@ -2509,7 +2503,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
 1 core/monitor/lib
 monitor.pl.sdoc
-60 core/monitor/monitor.pl.sdoc
+61 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
@@ -2566,7 +2560,8 @@ defoperator monitor => q{
 my $original_main_operator = $main_operator;
 $main_operator = sub {
   my $n_ops = @_;
-  return &$original_main_operator(@_) if $ENV{NI_NO_MONITOR};
+  return &$original_main_operator(@_)
+    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };
@@ -3035,7 +3030,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-45 core/row/scale.pl.sdoc
+111 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3048,36 +3043,102 @@ The simplest option: specify N workers and a lambda, and the lambda will be
 replicated that many times. Incoming data is broken into chunks of rows and
 written to any worker that's available.
 
+Some notes on the subtleties here.
+Conceptually what we're doing is simple: read a batch of rows, send them to any
+process we can write to, and read outputs as they become available. In practice
+there are some details that complicate things.
+
+First, it's entirely possible that our lines are longer than the pipe buffer
+size -- so there's no guarantee that a single line-write operation will be
+nonblocking. Second, the command may interleave inputs and outputs arbitrarily;
+for example, `syswrite STDOUT, $_ while sysread STDIN, $_, 1` is a valid thing
+for a program to do.
+
+Third, we want to strike a balance between vectorizing stuff and blocking on
+pipe-writes. Any blocking done by the distributor process is downtime if there
+are available fds.
+
 defoperator row_fixed_scale => q{
+  use strict;
+  use warnings;
+
   my ($n, $f) = @_;
   $ENV{NI_NO_MONITOR} = 'yes';
-  my @workers = map {siproc {exec_ni @$f}} 1..$n;
-  my $ws;
-  my $leftover;
+
+  my (@wi, @wo);
+  my ($wb, $rb, $w, $r);
+  for (1..$n) {
+    my ($i, $o) = sioproc {exec_ni @$f};
+    push @wi, $i;
+    push @wo, $o;
+    vec($wb, fileno $i, 1) = 1;
+    vec($rb, fileno $o, 1) = 1;
+  }
+
+  my $stdout_reader = siproc {
+    my @stdout = ('') x $n;
+    close $_ for @wi;
+    while ($n) {
+      select $r = $rb, undef, undef, undef;
+
+      for (0..$#wo) {
+        next unless defined $wo[$_];
+        next unless vec $r, fileno $wo[$_], 1;
+
+        my $l = length $stdout[$_];
+        if (saferead $wo[$_], $stdout[$_], 65536, length $stdout[$_]) {
+          my $np = rindex substr($stdout[$_], $l), "\n";
+          if ($np >= 0) {
+            $np += $l;
+            safewrite \*STDOUT, substr $stdout[$_], 0, $np + 1;
+            $stdout[$_] = substr $stdout[$_], $np + 1;
+          }
+        } else {
+          --$n;
+          vec($rb, fileno $wo[$_], 1) = 0;
+          close $wo[$_];
+
+          safewrite \*STDOUT, $stdout[$_] if length $stdout[$_];
+          $stdout[$_] = $wo[$_] = $wi[$_] = undef;
+        }
+      }
+    }
+  };
+
+  close $stdout_reader;
+  close $_ for @wo;
+
+  my $stdin = '';
   my @queue;
   my $eof;
+  until (!@queue && $eof) {
+    select undef, $w = $wb, undef, undef;
 
-  vec($ws, fileno $_, 1) = 1 for @workers;
-  until ($eof) {
-    my $wn = select undef, my $wo = $ws, undef, undef;
-    while (@queue < $wn && !$eof) {
-      if ($eof = !saferead \*STDIN, $leftover, 8192, length $leftover) {
-        push @queue, $leftover if length $leftover;
+    while (@queue < $n && !$eof) {
+      my $l = length $stdin;
+      if ($eof = !saferead \*STDIN, $stdin, 65536, length $stdin) {
+        push @queue, $stdin if length $stdin;
+        $stdin = undef;
       } else {
-        my $np = rindex $leftover, "\n";
-        if ($np > 0) {
-          push @queue, substr $leftover, 0, $np + 1;
-          $leftover = substr $leftover, $np + 1;
+        my $np = rindex substr($stdin, $l), "\n";
+        if ($np >= 0) {
+          $np += $l;
+          push @queue, substr $stdin, 0, $np + 1;
+          $stdin = substr $stdin, $np + 1;
         }
       }
     }
 
-    @queue and vec $wo, fileno $_, 1 and safewrite $_, shift @queue
-      for @workers;
+    for (@wi) {
+      last unless @queue;
+      next unless defined and vec $w, fileno $_, 1;
+      safewrite $_, shift @queue;
+    }
   }
 
-  close $_ for @workers;
-  $_->await for @workers;
+  defined and close $_ for @wi;
+  $_->await for @wo;
+  $stdout_reader->await;
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';
@@ -3528,7 +3589,7 @@ sub geohash_decode {
 
 *ghe = \&geohash_encode;
 *ghd = \&geohash_decode;
-106 core/pl/pl.pl.sdoc
+105 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3590,7 +3651,6 @@ use constant perl_mapgen => gen q{
   %prefix
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
-  $|++;
   sub row {
     %body
   }
@@ -3623,8 +3683,8 @@ sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
                                  body   => $_[0],
                                  each   => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_ . "\n" for row'}
-sub perl_grepper($) {perl_code                   $_[0], 'print $_ . "\n" if row'}
+sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -5834,7 +5894,7 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
-220 doc/col.md
+233 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -6054,7 +6114,20 @@ $ ni //ni r3FWfB Wn100          # left-join numbers
 3	https
 ```
 
-As shown above, the output stream is only as long as the shorter input.
+As shown above, the output stream is only as long as the shorter input. This is
+useful in conjunction with infinite generators like `n`; for example, you can
+prepend line numbers to an arbitrarily long data stream like this:
+
+```bash
+$ ni //license Wn r+3
+19	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+20	SOFTWARE.
+21	
+$ ni nE5p'a*a' Wn r+3
+99998	9999600004
+99999	9999800001
+100000	10000000000
+```
 85 doc/container.md
 # Containerized pipelines
 ```lazytest
@@ -7833,7 +7906,7 @@ The scaling operator `S` lets you work around bottlenecks by adding horizontal
 scale to a section of your pipeline. For example, suppose we have this:
 
 ```bash
-$ ni nE5 p'sin(a/100)' > slow-sine-table
+$ ni nE6 p'sin(a/100)' > slow-sine-table
 ```
 
 On a multicore machine, this will run more slowly than it should because
@@ -7841,7 +7914,7 @@ On a multicore machine, this will run more slowly than it should because
 like this:
 
 ```bash
-$ ni nE5 S4[p'sin(a/100)'] > parallel-sine-table
+$ ni nE6 S4[p'sin(a/100)'] > parallel-sine-table
 $ diff <(ni slow-sine-table o) <(ni parallel-sine-table o)
 ```
 

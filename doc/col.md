@@ -217,4 +217,17 @@ $ ni //ni r3FWfB Wn100          # left-join numbers
 3	https
 ```
 
-As shown above, the output stream is only as long as the shorter input.
+As shown above, the output stream is only as long as the shorter input. This is
+useful in conjunction with infinite generators like `n`; for example, you can
+prepend line numbers to an arbitrarily long data stream like this:
+
+```bash
+$ ni //license Wn r+3
+19	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+20	SOFTWARE.
+21	
+$ ni nE5p'a*a' Wn r+3
+99998	9999600004
+99999	9999800001
+100000	10000000000
+```

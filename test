@@ -28,7 +28,7 @@ default_image=ubuntu-16.04
 
 docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
-docker_opts="$docker_magic $docker_dind -i -m 256M --name ni-test-$$ --rm -v $PWD:/data:ro"
+docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 
 c=$1
 shift
@@ -43,11 +43,11 @@ case $c in
   ;;
 
 -q|--quick)
-  tests | docker run $docker_opts $(image ${1:-$default_image}) /bin/bash
+  tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash
   ;;
 
 -r|--repl)
-  docker run $docker_opts -t $(image ${1:-$default_image}) /bin/bash
+  docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
 *)
@@ -55,7 +55,7 @@ case $c in
     echo
     echo "TESTING $e"
     echo
-    tests | docker run $docker_opts $(image $e) /bin/bash
+    tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
     echo
   done
 esac

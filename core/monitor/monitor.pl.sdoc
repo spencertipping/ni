@@ -54,7 +54,8 @@ defoperator monitor => q{
 my $original_main_operator = $main_operator;
 $main_operator = sub {
   my $n_ops = @_;
-  return &$original_main_operator(@_) if $ENV{NI_NO_MONITOR};
+  return &$original_main_operator(@_)
+    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};
   &$original_main_operator(
     map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
 };

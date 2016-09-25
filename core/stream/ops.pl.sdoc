@@ -48,11 +48,11 @@ $SIG{INT} = sub {
   exit 1;
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(1, prc '.*[^]]'), prx '\]';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(1, pnx '\]$'),    prc '\]$';
+use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
 use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
                                      pmap(q{shell_quote @$_}, shell_lambda),
-                                     prx '.*';
+                                     prx '[^][]+';
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -65,16 +65,10 @@ point, which can cause unexpected results and loss of precision.
 
 defoperator n => q{
   my ($l, $u) = @_;
-  sio; for (my $i = $l; $i < $u; ++$i) {print "$i\n"};
+  sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
 };
 
-defoperator number_lines => q{
-  my $n = 0;
-  print ++$n, "\t", $_ while <STDIN>;
-};
-
-defshort '/n', palt pmap(q{n_op 1, $_ + 1}, number),
-                    pmap q{number_lines_op}, pnone;
+defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
 
