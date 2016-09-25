@@ -929,7 +929,7 @@ decompressed and globs are automatically deglobbed.
 
 sub scat {
   local $| = 1;
-  for my $f (map -e ? $_ : glob($_), @_) {
+  for my $f (map -e($_) ? $_ : glob($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
@@ -2503,17 +2503,18 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
 1 core/monitor/lib
 monitor.pl.sdoc
-61 core/monitor/monitor.pl.sdoc
+62 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
 data.
 
 sub unit_bytes($) {
-  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
-  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
-  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
-  return ($_[0] >> 40), "T";
+  return ($_[0] >> 10), "K" if $_[0] >> 10 < 99999;
+  return ($_[0] >> 20), "M" if $_[0] >> 20 < 99999;
+  return ($_[0] >> 30), "G" if $_[0] >> 30 < 99999;
+  return ($_[0] >> 40), "T" if $_[0] >> 40 < 99999;
+  return ($_[0] >> 50), "P";
 }
 
 defoperator monitor => q{

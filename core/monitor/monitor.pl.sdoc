@@ -4,10 +4,11 @@ much more, for instance determining the cause of a bottleneck and previewing
 data.
 
 sub unit_bytes($) {
-  return ($_[0] >> 10), "K" if $_[0] <= 4 * 1048576;
-  return ($_[0] >> 20), "M" if $_[0] <= 4 * 1048576 * 1024;
-  return ($_[0] >> 30), "G" if $_[0] <= 4 * 1048576 * 1024 * 1024;
-  return ($_[0] >> 40), "T";
+  return ($_[0] >> 10), "K" if $_[0] >> 10 < 99999;
+  return ($_[0] >> 20), "M" if $_[0] >> 20 < 99999;
+  return ($_[0] >> 30), "G" if $_[0] >> 30 < 99999;
+  return ($_[0] >> 40), "T" if $_[0] >> 40 < 99999;
+  return ($_[0] >> 50), "P";
 }
 
 defoperator monitor => q{
