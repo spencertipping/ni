@@ -30,7 +30,7 @@ if (1 << 32) {
   *geohash_encode = sub {
     local $_;
     my ($lat, $lng, $precision) = @_;
-    $precision //= 12;
+    $precision ||= 12;
     my $bits = $precision > 0 ? $precision * 5 : -$precision;
     my $gh   = (morton_gap(int(($lat +  90) / 180 * 0x40000000)) |
                 morton_gap(int(($lng + 180) / 360 * 0x40000000)) << 1)
