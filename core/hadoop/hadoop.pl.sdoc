@@ -21,9 +21,9 @@ NI_HADOOP_STREAMING_JAR.
 sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
   $ENV{NI_HADOOP_STREAMING_JAR}
-  || (split /\n/, `locate 'hadoop-streaming*.jar' \
-                   || find /usr    -name 'hadoop-streaming*.jar' \
-                   || find /opt    -name 'hadoop-streaming*.jar' \
+  || (split /\n/, `locate 'hadoop-streaming*.jar' \\
+                   || find /usr    -name 'hadoop-streaming*.jar' \\
+                   || find /opt    -name 'hadoop-streaming*.jar' \\
                    || find / -xdev -name 'hadoop-streaming*.jar'`)[0]
   || die "ni: cannot find hadoop streaming jar "
        . "(you can fix this by setting \$NI_HADOOP_STREAMING_JAR)";
