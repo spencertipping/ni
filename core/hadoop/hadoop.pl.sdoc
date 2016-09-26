@@ -69,5 +69,41 @@ sub hadoop_lambda_file($$) {
 }
 
 defoperator hadoop_streaming => q{
-  my ($conf, $map, $combine, $reduce) = @_;
+  my ($map, $combine, $reduce) = @_;
+  my $ipath = hdfs_input_path;
+  my $opath = resource_tmp "hdfs://";
+  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', @$map;
+  my ($combiner, @combine_cmd) = defined $combine
+    ? hadoop_lambda_file 'combiner', @$combine : ();
+  my ($reducer, @reduce_cmd) = defined $reduce
+    ? hadoop_lambda_file 'reducer', @$reduce : ();
+
+  my $streaming_jar = hadoop_streaming_jar;
+
+  my $hadoop_fh = siproc {
+    $mapper   =~ s|^file://||;
+    $combiner =~ s|^file://|| if defined $combiner;
+    $reducer  =~ s|^file://|| if defined $reducer;
+    exec 'hadoop', 'jar', $streaming_jar,
+         '-D', "mapred.job.name=ni $ipath -> $opath",
+         '-input', $ipath,
+         '-output', $opath,
+         '-file',   $mapper,
+         '-mapper', shell_quote(@map_cmd),
+         (defined $combiner
+           ? ('-file', $combiner, '-combiner', shell_quote @combine_cmd)
+           : ()),
+         (defined $reducer
+           ? ('-file', $reducer, '-reducer', shell_quote @reduce_cmd)
+           : ());
+  };
+
+  close $hadoop_fh;
+  die "ni: hadoop streaming failed" if $hadoop_fh->await;
+
+  resource_nuke $mapper;
+  resource_nuke $combiner if defined $combiner;
+  resource_nuke $reducer  if defined $reducer;
+
+  print $opath, "\n";
 };
