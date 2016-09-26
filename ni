@@ -2551,7 +2551,7 @@ defoperator monitor => q{
         $preview = substr $monitor_name, 0, $width - 20;
       }
 
-      my $factor_log = log($itime / ($otime || 1)) / log 2;
+      my $factor_log = log($otime / ($itime || 1)) / log 2;
 
       safewrite \*STDERR,
         sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
