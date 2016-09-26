@@ -52,6 +52,7 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
+# TODO: get rid of this; it breaks bracket inference.
 sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
 
 use constant perl_mapgen => gen q{

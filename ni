@@ -2645,10 +2645,10 @@ my $original_srfile = \&srfile;
 my $original_swfile = \&swfile;
 my $original_glob_expand = \&glob_expand;
 
-sub is_uri($) {$_[0] =~ /^[^:]+:\/\//}
+sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 
 *glob_expand = sub($) {
-  return $_[0] if -e $_[0] || is_uri $_[0];
+  return $_[0] if is_uri $_[0] or -e $_[0];
   glob $_[0];
 };
 
@@ -3688,7 +3688,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-105 core/pl/pl.pl.sdoc
+106 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3743,6 +3743,7 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
+# TODO: get rid of this; it breaks bracket inference.
 sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
 
 use constant perl_mapgen => gen q{
@@ -5575,7 +5576,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
-129 core/hadoop/hadoop.pl.sdoc
+131 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -5650,37 +5651,39 @@ defoperator hadoop_streaming => q{
   my ($map, $combine, $reduce) = @_;
   my ($nuke_inputs, @ipath) = hdfs_input_path;
   my $opath = resource_tmp "hdfs://";
-  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', @$map;
-  my ($combiner, @combine_cmd) = defined $combine
-    ? hadoop_lambda_file 'combiner', @$combine : ();
-  my ($reducer, @reduce_cmd) = defined $reduce
-    ? hadoop_lambda_file 'reducer', @$reduce : ();
+  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
+  my ($combiner, @combine_cmd) = $combine
+    ? hadoop_lambda_file 'combiner', $combine : ();
+  my ($reducer, @reduce_cmd) = $reduce
+    ? hadoop_lambda_file 'reducer', $reduce : ();
 
   my $streaming_jar = hadoop_streaming_jar;
 
   my $hadoop_fh = siproc {
     $mapper   =~ s|^file://||;
-    $combiner =~ s|^file://|| if defined $combiner;
-    $reducer  =~ s|^file://|| if defined $reducer;
+    $combiner =~ s|^file://|| if $combiner;
+    $reducer  =~ s|^file://|| if $reducer;
 
     (my $mapper_file   = $mapper)         =~ s|.*/||;
     (my $combiner_file = $combiner || '') =~ s|.*/||;
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
-    my $cmd = shell_quote hadoop_name, 'jar', $streaming_jar,
-                '-D', "mapred.job.name=ni @ipath -> $opath",
-                map((-input => $_), @ipath),
-                '-output', $opath,
-                '-file',   $mapper,
-                '-mapper', hadoop_embedded_cmd($mapper_file, @map_cmd),
-                (defined $combiner
-                  ? ('-file', $combiner, '-combiner',
-                     hadoop_embedded_cmd($combiner_file, @combine_cmd))
-                  : ()),
-                (defined $reducer
-                  ? ('-file', $reducer, '-reducer',
-                     hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-                  : ());
+    my $cmd = shell_quote
+      hadoop_name,
+      jar => $streaming_jar,
+      -D  => "mapred.job.name=ni @ipath -> $opath",
+      map((-input => $_), @ipath),
+      -output => $opath,
+      -file   => $mapper,
+      -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+      (defined $combiner
+        ? (-file     => $combiner,
+           -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+        : ()),
+      (defined $reducer
+        ? (-file    => $reducer,
+           -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+        : ());
     sh "$cmd 1>&2";
   };
 
@@ -5702,9 +5705,9 @@ use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                              pqfn '';
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
-                  pseq hadoop_streaming_lambda,
-                       hadoop_streaming_lambda,
-                       hadoop_streaming_lambda;
+                  pseq pc hadoop_streaming_lambda,
+                       pc hadoop_streaming_lambda,
+                       pc hadoop_streaming_lambda;
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
@@ -6201,7 +6204,7 @@ $ docker rm -f ni-test-container >/dev/null
 ```
 
 ```lazytest
-fi                      # $HAVE_DOCKER (lazytest condition)
+fi                      # $SKIP_DOCKER (lazytest condition)
 ```
 241 doc/examples.md
 # Examples of ni misuse
@@ -7027,7 +7030,7 @@ Operator | Status | Example      | Description
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
-`H`      | U      | `H c`        | Send named files through hadoop
+`H`      | T      | `HS:::`      | Send named files through hadoop
 `I`      |        |              |
 `J`      |        |              |
 `K`      |        |              |
@@ -7038,7 +7041,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      | M      | `S16[plc]`   | Scale across multiple processes
+`S`      | T      | `S16[plc]`   | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B

@@ -66,10 +66,10 @@ my $original_srfile = \&srfile;
 my $original_swfile = \&swfile;
 my $original_glob_expand = \&glob_expand;
 
-sub is_uri($) {$_[0] =~ /^[^:]+:\/\//}
+sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 
 *glob_expand = sub($) {
-  return $_[0] if -e $_[0] || is_uri $_[0];
+  return $_[0] if is_uri $_[0] or -e $_[0];
   glob $_[0];
 };
 

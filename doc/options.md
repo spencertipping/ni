@@ -67,7 +67,7 @@ Operator | Status | Example      | Description
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
-`H`      | U      | `H c`        | Send named files through hadoop
+`H`      | T      | `HS:::`      | Send named files through hadoop
 `I`      |        |              |
 `J`      |        |              |
 `K`      |        |              |
@@ -78,7 +78,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      | M      | `S16[plc]`   | Scale across multiple processes
+`S`      | T      | `S16[plc]`   | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B

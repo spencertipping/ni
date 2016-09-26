@@ -81,5 +81,5 @@ $ docker rm -f ni-test-container >/dev/null
 ```
 
 ```lazytest
-fi                      # $HAVE_DOCKER (lazytest condition)
+fi                      # $SKIP_DOCKER (lazytest condition)
 ```
