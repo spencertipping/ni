@@ -3599,7 +3599,7 @@ if (1 << 32) {
     $x |= $x << 4;  $x &= 0x0f0f0f0f0f0f0f0f;
     $x |= $x << 2;  $x &= 0x3333333333333333;
     return ($x | $x << 1) & 0x5555555555555555;
-  }
+  };
 
   *morton_ungap = sub($) {
     my ($x) = @_;  $x &= 0x5555555555555555;
@@ -3608,7 +3608,7 @@ if (1 << 32) {
     $x ^= $x >> 4; $x &= 0x00ff00ff00ff00ff;
     $x ^= $x >> 8; $x &= 0x0000ffff0000ffff;
     return ($x ^ $x >> 16) & 0x00000000ffffffff;
-  }
+  };
 
   *geohash_encode = sub {
     local $_;
@@ -3622,7 +3622,7 @@ if (1 << 32) {
     $precision > 0 ? join '', reverse map $gh_alphabet[$gh >> $_ * 5 & 31],
                                           0 .. $precision - 1
                    : $gh;
-  }
+  };
 
   *geohash_decode = sub {
     local $_;
@@ -3637,7 +3637,7 @@ if (1 << 32) {
     $gh <<= 60 - $bits;
     return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
             morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
-  }
+  };
 } else {
   *morton_gap = sub($) {
     my ($x) = @_;
@@ -3645,7 +3645,7 @@ if (1 << 32) {
     $x |= $x << 4;  $x &= 0x0f0f0f0f;
     $x |= $x << 2;  $x &= 0x33333333;
     return ($x | $x << 1) & 0x55555555;
-  }
+  };
 
   *morton_ungap = sub($) {
     my ($x) = @_;  $x &= 0x55555555;
@@ -3653,7 +3653,7 @@ if (1 << 32) {
     $x ^= $x >> 2; $x &= 0x0f0f0f0f;
     $x ^= $x >> 4; $x &= 0x00ff00ff;
     return ($x ^= $x >> 8) & 0x0000ffff;
-  }
+  };
 
   *geohash_encode = sub {
     local $_;
@@ -3668,7 +3668,7 @@ if (1 << 32) {
     my $gh12 = join '', map($geohash_alphabet[$high_30 >> 30 - 5*$_ & 31], 1..6),
                         map($geohash_alphabet[$low_30  >> 30 - 5*$_ & 31], 1..6);
     substr $gh12, 0, $precision;
-  }
+  };
 
   *geohash_decode = sub {
     local $_;
@@ -3681,7 +3681,7 @@ if (1 << 32) {
     my $lat_int = morton_ungap($low_30)      | morton_ungap($high_30)      << 15;
     my $lng_int = morton_ungap($low_30 >> 1) | morton_ungap($high_30 >> 1) << 15;
     ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
-  }
+  };
 }
 
 *ghe = \&geohash_encode;
