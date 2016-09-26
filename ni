@@ -3037,7 +3037,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-111 core/row/scale.pl.sdoc
+114 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3075,7 +3075,10 @@ defoperator row_fixed_scale => q{
   my (@wi, @wo);
   my ($wb, $rb, $w, $r);
   for (1..$n) {
-    my ($i, $o) = sioproc {exec_ni @$f};
+    my ($i, $o) = sioproc {
+      setpriority 0, 0, $n;
+      exec_ni @$f;
+    };
     push @wi, $i;
     push @wo, $o;
     vec($wb, fileno $i, 1) = 1;

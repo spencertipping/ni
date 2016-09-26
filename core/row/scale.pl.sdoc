@@ -35,7 +35,10 @@ defoperator row_fixed_scale => q{
   my (@wi, @wo);
   my ($wb, $rb, $w, $r);
   for (1..$n) {
-    my ($i, $o) = sioproc {exec_ni @$f};
+    my ($i, $o) = sioproc {
+      setpriority 0, 0, $n;
+      exec_ni @$f;
+    };
     push @wi, $i;
     push @wo, $o;
     vec($wb, fileno $i, 1) = 1;
