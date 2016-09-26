@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+our $s = ' ' x 65536;
+
+cmpthese(1000000, {
+  substr_short   => q{ length substr($s, 0, 256) },
+  substr_long    => q{ length substr($s, 0, 16384) },
+  substr_forward => q{ length substr($s, 16384, 256) },
+});
+
+cmpthese(100000, {
+  buf_substr => q{ my $buf = $s; $buf = substr($buf, 256) for 1..64 },
+  buf_sg     => q{ my $buf = $s; $buf =~ s/^[\s\S]{256}// for 1..64 },
+  buf_array  => q{ my @buf = map substr($s, $_ * 256, 256), 1..256;
+                   shift @buf for 1..64 },
+});
