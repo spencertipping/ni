@@ -734,7 +734,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-243 core/stream/pipeline.pl.sdoc
+245 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -927,9 +927,11 @@ cat exists to turn filesystem objects into text. Files are emitted and
 directories are turned into readable listings. Files are automatically
 decompressed and globs are automatically deglobbed.
 
+sub glob_expand($) {-e($_[0]) ? $_[0] : glob $_[0]}
+
 sub scat {
   local $| = 1;
-  for my $f (map -e($_) ? $_ : glob($_), @_) {
+  for my $f (map glob_expand($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
@@ -937,7 +939,7 @@ sub scat {
     } else {
       my $d = siproc {sdecode};
       sforward srfile $f, $d;
-      close $d->fh;
+      close $d;
       $d->await;
     }
   }
@@ -2551,7 +2553,7 @@ defoperator monitor => q{
         $preview = substr $monitor_name, 0, $width - 20;
       }
 
-      my $factor_log = log($otime / ($itime || 1)) / log 2;
+      my $factor_log = log(($otime || 1) / ($itime || 1)) / log 2;
 
       safewrite \*STDERR,
         sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
@@ -2574,7 +2576,7 @@ $main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-100 core/uri/uri.pl.sdoc
+129 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2589,6 +2591,8 @@ of them:
 
 c
 BEGIN {
+
+sub hadoop_name();
 
 deflong '/resource',
   defdsp 'resourcealt', 'dispatch table for URI prefixes';
@@ -2609,7 +2613,10 @@ for my $op (qw/read write exists tmp nuke/) {
 defoperator resource_quote => q{sio; print "$_[0]\n"};
 defoperator resource_append => q{
   sio;
-  sforward resource_read $_[0], \*STDOUT;
+  my $decoder = siproc {sdecode};
+  sforward resource_read $_[0], $decoder;
+  close $decoder;
+  $decoder->await;
 };
 
 defoperator resource_quote_many => q{sio; print "$_\n" for @_};
@@ -2631,6 +2638,30 @@ sub defresource($%) {
   $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
 }
 
+Stream function extensions.
+Add resource support to srfile and swfile.
+
+my $original_srfile = \&srfile;
+my $original_swfile = \&swfile;
+my $original_glob_expand = \&glob_expand;
+
+sub is_uri($) {$_[0] =~ /^[^:]+:\/\//}
+
+*glob_expand = sub($) {
+  return $_[0] if -e $_[0] || is_uri $_[0];
+  glob $_[0];
+};
+
+*srfile = sub($) {
+  return resource_read $_[0] if is_uri $_[0];
+  &$original_srfile($_[0]);
+};
+
+*swfile = sub($) {
+  return resource_write $_[0] if is_uri $_[0];
+  &$original_swfile($_[0]);
+};
+
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
@@ -2648,20 +2679,20 @@ defresource 'sftp',
               soproc {exec 'ssh', $host, 'cat', $path}};
 
 defresource 'hdfs',
-  read   => q{soproc {exec 'hadoop', 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh "hadoop fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
-              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
+              my $fh = soproc {exec hadoop_name, 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
   tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
               . "/" . uri_temp_noise},
-  nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+  nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec 'hadoop', 'fs', '-text', $_[1]} @_},
-  nuke => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+  read => q{soproc {exec hadoop_name, 'fs', '-text', $_[1]} @_},
+  nuke => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
@@ -5544,12 +5575,14 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, pqfn '';
 1 core/hadoop/lib
 hadoop.pl.sdoc
-73 core/hadoop/hadoop.pl.sdoc
+129 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
 c
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
+
+sub hadoop_name() {$ENV{NI_HADOOP} || 'hadoop'}
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -5560,7 +5593,6 @@ fine. Here's what we can do:
 | 1. Use $NI_HADOOP_STREAMING_JAR if it's set
   2. Use `locate hadoop-streaming*.jar` if we have `locate`
   3. Use `find /usr /opt -name hadoop-streaming*.jar`, see if it's there
-  4. Use `find / -name hadoop-streaming*.jar`, hope it's there
 
 If those don't work, then we are officially SOL and you'll have to set
 NI_HADOOP_STREAMING_JAR.
@@ -5569,9 +5601,8 @@ sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
   $ENV{NI_HADOOP_STREAMING_JAR}
   || (split /\n/, `locate 'hadoop-streaming*.jar' \\
-                   || find /usr    -name 'hadoop-streaming*.jar' \\
-                   || find /opt    -name 'hadoop-streaming*.jar' \\
-                   || find / -xdev -name 'hadoop-streaming*.jar'`)[0]
+                   || find /usr -name 'hadoop-streaming*.jar' \\
+                   || find /opt -name 'hadoop-streaming*.jar'`)[0]
   || die "ni: cannot find hadoop streaming jar "
        . "(you can fix this by setting \$NI_HADOOP_STREAMING_JAR)";
 }
@@ -5586,9 +5617,10 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfs:\/\//) {
+  if (/^hdfst?:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
-    grep length, split /\n/;
+    s/^hdfst:/hdfs:/gm;
+    (0, grep length, split /\n/);
   } else {
     my $hdfs_tmp    = resource_tmp 'hdfs://';
     my $hdfs_writer = resource_write $hdfs_tmp;
@@ -5596,28 +5628,83 @@ sub hdfs_input_path {
     safewrite $hdfs_writer, $_ while saferead \*STDIN, $_, 8192;
     close $hdfs_writer;
     $hdfs_writer->await;
-    $hdfs_tmp;
+    (1, $hdfs_tmp);
   }
 }
 
 sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
-  my $w   = resource_writer $tmp;
+  my $w   = resource_write $tmp;
   my ($stdin, @exec) = sni_exec_list @$lambda;
   safewrite $w, $stdin;
   close $w;
-  $exec[1] eq '-'
-    ? ($exec[1] = $tmp) =~ s/^.*\///
-    : die "ni: sni_exec_list has produced @exec; hadoop_lambda_file expected "
-        . "- as the second argument in this list (the goal is to change the "
-        . "command to have perl read its input from a file rather than stdin)";
   ($tmp, @exec);
 }
 
+sub hadoop_embedded_cmd($@) {
+  "sh -c " . shell_quote("cat " . shell_quote($_[0]) . " - | " . shell_quote(@_[1..$#_]));
+}
+
 defoperator hadoop_streaming => q{
-  my ($conf, $map, $combine, $reduce) = @_;
+  my ($map, $combine, $reduce) = @_;
+  my ($nuke_inputs, @ipath) = hdfs_input_path;
+  my $opath = resource_tmp "hdfs://";
+  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', @$map;
+  my ($combiner, @combine_cmd) = defined $combine
+    ? hadoop_lambda_file 'combiner', @$combine : ();
+  my ($reducer, @reduce_cmd) = defined $reduce
+    ? hadoop_lambda_file 'reducer', @$reduce : ();
+
+  my $streaming_jar = hadoop_streaming_jar;
+
+  my $hadoop_fh = siproc {
+    $mapper   =~ s|^file://||;
+    $combiner =~ s|^file://|| if defined $combiner;
+    $reducer  =~ s|^file://|| if defined $reducer;
+
+    (my $mapper_file   = $mapper)         =~ s|.*/||;
+    (my $combiner_file = $combiner || '') =~ s|.*/||;
+    (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+
+    my $cmd = shell_quote hadoop_name, 'jar', $streaming_jar,
+                '-D', "mapred.job.name=ni @ipath -> $opath",
+                map((-input => $_), @ipath),
+                '-output', $opath,
+                '-file',   $mapper,
+                '-mapper', hadoop_embedded_cmd($mapper_file, @map_cmd),
+                (defined $combiner
+                  ? ('-file', $combiner, '-combiner',
+                     hadoop_embedded_cmd($combiner_file, @combine_cmd))
+                  : ()),
+                (defined $reducer
+                  ? ('-file', $reducer, '-reducer',
+                     hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+                  : ());
+    sh "$cmd 1>&2";
+  };
+
+  close $hadoop_fh;
+  die "ni: hadoop streaming failed" if $hadoop_fh->await;
+
+  (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+  print "$result_path/part-*\n";
+
+  if ($nuke_inputs) {resource_nuke $_ for @ipath}
+
+  resource_nuke $mapper;
+  resource_nuke $combiner if defined $combiner;
+  resource_nuke $reducer  if defined $reducer;
 };
+
+use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                             pmap(q{[]},    prc ':'),
+                                             pqfn '';
+
+defhadoopalt S => pmap q{hadoop_streaming_op @$_},
+                  pseq hadoop_streaming_lambda,
+                       hadoop_streaming_lambda,
+                       hadoop_streaming_lambda;
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc

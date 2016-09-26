@@ -4,6 +4,8 @@ The entry point for running various kinds of Hadoop jobs.
 c
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
+sub hadoop_name() {$ENV{NI_HADOOP} || 'hadoop'}
+
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
 hadoop docs suggest that $HADOOP_HOME has something to do with it, but I've
@@ -13,7 +15,6 @@ fine. Here's what we can do:
 | 1. Use $NI_HADOOP_STREAMING_JAR if it's set
   2. Use `locate hadoop-streaming*.jar` if we have `locate`
   3. Use `find /usr /opt -name hadoop-streaming*.jar`, see if it's there
-  4. Use `find / -name hadoop-streaming*.jar`, hope it's there
 
 If those don't work, then we are officially SOL and you'll have to set
 NI_HADOOP_STREAMING_JAR.
@@ -22,9 +23,8 @@ sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
   $ENV{NI_HADOOP_STREAMING_JAR}
   || (split /\n/, `locate 'hadoop-streaming*.jar' \\
-                   || find /usr    -name 'hadoop-streaming*.jar' \\
-                   || find /opt    -name 'hadoop-streaming*.jar' \\
-                   || find / -xdev -name 'hadoop-streaming*.jar'`)[0]
+                   || find /usr -name 'hadoop-streaming*.jar' \\
+                   || find /opt -name 'hadoop-streaming*.jar'`)[0]
   || die "ni: cannot find hadoop streaming jar "
        . "(you can fix this by setting \$NI_HADOOP_STREAMING_JAR)";
 }
@@ -39,9 +39,10 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfs:\/\//) {
+  if (/^hdfst?:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
-    grep length, split /\n/;
+    s/^hdfst:/hdfs:/gm;
+    (0, grep length, split /\n/);
   } else {
     my $hdfs_tmp    = resource_tmp 'hdfs://';
     my $hdfs_writer = resource_write $hdfs_tmp;
@@ -49,28 +50,27 @@ sub hdfs_input_path {
     safewrite $hdfs_writer, $_ while saferead \*STDIN, $_, 8192;
     close $hdfs_writer;
     $hdfs_writer->await;
-    $hdfs_tmp;
+    (1, $hdfs_tmp);
   }
 }
 
 sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
-  my $w   = resource_writer $tmp;
+  my $w   = resource_write $tmp;
   my ($stdin, @exec) = sni_exec_list @$lambda;
   safewrite $w, $stdin;
   close $w;
-  $exec[1] eq '-'
-    ? ($exec[1] = $tmp) =~ s/^.*\///
-    : die "ni: sni_exec_list has produced @exec; hadoop_lambda_file expected "
-        . "- as the second argument in this list (the goal is to change the "
-        . "command to have perl read its input from a file rather than stdin)";
   ($tmp, @exec);
+}
+
+sub hadoop_embedded_cmd($@) {
+  "sh -c " . shell_quote("cat " . shell_quote($_[0]) . " - | " . shell_quote(@_[1..$#_]));
 }
 
 defoperator hadoop_streaming => q{
   my ($map, $combine, $reduce) = @_;
-  my $ipath = hdfs_input_path;
+  my ($nuke_inputs, @ipath) = hdfs_input_path;
   my $opath = resource_tmp "hdfs://";
   my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', @$map;
   my ($combiner, @combine_cmd) = defined $combine
@@ -84,26 +84,46 @@ defoperator hadoop_streaming => q{
     $mapper   =~ s|^file://||;
     $combiner =~ s|^file://|| if defined $combiner;
     $reducer  =~ s|^file://|| if defined $reducer;
-    exec 'hadoop', 'jar', $streaming_jar,
-         '-D', "mapred.job.name=ni $ipath -> $opath",
-         '-input', $ipath,
-         '-output', $opath,
-         '-file',   $mapper,
-         '-mapper', shell_quote(@map_cmd),
-         (defined $combiner
-           ? ('-file', $combiner, '-combiner', shell_quote @combine_cmd)
-           : ()),
-         (defined $reducer
-           ? ('-file', $reducer, '-reducer', shell_quote @reduce_cmd)
-           : ());
+
+    (my $mapper_file   = $mapper)         =~ s|.*/||;
+    (my $combiner_file = $combiner || '') =~ s|.*/||;
+    (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+
+    my $cmd = shell_quote hadoop_name, 'jar', $streaming_jar,
+                '-D', "mapred.job.name=ni @ipath -> $opath",
+                map((-input => $_), @ipath),
+                '-output', $opath,
+                '-file',   $mapper,
+                '-mapper', hadoop_embedded_cmd($mapper_file, @map_cmd),
+                (defined $combiner
+                  ? ('-file', $combiner, '-combiner',
+                     hadoop_embedded_cmd($combiner_file, @combine_cmd))
+                  : ()),
+                (defined $reducer
+                  ? ('-file', $reducer, '-reducer',
+                     hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+                  : ());
+    sh "$cmd 1>&2";
   };
 
   close $hadoop_fh;
   die "ni: hadoop streaming failed" if $hadoop_fh->await;
 
+  (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+  print "$result_path/part-*\n";
+
+  if ($nuke_inputs) {resource_nuke $_ for @ipath}
+
   resource_nuke $mapper;
   resource_nuke $combiner if defined $combiner;
   resource_nuke $reducer  if defined $reducer;
-
-  print $opath, "\n";
 };
+
+use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                             pmap(q{[]},    prc ':'),
+                                             pqfn '';
+
+defhadoopalt S => pmap q{hadoop_streaming_op @$_},
+                  pseq hadoop_streaming_lambda,
+                       hadoop_streaming_lambda,
+                       hadoop_streaming_lambda;

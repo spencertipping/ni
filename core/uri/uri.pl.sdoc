@@ -13,6 +13,8 @@ of them:
 c
 BEGIN {
 
+sub hadoop_name();
+
 deflong '/resource',
   defdsp 'resourcealt', 'dispatch table for URI prefixes';
 
@@ -32,7 +34,10 @@ for my $op (qw/read write exists tmp nuke/) {
 defoperator resource_quote => q{sio; print "$_[0]\n"};
 defoperator resource_append => q{
   sio;
-  sforward resource_read $_[0], \*STDOUT;
+  my $decoder = siproc {sdecode};
+  sforward resource_read $_[0], $decoder;
+  close $decoder;
+  $decoder->await;
 };
 
 defoperator resource_quote_many => q{sio; print "$_\n" for @_};
@@ -54,6 +59,30 @@ sub defresource($%) {
   $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
 }
 
+Stream function extensions.
+Add resource support to srfile and swfile.
+
+my $original_srfile = \&srfile;
+my $original_swfile = \&swfile;
+my $original_glob_expand = \&glob_expand;
+
+sub is_uri($) {$_[0] =~ /^[^:]+:\/\//}
+
+*glob_expand = sub($) {
+  return $_[0] if -e $_[0] || is_uri $_[0];
+  glob $_[0];
+};
+
+*srfile = sub($) {
+  return resource_read $_[0] if is_uri $_[0];
+  &$original_srfile($_[0]);
+};
+
+*swfile = sub($) {
+  return resource_write $_[0] if is_uri $_[0];
+  &$original_swfile($_[0]);
+};
+
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
@@ -71,20 +100,20 @@ defresource 'sftp',
               soproc {exec 'ssh', $host, 'cat', $path}};
 
 defresource 'hdfs',
-  read   => q{soproc {exec 'hadoop', 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh "hadoop fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
-              my $fh = soproc {exec 'hdfs', 'fs', '-stat', $_[1]} @_;
+              my $fh = soproc {exec hadoop_name, 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
   tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
               . "/" . uri_temp_noise},
-  nuke   => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+  nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec 'hadoop', 'fs', '-text', $_[1]} @_},
-  nuke => q{exec 'hadoop', 'fs', '-rm', '-r', $_[1]};
+  read => q{soproc {exec hadoop_name, 'fs', '-text', $_[1]} @_},
+  nuke => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},

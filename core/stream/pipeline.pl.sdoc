@@ -190,9 +190,11 @@ cat exists to turn filesystem objects into text. Files are emitted and
 directories are turned into readable listings. Files are automatically
 decompressed and globs are automatically deglobbed.
 
+sub glob_expand($) {-e($_[0]) ? $_[0] : glob $_[0]}
+
 sub scat {
   local $| = 1;
-  for my $f (map -e($_) ? $_ : glob($_), @_) {
+  for my $f (map glob_expand($_), @_) {
     if (-d $f) {
       opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
       print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
@@ -200,7 +202,7 @@ sub scat {
     } else {
       my $d = siproc {sdecode};
       sforward srfile $f, $d;
-      close $d->fh;
+      close $d;
       $d->await;
     }
   }
