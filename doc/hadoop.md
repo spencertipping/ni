@@ -30,15 +30,37 @@ two special cases you can use instead of a normal bracketed lambda:
 
 Hadoop input paths are specified using the input stream to a hadoop command. If
 you specify something that doesn't start with `hdfs://` or `hdfst://`, the
-stream will be uploaded to an HDFS tempfile and used as the job input.
-
-For example, let's get a word count for the ni license. Notice that we use `\<`
-after the hadoop command: `H` emits the output path, but not the output data --
-so if we want the data we need to read it.
+stream will be uploaded to an HDFS tempfile and used as the job input. Notice
+that we use `\<` after the hadoop command: `H` emits the output path, but not
+the output data -- so if we want the data we need to read it.
 
 ```bash
 $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HS[FW pF_] _ [cx] \<] r10
+  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ _ \<]
+1	1
+2	4
+3	9
+4	16
+5	25
+```
+
+With a reducer:
+
+```bash
+$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
+  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
+```
+
+Now let's get a word count for `ni //license`:
+
+```bash
+$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
+  ni //license Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 2016	1
 A	1
 ACTION	1
@@ -56,7 +78,7 @@ recommend using `--explain` liberally if you plan to make a habit of this):
 
 ```bash
 $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HSFWpF_ _ cx \<]
+  ni //license Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
 ACTION	1
