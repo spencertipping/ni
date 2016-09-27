@@ -24,12 +24,13 @@ $ ni //help/stream                      # view a help topic
 
 ## Stuff worth knowing about
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
+- [scale.md](scale.md)         (`ni //help/scale`):     parallelizing stuff
+- [hadoop.md](hadoop.md)       (`ni //help/hadoop`);    Hadoop interop
 - [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
 - [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
 - [binary.md](binary.md)       (`ni //help/binary`):    decoding binary streams
 - [container.md](container.md) (`ni //help/container`): Dockerizing stuff
 - [json.md](json.md)           (`ni //help/json`):      working with JSON
-- [scale.md](scale.md)         (`ni //help/scale`):     horizontal scaling
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
