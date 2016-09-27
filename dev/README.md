@@ -33,6 +33,7 @@ can debug the image build process by doing this:
 
 ```sh
 $ ./test --build                # just build the images, showing output
+$ ./test -b
 ```
 
 If your tests are failing in a specific image and you want to explore that, you
@@ -41,6 +42,7 @@ can get a bash repl:
 ```sh
 $ ./test --repl centos-5        # boot up this test environment
 $ ./test --repl                 # boot up ubuntu-16.04
+$ ./test -r
 ```
 
 You can also run the tests in just one environment if you want faster
@@ -49,6 +51,15 @@ iteration:
 ```sh
 $ ./test --quick alpine         # run tests in just this environment
 $ ./test --quick                # run tests in ubuntu-16.04
+$ ./test -q                     # short version
+```
+
+And if you're testing a new feature, you can prepend `-o` or `--only` to run
+just one markdown file:
+
+```sh
+$ ./test --only doc/hadoop.md -q
+$ ./test -o doc/hadoop.md -q
 ```
 
 ## Running benchmarks

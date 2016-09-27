@@ -3,7 +3,8 @@ The scaling operator `S` lets you work around bottlenecks by adding horizontal
 scale to a section of your pipeline. For example, suppose we have this:
 
 ```bash
-$ ni nE6 p'sin(a/100)' > slow-sine-table
+$ ni nE6 p'sin(a/100)' =\>slow-sine-table e[wc -l]
+1000000
 ```
 
 On a multicore machine, this will run more slowly than it should because
@@ -11,8 +12,11 @@ On a multicore machine, this will run more slowly than it should because
 like this:
 
 ```bash
-$ ni nE6 S4[p'sin(a/100)'] > parallel-sine-table
-$ diff <(ni slow-sine-table o) <(ni parallel-sine-table o)
+$ ni nE6 S4[p'sin(a/100)'] =\>parallel-sine-table e[wc -l]
+1000000
+$ echo $(($(wc -c < parallel-sine-table) - $(wc -c < slow-sine-table)))
+0
+$ diff <(ni slow-sine-table o) <(ni parallel-sine-table o) | head -n10
 ```
 
 `S` works by reading blocks of input and finding line boundaries. It then sends

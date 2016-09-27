@@ -7,12 +7,6 @@ arbitrary-column joins and not rearrange any columns in the result.
 format for things like `//options` and `--dev/parse`. Also document why some
 options are `--` and others are `//`.
 
-### Throughput monitoring
-At the very least we should indicate that data is moving, and where (nfu-style
-pipeline monitoring). Need a protocol for this, possibly also a log collector.
-Standard error should be piped through the main process, so the pager should be
-a fork.
-
 ### JSPlot
 #### Labeled points
 #### Labeled axes/grids/etc

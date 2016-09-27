@@ -3072,7 +3072,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-114 core/row/scale.pl.sdoc
+180 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3085,34 +3085,55 @@ The simplest option: specify N workers and a lambda, and the lambda will be
 replicated that many times. Incoming data is broken into chunks of rows and
 written to any worker that's available.
 
-Some notes on the subtleties here.
-Conceptually what we're doing is simple: read a batch of rows, send them to any
-process we can write to, and read outputs as they become available. In practice
-there are some details that complicate things.
+Implementation-wise here's how this works. We're distributing a single stream
+of data to potentially a lot of subprocesses, each of which might be quite
+fast. So we need to optimize this aggressively, which in this case consists of
+the following:
 
-First, it's entirely possible that our lines are longer than the pipe buffer
-size -- so there's no guarantee that a single line-write operation will be
-nonblocking. Second, the command may interleave inputs and outputs arbitrarily;
-for example, `syswrite STDOUT, $_ while sysread STDIN, $_, 1` is a valid thing
-for a program to do.
+| 1. We maintain an input queue for each worker for reasons described below.
+  2. We minimize the overhead involved in line-splitting blocks, avoiding it
+     entirely for most of the input data.
+  3. We keep writes to workers small enough that they won't block.
 
-Third, we want to strike a balance between vectorizing stuff and blocking on
-pipe-writes. Any blocking done by the distributor process is downtime if there
-are available fds.
+Visually, here's what we're doing:
+
+| worker 1 <- [block 1] [block 2] [block 3] [block 4] [part of block 5]
+  worker 2 <- [rest of part 5] [block 6] [block 7] [block 8] [part of block 9]
+  worker 3 <- ...
+
+The key here is that we can avoid line-splitting for any two consecutive blocks
+we send to the same worker, so we want every queue-fill operation to consume a
+large number of blocks. This leads to a possibly counterintuitive heuristic: we
+deliberately let queues run low before refilling them.
+
+Reading from the workers' stdout is exactly the same: we enqueue a bunch of
+blocks and then line-merge once the queues are full enough.
+
+A note about blocking: the scale operator goes to some lengths to avoid
+blocking on the workers, but it's fine and expected for it to block on its own
+stdin and stdout. The only consideration there is that we try to interleave
+worker and stdin/stdout blocking; this increases the likelihood that we'll
+saturate source and/or sink processes.
 
 defoperator row_fixed_scale => q{
   use strict;
   use warnings;
+  use constant buf_size => 32768;
+
+  sub new_ref() {\(my $x = '')}
 
   my ($n, $f) = @_;
   $ENV{NI_NO_MONITOR} = 'yes';
+
+  my ($iqueue, $oqueue) = (64, 64);
 
   my (@wi, @wo);
   my ($wb, $rb, $w, $r);
   for (1..$n) {
     my ($i, $o) = sioproc {
-      setpriority 0, 0, $n;
-      exec_ni @$f;
+      setpriority 0, 0, $n >> 2;
+      &$ni::main_operator(@$f);
+      exit;
     };
     push @wi, $i;
     push @wo, $o;
@@ -3121,67 +3142,112 @@ defoperator row_fixed_scale => q{
   }
 
   my $stdout_reader = siproc {
-    my @stdout = ('') x $n;
+    my @bufs;
+    my @stdout = map [], @wo;
+    my @outqueue;
+    my $b;
+    my $stdout = \*STDOUT;
+
     close $_ for @wi;
+
     while ($n) {
+      until (@outqueue < $oqueue * $n) {
+        safewrite $stdout, ${$b = shift @outqueue};
+        push @bufs, $b;
+      }
+
       select $r = $rb, undef, undef, undef;
+      for my $i (0..$#wo) {
+        next unless defined $wo[$i];
+        next unless vec $r, fileno $wo[$i], 1;
 
-      for (0..$#wo) {
-        next unless defined $wo[$_];
-        next unless vec $r, fileno $wo[$_], 1;
-
-        my $l = length $stdout[$_];
-        if (saferead $wo[$_], $stdout[$_], 8192, length $stdout[$_]) {
-          my $np = rindex substr($stdout[$_], $l), "\n";
-          if ($np >= 0) {
-            $np += $l;
-            safewrite \*STDOUT, substr $stdout[$_], 0, $np + 1;
-            $stdout[$_] = substr $stdout[$_], $np + 1;
+        if (@outqueue) {
+          safewrite $stdout, ${$b = shift @outqueue};
+          push @bufs, $b;
+        }
+        my $so = $stdout[$i];
+        if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, buf_size) {
+          push @$so, $b;
+          my $np;
+          if (@$so >= $oqueue and 0 <= ($np = rindex $$b, "\n")) {
+            push @outqueue, @$so[0..$#{$so} - 1];
+            push @outqueue, \(my $x = substr $$b, 0, $np + 1);
+            $$b = substr $$b, $np + 1;
+            @$so = ($b);
           }
         } else {
           --$n;
-          vec($rb, fileno $wo[$_], 1) = 0;
-          close $wo[$_];
-
-          safewrite \*STDOUT, $stdout[$_] if length $stdout[$_];
-          $stdout[$_] = $wo[$_] = $wi[$_] = undef;
+          vec($rb, fileno $wo[$i], 1) = 0;
+          close $wo[$i];
+          push @outqueue, @$so;
+          $stdout[$i] = $wo[$i] = undef;
         }
       }
     }
+
+    safewrite $stdout, $$_ for @outqueue;
   };
 
   close $stdout_reader;
   close $_ for @wo;
 
-  my $stdin = '';
-  my @queue;
-  my $eof;
-  until (!@queue && $eof) {
-    select undef, $w = $wb, undef, undef;
+  {
+    my @bufs;
+    my @stdin = map [], @wi;
+    my @queue;
+    my $eof;
+    my $b;
+    my $stdin = \*STDIN;
 
-    while (@queue < $n && !$eof) {
-      my $l = length $stdin;
-      if ($eof = !saferead \*STDIN, $stdin, 8192, length $stdin) {
-        push @queue, $stdin if length $stdin;
-        $stdin = undef;
-      } else {
-        my $np = rindex substr($stdin, $l), "\n";
-        if ($np >= 0) {
-          $np += $l;
-          push @queue, substr $stdin, 0, $np + 1;
-          $stdin = substr $stdin, $np + 1;
+    until (!@queue && $eof) {
+      select undef, $w = $wb, undef, undef;
+      for my $i (0..$#wi) {
+        next unless vec $w, fileno $wi[$i], 1;
+
+        my $si = $stdin[$i];
+        if (@$si * 4 < $iqueue) {
+          # Commit to refilling this stdin queue, which means we need to write
+          # exclusively to this one until we find a line break.
+          push @$si, shift @queue while @$si < $iqueue and @queue;
+          while (@queue or not $eof) {
+            unless ($b = $queue[0]) {
+              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size;
+              push @queue, $b;
+            }
+
+            my $np;
+            if (0 <= ($np = rindex $$b, "\n")) {
+              push @$si, \(my $x = substr $$b, 0, $np + 1);
+              $$b = substr $$b, $np + 1;
+              last;
+            } else {
+              push @$si, shift @queue;
+            }
+          }
         }
+
+        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+        or push @queue, $b
+          if @queue < $iqueue * $n;
+
+        if (@$si) {
+          safewrite $wi[$i], ${$b = shift @$si};
+          push @bufs, $b;
+        }
+
+        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+        or push @queue, $b
+          if 0 and @queue < $iqueue * $n;
       }
     }
 
-    for (@wi) {
-      last unless @queue;
-      next unless defined and vec $w, fileno $_, 1;
-      safewrite $_, shift @queue;
+    # Run out the individual queues.
+    for my $i (0..$#wi) {
+      safewrite $wi[$i], $$_ for @{$stdin[$i]};
+      close $wi[$i];
     }
   }
 
-  defined and close $_ for @wi;
   $_->await for @wo;
   $stdout_reader->await;
 };
@@ -7991,13 +8057,14 @@ $ ni mult-table m'r ru {|l| l.ai%4 == 0}.g'
 28	35	42	49
 56	63	70
 ```
-19 doc/scale.md
+23 doc/scale.md
 # Pipeline scaling
 The scaling operator `S` lets you work around bottlenecks by adding horizontal
 scale to a section of your pipeline. For example, suppose we have this:
 
 ```bash
-$ ni nE6 p'sin(a/100)' > slow-sine-table
+$ ni nE6 p'sin(a/100)' =\>slow-sine-table e[wc -l]
+1000000
 ```
 
 On a multicore machine, this will run more slowly than it should because
@@ -8005,8 +8072,11 @@ On a multicore machine, this will run more slowly than it should because
 like this:
 
 ```bash
-$ ni nE6 S4[p'sin(a/100)'] > parallel-sine-table
-$ diff <(ni slow-sine-table o) <(ni parallel-sine-table o)
+$ ni nE6 S4[p'sin(a/100)'] =\>parallel-sine-table e[wc -l]
+1000000
+$ echo $(($(wc -c < parallel-sine-table) - $(wc -c < slow-sine-table)))
+0
+$ diff <(ni slow-sine-table o) <(ni parallel-sine-table o) | head -n10
 ```
 
 `S` works by reading blocks of input and finding line boundaries. It then sends
