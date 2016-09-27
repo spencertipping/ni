@@ -50,6 +50,16 @@ by default ni seeds the RNG with 42 every time (though you can change this by
 exporting `NI_SEED`). ni also uses an optimized Poisson process to sample rows,
 which minimizes calls to `rand()`.
 
+**NOTE:** If you're sampling from a large dataset, you will often get some
+speedup by parallelizing the row operator. For example:
+
+```sh
+$ ni /path/to/large/data rx100          # ~300MB/s
+$ ni /path/to/large/data S8rx100        # ~800MB/s
+```
+
+See [scale.md](scale.md) for details about horizontal scaling.
+
 ## Regex matching
 ```bash
 $ ni n10000r/[42]000$/

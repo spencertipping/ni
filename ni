@@ -1195,7 +1195,7 @@ defoperator encode_resource_stream => q{
   }
 };
 
-defshort '/>R', pmap q{encode_resource_stream_op}, pnone;
+defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
@@ -7175,7 +7175,7 @@ Operator | Status | Example      | Description
 `%`      | T      | `%[\>f K]`   | Duplicate stream, interleaving fork output
 `=`      | T      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | T      | `\>file`     | Sinks stream into resource, emits resource name
-`\>R`    | M      | `\>R`        | Converts a stream of resource names into a packed resource stream
+`\>\'R`  | M      | `\>\'R`      | Converts a stream of resource names into a packed resource stream
 `\<`     | T      | `\<`         | Opposite of `\>`
 `.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
@@ -7690,7 +7690,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-243 doc/row.md
+253 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -7742,6 +7742,16 @@ It's worth noting that uniform sampling, though random, is also deterministic;
 by default ni seeds the RNG with 42 every time (though you can change this by
 exporting `NI_SEED`). ni also uses an optimized Poisson process to sample rows,
 which minimizes calls to `rand()`.
+
+**NOTE:** If you're sampling from a large dataset, you will often get some
+speedup by parallelizing the row operator. For example:
+
+```sh
+$ ni /path/to/large/data rx100          # ~300MB/s
+$ ni /path/to/large/data S8rx100        # ~800MB/s
+```
+
+See [scale.md](scale.md) for details about horizontal scaling.
 
 ## Regex matching
 ```bash
@@ -8140,7 +8150,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-367 doc/stream.md
+385 doc/stream.md
 # Stream operations
 `bash` and `ni` are both pipeline constructors: they string processes together
 by connecting one's stdin to another's stdout. For example, here's word count
@@ -8265,6 +8275,24 @@ can't parse something, though.
 
 See [row.md](row.md) (`ni //help/row`) for details about row-reordering
 operators like sorting.
+
+### Important note about `e`
+`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
+when you use shell metacharacters:
+
+```bash
+$ mkdir test-dir
+$ touch test-dir/{a,b,c}
+$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
+test-dir/a
+test-dir/b
+test-dir/c
+$ ni e[ls test-dir/*] 2>/dev/null       # e[] uses exec() directly; no wildcard expansion
+$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
+test-dir/a
+test-dir/b
+test-dir/c
+```
 
 ## Stream combiners
 ni has four operators that combine streams:

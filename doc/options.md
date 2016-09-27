@@ -23,7 +23,7 @@ Operator | Status | Example      | Description
 `%`      | T      | `%[\>f K]`   | Duplicate stream, interleaving fork output
 `=`      | T      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | T      | `\>file`     | Sinks stream into resource, emits resource name
-`\>R`    | M      | `\>R`        | Converts a stream of resource names into a packed resource stream
+`\>\'R`  | M      | `\>\'R`      | Converts a stream of resource names into a packed resource stream
 `\<`     | T      | `\<`         | Opposite of `\>`
 `.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |

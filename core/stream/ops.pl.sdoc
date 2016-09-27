@@ -212,7 +212,7 @@ defoperator encode_resource_stream => q{
   }
 };
 
-defshort '/>R', pmap q{encode_resource_stream_op}, pnone;
+defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
 Compression and decoding.
 Sometimes you want to emit compressed data, which you can do with the `Z`
