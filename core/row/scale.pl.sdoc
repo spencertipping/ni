@@ -58,7 +58,7 @@ defoperator row_fixed_scale => q{
   for (1..$n) {
     my ($i, $o) = sioproc {
       setpriority 0, 0, $n >> 2;
-      &$ni::main_operator(@$f);
+      &$ni::main_operator(flatten_operators $f);
       exit;
     };
     push @wi, $i;

@@ -980,7 +980,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-234 core/stream/ops.pl.sdoc
+236 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1018,6 +1018,7 @@ closing its input stream and having the user use `q` or similar.
 
 $SIG{TERM} = sub {
   close $pager_fh if $pager_fh;
+  print STDERR "ni: terminating child processes...\n";
   ni::procfh::kill_children 'TERM';
   sleep 1;
   ni::procfh::kill_children 'KILL';
@@ -1029,6 +1030,7 @@ $SIG{INT} = sub {
     close $pager_fh;
     $pager_fh->await;
   }
+  print STDERR "ni: terminating child processes...\n";
   ni::procfh::kill_children 'INT';
   sleep 1;
   ni::procfh::kill_children 'TERM';
@@ -3133,7 +3135,7 @@ defoperator row_fixed_scale => q{
   for (1..$n) {
     my ($i, $o) = sioproc {
       setpriority 0, 0, $n >> 2;
-      &$ni::main_operator(@$f);
+      &$ni::main_operator(flatten_operators $f);
       exit;
     };
     push @wi, $i;
@@ -5275,7 +5277,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-93 core/jsplot/interface.waul.sdoc
+101 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -5289,6 +5291,7 @@ $(caterwaul(':all')(function ($) {
         tr       = $('#transform'), lw = 0, mx = null, ms = false,
         status   = $('#status'),    lh = 0, my = null, mc = false,
         preview  = $('#preview'),
+        explain  = $('#explain'),
         controls = $('#controls').modus('proxy', '.camera') /~addClass/ 'camera-mode noshift',
         w        = $(window).modus('composite', {ni: tr, v: controls}),
 
@@ -5299,7 +5302,8 @@ $(caterwaul(':all')(function ($) {
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
         resize_other_stuff()   = tr      /~css/ {height: 0} /~css/ {height: tr[0].scrollHeight - 2, width: lw-2}
-                          -then- preview /~css/ {top: tr.height() + 3, bottom: 1},
+                          -then- preview /~css/ {top: tr.height() + 3, bottom: 1}
+                          -then- explain /~css/ {top: tr.height() + 3, left: preview.width() + 12},
         handle_resizes()       = resize_canvases() -when- size_changed() -then- resize_other_stuff(),
 
         update_status(t)       = status.text(t).activate(),
@@ -5326,11 +5330,17 @@ $(caterwaul(':all')(function ($) {
                                                                              sy = s ? 0        : dy]
                                              : 'cd' |a*b -given[a, b] |-view_change| Math.exp(dy * -0.01),
 
-        check_syntax(v)        = $.get('/parse/#{v /!encodeURIComponent}', "console.log(_)".qf),
+        check_syntax(v)        = $.getJSON('/parse/#{v /!encodeURIComponent}', update_explain)
+                         -where [update_explain(r)  = explain.empty() /~append/ explanation_for(r.ops)
+                                                                      /~prepend/ errors_for(r.unparsed),
+                                 explanation_for(x) = jquery[pre /text(s)] -where [s = x *JSON.stringify /seq -re- it.join("\n")],
+                                 errors_for(u)      = u.length ? jquery[div.errors > code /text(u /~join/ ' ')] : []],
 
         setup_event_handlers() = tr /~keydown/ given.e [e.which === 13 && !e.shiftKey ? w.val().ni /!visualize -then- false : true]
                                       /~keyup/ given.e [$(this).change() -then- w.val().ni /!check_syntax]
-                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey]
+                                      /~focus/ given.e [explain.show()]
+                                       /~blur/ given.e [explain.hide()]
+                          -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, true]
                                             /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
                           -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen(),
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
@@ -5349,7 +5359,7 @@ $(caterwaul(':all')(function ($) {
         reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
         data_state           = null -se- reset_data_state(),
 
-        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.axes[0].end() / 100]
+        data_was_revised(ls) = update_screen() /when[data_state.axes.length && +new Date - data_state.last_render > data_state.axes[0].end() / 100]
                       -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
                              /!update_status
                       -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n") + "\n")],
@@ -5369,7 +5379,7 @@ $(caterwaul(':all')(function ($) {
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
-61 core/jsplot/css
+65 core/jsplot/css
 body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monospace; overflow: hidden}
 
 #screen, #overlay {position:absolute}
@@ -5388,6 +5398,10 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 #transform:focus,
 #transform:hover {background:rgba(0,0,0,0.75)}
 #transform:focus {border-bottom:solid 1px #f60}
+
+#explain {z-index:9; position:absolute; padding:4px}
+#explain > .errors {color:#f20}
+#explain > .errors::before {color:#f20; content:'error> '}
 
 #preview {z-index:9; color:transparent; max-width:1px; overflow-x:auto; position:absolute; left:0; padding-right:12px; overflow-y:show; margin:0;
           background:rgba(0,0,0,0.75); cursor:default; font-family:monospace}
@@ -5431,7 +5445,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 #controls.object-mode.shift .vector.object-scale       {border-left:solid 8px #f60}
 #controls.object-mode.shift .vector.camera-rotation    {border-left:solid 8px #f60}
 #controls.object-mode.shift .distance                  {border-left:solid 8px rgba(96,96,96,0.5)}
-21 core/jsplot/html
+22 core/jsplot/html
 <!doctype html>
 <html>
 <head>
@@ -5441,6 +5455,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </head>
 <body>
 <textarea spellcheck='false' id='transform'></textarea>
+<div id='explain'></div>
 <pre id='preview' class='autohide'></pre>
 <canvas id='screen'></canvas>
 <canvas id='overlay'></canvas>
@@ -8063,30 +8078,32 @@ $ ni mult-table m'r ru {|l| l.ai%4 == 0}.g'
 28	35	42	49
 56	63	70
 ```
-23 doc/scale.md
+25 doc/scale.md
 # Pipeline scaling
 The scaling operator `S` lets you work around bottlenecks by adding horizontal
 scale to a section of your pipeline. For example, suppose we have this:
 
 ```bash
-$ ni nE6 p'sin(a/100)' =\>slow-sine-table e[wc -l]
-1000000
+$ ni nE6 p'sin(a/100)' rp'a >= 0' =\>slow-sine-table e[wc -l]
+500141
 ```
 
 On a multicore machine, this will run more slowly than it should because
-`p` processes data serially. We can parallelize it across multiple processes
-like this:
+`p` processes data serially. We can parallelize it across four processes like
+this:
 
 ```bash
-$ ni nE6 S4[p'sin(a/100)'] =\>parallel-sine-table e[wc -l]
-1000000
-$ echo $(($(wc -c < parallel-sine-table) - $(wc -c < slow-sine-table)))
-0
+$ ni nE6 S4[p'sin(a/100)' rp'a >= 0'] =\>parallel-sine-table e[wc -l]
+500141
 $ diff <(ni slow-sine-table o) <(ni parallel-sine-table o) | head -n10
 ```
 
 `S` works by reading blocks of input and finding line boundaries. It then sends
 groups of lines to the child processes as their input fds become available.
+
+Scaling makes no guarantees about the ordering of the output rows, nor where
+exactly the input will be split. In practice the input splits tend to be large
+for performance reasons.
 35 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
