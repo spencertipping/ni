@@ -6,7 +6,7 @@ use POSIX ();
 
 our $pager_fh;
 
-sub problematic_exit($) {$_[0] != 0 && $_[0] != 13}
+sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
 $ni::main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
@@ -33,7 +33,7 @@ $ni::main_operator = sub {
   }
 
   my $exit_status = 0;
-  problematic_exit $_->await and $exit_status = 1 for @children;
+  child_status_ok $_->await or $exit_status = 1 for @children;
   $exit_status;
 };
 

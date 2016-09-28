@@ -1043,7 +1043,7 @@ use POSIX ();
 
 our $pager_fh;
 
-sub problematic_exit($) {$_[0] != 0 && $_[0] != 13}
+sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
 $ni::main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
@@ -1070,7 +1070,7 @@ $ni::main_operator = sub {
   }
 
   my $exit_status = 0;
-  problematic_exit $_->await and $exit_status = 1 for @children;
+  child_status_ok $_->await or $exit_status = 1 for @children;
   $exit_status;
 };
 
@@ -3164,7 +3164,7 @@ defshort '/r',
     pmap(q{row_every_op  $_},            pn 1, prx 'x',  number),
     pmap(q{row_match_op  $_},            pn 1, prx '/',  regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
-    pmap(q{head_op '-n', $_},            integer),
+    pmap(q{head_op '-n', 0 + $_},        integer),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
 
 Sorting.
