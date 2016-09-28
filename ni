@@ -2526,7 +2526,7 @@ if (__PACKAGE__ eq 'ni::pl') {
   *je = \&json_encode;
   *jd = \&json_decode;
 }
-50 core/json/extract.pl.sdoc
+51 core/json/extract.pl.sdoc
 Targeted extraction.
 ni gives you ways to decode JSON, but you aren't likely to have data stored as
 JSON objects in the middle of data pipelines. It's more of an archival format,
@@ -2570,7 +2570,8 @@ sub json_extractor($) {
 }
 
 defoperator destructure => q{
-  ni::eval gen(q{eval {binmode STDOUT, ":encoding(utf-8)"};
+  ni::eval gen(q{no warnings 'uninitialized';
+                 eval {binmode STDOUT, ":encoding(utf-8)"};
                  print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
                  while (<STDIN>) {print join("\t", %e), "\n"}})
             ->(e => json_extractor $_[0]);
@@ -3116,7 +3117,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-122 core/row/row.pl.sdoc
+123 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3139,6 +3140,7 @@ defoperator row_sample => q{
 };
 
 defoperator row_cols_defined => q{
+  no warnings 'uninitialized';
   my ($floor, @cs) = @_;
   my $limit = $floor + 1;
   my $line;

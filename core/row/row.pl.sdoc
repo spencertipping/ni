@@ -20,6 +20,7 @@ defoperator row_sample => q{
 };
 
 defoperator row_cols_defined => q{
+  no warnings 'uninitialized';
   my ($floor, @cs) = @_;
   my $limit = $floor + 1;
   my $line;
