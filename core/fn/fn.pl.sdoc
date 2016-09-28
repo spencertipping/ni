@@ -23,14 +23,6 @@ type-tagging the results:
 | defn ['/manpages-matching', condition => plcode],
        qw[e[find /usr/share/man -type f] rp$condition];
 
-TODO: defshort() should define a named parser that manages the arguments for
-each command. Then it becomes possible to refer not only to individual
-elements, but also to proxy for specific commands. There's also no sense in
-having generated 'plambda' etc; these should be named parse elements. Having a
-broad namespace should make grammar introspection much more useful.
-
-Also, let's get rid of the 'p' prefix for parsers and pretend it didn't happen.
-
 c
 BEGIN {
   defparser fn_expander => '$$',
@@ -60,5 +52,5 @@ sub defn($$) {
   }
 
   defshort $short_spec,
-    pfn_expander [@arg_parsers], {%arg_positions}, $expansion;
+    fn_expander [@arg_parsers], {%arg_positions}, $expansion;
 }

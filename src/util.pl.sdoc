@@ -32,7 +32,7 @@ ni can include .pm files in its resource stream, which contain Perl code but
 aren't evaluated by default. This function is used to eval them into the
 current runtime.
 
-sub load($) {ni::eval $self{$_[0]}, $_[0]}
+sub load($) {ni::eval $ni::self{$_[0]}, $_[0]}
 
 Shell quoting/unquoting.
 Useful for two cases. One is when you have a structured list and want a shell

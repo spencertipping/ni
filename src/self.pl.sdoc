@@ -2,6 +2,8 @@ Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
+our %self;
+
 sub lib_entries($$) {
   local $_;
   my ($name, $text) = @_;

@@ -8,7 +8,7 @@ sub defoperator($$) {
   die "ni: cannot redefine operator $name" if exists $operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
-  ni::eval "sub ${name}_run(@) {\$operators{\$name}->(\@_)}",
+  ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
 
@@ -18,10 +18,11 @@ sub operate {
   $operators{$name}->(@args);
 }
 
+sub flatten_operators($);
 sub flatten_operators($) {
   my ($name) = @{$_[0]};
   return $_[0] unless ref $name;
-  map flatten_operators($_), @{$_[0]};
+  map flatten_operators $_, @{$_[0]};
 }
 
 Ni operators.

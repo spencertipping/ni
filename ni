@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 eval($ni::self{ni} = <<'_');
+use strict;
+use warnings;
 sub ni::boot_header
 { join "\n", '#!/usr/bin/env perl',
              "\$ni::self{license} = <<'_';\n$ni::self{license}_",
@@ -39,12 +41,13 @@ sub ni::eval($;$)
   @r }
 
 sub ni::set
-{ chomp($ni::self{$_[0]} = $_[1]);
-  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc$/;
-  ni::eval $_[1], $_[0]                           if $_[0] =~ /\.pl$/ }
+{ my $k = $_[0];
+  chomp($ni::self{$k} = $_[1]);
+  ni::set(substr($k, 0, -5), ni::unsdoc $_[1]) if $k =~ /\.sdoc$/;
+  ni::eval $_[1], $k                           if $k =~ /\.pl$/ }
 
-ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
-while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
+ni::set $2, join '', map $_ = <DATA>, 1..$1
+while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
 $ni::data = \*DATA;
 ni::eval 'exit main @ARGV', 'main';
 _
@@ -134,7 +137,7 @@ ni can include .pm files in its resource stream, which contain Perl code but
 aren't evaluated by default. This function is used to eval them into the
 current runtime.
 
-sub load($) {ni::eval $self{$_[0]}, $_[0]}
+sub load($) {ni::eval $ni::self{$_[0]}, $_[0]}
 
 Shell quoting/unquoting.
 Useful for two cases. One is when you have a structured list and want a shell
@@ -187,18 +190,19 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-31 dev.pl.sdoc
+32 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
 
+sub dev_inspect($;\%);
 sub dev_inspect($;\%) {
   local $_;
   my ($x, $refs) = (@_, {});
   return "<circular $x>" if exists $$refs{$x};
 
   $$refs{$x} = $x;
-  my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, $refs), @$x) . ']'
-        : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, $refs), keys %$x) . '}'
+  my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, %$refs), @$x) . ']'
+        : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, %$refs), keys %$x) . '}'
         : "" . $x;
   delete $$refs{$x};
   $r;
@@ -225,8 +229,6 @@ List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
-use strict 'refs';
-
 our %parsers;
 sub parser($) {
   die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
@@ -246,7 +248,7 @@ sub defparseralias($$) {
   (my $code_name = $name) =~ s/\W+/_/g;
   die "ni: defparseralias cannot redefine $name" if exists $parsers{$name};
   $parsers{$name} = $alias;
-  eval "sub $code_name() {['$name']}";
+  eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
 sub parse {
@@ -280,8 +282,9 @@ BEGIN {
       @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
   defparser 'pdspr', '\%',
-    q{my ($self, $x, @xs, $k, @ys, %ls) = @_;
+    q{my ($self, $x, @xs, $k, @ys, %ls, $c) = @_;
       my (undef, $ps) = @$self;
+      return () unless defined $x;
       ++$ls{length $_} for keys %$ps;
       for my $l (sort {$b <=> $a} keys %ls) {
         return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
@@ -339,10 +342,11 @@ c
 BEGIN {
   defparser 'prx', '$',
     q{my ($self, $x, @xs) = @_;
-      $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+      defined $x && $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
   defparser 'pnx', '$',
-    q{my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+    q{my ($self, $x, @xs) = @_;
+      defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
@@ -412,7 +416,7 @@ use constant filename => palt prx 'file:(.+)',
                               pcond q{-e}, prx '[^][]+';
 
 use constant nefilename => palt filename, prx '[^][]+';
-72 cli.pl.sdoc
+74 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -447,13 +451,13 @@ sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
-  $parsers{"short/$context/$dsp"} = $_[1];
+  defparseralias "short/$context/$dsp" => $_[1];
   $short_refs{$context}{$dsp} = ["short/$context/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
-  $parsers{"long/$context/$name"} = $_[1];
+  defparseralias "long/$context/$name" => $_[1];
   unshift @{$long_names{$context}}, $name;
   unshift @{$long_refs{$context}}, ["long/$context/$name"];
 }
@@ -461,16 +465,17 @@ sub deflong($$) {
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
-  delete $parsers{"short/$context/$dsp"};
+  delete $ni::parsers{"short/$context/$dsp"};
 }
 
-sub cli(@) {my ($r) = parse $parsers{'/cli'}, @_; $r}
+sub cli(@) {my ($r) = parse parser '/cli', @_; $r}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their
 documentation.
 
 sub defalt($$@) {
+  no strict 'refs';
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   @{$vname} = @entries;
@@ -479,13 +484,14 @@ sub defalt($$@) {
 }
 
 sub defdsp($$%) {
+  no strict 'refs';
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   %{$vname} = %entries;
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }
-38 op.pl.sdoc
+39 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -496,7 +502,7 @@ sub defoperator($$) {
   die "ni: cannot redefine operator $name" if exists $operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
-  ni::eval "sub ${name}_run(@) {\$operators{\$name}->(\@_)}",
+  ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
 
@@ -506,10 +512,11 @@ sub operate {
   $operators{$name}->(@args);
 }
 
+sub flatten_operators($);
 sub flatten_operators($) {
   my ($name) = @{$_[0]};
   return $_[0] unless ref $name;
-  map flatten_operators($_), @{$_[0]};
+  map flatten_operators $_, @{$_[0]};
 }
 
 Ni operators.
@@ -524,10 +531,12 @@ sub defnioperator($$) {
   }
   *{"${name}_op"} = sub() {$ops};
 }
-52 self.pl.sdoc
+54 self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
+
+our %self;
 
 sub lib_entries($$) {
   local $_;
@@ -655,7 +664,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-92 core/stream/procfh.pl.sdoc
+90 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -663,8 +672,6 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
-use strict;
-use warnings;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -748,7 +755,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-245 core/stream/pipeline.pl.sdoc
+250 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -756,6 +763,8 @@ PID is returned.
 
 I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
+
+no warnings 'io';
 
 use Errno qw/EINTR/;
 use POSIX qw/dup2/;
@@ -783,7 +792,7 @@ handle this case properly.
 sub saferead($$$;$) {
   my $n;
   do {
-    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3]);
+    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -966,11 +975,14 @@ If you do this, ni's standard input will come from a continuation of __DATA__.
 
 defclispecial '--internal/operate', q{
   my ($k) = @_;
-  $ENV{sr $_, qr|^transient/env/|, ''} ||= $self{$_}
-    for grep m|^transient/env/|, keys %self;
+  $ENV{sr $_, qr|^transient/env/|, ''} ||= $ni::self{$_}
+    for grep m|^transient/env/|, keys %ni::self;
 
-  my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
-  print $fh $_ while read $data, $_, 8192;
+  die "ni --internal/operate: nonexistent op key: $k"
+    unless exists $ni::self{$k};
+
+  my $fh = siproc {&$ni::main_operator(flatten_operators json_decode($ni::self{$k}))};
+  print $fh $_ while read $ni::data, $_, 8192;
   close $fh;
   $fh->await;
 };
@@ -1001,7 +1013,7 @@ included are numeric generators, shell commands, etc.
 
 our $pager_fh;
 
-$main_operator = sub {
+$ni::main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
   # buffer so no child process gets bogus data.
   move_fd 0, 3;
@@ -1225,8 +1237,8 @@ by adding a suffix. You can decode a stream in any of these formats using `ZD`
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
 c
+BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
-  defparseralias compressor_name => prx '[gxo4b]';
   defparseralias compressor_spec =>
     pmap q{my ($c, $level) = @$_;
            $c = $compressors{$c || 'g'};
@@ -1242,24 +1254,27 @@ defshort '/zd', pk decode_op();
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-68 core/meta/meta.pl.sdoc
+71 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
 
 defoperator meta_image => q{sio; print image, "\n"};
-defoperator meta_keys  => q{sio; print "$_\n" for sort keys %self};
-defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @self{@ks}};
+defoperator meta_keys  => q{sio; print "$_\n" for sort keys %ni::self};
+defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
 
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
-  sio; print $self{"doc/$topic.md"} . "\n";
+  sio; print $ni::self{"doc/$topic.md"}, "\n";
 };
 
 defshort '///',        pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
+
+defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
+defshort '///eval/', pmap q{meta_eval_number_op $_}, integer;
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
@@ -1271,9 +1286,9 @@ defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
 
 defoperator meta_options => q{
   sio;
-  for my $c (sort keys %contexts) {
-    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $long_names{$c}[$_], abbrev dev_inspect_nonl $long_refs{$c}[$_],  40 for       0..$#{$long_refs{$c}};
-    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                  abbrev dev_inspect_nonl $short_refs{$c}{$_}, 40 for sort keys %{$short_refs{$c}};
+  for my $c (sort keys %ni::contexts) {
+    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $ni::long_names{$c}[$_], abbrev dev_inspect_nonl $ni::long_refs{$c}[$_],  40 for       0..$#{$ni::long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                      abbrev dev_inspect_nonl $ni::short_refs{$c}{$_}, 40 for sort keys %{$ni::short_refs{$c}};
   }
 };
 
@@ -1282,13 +1297,13 @@ defshort '///options', pmap q{meta_options_op}, pnone;
 Inspection.
 This lets you get details about specific operators or parsing contexts.
 
-defoperator meta_op  => q{sio; print "sub {$operators{$_[0]}}\n"};
-defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
+defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
+defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
 defshort '///op/', pmap q{meta_op_op $_}, prc '.+';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
 
 defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
-defoperator meta_parsers => q{sio; print "$_\t" . json_encode($parsers{$_}) . "\n" for sort keys %parsers};
+defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers};
 defshort '///parser/', pmap q{meta_parser_op $_}, prc '.+';
 defshort '///parsers', pmap q{meta_parsers_op}, pnone;
 
@@ -1323,8 +1338,8 @@ use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222
 defoperator meta_short_availability => q{
   sio;
   print "--------" . qwerty_prefixes . "\n";
-  for my $c (sort keys %contexts) {
-    my $s = $short_refs{$c};
+  for my $c (sort keys %ni::contexts) {
+    my $s = $ni::short_refs{$c};
     my %multi;
     ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
 
@@ -2410,7 +2425,7 @@ sub gen($) {
 2 core/json/lib
 json.pl.sdoc
 extract.pl.sdoc
-75 core/json/json.pl.sdoc
+76 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
 installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -2473,6 +2488,7 @@ sub json_escape($) {
   "\"$x\"";
 }
 
+sub json_encode($);
 sub json_encode($) {
   local $_;
   my ($v) = @_;
@@ -2594,8 +2610,8 @@ defoperator monitor => q{
   }
 };
 
-my $original_main_operator = $main_operator;
-$main_operator = sub {
+my $original_main_operator = $ni::main_operator;
+$ni::main_operator = sub {
   my $n_ops = @_;
   return &$original_main_operator(@_)
     if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};
@@ -2604,7 +2620,7 @@ $main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-129 core/uri/uri.pl.sdoc
+136 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2619,24 +2635,27 @@ of them:
 
 c
 BEGIN {
+  no strict 'refs';
 
-sub hadoop_name();
+  deflong '/resource', defdsp 'resourcealt', 'dispatch table for URI prefixes';
 
-deflong '/resource',
-  defdsp 'resourcealt', 'dispatch table for URI prefixes';
-
-for my $op (qw/read write exists tmp nuke/) {
-  %{"ni::resource_$op"} = ();
-  *{"ni::resource_$op"} = sub ($) {
-    my ($r) = @_;
-    my ($scheme) = $r =~ /^([^:]+):/;
-    my $f = ${"ni::resource_$op"}{$scheme} or
-      die "ni: $scheme resources don't support the $op operation";
-    &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
-  };
+  for my $op (qw/read write exists tmp nuke/) {
+    %{"ni::resource_$op"} = ();
+    *{"ni::resource_$op"} = sub ($) {
+      my ($r) = @_;
+      my ($scheme) = $r =~ /^([^:]+):/;
+      my $f = ${"ni::resource_$op"}{$scheme} or
+        die "ni: $scheme resources don't support the $op operation";
+      &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+    };
+  }
 }
 
-}
+our %resource_read;
+our %resource_write;
+our %resource_exists;
+our %resource_tmp;
+our %resource_nuke;
 
 defoperator resource_quote => q{sio; print "$_[0]\n"};
 defoperator resource_append => q{
@@ -2675,20 +2694,23 @@ my $original_glob_expand = \&glob_expand;
 
 sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 
-*glob_expand = sub($) {
-  return $_[0] if is_uri $_[0] or -e $_[0];
-  glob $_[0];
-};
+{
+  no warnings 'redefine';
+  *glob_expand = sub($) {
+    return $_[0] if is_uri $_[0] or -e $_[0];
+    glob $_[0];
+  };
 
-*srfile = sub($) {
-  return resource_read $_[0] if is_uri $_[0];
-  &$original_srfile($_[0]);
-};
+  *srfile = sub($) {
+    return resource_read $_[0] if is_uri $_[0];
+    &$original_srfile($_[0]);
+  };
 
-*swfile = sub($) {
-  return resource_write $_[0] if is_uri $_[0];
-  &$original_swfile($_[0]);
-};
+  *swfile = sub($) {
+    return resource_write $_[0] if is_uri $_[0];
+    &$original_swfile($_[0]);
+  };
+}
 
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
@@ -2706,6 +2728,7 @@ defresource 'sftp',
   read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
               soproc {exec 'ssh', $host, 'cat', $path}};
 
+sub hadoop_name();
 defresource 'hdfs',
   read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
   write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
@@ -3103,7 +3126,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-186 core/row/scale.pl.sdoc
+184 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3147,8 +3170,6 @@ worker and stdin/stdout blocking; this increases the likelihood that we'll
 saturate source and/or sink processes.
 
 defoperator row_fixed_scale => q{
-  use strict;
-  use warnings;
   use constant buf_size => 32768;
 
   sub new_ref() {\(my $x = '')}
@@ -3882,7 +3903,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
 
 sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
-sub perl_prefix() {join "\n", @self{@perl_prefix_keys}}
+sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
   eval {move_fd 0, 3};
@@ -4059,7 +4080,7 @@ use constant ruby_mapgen => gen q{
   end
 };
 
-use constant ruby_prefix => join "\n", @self{qw| core/rb/prefix.rb |};
+use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};
 
 sub stdin_to_ruby($) {
   move_fd 0, 3;
@@ -4279,7 +4300,7 @@ preprocesses files with an sdoc extension (though you're not required to use
 it; normal files are passed straight through), and file paths become keys in
 the %self hash after having the src/ prefix replaced with core/.
 
-sub lisp_prefix() {join "\n", @self{qw| core/lisp/prefix.lisp |}}
+sub lisp_prefix() {join "\n", @ni::self{qw| core/lisp/prefix.lisp |}}
 
 Finally we define the toplevel operator. 'root' is the operator context, 'L' is
 the operator name, and pmap {...} mrc '...' is the parsing expression that
@@ -4552,7 +4573,7 @@ defperlprefix 'core/binary/bytewriter.pm';
 our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
 
 sub binary_perl_prefix() {join "\n", perl_prefix,
-                                     @self{@binary_perl_prefix_keys}}
+                                     @ni::self{@binary_perl_prefix_keys}}
 
 sub defbinaryperlprefix($) {push @binary_perl_prefix_keys, $_[0]}
 
@@ -5516,23 +5537,23 @@ JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
 JSPlot driver buffers the data to disk to make it repeatable.
 
-use constant jsplot_gen => gen $self{'core/jsplot/html'};
+use constant jsplot_gen => gen $ni::self{'core/jsplot/html'};
 
 use constant jsplot_html =>
-  jsplot_gen->(css => $self{'core/jsplot/css'},
-               js  => join '', @self{qw| core/jsplot/jquery.min.js
-                                         core/jsplot/jquery.mousewheel.min.js
-                                         core/caterwaul/caterwaul.min.js
-                                         core/caterwaul/caterwaul.std.min.js
-                                         core/caterwaul/caterwaul.ui.min.js
-                                         core/jsplot/modus.js
-                                         core/jsplot/vector.js
-                                         core/jsplot/axis.waul
-                                         core/jsplot/matrix.waul
-                                         core/jsplot/socket.waul
-                                         core/jsplot/render.waul
-                                         core/jsplot/camera.waul
-                                         core/jsplot/interface.waul |});
+  jsplot_gen->(css => $ni::self{'core/jsplot/css'},
+               js  => join '', @ni::self{qw| core/jsplot/jquery.min.js
+                                             core/jsplot/jquery.mousewheel.min.js
+                                             core/caterwaul/caterwaul.min.js
+                                             core/caterwaul/caterwaul.std.min.js
+                                             core/caterwaul/caterwaul.ui.min.js
+                                             core/jsplot/modus.js
+                                             core/jsplot/vector.js
+                                             core/jsplot/axis.waul
+                                             core/jsplot/matrix.waul
+                                             core/jsplot/socket.waul
+                                             core/jsplot/render.waul
+                                             core/jsplot/camera.waul
+                                             core/jsplot/interface.waul |});
 
 Parsing.
 This entry point provides a realtime CLI parse for the UI.

@@ -9,8 +9,8 @@ use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222
 defoperator meta_short_availability => q{
   sio;
   print "--------" . qwerty_prefixes . "\n";
-  for my $c (sort keys %contexts) {
-    my $s = $short_refs{$c};
+  for my $c (sort keys %ni::contexts) {
+    my $s = $ni::short_refs{$c};
     my %multi;
     ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
 

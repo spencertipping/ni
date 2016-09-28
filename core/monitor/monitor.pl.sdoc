@@ -52,8 +52,8 @@ defoperator monitor => q{
   }
 };
 
-my $original_main_operator = $main_operator;
-$main_operator = sub {
+my $original_main_operator = $ni::main_operator;
+$ni::main_operator = sub {
   my $n_ops = @_;
   return &$original_main_operator(@_)
     if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};

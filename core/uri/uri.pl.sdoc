@@ -12,24 +12,27 @@ of them:
 
 c
 BEGIN {
+  no strict 'refs';
 
-sub hadoop_name();
+  deflong '/resource', defdsp 'resourcealt', 'dispatch table for URI prefixes';
 
-deflong '/resource',
-  defdsp 'resourcealt', 'dispatch table for URI prefixes';
-
-for my $op (qw/read write exists tmp nuke/) {
-  %{"ni::resource_$op"} = ();
-  *{"ni::resource_$op"} = sub ($) {
-    my ($r) = @_;
-    my ($scheme) = $r =~ /^([^:]+):/;
-    my $f = ${"ni::resource_$op"}{$scheme} or
-      die "ni: $scheme resources don't support the $op operation";
-    &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
-  };
+  for my $op (qw/read write exists tmp nuke/) {
+    %{"ni::resource_$op"} = ();
+    *{"ni::resource_$op"} = sub ($) {
+      my ($r) = @_;
+      my ($scheme) = $r =~ /^([^:]+):/;
+      my $f = ${"ni::resource_$op"}{$scheme} or
+        die "ni: $scheme resources don't support the $op operation";
+      &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+    };
+  }
 }
 
-}
+our %resource_read;
+our %resource_write;
+our %resource_exists;
+our %resource_tmp;
+our %resource_nuke;
 
 defoperator resource_quote => q{sio; print "$_[0]\n"};
 defoperator resource_append => q{
@@ -68,20 +71,23 @@ my $original_glob_expand = \&glob_expand;
 
 sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 
-*glob_expand = sub($) {
-  return $_[0] if is_uri $_[0] or -e $_[0];
-  glob $_[0];
-};
+{
+  no warnings 'redefine';
+  *glob_expand = sub($) {
+    return $_[0] if is_uri $_[0] or -e $_[0];
+    glob $_[0];
+  };
 
-*srfile = sub($) {
-  return resource_read $_[0] if is_uri $_[0];
-  &$original_srfile($_[0]);
-};
+  *srfile = sub($) {
+    return resource_read $_[0] if is_uri $_[0];
+    &$original_srfile($_[0]);
+  };
 
-*swfile = sub($) {
-  return resource_write $_[0] if is_uri $_[0];
-  &$original_swfile($_[0]);
-};
+  *swfile = sub($) {
+    return resource_write $_[0] if is_uri $_[0];
+    &$original_swfile($_[0]);
+  };
+}
 
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
@@ -99,6 +105,7 @@ defresource 'sftp',
   read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
               soproc {exec 'ssh', $host, 'cat', $path}};
 
+sub hadoop_name();
 defresource 'hdfs',
   read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
   write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},

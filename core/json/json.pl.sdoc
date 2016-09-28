@@ -60,6 +60,7 @@ sub json_escape($) {
   "\"$x\"";
 }
 
+sub json_encode($);
 sub json_encode($) {
   local $_;
   my ($v) = @_;

@@ -41,8 +41,6 @@ worker and stdin/stdout blocking; this increases the likelihood that we'll
 saturate source and/or sink processes.
 
 defoperator row_fixed_scale => q{
-  use strict;
-  use warnings;
   use constant buf_size => 32768;
 
   sub new_ref() {\(my $x = '')}

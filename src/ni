@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 eval($ni::self{ni} = <<'_');
+use strict;
+use warnings;
 sub ni::boot_header
 { join "\n", '#!/usr/bin/env perl',
              "\$ni::self{license} = <<'_';\n$ni::self{license}_",
@@ -39,12 +41,13 @@ sub ni::eval($;$)
   @r }
 
 sub ni::set
-{ chomp($ni::self{$_[0]} = $_[1]);
-  ni::set(substr($_[0], 0, -5), ni::unsdoc $_[1]) if $_[0] =~ /\.sdoc$/;
-  ni::eval $_[1], $_[0]                           if $_[0] =~ /\.pl$/ }
+{ my $k = $_[0];
+  chomp($ni::self{$k} = $_[1]);
+  ni::set(substr($k, 0, -5), ni::unsdoc $_[1]) if $k =~ /\.sdoc$/;
+  ni::eval $_[1], $k                           if $k =~ /\.pl$/ }
 
-ni::set "$2$3", join '', map $_ = <DATA>, 1..$1
-while <DATA> =~ /^\s*(\d+)\s+(.*?)(\.sdoc)?$/;
+ni::set $2, join '', map $_ = <DATA>, 1..$1
+while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
 $ni::data = \*DATA;
 ni::eval 'exit main @ARGV', 'main';
 _

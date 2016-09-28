@@ -6,6 +6,8 @@ PID is returned.
 I define some system functions with a `c` prefix: these are checked system
 calls that will die with a helpful message if anything fails.
 
+no warnings 'io';
+
 use Errno qw/EINTR/;
 use POSIX qw/dup2/;
 
@@ -32,7 +34,7 @@ handle this case properly.
 sub saferead($$$;$) {
   my $n;
   do {
-    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3]);
+    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -215,11 +217,14 @@ If you do this, ni's standard input will come from a continuation of __DATA__.
 
 defclispecial '--internal/operate', q{
   my ($k) = @_;
-  $ENV{sr $_, qr|^transient/env/|, ''} ||= $self{$_}
-    for grep m|^transient/env/|, keys %self;
+  $ENV{sr $_, qr|^transient/env/|, ''} ||= $ni::self{$_}
+    for grep m|^transient/env/|, keys %ni::self;
 
-  my $fh = siproc {&$main_operator(flatten_operators json_decode($self{$k}))};
-  print $fh $_ while read $data, $_, 8192;
+  die "ni --internal/operate: nonexistent op key: $k"
+    unless exists $ni::self{$k};
+
+  my $fh = siproc {&$ni::main_operator(flatten_operators json_decode($ni::self{$k}))};
+  print $fh $_ while read $ni::data, $_, 8192;
   close $fh;
   $fh->await;
 };

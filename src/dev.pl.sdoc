@@ -1,14 +1,15 @@
 Development functions.
 Utilities helpful for debugging and developing ni.
 
+sub dev_inspect($;\%);
 sub dev_inspect($;\%) {
   local $_;
   my ($x, $refs) = (@_, {});
   return "<circular $x>" if exists $$refs{$x};
 
   $$refs{$x} = $x;
-  my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, $refs), @$x) . ']'
-        : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, $refs), keys %$x) . '}'
+  my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, %$refs), @$x) . ']'
+        : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, %$refs), keys %$x) . '}'
         : "" . $x;
   delete $$refs{$x};
   $r;

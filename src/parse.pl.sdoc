@@ -3,8 +3,6 @@ List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
-use strict 'refs';
-
 our %parsers;
 sub parser($) {
   die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
@@ -24,7 +22,7 @@ sub defparseralias($$) {
   (my $code_name = $name) =~ s/\W+/_/g;
   die "ni: defparseralias cannot redefine $name" if exists $parsers{$name};
   $parsers{$name} = $alias;
-  eval "sub $code_name() {['$name']}";
+  eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
 sub parse {
@@ -58,8 +56,9 @@ BEGIN {
       @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
   defparser 'pdspr', '\%',
-    q{my ($self, $x, @xs, $k, @ys, %ls) = @_;
+    q{my ($self, $x, @xs, $k, @ys, %ls, $c) = @_;
       my (undef, $ps) = @$self;
+      return () unless defined $x;
       ++$ls{length $_} for keys %$ps;
       for my $l (sort {$b <=> $a} keys %ls) {
         return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
@@ -117,10 +116,11 @@ c
 BEGIN {
   defparser 'prx', '$',
     q{my ($self, $x, @xs) = @_;
-      $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+      defined $x && $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
   defparser 'pnx', '$',
-    q{my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+    q{my ($self, $x, @xs) = @_;
+      defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}

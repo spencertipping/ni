@@ -48,7 +48,7 @@ use constant ruby_mapgen => gen q{
   end
 };
 
-use constant ruby_prefix => join "\n", @self{qw| core/rb/prefix.rb |};
+use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};
 
 sub stdin_to_ruby($) {
   move_fd 0, 3;

@@ -5,8 +5,6 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
-use strict;
-use warnings;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.

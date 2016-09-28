@@ -32,13 +32,13 @@ sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
-  $parsers{"short/$context/$dsp"} = $_[1];
+  defparseralias "short/$context/$dsp" => $_[1];
   $short_refs{$context}{$dsp} = ["short/$context/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
-  $parsers{"long/$context/$name"} = $_[1];
+  defparseralias "long/$context/$name" => $_[1];
   unshift @{$long_names{$context}}, $name;
   unshift @{$long_refs{$context}}, ["long/$context/$name"];
 }
@@ -46,16 +46,17 @@ sub deflong($$) {
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
-  delete $parsers{"short/$context/$dsp"};
+  delete $ni::parsers{"short/$context/$dsp"};
 }
 
-sub cli(@) {my ($r) = parse $parsers{'/cli'}, @_; $r}
+sub cli(@) {my ($r) = parse parser '/cli', @_; $r}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their
 documentation.
 
 sub defalt($$@) {
+  no strict 'refs';
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   @{$vname} = @entries;
@@ -64,6 +65,7 @@ sub defalt($$@) {
 }
 
 sub defdsp($$%) {
+  no strict 'refs';
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   %{$vname} = %entries;

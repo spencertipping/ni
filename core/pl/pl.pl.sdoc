@@ -78,7 +78,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
 
 sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
-sub perl_prefix() {join "\n", @self{@perl_prefix_keys}}
+sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
   eval {move_fd 0, 3};

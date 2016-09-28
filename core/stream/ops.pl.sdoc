@@ -4,7 +4,7 @@ included are numeric generators, shell commands, etc.
 
 our $pager_fh;
 
-$main_operator = sub {
+$ni::main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
   # buffer so no child process gets bogus data.
   move_fd 0, 3;
@@ -228,8 +228,8 @@ by adding a suffix. You can decode a stream in any of these formats using `ZD`
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
 c
+BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
-  defparseralias compressor_name => prx '[gxo4b]';
   defparseralias compressor_spec =>
     pmap q{my ($c, $level) = @$_;
            $c = $compressors{$c || 'g'};

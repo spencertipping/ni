@@ -3,23 +3,23 @@ JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
 JSPlot driver buffers the data to disk to make it repeatable.
 
-use constant jsplot_gen => gen $self{'core/jsplot/html'};
+use constant jsplot_gen => gen $ni::self{'core/jsplot/html'};
 
 use constant jsplot_html =>
-  jsplot_gen->(css => $self{'core/jsplot/css'},
-               js  => join '', @self{qw| core/jsplot/jquery.min.js
-                                         core/jsplot/jquery.mousewheel.min.js
-                                         core/caterwaul/caterwaul.min.js
-                                         core/caterwaul/caterwaul.std.min.js
-                                         core/caterwaul/caterwaul.ui.min.js
-                                         core/jsplot/modus.js
-                                         core/jsplot/vector.js
-                                         core/jsplot/axis.waul
-                                         core/jsplot/matrix.waul
-                                         core/jsplot/socket.waul
-                                         core/jsplot/render.waul
-                                         core/jsplot/camera.waul
-                                         core/jsplot/interface.waul |});
+  jsplot_gen->(css => $ni::self{'core/jsplot/css'},
+               js  => join '', @ni::self{qw| core/jsplot/jquery.min.js
+                                             core/jsplot/jquery.mousewheel.min.js
+                                             core/caterwaul/caterwaul.min.js
+                                             core/caterwaul/caterwaul.std.min.js
+                                             core/caterwaul/caterwaul.ui.min.js
+                                             core/jsplot/modus.js
+                                             core/jsplot/vector.js
+                                             core/jsplot/axis.waul
+                                             core/jsplot/matrix.waul
+                                             core/jsplot/socket.waul
+                                             core/jsplot/render.waul
+                                             core/jsplot/camera.waul
+                                             core/jsplot/interface.waul |});
 
 Parsing.
 This entry point provides a realtime CLI parse for the UI.

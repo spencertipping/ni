@@ -16,7 +16,7 @@ defperlprefix 'core/binary/bytewriter.pm';
 our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
 
 sub binary_perl_prefix() {join "\n", perl_prefix,
-                                     @self{@binary_perl_prefix_keys}}
+                                     @ni::self{@binary_perl_prefix_keys}}
 
 sub defbinaryperlprefix($) {push @binary_perl_prefix_keys, $_[0]}
 
