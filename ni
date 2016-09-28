@@ -1006,7 +1006,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-244 core/stream/ops.pl.sdoc
+245 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1218,10 +1218,11 @@ This makes it possible to serialize a directory structure into a single stream.
 ni uses this format internally to store its k/v state.
 
 defoperator encode_resource_stream => q{
+  my @xs;
   while (<STDIN>) {
     chomp;
     my $s = rfc $_;
-    my $line_count = split /\n/, "$s ";
+    my $line_count = @xs = split /\n/, "$s ";
     print "$line_count $_\n", $s, "\n";
   }
 };
