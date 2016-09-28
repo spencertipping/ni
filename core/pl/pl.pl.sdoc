@@ -5,6 +5,8 @@ invalid. The same property holds across most code-to-code functions. This is
 how ni figures out whether a closing bracket is a lambda-terminator or a part
 of some row mapping code.
 
+use POSIX ();
+
 sub syntax_check($$) {
   my ($check_cmd, $code) = @_;
   my $fh = siproc {sh "$check_cmd >/dev/null 2>&1"};
@@ -81,7 +83,7 @@ sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
-  eval {move_fd 0, 3};
+  eval {cdup2 0, 3; POSIX::close 0};
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
     . "    this usually means you're running in a context with no STDIN"
   if $@;

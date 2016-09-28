@@ -8,6 +8,8 @@ generating a pipeline element like this:
         (line mapping code)
         EOF
 
+use POSIX ();
+
 use constant lisp_mapgen => gen q{
   %prefix
   (with-ni-env nil
@@ -38,7 +40,8 @@ BEGIN {defparseralias lispcode => prc '.*[^]]+'}
 
 defoperator lisp_code => q{
   my ($code) = @_;
-  move_fd 0, 3;
+  cdup2 0, 3;
+  POSIX::close 0;
   safewrite siproc {exec qw| sbcl --noinform --noprint --eval |,
                          '(load *standard-input* :verbose nil :print nil)'},
             $code;

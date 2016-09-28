@@ -4,6 +4,8 @@ there's no `BEGIN/END` substitution. We also don't need to take a code
 transform because no amount of wrapping will change whether an expression can
 be parsed.
 
+use POSIX ();
+
 c
 BEGIN {
 defparser 'rbcode', '', sub {
@@ -51,7 +53,8 @@ use constant ruby_mapgen => gen q{
 use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};
 
 sub stdin_to_ruby($) {
-  move_fd 0, 3;
+  cdup2 0, 3;
+  POSIX::close 0;
   safewrite siproc {exec 'ruby', '-'}, $_[0];
 }
 

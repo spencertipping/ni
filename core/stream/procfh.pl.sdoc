@@ -5,6 +5,7 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
+use Scalar::Util qw/weaken/;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -37,14 +38,18 @@ of numeric fds by promoting them into Perl fh references.
 use overload qw/*{} fh "" str/;
 sub new($$$) {
   my ($class, $fd, $pid) = @_;
+  my $result = bless {pid => $pid, status => undef}, $class;
+  weaken($child_owners{$pid} = $result);
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;
-  $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
+  $$result{fh} = $fh;
+  $result;
 }
 
 sub DESTROY {
   my ($self) = @_;
+  close $$self{fh};
   delete $child_owners{$$self{pid}} unless defined $$self{status};
 }
 
@@ -78,8 +83,12 @@ sub await($) {
   return $$self{status} if defined $$self{status};
   $SIG{CHLD} = 'DEFAULT';
   return $$self{status} if defined $$self{status};
-  my $pid = waitpid $$self{pid}, 0;
-  $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  if (kill 'ZERO', $$self{pid}) {
+    my $pid = waitpid $$self{pid}, 0;
+    $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  } else {
+    $self->child_exited("-1 [child already collected]");
+  }
   $$self{status};
 }
 

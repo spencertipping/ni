@@ -6,43 +6,48 @@ cd $(dirname $0)
 
 ./boot
 
+module() {
+  echo -en "ni --internal/lib $1                   \r"
+  ./ni --internal/lib $1
+}
+
 export NI_NO_HOME=yes
-./ni --internal/lib core/stream
-./ni --internal/lib core/meta
-./ni --internal/lib core/deps
-./ni --internal/lib core/gen
-./ni --internal/lib core/json
-./ni --internal/lib core/monitor
-./ni --internal/lib core/uri
-./ni --internal/lib core/fn
+module core/stream
+module core/meta
+module core/deps
+module core/gen
+module core/json
+module core/monitor
+module core/uri
+module core/fn
 
-./ni --internal/lib core/checkpoint
-./ni --internal/lib core/net
-./ni --internal/lib core/buffer
+module core/checkpoint
+module core/net
+module core/buffer
 
-./ni --internal/lib core/col
-./ni --internal/lib core/row
-./ni --internal/lib core/cell
+module core/col
+module core/row
+module core/cell
 
-./ni --internal/lib core/pl
-./ni --internal/lib core/rb
-./ni --internal/lib core/lisp
-./ni --internal/lib core/sql
-./ni --internal/lib core/python
+module core/pl
+module core/rb
+module core/lisp
+module core/sql
+module core/python
 
-./ni --internal/lib core/binary
-./ni --internal/lib core/matrix
-./ni --internal/lib core/gnuplot
+module core/binary
+module core/matrix
+module core/gnuplot
 
-./ni --internal/lib core/http
-./ni --internal/lib core/caterwaul
-./ni --internal/lib core/jsplot
+module core/http
+module core/caterwaul
+module core/jsplot
 
-./ni --internal/lib core/docker
-./ni --internal/lib core/hadoop
-./ni --internal/lib core/pyspark
+module core/docker
+module core/hadoop
+module core/pyspark
 
-./ni --internal/lib doc
+module doc
 unset NI_NO_HOME
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then
@@ -50,4 +55,5 @@ if [[ `./ni //ni` != "$(< ni)" ]]; then
   exit 1
 fi
 
+echo
 wc -c ni

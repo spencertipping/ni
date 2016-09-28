@@ -17,14 +17,15 @@ defoperator monitor => q{
   my ($itime, $otime, $bytes) = (0, 0, 0);
   my $last_update = 0;
   my $start_time = time;
+  my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
   while (1) {
-    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
-    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
+    last unless $n;
+    my $t2 = time; safewrite $stdout, $_;
     my $t3 = time;
 
     $itime += $t2 - $t1;
     $otime += $t3 - $t2;
-    last unless $n;
 
     if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
       $last_update = $t3;

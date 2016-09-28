@@ -11,17 +11,9 @@ no warnings 'io';
 use Errno qw/EINTR/;
 use POSIX qw/dup2/;
 
-sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
+sub cdup2 {defined dup2 $_[0], $_[1] or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
 sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
-
-sub move_fd($$) {
-  my ($old, $new) = @_;
-  return if $old == $new;
-  close $new;
-  cdup2 $old, $new;
-  close $old;
-}
 
 sub sh($) {exec 'sh', '-c', $_[0]}
 
@@ -83,7 +75,8 @@ sub forkopen {
     return ni::procfh->new($ret, $pid);
   } else {
     close $ret;
-    move_fd fileno $child, $fd;
+    cdup2 fileno $child, $fd;
+    close $child;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
     &$f(@args);
@@ -103,8 +96,10 @@ sub sioproc(&@) {
   } else {
     close $w;
     close $r;
-    move_fd fileno $proc_in, 0;
-    move_fd fileno $proc_out, 1;
+    cdup2 fileno $proc_in, 0;
+    cdup2 fileno $proc_out, 1;
+    close $proc_in;
+    close $proc_out;
     open STDIN,  '<&=0';
     open STDOUT, '>&=1';
     &$f(@args);
@@ -118,7 +113,8 @@ sub soproc(&@) {forkopen 1, @_}
 sub sicons(&@) {
   my ($f, @args) = @_;
   my $fh = soproc {&$f(@args)};
-  move_fd fileno $fh, 0;
+  cdup2 fileno $fh, 0;
+  close $fh;
   open STDIN, '<&=0';
   $fh;
 }
@@ -126,7 +122,8 @@ sub sicons(&@) {
 sub socons(&@) {
   my ($f, @args) = @_;
   my $fh = siproc {&$f(@args)};
-  move_fd fileno $fh, 1;
+  cdup2 fileno $fh, 1;
+  close $fh;
   open STDOUT, '>&=1';
   $fh;
 }
@@ -246,5 +243,5 @@ sub exec_ni(@) {
 
 sub sni(@) {
   my @args = @_;
-  soproc {close STDIN; close 0; exec_ni @args};
+  soproc {close STDIN; exec_ni @args};
 }

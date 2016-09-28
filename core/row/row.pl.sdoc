@@ -1,12 +1,7 @@
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-NB: the "head" operator is indirected through POSIX sh because head sometimes
-segfaults (?) and causes nonzero exit codes. This intermittently breaks unit
-tests (about 5% of the time I think). Ultimately it's probably worth finding
-the root cause.
-
-defoperator head => q{sh sprintf 'head %s; true', shell_quote @_};
+defoperator head => q{exec 'head', shell_quote @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};

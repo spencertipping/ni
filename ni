@@ -686,7 +686,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-90 core/stream/procfh.pl.sdoc
+99 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -694,6 +694,7 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
+use Scalar::Util qw/weaken/;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -726,14 +727,18 @@ of numeric fds by promoting them into Perl fh references.
 use overload qw/*{} fh "" str/;
 sub new($$$) {
   my ($class, $fd, $pid) = @_;
+  my $result = bless {pid => $pid, status => undef}, $class;
+  weaken($child_owners{$pid} = $result);
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;
-  $child_owners{$pid} = bless {fh => $fh, pid => $pid, status => undef}, $class;
+  $$result{fh} = $fh;
+  $result;
 }
 
 sub DESTROY {
   my ($self) = @_;
+  close $$self{fh};
   delete $child_owners{$$self{pid}} unless defined $$self{status};
 }
 
@@ -767,8 +772,12 @@ sub await($) {
   return $$self{status} if defined $$self{status};
   $SIG{CHLD} = 'DEFAULT';
   return $$self{status} if defined $$self{status};
-  my $pid = waitpid $$self{pid}, 0;
-  $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  if (kill 'ZERO', $$self{pid}) {
+    my $pid = waitpid $$self{pid}, 0;
+    $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  } else {
+    $self->child_exited("-1 [child already collected]");
+  }
   $$self{status};
 }
 
@@ -777,7 +786,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-250 core/stream/pipeline.pl.sdoc
+247 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -791,17 +800,9 @@ no warnings 'io';
 use Errno qw/EINTR/;
 use POSIX qw/dup2/;
 
-sub cdup2 {dup2 @_ or die "ni: dup2(@_) failed: $!"}
+sub cdup2 {defined dup2 $_[0], $_[1] or die "ni: dup2(@_) failed: $!"}
 sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
 sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
-
-sub move_fd($$) {
-  my ($old, $new) = @_;
-  return if $old == $new;
-  close $new;
-  cdup2 $old, $new;
-  close $old;
-}
 
 sub sh($) {exec 'sh', '-c', $_[0]}
 
@@ -863,7 +864,8 @@ sub forkopen {
     return ni::procfh->new($ret, $pid);
   } else {
     close $ret;
-    move_fd fileno $child, $fd;
+    cdup2 fileno $child, $fd;
+    close $child;
     open STDIN,  '<&=0' if $fd == 0;
     open STDOUT, '>&=1' if $fd == 1;
     &$f(@args);
@@ -883,8 +885,10 @@ sub sioproc(&@) {
   } else {
     close $w;
     close $r;
-    move_fd fileno $proc_in, 0;
-    move_fd fileno $proc_out, 1;
+    cdup2 fileno $proc_in, 0;
+    cdup2 fileno $proc_out, 1;
+    close $proc_in;
+    close $proc_out;
     open STDIN,  '<&=0';
     open STDOUT, '>&=1';
     &$f(@args);
@@ -898,7 +902,8 @@ sub soproc(&@) {forkopen 1, @_}
 sub sicons(&@) {
   my ($f, @args) = @_;
   my $fh = soproc {&$f(@args)};
-  move_fd fileno $fh, 0;
+  cdup2 fileno $fh, 0;
+  close $fh;
   open STDIN, '<&=0';
   $fh;
 }
@@ -906,7 +911,8 @@ sub sicons(&@) {
 sub socons(&@) {
   my ($f, @args) = @_;
   my $fh = siproc {&$f(@args)};
-  move_fd fileno $fh, 1;
+  cdup2 fileno $fh, 1;
+  close $fh;
   open STDOUT, '>&=1';
   $fh;
 }
@@ -1026,27 +1032,32 @@ sub exec_ni(@) {
 
 sub sni(@) {
   my @args = @_;
-  soproc {close STDIN; close 0; exec_ni @args};
+  soproc {close STDIN; exec_ni @args};
 }
-251 core/stream/ops.pl.sdoc
+248 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
+use POSIX ();
+
 our $pager_fh;
+
+sub problematic_exit($) {$_[0] != 0 && $_[0] != 13}
 
 $ni::main_operator = sub {
   # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
   # buffer so no child process gets bogus data.
-  move_fd 0, 3;
+  cdup2 0, 3;
   close STDIN;
-  move_fd 3, 0;
+  cdup2 3, 0;
+  POSIX::close 3;
   open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
 
   my @children;
 
-  -t STDIN ? close STDIN : push @children, sicons {sdecode};
-  @$_ && push @children, sicons {operate @$_} for @_;
+  -t STDIN ? open STDIN, "</dev/null" : push @children, sicons {sdecode};
+  @$_ and push @children, sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec 'less' or exec 'more' or sio};
@@ -1059,7 +1070,7 @@ $ni::main_operator = sub {
   }
 
   my $exit_status = 0;
-  $_->await and $exit_status = 1 for @children;
+  problematic_exit $_->await and $exit_status = 1 for @children;
   $exit_status;
 };
 
@@ -1072,10 +1083,7 @@ closing its input stream and having the user use `q` or similar.
 
 $SIG{TERM} = sub {
   close $pager_fh if $pager_fh;
-  print STDERR "ni: terminating child processes...\n";
   ni::procfh::kill_children 'TERM';
-  sleep 1;
-  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 
@@ -1084,12 +1092,7 @@ $SIG{INT} = sub {
     close $pager_fh;
     $pager_fh->await;
   }
-  print STDERR "ni: terminating child processes...\n";
   ni::procfh::kill_children 'INT';
-  sleep 1;
-  ni::procfh::kill_children 'TERM';
-  sleep 1;
-  ni::procfh::kill_children 'KILL';
   exit 1;
 };
 
@@ -2585,7 +2588,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/monitor/lib
 monitor.pl.sdoc
-62 core/monitor/monitor.pl.sdoc
+63 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
@@ -2605,14 +2608,15 @@ defoperator monitor => q{
   my ($itime, $otime, $bytes) = (0, 0, 0);
   my $last_update = 0;
   my $start_time = time;
+  my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
   while (1) {
-    my $t1 = time; $bytes += my $n = saferead \*STDIN, $_, 65536;
-    my $t2 = time; safewrite \*STDOUT, $_;
+    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
+    last unless $n;
+    my $t2 = time; safewrite $stdout, $_;
     my $t3 = time;
 
     $itime += $t2 - $t1;
     $otime += $t3 - $t2;
-    last unless $n;
 
     if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
       $last_update = $t3;
@@ -3122,16 +3126,11 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-123 core/row/row.pl.sdoc
+118 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-NB: the "head" operator is indirected through POSIX sh because head sometimes
-segfaults (?) and causes nonzero exit codes. This intermittently breaks unit
-tests (about 5% of the time I think). Ultimately it's probably worth finding
-the root cause.
-
-defoperator head => q{sh sprintf 'head %s; true', shell_quote @_};
+defoperator head => q{exec 'head', shell_quote @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
@@ -3942,13 +3941,15 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-112 core/pl/pl.pl.sdoc
+114 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
 invalid. The same property holds across most code-to-code functions. This is
 how ni figures out whether a closing bracket is a lambda-terminator or a part
 of some row mapping code.
+
+use POSIX ();
 
 sub syntax_check($$) {
   my ($check_cmd, $code) = @_;
@@ -4026,7 +4027,7 @@ sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
 sub stdin_to_perl($) {
-  eval {move_fd 0, 3};
+  eval {cdup2 0, 3; POSIX::close 0};
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
     . "    this usually means you're running in a context with no STDIN"
   if $@;
@@ -4155,12 +4156,14 @@ def re &f
   v = f.call $l
   rw {|l| f.call(l) == v}
 end
-72 core/rb/rb.pl.sdoc
+75 core/rb/rb.pl.sdoc
 Ruby code element.
 This works just like the Perl code parser but is slightly less involved because
 there's no `BEGIN/END` substitution. We also don't need to take a code
 transform because no amount of wrapping will change whether an expression can
 be parsed.
+
+use POSIX ();
 
 c
 BEGIN {
@@ -4209,7 +4212,8 @@ use constant ruby_mapgen => gen q{
 use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};
 
 sub stdin_to_ruby($) {
-  move_fd 0, 3;
+  cdup2 0, 3;
+  POSIX::close 0;
   safewrite siproc {exec 'ruby', '-'}, $_[0];
 }
 
@@ -4398,7 +4402,7 @@ lisp.pl.sdoc
                         ,@(loop for form in body collect
                                `(multiple-value-call #'output-rows ,form)
                         )))))))))
-53 core/lisp/lisp.pl.sdoc
+56 core/lisp/lisp.pl.sdoc
 Lisp backend.
 A super simple SBCL operator. The first thing we want to do is to define the
 code template that we send to Lisp via stdin (using a heredoc). So ni ends up
@@ -4408,6 +4412,8 @@ generating a pipeline element like this:
         (prefix lisp code)
         (line mapping code)
         EOF
+
+use POSIX ();
 
 use constant lisp_mapgen => gen q{
   %prefix
@@ -4439,7 +4445,8 @@ BEGIN {defparseralias lispcode => prc '.*[^]]+'}
 
 defoperator lisp_code => q{
   my ($code) = @_;
-  move_fd 0, 3;
+  cdup2 0, 3;
+  POSIX::close 0;
   safewrite siproc {exec qw| sbcl --noinform --noprint --eval |,
                          '(load *standard-input* :verbose nil :print nil)'},
             $code;
