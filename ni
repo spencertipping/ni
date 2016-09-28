@@ -355,14 +355,15 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-65 common.pl.sdoc
+66 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
 brackets the same way, we just require that regexes are terminated with /
 (which should be ok because that's also how they typically start).
 
-use constant regex => pmap q{s/\/$//; $_}, prx qr{^(?:[^\\/]+|\\.)*/};
+c
+BEGIN {defparseralias regex => pmap q{s/\/$//; $_}, prx qr{^(?:[^\\/]+|\\.)*/}}
 
 Generic code parser.
 Counts brackets outside quoted strings, which in our case are '' and "".
