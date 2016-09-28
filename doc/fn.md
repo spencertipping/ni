@@ -49,3 +49,29 @@ c
 2016
 Spencer
 ```
+
+## Using Perl functions
+You can use an arbitrary Perl expression instead of an expansion template:
+
+```bash
+$ mkdir fractional2
+$ echo fractional2.pl > fractional2/lib
+$ cat >fractional2/fractional2.pl <<'EOF'
+defexpander ['/frac', n => pc integer, step => pc number],
+  sub {
+    my %args = @_;
+    ("+n$args{n}", "pa * $args{step}");
+  };
+EOF
+$ ni --lib fractional2 frac 10 .5
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+```

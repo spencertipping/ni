@@ -2782,7 +2782,7 @@ defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
                      write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 1 core/fn/lib
 fn.pl.sdoc
-88 core/fn/fn.pl.sdoc
+90 core/fn/fn.pl.sdoc
 Operator->operator functions.
 This provides a mechanism for ni to implement aliases and other shorthands.
 Internally we do this by defining a "rewrite parser" that modifies the unparsed
@@ -2811,6 +2811,8 @@ type-tagging the parameters:
 sub evaluate_fn_expansion(\%@) {
   local $_;
   my ($args, @expansion) = @_;
+  return &{$expansion[0]}(%$args) if ref $expansion[0];
+
   return @expansion unless keys %$args;
 
   my @result;
@@ -6742,7 +6744,7 @@ $ ni --lib my-library n100wc
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
-51 doc/fn.md
+77 doc/fn.md
 # Function definitions
 ni lets you define aliases using the `defexpander` internal function. These
 support arguments of arbitrary parse types and provide basic substitution. For
@@ -6793,6 +6795,32 @@ Copyright
 c
 2016
 Spencer
+```
+
+## Using Perl functions
+You can use an arbitrary Perl expression instead of an expansion template:
+
+```bash
+$ mkdir fractional2
+$ echo fractional2.pl > fractional2/lib
+$ cat >fractional2/fractional2.pl <<'EOF'
+defexpander ['/frac', n => pc integer, step => pc number],
+  sub {
+    my %args = @_;
+    ("+n$args{n}", "pa * $args{step}");
+  };
+EOF
+$ ni --lib fractional2 frac 10 .5
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
 ```
 100 doc/hadoop.md
 # Hadoop operator

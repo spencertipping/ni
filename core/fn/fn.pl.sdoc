@@ -26,6 +26,8 @@ type-tagging the parameters:
 sub evaluate_fn_expansion(\%@) {
   local $_;
   my ($args, @expansion) = @_;
+  return &{$expansion[0]}(%$args) if ref $expansion[0];
+
   return @expansion unless keys %$args;
 
   my @result;
