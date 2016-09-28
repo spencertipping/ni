@@ -66,7 +66,7 @@ creating the opposite (i.e. it appears to have no backpressure at all, acting
 like a vacuum).
 
 ni calculates the pressure by measuring the time spent waiting on IO requests.
-The pressure is `10 * log2(input_time / output_time)`, so in the example above
+The pressure is `10 * log2(output_time / input_time)`, so in the example above
 `n` was producing data about 3000 times as fast as the Perl process was
 consuming it (and the Perl process was producing data about 3000 times _slower_
 than `sink_null` was willing to consume it).
