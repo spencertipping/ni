@@ -232,7 +232,7 @@ BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
   defparseralias compressor_spec =>
     pmap q{my ($c, $level) = @$_;
-           $c = $compressors{$c || 'g'};
+           $c = $ni::compressors{$c || 'g'};
            defined $level ? sh_op "$c -$level" : sh_op $c},
     pseq popt compressor_name, popt integer;
 }
