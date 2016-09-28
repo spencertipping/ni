@@ -119,8 +119,8 @@ defoperator vertical_apply => q{
   my ($i, $o) = sioproc {exec @exec};
   safewrite $i, $stdin;
 
-  vec(my $rbits, fileno $o, 1) = 1;
-  vec(my $wbits, fileno $i, 1) = 1;
+  vec(my $rbits = '', fileno $o, 1) = 1;
+  vec(my $wbits = '', fileno $i, 1) = 1;
   fh_nonblock $i;
 
   my $read_buf = '';

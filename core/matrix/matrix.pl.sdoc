@@ -43,6 +43,7 @@ defoperator sparse_to_dense => q{
     my $kr = qr/\Q$k\E/;
     my @fs = $col ? @r[0..$col-1] : ();
     if ($col < @r) {
+      no warnings 'numeric';
       ++$row, print "\n" until $row >= $r[$col];
     }
     $fs[$col + $r[$col+1]] = $r[$col+2];

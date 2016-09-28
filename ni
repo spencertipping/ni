@@ -263,8 +263,8 @@ Stuff for dealing with some base cases.
 
 c
 BEGIN {
-  defparser 'pend',   '',  q{@_ > 1       ? () : (0)};
-  defparser 'pempty', '',  q{length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'pend',   '',  q{@_ > 1                        ? () : (0)};
+  defparser 'pempty', '',  q{defined $_[1] && length $_[1] ? () : (0, @_[2..$#_])};
   defparser 'pk',     '$', q{(${$_[0]}[1], @_[1..$#_])};
   defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
@@ -2941,8 +2941,8 @@ defoperator vertical_apply => q{
   my ($i, $o) = sioproc {exec @exec};
   safewrite $i, $stdin;
 
-  vec(my $rbits, fileno $o, 1) = 1;
-  vec(my $wbits, fileno $i, 1) = 1;
+  vec(my $rbits = '', fileno $o, 1) = 1;
+  vec(my $wbits = '', fileno $i, 1) = 1;
   fh_nonblock $i;
 
   my $read_buf = '';
@@ -4582,7 +4582,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-118 core/matrix/matrix.pl.sdoc
+119 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -4628,6 +4628,7 @@ defoperator sparse_to_dense => q{
     my $kr = qr/\Q$k\E/;
     my @fs = $col ? @r[0..$col-1] : ();
     if ($col < @r) {
+      no warnings 'numeric';
       ++$row, print "\n" until $row >= $r[$col];
     }
     $fs[$col + $r[$col+1]] = $r[$col+2];

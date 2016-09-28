@@ -37,8 +37,8 @@ Stuff for dealing with some base cases.
 
 c
 BEGIN {
-  defparser 'pend',   '',  q{@_ > 1       ? () : (0)};
-  defparser 'pempty', '',  q{length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'pend',   '',  q{@_ > 1                        ? () : (0)};
+  defparser 'pempty', '',  q{defined $_[1] && length $_[1] ? () : (0, @_[2..$#_])};
   defparser 'pk',     '$', q{(${$_[0]}[1], @_[1..$#_])};
   defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }

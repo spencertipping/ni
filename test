@@ -43,7 +43,7 @@ case $c in
   ;;
 
 -q|--quick)
-  tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash
+  tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash 2>test.log
   ;;
 
 -r|--repl)
@@ -57,5 +57,5 @@ case $c in
     echo
     tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
     echo
-  done
+  done 2>test.log
 esac
