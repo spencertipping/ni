@@ -90,12 +90,11 @@ SQL operator mapping.
 For the most part we model SQL operations the same way that we address Spark
 RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
-defcontext 'sql';
-
-use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
-
-our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt parser 'sql/qfn';
+c
+BEGIN {defcontext 'sql'}
+BEGIN {defparseralias sql_table => pmap q{sqlgen $_}, prc '^[^][]*'}
+BEGIN {defparseralias sql_query => pmap q{sql_compile $$_[0], @{$$_[1]}},
+                                   pseq sql_table, popt parser 'sql/qfn'}
 
 defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/u', pk ['uniq'];
@@ -107,18 +106,18 @@ defshort 'sql/r',
 
 defshort 'sql/j',
   defalt 'sqljoinalt', 'alternatives for sql/j join operator',
-    pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
-    pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
-    pmap(q{['njoin', $_]}, pn 1, prx 'N', $sql_query),
-    pmap(q{['ijoin', $_]}, $sql_query);
+    pmap(q{['ljoin', $_]}, pn 1, prx 'L', sql_query),
+    pmap(q{['rjoin', $_]}, pn 1, prx 'R', sql_query),
+    pmap(q{['njoin', $_]}, pn 1, prx 'N', sql_query),
+    pmap(q{['ijoin', $_]}, sql_query);
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
 defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
 defshort 'sql/O', pmap q{['order_by', "$_ DESC"]}, sqlcode;
 
-defshort 'sql/+', pmap q{['union',      $_]}, $sql_query;
-defshort 'sql/*', pmap q{['intersect',  $_]}, $sql_query;
-defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
+defshort 'sql/+', pmap q{['union',      $_]}, sql_query;
+defshort 'sql/*', pmap q{['intersect',  $_]}, sql_query;
+defshort 'sql/-', pmap q{['difference', $_]}, sql_query;
 
 Global operator.
 SQL stuff is accessed using Q, which delegates to a sub-parser that handles
@@ -129,4 +128,4 @@ defoperator sql_preview => q{sio; print "$_[0]\n"};
 
 defshort '/Q',
   defdsp 'sqlprofile', 'dispatch for SQL profiles',
-    'dev/compile' => pmap q{sql_preview_op($_[0])}, $sql_query;
+    'dev/compile' => pmap q{sql_preview_op($_[0])}, sql_query;

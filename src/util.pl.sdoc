@@ -8,7 +8,7 @@ sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub swap($$) {@_[0, 1] = @_[1, 0]}
 
-sub sum {local $_; my $x; $x += $_ for @_; $x}
+sub sum {local $_; my $x = 0; $x += $_ for @_; $x}
 
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 

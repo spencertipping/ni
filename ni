@@ -113,7 +113,7 @@ sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub swap($$) {@_[0, 1] = @_[1, 0]}
 
-sub sum {local $_; my $x; $x += $_ for @_; $x}
+sub sum {local $_; my $x = 0; $x += $_ for @_; $x}
 
 sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
@@ -544,7 +544,7 @@ sub lib_entries($$) {
   map "$name/$_", grep {s/#.*//; length} split /\n/, $text;
 }
 
-sub quote_resource {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
+sub quote_resource {my @xs; map sprintf("%d %s\n%s", scalar(@xs = split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub quote_library  {map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_}
 
 sub read_map {join '', map "$_\n",
@@ -4323,7 +4323,7 @@ defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
           pn 1, prx 'l', lispcode;
 1 core/sql/lib
 sql.pl.sdoc
-132 core/sql/sql.pl.sdoc
+131 core/sql/sql.pl.sdoc
 SQL parsing context.
 Translates ni CLI grammar to a SELECT query. This is a little interesting
 because SQL has a weird structure to it; to help with this I've also got a
@@ -4416,12 +4416,11 @@ SQL operator mapping.
 For the most part we model SQL operations the same way that we address Spark
 RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
-defcontext 'sql';
-
-use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
-
-our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt parser 'sql/qfn';
+c
+BEGIN {defcontext 'sql'}
+BEGIN {defparseralias sql_table => pmap q{sqlgen $_}, prc '^[^][]*'}
+BEGIN {defparseralias sql_query => pmap q{sql_compile $$_[0], @{$$_[1]}},
+                                   pseq sql_table, popt parser 'sql/qfn'}
 
 defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/u', pk ['uniq'];
@@ -4433,18 +4432,18 @@ defshort 'sql/r',
 
 defshort 'sql/j',
   defalt 'sqljoinalt', 'alternatives for sql/j join operator',
-    pmap(q{['ljoin', $_]}, pn 1, prx 'L', $sql_query),
-    pmap(q{['rjoin', $_]}, pn 1, prx 'R', $sql_query),
-    pmap(q{['njoin', $_]}, pn 1, prx 'N', $sql_query),
-    pmap(q{['ijoin', $_]}, $sql_query);
+    pmap(q{['ljoin', $_]}, pn 1, prx 'L', sql_query),
+    pmap(q{['rjoin', $_]}, pn 1, prx 'R', sql_query),
+    pmap(q{['njoin', $_]}, pn 1, prx 'N', sql_query),
+    pmap(q{['ijoin', $_]}, sql_query);
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
 defshort 'sql/o', pmap q{['order_by', "$_ ASC"]},  sqlcode;
 defshort 'sql/O', pmap q{['order_by', "$_ DESC"]}, sqlcode;
 
-defshort 'sql/+', pmap q{['union',      $_]}, $sql_query;
-defshort 'sql/*', pmap q{['intersect',  $_]}, $sql_query;
-defshort 'sql/-', pmap q{['difference', $_]}, $sql_query;
+defshort 'sql/+', pmap q{['union',      $_]}, sql_query;
+defshort 'sql/*', pmap q{['intersect',  $_]}, sql_query;
+defshort 'sql/-', pmap q{['difference', $_]}, sql_query;
 
 Global operator.
 SQL stuff is accessed using Q, which delegates to a sub-parser that handles
@@ -4455,7 +4454,7 @@ defoperator sql_preview => q{sio; print "$_[0]\n"};
 
 defshort '/Q',
   defdsp 'sqlprofile', 'dispatch for SQL profiles',
-    'dev/compile' => pmap q{sql_preview_op($_[0])}, $sql_query;
+    'dev/compile' => pmap q{sql_preview_op($_[0])}, sql_query;
 1 core/python/lib
 python.pl.sdoc
 46 core/python/python.pl.sdoc
@@ -4582,7 +4581,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-115 core/matrix/matrix.pl.sdoc
+118 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -4627,7 +4626,9 @@ defoperator sparse_to_dense => q{
     my $k = join "\t", @r[0..$col];
     my $kr = qr/\Q$k\E/;
     my @fs = $col ? @r[0..$col-1] : ();
-    ++$row, print "\n" until $row >= $r[$col];
+    if ($col < @r) {
+      ++$row, print "\n" until $row >= $r[$col];
+    }
     $fs[$col + $r[$col+1]] = $r[$col+2];
     $fs[$col + $1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
@@ -4669,7 +4670,7 @@ defoperator numpy_dense => q{
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @r = split /\t/;
-    my $k = $col ? join("\t", @r[0..$col-1]) : ();
+    my $k = $col ? join("\t", @r[0..$col-1]) : '';
     $rows = 1;
     my @m = [@r[$col..$#r]];
     my $kr = qr/\Q$k\E/;
@@ -4679,6 +4680,7 @@ defoperator numpy_dense => q{
 
     $cols = max map scalar(@$_), @m;
     safewrite $i, pack "NNF*", $rows, $cols,
+      map $_ || 0,
       map {(@$_, (0) x ($cols - @$_))} @m;
 
     saferead $o, $_, 8;
@@ -8284,7 +8286,7 @@ defoperator sqlite => q{
   exec 'sqlite', '-separator', "\t", $db, $query;
 };
 defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
-                        pseq pc filename, $sql_query;
+                        pseq pc filename, sql_query;
 EOF
 ```
 

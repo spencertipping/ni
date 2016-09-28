@@ -10,7 +10,7 @@ sub lib_entries($$) {
   map "$name/$_", grep {s/#.*//; length} split /\n/, $text;
 }
 
-sub quote_resource {map sprintf("%d %s\n%s", scalar(split /\n/, "$self{$_} "), $_, $self{$_}), @_}
+sub quote_resource {my @xs; map sprintf("%d %s\n%s", scalar(@xs = split /\n/, "$self{$_} "), $_, $self{$_}), @_}
 sub quote_library  {map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_}
 
 sub read_map {join '', map "$_\n",

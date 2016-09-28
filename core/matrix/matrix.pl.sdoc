@@ -42,7 +42,9 @@ defoperator sparse_to_dense => q{
     my $k = join "\t", @r[0..$col];
     my $kr = qr/\Q$k\E/;
     my @fs = $col ? @r[0..$col-1] : ();
-    ++$row, print "\n" until $row >= $r[$col];
+    if ($col < @r) {
+      ++$row, print "\n" until $row >= $r[$col];
+    }
     $fs[$col + $r[$col+1]] = $r[$col+2];
     $fs[$col + $1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
@@ -84,7 +86,7 @@ defoperator numpy_dense => q{
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @r = split /\t/;
-    my $k = $col ? join("\t", @r[0..$col-1]) : ();
+    my $k = $col ? join("\t", @r[0..$col-1]) : '';
     $rows = 1;
     my @m = [@r[$col..$#r]];
     my $kr = qr/\Q$k\E/;
@@ -94,6 +96,7 @@ defoperator numpy_dense => q{
 
     $cols = max map scalar(@$_), @m;
     safewrite $i, pack "NNF*", $rows, $cols,
+      map $_ || 0,
       map {(@$_, (0) x ($cols - @$_))} @m;
 
     saferead $o, $_, 8;
