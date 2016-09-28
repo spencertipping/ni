@@ -6,6 +6,7 @@ cd $(dirname $0)
 
 ./boot
 
+export NI_NO_HOME=yes
 ./ni --internal/lib core/stream
 ./ni --internal/lib core/meta
 ./ni --internal/lib core/deps
@@ -13,6 +14,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/json
 ./ni --internal/lib core/monitor
 ./ni --internal/lib core/uri
+./ni --internal/lib core/fn
 
 ./ni --internal/lib core/checkpoint
 ./ni --internal/lib core/net
@@ -41,6 +43,7 @@ cd $(dirname $0)
 ./ni --internal/lib core/pyspark
 
 ./ni --internal/lib doc
+unset NI_NO_HOME
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2

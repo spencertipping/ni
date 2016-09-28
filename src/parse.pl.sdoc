@@ -25,11 +25,13 @@ sub defparseralias($$) {
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
+sub parse;
 sub parse {
+  local $_;
   my ($p, @args) = @{$_[0]};
   my $f = $parsers{$p} or die "ni: no such parser: $p";
-  return parse($f, @_[1..$#_]) if 'ARRAY' eq ref $f;
-  &$f(@_);
+  return @_[1..$#_] if @_ > 1 && ref $_[1];
+  'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f(@_);
 }
 
 Base parsers.

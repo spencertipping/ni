@@ -7,7 +7,8 @@ Incorporate data into the image. If it's too large, map it to a tempfile.
 
 ### Ops and parsers should be self-documenting
 
-### CLI functions (aliases)
+### `r` operator should take a lambda
+i.e. "take rows for which this lambda streams non-null values"
 
 ### Autofilled directories
 e.g. `/mc9drc24` for `/mnt/cache/t9/data/reddit-comments-2015.lz4`

@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-48 ni.map.sdoc
+49 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -81,6 +81,7 @@ lib core/gen
 lib core/json
 lib core/monitor
 lib core/uri
+lib core/fn
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -190,7 +191,7 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-32 dev.pl.sdoc
+34 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
 
@@ -198,19 +199,21 @@ sub dev_inspect($;\%);
 sub dev_inspect($;\%) {
   local $_;
   my ($x, $refs) = (@_, {});
-  return "<circular $x>" if exists $$refs{$x};
+  return "<circular $x>" if defined $x && exists $$refs{$x};
 
-  $$refs{$x} = $x;
+  $$refs{$x} = $x if defined $x;
   my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, %$refs), @$x) . ']'
         : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, %$refs), keys %$x) . '}'
-        : "" . $x;
-  delete $$refs{$x};
+        : defined $x        ? "" . $x
+        :                     'undef';
+  delete $$refs{$x} if defined $x;
   $r;
 }
 
 sub dev_inspect_nonl($) {(my $r = dev_inspect $_[0]) =~ s/\s+/ /g; $r}
 
 sub dev_trace($) {
+  no strict 'refs';
   my ($fname) = @_;
   my $f = \&{$fname};
   my $indent = '';
@@ -223,7 +226,7 @@ sub dev_trace($) {
     @r;
   };
 }
-126 parse.pl.sdoc
+128 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -251,11 +254,13 @@ sub defparseralias($$) {
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
+sub parse;
 sub parse {
+  local $_;
   my ($p, @args) = @{$_[0]};
   my $f = $parsers{$p} or die "ni: no such parser: $p";
-  return parse($f, @_[1..$#_]) if 'ARRAY' eq ref $f;
-  &$f(@_);
+  return @_[1..$#_] if @_ > 1 && ref $_[1];
+  'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f(@_);
 }
 
 Base parsers.
@@ -586,7 +591,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-62 main.pl.sdoc
+79 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -614,6 +619,13 @@ Options to extend and modify the ni image.
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
 defclispecial '--lib', q{intern_lib shift; goto \&main};
 
+defclispecial '--run', q{
+  $ni::self{"transient/eval"} .= "\n$_[0]\n";
+  ni::eval $_[0], "--run $_[0]";
+  shift;
+  goto \&main;
+};
+
 Documentation.
 
 defclispecial '--explain', q{
@@ -636,10 +648,20 @@ our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
-  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
-  @_ = ('//help')
+  @_ = ('//help', @_[1..$#_])
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
+
+  if (exists $ENV{HOME} && !exists $ENV{NI_NO_HOME} && -d "$ENV{HOME}/.ni") {
+    eval {intern_lib "$ENV{HOME}/.ni"};
+    if ($@) {
+      print STDERR "ni: note: failed to load ~/.ni as a library: $@\n";
+      print STDERR "    (export NI_NO_HOME to disable ~/.ni autoloading,\n";
+      print STDERR "     or run `ni //help/libraries` for details about libraries)\n";
+    }
+  }
+
+  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
   my ($r) = cli @_;
   return &$main_operator(flatten_operators $r) if ref $r;
@@ -1270,7 +1292,7 @@ defoperator meta_help => q{
   sio; print $ni::self{"doc/$topic.md"}, "\n";
 };
 
-defshort '///',        pmap q{meta_key_op $_}, prc '[^][]+$';
+defshort '///',        pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
@@ -2758,6 +2780,97 @@ defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
 
 defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
                      write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+1 core/fn/lib
+fn.pl.sdoc
+88 core/fn/fn.pl.sdoc
+Operator->operator functions.
+This provides a mechanism for ni to implement aliases and other shorthands.
+Internally we do this by defining a "rewrite parser" that modifies the unparsed
+elements in front of it. Rewriting is namespaced: if you define a lambda in the
+root context, it won't apply in other contexts.
+
+Here's an example of a lambda that looks for manpages matching the given
+filename pattern:
+
+| defn ['/manpages', 'pattern'],
+       qw[e[find /usr/share/man -name $pattern*] \<];
+
+After this definition, ni will perform substitutions like the following:
+
+| $ ni manpages ls
+  # ni e[find /usr/share/man -name ls*] \<
+
+Other types of definitions.
+A parameter like 'pattern' will just consume a single unparsed argument, but
+sometimes you want to apply parsing structure to things. You can do that by
+type-tagging the parameters:
+
+| defexpander ['/manpages-matching', condition => plcode],
+              qw[e[find /usr/share/man -type f] rp$condition];
+
+sub evaluate_fn_expansion(\%@) {
+  local $_;
+  my ($args, @expansion) = @_;
+  return @expansion unless keys %$args;
+
+  my @result;
+  my $scalar_args = join '|', map qr/\$\Q$_\E/, keys %$args;
+  $scalar_args = qr/$scalar_args/;
+  my $array_args = join '|', map qr/@\Q$_\E/, keys %$args;
+  $array_args = qr/$array_args/;
+
+  for (@expansion) {
+    if (/^($array_args)$/) {
+      push @result, @$args{substr $1, 1};
+    } else {
+      my @pieces = split /($scalar_args)/;
+      $_ & 1 and $pieces[$_] = $$args{substr $pieces[$_], 1}
+        for 0..$#pieces;
+      push @result, join '', @pieces;
+    }
+  }
+  @result;
+}
+
+c
+BEGIN {
+  defparser fn_expander => '$$$$',
+    sub {
+      my ($self, @xs) = @_;
+      my (undef, $context, $formals, $positions, $expansion) = @$self;
+      my ($parsed_formals, @rest) = parse pn(1, popt pempty, $formals), @xs;
+      return () unless defined $parsed_formals;
+
+      my %args;
+      $args{$_} = $$parsed_formals[$$positions{$_}] for keys %$positions;
+      parse parser "$context/op",
+            evaluate_fn_expansion(%args, @$expansion), @rest;
+    };
+}
+
+sub defexpander($@) {
+  my ($fn, @expansion) = @_;
+  my ($short_spec, @args) = ref $fn ? @$fn : ($fn);
+  my ($context, $name) = split /\//, $short_spec, 2;
+
+  my @arg_parsers;
+  my %arg_positions;
+  if (@args > 1 && ref $args[1]) {
+    for (my $i = 0; $i < @args; $i += 2) {
+      my ($k, $v) = @args[$i, $i + 1];
+      $arg_positions{$k} = $i >> 1;
+      push @arg_parsers, $v;
+    }
+  } elsif (@args) {
+    $arg_positions{@args[0..$#args]} = 0..$#args;
+    @arg_parsers = map prc '.*', @args;
+  }
+
+  defshort $short_spec,
+    fn_expander $context, pseq(map pc $_, @arg_parsers),
+                          \%arg_positions,
+                          \@expansion;
+}
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -2780,7 +2893,7 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
 1 core/net/lib
 net.pl.sdoc
-19 core/net/net.pl.sdoc
+20 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -2792,14 +2905,15 @@ BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 defoperator ssh => q{
   my ($host, $lambda) = @_;
   my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec 'ssh', $host, shell_quote @exec};
+  my $fh = siproc {exec 'ssh', @$host, shell_quote @exec};
   safewrite $fh, $stdin;
   sforward \*STDIN, $fh;
   close $fh;
   $fh->await;
 };
 
-defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
+defshort '/s', pmap q{ssh_op @$_},
+  pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;
 1 core/buffer/lib
 buffer.pl.sdoc
 14 core/buffer/buffer.pl.sdoc
@@ -3818,7 +3932,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-106 core/pl/pl.pl.sdoc
+112 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -3919,12 +4033,18 @@ sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
+c
+BEGIN {
+  defparseralias perl_mapper_code  => plcode \&perl_mapper;
+  defparseralias perl_grepper_code => plcode \&perl_grepper;
+}
+
 defshort '/p',
   defalt 'perlalt', 'alternatives for /p perl operator',
-    pmap q{perl_mapper_op $_}, plcode \&perl_mapper;
+    pmap q{perl_mapper_op $_}, perl_mapper_code;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', plcode \&perl_grepper;
+          pn 1, prx 'p', perl_grepper_code;
 2 core/rb/lib
 prefix.rb
 rb.pl.sdoc
@@ -5956,12 +6076,13 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-23 doc/lib
+24 doc/lib
 binary.md
 col.md
 container.md
 examples.md
 extend.md
+fn.md
 hadoop.md
 json.md
 libraries.md
@@ -6621,6 +6742,58 @@ $ ni --lib my-library n100wc
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
+51 doc/fn.md
+# Function definitions
+ni lets you define aliases using the `defexpander` internal function. These
+support arguments of arbitrary parse types and provide basic substitution. For
+example, let's define a shorthand for fractional numbers:
+
+```bash
+$ mkdir fractional
+$ echo fractional.pl > fractional/lib
+$ cat >fractional/fractional.pl <<'EOF'
+defexpander ['/frac', n => pc integer, step => pc number],
+            'n$n', 'pa * $step';
+EOF
+```
+
+Now we can load the library and use the new operator:
+
+```bash
+$ ni --lib fractional frac 10 .5
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+4
+4.5
+5
+$ ni --lib fractional frac4.5
+0.5
+1
+1.5
+2
+```
+
+You can also define a nullary function, which is just a regular shorthand:
+
+```bash
+$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
+     license-words r10
+ni
+https
+github
+com
+spencertipping
+ni
+Copyright
+c
+2016
+Spencer
+```
 100 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to

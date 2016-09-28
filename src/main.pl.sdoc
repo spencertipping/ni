@@ -25,6 +25,13 @@ Options to extend and modify the ni image.
 defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
 defclispecial '--lib', q{intern_lib shift; goto \&main};
 
+defclispecial '--run', q{
+  $ni::self{"transient/eval"} .= "\n$_[0]\n";
+  ni::eval $_[0], "--run $_[0]";
+  shift;
+  goto \&main;
+};
+
 Documentation.
 
 defclispecial '--explain', q{
@@ -47,10 +54,20 @@ our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
-  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
-  @_ = ('//help')
+  @_ = ('//help', @_[1..$#_])
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
+
+  if (exists $ENV{HOME} && !exists $ENV{NI_NO_HOME} && -d "$ENV{HOME}/.ni") {
+    eval {intern_lib "$ENV{HOME}/.ni"};
+    if ($@) {
+      print STDERR "ni: note: failed to load ~/.ni as a library: $@\n";
+      print STDERR "    (export NI_NO_HOME to disable ~/.ni autoloading,\n";
+      print STDERR "     or run `ni //help/libraries` for details about libraries)\n";
+    }
+  }
+
+  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
   my ($r) = cli @_;
   return &$main_operator(flatten_operators $r) if ref $r;

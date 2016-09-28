@@ -9,11 +9,12 @@ BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 defoperator ssh => q{
   my ($host, $lambda) = @_;
   my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec 'ssh', $host, shell_quote @exec};
+  my $fh = siproc {exec 'ssh', @$host, shell_quote @exec};
   safewrite $fh, $stdin;
   sforward \*STDIN, $fh;
   close $fh;
   $fh->await;
 };
 
-defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
+defshort '/s', pmap q{ssh_op @$_},
+  pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;

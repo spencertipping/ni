@@ -98,9 +98,15 @@ sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
+c
+BEGIN {
+  defparseralias perl_mapper_code  => plcode \&perl_mapper;
+  defparseralias perl_grepper_code => plcode \&perl_grepper;
+}
+
 defshort '/p',
   defalt 'perlalt', 'alternatives for /p perl operator',
-    pmap q{perl_mapper_op $_}, plcode \&perl_mapper;
+    pmap q{perl_mapper_op $_}, perl_mapper_code;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', plcode \&perl_grepper;
+          pn 1, prx 'p', perl_grepper_code;
