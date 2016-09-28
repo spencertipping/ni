@@ -252,7 +252,7 @@ sub defparseralias($$) {
 sub parse {
   my ($p, @args) = @{$_[0]};
   my $f = $parsers{$p} or die "ni: no such parser: $p";
-  return parse($f, @_[1..$#_]) unless 'CODE' eq ref $f;
+  return parse($f, @_[1..$#_]) if 'ARRAY' eq ref $f;
   &$f(@_);
 }
 
@@ -261,10 +261,10 @@ Stuff for dealing with some base cases.
 
 c
 BEGIN {
-  defparser 'pend',   '',  sub {@_ > 1       ? () : (0)};
-  defparser 'pempty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
-  defparser 'pk',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
-  defparser 'pnone',  '',  sub {(undef,       @_[1..$#_])};
+  defparser 'pend',   '',  q{@_ > 1       ? () : (0)};
+  defparser 'pempty', '',  q{length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'pk',     '$', q{(${$_[0]}[1], @_[1..$#_])};
+  defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
 
 Basic combinators.
@@ -276,18 +276,18 @@ collection later on to add more alternatives.
 c
 BEGIN {
   defparser 'paltr', '\@',
-    sub {my ($self, @xs, @ps, @r) = @_;
-         @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
+    q{my ($self, @xs, @ps, @r) = @_;
+      @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
   defparser 'pdspr', '\%',
-    sub {my ($self, $x, @xs, $k, @ys, %ls) = @_;
-         my (undef, $ps) = @$self;
-         ++$ls{length $_} for keys %$ps;
-         for my $l (sort {$b <=> $a} keys %ls) {
-           return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
-           if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
-         }
-         ()};
+    q{my ($self, $x, @xs, $k, @ys, %ls) = @_;
+      my (undef, $ps) = @$self;
+      ++$ls{length $_} for keys %$ps;
+      for my $l (sort {$b <=> $a} keys %ls) {
+        return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
+        if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
+      }
+      ()};
 }
 
 sub palt(@) {my @ps = @_; paltr @ps}
@@ -296,32 +296,32 @@ sub pdsp(%) {my %ps = @_; pdspr %ps}
 c
 BEGIN {
   defparser 'pseq', '@',
-    sub {my ($self, @is, $x, @xs, @ys) = @_;
-         my (undef, @ps) = @$self;
-         (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
-         (\@xs, @is)};
+    q{my ($self, @is, $x, @xs, @ys) = @_;
+      my (undef, @ps) = @$self;
+      (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
+      (\@xs, @is)};
 
   defparser 'prep', '$;$',
-    sub {my ($self, @is, @c, @r) = @_;
-         my (undef, $p, $n) = (@$self, 0);
-         push @r, $_ while ($_, @is) = parse $p, (@c = @is);
-         @r >= $n ? (\@r, @c) : ()};
+    q{my ($self, @is, @c, @r) = @_;
+      my (undef, $p, $n) = (@$self, 0);
+      push @r, $_ while ($_, @is) = parse $p, (@c = @is);
+      @r >= $n ? (\@r, @c) : ()};
 
   defparser 'popt', '$',
-    sub {my ($self, @is) = @_;
-         my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
+    q{my ($self, @is) = @_;
+      my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
 
   defparser 'pmap', '$$',
-    sub {my ($self, @is) = @_;
-         my (undef, $f, $p) = @$self;
-         $f = fn $f;
-         my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
+    q{my ($self, @is) = @_;
+      my (undef, $f, $p) = @$self;
+      $f = fn $f;
+      my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
   defparser 'pcond', '$$',
-    sub {my ($self, @is) = @_;
-         my (undef, $f, $p) = @$self;
-         $f = fn $f;
-         my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
+    q{my ($self, @is) = @_;
+      my (undef, $f, $p) = @$self;
+      $f = fn $f;
+      my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
 sub pn($@)
@@ -338,11 +338,11 @@ you specify. Always matches from the beginning of a string.
 c
 BEGIN {
   defparser 'prx', '$',
-    sub {my ($self, $x, @xs) = @_;
-         $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+    q{my ($self, $x, @xs) = @_;
+      $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
   defparser 'pnx', '$',
-    sub {my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+    q{my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
@@ -994,7 +994,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-236 core/stream/ops.pl.sdoc
+244 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1053,11 +1053,16 @@ $SIG{INT} = sub {
   exit 1;
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
-use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
-                                     pmap(q{shell_quote @$_}, shell_lambda),
-                                     prx '[^][]+';
+c
+BEGIN {
+  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+}
+BEGIN {
+  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                         pmap(q{shell_quote @$_}, shell_lambda),
+                                         prx '[^][]+';
+}
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -1219,12 +1224,15 @@ by adding a suffix. You can decode a stream in any of these formats using `ZD`
 
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
-use constant compressor_name => prx '[gxo4b]';
-use constant compressor_spec =>
-  pmap q{my ($c, $level) = @$_;
-         $c = $compressors{$c || 'g'};
-         defined $level ? sh_op "$c -$level" : sh_op $c},
-  pseq popt compressor_name, popt integer;
+c
+BEGIN {
+  defparseralias compressor_name => prx '[gxo4b]';
+  defparseralias compressor_spec =>
+    pmap q{my ($c, $level) = @$_;
+           $c = $compressors{$c || 'g'};
+           defined $level ? sh_op "$c -$level" : sh_op $c},
+    pseq popt compressor_name, popt integer;
+}
 
 defoperator decode => q{sdecode};
 
@@ -1234,7 +1242,7 @@ defshort '/zd', pk decode_op();
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-64 core/meta/meta.pl.sdoc
+68 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -1276,9 +1284,13 @@ This lets you get details about specific operators or parsing contexts.
 
 defoperator meta_op  => q{sio; print "sub {$operators{$_[0]}}\n"};
 defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
-
-defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
+defshort '///op/', pmap q{meta_op_op $_}, prc '.+';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
+
+defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
+defoperator meta_parsers => q{sio; print "$_\t" . json_encode($parsers{$_}) . "\n" for sort keys %parsers};
+defshort '///parser/', pmap q{meta_parser_op $_}, prc '.+';
+defshort '///parsers', pmap q{meta_parsers_op}, pnone;
 
 The backdoor.
 Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
@@ -2744,11 +2756,14 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
 1 core/net/lib
 net.pl.sdoc
-18 core/net/net.pl.sdoc
+19 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
 be writable.
+
+c
+BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 
 defoperator ssh => q{
   my ($host, $lambda) = @_;
@@ -2759,8 +2774,6 @@ defoperator ssh => q{
   close $fh;
   $fh->await;
 };
-
-use constant ssh_host => prx '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
 1 core/buffer/lib
@@ -2967,7 +2980,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-121 core/row/row.pl.sdoc
+122 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3029,7 +3042,8 @@ modifiers, which are optional, are any of these:
   n     numeric sort
   -     reverse (I would use 'r', but it conflicts with the row operator)
 
-use constant sortspec => prep pseq colspec1, popt prx '[-gn]+';
+c
+BEGIN {defparseralias sortspec => prep pseq colspec1, popt prx '[-gn]+'}
 
 sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;
@@ -3312,7 +3326,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-122 core/cell/cell.pl.sdoc
+128 core/cell/cell.pl.sdoc
 Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
@@ -3320,8 +3334,11 @@ Perl code. They're also optimized for performance.
 defcontext 'cell';
 defshort '/,', parser 'cell/qfn';
 
-use constant cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
-use constant cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
+c
+BEGIN {
+  defparseralias cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
+  defparseralias cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
+}
 
 Codegen.
 Most of these have exactly the same format and take a column spec.
@@ -3368,7 +3385,14 @@ defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt inte
 Numerical transformations.
 Trivial stuff that applies to each cell individually.
 
-use constant log_base => pmap q{$_ || exp 1}, popt number;
+c
+BEGIN {
+  defparseralias quant_spec  => pmap q{$_ || 1}, popt number;
+  defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
+  defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
+  defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
+                                                        popt pc number;
+}
 
 defoperator cell_log => q{
   my ($cs, $base) = @_;
@@ -3385,9 +3409,6 @@ defoperator cell_exp => q{
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
 defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
 
-use constant jitter_bias => pmap q{dor $_, 0}, popt number;
-use constant jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
-                                                    popt pc number;
 
 defoperator jitter_uniform => q{
   my ($cs, $mag, $bias) = @_;
@@ -3398,7 +3419,6 @@ defoperator jitter_uniform => q{
 defshort 'cell/j', pmap q{jitter_uniform_op @$_},
                    pseq cellspec_fixed, jitter_mag, jitter_bias;
 
-use constant quant_spec => pmap q{$_ || 1}, popt number;
 
 defoperator quantize => q{
   my ($cs, $q) = @_;
@@ -4231,7 +4251,7 @@ lisp.pl.sdoc
                         ,@(loop for form in body collect
                                `(multiple-value-call #'output-rows ,form)
                         )))))))))
-52 core/lisp/lisp.pl.sdoc
+53 core/lisp/lisp.pl.sdoc
 Lisp backend.
 A super simple SBCL operator. The first thing we want to do is to define the
 code template that we send to Lisp via stdin (using a heredoc). So ni ends up
@@ -4267,7 +4287,8 @@ consumes the operator's arguments (in this case a single argument of just some
 Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
 how shell commands are represented.)
 
-use constant lispcode => prc '.*[^]]+';
+c
+BEGIN {defparseralias lispcode => prc '.*[^]]+'}
 
 defoperator lisp_code => q{
   my ($code) = @_;
@@ -4286,7 +4307,7 @@ defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
           pn 1, prx 'l', lispcode;
 1 core/sql/lib
 sql.pl.sdoc
-131 core/sql/sql.pl.sdoc
+132 core/sql/sql.pl.sdoc
 SQL parsing context.
 Translates ni CLI grammar to a SELECT query. This is a little interesting
 because SQL has a weird structure to it; to help with this I've also got a
@@ -4353,7 +4374,8 @@ sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 SQL code parse element.
 Counts brackets outside quoted strings.
 
-use constant sqlcode => generic_code;
+c
+BEGIN {defparseralias sqlcode => generic_code}
 
 Code compilation.
 Parser elements can generate one of two things: [method, @args] or
@@ -4466,7 +4488,7 @@ Counts brackets, excluding those inside quoted strings. This is more efficient
 and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
-use constant pycode => pmap q{pydent $_}, generic_code;
+defparseralias pycode => pmap q{pydent $_}, generic_code;
 3 core/binary/lib
 bytestream.pm.sdoc
 bytewriter.pm.sdoc
@@ -5683,7 +5705,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-131 core/hadoop/hadoop.pl.sdoc
+134 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -5807,9 +5829,12 @@ defoperator hadoop_streaming => q{
   resource_nuke $reducer  if defined $reducer;
 };
 
-use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
-                                             pmap(q{[]},    prc ':'),
-                                             _qfn;
+c
+BEGIN {
+  defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                                 pmap(q{[]},    prc ':'),
+                                                 _qfn;
+}
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
@@ -5818,7 +5843,7 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
-54 core/pyspark/pyspark.pl.sdoc
+55 core/pyspark/pyspark.pl.sdoc
 Pyspark interop.
 We need to define a context for CLI arguments so we can convert ni pipelines
 into pyspark code. This ends up being fairly straightforward because Spark
@@ -5840,9 +5865,10 @@ sub pyspark_create_lambda($) {$_[0]}
 
 c
 BEGIN {defcontext 'pyspark'}
-
-use constant pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
-use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
+BEGIN {
+  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+  defparseralias pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
+}
 
 defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;

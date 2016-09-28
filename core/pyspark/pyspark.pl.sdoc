@@ -19,9 +19,10 @@ sub pyspark_create_lambda($) {$_[0]}
 
 c
 BEGIN {defcontext 'pyspark'}
-
-use constant pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
-use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
+BEGIN {
+  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+  defparseralias pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
+}
 
 defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;

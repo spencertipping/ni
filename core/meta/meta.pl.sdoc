@@ -39,9 +39,13 @@ This lets you get details about specific operators or parsing contexts.
 
 defoperator meta_op  => q{sio; print "sub {$operators{$_[0]}}\n"};
 defoperator meta_ops => q{sio; print "$_\n" for sort keys %operators};
-
-defshort '///op/', pmap q{meta_op_op $_}, prc '(.+)';
+defshort '///op/', pmap q{meta_op_op $_}, prc '.+';
 defshort '///ops', pmap q{meta_ops_op},   pnone;
+
+defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
+defoperator meta_parsers => q{sio; print "$_\t" . json_encode($parsers{$_}) . "\n" for sort keys %parsers};
+defshort '///parser/', pmap q{meta_parser_op $_}, prc '.+';
+defshort '///parsers', pmap q{meta_parsers_op}, pnone;
 
 The backdoor.
 Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl

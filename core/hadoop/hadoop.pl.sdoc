@@ -121,9 +121,12 @@ defoperator hadoop_streaming => q{
   resource_nuke $reducer  if defined $reducer;
 };
 
-use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
-                                             pmap(q{[]},    prc ':'),
-                                             _qfn;
+c
+BEGIN {
+  defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                                 pmap(q{[]},    prc ':'),
+                                                 _qfn;
+}
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,

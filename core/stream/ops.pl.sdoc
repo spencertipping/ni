@@ -56,11 +56,16 @@ $SIG{INT} = sub {
   exit 1;
 };
 
-use constant shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-use constant shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
-use constant shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
-                                     pmap(q{shell_quote @$_}, shell_lambda),
-                                     prx '[^][]+';
+c
+BEGIN {
+  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+}
+BEGIN {
+  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                         pmap(q{shell_quote @$_}, shell_lambda),
+                                         prx '[^][]+';
+}
 
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -222,12 +227,15 @@ by adding a suffix. You can decode a stream in any of these formats using `ZD`
 
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
-use constant compressor_name => prx '[gxo4b]';
-use constant compressor_spec =>
-  pmap q{my ($c, $level) = @$_;
-         $c = $compressors{$c || 'g'};
-         defined $level ? sh_op "$c -$level" : sh_op $c},
-  pseq popt compressor_name, popt integer;
+c
+BEGIN {
+  defparseralias compressor_name => prx '[gxo4b]';
+  defparseralias compressor_spec =>
+    pmap q{my ($c, $level) = @$_;
+           $c = $compressors{$c || 'g'};
+           defined $level ? sh_op "$c -$level" : sh_op $c},
+    pseq popt compressor_name, popt integer;
+}
 
 defoperator decode => q{sdecode};
 

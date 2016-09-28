@@ -5,8 +5,11 @@ Perl code. They're also optimized for performance.
 defcontext 'cell';
 defshort '/,', parser 'cell/qfn';
 
-use constant cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
-use constant cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
+c
+BEGIN {
+  defparseralias cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
+  defparseralias cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
+}
 
 Codegen.
 Most of these have exactly the same format and take a column spec.
@@ -53,7 +56,14 @@ defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt inte
 Numerical transformations.
 Trivial stuff that applies to each cell individually.
 
-use constant log_base => pmap q{$_ || exp 1}, popt number;
+c
+BEGIN {
+  defparseralias quant_spec  => pmap q{$_ || 1}, popt number;
+  defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
+  defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
+  defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
+                                                        popt pc number;
+}
 
 defoperator cell_log => q{
   my ($cs, $base) = @_;
@@ -70,9 +80,6 @@ defoperator cell_exp => q{
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
 defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
 
-use constant jitter_bias => pmap q{dor $_, 0}, popt number;
-use constant jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
-                                                    popt pc number;
 
 defoperator jitter_uniform => q{
   my ($cs, $mag, $bias) = @_;
@@ -83,7 +90,6 @@ defoperator jitter_uniform => q{
 defshort 'cell/j', pmap q{jitter_uniform_op @$_},
                    pseq cellspec_fixed, jitter_mag, jitter_bias;
 
-use constant quant_spec => pmap q{$_ || 1}, popt number;
 
 defoperator quantize => q{
   my ($cs, $q) = @_;

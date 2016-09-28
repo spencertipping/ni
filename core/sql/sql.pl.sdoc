@@ -64,7 +64,8 @@ sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 SQL code parse element.
 Counts brackets outside quoted strings.
 
-use constant sqlcode => generic_code;
+c
+BEGIN {defparseralias sqlcode => generic_code}
 
 Code compilation.
 Parser elements can generate one of two things: [method, @args] or

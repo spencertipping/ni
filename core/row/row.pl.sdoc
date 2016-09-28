@@ -59,7 +59,8 @@ modifiers, which are optional, are any of these:
   n     numeric sort
   -     reverse (I would use 'r', but it conflicts with the row operator)
 
-use constant sortspec => prep pseq colspec1, popt prx '[-gn]+';
+c
+BEGIN {defparseralias sortspec => prep pseq colspec1, popt prx '[-gn]+'}
 
 sub sort_args {'-t', "\t",
                map {my $i = $$_[0] + 1;

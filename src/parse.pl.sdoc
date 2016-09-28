@@ -30,7 +30,7 @@ sub defparseralias($$) {
 sub parse {
   my ($p, @args) = @{$_[0]};
   my $f = $parsers{$p} or die "ni: no such parser: $p";
-  return parse($f, @_[1..$#_]) unless 'CODE' eq ref $f;
+  return parse($f, @_[1..$#_]) if 'ARRAY' eq ref $f;
   &$f(@_);
 }
 
@@ -39,10 +39,10 @@ Stuff for dealing with some base cases.
 
 c
 BEGIN {
-  defparser 'pend',   '',  sub {@_ > 1       ? () : (0)};
-  defparser 'pempty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
-  defparser 'pk',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
-  defparser 'pnone',  '',  sub {(undef,       @_[1..$#_])};
+  defparser 'pend',   '',  q{@_ > 1       ? () : (0)};
+  defparser 'pempty', '',  q{length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'pk',     '$', q{(${$_[0]}[1], @_[1..$#_])};
+  defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
 
 Basic combinators.
@@ -54,18 +54,18 @@ collection later on to add more alternatives.
 c
 BEGIN {
   defparser 'paltr', '\@',
-    sub {my ($self, @xs, @ps, @r) = @_;
-         @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
+    q{my ($self, @xs, @ps, @r) = @_;
+      @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
   defparser 'pdspr', '\%',
-    sub {my ($self, $x, @xs, $k, @ys, %ls) = @_;
-         my (undef, $ps) = @$self;
-         ++$ls{length $_} for keys %$ps;
-         for my $l (sort {$b <=> $a} keys %ls) {
-           return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
-           if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
-         }
-         ()};
+    q{my ($self, $x, @xs, $k, @ys, %ls) = @_;
+      my (undef, $ps) = @$self;
+      ++$ls{length $_} for keys %$ps;
+      for my $l (sort {$b <=> $a} keys %ls) {
+        return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
+        if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
+      }
+      ()};
 }
 
 sub palt(@) {my @ps = @_; paltr @ps}
@@ -74,32 +74,32 @@ sub pdsp(%) {my %ps = @_; pdspr %ps}
 c
 BEGIN {
   defparser 'pseq', '@',
-    sub {my ($self, @is, $x, @xs, @ys) = @_;
-         my (undef, @ps) = @$self;
-         (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
-         (\@xs, @is)};
+    q{my ($self, @is, $x, @xs, @ys) = @_;
+      my (undef, @ps) = @$self;
+      (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
+      (\@xs, @is)};
 
   defparser 'prep', '$;$',
-    sub {my ($self, @is, @c, @r) = @_;
-         my (undef, $p, $n) = (@$self, 0);
-         push @r, $_ while ($_, @is) = parse $p, (@c = @is);
-         @r >= $n ? (\@r, @c) : ()};
+    q{my ($self, @is, @c, @r) = @_;
+      my (undef, $p, $n) = (@$self, 0);
+      push @r, $_ while ($_, @is) = parse $p, (@c = @is);
+      @r >= $n ? (\@r, @c) : ()};
 
   defparser 'popt', '$',
-    sub {my ($self, @is) = @_;
-         my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
+    q{my ($self, @is) = @_;
+      my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
 
   defparser 'pmap', '$$',
-    sub {my ($self, @is) = @_;
-         my (undef, $f, $p) = @$self;
-         $f = fn $f;
-         my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
+    q{my ($self, @is) = @_;
+      my (undef, $f, $p) = @$self;
+      $f = fn $f;
+      my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
   defparser 'pcond', '$$',
-    sub {my ($self, @is) = @_;
-         my (undef, $f, $p) = @$self;
-         $f = fn $f;
-         my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
+    q{my ($self, @is) = @_;
+      my (undef, $f, $p) = @$self;
+      $f = fn $f;
+      my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
 sub pn($@)
@@ -116,11 +116,11 @@ you specify. Always matches from the beginning of a string.
 c
 BEGIN {
   defparser 'prx', '$',
-    sub {my ($self, $x, @xs) = @_;
-         $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
+    q{my ($self, $x, @xs) = @_;
+      $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
   defparser 'pnx', '$',
-    sub {my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+    q{my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}

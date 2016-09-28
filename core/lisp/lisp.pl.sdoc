@@ -33,7 +33,8 @@ consumes the operator's arguments (in this case a single argument of just some
 Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
 how shell commands are represented.)
 
-use constant lispcode => prc '.*[^]]+';
+c
+BEGIN {defparseralias lispcode => prc '.*[^]]+'}
 
 defoperator lisp_code => q{
   my ($code) = @_;

@@ -3,6 +3,9 @@ SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
 be writable.
 
+c
+BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
+
 defoperator ssh => q{
   my ($host, $lambda) = @_;
   my ($stdin, @exec) = sni_exec_list @$lambda;
@@ -12,7 +15,5 @@ defoperator ssh => q{
   close $fh;
   $fh->await;
 };
-
-use constant ssh_host => prx '[^][/,]+';
 
 defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
