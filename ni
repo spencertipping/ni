@@ -1028,7 +1028,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-247 core/stream/ops.pl.sdoc
+251 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1043,8 +1043,10 @@ $ni::main_operator = sub {
   move_fd 3, 0;
   open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
 
-  -t STDIN ? close STDIN : sicons {sdecode};
-  @$_ && sicons {operate @$_} for @_;
+  my @children;
+
+  -t STDIN ? close STDIN : push @children, sicons {sdecode};
+  @$_ && push @children, sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec 'less' or exec 'more' or sio};
@@ -1054,9 +1056,11 @@ $ni::main_operator = sub {
     ni::procfh::kill_children 'TERM';
   } else {
     sio;
-    ni::procfh::kill_children 'TERM';
-    0;
   }
+
+  my $exit_status = 0;
+  $_->await and $exit_status = 1 for @children;
+  $exit_status;
 };
 
 Pagers and kill signals.
