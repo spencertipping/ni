@@ -2949,9 +2949,10 @@ defoperator vertical_apply => q{
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
-2 core/row/lib
+3 core/row/lib
 row.pl.sdoc
 scale.pl.sdoc
+join.pl.sdoc
 121 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
@@ -3261,6 +3262,10 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';
+3 core/row/join.pl.sdoc
+Streaming joins.
+The UNIX `join` command does this, but rearranges fields in the process. ni
+implements its own operators as a workaround.
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -5890,7 +5895,7 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-22 doc/lib
+23 doc/lib
 binary.md
 col.md
 container.md
@@ -5901,6 +5906,7 @@ json.md
 libraries.md
 lisp.md
 matrix.md
+monitor.md
 net.md
 options.md
 perl.md
@@ -7102,6 +7108,99 @@ a	1	3	1	1	1	1	1
 a	1	1	2	1	1	1	1
 a	1	1	1	2	1	1	1
 ```
+92 doc/monitor.md
+# Monitors
+If you run a pipeline that takes longer than a couple of seconds, ni will emit
+monitor output to standard error. It looks like this:
+
+```sh
+$ ni nE9S8p'sin(rand())' rp'a > 0.1' ,q0.01 czn
+ 6106K  2085K/s  -8 905930
+ 4223K  1427K/s  24 0.735911990151528
+ 3672K  1251K/s  16 0.3174551373783
+  985K   339K/s -19 0.45
+ 1329K   456K/s -32 ["count"]
+```
+
+Each row corresponds to the output side of one pipeline operation:
+
+```sh
+$ ni --explain nE9S8p'sin(rand())' rp'a > 0.1' ,q0.01 czn
+["n",1,1000000001]
+["row_fixed_scale",8,[["perl_mapper","sin(rand())"]]]
+["perl_grepper","a > 0.1"]
+[["quantize",[1,0],0.01]]
+["count"]
+["sink_null"]
+```
+
+(`sink_null` produces no output, so its monitor will never appear.)
+
+There are four columns:
+
+```
+     +------------------------- total output data (from this operator)
+     |        +---------------- output data rate
+     |        |   +------------ output data "pressure" (more below)
+     |        |   |      +----- data preview, or --explain for the operator
+     |        |   |      |        (the display alternates between the two)
+ 6106K  2085K/s  -8 905930
+```
+
+## Throughput and data pressure
+Data pipeline performance isn't entirely straightforward, particularly when
+buffering operators are involved. Most ni operators, however, are written to
+stream data quickly from input to output -- in which case the slowest operator
+will govern the overall pipeline speed. For example, we can write an
+artificially slow map function to reduce the throughput everywhere:
+
+```sh
+$ ni nE7 pa+1 zn                        # a few seconds
+$ ni nE7 p'sleep 0.1; a + 1' zn         # quite a lot longer
+```
+
+Throughput and output data won't help you identify the pipeline bottleneck in
+these situations because the pipeline is effectively moving in lock-step. This
+is where the concept of data pressure comes in.
+
+If you run the second example above, you'll see monitor output like this:
+
+```
+ 2815K    90K/s 115 ["n",1,10000001]
+ 2752K    88K/s-116 ["perl_mapper","sleep 0.1; a + 1"]
+```
+
+The output pressure from `nE7` is 115, and the output pressure of the Perl
+command is -116. Intuitively this makes sense: the Perl command is creating
+backpressure against `n`, and `sink_null` is, relatively to the Perl command,
+creating the opposite (i.e. it appears to have no backpressure at all, acting
+like a vacuum).
+
+ni calculates the pressure by measuring the time spent waiting on IO requests.
+The pressure is `10 * log2(input_time / output_time)`, so in the example above
+`n` was producing data about 3000 times as fast as the Perl process was
+consuming it (and the Perl process was producing data about 3000 times _slower_
+than `sink_null` was willing to consume it).
+
+## Dealing with bottlenecks
+The easiest way to solve a bottleneck is to [horizontally scale](scale.md) the
+slow sections of the pipeline. This isn't always possible, for example if you
+need to sort things, but when it is possible it should produce significant
+speedups. For example:
+
+```sh
+$ ni nE7 S8p'sleep 0.1; a + 1' zn
+33014K   645K/s  49 4356592
+21735K   433K/s-117 ["row_fixed_scale",8,[["perl_mapper","sleep 0.1; a + 1"]]]
+```
+
+Now the Perl function appears to be only ~32x slower than `n` -- unexpectedly
+fast for two reasons. First, `S` maintains large memory buffers that it fills
+quickly at pipeline startup; that will distort initial readings, though it will
+ultimately even out. Second, `n` produces rows whose length increases as we
+read more input; so the `sleep 0.1` in the Perl command has less of an impact
+the further we get into the stream. (This is an example of data-dependent
+throughput, which happens a lot in practice.)
 46 doc/net.md
 # Network operators
 ## HTTP
@@ -7230,7 +7329,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      | T      | `S16[plc]`   | Scale across multiple processes
+`S`      | T      | `S16[rx100]` | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
@@ -8536,7 +8635,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-47 doc/tutorial.md
+48 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -8554,12 +8653,13 @@ $ ni //help/stream                      # view a help topic
 - [examples.md](examples.md) (`ni //help/examples`)
 
 ## Essentials
-- [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
-- [row.md](row.md)       (`ni //help/row`):    row-level operators
-- [col.md](col.md)       (`ni //help/col`):    column-level operators
-- [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
-- [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
-- [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
+- [stream.md](stream.md)   (`ni //help/stream`):  intro to ni grammar and data
+- [row.md](row.md)         (`ni //help/row`):     row-level operators
+- [col.md](col.md)         (`ni //help/col`):     column-level operators
+- [perl.md](perl.md)       (`ni //help/perl`):    ni's Perl library
+- [lisp.md](lisp.md)       (`ni //help/lisp`):    ni's Common Lisp library
+- [ruby.md](ruby.md)       (`ni //help/ruby`):    ni's Ruby library
+- [monitor.md](monitor.md) (`ni //help/monitor`): pipeline monitoring
 
 ## Stuff worth knowing about
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc

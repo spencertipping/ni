@@ -15,12 +15,13 @@ $ ni //help/stream                      # view a help topic
 - [examples.md](examples.md) (`ni //help/examples`)
 
 ## Essentials
-- [stream.md](stream.md) (`ni //help/stream`): intro to ni grammar and data
-- [row.md](row.md)       (`ni //help/row`):    row-level operators
-- [col.md](col.md)       (`ni //help/col`):    column-level operators
-- [perl.md](perl.md)     (`ni //help/perl`):   ni's Perl library
-- [lisp.md](lisp.md)     (`ni //help/lisp`):   ni's Common Lisp library
-- [ruby.md](ruby.md)     (`ni //help/ruby`):   ni's Ruby library
+- [stream.md](stream.md)   (`ni //help/stream`):  intro to ni grammar and data
+- [row.md](row.md)         (`ni //help/row`):     row-level operators
+- [col.md](col.md)         (`ni //help/col`):     column-level operators
+- [perl.md](perl.md)       (`ni //help/perl`):    ni's Perl library
+- [lisp.md](lisp.md)       (`ni //help/lisp`):    ni's Common Lisp library
+- [ruby.md](ruby.md)       (`ni //help/ruby`):    ni's Ruby library
+- [monitor.md](monitor.md) (`ni //help/monitor`): pipeline monitoring
 
 ## Stuff worth knowing about
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc

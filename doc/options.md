@@ -78,7 +78,7 @@ Operator | Status | Example      | Description
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
 `Q`      |        |              |
 `R`      | U      | `R'a+1'`     | Faceted R matrix interop
-`S`      | T      | `S16[plc]`   | Scale across multiple processes
+`S`      | T      | `S16[rx100]` | Scale across multiple processes
 `T`      |        |              |
 `U`      |        |              |
 `V`      | U      | `VB`         | Pivot and collect on field B
