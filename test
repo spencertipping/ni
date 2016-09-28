@@ -52,9 +52,18 @@ case $c in
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
+-c|--cancel)
+  touch .test-cancel
+  docker rm -f ni-test ni-test-hadoop
+  ;;
+
 *)
   echo "NOTE: standard error is redirected into test.log"
   for e in ${envs[@]}; do
+    if [[ -e .test-cancel ]]; then
+      rm .test-cancel
+      exit 1
+    fi
     echo
     echo "TESTING $e"
     echo
