@@ -106,7 +106,7 @@ Sorted and unsorted streaming counts.
 defoperator count => q{
   my ($n, $last) = (0, undef);
   while (<STDIN>) {
-    if ($_ ne $last or !defined $last) {
+    if (!defined $last or $_ ne $last) {
       print "$n\t$last" if defined $last;
       $n = 0;
       $last = $_;

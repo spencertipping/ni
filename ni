@@ -2419,7 +2419,7 @@ sub gen($) {
     my %vars = @_;
     my @r = @pieces;
     $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
-    join '', map dor($_, ''), @r;
+    join '', map defined $_ ? $_ : '', @r;
   };
 }
 2 core/json/lib
@@ -3107,7 +3107,7 @@ Sorted and unsorted streaming counts.
 defoperator count => q{
   my ($n, $last) = (0, undef);
   while (<STDIN>) {
-    if ($_ ne $last or !defined $last) {
+    if (!defined $last or $_ ne $last) {
       print "$n\t$last" if defined $last;
       $n = 0;
       $last = $_;
