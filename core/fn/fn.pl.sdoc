@@ -1,0 +1,49 @@
+Operator->operator functions.
+This provides a mechanism for ni to implement aliases and other shorthands.
+Internally we do this by defining a "rewrite parser" that modifies the unparsed
+elements in front of it. Rewriting is namespaced: if you define a lambda in the
+root context, it won't apply in other contexts.
+
+Here's an example of a lambda that looks for manpages matching the given
+filename pattern:
+
+| defn ['/manpages', 'pattern'],
+       qw[e[find /usr/share/man -name $pattern*] \<];
+
+After this definition, ni will perform substitutions like the following:
+
+| $ ni manpages ls
+  # ni e[find /usr/share/man -name ls*] \<
+
+Other types of definitions.
+A parameter like 'pattern' will just consume a single unparsed argument, but
+sometimes you want to apply parsing structure to things. You can do that by
+type-tagging the results:
+
+| defn ['/manpages-matching', condition => pplcode],
+       qw[e[find /usr/share/man -type f] rp$condition];
+
+TODO: defshort() should define a named parser that manages the arguments for
+each command. Then it becomes possible to refer not only to individual
+elements, but also to proxy for specific commands. There's also no sense in
+having generated 'plambda' etc; these should be named parse elements. Having a
+broad namespace should make grammar introspection much more useful.
+
+Also, let's get rid of the 'p' prefix for parsers and pretend it didn't happen.
+
+c
+BEGIN {
+  defparser fn_expander => '$$',
+    sub {
+      my ($self, @xs) = @_;
+      my (undef, $formals, $expansion) = @_;
+      # TODO
+    };
+}
+
+sub defn($$) {
+  my ($fn, $expansion) = @_;
+  my ($short_spec, @args) = @$fn;
+  my ($context, $name) = split /\//, $short_spec, 2;
+  # TODO
+}

@@ -1,0 +1,3 @@
+Streaming joins.
+The UNIX `join` command does this, but rearranges fields in the process. ni
+implements its own operators as a workaround.
