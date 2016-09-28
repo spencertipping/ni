@@ -11,47 +11,45 @@ our %long_refs;
 our %short_refs;
 
 sub defcontext($) {
-  $short_refs{$_[0]} = {};
-  $long_refs{$_[0]}  = [pdspr %{$short_refs{$_[0]}}];
-  $long_names{$_[0]} = ['<short dispatch>'];
-  $contexts{$_[0]}   = paltr @{$long_refs{$_[0]}};
+  my ($c) = @_;
+  $short_refs{$c} = {};
+  $long_refs{$c}  = [pdspr %{$short_refs{$c}}];
+  $long_names{$c} = ['<short dispatch>'];
+  $contexts{$c}   = paltr @{$long_refs{$c}};
+
+  defparseralias "$c/short",  pdspr %{$short_refs{$c}};
+  defparseralias "$c/op",     $contexts{$c};
+  defparseralias "$c/suffix", prep $contexts{$c};
+  defparseralias "$c/series", prep pn 1, popt pempty, $contexts{$c}, popt pempty;
+  defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
+  defparseralias "$c/qfn",    palt parser "$c/lambda", parser "$c/suffix";
+
+  defparseralias "$c/cli",       pn 0, parser "$c/series", pend;
+  defparseralias "$c/cli_debug", parser "$c/series";
 }
 
 sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
-  $short_refs{$context}{$dsp} = $_[1];
+  $parsers{"short/$context/$dsp"} = $_[1];
+  $short_refs{$context}{$dsp} = ["short/$context/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
+  $parsers{"long/$context/$name"} = $_[1];
   unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, $_[1];
+  unshift @{$long_refs{$context}}, ["long/$context/$name"];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
+  delete $parsers{"short/$context/$dsp"};
 }
 
-CLI grammar elements.
-Generators for various syntactic constructs given a context. Here's what they
-represent:
-
-| pseries(context): a chain of consecutive operators in the context
-  plambda(context): a lambda-list: [ chain ]
-  pcli(context):    a complete command-line within the context
-
-sub psuffix($)    {prep $contexts{$_[0]}}
-sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
-sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prx qr/\]/}
-sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
-
-sub pcli($)       {pn 0, pseries $_[0], pend}
-sub pcli_debug($) {pseries $_[0]}
-
-sub cli(@) {my ($r) = parse pcli '', @_; $r}
+sub cli(@) {my ($r) = parse $parsers{'/cli'}, @_; $r}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their

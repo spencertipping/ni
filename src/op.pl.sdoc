@@ -31,7 +31,7 @@ sub defnioperator($$) {
   my ($name, $op) = @_;
   my ($ops) = cli shell_unquote $op;
   if (!defined $ops) {
-    my (undef, @rest) = parse pcli_debug '', shell_unquote $op;
+    my (undef, @rest) = parse parser '/cli_debug', shell_unquote $op;
     die "ni: defnioperator parse failed starting at @rest";
   }
   *{"${name}_op"} = sub() {$ops};

@@ -183,4 +183,4 @@ defoperator row_fixed_scale => q{
   $stdout_reader->await;
 };
 
-defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';
+defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;

@@ -11,7 +11,7 @@ Things useful for developing ni.
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
-  parse pcli '', @_;
+  parse parser '/cli', @_;
 };
 
 defclispecial '--dev/parse-one', q{
@@ -28,7 +28,7 @@ defclispecial '--lib', q{intern_lib shift; goto \&main};
 Documentation.
 
 defclispecial '--explain', q{
-  my ($r) = parse pcli '', @_;
+  my ($r) = parse parser '/cli', @_;
   print json_encode($_), "\n" for @$r;
 };
 
@@ -55,7 +55,7 @@ sub main {
   my ($r) = cli @_;
   return &$main_operator(flatten_operators $r) if ref $r;
 
-  my (undef, @rest) = parse pcli_debug '', @_;
+  my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   exit 1;

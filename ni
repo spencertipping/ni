@@ -219,7 +219,7 @@ sub dev_trace($) {
     @r;
   };
 }
-110 parse.pl.sdoc
+126 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -228,15 +228,31 @@ allows ni to build an operator mapping table.
 use strict 'refs';
 
 our %parsers;
+sub parser($) {
+  die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
+  [$_[0]];
+}
+
 sub defparser($$$) {
   my ($name, $proto, $f) = @_;
+  (my $code_name = $name) =~ s/\W+/_/g;
+  die "ni: defparser cannot redefine $name" if exists $parsers{$name};
   $parsers{$name} = fn $f;
-  eval "sub p$name($proto) {['$name', \@_]}";
+  eval "sub $code_name($proto) {['$name', \@_]}";
+}
+
+sub defparseralias($$) {
+  my ($name, $alias) = @_;
+  (my $code_name = $name) =~ s/\W+/_/g;
+  die "ni: defparseralias cannot redefine $name" if exists $parsers{$name};
+  $parsers{$name} = $alias;
+  eval "sub $code_name() {['$name']}";
 }
 
 sub parse {
   my ($p, @args) = @{$_[0]};
   my $f = $parsers{$p} or die "ni: no such parser: $p";
+  return parse($f, @_[1..$#_]) unless 'CODE' eq ref $f;
   &$f(@_);
 }
 
@@ -245,10 +261,10 @@ Stuff for dealing with some base cases.
 
 c
 BEGIN {
-  defparser 'end',   '',  sub {@_ > 1       ? () : (0)};
-  defparser 'empty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
-  defparser 'k',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
-  defparser 'none',  '',  sub {(undef,       @_[1..$#_])};
+  defparser 'pend',   '',  sub {@_ > 1       ? () : (0)};
+  defparser 'pempty', '',  sub {length $_[1] ? () : (0, @_[2..$#_])};
+  defparser 'pk',     '$', sub {(${$_[0]}[1], @_[1..$#_])};
+  defparser 'pnone',  '',  sub {(undef,       @_[1..$#_])};
 }
 
 Basic combinators.
@@ -259,11 +275,11 @@ collection later on to add more alternatives.
 
 c
 BEGIN {
-  defparser 'altr', '\@',
+  defparser 'paltr', '\@',
     sub {my ($self, @xs, @ps, @r) = @_;
          @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
 
-  defparser 'dspr', '\%',
+  defparser 'pdspr', '\%',
     sub {my ($self, $x, @xs, $k, @ys, %ls) = @_;
          my (undef, $ps) = @$self;
          ++$ls{length $_} for keys %$ps;
@@ -279,29 +295,29 @@ sub pdsp(%) {my %ps = @_; pdspr %ps}
 
 c
 BEGIN {
-  defparser 'seq', '@',
+  defparser 'pseq', '@',
     sub {my ($self, @is, $x, @xs, @ys) = @_;
          my (undef, @ps) = @$self;
          (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
          (\@xs, @is)};
 
-  defparser 'rep', '$;$',
+  defparser 'prep', '$;$',
     sub {my ($self, @is, @c, @r) = @_;
          my (undef, $p, $n) = (@$self, 0);
          push @r, $_ while ($_, @is) = parse $p, (@c = @is);
          @r >= $n ? (\@r, @c) : ()};
 
-  defparser 'opt', '$',
+  defparser 'popt', '$',
     sub {my ($self, @is) = @_;
          my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)};
 
-  defparser 'map', '$$',
+  defparser 'pmap', '$$',
     sub {my ($self, @is) = @_;
          my (undef, $f, $p) = @$self;
          $f = fn $f;
          my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()};
 
-  defparser 'cond', '$$',
+  defparser 'pcond', '$$',
     sub {my ($self, @is) = @_;
          my (undef, $f, $p) = @$self;
          $f = fn $f;
@@ -321,11 +337,11 @@ you specify. Always matches from the beginning of a string.
 
 c
 BEGIN {
-  defparser 'rx', '$',
+  defparser 'prx', '$',
     sub {my ($self, $x, @xs) = @_;
          $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
-  defparser 'nx', '$',
+  defparser 'pnx', '$',
     sub {my ($self, $x, @xs) = @_; $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
@@ -396,7 +412,7 @@ use constant filename => palt prx 'file:(.+)',
                               pcond q{-e}, prx '[^][]+';
 
 use constant nefilename => palt filename, prx '[^][]+';
-74 cli.pl.sdoc
+72 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -410,47 +426,45 @@ our %long_refs;
 our %short_refs;
 
 sub defcontext($) {
-  $short_refs{$_[0]} = {};
-  $long_refs{$_[0]}  = [pdspr %{$short_refs{$_[0]}}];
-  $long_names{$_[0]} = ['<short dispatch>'];
-  $contexts{$_[0]}   = paltr @{$long_refs{$_[0]}};
+  my ($c) = @_;
+  $short_refs{$c} = {};
+  $long_refs{$c}  = [pdspr %{$short_refs{$c}}];
+  $long_names{$c} = ['<short dispatch>'];
+  $contexts{$c}   = paltr @{$long_refs{$c}};
+
+  defparseralias "$c/short",  pdspr %{$short_refs{$c}};
+  defparseralias "$c/op",     $contexts{$c};
+  defparseralias "$c/suffix", prep $contexts{$c};
+  defparseralias "$c/series", prep pn 1, popt pempty, $contexts{$c}, popt pempty;
+  defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
+  defparseralias "$c/qfn",    palt parser "$c/lambda", parser "$c/suffix";
+
+  defparseralias "$c/cli",       pn 0, parser "$c/series", pend;
+  defparseralias "$c/cli_debug", parser "$c/series";
 }
 
 sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
-  $short_refs{$context}{$dsp} = $_[1];
+  $parsers{"short/$context/$dsp"} = $_[1];
+  $short_refs{$context}{$dsp} = ["short/$context/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
+  $parsers{"long/$context/$name"} = $_[1];
   unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, $_[1];
+  unshift @{$long_refs{$context}}, ["long/$context/$name"];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
+  delete $parsers{"short/$context/$dsp"};
 }
 
-CLI grammar elements.
-Generators for various syntactic constructs given a context. Here's what they
-represent:
-
-| pseries(context): a chain of consecutive operators in the context
-  plambda(context): a lambda-list: [ chain ]
-  pcli(context):    a complete command-line within the context
-
-sub psuffix($)    {prep $contexts{$_[0]}}
-sub pseries($)    {prep pn 1, popt pempty, $contexts{$_[0]}, popt pempty}
-sub plambda($)    {pn 1, prc qr/\[/, pseries $_[0], prx qr/\]/}
-sub pqfn($)       {palt plambda $_[0], psuffix $_[0]}
-
-sub pcli($)       {pn 0, pseries $_[0], pend}
-sub pcli_debug($) {pseries $_[0]}
-
-sub cli(@) {my ($r) = parse pcli '', @_; $r}
+sub cli(@) {my ($r) = parse $parsers{'/cli'}, @_; $r}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their
@@ -505,7 +519,7 @@ sub defnioperator($$) {
   my ($name, $op) = @_;
   my ($ops) = cli shell_unquote $op;
   if (!defined $ops) {
-    my (undef, @rest) = parse pcli_debug '', shell_unquote $op;
+    my (undef, @rest) = parse parser '/cli_debug', shell_unquote $op;
     die "ni: defnioperator parse failed starting at @rest";
   }
   *{"${name}_op"} = sub() {$ops};
@@ -577,7 +591,7 @@ Things useful for developing ni.
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
-  parse pcli '', @_;
+  parse parser '/cli', @_;
 };
 
 defclispecial '--dev/parse-one', q{
@@ -594,7 +608,7 @@ defclispecial '--lib', q{intern_lib shift; goto \&main};
 Documentation.
 
 defclispecial '--explain', q{
-  my ($r) = parse pcli '', @_;
+  my ($r) = parse parser '/cli', @_;
   print json_encode($_), "\n" for @$r;
 };
 
@@ -621,7 +635,7 @@ sub main {
   my ($r) = cli @_;
   return &$main_operator(flatten_operators $r) if ref $r;
 
-  my (undef, @rest) = parse pcli_debug '', @_;
+  my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   exit 1;
@@ -1101,10 +1115,10 @@ defoperator divert => q{
   $fh->await;
 };
 
-defshort '/+', pmap q{append_op    @$_}, pqfn '';
-defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
-defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
-defshort '/=', pmap q{divert_op    @$_}, pqfn '';
+defshort '/+', pmap q{append_op    @$_}, _qfn;
+defshort '/^', pmap q{prepend_op   @$_}, _qfn;
+defshort '/%', pmap q{duplicate_op @$_}, _qfn;
+defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
 Interleaving.
 Append/prepend will block one of the two data sources until the other
@@ -1156,7 +1170,7 @@ defoperator interleave => q{
   $fh->await;
 };
 
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, pqfn '';
+defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -1284,7 +1298,7 @@ defoperator dev_local_operate => q{
   $fh->await;
 };
 
-defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, pqfn '';
+defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;
 24 core/meta/map.pl.sdoc
 Syntax mapping.
 We can inspect the parser dispatch tables within various contexts to get a
@@ -2510,7 +2524,7 @@ defoperator destructure => q{
             ->(e => json_extractor $_[0]);
 };
 
-defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
+defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/monitor/lib
 monitor.pl.sdoc
 62 core/monitor/monitor.pl.sdoc
@@ -2727,7 +2741,7 @@ defoperator 'checkpoint', q{
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
+defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
 1 core/net/lib
 net.pl.sdoc
 18 core/net/net.pl.sdoc
@@ -2748,7 +2762,7 @@ defoperator ssh => q{
 
 use constant ssh_host => prx '[^][/,]+';
 
-defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, pqfn '';
+defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
 1 core/buffer/lib
 buffer.pl.sdoc
 17 core/buffer/buffer.pl.sdoc
@@ -2874,8 +2888,8 @@ defoperator with_left => q{
   }
 };
 
-defshort '/w', pmap q{with_right_op @$_}, pqfn '';
-defshort '/W', pmap q{with_left_op  @$_}, pqfn '';
+defshort '/w', pmap q{with_right_op @$_}, _qfn;
+defshort '/W', pmap q{with_left_op  @$_}, _qfn;
 
 Vertical transformation.
 This is useful when you want to apply a streaming transformation to a specific
@@ -2948,7 +2962,7 @@ defoperator vertical_apply => q{
   $o->await;
 };
 
-defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
+defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 3 core/row/lib
 row.pl.sdoc
 scale.pl.sdoc
@@ -3261,7 +3275,7 @@ defoperator row_fixed_scale => q{
   $stdout_reader->await;
 };
 
-defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, pqfn '';
+defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
 3 core/row/join.pl.sdoc
 Streaming joins.
 The UNIX `join` command does this, but rearranges fields in the process. ni
@@ -3304,7 +3318,7 @@ Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
 
 defcontext 'cell';
-defshort '/,', pqfn 'cell';
+defshort '/,', parser 'cell/qfn';
 
 use constant cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
 use constant cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
@@ -3870,10 +3884,10 @@ defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
 defshort '/p',
   defalt 'perlalt', 'alternatives for /p perl operator',
-    pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
+    pmap q{perl_mapper_op $_}, plcode \&perl_mapper;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', pplcode \&perl_grepper;
+          pn 1, prx 'p', plcode \&perl_grepper;
 2 core/rb/lib
 prefix.rb
 rb.pl.sdoc
@@ -4044,9 +4058,9 @@ defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
 defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
-    pmap q{ruby_mapper_op $_}, prbcode;
+    pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;
+defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
@@ -4339,7 +4353,7 @@ sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 SQL code parse element.
 Counts brackets outside quoted strings.
 
-use constant sqlcode => pgeneric_code;
+use constant sqlcode => generic_code;
 
 Code compilation.
 Parser elements can generate one of two things: [method, @args] or
@@ -4369,7 +4383,7 @@ defcontext 'sql';
 use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt pqfn 'sql';
+                 pseq sql_table, popt parser 'sql/qfn';
 
 defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/u', pk ['uniq'];
@@ -4452,7 +4466,7 @@ Counts brackets, excluding those inside quoted strings. This is more efficient
 and less accurate than Ruby/Perl, but the upside is that errors are not
 particularly common.
 
-use constant pycode => pmap q{pydent $_}, pgeneric_code;
+use constant pycode => pmap q{pydent $_}, generic_code;
 3 core/binary/lib
 bytestream.pm.sdoc
 bytewriter.pm.sdoc
@@ -4527,7 +4541,7 @@ defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
 defshort '/b',
   defdsp 'binaryalt', 'dispatch table for the /b binary operator',
-    p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
+    p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
 115 core/matrix/matrix.pl.sdoc
@@ -4648,19 +4662,20 @@ defoperator numpy_dense => q{
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
-12 core/gnuplot/gnuplot.pl.sdoc
+13 core/gnuplot/gnuplot.pl.sdoc
 Gnuplot interop.
-An operator that tees output to a gnuplot process.
+An operator that sends output to a gnuplot process.
 
 defcontext 'gnuplot';
 defshort 'gnuplot/d', pk 'plot "-" with dots';
 
-defoperator gnuplot => q{
+defoperator stream_to_gnuplot => q{
   my ($args) = @_;
   exec 'gnuplot', '-persist', '-e', $args;
 };
 
-defshort '/G', $contexts{gnuplot};
+# TODO
+defshort '/G', pmap q{stream_to_gnuplot_op $_}, parser 'gnuplot/qfn';
 2 core/http/lib
 ws.pm.sdoc
 http.pl.sdoc
@@ -5502,7 +5517,7 @@ This entry point provides a realtime CLI parse for the UI.
 
 sub jsplot_parse($$@) {
   my ($reply, $req, @ni_args) = @_;
-  my ($ops, @rest) = parse pcli_debug '', @ni_args;
+  my ($ops, @rest) = parse _cli_debug, @ni_args;
   http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
 }
 
@@ -5518,7 +5533,7 @@ sub jsplot_stream($$@) {
   my ($reply, $req, @ni_args) = @_;
   my ($ops) = cli @ni_args;
   unless (defined $ops) {
-    my (undef, @rest) = parse pcli_debug '', @ni_args;
+    my (undef, @rest) = parse _cli_debug, @ni_args;
     die "ni: jsplot failed to parse starting at @rest";
   }
 
@@ -5642,11 +5657,11 @@ use constant docker_package_list => pmap q{[/\+([^][+]+)/g]}, prx '[^][]+';
 defshort '/C',
   defalt 'dockeralt', 'alternatives for the /C containerize operator',
     pmap(q{docker_run_dynamic_op alpine_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prc 'A', pc docker_package_list), pqfn ''),
+         pseq pn(1, prc 'A', pc docker_package_list), _qfn),
     pmap(q{docker_run_dynamic_op ubuntu_dockerfile(@{$$_[0]}), @{$$_[1]}},
-         pseq pn(1, prc 'U', pc docker_package_list), pqfn ''),
+         pseq pn(1, prc 'U', pc docker_package_list), _qfn),
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
-         pseq pc docker_image_name, pqfn '');
+         pseq pc docker_image_name, _qfn);
 
 Execution within existing containers.
 Same idea as running a new Docker, but creates a process within an existing
@@ -5665,7 +5680,7 @@ defoperator docker_exec => q{
 };
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
-               pseq pc docker_container_name, pqfn '';
+               pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
 131 core/hadoop/hadoop.pl.sdoc
@@ -5794,7 +5809,7 @@ defoperator hadoop_streaming => q{
 
 use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                              pmap(q{[]},    prc ':'),
-                                             pqfn '';
+                                             _qfn;
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
@@ -5821,13 +5836,13 @@ Python code, we generate a series of gens, each of which refers to a '%v'
 quantity that signifies the value being transformed.
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
-sub pyspark_lambda($) {$_[0]}
+sub pyspark_create_lambda($) {$_[0]}
 
 c
 BEGIN {defcontext 'pyspark'}
 
-use constant pyspark_fn  => pmap q{pyspark_lambda $_}, pycode;
-use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pqfn 'pyspark';
+use constant pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
 
 defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;
@@ -6579,7 +6594,7 @@ $ docker run --detach -i -m 1G --name ni-test-hadoop \
     sequenceiq/hadoop-docker \
     /etc/bootstrap.sh -bash >/dev/null
 $ until docker exec -i ni-test-hadoop \
-        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir >&/dev/null; \
+        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; \
   do sleep 1; done
 ```
 

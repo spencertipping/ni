@@ -118,10 +118,10 @@ defoperator divert => q{
   $fh->await;
 };
 
-defshort '/+', pmap q{append_op    @$_}, pqfn '';
-defshort '/^', pmap q{prepend_op   @$_}, pqfn '';
-defshort '/%', pmap q{duplicate_op @$_}, pqfn '';
-defshort '/=', pmap q{divert_op    @$_}, pqfn '';
+defshort '/+', pmap q{append_op    @$_}, _qfn;
+defshort '/^', pmap q{prepend_op   @$_}, _qfn;
+defshort '/%', pmap q{duplicate_op @$_}, _qfn;
+defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
 Interleaving.
 Append/prepend will block one of the two data sources until the other
@@ -173,7 +173,7 @@ defoperator interleave => q{
   $fh->await;
 };
 
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, pqfn '';
+defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is

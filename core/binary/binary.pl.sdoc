@@ -27,4 +27,4 @@ defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
 defshort '/b',
   defdsp 'binaryalt', 'dispatch table for the /b binary operator',
-    p => pmap q{binary_perl_op $_}, pplcode \&binary_perl_mapper;
+    p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;

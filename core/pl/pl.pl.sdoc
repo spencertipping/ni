@@ -100,7 +100,7 @@ defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
 defshort '/p',
   defalt 'perlalt', 'alternatives for /p perl operator',
-    pmap q{perl_mapper_op $_}, pplcode \&perl_mapper;
+    pmap q{perl_mapper_op $_}, plcode \&perl_mapper;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', pplcode \&perl_grepper;
+          pn 1, prx 'p', plcode \&perl_grepper;

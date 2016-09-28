@@ -15,13 +15,13 @@ Python code, we generate a series of gens, each of which refers to a '%v'
 quantity that signifies the value being transformed.
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
-sub pyspark_lambda($) {$_[0]}
+sub pyspark_create_lambda($) {$_[0]}
 
 c
 BEGIN {defcontext 'pyspark'}
 
-use constant pyspark_fn  => pmap q{pyspark_lambda $_}, pycode;
-use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pqfn 'pyspark';
+use constant pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+use constant pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
 
 defshort 'pyspark/n',  pmap q{gen "%v.union(sc.parallelize(range(1, 1+$_)))"}, integer;
 defshort 'pyspark/n0', pmap q{gen "%v.union(sc.parallelize(range($_)))"}, integer;

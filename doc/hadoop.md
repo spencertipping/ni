@@ -16,7 +16,7 @@ $ docker run --detach -i -m 1G --name ni-test-hadoop \
     sequenceiq/hadoop-docker \
     /etc/bootstrap.sh -bash >/dev/null
 $ until docker exec -i ni-test-hadoop \
-        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir >&/dev/null; \
+        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; \
   do sleep 1; done
 ```
 

@@ -1,12 +1,13 @@
 Gnuplot interop.
-An operator that tees output to a gnuplot process.
+An operator that sends output to a gnuplot process.
 
 defcontext 'gnuplot';
 defshort 'gnuplot/d', pk 'plot "-" with dots';
 
-defoperator gnuplot => q{
+defoperator stream_to_gnuplot => q{
   my ($args) = @_;
   exec 'gnuplot', '-persist', '-e', $args;
 };
 
-defshort '/G', $contexts{gnuplot};
+# TODO
+defshort '/G', pmap q{stream_to_gnuplot_op $_}, parser 'gnuplot/qfn';

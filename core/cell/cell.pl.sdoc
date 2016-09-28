@@ -3,7 +3,7 @@ Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
 
 defcontext 'cell';
-defshort '/,', pqfn 'cell';
+defshort '/,', parser 'cell/qfn';
 
 use constant cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
 use constant cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;

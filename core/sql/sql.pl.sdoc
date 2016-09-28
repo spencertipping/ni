@@ -64,7 +64,7 @@ sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 SQL code parse element.
 Counts brackets outside quoted strings.
 
-use constant sqlcode => pgeneric_code;
+use constant sqlcode => generic_code;
 
 Code compilation.
 Parser elements can generate one of two things: [method, @args] or
@@ -94,7 +94,7 @@ defcontext 'sql';
 use constant sql_table => pmap q{sqlgen $_}, prc '^[^][]*';
 
 our $sql_query = pmap q{sql_compile $$_[0], @{$$_[1]}},
-                 pseq sql_table, popt pqfn 'sql';
+                 pseq sql_table, popt parser 'sql/qfn';
 
 defshort 'sql/m', pmap q{['map', $_]}, sqlcode;
 defshort 'sql/u', pk ['uniq'];

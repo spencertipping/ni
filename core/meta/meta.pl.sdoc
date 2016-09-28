@@ -61,4 +61,4 @@ defoperator dev_local_operate => q{
   $fh->await;
 };
 
-defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, pqfn '';
+defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;

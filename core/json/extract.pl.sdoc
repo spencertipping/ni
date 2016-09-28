@@ -47,4 +47,4 @@ defoperator destructure => q{
             ->(e => json_extractor $_[0]);
 };
 
-defshort '/D', pmap q{destructure_op $_}, pgeneric_code;
+defshort '/D', pmap q{destructure_op $_}, generic_code;

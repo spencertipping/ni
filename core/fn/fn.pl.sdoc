@@ -20,7 +20,7 @@ A parameter like 'pattern' will just consume a single unparsed argument, but
 sometimes you want to apply parsing structure to things. You can do that by
 type-tagging the results:
 
-| defn ['/manpages-matching', condition => pplcode],
+| defn ['/manpages-matching', condition => plcode],
        qw[e[find /usr/share/man -type f] rp$condition];
 
 TODO: defshort() should define a named parser that manages the arguments for
@@ -36,8 +36,8 @@ BEGIN {
   defparser fn_expander => '$$',
     sub {
       my ($self, @xs) = @_;
-      my (undef, $formals, $expansion) = @_;
-      # TODO
+      my (undef, $formals, $positions, $expansion) = @_;
+      
     };
 }
 
@@ -45,5 +45,20 @@ sub defn($$) {
   my ($fn, $expansion) = @_;
   my ($short_spec, @args) = @$fn;
   my ($context, $name) = split /\//, $short_spec, 2;
-  # TODO
+
+  my @arg_parsers;
+  my %arg_positions;
+  if (ref $args[1]) {
+    for (my $i = 0; $i < $#args - 1; $i += 2) {
+      my ($k, $v) = @args[$i, $i + 1];
+      $arg_positions{$k} = $i >> 1;
+      push @arg_parsers, $v;
+    }
+  } else {
+    $arg_positions{@args[0..$#args]} = 0..$#args;
+    @arg_parsers = map prc '.*', @args;
+  }
+
+  defshort $short_spec,
+    pfn_expander [@arg_parsers], {%arg_positions}, $expansion;
 }

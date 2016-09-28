@@ -123,7 +123,7 @@ defoperator hadoop_streaming => q{
 
 use constant hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                              pmap(q{[]},    prc ':'),
-                                             pqfn '';
+                                             _qfn;
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,

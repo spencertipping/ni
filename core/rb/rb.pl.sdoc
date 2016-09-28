@@ -67,6 +67,6 @@ defoperator ruby_grepper => q{stdin_to_ruby ruby_grepper $_[0]};
 
 defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
-    pmap q{ruby_mapper_op $_}, prbcode;
+    pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', prbcode;
+defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', rbcode;

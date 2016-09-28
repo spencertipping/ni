@@ -14,4 +14,4 @@ defoperator 'checkpoint', q{
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, pqfn '';
+defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;

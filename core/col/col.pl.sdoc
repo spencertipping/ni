@@ -100,8 +100,8 @@ defoperator with_left => q{
   }
 };
 
-defshort '/w', pmap q{with_right_op @$_}, pqfn '';
-defshort '/W', pmap q{with_left_op  @$_}, pqfn '';
+defshort '/w', pmap q{with_right_op @$_}, _qfn;
+defshort '/W', pmap q{with_left_op  @$_}, _qfn;
 
 Vertical transformation.
 This is useful when you want to apply a streaming transformation to a specific
@@ -174,4 +174,4 @@ defoperator vertical_apply => q{
   $o->await;
 };
 
-defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, pqfn '';
+defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
