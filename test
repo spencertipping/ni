@@ -43,14 +43,17 @@ case $c in
   ;;
 
 -q|--quick)
+  echo "NOTE: standard error is redirected into test.log"
   tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash 2>test.log
   ;;
 
 -r|--repl)
+  echo "NOTE: to run tests, cd /tmp && bash /data/dev/tests.sh"
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
 *)
+  echo "NOTE: standard error is redirected into test.log"
   for e in ${envs[@]}; do
     echo
     echo "TESTING $e"
