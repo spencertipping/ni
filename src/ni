@@ -23,7 +23,6 @@ SOFTWARE.
 _
 eval($ni::self{ni} = <<'_');
 use strict;
-use warnings;
 sub ni::boot_header
 { join "\n", '#!/usr/bin/env perl',
              "\$ni::self{license} = <<'_';\n$ni::self{license}_",
