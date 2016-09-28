@@ -47,7 +47,7 @@ our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
-  return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
+  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
   @_ = ('//help')
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;

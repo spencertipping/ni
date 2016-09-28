@@ -636,7 +636,7 @@ our $main_operator = sub {operate @$_ for @_};
 
 sub main {
   my ($cmd, @args) = @_;
-  return $cli_special{$cmd}->(@args) if exists $cli_special{$cmd};
+  return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
   @_ = ('//help')
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
@@ -2419,7 +2419,7 @@ sub gen($) {
     my %vars = @_;
     my @r = @pieces;
     $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
-    join '', @r;
+    join '', map dor($_, ''), @r;
   };
 }
 2 core/json/lib
@@ -2495,7 +2495,7 @@ sub json_encode($) {
   return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
-  looks_like_number $v ? $v : json_escape $v;
+  looks_like_number $v ? $v : defined $v ?  json_escape $v : 'null';
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
@@ -2801,7 +2801,7 @@ defoperator ssh => q{
 defshort '/s', pmap q{ssh_op @$_}, pseq pc ssh_host, _qfn;
 1 core/buffer/lib
 buffer.pl.sdoc
-17 core/buffer/buffer.pl.sdoc
+14 core/buffer/buffer.pl.sdoc
 Buffering operators.
 Buffering a stream causes it to be forced in its entirety. Buffering does not
 imply, however, that the stream will be consumed at any particular rate; some
@@ -2811,17 +2811,14 @@ space available.
 Null buffer.
 Forwards data 1:1, but ignores pipe signals on its output.
 
-defoperator buffer_null_op => q{
-  local $SIG{PIPE} = 'IGNORE';
-  sio;
-};
+defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 
 defshort '/B',
   defdsp 'bufferalt', 'dispatch table for /B buffer operator',
     n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-177 core/col/col.pl.sdoc
+175 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -2834,10 +2831,6 @@ sub col_cut {
   my ($floor, $rest, @fs) = @_;
   exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
-
-TODO optimization: limit the number of elements returned by split(). We can do
-this because we have the full column list available, though it may be more
-trouble than it's worth if we have to contend with stray tabs in the output.
 
 use constant cols_gen =>
   gen q{@_ = split /\t/, $_, %limit; print join "\t", @_[%is]};
@@ -2938,6 +2931,8 @@ WARNING: your process needs to output exactly one line per input. If the driver
 is forced to buffer too much memory it will hang waiting for the process to
 catch up.
 
+TODO: optimize this. Right now it's horrendously slow.
+
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
   my ($limit, @cols) = @$colspec;
@@ -2949,8 +2944,8 @@ defoperator vertical_apply => q{
   vec(my $wbits, fileno $i, 1) = 1;
   fh_nonblock $i;
 
-  my $read_buf;
-  my $write_buf;
+  my $read_buf = '';
+  my $write_buf = '';
   my @queued;
   my @awaiting_completion;
   my $stdin_ok = my $proc_ok = 1;
@@ -2961,7 +2956,7 @@ defoperator vertical_apply => q{
                               and $stdin_ok &&= defined($_ = <STDIN>);
 
     while (@queued && sum(map length, @awaiting_completion) < 1048576
-                   && select undef, my $wout=$wbits, undef, 0.001) {
+                   && select undef, my $wout=$wbits, undef, 0) {
       my $n = 0;
       my @chopped;
       push @chopped, join "\t", (split /\t/, $queued[$n++], $limit)[@cols]
@@ -2977,7 +2972,7 @@ defoperator vertical_apply => q{
     close $i if !@queued && !$stdin_ok;
 
     $proc_ok &&= saferead $o, $read_buf, 8192, length $read_buf
-      while $proc_ok && select my $rout=$rbits, undef, undef, 0.001;
+      while $proc_ok && select my $rout=$rbits, undef, undef, 0;
 
     my @lines = split /\n/, $read_buf . " ";
     $proc_ok ? $read_buf = substr pop(@lines), 0, -1 : pop @lines;
@@ -3112,7 +3107,7 @@ Sorted and unsorted streaming counts.
 defoperator count => q{
   my ($n, $last) = (0, undef);
   while (<STDIN>) {
-    if ($_ ne $last) {
+    if ($_ ne $last or !defined $last) {
       print "$n\t$last" if defined $last;
       $n = 0;
       $last = $_;

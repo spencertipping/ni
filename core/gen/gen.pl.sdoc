@@ -29,6 +29,6 @@ sub gen($) {
     my %vars = @_;
     my @r = @pieces;
     $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
-    join '', @r;
+    join '', map dor($_, ''), @r;
   };
 }

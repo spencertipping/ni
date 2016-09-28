@@ -11,10 +11,6 @@ sub col_cut {
   exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
-TODO optimization: limit the number of elements returned by split(). We can do
-this because we have the full column list available, though it may be more
-trouble than it's worth if we have to contend with stray tabs in the output.
-
 use constant cols_gen =>
   gen q{@_ = split /\t/, $_, %limit; print join "\t", @_[%is]};
 
@@ -114,6 +110,8 @@ WARNING: your process needs to output exactly one line per input. If the driver
 is forced to buffer too much memory it will hang waiting for the process to
 catch up.
 
+TODO: optimize this. Right now it's horrendously slow.
+
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
   my ($limit, @cols) = @$colspec;
@@ -125,8 +123,8 @@ defoperator vertical_apply => q{
   vec(my $wbits, fileno $i, 1) = 1;
   fh_nonblock $i;
 
-  my $read_buf;
-  my $write_buf;
+  my $read_buf = '';
+  my $write_buf = '';
   my @queued;
   my @awaiting_completion;
   my $stdin_ok = my $proc_ok = 1;
@@ -137,7 +135,7 @@ defoperator vertical_apply => q{
                               and $stdin_ok &&= defined($_ = <STDIN>);
 
     while (@queued && sum(map length, @awaiting_completion) < 1048576
-                   && select undef, my $wout=$wbits, undef, 0.001) {
+                   && select undef, my $wout=$wbits, undef, 0) {
       my $n = 0;
       my @chopped;
       push @chopped, join "\t", (split /\t/, $queued[$n++], $limit)[@cols]
@@ -153,7 +151,7 @@ defoperator vertical_apply => q{
     close $i if !@queued && !$stdin_ok;
 
     $proc_ok &&= saferead $o, $read_buf, 8192, length $read_buf
-      while $proc_ok && select my $rout=$rbits, undef, undef, 0.001;
+      while $proc_ok && select my $rout=$rbits, undef, undef, 0;
 
     my @lines = split /\n/, $read_buf . " ";
     $proc_ok ? $read_buf = substr pop(@lines), 0, -1 : pop @lines;

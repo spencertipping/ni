@@ -7,10 +7,7 @@ space available.
 Null buffer.
 Forwards data 1:1, but ignores pipe signals on its output.
 
-defoperator buffer_null_op => q{
-  local $SIG{PIPE} = 'IGNORE';
-  sio;
-};
+defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 
 defshort '/B',
   defdsp 'bufferalt', 'dispatch table for /B buffer operator',
