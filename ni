@@ -3130,7 +3130,7 @@ join.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-defoperator head => q{exec 'head', shell_quote @_};
+defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
@@ -8663,7 +8663,7 @@ $ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
 test-dir/a
 test-dir/b
 test-dir/c
-$ ni e[ls test-dir/*] 2>/dev/null       # e[] uses exec() directly; no wildcard expansion
+$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
 $ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
 test-dir/a
 test-dir/b

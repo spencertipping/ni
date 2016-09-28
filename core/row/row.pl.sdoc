@@ -1,7 +1,7 @@
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
-defoperator head => q{exec 'head', shell_quote @_};
+defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
