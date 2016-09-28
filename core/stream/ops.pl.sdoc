@@ -20,8 +20,10 @@ $ni::main_operator = sub {
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
     $pager_fh->await;
+    ni::procfh::kill_children 'TERM';
   } else {
     sio;
+    ni::procfh::kill_children 'TERM';
     0;
   }
 };

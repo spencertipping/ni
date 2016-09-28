@@ -1028,7 +1028,7 @@ sub sni(@) {
   my @args = @_;
   soproc {close STDIN; close 0; exec_ni @args};
 }
-245 core/stream/ops.pl.sdoc
+247 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1051,8 +1051,10 @@ $ni::main_operator = sub {
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
     $pager_fh->await;
+    ni::procfh::kill_children 'TERM';
   } else {
     sio;
+    ni::procfh::kill_children 'TERM';
     0;
   }
 };
