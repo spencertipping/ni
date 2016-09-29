@@ -9,17 +9,22 @@ our $pager_fh;
 sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
 $ni::main_operator = sub {
-  # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
-  # buffer so no child process gets bogus data.
-  cdup2 0, 3;
-  close STDIN;
-  cdup2 3, 0;
-  POSIX::close 3;
-  open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
-
   my @children;
 
-  -t STDIN ? open STDIN, "</dev/null" : push @children, sicons {sdecode};
+  if (-t STDIN) {
+    nuke_stdin;
+  } else {
+    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+    # buffer so no child process gets bogus data.
+    cdup2 0, 3;
+    close STDIN;
+    cdup2 3, 0;
+    POSIX::close 3;
+    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
+    push @children, sicons {sdecode};
+  }
+
   @$_ and push @children, sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
@@ -98,13 +103,12 @@ Append, prepend, duplicate, divert.
 defoperator append => q{
   my @xs = @_;
   sio;
-  close STDIN;
   exec_ni @xs;
 };
 
 defoperator prepend => q{
   my @xs = @_;
-  close(my $fh = siproc {close STDIN; exec_ni @xs});
+  close(my $fh = siproc {exec_ni @xs});
   $fh->await;
   sio;
 };

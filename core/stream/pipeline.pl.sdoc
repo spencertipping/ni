@@ -17,6 +17,14 @@ sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
 
 sub sh($) {exec 'sh', '-c', $_[0]}
 
+sub nuke_stdin() {
+  open STDIN, '</dev/null';
+  if (fileno STDIN) {
+    cdup2 fileno STDIN, 0;
+    open STDIN, '<&=0';
+  }
+}
+
 Safe reads/writes.
 This is required because older versions of Perl don't automatically retry
 interrupted reads/writes. We run the risk of interruption because we have a
@@ -243,5 +251,8 @@ sub exec_ni(@) {
 
 sub sni(@) {
   my @args = @_;
-  soproc {close STDIN; exec_ni @args};
+  soproc {
+    nuke_stdin;
+    exec_ni @args;
+  };
 }

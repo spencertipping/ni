@@ -786,7 +786,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-247 core/stream/pipeline.pl.sdoc
+258 core/stream/pipeline.pl.sdoc
 Pipeline construction.
 A way to build a shell pipeline in-process by consing a transformation onto
 this process's standard input. This will cause a fork to happen, and the forked
@@ -805,6 +805,14 @@ sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
 sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
 
 sub sh($) {exec 'sh', '-c', $_[0]}
+
+sub nuke_stdin() {
+  open STDIN, '</dev/null';
+  if (fileno STDIN) {
+    cdup2 fileno STDIN, 0;
+    open STDIN, '<&=0';
+  }
+}
 
 Safe reads/writes.
 This is required because older versions of Perl don't automatically retry
@@ -1032,9 +1040,12 @@ sub exec_ni(@) {
 
 sub sni(@) {
   my @args = @_;
-  soproc {close STDIN; exec_ni @args};
+  soproc {
+    nuke_stdin;
+    exec_ni @args;
+  };
 }
-248 core/stream/ops.pl.sdoc
+252 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -1046,17 +1057,22 @@ our $pager_fh;
 sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
 $ni::main_operator = sub {
-  # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
-  # buffer so no child process gets bogus data.
-  cdup2 0, 3;
-  close STDIN;
-  cdup2 3, 0;
-  POSIX::close 3;
-  open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
-
   my @children;
 
-  -t STDIN ? open STDIN, "</dev/null" : push @children, sicons {sdecode};
+  if (-t STDIN) {
+    nuke_stdin;
+  } else {
+    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+    # buffer so no child process gets bogus data.
+    cdup2 0, 3;
+    close STDIN;
+    cdup2 3, 0;
+    POSIX::close 3;
+    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
+    push @children, sicons {sdecode};
+  }
+
   @$_ and push @children, sicons {operate @$_} for @_;
 
   if (-t STDOUT) {
@@ -1135,13 +1151,12 @@ Append, prepend, duplicate, divert.
 defoperator append => q{
   my @xs = @_;
   sio;
-  close STDIN;
   exec_ni @xs;
 };
 
 defoperator prepend => q{
   my @xs = @_;
-  close(my $fh = siproc {close STDIN; exec_ni @xs});
+  close(my $fh = siproc {exec_ni @xs});
   $fh->await;
   sio;
 };
