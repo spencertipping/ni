@@ -167,22 +167,8 @@ $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 
 The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code. If you end your code with `#`, ni will add this for
-you -- but without breaking any quotation constructs that rely on the `#`:
-
-```bash
-$ ni n3p'r $_ for 1..a#'                # auto-return nothing
-1
-1
-2
-1
-2
-3
-$ ni n3p'r qw#foo#'                     # not broken by this code transform
-foo
-foo
-foo
-```
+end of your mapper code. (At one point ni transformed a trailing `#` into
+`;()`, but this broke bracket inference in some cases.)
 
 As a shorthand, any array references you return will become rows:
 

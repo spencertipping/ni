@@ -21,7 +21,8 @@ $ni::main_operator = sub {
     push @children, sicons {sdecode};
   }
 
-  @$_ and push @children, sicons {operate @$_} for @_;
+  my @ops = apply_meta_operators @_;
+  @$_ and push @children, sicons {operate @$_} for @ops;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec 'less' or exec 'more' or sio};

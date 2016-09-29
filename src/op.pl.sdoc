@@ -23,10 +23,10 @@ sub defmetaoperator($$) {
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
   my ($op, @args) = @$operator;
-  $meta_operators{$op}->(
-    [@args],
-    [$position ? @$context[0..$position-1] : ()],
-    [@$context[$position+1..$#{$context}]]);
+  my ($left, $right) = ([$position ? @$context[0..$position-1] : ()],
+                        [@$context[$position+1..$#{$context}]]);
+  my ($new_left, $new_right) = $meta_operators{$op}->([@args], $left, $right);
+  (@{$left || $new_left}, @{$new_right || $right});
 }
 
 sub flatten_operators($);
@@ -39,7 +39,7 @@ sub flatten_operators($) {
 sub apply_meta_operators;
 sub apply_meta_operators(@) {
   local $_;
-  exists $meta_operators{$_[$_][0]}
+  exists $meta_operators{$_[$_]->[0]}
     and return apply_meta_operators meta_operate $_[$_], $_, [@_]
     for 0..$#_;
   @_;

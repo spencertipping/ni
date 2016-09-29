@@ -54,12 +54,10 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
-# TODO: get rid of this; it breaks bracket inference.
-sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
-
 use constant perl_mapgen => gen q{
   package ni::pl;
   %prefix
+  %closures
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
@@ -82,6 +80,11 @@ sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
 sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
+sub perl_quote($)    {(my $x = $_[0]) =~ s/([\\'])/\\$1/g; "'$x'"}
+sub perl_closure($$) {"use constant $_[0] => " . perl_quote($_[1]) . ";"}
+sub perl_closures()
+{join "\n", map perl_closure($_, closure_data $_), closure_keys}
+
 sub stdin_to_perl($) {
   eval {cdup2 0, 3; POSIX::close 0};
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
@@ -90,12 +93,13 @@ sub stdin_to_perl($) {
   safewrite siproc {exec 'perl', '-'}, $_[0];
 }
 
-sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
-                                 body   => $_[0],
-                                 each   => $_[1])}
+sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
+                                 closures => perl_closures,
+                                 body     => $_[0],
+                                 each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};

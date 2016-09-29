@@ -52,7 +52,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-49 ni.map.sdoc
+50 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -81,6 +81,7 @@ lib core/json
 lib core/monitor
 lib core/uri
 lib core/fn
+lib core/closure
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -527,10 +528,10 @@ sub defmetaoperator($$) {
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
   my ($op, @args) = @$operator;
-  $meta_operators{$op}->(
-    [@args],
-    [$position ? @$context[0..$position-1] : ()],
-    [@$context[$position+1..$#{$context}]]);
+  my ($left, $right) = ([$position ? @$context[0..$position-1] : ()],
+                        [@$context[$position+1..$#{$context}]]);
+  my ($new_left, $new_right) = $meta_operators{$op}->([@args], $left, $right);
+  (@{$left || $new_left}, @{$new_right || $right});
 }
 
 sub flatten_operators($);
@@ -543,7 +544,7 @@ sub flatten_operators($) {
 sub apply_meta_operators;
 sub apply_meta_operators(@) {
   local $_;
-  exists $meta_operators{$_[$_][0]}
+  exists $meta_operators{$_[$_]->[0]}
     and return apply_meta_operators meta_operate $_[$_], $_, [@_]
     for 0..$#_;
   @_;
@@ -1287,7 +1288,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-61 core/stream/main.pl.sdoc
+62 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -1311,7 +1312,8 @@ $ni::main_operator = sub {
     push @children, sicons {sdecode};
   }
 
-  @$_ and push @children, sicons {operate @$_} for @_;
+  my @ops = apply_meta_operators @_;
+  @$_ and push @children, sicons {operate @$_} for @ops;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec 'less' or exec 'more' or sio};
@@ -1367,7 +1369,7 @@ defoperator meta_help => q{
   sio; print $ni::self{"doc/$topic.md"}, "\n";
 };
 
-defshort '///ni/',     pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
+defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
@@ -2952,6 +2954,37 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
+1 core/closure/lib
+closure.pl.sdoc
+28 core/closure/closure.pl.sdoc
+Data closures.
+Data closures are a way to ship data along with a process, for example over
+hadoop or SSH. The idea is to make your data as portable as ni is.
+
+sub add_closure_key($$) {
+  # TODO: use a lib for all data closures
+  my ($k, $v) = @_;
+  $k = "transient/closure/$k";
+  chomp($ni::self{$k} = $v);
+  $ni::self{'ni.map'} .= "\nresource $k";
+}
+
+sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
+sub closure_data($) {$ni::self{"transient/closure/$_[0]"}}
+
+defmetaoperator memory_data_closure => q{
+  my ($name, $f) = @{$_[0]};
+  my $data;
+  my $fh = sni @$f;
+  1 while saferead $fh, $data, 8192, length $data;
+  close $fh;
+  $fh->await;
+  add_closure_key $name, $data;
+  ();
+};
+
+defshort '/::', pmap q{memory_data_closure_op @$_},
+                pseq prc '[^][]+', _qfn;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -4009,7 +4042,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-114 core/pl/pl.pl.sdoc
+118 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4066,12 +4099,10 @@ Defines the `p` operator, which can be modified in a few different ways to do
 different things. By default it functions as a one-in, many-out row
 transformer.
 
-# TODO: get rid of this; it breaks bracket inference.
-sub perl_crunch_empty($) {sr $_[0], qr/#$/, "#\n;()"}
-
 use constant perl_mapgen => gen q{
   package ni::pl;
   %prefix
+  %closures
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
@@ -4094,6 +4125,11 @@ sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
 sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
+sub perl_quote($)    {(my $x = $_[0]) =~ s/([\\'])/\\$1/g; "'$x'"}
+sub perl_closure($$) {"use constant $_[0] => " . perl_quote($_[1]) . ";"}
+sub perl_closures()
+{join "\n", map perl_closure($_, closure_data $_), closure_keys}
+
 sub stdin_to_perl($) {
   eval {cdup2 0, 3; POSIX::close 0};
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
@@ -4102,12 +4138,13 @@ sub stdin_to_perl($) {
   safewrite siproc {exec 'perl', '-'}, $_[0];
 }
 
-sub perl_code($$) {perl_mapgen->(prefix => perl_prefix,
-                                 body   => $_[0],
-                                 each   => $_[1])}
+sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
+                                 closures => perl_closures,
+                                 body     => $_[0],
+                                 each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_crunch_empty $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code                   $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
@@ -7594,7 +7631,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-88 doc/options.md
+89 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -7627,6 +7664,7 @@ Operator | Status | Example      | Description
 `_`      |        |              |
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
+`::`     | U      | `::x[n100]`  | Create an in-memory data closure
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |
@@ -7683,7 +7721,7 @@ Operator | Status | Example      | Description
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
-422 doc/perl.md
+408 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -7853,22 +7891,8 @@ $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 
 The last example has blank lines because Perl's `for` construct returns a
 single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code. If you end your code with `#`, ni will add this for
-you -- but without breaking any quotation constructs that rely on the `#`:
-
-```bash
-$ ni n3p'r $_ for 1..a#'                # auto-return nothing
-1
-1
-2
-1
-2
-3
-$ ni n3p'r qw#foo#'                     # not broken by this code transform
-foo
-foo
-foo
-```
+end of your mapper code. (At one point ni transformed a trailing `#` into
+`;()`, but this broke bracket inference in some cases.)
 
 As a shorthand, any array references you return will become rows:
 
