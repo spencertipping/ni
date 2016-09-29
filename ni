@@ -2263,7 +2263,7 @@ sub scat {
     }
   }
 }
-78 core/stream/self.pl.sdoc
+79 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2285,16 +2285,15 @@ sub safereadbuf($$$;$) {
 }
 
 defclispecial '--internal/operate-quoted', q{
-  my ($k) = @_;
-  my $parent_env = json_decode($ni::self{'quoted/env'});
+  my $parent_env = json_decode $ni::self{'quoted/env'};
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
   sforward_buf_unquoted $ni::data, resource_write $_
-    for @{json_decode $ni::self{'quoted/streamed'}};
+    for @{json_decode $ni::self{'quoted/resources'}};
 
   $ni::is_toplevel = 0;
   my $fh = siproc {
-    &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
+    &$ni::main_operator(flatten_operators json_decode $ni::self{'quoted/op'});
   };
   safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
@@ -2321,10 +2320,12 @@ sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
 
 sub ni_quoted_image($@) {
   my ($include_quoted_resources, @args) = @_;
-  image_with 'quoted/op'       => json_encode [@args],
-             'quoted/env'      => json_encode {%ENV},
-             'quoted/streamed' => json_encode
-               $include_quoted_resources ? [@quoted_resources] : [];
+  image_with
+    'quoted/op'        => json_encode [@args],
+    'quoted/env'       => json_encode {%ENV},
+    'quoted/resources' => json_encode($include_quoted_resources
+                                        ? [@quoted_resources]
+                                        : []);
 }
 
 sub quote_ni_into($@) {
@@ -2999,8 +3000,9 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
-1 core/closure/lib
+2 core/closure/lib
 closure.pl.sdoc
+file.pl.sdoc
 34 core/closure/closure.pl.sdoc
 Data closures.
 Data closures are a way to ship data along with a process, for example over
@@ -3035,6 +3037,47 @@ BEGIN {defparseralias closure_name => prx '[^][]+'}
 
 defshort '///:', pmap q{memory_closure_append_op $_}, pc closure_name;
 defshort '/::',  pmap q{memory_data_closure_op @$_},
+                 pseq pc closure_name, _qfn;
+40 core/closure/file.pl.sdoc
+File-backed data closures.
+Sometimes you have data that's too large to store in-memory in the ni image,
+but you still want it to be forwarded automatically. To handle this case, you
+can use a file-backed data closure: the data is streamed after ni's image state
+and is written directly to disk, never stored in memory. (All that's stored in
+memory is the name of the file.)
+
+A point of subtlety about the way file closures are handled. I'm doing this
+through URIs because tempdirs might not be portable between machines: on a
+Linux machine all tempfiles might be in /tmp, but on Mac they might be
+somewhere else. So we make sure that the name of the tempfile is computed in
+the same place that it's written, minimizing the likelihood that we'll hit
+permission errors.
+
+defresource 'file-closure',
+  read  => q{resource_read closure_data $_[1]},
+  write => q{my $tmp = resource_tmp 'file://';
+             add_closure_key $_[1], $tmp;
+             resource_write $tmp};
+
+defmetaoperator file_data_closure => q{
+  my ($name, $f) = @{$_[0]};
+  my $file = resource_write "file-closure://$name";
+  my $fh = sni @$f;
+  sforward $fh, $file;
+  close $file;
+  close $fh;
+  $fh->await;
+  add_quoted_resource "file-closure://$name";
+  ();
+};
+
+defoperator file_closure_append => q{
+  sio;
+  sforward resource_read(closure_data $_[0]), \*STDOUT;
+};
+
+defshort '///@', pmap q{file_closure_append_op $_}, pc closure_name;
+defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc

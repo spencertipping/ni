@@ -19,16 +19,15 @@ sub safereadbuf($$$;$) {
 }
 
 defclispecial '--internal/operate-quoted', q{
-  my ($k) = @_;
-  my $parent_env = json_decode($ni::self{'quoted/env'});
+  my $parent_env = json_decode $ni::self{'quoted/env'};
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
   sforward_buf_unquoted $ni::data, resource_write $_
-    for @{json_decode $ni::self{'quoted/streamed'}};
+    for @{json_decode $ni::self{'quoted/resources'}};
 
   $ni::is_toplevel = 0;
   my $fh = siproc {
-    &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
+    &$ni::main_operator(flatten_operators json_decode $ni::self{'quoted/op'});
   };
   safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
@@ -55,10 +54,12 @@ sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
 
 sub ni_quoted_image($@) {
   my ($include_quoted_resources, @args) = @_;
-  image_with 'quoted/op'       => json_encode [@args],
-             'quoted/env'      => json_encode {%ENV},
-             'quoted/streamed' => json_encode
-               $include_quoted_resources ? [@quoted_resources] : [];
+  image_with
+    'quoted/op'        => json_encode [@args],
+    'quoted/env'       => json_encode {%ENV},
+    'quoted/resources' => json_encode($include_quoted_resources
+                                        ? [@quoted_resources]
+                                        : []);
 }
 
 sub quote_ni_into($@) {
