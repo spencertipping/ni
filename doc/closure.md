@@ -53,7 +53,7 @@ Disk-backed closures have almost exactly the same semantics, and are
 automatically deleted when ni exits:
 
 ```bash
-$ rm -r /tmp/*
+$ rm -r /tmp/* || :
 $ ni :@foo[n10] //@foo e[wc -l]         # disk-backed data closure
 10
 $ ls /tmp | wc -l

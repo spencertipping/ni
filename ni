@@ -2263,7 +2263,7 @@ sub scat {
     }
   }
 }
-80 core/stream/self.pl.sdoc
+79 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2308,9 +2308,8 @@ sub sforward_quoted($$) {
 
 sub sforward_buf_unquoted($$) {
   my ($n, $b, $eof) = (0, '', 0);
-  while (safereadbuf $_[0], $n, 4) {
+  while (safereadbuf $_[0], $n, 2 and $n = unpack 'n', $n) {
     $b = '';
-    $n = unpack 'N', $n;
     $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
     safewrite $_[1], $b;
@@ -6430,7 +6429,7 @@ Disk-backed closures have almost exactly the same semantics, and are
 automatically deleted when ni exits:
 
 ```bash
-$ rm -r /tmp/*
+$ rm -r /tmp/* || :
 $ ni :@foo[n10] //@foo e[wc -l]         # disk-backed data closure
 10
 $ ls /tmp | wc -l

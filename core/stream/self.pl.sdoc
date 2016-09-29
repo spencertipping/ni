@@ -42,9 +42,8 @@ sub sforward_quoted($$) {
 
 sub sforward_buf_unquoted($$) {
   my ($n, $b, $eof) = (0, '', 0);
-  while (safereadbuf $_[0], $n, 4) {
+  while (safereadbuf $_[0], $n, 2 and $n = unpack 'n', $n) {
     $b = '';
-    $n = unpack 'N', $n;
     $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
     safewrite $_[1], $b;
