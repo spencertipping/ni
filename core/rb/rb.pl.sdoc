@@ -48,6 +48,7 @@ use constant ruby_mapgen => gen q{
     x = $l.row
     %each
   end
+  exit 0
 };
 
 use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};

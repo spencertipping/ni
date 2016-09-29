@@ -4171,7 +4171,7 @@ def re &f
   v = f.call $l
   rw {|l| f.call(l) == v}
 end
-75 core/rb/rb.pl.sdoc
+76 core/rb/rb.pl.sdoc
 Ruby code element.
 This works just like the Perl code parser but is slightly less involved because
 there's no `BEGIN/END` substitution. We also don't need to take a code
@@ -4222,6 +4222,7 @@ use constant ruby_mapgen => gen q{
     x = $l.row
     %each
   end
+  exit 0
 };
 
 use constant ruby_prefix => join "\n", @ni::self{qw| core/rb/prefix.rb |};
