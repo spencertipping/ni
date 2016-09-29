@@ -674,13 +674,13 @@ Documentation.
 
 defclispecial '--explain', q{
   my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for flatten_operators @$r;
+  print json_encode($_), "\n" for flatten_operators $r;
 };
 
 defclispecial '--explain-meta', q{
   my ($r) = parse parser '/cli', @_;
   print json_encode($_), "\n" for
-    apply_meta_operators flatten_operators @$r;
+    apply_meta_operators flatten_operators $r;
 };
 
 Root CLI context.
