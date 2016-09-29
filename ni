@@ -23,6 +23,8 @@ SOFTWARE.
 _
 eval($ni::self{ni} = <<'_');
 use strict;
+$ni::data = \*DATA;
+
 sub ni::boot_header
 { join "\n", '#!/usr/bin/env perl',
              "\$ni::self{license} = <<'_';\n$ni::self{license}_",
@@ -47,7 +49,6 @@ sub ni::set
 
 ni::set $2, join '', map $_ = <DATA>, 1..$1
 while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
-$ni::data = \*DATA;
 ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
@@ -2274,7 +2275,7 @@ defclispecial '--internal/operate-quoted', q{
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
-  open STDIN, '<&=' . fileno $ni::data;
+  *STDIN = $ni::data;
   &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
 };
 
