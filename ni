@@ -1307,7 +1307,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-71 core/meta/meta.pl.sdoc
+73 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -1346,6 +1346,8 @@ defoperator meta_options => q{
 };
 
 defshort '///ni/options', pmap q{meta_options_op}, pnone;
+
+defshort '///license', pmap q{meta_key_op 'license'}, pnone;
 
 Inspection.
 This lets you get details about specific operators or parsing contexts.

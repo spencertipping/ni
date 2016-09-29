@@ -37,6 +37,8 @@ defoperator meta_options => q{
 
 defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
+defshort '///license', pmap q{meta_key_op 'license'}, pnone;
+
 Inspection.
 This lets you get details about specific operators or parsing contexts.
 
