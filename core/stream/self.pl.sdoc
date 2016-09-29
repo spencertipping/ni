@@ -3,24 +3,22 @@ You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, ni's standard input will come from a continuation of __DATA__.
 
-defclispecial '--internal/operate', q{
+our @quoted_resources;
+
+defclispecial '--internal/operate-quoted', q{
   my ($k) = @_;
-  my $parent_env = json_decode($ni::self{'transient/env'});
+  my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
-  die "ni --internal/operate: nonexistent op key: $k"
-    unless exists $ni::self{$k};
-
-  my $fh = siproc {&$ni::main_operator(flatten_operators json_decode($ni::self{$k}))};
-  print $fh $_ while read $ni::data, $_, 8192;
-  close $fh;
-  $fh->await;
+  open STDIN, '<&=' . fileno $ni::data;
+  &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
 };
 
 sub sni_exec_list(@) {
-  my $stdin = image_with 'transient/op'  => json_encode([@_]),
-                         'transient/env' => json_encode({%ENV});
-  ($stdin, qw|perl - --internal/operate transient/op|);
+  my $stdin = image_with 'quoted/op'       => json_encode([@_]),
+                         'quoted/env'      => json_encode({%ENV}),
+                         'quoted/streamed' => json_encode([@quoted_resources]);
+  ($stdin, qw|perl - --internal/operate-quoted|);
 }
 
 sub exec_ni(@) {
