@@ -9,8 +9,6 @@ defclispecial '--internal/operate-quoted', q{
   my ($k) = @_;
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
-
-  *STDIN = $ni::data;
   &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
 };
 

@@ -2262,7 +2262,7 @@ sub scat {
     }
   }
 }
-39 core/stream/self.pl.sdoc
+37 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2274,8 +2274,6 @@ defclispecial '--internal/operate-quoted', q{
   my ($k) = @_;
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
-
-  *STDIN = $ni::data;
   &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
 };
 
