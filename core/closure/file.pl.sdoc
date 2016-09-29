@@ -16,17 +16,20 @@ defresource 'file-closure',
   read  => q{resource_read closure_data $_[1]},
   write => q{my $tmp = resource_tmp 'file://';
              add_closure_key $_[1], $tmp;
-             resource_write $tmp};
+             resource_write $tmp},
+  nuke  => q{resource_nuke closure_data $_[1]};
 
 defmetaoperator file_data_closure => q{
   my ($name, $f) = @{$_[0]};
-  my $file = resource_write "file-closure://$name";
-  my $fh = sni @$f;
+  my $c    = "file-closure://$name";
+  my $file = resource_write $c;
+  my $fh   = sni @$f;
   sforward $fh, $file;
   close $file;
   close $fh;
   $fh->await;
-  add_quoted_resource "file-closure://$name";
+  nuke_on_exit $c;
+  add_quoted_resource $c;
   ();
 };
 

@@ -2768,7 +2768,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-138 core/uri/uri.pl.sdoc
+145 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2798,6 +2798,13 @@ BEGIN {
     };
   }
 }
+
+our @nuke_on_exit;
+
+sub nuke_on_exit($) {push @nuke_on_exit, $_[0]}
+
+c
+END {resource_nuke $_ for @nuke_on_exit}
 
 our %resource_read;
 our %resource_write;
@@ -3038,7 +3045,7 @@ BEGIN {defparseralias closure_name => prx '[^][]+'}
 defshort '///:', pmap q{memory_closure_append_op $_}, pc closure_name;
 defshort '/::',  pmap q{memory_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
-40 core/closure/file.pl.sdoc
+43 core/closure/file.pl.sdoc
 File-backed data closures.
 Sometimes you have data that's too large to store in-memory in the ni image,
 but you still want it to be forwarded automatically. To handle this case, you
@@ -3057,17 +3064,20 @@ defresource 'file-closure',
   read  => q{resource_read closure_data $_[1]},
   write => q{my $tmp = resource_tmp 'file://';
              add_closure_key $_[1], $tmp;
-             resource_write $tmp};
+             resource_write $tmp},
+  nuke  => q{resource_nuke closure_data $_[1]};
 
 defmetaoperator file_data_closure => q{
   my ($name, $f) = @{$_[0]};
-  my $file = resource_write "file-closure://$name";
-  my $fh = sni @$f;
+  my $c    = "file-closure://$name";
+  my $file = resource_write $c;
+  my $fh   = sni @$f;
   sforward $fh, $file;
   close $file;
   close $fh;
   $fh->await;
-  add_quoted_resource "file-closure://$name";
+  nuke_on_exit $c;
+  add_quoted_resource $c;
   ();
 };
 
