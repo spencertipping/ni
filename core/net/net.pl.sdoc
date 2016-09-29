@@ -8,12 +8,8 @@ BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 
 defoperator ssh => q{
   my ($host, $lambda) = @_;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec 'ssh', @$host, shell_quote @exec};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $ssh_pipe = siproc {exec 'ssh', @$host, shell_quote ni_quoted_exec_args};
+  quote_ni_into $ssh_pipe, @$lambda;
 };
 
 defshort '/s', pmap q{ssh_op @$_},

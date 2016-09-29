@@ -58,10 +58,10 @@ sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
   my $w   = resource_write $tmp;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  safewrite $w, $stdin;
+  safewrite $w, ni_quoted_image 1, @$lambda;
+  sforward_quoted resource_read($_), $w for quoted_resources;
   close $w;
-  ($tmp, @exec);
+  ($tmp, ni_quoted_exec_args);
 }
 
 sub hadoop_embedded_cmd($@) {

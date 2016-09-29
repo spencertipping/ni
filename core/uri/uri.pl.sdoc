@@ -92,13 +92,16 @@ sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
+sub uri_file_temp_prefix() {dor $ENV{TMPDIR}, '/tmp'}
+sub uri_hdfs_temp_prefix() {dor $ENV{NI_HDFS_TMPDIR}, '/tmp'}
+
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
 
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/" . uri_temp_noise},
+  tmp    => q{"file://" . uri_file_temp_prefix . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
@@ -114,8 +117,7 @@ defresource 'hdfs',
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
-  tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
-              . "/" . uri_temp_noise},
+  tmp    => q{"hdfs://" . uri_hdfs_temp_prefix . "/" . uri_temp_noise},
   nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',

@@ -62,12 +62,8 @@ defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
 # Used for regression testing
 defoperator dev_local_operate => q{
   my ($lambda) = @_;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec @exec};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec ni_quoted_exec_args};
+  quote_ni_into $fh, @$lambda;
 };
 
 defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;

@@ -2263,52 +2263,85 @@ sub scat {
     }
   }
 }
-45 core/stream/self.pl.sdoc
+78 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, ni's standard input will come from a continuation of __DATA__.
 
+use Errno qw/EINTR/;
+
 our @quoted_resources;
 
+sub quoted_resources()     {@quoted_resources}
+sub add_quoted_resource($) {push @quoted_resources, $_[0]}
+
+sub safereadbuf($$$;$) {
+  my $n;
+  do {
+    return $n if $n = read $_[0], $_[1], $_[2], $_[3] || 0;
+  } while $!{EINTR};
+  return undef;
+}
+
 defclispecial '--internal/operate-quoted', q{
-  use Errno qw/EINTR/;
   my ($k) = @_;
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+
+  sforward_buf_unquoted $ni::data, resource_write $_
+    for @{json_decode $ni::self{'quoted/streamed'}};
 
   $ni::is_toplevel = 0;
   my $fh = siproc {
     &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
   };
-  print $fh $_ while read $ni::data, $_, 8192 or $!{EINTR};
+  safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
   $fh->await;
 };
 
-sub sni_exec_list(@) {
-  my $stdin = image_with 'quoted/op'       => json_encode([@_]),
-                         'quoted/env'      => json_encode({%ENV}),
-                         'quoted/streamed' => json_encode([@quoted_resources]);
-  ($stdin, qw|perl - --internal/operate-quoted|);
+sub sforward_quoted($$) {
+  my ($n, $b);
+  safewrite $_[1], pack 'na*', $n, $b while $n = saferead $_[0], $b, 8192;
+}
+
+sub sforward_buf_unquoted($$) {
+  my ($n, $b, $eof) = (0, '', 0);
+  while (safereadbuf $_[0], $n, 4) {
+    $b = '';
+    $n = unpack 'N', $n;
+    $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
+      until $eof or length($b) >= $n;
+    safewrite $_[1], $b;
+  }
+}
+
+sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
+
+sub ni_quoted_image($@) {
+  my ($include_quoted_resources, @args) = @_;
+  image_with 'quoted/op'       => json_encode [@args],
+             'quoted/env'      => json_encode {%ENV},
+             'quoted/streamed' => json_encode
+               $include_quoted_resources ? [@quoted_resources] : [];
+}
+
+sub quote_ni_into($@) {
+  my ($fh, @args) = @_;
+  safewrite $fh, ni_quoted_image 1, @args;
+  sforward_quoted resource_read($_), $fh for @quoted_resources;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
 }
 
 sub exec_ni(@) {
-  my ($stdin, @argv) = sni_exec_list @_;
-  my $fh = siproc {exec @argv};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  exit $fh->await;
+  my $ni = siproc {exec ni_quoted_exec_args};
+  quote_ni_into $ni, @_;
 }
 
-sub sni(@) {
-  my @args = @_;
-  soproc {
-    nuke_stdin;
-    exec_ni @args;
-  };
-}
+sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
 190 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
@@ -2566,7 +2599,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-73 core/meta/meta.pl.sdoc
+69 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -2631,12 +2664,8 @@ defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
 # Used for regression testing
 defoperator dev_local_operate => q{
   my ($lambda) = @_;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec @exec};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec ni_quoted_exec_args};
+  quote_ni_into $fh, @$lambda;
 };
 
 defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;
@@ -2738,7 +2767,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-136 core/uri/uri.pl.sdoc
+138 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2833,13 +2862,16 @@ sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
+sub uri_file_temp_prefix() {dor $ENV{TMPDIR}, '/tmp'}
+sub uri_hdfs_temp_prefix() {dor $ENV{NI_HDFS_TMPDIR}, '/tmp'}
+
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
 
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . dor($ENV{TMPDIR}, '/tmp') . "/" . uri_temp_noise},
+  tmp    => q{"file://" . uri_file_temp_prefix . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
@@ -2855,8 +2887,7 @@ defresource 'hdfs',
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
-  tmp    => q{"hdfs://" . dor($ENV{NI_HDFS_TMPDIR}, '/tmp')
-              . "/" . uri_temp_noise},
+  tmp    => q{"hdfs://" . uri_hdfs_temp_prefix . "/" . uri_temp_noise},
   nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
@@ -3027,7 +3058,7 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
 1 core/net/lib
 net.pl.sdoc
-20 core/net/net.pl.sdoc
+16 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -3038,12 +3069,8 @@ BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 
 defoperator ssh => q{
   my ($host, $lambda) = @_;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec 'ssh', @$host, shell_quote @exec};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $ssh_pipe = siproc {exec 'ssh', @$host, shell_quote ni_quoted_exec_args};
+  quote_ni_into $ssh_pipe, @$lambda;
 };
 
 defshort '/s', pmap q{ssh_op @$_},
@@ -3067,7 +3094,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-175 core/col/col.pl.sdoc
+174 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -3185,9 +3212,8 @@ TODO: optimize this. Right now it's horrendously slow.
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
   my ($limit, @cols) = @$colspec;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my ($i, $o) = sioproc {exec @exec};
-  safewrite $i, $stdin;
+  my ($i, $o) = sioproc {exec ni_quoted_exec_args};
+  safewrite $i, ni_quoted_image 0, @$lambda;
 
   vec(my $rbits = '', fileno $o, 1) = 1;
   vec(my $wbits = '', fileno $i, 1) = 1;
@@ -5885,7 +5911,7 @@ sub jsplot_server {
 defclispecial '--js', q{jsplot_server $_[0] || 8090};
 1 core/docker/lib
 docker.pl.sdoc
-100 core/docker/docker.pl.sdoc
+88 core/docker/docker.pl.sdoc
 Pipeline dockerization.
 Creates a transient container to execute a part of your pipeline. The image you
 specify needs to have Perl installed, but that's about it.
@@ -5897,12 +5923,8 @@ use constant docker_image_name => prx '[^][]+';
 
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
-  my $fh = siproc {exec qw|docker run --rm -i|, $image, @args};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec qw|docker run --rm -i|, $image, ni_quoted_exec_args};
+  quote_ni_into $fh, @f;
 };
 
 On-demand images.
@@ -5917,10 +5939,9 @@ untagging the image.
 
 defoperator docker_run_dynamic => q{
   my ($dockerfile, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
   my $fh = siproc {
     my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
-    my $quoted_args       = shell_quote @args;
+    my $quoted_args       = shell_quote ni_quoted_exec_args;
     my $image_name        = "ni-tmp-" . lc noise_str 32;
     sh qq{image_name=\`$quoted_dockerfile | docker build -q -\`
           if [ \${#image_name} -gt 80 ]; then \\
@@ -5932,10 +5953,7 @@ defoperator docker_run_dynamic => q{
             docker run --rm -i \$image_name $quoted_args
           fi};
   };
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  quote_ni_into $fh, @f;
 };
 
 sub alpine_dockerfile {
@@ -5976,12 +5994,8 @@ use constant docker_container_name => docker_image_name;
 
 defoperator docker_exec => q{
   my ($container, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
-  my $fh = siproc {exec qw|docker exec -i|, $container, @args};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec qw|docker exec -i|, $container, ni_quoted_exec_args};
+  quote_ni_into $fh, @f;
 };
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
@@ -6049,10 +6063,10 @@ sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
   my $w   = resource_write $tmp;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  safewrite $w, $stdin;
+  safewrite $w, ni_quoted_image 1, @$lambda;
+  sforward_quoted resource_read($_), $w for quoted_resources;
   close $w;
-  ($tmp, @exec);
+  ($tmp, ni_quoted_exec_args);
 }
 
 sub hadoop_embedded_cmd($@) {
@@ -7511,7 +7525,7 @@ a	1	3	1	1	1	1	1
 a	1	1	2	1	1	1	1
 a	1	1	1	2	1	1	1
 ```
-92 doc/monitor.md
+107 doc/monitor.md
 # Monitors
 If you run a pipeline that takes longer than a couple of seconds, ni will emit
 monitor output to standard error. It looks like this:
@@ -7566,7 +7580,26 @@ Throughput and output data won't help you identify the pipeline bottleneck in
 these situations because the pipeline is effectively moving in lock-step. This
 is where the concept of data pressure comes in.
 
-If you run the second example above, you'll see monitor output like this:
+To understand how ni computes data pressure, it is helpful to envision each part
+of the pipeline as having a monitor that sits in between it and the next
+operator, accepting output from the former and sending it to the latter:
+
+```
+         +----------+                     +----------+
+         |          |                     |          |
+         | operator |     +---------+     | operator |
+... ==>  |    X     | ==> | monitor | ==> |    Y     | ==> ...
+         |          |     +---------+     |          |
+         +----------+                     +----------+
+```
+
+The output data pressure of process X is `10 * log2(output_time / input_time)`,
+where `output_time` is the amount of time the monitor spends waiting for output
+from X and `input_time` is the amount of time the monitor spends waiting for
+process Y to accept input.
+
+Going back to our two examples above, if you run the second one, you'll see
+monitor output like this:
 
 ```
  2815K    90K/s 115 ["n",1,10000001]
@@ -7574,16 +7607,12 @@ If you run the second example above, you'll see monitor output like this:
 ```
 
 The output pressure from `nE7` is 115, and the output pressure of the Perl
-command is -116. Intuitively this makes sense: the Perl command is creating
-backpressure against `n`, and `sink_null` is, relatively to the Perl command,
-creating the opposite (i.e. it appears to have no backpressure at all, acting
-like a vacuum).
-
-ni calculates the pressure by measuring the time spent waiting on IO requests.
-The pressure is `10 * log2(output_time / input_time)`, so in the example above
-`n` was producing data about 3000 times as fast as the Perl process was
-consuming it (and the Perl process was producing data about 3000 times _slower_
-than `sink_null` was willing to consume it).
+command is -116, meaning `n` was producing data about 3000 times as fast as the
+Perl process was consuming it (and the Perl process was producing data about
+3000 times _slower_ than `sink_null` was willing to consume it). Intuitively
+this makes sense: the Perl command is creating backpressure against `n`, and
+`sink_null` is, relatively to the Perl command, creating the opposite (i.e. it
+appears to have no backpressure at all, acting like a vacuum).
 
 ## Dealing with bottlenecks
 The easiest way to solve a bottleneck is to [horizontally scale](scale.md) the

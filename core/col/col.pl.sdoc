@@ -115,9 +115,8 @@ TODO: optimize this. Right now it's horrendously slow.
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
   my ($limit, @cols) = @$colspec;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my ($i, $o) = sioproc {exec @exec};
-  safewrite $i, $stdin;
+  my ($i, $o) = sioproc {exec ni_quoted_exec_args};
+  safewrite $i, ni_quoted_image 0, @$lambda;
 
   vec(my $rbits = '', fileno $o, 1) = 1;
   vec(my $wbits = '', fileno $i, 1) = 1;

@@ -3,43 +3,76 @@ You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
 If you do this, ni's standard input will come from a continuation of __DATA__.
 
+use Errno qw/EINTR/;
+
 our @quoted_resources;
 
+sub quoted_resources()     {@quoted_resources}
+sub add_quoted_resource($) {push @quoted_resources, $_[0]}
+
+sub safereadbuf($$$;$) {
+  my $n;
+  do {
+    return $n if $n = read $_[0], $_[1], $_[2], $_[3] || 0;
+  } while $!{EINTR};
+  return undef;
+}
+
 defclispecial '--internal/operate-quoted', q{
-  use Errno qw/EINTR/;
   my ($k) = @_;
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+
+  sforward_buf_unquoted $ni::data, resource_write $_
+    for @{json_decode $ni::self{'quoted/streamed'}};
 
   $ni::is_toplevel = 0;
   my $fh = siproc {
     &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
   };
-  print $fh $_ while read $ni::data, $_, 8192 or $!{EINTR};
+  safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
   $fh->await;
 };
 
-sub sni_exec_list(@) {
-  my $stdin = image_with 'quoted/op'       => json_encode([@_]),
-                         'quoted/env'      => json_encode({%ENV}),
-                         'quoted/streamed' => json_encode([@quoted_resources]);
-  ($stdin, qw|perl - --internal/operate-quoted|);
+sub sforward_quoted($$) {
+  my ($n, $b);
+  safewrite $_[1], pack 'na*', $n, $b while $n = saferead $_[0], $b, 8192;
+}
+
+sub sforward_buf_unquoted($$) {
+  my ($n, $b, $eof) = (0, '', 0);
+  while (safereadbuf $_[0], $n, 4) {
+    $b = '';
+    $n = unpack 'N', $n;
+    $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
+      until $eof or length($b) >= $n;
+    safewrite $_[1], $b;
+  }
+}
+
+sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
+
+sub ni_quoted_image($@) {
+  my ($include_quoted_resources, @args) = @_;
+  image_with 'quoted/op'       => json_encode [@args],
+             'quoted/env'      => json_encode {%ENV},
+             'quoted/streamed' => json_encode
+               $include_quoted_resources ? [@quoted_resources] : [];
+}
+
+sub quote_ni_into($@) {
+  my ($fh, @args) = @_;
+  safewrite $fh, ni_quoted_image 1, @args;
+  sforward_quoted resource_read($_), $fh for @quoted_resources;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
 }
 
 sub exec_ni(@) {
-  my ($stdin, @argv) = sni_exec_list @_;
-  my $fh = siproc {exec @argv};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  exit $fh->await;
+  my $ni = siproc {exec ni_quoted_exec_args};
+  quote_ni_into $ni, @_;
 }
 
-sub sni(@) {
-  my @args = @_;
-  soproc {
-    nuke_stdin;
-    exec_ni @args;
-  };
-}
+sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}

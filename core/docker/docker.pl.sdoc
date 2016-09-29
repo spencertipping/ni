@@ -9,12 +9,8 @@ use constant docker_image_name => prx '[^][]+';
 
 defoperator docker_run_image => q{
   my ($image, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
-  my $fh = siproc {exec qw|docker run --rm -i|, $image, @args};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec qw|docker run --rm -i|, $image, ni_quoted_exec_args};
+  quote_ni_into $fh, @f;
 };
 
 On-demand images.
@@ -29,10 +25,9 @@ untagging the image.
 
 defoperator docker_run_dynamic => q{
   my ($dockerfile, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
   my $fh = siproc {
     my $quoted_dockerfile = shell_quote 'printf', '%s', $dockerfile;
-    my $quoted_args       = shell_quote @args;
+    my $quoted_args       = shell_quote ni_quoted_exec_args;
     my $image_name        = "ni-tmp-" . lc noise_str 32;
     sh qq{image_name=\`$quoted_dockerfile | docker build -q -\`
           if [ \${#image_name} -gt 80 ]; then \\
@@ -44,10 +39,7 @@ defoperator docker_run_dynamic => q{
             docker run --rm -i \$image_name $quoted_args
           fi};
   };
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  quote_ni_into $fh, @f;
 };
 
 sub alpine_dockerfile {
@@ -88,12 +80,8 @@ use constant docker_container_name => docker_image_name;
 
 defoperator docker_exec => q{
   my ($container, @f) = @_;
-  my ($stdin, @args) = sni_exec_list @f;
-  my $fh = siproc {exec qw|docker exec -i|, $container, @args};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
+  my $fh = siproc {exec qw|docker exec -i|, $container, ni_quoted_exec_args};
+  quote_ni_into $fh, @f;
 };
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
