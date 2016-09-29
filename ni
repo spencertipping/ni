@@ -636,7 +636,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-85 main.pl.sdoc
+87 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -720,6 +720,8 @@ sub main {
   my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
+  print STDERR "If ni is failing to parse a filename, start it with /, ./,\n";
+  print STDERR "or file:// to qualify it.\n";
   exit 1;
 }
 5 core/stream/lib
@@ -7664,7 +7666,7 @@ Operator | Status | Example      | Description
 `_`      |        |              |
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
-`::`     | U      | `::x[n100]`  | Create an in-memory data closure
+`::`     | M      | `::x[n100]`  | Create an in-memory data closure
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |

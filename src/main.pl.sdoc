@@ -81,5 +81,7 @@ sub main {
   my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
+  print STDERR "If ni is failing to parse a filename, start it with /, ./,\n";
+  print STDERR "or file:// to qualify it.\n";
   exit 1;
 }
