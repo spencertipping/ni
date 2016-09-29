@@ -501,12 +501,58 @@ sub defdsp($$%) {
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }
-39 op.pl.sdoc
+78 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
 
+Meta operators are applied before any pipeline forking happens, and are at
+liberty to modify anything to their left. (Or anything at all really, but it's
+counterintuitive for them to act rightwards.)
+
+Note that only toplevel meta operators are evaluated pre-pipeline. Meta
+operators inside lambdas are applied when the lambdas are evaluated (this is a
+feature).
+
 our %operators;
+our %meta_operators;
+
+sub defmetaoperator($$) {
+  my ($name, $f) = @_;
+  die "ni: cannot redefine meta operator $name" if exists $meta_operators{$name};
+  $meta_operators{$name} = fn $f;
+  ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defmetaoperator $name";
+}
+
+sub meta_operate($$$) {
+  my ($operator, $position, $context) = @_;
+  my ($op, @args) = @$operator;
+  $meta_operators{$op}->(
+    [@args],
+    [$position ? @$context[0..$position-1] : ()],
+    [@$context[$position+1..$#{$context}]]);
+}
+
+sub flatten_operators($);
+sub flatten_operators($) {
+  my ($name) = @{$_[0]};
+  return $_[0] unless ref $name;
+  map flatten_operators $_, @{$_[0]};
+}
+
+sub apply_meta_operators;
+sub apply_meta_operators(@) {
+  local $_;
+  exists $meta_operators{$_[$_][0]}
+    and return apply_meta_operators meta_operate $_[$_], $_, [@_]
+    for 0..$#_;
+  @_;
+}
+
+Regular operators.
+Each of these is a filter process that is forked and piped against standard
+input. Operators act independently of one another.
+
 sub defoperator($$) {
   my ($name, $f) = @_;
   die "ni: cannot redefine operator $name" if exists $operators{$name};
@@ -520,13 +566,6 @@ sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
-}
-
-sub flatten_operators($);
-sub flatten_operators($) {
-  my ($name) = @{$_[0]};
-  return $_[0] unless ref $name;
-  map flatten_operators $_, @{$_[0]};
 }
 
 Ni operators.
@@ -596,7 +635,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-79 main.pl.sdoc
+85 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -635,7 +674,13 @@ Documentation.
 
 defclispecial '--explain', q{
   my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for @$r;
+  print json_encode($_), "\n" for flatten_operators @$r;
+};
+
+defclispecial '--explain-meta', q{
+  my ($r) = parse parser '/cli', @_;
+  print json_encode($_), "\n" for
+    apply_meta_operators flatten_operators @$r;
 };
 
 Root CLI context.
