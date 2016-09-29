@@ -7,13 +7,13 @@ obvious implications. Both types of data closures are accessible to scripts you
 write inside ni; for example:
 
 ```bash
-$ ni n5                         # here's some data
+$ ni n5                         # some data
 1
 2
 3
 4
 5
-$ ni ::foo[n5]                  # now it's in a memory-resident closure
+$ ni ::foo[n5]                  # ...in a memory-resident closure
 ```
 
 Once you have a closure, it's visible to mappers, row filters, and any other
@@ -27,7 +27,7 @@ $ ni ::foo[n5] //:foo                   # closures are streams
 3
 4
 5
-$ ni ::foo[n5] n1p'r split /\n/, foo'   # ... and strings inside languages
+$ ni ::foo[n5] n1p'r split /\n/, foo'   # and strings inside languages
 1	2	3	4	5
 ```
 
