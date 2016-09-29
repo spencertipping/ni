@@ -14,12 +14,14 @@ if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   shift 2
 fi
 
-./build
-{
-  echo cd /tmp
-  echo export NI_NO_MONITOR=yes
-  ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
-} > dev/tests.sh
+build_ni_stuff() {
+  ./build
+  {
+    echo cd /tmp
+    echo export NI_NO_MONITOR=yes
+    ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
+  } > dev/tests.sh
+}
 
 tests() { echo 'bash /data/dev/tests.sh'; }
 image() { docker build -q -f env/$1 -t ni/env-$1 .; }
@@ -44,11 +46,13 @@ case $c in
 
 -q|--quick)
   echo "NOTE: standard error is redirected into test.log"
+  build_ni_stuff
   tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash 2>test.log
   ;;
 
 -r|--repl)
   echo "NOTE: to run tests, cd /tmp && bash /data/dev/tests.sh"
+  build_ni_stuff
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
@@ -59,6 +63,7 @@ case $c in
 
 *)
   echo "NOTE: standard error is redirected into test.log"
+  build_ni_stuff
   for e in ${envs[@]}; do
     if [[ -e .test-cancel ]]; then
       rm .test-cancel
