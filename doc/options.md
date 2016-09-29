@@ -31,6 +31,7 @@ Operator | Status | Example      | Description
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
 `::`     | M      | `::x[n100]`  | Create an in-memory data closure
+`//:`    | M      | `//:x`       | Append closure data
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |

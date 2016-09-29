@@ -1,0 +1,44 @@
+Self invocation.
+You can run ni and read from the resulting file descriptor; this gives you a
+way to evaluate lambda expressions (this is how checkpoints work, for example).
+If you do this, ni's standard input will come from a continuation of __DATA__.
+
+our @quoted_resources;
+
+defclispecial '--internal/operate-quoted', q{
+  use Errno qw/EINTR/;
+  my ($k) = @_;
+  my $parent_env = json_decode($ni::self{'quoted/env'});
+  $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+
+  my $fh = siproc {
+    &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
+  };
+  print $fh $_ while read $ni::data, $_, 8192 or $!{EINTR};
+  close $fh;
+  $fh->await;
+};
+
+sub sni_exec_list(@) {
+  my $stdin = image_with 'quoted/op'       => json_encode([@_]),
+                         'quoted/env'      => json_encode({%ENV}),
+                         'quoted/streamed' => json_encode([@quoted_resources]);
+  ($stdin, qw|perl - --internal/operate-quoted|);
+}
+
+sub exec_ni(@) {
+  my ($stdin, @argv) = sni_exec_list @_;
+  my $fh = siproc {exec @argv};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  exit $fh->await;
+}
+
+sub sni(@) {
+  my @args = @_;
+  soproc {
+    nuke_stdin;
+    exec_ni @args;
+  };
+}
