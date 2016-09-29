@@ -12,11 +12,12 @@ module() {
 }
 
 export NI_NO_HOME=yes
-module core/stream
-module core/meta
-module core/deps
 module core/gen
 module core/json
+module core/deps
+
+module core/stream
+module core/meta
 module core/monitor
 module core/uri
 module core/fn

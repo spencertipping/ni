@@ -73,11 +73,11 @@ resource cli.pl.sdoc
 resource op.pl.sdoc
 resource self.pl.sdoc
 resource main.pl.sdoc
-lib core/stream
-lib core/meta
-lib core/deps
 lib core/gen
 lib core/json
+lib core/deps
+lib core/stream
+lib core/meta
 lib core/monitor
 lib core/uri
 lib core/fn
@@ -724,737 +724,175 @@ sub main {
   print STDERR "or file:// to qualify it.\n";
   exit 1;
 }
-5 core/stream/lib
-fh.pl.sdoc
-procfh.pl.sdoc
-pipeline.pl.sdoc
-ops.pl.sdoc
-main.pl.sdoc
-9 core/stream/fh.pl.sdoc
-Filehandle functions.
+1 core/gen/lib
+gen.pl.sdoc
+34 core/gen/gen.pl.sdoc
+Code generator.
+A general-purpose interface to do code-generation stuff. This is used when
+you've got a task that's mostly boilerplate of some kind, but you've got
+variable regions. For example, if you wanted to generalize JVM-hosted
+command-line filters:
 
-use Fcntl qw/:DEFAULT/;
-
-sub fh_nonblock($) {
-  my ($fh) = @_;
-  my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
-  fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
-}
-99 core/stream/procfh.pl.sdoc
-Process + filehandle combination.
-We can't use Perl's process-aware FHs because they block-wait for the process
-on close. There are some situations where we care about the exit code and
-others where we don't, and this class supports both cases.
-
-package ni::procfh;
-
-use Scalar::Util qw/weaken/;
-use POSIX qw/:sys_wait_h/;
-
-Global child collector.
-Collect children regardless of whether anyone is listening for them. If we have
-an interested party, notify them.
-
-our %child_owners;
-
-sub await_children {
-  local ($!, $?, $_);
-  while (0 < ($_ = waitpid -1, WNOHANG)) {
-    $child_owners{$_}->child_exited($?) if defined $child_owners{$_};
-  }
-  $SIG{CHLD} = \&await_children;
-};
-$SIG{CHLD} = \&await_children;
-
-Signal forwarding.
-Propagate termination signals to children and run finalizers. This makes it so
-that non-writing pipelines like `ni n100000000gzn` still die out without
-waiting for the SIGPIPE.
-
-sub kill_children($) {kill $_[0], keys %child_owners}
-
-Proc-filehandle class.
-Overloading *{} makes it possible for this to act like a real filehandle in
-every sense: fileno() works, syswrite() works, etc. The constructor takes care
-of numeric fds by promoting them into Perl fh references.
-
-use overload qw/*{} fh "" str/;
-sub new($$$) {
-  my ($class, $fd, $pid) = @_;
-  my $result = bless {pid => $pid, status => undef}, $class;
-  weaken($child_owners{$pid} = $result);
-  my $fh = ref($fd) ? $fd : undef;
-  open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
-    unless defined $fh;
-  $$result{fh} = $fh;
-  $result;
-}
-
-sub DESTROY {
-  my ($self) = @_;
-  close $$self{fh};
-  delete $child_owners{$$self{pid}} unless defined $$self{status};
-}
-
-sub fh($)     {my ($self) = @_; $$self{fh}}
-sub pid($)    {my ($self) = @_; $$self{pid}}
-sub status($) {my ($self) = @_; $$self{status}}
-
-sub kill($$) {
-  my ($self, $sig) = @_;
-  kill $sig, $$self{pid} unless defined $$self{status};
-}
-
-sub str($)
-{ my ($self) = @_;
-  sprintf "<fd %d, pid %d, status %s>",
-          fileno $$self{fh}, $$self{pid}, $$self{status} || 'none' }
-
-Child await.
-We have to stop the SIGCHLD handler while we wait for the child in question.
-Otherwise we run the risk of waitpid() blocking forever or catching the wrong
-process. This ends up being fine because this process can't create more
-children while waitpid() is waiting, so we might have some resource delays but
-we won't have a leak.
-
-We also don't have to worry about multithreading: only one await() call can
-happen per process.
-
-sub await($) {
-  local ($?, $SIG{CHLD});
-  my ($self) = @_;
-  return $$self{status} if defined $$self{status};
-  $SIG{CHLD} = 'DEFAULT';
-  return $$self{status} if defined $$self{status};
-  if (kill 'ZERO', $$self{pid}) {
-    my $pid = waitpid $$self{pid}, 0;
-    $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
-  } else {
-    $self->child_exited("-1 [child already collected]");
-  }
-  $$self{status};
-}
-
-sub child_exited($$) {
-  my ($self, $status) = @_;
-  $$self{status} = $status;
-  delete $child_owners{$$self{pid}};
-}
-258 core/stream/pipeline.pl.sdoc
-Pipeline construction.
-A way to build a shell pipeline in-process by consing a transformation onto
-this process's standard input. This will cause a fork to happen, and the forked
-PID is returned.
-
-I define some system functions with a `c` prefix: these are checked system
-calls that will die with a helpful message if anything fails.
-
-no warnings 'io';
-
-use Errno qw/EINTR/;
-use POSIX qw/dup2/;
-
-sub cdup2 {defined dup2 $_[0], $_[1] or die "ni: dup2(@_) failed: $!"}
-sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
-sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
-
-sub sh($) {exec 'sh', '-c', $_[0]}
-
-sub nuke_stdin() {
-  open STDIN, '</dev/null';
-  if (fileno STDIN) {
-    cdup2 fileno STDIN, 0;
-    open STDIN, '<&=0';
-  }
-}
-
-Safe reads/writes.
-This is required because older versions of Perl don't automatically retry
-interrupted reads/writes. We run the risk of interruption because we have a
-SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
-handle this case properly.
-
-sub saferead($$$;$) {
-  my $n;
-  do {
-    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3] || 0);
-  } while $!{EINTR};
-  return undef;
-}
-
-sub safewrite($$) {
-  my $n;
-  do {
-    return $n if defined($n = syswrite $_[0], $_[1]);
-  } while $!{EINTR};
-  return undef;
-}
-
-Process construction.
-A few functions, depending on what you want to do:
-
-| siproc(&): fork into block, return pipe FH to block's STDIN.
-  soproc(&): fork into block, return pipe FH from block's STDOUT.
-  sicons(&): fork into block, connect its STDOUT to our STDIN.
-  socons(&): fork into block, connect our STDOUT to its STDIN.
-
-NOTE: forkopen does something strange and noteworthy. You'll notice that it's
-reopening STDIN and STDOUT from FDs, which seems redundant. This is required
-because Perl filehandles aren't the same as OS-level file descriptors, and ni
-deals with both in different ways.
-
-In particular, ni closes STDIN (the filehandle) if the input comes from a
-terminal, since presumably the user doesn't intend to type their input in
-manually. This needs to happen before any exec() from a forked filter process.
-But this creates a problem: if we later reactivate fd 0, which we do by moving
-file descriptors from a pipe. We have to do this at the fd level so exec()
-works correctly (since exec doesn't know anything about Perl filehandles, just
-fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
-operation, Perl's STDIN filehandle will think it's closed and return no data.
-
-So that's why we do these redundant open STDIN and STDOUT operations. At some
-point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
-moment that seems like more trouble than it's worth.
-
-sub forkopen {
-  my ($fd, $f, @args) = @_;
-  cpipe my $r, my $w;
-  my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
-  my $pid;
-  if ($pid = cfork) {
-    close $child;
-    return ni::procfh->new($ret, $pid);
-  } else {
-    close $ret;
-    cdup2 fileno $child, $fd;
-    close $child;
-    open STDIN,  '<&=0' if $fd == 0;
-    open STDOUT, '>&=1' if $fd == 1;
-    &$f(@args);
-    exit;
-  }
-}
-
-sub sioproc(&@) {
-  my ($f, @args) = @_;
-  cpipe my $proc_in, my $w;
-  cpipe my $r, my $proc_out;
-  my $pid;
-  if ($pid = cfork) {
-    close $proc_in;
-    close $proc_out;
-    return ($w, ni::procfh->new($r, $pid));
-  } else {
-    close $w;
-    close $r;
-    cdup2 fileno $proc_in, 0;
-    cdup2 fileno $proc_out, 1;
-    close $proc_in;
-    close $proc_out;
-    open STDIN,  '<&=0';
-    open STDOUT, '>&=1';
-    &$f(@args);
-    exit;
-  }
-}
-
-sub siproc(&@) {forkopen 0, @_}
-sub soproc(&@) {forkopen 1, @_}
-
-sub sicons(&@) {
-  my ($f, @args) = @_;
-  my $fh = soproc {&$f(@args)};
-  cdup2 fileno $fh, 0;
-  close $fh;
-  open STDIN, '<&=0';
-  $fh;
-}
-
-sub socons(&@) {
-  my ($f, @args) = @_;
-  my $fh = siproc {&$f(@args)};
-  cdup2 fileno $fh, 1;
-  close $fh;
-  open STDOUT, '>&=1';
-  $fh;
-}
-
-Stream functions.
-These are called by pipelines to simplify things. For example, a common
-operation is to append the output of some data-producing command:
-
-| $ ni . .              # lists current directory twice
-
-If you do this, ni will create a pipeline that uses stream wrappers to
-concatenate the second `ls` output (despite the fact that technically it's a
-shell pipe).
-
-sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
-sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
-sub sio()        {sforward \*STDIN, \*STDOUT}
-
-sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
-sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
-
-Compressed stream support.
-This provides a stdin filter you can use to read the contents of a compressed
-stream as though it weren't compressed. It's implemented as a filter process so
-we don't need to rely on file extensions.
-
-We detect the following file formats:
-
-| gzip:  1f 8b
-  bzip2: BZh\0
-  lzo:   89 4c 5a 4f
-  lz4:   04 22 4d 18
-  xz:    fd 37 7a 58 5a
-
-Decoding works by reading enough to decode the magic, then forwarding data
-into the appropriate decoding process (or doing nothing if we don't know what
-the data is).
-
-sub sdecode(;$) {
-  local $_;
-  return unless saferead \*STDIN, $_, 8192;
-
-  my $decoder = /^\x1f\x8b/             ? "gzip -dc"
-              : /^BZh\0/                ? "bzip2 -dc"
-              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
-              : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
-
-  if (defined $decoder) {
-    my $o = siproc {sh $decoder};
-    safewrite $o, $_;
-    sforward \*STDIN, $o;
-    close $o;
-    $o->await;
-  } else {
-    safewrite \*STDOUT, $_;
-    sio;
-  }
-}
-
-File/directory cat.
-cat exists to turn filesystem objects into text. Files are emitted and
-directories are turned into readable listings. Files are automatically
-decompressed and globs are automatically deglobbed.
-
-sub glob_expand($) {-e($_[0]) ? $_[0] : glob $_[0]}
-
-sub scat {
-  local $| = 1;
-  for my $f (map glob_expand($_), @_) {
-    if (-d $f) {
-      opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
-      print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
-      closedir $d;
-    } else {
-      my $d = siproc {sdecode};
-      sforward srfile $f, $d;
-      close $d;
-      $d->await;
+| my $java_linefilter = gen q{
+    import java.io.*;
+    public class %classname {
+      public static void main(String[] args) {
+        BufferedReader stdin = <the ridiculous crap required to do this>;
+        String %line;
+        while ((%line = stdin.readLine()) != null) {
+          %body;
+        }
+      }
     }
-  }
-}
+  };
+  my $code = &$java_linefilter(classname => 'Foo',
+                               line      => 'line',
+                               body      => 'System.out.println(line);');
 
-Self invocation.
-You can run ni and read from the resulting file descriptor; this gives you a
-way to evaluate lambda expressions (this is how checkpoints work, for example).
-If you do this, ni's standard input will come from a continuation of __DATA__.
+our $gensym_index = 0;
+sub gensym {join '_', '_gensym', ++$gensym_index, @_}
 
-defclispecial '--internal/operate', q{
-  my ($k) = @_;
-  $ENV{sr $_, qr|^transient/env/|, ''} ||= $ni::self{$_}
-    for grep m|^transient/env/|, keys %ni::self;
-
-  die "ni --internal/operate: nonexistent op key: $k"
-    unless exists $ni::self{$k};
-
-  my $fh = siproc {&$ni::main_operator(flatten_operators json_decode($ni::self{$k}))};
-  print $fh $_ while read $ni::data, $_, 8192;
-  close $fh;
-  $fh->await;
-};
-
-sub sni_exec_list(@) {
-  my $stdin = image_with 'transient/op' => json_encode([@_]),
-                         map {; "transient/env/$_" => $ENV{$_}} keys %ENV;
-  ($stdin, qw|perl - --internal/operate transient/op|);
-}
-
-sub exec_ni(@) {
-  my ($stdin, @argv) = sni_exec_list @_;
-  my $fh = siproc {exec @argv};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  exit $fh->await;
-}
-
-sub sni(@) {
-  my @args = @_;
-  soproc {
-    nuke_stdin;
-    exec_ni @args;
+sub gen($) {
+  my @pieces = split /(%\w+)/, $_[0];
+  sub {
+    my %vars = @_;
+    my @r = @pieces;
+    $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
+    join '', map defined $_ ? $_ : '', @r;
   };
 }
-190 core/stream/ops.pl.sdoc
-Streaming data sources.
-Common ways to read data, most notably from files and directories. Also
-included are numeric generators, shell commands, etc.
+2 core/json/lib
+json.pl.sdoc
+extract.pl.sdoc
+76 core/json/json.pl.sdoc
+JSON parser/generator.
+Perl has native JSON libraries available in CPAN, but we can't assume those are
+installed locally. The pure-perl library is unusably slow, and even it isn't
+always there. So I'm implementing an optimized pure-Perl library here to
+address this. Note that this library doesn't parse all valid JSON, but it does
+come close -- and I've never seen a real-world use case of JSON that it would
+fail to parse.
 
-c
-BEGIN {
-  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+use Scalar::Util qw/looks_like_number/;
+
+our %json_unescapes =
+  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
+   t => "\t");
+
+sub json_unescape_one($) {$json_unescapes{$_[0]} || chr hex substr $_[0], 1}
+sub json_unescape($) {
+  my $x = substr $_[0], 1, -1;
+  $x =~ s/\\(["\\\/bfnrt]|u[0-9a-fA-F]{4})/json_unescape_one $1/eg;
+  $x;
 }
-BEGIN {
-  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
-                                         pmap(q{shell_quote @$_}, shell_lambda),
-                                         prx '[^][]+';
-}
 
-defoperator cat  => q{my ($f) = @_; sio; scat $f};
-defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
-defoperator sh   => q{my ($c) = @_; sh $c};
+Fully decode a string of JSON. Unless you need to extract everything, this is
+probably the slowest option; targeted attribute extraction should be much
+faster.
 
-Note that we generate numbers internally rather than shelling out to `seq`
-(which is ~20x faster than Perl for the purpose, incidentally). This is
-deliberate: certain versions of `seq` generate floating-point numbers after a
-point, which can cause unexpected results and loss of precision.
-
-defoperator n => q{
-  my ($l, $u) = @_;
-  sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
-};
-
-defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
-defshort '/n0',  pmap q{n_op 0, $_}, number;
-defshort '/id:', pmap q{echo_op $_}, prc '.*';
-
-defshort '/e', pmap q{sh_op $_}, shell_command;
-
-deflong '/fs', pmap q{cat_op $_}, filename;
-
-Stream mixing/forking.
-Append, prepend, duplicate, divert.
-
-defoperator append => q{
-  my @xs = @_;
-  sio;
-  exec_ni @xs;
-};
-
-defoperator prepend => q{
-  my @xs = @_;
-  close(my $fh = siproc {exec_ni @xs});
-  $fh->await;
-  sio;
-};
-
-defoperator duplicate => q{
-  my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  stee \*STDIN, $fh, \*STDOUT;
-  close $fh;
-  $fh->await;
-};
-
-defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
-defoperator divert => q{
-  my @xs = @_;
-  my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
-  stee \*STDIN, $fh, \*STDOUT;
-  close $fh;
-  $fh->await;
-};
-
-defshort '/+', pmap q{append_op    @$_}, _qfn;
-defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/%', pmap q{duplicate_op @$_}, _qfn;
-defshort '/=', pmap q{divert_op    @$_}, _qfn;
-
-Interleaving.
-Append/prepend will block one of the two data sources until the other
-completes. Sometimes, though, you want to stream both at once. Interleaving
-makes that possible, and you can optionally specify the mixture ratio, which is
-the number of interleaved rows per input row. (Negative numbers are interpreted
-as reciprocals, so -2 means two stdin rows for every interleaved.)
-
-defoperator interleave => q{
-  my ($ratio, $lambda) = @_;
-  my $fh = soproc {close STDIN; exec_ni @$lambda};
-
-  if ($ratio) {
-    $ratio = 1/-$ratio if $ratio < 0;
-    my ($n1, $n2) = (0, 0);
-    while (1) {
-      ++$n1, defined($_ = <STDIN>) || goto done, print while $n1 <= $n2 * $ratio;
-      ++$n2, defined($_ = <$fh>)   || goto done, print while $n1 >= $n2 * $ratio;
-    }
-  } else {
-    my $rmask;
-    my ($stdin_ok,  $ni_ok) = (1, 1);
-    my ($stdin_buf, $ni_buf);
-    while ($stdin_ok || $ni_ok) {
-      vec($rmask, fileno STDIN, 1) = $stdin_ok;
-      vec($rmask, fileno $fh,   1) = $ni_ok;
-      my $n = select my $rout = $rmask, undef, undef, 0.01;
-      if (vec $rout, fileno STDIN, 1) {
-        $stdin_ok = !!saferead \*STDIN, $stdin_buf, 1048576, length $stdin_buf;
-        my $i = 1 + rindex $stdin_buf, "\n";
-        if ($i) {
-          safewrite \*STDOUT, substr $stdin_buf, 0, $i;
-          $stdin_buf = substr $stdin_buf, $i;
-        }
-      }
-      if (vec $rout, fileno $fh, 1) {
-        $ni_ok = !!saferead $fh, $ni_buf, 1048576, length $ni_buf;
-        my $i = 1 + rindex $ni_buf, "\n";
-        if ($i) {
-          safewrite \*STDOUT, substr $ni_buf, 0, $i;
-          $ni_buf = substr $ni_buf, $i;
-        }
-      }
+sub json_decode($) {
+  local $_;
+  my @v = [];
+  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|[-+eE\d.]+/g) {
+    if (/^[[{]$/) {
+      push @v, [];
+    } elsif (/^\]$/) {
+      die "json_decode $_[0]: too many closing brackets" if @v < 2;
+      push @{$v[-2]}, $v[-1];
+      pop @v;
+    } elsif (/^\}$/) {
+      die "json_decode $_[0]: too many closing brackets" if @v < 2;
+      push @{$v[-2]}, {@{$v[-1]}};
+      pop @v;
+    } else {
+      push @{$v[-1]}, /^"/      ? json_unescape $_
+                    : /^true$/  ? 1
+                    : /^false$/ ? 0
+                    : /^null$/  ? undef
+                    :             0 + $_;
     }
   }
-
-  done:
-  close $fh;
-  $fh->await;
-};
-
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
-
-Sinking.
-We can sink data into a file just as easily as we can read from it. This is
-done with the `>` operator, which is typically written as `\>`. The difference
-between this and the shell's > operator is that \> outputs the filename; this
-lets you invert the operation with the nullary \< operator.
-
-use constant tmpdir => $ENV{TMPDIR} || "/tmp";
-sub tempfile_name() {
-  my $r = '/';
-  $r = tmpdir . "/ni-$$-" . noise_str 8 while -e $r;
-  $r;
+  my $r = pop @v;
+  die "json_decode $_[0]: not enough closing brackets" if @v;
+  wantarray ? @$r : $$r[0];
 }
 
-defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
-defoperator file_write => q{
-  my ($file) = @_;
-  $file = tempfile_name unless defined $file;
-  sforward \*STDIN, swfile $file;
-  print "$file\n";
-};
+Encode a string of JSON from a structured value. TODO: add the ability to
+generate true/false values.
 
-defshort '/>', pmap q{file_write_op $_}, nefilename;
-defshort '/<', pmap q{file_read_op},     pnone;
+our %json_escapes = map {;$json_unescapes{$_} => $_} keys %json_unescapes;
 
-Resource stream encoding.
-This makes it possible to serialize a directory structure into a single stream.
-ni uses this format internally to store its k/v state.
-
-defoperator encode_resource_stream => q{
-  my @xs;
-  while (<STDIN>) {
-    chomp;
-    my $s = rfc $_;
-    my $line_count = @xs = split /\n/, "$s ";
-    print "$line_count $_\n", $s, "\n";
-  }
-};
-
-defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
-
-Compression and decoding.
-Sometimes you want to emit compressed data, which you can do with the `Z`
-operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
-by adding a suffix. You can decode a stream in any of these formats using `ZD`
-(though in most cases ni will automatically decode compressed formats).
-
-our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
-
-c
-BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
-BEGIN {
-  defparseralias compressor_spec =>
-    pmap q{my ($c, $level) = @$_;
-           $c = $ni::compressors{$c || 'g'};
-           defined $level ? sh_op "$c -$level" : sh_op $c},
-    pseq popt compressor_name, popt integer;
+sub json_escape($) {
+  (my $x = $_[0]) =~ s/([\b\f\n\r\t"\\])/"\\" . $json_escapes{$1}/eg;
+  "\"$x\"";
 }
 
-defoperator decode => q{sdecode};
+sub json_encode($);
+sub json_encode($) {
+  local $_;
+  my ($v) = @_;
+  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+  return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
+                             sort keys %$v) . "}" if 'HASH' eq ref $v;
+  looks_like_number $v ? $v : defined $v ?  json_escape $v : 'null';
+}
 
-defshort '/z',  compressor_spec;
-defshort '/zn', pk sink_null_op();
-defshort '/zd', pk decode_op();
-62 core/stream/main.pl.sdoc
-use POSIX ();
+if (__PACKAGE__ eq 'ni::pl') {
+  *je = \&json_encode;
+  *jd = \&json_decode;
+}
+51 core/json/extract.pl.sdoc
+Targeted extraction.
+ni gives you ways to decode JSON, but you aren't likely to have data stored as
+JSON objects in the middle of data pipelines. It's more of an archival format,
+so the goal is to unpack stuff quickly. ni gives you a way of doing this that
+is usually much faster than running the full decoder. (And also requires less
+typing.)
 
-our $pager_fh;
+The set of operations is basically this:
 
-sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
+| .foo          # direct object key access (not very fast)
+  ..foo         # multiple indirect object key access (fast-ish)
+  :foo          # single indirect object key access (very fast)
+  [0]           # array access (slow)
+  []            # array flatten (slow)
 
-$ni::main_operator = sub {
-  my @children;
+Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
+every 'bar' key within the first element of the 'foo' field of the root
+object".
 
-  if (-t STDIN) {
-    nuke_stdin;
-  } else {
-    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
-    # buffer so no child process gets bogus data.
-    cdup2 0, 3;
-    close STDIN;
-    cdup2 3, 0;
-    POSIX::close 3;
-    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+Extracted values are flattened into a single array and returned. They're
+optimized for strings, numeric, and true/false/null; you can return other
+values, but it will be slower.
 
-    push @children, sicons {sdecode};
-  }
+# TODO: replace all of this
 
-  my @ops = apply_meta_operators @_;
-  @$_ and push @children, sicons {operate @$_} for @ops;
+use constant json_si_gen => gen q#
+  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
+               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
+               : /\G([^][{},]+)/              ? "" . $1
+               : undef
+               : undef) #;
 
-  if (-t STDOUT) {
-    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
-    sforward \*STDIN, $pager_fh;
-    close $pager_fh;
-    $pager_fh->await;
-    ni::procfh::kill_children 'TERM';
-  } else {
-    sio;
-  }
+sub json_extractor($) {
+  my @pieces = split /\s*,\s*/, $_[0];
+  die "ni: json_extractor is not really written yet"
+    if grep !/^:\w+$/, @pieces;
 
-  my $exit_status = 0;
-  child_status_ok $_->await or $exit_status = 1 for @children;
-  $exit_status;
+  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+                 map sr($_, qr/^:/, ''), @pieces;
+  join ',', @compiled;
+}
+
+defoperator destructure => q{
+  ni::eval gen(q{no warnings 'uninitialized';
+                 eval {binmode STDOUT, ":encoding(utf-8)"};
+                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+                 while (<STDIN>) {print join("\t", %e), "\n"}})
+            ->(e => json_extractor $_[0]);
 };
 
-Pagers and kill signals.
-`less` resets a number of terminal settings, including character buffering and
-no-echo. If we kill it directly with a signal, it will exit without restoring a
-shell-friendly terminal state, requiring the user to run `reset` to fix it. So
-in an interrupt context we try to give the pager a chance to exit gracefully by
-closing its input stream and having the user use `q` or similar.
-
-$SIG{TERM} = sub {
-  close $pager_fh if $pager_fh;
-  ni::procfh::kill_children 'TERM';
-  exit 1;
-};
-
-$SIG{INT} = sub {
-  if ($pager_fh) {
-    close $pager_fh;
-    $pager_fh->await;
-  }
-  ni::procfh::kill_children 'TERM';
-  exit 1;
-};
-2 core/meta/lib
-meta.pl.sdoc
-map.pl.sdoc
-73 core/meta/meta.pl.sdoc
-Image-related data sources.
-Long options to access ni's internal state. Also the ability to instantiate ni
-within a shell process.
-
-defoperator meta_image => q{sio; print image, "\n"};
-defoperator meta_keys  => q{sio; print "$_\n" for sort keys %ni::self};
-defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
-
-defoperator meta_help => q{
-  my ($topic) = @_;
-  $topic = 'tutorial' unless length $topic;
-  sio; print $ni::self{"doc/$topic.md"}, "\n";
-};
-
-defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';
-defshort '///ni',      pmap q{meta_image_op},  pnone;
-defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
-
-defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
-defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;
-
-Documentation options.
-These are listed under the `//help` prefix. This isn't a toplevel option
-because it's more straightforward to model these as data sources.
-
-sub meta_context_name($) {$_[0] || '<root>'}
-
-defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
-
-defoperator meta_options => q{
-  sio;
-  for my $c (sort keys %ni::contexts) {
-    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $ni::long_names{$c}[$_], abbrev dev_inspect_nonl $ni::long_refs{$c}[$_],  40 for       0..$#{$ni::long_refs{$c}};
-    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                      abbrev dev_inspect_nonl $ni::short_refs{$c}{$_}, 40 for sort keys %{$ni::short_refs{$c}};
-  }
-};
-
-defshort '///ni/options', pmap q{meta_options_op}, pnone;
-
-defshort '///license', pmap q{meta_key_op 'license'}, pnone;
-
-Inspection.
-This lets you get details about specific operators or parsing contexts.
-
-defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
-defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
-defshort '///ni/op/', pmap q{meta_op_op $_}, prc '.+';
-defshort '///ni/ops', pmap q{meta_ops_op},   pnone;
-
-defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
-defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers};
-defshort '///ni/parser/', pmap q{meta_parser_op $_}, prc '.+';
-defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
-
-The backdoor.
-Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
-code within this process, and behaves like a normal streaming operator.
-
-defoperator dev_backdoor => q{ni::eval $_[0]};
-defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
-
-# Used for regression testing
-defoperator dev_local_operate => q{
-  my ($lambda) = @_;
-  my ($stdin, @exec) = sni_exec_list @$lambda;
-  my $fh = siproc {exec @exec};
-  safewrite $fh, $stdin;
-  sforward \*STDIN, $fh;
-  close $fh;
-  $fh->await;
-};
-
-defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;
-24 core/meta/map.pl.sdoc
-Syntax mapping.
-We can inspect the parser dispatch tables within various contexts to get a
-character-level map of prefixes and to indicate which characters are available
-for additional operators.
-
-use constant qwerty_prefixes => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@%=$+_,.:';
-use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222334344444455544565565223';
-
-defoperator meta_short_availability => q{
-  sio;
-  print "--------" . qwerty_prefixes . "\n";
-  for my $c (sort keys %ni::contexts) {
-    my $s = $ni::short_refs{$c};
-    my %multi;
-    ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
-
-    print substr(meta_context_name $c, 0, 7) . "\t"
-        . join('', map $multi{$_} ? '.' : $$s{$_} ? '|' : ' ',
-                       split //, qwerty_prefixes)
-        . "\n";
-  }
-};
-
-defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
+defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2489,175 +1927,738 @@ sub load {
 }
 
 1;
-1 core/gen/lib
-gen.pl.sdoc
-34 core/gen/gen.pl.sdoc
-Code generator.
-A general-purpose interface to do code-generation stuff. This is used when
-you've got a task that's mostly boilerplate of some kind, but you've got
-variable regions. For example, if you wanted to generalize JVM-hosted
-command-line filters:
+6 core/stream/lib
+fh.pl.sdoc
+procfh.pl.sdoc
+pipeline.pl.sdoc
+self.pl.sdoc
+ops.pl.sdoc
+main.pl.sdoc
+9 core/stream/fh.pl.sdoc
+Filehandle functions.
 
-| my $java_linefilter = gen q{
-    import java.io.*;
-    public class %classname {
-      public static void main(String[] args) {
-        BufferedReader stdin = <the ridiculous crap required to do this>;
-        String %line;
-        while ((%line = stdin.readLine()) != null) {
-          %body;
+use Fcntl qw/:DEFAULT/;
+
+sub fh_nonblock($) {
+  my ($fh) = @_;
+  my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
+  fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
+}
+99 core/stream/procfh.pl.sdoc
+Process + filehandle combination.
+We can't use Perl's process-aware FHs because they block-wait for the process
+on close. There are some situations where we care about the exit code and
+others where we don't, and this class supports both cases.
+
+package ni::procfh;
+
+use Scalar::Util qw/weaken/;
+use POSIX qw/:sys_wait_h/;
+
+Global child collector.
+Collect children regardless of whether anyone is listening for them. If we have
+an interested party, notify them.
+
+our %child_owners;
+
+sub await_children {
+  local ($!, $?, $_);
+  while (0 < ($_ = waitpid -1, WNOHANG)) {
+    $child_owners{$_}->child_exited($?) if defined $child_owners{$_};
+  }
+  $SIG{CHLD} = \&await_children;
+};
+$SIG{CHLD} = \&await_children;
+
+Signal forwarding.
+Propagate termination signals to children and run finalizers. This makes it so
+that non-writing pipelines like `ni n100000000gzn` still die out without
+waiting for the SIGPIPE.
+
+sub kill_children($) {kill $_[0], keys %child_owners}
+
+Proc-filehandle class.
+Overloading *{} makes it possible for this to act like a real filehandle in
+every sense: fileno() works, syswrite() works, etc. The constructor takes care
+of numeric fds by promoting them into Perl fh references.
+
+use overload qw/*{} fh "" str/;
+sub new($$$) {
+  my ($class, $fd, $pid) = @_;
+  my $result = bless {pid => $pid, status => undef}, $class;
+  weaken($child_owners{$pid} = $result);
+  my $fh = ref($fd) ? $fd : undef;
+  open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
+    unless defined $fh;
+  $$result{fh} = $fh;
+  $result;
+}
+
+sub DESTROY {
+  my ($self) = @_;
+  close $$self{fh};
+  delete $child_owners{$$self{pid}} unless defined $$self{status};
+}
+
+sub fh($)     {my ($self) = @_; $$self{fh}}
+sub pid($)    {my ($self) = @_; $$self{pid}}
+sub status($) {my ($self) = @_; $$self{status}}
+
+sub kill($$) {
+  my ($self, $sig) = @_;
+  kill $sig, $$self{pid} unless defined $$self{status};
+}
+
+sub str($)
+{ my ($self) = @_;
+  sprintf "<fd %d, pid %d, status %s>",
+          fileno $$self{fh}, $$self{pid}, $$self{status} || 'none' }
+
+Child await.
+We have to stop the SIGCHLD handler while we wait for the child in question.
+Otherwise we run the risk of waitpid() blocking forever or catching the wrong
+process. This ends up being fine because this process can't create more
+children while waitpid() is waiting, so we might have some resource delays but
+we won't have a leak.
+
+We also don't have to worry about multithreading: only one await() call can
+happen per process.
+
+sub await($) {
+  local ($?, $SIG{CHLD});
+  my ($self) = @_;
+  return $$self{status} if defined $$self{status};
+  $SIG{CHLD} = 'DEFAULT';
+  return $$self{status} if defined $$self{status};
+  if (kill 'ZERO', $$self{pid}) {
+    my $pid = waitpid $$self{pid}, 0;
+    $self->child_exited($pid <= 0 ? "-1 [waitpid: $!]" : $?);
+  } else {
+    $self->child_exited("-1 [child already collected]");
+  }
+  $$self{status};
+}
+
+sub child_exited($$) {
+  my ($self, $status) = @_;
+  $$self{status} = $status;
+  delete $child_owners{$$self{pid}};
+}
+216 core/stream/pipeline.pl.sdoc
+Pipeline construction.
+A way to build a shell pipeline in-process by consing a transformation onto
+this process's standard input. This will cause a fork to happen, and the forked
+PID is returned.
+
+I define some system functions with a `c` prefix: these are checked system
+calls that will die with a helpful message if anything fails.
+
+no warnings 'io';
+
+use Errno qw/EINTR/;
+use POSIX qw/dup2/;
+
+sub cdup2 {defined dup2 $_[0], $_[1] or die "ni: dup2(@_) failed: $!"}
+sub cpipe {pipe $_[0], $_[1] or die "ni: pipe failed: $!"}
+sub cfork {my $pid = fork; die "ni: fork failed: $!" unless defined $pid; $pid}
+
+sub sh($) {exec 'sh', '-c', $_[0]}
+
+sub nuke_stdin() {
+  open STDIN, '</dev/null';
+  if (fileno STDIN) {
+    cdup2 fileno STDIN, 0;
+    open STDIN, '<&=0';
+  }
+}
+
+Safe reads/writes.
+This is required because older versions of Perl don't automatically retry
+interrupted reads/writes. We run the risk of interruption because we have a
+SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
+handle this case properly.
+
+sub saferead($$$;$) {
+  my $n;
+  do {
+    return $n if defined($n = sysread $_[0], $_[1], $_[2], $_[3] || 0);
+  } while $!{EINTR};
+  return undef;
+}
+
+sub safewrite($$) {
+  my $n;
+  do {
+    return $n if defined($n = syswrite $_[0], $_[1]);
+  } while $!{EINTR};
+  return undef;
+}
+
+Process construction.
+A few functions, depending on what you want to do:
+
+| siproc(&): fork into block, return pipe FH to block's STDIN.
+  soproc(&): fork into block, return pipe FH from block's STDOUT.
+  sicons(&): fork into block, connect its STDOUT to our STDIN.
+  socons(&): fork into block, connect our STDOUT to its STDIN.
+
+NOTE: forkopen does something strange and noteworthy. You'll notice that it's
+reopening STDIN and STDOUT from FDs, which seems redundant. This is required
+because Perl filehandles aren't the same as OS-level file descriptors, and ni
+deals with both in different ways.
+
+In particular, ni closes STDIN (the filehandle) if the input comes from a
+terminal, since presumably the user doesn't intend to type their input in
+manually. This needs to happen before any exec() from a forked filter process.
+But this creates a problem: if we later reactivate fd 0, which we do by moving
+file descriptors from a pipe. We have to do this at the fd level so exec()
+works correctly (since exec doesn't know anything about Perl filehandles, just
+fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
+operation, Perl's STDIN filehandle will think it's closed and return no data.
+
+So that's why we do these redundant open STDIN and STDOUT operations. At some
+point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
+moment that seems like more trouble than it's worth.
+
+sub forkopen {
+  my ($fd, $f, @args) = @_;
+  cpipe my $r, my $w;
+  my ($ret, $child) = ($r, $w)[$fd ^ 1, $fd];
+  my $pid;
+  if ($pid = cfork) {
+    close $child;
+    return ni::procfh->new($ret, $pid);
+  } else {
+    close $ret;
+    cdup2 fileno $child, $fd;
+    close $child;
+    open STDIN,  '<&=0' if $fd == 0;
+    open STDOUT, '>&=1' if $fd == 1;
+    &$f(@args);
+    exit;
+  }
+}
+
+sub sioproc(&@) {
+  my ($f, @args) = @_;
+  cpipe my $proc_in, my $w;
+  cpipe my $r, my $proc_out;
+  my $pid;
+  if ($pid = cfork) {
+    close $proc_in;
+    close $proc_out;
+    return ($w, ni::procfh->new($r, $pid));
+  } else {
+    close $w;
+    close $r;
+    cdup2 fileno $proc_in, 0;
+    cdup2 fileno $proc_out, 1;
+    close $proc_in;
+    close $proc_out;
+    open STDIN,  '<&=0';
+    open STDOUT, '>&=1';
+    &$f(@args);
+    exit;
+  }
+}
+
+sub siproc(&@) {forkopen 0, @_}
+sub soproc(&@) {forkopen 1, @_}
+
+sub sicons(&@) {
+  my ($f, @args) = @_;
+  my $fh = soproc {&$f(@args)};
+  cdup2 fileno $fh, 0;
+  close $fh;
+  open STDIN, '<&=0';
+  $fh;
+}
+
+sub socons(&@) {
+  my ($f, @args) = @_;
+  my $fh = siproc {&$f(@args)};
+  cdup2 fileno $fh, 1;
+  close $fh;
+  open STDOUT, '>&=1';
+  $fh;
+}
+
+Stream functions.
+These are called by pipelines to simplify things. For example, a common
+operation is to append the output of some data-producing command:
+
+| $ ni . .              # lists current directory twice
+
+If you do this, ni will create a pipeline that uses stream wrappers to
+concatenate the second `ls` output (despite the fact that technically it's a
+shell pipe).
+
+sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
+sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
+sub sio()        {sforward \*STDIN, \*STDOUT}
+
+sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
+sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
+
+Compressed stream support.
+This provides a stdin filter you can use to read the contents of a compressed
+stream as though it weren't compressed. It's implemented as a filter process so
+we don't need to rely on file extensions.
+
+We detect the following file formats:
+
+| gzip:  1f 8b
+  bzip2: BZh\0
+  lzo:   89 4c 5a 4f
+  lz4:   04 22 4d 18
+  xz:    fd 37 7a 58 5a
+
+Decoding works by reading enough to decode the magic, then forwarding data
+into the appropriate decoding process (or doing nothing if we don't know what
+the data is).
+
+sub sdecode(;$) {
+  local $_;
+  return unless saferead \*STDIN, $_, 8192;
+
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc"
+              : /^BZh\0/                ? "bzip2 -dc"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+
+  if (defined $decoder) {
+    my $o = siproc {sh $decoder};
+    safewrite $o, $_;
+    sforward \*STDIN, $o;
+    close $o;
+    $o->await;
+  } else {
+    safewrite \*STDOUT, $_;
+    sio;
+  }
+}
+
+File/directory cat.
+cat exists to turn filesystem objects into text. Files are emitted and
+directories are turned into readable listings. Files are automatically
+decompressed and globs are automatically deglobbed.
+
+sub glob_expand($) {-e($_[0]) ? $_[0] : glob $_[0]}
+
+sub scat {
+  local $| = 1;
+  for my $f (map glob_expand($_), @_) {
+    if (-d $f) {
+      opendir my $d, $f or die "ni_cat: failed to opendir $f: $!";
+      print "$f/$_\n" for sort grep !/^\.\.?$/, readdir $d;
+      closedir $d;
+    } else {
+      my $d = siproc {sdecode};
+      sforward srfile $f, $d;
+      close $d;
+      $d->await;
+    }
+  }
+}
+41 core/stream/self.pl.sdoc
+Self invocation.
+You can run ni and read from the resulting file descriptor; this gives you a
+way to evaluate lambda expressions (this is how checkpoints work, for example).
+If you do this, ni's standard input will come from a continuation of __DATA__.
+
+defclispecial '--internal/operate', q{
+  my ($k) = @_;
+  my $parent_env = json_decode($ni::self{'transient/env'});
+  $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+
+  die "ni --internal/operate: nonexistent op key: $k"
+    unless exists $ni::self{$k};
+
+  my $fh = siproc {&$ni::main_operator(flatten_operators json_decode($ni::self{$k}))};
+  print $fh $_ while read $ni::data, $_, 8192;
+  close $fh;
+  $fh->await;
+};
+
+sub sni_exec_list(@) {
+  my $stdin = image_with 'transient/op'  => json_encode([@_]),
+                         'transient/env' => json_encode({%ENV});
+  ($stdin, qw|perl - --internal/operate transient/op|);
+}
+
+sub exec_ni(@) {
+  my ($stdin, @argv) = sni_exec_list @_;
+  my $fh = siproc {exec @argv};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  exit $fh->await;
+}
+
+sub sni(@) {
+  my @args = @_;
+  soproc {
+    nuke_stdin;
+    exec_ni @args;
+  };
+}
+190 core/stream/ops.pl.sdoc
+Streaming data sources.
+Common ways to read data, most notably from files and directories. Also
+included are numeric generators, shell commands, etc.
+
+c
+BEGIN {
+  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+}
+BEGIN {
+  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
+                                         pmap(q{shell_quote @$_}, shell_lambda),
+                                         prx '[^][]+';
+}
+
+defoperator cat  => q{my ($f) = @_; sio; scat $f};
+defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
+defoperator sh   => q{my ($c) = @_; sh $c};
+
+Note that we generate numbers internally rather than shelling out to `seq`
+(which is ~20x faster than Perl for the purpose, incidentally). This is
+deliberate: certain versions of `seq` generate floating-point numbers after a
+point, which can cause unexpected results and loss of precision.
+
+defoperator n => q{
+  my ($l, $u) = @_;
+  sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
+};
+
+defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
+defshort '/n0',  pmap q{n_op 0, $_}, number;
+defshort '/id:', pmap q{echo_op $_}, prc '.*';
+
+defshort '/e', pmap q{sh_op $_}, shell_command;
+
+deflong '/fs', pmap q{cat_op $_}, filename;
+
+Stream mixing/forking.
+Append, prepend, duplicate, divert.
+
+defoperator append => q{
+  my @xs = @_;
+  sio;
+  exec_ni @xs;
+};
+
+defoperator prepend => q{
+  my @xs = @_;
+  close(my $fh = siproc {exec_ni @xs});
+  $fh->await;
+  sio;
+};
+
+defoperator duplicate => q{
+  my @xs = @_;
+  my $fh = siproc {exec_ni @xs};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
+};
+
+defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+defoperator divert => q{
+  my @xs = @_;
+  my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
+  stee \*STDIN, $fh, \*STDOUT;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/+', pmap q{append_op    @$_}, _qfn;
+defshort '/^', pmap q{prepend_op   @$_}, _qfn;
+defshort '/%', pmap q{duplicate_op @$_}, _qfn;
+defshort '/=', pmap q{divert_op    @$_}, _qfn;
+
+Interleaving.
+Append/prepend will block one of the two data sources until the other
+completes. Sometimes, though, you want to stream both at once. Interleaving
+makes that possible, and you can optionally specify the mixture ratio, which is
+the number of interleaved rows per input row. (Negative numbers are interpreted
+as reciprocals, so -2 means two stdin rows for every interleaved.)
+
+defoperator interleave => q{
+  my ($ratio, $lambda) = @_;
+  my $fh = soproc {close STDIN; exec_ni @$lambda};
+
+  if ($ratio) {
+    $ratio = 1/-$ratio if $ratio < 0;
+    my ($n1, $n2) = (0, 0);
+    while (1) {
+      ++$n1, defined($_ = <STDIN>) || goto done, print while $n1 <= $n2 * $ratio;
+      ++$n2, defined($_ = <$fh>)   || goto done, print while $n1 >= $n2 * $ratio;
+    }
+  } else {
+    my $rmask;
+    my ($stdin_ok,  $ni_ok) = (1, 1);
+    my ($stdin_buf, $ni_buf);
+    while ($stdin_ok || $ni_ok) {
+      vec($rmask, fileno STDIN, 1) = $stdin_ok;
+      vec($rmask, fileno $fh,   1) = $ni_ok;
+      my $n = select my $rout = $rmask, undef, undef, 0.01;
+      if (vec $rout, fileno STDIN, 1) {
+        $stdin_ok = !!saferead \*STDIN, $stdin_buf, 1048576, length $stdin_buf;
+        my $i = 1 + rindex $stdin_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $stdin_buf, 0, $i;
+          $stdin_buf = substr $stdin_buf, $i;
+        }
+      }
+      if (vec $rout, fileno $fh, 1) {
+        $ni_ok = !!saferead $fh, $ni_buf, 1048576, length $ni_buf;
+        my $i = 1 + rindex $ni_buf, "\n";
+        if ($i) {
+          safewrite \*STDOUT, substr $ni_buf, 0, $i;
+          $ni_buf = substr $ni_buf, $i;
         }
       }
     }
-  };
-  my $code = &$java_linefilter(classname => 'Foo',
-                               line      => 'line',
-                               body      => 'System.out.println(line);');
-
-our $gensym_index = 0;
-sub gensym {join '_', '_gensym', ++$gensym_index, @_}
-
-sub gen($) {
-  my @pieces = split /(%\w+)/, $_[0];
-  sub {
-    my %vars = @_;
-    my @r = @pieces;
-    $r[$_] = $vars{substr $pieces[$_], 1} for grep $_ & 1, 0..$#pieces;
-    join '', map defined $_ ? $_ : '', @r;
-  };
-}
-2 core/json/lib
-json.pl.sdoc
-extract.pl.sdoc
-76 core/json/json.pl.sdoc
-JSON parser/generator.
-Perl has native JSON libraries available in CPAN, but we can't assume those are
-installed locally. The pure-perl library is unusably slow, and even it isn't
-always there. So I'm implementing an optimized pure-Perl library here to
-address this. Note that this library doesn't parse all valid JSON, but it does
-come close -- and I've never seen a real-world use case of JSON that it would
-fail to parse.
-
-use Scalar::Util qw/looks_like_number/;
-
-our %json_unescapes =
-  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
-   t => "\t");
-
-sub json_unescape_one($) {$json_unescapes{$_[0]} || chr hex substr $_[0], 1}
-sub json_unescape($) {
-  my $x = substr $_[0], 1, -1;
-  $x =~ s/\\(["\\\/bfnrt]|u[0-9a-fA-F]{4})/json_unescape_one $1/eg;
-  $x;
-}
-
-Fully decode a string of JSON. Unless you need to extract everything, this is
-probably the slowest option; targeted attribute extraction should be much
-faster.
-
-sub json_decode($) {
-  local $_;
-  my @v = [];
-  for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\]+|\\.)*"|[-+eE\d.]+/g) {
-    if (/^[[{]$/) {
-      push @v, [];
-    } elsif (/^\]$/) {
-      die "json_decode $_[0]: too many closing brackets" if @v < 2;
-      push @{$v[-2]}, $v[-1];
-      pop @v;
-    } elsif (/^\}$/) {
-      die "json_decode $_[0]: too many closing brackets" if @v < 2;
-      push @{$v[-2]}, {@{$v[-1]}};
-      pop @v;
-    } else {
-      push @{$v[-1]}, /^"/      ? json_unescape $_
-                    : /^true$/  ? 1
-                    : /^false$/ ? 0
-                    : /^null$/  ? undef
-                    :             0 + $_;
-    }
   }
-  my $r = pop @v;
-  die "json_decode $_[0]: not enough closing brackets" if @v;
-  wantarray ? @$r : $$r[0];
-}
 
-Encode a string of JSON from a structured value. TODO: add the ability to
-generate true/false values.
-
-our %json_escapes = map {;$json_unescapes{$_} => $_} keys %json_unescapes;
-
-sub json_escape($) {
-  (my $x = $_[0]) =~ s/([\b\f\n\r\t"\\])/"\\" . $json_escapes{$1}/eg;
-  "\"$x\"";
-}
-
-sub json_encode($);
-sub json_encode($) {
-  local $_;
-  my ($v) = @_;
-  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
-  return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
-                             sort keys %$v) . "}" if 'HASH' eq ref $v;
-  looks_like_number $v ? $v : defined $v ?  json_escape $v : 'null';
-}
-
-if (__PACKAGE__ eq 'ni::pl') {
-  *je = \&json_encode;
-  *jd = \&json_decode;
-}
-51 core/json/extract.pl.sdoc
-Targeted extraction.
-ni gives you ways to decode JSON, but you aren't likely to have data stored as
-JSON objects in the middle of data pipelines. It's more of an archival format,
-so the goal is to unpack stuff quickly. ni gives you a way of doing this that
-is usually much faster than running the full decoder. (And also requires less
-typing.)
-
-The set of operations is basically this:
-
-| .foo          # direct object key access (not very fast)
-  ..foo         # multiple indirect object key access (fast-ish)
-  :foo          # single indirect object key access (very fast)
-  [0]           # array access (slow)
-  []            # array flatten (slow)
-
-Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
-every 'bar' key within the first element of the 'foo' field of the root
-object".
-
-Extracted values are flattened into a single array and returned. They're
-optimized for strings, numeric, and true/false/null; you can return other
-values, but it will be slower.
-
-# TODO: replace all of this
-
-use constant json_si_gen => gen q#
-  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
-               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
-               : /\G([^][{},]+)/              ? "" . $1
-               : undef
-               : undef) #;
-
-sub json_extractor($) {
-  my @pieces = split /\s*,\s*/, $_[0];
-  die "ni: json_extractor is not really written yet"
-    if grep !/^:\w+$/, @pieces;
-
-  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
-                 map sr($_, qr/^:/, ''), @pieces;
-  join ',', @compiled;
-}
-
-defoperator destructure => q{
-  ni::eval gen(q{no warnings 'uninitialized';
-                 eval {binmode STDOUT, ":encoding(utf-8)"};
-                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-                 while (<STDIN>) {print join("\t", %e), "\n"}})
-            ->(e => json_extractor $_[0]);
+  done:
+  close $fh;
+  $fh->await;
 };
 
-defshort '/D', pmap q{destructure_op $_}, generic_code;
+defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
+
+Sinking.
+We can sink data into a file just as easily as we can read from it. This is
+done with the `>` operator, which is typically written as `\>`. The difference
+between this and the shell's > operator is that \> outputs the filename; this
+lets you invert the operation with the nullary \< operator.
+
+use constant tmpdir => $ENV{TMPDIR} || "/tmp";
+sub tempfile_name() {
+  my $r = '/';
+  $r = tmpdir . "/ni-$$-" . noise_str 8 while -e $r;
+  $r;
+}
+
+defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
+defoperator file_write => q{
+  my ($file) = @_;
+  $file = tempfile_name unless defined $file;
+  sforward \*STDIN, swfile $file;
+  print "$file\n";
+};
+
+defshort '/>', pmap q{file_write_op $_}, nefilename;
+defshort '/<', pmap q{file_read_op},     pnone;
+
+Resource stream encoding.
+This makes it possible to serialize a directory structure into a single stream.
+ni uses this format internally to store its k/v state.
+
+defoperator encode_resource_stream => q{
+  my @xs;
+  while (<STDIN>) {
+    chomp;
+    my $s = rfc $_;
+    my $line_count = @xs = split /\n/, "$s ";
+    print "$line_count $_\n", $s, "\n";
+  }
+};
+
+defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
+
+Compression and decoding.
+Sometimes you want to emit compressed data, which you can do with the `Z`
+operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
+by adding a suffix. You can decode a stream in any of these formats using `ZD`
+(though in most cases ni will automatically decode compressed formats).
+
+our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
+
+c
+BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
+BEGIN {
+  defparseralias compressor_spec =>
+    pmap q{my ($c, $level) = @$_;
+           $c = $ni::compressors{$c || 'g'};
+           defined $level ? sh_op "$c -$level" : sh_op $c},
+    pseq popt compressor_name, popt integer;
+}
+
+defoperator decode => q{sdecode};
+
+defshort '/z',  compressor_spec;
+defshort '/zn', pk sink_null_op();
+defshort '/zd', pk decode_op();
+62 core/stream/main.pl.sdoc
+use POSIX ();
+
+our $pager_fh;
+
+sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
+
+$ni::main_operator = sub {
+  my @children;
+
+  if (-t STDIN) {
+    nuke_stdin;
+  } else {
+    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+    # buffer so no child process gets bogus data.
+    cdup2 0, 3;
+    close STDIN;
+    cdup2 3, 0;
+    POSIX::close 3;
+    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
+    push @children, sicons {sdecode};
+  }
+
+  my @ops = apply_meta_operators @_;
+  @$_ and push @children, sicons {operate @$_} for @ops;
+
+  if (-t STDOUT) {
+    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+    sforward \*STDIN, $pager_fh;
+    close $pager_fh;
+    $pager_fh->await;
+    ni::procfh::kill_children 'TERM';
+  } else {
+    sio;
+  }
+
+  my $exit_status = 0;
+  child_status_ok $_->await or $exit_status = 1 for @children;
+  $exit_status;
+};
+
+Pagers and kill signals.
+`less` resets a number of terminal settings, including character buffering and
+no-echo. If we kill it directly with a signal, it will exit without restoring a
+shell-friendly terminal state, requiring the user to run `reset` to fix it. So
+in an interrupt context we try to give the pager a chance to exit gracefully by
+closing its input stream and having the user use `q` or similar.
+
+$SIG{TERM} = sub {
+  close $pager_fh if $pager_fh;
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
+
+$SIG{INT} = sub {
+  if ($pager_fh) {
+    close $pager_fh;
+    $pager_fh->await;
+  }
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
+2 core/meta/lib
+meta.pl.sdoc
+map.pl.sdoc
+73 core/meta/meta.pl.sdoc
+Image-related data sources.
+Long options to access ni's internal state. Also the ability to instantiate ni
+within a shell process.
+
+defoperator meta_image => q{sio; print image, "\n"};
+defoperator meta_keys  => q{sio; print "$_\n" for sort keys %ni::self};
+defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
+
+defoperator meta_help => q{
+  my ($topic) = @_;
+  $topic = 'tutorial' unless length $topic;
+  sio; print $ni::self{"doc/$topic.md"}, "\n";
+};
+
+defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';
+defshort '///ni',      pmap q{meta_image_op},  pnone;
+defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
+
+defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
+defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;
+
+Documentation options.
+These are listed under the `//help` prefix. This isn't a toplevel option
+because it's more straightforward to model these as data sources.
+
+sub meta_context_name($) {$_[0] || '<root>'}
+
+defshort '///help', pmap q{meta_help_op $_}, popt prx '/(.*)';
+
+defoperator meta_options => q{
+  sio;
+  for my $c (sort keys %ni::contexts) {
+    printf "%s\tlong\t%s\t%s\n",  meta_context_name $c, $ni::long_names{$c}[$_], abbrev dev_inspect_nonl $ni::long_refs{$c}[$_],  40 for       0..$#{$ni::long_refs{$c}};
+    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                      abbrev dev_inspect_nonl $ni::short_refs{$c}{$_}, 40 for sort keys %{$ni::short_refs{$c}};
+  }
+};
+
+defshort '///ni/options', pmap q{meta_options_op}, pnone;
+
+defshort '///license', pmap q{meta_key_op 'license'}, pnone;
+
+Inspection.
+This lets you get details about specific operators or parsing contexts.
+
+defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
+defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
+defshort '///ni/op/', pmap q{meta_op_op $_}, prc '.+';
+defshort '///ni/ops', pmap q{meta_ops_op},   pnone;
+
+defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
+defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers};
+defshort '///ni/parser/', pmap q{meta_parser_op $_}, prc '.+';
+defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
+
+The backdoor.
+Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
+code within this process, and behaves like a normal streaming operator.
+
+defoperator dev_backdoor => q{ni::eval $_[0]};
+defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
+
+# Used for regression testing
+defoperator dev_local_operate => q{
+  my ($lambda) = @_;
+  my ($stdin, @exec) = sni_exec_list @$lambda;
+  my $fh = siproc {exec @exec};
+  safewrite $fh, $stdin;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await;
+};
+
+defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;
+24 core/meta/map.pl.sdoc
+Syntax mapping.
+We can inspect the parser dispatch tables within various contexts to get a
+character-level map of prefixes and to indicate which characters are available
+for additional operators.
+
+use constant qwerty_prefixes => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@%=$+_,.:';
+use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222334344444455544565565223';
+
+defoperator meta_short_availability => q{
+  sio;
+  print "--------" . qwerty_prefixes . "\n";
+  for my $c (sort keys %ni::contexts) {
+    my $s = $ni::short_refs{$c};
+    my %multi;
+    ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
+
+    print substr(meta_context_name $c, 0, 7) . "\t"
+        . join('', map $multi{$_} ? '.' : $$s{$_} ? '|' : ' ',
+                       split //, qwerty_prefixes)
+        . "\n";
+  }
+};
+
+defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl.sdoc
 63 core/monitor/monitor.pl.sdoc
