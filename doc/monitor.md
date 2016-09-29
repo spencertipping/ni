@@ -52,7 +52,24 @@ Throughput and output data won't help you identify the pipeline bottleneck in
 these situations because the pipeline is effectively moving in lock-step. This
 is where the concept of data pressure comes in.
 
-If you run the second example above, you'll see monitor output like this:
+To understand how ni computes data pressure, it is helpful to envision each part
+of the pipeline as having a monitor that sits in between it and the next
+operator, accepting output from the former and sending it to the latter:
+
+         +----------+                     +----------+
+         |          |                     |          |
+         | operator |     +---------+     | operator |
+... ==>  |    X     | ==> | monitor | ==> |    Y     | ==> ...
+         |          |     +---------+     |          |
+         +----------+                     +----------+
+
+The output data pressure of process X is `10 * log2(output_time / input_time)`,
+where `output_time` is the amount of time the monitor spends waiting for output
+from X and `input_time` is the amount of time the monitor spends waiting for
+process Y to accept input.
+
+Going back to our two examples above, if you run the second one, you'll see
+monitor output like this:
 
 ```
  2815K    90K/s 115 ["n",1,10000001]
@@ -60,16 +77,12 @@ If you run the second example above, you'll see monitor output like this:
 ```
 
 The output pressure from `nE7` is 115, and the output pressure of the Perl
-command is -116. Intuitively this makes sense: the Perl command is creating
-backpressure against `n`, and `sink_null` is, relatively to the Perl command,
-creating the opposite (i.e. it appears to have no backpressure at all, acting
-like a vacuum).
-
-ni calculates the pressure by measuring the time spent waiting on IO requests.
-The pressure is `10 * log2(output_time / input_time)`, so in the example above
-`n` was producing data about 3000 times as fast as the Perl process was
-consuming it (and the Perl process was producing data about 3000 times _slower_
-than `sink_null` was willing to consume it).
+command is -116, meaning `n` was producing data about 3000 times as fast as the
+Perl process was consuming it (and the Perl process was producing data about
+3000 times _slower_ than `sink_null` was willing to consume it). Intuitively
+this makes sense: the Perl command is creating backpressure against `n`, and
+`sink_null` is, relatively to the Perl command, creating the opposite (i.e. it
+appears to have no backpressure at all, acting like a vacuum).
 
 ## Dealing with bottlenecks
 The easiest way to solve a bottleneck is to [horizontally scale](scale.md) the
