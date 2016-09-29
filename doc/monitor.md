@@ -56,12 +56,14 @@ To understand how ni computes data pressure, it is helpful to envision each part
 of the pipeline as having a monitor that sits in between it and the next
 operator, accepting output from the former and sending it to the latter:
 
+```
          +----------+                     +----------+
          |          |                     |          |
          | operator |     +---------+     | operator |
 ... ==>  |    X     | ==> | monitor | ==> |    Y     | ==> ...
          |          |     +---------+     |          |
          +----------+                     +----------+
+```
 
 The output data pressure of process X is `10 * log2(output_time / input_time)`,
 where `output_time` is the amount of time the monitor spends waiting for output
