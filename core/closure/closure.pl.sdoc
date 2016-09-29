@@ -6,12 +6,12 @@ sub add_closure_key($$) {
   # TODO: use a lib for all data closures
   my ($k, $v) = @_;
   $k = "transient/closure/$k";
-  chomp($ni::self{$k} = $v);
+  $ni::self{$k} = pack 'u', $v;
   $ni::self{'ni.map'} .= "\nresource $k";
 }
 
 sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
-sub closure_data($) {$ni::self{"transient/closure/$_[0]"}}
+sub closure_data($) {unpack 'u', $ni::self{"transient/closure/$_[0]"}}
 
 defmetaoperator memory_data_closure => q{
   my ($name, $f) = @{$_[0]};
