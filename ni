@@ -225,7 +225,7 @@ sub dev_trace($) {
     @r;
   };
 }
-128 parse.pl.sdoc
+133 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -253,10 +253,15 @@ sub defparseralias($$) {
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
+our $recursion_level = 0;
+
 sub parse;
 sub parse {
   local $_;
+  local $recursion_level = $recursion_level + 1;
   my ($p, @args) = @{$_[0]};
+  die "ni: runaway parse of $p on @_[1..$#_] ($recursion_level levels)"
+    if $recursion_level > 1024;
   my $f = $parsers{$p} or die "ni: no such parser: $p";
   return @_[1..$#_] if @_ > 1 && ref $_[1];
   'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f(@_);
