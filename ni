@@ -2958,7 +2958,7 @@ sub defexpander($@) {
 }
 1 core/closure/lib
 closure.pl.sdoc
-28 core/closure/closure.pl.sdoc
+34 core/closure/closure.pl.sdoc
 Data closures.
 Data closures are a way to ship data along with a process, for example over
 hadoop or SSH. The idea is to make your data as portable as ni is.
@@ -2985,8 +2985,14 @@ defmetaoperator memory_data_closure => q{
   ();
 };
 
-defshort '/::', pmap q{memory_data_closure_op @$_},
-                pseq prc '[^][]+', _qfn;
+defoperator memory_closure_append => q{sio; print closure_data $_[0]};
+
+c
+BEGIN {defparseralias closure_name => prx '[^][]+'}
+
+defshort '///:', pmap q{memory_closure_append_op $_}, pc closure_name;
+defshort '/::',  pmap q{memory_data_closure_op @$_},
+                 pseq pc closure_name, _qfn;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -7633,7 +7639,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-89 doc/options.md
+90 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -7667,6 +7673,7 @@ Operator | Status | Example      | Description
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
 `::`     | M      | `::x[n100]`  | Create an in-memory data closure
+`//:`    | M      | `//:x`       | Append closure data
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |
