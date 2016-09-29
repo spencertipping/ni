@@ -35,7 +35,7 @@ pixel. Brightness is stored in the alpha channel and converges to 255 by an expo
 Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
 constantly low.
 
-  -where[slice_size      = 1024,
+  -where[slice_size      = 256,
          slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
