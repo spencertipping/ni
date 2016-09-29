@@ -21,4 +21,4 @@ defoperator meta_short_availability => q{
   }
 };
 
-defshort '///map/short', pmap q{meta_short_availability}, pnone;
+defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;

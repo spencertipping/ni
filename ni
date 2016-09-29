@@ -461,21 +461,21 @@ sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
     if exists $short_refs{$context}{$dsp};
-  defparseralias "short/$context/$dsp" => $_[1];
-  $short_refs{$context}{$dsp} = ["short/$context/$dsp"];
+  defparseralias "$context/short/$dsp" => $_[1];
+  $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
-  defparseralias "long/$context/$name" => $_[1];
+  defparseralias "$context/long/$name" => $_[1];
   unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, ["long/$context/$name"];
+  unshift @{$long_refs{$context}}, ["$context/long/$name"];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $short_refs{$context}{$dsp};
-  delete $ni::parsers{"short/$context/$dsp"};
+  delete $ni::parsers{"$context/short/$dsp"};
 }
 
 sub cli(@) {my ($r) = parse parser '/cli', @_; $r}
@@ -676,11 +676,12 @@ sub main {
   print STDERR "  @rest\n";
   exit 1;
 }
-4 core/stream/lib
+5 core/stream/lib
 fh.pl.sdoc
 procfh.pl.sdoc
 pipeline.pl.sdoc
 ops.pl.sdoc
+main.pl.sdoc
 9 core/stream/fh.pl.sdoc
 Filehandle functions.
 
@@ -1050,72 +1051,10 @@ sub sni(@) {
     exec_ni @args;
   };
 }
-252 core/stream/ops.pl.sdoc
+190 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
-
-use POSIX ();
-
-our $pager_fh;
-
-sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
-
-$ni::main_operator = sub {
-  my @children;
-
-  if (-t STDIN) {
-    nuke_stdin;
-  } else {
-    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
-    # buffer so no child process gets bogus data.
-    cdup2 0, 3;
-    close STDIN;
-    cdup2 3, 0;
-    POSIX::close 3;
-    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
-
-    push @children, sicons {sdecode};
-  }
-
-  @$_ and push @children, sicons {operate @$_} for @_;
-
-  if (-t STDOUT) {
-    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
-    sforward \*STDIN, $pager_fh;
-    close $pager_fh;
-    $pager_fh->await;
-    ni::procfh::kill_children 'TERM';
-  } else {
-    sio;
-  }
-
-  my $exit_status = 0;
-  child_status_ok $_->await or $exit_status = 1 for @children;
-  $exit_status;
-};
-
-Pagers and kill signals.
-`less` resets a number of terminal settings, including character buffering and
-no-echo. If we kill it directly with a signal, it will exit without restoring a
-shell-friendly terminal state, requiring the user to run `reset` to fix it. So
-in an interrupt context we try to give the pager a chance to exit gracefully by
-closing its input stream and having the user use `q` or similar.
-
-$SIG{TERM} = sub {
-  close $pager_fh if $pager_fh;
-  ni::procfh::kill_children 'TERM';
-  exit 1;
-};
-
-$SIG{INT} = sub {
-  if ($pager_fh) {
-    close $pager_fh;
-    $pager_fh->await;
-  }
-  ni::procfh::kill_children 'TERM';
-  exit 1;
-};
 
 c
 BEGIN {
@@ -1303,6 +1242,68 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
+61 core/stream/main.pl.sdoc
+use POSIX ();
+
+our $pager_fh;
+
+sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
+
+$ni::main_operator = sub {
+  my @children;
+
+  if (-t STDIN) {
+    nuke_stdin;
+  } else {
+    # Fix for bugs/2016.0918.replicated-garbage.md: forcibly flush the STDIN
+    # buffer so no child process gets bogus data.
+    cdup2 0, 3;
+    close STDIN;
+    cdup2 3, 0;
+    POSIX::close 3;
+    open STDIN, '<&=0' or die "ni: failed to reopen STDIN: $!";
+
+    push @children, sicons {sdecode};
+  }
+
+  @$_ and push @children, sicons {operate @$_} for @_;
+
+  if (-t STDOUT) {
+    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+    sforward \*STDIN, $pager_fh;
+    close $pager_fh;
+    $pager_fh->await;
+    ni::procfh::kill_children 'TERM';
+  } else {
+    sio;
+  }
+
+  my $exit_status = 0;
+  child_status_ok $_->await or $exit_status = 1 for @children;
+  $exit_status;
+};
+
+Pagers and kill signals.
+`less` resets a number of terminal settings, including character buffering and
+no-echo. If we kill it directly with a signal, it will exit without restoring a
+shell-friendly terminal state, requiring the user to run `reset` to fix it. So
+in an interrupt context we try to give the pager a chance to exit gracefully by
+closing its input stream and having the user use `q` or similar.
+
+$SIG{TERM} = sub {
+  close $pager_fh if $pager_fh;
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
+
+$SIG{INT} = sub {
+  if ($pager_fh) {
+    close $pager_fh;
+    $pager_fh->await;
+  }
+  ni::procfh::kill_children 'TERM';
+  exit 1;
+};
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
@@ -1321,12 +1322,12 @@ defoperator meta_help => q{
   sio; print $ni::self{"doc/$topic.md"}, "\n";
 };
 
-defshort '///',        pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
+defshort '///ni/',     pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
 defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
-defshort '///eval/', pmap q{meta_eval_number_op $_}, integer;
+defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
@@ -1344,20 +1345,20 @@ defoperator meta_options => q{
   }
 };
 
-defshort '///options', pmap q{meta_options_op}, pnone;
+defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
 Inspection.
 This lets you get details about specific operators or parsing contexts.
 
 defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
 defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
-defshort '///op/', pmap q{meta_op_op $_}, prc '.+';
-defshort '///ops', pmap q{meta_ops_op},   pnone;
+defshort '///ni/op/', pmap q{meta_op_op $_}, prc '.+';
+defshort '///ni/ops', pmap q{meta_ops_op},   pnone;
 
 defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
 defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers};
-defshort '///parser/', pmap q{meta_parser_op $_}, prc '.+';
-defshort '///parsers', pmap q{meta_parsers_op}, pnone;
+defshort '///ni/parser/', pmap q{meta_parser_op $_}, prc '.+';
+defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
 
 The backdoor.
 Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
@@ -1402,7 +1403,7 @@ defoperator meta_short_availability => q{
   }
 };
 
-defshort '///map/short', pmap q{meta_short_availability}, pnone;
+defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm

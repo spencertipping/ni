@@ -12,12 +12,12 @@ defoperator meta_help => q{
   sio; print $ni::self{"doc/$topic.md"}, "\n";
 };
 
-defshort '///',        pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
+defshort '///ni/',     pmap q{meta_key_op $_}, pcond q{exists $ni::self{$_}}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
 defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
-defshort '///eval/', pmap q{meta_eval_number_op $_}, integer;
+defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;
 
 Documentation options.
 These are listed under the `//help` prefix. This isn't a toplevel option
@@ -35,20 +35,20 @@ defoperator meta_options => q{
   }
 };
 
-defshort '///options', pmap q{meta_options_op}, pnone;
+defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
 Inspection.
 This lets you get details about specific operators or parsing contexts.
 
 defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
 defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
-defshort '///op/', pmap q{meta_op_op $_}, prc '.+';
-defshort '///ops', pmap q{meta_ops_op},   pnone;
+defshort '///ni/op/', pmap q{meta_op_op $_}, prc '.+';
+defshort '///ni/ops', pmap q{meta_ops_op},   pnone;
 
 defoperator meta_parser  => q{sio; print json_encode(parser $_[0]), "\n"};
 defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers};
-defshort '///parser/', pmap q{meta_parser_op $_}, prc '.+';
-defshort '///parsers', pmap q{meta_parsers_op}, pnone;
+defshort '///ni/parser/', pmap q{meta_parser_op $_}, prc '.+';
+defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
 
 The backdoor.
 Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
