@@ -532,7 +532,7 @@ sub meta_operate($$$) {
   my ($left, $right) = ([$position ? @$context[0..$position-1] : ()],
                         [@$context[$position+1..$#{$context}]]);
   my ($new_left, $new_right) = $meta_operators{$op}->([@args], $left, $right);
-  (@{$left || $new_left}, @{$new_right || $right});
+  (@{$new_left || $left}, @{$new_right || $right});
 }
 
 sub flatten_operators($);
@@ -637,7 +637,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-87 main.pl.sdoc
+88 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -696,10 +696,11 @@ $main_operator so it can be extended to handle various cases; for instance, ni
 launches a pager when its output is connected to a terminal, etc. This is
 handled by core/stream.
 
-our $main_operator = sub {operate @$_ for @_};
+our $main_operator = sub {die "ni: no main operator defined (your ni is broken)"};
 
 sub main {
   my ($cmd, @args) = @_;
+  $ni::is_toplevel = 1;
 
   @_ = ('//help', @_[1..$#_])
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
@@ -2262,7 +2263,7 @@ sub scat {
     }
   }
 }
-44 core/stream/self.pl.sdoc
+45 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2276,6 +2277,7 @@ defclispecial '--internal/operate-quoted', q{
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
+  $ni::is_toplevel = 0;
   my $fh = siproc {
     &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
   };
@@ -2665,21 +2667,28 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl.sdoc
-63 core/monitor/monitor.pl.sdoc
+68 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
 data.
 
 sub unit_bytes($) {
-  return ($_[0] >> 10), "K" if $_[0] >> 10 < 99999;
-  return ($_[0] >> 20), "M" if $_[0] >> 20 < 99999;
-  return ($_[0] >> 30), "G" if $_[0] >> 30 < 99999;
-  return ($_[0] >> 40), "T" if $_[0] >> 40 < 99999;
+  return ($_[0] >> 10), "K" if $_[0] >> 10 <= 99999;
+  return ($_[0] >> 20), "M" if $_[0] >> 20 <= 99999;
+  return ($_[0] >> 30), "G" if $_[0] >> 30 <= 99999;
+  return ($_[0] >> 40), "T" if $_[0] >> 40 <= 99999;
   return ($_[0] >> 50), "P";
 }
 
-defoperator monitor => q{
+defmetaoperator stderr_monitor_transform => q{
+  my ($args, $left) = @_;
+  my ($interval) = @$args;
+  [map {;$$left[$_], stderr_monitor_op($_, json_encode $$left[$_], $interval)}
+        0..$#{$left}];
+};
+
+defoperator stderr_monitor => q{
   BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
   my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
   my ($itime, $otime, $bytes) = (0, 0, 0);
@@ -2688,7 +2697,7 @@ defoperator monitor => q{
   my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
   while (1) {
     my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
-    last unless $n;
+                   last unless $n;
     my $t2 = time; safewrite $stdout, $_;
     my $t3 = time;
 
@@ -2723,11 +2732,9 @@ defoperator monitor => q{
 
 my $original_main_operator = $ni::main_operator;
 $ni::main_operator = sub {
-  my $n_ops = @_;
   return &$original_main_operator(@_)
-    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};
-  &$original_main_operator(
-    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS} || !$ni::is_toplevel;
+  &$original_main_operator(@_, stderr_monitor_transform_op(0.1));
 };
 1 core/uri/lib
 uri.pl.sdoc
@@ -9019,7 +9026,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-48 doc/tutorial.md
+45 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -9057,9 +9064,6 @@ $ ni //help/stream                      # view a help topic
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
-You can use `ni //options` to get a list of all parsing rules ni applies to the
-command line. The output format is a TSV of `context long/short name parser`.
-
 - [options.md](options.md) (`ni //help/options`): every CLI option and
   operator, each with example usage
 

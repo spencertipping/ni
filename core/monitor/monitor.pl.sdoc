@@ -4,14 +4,21 @@ much more, for instance determining the cause of a bottleneck and previewing
 data.
 
 sub unit_bytes($) {
-  return ($_[0] >> 10), "K" if $_[0] >> 10 < 99999;
-  return ($_[0] >> 20), "M" if $_[0] >> 20 < 99999;
-  return ($_[0] >> 30), "G" if $_[0] >> 30 < 99999;
-  return ($_[0] >> 40), "T" if $_[0] >> 40 < 99999;
+  return ($_[0] >> 10), "K" if $_[0] >> 10 <= 99999;
+  return ($_[0] >> 20), "M" if $_[0] >> 20 <= 99999;
+  return ($_[0] >> 30), "G" if $_[0] >> 30 <= 99999;
+  return ($_[0] >> 40), "T" if $_[0] >> 40 <= 99999;
   return ($_[0] >> 50), "P";
 }
 
-defoperator monitor => q{
+defmetaoperator stderr_monitor_transform => q{
+  my ($args, $left) = @_;
+  my ($interval) = @$args;
+  [map {;$$left[$_], stderr_monitor_op($_, json_encode $$left[$_], $interval)}
+        0..$#{$left}];
+};
+
+defoperator stderr_monitor => q{
   BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
   my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
   my ($itime, $otime, $bytes) = (0, 0, 0);
@@ -20,7 +27,7 @@ defoperator monitor => q{
   my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
   while (1) {
     my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
-    last unless $n;
+                   last unless $n;
     my $t2 = time; safewrite $stdout, $_;
     my $t3 = time;
 
@@ -55,9 +62,7 @@ defoperator monitor => q{
 
 my $original_main_operator = $ni::main_operator;
 $ni::main_operator = sub {
-  my $n_ops = @_;
   return &$original_main_operator(@_)
-    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS};
-  &$original_main_operator(
-    map {;$_[$_], monitor_op($_, json_encode $_[$_], 0.1)} 0..$#_);
+    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS} || !$ni::is_toplevel;
+  &$original_main_operator(@_, stderr_monitor_transform_op(0.1));
 };

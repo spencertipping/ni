@@ -11,6 +11,7 @@ defclispecial '--internal/operate-quoted', q{
   my $parent_env = json_decode($ni::self{'quoted/env'});
   $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
 
+  $ni::is_toplevel = 0;
   my $fh = siproc {
     &$ni::main_operator(flatten_operators json_decode($ni::self{'quoted/op'}));
   };

@@ -35,9 +35,6 @@ $ ni //help/stream                      # view a help topic
 - [warnings.md](warnings.md)   (`ni //help/warnings`):  things to look out for
 
 ## Reference
-You can use `ni //options` to get a list of all parsing rules ni applies to the
-command line. The output format is a TSV of `context long/short name parser`.
-
 - [options.md](options.md) (`ni //help/options`): every CLI option and
   operator, each with example usage
 

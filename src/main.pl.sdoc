@@ -56,10 +56,11 @@ $main_operator so it can be extended to handle various cases; for instance, ni
 launches a pager when its output is connected to a terminal, etc. This is
 handled by core/stream.
 
-our $main_operator = sub {operate @$_ for @_};
+our $main_operator = sub {die "ni: no main operator defined (your ni is broken)"};
 
 sub main {
   my ($cmd, @args) = @_;
+  $ni::is_toplevel = 1;
 
   @_ = ('//help', @_[1..$#_])
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
