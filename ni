@@ -3146,7 +3146,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-192 core/col/col.pl.sdoc
+185 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -3213,18 +3213,11 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
 defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-We can't work with "proper CSV" as such if its values contain newlines and
-tabs, but we can strip those characters out and safely (if lossily) convert to
-TSV.
-
+# TODO: collapse multiline fields
 defoperator split_proper_csv => q{
   while (<STDIN>) {
     my @fields = /\G,?[^,"\n]+|"(?:[^"]+|"")*"/g;
-    while (pos() != length() - 1) {
-      $_ .= <STDIN>;
-      push @fields, /\G,?[^,"\n]+|"(?:[^"]+|"")*"/g;
-    }
-    s/[\n\t]/ /g, s/""/"/g for @fields;
+    s/\t/        /g, s/""/"/g for @fields;
     print join("\t", @fields), "\n";
   }
 };
