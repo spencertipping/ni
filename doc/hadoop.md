@@ -12,7 +12,7 @@ delegator, meaning that you always specify a profile (in this case `S` for
 Streaming) before any command arguments.
 
 ```bash
-$ docker run --detach -i -m 1G --name ni-test-hadoop \
+$ docker run --detach -i -m 2G --name ni-test-hadoop \
     sequenceiq/hadoop-docker \
     /etc/bootstrap.sh -bash >/dev/null
 $ until docker exec -i ni-test-hadoop \
