@@ -9232,7 +9232,7 @@ $ ni --explain :biglist n100000z r5
 $ ni --explain :biglist n100000zr5
 ["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
-45 doc/tutorial.md
+46 doc/tutorial.md
 # ni tutorial
 You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
 
@@ -9261,6 +9261,7 @@ $ ni //help/stream                      # view a help topic
 ## Stuff worth knowing about
 - [net.md](net.md)             (`ni //help/net`):       HTTP/SSH/etc
 - [scale.md](scale.md)         (`ni //help/scale`):     parallelizing stuff
+- [closure.md](closure.md)     (`ni //help/closure`):   data closures
 - [hadoop.md](hadoop.md)       (`ni //help/hadoop`);    Hadoop interop
 - [visual.md](visual.md)       (`ni //help/visual`):    visualizing data
 - [matrix.md](matrix.md)       (`ni //help/matrix`):    dense/sparse matrices
