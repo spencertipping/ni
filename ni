@@ -3146,7 +3146,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/col/lib
 col.pl.sdoc
-174 core/col/col.pl.sdoc
+192 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -3201,20 +3201,38 @@ Adapters for input formats that don't have tab delimiters. Common ones are,
 with their split-spec mnemonics:
 
 | commas:       C
+  "proper CSV": V
   pipes:        P
   whitespace:   S
   non-words:    W
 
-You can also field-split on arbitrary regexes, or extend the %split_chalt hash
-to add custom split operators.
+You can also field-split on arbitrary regexes, or extend the splitalt dsp to
+add custom split operators.
 
 defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
 defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
+We can't work with "proper CSV" as such if its values contain newlines and
+tabs, but we can strip those characters out and safely (if lossily) convert to
+TSV.
+
+defoperator split_proper_csv => q{
+  while (<STDIN>) {
+    my @fields = /\G,?[^,"\n]+|"(?:[^"]+|"")*"/g;
+    while (pos() != length() - 1) {
+      $_ .= <STDIN>;
+      push @fields, /\G,?[^,"\n]+|"(?:[^"]+|"")*"/g;
+    }
+    s/[\n\t]/ /g, s/""/"/g for @fields;
+    print join("\t", @fields), "\n";
+  }
+};
+
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
     'C' => pmap(q{split_chr_op   ','},               pnone),
+    'V' => pmap(q{split_proper_csv_op},              pnone),
     'P' => pmap(q{split_chr_op   '|'},               pnone),
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
     'W' => pmap(q{split_regex_op '[^\w\n]+'},        pnone),
