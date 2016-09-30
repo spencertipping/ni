@@ -2279,7 +2279,7 @@ sub add_quoted_resource($) {push @quoted_resources, $_[0]}
 sub safereadbuf($$$;$) {
   my $n;
   do {
-    return $n if $n = read $_[0], $_[1], $_[2], $_[3] || 0;
+    return $n if defined($n = read $_[0], $_[1], $_[2], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -2307,10 +2307,10 @@ sub sforward_quoted($$) {
 }
 
 sub sforward_buf_unquoted($$) {
-  my ($n, $nb, $b, $eof) = ('', '', 0);
-  while (!$eof and safereadbuf $_[0], $nb, 2 and $n = unpack 'n', $nb) {
+  my ($n, $nb, $b, $eof) = (0, '', '', 0);
+  while (!$eof and safereadbuf $_[0], $nb, 2 and ($n) = unpack 'n', $nb) {
     $b = '';
-    $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
+    $eof ||= !safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
     safewrite $_[1], $b;
   }
@@ -2768,7 +2768,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-145 core/uri/uri.pl.sdoc
+144 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2799,12 +2799,11 @@ BEGIN {
   }
 }
 
-our @nuke_on_exit;
-
-sub nuke_on_exit($) {push @nuke_on_exit, $_[0]}
+our %nuke_on_exit;
+sub nuke_on_exit($) {$nuke_on_exit{$_[0]} = $$}
 
 c
-END {resource_nuke $_ for @nuke_on_exit}
+END {$nuke_on_exit{$_} eq $$ and resource_nuke $_ for keys %nuke_on_exit}
 
 our %resource_read;
 our %resource_write;
@@ -6373,7 +6372,7 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
-84 doc/closure.md
+112 doc/closure.md
 # Data closures
 Sometimes it's useful to bundle data with ni so that it's available on a
 different filesystem. Data closures do exactly this.
@@ -6425,6 +6424,10 @@ $ ni ::foo[n5] Cubuntu[n1p'r split /\n/, foo']
 1	2	3	4	5
 ```
 
+```lazytest
+fi                      # $SKIP_DOCKER
+```
+
 Disk-backed closures have almost exactly the same semantics, and are
 automatically deleted when ni exits:
 
@@ -6434,25 +6437,49 @@ $ ni :@foo[n10] //@foo e[wc -l]         # disk-backed data closure
 10
 $ ls /tmp | wc -l
 0
-```
-
-They also travel with ni into tempfiles on remote systems, and ni maps the
-names accordingly:
-
-```bash
-$ ni :@foo[n3] Cubuntu[//@foo]
+$ ni :@foo[nE5] :@bar[nE4] //@foo //@bar gr9
 1
-2
-3
+1
+10
+10
+100
+100
+1000
+1000
+10000
 ```
 
 Disk-backed closures turn into file URIs inside language environments.
 
 ```bash
-$ ni :@foo[nE5] Cubuntu[n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/;
-                            ++$n while <$fh>;
-                            print $n']
-100000
+$ ni :@foo[nE6] \
+      n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/ or die $!;
+          print while <$fh>;()' e[wc -c]
+6888896
+```
+
+They also travel with ni into tempfiles on remote systems, and ni maps the
+names accordingly:
+
+```lazytest
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
+```bash
+$ ni :@foo[nE5] :@bar[nE4] Cubuntu[//@foo //@bar gr9]
+1
+1
+10
+10
+100
+100
+1000
+1000
+10000
+$ ni :@foo[nE6] Cubuntu[ \
+    n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/ or die $!;
+        print while <$fh>;()'] e[wc -c]
+6888896
 ```
 
 ```lazytest

@@ -49,6 +49,10 @@ $ ni ::foo[n5] Cubuntu[n1p'r split /\n/, foo']
 1	2	3	4	5
 ```
 
+```lazytest
+fi                      # $SKIP_DOCKER
+```
+
 Disk-backed closures have almost exactly the same semantics, and are
 automatically deleted when ni exits:
 
@@ -58,25 +62,49 @@ $ ni :@foo[n10] //@foo e[wc -l]         # disk-backed data closure
 10
 $ ls /tmp | wc -l
 0
-```
-
-They also travel with ni into tempfiles on remote systems, and ni maps the
-names accordingly:
-
-```bash
-$ ni :@foo[n3] Cubuntu[//@foo]
+$ ni :@foo[nE5] :@bar[nE4] //@foo //@bar gr9
 1
-2
-3
+1
+10
+10
+100
+100
+1000
+1000
+10000
 ```
 
 Disk-backed closures turn into file URIs inside language environments.
 
 ```bash
-$ ni :@foo[nE5] Cubuntu[n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/;
-                            ++$n while <$fh>;
-                            print $n']
-100000
+$ ni :@foo[nE6] \
+      n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/ or die $!;
+          print while <$fh>;()' e[wc -c]
+6888896
+```
+
+They also travel with ni into tempfiles on remote systems, and ni maps the
+names accordingly:
+
+```lazytest
+if ! [[ $SKIP_DOCKER ]]; then
+```
+
+```bash
+$ ni :@foo[nE5] :@bar[nE4] Cubuntu[//@foo //@bar gr9]
+1
+1
+10
+10
+100
+100
+1000
+1000
+10000
+$ ni :@foo[nE6] Cubuntu[ \
+    n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/ or die $!;
+        print while <$fh>;()'] e[wc -c]
+6888896
 ```
 
 ```lazytest

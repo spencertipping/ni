@@ -13,7 +13,7 @@ sub add_quoted_resource($) {push @quoted_resources, $_[0]}
 sub safereadbuf($$$;$) {
   my $n;
   do {
-    return $n if $n = read $_[0], $_[1], $_[2], $_[3] || 0;
+    return $n if defined($n = read $_[0], $_[1], $_[2], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -41,10 +41,10 @@ sub sforward_quoted($$) {
 }
 
 sub sforward_buf_unquoted($$) {
-  my ($n, $nb, $b, $eof) = ('', '', 0);
-  while (!$eof and safereadbuf $_[0], $nb, 2 and $n = unpack 'n', $nb) {
+  my ($n, $nb, $b, $eof) = (0, '', '', 0);
+  while (!$eof and safereadbuf $_[0], $nb, 2 and ($n) = unpack 'n', $nb) {
     $b = '';
-    $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
+    $eof ||= !safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
     safewrite $_[1], $b;
   }

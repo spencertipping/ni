@@ -28,12 +28,11 @@ BEGIN {
   }
 }
 
-our @nuke_on_exit;
-
-sub nuke_on_exit($) {push @nuke_on_exit, $_[0]}
+our %nuke_on_exit;
+sub nuke_on_exit($) {$nuke_on_exit{$_[0]} = $$}
 
 c
-END {resource_nuke $_ for @nuke_on_exit}
+END {$nuke_on_exit{$_} eq $$ and resource_nuke $_ for keys %nuke_on_exit}
 
 our %resource_read;
 our %resource_write;
