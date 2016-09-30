@@ -25,8 +25,8 @@ sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
 sub r(@)         {my $l = join "\t", @_; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d], @_)}',
-                     $_, ord($_) - 97 for 'a'..'l'}
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], @_) : (split /\t/, $_[0])[%d]}',
+                     $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
