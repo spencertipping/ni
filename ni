@@ -3216,7 +3216,7 @@ defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]
 # TODO: collapse multiline fields
 defoperator split_proper_csv => q{
   while (<STDIN>) {
-    my @fields = /\G,?([^,"\n]+|"(?:[^"]+|"")*")/g;
+    my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
     s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
     print join("\t", @fields), "\n";
   }
