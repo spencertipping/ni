@@ -2307,8 +2307,8 @@ sub sforward_quoted($$) {
 }
 
 sub sforward_buf_unquoted($$) {
-  my ($n, $b, $eof) = (0, '', 0);
-  while (safereadbuf $_[0], $n, 2 and $n = unpack 'n', $n) {
+  my ($n, $nb, $b, $eof) = ('', '', 0);
+  while (!$eof and safereadbuf $_[0], $nb, 2 and $n = unpack 'n', $nb) {
     $b = '';
     $eof ||= safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
@@ -6373,7 +6373,7 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
-75 doc/closure.md
+84 doc/closure.md
 # Data closures
 Sometimes it's useful to bundle data with ni so that it's available on a
 different filesystem. Data closures do exactly this.
@@ -6444,6 +6444,15 @@ $ ni :@foo[n3] Cubuntu[//@foo]
 1
 2
 3
+```
+
+Disk-backed closures turn into file URIs inside language environments.
+
+```bash
+$ ni :@foo[nE5] Cubuntu[n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/;
+                            ++$n while <$fh>;
+                            print $n']
+100000
 ```
 
 ```lazytest

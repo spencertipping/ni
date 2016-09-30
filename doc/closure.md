@@ -70,6 +70,15 @@ $ ni :@foo[n3] Cubuntu[//@foo]
 3
 ```
 
+Disk-backed closures turn into file URIs inside language environments.
+
+```bash
+$ ni :@foo[nE5] Cubuntu[n1p'open my $fh, "<", foo =~ /^file:\/\/(.*)/;
+                            ++$n while <$fh>;
+                            print $n']
+100000
+```
+
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
