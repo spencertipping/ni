@@ -461,7 +461,7 @@ sub defcontext($) {
 
 sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
-  die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
+  warn "ni: defshort is redefining '$_[0]' (use rmshort to avoid this warning)"
     if exists $short_refs{$context}{$dsp};
   defparseralias "$context/short/$dsp" => $_[1];
   $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
@@ -4151,7 +4151,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-34 core/pl/time.pm.sdoc
+39 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4170,7 +4170,7 @@ sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
 POSIX::tzset();
 
-sub tep($$) {
+sub time_epoch_pieces($$) {
   my ($es, $t) = @_;
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
@@ -4178,13 +4178,18 @@ sub tep($$) {
   @pieces[time_element_indexes $es];
 }
 
-sub tpe($@) {
+sub time_pieces_epoch($@) {
   my ($es, @ps) = @_;
-  my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1);
+  my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
-  my $fractional = $es =~ /N/ ? $tvs[9] / 1_000_000_000 : 0;
-  POSIX::mktime(@tvs) + $fractional;
+  POSIX::mktime(@tvs) + $tvs[9] / 1_000_000_000;
+}
+
+c
+BEGIN {
+  *tep = \&time_epoch_pieces;
+  *tpe = \&time_pieces_epoch;
 }
 119 core/pl/pl.pl.sdoc
 Perl parse element.

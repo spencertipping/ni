@@ -30,7 +30,7 @@ sub defcontext($) {
 
 sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
-  die "ni: defshort cannot be used to redefine '$_[0]' (use rmshort first)"
+  warn "ni: defshort is redefining '$_[0]' (use rmshort to avoid this warning)"
     if exists $short_refs{$context}{$dsp};
   defparseralias "$context/short/$dsp" => $_[1];
   $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
