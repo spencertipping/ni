@@ -4082,7 +4082,7 @@ if (1 << 32) {
                 morton_gap(int(($lng + 180) / 360 * 0x40000000)) << 1)
                >> 60 - $bits;
 
-    $precision > 0 ? join '', reverse map $gh_alphabet[$gh >> $_ * 5 & 31],
+    $precision > 0 ? join '', reverse map $geohash_alphabet[$gh >> $_ * 5 & 31],
                                           0 .. $precision - 1
                    : $gh;
   };
@@ -4094,7 +4094,7 @@ if (1 << 32) {
       # Decode gh from base-32
       $bits = length($gh) * 5;
       my $n = 0;
-      $n = $n << 5 | $gh_decode{lc $_} for split //, $gh;
+      $n = $n << 5 | $geohash_decode{lc $_} for split //, $gh;
       $gh = $n;
     }
     $gh <<= 60 - $bits;
