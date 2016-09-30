@@ -3336,7 +3336,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-118 core/row/row.pl.sdoc
+117 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3358,10 +3358,9 @@ defoperator row_cols_defined => q{
   my ($floor, @cs) = @_;
   my $limit = $floor + 1;
   my $line;
-  line:
   while (defined($line = <STDIN>)) {
     chomp $line;
-    next line unless length $line;
+    next unless length $line;
     my @fs = split /\t/, $line, $limit;
     print $line . "\n" if @cs == grep length $fs[$_], @cs;
   }
@@ -3805,12 +3804,13 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
-6 core/pl/lib
+7 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
 stream.pm.sdoc
 reducers.pm.sdoc
 geohash.pm.sdoc
+time.pm.sdoc
 pl.pl.sdoc
 55 core/pl/util.pm.sdoc
 Utility library functions.
@@ -4151,7 +4151,42 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-118 core/pl/pl.pl.sdoc
+34 core/pl/time.pm.sdoc
+Time conversion functions.
+Dependency-free functions that do various time-conversion tasks for you in a
+standardized way. They include:
+
+| @parts = tep($elements, $epoch): convert an epoch to specified pieces
+  $epoch = tpe($elements, @values): convert values to an epoch
+
+Everything always happens in UTC. If you want a different timezone, you'll need
+to shift your epochs by some multiple of 3600.
+
+use POSIX ();
+
+use constant time_pieces => 'SMHdmYwjDN';
+
+sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
+
+POSIX::tzset();
+
+sub tep($$) {
+  my ($es, $t) = @_;
+  my @pieces = gmtime $t;
+  push @pieces, int(1_000_000_000 * ($t - int $t));
+  $pieces[5] += 1900;
+  @pieces[time_element_indexes $es];
+}
+
+sub tpe($@) {
+  my ($es, @ps) = @_;
+  my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1);
+  @tvs[time_element_indexes $es] = @ps;
+  $tvs[5] -= 1900;
+  my $fractional = $es =~ /N/ ? $tvs[9] / 1_000_000_000 : 0;
+  POSIX::mktime(@tvs) + $fractional;
+}
+119 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4226,6 +4261,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
                             core/pl/geohash.pm
+                            core/pl/time.pm
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;

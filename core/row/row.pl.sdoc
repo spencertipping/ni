@@ -19,10 +19,9 @@ defoperator row_cols_defined => q{
   my ($floor, @cs) = @_;
   my $limit = $floor + 1;
   my $line;
-  line:
   while (defined($line = <STDIN>)) {
     chomp $line;
-    next line unless length $line;
+    next unless length $line;
     my @fs = split /\t/, $line, $limit;
     print $line . "\n" if @cs == grep length $fs[$_], @cs;
   }
