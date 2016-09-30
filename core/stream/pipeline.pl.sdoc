@@ -161,7 +161,7 @@ we don't need to rely on file extensions.
 We detect the following file formats:
 
 | gzip:  1f 8b
-  bzip2: BZh\0
+  bzip2: BZh[1-9]    (sometimes \0 instead of the digit)
   lzo:   89 4c 5a 4f
   lz4:   04 22 4d 18
   xz:    fd 37 7a 58 5a
@@ -174,14 +174,14 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? "gzip -dc"
-              : /^BZh\0/                ? "bzip2 -dc"
-              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc"
-              : /^\x04\x22\x4d\x18/     ? "lz4 -dc"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc" : undef;
+  my $decoder = /^\x1f\x8b/             ? ["gzip -dc"]
+              : /^BZh[1-9\0]/           ? ["pbzip2 -dc", "bzip2 -dc"]
+              : /^\x89\x4c\x5a\x4f/     ? ["lzop -dc"]
+              : /^\x04\x22\x4d\x18/     ? ["lz4 -dc"]
+              : /^\xfd\x37\x7a\x58\x5a/ ? ["xz -dc"] : undef;
 
   if (defined $decoder) {
-    my $o = siproc {sh $decoder};
+    my $o = siproc {sh $_ for @$decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
     close $o;
