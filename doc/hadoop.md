@@ -11,13 +11,26 @@ Let's start up a container and use `HS` to run a Streaming job. `H` is a
 delegator, meaning that you always specify a profile (in this case `S` for
 Streaming) before any command arguments.
 
+(Note: The `until docker exec` silliness below is because we have to wait for
+the hadoop container to boot up correctly. Sometimes the container gets into a
+bad state and doesn't become available, in which case we nuke it and start
+over. This is all just for unit testing; you won't have to worry about this
+stuff if you're using ni to run hadoop jobs.)
+
 ```bash
 $ docker run --detach -i -m 2G --name ni-test-hadoop \
     sequenceiq/hadoop-docker \
     /etc/bootstrap.sh -bash >/dev/null
-$ until docker exec -i ni-test-hadoop \
-        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; \
-  do sleep 1; done
+$ start_time=$(date +%s) \
+  until docker exec -i ni-test-hadoop \
+        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do \
+    if (( $(date +%s) - start_time > 30 )); then \
+      docker rm -f ni-test-hadoop; \
+      docker run --detach -i -m 2G --name ni-test-hadoop \
+        sequenceiq/hadoop-docker \
+        /etc/bootstrap.sh -bash >/dev/null; \
+    fi; \
+  done
 ```
 
 `S` takes three lambdas: the mapper, the combiner, and the reducer. There are
