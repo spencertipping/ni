@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-50 ni.map.sdoc
+51 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -83,6 +83,7 @@ lib core/monitor
 lib core/uri
 lib core/fn
 lib core/closure
+lib core/destructure
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -3036,6 +3037,60 @@ defoperator file_closure_append => q{
 defshort '///@', pmap q{file_closure_append_op $_}, pc closure_name;
 defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
+1 core/destructure/lib
+destructure.pl.sdoc
+51 core/destructure/destructure.pl.sdoc
+Targeted extraction.
+ni gives you ways to decode JSON, but you aren't likely to have data stored as
+JSON objects in the middle of data pipelines. It's more of an archival format,
+so the goal is to unpack stuff quickly. ni gives you a way of doing this that
+is usually much faster than running the full decoder. (And also requires less
+typing.)
+
+The set of operations is basically this:
+
+| .foo          # direct object key access (not very fast)
+  ..foo         # multiple indirect object key access (fast-ish)
+  :foo          # single indirect object key access (very fast)
+  [0]           # array access (slow)
+  []            # array flatten (slow)
+
+Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
+every 'bar' key within the first element of the 'foo' field of the root
+object".
+
+Extracted values are flattened into a single array and returned. They're
+optimized for strings, numeric, and true/false/null; you can return other
+values, but it will be slower.
+
+# TODO: replace all of this
+
+use constant json_si_gen => gen q#
+  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
+               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
+               : /\G([^][{},]+)/              ? "" . $1
+               : undef
+               : undef) #;
+
+sub json_extractor($) {
+  my @pieces = split /\s*,\s*/, $_[0];
+  die "ni: json_extractor is not really written yet"
+    if grep !/^:\w+$/, @pieces;
+
+  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+                 map sr($_, qr/^:/, ''), @pieces;
+  join ',', @compiled;
+}
+
+defoperator destructure => q{
+  ni::eval gen(q{no warnings 'uninitialized';
+                 eval {binmode STDOUT, ":encoding(utf-8)"};
+                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+                 while (<STDIN>) {print join("\t", %e), "\n"}})
+            ->(e => json_extractor $_[0]);
+};
+
+defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
 17 core/checkpoint/checkpoint.pl.sdoc
@@ -7147,11 +7202,17 @@ $ ni --lib fractional2 frac 10 .5
 4.5
 5
 ```
-100 doc/hadoop.md
+115 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
 container):
+
+```sh
+$ docker run --detach -i -m 2G --name ni-test-hadoop \
+    sequenceiq/hadoop-docker \
+    /etc/bootstrap.sh -bash
+```
 
 ```lazytest
 if ! [[ $SKIP_DOCKER ]]; then
@@ -7161,13 +7222,24 @@ Let's start up a container and use `HS` to run a Streaming job. `H` is a
 delegator, meaning that you always specify a profile (in this case `S` for
 Streaming) before any command arguments.
 
-```bash
-$ docker run --detach -i -m 2G --name ni-test-hadoop \
-    sequenceiq/hadoop-docker \
-    /etc/bootstrap.sh -bash >/dev/null
-$ until docker exec -i ni-test-hadoop \
-        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; \
-  do sleep 1; done
+(Note: The `until docker exec` silliness below is because we have to wait for
+the hadoop container to boot up correctly. Sometimes the container gets into a
+bad state and doesn't become available, in which case we nuke it and start
+over. This is all just for unit testing; you won't have to worry about this
+stuff if you're using ni to run hadoop jobs.)
+
+```lazytest
+start_time=0;
+until docker exec -i ni-test-hadoop \
+      /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
+  if (( $(date +%s) - start_time > 60 )); then
+    docker rm -f ni-test-hadoop >&2
+    docker run --detach -i -m 2G --name ni-test-hadoop \
+      sequenceiq/hadoop-docker \
+      /etc/bootstrap.sh -bash >&2
+    start_time=$(date +%s)
+  fi
+done
 ```
 
 `S` takes three lambdas: the mapper, the combiner, and the reducer. There are
@@ -7241,11 +7313,9 @@ AUTHORS	1
 BE	1
 ```
 
-```bash
-$ docker rm -f ni-test-hadoop >/dev/null
-```
-
 ```lazytest
+docker rm -f ni-test-hadoop >&2
+
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
 72 doc/json.md
