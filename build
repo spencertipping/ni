@@ -22,6 +22,7 @@ module core/monitor
 module core/uri
 module core/fn
 module core/closure
+module core/destructure
 
 module core/checkpoint
 module core/net
