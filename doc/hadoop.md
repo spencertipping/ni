@@ -3,6 +3,12 @@ The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
 container):
 
+```sh
+$ docker run --detach -i -m 2G --name ni-test-hadoop \
+    sequenceiq/hadoop-docker \
+    /etc/bootstrap.sh -bash
+```
+
 ```lazytest
 if ! [[ $SKIP_DOCKER ]]; then
 ```
@@ -17,20 +23,18 @@ bad state and doesn't become available, in which case we nuke it and start
 over. This is all just for unit testing; you won't have to worry about this
 stuff if you're using ni to run hadoop jobs.)
 
-```bash
-$ docker run --detach -i -m 2G --name ni-test-hadoop \
-    sequenceiq/hadoop-docker \
-    /etc/bootstrap.sh -bash >/dev/null
-$ start_time=$(date +%s); \
-  until docker exec -i ni-test-hadoop \
-        /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do \
-    if (( $(date +%s) - start_time > 30 )); then \
-      docker rm -f ni-test-hadoop; \
-      docker run --detach -i -m 2G --name ni-test-hadoop \
-        sequenceiq/hadoop-docker \
-        /etc/bootstrap.sh -bash >/dev/null; \
-    fi; \
-  done
+```lazytest
+start_time=0;
+until docker exec -i ni-test-hadoop \
+      /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
+  if (( $(date +%s) - start_time > 30 )); then
+    docker rm -f ni-test-hadoop >&2
+    docker run --detach -i -m 2G --name ni-test-hadoop \
+      sequenceiq/hadoop-docker \
+      /etc/bootstrap.sh -bash >&2
+    start_time=$(date +%s)
+  fi
+done
 ```
 
 `S` takes three lambdas: the mapper, the combiner, and the reducer. There are
@@ -104,10 +108,8 @@ AUTHORS	1
 BE	1
 ```
 
-```bash
-$ docker rm -f ni-test-hadoop >/dev/null
-```
-
 ```lazytest
+docker rm -f ni-test-hadoop >&2
+
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
