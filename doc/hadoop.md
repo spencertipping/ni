@@ -27,7 +27,7 @@ stuff if you're using ni to run hadoop jobs.)
 start_time=0;
 until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
-  if (( $(date +%s) - start_time > 30 )); then
+  if (( $(date +%s) - start_time > 60 )); then
     docker rm -f ni-test-hadoop >&2
     docker run --detach -i -m 2G --name ni-test-hadoop \
       sequenceiq/hadoop-docker \
