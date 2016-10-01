@@ -6,7 +6,7 @@ defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator stream_to_gnuplot => q{
   my ($args) = @_;
-  exec 'gnuplot', '-persist', '-e', $args;
+  exec 'gnuplot', '-persist', '-e', join '', @$args;
 };
 
 # TODO

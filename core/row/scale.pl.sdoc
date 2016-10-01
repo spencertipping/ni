@@ -40,6 +40,10 @@ stdin and stdout. The only consideration there is that we try to interleave
 worker and stdin/stdout blocking; this increases the likelihood that we'll
 saturate source and/or sink processes.
 
+TODO: refactor this to make the pieces available elsewhere. Should probably end
+up with various "combine streams vertically/horizontally/etc" library
+functions.
+
 defoperator row_fixed_scale => q{
   use constant buf_size => 32768;
 

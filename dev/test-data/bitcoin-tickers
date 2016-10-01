@@ -1,0 +1,1400 @@
+{
+  "AED": {
+    "ask": 2276.6,
+    "bid": 2274.26,
+    "last": 2275.68,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "AFN": {
+    "ask": 40668.72,
+    "bid": 40627.02,
+    "last": 40652.29,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ALL": {
+    "ask": 75843.45,
+    "bid": 75765.67,
+    "last": 75812.8,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "AMD": {
+    "ask": 294025.29,
+    "bid": 293723.78,
+    "last": 293906.49,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ANG": {
+    "ask": 1100.94,
+    "bid": 1099.81,
+    "last": 1100.5,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "AOA": {
+    "ask": 102616.98,
+    "bid": 102511.75,
+    "last": 102575.52,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ARS": {
+    "ask": 9496.83,
+    "bid": 9487.09,
+    "last": 9493.0,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "AUD": {
+    "24h_avg": 802.86,
+    "ask": 809.07,
+    "bid": 808.24,
+    "last": 808.75,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 193.82,
+    "volume_percent": 0.62
+  },
+  "AWG": {
+    "ask": 1111.17,
+    "bid": 1110.03,
+    "last": 1110.72,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "AZN": {
+    "ask": 1009.74,
+    "bid": 1008.71,
+    "last": 1009.33,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BAM": {
+    "ask": 1079.84,
+    "bid": 1078.73,
+    "last": 1079.4,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BBD": {
+    "ask": 1239.75,
+    "bid": 1238.47,
+    "last": 1239.25,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BDT": {
+    "ask": 48610.35,
+    "bid": 48560.51,
+    "last": 48590.71,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BGN": {
+    "ask": 1080.69,
+    "bid": 1079.58,
+    "last": 1080.26,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BHD": {
+    "ask": 233.64,
+    "bid": 233.4,
+    "last": 233.54,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BIF": {
+    "ask": 1029003.13,
+    "bid": 1027947.94,
+    "last": 1028587.38,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BMD": {
+    "ask": 619.87,
+    "bid": 619.24,
+    "last": 619.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BND": {
+    "ask": 845.15,
+    "bid": 844.29,
+    "last": 844.81,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BOB": {
+    "ask": 4276.76,
+    "bid": 4272.37,
+    "last": 4275.03,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BRL": {
+    "24h_avg": 1998.13,
+    "ask": 2020.86,
+    "bid": 2018.79,
+    "last": 2020.05,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 461.8,
+    "volume_percent": 1.49
+  },
+  "BSD": {
+    "ask": 619.87,
+    "bid": 619.24,
+    "last": 619.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BTC": {
+    "ask": 1.01,
+    "bid": 1.01,
+    "last": 1.01,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BTN": {
+    "ask": 41348.25,
+    "bid": 41305.85,
+    "last": 41331.54,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BWP": {
+    "ask": 6499.99,
+    "bid": 6493.32,
+    "last": 6497.36,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BYN": {
+    "ask": 1192.14,
+    "bid": 1190.92,
+    "last": 1191.66,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BYR": {
+    "ask": 12413731.71,
+    "bid": 12401002.07,
+    "last": 12408716.14,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "BZD": {
+    "ask": 1238.83,
+    "bid": 1237.56,
+    "last": 1238.33,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CAD": {
+    "24h_avg": 806.53,
+    "ask": 813.89,
+    "bid": 813.05,
+    "last": 813.56,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 416.21,
+    "volume_percent": 1.34
+  },
+  "CDF": {
+    "ask": 606241.07,
+    "bid": 605619.4,
+    "last": 605996.12,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CHF": {
+    "ask": 601.86,
+    "bid": 601.24,
+    "last": 601.61,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CLF": {
+    "ask": 15.39,
+    "bid": 15.38,
+    "last": 15.39,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CLP": {
+    "ask": 407717.37,
+    "bid": 407299.28,
+    "last": 407552.64,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CNY": {
+    "24h_avg": 4099.62,
+    "ask": 4134.47,
+    "bid": 4130.23,
+    "last": 4132.8,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 466.71,
+    "volume_percent": 1.5
+  },
+  "COP": {
+    "ask": 1787197.18,
+    "bid": 1785364.5,
+    "last": 1786475.09,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CRC": {
+    "ask": 341623.98,
+    "bid": 341273.66,
+    "last": 341485.95,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CUC": {
+    "ask": 619.87,
+    "bid": 619.24,
+    "last": 619.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CUP": {
+    "ask": 15328.46,
+    "bid": 15312.74,
+    "last": 15322.26,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CVE": {
+    "ask": 60912.66,
+    "bid": 60850.2,
+    "last": 60888.05,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "CZK": {
+    "ask": 14908.6,
+    "bid": 14893.31,
+    "last": 14902.58,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "DJF": {
+    "ask": 110082.78,
+    "bid": 109969.9,
+    "last": 110038.3,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "DKK": {
+    "ask": 4109.25,
+    "bid": 4105.04,
+    "last": 4107.59,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "DOP": {
+    "ask": 28595.14,
+    "bid": 28565.82,
+    "last": 28583.59,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "DZD": {
+    "ask": 67887.44,
+    "bid": 67817.82,
+    "last": 67860.01,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "EEK": {
+    "ask": 8639.25,
+    "bid": 8630.39,
+    "last": 8635.76,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "EGP": {
+    "ask": 5501.4,
+    "bid": 5495.76,
+    "last": 5499.18,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ERN": {
+    "ask": 9493.36,
+    "bid": 9483.62,
+    "last": 9489.52,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ETB": {
+    "ask": 13746.06,
+    "bid": 13731.97,
+    "last": 13740.51,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "EUR": {
+    "24h_avg": 547.58,
+    "ask": 551.5,
+    "bid": 550.94,
+    "last": 551.28,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 5859.14,
+    "volume_percent": 18.85
+  },
+  "FJD": {
+    "ask": 1274.48,
+    "bid": 1273.17,
+    "last": 1273.96,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "FKP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GBP": {
+    "24h_avg": 473.62,
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 977.31,
+    "volume_percent": 3.14
+  },
+  "GEL": {
+    "ask": 1447.47,
+    "bid": 1445.98,
+    "last": 1446.88,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GGP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GHS": {
+    "ask": 2458.96,
+    "bid": 2456.44,
+    "last": 2457.97,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GIP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GMD": {
+    "ask": 26377.02,
+    "bid": 26349.97,
+    "last": 26366.36,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GNF": {
+    "ask": 5592540.72,
+    "bid": 5586805.85,
+    "last": 5590281.14,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GTQ": {
+    "ask": 4662.47,
+    "bid": 4657.69,
+    "last": 4660.58,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "GYD": {
+    "ask": 127215.92,
+    "bid": 127085.46,
+    "last": 127164.52,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "HKD": {
+    "24h_avg": 4766.44,
+    "ask": 4807.45,
+    "bid": 4802.52,
+    "last": 4805.5,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 12.61,
+    "volume_percent": 0.04
+  },
+  "HNL": {
+    "ask": 14210.73,
+    "bid": 14196.16,
+    "last": 14204.99,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "HRK": {
+    "ask": 4142.63,
+    "bid": 4138.38,
+    "last": 4140.96,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "HTG": {
+    "ask": 40429.71,
+    "bid": 40388.26,
+    "last": 40413.38,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "HUF": {
+    "ask": 170322.19,
+    "bid": 170147.54,
+    "last": 170253.38,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "IDR": {
+    "24h_avg": 8005024.85,
+    "ask": 8078877.16,
+    "bid": 8070592.68,
+    "last": 8075613.02,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 312.74,
+    "volume_percent": 1.01
+  },
+  "ILS": {
+    "24h_avg": 2305.02,
+    "ask": 2323.47,
+    "bid": 2321.09,
+    "last": 2322.53,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 4.97,
+    "volume_percent": 0.02
+  },
+  "IMP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "INR": {
+    "24h_avg": 40939.32,
+    "ask": 41285.56,
+    "bid": 41243.22,
+    "last": 41268.88,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 162.03,
+    "volume_percent": 0.52
+  },
+  "IQD": {
+    "ask": 720798.38,
+    "bid": 720059.24,
+    "last": 720507.15,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "IRR": {
+    "ask": 18638031.49,
+    "bid": 18618919.15,
+    "last": 18630501.1,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ISK": {
+    "ask": 70715.24,
+    "bid": 70642.72,
+    "last": 70686.66,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "JEP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "JMD": {
+    "ask": 79044.59,
+    "bid": 78963.54,
+    "last": 79012.66,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "JOD": {
+    "ask": 439.33,
+    "bid": 438.88,
+    "last": 439.16,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "JPY": {
+    "24h_avg": 62261.15,
+    "ask": 62793.01,
+    "bid": 62728.62,
+    "last": 62767.64,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 3.96,
+    "volume_percent": 0.01
+  },
+  "KES": {
+    "ask": 62755.25,
+    "bid": 62690.9,
+    "last": 62729.9,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KGS": {
+    "ask": 42093.19,
+    "bid": 42050.02,
+    "last": 42076.18,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KHR": {
+    "ask": 2537149.5,
+    "bid": 2534547.78,
+    "last": 2536124.4,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KMF": {
+    "ask": 271927.95,
+    "bid": 271649.1,
+    "last": 271818.08,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KPW": {
+    "ask": 557941.49,
+    "bid": 557369.35,
+    "last": 557716.06,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KRW": {
+    "ask": 682065.9,
+    "bid": 681366.48,
+    "last": 681790.33,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KWD": {
+    "ask": 186.85,
+    "bid": 186.66,
+    "last": 186.77,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KYD": {
+    "ask": 511.02,
+    "bid": 510.5,
+    "last": 510.81,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "KZT": {
+    "ask": 208058.02,
+    "bid": 207844.66,
+    "last": 207973.96,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LAK": {
+    "ask": 5028149.45,
+    "bid": 5022993.34,
+    "last": 5026117.9,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LBP": {
+    "ask": 935695.2,
+    "bid": 934735.7,
+    "last": 935317.15,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LKR": {
+    "ask": 90900.9,
+    "bid": 90807.69,
+    "last": 90864.18,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LRD": {
+    "ask": 56718.38,
+    "bid": 56660.22,
+    "last": 56695.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LSL": {
+    "ask": 8535.34,
+    "bid": 8526.58,
+    "last": 8531.89,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LTL": {
+    "ask": 1882.08,
+    "bid": 1880.15,
+    "last": 1881.32,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LVL": {
+    "ask": 386.92,
+    "bid": 386.53,
+    "last": 386.77,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "LYD": {
+    "ask": 855.11,
+    "bid": 854.23,
+    "last": 854.77,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MAD": {
+    "ask": 6021.3,
+    "bid": 6015.12,
+    "last": 6018.87,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MDL": {
+    "ask": 12217.64,
+    "bid": 12205.11,
+    "last": 12212.7,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MGA": {
+    "ask": 1925182.97,
+    "bid": 1923208.8,
+    "last": 1924405.13,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MKD": {
+    "ask": 33943.07,
+    "bid": 33908.27,
+    "last": 33929.36,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MMK": {
+    "ask": 781348.37,
+    "bid": 780547.14,
+    "last": 781032.68,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MNT": {
+    "ask": 1415438.68,
+    "bid": 1413987.22,
+    "last": 1414866.79,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MOP": {
+    "ask": 4950.39,
+    "bid": 4945.32,
+    "last": 4948.39,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MRO": {
+    "ask": 220635.22,
+    "bid": 220408.97,
+    "last": 220546.08,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MTL": {
+    "ask": 423.75,
+    "bid": 423.31,
+    "last": 423.58,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MUR": {
+    "ask": 21951.02,
+    "bid": 21928.51,
+    "last": 21942.15,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MVR": {
+    "ask": 9461.33,
+    "bid": 9451.63,
+    "last": 9457.51,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MWK": {
+    "ask": 444942.48,
+    "bid": 444486.21,
+    "last": 444762.7,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MXN": {
+    "24h_avg": 11923.02,
+    "ask": 12024.89,
+    "bid": 12012.55,
+    "last": 12020.03,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 148.62,
+    "volume_percent": 0.48
+  },
+  "MYR": {
+    "ask": 2561.41,
+    "bid": 2558.78,
+    "last": 2560.38,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "MZN": {
+    "ask": 48498.86,
+    "bid": 48449.13,
+    "last": 48479.27,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "NAD": {
+    "ask": 8545.41,
+    "bid": 8536.65,
+    "last": 8541.96,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "NGN": {
+    "ask": 194038.85,
+    "bid": 193839.87,
+    "last": 193960.45,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "NIO": {
+    "ask": 17936.24,
+    "bid": 17917.84,
+    "last": 17928.99,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "NOK": {
+    "24h_avg": 4919.97,
+    "ask": 4954.07,
+    "bid": 4948.99,
+    "last": 4952.07,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 7.03,
+    "volume_percent": 0.02
+  },
+  "NPR": {
+    "ask": 65990.69,
+    "bid": 65923.02,
+    "last": 65964.03,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "NZD": {
+    "24h_avg": 843.76,
+    "ask": 850.68,
+    "bid": 849.8,
+    "last": 850.33,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 28.02,
+    "volume_percent": 0.09
+  },
+  "OMR": {
+    "ask": 238.64,
+    "bid": 238.39,
+    "last": 238.54,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PAB": {
+    "ask": 619.87,
+    "bid": 619.24,
+    "last": 619.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PEN": {
+    "ask": 2097.97,
+    "bid": 2095.82,
+    "last": 2097.12,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PGK": {
+    "ask": 1962.98,
+    "bid": 1960.97,
+    "last": 1962.19,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PHP": {
+    "ask": 29992.25,
+    "bid": 29961.49,
+    "last": 29980.13,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PKR": {
+    "ask": 64769.97,
+    "bid": 64703.55,
+    "last": 64743.8,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "PLN": {
+    "24h_avg": 2355.51,
+    "ask": 2371.31,
+    "bid": 2368.88,
+    "last": 2370.36,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 355.96,
+    "volume_percent": 1.15
+  },
+  "PYG": {
+    "ask": 3431429.95,
+    "bid": 3427911.19,
+    "last": 3430043.53,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "QAR": {
+    "ask": 2257.45,
+    "bid": 2255.13,
+    "last": 2256.53,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "RON": {
+    "24h_avg": 2435.82,
+    "ask": 2452.68,
+    "bid": 2450.16,
+    "last": 2451.68,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 11.47,
+    "volume_percent": 0.04
+  },
+  "RSD": {
+    "ask": 67929.73,
+    "bid": 67860.07,
+    "last": 67902.28,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "RUB": {
+    "24h_avg": 38688.69,
+    "ask": 38992.35,
+    "bid": 38952.36,
+    "last": 38976.59,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 1286.25,
+    "volume_percent": 4.14
+  },
+  "RWF": {
+    "ask": 495261.59,
+    "bid": 494753.72,
+    "last": 495061.49,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SAR": {
+    "ask": 2325.72,
+    "bid": 2323.33,
+    "last": 2324.78,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SBD": {
+    "ask": 4840.72,
+    "bid": 4835.76,
+    "last": 4838.77,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SCR": {
+    "ask": 8255.34,
+    "bid": 8246.87,
+    "last": 8252.0,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SDG": {
+    "ask": 3795.02,
+    "bid": 3791.13,
+    "last": 3793.49,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SEK": {
+    "24h_avg": 5273.62,
+    "ask": 5314.55,
+    "bid": 5309.1,
+    "last": 5312.4,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 41.5,
+    "volume_percent": 0.13
+  },
+  "SGD": {
+    "24h_avg": 837.81,
+    "ask": 844.96,
+    "bid": 844.1,
+    "last": 844.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 210.23,
+    "volume_percent": 0.68
+  },
+  "SHP": {
+    "ask": 477.65,
+    "bid": 477.16,
+    "last": 477.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SLL": {
+    "ask": 3502282.46,
+    "bid": 3498691.05,
+    "last": 3500867.42,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SOS": {
+    "ask": 360695.01,
+    "bid": 360325.13,
+    "last": 360549.28,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SRD": {
+    "ask": 4727.43,
+    "bid": 4722.58,
+    "last": 4725.52,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "STD": {
+    "ask": 13556266.13,
+    "bid": 13542364.88,
+    "last": 13550788.94,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SVC": {
+    "ask": 5418.89,
+    "bid": 5413.33,
+    "last": 5416.7,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SYP": {
+    "ask": 132624.93,
+    "bid": 132488.93,
+    "last": 132571.34,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "SZL": {
+    "ask": 8542.9,
+    "bid": 8534.14,
+    "last": 8539.45,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "THB": {
+    "ask": 21454.74,
+    "bid": 21432.74,
+    "last": 21446.07,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TJS": {
+    "ask": 4864.67,
+    "bid": 4859.68,
+    "last": 4862.7,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TMT": {
+    "ask": 2148.6,
+    "bid": 2146.4,
+    "last": 2147.74,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TND": {
+    "ask": 1364.37,
+    "bid": 1362.97,
+    "last": 1363.82,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TOP": {
+    "ask": 1394.87,
+    "bid": 1393.44,
+    "last": 1394.31,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TRY": {
+    "ask": 1860.05,
+    "bid": 1858.15,
+    "last": 1859.3,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TTD": {
+    "ask": 4154.08,
+    "bid": 4149.82,
+    "last": 4152.4,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TWD": {
+    "ask": 19410.94,
+    "bid": 19391.03,
+    "last": 19403.1,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "TZS": {
+    "ask": 1351032.84,
+    "bid": 1349647.42,
+    "last": 1350486.97,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "UAH": {
+    "ask": 16058.96,
+    "bid": 16042.5,
+    "last": 16052.47,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "UGX": {
+    "ask": 2100056.38,
+    "bid": 2097902.88,
+    "last": 2099207.89,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "USD": {
+    "24h_avg": 614.61,
+    "ask": 619.87,
+    "bid": 619.24,
+    "last": 619.62,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 19964.53,
+    "volume_percent": 64.22
+  },
+  "UYU": {
+    "ask": 17655.55,
+    "bid": 17637.44,
+    "last": 17648.41,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "UZS": {
+    "ask": 1859479.54,
+    "bid": 1857572.73,
+    "last": 1858728.24,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "VEF": {
+    "ask": 6184.24,
+    "bid": 6177.9,
+    "last": 6181.74,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "VND": {
+    "ask": 13832972.27,
+    "bid": 13818787.27,
+    "last": 13827383.28,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "VUV": {
+    "ask": 65735.47,
+    "bid": 65668.06,
+    "last": 65708.91,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "WST": {
+    "ask": 1560.32,
+    "bid": 1558.72,
+    "last": 1559.69,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XAF": {
+    "ask": 363333.11,
+    "bid": 362960.53,
+    "last": 363186.31,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XAG": {
+    "ask": 32.68,
+    "bid": 32.65,
+    "last": 32.67,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XAU": {
+    "ask": 0.47,
+    "bid": 0.47,
+    "last": 0.47,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XCD": {
+    "ask": 1673.05,
+    "bid": 1671.33,
+    "last": 1672.37,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XDR": {
+    "ask": 444.09,
+    "bid": 443.64,
+    "last": 443.91,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XOF": {
+    "ask": 364799.48,
+    "bid": 364425.4,
+    "last": 364652.09,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XPD": {
+    "ask": 0.92,
+    "bid": 0.92,
+    "last": 0.92,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XPF": {
+    "ask": 65867.16,
+    "bid": 65799.62,
+    "last": 65840.55,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "XPT": {
+    "ask": 0.55,
+    "bid": 0.55,
+    "last": 0.55,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "YER": {
+    "ask": 155024.04,
+    "bid": 154865.07,
+    "last": 154961.4,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ZAR": {
+    "24h_avg": 8457.43,
+    "ask": 8524.09,
+    "bid": 8515.35,
+    "last": 8520.65,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 160.95,
+    "volume_percent": 0.52
+  },
+  "ZMK": {
+    "ask": 3255588.35,
+    "bid": 3252249.91,
+    "last": 3254272.98,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ZMW": {
+    "ask": 6195.43,
+    "bid": 6189.08,
+    "last": 6192.93,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "ZWL": {
+    "ask": 199799.19,
+    "bid": 199594.3,
+    "last": 199718.46,
+    "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000",
+    "volume_btc": 0.0,
+    "volume_percent": 0.0
+  },
+  "timestamp": "Sat, 01 Oct 2016 12:09:11 -0000"
+}

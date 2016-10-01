@@ -763,9 +763,8 @@ sub gen($) {
     join '', map defined $_ ? $_ : '', @r;
   };
 }
-2 core/json/lib
+1 core/json/lib
 json.pl.sdoc
-extract.pl.sdoc
 76 core/json/json.pl.sdoc
 JSON parser/generator.
 Perl has native JSON libraries available in CPAN, but we can't assume those are
@@ -843,58 +842,6 @@ if (__PACKAGE__ eq 'ni::pl') {
   *je = \&json_encode;
   *jd = \&json_decode;
 }
-51 core/json/extract.pl.sdoc
-Targeted extraction.
-ni gives you ways to decode JSON, but you aren't likely to have data stored as
-JSON objects in the middle of data pipelines. It's more of an archival format,
-so the goal is to unpack stuff quickly. ni gives you a way of doing this that
-is usually much faster than running the full decoder. (And also requires less
-typing.)
-
-The set of operations is basically this:
-
-| .foo          # direct object key access (not very fast)
-  ..foo         # multiple indirect object key access (fast-ish)
-  :foo          # single indirect object key access (very fast)
-  [0]           # array access (slow)
-  []            # array flatten (slow)
-
-Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
-every 'bar' key within the first element of the 'foo' field of the root
-object".
-
-Extracted values are flattened into a single array and returned. They're
-optimized for strings, numeric, and true/false/null; you can return other
-values, but it will be slower.
-
-# TODO: replace all of this
-
-use constant json_si_gen => gen q#
-  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
-               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
-               : /\G([^][{},]+)/              ? "" . $1
-               : undef
-               : undef) #;
-
-sub json_extractor($) {
-  my @pieces = split /\s*,\s*/, $_[0];
-  die "ni: json_extractor is not really written yet"
-    if grep !/^:\w+$/, @pieces;
-
-  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
-                 map sr($_, qr/^:/, ''), @pieces;
-  join ',', @compiled;
-}
-
-defoperator destructure => q{
-  ni::eval gen(q{no warnings 'uninitialized';
-                 eval {binmode STDOUT, ":encoding(utf-8)"};
-                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-                 while (<STDIN>) {print join("\t", %e), "\n"}})
-            ->(e => json_extractor $_[0]);
-};
-
-defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/deps/lib
 sha1.pm
 1031 core/deps/sha1.pm
@@ -2534,7 +2481,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-62 core/stream/main.pl.sdoc
+63 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -2583,7 +2530,8 @@ shell-friendly terminal state, requiring the user to run `reset` to fix it. So
 in an interrupt context we try to give the pager a chance to exit gracefully by
 closing its input stream and having the user use `q` or similar.
 
-$SIG{TERM} = sub {
+$SIG{TERM} =
+$SIG{HUP}  = sub {
   close $pager_fh if $pager_fh;
   ni::procfh::kill_children 'TERM';
   exit 1;
@@ -3454,7 +3402,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-184 core/row/scale.pl.sdoc
+188 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3496,6 +3444,10 @@ blocking on the workers, but it's fine and expected for it to block on its own
 stdin and stdout. The only consideration there is that we try to interleave
 worker and stdin/stdout blocking; this increases the likelihood that we'll
 saturate source and/or sink processes.
+
+TODO: refactor this to make the pieces available elsewhere. Should probably end
+up with various "combine streams vertically/horizontally/etc" library
+functions.
 
 defoperator row_fixed_scale => q{
   use constant buf_size => 32768;
@@ -5106,7 +5058,7 @@ defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator stream_to_gnuplot => q{
   my ($args) = @_;
-  exec 'gnuplot', '-persist', '-e', $args;
+  exec 'gnuplot', '-persist', '-e', join '', @$args;
 };
 
 # TODO

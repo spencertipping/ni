@@ -4,6 +4,28 @@ arbitrary-column joins and not rearrange any columns in the result.
 
 ### Ops and parsers should be self-documenting
 
+### Autoscaling
+Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
+
+### Runs of input files
+ni naively appends each input file, but this creates tons of unnecessary
+intermediate processes for long file lists. We should preprocess operations to
+merge adjacent `cat` invocations (which is easy: `cat` should be a meta-op).
+
+### Sub-monitors
+Right now lambdas don't have monitoring at all, which is lame. We should
+monitor lambdas in general, though this requires some cooperation from
+operators like `ssh` etc (since we don't yet have a way to traverse lambdas
+within op trees).
+
+### Generalized/optimized destructuring
+Should apply to JSON, XML, headed CSV, SQL-as-text, possibly other formats too.
+Also should optimize for the consistent-schema case and predict field
+positions.
+
+### Better/more test data
+Some data is harder to parse than reddit comments.
+
 ### `r` operator should take a lambda
 i.e. "take rows for which this lambda streams non-null values"
 
