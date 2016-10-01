@@ -2561,7 +2561,7 @@ $ni::main_operator = sub {
   my @ops = apply_meta_operators @_;
   @$_ and push @children, sicons {operate @$_} for @ops;
 
-  if (-t STDOUT) {
+  if (-t STDOUT and !$ENV{NI_NO_PAGER}) {
     $pager_fh = siproc {exec 'less' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
@@ -4183,7 +4183,7 @@ sub time_pieces_epoch($@) {
   my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
-  POSIX::mktime(@tvs) + $tvs[9] / 1_000_000_000;
+  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
 }
 
 c
@@ -5719,7 +5719,7 @@ caterwaul(':all')(function ($) {
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
         number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
-                                                                            s(v) = this.modus('val', +v /!n/~toFixed/ 6)],
+                                                                            s(v) = this.modus('val', +v /!n)],
         log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
         linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
         angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',

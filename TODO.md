@@ -2,9 +2,6 @@
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.
 
-### Data closures
-Incorporate data into the image. If it's too large, map it to a tempfile.
-
 ### Ops and parsers should be self-documenting
 
 ### `r` operator should take a lambda

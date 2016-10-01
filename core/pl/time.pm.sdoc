@@ -29,7 +29,7 @@ sub time_pieces_epoch($@) {
   my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
-  POSIX::mktime(@tvs) + $tvs[9] / 1_000_000_000;
+  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
 }
 
 c

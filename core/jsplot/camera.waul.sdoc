@@ -33,7 +33,7 @@ caterwaul(':all')(function ($) {
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
         number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
-                                                                            s(v) = this.modus('val', +v /!n/~toFixed/ 6)],
+                                                                            s(v) = this.modus('val', +v /!n)],
         log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
         linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
         angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
