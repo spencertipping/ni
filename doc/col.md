@@ -4,7 +4,9 @@ operators that allow you to manipulate the columns in a stream accordingly. The
 two important ones are `f[columns...]` to rearrange columns, and `F[delimiter]`
 to create new ones.
 
-ni always refers to columns using letters: `A` to `Z`.
+ni refers to columns using letters: `A` to `Z`, though you can also use the
+form `#N` to address the Nth column, where `#0` == `A` and `#25` == `Z`. This
+second form can be useful for large data files.
 
 ## Reordering
 First let's generate some data, in this case an 8x8 multiplication table:
@@ -125,13 +127,11 @@ first.
   group will be included before a tab is appended to a field.
 - `Fm/regex/`: don't split; instead, look for matches of regex and use those as
   the field values.
-- `FC`: split on commas
+- `FC`: split on commas (doesn't handle special CSV cases)
+- `FV`: parse CSV "correctly", up to newlines in fields
 - `FS`: split on runs of horizontal whitespace
 - `FW`: split on runs of non-word characters
 - `FP`: split on pipe symbols
-
-Note that `FC` isn't a proper CSV parser; it just transliterates all commas
-into tabs.
 
 ### Examples
 ```bash

@@ -28,39 +28,41 @@ specific cases. These are documented somewhere in `doc/`.
 A parsed column spec is an N-element array: [floor, cols...]. `floor` indicates
 the first column that would be selected by a `.` ("the rest").
 
-use constant neval   => pmap q{eval}, prx '=([^]=]+)';
-use constant integer => palt pmap(q{int},       neval),
-                             pmap(q{10 ** $_},  prx 'E(-?\d+)'),
-                             pmap(q{1 << $_},   prx 'B(\d+)'),
-                             pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                             pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?');
-use constant float   => pmap q{0 + $_},
-                        pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?';
-use constant number  => palt neval, integer, float;
+c
+BEGIN {defparseralias neval => pmap q{eval}, prx '=([^]=]+)'}
+BEGIN {defparseralias integer => palt pmap(q{int},       neval),
+                                      pmap(q{10 ** $_},  prx 'E(-?\d+)'),
+                                      pmap(q{1 << $_},   prx 'B(\d+)'),
+                                      pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
+                                      pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?'),
+                                                         prx '0'}
+BEGIN {defparseralias float => pmap q{0 + $_},
+                               pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?'}
+BEGIN {defparseralias number => palt neval, integer, float}
 
-use constant colspec1      => pmap q{ord() - 65}, prx '[A-Z]';
-use constant colspec_rest  => pmap q{-1}, prx '\.';
-use constant colspec_range => pmap q{[$$_[0] .. $$_[2]]},
-                              pseq colspec1, prx '-', colspec1;
-
-use constant colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
-                              pmap q{[map ref() ? @$_ : $_, @$_]},
-                              prep palt(colspec_range, colspec1), 1;
-
-use constant colspec => pmap q{[max(@$_) + 1, @$_]},
-                        pmap q{[map ref() ? @$_ : $_, @$_]},
-                        prep palt(colspec_range, colspec1, colspec_rest), 1;
+c
+BEGIN {defparseralias colspec1      => palt pn(1, prx '#', integer),
+                                            pmap q{ord() - 65}, prx '[A-Z]';
+       defparseralias colspec_rest  => pmap q{-1}, prx '\.'}
+BEGIN {defparseralias colspec_range => pmap q{[$$_[0] .. $$_[2]]},
+                                       pseq colspec1, prx '-', colspec1}
+BEGIN {defparseralias colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
+                                       pmap q{[map ref() ? @$_ : $_, @$_]},
+                                       prep pn(1, popt prx ',',
+                                                  palt(colspec_range, colspec1)), 1}
+BEGIN {defparseralias colspec => pmap q{[max(@$_) + 1, @$_]},
+                                 pmap q{[map ref() ? @$_ : $_, @$_]},
+                                 prep pn(1, popt prx ',',
+                                            palt(colspec_range, colspec1, colspec_rest)), 1}
 
 Filenames, in general.
 Typically filenames won't include bracket characters, though they might include
 just about everything else. Two possibilities there: if we need special stuff,
-there's the `file:` prefix; otherwise we assume the non-bracket interpretation.
+there's the `file://` prefix; otherwise we assume the non-bracket
+interpretation.
 
-use constant tmpdir   => dor $ENV{TMPDIR}, '/tmp';
-use constant tempfile => pmap q{tmpdir . "/ni-$<-$_"}, prx '@:(\w*)';
-use constant filename => palt prx 'file:(.+)',
-                              prx '\.?/(?:[^/]|$)[^]]*',
-                              tempfile,
-                              pcond q{-e}, prx '[^][]+';
-
-use constant nefilename => palt filename, prx '[^][]+';
+c
+BEGIN {defparseralias filename   => palt prx 'file://(.+)',
+                                         prx '\.?/(?:[^/]|$)[^]]*',
+                                         pcond q{-e}, prx '[^][]+'}
+BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
