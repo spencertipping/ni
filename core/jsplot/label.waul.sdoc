@@ -1,0 +1,34 @@
+A column vector of labeled data.
+Stores a column of hashed labels for a field, along with a sample of unique string values for that field. The sample's purpose is to provide a catalog of
+human-readable labels, ideally covering a large fraction of the points in question. This means we want its bias to echo the points' bias.
+
+The way we achieve this is simple: the sample array is indexed by the low N bits of each entry's murmurhash. Collisions are eagerly replaced, and we monitor
+the total string length, changing the number of bits and collapsing to remain within the memory limits.
+
+caterwaul(':all')(function () {
+  label(capacity) = this /-caterwaul.merge/ {hashes: new UInt32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
+  label.prototype /-caterwaul.merge/ label_methods,
+
+  label_sample(capacity) = this /-caterwaul.merge/ {s: n[''] *[null] -seq, bits: 16, size: 0, n: 0, c: capacity} -re- void 0,
+  label_sample.prototype /-caterwaul.merge/ label_sample_methods,
+
+  where[label_methods = capture[reset()            = this -se [this.n = 0, this.labels = []],
+                                set(i, x)          = this -se [
+
+                                                               this.data[i] = x],
+
+                                end()              = this.n /-Math.min/ this.c,
+
+
+                                push(x, r)         = this.n++ < this.c ? this.set(this.n, x) : this /x /~uniform_push/ r,
+                                uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]],
+
+        label_sample_methods = capture [reset()      = this -se [this.s = n[''] *[null] -seq, this.size = 0, this.bits = 16],
+                                        set(i, x)    = this -se [this.size += x.length - this.s[i].length, this.s[i] = x],
+                                        push(x)      = this -se [this.set(x /-murmurhash3_32/ 0 & -1 << this.bits, x), this /~check_size/ ++n],
+
+                                        check_size() = this -se [this.size * 2 > 4 * capacity ? this.collapse()
+                                                               : this.size * 4 < 4 * capacity ? this.expand() : 0],
+                                        collapse()   = this -se [this.s = n[1 << --this.bits] *[this.s[x] || this.s[x + 1 << this.bits]] -seq],
+                                        expand()     = this -se [this.s = n[1 << ++this.bits] *[''] /seq -se-
+                                                                          this.s *![it[murmurhash3_32(x, 0) & -1 << this.bits] = x] /seq]]]})();

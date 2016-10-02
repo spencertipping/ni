@@ -34,11 +34,11 @@ BEGIN {defparseralias integer => palt pmap(q{int},       neval),
                                       pmap(q{10 ** $_},  prx 'E(-?\d+)'),
                                       pmap(q{1 << $_},   prx 'B(\d+)'),
                                       pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                                      pmap(q{0 + $_},    prx '[1-9]\d*(?:[eE]\d+)?'),
+                                      pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
                                                          prx '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
                                pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?'}
-BEGIN {defparseralias number => palt neval, integer, float}
+BEGIN {defparseralias number => palt neval, float, integer}
 
 c
 BEGIN {defparseralias colspec1      => palt pn(1, prx '#', integer),
