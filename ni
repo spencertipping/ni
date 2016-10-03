@@ -5705,7 +5705,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-116 core/jsplot/render.waul.sdoc
+117 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -5757,8 +5757,8 @@ Here's the calculation:
   next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
 
     --frames_requested;
-    var ax = state.a[0], ay = state.a[1], xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
-        az = state.a[2], aw = state.a[3], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
+    var ax = state.a[0], ay = state.a[1],                  xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
+        az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
         t  = +new Date, sr = state.saturation_rate;
@@ -5769,7 +5769,8 @@ Here's the calculation:
     for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
-            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
+            wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
+            q  = aq ? j /!aq.pnorm : 1;
 
         if (zp > 0) {
           w *= 0.8;
@@ -5786,7 +5787,7 @@ Here's the calculation:
                   var pi = (sy+dy)*width + sx+dx << 2,
                       op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                       lp = id[pi|3] || 64,
-                      ci = l * op * (256 - lp),
+                      ci = l * op * (256 - lp) * q,
                       li = ci * zi*zi,
                       d  = sr / (ci + lp);
 
@@ -5799,7 +5800,7 @@ Here's the calculation:
             else {
               var pi = sy*width + sx << 2,
                   lp = id[pi|3] || 64,
-                  ci = l * (256 - lp),
+                  ci = l * (256 - lp) * q,
                   li = ci * zi*zi,
                   d  = sr / (ci + lp);
 
