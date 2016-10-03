@@ -34,7 +34,7 @@ $(caterwaul(':all')(function ($) {
 
         view_change(k, f, v)   = w.val(w.val() -se [it.v[k] = it.v[k] /-f/ v]),
 
-        data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
+        data_lock_vector()     = data_state.frame.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
         screen_scale()         = (lw /-Math.min/ lh) / 2,
         drag(dx, dy, s)        = s ? 'cr' /v2plus /-view_change/ [dy * 180 / screen_scale(), -dx * 180 / screen_scale()]
                                    : w.val() /se    [it.v.ot = it.v.ot /-v3plus/ modify(it.v, [dx / screen_scale(), -dy / screen_scale(), 0, 0])
@@ -76,26 +76,23 @@ $(caterwaul(':all')(function ($) {
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
+        reset_data_state()   = data_state = {frame: new dataframe(128 * 1048576), bytes: 0, last_render: 0} -se- preview /~text/ '',
         data_state           = null -se- reset_data_state(),
 
-        data_was_revised(ls) = update_screen() /when[data_state.axes.length && +new Date - data_state.last_render > data_state.axes[0].end() / 100]
-                      -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
-                             /!update_status
-                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n") + "\n")],
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
+                      -then- '#{ats} / #{data_state.frame.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
+                             /!update_status /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join('')]
+                      -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it /~join/ '\n')
+                      -when- data_state.frame.axes,
 
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
-                           -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
-                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[new axis(1048576*4)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *[x.split(/\t/)] /seq /!populate_axes -then- data_was_revised(lines),
-                                   populate_axes(ls)  = ls /!update_n_axes -then-
-                                                        ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
+                      -where [handle_data(ls) = ls *!data_state.frame.push -seq -then- data_was_revised(ls)],
 
         renderer           = render(),
         update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+                     -then-  renderer(data_state.frame.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.axes && +new Date - data_state.last_render > 30]
+                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

@@ -21,10 +21,13 @@ within op trees).
 ### Generalized/optimized destructuring
 Should apply to JSON, XML, headed CSV, SQL-as-text, possibly other formats too.
 Also should optimize for the consistent-schema case and predict field
-positions.
+positions. Support assertions.
 
-### Better/more test data
-Some data is harder to parse than reddit comments.
+### Cell-specific value transforms
+e.g. `ni ,pACDs/foo/bar/`
+
+### Concise `BEGIN` blocks for mappers
+e.g. `ni p'^{@xs = (1, 2, 3)} r(a, $xs[b])'`
 
 ### `r` operator should take a lambda
 i.e. "take rows for which this lambda streams non-null values"
@@ -44,9 +47,6 @@ options are `--` and others are `//`.
 #### Labeled axes/grids/etc
 Must be client-side; this way it can happen after autoranging and during zooms.
 
-#### Custom autorange
-#### Outlier removal
-#### Precise zooming, view history
-#### Options to reset/generate view matrix
+#### View history
 #### Client-side axis reordering
 Should be trivial since the data is all there.

@@ -5597,9 +5597,9 @@ caterwaul(':all')(function () {
                                  p(i)               = this.data[i],
                                  pnorm(i)           = (this.data[i] - this.offset()) / this.range() + 0.5,
 
-                                 push(x, r)         = this.n++ < this.c ? this.set(this.n, x) : this /x /~uniform_push/ r,
+                                 push(x, r)         = this.n++ < this.c ? this.set(this.n, +x) : this /+x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
-29 core/jsplot/label.waul.sdoc
+31 core/jsplot/label.waul.sdoc
 A column vector of labeled data.
 Stores a column of hashed labels for a field, along with a sample of unique string values for that field. The sample's purpose is to provide a catalog of
 human-readable labels, ideally covering a large fraction of the points in question. This means we want its bias to echo the points' bias.
@@ -5608,44 +5608,55 @@ The way we achieve this is simple: the sample array is indexed by the low N bits
 the total string length, changing the number of bits and collapsing to remain within the memory limits.
 
 caterwaul(':all')(function () {
-  label(capacity) = this /-caterwaul.merge/ {hashes: new UInt32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
+  label(capacity) = this /-caterwaul.merge/ {hashes: new Int32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
   label.prototype /-caterwaul.merge/ label_methods,
 
-  label_sample(capacity) = this /-caterwaul.merge/ {s: n[''] *[null] -seq, bits: 16, size: 0, n: 0, c: capacity} -re- void 0,
+  label_sample(capacity) = this /-caterwaul.merge/ {s: n[1 << 16] *[''] -seq, bits: 16, size: 0, n: 0, c: capacity} -re- void 0,
   label_sample.prototype /-caterwaul.merge/ label_sample_methods,
 
   where[label_methods = capture[reset()            = this -se [this.n = 0, this.sample = new label_sample(this.c)],
                                 set(i, x)          = this -se [this.hashes[i] = murmurhash3_32(x, 0), this.sample /~push/ x],
+                                pnorm(i)           = (this.hashes[i] & 0x7fffffff) / 0x80000000,
+                                p(i)               = this.hashes[i],
                                 end()              = this.n /-Math.min/ this.c,
                                 push(x, r)         = this.n++ < this.c ? this.set(this.n - 1, x) : this /x /~uniform_push/ r,
                                 uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]],
 
-        label_sample_methods = capture [reset()      = this -se [this.s = n[''] *[null] -seq, this.size = 0, this.bits = 16],
-                                        set(i, x)    = this -se [this.size += x.length - this.s[i].length, this.s[i] = x],
-                                        push(x)      = this -se [this.set(x /-murmurhash3_32/ 0 & -1 << this.bits, x), this /~check_size/ ++n],
+        label_sample_methods = capture [reset()      = this -se [this.s = n[1 << 16] *[''] -seq, this.n = 0, this.size = 0, this.bits = 16],
+                                        set(i, x)    = this -se [this.size += x.length - this.s[i].length, this.s[i] = x, unless [x == null]],
+                                        push(x)      = this -se [this.set(x /-murmurhash3_32/ 0 & ~(-1 << this.bits), x), ++this.n, this.check_size()],
 
-                                        check_size() = this -se [this.size * 2 > 4 * capacity ? this.collapse()
-                                                               : this.size * 4 < 4 * capacity ? this.expand() : 0],
+                                        check_size() = this -se [this.size * 2 > 4 * this.capacity ? this.collapse()
+                                                               : this.size * 4 < 4 * this.capacity ? this.expand() : 0],
                                         collapse()   = this -se [this.s = n[1 << --this.bits] *[this.s[x] || this.s[x + 1 << this.bits]] -seq],
                                         expand()     = this -se [this.s = n[1 << ++this.bits] *[''] /seq -se-
-                                                                          this.s *![it[murmurhash3_32(x, 0) & -1 << this.bits] = x] /seq]]]})();
-16 core/jsplot/dataframe.waul.sdoc
+                                                                          this.s *![it[murmurhash3_32(x, 0) & ~(-1 << this.bits)] = x] /seq]]]})();
+25 core/jsplot/dataframe.waul.sdoc
 Data frame: a collection of typed axes.
 Manages axis allocation, memory bounding, and input conversion. Also provides a layer of customization around coordinate mappings.
 
 caterwaul(':all')(function () {
-  dataframe(memory_limit) = this /-caterwaul.merge/ {axes: null, n: 0, preview_lines: [], memory_limit: memory_limit} -re- void 0,
+  dataframe(memory_limit) = this /-caterwaul.merge/ {axes: null, axis_types: null, n: 0, preview_lines: [], memory_limit: memory_limit} -re- void 0,
   dataframe.prototype /-caterwaul.merge/ dataframe_methods,
 
-  where [dataframe_methods = capture [push(l)       = ++this.n <= 64 ? preview_lines /~push/ l.split(/\t/) : this /~axis_push/ l.split(/\t/),
-                                      axis_push(vs) = this.force_axes() -unless [this.axes] -then- this.axes *![x /vs[xi] /~push/ r] /seq
-                                                                                            -where [r = Math.random()],
-                                      force_axes()  = this.axes /eq[n[n_axes] *[axis_type(i) > 0.5 ? new axis(axis_capacity) : new label(axis_capacity)] -seq]
-                                                      -then- this.previeW_lines *!this.axis_push /seq
-                                                      -where [n_axes        = this.preview_lines /[0][x0 /-Math.max/ x.length] -seq || 1,
-                                                              axis_capacity = this.memory_limit / n_axes >>> 3,
-                                                              numeric(x)    = !isNaN(+x),
-                                                              axis_type(i)  = this.preview_lines /[0][x0 + x[i] /!is_numeric] -seq -re- it / this.n]]]})();
+  where [dataframe_methods = capture [push(l)          = ++this.n <= 1024 ? this.preview_lines /~push/ l.split(/\t/) : this /~axis_push/ l.split(/\t/),
+                                      axis_push(vs)    = this.force_axes() -unless [this.axes] -then- this.axes *![x /vs[xi] /~push/ r] /seq
+                                                                                               -where [r = Math.random()],
+                                      axes()           = this.axes ? this.axes.length : 0,
+                                      axis(i)          = this.axes[i],
+                                      index_axis()     =  capture[p(i) = i,                 pnorm(i) = i / n, end() = n] -where [n = this.end()],
+                                      match_axis(i, f) = wcapture[p(i) = f(a.p(i)) ? 1 : 0, pnorm(i) = p(i),  end() = n]
+                                                         -where [a = this.axes[i], n = this.end()],
+
+                                      force_axes()     = this.axes /eq[axis_types *[new window[x](axis_capacity)] -seq]
+                                                         -then- this.axis_types /eq.axis_types
+                                                         -then- this.preview_lines *!this.axis_push /seq
+                                                         -where [n_axes        = this.preview_lines /[0][x0 /-Math.max/ x.length] -seq || 1,
+                                                                 axis_capacity = this.memory_limit / n_axes >>> 3,
+                                                                 self          = this,
+                                                                 is_numeric(x) = !isNaN(+x),
+                                                                 axis_type(i)  = self.preview_lines /[0][x0 + x[i] /!is_numeric] -seq,
+                                                                 axis_types    = n[n_axes] *[axis_type(x) > 512 ? 'axis' : 'label'] -seq]]]})();
 34 core/jsplot/matrix.waul.sdoc
 Matrices.
 Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
@@ -5858,7 +5869,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-101 core/jsplot/interface.waul.sdoc
+98 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -5895,7 +5906,7 @@ $(caterwaul(':all')(function ($) {
 
         view_change(k, f, v)   = w.val(w.val() -se [it.v[k] = it.v[k] /-f/ v]),
 
-        data_lock_vector()     = data_state.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
+        data_lock_vector()     = data_state.frame.axes.length >= 3 ? [1, 1, 1] : [1, 1, 0],
         screen_scale()         = (lw /-Math.min/ lh) / 2,
         drag(dx, dy, s)        = s ? 'cr' /v2plus /-view_change/ [dy * 180 / screen_scale(), -dx * 180 / screen_scale()]
                                    : w.val() /se    [it.v.ot = it.v.ot /-v3plus/ modify(it.v, [dx / screen_scale(), -dy / screen_scale(), 0, 0])
@@ -5937,26 +5948,23 @@ $(caterwaul(':all')(function ($) {
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        reset_data_state()   = data_state = {axes: null, bytes: 0, last_render: 0, preview: ''} -se- preview /~text/ '',
+        reset_data_state()   = data_state = {frame: new dataframe(128 * 1048576), bytes: 0, last_render: 0} -se- preview /~text/ '',
         data_state           = null -se- reset_data_state(),
 
-        data_was_revised(ls) = update_screen() /when[data_state.axes.length && +new Date - data_state.last_render > data_state.axes[0].end() / 100]
-                      -then- '#{data_state.axes.length} / #{data_state.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
-                             /!update_status
-                      -then- preview /~text/ data_state.preview /when[data_state.preview.length < 65536 && (data_state.preview += ls.join("\n") + "\n")],
+        data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
+                      -then- '#{ats} / #{data_state.frame.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
+                             /!update_status /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join('')]
+                      -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it /~join/ '\n')
+                      -when- data_state.frame.axes,
 
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
-                           -where [infer_n_axes(ls)   = ls /[0][x0 /-Math.max/ x.length] -seq |-Math.min| 4,
-                                   update_n_axes(ls)  = data_state.axes /eq[n[ls /!infer_n_axes] *[new axis(1048576*4)] -seq] -unless- data_state.axes,
-                                   handle_data(lines) = lines *[x.split(/\t/)] /seq /!populate_axes -then- data_was_revised(lines),
-                                   populate_axes(ls)  = ls /!update_n_axes -then-
-                                                        ls *!l[data_state.axes *!a[a.push(+l[ai] || 0, r)] /seq -where [r = Math.random()]] /seq],
+                      -where [handle_data(ls) = ls *!data_state.frame.push -seq -then- data_was_revised(ls)],
 
         renderer           = render(),
         update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+                     -then-  renderer(data_state.frame.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.axes && +new Date - data_state.last_render > 30]
+                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
@@ -6049,7 +6057,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-89 core/jsplot/jsplot.pl.sdoc
+92 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -6064,9 +6072,12 @@ use constant jsplot_html =>
                                              core/caterwaul/caterwaul.min.js
                                              core/caterwaul/caterwaul.std.min.js
                                              core/caterwaul/caterwaul.ui.min.js
+                                             core/jsplot/murmurhash3.js
                                              core/jsplot/modus.js
                                              core/jsplot/vector.js
                                              core/jsplot/axis.waul
+                                             core/jsplot/label.waul
+                                             core/jsplot/dataframe.waul
                                              core/jsplot/matrix.waul
                                              core/jsplot/socket.waul
                                              core/jsplot/render.waul
