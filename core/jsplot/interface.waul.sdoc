@@ -28,7 +28,7 @@ $(caterwaul(':all')(function ($) {
 
         update_status(t)       = status.text(t).activate(),
 
-        object_mode            = false,         // MOCK
+        object_mode            = false,
         toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode)
                                          .toggleClass('camera-mode', !object_mode),
 
