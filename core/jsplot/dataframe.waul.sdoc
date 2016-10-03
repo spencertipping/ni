@@ -1,0 +1,16 @@
+Data frame: a collection of typed axes.
+Manages axis allocation, memory bounding, and input conversion. Also provides a layer of customization around coordinate mappings.
+
+caterwaul(':all')(function () {
+  dataframe(memory_limit) = this /-caterwaul.merge/ {axes: null, n: 0, preview_lines: [], memory_limit: memory_limit} -re- void 0,
+  dataframe.prototype /-caterwaul.merge/ dataframe_methods,
+
+  where [dataframe_methods = capture [push(l)       = ++this.n <= 64 ? preview_lines /~push/ l.split(/\t/) : this /~axis_push/ l.split(/\t/),
+                                      axis_push(vs) = this.force_axes() -unless [this.axes] -then- this.axes *![x /vs[xi] /~push/ r] /seq
+                                                                                            -where [r = Math.random()],
+                                      force_axes()  = this.axes /eq[n[n_axes] *[axis_type(i) > 0.5 ? new axis(axis_capacity) : new label(axis_capacity)] -seq]
+                                                      -then- this.previeW_lines *!this.axis_push /seq
+                                                      -where [n_axes        = this.preview_lines /[0][x0 /-Math.max/ x.length] -seq || 1,
+                                                              axis_capacity = this.memory_limit / n_axes >>> 3,
+                                                              numeric(x)    = !isNaN(+x),
+                                                              axis_type(i)  = this.preview_lines /[0][x0 + x[i] /!is_numeric] -seq -re- it / this.n]]]})();

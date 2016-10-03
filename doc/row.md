@@ -19,7 +19,7 @@ $ ni n10r3                      # take first 3
 1
 2
 3
-$ ni n10r+3                     # take last 3
+$ ni n10r~3                     # take last 3
 8
 9
 10
