@@ -13,6 +13,7 @@ caterwaul(':all')(function () {
                                       index_axis()     =  capture[p(i) = i,                 pnorm(i) = i / n, end() = n] -where [n = this.end()],
                                       match_axis(i, f) = wcapture[p(i) = f(a.p(i)) ? 1 : 0, pnorm(i) = p(i),  end() = n]
                                                          -where [a = this.axes[i], n = this.end()],
+                                      capacity()       = this.axes ? this.memory_limit / this.axes.length >>> 3 : 0,
 
                                       force_axes()     = this.axes /eq[axis_types *[new window[x](axis_capacity)] -seq]
                                                          -then- this.axis_types /eq.axis_types

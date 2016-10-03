@@ -5631,7 +5631,7 @@ caterwaul(':all')(function () {
                                         collapse()   = this -se [this.s = n[1 << --this.bits] *[this.s[x] || this.s[x + 1 << this.bits]] -seq],
                                         expand()     = this -se [this.s = n[1 << ++this.bits] *[''] /seq -se-
                                                                           this.s *![it[murmurhash3_32(x, 0) & ~(-1 << this.bits)] = x] /seq]]]})();
-25 core/jsplot/dataframe.waul.sdoc
+26 core/jsplot/dataframe.waul.sdoc
 Data frame: a collection of typed axes.
 Manages axis allocation, memory bounding, and input conversion. Also provides a layer of customization around coordinate mappings.
 
@@ -5647,6 +5647,7 @@ caterwaul(':all')(function () {
                                       index_axis()     =  capture[p(i) = i,                 pnorm(i) = i / n, end() = n] -where [n = this.end()],
                                       match_axis(i, f) = wcapture[p(i) = f(a.p(i)) ? 1 : 0, pnorm(i) = p(i),  end() = n]
                                                          -where [a = this.axes[i], n = this.end()],
+                                      capacity()       = this.axes ? this.memory_limit / this.axes.length >>> 3 : 0,
 
                                       force_axes()     = this.axes /eq[axis_types *[new window[x](axis_capacity)] -seq]
                                                          -then- this.axis_types /eq.axis_types
@@ -5704,7 +5705,7 @@ caterwaul(':all')(function () {
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-115 core/jsplot/render.waul.sdoc
+116 core/jsplot/render.waul.sdoc
 Rendering support.
 Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 details are all hidden inside a render request.
@@ -5771,6 +5772,7 @@ Here's the calculation:
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z);
 
         if (zp > 0) {
+          w *= 0.8;
           var r  = use_hue ? 1 - 2*(1/2 - Math.abs(.5  - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
               g  = use_hue ?     2*(1/2 - Math.abs(1/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
               b  = use_hue ?     2*(1/2 - Math.abs(2/3 - w)) |-Math.min| 1 |-Math.max| 0.1 : 1,
@@ -5820,16 +5822,18 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-48 core/jsplot/camera.waul.sdoc
+56 core/jsplot/camera.waul.sdoc
 Camera state, geometry, and UI.
 The camera contains an object matrix, a view matrix, and some render settings.
 
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
-                                                     sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number'})
-                     >  div.vector.brightness[log_number() /~attr/ {title: 'View brightness'}]
-                     >  div.vector.saturation[log_number() /~attr/ {title: 'White-saturation rate'}]
-                     >  div.vector.distance  [log_number() /~attr/ {title: 'Camera distance'}]
+                                                     sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number',
+                                                     axes: '.axis-mapping *'})
+                     >  div.vector.axis_mapping[axis_mapping() /~attr/ {title: 'Axis mapping'}]
+                     >  div.vector.brightness  [log_number()   /~attr/ {title: 'View brightness'}]
+                     >  div.vector.saturation  [log_number()   /~attr/ {title: 'White-saturation rate'}]
+                     >  div.vector.distance    [log_number()   /~attr/ {title: 'Camera distance'}]
                      >= translation_ui() /~addClass/ 'object-translation' /~attr/ {title: 'Object translation'}
                      >= scale_ui()       /~addClass/ 'object-scale'       /~attr/ {title: 'Object scale'}
                      >= rotation_ui()    /~addClass/ 'camera-rotation'    /~attr/ {title: 'Camera rotation'}] -se- it.val(v) /when.v,
@@ -5857,6 +5861,9 @@ caterwaul(':all')(function ($) {
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
         number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
                                                                             s(v) = this.modus('val', +v /!n)],
+
+        axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val')   /!parse_axis_mapping,
+                                                             s(v) = this.modus('val', v /!generate_axis_mapping)],
         log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
         linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
         angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
@@ -5867,6 +5874,9 @@ caterwaul(':all')(function ($) {
         rotation_ui     = vector_ui(angle_number)  /-tagged/ 'rotation',
 
         tau             = Math.PI * 2],
+
+  where[parse_axis_mapping(s)    = [0, 1, 2, 3],
+        generate_axis_mapping(m) = [0, 1, 2, 3]],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
 98 core/jsplot/interface.waul.sdoc
@@ -5952,7 +5962,7 @@ $(caterwaul(':all')(function ($) {
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
-                      -then- '#{ats} / #{data_state.frame.axes[0].n} / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
+                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
                              /!update_status /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join('')]
                       -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it /~join/ '\n')
                       -when- data_state.frame.axes,
