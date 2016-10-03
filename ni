@@ -362,7 +362,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-68 common.pl.sdoc
+69 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -402,7 +402,8 @@ BEGIN {defparseralias integer => palt pmap(q{int},       neval),
                                       pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
                                                          prx '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
-                               pcond q{length}, prx '-?\d*(?:\.\d+)?(?:[eE][-+]?\d+)?'}
+                               pcond q{length},
+                               prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
 c
