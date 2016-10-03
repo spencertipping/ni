@@ -4,7 +4,7 @@ The camera contains an object matrix, a view matrix, and some render settings.
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
                                                      sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number',
-                                                     axes: '.axis-mapping *'})
+                                                     axes: '.axis-mapping input'})
                      >  div.vector.axis_mapping[axis_mapping() /~attr/ {title: 'Axis mapping'}]
                      >  div.vector.brightness  [log_number()   /~attr/ {title: 'View brightness'}]
                      >  div.vector.saturation  [log_number()   /~attr/ {title: 'White-saturation rate'}]
@@ -37,8 +37,9 @@ caterwaul(':all')(function ($) {
         number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
                                                                             s(v) = this.modus('val', +v /!n)],
 
-        axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val')   /!parse_axis_mapping,
-                                                             s(v) = this.modus('val', v /!generate_axis_mapping)],
+        axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val').split('') *[x.charCodeAt(0) - 65] -seq,
+                                                             s(v) = this.modus('val', (v || 'ABCDE') *[String.fromCharCode(65 + x)] -seq -re- it.join(''))],
+
         log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
         linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
         angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
@@ -49,8 +50,5 @@ caterwaul(':all')(function ($) {
         rotation_ui     = vector_ui(angle_number)  /-tagged/ 'rotation',
 
         tau             = Math.PI * 2],
-
-  where[parse_axis_mapping(s)    = [0, 1, 2, 3],
-        generate_axis_mapping(m) = [0, 1, 2, 3]],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);

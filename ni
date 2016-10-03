@@ -5822,14 +5822,14 @@ Here's the calculation:
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
   }]})();
-56 core/jsplot/camera.waul.sdoc
+54 core/jsplot/camera.waul.sdoc
 Camera state, geometry, and UI.
 The camera contains an object matrix, a view matrix, and some render settings.
 
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
                                                      sa: '.saturation .number', cr: '.camera-rotation',    cd: '.distance .number',
-                                                     axes: '.axis-mapping *'})
+                                                     axes: '.axis-mapping input'})
                      >  div.vector.axis_mapping[axis_mapping() /~attr/ {title: 'Axis mapping'}]
                      >  div.vector.brightness  [log_number()   /~attr/ {title: 'View brightness'}]
                      >  div.vector.saturation  [log_number()   /~attr/ {title: 'White-saturation rate'}]
@@ -5862,8 +5862,9 @@ caterwaul(':all')(function ($) {
         number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
                                                                             s(v) = this.modus('val', +v /!n)],
 
-        axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val')   /!parse_axis_mapping,
-                                                             s(v) = this.modus('val', v /!generate_axis_mapping)],
+        axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val').split('') *[x.charCodeAt(0) - 65] -seq,
+                                                             s(v) = this.modus('val', (v || 'ABCDE') *[String.fromCharCode(65 + x)] -seq -re- it.join(''))],
+
         log_number      = "_".qf       /!number_ui /-tagged/ 'log-number',
         linear_number   = "_".qf       /!number_ui /-tagged/ 'linear-number',
         angle_number    = "_ % 360".qf /!number_ui /-tagged/ 'linear-number',
@@ -5875,11 +5876,8 @@ caterwaul(':all')(function ($) {
 
         tau             = Math.PI * 2],
 
-  where[parse_axis_mapping(s)    = [0, 1, 2, 3],
-        generate_axis_mapping(m) = [0, 1, 2, 3]],
-
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-98 core/jsplot/interface.waul.sdoc
+99 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -5899,7 +5897,7 @@ $(caterwaul(':all')(function ($) {
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 S8p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + "S8,qABCD0.01 p'r a, - c, b, d'",
-                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03}},
+                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03, axes: n[4] -seq}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
@@ -5970,9 +5968,10 @@ $(caterwaul(':all')(function ($) {
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                       -where [handle_data(ls) = ls *!data_state.frame.push -seq -then- data_was_revised(ls)],
 
+        axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
         update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.frame.axes, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+                     -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],
@@ -6011,7 +6010,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 #controls:hover, #controls.pinned {right:0}
 #controls.pinned {border-top:solid 1px #f60}
 
-.number {background:none; border:none; margin:0; color:#eee; padding:4px; font-family:sans-serif; font-size:14pt; width:132px; cursor:default}
+.vector input {background:none; border:none; margin:0; color:#eee; padding:4px; font-family:sans-serif; font-size:14pt; width:132px; cursor:default}
 
 .vector     {display:inline-block; padding:4px; border-left:solid 8px rgba(96,96,96,0.5); background:rgba(64,64,64,0.25); margin:2px 0}
 .vector > * {display:inline-block}
