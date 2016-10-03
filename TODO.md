@@ -19,18 +19,12 @@ operators like `ssh` etc (since we don't yet have a way to traverse lambdas
 within op trees).
 
 ### Generalized/optimized destructuring
-Should apply to JSON, XML, headed CSV, SQL-as-text, possibly other formats too.
-Also should optimize for the consistent-schema case and predict field
-positions. Support assertions.
+Should apply to JSON, XML, headed CSV/TSV, SQL-as-text, possibly other formats
+too. Also should optimize for the consistent-schema case and predict field
+positions. Support assertions (?)
 
 ### Cell-specific value transforms
-e.g. `ni ,pACDs/foo/bar/`
-
-### Concise `BEGIN` blocks for mappers
-e.g. `ni p'^{@xs = (1, 2, 3)} r(a, $xs[b])'`
-
-### `r` operator should take a lambda
-i.e. "take rows for which this lambda streams non-null values"
+e.g. `ni ,pACDs/foo/bar/gr`
 
 ### Autofilled directories
 e.g. `/mc9drc24` for `/mnt/cache/t9/data/reddit-comments-2015.lz4`
@@ -48,5 +42,3 @@ options are `--` and others are `//`.
 Must be client-side; this way it can happen after autoranging and during zooms.
 
 #### View history
-#### Client-side axis reordering
-Should be trivial since the data is all there.

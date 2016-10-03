@@ -4201,7 +4201,7 @@ BEGIN {
   *tep = \&time_epoch_pieces;
   *tpe = \&time_pieces_epoch;
 }
-119 core/pl/pl.pl.sdoc
+133 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4290,6 +4290,8 @@ sub perl_closure($$) {"use constant $_[0] => " . perl_quote($_[1]) . ";"}
 sub perl_closures()
 {join "\n", map perl_closure($_, closure_data $_), closure_keys}
 
+sub perl_expand_begin($) {sr $_[0], qr/^\^/, 'BEGIN'}
+
 sub stdin_to_perl($) {
   eval {cdup2 0, 3; POSIX::close 0};
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
@@ -4303,16 +4305,25 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)  {perl_code $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
-sub perl_grepper($) {perl_code $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
+defoperator perl_cell_transformer_op => q{
+  # TODO: colspec mapping stuff
+  stdin_to_perl perl_mapgen->(prefix   => perl_prefix,
+                              closures => perl_closures,
+                              body     => perl_expand_begin $_[0],
+                              each     => TODO());
+};
+
 c
 BEGIN {
-  defparseralias perl_mapper_code  => plcode \&perl_mapper;
-  defparseralias perl_grepper_code => plcode \&perl_grepper;
+  defparseralias perl_mapper_code         => plcode \&perl_mapper;
+  defparseralias perl_grepper_code        => plcode \&perl_grepper;
+  defparseralias perl_cell_transform_code => plcode \&perl_mapper;      # [sic]
 }
 
 defshort '/p',
@@ -4321,6 +4332,9 @@ defshort '/p',
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', perl_grepper_code;
+
+defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
+                   pseq colspec, perl_cell_transform_code;
 2 core/rb/lib
 prefix.rb
 rb.pl.sdoc
