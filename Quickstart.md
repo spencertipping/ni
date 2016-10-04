@@ -11,6 +11,7 @@ Be judicious about the setup that you do; if you're most comfortable in Ruby, yo
 3. Run `ni --js` and play around with some of the cool [graphical examples](examples.md).
 4. Work through the documentation on [streams](stream.md), [row operations](row.md), and [column operators](col.md).
 5. If you have a dominant language among [Ruby](ruby.md), [Perl](perl.md), and [Lisp](lisp.md), work through the appropriate documentation. If you don't have a dominant language, [Perl](perl.md) is used most heavily in the documentation, and [Ruby](ruby.md) is likely the easiest to learn.
+    - SBCL Lisp setup instructions are below.
 6. ????
 7. Revenue; profit if you've been efficient.
 
