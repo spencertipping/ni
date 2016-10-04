@@ -11,7 +11,7 @@ Things useful for developing ni.
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
-  parse parser '/cli', @_;
+  cli_parse @_;
 };
 
 defclispecial '--dev/parse-one', q{
@@ -35,14 +35,19 @@ defclispecial '--run', q{
 Documentation.
 
 defclispecial '--explain', q{
-  my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for flatten_operators $r;
+  my ($r, @rest) = cli_parse @_;
+  print "UNPARSED: @rest\n" if @rest;
+  if (ref $r) {
+    print json_encode($_), "\n" for flatten_operators $r;
+  }
 };
 
 defclispecial '--explain-meta', q{
-  my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for
-    apply_meta_operators flatten_operators $r;
+  my ($r, @rest) = cli_parse @_;
+  print "UNPARSED: @rest\n" if @rest;
+  if (ref $r) {
+    print json_encode($_), "\n" for apply_meta_operators flatten_operators $r;
+  }
 };
 
 Root CLI context.
@@ -76,10 +81,9 @@ sub main {
 
   return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
-  my ($r) = cli @_;
-  return &$main_operator(flatten_operators $r) if ref $r;
+  my ($r, @rest) = cli_parse @_;
+  return &$main_operator(flatten_operators $r) if !@rest && ref $r;
 
-  my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   print STDERR "If ni is failing to parse a filename, start it with /, ./,\n";

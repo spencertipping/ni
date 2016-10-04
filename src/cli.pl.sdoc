@@ -24,7 +24,7 @@ sub defcontext($) {
   defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
   defparseralias "$c/qfn",    palt parser "$c/lambda", parser "$c/suffix";
 
-  defparseralias "$c/cli",       pn 0, parser "$c/series", pend;
+  defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
 }
 
@@ -49,7 +49,12 @@ sub rmshort($) {
   delete $ni::parsers{"$context/short/$dsp"};
 }
 
-sub cli(@) {my ($r) = parse parser '/cli', @_; $r}
+sub cli_parse(@) {parse parser '/cli_debug', @_}
+sub cli(@) {
+  my ($r, @rest) = cli_parse @_;
+  die "ni: failed to parse starting here:\n  @rest" if @rest;
+  $r;
+}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their

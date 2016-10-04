@@ -433,7 +433,7 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
-74 cli.pl.sdoc
+79 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -460,7 +460,7 @@ sub defcontext($) {
   defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
   defparseralias "$c/qfn",    palt parser "$c/lambda", parser "$c/suffix";
 
-  defparseralias "$c/cli",       pn 0, parser "$c/series", pend;
+  defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
 }
 
@@ -485,7 +485,12 @@ sub rmshort($) {
   delete $ni::parsers{"$context/short/$dsp"};
 }
 
-sub cli(@) {my ($r) = parse parser '/cli', @_; $r}
+sub cli_parse(@) {parse parser '/cli_debug', @_}
+sub cli(@) {
+  my ($r, @rest) = cli_parse @_;
+  die "ni: failed to parse starting here:\n  @rest" if @rest;
+  $r;
+}
 
 Extensible parse elements.
 These patterns come up a lot, and it's worth being able to autogenerate their
@@ -642,7 +647,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-88 main.pl.sdoc
+92 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -656,7 +661,7 @@ Things useful for developing ni.
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
 defclispecial '--dev/parse', q{
   dev_trace 'ni::parse';
-  parse parser '/cli', @_;
+  cli_parse @_;
 };
 
 defclispecial '--dev/parse-one', q{
@@ -680,14 +685,19 @@ defclispecial '--run', q{
 Documentation.
 
 defclispecial '--explain', q{
-  my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for flatten_operators $r;
+  my ($r, @rest) = cli_parse @_;
+  print "UNPARSED: @rest\n" if @rest;
+  if (ref $r) {
+    print json_encode($_), "\n" for flatten_operators $r;
+  }
 };
 
 defclispecial '--explain-meta', q{
-  my ($r) = parse parser '/cli', @_;
-  print json_encode($_), "\n" for
-    apply_meta_operators flatten_operators $r;
+  my ($r, @rest) = cli_parse @_;
+  print "UNPARSED: @rest\n" if @rest;
+  if (ref $r) {
+    print json_encode($_), "\n" for apply_meta_operators flatten_operators $r;
+  }
 };
 
 Root CLI context.
@@ -721,10 +731,9 @@ sub main {
 
   return $cli_special{$cmd}->(@args) if defined $cmd && exists $cli_special{$cmd};
 
-  my ($r) = cli @_;
-  return &$main_operator(flatten_operators $r) if ref $r;
+  my ($r, @rest) = cli_parse @_;
+  return &$main_operator(flatten_operators $r) if !@rest && ref $r;
 
-  my (undef, @rest) = parse parser '/cli_debug', @_;
   print STDERR "ni: failed to parse starting here (ni --dev/parse to trace):\n";
   print STDERR "  @rest\n";
   print STDERR "If ni is failing to parse a filename, start it with /, ./,\n";
@@ -1883,7 +1892,7 @@ sub load {
 1;
 1 core/conf/lib
 conf.pl.sdoc
-41 core/conf/conf.pl.sdoc
+57 core/conf/conf.pl.sdoc
 Configuration variables.
 These can be specified as environment vars or overridden locally for specific
 operations.
@@ -1891,22 +1900,38 @@ operations.
 our %conf_variables;
 
 sub conf($) {
-  die "ni: nonexistent configuration variable $_[0]"
+  die "ni: nonexistent configuration variable $_[0] (ni //ni/conf to list)"
     unless exists $conf_variables{$_[0]};
   $conf_variables{$_[0]}->();
 }
 
 sub conf_set($$) {
-  die "ni: nonexistent configuration variable $_[0]"
+  die "ni: nonexistent configuration variable $_[0] (ni //ni/conf to list)"
     unless exists $conf_variables{$_[0]};
   $conf_variables{$_[0]}->($_[1]);
 }
 
-sub defconf($;$) {$conf_variables{$_[0]} = fn $_[1]}
+defoperator conf_get => q{
+  my ($name) = @_;
+  sio();
+  print conf $name, "\n";
+};
+
+sub defconf($;$) {
+  $conf_variables{$_[0]} = fn $_[1];
+  defshort '/$' . $_[0], pmap qq{conf_get_op '$_[0]'}, pnone;
+}
+
+sub conf_env {
+  my ($name, $v) = @_;
+  $ENV{$name} = $v if @_ == 2;
+  $ENV{$name};
+}
+
 sub defconfenv($$;$) {
   my ($name, $env, $v) = @_;
-  $conf_variables{$name} = fn qq{\@_ ? \$ENV{'$env'} = \$_[0] : \$ENV{'$env'}};
-  conf_set $name, $v if defined $v;
+  defconf $name, qq{conf_env '$env', \@_};
+  conf_set $name, $v if !exists $ENV{$env} && defined $v;
 }
 
 defoperator configure => q{
@@ -1917,12 +1942,12 @@ defoperator configure => q{
 
 c
 BEGIN {defparseralias config_map_key   => prx '[^=]+';
-       defparseralias config_map_value => prc '|.*[^}]+'}
+       defparseralias config_map_value => prc '.*[^}]+|'}
 BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, prx '=',
                                                      config_map_value}
 BEGIN {defparseralias config_option_map
          => pmap q{my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h},
-            pn 0, prep(config_map_kv), prx '}'}
+            pn 0, prep(config_map_kv), prc '}'}
 
 defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
 6 core/stream/lib
@@ -2339,7 +2364,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-190 core/stream/ops.pl.sdoc
+183 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2473,17 +2498,10 @@ done with the `>` operator, which is typically written as `\>`. The difference
 between this and the shell's > operator is that \> outputs the filename; this
 lets you invert the operation with the nullary \< operator.
 
-use constant tmpdir => $ENV{TMPDIR} || "/tmp";
-sub tempfile_name() {
-  my $r = '/';
-  $r = tmpdir . "/ni-$$-" . noise_str 8 while -e $r;
-  $r;
-}
-
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
-  $file = tempfile_name unless defined $file;
+  $file = resource_tmp('file://') unless defined $file;
   sforward \*STDIN, swfile $file;
   print "$file\n";
 };
@@ -2559,7 +2577,7 @@ $ni::main_operator = sub {
   my @ops = apply_meta_operators @_;
   @$_ and push @children, sicons {operate @$_} for @ops;
 
-  if (-t STDOUT and !conf 'stream/pager') {
+  if (-t STDOUT) {
     $pager_fh = siproc {exec conf 'stream/pager' or
                         exec 'less' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
@@ -2600,7 +2618,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl.sdoc
 map.pl.sdoc
-69 core/meta/meta.pl.sdoc
+76 core/meta/meta.pl.sdoc
 Image-related data sources.
 Long options to access ni's internal state. Also the ability to instantiate ni
 within a shell process.
@@ -2641,6 +2659,13 @@ defoperator meta_options => q{
 defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
 defshort '///license', pmap q{meta_key_op 'license'}, pnone;
+
+defoperator meta_conf => q{
+  sio;
+  print "$_\t" . conf($_) . "\t$ni::conf_variables{$_}\n" for sort keys %ni::conf_variables;
+};
+
+defshort '///ni/conf', pmap q{meta_conf_op}, pnone;
 
 Inspection.
 This lets you get details about specific operators or parsing contexts.
@@ -2697,19 +2722,21 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl.sdoc
-68 core/monitor/monitor.pl.sdoc
+69 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
 data.
 
 sub unit_bytes($) {
-  return ($_[0] >> 10), "K" if $_[0] >> 10 <= 99999;
-  return ($_[0] >> 20), "M" if $_[0] >> 20 <= 99999;
-  return ($_[0] >> 30), "G" if $_[0] >> 30 <= 99999;
-  return ($_[0] >> 40), "T" if $_[0] >> 40 <= 99999;
-  return ($_[0] >> 50), "P";
+  return $_[0] >> 10, "K" if $_[0] >> 10 <= 99999;
+  return $_[0] >> 20, "M" if $_[0] >> 20 <= 99999;
+  return $_[0] >> 30, "G" if $_[0] >> 30 <= 99999;
+  return $_[0] >> 40, "T" if $_[0] >> 40 <= 99999;
+  return $_[0] >> 50, "P";
 }
+
+defconfenv 'monitor', NI_MONITOR => 'yes';
 
 defmetaoperator stderr_monitor_transform => q{
   my ($args, $left) = @_;
@@ -2762,13 +2789,12 @@ defoperator stderr_monitor => q{
 
 my $original_main_operator = $ni::main_operator;
 $ni::main_operator = sub {
-  return &$original_main_operator(@_)
-    if $ENV{NI_NO_MONITOR} || $ENV{NI_NO_MONITORS} || !$ni::is_toplevel;
+  return &$original_main_operator(@_) if conf 'monitor' ne 'yes';
   &$original_main_operator(@_, stderr_monitor_transform_op(0.1));
 };
 1 core/uri/lib
 uri.pl.sdoc
-144 core/uri/uri.pl.sdoc
+140 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2869,37 +2895,33 @@ sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
-sub uri_file_temp_prefix() {dor $ENV{TMPDIR}, '/tmp'}
-sub uri_hdfs_temp_prefix() {dor $ENV{NI_HDFS_TMPDIR}, '/tmp'}
-
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
 
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . uri_file_temp_prefix . "/" . uri_temp_noise},
+  tmp    => q{"file://" . conf('/tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
   read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
               soproc {exec 'ssh', $host, 'cat', $path}};
 
-sub hadoop_name();
 defresource 'hdfs',
-  read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh conf('hadoop/name') . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
-              my $fh = soproc {exec hadoop_name, 'fs', '-stat', $_[1]} @_;
+              my $fh = soproc {exec conf 'hadoop/name', 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
-  tmp    => q{"hdfs://" . uri_hdfs_temp_prefix . "/" . uri_temp_noise},
-  nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+  tmp    => q{"hdfs://" . conf('hdfs/tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec hadoop_name, 'fs', '-text', $_[1]} @_},
-  nuke => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
@@ -3390,17 +3412,19 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-121 core/row/row.pl.sdoc
+123 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
+defconfenv 'row/seed', NI_ROW_SEED => 42;
+
 defoperator row_every => q{$. % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
-  srand($ENV{NI_SEED} || 42);
+  srand conf 'row/seed';
   $. = 0;
   while (<STDIN>) {
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
@@ -6320,14 +6344,19 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-134 core/hadoop/hadoop.pl.sdoc
+137 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
 c
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
-sub hadoop_name() {$ENV{NI_HADOOP} || 'hadoop'}
+defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
+defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
+
+defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
+
+defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -6344,7 +6373,7 @@ NI_HADOOP_STREAMING_JAR.
 
 sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
-  $ENV{NI_HADOOP_STREAMING_JAR}
+  conf 'hadoop/streaming-jar'
   || (split /\n/, `locate 'hadoop-streaming*.jar' \\
                    || find /usr -name 'hadoop-streaming*.jar' \\
                    || find /opt -name 'hadoop-streaming*.jar'`)[0]
@@ -6413,9 +6442,9 @@ defoperator hadoop_streaming => q{
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
     my $cmd = shell_quote
-      hadoop_name,
+      conf 'hadoop/name',
       jar => $streaming_jar,
-      -D  => "mapred.job.name=ni @ipath -> $opath",
+      -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
       map((-input => $_), @ipath),
       -output => $opath,
       -file   => $mapper,
@@ -6445,11 +6474,9 @@ defoperator hadoop_streaming => q{
 };
 
 c
-BEGIN {
-  defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
-                                                 pmap(q{[]},    prc ':'),
-                                                 _qfn;
-}
+BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                                      pmap(q{[]},    prc ':'),
+                                                      _qfn}
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,

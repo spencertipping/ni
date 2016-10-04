@@ -98,37 +98,33 @@ sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
 Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
-sub uri_file_temp_prefix() {dor $ENV{TMPDIR}, '/tmp'}
-sub uri_hdfs_temp_prefix() {dor $ENV{NI_HDFS_TMPDIR}, '/tmp'}
-
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
 
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . uri_file_temp_prefix . "/" . uri_temp_noise},
+  tmp    => q{"file://" . conf('/tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
 defresource 'sftp',
   read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
               soproc {exec 'ssh', $host, 'cat', $path}};
 
-sub hadoop_name();
 defresource 'hdfs',
-  read   => q{soproc {exec hadoop_name, 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh hadoop_name . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh conf('hadoop/name') . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
   exists => q{local $_;
-              my $fh = soproc {exec hadoop_name, 'fs', '-stat', $_[1]} @_;
+              my $fh = soproc {exec conf 'hadoop/name', 'fs', '-stat', $_[1]} @_;
               saferead $fh, $_, 8192;
               close $fh;
               !$fh->await},
-  tmp    => q{"hdfs://" . uri_hdfs_temp_prefix . "/" . uri_temp_noise},
-  nuke   => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+  tmp    => q{"hdfs://" . conf('hdfs/tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec hadoop_name, 'fs', '-text', $_[1]} @_},
-  nuke => q{sh hadoop_name . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},

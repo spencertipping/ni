@@ -131,17 +131,10 @@ done with the `>` operator, which is typically written as `\>`. The difference
 between this and the shell's > operator is that \> outputs the filename; this
 lets you invert the operation with the nullary \< operator.
 
-use constant tmpdir => $ENV{TMPDIR} || "/tmp";
-sub tempfile_name() {
-  my $r = '/';
-  $r = tmpdir . "/ni-$$-" . noise_str 8 while -e $r;
-  $r;
-}
-
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
-  $file = tempfile_name unless defined $file;
+  $file = resource_tmp('file://') unless defined $file;
   sforward \*STDIN, swfile $file;
   print "$file\n";
 };

@@ -4,7 +4,12 @@ The entry point for running various kinds of Hadoop jobs.
 c
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
-sub hadoop_name() {$ENV{NI_HADOOP} || 'hadoop'}
+defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
+defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
+
+defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
+
+defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -21,7 +26,7 @@ NI_HADOOP_STREAMING_JAR.
 
 sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
-  $ENV{NI_HADOOP_STREAMING_JAR}
+  conf 'hadoop/streaming-jar'
   || (split /\n/, `locate 'hadoop-streaming*.jar' \\
                    || find /usr -name 'hadoop-streaming*.jar' \\
                    || find /opt -name 'hadoop-streaming*.jar'`)[0]
@@ -90,9 +95,9 @@ defoperator hadoop_streaming => q{
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
     my $cmd = shell_quote
-      hadoop_name,
+      conf 'hadoop/name',
       jar => $streaming_jar,
-      -D  => "mapred.job.name=ni @ipath -> $opath",
+      -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
       map((-input => $_), @ipath),
       -output => $opath,
       -file   => $mapper,
@@ -122,11 +127,9 @@ defoperator hadoop_streaming => q{
 };
 
 c
-BEGIN {
-  defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
-                                                 pmap(q{[]},    prc ':'),
-                                                 _qfn;
-}
+BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
+                                                      pmap(q{[]},    prc ':'),
+                                                      _qfn}
 
 defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
