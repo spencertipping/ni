@@ -3,6 +3,7 @@ These can be specified as environment vars or overridden locally for specific
 operations.
 
 our %conf_variables;
+our %conf_defaults;
 
 sub conf($) {
   die "ni: nonexistent configuration variable $_[0] (ni //ni/conf to list)"
@@ -22,7 +23,7 @@ defoperator conf_get => q{
   print conf $name, "\n";
 };
 
-sub defconf($;$) {
+sub defconf($$) {
   $conf_variables{$_[0]} = fn $_[1];
   defshort '/$' . $_[0], pmap qq{conf_get_op '$_[0]'}, pnone;
 }
@@ -33,10 +34,10 @@ sub conf_env {
   $ENV{$name};
 }
 
-sub defconfenv($$;$) {
+sub defconfenv($$$) {
   my ($name, $env, $v) = @_;
   defconf $name, qq{conf_env '$env', \@_};
-  conf_set $name, $v if !exists $ENV{$env} && defined $v;
+  $conf_defaults{$name} = $v;
 }
 
 defoperator configure => q{
