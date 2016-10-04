@@ -31,11 +31,6 @@ e.g. `/mc9drc24` for `/mnt/cache/t9/data/reddit-comments-2015.lz4`
 
 ### Configuration variables
 
-### Document+test dev options
-`--explain`, `--dev/parse-one`, etc. Maybe also come up with a better output
-format for things like `//options` and `--dev/parse`. Also document why some
-options are `--` and others are `//`.
-
 ### JSPlot
 #### Labeled points
 #### Labeled axes/grids/etc

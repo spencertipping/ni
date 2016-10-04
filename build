@@ -11,11 +11,12 @@ module() {
   ./ni --internal/lib $1
 }
 
-export NI_NO_HOME=yes
+export NI_NO_HOME=yes           # IMPORTANT
 module core/gen
 module core/json
 module core/deps
 
+module core/conf
 module core/stream
 module core/meta
 module core/monitor

@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-51 ni.map.sdoc
+52 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -77,6 +77,7 @@ resource main.pl.sdoc
 lib core/gen
 lib core/json
 lib core/deps
+lib core/conf
 lib core/stream
 lib core/meta
 lib core/monitor
@@ -1880,6 +1881,50 @@ sub load {
 }
 
 1;
+1 core/conf/lib
+conf.pl.sdoc
+41 core/conf/conf.pl.sdoc
+Configuration variables.
+These can be specified as environment vars or overridden locally for specific
+operations.
+
+our %conf_variables;
+
+sub conf($) {
+  die "ni: nonexistent configuration variable $_[0]"
+    unless exists $conf_variables{$_[0]};
+  $conf_variables{$_[0]}->();
+}
+
+sub conf_set($$) {
+  die "ni: nonexistent configuration variable $_[0]"
+    unless exists $conf_variables{$_[0]};
+  $conf_variables{$_[0]}->($_[1]);
+}
+
+sub defconf($;$) {$conf_variables{$_[0]} = fn $_[1]}
+sub defconfenv($$;$) {
+  my ($name, $env, $v) = @_;
+  $conf_variables{$name} = fn qq{\@_ ? \$ENV{'$env'} = \$_[0] : \$ENV{'$env'}};
+  conf_set $name, $v if defined $v;
+}
+
+defoperator configure => q{
+  my ($vars, $f) = @_;
+  conf_set $_, $$vars{$_} for keys %$vars;
+  &$ni::main_operator(@$f);
+};
+
+c
+BEGIN {defparseralias config_map_key   => prx '[^=]+';
+       defparseralias config_map_value => prc '|.*[^}]+'}
+BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, prx '=',
+                                                     config_map_value}
+BEGIN {defparseralias config_option_map
+         => pmap q{my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h},
+            pn 0, prep(config_map_kv), prx '}'}
+
+defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
 6 core/stream/lib
 fh.pl.sdoc
 procfh.pl.sdoc
@@ -2485,10 +2530,12 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-63 core/stream/main.pl.sdoc
+66 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
+
+defconfenv 'stream/pager', NI_PAGER => 'less';
 
 sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
@@ -2512,8 +2559,9 @@ $ni::main_operator = sub {
   my @ops = apply_meta_operators @_;
   @$_ and push @children, sicons {operate @$_} for @ops;
 
-  if (-t STDOUT and !$ENV{NI_NO_PAGER}) {
-    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+  if (-t STDOUT and !conf 'stream/pager') {
+    $pager_fh = siproc {exec conf 'stream/pager' or
+                        exec 'less' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
     $pager_fh->await;
@@ -3342,7 +3390,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-117 core/row/row.pl.sdoc
+121 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3430,11 +3478,15 @@ sub sort_extra_args(@) {
   @r;
 }
 
+defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
+defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '64M';
+defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => '4';
+
 defoperator row_sort => q{
-  # TODO: support customization
-  exec 'sort', sort_extra_args('--compress-program=gzip',
-                               '--buffer-size=64M',
-                               '--parallel=4'), @_};
+  exec 'sort', sort_extra_args(
+    '--compress-program=' . conf 'row/sort-compress',
+    '--buffer-size='      . conf 'row/sort-buffer',
+    '--parallel='         . conf 'row/sort-parallel'), @_};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
@@ -5892,7 +5944,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-99 core/jsplot/interface.waul.sdoc
+100 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -5964,6 +6016,7 @@ $(caterwaul(':all')(function ($) {
                                                                  : e.which === 16 ? controls /~addClass/ 'shift' : true]
                                                  /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
                           -then- controls /~append/ camera().change(update_screen)
+                          -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50

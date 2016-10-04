@@ -2,6 +2,8 @@ use POSIX ();
 
 our $pager_fh;
 
+defconfenv 'stream/pager', NI_PAGER => 'less';
+
 sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
 $ni::main_operator = sub {
@@ -24,8 +26,9 @@ $ni::main_operator = sub {
   my @ops = apply_meta_operators @_;
   @$_ and push @children, sicons {operate @$_} for @ops;
 
-  if (-t STDOUT and !$ENV{NI_NO_PAGER}) {
-    $pager_fh = siproc {exec 'less' or exec 'more' or sio};
+  if (-t STDOUT and !conf 'stream/pager') {
+    $pager_fh = siproc {exec conf 'stream/pager' or
+                        exec 'less' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
     $pager_fh->await;

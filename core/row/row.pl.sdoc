@@ -85,11 +85,15 @@ sub sort_extra_args(@) {
   @r;
 }
 
+defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
+defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '64M';
+defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => '4';
+
 defoperator row_sort => q{
-  # TODO: support customization
-  exec 'sort', sort_extra_args('--compress-program=gzip',
-                               '--buffer-size=64M',
-                               '--parallel=4'), @_};
+  exec 'sort', sort_extra_args(
+    '--compress-program=' . conf 'row/sort-compress',
+    '--buffer-size='      . conf 'row/sort-buffer',
+    '--parallel='         . conf 'row/sort-parallel'), @_};
 
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;

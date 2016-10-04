@@ -69,6 +69,7 @@ $(caterwaul(':all')(function ($) {
                                                                  : e.which === 16 ? controls /~addClass/ 'shift' : true]
                                                  /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
                           -then- controls /~append/ camera().change(update_screen)
+                          -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
                           -then- handle_resizes /-setInterval/ 50

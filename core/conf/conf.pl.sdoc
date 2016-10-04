@@ -1,0 +1,41 @@
+Configuration variables.
+These can be specified as environment vars or overridden locally for specific
+operations.
+
+our %conf_variables;
+
+sub conf($) {
+  die "ni: nonexistent configuration variable $_[0]"
+    unless exists $conf_variables{$_[0]};
+  $conf_variables{$_[0]}->();
+}
+
+sub conf_set($$) {
+  die "ni: nonexistent configuration variable $_[0]"
+    unless exists $conf_variables{$_[0]};
+  $conf_variables{$_[0]}->($_[1]);
+}
+
+sub defconf($;$) {$conf_variables{$_[0]} = fn $_[1]}
+sub defconfenv($$;$) {
+  my ($name, $env, $v) = @_;
+  $conf_variables{$name} = fn qq{\@_ ? \$ENV{'$env'} = \$_[0] : \$ENV{'$env'}};
+  conf_set $name, $v if defined $v;
+}
+
+defoperator configure => q{
+  my ($vars, $f) = @_;
+  conf_set $_, $$vars{$_} for keys %$vars;
+  &$ni::main_operator(@$f);
+};
+
+c
+BEGIN {defparseralias config_map_key   => prx '[^=]+';
+       defparseralias config_map_value => prc '|.*[^}]+'}
+BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, prx '=',
+                                                     config_map_value}
+BEGIN {defparseralias config_option_map
+         => pmap q{my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h},
+            pn 0, prep(config_map_kv), prx '}'}
+
+defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
