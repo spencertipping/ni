@@ -1892,17 +1892,18 @@ sub load {
 1;
 1 core/conf/lib
 conf.pl.sdoc
-57 core/conf/conf.pl.sdoc
+58 core/conf/conf.pl.sdoc
 Configuration variables.
 These can be specified as environment vars or overridden locally for specific
 operations.
 
 our %conf_variables;
+our %conf_defaults;
 
 sub conf($) {
   die "ni: nonexistent configuration variable $_[0] (ni //ni/conf to list)"
     unless exists $conf_variables{$_[0]};
-  $conf_variables{$_[0]}->();
+  dor $conf_variables{$_[0]}->(), $conf_defaults{$_[0]};
 }
 
 sub conf_set($$) {
@@ -1917,7 +1918,7 @@ defoperator conf_get => q{
   print conf $name, "\n";
 };
 
-sub defconf($;$) {
+sub defconf($$) {
   $conf_variables{$_[0]} = fn $_[1];
   defshort '/$' . $_[0], pmap qq{conf_get_op '$_[0]'}, pnone;
 }
@@ -1928,10 +1929,10 @@ sub conf_env {
   $ENV{$name};
 }
 
-sub defconfenv($$;$) {
+sub defconfenv($$$) {
   my ($name, $env, $v) = @_;
   defconf $name, qq{conf_env '$env', \@_};
-  conf_set $name, $v if !exists $ENV{$env} && defined $v;
+  $conf_defaults{$name} = $v;
 }
 
 defoperator configure => q{
@@ -5954,7 +5955,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-100 core/jsplot/interface.waul.sdoc
+101 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -6050,6 +6051,7 @@ $(caterwaul(':all')(function ($) {
         renderer           = render(),
         update_screen()    = handle_resizes()
                      -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+                     -then-  update_overlay()
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],
@@ -7504,8 +7506,8 @@ $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 With a reducer:
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+$ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+          Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -7516,8 +7518,8 @@ $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 Now let's get a word count for `ni //license`:
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 2016	1
 A	1
 ACTION	1
@@ -7534,8 +7536,8 @@ Of course, we're also at liberty to omit the lambda brackets for brevity (I
 recommend using `--explain` liberally if you plan to make a habit of this):
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
 ACTION	1

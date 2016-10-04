@@ -93,6 +93,7 @@ $(caterwaul(':all')(function ($) {
         renderer           = render(),
         update_screen()    = handle_resizes()
                      -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+                     -then-  update_overlay()
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],

@@ -64,8 +64,8 @@ $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 With a reducer:
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+$ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+          Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -76,8 +76,8 @@ $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 Now let's get a word count for `ni //license`:
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 2016	1
 A	1
 ACTION	1
@@ -94,8 +94,8 @@ Of course, we're also at liberty to omit the lambda brackets for brevity (I
 recommend using `--explain` liberally if you plan to make a habit of this):
 
 ```bash
-$ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni //license Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
 ACTION	1
