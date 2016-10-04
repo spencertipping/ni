@@ -2553,7 +2553,7 @@ use POSIX ();
 
 our $pager_fh;
 
-defconfenv 'stream/pager', NI_PAGER => 'less';
+defconfenv 'pager', NI_PAGER => 'less';
 
 sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
 
@@ -2578,7 +2578,7 @@ $ni::main_operator = sub {
   @$_ and push @children, sicons {operate @$_} for @ops;
 
   if (-t STDOUT) {
-    $pager_fh = siproc {exec conf 'stream/pager' or
+    $pager_fh = siproc {exec conf 'pager' or
                         exec 'less' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
@@ -2794,7 +2794,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-140 core/uri/uri.pl.sdoc
+109 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2896,45 +2896,14 @@ Filesystem resources.
 Things that behave like files: local files, HDFS, S3, sftp, etc.
 
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
+defconfenv 'tmpdir', TMPDIR => '/tmp';
 
 defresource 'file',
   read   => q{srfile $_[1]},
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
-  tmp    => q{"file://" . conf('/tmpdir') . "/" . uri_temp_noise},
+  tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
-
-defresource 'sftp',
-  read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
-              soproc {exec 'ssh', $host, 'cat', $path}};
-
-defresource 'hdfs',
-  read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
-  write  => q{siproc {sh conf('hadoop/name') . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
-  exists => q{local $_;
-              my $fh = soproc {exec conf 'hadoop/name', 'fs', '-stat', $_[1]} @_;
-              saferead $fh, $_, 8192;
-              close $fh;
-              !$fh->await},
-  tmp    => q{"hdfs://" . conf('hdfs/tmpdir') . "/" . uri_temp_noise},
-  nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
-
-defresource 'hdfst',
-  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
-  nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
-
-defresource 's3cmd',
-  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
-  write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
-  # TODO
-
-Network resources.
-
-defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
-                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
-
-defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
-                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 1 core/fn/lib
 fn.pl.sdoc
 90 core/fn/fn.pl.sdoc
@@ -3186,7 +3155,7 @@ defoperator 'checkpoint', q{
 defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
 1 core/net/lib
 net.pl.sdoc
-16 core/net/net.pl.sdoc
+33 core/net/net.pl.sdoc
 Networking stuff.
 SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 not need to be installed on the remote system, nor does its filesystem need to
@@ -3203,6 +3172,23 @@ defoperator ssh => q{
 
 defshort '/s', pmap q{ssh_op @$_},
   pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;
+
+Network resources.
+
+defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+
+defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+
+defresource 'sftp',
+  read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
+              soproc {exec 'ssh', $host, 'cat', $path}};
+
+defresource 's3cmd',
+  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
+  write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
+  # TODO
 1 core/buffer/lib
 buffer.pl.sdoc
 14 core/buffer/buffer.pl.sdoc
@@ -6344,7 +6330,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-137 core/hadoop/hadoop.pl.sdoc
+152 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6357,6 +6343,21 @@ defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
+
+defresource 'hdfs',
+  read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh conf('hadoop/name') . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  exists => q{local $_;
+              my $fh = soproc {exec conf 'hadoop/name', 'fs', '-stat', $_[1]} @_;
+              saferead $fh, $_, 8192;
+              close $fh;
+              !$fh->await},
+  tmp    => q{"hdfs://" . conf('hdfs/tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
+defresource 'hdfst',
+  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The

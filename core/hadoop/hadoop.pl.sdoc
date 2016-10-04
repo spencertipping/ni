@@ -11,6 +11,21 @@ defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
 
+defresource 'hdfs',
+  read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
+  write  => q{siproc {sh conf('hadoop/name') . " fs -put - " . shell_quote($_[1]) . " 1>&2"} @_},
+  exists => q{local $_;
+              my $fh = soproc {exec conf 'hadoop/name', 'fs', '-stat', $_[1]} @_;
+              saferead $fh, $_, 8192;
+              close $fh;
+              !$fh->await},
+  tmp    => q{"hdfs://" . conf('hdfs/tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
+defresource 'hdfst',
+  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
 hadoop docs suggest that $HADOOP_HOME has something to do with it, but I've
