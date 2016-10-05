@@ -126,7 +126,7 @@ sub row {
 }
 while (<STDIN>) {
   $l = $_;
-  print "$_\n" for row();
+  defined $_ && print "$_\n" for row();
 }
 ```
 
@@ -146,29 +146,14 @@ $ ni n2p'a, a + 100'                    # return without "r"
 $ ni n2p'r a, a + 100'                  # use "r" for side effect, return ()
 1	101
 2	102
-$ ni n3p'r $_ for 1..a; ()'             # use r imperatively, explicit return
-1
-1
-2
-1
-2
-3
 $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 1
-
 1
 2
-
 1
 2
 3
-
 ```
-
-The last example has blank lines because Perl's `for` construct returns a
-single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code. (At one point ni transformed a trailing `#` into
-`;()`, but this broke bracket inference in some cases.)
 
 As a shorthand, any array references you return will become rows:
 

@@ -4396,7 +4396,7 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : print $_, "\n" for row'}
+sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : defined $_ && print $_, "\n" for row'}
 sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
@@ -8344,7 +8344,7 @@ Operator | Status | Example      | Description
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
-408 doc/perl.md
+393 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8473,7 +8473,7 @@ sub row {
 }
 while (<STDIN>) {
   $l = $_;
-  print "$_\n" for row();
+  defined $_ && print "$_\n" for row();
 }
 ```
 
@@ -8493,29 +8493,14 @@ $ ni n2p'a, a + 100'                    # return without "r"
 $ ni n2p'r a, a + 100'                  # use "r" for side effect, return ()
 1	101
 2	102
-$ ni n3p'r $_ for 1..a; ()'             # use r imperatively, explicit return
-1
-1
-2
-1
-2
-3
 $ ni n3p'r $_ for 1..a'                 # use r imperatively, implicit return
 1
-
 1
 2
-
 1
 2
 3
-
 ```
-
-The last example has blank lines because Perl's `for` construct returns a
-single empty scalar. You can suppress any implicit returns using `;()` at the
-end of your mapper code. (At one point ni transformed a trailing `#` into
-`;()`, but this broke bracket inference in some cases.)
 
 As a shorthand, any array references you return will become rows:
 
