@@ -10,8 +10,8 @@ subdirectory of src/.
 bootcode
 resource ni.map.sdoc
 
-resource doc.pl.sdoc
 resource util.pl.sdoc
+resource doc.pl.sdoc
 resource dev.pl.sdoc
 resource parse.pl.sdoc
 resource common.pl.sdoc

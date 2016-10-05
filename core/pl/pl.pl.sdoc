@@ -127,7 +127,7 @@ defshort '/p',
     pmap q{perl_mapper_op $_}, perl_mapper_code;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', perl_grepper_code;
+          pn 1, pstr 'p', perl_grepper_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;

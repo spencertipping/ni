@@ -105,12 +105,14 @@ forked process in the pipeline.
 _
 
 defclispecial "--doc/$_", qq{
-  return print ${_}_doc \$_[0], "\\n" if \@_;
-  print "\$_\\n" for sort keys \%{\$ni::doc{'$_'}};
+  if (\@_) {
+    eval {print ${_}_doc \$_, "\\n"}, \$@ && warn \$@ for \@_;
+  } else {
+    print "\$_\\n" for sort keys \%{\$ni::doc_entities{'$_'}};
+  }
 }, <<_
 Usage: ni --doc/$_ [<${_}-name>]
-Print documentation for <${_}-name> if specified; otherwise list all ${_}s for
-which documentation exists.
+Print documentation for <${_}-name> if specified; otherwise list all ${_}s.
 _
 for keys %ni::doc;
 

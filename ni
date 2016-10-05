@@ -66,8 +66,8 @@ subdirectory of src/.
 bootcode
 resource ni.map.sdoc
 
-resource doc.pl.sdoc
 resource util.pl.sdoc
+resource doc.pl.sdoc
 resource dev.pl.sdoc
 resource parse.pl.sdoc
 resource common.pl.sdoc
@@ -107,28 +107,6 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-21 doc.pl.sdoc
-Documentation generator.
-Produces documentation by inspecting data structures. For the most part this is
-delegated.
-
-our %doc;
-our %doc_entities;
-
-sub documentation_for($$) {
-  my ($type, $thing) = @_;
-  return $doc{$type}{ref $thing}->($thing) if ref $thing;
-  return $doc{$type}{$thing}->($thing)     if ref $doc{$type}{$thing};
-  $doc{$type}{$thing};
-}
-
-sub defdocumentable($$) {
-  my ($name, $global_hash) = @_;
-  $doc_entities{$name} = $global_hash;
-  $doc{$name}          = {};
-  ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
-  ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
-}
 92 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
@@ -222,6 +200,37 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
+30 doc.pl.sdoc
+Documentation generator.
+Produces documentation by inspecting data structures. For the most part this is
+delegated.
+
+our %doc;
+our %doc_fns;
+our %doc_entities;
+
+sub documentation_for($$) {
+  my ($type, $thing) = @_;
+  $doc_fns{$type}->($thing, $doc{$type}{$thing}, $type);
+}
+sub default_doc_fn($$) {$_[1]}
+
+sub doc_sections(@) {
+  my %sections      = @_;
+  my @section_order = map $_[$_ * 2], 0..$#_ >> 1;
+  join "\n", map {('', ($_ ? '  ' : '') . $section_order[$_],
+                   map "\t$_", split /\n/, $sections{$section_order[$_]})}
+             0..$#section_order;
+}
+
+sub defdocumentable($$;$) {
+  my ($name, $global_hash, $fn) = @_;
+  $doc{$name}          = {};
+  $doc_fns{$name}      = defined $fn ? fn $fn : \&default_doc_fn;
+  $doc_entities{$name} = $global_hash;
+  ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
+  ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
+}
 34 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
@@ -257,25 +266,41 @@ sub dev_trace($) {
     @r;
   };
 }
-196 parse.pl.sdoc
+230 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
 our %parsers;
-BEGIN {defdocumentable 'parser', \%parsers}
+BEGIN {defdocumentable 'parser', \%parsers, q{
+  my ($p, $doc) = @_;
+  if (ref $p) {
+    my ($name, @args) = @$p;
+    return $ni::doc{parser}{$name}->($p) if ref $ni::doc{parser}{$name};
+    parser_doc($name);
+  } else {
+    doc_sections
+      "PARSER $p"  => $doc,
+      "DEFINITION" => parser_ebnf($ni::parsers{$p});
+  }
+}}
 
-docparser ARRAY => fn q{
+our %parser_ebnf;
+sub defparserebnf($$) {$parser_ebnf{$_[0]} = fn $_[1]}
+sub parser_ebnf($) {
   my ($p) = @_;
-  my ($pname, @args) = @$p;
-  my $doc = $ni::doc{parser}{$pname};
-  ref $doc ? $doc->($p) : $doc;
-};
+  return "<$p>" unless ref $p;
+  my ($name, @args) = @$p;
+  return "<" . join(' ', $name, @args) . ">" unless exists $parser_ebnf{$name};
+  $parser_ebnf{$name}->($p);
+}
 
+sub parser($);
 sub parser($) {
+  return $_[0] if ref $_[0];
   die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
-  [$_[0]];
+  parser $parsers{$_[0]};
 }
 
 sub defparser($$$) {
@@ -292,21 +317,26 @@ sub defparseralias($$) {
   die "ni: defparseralias cannot redefine $name" if exists $parsers{$name};
   $parsers{$name} = $alias;
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
-  docparser $name, parser_doc $alias;
 }
 
-our $recursion_level = 0;
+Parse function.
+($result, @remaining) = parse($parser, @inputs). $parser can take one of three
+forms:
 
+| ['parser-name', @args]: $parsers{'parser-name'} is a function
+  ['parser-name']: $parsers{'parser-name'} could be a function or an array
+  'parser-name': $parsers{'parser-name'} is an array
+
+our $recursion_level = 0;
 sub parse;
 sub parse {
   local $_;
   local $recursion_level = $recursion_level + 1;
-  my ($p, @args) = @{$_[0]};
-  die "ni: runaway parse of $p on @_[1..$#_] ($recursion_level levels)"
+  my ($p, @args) = @{parser $_[0]};
+  die "ni: runaway parse of $p [@args] on @_[1..$#_] ($recursion_level levels)"
     if $recursion_level > 1024;
-  my $f = $parsers{$p} or die "ni: no such parser: $p";
-  return @_[1..$#_] if @_ > 1 && ref $_[1];
-  'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f(@_);
+  my $f = $parsers{$p};
+  'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f([$p, @args], @_[1..$#_]);
 }
 
 Base parsers.
@@ -320,10 +350,10 @@ BEGIN {
   defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
 
-docparser pend   => q{<end of ARGV>};
-docparser pempty => q{<empty arg>};
-docparser pk     => fn q{"<'', evaluate as $_[0]>"};
-docparser pnone  => q{''};
+defparserebnf pend   => q{'<argv_end>'};
+defparserebnf pempty => q{'<empty>'};
+defparserebnf pk     => q{"<'', evaluate as $_[0][1]>"};
+defparserebnf pnone  => q{"''"};
 
 Basic combinators.
 Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
@@ -335,7 +365,7 @@ c
 BEGIN {
   defparser 'paltr', '\@',
     q{my ($self, @xs, @ps, @r) = @_;
-      @r = parse $_, @xs and return @r for @ps = @{$$self[1]}; ()};
+      @r = parse $_, @xs and return @r for @ps = @{parser $$self[1]}; ()};
 
   defparser 'pdspr', '\%',
     q{my ($self, $x, @xs, $k, @ys, %ls, $c) = @_;
@@ -352,16 +382,17 @@ BEGIN {
 sub palt(@) {my @ps = @_; paltr @ps}
 sub pdsp(%) {my %ps = @_; pdspr %ps}
 
-docparser paltr => fn q{
+defparserebnf paltr => fn q{
   my ($self, $alt) = @{$_[0]};
-  my @docs = map indent(parser_doc $_, 2), @$alt;
-  join "\n| ", @docs;
+  my @docs = map "| " . sr(indent(parser_ebnf $_, 2), qr/^  /, ''), @$alt;
+  "(\n" . join("\n", @docs) . "\n)";
 };
 
-docparser pdspr => fn q{
+defparserebnf pdspr => fn q{
   my ($self, $dsp) = @{$_[0]};
-  my @docs = map indent("'$_' " . parser_doc $$dsp{$_}, 2), sort keys %$dsp;
-  join "\n| ", @docs;
+  my @docs = map "| '$_' " . sr(indent(parser_ebnf $$dsp{$_}, 2), qr/^  /, ''),
+             sort keys %$dsp;
+  "(\n" . join("\n", @docs) . "\n)";
 };
 
 c
@@ -395,30 +426,30 @@ BEGIN {
       my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
-docparser pseq => fn q{
+defparserebnf pseq => fn q{
   my ($self, @ps) = @{$_[0]};
-  '( ' . join(' ', map parser_doc $_, @ps) . ' )';
+  "(\n" . join("\n", map indent(parser_ebnf $_, 2), @ps) . "\n)";
 };
 
-docparser prep => fn q{
+defparserebnf prep => fn q{
   my ($self, $p, $n) = (@{$_[0]}, 0);
   my $rep_symbol = $n == 0 ? '*' : $n == 1 ? '+' : "{$n+ times}";
-  parser_doc($p) . "$rep_symbol";
+  parser_ebnf($p) . "$rep_symbol";
 };
 
-docparser popt => fn q{
+defparserebnf popt => fn q{
   my ($self, $p) = @{$_[0]};
-  parser_doc($p) . '?';
+  parser_ebnf($p) . '?';
 };
 
-docparser pmap => fn q{
+defparserebnf pmap => fn q{
   my ($self, $f, $p) = @{$_[0]};
-  parser_doc($p) . "->{$f}";
+  parser_ebnf($p) . " -> {$f}";
 };
 
-docparser pcond => fn q{
+defparserebnf pcond => fn q{
   my ($self, $f, $p) = @{$_[0]};
-  parser_doc($p) . "->if{$f}";
+  parser_ebnf($p) . " such that {$f}";
 };
 
 sub pn($@)
@@ -438,23 +469,35 @@ BEGIN {
     q{my ($self, $x, @xs) = @_;
       defined $x && $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()};
 
+  defparser 'pstr', '$',
+    q{my ($self, $x, @xs) = @_;
+      defined $x && index($x, $$self[1]) == 0
+        ? ($$self[1], substr($x, length $$self[1]), @xs)
+        : ()};
+
   defparser 'pnx', '$',
     q{my ($self, $x, @xs) = @_;
       defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
-sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
+sub prc($)  {pn 0, prx  $_[0], popt pempty}
+sub pstc($) {pn 0, pstr $_[0], popt pempty}
 
-docparser prx => fn q{
-  my ($self, $r) = @{$_[0]};
-  '/' . qr/$r/ . '/';
+defparserebnf pstr => fn q{
+  my ($self, $s) = @{$_[0]};
+  $s =~ /'/ ? json_encode($s) : "'$s'";
 };
 
-docparser pnx => fn q{
+defparserebnf prx => fn q{
   my ($self, $r) = @{$_[0]};
-  '!/' . qr/$r/ . '/';
+  "/$r/";
 };
-69 common.pl.sdoc
+
+defparserebnf pnx => fn q{
+  my ($self, $r) = @{$_[0]};
+  "!/$r/";
+};
+88 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -464,11 +507,15 @@ brackets the same way, we just require that regexes are terminated with /
 c
 BEGIN {defparseralias regex => pmap q{s/\/$//; $_}, prx qr{^(?:[^\\/]+|\\.)*/}}
 
-Generic code parser.
+docparser regex => q{Regular expression, delimited by slashes};
+
+
+docparser generic_code => <<'_';
 Counts brackets outside quoted strings, which in our case are '' and "".
 Doesn't look for regular expressions because these vary by language; but this
 parser should be able to handle most straightforward languages with quoted
 string literals and backslash escapes.
+_
 
 defparser 'generic_code', '',
   sub {my ($self, $code, @xs) = @_;
@@ -477,6 +524,7 @@ defparser 'generic_code', '',
        my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
        $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
                 : ($code, '', @xs)};
+
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -492,26 +540,37 @@ BEGIN {defparseralias integer => palt pmap(q{int},       neval),
                                       pmap(q{1 << $_},   prx 'B(\d+)'),
                                       pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                                       pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
-                                                         prx '0'}
+                                                         pstr '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
                                pcond q{length},
                                prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
 c
-BEGIN {defparseralias colspec1      => palt pn(1, prx '#', integer),
+BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
                                             pmap q{ord() - 65}, prx '[A-Z]';
-       defparseralias colspec_rest  => pmap q{-1}, prx '\.'}
+       defparseralias colspec_rest  => pmap q{-1}, pstr '.'}
 BEGIN {defparseralias colspec_range => pmap q{[$$_[0] .. $$_[2]]},
-                                       pseq colspec1, prx '-', colspec1}
+                                       pseq colspec1, pstr '-', colspec1}
 BEGIN {defparseralias colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
                                        pmap q{[map ref() ? @$_ : $_, @$_]},
-                                       prep pn(1, popt prx ',',
+                                       prep pn(1, popt pstr ',',
                                                   palt(colspec_range, colspec1)), 1}
 BEGIN {defparseralias colspec => pmap q{[max(@$_) + 1, @$_]},
                                  pmap q{[map ref() ? @$_ : $_, @$_]},
-                                 prep pn(1, popt prx ',',
+                                 prep pn(1, popt pstr ',',
                                             palt(colspec_range, colspec1, colspec_rest)), 1}
+
+docparser neval => q{An expression evaluated by Perl; e.g. =3+4 for 7};
+docparser colspec1 => q{A way to identify a single column; either A-Z or #N};
+docparser colspec_rest => <<'_';
+"The rest of the columns": everything to the right of the rightmost
+explicitly-specified column
+_
+
+docparser colspec_range => q{A range of columns, e.g. A-Q or #10-#20};
+docparser colspec_fixed => q{A set of definite columns; disallows '.' ("the rest")};
+docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 
 Filenames, in general.
 Typically filenames won't include bracket characters, though they might include
@@ -524,7 +583,10 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
-102 cli.pl.sdoc
+
+docparser filename   => q{The name of an existing file};
+docparser nefilename => q{The name of a possibly-nonexisting file};
+131 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -535,7 +597,6 @@ about is the long/short option dispatch, which looks like this:
 our %contexts;
 our %shorts;
 our %longs;
-our %long_names;
 our %long_refs;
 our %short_refs;
 our %dsps;
@@ -543,59 +604,85 @@ our %alts;
 
 c
 BEGIN {
-  defdocumentable context => \%contexts;
-  defdocumentable short   => \%shorts;
-  defdocumentable long    => \%longs;
-  defdocumentable dsp     => \%dsps;
-  defdocumentable alt     => \%alts;
+  defdocumentable context => \%contexts, q{
+    my ($c, $doc) = @_;
+    doc_sections
+      "CONTEXT $c" => $doc,
+      "LONG OPERATORS (ni --doc/long X)"   => join("\n", sort grep /^$c\//, keys %ni::longs),
+      "SHORT OPERATORS (ni --doc/short X)" => join("\n", sort grep /^$c\//, keys %ni::shorts);
+  };
+
+  defdocumentable short => \%shorts, q{
+    my ($s, $doc) = @_;
+    doc_sections
+      "SHORT OPERATOR $s" => $doc,
+      "SYNTAX" => parser_ebnf $ni::shorts{$s};
+  };
+
+  defdocumentable long => \%longs, q{
+    my ($l, $doc) = @_;
+    doc_sections
+      "LONG OPERATOR $l" => $doc,
+      "SYNTAX" => parser_ebnf $ni::longs{$l};
+  };
+
+  defdocumentable dsp => \%dsps, q{
+    my ($d, $doc) = @_;
+    doc_sections
+      "EXTENSIBLE DISPATCH TABLE $d" => $doc,
+      "OPTIONS" => parser_ebnf parser "dsp/$d";
+  };
+
+  defdocumentable alt => \%alts, q{
+    my ($a, $doc) = @_;
+    doc_sections
+      "EXTENSIBLE LIST $a" => $doc,
+      "OPTIONS" => parser_ebnf parser "alt/$a";
+  };
 }
 
 sub defcontext($$) {
   my ($c, $doc) = @_;
   $short_refs{$c} = {};
-  $long_refs{$c}  = [pdspr %{$short_refs{$c}}];
-  $long_names{$c} = ['<short dispatch>'];
+  $long_refs{$c}  = ["$c/short"];
   $contexts{$c}   = paltr @{$long_refs{$c}};
 
   doccontext $c, $doc;
 
   defparseralias "$c/short",  pdspr %{$short_refs{$c}};
   defparseralias "$c/op",     $contexts{$c};
-  docparser "$c/short", "<$c/short>";
-  docparser "$c/op",    "<$c/op>";
+  defparseralias "$c/suffix", prep "$c/op";
+  defparseralias "$c/series", prep pn 1, popt pempty, "$c/op", popt pempty;
+  defparseralias "$c/lambda", pn 1, pstc '[', "$c/series", pstr ']';
+  defparseralias "$c/qfn",    palt "$c/lambda", "$c/suffix";
 
-  defparseralias "$c/suffix", prep $contexts{$c};
-  defparseralias "$c/series", prep pn 1, popt pempty, $contexts{$c}, popt pempty;
-  defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
-  defparseralias "$c/qfn",    palt parser "$c/lambda", parser "$c/suffix";
-
-  defparseralias "$c/cli", pn 0, parser "$c/series", pend;
-  defparseralias "$c/cli_debug", parser "$c/series";
+  docparser "$c/short" => qq{Dispatch table for short options in context '$c'};
+  docparser "$c/op" => qq{A single operator in the context '$c'};
+  docparser "$c/suffix" => qq{A string of operators unbroken by whitespace};
+  docparser "$c/series" => qq{A string of operators, possibly including whitespace};
+  docparser "$c/lambda" => qq{A bracketed lambda function in context '$c'};
+  docparser "$c/qfn" => qq{Operators that are interpreted as a lambda, whether bracketed or written as a suffix};
 }
 
 sub defshort($$) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   warn "ni: defshort is redefining '$_[0]' (use rmshort to avoid this warning)"
     if exists $short_refs{$context}{$dsp};
-  defparseralias "$context/short/$dsp" => $_[1];
-  $shorts{$_[0]} = $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
+  $shorts{$_[0]} = $short_refs{$context}{$dsp} = $_[1];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
-  defparseralias "$context/long/$name" => $_[1];
-  unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, $longs{$_[0]} = ["$context/long/$name"];
+  unshift @{$long_refs{$context}}, $longs{$_[0]} = $_[1];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $shorts{$_[0]};
   delete $short_refs{$context}{$dsp};
-  delete $ni::parsers{"$context/short/$dsp"};
 }
 
-sub cli_parse(@) {parse parser '/cli_debug', @_}
+sub cli_parse(@) {parse parser '/series', @_}
 sub cli(@) {
   my ($r, @rest) = cli_parse @_;
   die "ni: failed to parse starting here:\n  @rest" if @rest;
@@ -614,7 +701,9 @@ sub defalt($$@) {
   @{$vname} = @entries;
   $alts{$name} = \@{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
-  paltr @{$vname};
+  my $r = paltr @{$vname};
+  defparseralias "alt/$name" => $r;
+  $r;
 }
 
 sub defdsp($$%) {
@@ -625,9 +714,11 @@ sub defdsp($$%) {
   %{$vname} = %entries;
   $dsps{$name} = \%{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
-  pdspr %{$vname};
+  my $r = pdspr %{$vname};
+  defparseralias "dsp/$name" => $r;
+  $r;
 }
-70 op.pl.sdoc
+81 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -643,8 +734,19 @@ feature).
 our %operators;
 our %meta_operators;
 
-defdocumentable operator      => \%operators;
-defdocumentable meta_operator => \%meta_operators;
+defdocumentable operator => \%operators, q{
+  my ($op, $doc) = @_;
+  doc_sections
+    "OPERATOR $op"   => $doc,
+    "IMPLEMENTATION" => $ni::operators{$op};
+};
+
+defdocumentable meta_operator => \%meta_operators, q{
+  my ($mop, $doc) = @_;
+  doc_sections
+    "META OPERATOR $mop" => $doc,
+    "IMPLEMENTATION" => $ni::meta_operators{$mop};
+};
 
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
@@ -752,7 +854,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-163 main.pl.sdoc
+165 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -860,12 +962,14 @@ forked process in the pipeline.
 _
 
 defclispecial "--doc/$_", qq{
-  return print ${_}_doc \$_[0], "\\n" if \@_;
-  print "\$_\\n" for sort keys \%{\$ni::doc{'$_'}};
+  if (\@_) {
+    eval {print ${_}_doc \$_, "\\n"}, \$@ && warn \$@ for \@_;
+  } else {
+    print "\$_\\n" for sort keys \%{\$ni::doc_entities{'$_'}};
+  }
 }, <<_
 Usage: ni --doc/$_ [<${_}-name>]
-Print documentation for <${_}-name> if specified; otherwise list all ${_}s for
-which documentation exists.
+Print documentation for <${_}-name> if specified; otherwise list all ${_}s.
 _
 for keys %ni::doc;
 
@@ -2120,7 +2224,7 @@ defoperator configure => q{
 c
 BEGIN {defparseralias config_map_key   => prx '[^=]+';
        defparseralias config_map_value => prc '.*[^}]+|'}
-BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, prx '=',
+BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, pstr '=',
                                                      config_map_value}
 BEGIN {defparseralias config_option_map
          => pmap q{my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h},
@@ -2545,7 +2649,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-183 core/stream/ops.pl.sdoc
+214 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2561,9 +2665,28 @@ BEGIN {
                                          prx '[^][]+';
 }
 
+docparser shell_lambda => <<'_';
+A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+metacharacters within the arguments won't be expanded). If you use this form,
+no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
+to close the list.
+_
+
+docparser shell_lambda_ws => <<'_';
+A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+metacharacters within the arguments won't be expanded). Whitespace is required
+around both brackets.
+_
+
+docparser shell_command => q{A quoted or bracketed shell command};
+
 defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
 defoperator sh   => q{my ($c) = @_; sh $c};
+
+docoperator cat  => q{Append contents of a file or resource};
+docoperator echo => q{Append text verbatim};
+docoperator sh   => q{Filter stream through a shell command};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -2575,6 +2698,8 @@ defoperator n => q{
   sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
 };
 
+docoperator n => q{Append consecutive integers within a range};
+
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
@@ -2583,14 +2708,18 @@ defshort '/e', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
+docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
+docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
+docshort '/id:' => q{Append literal text};
+docshort '/e' => q{Exec shell command as a filter for the current stream};
+
+doclong '/fs' => q{Append things that appear to be files};
+
 Stream mixing/forking.
 Append, prepend, duplicate, divert.
 
-defoperator append => q{
-  my @xs = @_;
-  sio;
-  exec_ni @xs;
-};
+defoperator append => q{my @xs = @_; sio; exec_ni @xs};
+docoperator append => q{Append another ni stream to this one};
 
 defoperator prepend => q{
   my @xs = @_;
@@ -2598,6 +2727,7 @@ defoperator prepend => q{
   $fh->await;
   sio;
 };
+docoperator prepend => q{Prepend a ni stream to this one};
 
 defoperator duplicate => q{
   my @xs = @_;
@@ -2607,7 +2737,11 @@ defoperator duplicate => q{
   $fh->await;
 };
 
+docoperator duplicate => q{Duplicate this stream into a ni pipeline, collecting both outputs};
+
 defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+docoperator sink_null => q{Consume stream and produce nothing};
+
 defoperator divert => q{
   my @xs = @_;
   my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
@@ -2615,6 +2749,7 @@ defoperator divert => q{
   close $fh;
   $fh->await;
 };
+docoperator divert => q{Duplicate this stream into a ni pipeline, discarding that pipeline's output};
 
 defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
@@ -3473,8 +3608,8 @@ defshort '/F',
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
     'W' => pmap(q{split_regex_op '[^\w\n]+'},        pnone),
     '/' => pmap(q{split_regex_op $_},                regex),
-    ':' => pmap(q{split_chr_op   $_},                prx '^.'),
-    'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex);
+    ':' => pmap(q{split_chr_op   $_},                prx '.'),
+    'm' => pn(1, pstr '/', pmap q{scan_regex_op $_}, regex);
 
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.
@@ -3613,10 +3748,10 @@ defoperator row_cols_defined => q{
 
 defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
-    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '~', integer),
-    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-', integer),
-    pmap(q{row_every_op  $_},            pn 1, prx 'x', number),
-    pmap(q{row_match_op  $_},            pn 1, prx '/', regex),
+    pmap(q{tail_op '-n', '',  $_},       pn 1, pstr '~', integer),
+    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, pstr '-', integer),
+    pmap(q{row_every_op  $_},            pn 1, pstr 'x', number),
+    pmap(q{row_match_op  $_},            pn 1, pstr '/', regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
@@ -4601,7 +4736,7 @@ defshort '/p',
     pmap q{perl_mapper_op $_}, perl_mapper_code;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', perl_grepper_code;
+          pn 1, pstr 'p', perl_grepper_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
@@ -4781,7 +4916,7 @@ defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
     pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', rbcode;
+defrowalt pmap q{perl_grepper_op $_}, pn 1, pstr 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
@@ -5008,7 +5143,7 @@ defshort '/l', pmap q{lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 
 defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
                                              body   => $_)},
-          pn 1, prx 'l', lispcode;
+          pn 1, pstr 'l', lispcode;
 1 core/sql/lib
 sql.pl.sdoc
 131 core/sql/sql.pl.sdoc
@@ -5120,9 +5255,9 @@ defshort 'sql/r',
 
 defshort 'sql/j',
   defalt 'sqljoinalt', 'alternatives for sql/j join operator',
-    pmap(q{['ljoin', $_]}, pn 1, prx 'L', sql_query),
-    pmap(q{['rjoin', $_]}, pn 1, prx 'R', sql_query),
-    pmap(q{['njoin', $_]}, pn 1, prx 'N', sql_query),
+    pmap(q{['ljoin', $_]}, pn 1, pstr 'L', sql_query),
+    pmap(q{['rjoin', $_]}, pn 1, pstr 'R', sql_query),
+    pmap(q{['njoin', $_]}, pn 1, pstr 'N', sql_query),
     pmap(q{['ijoin', $_]}, sql_query);
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;
@@ -6416,7 +6551,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-96 core/jsplot/jsplot.pl.sdoc
+93 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -6448,7 +6583,7 @@ This entry point provides a realtime CLI parse for the UI.
 
 sub jsplot_parse($$@) {
   my ($reply, $req, @ni_args) = @_;
-  my ($ops, @rest) = parse _cli_debug, @ni_args;
+  my ($ops, @rest) = cli @ni_args;
   http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
 }
 
@@ -6462,11 +6597,8 @@ sub jsplot_log($@) {printf STDERR "ni js[$$]: $_[0]", @_[1..$#_]}
 sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
-  my ($ops) = cli @ni_args;
-  unless (defined $ops) {
-    my (undef, @rest) = parse _cli_debug, @ni_args;
-    die "ni: jsplot failed to parse starting at @rest";
-  }
+  my ($ops, @rest) = cli @ni_args;
+  die "ni: jsplot failed to parse starting at @rest" unless defined $ops;
 
   jsplot_log "running %s\n", json_encode $ops;
 

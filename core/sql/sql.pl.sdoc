@@ -106,9 +106,9 @@ defshort 'sql/r',
 
 defshort 'sql/j',
   defalt 'sqljoinalt', 'alternatives for sql/j join operator',
-    pmap(q{['ljoin', $_]}, pn 1, prx 'L', sql_query),
-    pmap(q{['rjoin', $_]}, pn 1, prx 'R', sql_query),
-    pmap(q{['njoin', $_]}, pn 1, prx 'N', sql_query),
+    pmap(q{['ljoin', $_]}, pn 1, pstr 'L', sql_query),
+    pmap(q{['rjoin', $_]}, pn 1, pstr 'R', sql_query),
+    pmap(q{['njoin', $_]}, pn 1, pstr 'N', sql_query),
     pmap(q{['ijoin', $_]}, sql_query);
 
 defshort 'sql/g', pmap q{['order_by', $_]},        sqlcode;

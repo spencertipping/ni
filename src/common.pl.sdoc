@@ -7,11 +7,15 @@ brackets the same way, we just require that regexes are terminated with /
 c
 BEGIN {defparseralias regex => pmap q{s/\/$//; $_}, prx qr{^(?:[^\\/]+|\\.)*/}}
 
-Generic code parser.
+docparser regex => q{Regular expression, delimited by slashes};
+
+
+docparser generic_code => <<'_';
 Counts brackets outside quoted strings, which in our case are '' and "".
 Doesn't look for regular expressions because these vary by language; but this
 parser should be able to handle most straightforward languages with quoted
 string literals and backslash escapes.
+_
 
 defparser 'generic_code', '',
   sub {my ($self, $code, @xs) = @_;
@@ -20,6 +24,7 @@ defparser 'generic_code', '',
        my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
        $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
                 : ($code, '', @xs)};
+
 
 Basic CLI types.
 Some common argument formats for various commands, sometimes transformed for
@@ -35,26 +40,37 @@ BEGIN {defparseralias integer => palt pmap(q{int},       neval),
                                       pmap(q{1 << $_},   prx 'B(\d+)'),
                                       pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
                                       pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
-                                                         prx '0'}
+                                                         pstr '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
                                pcond q{length},
                                prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
 c
-BEGIN {defparseralias colspec1      => palt pn(1, prx '#', integer),
+BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
                                             pmap q{ord() - 65}, prx '[A-Z]';
-       defparseralias colspec_rest  => pmap q{-1}, prx '\.'}
+       defparseralias colspec_rest  => pmap q{-1}, pstr '.'}
 BEGIN {defparseralias colspec_range => pmap q{[$$_[0] .. $$_[2]]},
-                                       pseq colspec1, prx '-', colspec1}
+                                       pseq colspec1, pstr '-', colspec1}
 BEGIN {defparseralias colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
                                        pmap q{[map ref() ? @$_ : $_, @$_]},
-                                       prep pn(1, popt prx ',',
+                                       prep pn(1, popt pstr ',',
                                                   palt(colspec_range, colspec1)), 1}
 BEGIN {defparseralias colspec => pmap q{[max(@$_) + 1, @$_]},
                                  pmap q{[map ref() ? @$_ : $_, @$_]},
-                                 prep pn(1, popt prx ',',
+                                 prep pn(1, popt pstr ',',
                                             palt(colspec_range, colspec1, colspec_rest)), 1}
+
+docparser neval => q{An expression evaluated by Perl; e.g. =3+4 for 7};
+docparser colspec1 => q{A way to identify a single column; either A-Z or #N};
+docparser colspec_rest => <<'_';
+"The rest of the columns": everything to the right of the rightmost
+explicitly-specified column
+_
+
+docparser colspec_range => q{A range of columns, e.g. A-Q or #10-#20};
+docparser colspec_fixed => q{A set of definite columns; disallows '.' ("the rest")};
+docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 
 Filenames, in general.
 Typically filenames won't include bracket characters, though they might include
@@ -67,3 +83,6 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
+
+docparser filename   => q{The name of an existing file};
+docparser nefilename => q{The name of a possibly-nonexisting file};

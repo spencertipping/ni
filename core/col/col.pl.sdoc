@@ -81,8 +81,8 @@ defshort '/F',
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
     'W' => pmap(q{split_regex_op '[^\w\n]+'},        pnone),
     '/' => pmap(q{split_regex_op $_},                regex),
-    ':' => pmap(q{split_chr_op   $_},                prx '^.'),
-    'm' => pn(1, prx '^/', pmap q{scan_regex_op $_}, regex);
+    ':' => pmap(q{split_chr_op   $_},                prx '.'),
+    'm' => pn(1, pstr '/', pmap q{scan_regex_op $_}, regex);
 
 Juxtaposition.
 You can juxtapose two data sources horizontally by using `w` for `with`.

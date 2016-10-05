@@ -29,7 +29,7 @@ This entry point provides a realtime CLI parse for the UI.
 
 sub jsplot_parse($$@) {
   my ($reply, $req, @ni_args) = @_;
-  my ($ops, @rest) = parse _cli_debug, @ni_args;
+  my ($ops, @rest) = cli @ni_args;
   http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
 }
 
@@ -43,11 +43,8 @@ sub jsplot_log($@) {printf STDERR "ni js[$$]: $_[0]", @_[1..$#_]}
 sub jsplot_stream($$@) {
   local $_;
   my ($reply, $req, @ni_args) = @_;
-  my ($ops) = cli @ni_args;
-  unless (defined $ops) {
-    my (undef, @rest) = parse _cli_debug, @ni_args;
-    die "ni: jsplot failed to parse starting at @rest";
-  }
+  my ($ops, @rest) = cli @ni_args;
+  die "ni: jsplot failed to parse starting at @rest" unless defined $ops;
 
   jsplot_log "running %s\n", json_encode $ops;
 

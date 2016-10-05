@@ -13,8 +13,19 @@ feature).
 our %operators;
 our %meta_operators;
 
-defdocumentable operator      => \%operators;
-defdocumentable meta_operator => \%meta_operators;
+defdocumentable operator => \%operators, q{
+  my ($op, $doc) = @_;
+  doc_sections
+    "OPERATOR $op"   => $doc,
+    "IMPLEMENTATION" => $ni::operators{$op};
+};
+
+defdocumentable meta_operator => \%meta_operators, q{
+  my ($mop, $doc) = @_;
+  doc_sections
+    "META OPERATOR $mop" => $doc,
+    "IMPLEMENTATION" => $ni::meta_operators{$mop};
+};
 
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
