@@ -1,13 +1,13 @@
 
-LONG OPERATOR /fs
+# LONG OPERATOR /fs
 	Append things that appear to be files
 
-  SYNTAX
+## SYNTAX
 	<filename> -> {cat_op $_}
 
-LONG OPERATOR /resource
+# LONG OPERATOR /resource
 
-  SYNTAX
+## SYNTAX
 	(
 	| ''file-closure://' (
 	    /.*/

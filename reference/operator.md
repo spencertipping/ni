@@ -1,76 +1,76 @@
 
-OPERATOR append
+# OPERATOR append
 	Append another ni stream to this one
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	my @xs = @_; sio; exec_ni @xs
 
-OPERATOR binary_perl
+# OPERATOR binary_perl
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	stdin_to_perl binary_perl_mapper $_[0]
 
-OPERATOR buffer_null
+# OPERATOR buffer_null
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	local $SIG{PIPE} = 'IGNORE'; sio
 
-OPERATOR cat
+# OPERATOR cat
 	Append contents of a file or resource
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	my ($f) = @_; sio; scat $f
 
-OPERATOR cell_exp
+# OPERATOR cell_exp
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($cs, $base) = @_;
 	  my $eb = log $base;
 	  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
 
-OPERATOR cell_log
+# OPERATOR cell_log
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($cs, $base) = @_;
 	  my $lb = 1 / log $base;
 	  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
 
-OPERATOR checkpoint
+# OPERATOR checkpoint
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($file, $generator) = @_;
 	  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 
-OPERATOR col_average
+# OPERATOR col_average
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  cell_eval {args  => 'undef',
 	             begin => 'my @ns = map 0, @cols; $. = 0',
 	             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
 
-OPERATOR col_delta
+# OPERATOR col_delta
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  cell_eval {args  => 'undef',
 	             begin => 'my @ns = map 0, @cols',
 	             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
 
-OPERATOR col_sum
+# OPERATOR col_sum
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  cell_eval {args  => 'undef',
 	             begin => 'my @ns = map 0, @cols',
 	             each  => '$xs[$_] = $ns[$_] += $xs[$_]'}, @_;
 
-OPERATOR cols
+# OPERATOR cols
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($floor, @cs) = @_;
 	  my $asc = join('', @cs) eq join('', sort @cs);
@@ -81,9 +81,9 @@ OPERATOR cols
 	       cols_gen->(limit => $floor + 1,
 	                  is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);
 
-OPERATOR colswap
+# OPERATOR colswap
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($floor, @cs) = @_;
 	  my %cs; ++$cs{$_} for @cs;
@@ -95,25 +95,25 @@ OPERATOR colswap
 	  exec 'perl', '-lne', cols_gen->(limit => $floor + 1,
 	                                  is    => join ',', @cols, "$floor..\$#_");
 
-OPERATOR conf_get
+# OPERATOR conf_get
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($name) = @_;
 	  sio();
 	  print conf $name, "\n";
 
-OPERATOR configure
+# OPERATOR configure
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($vars, $f) = @_;
 	  conf_set $_, $$vars{$_} for keys %$vars;
 	  &$ni::main_operator(@$f);
 
-OPERATOR count
+# OPERATOR count
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($n, $last) = (0, undef);
 	  while (<STDIN>) {
@@ -126,14 +126,14 @@ OPERATOR count
 	  }
 	  print "$n\t$last" if defined $last;
 
-OPERATOR decode
+# OPERATOR decode
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sdecode
 
-OPERATOR dense_to_sparse
+# OPERATOR dense_to_sparse
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($col) = @_;
 	  $col ||= 0;
@@ -159,9 +159,9 @@ OPERATOR dense_to_sparse
 	    }
 	  }
 
-OPERATOR destructure
+# OPERATOR destructure
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  ni::eval gen(q{no warnings 'uninitialized';
 	                 eval {binmode STDOUT, ":encoding(utf-8)"};
@@ -169,23 +169,23 @@ OPERATOR destructure
 	                 while (<STDIN>) {print join("\t", %e), "\n"}})
 	            ->(e => json_extractor $_[0]);
 
-OPERATOR dev_backdoor
+# OPERATOR dev_backdoor
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	ni::eval $_[0]
 
-OPERATOR dev_local_operate
+# OPERATOR dev_local_operate
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($lambda) = @_;
 	  my $fh = siproc {exec ni_quoted_exec_args};
 	  quote_ni_into $fh, @$lambda;
 
-OPERATOR divert
+# OPERATOR divert
 	Duplicate this stream into a ni pipeline, discarding that pipeline's output
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my @xs = @_;
 	  my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
@@ -193,17 +193,17 @@ OPERATOR divert
 	  close $fh;
 	  $fh->await;
 
-OPERATOR docker_exec
+# OPERATOR docker_exec
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($container, @f) = @_;
 	  my $fh = siproc {exec qw|docker exec -i|, $container, ni_quoted_exec_args};
 	  quote_ni_into $fh, @f;
 
-OPERATOR docker_run_dynamic
+# OPERATOR docker_run_dynamic
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($dockerfile, @f) = @_;
 	  my $fh = siproc {
@@ -222,18 +222,18 @@ OPERATOR docker_run_dynamic
 	  };
 	  quote_ni_into $fh, @f;
 
-OPERATOR docker_run_image
+# OPERATOR docker_run_image
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($image, @f) = @_;
 	  my $fh = siproc {exec qw|docker run --rm -i|, $image, ni_quoted_exec_args};
 	  quote_ni_into $fh, @f;
 
-OPERATOR duplicate
+# OPERATOR duplicate
 	Duplicate this stream into a ni pipeline, collecting both outputs
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my @xs = @_;
 	  my $fh = siproc {exec_ni @xs};
@@ -241,15 +241,15 @@ OPERATOR duplicate
 	  close $fh;
 	  $fh->await;
 
-OPERATOR echo
+# OPERATOR echo
 	Append text verbatim
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	my ($x) = @_; sio; print "$x\n"
 
-OPERATOR encode_resource_stream
+# OPERATOR encode_resource_stream
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my @xs;
 	  while (<STDIN>) {
@@ -259,30 +259,30 @@ OPERATOR encode_resource_stream
 	    print "$line_count $_\n", $s, "\n";
 	  }
 
-OPERATOR file_closure_append
+# OPERATOR file_closure_append
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  sio;
 	  sforward resource_read(closure_data $_[0]), \*STDOUT;
 
-OPERATOR file_read
+# OPERATOR file_read
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	chomp, weval q{scat $_} while <STDIN>
 
-OPERATOR file_write
+# OPERATOR file_write
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($file) = @_;
 	  $file = resource_tmp('file://') unless defined $file;
 	  sforward \*STDIN, swfile $file;
 	  print "$file\n";
 
-OPERATOR hadoop_streaming
+# OPERATOR hadoop_streaming
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($map, $combine, $reduce) = @_;
 	  my ($nuke_inputs, @ipath) = hdfs_input_path;
@@ -327,28 +327,28 @@ OPERATOR hadoop_streaming
 	  resource_nuke $combiner if defined $combiner;
 	  resource_nuke $reducer  if defined $reducer;
 
-OPERATOR head
+# OPERATOR head
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'head', @_
 
-OPERATOR http_websocket_encode
+# OPERATOR http_websocket_encode
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  load 'core/http/ws.pm';
 	  safewrite \*STDOUT, ws_encode($_) while <STDIN>;
 
-OPERATOR http_websocket_encode_batch
+# OPERATOR http_websocket_encode_batch
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  load 'core/http/ws.pm';
 	  safewrite \*STDOUT, ws_encode($_) while saferead \*STDIN, $_, $_[0] || 8192;
 
-OPERATOR interleave
+# OPERATOR interleave
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($ratio, $lambda) = @_;
 	  my $fh = soproc {close STDIN; exec_ni @$lambda};
@@ -389,33 +389,33 @@ OPERATOR interleave
 	  close $fh;
 	  $fh->await;
 
-OPERATOR intify_compact
+# OPERATOR intify_compact
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  cell_eval {args  => 'undef',
 	             begin => 'my %ids; my $n = 0',
 	             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n) - 1'}, @_;
 
-OPERATOR intify_hash
+# OPERATOR intify_hash
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  cell_eval {args  => '$seed',
 	             begin => '$seed ||= 0',
 	             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
 
-OPERATOR jitter_uniform
+# OPERATOR jitter_uniform
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($cs, $mag, $bias) = @_;
 	  my $adjust = $bias - $mag / 2;
 	  cell_eval {args => 'undef', each => "\$xs[\$_] += rand() * $mag + $adjust"}, $cs;
 
-OPERATOR join
+# OPERATOR join
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($left_cols, $right_cols, $f) = @_;
 	  my $fh = sni @$f;
@@ -437,9 +437,9 @@ OPERATOR join
 	    }
 	  }
 
-OPERATOR lisp_code
+# OPERATOR lisp_code
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($code) = @_;
 	  cdup2 0, 3;
@@ -448,59 +448,59 @@ OPERATOR lisp_code
 	                         '(load *standard-input* :verbose nil :print nil)'},
 	            $code;
 
-OPERATOR memory_closure_append
+# OPERATOR memory_closure_append
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print closure_data $_[0]
 
-OPERATOR meta_conf
+# OPERATOR meta_conf
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  sio;
 	  print "$_\t" . conf($_) . "\t$ni::conf_variables{$_}\n" for sort keys %ni::conf_variables;
 
-OPERATOR meta_eval_number
+# OPERATOR meta_eval_number
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print $ni::evals{$_[0] - 1}, "\n"
 
-OPERATOR meta_help
+# OPERATOR meta_help
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($topic) = @_;
 	  $topic = 'tutorial' unless length $topic;
 	  sio; print $ni::self{"doc/$topic.md"}, "\n";
 
-OPERATOR meta_image
+# OPERATOR meta_image
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print image, "\n"
 
-OPERATOR meta_key
+# OPERATOR meta_key
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	my @ks = @_; sio; print "$_\n" for @ni::self{@ks}
 
-OPERATOR meta_keys
+# OPERATOR meta_keys
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_\n" for sort keys %ni::self
 
-OPERATOR meta_op
+# OPERATOR meta_op
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "sub {$ni::operators{$_[0]}}\n"
 
-OPERATOR meta_ops
+# OPERATOR meta_ops
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_\n" for sort keys %ni::operators
 
-OPERATOR meta_options
+# OPERATOR meta_options
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  sio;
 	  for my $c (sort keys %ni::contexts) {
@@ -508,19 +508,19 @@ OPERATOR meta_options
 	    printf "%s\tshort\t%s\t%s\n", meta_context_name $c, $_,                      abbrev dev_inspect_nonl $ni::short_refs{$c}{$_}, 40 for sort keys %{$ni::short_refs{$c}};
 	  }
 
-OPERATOR meta_parser
+# OPERATOR meta_parser
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print json_encode(parser $_[0]), "\n"
 
-OPERATOR meta_parsers
+# OPERATOR meta_parsers
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_\t" . json_encode(parser $_) . "\n" for sort keys %ni::parsers
 
-OPERATOR meta_short_availability
+# OPERATOR meta_short_availability
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  sio;
 	  print "--------" . qwerty_prefixes . "\n";
@@ -534,17 +534,17 @@ OPERATOR meta_short_availability
 	        . "\n";
 	  }
 
-OPERATOR n
+# OPERATOR n
 	Append consecutive integers within a range
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($l, $u) = @_;
 	  sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
 
-OPERATOR numpy_dense
+# OPERATOR numpy_dense
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($col, $f) = @_;
 	  $col ||= 0;
@@ -579,9 +579,9 @@ OPERATOR numpy_dense
 	  close $o;
 	  $o->await;
 
-OPERATOR perl_cell_transformer_op
+# OPERATOR perl_cell_transformer_op
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  # TODO: colspec mapping stuff
 	  stdin_to_perl perl_mapgen->(prefix   => perl_prefix,
@@ -589,29 +589,29 @@ OPERATOR perl_cell_transformer_op
 	                              body     => perl_expand_begin $_[0],
 	                              each     => TODO());
 
-OPERATOR perl_grepper
+# OPERATOR perl_grepper
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	stdin_to_perl perl_grepper $_[0]
 
-OPERATOR perl_mapper
+# OPERATOR perl_mapper
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	stdin_to_perl perl_mapper  $_[0]
 
-OPERATOR prepend
+# OPERATOR prepend
 	Prepend a ni stream to this one
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my @xs = @_;
 	  close(my $fh = siproc {exec_ni @xs});
 	  $fh->await;
 	  sio;
 
-OPERATOR pyspark_local_text
+# OPERATOR pyspark_local_text
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($fn) = @_;
 	  my $inpath   = join ',', map sr("file://$_", qr/\n$/, ''), <STDIN>;
@@ -628,23 +628,23 @@ OPERATOR pyspark_local_text
 	  die "ni: pyspark failed with $_" if $_ = system 'spark-submit', $tempfile;
 	  print "$outpath\n";
 
-OPERATOR pyspark_preview
+# OPERATOR pyspark_preview
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_[0]\n"
 
-OPERATOR quantize
+# OPERATOR quantize
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($cs, $q) = @_;
 	  my $iq = 1 / $q;
 	  cell_eval {args => 'undef',
 	             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
 
-OPERATOR resource_append
+# OPERATOR resource_append
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  sio;
 	  my $decoder = siproc {sdecode};
@@ -652,19 +652,19 @@ OPERATOR resource_append
 	  close $decoder;
 	  $decoder->await;
 
-OPERATOR resource_quote
+# OPERATOR resource_quote
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_[0]\n"
 
-OPERATOR resource_quote_many
+# OPERATOR resource_quote_many
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_\n" for @_
 
-OPERATOR row_cols_defined
+# OPERATOR row_cols_defined
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  no warnings 'uninitialized';
 	  my ($floor, @cs) = @_;
@@ -677,14 +677,14 @@ OPERATOR row_cols_defined
 	    print $line . "\n" if @cs == grep length $fs[$_], @cs;
 	  }
 
-OPERATOR row_every
+# OPERATOR row_every
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	$. % $_[0] || print while <STDIN>
 
-OPERATOR row_fixed_scale
+# OPERATOR row_fixed_scale
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  use constant buf_size => 32768;
 	  sub new_ref() {\(my $x = '')}
@@ -804,14 +804,14 @@ OPERATOR row_fixed_scale
 	  $_->await for @wo;
 	  $stdout_reader->await;
 
-OPERATOR row_match
+# OPERATOR row_match
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>
 
-OPERATOR row_sample
+# OPERATOR row_sample
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  srand conf 'row/seed';
 	  $. = 0;
@@ -819,45 +819,45 @@ OPERATOR row_sample
 	    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
 	  }
 
-OPERATOR row_sort
+# OPERATOR row_sort
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  exec 'sort', sort_extra_args(
 	    '--compress-program=' . conf 'row/sort-compress',
 	    '--buffer-size='      . conf 'row/sort-buffer',
 	    '--parallel='         . conf 'row/sort-parallel'), @_
 
-OPERATOR ruby_grepper
+# OPERATOR ruby_grepper
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	stdin_to_ruby ruby_grepper $_[0]
 
-OPERATOR ruby_mapper
+# OPERATOR ruby_mapper
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	stdin_to_ruby ruby_mapper  $_[0]
 
-OPERATOR scan_regex
+# OPERATOR scan_regex
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"
 
-OPERATOR sh
+# OPERATOR sh
 	Filter stream through a shell command
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	my ($c) = @_; sh $c
 
-OPERATOR sink_null
+# OPERATOR sink_null
 	Consume stream and produce nothing
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	1 while saferead \*STDIN, $_, 8192
 
-OPERATOR sparse_to_dense
+# OPERATOR sparse_to_dense
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($col) = @_;
 	  $col ||= 0;
@@ -881,14 +881,14 @@ OPERATOR sparse_to_dense
 	    print join("\t", map defined() ? $_ : '', @fs), "\n";
 	  }
 
-OPERATOR split_chr
+# OPERATOR split_chr
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'perl', '-lnpe', "y/$_[0]/\t/"
 
-OPERATOR split_proper_csv
+# OPERATOR split_proper_csv
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  while (<STDIN>) {
 	    my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
@@ -896,27 +896,27 @@ OPERATOR split_proper_csv
 	    print join("\t", @fields), "\n";
 	  }
 
-OPERATOR split_regex
+# OPERATOR split_regex
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'perl', '-lnpe', "s/$_[0]/\$1\t/g"
 
-OPERATOR sql_preview
+# OPERATOR sql_preview
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	sio; print "$_[0]\n"
 
-OPERATOR ssh
+# OPERATOR ssh
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($host, $lambda) = @_;
 	  my $ssh_pipe = siproc {exec 'ssh', @$host, shell_quote ni_quoted_exec_args};
 	  quote_ni_into $ssh_pipe, @$lambda;
 
-OPERATOR stderr_monitor
+# OPERATOR stderr_monitor
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
 	  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
@@ -954,26 +954,26 @@ OPERATOR stderr_monitor
 	    }
 	  }
 
-OPERATOR stream_to_gnuplot
+# OPERATOR stream_to_gnuplot
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($args) = @_;
 	  exec 'gnuplot', '-persist', '-e', join '', @$args;
 
-OPERATOR tail
+# OPERATOR tail
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'tail', $_[0], join "", @_[1..$#_]
 
-OPERATOR uniq
+# OPERATOR uniq
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	exec 'uniq'
 
-OPERATOR vertical_apply
+# OPERATOR vertical_apply
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($colspec, $lambda) = @_;
 	  my ($limit, @cols) = @$colspec;
@@ -1024,9 +1024,9 @@ OPERATOR vertical_apply
 	  close $o;
 	  $o->await;
 
-OPERATOR with_left
+# OPERATOR with_left
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my $fh = sni @_;
 	  my $l;
@@ -1036,9 +1036,9 @@ OPERATOR with_left
 	    print "$l\t$_";
 	  }
 
-OPERATOR with_right
+# OPERATOR with_right
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my $fh = sni @_;
 	  my $l;

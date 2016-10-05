@@ -1,16 +1,16 @@
 
-EXTENSIBLE LIST colalt
+# EXTENSIBLE LIST colalt
 	list of alternatives for /f field-select operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| <colspec> -> {cols_op @$_}
 	)
 
-EXTENSIBLE LIST dockeralt
+# EXTENSIBLE LIST dockeralt
 	alternatives for the /C containerize operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| (
 	    (
@@ -47,28 +47,28 @@ EXTENSIBLE LIST dockeralt
 	  ) -> {docker_run_image_op $$_[0], @{$$_[1]}}
 	)
 
-EXTENSIBLE LIST perlalt
+# EXTENSIBLE LIST perlalt
 	alternatives for /p perl operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| <perl_mapper_code> -> {perl_mapper_op $_}
 	)
 
-EXTENSIBLE LIST pysparkrowalt
+# EXTENSIBLE LIST pysparkrowalt
 	alternatives for pyspark/r row operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| <integer> -> {gen "%v.sample(False, $_)"}
 	| /\.(\d+)/ -> {gen "%v.takeSample(False, $_)"}
 	| <pyspark_fn> -> {gen "%v.filter($_)"}
 	)
 
-EXTENSIBLE LIST rowalt
+# EXTENSIBLE LIST rowalt
 	alternatives for the /r row operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| (
 	    'l'
@@ -104,18 +104,18 @@ EXTENSIBLE LIST rowalt
 	| <colspec_fixed> -> {row_cols_defined_op @$_}
 	)
 
-EXTENSIBLE LIST rubyalt
+# EXTENSIBLE LIST rubyalt
 	alternatives for the /m ruby operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| <rbcode> -> {ruby_mapper_op $_}
 	)
 
-EXTENSIBLE LIST scalealt
+# EXTENSIBLE LIST scalealt
 	row scaling alternation list
 
-  OPTIONS
+## OPTIONS
 	(
 	| (
 	    <integer>
@@ -123,10 +123,10 @@ EXTENSIBLE LIST scalealt
 	  ) -> {row_fixed_scale_op @$_}
 	)
 
-EXTENSIBLE LIST sqljoinalt
+# EXTENSIBLE LIST sqljoinalt
 	alternatives for sql/j join operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| (
 	    'L'
@@ -143,10 +143,10 @@ EXTENSIBLE LIST sqljoinalt
 	| <sql_query> -> {['ijoin', $_]}
 	)
 
-EXTENSIBLE LIST sqlrowalt
+# EXTENSIBLE LIST sqlrowalt
 	alternatives for sql/r row operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| <integer> -> {['take',   $_]}
 	| <sqlcode> -> {['filter', $_]}

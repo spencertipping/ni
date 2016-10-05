@@ -52,7 +52,7 @@ export NI_NO_HOME=yes           # IMPORTANT
 ./ni --dev/doc-check
 
 for t in $(ni --doc); do
-  ./ni $t $(./ni $t) > reference/${t#--doc/}
+  ./ni $t $(./ni $t) > reference/${t#--doc/}.md
 done
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then

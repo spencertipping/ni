@@ -1,7 +1,7 @@
 
-META OPERATOR file_data_closure
+# META OPERATOR file_data_closure
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($name, $f) = @{$_[0]};
 	  my $c    = "file-closure://$name";
@@ -15,9 +15,9 @@ META OPERATOR file_data_closure
 	  add_quoted_resource $c;
 	  ();
 
-META OPERATOR memory_data_closure
+# META OPERATOR memory_data_closure
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($name, $f) = @{$_[0]};
 	  my $data;
@@ -28,9 +28,9 @@ META OPERATOR memory_data_closure
 	  add_closure_key $name, $data;
 	  ();
 
-META OPERATOR stderr_monitor_transform
+# META OPERATOR stderr_monitor_transform
 
-  IMPLEMENTATION
+## IMPLEMENTATION
 	
 	  my ($args, $left) = @_;
 	  my ($interval) = @$args;

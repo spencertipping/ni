@@ -1,24 +1,24 @@
 
-EXTENSIBLE DISPATCH TABLE binaryalt
+# EXTENSIBLE DISPATCH TABLE binaryalt
 	dispatch table for the /b binary operator
 
-  OPTIONS
+## OPTIONS
 	(
-	| 'p' <plcode CODE(0x1a58880)> -> {binary_perl_op $_}
+	| 'p' <plcode CODE(0x1ad78d0)> -> {binary_perl_op $_}
 	)
 
-EXTENSIBLE DISPATCH TABLE bufferalt
+# EXTENSIBLE DISPATCH TABLE bufferalt
 	dispatch table for /B buffer operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| 'n' '' -> {buffer_null_op}
 	)
 
-EXTENSIBLE DISPATCH TABLE hadoopalt
+# EXTENSIBLE DISPATCH TABLE hadoopalt
 	hadoop job dispatch table
 
-  OPTIONS
+## OPTIONS
 	(
 	| 'S' (
 	    (
@@ -36,10 +36,10 @@ EXTENSIBLE DISPATCH TABLE hadoopalt
 	  ) -> {hadoop_streaming_op @$_}
 	)
 
-EXTENSIBLE DISPATCH TABLE resourcealt
+# EXTENSIBLE DISPATCH TABLE resourcealt
 	dispatch table for URI prefixes
 
-  OPTIONS
+## OPTIONS
 	(
 	| ''file-closure://' (
 	    /.*/
@@ -107,10 +107,10 @@ EXTENSIBLE DISPATCH TABLE resourcealt
 	  ) -> {$$_[0]} -> {resource_append_op "sftp://$_"}
 	)
 
-EXTENSIBLE DISPATCH TABLE sparkprofile
+# EXTENSIBLE DISPATCH TABLE sparkprofile
 	dispatch for pyspark profiles
 
-  OPTIONS
+## OPTIONS
 	(
 	| 'L' <pyspark_rdd> -> {[pyspark_local_text_op($_),
 	                               file_read_op,
@@ -118,10 +118,10 @@ EXTENSIBLE DISPATCH TABLE sparkprofile
 	| 'dev/compile' <pyspark_rdd> -> {pyspark_preview_op $_}
 	)
 
-EXTENSIBLE DISPATCH TABLE splitalt
+# EXTENSIBLE DISPATCH TABLE splitalt
 	dispatch table for /F split operator
 
-  OPTIONS
+## OPTIONS
 	(
 	| '/' <regex> -> {split_regex_op $_}
 	| ':' /./ -> {split_chr_op   $_}
@@ -136,10 +136,10 @@ EXTENSIBLE DISPATCH TABLE splitalt
 	  ) -> {$$_[1]}
 	)
 
-EXTENSIBLE DISPATCH TABLE sqlprofile
+# EXTENSIBLE DISPATCH TABLE sqlprofile
 	dispatch for SQL profiles
 
-  OPTIONS
+## OPTIONS
 	(
 	| 'dev/compile' <sql_query> -> {sql_preview_op($_[0])}
 	)

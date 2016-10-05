@@ -1,10 +1,10 @@
 
-CONTEXT cell
+# CONTEXT cell
 	cell operator context
 
-  LONG OPERATORS (ni --doc/long X)
+## LONG OPERATORS (ni --doc/long X)
 
-  SHORT OPERATORS (ni --doc/short X)
+## SHORT OPERATORS (ni --doc/short X)
 	cell/a
 	cell/d
 	cell/e
@@ -16,20 +16,20 @@ CONTEXT cell
 	cell/s
 	cell/z
 
-CONTEXT gnuplot
+# CONTEXT gnuplot
 	GNUPlot command context
 
-  LONG OPERATORS (ni --doc/long X)
+## LONG OPERATORS (ni --doc/long X)
 
-  SHORT OPERATORS (ni --doc/short X)
+## SHORT OPERATORS (ni --doc/short X)
 	gnuplot/d
 
-CONTEXT pyspark
+# CONTEXT pyspark
 	PySpark compilation context
 
-  LONG OPERATORS (ni --doc/long X)
+## LONG OPERATORS (ni --doc/long X)
 
-  SHORT OPERATORS (ni --doc/short X)
+## SHORT OPERATORS (ni --doc/short X)
 	pyspark/*
 	pyspark/+
 	pyspark/e
@@ -40,12 +40,12 @@ CONTEXT pyspark
 	pyspark/r
 	pyspark/u
 
-CONTEXT sql
+# CONTEXT sql
 	SQL generator context
 
-  LONG OPERATORS (ni --doc/long X)
+## LONG OPERATORS (ni --doc/long X)
 
-  SHORT OPERATORS (ni --doc/short X)
+## SHORT OPERATORS (ni --doc/short X)
 	sql/*
 	sql/+
 	sql/-

@@ -218,7 +218,7 @@ sub default_doc_fn($$) {$_[1]}
 sub doc_sections(@) {
   my %sections      = @_;
   my @section_order = map $_[$_ * 2], 0..$#_ >> 1;
-  join "\n", map {('', ($_ ? '  ' : '') . $section_order[$_],
+  join "\n", map {('', ($_ ? '## ' : '# ') . $section_order[$_],
                    map "\t$_", split /\n/, $sections{$section_order[$_]})}
              0..$#section_order;
 }
