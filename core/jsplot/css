@@ -10,6 +10,17 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 
 #status {position:absolute; right:2px; bottom:2px; width:300px; opacity:0.2; text-align:right; z-index:9}
 
+#search {position:absolute; right:200px; bottom:0; width:400px; z-index:9}
+#search input {width:400px; font-family:monospace; color:#eee; border:none; outline:none; background:transparent; border-top:solid 1px transparent}
+
+#search input:focus {border-top:solid 1px #f60}
+#search input:hover, #search input:focus {background:rgba(0,0,0,0.75)}
+
+#search-auto .option {cursor:pointer}
+#search-auto .option:hover {background:rgba(96,96,96,0.75)}
+#search-auto {max-height:700px; width:400px; overflow:auto}
+#search-auto:hover {background:rgba(0,0,0,0.75)}
+
 #transform {background:none; margin:0; color:#eee; position:absolute; left:0; top:0; border:none; outline:none; padding:1px 0;
             border-bottom:solid 1px transparent; font-family:monospace; z-index:9}
 

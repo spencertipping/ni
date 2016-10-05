@@ -5,22 +5,20 @@ caterwaul(':all')(function () {
   dataframe(memory_limit) = this /-caterwaul.merge/ {axes: null, axis_types: null, n: 0, preview_lines: [], memory_limit: memory_limit} -re- void 0,
   dataframe.prototype /-caterwaul.merge/ dataframe_methods,
 
-  where [dataframe_methods = capture [push(l)          = ++this.n <= 1024 ? this.preview_lines /~push/ l.split(/\t/) : this /~axis_push/ l.split(/\t/),
-                                      axis_push(vs)    = this.force_axes() -unless [this.axes] -then- this.axes *![x /vs[xi] /~push/ r] /seq
-                                                                                               -where [r = Math.random()],
-                                      axes()           = this.axes ? this.axes.length : 0,
-                                      axis(i)          = this.axes[i],
-                                      index_axis()     =  capture[p(i) = i,                 pnorm(i) = i / n, end() = n] -where [n = this.end()],
-                                      match_axis(i, f) = wcapture[p(i) = f(a.p(i)) ? 1 : 0, pnorm(i) = p(i),  end() = n]
-                                                         -where [a = this.axes[i], n = this.end()],
-                                      capacity()       = this.axes ? this.memory_limit / this.axes.length >>> 3 : 0,
+  where [dataframe_methods = capture [push(l)       = ++this.n <= 1024 ? this.preview_lines /~push/ l.split(/\t/) : this /~axis_push/ l.split(/\t/),
+                                      axis_push(vs) = this.force_axes() -unless [this.axes] -then- this.axes *![x /vs[xi] /~push/ r] /seq
+                                                                                            -where [r = Math.random()],
+                                      eof()         = this.force_axes() -unless [this.axes],
+                                      axes()        = this.axes ? this.axes.length : 0,
+                                      axis(i)       = this.axes[i],
+                                      capacity()    = this.axes ? this.memory_limit / this.axes.length >>> 3 : 0,
 
-                                      force_axes()     = this.axes /eq[axis_types *[new window[x](axis_capacity)] -seq]
-                                                         -then- this.axis_types /eq.axis_types
-                                                         -then- this.preview_lines *!this.axis_push /seq
-                                                         -where [n_axes        = this.preview_lines /[0][x0 /-Math.max/ x.length] -seq || 1,
-                                                                 axis_capacity = this.memory_limit / n_axes >>> 3,
-                                                                 self          = this,
-                                                                 is_numeric(x) = !isNaN(+x),
-                                                                 axis_type(i)  = self.preview_lines /[0][x0 + x[i] /!is_numeric] -seq,
-                                                                 axis_types    = n[n_axes] *[axis_type(x) > 512 ? 'axis' : 'label'] -seq]]]})();
+                                      force_axes()  = this.axes /eq[axis_types *[new window[x](axis_capacity)] -seq]
+                                                      -then- this.axis_types /eq.axis_types
+                                                      -then- this.preview_lines *!this.axis_push /seq
+                                                      -where [n_axes        = this.preview_lines /[0][x0 /-Math.max/ x.length] -seq || 1,
+                                                              axis_capacity = this.memory_limit / n_axes >>> 3,
+                                                              self          = this,
+                                                              is_numeric(x) = !isNaN(+x),
+                                                              axis_type(i)  = self.preview_lines /[0][x0 + x[i] /!is_numeric] -seq,
+                                                              axis_types    = n[n_axes] *[axis_type(x) > self.n/2 ? 'axis' : 'label'] -seq]]]})();

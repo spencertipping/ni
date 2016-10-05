@@ -6,16 +6,17 @@ The way we achieve this is simple: the sample array is indexed by the low N bits
 the total string length, changing the number of bits and collapsing to remain within the memory limits.
 
 caterwaul(':all')(function () {
-  label(capacity) = this /-caterwaul.merge/ {hashes: new Int32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
+  label(capacity) = this /-caterwaul.merge/ {hashes: new Uint32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
   label.prototype /-caterwaul.merge/ label_methods,
 
   label_sample(capacity) = this /-caterwaul.merge/ {s: n[1 << 16] *[''] -seq, bits: 16, size: 0, n: 0, c: capacity} -re- void 0,
   label_sample.prototype /-caterwaul.merge/ label_sample_methods,
 
   where[label_methods = capture[reset()            = this -se [this.n = 0, this.sample = new label_sample(this.c)],
-                                set(i, x)          = this -se [this.hashes[i] = murmurhash3_32(x, 0), this.sample /~push/ x],
-                                pnorm(i)           = (this.hashes[i] & 0x7fffffff) / 0x80000000,
-                                p(i)               = this.hashes[i],
+                                set(i, x)          = this -se [this.hashes[i] = x /-murmurhash3_32/ 0, this.sample /~push/ x],
+                                pnorm(i)           = this.hashes[i] / 0x100000000,
+                                p(i)               = this.pnorm(i),
+                                h(i)               = this.hashes[i],
                                 end()              = this.n /-Math.min/ this.c,
                                 push(x, r)         = this.n++ < this.c ? this.set(this.n - 1, x) : this /x /~uniform_push/ r,
                                 uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]],

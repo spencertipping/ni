@@ -8,4 +8,5 @@ caterwaul(':all')(function () {
         cancel_existing()           = existing_connection /~send/ '' -rescue- null -then- existing_connection.close() -when.existing_connection,
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
-        message_wrapper(f, k='')(e) = k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
+        message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
+                                                                  : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();

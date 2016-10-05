@@ -55,13 +55,13 @@ sub jsplot_stream($$@) {
   my $ni_pipe = sni @$ops, http_websocket_encode_batch_op 65536;
 
   my $incoming;
-  my $rmask   = '';
+  my $rmask = '';
   vec($rmask, fileno $reply, 1) = 1;
 
   while (saferead $ni_pipe, $_, 65536) {
     if (select my $rout = $rmask, undef, undef, 0) {
       saferead $reply, $incoming, 8192;
-      if ($incoming =~ /^\x81\x80/) {
+      if (length $incoming) {
         jsplot_log "SIGTERM to worker\n";
         $ni_pipe->kill('TERM');
         jsplot_log "awaiting worker exit\n";

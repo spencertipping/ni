@@ -72,6 +72,12 @@ $(caterwaul(':all')(function ($) {
                           -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
+                          -then- $('#search input') /~change/ "update_selected($(this).val())".qf
+                                                     /~keyup/ search_complete /~focus/ "$('#search-auto').show()".qf
+                                                                              /~blur/  "$('#search-auto').hide()".qf
+                          -then- $('#search-auto').on('mousedown', '.option', "$('#search input') /~val/ $(this).text()".qf)
+                                                  .on('mouseover', '.option', "update_selected($(this).text()) -then- update_overlay()".qf)
+
                           -then- handle_resizes /-setInterval/ 50
                           -then- "document.location.hash = $(this).val() /!JSON.stringify /!encodeURI".qf /-setInterval/ 50
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
@@ -81,19 +87,54 @@ $(caterwaul(':all')(function ($) {
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
-                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{(data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10}K'
-                             /!update_status /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join('')]
-                      -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it /~join/ '\n')
-                      -when- data_state.frame.axes,
+                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{kb}K'
+                             /!update_status
+                             /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join(''),
+                                     kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10]
+                      -when [data_state.frame.axes && data_state.frame.axes[0]]
+                      -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it.join('\n').substr(0, 65536))
+                             /when[preview.text().length < 65536],
 
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
-                      -where [handle_data(ls) = ls *!data_state.frame.push -seq -then- data_was_revised(ls)],
+                      -where [handle_data(ls) = ls ? ls *!data_state.frame.push -seq -then- data_was_revised(ls)
+                                                   : data_state.frame.eof()          -then- data_was_revised([])],
+
+        label_axes()       = data_state.frame.axes ? data_state.frame.axes %[x.constructor === label] -seq : [],
+        search_complete()  = $('#search-auto').empty() |~append| options *[jquery[div.option /text(x)]] -seq
+                             -where [v           = $('#search input').val().toLowerCase(),
+                                     option_keys = {} -se [label_axes() *![x.sample.s
+                                                                        *![it[x] /eq.it -when [x.length && x.toLowerCase() /~indexOf/ v !== -1]] -seq] -seq],
+                                     options     = option_keys /keys -seq -re- it.sort().slice(0, 1024)],
+
+        selected_points    = [],
+        update_selected(s) = selected_points /eq.new_selected -then- w.val().v /!update_overlay
+                     -where [h            = s /-murmurhash3_32/ 0,
+                             new_selected = (function () {
+                                              var r = [], las = label_axes();
+                                              for (var li = 0; li < las.length; ++li)
+                                                for (var i = 0, a = las[li]; i < a.end(); ++i)
+                                                  if (a.h(i) === h)
+                                                    r.push(i);
+                                              return r;
+                                            })()],
+
+        update_overlay(v)  = oc.clearRect(0, 0, lw, lh) -then- outline_points('#f60', selected_points)
+                     -where [scale                 = lw /-Math.min/ lh >>> 1,
+                             cx                    = lw >>> 1,
+                             cy                    = lh >>> 1,
+                             axes                  = data_state.frame.axes /!axis_map,
+                             m                     = v /!camera.m,
+                             outline_one(x, y, z)  = oc.strokeRect(cx + scale*x/z - 2, cy - scale*y/z - 2, 5, 5) -when [z > 0],
+                             outline(i)            = outline_one(p[0], p[1], p[2]) -where [p = m.transform([axes[0] ? axes[0].p(i) : 0,
+                                                                                                            axes[1] ? axes[1].p(i) : 0,
+                                                                                                            axes[2] ? axes[2].p(i) : 0, 1]) /!camera.norm],
+                             outline_points(c, is) = oc.strokeStyle /eq.c -then- is *!outline /seq],    // TODO: optimize
 
         axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
         update_screen()    = handle_resizes()
                      -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
-                     -then-  update_overlay()
+                     -then-  update_overlay(v)
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
                      -where [v = w.val().v]],

@@ -6,6 +6,13 @@ BEGIN {
   eval 'use Digest::SHA qw/sha1_base64/';
   load 'core/deps/sha1.pm',
     Digest::SHA::PurePerl->import(qw/sha1_base64/) if $@;
+
+  eval 'use Encode qw/encode/';
+  if ($@) {
+    warn 'ni: websockets will fail for utf-8 data on this machine '
+       . '(no Encode module)';
+    *encode = sub {$_[1]};
+  }
 }
 
 use constant ws_guid => '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
@@ -29,4 +36,7 @@ sub ws_length_encode($) {
   return pack 'CNN', 127, $n >> 32, $n;
 }
 
-sub ws_encode($) {"\x81" . ws_length_encode(length $_[0]) . $_[0]}
+sub ws_encode($) {
+  my $e = encode 'utf8', $_[0];
+  "\x81" . ws_length_encode(length $e) . $e;
+}

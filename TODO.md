@@ -32,7 +32,7 @@ e.g. `/mc9drc24` for `/mnt/cache/t9/data/reddit-comments-2015.lz4`
 ### Configuration variables
 
 ### JSPlot
-#### Labeled points
+#### Refactor renderer to support arbitrary operations
 #### Labeled axes/grids/etc
 Must be client-side; this way it can happen after autoranging and during zooms.
 

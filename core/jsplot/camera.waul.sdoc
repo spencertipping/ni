@@ -34,8 +34,9 @@ caterwaul(':all')(function ($) {
                           .on('focus',      '.number',     given.e in $(this).select())),
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
-        number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n,
-                                                                            s(v) = this.modus('val', +v /!n)],
+        nan_protect(x)  = x /!isNaN ? 0 : x,
+        number_ui(n)(v) = jquery[input.number /modus(g, s) /val(v)] -where [g()  = this.modus('val') /!+eval /!n /!nan_protect,
+                                                                            s(v) = this.modus('val', +v /!n /!nan_protect)],
 
         axis_mapping()  = jquery[input /modus(g, s)] -where [g()  = this.modus('val').split('') *[x.charCodeAt(0) - 65] -seq,
                                                              s(v) = this.modus('val', (v || 'ABCDE') *[String.fromCharCode(65 + x)] -seq -re- it.join(''))],

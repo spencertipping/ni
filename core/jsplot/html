@@ -15,6 +15,10 @@
   <label id='camera-mode'>camera</label>
   <label id='object-mode'>object</label>
 </div>
+<div id='search'>
+  <div id='search-auto'></div>
+  <input id='search-text'></input>
+</div>
 <div id='status'>
   <label id='sizelabel'></label>
 </div>
