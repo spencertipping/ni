@@ -13,7 +13,8 @@ feature).
 our %operators;
 our %meta_operators;
 
-our %operator_doc;
+defdocumentable operator      => \%operators;
+defdocumentable meta_operator => \%meta_operators;
 
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
@@ -22,8 +23,6 @@ sub defmetaoperator($$) {
   $meta_operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defmetaoperator $name";
 }
-
-sub docmetaoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
@@ -63,8 +62,6 @@ sub defoperator($$) {
   ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
-
-sub docoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub operate {
   my ($name, @args) = @_;

@@ -107,7 +107,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-22 doc.pl.sdoc
+21 doc.pl.sdoc
 Documentation generator.
 Produces documentation by inspecting data structures. For the most part this is
 delegated.
@@ -118,6 +118,7 @@ our %doc_entities;
 sub documentation_for($$) {
   my ($type, $thing) = @_;
   return $doc{$type}{ref $thing}->($thing) if ref $thing;
+  return $doc{$type}{$thing}->($thing)     if ref $doc{$type}{$thing};
   $doc{$type}{$thing};
 }
 
@@ -128,9 +129,7 @@ sub defdocumentable($$) {
   ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
   ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
 }
-
-defdocumentable ni_fn => \%{ni::};
-87 util.pl.sdoc
+92 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -159,6 +158,11 @@ sub noise_char() {substr noise_chars, rand(length noise_chars), 1}
 sub noise_str($) {join '', map noise_char, 1..$_[0]}
 
 sub abbrev($$) {length($_[0]) < $_[1] ? $_[0] : substr($_[0], 0, $_[1] - 3) . '...'}
+
+sub indent($;$) {
+  my ($s, $indent) = (@_, 2);
+  join "\n", map ' ' x $indent . $_, split /\n/, $s;
+}
 
 Module loading.
 ni can include .pm files in its resource stream, which contain Perl code but
@@ -253,7 +257,7 @@ sub dev_trace($) {
     @r;
   };
 }
-195 parse.pl.sdoc
+196 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -265,7 +269,7 @@ BEGIN {defdocumentable 'parser', \%parsers}
 docparser ARRAY => fn q{
   my ($p) = @_;
   my ($pname, @args) = @$p;
-  my $doc = parser_doc $pname;
+  my $doc = $ni::doc{parser}{$pname};
   ref $doc ? $doc->($p) : $doc;
 };
 
@@ -288,6 +292,7 @@ sub defparseralias($$) {
   die "ni: defparseralias cannot redefine $name" if exists $parsers{$name};
   $parsers{$name} = $alias;
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
+  docparser $name, parser_doc $alias;
 }
 
 our $recursion_level = 0;
@@ -316,8 +321,8 @@ BEGIN {
 }
 
 docparser pend   => q{<end of ARGV>};
-docparser pempty => q{<end of arg>};
-docparser pk     => fn q{"<nothing, evaluate as $_[0]>"};
+docparser pempty => q{<empty arg>};
+docparser pk     => fn q{"<'', evaluate as $_[0]>"};
 docparser pnone  => q{''};
 
 Basic combinators.
@@ -392,28 +397,28 @@ BEGIN {
 
 docparser pseq => fn q{
   my ($self, @ps) = @{$_[0]};
-  join ' ', map parser_doc $_, @ps;
+  '( ' . join(' ', map parser_doc $_, @ps) . ' )';
 };
 
 docparser prep => fn q{
   my ($self, $p, $n) = (@{$_[0]}, 0);
   my $rep_symbol = $n == 0 ? '*' : $n == 1 ? '+' : "{$n+ times}";
-  '( ' . parser_doc($p) . " ) $rep_symbol";
+  parser_doc($p) . "$rep_symbol";
 };
 
 docparser popt => fn q{
   my ($self, $p) = @{$_[0]};
-  '( ' . parser_doc($p) . ' ) ?';
+  parser_doc($p) . '?';
 };
 
 docparser pmap => fn q{
   my ($self, $f, $p) = @{$_[0]};
-  '( ' . parser_doc($p) . " ) map {$f}";
+  parser_doc($p) . "->{$f}";
 };
 
 docparser pcond => fn q{
   my ($self, $f, $p) = @{$_[0]};
-  '( ' . parser_doc($p) . " ) if {$f}";
+  parser_doc($p) . "->if{$f}";
 };
 
 sub pn($@)
@@ -442,12 +447,12 @@ sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
 
 docparser prx => fn q{
   my ($self, $r) = @{$_[0]};
-  qr/$r/;
+  '/' . qr/$r/ . '/';
 };
 
 docparser pnx => fn q{
   my ($self, $r) = @{$_[0]};
-  '!' . qr/$r/;
+  '!/' . qr/$r/ . '/';
 };
 69 common.pl.sdoc
 Regex parsing.
@@ -519,7 +524,7 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
-93 cli.pl.sdoc
+102 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -528,6 +533,8 @@ about is the long/short option dispatch, which looks like this:
 | option = alt @longs, dsp %shorts
 
 our %contexts;
+our %shorts;
+our %longs;
 our %long_names;
 our %long_refs;
 our %short_refs;
@@ -537,6 +544,8 @@ our %alts;
 c
 BEGIN {
   defdocumentable context => \%contexts;
+  defdocumentable short   => \%shorts;
+  defdocumentable long    => \%longs;
   defdocumentable dsp     => \%dsps;
   defdocumentable alt     => \%alts;
 }
@@ -548,8 +557,13 @@ sub defcontext($$) {
   $long_names{$c} = ['<short dispatch>'];
   $contexts{$c}   = paltr @{$long_refs{$c}};
 
+  doccontext $c, $doc;
+
   defparseralias "$c/short",  pdspr %{$short_refs{$c}};
   defparseralias "$c/op",     $contexts{$c};
+  docparser "$c/short", "<$c/short>";
+  docparser "$c/op",    "<$c/op>";
+
   defparseralias "$c/suffix", prep $contexts{$c};
   defparseralias "$c/series", prep pn 1, popt pempty, $contexts{$c}, popt pempty;
   defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
@@ -557,9 +571,6 @@ sub defcontext($$) {
 
   defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
-
-  doccontext $c, $doc;
-  defdocumentable "${c}_short" => $short_refs{$c};
 }
 
 sub defshort($$) {
@@ -567,18 +578,19 @@ sub defshort($$) {
   warn "ni: defshort is redefining '$_[0]' (use rmshort to avoid this warning)"
     if exists $short_refs{$context}{$dsp};
   defparseralias "$context/short/$dsp" => $_[1];
-  $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
+  $shorts{$_[0]} = $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
   defparseralias "$context/long/$name" => $_[1];
   unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, ["$context/long/$name"];
+  unshift @{$long_refs{$context}}, $longs{$_[0]} = ["$context/long/$name"];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
+  delete $shorts{$_[0]};
   delete $short_refs{$context}{$dsp};
   delete $ni::parsers{"$context/short/$dsp"};
 }
@@ -598,6 +610,7 @@ sub defalt($$@) {
   no strict 'refs';
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
+  docalt $name, $doc;
   @{$vname} = @entries;
   $alts{$name} = \@{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
@@ -608,12 +621,13 @@ sub defdsp($$%) {
   no strict 'refs';
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
+  docdsp $name, $doc;
   %{$vname} = %entries;
   $dsps{$name} = \%{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }
-73 op.pl.sdoc
+70 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -629,7 +643,8 @@ feature).
 our %operators;
 our %meta_operators;
 
-our %operator_doc;
+defdocumentable operator      => \%operators;
+defdocumentable meta_operator => \%meta_operators;
 
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
@@ -638,8 +653,6 @@ sub defmetaoperator($$) {
   $meta_operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defmetaoperator $name";
 }
-
-sub docmetaoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
@@ -679,8 +692,6 @@ sub defoperator($$) {
   ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
-
-sub docoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub operate {
   my ($name, @args) = @_;
@@ -741,7 +752,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-146 main.pl.sdoc
+163 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -846,6 +857,23 @@ Usage: ni --explain-meta normal-ni-options...
 Describes the operators produced from the specified command line, after
 evaluating all meta-operators. Each operator in the output corresponds to a
 forked process in the pipeline.
+_
+
+defclispecial "--doc/$_", qq{
+  return print ${_}_doc \$_[0], "\\n" if \@_;
+  print "\$_\\n" for sort keys \%{\$ni::doc{'$_'}};
+}, <<_
+Usage: ni --doc/$_ [<${_}-name>]
+Print documentation for <${_}-name> if specified; otherwise list all ${_}s for
+which documentation exists.
+_
+for keys %ni::doc;
+
+defclispecial '--doc', q{print "--doc/$_\n" for sort keys %ni::doc}, <<'_';
+Usage: ni --doc
+Prints a list of all documentable types of things. For example, "parser" is one
+such thing, and from there you can run `ni --doc/parser X`, where `X` is the
+name of a parser. (`ni --doc/parser` will list all of them.)
 _
 
 Root CLI context.
@@ -5115,7 +5143,7 @@ defshort '/Q',
     'dev/compile' => pmap q{sql_preview_op($_[0])}, sql_query;
 1 core/python/lib
 python.pl.sdoc
-46 core/python/python.pl.sdoc
+41 core/python/python.pl.sdoc
 Python stuff.
 A context for processing stuff in Python, as well as various functions to
 handle the peculiarities of Python code.
@@ -5147,11 +5175,6 @@ sub pydent($) {
   my $spaces = ' ' x $indent;
   $lines[$_] =~ s/^$spaces// for 1..$#lines;
   join "\n", @lines;
-}
-
-sub indent($;$) {
-  my ($code, $indent) = (@_, 2);
-  join "\n", map ' ' x $indent . $_, split /\n/, $code;
 }
 
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}

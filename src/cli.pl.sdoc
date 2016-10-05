@@ -6,6 +6,8 @@ about is the long/short option dispatch, which looks like this:
 | option = alt @longs, dsp %shorts
 
 our %contexts;
+our %shorts;
+our %longs;
 our %long_names;
 our %long_refs;
 our %short_refs;
@@ -15,6 +17,8 @@ our %alts;
 c
 BEGIN {
   defdocumentable context => \%contexts;
+  defdocumentable short   => \%shorts;
+  defdocumentable long    => \%longs;
   defdocumentable dsp     => \%dsps;
   defdocumentable alt     => \%alts;
 }
@@ -26,8 +30,13 @@ sub defcontext($$) {
   $long_names{$c} = ['<short dispatch>'];
   $contexts{$c}   = paltr @{$long_refs{$c}};
 
+  doccontext $c, $doc;
+
   defparseralias "$c/short",  pdspr %{$short_refs{$c}};
   defparseralias "$c/op",     $contexts{$c};
+  docparser "$c/short", "<$c/short>";
+  docparser "$c/op",    "<$c/op>";
+
   defparseralias "$c/suffix", prep $contexts{$c};
   defparseralias "$c/series", prep pn 1, popt pempty, $contexts{$c}, popt pempty;
   defparseralias "$c/lambda", pn 1, prc qr/\[/, parser "$c/series", prx qr/\]/;
@@ -35,9 +44,6 @@ sub defcontext($$) {
 
   defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
-
-  doccontext $c, $doc;
-  defdocumentable "${c}_short" => $short_refs{$c};
 }
 
 sub defshort($$) {
@@ -45,18 +51,19 @@ sub defshort($$) {
   warn "ni: defshort is redefining '$_[0]' (use rmshort to avoid this warning)"
     if exists $short_refs{$context}{$dsp};
   defparseralias "$context/short/$dsp" => $_[1];
-  $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
+  $shorts{$_[0]} = $short_refs{$context}{$dsp} = ["$context/short/$dsp"];
 }
 
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
   defparseralias "$context/long/$name" => $_[1];
   unshift @{$long_names{$context}}, $name;
-  unshift @{$long_refs{$context}}, ["$context/long/$name"];
+  unshift @{$long_refs{$context}}, $longs{$_[0]} = ["$context/long/$name"];
 }
 
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
+  delete $shorts{$_[0]};
   delete $short_refs{$context}{$dsp};
   delete $ni::parsers{"$context/short/$dsp"};
 }
@@ -76,6 +83,7 @@ sub defalt($$@) {
   no strict 'refs';
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
+  docalt $name, $doc;
   @{$vname} = @entries;
   $alts{$name} = \@{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
@@ -86,6 +94,7 @@ sub defdsp($$%) {
   no strict 'refs';
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
+  docdsp $name, $doc;
   %{$vname} = %entries;
   $dsps{$name} = \%{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};

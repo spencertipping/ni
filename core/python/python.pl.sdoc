@@ -31,11 +31,6 @@ sub pydent($) {
   join "\n", @lines;
 }
 
-sub indent($;$) {
-  my ($code, $indent) = (@_, 2);
-  join "\n", map ' ' x $indent . $_, split /\n/, $code;
-}
-
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 
 Python code parse element.

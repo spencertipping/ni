@@ -104,6 +104,23 @@ evaluating all meta-operators. Each operator in the output corresponds to a
 forked process in the pipeline.
 _
 
+defclispecial "--doc/$_", qq{
+  return print ${_}_doc \$_[0], "\\n" if \@_;
+  print "\$_\\n" for sort keys \%{\$ni::doc{'$_'}};
+}, <<_
+Usage: ni --doc/$_ [<${_}-name>]
+Print documentation for <${_}-name> if specified; otherwise list all ${_}s for
+which documentation exists.
+_
+for keys %ni::doc;
+
+defclispecial '--doc', q{print "--doc/$_\n" for sort keys %ni::doc}, <<'_';
+Usage: ni --doc
+Prints a list of all documentable types of things. For example, "parser" is one
+such thing, and from there you can run `ni --doc/parser X`, where `X` is the
+name of a parser. (`ni --doc/parser` will list all of them.)
+_
+
 Root CLI context.
 This is used by extensions that define long and short options.
 

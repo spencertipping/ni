@@ -8,6 +8,7 @@ our %doc_entities;
 sub documentation_for($$) {
   my ($type, $thing) = @_;
   return $doc{$type}{ref $thing}->($thing) if ref $thing;
+  return $doc{$type}{$thing}->($thing)     if ref $doc{$type}{$thing};
   $doc{$type}{$thing};
 }
 
