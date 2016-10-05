@@ -6,58 +6,54 @@ cd $(dirname $0)
 
 ./boot
 
-module() {
-  echo -en "ni --internal/lib $1                   \r"
-  ./ni --internal/lib $1
-}
-
 export NI_NO_HOME=yes           # IMPORTANT
-module core/gen
-module core/json
-module core/deps
-
-module core/conf
-module core/stream
-module core/meta
-module core/monitor
-module core/uri
-module core/fn
-module core/closure
-module core/destructure
-
-module core/checkpoint
-module core/net
-module core/buffer
-
-module core/col
-module core/row
-module core/cell
-
-module core/pl
-module core/rb
-module core/lisp
-module core/sql
-module core/python
-
-module core/binary
-module core/matrix
-module core/gnuplot
-
-module core/http
-module core/caterwaul
-module core/jsplot
-
-module core/docker
-module core/hadoop
-module core/pyspark
-
-module doc
-unset NI_NO_HOME
+./ni --internal/lib \
+  core/gen \
+  core/json \
+  core/deps \
+  \
+  core/conf \
+  core/stream \
+  core/meta \
+  core/monitor \
+  core/uri \
+  core/fn \
+  core/closure \
+  core/destructure \
+  \
+  core/checkpoint \
+  core/net \
+  core/buffer \
+  \
+  core/col \
+  core/row \
+  core/cell \
+  \
+  core/pl \
+  core/rb \
+  core/lisp \
+  core/sql \
+  core/python \
+  \
+  core/binary \
+  core/matrix \
+  core/gnuplot \
+  \
+  core/http \
+  core/caterwaul \
+  core/jsplot \
+  \
+  core/docker \
+  core/hadoop \
+  core/pyspark \
+  \
+  doc
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1
 fi
 
-echo
+unset NI_NO_HOME
+
 wc -c ni

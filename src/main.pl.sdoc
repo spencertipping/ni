@@ -22,7 +22,11 @@ defclispecial '--dev/parse-one', q{
 Extensions.
 Options to extend and modify the ni image.
 
-defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
+defclispecial '--internal/lib', q{
+  extend_self 'lib', $_ for @_;
+  modify_self 'ni.map';
+};
+
 defclispecial '--lib', q{intern_lib shift; goto \&main};
 
 defclispecial '--run', q{

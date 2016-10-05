@@ -39,7 +39,6 @@ sub extend_self($$) {
   intern_lib $lib;
   set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$type $lib"
     unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{'ni.map'};
-  modify_self 'ni.map';
 }
 
 sub image {read_map 'ni.map'}

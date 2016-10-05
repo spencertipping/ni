@@ -592,7 +592,7 @@ sub defnioperator($$) {
   }
   *{"${name}_op"} = sub() {$ops};
 }
-54 self.pl.sdoc
+53 self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
@@ -634,7 +634,6 @@ sub extend_self($$) {
   intern_lib $lib;
   set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$type $lib"
     unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{'ni.map'};
-  modify_self 'ni.map';
 }
 
 sub image {read_map 'ni.map'}
@@ -647,7 +646,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-92 main.pl.sdoc
+96 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -672,7 +671,11 @@ defclispecial '--dev/parse-one', q{
 Extensions.
 Options to extend and modify the ni image.
 
-defclispecial '--internal/lib', q{extend_self 'lib', $_[0]};
+defclispecial '--internal/lib', q{
+  extend_self 'lib', $_ for @_;
+  modify_self 'ni.map';
+};
+
 defclispecial '--lib', q{intern_lib shift; goto \&main};
 
 defclispecial '--run', q{
@@ -8779,7 +8782,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-264 doc/row.md
+277 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -9042,8 +9045,21 @@ value. ni assumes both streams are sorted already, e.g. using the `g` operator.
 ```bash
 $ ni word-list p'r a, length a' > word-lengths
 $ ni word-list gj[word-lengths g] r10
-
+2016	2016	4
+A	A	1
+ACTION	ACTION	6
+AN	AN	2
+AND	AND	3
+ANY	ANY	3
+ANY	ANY	3
+ARISING	ARISING	7
+AS	AS	2
+AUTHORS	AUTHORS	7
 ```
+
+As shown above, joins are strictly line-sequential: every output consumes a
+line from each stream. This is unlike the UNIX `join` command, which outputs a
+Cartesian product.
 143 doc/ruby.md
 # Ruby interface
 The `m` operator (for "map") lets you use a Ruby line processor to transform
