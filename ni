@@ -3712,10 +3712,35 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-3 core/row/join.pl.sdoc
+28 core/row/join.pl.sdoc
 Streaming joins.
 The UNIX `join` command does this, but rearranges fields in the process. ni
 implements its own operators as a workaround.
+
+defoperator join => q{
+  my ($left_cols, $right_cols, $f) = @_;
+  my $fh = sni @$f;
+  my ($leof, $reof) = (0, 0);
+  while (!$leof && !$reof) {
+    chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>)[@$left_cols]);
+    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>  )[@$right_cols]);
+
+    until ($lkey eq $rkey or $leof or $reof) {
+      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>)[@$left_cols]),
+        $reof ||= !defined $rrow until $reof or $rkey ge $lkey;
+      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>)[@$right_cols]),
+        $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
+    }
+
+    if ($lkey eq $rkey) {
+      chomp $lrow;
+      print "$lrow\t$rrow";
+    }
+  }
+};
+
+# TODO: colspecs
+defshort '/j', pmap q{join_op [0], [0], $_}, _qfn;
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -8754,7 +8779,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-253 doc/row.md
+264 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -8767,6 +8792,7 @@ anything else. They include:
 - Rows satisfying code
 - Reorder rows
 - Count identical rows
+- Joining sorted rows
 
 ## First/last
 Shorthands for UNIX `head` and `tail`.
@@ -9007,6 +9033,16 @@ $ ni word-list gcOr10           # by descending count
 4	OF
 4	IN
 3	SOFTWARE
+```
+
+## Joining
+You can use the `j` operator to inner-join two streams on the first column
+value. ni assumes both streams are sorted already, e.g. using the `g` operator.
+
+```bash
+$ ni word-list p'r a, length a' > word-lengths
+$ ni word-list gj[word-lengths g] r10
+
 ```
 143 doc/ruby.md
 # Ruby interface

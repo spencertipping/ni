@@ -1,3 +1,28 @@
 Streaming joins.
 The UNIX `join` command does this, but rearranges fields in the process. ni
 implements its own operators as a workaround.
+
+defoperator join => q{
+  my ($left_cols, $right_cols, $f) = @_;
+  my $fh = sni @$f;
+  my ($leof, $reof) = (0, 0);
+  while (!$leof && !$reof) {
+    chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>)[@$left_cols]);
+    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>  )[@$right_cols]);
+
+    until ($lkey eq $rkey or $leof or $reof) {
+      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>)[@$left_cols]),
+        $reof ||= !defined $rrow until $reof or $rkey ge $lkey;
+      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>)[@$right_cols]),
+        $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
+    }
+
+    if ($lkey eq $rkey) {
+      chomp $lrow;
+      print "$lrow\t$rrow";
+    }
+  }
+};
+
+# TODO: colspecs
+defshort '/j', pmap q{join_op [0], [0], $_}, _qfn;

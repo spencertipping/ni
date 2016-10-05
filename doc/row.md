@@ -10,6 +10,7 @@ anything else. They include:
 - Rows satisfying code
 - Reorder rows
 - Count identical rows
+- Joining sorted rows
 
 ## First/last
 Shorthands for UNIX `head` and `tail`.
@@ -251,3 +252,26 @@ $ ni word-list gcOr10           # by descending count
 4	IN
 3	SOFTWARE
 ```
+
+## Joining
+You can use the `j` operator to inner-join two streams on the first column
+value. ni assumes both streams are sorted already, e.g. using the `g` operator.
+
+```bash
+$ ni word-list p'r a, length a' > word-lengths
+$ ni word-list gj[word-lengths g] r10
+2016	2016	4
+A	A	1
+ACTION	ACTION	6
+AN	AN	2
+AND	AND	3
+ANY	ANY	3
+ANY	ANY	3
+ARISING	ARISING	7
+AS	AS	2
+AUTHORS	AUTHORS	7
+```
+
+As shown above, joins are strictly line-sequential: every output consumes a
+line from each stream. This is unlike the UNIX `join` command, which outputs a
+Cartesian product.
