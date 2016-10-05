@@ -1,19 +1,22 @@
 #Quickstart Guide
 
-Like most classified knowledge, `ni` is need-to-know; I'd recommend reading over the 
-
-Be judicious about the setup that you do; if you're most comfortable in Ruby, you can be productive with `ni` without setting up SBCL to get Lisp access.
 
 ##How to Learn ni
 
 1. `git clone` the repo, `cd` into the folder, and run `./build.sh` to get `ni` installed on your machine
 2. Set up `ssh` (see below).
-3. Run `ni --js` and play around with some of the cool [graphical examples](examples.md).
+3. Run `ni --js` and play around with some of the cool [graphical examples](examples.md).  Take a look at the [docs](#using-the-web-interface).
 4. Work through the documentation on [streams](stream.md), [row operations](row.md), and [column operators](col.md).
-5. If you have a dominant language among [Ruby](ruby.md), [Perl](perl.md), and [Lisp](lisp.md), work through the appropriate documentation. If you don't have a dominant language, [Perl](perl.md) is used most heavily in the documentation, and [Ruby](ruby.md) is likely the easiest to learn.
-    - SBCL Lisp setup instructions are below.
-6. ????
-7. Revenue; profit if you've been efficient.
+5. Work through the [Perl](perl.md) documentation, which is the most complete. Don't worry if you don't exactly understand the Perl syntax; if you know any scripting language it should make enough sense.
+6. Work through the [Ruby](ruby.md) documentation.
+   - It should make sense.
+   - Note the importance of casting value types, which is unique to Ruby.
+7. If you have no Lisp experience, you may want to skip over the Lisp documentation, since its syntax is significantly different from scripting languages.
+8. Else:
+    - Install SBCL Lisp if necessary (see below)
+    - Work through the [Lisp](lisp.md) documentation.
+
+At this point, you are competent enough to write this documentation. To prove this to yourself, put some data in a TSV on your `dev` machine, then use `ni` to stream it to your machine and run a job on it.
 
 ##Setting up SSH
 
