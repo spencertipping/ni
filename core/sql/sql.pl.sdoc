@@ -91,7 +91,7 @@ For the most part we model SQL operations the same way that we address Spark
 RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
 c
-BEGIN {defcontext 'sql'}
+BEGIN {defcontext 'sql', q{SQL generator context}}
 BEGIN {defparseralias sql_table => pmap q{sqlgen $_}, prc '^[^][]*'}
 BEGIN {defparseralias sql_query => pmap q{sql_compile $$_[0], @{$$_[1]}},
                                    pseq sql_table, popt parser 'sql/qfn'}

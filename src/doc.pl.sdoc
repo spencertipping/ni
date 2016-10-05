@@ -1,0 +1,20 @@
+Documentation generator.
+Produces documentation by inspecting data structures. For the most part this is
+delegated.
+
+our %doc;
+our %doc_entities;
+
+sub documentation_for($$) {
+  my ($type, $thing) = @_;
+  return $doc{$type}{ref $thing}->($thing) if ref $thing;
+  $doc{$type}{$thing};
+}
+
+sub defdocumentable($$) {
+  my ($name, $global_hash) = @_;
+  $doc_entities{$name} = $global_hash;
+  $doc{$name}          = {};
+  ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
+  ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
+}

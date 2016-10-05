@@ -4,6 +4,15 @@ indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
 our %parsers;
+BEGIN {defdocumentable 'parser', \%parsers}
+
+docparser ARRAY => fn q{
+  my ($p) = @_;
+  my ($pname, @args) = @$p;
+  my $doc = parser_doc $pname;
+  ref $doc ? $doc->($p) : $doc;
+};
+
 sub parser($) {
   die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
   [$_[0]];
@@ -50,6 +59,11 @@ BEGIN {
   defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
 
+docparser pend   => q{<end of ARGV>};
+docparser pempty => q{<end of arg>};
+docparser pk     => fn q{"<nothing, evaluate as $_[0]>"};
+docparser pnone  => q{''};
+
 Basic combinators.
 Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
 a dispatch on specified prefixes. The 'r' suffix means that the parser
@@ -76,6 +90,18 @@ BEGIN {
 
 sub palt(@) {my @ps = @_; paltr @ps}
 sub pdsp(%) {my %ps = @_; pdspr %ps}
+
+docparser paltr => fn q{
+  my ($self, $alt) = @{$_[0]};
+  my @docs = map indent(parser_doc $_, 2), @$alt;
+  join "\n| ", @docs;
+};
+
+docparser pdspr => fn q{
+  my ($self, $dsp) = @{$_[0]};
+  my @docs = map indent("'$_' " . parser_doc $$dsp{$_}, 2), sort keys %$dsp;
+  join "\n| ", @docs;
+};
 
 c
 BEGIN {
@@ -108,6 +134,32 @@ BEGIN {
       my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
+docparser pseq => fn q{
+  my ($self, @ps) = @{$_[0]};
+  join ' ', map parser_doc $_, @ps;
+};
+
+docparser prep => fn q{
+  my ($self, $p, $n) = (@{$_[0]}, 0);
+  my $rep_symbol = $n == 0 ? '*' : $n == 1 ? '+' : "{$n+ times}";
+  '( ' . parser_doc($p) . " ) $rep_symbol";
+};
+
+docparser popt => fn q{
+  my ($self, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . ' ) ?';
+};
+
+docparser pmap => fn q{
+  my ($self, $f, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . " ) map {$f}";
+};
+
+docparser pcond => fn q{
+  my ($self, $f, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . " ) if {$f}";
+};
+
 sub pn($@)
 { my ($n, @ps) = @_;
   'ARRAY' eq ref $n ? pmap fn "[\@\$_[" . join(',', @$n) . "]]", pseq @ps
@@ -131,3 +183,13 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
+
+docparser prx => fn q{
+  my ($self, $r) = @{$_[0]};
+  qr/$r/;
+};
+
+docparser pnx => fn q{
+  my ($self, $r) = @{$_[0]};
+  '!' . qr/$r/;
+};

@@ -13,12 +13,17 @@ feature).
 our %operators;
 our %meta_operators;
 
+our %operator_doc;
+
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
   die "ni: cannot redefine meta operator $name" if exists $meta_operators{$name};
+  warn "ni: overlapping op/meta definition $name" if exists $operators{$name};
   $meta_operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defmetaoperator $name";
 }
+
+sub docmetaoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
@@ -52,27 +57,17 @@ input. Operators act independently of one another.
 sub defoperator($$) {
   my ($name, $f) = @_;
   die "ni: cannot redefine operator $name" if exists $operators{$name};
+  warn "ni: overlapping op/meta definition $name" if exists $meta_operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
   ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
 
+sub docoperator($$) {$operator_doc{$_[0]} = $_[1]}
+
 sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
-}
-
-Ni operators.
-Some operators are most easily specified in terms of ni commands.
-
-sub defnioperator($$) {
-  my ($name, $op) = @_;
-  my ($ops) = cli shell_unquote $op;
-  if (!defined $ops) {
-    my (undef, @rest) = parse parser '/cli_debug', shell_unquote $op;
-    die "ni: defnioperator parse failed starting at @rest";
-  }
-  *{"${name}_op"} = sub() {$ops};
 }

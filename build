@@ -49,6 +49,8 @@ export NI_NO_HOME=yes           # IMPORTANT
   \
   doc
 
+./ni --dev/doc-check
+
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1

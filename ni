@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-52 ni.map.sdoc
+53 ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly. The filenames
@@ -66,6 +66,7 @@ subdirectory of src/.
 bootcode
 resource ni.map.sdoc
 
+resource doc.pl.sdoc
 resource util.pl.sdoc
 resource dev.pl.sdoc
 resource parse.pl.sdoc
@@ -106,6 +107,29 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
+22 doc.pl.sdoc
+Documentation generator.
+Produces documentation by inspecting data structures. For the most part this is
+delegated.
+
+our %doc;
+our %doc_entities;
+
+sub documentation_for($$) {
+  my ($type, $thing) = @_;
+  return $doc{$type}{ref $thing}->($thing) if ref $thing;
+  $doc{$type}{$thing};
+}
+
+sub defdocumentable($$) {
+  my ($name, $global_hash) = @_;
+  $doc_entities{$name} = $global_hash;
+  $doc{$name}          = {};
+  ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
+  ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
+}
+
+defdocumentable ni_fn => \%{ni::};
 87 util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
@@ -229,13 +253,22 @@ sub dev_trace($) {
     @r;
   };
 }
-133 parse.pl.sdoc
+195 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
 allows ni to build an operator mapping table.
 
 our %parsers;
+BEGIN {defdocumentable 'parser', \%parsers}
+
+docparser ARRAY => fn q{
+  my ($p) = @_;
+  my ($pname, @args) = @$p;
+  my $doc = parser_doc $pname;
+  ref $doc ? $doc->($p) : $doc;
+};
+
 sub parser($) {
   die "ni: parser $_[0] is not defined" unless exists $parsers{$_[0]};
   [$_[0]];
@@ -282,6 +315,11 @@ BEGIN {
   defparser 'pnone',  '',  q{(undef,       @_[1..$#_])};
 }
 
+docparser pend   => q{<end of ARGV>};
+docparser pempty => q{<end of arg>};
+docparser pk     => fn q{"<nothing, evaluate as $_[0]>"};
+docparser pnone  => q{''};
+
 Basic combinators.
 Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
 a dispatch on specified prefixes. The 'r' suffix means that the parser
@@ -308,6 +346,18 @@ BEGIN {
 
 sub palt(@) {my @ps = @_; paltr @ps}
 sub pdsp(%) {my %ps = @_; pdspr %ps}
+
+docparser paltr => fn q{
+  my ($self, $alt) = @{$_[0]};
+  my @docs = map indent(parser_doc $_, 2), @$alt;
+  join "\n| ", @docs;
+};
+
+docparser pdspr => fn q{
+  my ($self, $dsp) = @{$_[0]};
+  my @docs = map indent("'$_' " . parser_doc $$dsp{$_}, 2), sort keys %$dsp;
+  join "\n| ", @docs;
+};
 
 c
 BEGIN {
@@ -340,6 +390,32 @@ BEGIN {
       my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()};
 }
 
+docparser pseq => fn q{
+  my ($self, @ps) = @{$_[0]};
+  join ' ', map parser_doc $_, @ps;
+};
+
+docparser prep => fn q{
+  my ($self, $p, $n) = (@{$_[0]}, 0);
+  my $rep_symbol = $n == 0 ? '*' : $n == 1 ? '+' : "{$n+ times}";
+  '( ' . parser_doc($p) . " ) $rep_symbol";
+};
+
+docparser popt => fn q{
+  my ($self, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . ' ) ?';
+};
+
+docparser pmap => fn q{
+  my ($self, $f, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . " ) map {$f}";
+};
+
+docparser pcond => fn q{
+  my ($self, $f, $p) = @{$_[0]};
+  '( ' . parser_doc($p) . " ) if {$f}";
+};
+
 sub pn($@)
 { my ($n, @ps) = @_;
   'ARRAY' eq ref $n ? pmap fn "[\@\$_[" . join(',', @$n) . "]]", pseq @ps
@@ -363,6 +439,16 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
+
+docparser prx => fn q{
+  my ($self, $r) = @{$_[0]};
+  qr/$r/;
+};
+
+docparser pnx => fn q{
+  my ($self, $r) = @{$_[0]};
+  '!' . qr/$r/;
+};
 69 common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
@@ -433,7 +519,7 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
-79 cli.pl.sdoc
+93 cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -445,9 +531,18 @@ our %contexts;
 our %long_names;
 our %long_refs;
 our %short_refs;
+our %dsps;
+our %alts;
 
-sub defcontext($) {
-  my ($c) = @_;
+c
+BEGIN {
+  defdocumentable context => \%contexts;
+  defdocumentable dsp     => \%dsps;
+  defdocumentable alt     => \%alts;
+}
+
+sub defcontext($$) {
+  my ($c, $doc) = @_;
   $short_refs{$c} = {};
   $long_refs{$c}  = [pdspr %{$short_refs{$c}}];
   $long_names{$c} = ['<short dispatch>'];
@@ -462,6 +557,9 @@ sub defcontext($) {
 
   defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
+
+  doccontext $c, $doc;
+  defdocumentable "${c}_short" => $short_refs{$c};
 }
 
 sub defshort($$) {
@@ -501,6 +599,7 @@ sub defalt($$@) {
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   @{$vname} = @entries;
+  $alts{$name} = \@{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
   paltr @{$vname};
 }
@@ -510,10 +609,11 @@ sub defdsp($$%) {
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   %{$vname} = %entries;
+  $dsps{$name} = \%{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }
-78 op.pl.sdoc
+73 op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -529,12 +629,17 @@ feature).
 our %operators;
 our %meta_operators;
 
+our %operator_doc;
+
 sub defmetaoperator($$) {
   my ($name, $f) = @_;
   die "ni: cannot redefine meta operator $name" if exists $meta_operators{$name};
+  warn "ni: overlapping op/meta definition $name" if exists $operators{$name};
   $meta_operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defmetaoperator $name";
 }
+
+sub docmetaoperator($$) {$operator_doc{$_[0]} = $_[1]}
 
 sub meta_operate($$$) {
   my ($operator, $position, $context) = @_;
@@ -568,29 +673,19 @@ input. Operators act independently of one another.
 sub defoperator($$) {
   my ($name, $f) = @_;
   die "ni: cannot redefine operator $name" if exists $operators{$name};
+  warn "ni: overlapping op/meta definition $name" if exists $meta_operators{$name};
   $operators{$name} = fn $f;
   ni::eval "sub ${name}_op(@) {['$name', \@_]}", "defoperator $name";
   ni::eval "sub ${name}_run(@) {\$ni::operators{$name}->(\@_)}",
            "defoperator $name ($f)";
 }
 
+sub docoperator($$) {$operator_doc{$_[0]} = $_[1]}
+
 sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
-}
-
-Ni operators.
-Some operators are most easily specified in terms of ni commands.
-
-sub defnioperator($$) {
-  my ($name, $op) = @_;
-  my ($ops) = cli shell_unquote $op;
-  if (!defined $ops) {
-    my (undef, @rest) = parse parser '/cli_debug', shell_unquote $op;
-    die "ni: defnioperator parse failed starting at @rest";
-  }
-  *{"${name}_op"} = sub() {$ops};
 }
 53 self.pl.sdoc
 Image functions.
@@ -646,27 +741,57 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-96 main.pl.sdoc
+146 main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
 
 our %cli_special;
-sub defclispecial($$) {$cli_special{$_[0]} = fn $_[1]}
+BEGIN {defdocumentable 'clispecial', \%cli_special}
+
+sub defclispecial($$$) {
+  $cli_special{$_[0]} = fn $_[1];
+  docclispecial $_[0], $_[2];
+}
 
 Development options.
 Things useful for developing ni.
 
-defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"};
-defclispecial '--dev/parse', q{
-  dev_trace 'ni::parse';
-  cli_parse @_;
-};
+defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"}, <<'_';
+Development option: evaluate an expression within the `ni::` package, and print
+the result. For example:
+
+$ ni --dev/eval '3 + 4'
+7
+_
+
+defclispecial '--dev/parse', q{dev_trace 'ni::parse'; cli_parse @_}, <<'_';
+Development option: trace the ni::parse function and attempt to parse the
+command line. Mostly useful for debugging.
+_
 
 defclispecial '--dev/parse-one', q{
   dev_trace 'ni::parse';
   parse ni::eval($_[0]), @_[1..$#_];
-};
+}, <<'_';
+Development option: trace the ni::parse function and evaluate the specified
+parser on the rest of the command line arguments. For example:
+
+$ ni --dev/parse-one 'parser "/qfn"' [gc]
+_
+
+defclispecial '--dev/doc-check' => q{
+  my $undocumented = 0;
+  for my $type (sort keys %ni::doc_entities) {
+    exists $ni::doc{$type}{$_} or ++$undocumented && print "$type\t$_\n"
+      for sort keys %{$ni::doc_entities{$type}};
+  }
+  print "$undocumented undocumented thing(s)\n";
+  !!$undocumented;
+}, <<'_';
+Development option: find things (parsers, ops, etc) that have been defined but
+have no documentation associated with them.
+_
 
 Extensions.
 Options to extend and modify the ni image.
@@ -674,16 +799,27 @@ Options to extend and modify the ni image.
 defclispecial '--internal/lib', q{
   extend_self 'lib', $_ for @_;
   modify_self 'ni.map';
-};
+}, <<'_';
+Usage: ni --internal/lib lib1 lib2 ... libN
+Modifies the ni image in-place to include the specified libraries. See ni
+//help/libraries for more information.
+_
 
-defclispecial '--lib', q{intern_lib shift; goto \&main};
+defclispecial '--lib', q{intern_lib shift; goto \&main}, <<'_';
+Usage: ni --lib lib-dir normal-ni-options...
+Preloads a library before running normally. ni does not self-modify on disk if
+you do this, though the library will be available in remote contexts.
+_
 
 defclispecial '--run', q{
   $ni::self{"transient/eval"} .= "\n$_[0]\n";
   ni::eval $_[0], "--run $_[0]";
   shift;
   goto \&main;
-};
+}, <<'_';
+Usage: ni --run 'perl code' normal-ni-options...
+Runs code before running normally.
+_
 
 Documentation.
 
@@ -693,7 +829,11 @@ defclispecial '--explain', q{
   if (ref $r) {
     print json_encode($_), "\n" for flatten_operators $r;
   }
-};
+}, <<'_';
+Usage: ni --explain normal-ni-options...
+Describes the operators and meta-operators produced from the specified command
+line. Meta-operators are unevaluated in this form.
+_
 
 defclispecial '--explain-meta', q{
   my ($r, @rest) = cli_parse @_;
@@ -701,12 +841,17 @@ defclispecial '--explain-meta', q{
   if (ref $r) {
     print json_encode($_), "\n" for apply_meta_operators flatten_operators $r;
   }
-};
+}, <<'_';
+Usage: ni --explain-meta normal-ni-options...
+Describes the operators produced from the specified command line, after
+evaluating all meta-operators. Each operator in the output corresponds to a
+forked process in the pipeline.
+_
 
 Root CLI context.
 This is used by extensions that define long and short options.
 
-defcontext '';
+defcontext '', q{toplevel CLI context};
 
 Main stuff.
 sub main() is called by the ni boot header on @ARGV. I've separated
@@ -2288,7 +2433,7 @@ sub scat {
     }
   }
 }
-79 core/stream/self.pl.sdoc
+83 core/stream/self.pl.sdoc
 Self invocation.
 You can run ni and read from the resulting file descriptor; this gives you a
 way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2323,7 +2468,11 @@ defclispecial '--internal/operate-quoted', q{
   safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
   $fh->await;
-};
+}, <<'_';
+Internal option: causes ni to parse keys within its image and use those as the
+list of operators to run. This is how all of ni's remoting is done; the
+indirection prevents us from hitting any size limits on ARGV or ENV.
+_
 
 sub sforward_quoted($$) {
   my ($n, $b);
@@ -3781,7 +3930,7 @@ Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
 
-defcontext 'cell';
+defcontext 'cell', q{cell operator context};
 defshort '/,', parser 'cell/qfn';
 
 c
@@ -4926,7 +5075,7 @@ For the most part we model SQL operations the same way that we address Spark
 RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
 c
-BEGIN {defcontext 'sql'}
+BEGIN {defcontext 'sql', q{SQL generator context}}
 BEGIN {defparseralias sql_table => pmap q{sqlgen $_}, prc '^[^][]*'}
 BEGIN {defparseralias sql_query => pmap q{sql_compile $$_[0], @{$$_[1]}},
                                    pseq sql_table, popt parser 'sql/qfn'}
@@ -5216,7 +5365,7 @@ gnuplot.pl.sdoc
 Gnuplot interop.
 An operator that sends output to a gnuplot process.
 
-defcontext 'gnuplot';
+defcontext 'gnuplot', q{GNUPlot command context};
 defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator stream_to_gnuplot => q{
@@ -6242,7 +6391,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-92 core/jsplot/jsplot.pl.sdoc
+96 core/jsplot/jsplot.pl.sdoc
 JSPlot interop.
 JSPlot is served over HTTP as a portable web interface. It requests data via
 AJAX, and may request the same data multiple times to save browser memory. The
@@ -6334,7 +6483,11 @@ sub jsplot_server {
   };
 }
 
-defclispecial '--js', q{jsplot_server $_[0] || 8090};
+defclispecial '--js', q{jsplot_server $_[0] || 8090}, <<'_';
+Usage: ni --js [port=8090]
+Runs a web interface that allows you to visualize data streams. See ni
+//help/visual for details.
+_
 1 core/docker/lib
 docker.pl.sdoc
 88 core/docker/docker.pl.sdoc
@@ -6605,7 +6758,7 @@ sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
 sub pyspark_create_lambda($) {$_[0]}
 
 c
-BEGIN {defcontext 'pyspark'}
+BEGIN {defcontext 'pyspark', q{PySpark compilation context}}
 BEGIN {
   defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
   defparseralias pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;

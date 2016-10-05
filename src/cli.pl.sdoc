@@ -9,9 +9,18 @@ our %contexts;
 our %long_names;
 our %long_refs;
 our %short_refs;
+our %dsps;
+our %alts;
 
-sub defcontext($) {
-  my ($c) = @_;
+c
+BEGIN {
+  defdocumentable context => \%contexts;
+  defdocumentable dsp     => \%dsps;
+  defdocumentable alt     => \%alts;
+}
+
+sub defcontext($$) {
+  my ($c, $doc) = @_;
   $short_refs{$c} = {};
   $long_refs{$c}  = [pdspr %{$short_refs{$c}}];
   $long_names{$c} = ['<short dispatch>'];
@@ -26,6 +35,9 @@ sub defcontext($) {
 
   defparseralias "$c/cli", pn 0, parser "$c/series", pend;
   defparseralias "$c/cli_debug", parser "$c/series";
+
+  doccontext $c, $doc;
+  defdocumentable "${c}_short" => $short_refs{$c};
 }
 
 sub defshort($$) {
@@ -65,6 +77,7 @@ sub defalt($$@) {
   my ($name, $doc, @entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   @{$vname} = @entries;
+  $alts{$name} = \@{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($) {unshift @{$vname}, $_[0]};
   paltr @{$vname};
 }
@@ -74,6 +87,7 @@ sub defdsp($$%) {
   my ($name, $doc, %entries) = @_;
   my $vname = __PACKAGE__ . "::$name";
   %{$vname} = %entries;
+  $dsps{$name} = \%{$vname};
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }

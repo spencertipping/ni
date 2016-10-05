@@ -89,4 +89,8 @@ sub jsplot_server {
   };
 }
 
-defclispecial '--js', q{jsplot_server $_[0] || 8090};
+defclispecial '--js', q{jsplot_server $_[0] || 8090}, <<'_';
+Usage: ni --js [port=8090]
+Runs a web interface that allows you to visualize data streams. See ni
+//help/visual for details.
+_

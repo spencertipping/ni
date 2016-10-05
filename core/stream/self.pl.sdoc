@@ -32,7 +32,11 @@ defclispecial '--internal/operate-quoted', q{
   safewrite $fh, $_ while safereadbuf $ni::data, $_, 8192;
   close $fh;
   $fh->await;
-};
+}, <<'_';
+Internal option: causes ni to parse keys within its image and use those as the
+list of operators to run. This is how all of ni's remoting is done; the
+indirection prevents us from hitting any size limits on ARGV or ENV.
+_
 
 sub sforward_quoted($$) {
   my ($n, $b);

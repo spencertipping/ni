@@ -1,7 +1,7 @@
 Gnuplot interop.
 An operator that sends output to a gnuplot process.
 
-defcontext 'gnuplot';
+defcontext 'gnuplot', q{GNUPlot command context};
 defshort 'gnuplot/d', pk 'plot "-" with dots';
 
 defoperator stream_to_gnuplot => q{
