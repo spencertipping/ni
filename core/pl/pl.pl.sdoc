@@ -23,7 +23,7 @@ this case, `END`.
 
 c
 BEGIN {
-defparser 'plcode', '$', sub {
+defparser 'plcode', '$', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my $safecode      = $code;

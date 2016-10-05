@@ -231,9 +231,16 @@ sub defdocumentable($$;$) {
   ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
   ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
 }
-34 dev.pl.sdoc
+42 dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
+
+sub try_to_resolve_coderef($) {
+  for my $f (keys %{ni::}) {
+    return "ni::$f" if \&{"ni::$f"} eq $_[0];
+  }
+  return '<opaque code reference>';
+}
 
 sub dev_inspect($;\%);
 sub dev_inspect($;\%) {
@@ -244,6 +251,7 @@ sub dev_inspect($;\%) {
   $$refs{$x} = $x if defined $x;
   my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, %$refs), @$x) . ']'
         : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, %$refs), keys %$x) . '}'
+        : 'CODE'  eq ref $x ? try_to_resolve_coderef($x)
         : defined $x        ? "" . $x
         :                     'undef';
   delete $$refs{$x} if defined $x;
@@ -266,7 +274,7 @@ sub dev_trace($) {
     @r;
   };
 }
-230 parse.pl.sdoc
+231 parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -291,8 +299,9 @@ sub defparserebnf($$) {$parser_ebnf{$_[0]} = fn $_[1]}
 sub parser_ebnf($) {
   my ($p) = @_;
   return "<$p>" unless ref $p;
+  return "<core parser {\n" . indent($p, 2) . "\n}>" unless 'ARRAY' eq ref $p;
   my ($name, @args) = @$p;
-  return "<" . join(' ', $name, @args) . ">" unless exists $parser_ebnf{$name};
+  return "<" . join(' ', $name, map dev_inspect($_), @args) . ">" unless exists $parser_ebnf{$name};
   $parser_ebnf{$name}->($p);
 }
 
@@ -352,7 +361,7 @@ BEGIN {
 
 defparserebnf pend   => q{'<argv_end>'};
 defparserebnf pempty => q{'<empty>'};
-defparserebnf pk     => q{"<'', evaluate as $_[0][1]>"};
+defparserebnf pk     => q{"<'', evaluate as " . dev_inspect($_[0][1]) . ">"};
 defparserebnf pnone  => q{"''"};
 
 Basic combinators.
@@ -518,12 +527,12 @@ string literals and backslash escapes.
 _
 
 defparser 'generic_code', '',
-  sub {my ($self, $code, @xs) = @_;
-       return ($code, '', @xs) unless $code =~ /\]$/;
-       (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
-       my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
-       $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
-                : ($code, '', @xs)};
+  q{my ($self, $code, @xs) = @_;
+    return ($code, '', @xs) unless $code =~ /\]$/;
+    (my $tcode = $code) =~ s/"([^"\\\\]+|\\\\.)"|'([^'\\\\]+|\\\\.)'//g;
+    my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
+    $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
+             : ($code, '', @xs)};
 
 
 Basic CLI types.
@@ -4632,7 +4641,7 @@ this case, `END`.
 
 c
 BEGIN {
-defparser 'plcode', '$', sub {
+defparser 'plcode', '$', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my $safecode      = $code;
@@ -4851,7 +4860,7 @@ use POSIX ();
 
 c
 BEGIN {
-defparser 'rbcode', '', sub {
+defparser 'rbcode', '', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my ($x, $status) = ('', 0);

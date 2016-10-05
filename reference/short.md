@@ -440,7 +440,7 @@
 
 ## SYNTAX
 	(
-	| 'p' <plcode CODE(0xed7780)> -> {binary_perl_op $_}
+	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 
 # SHORT OPERATOR /c
@@ -603,12 +603,12 @@
 # SHORT OPERATOR /zd
 
 ## SYNTAX
-	<'', evaluate as ARRAY(0xcc4e60)>
+	<'', evaluate as [decode]>
 
 # SHORT OPERATOR /zn
 
 ## SYNTAX
-	<'', evaluate as ARRAY(0xcc4d40)>
+	<'', evaluate as [sink_null]>
 
 # SHORT OPERATOR cell/a
 
@@ -702,7 +702,7 @@
 # SHORT OPERATOR pyspark/g
 
 ## SYNTAX
-	<'', evaluate as CODE(0xff4960)>
+	<'', evaluate as <opaque code reference>>
 
 # SHORT OPERATOR pyspark/m
 
@@ -731,7 +731,7 @@
 # SHORT OPERATOR pyspark/u
 
 ## SYNTAX
-	<'', evaluate as CODE(0x102aca0)>
+	<'', evaluate as <opaque code reference>>
 
 # SHORT OPERATOR sql/*
 
@@ -798,4 +798,4 @@
 # SHORT OPERATOR sql/u
 
 ## SYNTAX
-	<'', evaluate as ARRAY(0xee4380)>
+	<'', evaluate as [uniq]>

@@ -22,8 +22,9 @@ sub defparserebnf($$) {$parser_ebnf{$_[0]} = fn $_[1]}
 sub parser_ebnf($) {
   my ($p) = @_;
   return "<$p>" unless ref $p;
+  return "<core parser {\n" . indent($p, 2) . "\n}>" unless 'ARRAY' eq ref $p;
   my ($name, @args) = @$p;
-  return "<" . join(' ', $name, @args) . ">" unless exists $parser_ebnf{$name};
+  return "<" . join(' ', $name, map dev_inspect($_), @args) . ">" unless exists $parser_ebnf{$name};
   $parser_ebnf{$name}->($p);
 }
 
@@ -83,7 +84,7 @@ BEGIN {
 
 defparserebnf pend   => q{'<argv_end>'};
 defparserebnf pempty => q{'<empty>'};
-defparserebnf pk     => q{"<'', evaluate as $_[0][1]>"};
+defparserebnf pk     => q{"<'', evaluate as " . dev_inspect($_[0][1]) . ">"};
 defparserebnf pnone  => q{"''"};
 
 Basic combinators.

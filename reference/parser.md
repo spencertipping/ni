@@ -313,7 +313,7 @@
 	    </qfn>
 	  ) -> {configure_op @$_}
 	| 'b' (
-	  | 'p' <plcode CODE(0xfc44e0)> -> {binary_perl_op $_}
+	  | 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	  )
 	| 'c' '' -> {count_op}
 	| 'e' <shell_command> -> {sh_op $_}
@@ -392,8 +392,8 @@
 	| 'w' </qfn> -> {with_right_op @$_}
 	| 'x' <colspec>? -> {ref $_ ? colswap_op @$_ : colswap_op 2, 1}
 	| 'z' <compressor_spec>
-	| 'zd' <'', evaluate as ARRAY(0xdb2580)>
-	| 'zn' <'', evaluate as ARRAY(0xdb2460)>
+	| 'zd' <'', evaluate as [decode]>
+	| 'zn' <'', evaluate as [sink_null]>
 	)
 
 # PARSER /suffix
@@ -749,7 +749,7 @@
 
 ## DEFINITION
 	(
-	| 'p' <plcode CODE(0xfc44e0)> -> {binary_perl_op $_}
+	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 
 # PARSER dsp/bufferalt
@@ -898,6 +898,29 @@
 ## DEFINITION
 	/-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?/ such that {length} -> {0 + $_}
 
+# PARSER fn_expander
+
+## DEFINITION
+	<core parser {
+	  CODE(0x1a10358)
+	}>
+
+# PARSER generic_code
+	Counts brackets outside quoted strings, which in our case are '' and "".
+	Doesn't look for regular expressions because these vary by language; but this
+	parser should be able to handle most straightforward languages with quoted
+	string literals and backslash escapes.
+
+## DEFINITION
+	<core parser {
+	  my ($self, $code, @xs) = @_;
+	      return ($code, '', @xs) unless $code =~ /\]$/;
+	      (my $tcode = $code) =~ s/"([^"\\]+|\\.)"|'([^'\\]+|\\.)'//g;
+	      my $balance = length(sgr $tcode, qr/[^[]/, '') - length(sgr $tcode, qr/[^]]/, '');
+	      $balance ? (substr($code, 0, $balance), substr($code, $balance), @xs)
+	               : ($code, '', @xs)
+	}>
+
 # PARSER gnuplot/lambda
 	A bracketed lambda function in context 'gnuplot'
 
@@ -1032,20 +1055,171 @@
 	| <integer>
 	)
 
+# PARSER paltr
+
+## DEFINITION
+	<core parser {
+	  my ($self, @xs, @ps, @r) = @_;
+	        @r = parse $_, @xs and return @r for @ps = @{parser $$self[1]}; ()
+	}>
+
+# PARSER pcond
+
+## DEFINITION
+	<core parser {
+	  my ($self, @is) = @_;
+	        my (undef, $f, $p) = @$self;
+	        $f = fn $f;
+	        my @xs = parse $p, @is; @xs && &$f($_ = $xs[0]) ? @xs : ()
+	}>
+
+# PARSER pdspr
+
+## DEFINITION
+	<core parser {
+	  my ($self, $x, @xs, $k, @ys, %ls, $c) = @_;
+	        my (undef, $ps) = @$self;
+	        return () unless defined $x;
+	        ++$ls{length $_} for keys %$ps;
+	        for my $l (sort {$b <=> $a} keys %ls) {
+	          return (@ys = parse $$ps{$c}, substr($x, $l), @xs) ? @ys : ()
+	          if exists $$ps{$c = substr $x, 0, $l} and $l <= length $x;
+	        }
+	        ()
+	}>
+
+# PARSER pempty
+
+## DEFINITION
+	<core parser {
+	  defined $_[1] && length $_[1] ? () : (0, @_[2..$#_])
+	}>
+
+# PARSER pend
+
+## DEFINITION
+	<core parser {
+	  @_ > 1                        ? () : (0)
+	}>
+
 # PARSER perl_cell_transform_code
 
 ## DEFINITION
-	<plcode CODE(0xfadfe8)>
+	<plcode ni::perl_mapper>
 
 # PARSER perl_grepper_code
 
 ## DEFINITION
-	<plcode CODE(0xfae108)>
+	<plcode ni::perl_grepper>
 
 # PARSER perl_mapper_code
 
 ## DEFINITION
-	<plcode CODE(0xfadfe8)>
+	<plcode ni::perl_mapper>
+
+# PARSER pk
+
+## DEFINITION
+	<core parser {
+	  (${$_[0]}[1], @_[1..$#_])
+	}>
+
+# PARSER plcode
+
+## DEFINITION
+	<core parser {
+	  
+	    return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
+	    my ($self, $code, @xs) = @_;
+	    my $safecode      = $code;
+	    my $begin_warning = $safecode =~ s/BEGIN/ END /g;
+	    my $codegen       = $$self[1];
+	    my $status        = 0;
+	    my $x             = '';
+	    $x .= ']' while $status = syntax_check 'perl -c -', &$codegen($safecode)
+	                    and ($safecode =~ s/\]$//, $code =~ s/\]$//);
+	    die <<EOF if $status;
+	  ni: failed to get closing bracket count for perl code "$code$x", possibly
+	      because BEGIN-block metaprogramming is disabled when ni tries to figure
+	      this out. To avoid this, make sure the shell argument containing your code
+	      ends with something that isn't a closing bracket; e.g:
+	      p'[[some code]]'            # this may fail due to bracket inference
+	      p'[[some code]] '           # this works by bypassing it
+	      [p'[some code] ' ]          # this works for ni lambdas
+	  EOF
+	    ($code, $x, @xs);
+	}>
+
+# PARSER pmap
+
+## DEFINITION
+	<core parser {
+	  my ($self, @is) = @_;
+	        my (undef, $f, $p) = @$self;
+	        $f = fn $f;
+	        my @xs = parse $p, @is; @xs ? (&$f($_ = $xs[0]), @xs[1..$#xs]) : ()
+	}>
+
+# PARSER pnone
+
+## DEFINITION
+	<core parser {
+	  (undef,       @_[1..$#_])
+	}>
+
+# PARSER pnx
+
+## DEFINITION
+	<core parser {
+	  my ($self, $x, @xs) = @_;
+	        defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)
+	}>
+
+# PARSER popt
+
+## DEFINITION
+	<core parser {
+	  my ($self, @is) = @_;
+	        my @xs = parse $$self[1], @is; @xs ? @xs : (undef, @is)
+	}>
+
+# PARSER prep
+
+## DEFINITION
+	<core parser {
+	  my ($self, @is, @c, @r) = @_;
+	        my (undef, $p, $n) = (@$self, 0);
+	        push @r, $_ while ($_, @is) = parse $p, (@c = @is);
+	        @r >= $n ? (\@r, @c) : ()
+	}>
+
+# PARSER prx
+
+## DEFINITION
+	<core parser {
+	  my ($self, $x, @xs) = @_;
+	        defined $x && $x =~ s/^($$self[1])// ? (dor($2, $1), $x, @xs) : ()
+	}>
+
+# PARSER pseq
+
+## DEFINITION
+	<core parser {
+	  my ($self, @is, $x, @xs, @ys) = @_;
+	        my (undef, @ps) = @$self;
+	        (($x, @is) = parse $_, @is) ? push @xs, $x : return () for @ps;
+	        (\@xs, @is)
+	}>
+
+# PARSER pstr
+
+## DEFINITION
+	<core parser {
+	  my ($self, $x, @xs) = @_;
+	        defined $x && index($x, $$self[1]) == 0
+	          ? ($$self[1], substr($x, length $$self[1]), @xs)
+	          : ()
+	}>
 
 # PARSER pycode
 
@@ -1100,7 +1274,7 @@
 	| '*' <pyspark_rdd> -> {gen "%v.intersect($_)"}
 	| '+' <pyspark_rdd> -> {gen "%v.union($_)"}
 	| 'e' /([^]]+)/ -> {TODO(); gen "%v.pipe(" . pyquote($_) . ")"}
-	| 'g' <'', evaluate as CODE(0x10b2b50)>
+	| 'g' <'', evaluate as <opaque code reference>>
 	| 'm' <pyspark_fn> -> {gen "%v.map(lambda x: $_)"}
 	| 'n' <integer> -> {gen "%v.union(sc.parallelize(range(1, 1+$_)))"}
 	| 'n0' <integer> -> {gen "%v.union(sc.parallelize(range($_)))"}
@@ -1109,7 +1283,7 @@
 	  | /\.(\d+)/ -> {gen "%v.takeSample(False, $_)"}
 	  | <pyspark_fn> -> {gen "%v.filter($_)"}
 	  )
-	| 'u' <'', evaluate as CODE(0x1150e30)>
+	| 'u' <'', evaluate as <opaque code reference>>
 	)
 
 # PARSER pyspark/suffix
@@ -1132,6 +1306,22 @@
 
 ## DEFINITION
 	<number>? -> {$_ || 1}
+
+# PARSER rbcode
+
+## DEFINITION
+	<core parser {
+	  
+	    return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
+	    my ($self, $code, @xs) = @_;
+	    my ($x, $status) = ('', 0);
+	    $x .= ']' while $status = syntax_check 'ruby -c -', $code and $code =~ s/\]$//;
+	    die <<EOF if $status;
+	  ni: failed to get closing bracket count for ruby code "$code$x"; this means
+	      your code has a syntax error.
+	  EOF
+	    ($code, $x, @xs);
+	}>
 
 # PARSER regex
 	Regular expression, delimited by slashes
@@ -1259,7 +1449,7 @@
 	  | <integer> -> {['take',   $_]}
 	  | <sqlcode> -> {['filter', $_]}
 	  )
-	| 'u' <'', evaluate as ARRAY(0xfd4b60)>
+	| 'u' <'', evaluate as [uniq]>
 	)
 
 # PARSER sql/suffix

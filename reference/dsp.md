@@ -4,7 +4,7 @@
 
 ## OPTIONS
 	(
-	| 'p' <plcode CODE(0x1ad78d0)> -> {binary_perl_op $_}
+	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 
 # EXTENSIBLE DISPATCH TABLE bufferalt
