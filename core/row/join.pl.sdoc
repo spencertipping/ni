@@ -9,6 +9,8 @@ defoperator join => q{
   while (!$leof && !$reof) {
     chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>)[@$left_cols]);
     chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>  )[@$right_cols]);
+    $reof ||= !defined $rrow;
+    $leof ||= !defined $lrow;
 
     until ($lkey eq $rkey or $leof or $reof) {
       chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>)[@$left_cols]),
@@ -17,7 +19,7 @@ defoperator join => q{
         $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
     }
 
-    if ($lkey eq $rkey) {
+    if ($lkey eq $rkey and !$leof && !$reof) {
       chomp $lrow;
       print "$lrow\t$rrow";
     }

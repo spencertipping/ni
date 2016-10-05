@@ -3715,7 +3715,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-28 core/row/join.pl.sdoc
+30 core/row/join.pl.sdoc
 Streaming joins.
 The UNIX `join` command does this, but rearranges fields in the process. ni
 implements its own operators as a workaround.
@@ -3727,6 +3727,8 @@ defoperator join => q{
   while (!$leof && !$reof) {
     chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>)[@$left_cols]);
     chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>  )[@$right_cols]);
+    $reof ||= !defined $rrow;
+    $leof ||= !defined $lrow;
 
     until ($lkey eq $rkey or $leof or $reof) {
       chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>)[@$left_cols]),
@@ -3735,7 +3737,7 @@ defoperator join => q{
         $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
     }
 
-    if ($lkey eq $rkey) {
+    if ($lkey eq $rkey and !$leof && !$reof) {
       chomp $lrow;
       print "$lrow\t$rrow";
     }
