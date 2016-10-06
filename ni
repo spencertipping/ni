@@ -4294,7 +4294,7 @@ BEGIN {
   *tep = \&time_epoch_pieces;
   *tpe = \&time_pieces_epoch;
 }
-133 core/pl/pl.pl.sdoc
+142 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4404,12 +4404,21 @@ sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
 defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
 
-defoperator perl_cell_transformer_op => q{
-  # TODO: colspec mapping stuff
-  stdin_to_perl perl_mapgen->(prefix   => perl_prefix,
-                              closures => perl_closures,
-                              body     => perl_expand_begin $_[0],
-                              each     => TODO());
+defoperator perl_cell_transformer => q{
+  my ($colspec, $code) = @_;
+  my ($limit, @cols) = @$colspec;
+  my $gen = gen q{
+    for my $fi (%cols) {
+      $_ = $F[$fi];
+      $F[$fi] = row;
+    }
+    r @F;
+  };
+  stdin_to_perl perl_mapgen->(
+    prefix   => perl_prefix,
+    closures => perl_closures,
+    body     => perl_expand_begin $code,
+    each     => $gen->(cols => @cols ? join ',', @cols : '0..$#F'));
 };
 
 c
