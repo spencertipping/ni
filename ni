@@ -53,27 +53,22 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-52 ni.map.sdoc
+47 core/boot/ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
-included in the ni image itself so it can rebuild accordingly. The filenames
-referenced from this file correspond to SDoc-processed entries in src/.
-
-Note that these are just the entries for the core image. ni modifies itself
-during the build process to include more extensions, each of which lives in a
-subdirectory of src/.
+included in the ni image itself so it can rebuild accordingly.
 
 bootcode
-resource ni.map.sdoc
+resource core/boot/ni.map.sdoc
 
-resource util.pl.sdoc
-resource dev.pl.sdoc
-resource parse.pl.sdoc
-resource common.pl.sdoc
-resource cli.pl.sdoc
-resource op.pl.sdoc
-resource self.pl.sdoc
-resource main.pl.sdoc
+resource core/boot/util.pl.sdoc
+resource core/boot/dev.pl.sdoc
+resource core/boot/parse.pl.sdoc
+resource core/boot/common.pl.sdoc
+resource core/boot/cli.pl.sdoc
+resource core/boot/op.pl.sdoc
+resource core/boot/self.pl.sdoc
+resource core/boot/main.pl.sdoc
 lib core/gen
 lib core/json
 lib core/deps
@@ -106,7 +101,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-87 util.pl.sdoc
+87 core/boot/util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -194,7 +189,7 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-34 dev.pl.sdoc
+34 core/boot/dev.pl.sdoc
 Development functions.
 Utilities helpful for debugging and developing ni.
 
@@ -229,7 +224,7 @@ sub dev_trace($) {
     @r;
   };
 }
-133 parse.pl.sdoc
+133 core/boot/parse.pl.sdoc
 Parser combinators.
 List-structured combinators. These work like normal parser combinators, but are
 indirected through data structures to make them much easier to inspect. This
@@ -363,7 +358,7 @@ BEGIN {
 }
 
 sub prc($) {pn 0, prx qr/$_[0]/, popt pempty}
-69 common.pl.sdoc
+69 core/boot/common.pl.sdoc
 Regex parsing.
 Sometimes we'll have an operator that takes a regex, which is subject to the
 CLI reader problem the same way code arguments are. Rather than try to infer
@@ -433,7 +428,7 @@ BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
-79 cli.pl.sdoc
+79 core/boot/cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -513,7 +508,7 @@ sub defdsp($$%) {
   *{__PACKAGE__ . "::def$name"} = sub ($$) {${$vname}{$_[0]} = $_[1]};
   pdspr %{$vname};
 }
-78 op.pl.sdoc
+78 core/boot/op.pl.sdoc
 Operator definition.
 Like ni's parser combinators, operators are indirected using names. This
 provides an intermediate representation that can be inspected and serialized.
@@ -592,12 +587,15 @@ sub defnioperator($$) {
   }
   *{"${name}_op"} = sub() {$ops};
 }
-53 self.pl.sdoc
+56 core/boot/self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
 
 our %self;
+
+our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
+our $ni_map      = 'core/boot/ni.map';
 
 sub lib_entries($$) {
   local $_;
@@ -622,31 +620,31 @@ sub intern_lib($) {
   set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
 }
 
-sub modify_self($) {
+sub modify_self() {
   die "ni: not a modifiable instance: $0" unless -w $0;
   open my $fh, "> $0" or die "ni: failed to open self: $!";
-  print $fh read_map $_[0];
+  print $fh read_map $ni_map;
   close $fh;
 }
 
 sub extend_self($$) {
   my ($type, $lib) = @_;
   intern_lib $lib;
-  set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$type $lib"
-    unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{'ni.map'};
+  set $ni_map_sdoc, "$self{$ni_map_sdoc}\n$type $lib"
+    unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{$ni_map};
 }
 
-sub image {read_map 'ni.map'}
+sub image {read_map $ni_map}
 sub image_with(%) {
   my %old_self = %self;
   my %h        = @_;
-  $self{'ni.map'} .= join '', map "\nresource $_", keys %h;
+  $self{$ni_map} .= join '', map "\nresource $_", keys %h;
   @self{keys %h} = values %h;
   my $i = image;
   %self = %old_self;
   $i;
 }
-96 main.pl.sdoc
+96 core/boot/main.pl.sdoc
 CLI entry point.
 Some custom toplevel option handlers and the main function that ni uses to
 parse CLI options and execute the data pipeline.
@@ -673,7 +671,7 @@ Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{
   extend_self 'lib', $_ for @_;
-  modify_self 'ni.map';
+  modify_self;
 };
 
 defclispecial '--lib', q{intern_lib shift; goto \&main};
@@ -8660,7 +8658,7 @@ number despite its intermediate state being the separated sum and number).
 
 Compound reducers are compiled functions, which means their arguments are
 expressed as strings representing quoted code. This is why we use `"a"` rather
-than `a` in the example above: the string `'a' is spliced into a function body
+than `a` in the example above: the string `'a'` is spliced into a function body
 along with the other reducer expressions and compiled. The result is a very
 efficient reducer function that ends up looking like this:
 

@@ -302,7 +302,7 @@ number despite its intermediate state being the separated sum and number).
 
 Compound reducers are compiled functions, which means their arguments are
 expressed as strings representing quoted code. This is why we use `"a"` rather
-than `a` in the example above: the string `'a' is spliced into a function body
+than `a` in the example above: the string `'a'` is spliced into a function body
 along with the other reducer expressions and compiled. The result is a very
 efficient reducer function that ends up looking like this:
 

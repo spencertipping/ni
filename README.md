@@ -21,7 +21,7 @@ Some places to start reading:
 - `./build`: run `./boot`, then extend with a bunch of libraries. See [the dev
   docs](dev/) for information about how this works.
 - `core/`: all of the core libraries installed by `./build` onto the base
-  image.
+  image (which itself is built from `core/boot`).
 - `dev/`: documentation and scripts for ni development.
 - `doc/`: documentation for using ni. This ends up being added to the ni image
   by `./build`. Examples in the documentation are extracted into tests by
@@ -37,7 +37,6 @@ Some places to start reading:
 - `./ni`: the fully-built ni image if you run `./build`, or just the core image
   if you run `./boot`. The version checked into the repo should always be a
   full build.
-- `src/`: the source files to construct the ni base image.
 - `./test`: runs unit tests or launches a test environment. All tests are run
   inside one of the dockerized environments; see the [dev docs](dev/) for more
   details about how this works.

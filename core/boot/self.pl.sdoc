@@ -4,6 +4,9 @@ the map commands required to do this.
 
 our %self;
 
+our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
+our $ni_map      = 'core/boot/ni.map';
+
 sub lib_entries($$) {
   local $_;
   my ($name, $text) = @_;
@@ -27,25 +30,25 @@ sub intern_lib($) {
   set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
 }
 
-sub modify_self($) {
+sub modify_self() {
   die "ni: not a modifiable instance: $0" unless -w $0;
   open my $fh, "> $0" or die "ni: failed to open self: $!";
-  print $fh read_map $_[0];
+  print $fh read_map $ni_map;
   close $fh;
 }
 
 sub extend_self($$) {
   my ($type, $lib) = @_;
   intern_lib $lib;
-  set 'ni.map.sdoc', "$self{'ni.map.sdoc'}\n$type $lib"
-    unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{'ni.map'};
+  set $ni_map_sdoc, "$self{$ni_map_sdoc}\n$type $lib"
+    unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{$ni_map};
 }
 
-sub image {read_map 'ni.map'}
+sub image {read_map $ni_map}
 sub image_with(%) {
   my %old_self = %self;
   my %h        = @_;
-  $self{'ni.map'} .= join '', map "\nresource $_", keys %h;
+  $self{$ni_map} .= join '', map "\nresource $_", keys %h;
   @self{keys %h} = values %h;
   my $i = image;
   %self = %old_self;

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the core ni image from the files in src/.
+# Builds the core ni image from the files in core/boot.
 cd $(dirname $0)
 
 # Preprocessor to erase SDoc documentation. This minimizes the image size but
@@ -20,23 +20,12 @@ unsdoc() { perl -e 'print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//,
 
 # NB: these three functions are named to correspond to directives in
 # src/ni.map.sdoc.
-bootcode() { cat src/ni; }
+bootcode() { cat core/boot/ni; }
 
 resource() {
-  cd src
   for r; do
     wc -l $r
     cat $r
-  done
-  cd ..
-}
-
-lib() {
-  for l; do
-    resource $l/lib
-    for f in $(< src/$l/lib); do
-      resource $l/$f
-    done
   done
 }
 
@@ -46,7 +35,7 @@ lib() {
 # mechanism makes it possible for ni to serialize its code without being stored
 # anywhere (which is useful if you're piping it to a system whose filesystem is
 # read-only).
-eval "$(unsdoc < src/ni.map.sdoc)" > ni
+eval "$(unsdoc < core/boot/ni.map.sdoc)" > ni
 
 chmod +x ni
 

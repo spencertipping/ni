@@ -24,7 +24,7 @@ Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{
   extend_self 'lib', $_ for @_;
-  modify_self 'ni.map';
+  modify_self;
 };
 
 defclispecial '--lib', q{intern_lib shift; goto \&main};
