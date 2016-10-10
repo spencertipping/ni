@@ -6011,7 +6011,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-142 core/jsplot/interface.waul.sdoc
+141 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -6146,8 +6146,7 @@ $(caterwaul(':all')(function ($) {
 
         axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
-        update_screen()    = handle_resizes()
-                     -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
+        update_screen()    = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  update_overlay(v)
                      -then-  data_state.last_render /eq[+new Date]
                      -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
