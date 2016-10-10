@@ -3,6 +3,11 @@ Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
 identifier; this is useful when your matrices are prefixed with keys.
 
+sub matrix_cell_combine($$) {
+  return $_[0] = $_[1] unless defined $_[0];
+  $_[0] += $_[1];
+}
+
 defoperator dense_to_sparse => q{
   my ($col) = @_;
   $col ||= 0;
@@ -46,8 +51,9 @@ defoperator sparse_to_dense => q{
       no warnings 'numeric';
       ++$row, print "\n" until $row >= $r[$col];
     }
-    $fs[$col + $r[$col+1]] += $r[$col+2];
-    $fs[$col + $1] += $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
+    matrix_cell_combine $fs[$col + $r[$col+1]], $r[$col+2];
+    matrix_cell_combine $fs[$col + $1], $2
+      while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
     print join("\t", map defined() ? $_ : '', @fs), "\n";
   }

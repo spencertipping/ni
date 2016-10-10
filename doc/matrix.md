@@ -53,7 +53,7 @@ copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
 reducer:
 
 ```bash
-$ ni n10p'r 1, a%3, 1' X
+$ ni n010p'r 0, a%3, 1' X
 4	3	3
 ```
 

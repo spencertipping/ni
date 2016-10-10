@@ -3002,17 +3002,18 @@ sub defexpander($@) {
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
-34 core/closure/closure.pl.sdoc
+35 core/closure/closure.pl.sdoc
 Data closures.
 Data closures are a way to ship data along with a process, for example over
 hadoop or SSH. The idea is to make your data as portable as ni is.
 
 sub add_closure_key($$) {
   # TODO: use a lib for all data closures
+  # TODO: use functions to extend the image; don't write keys directly
   my ($k, $v) = @_;
   $k = "transient/closure/$k";
   $ni::self{$k} = pack 'u', $v;
-  $ni::self{'ni.map'} .= "\nresource $k";
+  $ni::self{'core/boot/ni.map'} .= "\nresource $k";
 }
 
 sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
@@ -5099,11 +5100,16 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-119 core/matrix/matrix.pl.sdoc
+125 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
 identifier; this is useful when your matrices are prefixed with keys.
+
+sub matrix_cell_combine($$) {
+  return $_[0] = $_[1] unless defined $_[0];
+  $_[0] += $_[1];
+}
 
 defoperator dense_to_sparse => q{
   my ($col) = @_;
@@ -5148,8 +5154,9 @@ defoperator sparse_to_dense => q{
       no warnings 'numeric';
       ++$row, print "\n" until $row >= $r[$col];
     }
-    $fs[$col + $r[$col+1]] = $r[$col+2];
-    $fs[$col + $1] = $2 while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
+    matrix_cell_combine $fs[$col + $r[$col+1]], $r[$col+2];
+    matrix_cell_combine $fs[$col + $1], $2
+      while defined($_ = <STDIN>) && /^$kr\t([^\t]+)\t(.*)/;
     push @q, $_ if defined;
     print join("\t", map defined() ? $_ : '', @fs), "\n";
   }
@@ -7876,7 +7883,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-230 doc/matrix.md
+238 doc/matrix.md
 # Matrix operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
@@ -7926,6 +7933,14 @@ of	this	software	and	associated	documentation	files	the	Software	to	deal
 in	the	Software	without	restriction	including	without	limitation	the	rights
 to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
 copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
+```
+
+`X` is also additive in the event of cell collisions; this makes it useful as a
+reducer:
+
+```bash
+$ ni n010p'r 0, a%3, 1' X
+4	3	3
 ```
 
 ## NumPy interop
