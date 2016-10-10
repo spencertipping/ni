@@ -5990,7 +5990,7 @@ caterwaul(':all')(function ($) {
                           .on('mousewheel', '.rotation',   given.e in $(this).val($(this).val() /-v2plus/ [e.deltaY * 0.1, e.deltaX * 0.1]).change())
                           .on('change',     '.number',     given.e in $(this).val($(this).val()))
                           .on('keydown',    '.number',     given.e[e.which === 38 ? $(this).val($(this).val() + 1) :
-                                                                   e.which === 40 ? $(this).val($(this).val() - 1) : true]
+                                                                   e.which === 40 ? $(this).val($(this).val() - 1) : true])
                           .on('focus',      '.number',     given.e in $(this).select())),
 
   where[tagged(f, c)(v) = f(v) /~addClass/ c,
