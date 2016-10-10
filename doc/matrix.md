@@ -49,6 +49,14 @@ to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
 copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
 ```
 
+`X` is also additive in the event of cell collisions; this makes it useful as a
+reducer:
+
+```bash
+$ ni n10p'r 1, a%3, 1' X
+4	3	3
+```
+
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code
 is evaluated in an imperative context and side-effectfully transforms the input

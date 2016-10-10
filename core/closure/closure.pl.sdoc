@@ -4,10 +4,11 @@ hadoop or SSH. The idea is to make your data as portable as ni is.
 
 sub add_closure_key($$) {
   # TODO: use a lib for all data closures
+  # TODO: use functions to extend the image; don't write keys directly
   my ($k, $v) = @_;
   $k = "transient/closure/$k";
   $ni::self{$k} = pack 'u', $v;
-  $ni::self{'ni.map'} .= "\nresource $k";
+  $ni::self{'core/boot/ni.map'} .= "\nresource $k";
 }
 
 sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
