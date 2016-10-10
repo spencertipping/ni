@@ -84,7 +84,7 @@ $(caterwaul(':all')(function ($) {
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        reset_data_state()   = data_state = {frame: new dataframe(128 * 1048576), preview_text: '', bytes: 0, last_render: 0} -se- preview /~text/ '',
+        reset_data_state()   = data_state = {frame: new dataframe(128 * 1048576), preview_done: false, bytes: 0, last_render: 0} -se- preview /~text/ '',
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
@@ -93,8 +93,9 @@ $(caterwaul(':all')(function ($) {
                              /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join(''),
                                      kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10]
                       -when [data_state.frame.axes && data_state.frame.axes[0]]
-                      -then- preview.text(data_state.preview_text = data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it.join('\n').substr(0, 65536))
-                             /when[data_state.preview_text.length < 65536],
+                      -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it.join('\n').substr(0, 65536))
+                             /then[data_state.preview_done = data_state.frame.preview_lines.length >= 1024]
+                             /unless[data_state.preview_done],
 
         visualize(cmd)     = reset_data_state() -then- ni_ws(cmd, handle_data)
                       -where [handle_data(ls) = ls ? ls *!data_state.frame.push -seq -then- data_was_revised(ls)
