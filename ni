@@ -3084,29 +3084,15 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl.sdoc
-51 core/destructure/destructure.pl.sdoc
+37 core/destructure/destructure.pl.sdoc
 Targeted extraction.
-ni gives you ways to decode JSON, but you aren't likely to have data stored as
-JSON objects in the middle of data pipelines. It's more of an archival format,
-so the goal is to unpack stuff quickly. ni gives you a way of doing this that
-is usually much faster than running the full decoder. (And also requires less
-typing.)
+Most data extraction workflows don't use every key of a rich data object like
+JSON or XML. ni allows you to avoid the overhead of fully decoding these
+objects by using targeted extraction, which compiles an optimized function to
+return just the values you need. Depending on what you're extracting, this can
+be up to 20-30x faster than doing a full decode.
 
-The set of operations is basically this:
 
-| .foo          # direct object key access (not very fast)
-  ..foo         # multiple indirect object key access (fast-ish)
-  :foo          # single indirect object key access (very fast)
-  [0]           # array access (slow)
-  []            # array flatten (slow)
-
-Operations compose by juxtaposition: `.foo[0]:bar` means "give me the value of
-every 'bar' key within the first element of the 'foo' field of the root
-object".
-
-Extracted values are flattened into a single array and returned. They're
-optimized for strings, numeric, and true/false/null; you can return other
-values, but it will be slower.
 
 # TODO: replace all of this
 
@@ -3842,7 +3828,7 @@ BEGIN {
   defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
   defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
   defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
-                                                        popt pc number;
+                                                        popt number;
 }
 
 defoperator cell_log => q{

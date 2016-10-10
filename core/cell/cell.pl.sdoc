@@ -62,7 +62,7 @@ BEGIN {
   defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
   defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
   defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
-                                                        popt pc number;
+                                                        popt number;
 }
 
 defoperator cell_log => q{
