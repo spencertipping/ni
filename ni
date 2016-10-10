@@ -6033,7 +6033,7 @@ $(caterwaul(':all')(function ($) {
                                       + "S8,qABCD0.01 p'r a, - c, b, d'",
                                   v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03, axes: n[4] -seq}},
 
-        size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
+        size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w[0].clientWidth, ch = w[0].clientHeight],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),
         resize_other_stuff()   = tr      /~css/ {height: 0} /~css/ {height: tr[0].scrollHeight - 2, width: lw-2}
                           -then- preview /~css/ {top: tr.height() + 3, bottom: 1}
