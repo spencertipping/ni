@@ -24,7 +24,7 @@ $(caterwaul(':all')(function ($) {
         resize_other_stuff()   = tr      /~css/ {height: 0} /~css/ {height: tr[0].scrollHeight - 2, width: lw-2}
                           -then- preview /~css/ {top: tr.height() + 3, bottom: 1}
                           -then- explain /~css/ {top: tr.height() + 3, left: preview.width() + 12},
-        handle_resizes()       = resize_canvases() -when- size_changed() -then- resize_other_stuff(),
+        handle_resizes()       = resize_canvases() -then- resize_other_stuff() -when- size_changed(),
 
         update_status(t)       = status.text(t).activate(),
 
