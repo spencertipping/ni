@@ -6011,7 +6011,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-141 core/jsplot/interface.waul.sdoc
+142 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -6082,6 +6082,7 @@ $(caterwaul(':all')(function ($) {
                                                /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false
                                                                  : e.which === 16 ? controls /~addClass/ 'shift' : true]
                                                  /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
+                          -then- w /~resize/ handle_resizes
                           -then- controls /~append/ camera().change(update_screen)
                           -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
@@ -6092,7 +6093,7 @@ $(caterwaul(':all')(function ($) {
                           -then- $('#search-auto').on('mousedown', '.option', "$('#search input') /~val/ $(this).text()".qf)
                                                   .on('mouseover', '.option', "update_selected($(this).text()) -then- update_overlay()".qf)
 
-                          -then- handle_resizes /-setInterval/ 250
+                          -then- handle_resizes /-setTimeout/ 10
                           -then- "document.location.hash = $(this).val() /!JSON.stringify /!encodeURI".qf /-setInterval/ 50
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
