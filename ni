@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-47 core/boot/ni.map.sdoc
+48 core/boot/ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly.
@@ -86,6 +86,7 @@ lib core/buffer
 lib core/col
 lib core/row
 lib core/cell
+lib core/assert
 lib core/pl
 lib core/rb
 lib core/lisp
@@ -3892,6 +3893,15 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+1 core/assert/lib
+assert.pl.sdoc
+6 core/assert/assert.pl.sdoc
+Assertions: die horribly unless something is true.
+Defines the `!` operator, which will deliberately nuke your entire process
+unless its condition is true.
+
+defshort '/!',
+  defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 7 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
@@ -4279,7 +4289,7 @@ BEGIN {
   *tep = \&time_epoch_pieces;
   *tpe = \&time_pieces_epoch;
 }
-142 core/pl/pl.pl.sdoc
+153 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4383,11 +4393,19 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
-sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
+  print $_, "\n";
+  unless (row) {
+    sleep 1;
+    die "\r\033[KASSERTION " . q#) . $_[0] . q(# . " FAILED at line $.: $_";
+  }
+)}
 
-defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
-defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
+defoperator perl_mapper  => q{stdin_to_perl perl_mapper   $_[0]};
+defoperator perl_grepper => q{stdin_to_perl perl_grepper  $_[0]};
+defoperator perl_assert  => q{stdin_to_perl perl_asserter $_[0]};
 
 defoperator perl_cell_transformer => q{
   my ($colspec, $code) = @_;
@@ -4410,6 +4428,7 @@ c
 BEGIN {
   defparseralias perl_mapper_code         => plcode \&perl_mapper;
   defparseralias perl_grepper_code        => plcode \&perl_grepper;
+  defparseralias perl_asserter_code       => plcode \&perl_asserter;
   defparseralias perl_cell_transform_code => plcode \&perl_mapper;      # [sic]
 }
 
@@ -4419,6 +4438,8 @@ defshort '/p',
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', perl_grepper_code;
+
+defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
@@ -8266,7 +8287,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-90 doc/options.md
+91 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8297,6 +8318,7 @@ Operator | Status | Example      | Description
 `.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
 `_`      |        |              |
+`\!`     | I      | `\!p'F_==3'` | Assert a condition
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
 `::`     | M      | `::x[n100]`  | Create an in-memory data closure

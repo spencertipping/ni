@@ -28,6 +28,7 @@ Operator | Status | Example      | Description
 `.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
 `_`      |        |              |
+`\!`     | I      | `\!p'F_==3'` | Assert a condition
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
 `::`     | M      | `::x[n100]`  | Create an in-memory data closure
