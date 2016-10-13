@@ -3085,15 +3085,13 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl.sdoc
-37 core/destructure/destructure.pl.sdoc
-Targeted extraction.
+35 core/destructure/destructure.pl.sdoc
+Destructuring.
 Most data extraction workflows don't use every key of a rich data object like
 JSON or XML. ni allows you to avoid the overhead of fully decoding these
 objects by using targeted extraction, which compiles an optimized function to
 return just the values you need. Depending on what you're extracting, this can
 be up to 20-30x faster than doing a full decode.
-
-
 
 # TODO: replace all of this
 

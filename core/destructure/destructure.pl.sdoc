@@ -1,11 +1,72 @@
-Targeted extraction.
+Destructuring.
 Most data extraction workflows don't use every key of a rich data object like
 JSON or XML. ni allows you to avoid the overhead of fully decoding these
 objects by using targeted extraction, which compiles an optimized function to
 return just the values you need. Depending on what you're extracting, this can
 be up to 20-30x faster than doing a full decode.
 
+Positionally-aware parsing.
+ni relies on relative key positions to infer structure, depending on the
+invariants that are available. Although the JSON library provides a decoder, it
+doesn't preserve important details like whitespace, field positions, etc. This
+parser produces a custom object in which each value is annotated with position,
+type, etc.
 
+sub json_decode_annotated($) {
+  local $_ = $_[0];
+  my @v = [];
+  while (/([][{}]|true|false|null|"(?:[^"\\]+|\\.)*"\s*:?\s*|[-+eE\d.]+)/g) {
+    my $x = $1;
+    if ($x eq '[') {
+      push @v, { type => 'a', pos => pos(), length => -1, vs => [] };
+    } elsif ($x eq '{') {
+      push @v, { type => 'o', pos => pos(), length => -1, ks => [], vs => [] };
+    } elsif ($x eq ']' or $x eq '}') {
+      push @{$v[-2]->{vs}}, $v[-1];
+      $v[-2]->{length} = pos() + 1 - $v[-2]->{pos};
+      pop @v;
+    } elsif ($x =~ /"\s*$/) {
+      push @{$v[-1]->{vs}},
+           { type => 's', pos => pos(), length => length($x),
+             v    => json_unescape $x };
+    } else {
+      push @{$v[-1]->{ks}},
+           { type   => $x =~ /"\s*:\s*/           ? 'k'
+                     : $x =~ /^true|^false|^null/ ? 'a'
+                     : $x =~ /[eE\.]/             ? 'f' : 'i',
+             pos    => pos(),
+             length => length($x),
+             v      => $x };
+    }
+  }
+  my $r = pop @v;
+  wantarray ? @$r : $$r[0];
+}
+
+Invariant detection.
+Given a series of annotated-decoded objects, the goal is to determine which
+invariants apply and return information about them.
+
+sub json_parse_annotated_key($) {
+  my ($x) = $_[0] =~ /^"((?:[^"\\]+|\\.)*)"/;
+  $x;
+}
+
+sub json_annotated_all_keys($);
+sub json_annotated_all_keys($) {
+  my ($o) = @_;
+  return map json_annotated_all_keys $_, @{$$o{vs}} if $$o{type} eq 'a';
+  return map {; json_parse_annotated_key ${$$o{ks}}[$_],
+                json_annotated_all_keys  ${$$o{vs}}[$_]} 0..$#{$$o{vs}}
+    if $$o{type} eq 'o';
+  ();
+}
+
+sub json_detect_invariants(@) {
+  my @key_lists;
+  my %key_index;
+  
+}
 
 # TODO: replace all of this
 
