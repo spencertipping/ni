@@ -61,7 +61,11 @@ $ ni /path/to/large/data S8rx100        # ~800MB/s
 
 See [scale.md](scale.md) for details about horizontal scaling.
 
-## Regex matching
+## Row matching
+
+There are several ways you can keep only rows matching a certain criterion.
+
+The simplest way is to use a regex:
 ```bash
 $ ni n10000r/[42]000$/
 2000
@@ -74,6 +78,25 @@ $ ni n1000r/[^1]$/r3
 
 These regexes are evaluated by Perl, which is likely to be faster than `grep`
 for nontrivial patterns.
+
+You can also row match using code in any language that ni supports. At current,
+it supports Perl, Ruby, and Common Lisp.
+
+`rp` means "select rows for which this Perl expression returns true".
+
+```bash
+$ ni n10000rp'$_ % 100 == 42' r3
+42
+142
+242
+```
+
+The expression has access to column accessors and everything else described in
+[perl.md](perl.md) (`ni //help/perl`).
+
+Note that whitespace is always required after quoted code.
+
+**TODO:** other languages
 
 ## Column assertion
 In real-world data pipelines it's common to have cases where you have missing
@@ -117,23 +140,6 @@ $ ni n10rB | wc -l              # no field B here, so no output
 $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
 10
 ```
-
-## Code
-`rp` means "select rows for which this Perl expression returns true".
-
-```bash
-$ ni n10000rp'$_ % 100 == 42' r3
-42
-142
-242
-```
-
-The expression has access to column accessors and everything else described in
-[perl.md](perl.md) (`ni //help/perl`).
-
-Note that whitespace is always required after quoted code.
-
-**TODO:** other languages
 
 ## Sorting
 ni has four operators that shell out to the UNIX sort command. Two are
