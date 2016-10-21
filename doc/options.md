@@ -88,3 +88,10 @@ Operator | Status | Example      | Description
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
+
+
+## Cell operators
+Operator | Status | Example | Description
+---------|--------|---------|------------
+`h`      | T      | `,z`    | Turns each unique value into a hash.
+`z`      | T      | `,h`    | Turns each unique value into an integer.
