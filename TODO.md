@@ -9,6 +9,8 @@ arbitrary-column joins and not rearrange any columns in the result.
 ### Configuration variables should be tied to %ENV
 Double-layer namespacing is way too confusing.
 
+### Horizontal scaling has a slow space leak
+
 ### Autoscaling
 Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
 
