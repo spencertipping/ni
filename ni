@@ -2367,7 +2367,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-183 core/stream/ops.pl.sdoc
+202 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2383,9 +2383,28 @@ BEGIN {
                                          prx '[^][]+';
 }
 
-defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
 defoperator sh   => q{my ($c) = @_; sh $c};
+
+Cat meta-operator.
+We don't want 'cat' to be a regular operator because of how shell wildcards
+work. If you say something like `ni *`, it's going to get a bunch of filenames,
+each of which will fork out to another ni process. Most of these ni processes
+will just be copying stdin to stdout, a huge waste if there are a lot of files.
+
+We get around this by making `cat` a meta-operator that merges adjacent cat
+operations into a single `cat_multi`.
+
+defoperator cat_multi => q{sio; scat $_ for @_};
+
+defmetaoperator cat => q{
+  my ($args, $left, $right) = @_;
+  my ($f) = @$args;
+  my $i = -1;
+  ++$i while $i+1 < @$right && $$right[$i+1][0] eq 'cat';
+  ($left, [cat_multi_op($f, $i > -1 ? map $$_[1], @$right[0..$i] : ()),
+           @$right[$i+1..$#{$right}]]);
+};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is

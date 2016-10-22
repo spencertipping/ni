@@ -12,11 +12,6 @@ Double-layer namespacing is way too confusing.
 ### Autoscaling
 Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
 
-### Runs of input files
-ni naively appends each input file, but this creates tons of unnecessary
-intermediate processes for long file lists. We should preprocess operations to
-merge adjacent `cat` invocations (which is easy: `cat` should be a meta-op).
-
 ### Sub-monitors
 Right now lambdas don't have monitoring at all, which is lame. We should
 monitor lambdas in general, though this requires some cooperation from
