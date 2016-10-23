@@ -3531,7 +3531,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-188 core/row/scale.pl.sdoc
+190 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3608,6 +3608,7 @@ defoperator row_fixed_scale => q{
 
   my $stdout_reader = siproc {
     my @bufs;
+    my $buf_limit = $oqueue * $n;
     my @stdout = map [], @wo;
     my @outqueue;
     my $b;
@@ -3618,7 +3619,7 @@ defoperator row_fixed_scale => q{
     while ($n) {
       until (@outqueue < $oqueue * $n) {
         safewrite $stdout, ${$b = shift @outqueue};
-        push @bufs, $b;
+        push @bufs, $b unless @bufs >= $buf_limit;
       }
 
       select $r = $rb, undef, undef, undef;
@@ -3628,7 +3629,7 @@ defoperator row_fixed_scale => q{
 
         while (@outqueue and select undef, $obtmp = $ob, undef, 0) {
           safewrite $stdout, ${$b = shift @outqueue};
-          push @bufs, $b;
+          push @bufs, $b unless @bufs >= $buf_limit;
         }
         my $so = $stdout[$i];
         if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, buf_size) {
@@ -3658,6 +3659,7 @@ defoperator row_fixed_scale => q{
 
   {
     my @bufs;
+    my $buf_limit = $iqueue * $n;
     my @stdin = map [], @wi;
     my @queue;
     my $eof;
@@ -3698,7 +3700,7 @@ defoperator row_fixed_scale => q{
 
         if (@$si) {
           safewrite $wi[$i], ${$b = shift @$si};
-          push @bufs, $b;
+          push @bufs, $b unless @bufs >= $buf_limit;
         }
 
         $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
