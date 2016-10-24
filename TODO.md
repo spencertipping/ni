@@ -2,6 +2,19 @@
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.
 
+#### Inner/outer/left/right 1:1, 1:many, etc joins
+#### Fix ordering
+The current inner-join operator joins on `\t` to form the comparison key, which
+is wrong: it needs to join on `\0` to be consistent with the way `sort` looks
+at it.
+
+### Child process cleanup
+I still sometimes get long-running child processes over SSH.
+
+### Do we want to implement our own sorting function?
+There's some possibility it would be faster, and it preemptively avoids issues
+around `LC_ALL`.
+
 ### Ops and parsers should be self-documenting
 
 ### Document (+test!) cell operators
