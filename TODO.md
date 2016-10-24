@@ -6,17 +6,20 @@ arbitrary-column joins and not rearrange any columns in the result.
 
 ### Document (+test!) cell operators
 
+### Monitors should handle various distribution cases (no clue how)
+For example, suppose we have a scale-by-single-row or scale-by-key operator
+later on. We might want to know the details of how each of those is working.
+This makes me think that fixed space allocation is a non-starter; we might want
+some kind of expand/collapse interface, or we might want aggregation by axis.
+
+I think this requires us to write a pager (or at least defer its instantiation)
+because `less` captures terminal input immediately.
+
 ### Configuration variables should be tied to %ENV
 Double-layer namespacing is way too confusing.
 
 ### Autoscaling
 Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
-
-### Sub-monitors
-Right now lambdas don't have monitoring at all, which is lame. We should
-monitor lambdas in general, though this requires some cooperation from
-operators like `ssh` etc (since we don't yet have a way to traverse lambdas
-within op trees).
 
 ### Generalized/optimized destructuring
 Should apply to JSON, XML, headed CSV/TSV, SQL-as-text, possibly other formats
