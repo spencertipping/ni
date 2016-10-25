@@ -2570,7 +2570,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-66 core/stream/main.pl.sdoc
+67 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -2622,6 +2622,7 @@ shell-friendly terminal state, requiring the user to run `reset` to fix it. So
 in an interrupt context we try to give the pager a chance to exit gracefully by
 closing its input stream and having the user use `q` or similar.
 
+$SIG{PIPE} =
 $SIG{TERM} =
 $SIG{HUP}  = sub {
   close $pager_fh if $pager_fh;
