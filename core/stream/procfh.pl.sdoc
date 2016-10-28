@@ -5,7 +5,6 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
-use Scalar::Util qw/weaken/;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -39,7 +38,7 @@ use overload qw/*{} fh "" str/;
 sub new($$$) {
   my ($class, $fd, $pid) = @_;
   my $result = bless {pid => $pid, status => undef}, $class;
-  weaken($child_owners{$pid} = $result);
+  $child_owners{$pid} = $result;
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;

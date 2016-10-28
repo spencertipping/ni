@@ -1970,7 +1970,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-99 core/stream/procfh.pl.sdoc
+98 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -1978,7 +1978,6 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
-use Scalar::Util qw/weaken/;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -2012,7 +2011,7 @@ use overload qw/*{} fh "" str/;
 sub new($$$) {
   my ($class, $fd, $pid) = @_;
   my $result = bless {pid => $pid, status => undef}, $class;
-  weaken($child_owners{$pid} = $result);
+  $child_owners{$pid} = $result;
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;
