@@ -41,6 +41,11 @@ the throughput of everything downstream.
 ### Configuration variables should be tied to %ENV
 Double-layer namespacing is way too confusing.
 
+### Better abstraction around procfhs
+We need more detailed process tracking, and ideally some more structured
+interface to pipelines. Streams should be objects since we aren't
+creating/destroying them inside any loops.
+
 ### Autoscaling
 Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
 
