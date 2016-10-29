@@ -79,13 +79,13 @@ The second argument is the bias, which uniformly shifts every value by the
 specified quantity. By default, this is 0.
 
 ```sh
-$ ni n5 ,j
+$ ni n5 ,j         # jitter by ±0.5
 1.38087196608922
 1.61856801700512
 2.91324974763314
 3.79416349073558
 5.28691089981028
-$ ni n5 ,j2
+$ ni n5 ,j2        # jitter by ±1
 0.774160150120231
 2.65192303824637
 3.66083749763882
@@ -97,25 +97,25 @@ The quantize function, `q`, rounds each number to the nearest interval,
 defaulting to 1.
 
 ```bash
-$ ni n8 p'a*0.3'
+$ ni n8 p'a*0.3'         # generate some non-integer numbers
 0.3
 0.6
 0.9
 1.2
 1.5
-$ ni n5 p'a*0.3' ,q
+$ ni n5 p'a*0.3' ,q      # round to the nearest integer
 0
 1
 1
 1
 2
-$ ni n5 p'a*0.3' ,q.5
+$ ni n5 p'a*0.3' ,q.5    # round to the nearest 0.5
 0.5
 0.5
 1
 1
 1.5
-$ ni n6 ,q2
+$ ni n6 ,q2              # round to the nearest multiple of 2
 2
 2
 4
@@ -142,19 +142,19 @@ The three streaming numeric operators, sum (`s`), delta (`d`), and average
 (`a`), give a running statistic of the column contents.
 
 ```bash
-$ ni n5 ,s
+$ ni n5 ,s    # running sum
 1
 3
 6
 10
 15
-$ ni n5 ,d
+$ ni n5 ,d    # running difference
 1
 1
 1
 1
 1
-$ ni n5 ,a
+$ ni n5 ,a    # running average
 1
 1.5
 2
@@ -169,7 +169,7 @@ change that by passing them a column spec, for example `AB` for the first two
 columns.
 
 ```bash
-$ ni n5 p'r a, a*2'
+$ ni n5 p'r a, a*2'         # generate two columns of numbers
 1	2
 2	4
 3	6
