@@ -63,7 +63,7 @@ rises
 the
 tide
 falls
-$ ni tide.csv ,z
+$ ni tide.csv ,h
 2866659357
 2144378426
 1536230278
@@ -121,7 +121,7 @@ The quantize function, `q`, rounds each number to the nearest interval,
 defaulting to 1.
 
 ```bash
-$ ni n8 p'a*0.3'         # generate some non-integer numbers
+$ ni n5 p'a*0.3'         # generate some non-integer numbers
 0.3
 0.6
 0.9
