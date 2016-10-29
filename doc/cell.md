@@ -3,11 +3,36 @@
 Cell operators transform the contents of one cell at a time. To access them, you
 must enter cell context using the `,` operator.
 
+By default, cell operators only transform the first column of your data. You can
+change that by passing them a column spec, for example `AB` for the first two
+columns.
+
+```bash
+$ ni n5 p'r a, a*2'         # generate two columns of numbers
+1	2
+2	4
+3	6
+4	8
+5	10
+$ ni n5 p'r a, a*2' ,s      # sums only first column
+1	2
+3	4
+6	6
+10	8
+15	10
+$ ni n5 p'r a, a*2' ,sAB    # sums both columns
+1	2
+3	6
+6	12
+10	20
+15	30
+```
+
 ## Intification
 
 Sometimes, you have nonnumeric data that you would like to graph. A handy
-function for these cases is the intify function, `z`, which maps assigns a
-different integer to each unique value in a column.
+function for these cases is the intify function, `z`, which assigns a different
+whole number to each unique value in a column.
 
 ```bash
 $ echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
@@ -165,31 +190,4 @@ $ ni n5 ,a    # running average
 2
 2.5
 3
-```
-
-## Transforming multiple columns
-
-By default, cell operators only transform the first column of your data. You can
-change that by passing them a column spec, for example `AB` for the first two
-columns.
-
-```bash
-$ ni n5 p'r a, a*2'         # generate two columns of numbers
-1	2
-2	4
-3	6
-4	8
-5	10
-$ ni n5 p'r a, a*2' ,s      # sums only first column
-1	2
-3	4
-6	6
-10	8
-15	10
-$ ni n5 p'r a, a*2' ,sAB    # sums both columns
-1	2
-3	6
-6	12
-10	20
-15	30
 ```
