@@ -1,6 +1,7 @@
 # Cell operations
 
-Use `,` to enter cell context.
+Cell operators transform the contents of one cell at a time. To access them, you
+must enter cell context using the `,` operator.
 
 ## Intification
 
@@ -66,21 +67,124 @@ $ ni n4 ,e
 54.5981500331442
 ```
 
-The jitter function, `j`, adds a small random quantity to each cell. It takes
-two arguments: The first is a range. For example, if the range is given as 1,
-then all numbers will be between `x - 0.5` and `x + 0.5`. TODO: Bias.
+The jitter function, `j`, adds a small random quantity to each cell, which is
+handy for visualizing discrete quantities.
 
-log
-exp
-jitter
-quantize
+Jitter accepts two arguments: The first is the jitter interval, which is a
+window around your original value that jitter will stay within. (For example, if
+the interval is 1, then the output will be within `±0.5` of the original value.)
+This defaults to 1.
+
+The second argument is the bias, which uniformly shifts every value by the
+specified quantity. By default, this is 0.
+
+```sh
+$ ni n5 ,j
+1.38087196608922
+1.61856801700512
+2.91324974763314
+3.79416349073558
+5.28691089981028
+$ ni n5 ,j2
+0.774160150120231
+2.65192303824637
+3.66083749763882
+3.71346670826269
+4.82190280992123
+```
+
+The quantize function, `q`, rounds each number to the nearest interval,
+defaulting to 1.
+
+```bash
+$ ni n8 p'a*0.3'
+0.3
+0.6
+0.9
+1.2
+1.5
+$ ni n5 p'a*0.3' ,q
+0
+1
+1
+1
+2
+$ ni n5 p'a*0.3' ,q.5
+0.5
+0.5
+1
+1
+1.5
+$ ni n6 ,q2
+2
+2
+4
+4
+6
+6
+```
+
+If a number is equidistant from either end of the interval, ni will round it
+upwards.
+
+```bash
+$ ni n05 ,q4
+0
+0
+4
+4
+4
+```
 
 ## Streaming numeric transformations
 
-sum
-delta
-average
+The three streaming numeric operators, sum (`s`), delta (`d`), and average
+(`a`), give a running statistic of the column contents.
 
-## Search and replace
+```bash
+$ ni n5 ,s
+1
+3
+6
+10
+15
+$ ni n5 ,d
+1
+1
+1
+1
+1
+$ ni n5 ,a
+1
+1.5
+2
+2.5
+3
+```
 
-:D
+## Transforming multiple columns
+
+By default, cell operators only transform the first column of your data. You can
+change that by passing them a column spec, for example `AB` for the first two
+columns.
+
+```bash
+$ ni n5 p'r a, a*2'
+1	2
+2	4
+3	6
+4	8
+5	10
+$ ni n5 p'r a, a*2' ,s      # sums only first column
+1	2
+3	4
+6	6
+10	8
+15	10
+$ ni n5 p'r a, a*2' ,sAB    # sums both columns
+1	2
+3	6
+6	12
+10	20
+15	30
+```
