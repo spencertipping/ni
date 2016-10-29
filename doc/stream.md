@@ -5,7 +5,7 @@ MORE (because I got rid of your intro).
 ## Files
 ni accepts file names and opens their contents in less.
 
-```
+```bash
 $ echo test > foo
 $ ni foo
 test
