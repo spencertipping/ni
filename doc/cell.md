@@ -6,8 +6,8 @@ must enter cell context using the `,` operator.
 ## Intification
 
 Sometimes, you have nonnumeric data that you would like to graph. A handy
-function for these cases is the intify function, `z`, which assigns an integer
-to each unique value in a column.
+function for these cases is the intify function, `z`, which maps assigns a
+different integer to each unique value in a column.
 
 ```bash
 $ echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
@@ -27,8 +27,7 @@ $ ni tide.csv ,z
 4
 ```
 
-The intify hash operator, `h`, does the same thing, except instead of integers,
-it assigns each value a unique hash.
+The intify hash operator, `h`, does the same thing using hashes.
 
 ```bash
 $ echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
@@ -70,9 +69,9 @@ $ ni n4 ,e
 The jitter function, `j`, adds a small random quantity to each cell, which is
 handy for visualizing discrete quantities.
 
-Jitter accepts two arguments: The first is the jitter interval, which is a
-window around your original value that jitter will stay within. (For example, if
-the interval is 1, then the output will be within `±0.5` of the original value.)
+Jitter accepts two arguments: The first is the interval, which is a window
+around your original value that jitter will stay within. (For example, if the
+interval is 1, then the output will be within `±0.5` of the original value.)
 This defaults to 1.
 
 The second argument is the bias, which uniformly shifts every value by the
@@ -128,6 +127,12 @@ If a number is equidistant from either end of the interval, ni will round it
 upwards.
 
 ```bash
+$ ni n05
+0
+1
+2
+3
+4
 $ ni n05 ,q4
 0
 0
