@@ -28,6 +28,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/col \
   core/row \
   core/cell \
+  core/assert \
   \
   core/pl \
   core/rb \

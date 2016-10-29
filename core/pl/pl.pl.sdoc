@@ -101,11 +101,19 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
-sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
+  print $_, "\n";
+  unless (row) {
+    sleep 1;
+    die "\r\033[KASSERTION " . q#) . $_[0] . q(# . " FAILED at line $.: $_";
+  }
+)}
 
-defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
-defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
+defoperator perl_mapper  => q{stdin_to_perl perl_mapper   $_[0]};
+defoperator perl_grepper => q{stdin_to_perl perl_grepper  $_[0]};
+defoperator perl_assert  => q{stdin_to_perl perl_asserter $_[0]};
 
 defoperator perl_cell_transformer => q{
   my ($colspec, $code) = @_;
@@ -128,6 +136,7 @@ c
 BEGIN {
   defparseralias perl_mapper_code         => plcode \&perl_mapper;
   defparseralias perl_grepper_code        => plcode \&perl_grepper;
+  defparseralias perl_asserter_code       => plcode \&perl_asserter;
   defparseralias perl_cell_transform_code => plcode \&perl_mapper;      # [sic]
 }
 
@@ -137,6 +146,8 @@ defshort '/p',
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', perl_grepper_code;
+
+defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;

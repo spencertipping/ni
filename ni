@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-47 core/boot/ni.map.sdoc
+48 core/boot/ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly.
@@ -86,6 +86,7 @@ lib core/buffer
 lib core/col
 lib core/row
 lib core/cell
+lib core/assert
 lib core/pl
 lib core/rb
 lib core/lisp
@@ -2366,7 +2367,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-183 core/stream/ops.pl.sdoc
+202 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2382,9 +2383,28 @@ BEGIN {
                                          prx '[^][]+';
 }
 
-defoperator cat  => q{my ($f) = @_; sio; scat $f};
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
 defoperator sh   => q{my ($c) = @_; sh $c};
+
+Cat meta-operator.
+We don't want 'cat' to be a regular operator because of how shell wildcards
+work. If you say something like `ni *`, it's going to get a bunch of filenames,
+each of which will fork out to another ni process. Most of these ni processes
+will just be copying stdin to stdout, a huge waste if there are a lot of files.
+
+We get around this by making `cat` a meta-operator that merges adjacent cat
+operations into a single `cat_multi`.
+
+defoperator cat_multi => q{sio; scat $_ for @_};
+
+defmetaoperator cat => q{
+  my ($args, $left, $right) = @_;
+  my ($f) = @$args;
+  my $i = -1;
+  ++$i while $i+1 < @$right && $$right[$i+1][0] eq 'cat';
+  ($left, [cat_multi_op($f, $i > -1 ? map $$_[1], @$right[0..$i] : ()),
+           @$right[$i+1..$#{$right}]]);
+};
 
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
@@ -3511,7 +3531,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-188 core/row/scale.pl.sdoc
+190 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
 workers.
@@ -3588,6 +3608,7 @@ defoperator row_fixed_scale => q{
 
   my $stdout_reader = siproc {
     my @bufs;
+    my $buf_limit = $oqueue * $n;
     my @stdout = map [], @wo;
     my @outqueue;
     my $b;
@@ -3598,7 +3619,7 @@ defoperator row_fixed_scale => q{
     while ($n) {
       until (@outqueue < $oqueue * $n) {
         safewrite $stdout, ${$b = shift @outqueue};
-        push @bufs, $b;
+        push @bufs, $b unless @bufs >= $buf_limit;
       }
 
       select $r = $rb, undef, undef, undef;
@@ -3608,7 +3629,7 @@ defoperator row_fixed_scale => q{
 
         while (@outqueue and select undef, $obtmp = $ob, undef, 0) {
           safewrite $stdout, ${$b = shift @outqueue};
-          push @bufs, $b;
+          push @bufs, $b unless @bufs >= $buf_limit;
         }
         my $so = $stdout[$i];
         if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, buf_size) {
@@ -3638,6 +3659,7 @@ defoperator row_fixed_scale => q{
 
   {
     my @bufs;
+    my $buf_limit = $iqueue * $n;
     my @stdin = map [], @wi;
     my @queue;
     my $eof;
@@ -3678,7 +3700,7 @@ defoperator row_fixed_scale => q{
 
         if (@$si) {
           safewrite $wi[$i], ${$b = shift @$si};
-          push @bufs, $b;
+          push @bufs, $b unless @bufs >= $buf_limit;
         }
 
         $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
@@ -3700,7 +3722,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-30 core/row/join.pl.sdoc
+32 core/row/join.pl.sdoc
 Streaming joins.
 The UNIX `join` command does this, but rearranges fields in the process. ni
 implements its own operators as a workaround.
@@ -3709,16 +3731,18 @@ defoperator join => q{
   my ($left_cols, $right_cols, $f) = @_;
   my $fh = sni @$f;
   my ($leof, $reof) = (0, 0);
+  my ($llimit, @lcols) = @$left_cols;
+  my ($rlimit, @rcols) = @$right_cols;
   while (!$leof && !$reof) {
-    chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>)[@$left_cols]);
-    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>  )[@$right_cols]);
+    chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>, $llimit + 1)[@lcols]);
+    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>,   $rlimit + 1)[@rcols]);
     $reof ||= !defined $rrow;
     $leof ||= !defined $lrow;
 
     until ($lkey eq $rkey or $leof or $reof) {
-      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>)[@$left_cols]),
+      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>, $llimit + 1)[@lcols]),
         $reof ||= !defined $rrow until $reof or $rkey ge $lkey;
-      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>)[@$right_cols]),
+      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $rlimit + 1)[@rcols]),
         $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
     }
 
@@ -3729,8 +3753,8 @@ defoperator join => q{
   }
 };
 
-# TODO: colspecs
-defshort '/j', pmap q{join_op [0], [0], $_}, _qfn;
+defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
+               pseq popt colspec, _qfn;
 2 core/cell/lib
 murmurhash.pl.sdoc
 cell.pl.sdoc
@@ -3892,6 +3916,15 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+1 core/assert/lib
+assert.pl.sdoc
+6 core/assert/assert.pl.sdoc
+Assertions: die horribly unless something is true.
+Defines the `!` operator, which will deliberately nuke your entire process
+unless its condition is true.
+
+defshort '/!',
+  defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 7 core/pl/lib
 util.pm.sdoc
 math.pm.sdoc
@@ -4279,7 +4312,7 @@ BEGIN {
   *tep = \&time_epoch_pieces;
   *tpe = \&time_pieces_epoch;
 }
-142 core/pl/pl.pl.sdoc
+153 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4383,11 +4416,19 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)  {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
-sub perl_grepper($) {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
+sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
+  print $_, "\n";
+  unless (row) {
+    sleep 1;
+    die "\r\033[KASSERTION " . q#) . $_[0] . q(# . " FAILED at line $.: $_";
+  }
+)}
 
-defoperator perl_mapper  => q{stdin_to_perl perl_mapper  $_[0]};
-defoperator perl_grepper => q{stdin_to_perl perl_grepper $_[0]};
+defoperator perl_mapper  => q{stdin_to_perl perl_mapper   $_[0]};
+defoperator perl_grepper => q{stdin_to_perl perl_grepper  $_[0]};
+defoperator perl_assert  => q{stdin_to_perl perl_asserter $_[0]};
 
 defoperator perl_cell_transformer => q{
   my ($colspec, $code) = @_;
@@ -4410,6 +4451,7 @@ c
 BEGIN {
   defparseralias perl_mapper_code         => plcode \&perl_mapper;
   defparseralias perl_grepper_code        => plcode \&perl_grepper;
+  defparseralias perl_asserter_code       => plcode \&perl_asserter;
   defparseralias perl_cell_transform_code => plcode \&perl_mapper;      # [sic]
 }
 
@@ -4419,6 +4461,8 @@ defshort '/p',
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, prx 'p', perl_grepper_code;
+
+defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
@@ -8271,7 +8315,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-97 doc/options.md
+98 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8302,6 +8346,7 @@ Operator | Status | Example      | Description
 `.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
 `_`      |        |              |
+`\!`     | I      | `\!p'F_==3'` | Assert a condition
 `,`      | T      | `,jAB`       | Enter cell context
 `:`      | T      | `:foo[nE8z]` | Checkpointed stream
 `::`     | M      | `::x[n100]`  | Create an in-memory data closure
