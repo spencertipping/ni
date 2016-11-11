@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-48 core/boot/ni.map.sdoc
+49 core/boot/ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly.
@@ -83,6 +83,7 @@ lib core/destructure
 lib core/checkpoint
 lib core/net
 lib core/buffer
+lib core/script
 lib core/col
 lib core/row
 lib core/cell
@@ -102,7 +103,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-87 core/boot/util.pl.sdoc
+89 core/boot/util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -120,6 +121,8 @@ sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+
+sub wf  {open my $fh, "> $_[0]" or die "wf $_[0]: $!"; print $fh $_[1]; close $fh; $_[0]}
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
@@ -2385,6 +2388,8 @@ BEGIN {
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
 defoperator sh   => q{my ($c) = @_; sh $c};
 
+defshort '/e', pmap q{sh_op $_}, shell_command;
+
 Cat meta-operator.
 We don't want 'cat' to be a regular operator because of how shell wildcards
 work. If you say something like `ni *`, it's going to get a bunch of filenames,
@@ -2418,8 +2423,6 @@ defoperator n => q{
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';
-
-defshort '/e', pmap q{sh_op $_}, shell_command;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
@@ -2816,7 +2819,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-109 core/uri/uri.pl.sdoc
+112 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2829,6 +2832,9 @@ of them:
 
 | ni \'[ http://foo.com http://bar.com ]
 
+sub uri_scheme($) {my ($scheme) = $_[0] =~ /^([^:]+):/; $scheme}
+sub uri_path($)   {my $s = uri_scheme $_[0]; sr $_[0], qr|^\Q$s://\E|, ''}
+
 c
 BEGIN {
   no strict 'refs';
@@ -2839,10 +2845,10 @@ BEGIN {
     %{"ni::resource_$op"} = ();
     *{"ni::resource_$op"} = sub ($) {
       my ($r) = @_;
-      my ($scheme) = $r =~ /^([^:]+):/;
+      my $scheme = uri_scheme $r;
       my $f = ${"ni::resource_$op"}{$scheme} or
         die "ni: $scheme resources don't support the $op operation";
-      &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+      &$f($r, uri_path $r);
     };
   }
 }
@@ -3215,6 +3221,42 @@ defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 defshort '/B',
   defdsp 'bufferalt', 'dispatch table for /B buffer operator',
     n => pmap q{buffer_null_op}, pnone;
+1 core/script/lib
+script.pl.sdoc
+33 core/script/script.pl.sdoc
+Scripting support.
+This lets you define a library of scripts or other random utilities (possibly
+with dependent files) and gives you a way to invoke those scripts from a custom
+operator. See doc/script.md for details about how this works.
+
+sub export_lib_to_path {
+  local $_;
+  my ($lib, $path) = @_;
+  $path ||= uri_path resource_tmp 'file://';
+  mkdir $path or die "ni: could not create $path/ for library export: $!";
+  my @l     = lib_entries $lib, $ni::self{"$lib/lib"};
+  my @files = map sr($_, qr|^\Q$lib/\E|, "$path/"), @l;
+  wf $files[$_], $ni::self{$l[$_]} for 0..$#l;
+  $path;
+}
+
+sub rm_rf($) {
+  local $SIG{CHLD} = 'DEFAULT';
+  system 'rm', '-rf', $_[0];
+}
+
+defoperator script => q{
+  my ($lib, $cmd) = @_;
+  my $tmpdir = export_lib_to_path $lib;
+  my $runner = siproc {
+    chdir $tmpdir;
+    sh $cmd;
+  };
+  sforward \*STDIN, $runner;
+  close $runner;
+  $runner->await;
+  rm_rf $tmpdir;
+};
 1 core/col/lib
 col.pl.sdoc
 185 core/col/col.pl.sdoc
@@ -6726,7 +6768,7 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-25 doc/lib
+26 doc/lib
 binary.md
 closure.md
 col.md
@@ -6747,6 +6789,7 @@ pyspark.md
 row.md
 ruby.md
 scale.md
+script.md
 sql.md
 stream.md
 tutorial.md
@@ -9273,6 +9316,37 @@ groups of lines to the child processes as their input fds become available.
 Scaling makes no guarantees about the ordering of the output rows, nor where
 exactly the input will be split. In practice the input splits tend to be large
 for performance reasons.
+30 doc/script.md
+# Scripting interface
+It's common to have a shell script you'd like to integrate into a ni pipeline,
+and possibly also into the ni image itself. This allows you to do something
+more graceful than `ni e[sh my-script args...]`.
+
+ni's scripting interface makes this possible. All you need to do is write a
+normal library and include it into the ni image. For example, here's a
+scripting extension that echoes its command-line arguments:
+
+```bash
+$ mkdir echo-script
+$ echo echo.pl >> echo-script/lib
+$ echo echo.sh >> echo-script/lib
+$ cat > echo-script/echo.sh <<'EOF'
+#!/bin/sh
+echo "$@"
+EOF
+$ cat > echo-script/echo.pl <<'EOF'
+defshort '/echo' =>
+  pmap q{script_op 'echo-script', "sh ./echo.sh " . $_},
+  shell_command;
+EOF
+```
+
+Now let's use the library:
+
+```bash
+$ ni --lib echo-script echo[1 2 3]
+1 2 3
+```
 35 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
