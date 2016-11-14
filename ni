@@ -8476,7 +8476,7 @@ Operator | Status | Example      | Description
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
-393 doc/perl.md
+405 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8687,9 +8687,21 @@ $ ni mult-table p'r g_ ru {a%4 == 0}'   # extract seventh column from each line
 `a_` etc are defined like this:
 
 ```pl
-sub a_ {local $_; map((split /\t/)[0], @_)}
-sub b_ {local $_; map((split /\t/)[1], @_)}
+sub a_ {local $_; map((split /\t/)[0], map split(/\n/), @_)}
+sub b_ {local $_; map((split /\t/)[1], map split(/\n/), @_)}
 ...
+```
+
+The line split enables more idiomatic handling of data closures:
+
+```bash
+$ ni ::squares[n100p'100 - a' p'r a, a*a'] \
+     n5p'^{@sq{a_ squares} = b_ squares} $sq{a()}'
+1
+4
+9
+16
+25
 ```
 
 ## Utility functions
