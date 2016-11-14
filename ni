@@ -9347,7 +9347,7 @@ groups of lines to the child processes as their input fds become available.
 Scaling makes no guarantees about the ordering of the output rows, nor where
 exactly the input will be split. In practice the input splits tend to be large
 for performance reasons.
-53 doc/script.md
+55 doc/script.md
 # Scripting interface
 It's common to have a shell script you'd like to integrate into a ni pipeline,
 and possibly also into the ni image itself. This allows you to do something
@@ -9394,7 +9394,9 @@ echo "$@"
 EOF
 ```
 
-Usage is exactly as before:
+Usage is exactly as before. Note, however, that if the operator name collides
+with a directory, as it does here, you need to use `'foo bar'` rather than
+`[foo bar]` to disambiguate.
 
 ```bash
 $ ni --lib echo2 echo2'foo bar'
