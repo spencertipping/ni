@@ -17,7 +17,7 @@ echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
 defshort '/echo' =>
-  pmap q{script_op 'echo-script', "./echo.sh " . $_},
+  pmap q{script_op 'echo-script', "./echo.sh $_"},
   shell_command;
 EOF
 ```
@@ -36,7 +36,7 @@ $ mkdir -p echo2/bin
 $ { echo echo2.pl; echo bin/echo2; } > echo2/lib
 $ cat > echo2/echo2.pl <<'EOF'
 defshort '/echo2' =>
-  pmap q{script_op 'echo2', "bin/echo2 " . $_},
+  pmap q{script_op 'echo2', "bin/echo2 $_"},
   shell_command;
 EOF
 $ cat > echo2/bin/echo2 <<'EOF'

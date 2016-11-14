@@ -2587,14 +2587,18 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-77 core/stream/main.pl.sdoc
+81 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
 
 defconfenv 'pager', NI_PAGER => 'less';
 
-sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
+sub child_status_ok($) {
+  $_[0] == 0                    # ok exit status
+    or ($_[0] & 127) == 13      # killed by sigpipe
+    or ($_[0] & 127) == 15      # killed by sigterm (probably from us)
+}
 
 $ni::main_operator = sub {
   my @children;
@@ -9363,7 +9367,7 @@ echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
 defshort '/echo' =>
-  pmap q{script_op 'echo-script', "./echo.sh " . $_},
+  pmap q{script_op 'echo-script', "./echo.sh $_"},
   shell_command;
 EOF
 ```
@@ -9382,7 +9386,7 @@ $ mkdir -p echo2/bin
 $ { echo echo2.pl; echo bin/echo2; } > echo2/lib
 $ cat > echo2/echo2.pl <<'EOF'
 defshort '/echo2' =>
-  pmap q{script_op 'echo2', "bin/echo2 " . $_},
+  pmap q{script_op 'echo2', "bin/echo2 $_"},
   shell_command;
 EOF
 $ cat > echo2/bin/echo2 <<'EOF'
