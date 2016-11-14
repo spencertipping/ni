@@ -44,7 +44,9 @@ echo "$@"
 EOF
 ```
 
-Usage is exactly as before:
+Usage is exactly as before. Note, however, that if the operator name collides
+with a directory, as it does here, you need to use `'foo bar'` rather than
+`[foo bar]` to disambiguate.
 
 ```bash
 $ ni --lib echo2 echo2'foo bar'
