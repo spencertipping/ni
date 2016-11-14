@@ -20,10 +20,8 @@ sub basename {sr $_[0], qr/^.*\//, ''}
 sub dirname  {sr $_[0], qr/[^\/]+$/, ''}
 
 sub mkdir_p {
-  return if -d $_[0] or not length $_[0];
-  mkdir_p(dirname $_[0]);
-  mkdir $_[0];
-}
+  print STDERR "mkdir_p $_[0]\n";
+  -d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
   mkdir_p dirname $_[0];

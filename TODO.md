@@ -1,3 +1,5 @@
+### Fix exit code handling
+
 ### Join operator
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.
