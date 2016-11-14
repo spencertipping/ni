@@ -103,7 +103,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-89 core/boot/util.pl.sdoc
+104 core/boot/util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -122,7 +122,22 @@ sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; c
 sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
 
-sub wf  {open my $fh, "> $_[0]" or die "wf $_[0]: $!"; print $fh $_[1]; close $fh; $_[0]}
+sub basename {sr $_[0], qr/^.*\//, ''}
+sub dirname  {sr $_[0], qr/[^\/]+$/, ''}
+
+sub mkdir_p {
+  return if -d $_[0] or not length $_[0];
+  mkdir_p(dirname $_[0]);
+  mkdir $_[0];
+}
+
+sub wf {
+  mkdir_p dirname $_[0];
+  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
+  print $fh $_[1];
+  close $fh;
+  $_[0];
+}
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
@@ -2572,7 +2587,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-72 core/stream/main.pl.sdoc
+77 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -2613,7 +2628,12 @@ $ni::main_operator = sub {
   }
 
   my $exit_status = 0;
-  child_status_ok $_->await or $exit_status = 1 for @children;
+  for (@children) {
+    my $status = $_->await;
+    next if child_status_ok $status;
+    print STDERR "ni: child $_->pid exited with nonzero status $status\n";
+    $exit_status = 1;
+  }
   $exit_status;
 };
 
@@ -3490,10 +3510,10 @@ defoperator row_cols_defined => q{
 
 defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
-    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '~', integer),
-    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-', integer),
-    pmap(q{row_every_op  $_},            pn 1, prx 'x', number),
-    pmap(q{row_match_op  $_},            pn 1, prx '/', regex),
+    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '[+~]', integer),
+    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',    integer),
+    pmap(q{row_every_op  $_},            pn 1, prx 'x',    number),
+    pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
@@ -9323,7 +9343,7 @@ groups of lines to the child processes as their input fds become available.
 Scaling makes no guarantees about the ordering of the output rows, nor where
 exactly the input will be split. In practice the input splits tend to be large
 for performance reasons.
-30 doc/script.md
+55 doc/script.md
 # Scripting interface
 It's common to have a shell script you'd like to integrate into a ni pipeline,
 and possibly also into the ni image itself. This allows you to do something
@@ -9353,6 +9373,31 @@ Now let's use the library:
 ```bash
 $ ni --lib echo-script echo[1 2 3]
 1 2 3
+```
+
+You can use subdirectories with scripts as well. For example:
+
+```bash
+$ mkdir -p echo2/bin
+$ { echo echo2.pl; echo bin/echo2; } > echo2/lib
+$ cat > echo2/echo2.pl <<'EOF'
+defshort '/echo2' =>
+  pmap q{script_op 'echo2', "bin/echo2 " . $_},
+  shell_command;
+EOF
+$ cat > echo2/bin/echo2 <<'EOF'
+#!/bin/sh
+echo "$# argument(s)"
+echo "$@"
+EOF
+```
+
+Usage is the same:
+
+```bash
+$ ni --lib echo2 echo2[foo bar]
+2 argument(s)
+foo bar
 ```
 35 doc/sql.md
 # SQL interop

@@ -28,3 +28,28 @@ Now let's use the library:
 $ ni --lib echo-script echo[1 2 3]
 1 2 3
 ```
+
+You can use subdirectories with scripts as well. For example:
+
+```bash
+$ mkdir -p echo2/bin
+$ { echo echo2.pl; echo bin/echo2; } > echo2/lib
+$ cat > echo2/echo2.pl <<'EOF'
+defshort '/echo2' =>
+  pmap q{script_op 'echo2', "bin/echo2 " . $_},
+  shell_command;
+EOF
+$ cat > echo2/bin/echo2 <<'EOF'
+#!/bin/sh
+echo "$# argument(s)"
+echo "$@"
+EOF
+```
+
+Usage is the same:
+
+```bash
+$ ni --lib echo2 echo2[foo bar]
+2 argument(s)
+foo bar
+```

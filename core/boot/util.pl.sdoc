@@ -16,7 +16,22 @@ sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; c
 sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
 
-sub wf  {open my $fh, "> $_[0]" or die "wf $_[0]: $!"; print $fh $_[1]; close $fh; $_[0]}
+sub basename {sr $_[0], qr/^.*\//, ''}
+sub dirname  {sr $_[0], qr/[^\/]+$/, ''}
+
+sub mkdir_p {
+  return if -d $_[0] or not length $_[0];
+  mkdir_p(dirname $_[0]);
+  mkdir $_[0];
+}
+
+sub wf {
+  mkdir_p dirname $_[0];
+  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
+  print $fh $_[1];
+  close $fh;
+  $_[0];
+}
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
