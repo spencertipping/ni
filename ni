@@ -3228,7 +3228,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/script/lib
 script.pl.sdoc
-33 core/script/script.pl.sdoc
+35 core/script/script.pl.sdoc
 Scripting support.
 This lets you define a library of scripts or other random utilities (possibly
 with dependent files) and gives you a way to invoke those scripts from a custom
@@ -3241,7 +3241,9 @@ sub export_lib_to_path {
   mkdir $path or die "ni: could not create $path/ for library export: $!";
   my @l     = lib_entries $lib, $ni::self{"$lib/lib"};
   my @files = map sr($_, qr|^\Q$lib/\E|, "$path/"), @l;
+  wf "$path/ni", image;
   wf $files[$_], $ni::self{$l[$_]} for 0..$#l;
+  chmod 0755, "$path/ni", @files;
   $path;
 }
 
@@ -9341,7 +9343,7 @@ echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
 defshort '/echo' =>
-  pmap q{script_op 'echo-script', "sh ./echo.sh " . $_},
+  pmap q{script_op 'echo-script', "./echo.sh " . $_},
   shell_command;
 EOF
 ```

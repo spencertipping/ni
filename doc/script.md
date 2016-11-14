@@ -17,7 +17,7 @@ echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
 defshort '/echo' =>
-  pmap q{script_op 'echo-script', "sh ./echo.sh " . $_},
+  pmap q{script_op 'echo-script', "./echo.sh " . $_},
   shell_command;
 EOF
 ```
