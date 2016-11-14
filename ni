@@ -2631,7 +2631,7 @@ $ni::main_operator = sub {
   for (@children) {
     my $status = $_->await;
     next if child_status_ok $status;
-    print STDERR "ni: child $_->pid exited with nonzero status $status\n";
+    print STDERR "ni: nonzero exit status for child process $_\n";
     $exit_status = 1;
   }
   $exit_status;
