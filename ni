@@ -103,7 +103,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-102 core/boot/util.pl.sdoc
+100 core/boot/util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -125,9 +125,7 @@ sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0
 sub basename($) {(dirbase $_[0])[1]}
 sub dirname($)  {(dirbase $_[0])[0]}
 
-sub mkdir_p {
-  print STDERR "mkdir_p $_[0]\n";
-  -d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
+sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
   mkdir_p dirname $_[0];
