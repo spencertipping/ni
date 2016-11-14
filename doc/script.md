@@ -16,9 +16,8 @@ $ cat > echo-script/echo.sh <<'EOF'
 echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
-defshort '/echo' =>
-  pmap q{script_op 'echo-script', "./echo.sh $_"},
-  shell_command;
+defshort '/echo' => pmap q{script_op 'echo-script', "./echo.sh $_"},
+                    shell_command;
 EOF
 ```
 
@@ -29,15 +28,14 @@ $ ni --lib echo-script echo[1 2 3]
 1 2 3
 ```
 
-You can use subdirectories with scripts as well. For example:
+Script libraries can also include subdirectories; for example:
 
 ```bash
 $ mkdir -p echo2/bin
 $ { echo echo2.pl; echo bin/echo2; } > echo2/lib
 $ cat > echo2/echo2.pl <<'EOF'
-defshort '/echo2' =>
-  pmap q{script_op 'echo2', "bin/echo2 $_"},
-  shell_command;
+defshort '/echo2' => pmap q{script_op 'echo2', "bin/echo2 $_"},
+                     shell_command;
 EOF
 $ cat > echo2/bin/echo2 <<'EOF'
 #!/bin/sh
@@ -46,10 +44,10 @@ echo "$@"
 EOF
 ```
 
-Usage is the same:
+Usage is exactly as before:
 
 ```bash
-$ ni --lib echo2 echo2[foo bar]
+$ ni --lib echo2 echo2'foo bar'
 2 argument(s)
 foo bar
 ```

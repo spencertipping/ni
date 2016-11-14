@@ -2587,10 +2587,11 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-81 core/stream/main.pl.sdoc
+83 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
+our $handling_pipe;
 
 defconfenv 'pager', NI_PAGER => 'less';
 
@@ -2638,7 +2639,7 @@ $ni::main_operator = sub {
     print STDERR "ni: nonzero exit status for child process $_\n";
     $exit_status = 1;
   }
-  $exit_status;
+  $handling_pipe ? 0 : $exit_status;
 };
 
 Pagers and kill signals.
@@ -2649,6 +2650,7 @@ in an interrupt context we try to give the pager a chance to exit gracefully by
 closing its input stream and having the user use `q` or similar.
 
 $SIG{PIPE} = sub {
+  $handling_pipe = 1;
   close $pager_fh if $pager_fh;
   ni::procfh::kill_children 'TERM';
   exit 0;
@@ -9347,7 +9349,7 @@ groups of lines to the child processes as their input fds become available.
 Scaling makes no guarantees about the ordering of the output rows, nor where
 exactly the input will be split. In practice the input splits tend to be large
 for performance reasons.
-55 doc/script.md
+53 doc/script.md
 # Scripting interface
 It's common to have a shell script you'd like to integrate into a ni pipeline,
 and possibly also into the ni image itself. This allows you to do something
@@ -9366,9 +9368,8 @@ $ cat > echo-script/echo.sh <<'EOF'
 echo "$@"
 EOF
 $ cat > echo-script/echo.pl <<'EOF'
-defshort '/echo' =>
-  pmap q{script_op 'echo-script', "./echo.sh $_"},
-  shell_command;
+defshort '/echo' => pmap q{script_op 'echo-script', "./echo.sh $_"},
+                    shell_command;
 EOF
 ```
 
@@ -9379,15 +9380,14 @@ $ ni --lib echo-script echo[1 2 3]
 1 2 3
 ```
 
-You can use subdirectories with scripts as well. For example:
+Script libraries can also include subdirectories; for example:
 
 ```bash
 $ mkdir -p echo2/bin
 $ { echo echo2.pl; echo bin/echo2; } > echo2/lib
 $ cat > echo2/echo2.pl <<'EOF'
-defshort '/echo2' =>
-  pmap q{script_op 'echo2', "bin/echo2 $_"},
-  shell_command;
+defshort '/echo2' => pmap q{script_op 'echo2', "bin/echo2 $_"},
+                     shell_command;
 EOF
 $ cat > echo2/bin/echo2 <<'EOF'
 #!/bin/sh
@@ -9396,10 +9396,10 @@ echo "$@"
 EOF
 ```
 
-Usage is the same:
+Usage is exactly as before:
 
 ```bash
-$ ni --lib echo2 echo2[foo bar]
+$ ni --lib echo2 echo2'foo bar'
 2 argument(s)
 foo bar
 ```
