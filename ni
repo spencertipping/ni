@@ -9788,18 +9788,18 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
 ```
 
 Checkpointing, like most operators that accept lambda expressions, can also be
