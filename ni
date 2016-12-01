@@ -4343,7 +4343,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-39 core/pl/time.pm.sdoc
+41 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4363,6 +4363,7 @@ sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 POSIX::tzset();
 
 sub time_epoch_pieces($$) {
+  local $_;
   my ($es, $t) = @_;
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
@@ -4371,6 +4372,7 @@ sub time_epoch_pieces($$) {
 }
 
 sub time_pieces_epoch($@) {
+  local $_;
   my ($es, @ps) = @_;
   my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
