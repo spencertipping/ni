@@ -4383,7 +4383,7 @@ BEGIN {
   *tep = \&time_epoch_pieces;
   *tpe = \&time_pieces_epoch;
 }
-153 core/pl/pl.pl.sdoc
+154 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4459,6 +4459,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/stream.pm
                             core/pl/geohash.pm
                             core/pl/time.pm
+                            core/cell/murmurhash.pl
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
