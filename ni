@@ -6551,7 +6551,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-152 core/hadoop/hadoop.pl.sdoc
+156 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6564,6 +6564,7 @@ defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
+defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -6663,11 +6664,14 @@ defoperator hadoop_streaming => q{
     (my $combiner_file = $combiner || '') =~ s|.*/||;
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
+    my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+
     my $cmd = shell_quote
       conf 'hadoop/name',
       jar => $streaming_jar,
       -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
       map((-input => $_), @ipath),
+      map((-D => $_), @jobconf),
       -output => $opath,
       -file   => $mapper,
       -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
