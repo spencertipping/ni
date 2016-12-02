@@ -53,3 +53,15 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
+
+sub lim {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  map min($upper, max $lower, $_), @xs;
+}
+
+sub btw {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  not grep $_ < $lower || $_ > $upper, @xs;
+}

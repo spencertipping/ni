@@ -4004,7 +4004,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-55 core/pl/util.pm.sdoc
+67 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4059,6 +4059,18 @@ sub cart {
   my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
+}
+
+sub lim {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  map min($upper, max $lower, $_), @xs;
+}
+
+sub btw {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  not grep $_ < $lower || $_ > $upper, @xs;
 }
 39 core/pl/math.pm.sdoc
 Math utility functions.
