@@ -4060,11 +4060,13 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-37 core/pl/math.pm.sdoc
+39 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
 
 use constant tau => 2 * 3.14159265358979323846264;
+use constant tau2 => tau/2;
+use constant tau4 => tau/4;
 
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
