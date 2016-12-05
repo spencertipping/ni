@@ -4138,7 +4138,7 @@ sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
 sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
-sub r(@)         {my $l = join "\t", @_; print $l, "\n"; ()}
+sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
@@ -6684,8 +6684,8 @@ defoperator hadoop_streaming => q{
       conf 'hadoop/name',
       jar => $streaming_jar,
       -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
-      map((-input => $_), @ipath),
       map((-D => $_), @jobconf),
+      map((-input => $_), @ipath),
       -output => $opath,
       -file   => $mapper,
       -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
@@ -7677,7 +7677,7 @@ $ ni --lib fractional2 frac 10 .5
 4.5
 5
 ```
-115 doc/hadoop.md
+118 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
@@ -7770,11 +7770,14 @@ AUTHORS	1
 BE	1
 ```
 
-Of course, we're also at liberty to omit the lambda brackets for brevity (I
-recommend using `--explain` liberally if you plan to make a habit of this):
+## Jobconf
+You can pass in jobconf options using the `hadoop/jobconf` variable or by
+setting `NI_HADOOP_JOBCONF`:
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+                 hadoop/jobconf='mapred.map.tasks=10
+                                 mapred.reduce.tasks=4'} \
                  Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1

@@ -90,11 +90,14 @@ AUTHORS	1
 BE	1
 ```
 
-Of course, we're also at liberty to omit the lambda brackets for brevity (I
-recommend using `--explain` liberally if you plan to make a habit of this):
+## Jobconf
+You can pass in jobconf options using the `hadoop/jobconf` variable or by
+setting `NI_HADOOP_JOBCONF`:
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+                 hadoop/jobconf='mapred.map.tasks=10
+                                 mapred.reduce.tasks=4'} \
                  Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
