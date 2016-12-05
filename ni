@@ -7677,7 +7677,7 @@ $ ni --lib fractional2 frac 10 .5
 4.5
 5
 ```
-118 doc/hadoop.md
+119 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
@@ -7772,7 +7772,8 @@ BE	1
 
 ## Jobconf
 You can pass in jobconf options using the `hadoop/jobconf` variable or by
-setting `NI_HADOOP_JOBCONF`:
+setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
+reducers, you'll see the shard boundaries):
 
 ```bash
 $ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
@@ -7781,14 +7782,14 @@ $ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
                  Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
 BE	1
+BUT	1
+FOR	2
+INCLUDING	1
+LIABILITY	1
+LIABLE	1
+OF	4
+OR	7
 ```
 
 ```lazytest
