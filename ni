@@ -4004,7 +4004,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-67 core/pl/util.pm.sdoc
+85 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4071,6 +4071,24 @@ sub btw {
   local $_;
   my ($lower, $upper, @xs) = @_;
   not grep $_ < $lower || $_ > $upper, @xs;
+}
+
+sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
+sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
+
+sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
+sub basename($) {(dirbase $_[0])[1]}
+sub dirname($)  {(dirbase $_[0])[0]}
+
+sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
+
+sub wf {
+  mkdir_p dirname $_[0];
+  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
+  print $fh $_[1];
+  close $fh;
+  $_[0];
 }
 39 core/pl/math.pm.sdoc
 Math utility functions.
