@@ -2380,7 +2380,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-202 core/stream/ops.pl.sdoc
+193 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2438,7 +2438,7 @@ defshort '/id:', pmap q{echo_op $_}, prc '.*';
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 Stream mixing/forking.
-Append, prepend, duplicate, divert.
+Append, prepend, divert.
 
 defoperator append => q{
   my @xs = @_;
@@ -2453,14 +2453,6 @@ defoperator prepend => q{
   sio;
 };
 
-defoperator duplicate => q{
-  my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  stee \*STDIN, $fh, \*STDOUT;
-  close $fh;
-  $fh->await;
-};
-
 defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
 defoperator divert => q{
   my @xs = @_;
@@ -2472,7 +2464,6 @@ defoperator divert => q{
 
 defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/%', pmap q{duplicate_op @$_}, _qfn;
 defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
 Interleaving.
@@ -2525,7 +2516,7 @@ defoperator interleave => q{
   $fh->await;
 };
 
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
+defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -8425,7 +8416,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-91 doc/options.md
+90 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8448,12 +8439,11 @@ Operator | Status | Example      | Description
 ---------|--------|--------------|------------
 `+`      | T      | `+p'foo'`    | Appends a data source evaluated with no input
 `^`      | T      | `^file`      | Prepends a data source
-`%`      | T      | `%[\>f K]`   | Duplicate stream, interleaving fork output
 `=`      | T      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | T      | `\>file`     | Sinks stream into resource, emits resource name
 `\>\'R`  | M      | `\>\'R`      | Converts a stream of resource names into a packed resource stream
 `\<`     | T      | `\<`         | Opposite of `\>`
-`.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
+`%`      | I      | `%n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
 `_`      |        |              |
 `\!`     | I      | `\!p'F_==3'` | Assert a condition
@@ -9492,7 +9482,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-385 doc/stream.md
+375 doc/stream.md
 # Stream operations
 `bash` and `ni` are both pipeline constructors: they string processes together
 by connecting one's stdin to another's stdout. For example, here's word count
@@ -9641,7 +9631,6 @@ ni has four operators that combine streams:
 
 - `+`: append a stream to this one
 - `^`: prepend a stream to this one
-- `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
 
 Visually, here's what these stream combiners do:
@@ -9660,11 +9649,6 @@ $ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
                         #                        ----------------
                         #                             |
 $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
-
-
-                        #                  n5 --> g
-                        #                 /        \
-$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
 
 
                         #                  n5 --> g --> /dev/null
@@ -9686,10 +9670,6 @@ world
 1
 2
 3
-$ ni hw %e[wc -l]               # output from 'wc -l' is included
-hello
-world
-2
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world

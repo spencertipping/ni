@@ -146,7 +146,6 @@ ni has four operators that combine streams:
 
 - `+`: append a stream to this one
 - `^`: prepend a stream to this one
-- `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
 
 Visually, here's what these stream combiners do:
@@ -165,11 +164,6 @@ $ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
                         #                        ----------------
                         #                             |
 $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
-
-
-                        #                  n5 --> g
-                        #                 /        \
-$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
 
 
                         #                  n5 --> g --> /dev/null
@@ -191,10 +185,6 @@ world
 1
 2
 3
-$ ni hw %e[wc -l]               # output from 'wc -l' is included
-hello
-world
-2
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world

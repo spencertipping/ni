@@ -55,7 +55,7 @@ defshort '/id:', pmap q{echo_op $_}, prc '.*';
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 Stream mixing/forking.
-Append, prepend, duplicate, divert.
+Append, prepend, divert.
 
 defoperator append => q{
   my @xs = @_;
@@ -70,14 +70,6 @@ defoperator prepend => q{
   sio;
 };
 
-defoperator duplicate => q{
-  my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  stee \*STDIN, $fh, \*STDOUT;
-  close $fh;
-  $fh->await;
-};
-
 defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
 defoperator divert => q{
   my @xs = @_;
@@ -89,7 +81,6 @@ defoperator divert => q{
 
 defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/%', pmap q{duplicate_op @$_}, _qfn;
 defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
 Interleaving.
@@ -142,7 +133,7 @@ defoperator interleave => q{
   $fh->await;
 };
 
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
+defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
