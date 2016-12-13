@@ -4121,7 +4121,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-67 core/pl/stream.pm.sdoc
+76 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4151,6 +4151,15 @@ sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
+
+Hash constructors.
+Pairs of letters you can use to index one column against another. For example,
+`%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
+
+c
+BEGIN {for my $x ('a'..'l') {
+         ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
+                       $x, $_, $x, $_ for 'a'..'l'}}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
