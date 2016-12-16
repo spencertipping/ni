@@ -4375,7 +4375,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-41 core/pl/time.pm.sdoc
+53 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4392,30 +4392,42 @@ use constant time_pieces => 'SMHdmYwjDN';
 
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
-POSIX::tzset();
-
-sub time_epoch_pieces($$) {
+sub time_epoch_pieces($;$) {
   local $_;
-  my ($es, $t) = @_;
+  my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
   $pieces[5] += 1900;
+  $pieces[4]++;
   @pieces[time_element_indexes $es];
 }
 
-sub time_pieces_epoch($@) {
+sub time_pieces_epoch {
   local $_;
-  my ($es, @ps) = @_;
-  my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
+  my ($es, @ps) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+  my @tvs = (0, 0, 0, 1, 1, 1970, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
+  $tvs[4]--;
   POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
+}
+
+Approximate timezone shifts by lat/lng.
+Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
+(in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
+It may be off by a few hours but is generally unbiased.
+
+sub timezone_seconds($$) {
+  my ($lat, $lng) = @_;
+  240 * int($lng + 7);
 }
 
 c
 BEGIN {
-  *tep = \&time_epoch_pieces;
-  *tpe = \&time_pieces_epoch;
+  POSIX::tzset();
+  *tep  = \&time_epoch_pieces;
+  *tpe  = \&time_pieces_epoch;
+  *tsec = \&timezone_seconds;
 }
 154 core/pl/pl.pl.sdoc
 Perl parse element.
