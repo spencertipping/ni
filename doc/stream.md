@@ -43,15 +43,14 @@ $ cat fooz | ni
 test
 ```
 
-## Data sources
-In addition to files, ni can generate data in a few ways:
+## Stream Generation
+In addition to reading files, ni can generate data:
+
+### Integer Streams
+
+The `n` operator generates a stream of integers of a given length; if the length is not given, `ni n` will generate an infinite stream.
 
 ```bash
-$ ni +e'seq 4'                  # append output of shell command "seq 4"
-1
-2
-3
-4
 $ ni n4                         # integer generator
 1
 2
@@ -62,8 +61,49 @@ $ ni n04                        # integer generator, zero-based
 1
 2
 3
+$ ni n                          # infinite stream of ints
+1
+2
+3
+4
+5
+.
+.
+.
+```
+
+`n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
+
+```bash
+$ni ::word[n1p'pretty'] n3 w[np'r word']
+1       pretty
+2       pretty
+3       pretty
+```
+
+### Literal Text
+
+The `id` operator puts whitespace-delimited literal text into the stream
+```bash
 $ ni id:foo                     # literal text
 foo
+```
+The example above can be written equivalently as:
+```bash
+ni ::word[id:pretty ]  n3 w[np'r word']
+1       pretty
+2       pretty
+3       pretty
+```
+Note that the whitespace between `pretty` and the closing bracket; if this space is not present, the `ni` parser will interpret the closing bracket as part of the literal text. This is important to keep in mind for `ni` in general, where commands are often very compact, sometimes whitespace (or a lack thereof) is needed for clarity. See [caveats.md](caveats.md) for some of the common cases where whitespace (or lack thereof) is important.
+
+### bash commands
+```bash
+$ ni e'seq 4'                  # output of shell command "seq 4"
+1
+2
+3
+4
 ```
 
 ## Transformation
