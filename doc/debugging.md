@@ -1,27 +1,36 @@
 #Debugging
 
-As a result of `ni`'s concision, even experienced developers can have difficulty identifying errors. 
+As a result of `ni`'s concision, even experienced developers can have difficulty eyeballing errors. However, `ni`'s structure as a stream-processing language makes development and debugging both very easy.
+
+##Compilation Errors
+Generally these will stem from an error with some of your Perl. Ask someone for help.
+
+##Job is too slow
+`ni` is a stream-processing language; every job should be fast (or at least, start spitting out output fast).  See [optimization.md](optimization.md) for tips on speeding up slow jobs.
 
 ##Parsing Errors
 
 ###Bracketed operators
 
-If you get an error involving a bracketed operator and you're sure you've written everything correctly, try inserting whitespace after the opening bracket and before the closing bracket.
+If you get an error involving a bracketed operator and you're sure you've written everything correctly, try inserting whitespace after the opening bracket and before the closing bracket. `ni` is usually good about telling you when that's necessary.
 
 ###Hadoop Streaming
+Take a look at the following snippet:
 
 `$ ni n1 HS [p'r a'] _ _`
-gives the error: `ni: failed to parse starting here (ni --dev/parse to trace):
+
+It fails with the error: `ni: failed to parse starting here (ni --dev/parse to trace):
   _`
   
+Running $ `ni --dev/parse n1 HS [p'r a'] _ _`
+
 ```
 <HUGE NUMBER OF LINES OF PARSE TRACE>
  ni::parse [[/series], n1, HS, [pr a], _, _] = [[[n, 1, 2], [hadoop_streaming, [], [[perl_mapper, r a]], undef]], _]
 ```
-The hadoop streaming parser interprets the next character after the `S` in `HS` as the 
 
-##Compilation Errors
-Generally these will stem from an error with some of your Perl. Ask someone for help.
+The `ni` parser interprets the next character after the `S` in `HS` as the mapper job, which we had meant to be `p'r a'`; 
+
 
 ##Hadoop Streaming Errors
 The first thing to do when hunting for errors in hadoop streaming jobs is to make sure that your mapper, combiner, and reducer run outside of an `HS` context. If they do, then 
@@ -30,15 +39,13 @@ The first thing to do when hunting for errors in hadoop streaming jobs is to mak
 When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the job server. If you have a large data closure, that closure will be included in the payload sent to the job server. If your closure is larger than a couple hundred megabytes, you should try a different approach to the problem (e.g. use an HDFS join [coming soon to `ni`, use [nfu]`nfu` for now]).
 
 
-##Job is too slow
-`ni` is a stream-processing language; every job should be fast (or at least, start spitting out output fast).  See [optimization.md](optimization.md) for tips on speeding up slow jobs.
 
 
 ##Erroneous Output
 The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls of these 
 
 ###Sorting doesn't work how I want
-As of 2016-12-18, sorting works in a way that is unintuitive on **certain** operating systems. Specifically, `ni`'s `g` operator ignores blanks (i.e. separators between columns) on certain operating systems, and n general, you will want to 
+As of 2016-12-18, sorting works in a way that is unintuitive on **certain** operating systems. Specifically, `ni`'s `g` operator ignores blanks (i.e. separators between columns) on certain operating systems (not Mac or Ubuntu). In general, if you need to sort by a particular column of the data, you will be better served using `g<column name>`.
 
 ###Referencing the wrong column after re-indexing
 
