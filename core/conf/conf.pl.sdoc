@@ -49,7 +49,7 @@ defoperator configure => q{
 c
 BEGIN {defparseralias config_map_key   => prx '[^=]+';
        defparseralias config_map_value => prc '.*[^}]+|'}
-BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, prx '=',
+BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, pstr '=',
                                                      config_map_value}
 BEGIN {defparseralias config_option_map
          => pmap q{my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h},

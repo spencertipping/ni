@@ -53,4 +53,4 @@ defshort '/l', pmap q{lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 
 defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
                                              body   => $_)},
-          pn 1, prx 'l', lispcode;
+          pn 1, pstr 'l', lispcode;

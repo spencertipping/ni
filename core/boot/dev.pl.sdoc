@@ -1,6 +1,13 @@
 Development functions.
 Utilities helpful for debugging and developing ni.
 
+sub try_to_resolve_coderef($) {
+  for my $f (keys %{ni::}) {
+    return "ni::$f" if \&{"ni::$f"} eq $_[0];
+  }
+  return '<opaque code reference>';
+}
+
 sub dev_inspect($;\%);
 sub dev_inspect($;\%) {
   local $_;
@@ -10,6 +17,7 @@ sub dev_inspect($;\%) {
   $$refs{$x} = $x if defined $x;
   my $r = 'ARRAY' eq ref $x ? '[' . join(', ', map dev_inspect($_, %$refs), @$x) . ']'
         : 'HASH'  eq ref $x ? '{' . join(', ', map "$_ => " . dev_inspect($$x{$_}, %$refs), keys %$x) . '}'
+        : 'CODE'  eq ref $x ? try_to_resolve_coderef($x)
         : defined $x        ? "" . $x
         :                     'undef';
   delete $$refs{$x} if defined $x;

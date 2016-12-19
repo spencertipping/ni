@@ -38,6 +38,25 @@ defmetaoperator cat => q{
            @$right[$i+1..$#{$right}]]);
 };
 
+docparser shell_lambda => <<'_';
+A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+metacharacters within the arguments won't be expanded). If you use this form,
+no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
+to close the list.
+_
+
+docparser shell_lambda_ws => <<'_';
+A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+metacharacters within the arguments won't be expanded). Whitespace is required
+around both brackets.
+_
+
+docparser shell_command => q{A quoted or bracketed shell command};
+
+docoperator cat  => q{Append contents of a file or resource};
+docoperator echo => q{Append text verbatim};
+docoperator sh   => q{Filter stream through a shell command};
+
 Note that we generate numbers internally rather than shelling out to `seq`
 (which is ~20x faster than Perl for the purpose, incidentally). This is
 deliberate: certain versions of `seq` generate floating-point numbers after a
@@ -48,20 +67,26 @@ defoperator n => q{
   sio; for (my $i = $l; $u < 0 || $i < $u; ++$i) {print "$i\n"};
 };
 
+docoperator n => q{Append consecutive integers within a range};
+
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
+docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
+docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
+docshort '/id:' => q{Append literal text};
+docshort '/e' => q{Exec shell command as a filter for the current stream};
+
+doclong '/fs' => q{Append things that appear to be files};
+
 Stream mixing/forking.
 Append, prepend, divert.
 
-defoperator append => q{
-  my @xs = @_;
-  sio;
-  exec_ni @xs;
-};
+defoperator append => q{my @xs = @_; sio; exec_ni @xs};
+docoperator append => q{Append another ni stream to this one};
 
 defoperator prepend => q{
   my @xs = @_;
@@ -69,8 +94,11 @@ defoperator prepend => q{
   $fh->await;
   sio;
 };
+docoperator prepend => q{Prepend a ni stream to this one};
 
 defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+docoperator sink_null => q{Consume stream and produce nothing};
+
 defoperator divert => q{
   my @xs = @_;
   my $fh = siproc {close STDOUT; exec_ni @xs, sink_null_op};
@@ -78,6 +106,7 @@ defoperator divert => q{
   close $fh;
   $fh->await;
 };
+docoperator divert => q{Duplicate this stream into a ni pipeline, discarding that pipeline's output};
 
 defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
