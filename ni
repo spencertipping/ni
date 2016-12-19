@@ -9130,17 +9130,17 @@ its prior behavior:
 ```bash
 $ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
 1	1	a
-1	1	b
-1	1	a
-1	2	b
-1	2	a
-1	2	b
-2	3	a
-2	3	b
-2	3	a
-2	1	b
 2	1	a
+1	2	a
+2	2	a
+1	3	a
+2	3	a
+1	1	b
 2	1	b
+1	2	b
+2	2	b
+1	3	b
+2	3	b
 ```
 
 ## Streaming lookahead
