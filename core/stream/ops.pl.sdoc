@@ -50,7 +50,7 @@ defoperator n => q{
 
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
-defshort '/id:', pmap q{echo_op $_}, prc '.*';
+defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
