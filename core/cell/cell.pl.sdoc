@@ -2,7 +2,7 @@ Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
 
-defcontext 'cell';
+defcontext 'cell', q{cell operator context};
 defshort '/,', parser 'cell/qfn';
 
 c

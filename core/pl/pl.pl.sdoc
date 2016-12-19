@@ -23,7 +23,7 @@ this case, `END`.
 
 c
 BEGIN {
-defparser 'plcode', '$', sub {
+defparser 'plcode', '$', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my $safecode      = $code;
@@ -146,7 +146,7 @@ defshort '/p',
     pmap q{perl_mapper_op $_}, perl_mapper_code;
 
 defrowalt pmap q{perl_grepper_op $_},
-          pn 1, prx 'p', perl_grepper_code;
+          pn 1, pstr 'p', perl_grepper_code;
 
 defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 

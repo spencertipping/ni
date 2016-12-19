@@ -8,7 +8,7 @@ use POSIX ();
 
 c
 BEGIN {
-defparser 'rbcode', '', sub {
+defparser 'rbcode', '', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
   my ($x, $status) = ('', 0);
@@ -73,4 +73,4 @@ defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
     pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, prx 'm', rbcode;
+defrowalt pmap q{perl_grepper_op $_}, pn 1, pstr 'm', rbcode;

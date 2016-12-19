@@ -7,7 +7,8 @@ envs=( alpine
        debian-wheezy
        ubuntu-12.04
        ubuntu-14.04
-       ubuntu-16.04 )
+       ubuntu-16.04
+       ubuntu-16.10 )
 
 if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   test_set=$2

@@ -52,7 +52,7 @@ sub evaluate_fn_expansion(\%@) {
 c
 BEGIN {
   defparser fn_expander => '$$$$',
-    sub {
+    q{
       my ($self, @xs) = @_;
       my (undef, $context, $formals, $positions, $expansion) = @$self;
       my ($parsed_formals, @rest) = parse pn(1, popt pempty, $formals), @xs;
