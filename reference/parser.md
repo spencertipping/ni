@@ -915,7 +915,16 @@
 
 ## DEFINITION
 	<core parser {
-	  CODE(0x2328bf0)
+	  
+	        my ($self, @xs) = @_;
+	        my (undef, $context, $formals, $positions, $expansion) = @$self;
+	        my ($parsed_formals, @rest) = parse pn(1, popt pempty, $formals), @xs;
+	        return () unless defined $parsed_formals;
+	        my %args;
+	        $args{$_} = $$parsed_formals[$$positions{$_}] for keys %$positions;
+	        parse parser "$context/op",
+	              evaluate_fn_expansion(%args, @$expansion), @rest;
+	      
 	}>
 
 # PARSER generic_code
