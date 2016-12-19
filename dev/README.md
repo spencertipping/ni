@@ -2,6 +2,11 @@
 Note that all paths in this README are relative to the repository root, not to
 this directory.
 
+## How ni works
+See [internals.md](internals.md) for the gory details. For the most part you
+won't need to worry about this stuff unless you're writing very involved ni
+extensions.
+
 ## Building the ni image
 ```sh
 $ ./build                       # constructs ./ni from stuff in src/
@@ -82,9 +87,9 @@ track performance by commit.
 
 # Notes
 1. The rewriting process itself is implemented by functions in
-   [src/self.pl.sdoc](../src/self.pl.sdoc), called by
+   [core/boot/self.pl.sdoc](../core/boot/self.pl.sdoc), called by
    `$option_handlers{'internal/lib'}` in
-   [src/main.pl.sdoc](../src/main.pl.sdoc). The main function,
-   counterintuitively, is called by [src/ni.sdoc](../src/ni.sdoc), which is the
-   header of the `./ni` script. (ni is a weird program in that it's
+   [core/boot/main.pl.sdoc](../core/boot/main.pl.sdoc). The main function,
+   counterintuitively, is called by [core/boot/ni](../core/boot/ni), which is
+   the header of the `./ni` script. (ni is a weird program in that it's
    self-modifying and can print its state without reading its source code.)

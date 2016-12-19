@@ -10,6 +10,9 @@ of them:
 
 | ni \'[ http://foo.com http://bar.com ]
 
+sub uri_scheme($) {my ($scheme) = $_[0] =~ /^([^:]+):/; $scheme}
+sub uri_path($)   {my $s = uri_scheme $_[0]; sr $_[0], qr|^\Q$s://\E|, ''}
+
 c
 BEGIN {
   no strict 'refs';
@@ -20,10 +23,10 @@ BEGIN {
     %{"ni::resource_$op"} = ();
     *{"ni::resource_$op"} = sub ($) {
       my ($r) = @_;
-      my ($scheme) = $r =~ /^([^:]+):/;
+      my $scheme = uri_scheme $r;
       my $f = ${"ni::resource_$op"}{$scheme} or
         die "ni: $scheme resources don't support the $op operation";
-      &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+      &$f($r, uri_path $r);
     };
   }
 }

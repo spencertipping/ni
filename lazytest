@@ -18,8 +18,11 @@ lazytest_case() {
   echo -n "$1" | tr '\n' ' ' | head -c79
   echo -ne '\r'
 
-  local actual="$(eval "$1"; echo "[exit code $?]")"
-  local expected="$(cat <&3; echo "[exit code $?]")"
+# local actual="$(eval "$1"; echo "[exit code $?]")"
+# local expected="$(cat <&3; echo "[exit code $?]")"
+  local actual="$(eval "$1")"
+  local expected="$(cat <&3)"
+
   lazytest_n=$((lazytest_n + 1))
   if [[ "$actual" = "$expected" ]]; then
     return 0

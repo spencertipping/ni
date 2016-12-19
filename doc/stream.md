@@ -30,12 +30,161 @@ $ cat fooz | ni
 test
 ```
 
+## Stream Generation
+In addition to reading files, ni can generate data:
+
+### Integer Streams
+
+The `n` operator generates a stream of integers of a given length; if the
+length is not given, `ni n` will generate an infinite stream.
+
+```bash
+$ ni n4                         # integer generator
+1
+2
+3
+4
+$ ni n04                        # integer generator, zero-based
+0
+1
+2
+3
+```
+
+```sh
+$ ni n                          # infinite stream of ints
+1
+2
+3
+4
+5
+.
+.
+.
+```
+
+`n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
+
+```bash
+$ ni ::word[n1p'pretty'] n3 w[np'r word']
+1	pretty
+2	pretty
+3	pretty
+```
+
+### Literal Text
+
+The `id` operator puts whitespace-delimited literal text into the stream.
+
+```bash
+$ ni id:foo                     # literal text
+foo
+```
+
+The example above can be written equivalently as:
+```bash
+$ ni ::word[id:pretty ] n3 w[np'r word']
+1	pretty
+2	pretty
+3	pretty
+```
+
+Note that the whitespace between `pretty` and the closing bracket; if this
+space is not present, the `ni` parser will interpret the closing bracket as
+part of the literal text. This is important to keep in mind for `ni` in
+general, where commands are often very compact: sometimes whitespace (or a lack
+thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
+the common cases where whitespace (or lack thereof) is important.
+
+### bash commands
+```bash
+$ ni e'seq 4'                  # output of shell command "seq 4"
+1
+2
+3
+4
+```
+
+## Transformation
+ni can stream data through a shell process, which is often shorter than
+shelling out separately:
+
+```bash
+$ ni n3 | sort
+1
+2
+3
+$ ni n3 e'sort'                 # without +, e acts as a filter
+1
+2
+3
+$ ni n3e'sort -r'
+3
+2
+1
+$ ni n3e[ sort -r ]             # easy way to quote arguments
+3
+2
+1
+$ ni n3e[sort -r]
+3
+2
+1
+```
+
+And, of course, ni has shorthands for doing all of the above:
+
+```bash
+$ ni n3 g       # g = sort
+1
+2
+3
+$ ni n3g        # no need for whitespace
+1
+2
+3
+$ ni n3gA-      # reverse-sort by first field
+3
+2
+1
+$ ni n3O        # NOTE: capital O, not zero; more typical reverse numeric sort
+3
+2
+1
+```
+
+Notice that ni typically doesn't require whitespace between commands. The only
+case where it does is when the parse would be ambiguous without it (and
+figuring out when this happens requires some knowledge about how the shell
+quotes things, since ni sees post-quoted arguments). ni will complain if it
+can't parse something, though.
+
+See [row.md](row.md) (`ni //help/row`) for details about row-reordering
+operators like sorting.
+
+### Important note about `e`
+`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
+when you use shell metacharacters:
+
+```bash
+$ mkdir test-dir
+$ touch test-dir/{a,b,c}
+$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
+test-dir/a
+test-dir/b
+test-dir/c
+$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
+$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
+test-dir/a
+test-dir/b
+test-dir/c
+```
+
 ## Stream combiners
 ni has four operators that combine streams:
 
 - `+`: append a stream to this one
 - `^`: prepend a stream to this one
-- `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
 
 Visually, here's what these stream combiners do:
@@ -54,11 +203,6 @@ $ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
                         #                        ----------------
                         #                             |
 $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
-
-
-                        #                  n5 --> g
-                        #                 /        \
-$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
 
 
                         #                  n5 --> g --> /dev/null
@@ -82,10 +226,6 @@ world
 1
 2
 3
-$ ni hw %e[wc -l]               # output from 'wc -l' is included
-hello
-world
-2
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world
@@ -306,18 +446,18 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
 ```
 
 Checkpointing, like most operators that accept lambda expressions, can also be

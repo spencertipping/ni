@@ -10,6 +10,7 @@ defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
+defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -109,10 +110,13 @@ defoperator hadoop_streaming => q{
     (my $combiner_file = $combiner || '') =~ s|.*/||;
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
+    my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+
     my $cmd = shell_quote
       conf 'hadoop/name',
       jar => $streaming_jar,
       -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+      map((-D => $_), @jobconf),
       map((-input => $_), @ipath),
       -output => $opath,
       -file   => $mapper,

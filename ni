@@ -53,7 +53,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-48 core/boot/ni.map.sdoc
+49 core/boot/ni.map.sdoc
 Resource layout map.
 ni is assembled by following the instructions here. This script is also
 included in the ni image itself so it can rebuild accordingly.
@@ -83,6 +83,7 @@ lib core/destructure
 lib core/checkpoint
 lib core/net
 lib core/buffer
+lib core/script
 lib core/col
 lib core/row
 lib core/cell
@@ -102,7 +103,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-87 core/boot/util.pl.sdoc
+100 core/boot/util.pl.sdoc
 Utility functions.
 Generally useful stuff, some of which makes up for the old versions of Perl we
 need to support.
@@ -112,14 +113,27 @@ sub weval($) {my @r = eval "package ni;$_[0]"; print STDERR $@ if $@; @r}
 sub sgr($$$) {(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x}
 sub sr($$$)  {(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x}
 sub swap($$) {@_[0, 1] = @_[1, 0]}
+sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
 sub sum {local $_; my $x = 0; $x += $_ for @_; $x}
-
-sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
 sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
 sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+
+sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
+sub basename($) {(dirbase $_[0])[1]}
+sub dirname($)  {(dirbase $_[0])[0]}
+
+sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
+
+sub wf {
+  mkdir_p dirname $_[0];
+  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
+  print $fh $_[1];
+  close $fh;
+  $_[0];
+}
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
@@ -1970,7 +1984,7 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-99 core/stream/procfh.pl.sdoc
+98 core/stream/procfh.pl.sdoc
 Process + filehandle combination.
 We can't use Perl's process-aware FHs because they block-wait for the process
 on close. There are some situations where we care about the exit code and
@@ -1978,7 +1992,6 @@ others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
-use Scalar::Util qw/weaken/;
 use POSIX qw/:sys_wait_h/;
 
 Global child collector.
@@ -2012,7 +2025,7 @@ use overload qw/*{} fh "" str/;
 sub new($$$) {
   my ($class, $fd, $pid) = @_;
   my $result = bless {pid => $pid, status => undef}, $class;
-  weaken($child_owners{$pid} = $result);
+  $child_owners{$pid} = $result;
   my $fh = ref($fd) ? $fd : undef;
   open $fh, "<&=$fd" or die "ni: procfh($fd, $pid) failed: $!"
     unless defined $fh;
@@ -2367,7 +2380,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-202 core/stream/ops.pl.sdoc
+193 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2385,6 +2398,8 @@ BEGIN {
 
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
 defoperator sh   => q{my ($c) = @_; sh $c};
+
+defshort '/e', pmap q{sh_op $_}, shell_command;
 
 Cat meta-operator.
 We don't want 'cat' to be a regular operator because of how shell wildcards
@@ -2418,14 +2433,12 @@ defoperator n => q{
 
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
-defshort '/id:', pmap q{echo_op $_}, prc '.*';
-
-defshort '/e', pmap q{sh_op $_}, shell_command;
+defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 Stream mixing/forking.
-Append, prepend, duplicate, divert.
+Append, prepend, divert.
 
 defoperator append => q{
   my @xs = @_;
@@ -2440,14 +2453,6 @@ defoperator prepend => q{
   sio;
 };
 
-defoperator duplicate => q{
-  my @xs = @_;
-  my $fh = siproc {exec_ni @xs};
-  stee \*STDIN, $fh, \*STDOUT;
-  close $fh;
-  $fh->await;
-};
-
 defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
 defoperator divert => q{
   my @xs = @_;
@@ -2459,7 +2464,6 @@ defoperator divert => q{
 
 defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/%', pmap q{duplicate_op @$_}, _qfn;
 defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
 Interleaving.
@@ -2512,7 +2516,7 @@ defoperator interleave => q{
   $fh->await;
 };
 
-defshort '/.', pmap q{interleave_op @$_}, pseq popt number, _qfn;
+defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 Sinking.
 We can sink data into a file just as easily as we can read from it. This is
@@ -2570,14 +2574,19 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-66 core/stream/main.pl.sdoc
+83 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
+our $handling_pipe;
 
 defconfenv 'pager', NI_PAGER => 'less';
 
-sub child_status_ok($) {$_[0] == 0 or ($_[0] & 127) == 13}
+sub child_status_ok($) {
+  $_[0] == 0                    # ok exit status
+    or ($_[0] & 127) == 13      # killed by sigpipe
+    or ($_[0] & 127) == 15      # killed by sigterm (probably from us)
+}
 
 $ni::main_operator = sub {
   my @children;
@@ -2611,8 +2620,13 @@ $ni::main_operator = sub {
   }
 
   my $exit_status = 0;
-  child_status_ok $_->await or $exit_status = 1 for @children;
-  $exit_status;
+  for (@children) {
+    my $status = $_->await;
+    next if child_status_ok $status;
+    print STDERR "ni: nonzero exit status for child process $_\n";
+    $exit_status = 1;
+  }
+  $handling_pipe ? 0 : $exit_status;
 };
 
 Pagers and kill signals.
@@ -2621,6 +2635,13 @@ no-echo. If we kill it directly with a signal, it will exit without restoring a
 shell-friendly terminal state, requiring the user to run `reset` to fix it. So
 in an interrupt context we try to give the pager a chance to exit gracefully by
 closing its input stream and having the user use `q` or similar.
+
+$SIG{PIPE} = sub {
+  $handling_pipe = 1;
+  close $pager_fh if $pager_fh;
+  ni::procfh::kill_children 'TERM';
+  exit 0;
+};
 
 $SIG{TERM} =
 $SIG{HUP}  = sub {
@@ -2816,7 +2837,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-109 core/uri/uri.pl.sdoc
+112 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
 quote them you should use the `\'` prefix:
@@ -2829,6 +2850,9 @@ of them:
 
 | ni \'[ http://foo.com http://bar.com ]
 
+sub uri_scheme($) {my ($scheme) = $_[0] =~ /^([^:]+):/; $scheme}
+sub uri_path($)   {my $s = uri_scheme $_[0]; sr $_[0], qr|^\Q$s://\E|, ''}
+
 c
 BEGIN {
   no strict 'refs';
@@ -2839,10 +2863,10 @@ BEGIN {
     %{"ni::resource_$op"} = ();
     *{"ni::resource_$op"} = sub ($) {
       my ($r) = @_;
-      my ($scheme) = $r =~ /^([^:]+):/;
+      my $scheme = uri_scheme $r;
       my $f = ${"ni::resource_$op"}{$scheme} or
         die "ni: $scheme resources don't support the $op operation";
-      &$f($r, sr $r, qr|^\Q$scheme://\E|, '');
+      &$f($r, uri_path $r);
     };
   }
 }
@@ -3215,6 +3239,44 @@ defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 defshort '/B',
   defdsp 'bufferalt', 'dispatch table for /B buffer operator',
     n => pmap q{buffer_null_op}, pnone;
+1 core/script/lib
+script.pl.sdoc
+35 core/script/script.pl.sdoc
+Scripting support.
+This lets you define a library of scripts or other random utilities (possibly
+with dependent files) and gives you a way to invoke those scripts from a custom
+operator. See doc/script.md for details about how this works.
+
+sub export_lib_to_path {
+  local $_;
+  my ($lib, $path) = @_;
+  $path ||= uri_path resource_tmp 'file://';
+  mkdir $path or die "ni: could not create $path/ for library export: $!";
+  my @l     = lib_entries $lib, $ni::self{"$lib/lib"};
+  my @files = map sr($_, qr|^\Q$lib/\E|, "$path/"), @l;
+  wf "$path/ni", image;
+  wf $files[$_], $ni::self{$l[$_]} for 0..$#l;
+  chmod 0755, "$path/ni", @files;
+  $path;
+}
+
+sub rm_rf($) {
+  local $SIG{CHLD} = 'DEFAULT';
+  system 'rm', '-rf', $_[0];
+}
+
+defoperator script => q{
+  my ($lib, $cmd) = @_;
+  my $tmpdir = export_lib_to_path $lib;
+  my $runner = siproc {
+    chdir $tmpdir;
+    sh $cmd;
+  };
+  sforward \*STDIN, $runner;
+  close $runner;
+  $runner->await;
+  rm_rf $tmpdir;
+};
 1 core/col/lib
 col.pl.sdoc
 185 core/col/col.pl.sdoc
@@ -3441,10 +3503,10 @@ defoperator row_cols_defined => q{
 
 defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
-    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '~', integer),
-    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-', integer),
-    pmap(q{row_every_op  $_},            pn 1, prx 'x', number),
-    pmap(q{row_match_op  $_},            pn 1, prx '/', regex),
+    pmap(q{tail_op '-n', '',  $_},       pn 1, prx '[+~]', integer),
+    pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',    integer),
+    pmap(q{row_every_op  $_},            pn 1, prx 'x',    number),
+    pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
@@ -3933,7 +3995,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-55 core/pl/util.pm.sdoc
+85 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -3989,11 +4051,43 @@ sub cart {
   map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
       0..prod(@ns) - 1;
 }
-37 core/pl/math.pm.sdoc
+
+sub lim {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  map min($upper, max $lower, $_), @xs;
+}
+
+sub btw {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  not grep $_ < $lower || $_ > $upper, @xs;
+}
+
+sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
+sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
+
+sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
+sub basename($) {(dirbase $_[0])[1]}
+sub dirname($)  {(dirbase $_[0])[0]}
+
+sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
+
+sub wf {
+  mkdir_p dirname $_[0];
+  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
+  print $fh $_[1];
+  close $fh;
+  $_[0];
+}
+39 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
 
 use constant tau => 2 * 3.14159265358979323846264;
+use constant tau2 => tau/2;
+use constant tau4 => tau/4;
 
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
@@ -4027,7 +4121,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-67 core/pl/stream.pm.sdoc
+76 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4053,10 +4147,19 @@ sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
 sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
-sub r(@)         {my $l = join "\t", @_; print $l, "\n"; ()}
+sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], @_) : (split /\t/, $_[0])[%d]}',
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
+
+Hash constructors.
+Pairs of letters you can use to index one column against another. For example,
+`%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
+
+c
+BEGIN {for my $x ('a'..'l') {
+         ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
+                       $x, $_, $x, $_ for 'a'..'l'}}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
@@ -4272,7 +4375,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-39 core/pl/time.pm.sdoc
+53 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4289,30 +4392,44 @@ use constant time_pieces => 'SMHdmYwjDN';
 
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
-POSIX::tzset();
-
-sub time_epoch_pieces($$) {
-  my ($es, $t) = @_;
+sub time_epoch_pieces($;$) {
+  local $_;
+  my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
   $pieces[5] += 1900;
+  $pieces[4]++;
   @pieces[time_element_indexes $es];
 }
 
-sub time_pieces_epoch($@) {
-  my ($es, @ps) = @_;
-  my @tvs = (0, 0, 0, 0, 0, 0, 0, 0, -1, 0);
+sub time_pieces_epoch {
+  local $_;
+  my ($es, @ps) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+  my @tvs = (0, 0, 0, 1, 1, 1970, 0, 0, -1, 0);
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
+  $tvs[4]--;
   POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
+}
+
+Approximate timezone shifts by lat/lng.
+Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
+(in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
+It may be off by a few hours but is generally unbiased.
+
+sub timezone_seconds($$) {
+  my ($lat, $lng) = @_;
+  240 * int($lng + 7);
 }
 
 c
 BEGIN {
-  *tep = \&time_epoch_pieces;
-  *tpe = \&time_pieces_epoch;
+  POSIX::tzset();
+  *tep  = \&time_epoch_pieces;
+  *tpe  = \&time_pieces_epoch;
+  *tsec = \&timezone_seconds;
 }
-153 core/pl/pl.pl.sdoc
+154 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
 because appending closing brackets to valid Perl code will always make it
@@ -4388,6 +4505,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/stream.pm
                             core/pl/geohash.pm
                             core/pl/time.pm
+                            core/cell/murmurhash.pl
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
@@ -6477,7 +6595,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-152 core/hadoop/hadoop.pl.sdoc
+156 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6490,6 +6608,7 @@ defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
+defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -6589,10 +6708,13 @@ defoperator hadoop_streaming => q{
     (my $combiner_file = $combiner || '') =~ s|.*/||;
     (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
+    my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+
     my $cmd = shell_quote
       conf 'hadoop/name',
       jar => $streaming_jar,
       -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+      map((-D => $_), @jobconf),
       map((-input => $_), @ipath),
       -output => $opath,
       -file   => $mapper,
@@ -6726,7 +6848,7 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-25 doc/lib
+26 doc/lib
 binary.md
 closure.md
 col.md
@@ -6747,6 +6869,7 @@ pyspark.md
 row.md
 ruby.md
 scale.md
+script.md
 sql.md
 stream.md
 tutorial.md
@@ -7589,7 +7712,7 @@ $ ni --lib fractional2 frac 10 .5
 4.5
 5
 ```
-115 doc/hadoop.md
+119 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
@@ -7682,22 +7805,26 @@ AUTHORS	1
 BE	1
 ```
 
-Of course, we're also at liberty to omit the lambda brackets for brevity (I
-recommend using `--explain` liberally if you plan to make a habit of this):
+## Jobconf
+You can pass in jobconf options using the `hadoop/jobconf` variable or by
+setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
+reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+                 hadoop/jobconf='mapred.map.tasks=10
+                                 mapred.reduce.tasks=4'} \
                  Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
 BE	1
+BUT	1
+FOR	2
+INCLUDING	1
+LIABILITY	1
+LIABLE	1
+OF	4
+OR	7
 ```
 
 ```lazytest
@@ -7705,7 +7832,7 @@ docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
-72 doc/json.md
+73 doc/json.md
 # JSON operators
 ## Background
 Perl has a standard JSON library since 5.14, but it's written in pure Perl and
@@ -7755,8 +7882,9 @@ destructuring operator that works like `jq` (but 2-3x faster):
 $ ni //license FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \
-     =\>jsons Bn r5     # Bn is important when writing files: see warnings.md
+                    word    => c}' \>jsons
+jsons
+$ ni jsons r5
 {"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
 {"context":{"w1":"github","w2":"com"},"type":"trigram","word":"ni"}
 {"context":{"w1":"com","w2":"ni"},"type":"trigram","word":"c"}
@@ -8315,7 +8443,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-98 doc/options.md
+97 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8338,12 +8466,11 @@ Operator | Status | Example      | Description
 ---------|--------|--------------|------------
 `+`      | T      | `+p'foo'`    | Appends a data source evaluated with no input
 `^`      | T      | `^file`      | Prepends a data source
-`%`      | T      | `%[\>f K]`   | Duplicate stream, interleaving fork output
 `=`      | T      | `=\>f`       | Duplicate stream, ignoring fork output
 `\>`     | T      | `\>file`     | Sinks stream into resource, emits resource name
 `\>\'R`  | M      | `\>\'R`      | Converts a stream of resource names into a packed resource stream
 `\<`     | T      | `\<`         | Opposite of `\>`
-`.`      | I      | `.n100`      | Interleave lines, optionally with a bias ratio
+`%`      | I      | `%n100`      | Interleave lines, optionally with a bias ratio
 `-`      |        |              |
 `_`      |        |              |
 `\!`     | I      | `\!p'F_==3'` | Assert a condition
@@ -8414,7 +8541,7 @@ Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-393 doc/perl.md
+418 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8622,12 +8749,37 @@ $ ni mult-table p'r g_ ru {a%4 == 0}'   # extract seventh column from each line
 56	63	70
 ```
 
-`a_` etc are defined like this:
+`a_` etc are defined like this, with an exception for the scalar return case:
 
 ```pl
-sub a_ {local $_; map((split /\t/)[0], @_)}
-sub b_ {local $_; map((split /\t/)[1], @_)}
+sub a_ {local $_; map((split /\t/)[0], map split(/\n/), @_)}
+sub b_ {local $_; map((split /\t/)[1], map split(/\n/), @_)}
 ...
+```
+
+The line split enables more idiomatic handling of data closures:
+
+```bash
+$ ni ::squares[n100p'100 - a' p'r a, a*a'] \
+     n5p'^{@sq{a_ squares} = b_ squares} $sq{a()}'
+1
+4
+9
+16
+25
+```
+
+## Hash constructors
+The above code can be condensed a bit with hash constructors, which are pairs
+of columns:
+
+```bash
+$ ni ::squares[n100p'100 - a' p'r a, a*a'] n5p'^{%sq = ab_ squares} $sq{a()}'
+1
+4
+9
+16
+25
 ```
 
 ## Utility functions
@@ -9291,6 +9443,62 @@ groups of lines to the child processes as their input fds become available.
 Scaling makes no guarantees about the ordering of the output rows, nor where
 exactly the input will be split. In practice the input splits tend to be large
 for performance reasons.
+55 doc/script.md
+# Scripting interface
+It's common to have a shell script you'd like to integrate into a ni pipeline,
+and possibly also into the ni image itself. This allows you to do something
+more graceful than `ni e[sh my-script args...]`.
+
+ni's scripting interface makes this possible. All you need to do is write a
+normal library and include it into the ni image. For example, here's a
+scripting extension that echoes its command-line arguments:
+
+```bash
+$ mkdir echo-script
+$ echo echo.pl >> echo-script/lib
+$ echo echo.sh >> echo-script/lib
+$ cat > echo-script/echo.sh <<'EOF'
+#!/bin/sh
+echo "$@"
+EOF
+$ cat > echo-script/echo.pl <<'EOF'
+defshort '/echo' => pmap q{script_op 'echo-script', "./echo.sh $_"},
+                    shell_command;
+EOF
+```
+
+Now let's use the library:
+
+```bash
+$ ni --lib echo-script echo[1 2 3]
+1 2 3
+```
+
+Script libraries can also include subdirectories; for example:
+
+```bash
+$ mkdir -p echo2/bin
+$ { echo echo2.pl; echo bin/echo2; } > echo2/lib
+$ cat > echo2/echo2.pl <<'EOF'
+defshort '/echo2' => pmap q{script_op 'echo2', "bin/echo2 $_"},
+                     shell_command;
+EOF
+$ cat > echo2/bin/echo2 <<'EOF'
+#!/bin/sh
+echo "$# argument(s)"
+echo "$@"
+EOF
+```
+
+Usage is exactly as before. Note, however, that if the operator name collides
+with a directory, as it does here, you need to use `'foo bar'` rather than
+`[foo bar]` to disambiguate.
+
+```bash
+$ ni --lib echo2 echo2'foo bar'
+2 argument(s)
+foo bar
+```
 35 doc/sql.md
 # SQL interop
 ni defines a parsing context that translates command-line syntax into SQL
@@ -9327,7 +9535,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-345 doc/stream.md
+485 doc/stream.md
 # Stream operations
 
 MORE (because I got rid of your intro).
@@ -9360,12 +9568,161 @@ $ cat fooz | ni
 test
 ```
 
+## Stream Generation
+In addition to reading files, ni can generate data:
+
+### Integer Streams
+
+The `n` operator generates a stream of integers of a given length; if the
+length is not given, `ni n` will generate an infinite stream.
+
+```bash
+$ ni n4                         # integer generator
+1
+2
+3
+4
+$ ni n04                        # integer generator, zero-based
+0
+1
+2
+3
+```
+
+```sh
+$ ni n                          # infinite stream of ints
+1
+2
+3
+4
+5
+.
+.
+.
+```
+
+`n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
+
+```bash
+$ ni ::word[n1p'pretty'] n3 w[np'r word']
+1	pretty
+2	pretty
+3	pretty
+```
+
+### Literal Text
+
+The `id` operator puts whitespace-delimited literal text into the stream.
+
+```bash
+$ ni id:foo                     # literal text
+foo
+```
+
+The example above can be written equivalently as:
+```bash
+$ ni ::word[id:pretty ] n3 w[np'r word']
+1	pretty
+2	pretty
+3	pretty
+```
+
+Note that the whitespace between `pretty` and the closing bracket; if this
+space is not present, the `ni` parser will interpret the closing bracket as
+part of the literal text. This is important to keep in mind for `ni` in
+general, where commands are often very compact: sometimes whitespace (or a lack
+thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
+the common cases where whitespace (or lack thereof) is important.
+
+### bash commands
+```bash
+$ ni e'seq 4'                  # output of shell command "seq 4"
+1
+2
+3
+4
+```
+
+## Transformation
+ni can stream data through a shell process, which is often shorter than
+shelling out separately:
+
+```bash
+$ ni n3 | sort
+1
+2
+3
+$ ni n3 e'sort'                 # without +, e acts as a filter
+1
+2
+3
+$ ni n3e'sort -r'
+3
+2
+1
+$ ni n3e[ sort -r ]             # easy way to quote arguments
+3
+2
+1
+$ ni n3e[sort -r]
+3
+2
+1
+```
+
+And, of course, ni has shorthands for doing all of the above:
+
+```bash
+$ ni n3 g       # g = sort
+1
+2
+3
+$ ni n3g        # no need for whitespace
+1
+2
+3
+$ ni n3gA-      # reverse-sort by first field
+3
+2
+1
+$ ni n3O        # NOTE: capital O, not zero; more typical reverse numeric sort
+3
+2
+1
+```
+
+Notice that ni typically doesn't require whitespace between commands. The only
+case where it does is when the parse would be ambiguous without it (and
+figuring out when this happens requires some knowledge about how the shell
+quotes things, since ni sees post-quoted arguments). ni will complain if it
+can't parse something, though.
+
+See [row.md](row.md) (`ni //help/row`) for details about row-reordering
+operators like sorting.
+
+### Important note about `e`
+`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
+when you use shell metacharacters:
+
+```bash
+$ mkdir test-dir
+$ touch test-dir/{a,b,c}
+$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
+test-dir/a
+test-dir/b
+test-dir/c
+$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
+$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
+test-dir/a
+test-dir/b
+test-dir/c
+```
+
 ## Stream combiners
 ni has four operators that combine streams:
 
 - `+`: append a stream to this one
 - `^`: prepend a stream to this one
-- `%`: duplicate this stream through a process, and include output
 - `=`: duplicate this stream through a process, discarding its output
 
 Visually, here's what these stream combiners do:
@@ -9384,11 +9741,6 @@ $ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
                         #                        ----------------
                         #                             |
 $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
-
-
-                        #                  n5 --> g
-                        #                 /        \
-$ ni n10 %[n5 g]        # ni stdin --> n10 ---------+--> ni stdout
 
 
                         #                  n5 --> g --> /dev/null
@@ -9412,10 +9764,6 @@ world
 1
 2
 3
-$ ni hw %e[wc -l]               # output from 'wc -l' is included
-hello
-world
-2
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world
@@ -9636,18 +9984,18 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
-$ ni :biglist[n100000z]r5
-1
-2
-3
-4
-5
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
+$ ni :biglist[n100000z]r+5
+99996
+99997
+99998
+99999
+100000
 ```
 
 Checkpointing, like most operators that accept lambda expressions, can also be
