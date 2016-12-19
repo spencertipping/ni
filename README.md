@@ -10,6 +10,8 @@ $ ./ni --js                     # ...or here if you like to live on the edge
 Some places to start reading:
 
 - [doc/README.md](doc/README.md): really smashing documentation
+- [doc/quickstart.md](doc/quickstart.md): a tutorial that won't say "ni" to you
+- [doc/cheatsheet.md](doc/cheatsheet.md): a tutorial that will say "ni" to you
 - [doc/examples.md](doc/examples.md): straight into the deep end with the web
   UI
 
@@ -27,8 +29,10 @@ you don't have to do any configuration).
 - [Wes Henderson](https://github.com/weshenderson)
 
 ## License
-(Also included in the top of the ni image)
+(Also included in the top of the ni image, and available by running `ni
+//license`.)
 
+```
 Copyright (c) 2016 Spencer Tipping
 
 MIT license
@@ -50,6 +54,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
 
 ## For ni developers
 ### [Amazingly cool development documentation](dev/README.md)
