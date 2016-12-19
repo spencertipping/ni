@@ -45,22 +45,29 @@ sub reductions(&$@) {
 }
 
 sub cart {
+  use integer;
   local $_;
   return () unless @_;
+  @$_ or return () for @_;
   return map [$_], @{$_[0]} if @_ == 1;
-  my @ns     = map scalar(@$_), @_;
-  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
-  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
-      0..prod(@ns) - 1;
+  my @ns = map scalar(@$_), @_;
+  map {
+    my ($i, $xs) = ($_ - 1, []);
+    for (0..$#ns) {
+      push @$xs, ${$_[$_]}[$i % $ns[$_]];
+      $i /= $ns[$_];
+    }
+    $xs;
+  } 1..prod(@ns);
 }
 
-sub lim {
+sub clip {
   local $_;
   my ($lower, $upper, @xs) = @_;
   map min($upper, max $lower, $_), @xs;
 }
 
-sub btw {
+sub within {
   local $_;
   my ($lower, $upper, @xs) = @_;
   not grep $_ < $lower || $_ > $upper, @xs;

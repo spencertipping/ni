@@ -258,6 +258,25 @@ $ ni n100p'mean rw {1}'
 50.5
 ```
 
+The Cartesian product function works, which is a considerable improvement over
+its prior behavior:
+
+```bash
+$ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
+1	1	a
+2	1	a
+1	2	a
+2	2	a
+1	3	a
+2	3	a
+1	1	b
+2	1	b
+1	2	b
+2	2	b
+1	3	b
+2	3	b
+```
+
 ## Streaming lookahead
 This is implemented in terms of reducers, and gives you the ability to reduce
 arbitrarily many rows in constant space. There are two parts to this. First,

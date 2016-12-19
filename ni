@@ -4314,7 +4314,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-85 core/pl/util.pm.sdoc
+92 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4362,22 +4362,29 @@ sub reductions(&$@) {
 }
 
 sub cart {
+  use integer;
   local $_;
   return () unless @_;
+  @$_ or return () for @_;
   return map [$_], @{$_[0]} if @_ == 1;
-  my @ns     = map scalar(@$_), @_;
-  my @shifts = reverse reductions {$_[0] * $_[1]} 1 / $ns[0], reverse @ns;
-  map {my $i = $_; [map $_[$_][int($i / $shifts[$_]) % $ns[$_]], 0..$#_]}
-      0..prod(@ns) - 1;
+  my @ns = map scalar(@$_), @_;
+  map {
+    my ($i, $xs) = ($_ - 1, []);
+    for (0..$#ns) {
+      push @$xs, ${$_[$_]}[$i % $ns[$_]];
+      $i /= $ns[$_];
+    }
+    $xs;
+  } 1..prod(@ns);
 }
 
-sub lim {
+sub clip {
   local $_;
   my ($lower, $upper, @xs) = @_;
   map min($upper, max $lower, $_), @xs;
 }
 
-sub btw {
+sub within {
   local $_;
   my ($lower, $upper, @xs) = @_;
   not grep $_ < $lower || $_ > $upper, @xs;
@@ -8856,7 +8863,7 @@ Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-418 doc/perl.md
+437 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -9115,6 +9122,25 @@ $ ni n10p'prod rw {1}'
 3628800
 $ ni n100p'mean rw {1}'
 50.5
+```
+
+The Cartesian product function works, which is a considerable improvement over
+its prior behavior:
+
+```bash
+$ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
+1	1	a
+2	1	a
+1	2	a
+2	2	a
+1	3	a
+2	3	a
+1	1	b
+2	1	b
+1	2	b
+2	2	b
+1	3	b
+2	3	b
 ```
 
 ## Streaming lookahead
