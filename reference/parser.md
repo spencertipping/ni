@@ -915,7 +915,7 @@
 
 ## DEFINITION
 	<core parser {
-	  CODE(0x1aa9350)
+	  CODE(0x2328bf0)
 	}>
 
 # PARSER generic_code
