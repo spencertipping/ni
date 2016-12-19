@@ -7827,7 +7827,7 @@ docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
-72 doc/json.md
+73 doc/json.md
 # JSON operators
 ## Background
 Perl has a standard JSON library since 5.14, but it's written in pure Perl and
@@ -7877,8 +7877,9 @@ destructuring operator that works like `jq` (but 2-3x faster):
 $ ni //license FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \
-     =\>jsons Bn r5     # Bn is important when writing files: see warnings.md
+                    word    => c}' \>jsons
+jsons
+$ ni jsons r5
 {"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
 {"context":{"w1":"github","w2":"com"},"type":"trigram","word":"ni"}
 {"context":{"w1":"com","w2":"ni"},"type":"trigram","word":"c"}
