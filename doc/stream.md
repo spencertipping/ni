@@ -79,10 +79,10 @@ $ ni n                          # infinite stream of ints
 `n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
 
 ```bash
-$ni ::word[n1p'pretty'] n3 w[np'r word']
-1       pretty
-2       pretty
-3       pretty
+$ ni ::word[n1p'pretty'] n3 w[np'r word']
+1	pretty
+2	pretty
+3	pretty
 ```
 
 ### Literal Text
@@ -97,9 +97,9 @@ foo
 The example above can be written equivalently as:
 ```bash
 ni ::word[id:pretty ]  n3 w[np'r word']
-1       pretty
-2       pretty
-3       pretty
+1	pretty
+2	pretty
+3	pretty
 ```
 
 Note that the whitespace between `pretty` and the closing bracket; if this
