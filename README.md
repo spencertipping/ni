@@ -20,9 +20,11 @@ remote jobs, like hadoop, SSH, docker, etc, ni automatically installs itself so
 you don't have to do any configuration).
 
 ## Contributors
-- [Spencer Tipping](https://github.com/spencertipping)
-- [Michael Bilow](https://github.com/michaelbilow)
 - [Factual, Inc](https://github.com/Factual)
+- [Joyce Tipping](https://github.com/joycetipping)
+- [Michael Bilow](https://github.com/michaelbilow)
+- [Spencer Tipping](https://github.com/spencertipping)
+- [Wes Henderson](https://github.com/weshenderson)
 
 ## License
 (Also included in the top of the ni image)
