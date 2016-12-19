@@ -13,7 +13,63 @@ Some places to start reading:
 - [doc/examples.md](doc/examples.md): straight into the deep end with the web
   UI
 
+## ni works on every machine
+...in the last decade, except Windows. Its only dependency is Perl 5.8 or
+later, which is installed basically everywhere (and in any context involving
+remote jobs, like hadoop, SSH, docker, etc, ni automatically installs itself so
+you don't have to do any configuration).
+
+## Contributors
+- [Spencer Tipping](https://github.com/spencertipping)
+- [Michael Bilow](https://github.com/michaelbilow)
+- [Factual, Inc](https://github.com/Factual)
+
+## License
+(Also included in the top of the ni image)
+
+Copyright (c) 2016 Spencer Tipping
+
+MIT license
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
 ## For ni developers
+### [Amazingly cool development documentation](dev/README.md)
+
+### How to test your changes
+```sh
+$ ./test                        # accurate but time-consuming; see below
+```
+
+`./test` automatically rebuilds your `./ni` image from source.
+
+If you've just made a small change and don't want to wait the full ten minutes
+it takes to run all tests on all distributions, here's a lighter-weight way to
+do it:
+
+```sh
+$ ./test --build                # if you're testing for the first time
+$ ./test --quick centos-5       # faster than running all tests
+$ ./test --quick ubuntu-16.04   # includes hadoop/spark/docker tests
+```
+
+### Main files and what they do
 - `./boot`: create the base `ni` image with no extensions. This image does
   almost nothing and is effectively unusable.
 - `bugs/`: documentation and tests for all nontrivial bugs I've found, starting
