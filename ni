@@ -3841,7 +3841,7 @@ sub murmurhash3($;$) {
     $h  = ($h << 13 | $h >> 19 & 0x1fff) * 5 + murmur_n;
   }
 
-  my ($r) = unpack 'L<', substr($_[0], ~3 & length $_[0]) . "\0\0\0\0";
+  my ($r) = unpack 'V', substr($_[0], ~3 & length $_[0]) . "\0\0\0\0";
   $r *= murmur_c1;
   $h ^= ($r << 15 | $r >> 17 & 0x7fff) * murmur_c2 & 0xffffffff ^ length $_[0];
   $h &= 0xffffffff;
@@ -7049,7 +7049,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-233 doc/col.md
+238 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -7169,9 +7169,6 @@ $ ni mult-table xr2     # swap first two columns
 
 ## Splitting
 The `F` operator gives you a way to convert non-tab-delimited data into TSV.
-For example, if you're parsing `/etc/passwd`, you'd turn colons into tabs
-first.
-
 `F` has the following uses:
 
 - `F:<char>`: split on character
@@ -7186,12 +7183,15 @@ first.
 - `FP`: split on pipe symbols
 
 ### Examples
+
+`/etc/passwd` split on colons:
 ```bash
 $ ni /etc/passwd r2F::          # F: followed by :, which is the split char
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```
 
+The first three lines of ni's source code:
 ```bash
 $ ni //ni r3                            # some data
 #!/usr/bin/env perl
@@ -7199,6 +7199,7 @@ $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 ```
 
+The first three lines of ni's source code, split on forward slashes:
 ```bash
 $ ni //ni r3F/\\//                      # split on forward slashes
 #!	usr	bin	env perl
@@ -7206,6 +7207,8 @@ $ni::self{license} = <<'_';
 ni: https:		github.com	spencertipping	ni
 ```
 
+
+The first three lines of ni's source code, split on non-words:
 ```bash
 $ ni //ni r3FW                          # split on non-words
 	usr	bin	env	perl
@@ -7213,6 +7216,7 @@ $ ni //ni r3FW                          # split on non-words
 ni	https	github	com	spencertipping	ni
 ```
 
+The first three lines of ni's source code, split on whitespace:
 ```bash
 $ ni //ni r3FS                          # split on whitespace
 #!/usr/bin/env	perl
@@ -7220,6 +7224,7 @@ $ni::self{license}	=	<<'_';
 ni:	https://github.com/spencertipping/ni
 ```
 
+The first three lines of ni's source code, split on words beginning with a slash:
 ```bash
 $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
@@ -8438,7 +8443,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-90 doc/options.md
+97 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8529,6 +8534,13 @@ Operator | Status | Example      | Description
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
 `Z`      |        |              |
+
+
+## Cell operators
+Operator | Status | Example | Description
+---------|--------|---------|------------
+`h`      | T      | `,z`    | Turns each unique value into a hash.
+`z`      | T      | `,h`    | Turns each unique value into an integer.
 418 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
@@ -8977,7 +8989,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-277 doc/row.md
+283 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -9041,7 +9053,11 @@ $ ni /path/to/large/data S8rx100        # ~800MB/s
 
 See [scale.md](scale.md) for details about horizontal scaling.
 
-## Regex matching
+## Row matching
+
+There are several ways you can keep only rows matching a certain criterion.
+
+The simplest way is to use a regex:
 ```bash
 $ ni n10000r/[42]000$/
 2000
@@ -9054,6 +9070,25 @@ $ ni n1000r/[^1]$/r3
 
 These regexes are evaluated by Perl, which is likely to be faster than `grep`
 for nontrivial patterns.
+
+You can also row match using code in any language that ni supports. At current,
+it supports Perl, Ruby, and Common Lisp.
+
+`rp` means "select rows for which this Perl expression returns true".
+
+```bash
+$ ni n10000rp'$_ % 100 == 42' r3
+42
+142
+242
+```
+
+The expression has access to column accessors and everything else described in
+[perl.md](perl.md) (`ni //help/perl`).
+
+Note that whitespace is always required after quoted code.
+
+**TODO:** other languages
 
 ## Column assertion
 In real-world data pipelines it's common to have cases where you have missing
@@ -9097,23 +9132,6 @@ $ ni n10rB | wc -l              # no field B here, so no output
 $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
 10
 ```
-
-## Code
-`rp` means "select rows for which this Perl expression returns true".
-
-```bash
-$ ni n10000rp'$_ % 100 == 42' r3
-42
-142
-242
-```
-
-The expression has access to column accessors and everything else described in
-[perl.md](perl.md) (`ni //help/perl`).
-
-Note that whitespace is always required after quoted code.
-
-**TODO:** other languages
 
 ## Sorting
 ni has four operators that shell out to the UNIX sort command. Two are
@@ -9517,36 +9535,23 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-427 doc/stream.md
+485 doc/stream.md
 # Stream operations
-`bash` and `ni` are both pipeline constructors: they string processes together
-by connecting one's stdin to another's stdout. For example, here's word count
-implemented first in bash, then in ni (with the corresponding options
-vertically aligned):
 
-```
-$ cat file |perl -lne 'print for split /\W+/' |sort |uniq -c
-$ ni  file FW pF_                             g     c
-```
-
-ni's pipe symbols are implied: `ni g c` is the same as `ni g | ni c`.
-
-```sh
-$ ni --explain FW pF_ g c
-["split_regex","(?^:[^\\w\\n]+)"]
-["perl_mapper","F_"]
-["row_sort","-t","\t"]
-["count"]
-```
+MORE (because I got rid of your intro).
 
 ## Files
-Files append themselves to the data stream (the bash equivalent would be
-`|cat - file`):
+ni accepts file names and opens their contents in less.
 
 ```bash
 $ echo test > foo
 $ ni foo
 test
+```
+
+Files append themselves to the data stream:
+
+```bash
 $ ni foo foo
 test
 test
@@ -9743,6 +9748,8 @@ $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
 $ ni n10 =[n5 g]        # ni stdin --> n10 -----------> ni stdout
 ```
 
+Usage examples:
+
 ```bash
 $ { echo hello; echo world; } > hw
 $ ni n3 +hw
@@ -9760,6 +9767,75 @@ world
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world
+```
+
+## Data generation
+In addition to files, ni can generate data in a few ways:
+
+```bash
+$ ni n4                         # integer generator
+1
+2
+3
+4
+$ ni n04                        # integer generator, zero-based
+0
+1
+2
+3
+$ ni id:foo                     # literal text
+foo
+```
+
+## Using a shell process
+ni can stream data through a shell process using the `e` command, which is often
+shorter than shelling out separately.
+
+The following commands are equivalent to `ni n3 | sort`:
+
+```bash
+$ ni n3 e'sort'
+1
+2
+3
+$ ni n3e'sort -r'
+3
+2
+1
+$ ni n3e[sort -r]
+3
+2
+1
+```
+
+By default, `e` acts as a filter. To keep your current stream and append the
+result of the shell command, use the `+` operator.
+
+```
+$ ni n2 +e'seq 3 5'                  # append output of shell command "seq 4"
+1
+2
+3
+4
+5
+```
+
+### Important note about `e`
+`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
+when you use shell metacharacters:
+
+```bash
+$ mkdir test-dir
+$ touch test-dir/{a,b,c}
+$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
+test-dir/a
+test-dir/b
+test-dir/c
+$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
+$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
+test-dir/a
+test-dir/b
+test-dir/c
 ```
 
 ## Writing files
@@ -9935,8 +10011,8 @@ $ ni :biglist n100000z r5
 5
 ```
 
-You can use `ni --explain` to see how ni parses something; in this case the
-lambda is contained within the `checkpoint` array:
+Using `ni --explain`, you can see that in this case the lambda is contained
+within the `checkpoint` array:
 
 ```bash
 $ ni --explain :biglist n100000z r5

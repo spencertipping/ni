@@ -1,32 +1,19 @@
 # Stream operations
-`bash` and `ni` are both pipeline constructors: they string processes together
-by connecting one's stdin to another's stdout. For example, here's word count
-implemented first in bash, then in ni (with the corresponding options
-vertically aligned):
 
-```
-$ cat file |perl -lne 'print for split /\W+/' |sort |uniq -c
-$ ni  file FW pF_                             g     c
-```
-
-ni's pipe symbols are implied: `ni g c` is the same as `ni g | ni c`.
-
-```sh
-$ ni --explain FW pF_ g c
-["split_regex","(?^:[^\\w\\n]+)"]
-["perl_mapper","F_"]
-["row_sort","-t","\t"]
-["count"]
-```
+MORE (because I got rid of your intro).
 
 ## Files
-Files append themselves to the data stream (the bash equivalent would be
-`|cat - file`):
+ni accepts file names and opens their contents in less.
 
 ```bash
 $ echo test > foo
 $ ni foo
 test
+```
+
+Files append themselves to the data stream:
+
+```bash
 $ ni foo foo
 test
 test
@@ -223,6 +210,8 @@ $ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
 $ ni n10 =[n5 g]        # ni stdin --> n10 -----------> ni stdout
 ```
 
+Usage examples:
+
 ```bash
 $ { echo hello; echo world; } > hw
 $ ni n3 +hw
@@ -240,6 +229,75 @@ world
 $ ni hw =e[wc -l]               # output from 'wc -l' is gone
 hello
 world
+```
+
+## Data generation
+In addition to files, ni can generate data in a few ways:
+
+```bash
+$ ni n4                         # integer generator
+1
+2
+3
+4
+$ ni n04                        # integer generator, zero-based
+0
+1
+2
+3
+$ ni id:foo                     # literal text
+foo
+```
+
+## Using a shell process
+ni can stream data through a shell process using the `e` command, which is often
+shorter than shelling out separately.
+
+The following commands are equivalent to `ni n3 | sort`:
+
+```bash
+$ ni n3 e'sort'
+1
+2
+3
+$ ni n3e'sort -r'
+3
+2
+1
+$ ni n3e[sort -r]
+3
+2
+1
+```
+
+By default, `e` acts as a filter. To keep your current stream and append the
+result of the shell command, use the `+` operator.
+
+```
+$ ni n2 +e'seq 3 5'                  # append output of shell command "seq 4"
+1
+2
+3
+4
+5
+```
+
+### Important note about `e`
+`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
+when you use shell metacharacters:
+
+```bash
+$ mkdir test-dir
+$ touch test-dir/{a,b,c}
+$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
+test-dir/a
+test-dir/b
+test-dir/c
+$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
+$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
+test-dir/a
+test-dir/b
+test-dir/c
 ```
 
 ## Writing files
@@ -415,8 +473,8 @@ $ ni :biglist n100000z r5
 5
 ```
 
-You can use `ni --explain` to see how ni parses something; in this case the
-lambda is contained within the `checkpoint` array:
+Using `ni --explain`, you can see that in this case the lambda is contained
+within the `checkpoint` array:
 
 ```bash
 $ ni --explain :biglist n100000z r5

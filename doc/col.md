@@ -117,9 +117,6 @@ $ ni mult-table xr2     # swap first two columns
 
 ## Splitting
 The `F` operator gives you a way to convert non-tab-delimited data into TSV.
-For example, if you're parsing `/etc/passwd`, you'd turn colons into tabs
-first.
-
 `F` has the following uses:
 
 - `F:<char>`: split on character
@@ -134,12 +131,15 @@ first.
 - `FP`: split on pipe symbols
 
 ### Examples
+
+`/etc/passwd` split on colons:
 ```bash
 $ ni /etc/passwd r2F::          # F: followed by :, which is the split char
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 ```
 
+The first three lines of ni's source code:
 ```bash
 $ ni //ni r3                            # some data
 #!/usr/bin/env perl
@@ -147,6 +147,7 @@ $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 ```
 
+The first three lines of ni's source code, split on forward slashes:
 ```bash
 $ ni //ni r3F/\\//                      # split on forward slashes
 #!	usr	bin	env perl
@@ -154,6 +155,8 @@ $ni::self{license} = <<'_';
 ni: https:		github.com	spencertipping	ni
 ```
 
+
+The first three lines of ni's source code, split on non-words:
 ```bash
 $ ni //ni r3FW                          # split on non-words
 	usr	bin	env	perl
@@ -161,6 +164,7 @@ $ ni //ni r3FW                          # split on non-words
 ni	https	github	com	spencertipping	ni
 ```
 
+The first three lines of ni's source code, split on whitespace:
 ```bash
 $ ni //ni r3FS                          # split on whitespace
 #!/usr/bin/env	perl
@@ -168,6 +172,7 @@ $ni::self{license}	=	<<'_';
 ni:	https://github.com/spencertipping/ni
 ```
 
+The first three lines of ni's source code, split on words beginning with a slash:
 ```bash
 $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
