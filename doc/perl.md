@@ -121,7 +121,6 @@ sub row {
   # your code goes here
 }
 while (<STDIN>) {
-  $l = $_;
   defined $_ && print "$_\n" for row();
 }
 ```

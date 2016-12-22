@@ -109,9 +109,10 @@ Note that whitespace is required after every p'code' operator; otherwise ni will
 * Returning data 
   * `p'..., ..., ...'`: Print each comma separated expression to its own row
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
+  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
 * Basic Field selection operations
   * `a`, `a()` through `l` and `l()`
-  * `p'F_'`
+  * `F_`
   * `a_` through `l_`
   * `FR` 
 
@@ -119,10 +120,10 @@ Note that whitespace is required after every p'code' operator; otherwise ni will
 ##Intermediate Row and Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more 
 
-* `r` - Take rows
+* `r` - Combining take rows with column and Perl operators
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
   * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-    * Be careful using `rp'...'` with numeric values, because the value `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
+    * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
 * `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
 * `W`: Prepend column stream
