@@ -5,7 +5,7 @@
 
 `$ni ...`
 
-##Basic I/O
+##Basic I/O Operations
 * `n`: Integer stream
   * `n#`: Stream the sequence `1..#`, one number per line
   * `n0#`: Stream the sequence `0..#-1`, one number per line
@@ -23,13 +23,13 @@
   * `zx`: xzip compression
   * `zb`: bzip2 compression
   * `z4`: lz4 compression (note, some Docker images have a too-old version of LZ4)
-* `... > filename`: Redirect to file
+* ` > filename`: Redirect to file
   * Redirects the stream to `filename`, emits nothing
   * This is not a `ni` operation, just a file redirect.
-* `... \>filename`: Write and emit filename:
+* ` \>filename`: Write and emit filename:
   * Writes the stream to the file named `filename`, and emits the filename.
   * Note that there is no whitespace between the angle-bracket and the filename.
-* `e[<script>]`: Evaluate Script
+* `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
 * `id:<text>`: Literal text input
   * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
@@ -45,11 +45,6 @@
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
   * `$ ni <data> rp'<...>'` - take rows where the Perl code `<...>` is true.
-* `g` - sort rows ascending (alphabetical)
-* `o` - sort rows ascending (numerical)
-* `O` - sort rows descending (numerical)
-* `u` - unique sorted rows
-* `c` - count sorted rows
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
 *  `m'<...>'`: Ruby
@@ -59,7 +54,7 @@
 
 ##Basic Column Operations
 * `f`: Take columns
-  * `$ ni <data> fAA` - select the first column and duplicate it.
+  * `$ ni <data> fAA` - select the first column and duplicate it
   * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
   * `$ ni <data> fB-E` - select columns 2-5
   * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
@@ -74,8 +69,7 @@
   * `FS`: split on runs of horizontal whitespace
   * `FW`: split on runs of non-word characters
   * `FP`: split on pipe symbols
-
-* `x` exchange columns
+* `x`: Exchange columns
   * `x` -- exchange the first two columns. 
     * Equivalent to `fBA.`
   * `xC` -- exchange column 3 with column 1. 
@@ -83,9 +77,32 @@
   * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
     * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
     * Equivalent to `fBECDA.`
-* `w<...>`: append stream defined by `<...>` to each row in the stream
-* `W<...>`: prepend stream defined by `<...>` to each row in the stream
-
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n` )
+  
+##Sort, Unique & Count Operations
+* `g`: General sorting
+  * `gB` - sort rows ascending by the lexicographic value of the second column
+    * Lexicographic value is determined by the ordering of characters in the ASCII table.
+    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+  * `gC-` - sort rows *descending* by the lexicographic value of the third column
+   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
+  * `gDn` - sort rows ascending by the **numerical** value of the fourth column.
+    * The numeric sort works on integers and floating-point numbers **not** written in exponential/scientific notation
+* `o` and `O`: Numeric sorting
+  * `o`: Sort rows ascending (numerical)
+    * `oA` is syntactic sugar for `$ ni <data> gAn`
+  * `O`: sort rows descending (numerical)
+    * `OB` is equivalent to `$ ni <data> gBn-` 
+  * **Important Note**: `o` and `O` sorts *cannot be chained together*, or combined with `g` sorts. 
+    * Concretely, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oB` and `$ ni <data> oB OA` is the 
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `ni <data> fBgc` -- return the 
+  * Note that the above operation is superior to `ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced 
   
 ##Basic Perl Operations
 `ni` fully supports Perl 5.
@@ -121,7 +138,7 @@ Note that you will need sufficient processing cores to effectively horizontally 
 
 
 
-##Cell Operations
+##Cell Operations 
 `$ ni <data> ,<op><columns>`
 
 * `,s` - running sum
@@ -152,5 +169,5 @@ Note that you will need sufficient processing cores to effectively horizontally 
     * The third element of the output row 
 * `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 
-
+* `v`: vertical operate on columns
 
