@@ -4347,8 +4347,8 @@ sub argmin(&@) {
   $m;
 }
 
-sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
-sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
 
 sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
