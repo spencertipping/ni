@@ -42,17 +42,18 @@
   * `$ ni <data> r100x` - take every 100th row in the stream
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
     * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
-  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
-  * `$ ni <data> rp'<...>'` - take rows where the Perl code `<...>` is true.
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
+   * See the [Perl for ni](perl_for_ni.md) docs
 *  `m'<...>'`: Ruby
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
 
 ##Basic Column Operations
+Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
+
 * `f`: Take columns
   * `$ ni <data> fAA` - select the first column and duplicate it
   * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
@@ -77,50 +78,106 @@
   * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
     * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
     * Equivalent to `fBECDA.`
-* `w`: Append column to stream
-  * `$ ni <data> w[np'a*a']`
-* `W`: Prepend column stream
-  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n` )
+
   
 ##Sort, Unique & Count Operations
+
+Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
 * `g`: General sorting
   * `gB` - sort rows ascending by the lexicographic value of the second column
     * Lexicographic value is determined by the ordering of characters in the ASCII table.
     * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
   * `gC-` - sort rows *descending* by the lexicographic value of the third column
    * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
-  * `gDn` - sort rows ascending by the **numerical** value of the fourth column.
-    * The numeric sort works on integers and floating-point numbers **not** written in exponential/scientific notation
+  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
+    * The numeric sort works on integers and floating-point numbers written as decimals.
+    * The numeric sort will **not** work on numbers written in exponential/scientific notation
+  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
+  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+  
+##Perl for `ni` Fundamentals
+`ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
+
+Note that whitespace is required after every p'code' operator; otherwise ni will assume that everything following your quoted code is also Perl.
+
+
+* Returning data 
+  * `p'..., ..., ...'`: Print each comma separated expression to its own row
+  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
+* Basic Field selection operations
+  * `a`, `a()` through `l` and `l()`
+  * `p'F_'`
+  * `a_` through `l_`
+  * `FR` 
+
+
+##Intermediate Row and Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more 
+
+* `r` - Take rows
+  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
+  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
+    * Be careful using `rp'...'` with numeric values, because the value `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+* `v`: Vertical operation on columns
+  * **Important Note**: As of 2016-12-21, this operator is too slow to use in production. most of this 
+
+##Useful Syntactic Sugar
 * `o` and `O`: Numeric sorting
   * `o`: Sort rows ascending (numerical)
     * `oA` is syntactic sugar for `$ ni <data> gAn`
   * `O`: sort rows descending (numerical)
     * `OB` is equivalent to `$ ni <data> gBn-` 
-  * **Important Note**: `o` and `O` sorts *cannot be chained together*, or combined with `g` sorts. 
-    * Concretely, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oB` and `$ ni <data> oB OA` is the 
-* `u`: unique sorted rows
-  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
-* `c`: count sorted rows
-  * `ni <data> fBgc` -- return the 
-  * Note that the above operation is superior to `ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced 
-  
-##Basic Perl Operations
-`ni` fully supports Perl 5.
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. Beacuse of this, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column (and they will, with very high probability, not be sorted). 
 
-###`ni`-specific Perl Extensions
+##Perl for `ni`
+A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses and 
+
+
+* `lc()`
+* `uc()`
+* `substr()`
+* `split`
+* `join`
+* `**`: exponent
+* `$<expr>`: get the scalar value associated with `<expr>`
+* `%<var> = `: construct a hash
+
+
+##`ni`-specific Perl Extensions
 The operators in this section refer specifically to the 
 `$ ni <data> p'...'`
 
-* Column operations
-* Time operations
 * Geohashing operations
+  * `ghe`: geohash encoding
+  * `ghd`: geohash decoding
+* Time operations
+  * `tpe`: time parts to epoch
+  * `tep`: time epoch to parts
+* Column operations
 * Building hashes
 
+##HDFS I/O & Hadoop Streaming
+
+We'll assume some familiarity with HDFS (or access to someone with enough familiarity) 
+
+* Reading from HDFS
+  * `hdfs://<path>`: `hadoop fs -cat <path>`
+  * `hdfst://<path>`: `hadoop fs -text <path>`
+* Reading 
+
+##Intermediate Perl Operations
 ###Begin Blocks
 `p'^{BEGIN_BLOCK} ...'`
 
-
-##HDFS I/O & Hadoop Streaming
 
 
 ##Data Closures & Checkpoints
@@ -169,5 +226,4 @@ Note that you will need sufficient processing cores to effectively horizontally 
     * The third element of the output row 
 * `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 
-* `v`: vertical operate on columns
 
