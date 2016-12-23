@@ -118,7 +118,7 @@ Note that whitespace is required after every p'code' operator; otherwise ni will
 
 
 ##Intermediate Row and Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more 
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
 * `r` - Combining take rows with column and Perl operators
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
@@ -159,12 +159,23 @@ The operators in this section refer specifically to the
 
 * Geohashing operations
   * `ghe`: geohash encoding
+    * `ghe($lat, $lng, $precision)`
+      * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
+      * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
   * `ghd`: geohash decoding
+    * `ghd($gh_base32)`
+      * Returns the latitude and longitude (in that order) of 
+    * `ghd($gh_int, $precision)`
+      * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the corresponding latitude and longitude (in that order).
 * Time operations
   * `tpe`: time parts to epoch
+    * 
   * `tep`: time epoch to parts
-* Column operations
-* Building hashes
+    * 
+  * `timezone_seconds`: compute the number of seconds to offset the epoch with respect to timezone.
+* Array functions
+  * `clip`
+  * `within`
 
 ##HDFS I/O & Hadoop Streaming
 
@@ -173,19 +184,27 @@ We'll assume some familiarity with HDFS (or access to someone with enough famili
 * Reading from HDFS
   * `hdfs://<path>`: `hadoop fs -cat <path>`
   * `hdfst://<path>`: `hadoop fs -text <path>`
-* Reading 
+* `HS[] [] []`: Hadoop Streaming Job
+  * 
+* Using HDFS paths in Hadoop Streaming Jobs:
+  * `\'hdfst://<path> HS...`
+ 
 
 ##Intermediate Perl Operations
+###Building Hashes
 ###Begin Blocks
 `p'^{BEGIN_BLOCK} ...'`
 
 
-
 ##Data Closures & Checkpoints
+* `closure_name::[...]`
+  * 
+* `@:[disk_backed_data_closure]`
+* `:[checkpoint]`
 
 ##Advanced Perl Operations
+###Buffered Readahead
 ###Streaming Reduce
-###Building Hashes
 
 
 ##Horizontal Scaling
