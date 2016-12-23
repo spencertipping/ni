@@ -12,20 +12,20 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
 sub argmax(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
   }
   $m;
 }
 
 sub argmin(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
   }
   $m;
 }

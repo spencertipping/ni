@@ -4329,20 +4329,20 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
 sub argmax(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
   }
   $m;
 }
 
 sub argmin(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
   }
   $m;
 }
@@ -4475,7 +4475,7 @@ sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/)[%d]}',
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ and $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
 Hash constructors.
