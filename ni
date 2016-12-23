@@ -4685,7 +4685,7 @@ if (1 << 32) {
 
   *geohash_decode = sub {
     local $_;
-    my $gh12 = $_[0] . "0" x 12;
+    my $gh12 = "$_[0]s" . "0" x 11;
     my ($low_30, $high_30) = (0, 0);
     for (0..5) {
       $low_30  = $low_30  << 5 | $geohash_decode{lc substr $gh12, $_ + 6, 1};
