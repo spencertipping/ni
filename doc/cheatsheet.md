@@ -168,7 +168,8 @@ The operators in this section refer specifically to the
       * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
 * Time operations
   * `tpe`: time parts to epoch
-    * 
+    * `tpe(@time_pieces)`
+    * `tpe($time_format, @time_pieces)`
   * `tep`: time epoch to parts
     * 
   * `timezone_seconds`: compute the number of seconds to offset the epoch with respect to timezone.
@@ -177,8 +178,7 @@ The operators in this section refer specifically to the
   * `within`
 
 ##HDFS I/O & Hadoop Streaming
-
--word explanation of how Hadoop streaming works with `ni`: `ni` uploads itself as a `.jar` to the configured Hadoop server, 
+When `ni HS...` is called, `ni` uploads itself as a `.jar` to the configured Hadoop server, and runs it
 
 * Reading from HDFS to a local `ni` job
   * `hdfs://<path>`: `hadoop fs -cat <path>`
@@ -187,7 +187,8 @@ The operators in this section refer specifically to the
   * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
   * `_` -- skip one of the steps. 
   * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for one of the steps
-  * If the reducer step is skipped with `_`, the output may not be sorted. 
+  * If the reducer step is skipped with `_`, the output may not be sorted.
+  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
 * Using HDFS paths in Hadoop Streaming Jobs:
   * `ni ... \'hdfst://<path> HS...`
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
@@ -216,8 +217,6 @@ The operators in this section refer specifically to the
 Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down.
 
 * `S` -- Horizontal Scaling 
-
-
 
 
 ##Cell Operations 
