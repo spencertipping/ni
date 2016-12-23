@@ -140,8 +140,7 @@ We can weave together row, column, and Perl operations to create more complex ro
   * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. Beacuse of this, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column (and they will, with very high probability, not be sorted). 
 
 ##Perl for `ni`
-A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses and 
-
+A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses or unquoted directly in to `ni` scripts.
 
 * `lc()`
 * `uc()`
@@ -164,9 +163,9 @@ The operators in this section refer specifically to the
       * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
   * `ghd`: geohash decoding
     * `ghd($gh_base32)`
-      * Returns the latitude and longitude (in that order) of 
+      * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
     * `ghd($gh_int, $precision)`
-      * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the corresponding latitude and longitude (in that order).
+      * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
 * Time operations
   * `tpe`: time parts to epoch
     * 
@@ -179,24 +178,29 @@ The operators in this section refer specifically to the
 
 ##HDFS I/O & Hadoop Streaming
 
-We'll assume some familiarity with HDFS (or access to someone with enough familiarity) 
+-word explanation of how Hadoop streaming works with `ni`: `ni` uploads itself as a `.jar` to the configured Hadoop server, 
 
-* Reading from HDFS
+* Reading from HDFS to a local `ni` job
   * `hdfs://<path>`: `hadoop fs -cat <path>`
   * `hdfst://<path>`: `hadoop fs -text <path>`
-* `HS[] [] []`: Hadoop Streaming Job
-  * 
+* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
+  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
+  * `_` -- skip one of the steps. 
+  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for one of the steps
+  * If the reducer step is skipped with `_`, the output may not be sorted. 
 * Using HDFS paths in Hadoop Streaming Jobs:
-  * `\'hdfst://<path> HS...`
+  * `ni ... \'hdfst://<path> HS...`
+  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 
 ##Intermediate Perl Operations
 ###Building Hashes
+
 ###Begin Blocks
 `p'^{BEGIN_BLOCK} ...'`
 
 
-##Data Closures & Checkpoints
+##Data Closures and their Use; Checkpoints
 * `closure_name::[...]`
   * 
 * `@:[disk_backed_data_closure]`
@@ -204,6 +208,7 @@ We'll assume some familiarity with HDFS (or access to someone with enough famili
 
 ##Advanced Perl Operations
 ###Buffered Readahead
+
 ###Streaming Reduce
 
 
@@ -238,12 +243,13 @@ Note that you will need sufficient processing cores to effectively horizontally 
    
 ##Advanced Row and Column Operations
 * `j` - streaming join
-  * Note that this join will only 
+  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
-    * The first element of the output row is the index of row of the input data that came fro
+    * The first element of the output row is the index of row of the input data that came from
     * The second element of the output row is the index of the column that the input data came from
-    * The third element of the output row 
+    * The third element of the output row is the value of the input stream at the specified row + column.
 * `X` - sparse-to-dense transformation
-  * `X` inverts `Y`; it converts a specifically-formatted 
+  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * The specification for what the input matrix must look like is described above in the `Y` operator.
 
