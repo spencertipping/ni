@@ -107,15 +107,14 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 
 Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
 
-
 * Returning data 
   * `p'..., ..., ...'`: Print each comma separated expression to its own row
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
   * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
-* Basic Field selection operations
+* Field selection operations
   * `a`, `a()` through `l` and `l()`: Parsimonious field access
     * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
-    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
   * `F_`: Explicit field access
     * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
     * `FM` is the number of fields in the row.
@@ -134,16 +133,8 @@ We can weave together row, column, and Perl operations to create more complex ro
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-21, this operator is too slow to use in production. most of this 
 
-##Useful Syntactic Sugar
-* `o` and `O`: Numeric sorting
-  * `o`: Sort rows ascending (numerical)
-    * `oA` is syntactic sugar for `$ ni <data> gAn`
-  * `O`: sort rows descending (numerical)
-    * `OB` is equivalent to `$ ni <data> gBn-` 
-  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. Beacuse of this, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column (and they will, with very high probability, not be sorted). 
-
 ##Perl for `ni`
-A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses or unquoted directly in to `ni` scripts.
+A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
 
 * `lc()`
 * `uc()`
@@ -154,6 +145,13 @@ A few important operators for doing data manipulation in Perl. Many Perl functio
 * `$<expr>`: get the scalar value associated with `<expr>`
 * `%<var> = `: construct a hash
 
+##Useful Syntactic Sugar
+* `o` and `O`: Numeric sorting
+  * `o`: Sort rows ascending (numerical)
+    * `oA` is syntactic sugar for `$ ni <data> gAn`
+  * `O`: sort rows descending (numerical)
+    * `OB` is equivalent to `$ ni <data> gBn-` 
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. Beacuse of this, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column (and they will, with very high probability, not be sorted). 
 
 ##`ni`-specific Perl Extensions
 The operators in this section refer specifically to the 
@@ -174,14 +172,17 @@ The operators in this section refer specifically to the
     * `tpe(@time_pieces)`
     * `tpe($time_format, @time_pieces)`
   * `tep`: time epoch to parts
-    * 
-  * `timezone_seconds`: compute the number of seconds to offset the epoch with respect to timezone.
+    * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
+    * `tep($format_string, $epoch_time)`: returns specified parts of the date using 
+  * `timezone_seconds`
+    * `timezone_seconds($lat, $lng)`: compute the number of seconds to subtract from local time (at a given data and hour) to convert to epoch time (at the same date and hour) (at the same date and hour).
+    * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 * Array functions
   * `clip`
   * `within`
 
 ##HDFS I/O & Hadoop Streaming
-When `ni HS...` is called, `ni` uploads itself as a `.jar` to the configured Hadoop server, and runs it
+When `ni HS...` is called, `ni` uploads itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`. It's the key to performing powerful `ni` operators.
 
 * Reading from HDFS to a local `ni` job
   * `hdfs://<path>`: `hadoop fs -cat <path>`
