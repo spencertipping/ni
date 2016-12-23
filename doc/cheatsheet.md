@@ -59,6 +59,8 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
   * `$ ni <data> fB-E` - select columns 2-5
   * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+* Combining column operations with `r`
+  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
   * `F/regex/`: split on occurrences of regex. If present, the first capture
@@ -103,7 +105,7 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 ##Perl for `ni` Fundamentals
 `ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
 
-Note that whitespace is required after every p'code' operator; otherwise ni will assume that everything following your quoted code is also Perl.
+Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
 
 
 * Returning data 
@@ -111,19 +113,20 @@ Note that whitespace is required after every p'code' operator; otherwise ni will
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
   * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
 * Basic Field selection operations
-  * `a`, `a()` through `l` and `l()`
-  * `F_`
-  * `a_` through `l_`
-  * `FR` 
-
-
-##Intermediate Row and Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
-
-* `r` - Combining take rows with column and Perl operators
-  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
+  * `a`, `a()` through `l` and `l()`: Parsimonious field access
+    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
+    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+  * `F_`: Explicit field access
+    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
+    * `FM` is the number of fields in the row.
+    * `FR n` is equivalent to `F_ n..FM`
+* Combining Perl with `r`
   * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
     * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
+
+##Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+
 * `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
 * `W`: Prepend column stream
@@ -201,9 +204,10 @@ When `ni HS...` is called, `ni` uploads itself as a `.jar` to the configured Had
 `p'^{BEGIN_BLOCK} ...'`
 
 
-##Data Closures and their Use; Checkpoints
+##Data Closures and Their Use; Checkpoints
 * `closure_name::[...]`
   * 
+* `a_` through `l_`
 * `@:[disk_backed_data_closure]`
 * `:[checkpoint]`
 
@@ -245,9 +249,9 @@ Note that you will need sufficient processing cores to effectively horizontally 
   * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
-    * The first element of the output row is the index of row of the input data that came from
-    * The second element of the output row is the index of the column that the input data came from
-    * The third element of the output row is the value of the input stream at the specified row + column.
+    * The index of the row that the input data that came from
+    * The index of the column that the input data came from
+    * The value of the input stream at the row + column specified by the first two columns.
 * `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
   * The specification for what the input matrix must look like is described above in the `Y` operator.
