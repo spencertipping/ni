@@ -5,7 +5,7 @@
 
 `$ni ...`
 
-##Basic I/O
+##Basic I/O Operations
 * `n`: Integer stream
   * `n#`: Stream the sequence `1..#`, one number per line
   * `n0#`: Stream the sequence `0..#-1`, one number per line
@@ -23,13 +23,13 @@
   * `zx`: xzip compression
   * `zb`: bzip2 compression
   * `z4`: lz4 compression (note, some Docker images have a too-old version of LZ4)
-* `... > filename`: Redirect to file
+* ` > filename`: Redirect to file
   * Redirects the stream to `filename`, emits nothing
   * This is not a `ni` operation, just a file redirect.
-* `... \>filename`: Write and emit filename:
+* ` \>filename`: Write and emit filename:
   * Writes the stream to the file named `filename`, and emits the filename.
   * Note that there is no whitespace between the angle-bracket and the filename.
-* `e[<script>]`: Evaluate Script
+* `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
 * `id:<text>`: Literal text input
   * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
@@ -42,27 +42,25 @@
   * `$ ni <data> r100x` - take every 100th row in the stream
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
     * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
-  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
-  * `$ ni <data> rp'<...>'` - take rows where the Perl code `<...>` is true.
-* `g` - sort rows ascending (alphabetical)
-* `o` - sort rows ascending (numerical)
-* `O` - sort rows descending (numerical)
-* `u` - unique sorted rows
-* `c` - count sorted rows
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
+   * See the [Perl for ni](perl_for_ni.md) docs
 *  `m'<...>'`: Ruby
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
 
 ##Basic Column Operations
+Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
+
 * `f`: Take columns
-  * `$ ni <data> fAA` - select the first column and duplicate it.
+  * `$ ni <data> fAA` - select the first column and duplicate it
   * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
   * `$ ni <data> fB-E` - select columns 2-5
   * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+* Combining column operations with `r`
+  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
   * `F/regex/`: split on occurrences of regex. If present, the first capture
@@ -74,8 +72,7 @@
   * `FS`: split on runs of horizontal whitespace
   * `FW`: split on runs of non-word characters
   * `FP`: split on pipe symbols
-
-* `x` exchange columns
+* `x`: Exchange columns
   * `x` -- exchange the first two columns. 
     * Equivalent to `fBA.`
   * `xC` -- exchange column 3 with column 1. 
@@ -83,34 +80,142 @@
   * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
     * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
     * Equivalent to `fBECDA.`
-* `w<...>`: append stream defined by `<...>` to each row in the stream
-* `W<...>`: prepend stream defined by `<...>` to each row in the stream
 
   
-##Basic Perl Operations
-`ni` fully supports Perl 5.
+##Sort, Unique & Count Operations
 
-###`ni`-specific Perl Extensions
+Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
+* `g`: General sorting
+  * `gB` - sort rows ascending by the lexicographic value of the second column
+    * Lexicographic value is determined by the ordering of characters in the ASCII table.
+    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+  * `gC-` - sort rows *descending* by the lexicographic value of the third column
+   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
+  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
+    * The numeric sort works on integers and floating-point numbers written as decimals.
+    * The numeric sort will **not** work on numbers written in exponential/scientific notation
+  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
+  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+  
+##Perl for `ni` Fundamentals
+`ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
+
+Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
+
+* Returning data 
+  * `p'..., ..., ...'`: Print each comma separated expression to its own row
+  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
+  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
+* Field selection operations
+  * `a`, `a()` through `l` and `l()`: Parsimonious field access
+    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
+    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+  * `F_`: Explicit field access
+    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
+    * `FM` is the number of fields in the row.
+    * `FR n` is equivalent to `F_ n..FM`
+* Combining Perl with `r`
+  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
+    * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
+
+##Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+* `v`: Vertical operation on columns
+  * **Important Note**: As of 2016-12-21, this operator is too slow to use in production. most of this 
+
+##Perl for `ni`
+A few important operators for doing data manipulation in Perl. Many Perl functions can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
+
+* `lc()`
+* `uc()`
+* `substr()`
+* `split`
+* `join`
+* `**`: exponent
+* `$<expr>`: get the scalar value associated with `<expr>`
+* `%<var> = `: construct a hash
+
+##Useful Syntactic Sugar
+* `o` and `O`: Numeric sorting
+  * `o`: Sort rows ascending (numerical)
+    * `oA` is syntactic sugar for `$ ni <data> gAn`
+  * `O`: sort rows descending (numerical)
+    * `OB` is equivalent to `$ ni <data> gBn-` 
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. Beacuse of this, there is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column (and they will, with very high probability, not be sorted). 
+
+##`ni`-specific Perl Extensions
 The operators in this section refer specifically to the 
 `$ ni <data> p'...'`
 
-* Column operations
-* Time operations
 * Geohashing operations
-* Building hashes
+  * `ghe`: geohash encoding
+    * `ghe($lat, $lng, $precision)`
+      * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
+      * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
+  * `ghd`: geohash decoding
+    * `ghd($gh_base32)`
+      * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+    * `ghd($gh_int, $precision)`
+      * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+* Time operations
+  * `tpe`: time parts to epoch
+    * `tpe(@time_pieces)`
+    * `tpe($time_format, @time_pieces)`
+  * `tep`: time epoch to parts
+    * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
+    * `tep($format_string, $epoch_time)`: returns specified parts of the date using 
+  * `timezone_seconds`
+    * `timezone_seconds($lat, $lng)`: compute the number of seconds to subtract from local time (at a given data and hour) to convert to epoch time (at the same date and hour) (at the same date and hour).
+    * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+* Array functions
+  * `clip`
+  * `within`
+
+##HDFS I/O & Hadoop Streaming
+When `ni HS...` is called, `ni` uploads itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`. It's the key to performing powerful `ni` operators.
+
+* Reading from HDFS to a local `ni` job
+  * `hdfs://<path>`: `hadoop fs -cat <path>`
+  * `hdfst://<path>`: `hadoop fs -text <path>`
+* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
+  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
+  * `_` -- skip one of the steps. 
+  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for one of the steps
+  * If the reducer step is skipped with `_`, the output may not be sorted.
+  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
+* Using HDFS paths in Hadoop Streaming Jobs:
+  * `ni ... \'hdfst://<path> HS...`
+  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+ 
+
+##Intermediate Perl Operations
+###Building Hashes
 
 ###Begin Blocks
 `p'^{BEGIN_BLOCK} ...'`
 
 
-##HDFS I/O & Hadoop Streaming
-
-
-##Data Closures & Checkpoints
+##Data Closures and Their Use; Checkpoints
+* `closure_name::[...]`
+  * 
+* `a_` through `l_`
+* `@:[disk_backed_data_closure]`
+* `:[checkpoint]`
 
 ##Advanced Perl Operations
+###Buffered Readahead
+
 ###Streaming Reduce
-###Building Hashes
 
 
 ##Horizontal Scaling
@@ -119,9 +224,7 @@ Note that you will need sufficient processing cores to effectively horizontally 
 * `S` -- Horizontal Scaling 
 
 
-
-
-##Cell Operations
+##Cell Operations 
 `$ ni <data> ,<op><columns>`
 
 * `,s` - running sum
@@ -144,13 +247,13 @@ Note that you will need sufficient processing cores to effectively horizontally 
    
 ##Advanced Row and Column Operations
 * `j` - streaming join
-  * Note that this join will only 
+  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
-    * The first element of the output row is the index of row of the input data that came fro
-    * The second element of the output row is the index of the column that the input data came from
-    * The third element of the output row 
+    * The index of the row that the input data that came from
+    * The index of the column that the input data came from
+    * The value of the input stream at the row + column specified by the first two columns.
 * `X` - sparse-to-dense transformation
-  * `X` inverts `Y`; it converts a specifically-formatted 
-
+  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * The specification for what the input matrix must look like is described above in the `Y` operator.
 
