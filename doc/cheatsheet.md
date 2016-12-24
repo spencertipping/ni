@@ -2,7 +2,6 @@
 
 `ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
 
-
 `$ni ...`
 
 ##Basic I/O Operations
@@ -49,7 +48,7 @@
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
-   * See the [Perl for ni](perl_for_ni.md) docs
+   * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
 
 ##Basic Column Operations
 Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
@@ -63,8 +62,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
-  * `F/regex/`: split on occurrences of regex. If present, the first capture
-  group will be included before a tab is appended to a field.
+  * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
   * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
   the field values.
   * `FC`: split on commas (doesn't handle special CSV cases)
@@ -108,7 +106,6 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
 
 * Returning data 
-  * `p'..., ..., ...'`: Print each comma separated expression to its own row
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
   * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
 * Field selection operations
@@ -143,6 +140,14 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
 * `join`
 * `**`: exponent
 * `my $<v> = <expr>`: instantiate a scalar `<v>` with the value of `<expr>`
+* `map`
+* `keys %h`
+* Regular Expressions
+  * `$<v> =~ /regex/`
+  * `$<v> =~ s/regex//`
+  * `$<v> = tr/regex//d`
+  * `$<v> = y/regex//`
+
 
 ##Useful Syntactic Sugar
 * `o` and `O`: Numeric sorting
@@ -198,60 +203,46 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * Equivalent to `hadoop fs -text <path>`
 * `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
   * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
-  * `_` -- skip one of the steps. 
-  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for one of the steps
-  * If the reducer step is skipped with `_`, the output may not be sorted.
+  * `_` -- skip the mapper/reducer/combiner. 
+  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
+  * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
   * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
 * Using HDFS paths in Hadoop Streaming Jobs:
   * `ni ... \'hdfst://<path> HS...`
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 
-##Intermediate Perl Operations
+##Basic Perl Reducers
 
 The operations here are generally dependent on sorting to function properly, which can make them very expensive to execute on a single machine.
 
 ###Streaming Reduce
 These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using the buffered readahead and line-array reducers.
 
-* `sr`: reduce over entire stream
-  * ($x, $y, ...) = sr {reducer} $x0, $y0, ...
-* `se`: reduce while equal: `@final_state = se {reducer} \&partition_fn, @init_state`
+* `sr`: Reduce over entire stream
+  * `$ ni n1E5p'sr {$_[0] + a} 0'`: sum the integers from 1 to 100,000
+* `se`: Reduce while equal
+  * `@final_state = se {reducer} \&partition_fn, @init_state`
+* `sea` through `seq`: Reduce with partition function `a()...q()`
+* `rc`: Compound reduce
+* `rfn`: Custom compound reduce
 
-###Buffered Readahead
-These operations are good for reducing 
-
-* `rw`: read while
-  * `@lines = rw {condition}`: read lines while a condition is met
-* `ru`: read until
-  * `@lines = ru {condition}`: read lines until a condition is met
-* `re`: read equal
-  * `@lines = re {condition}`: read lines while the value of the condition is equal.
-
-###Line-Array Reducers
-These operations can be used to reduce the data output by the readahead functions.
-
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
-
-
-
-##Basic Cell Operations 
+##Cell Operations 
 `$ ni <data> ,<op><columns>`
 
-These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting 
+These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
 
 * `,a`: Running average
 * `,d`: Difference between consecutive rows
 * `,e`: Natural exponential (`e^x`)
-* `,h`: Murmurhash (deterministic hash function)
+* `,h`: Murmurhash (deterministic 32-bit hash function)
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,l`: Natural log (`ln x`)
 * `,s`: Running sum 
 * `,q`: Quantize
 * `,z`: Intify (hash and then convert hashes to integers starting with 1)
+
+
 
 ##Horizontal Scaling
 Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down, as `ni` tries to spin up more processes than your machine can bear.
@@ -271,6 +262,37 @@ Note that you will need sufficient processing cores to effectively horizontally 
     * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
     * `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
+
+##Advanced Perl Reducers
+###Buffered Readahead
+These operations are good for reducing 
+
+* `rw`: read while
+  * `@lines = rw {condition}`: read lines while a condition is met
+* `ru`: read until
+  * `@lines = ru {condition}`: read lines until a condition is met
+* `re`: read equal
+  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+
+###Line-Array Reducers
+These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} re {b}'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ re {b}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, re{b}` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+
+##Stream Splitting/Joining/Duplication
+I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
+
+* `+`: append a stream to this one
+* `^`: prepend a stream to this one
+* `%`: duplicate this stream through a process, and include output
+* `=`: duplicate this stream through a process, discarding its output
+
+
 ##Advanced Row and Column Operations
 * `j` - streaming join
   * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
@@ -283,14 +305,6 @@ Note that you will need sufficient processing cores to effectively horizontally 
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
   * The specification for what the input matrix must look like is described above in the `Y` operator.
   
-  
-##Other Stream Splitting/Joining/Duplication
-I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
-
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `%`: duplicate this stream through a process, and include output
-* `=`: duplicate this stream through a process, discarding its output
 
 ##Advanced Data Closures & Checkpoints
 
@@ -312,8 +326,12 @@ I don't find these operators particularly useful in practice (with the exception
 * Array functions
   * `clip`
   * `within`
-  
+
+
 ##Things other than Perl 
+
+Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
+
 *  `m'<...>'`: Ruby
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
