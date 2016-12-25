@@ -41,6 +41,7 @@
 ##Basic Row Operations
 * `r`: Take rows
   * `$ ni <data> r3` - take the first 3 rows of the stream
+  * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
   * `$ ni <data> r~3` - take the last 3 rows of the stream
   * `$ ni <data> r100x` - take every 100th row in the stream
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
@@ -240,8 +241,7 @@ These provide keystroke-efficient ways to do transformations on a single column 
 * `,l`: Natural log (`ln x`)
 * `,s`: Running sum 
 * `,q`: Quantize
-* `,z`: Intify (hash and then convert hashes to integers starting with 1)
-
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
 
 
 ##Horizontal Scaling
@@ -305,6 +305,22 @@ I don't find these operators particularly useful in practice (with the exception
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
   * The specification for what the input matrix must look like is described above in the `Y` operator.
   
+  
+
+##Matrix Operations
+These operations are suited best to 
+
+
+* `N'x = ...'`: Numpy-style matrix operations
+  * Dense matrices can be transformed using Numpy-like operations
+  * The entire input matrix (i.e. the stream) is referred to as `x`.
+  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
+  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
+* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
+  * **TODO**: understand how these actually work.
+* `X`: sparse-to-dense transformation
+  * In the case that there are collisions for locations `X`, `X` will sum the values
+  * For example: `ni n010p'r 0, a%3, 1' X`
 
 ##Advanced Data Closures & Checkpoints
 
