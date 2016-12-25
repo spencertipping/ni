@@ -7,16 +7,21 @@ The goal of this tutorial is not to be exhaustive, but to be practical and produ
 ##Installation
 `ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get VirtualBox or Docker or whatever. Installation should be easy*.
 
-`git clone git@github.com:spencertipping/ni`
+```
+git clone git@github.com:spencertipping/ni
+cd ni
+./build
+ln -s ni ~/bin/ni  # or whatwever to add it to your path
+```
 
-`cd ni`
+##
 
-`./build`
-
-#Integer Streams, Output, Compression
+##Integer Streams, Output, Compression
 `ni n10 =\>ten.txt fAAz\>tens.gz \< >  tens.txt`
 
 We'll start each example with 
+
+We'll be using the `=\>` operator a lot in these examples, because it will allow us to  
 
 
 

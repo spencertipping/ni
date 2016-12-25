@@ -246,10 +246,28 @@ The operators in this section refer specifically to the
   
   
 ##Plotting with `ni --js`
-Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
+Check out the [examples](examples.md) for some examples of cool, interactive `ni` plotting.
 
-**TODO**: Say something useful.
+###Formula Bar
+You can enter ni formulas into the top bar (without the explicit `ni` call).
 
+###Controls
+
+- D : Distance
+  - D represents the distance from the camera to the origin
+- R : Rotation
+  - The first R component is the angle between the image and the plane of the image and the plane of the screen
+  - The second R component is the rotation of the image within the plane of the screenin degrees
+- x : Dimensional Scaling
+  - The first component controls scaling in the direction of the width of the screen;
+  - The second component controls scaling in the direction of the depth of the screen;
+  - The third component controls scaling in the direction of the height of the screen.
+
+###Viewing a 3D plot to 2D
+
+Set the second x component to 0 to flatten the image's depth dimension; then
+set the first R component to 0 and the second R component to 90 to show a
+front-facing view of your plot.
 
 ##Data Closure Basics and Array-Based Operators
 Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
