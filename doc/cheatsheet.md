@@ -38,13 +38,8 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * Whereas `\>` will consume your entire stream, ending any future processing, `=\>` duplicates the stream, sending one version to a file, while the other can continue to be processed.
 * `z`: Compress stream
   * Defaults to applying `gzip` compression, but can use any number of operations. 
-  * `zg`: explicit gzip with default compression
-  * `zg9`: gzip with compression level 9
-  * `zn` writes all output to `dev/null`; useful for forcing an operation to complete.
-  * `zo`: lzo compression
-  * `zx`: xzip compression
-  * `zb`: bzip2 compression
-  * `z4`: lz4 compression (note, some Docker images have a too-old version of LZ4)
+* `zd`: Universal decompressor
+  * This is available but rarely useful because `ni` will automatically decompress most files for you.
 
 
 ##Basic Row Operations
@@ -465,3 +460,14 @@ Here be dragons, and files that start with `<<EOF`.
 * [Scripting](script.md)
 * [HTTP Operations](net.md)
 * [Defining `ni` functions](fn.md)
+
+## Compression Details
+
+
+  * `zg`: explicit gzip with default compression
+  * `zg9`: gzip with compression level 9
+  * `zn` writes all output to `dev/null`; useful for forcing an operation to complete.
+  * `zo`: lzo compression
+  * `zx`: xzip compression
+  * `zb`: bzip2 compression
+  * `z4`: lz4 compression (note, some Docker images have a too-old version of LZ4)

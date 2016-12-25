@@ -1,15 +1,25 @@
-#Ni by Example
+#Ni by Example (WIP)
+
+The learning curve for `ni` is steep, but the power curve is exponential.
+
+The goal of this tutorial is not to be exhaustive, but to be practical and productive. The goal is that this will be the first tutorial you read about `ni`, and may there's plenty of time to explore `ni` once you've learned to swing there are rich-text explanations.
+
+##Installation
+`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get VirtualBox or Docker or whatever. Installation should be easy*.
+
+`git clone git@github.com:spencertipping/ni`
+
+`cd ni`
+
+`./build`
+
+#Integer Streams, Output, Compression
+`ni n10 =\>ten.txt fAAz\>tens.gz \< >  tens.txt`
+
+We'll start each example with 
 
 
 
-###...well, it was before it got out of hand.
-######(I'm working on it.)
-
-`ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
-
-`$ni ...`
-
-Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be a mostly complete functional introduction to `ni` as a language.
 
 ##Input Operations
 * `n`: Integer stream
@@ -29,25 +39,6 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
-##File Output and Compression
-* ` > filename`: Redirect stream to file
-  * Redirects the stream to `filename`, emits nothing
-  * This is not a `ni` operation, just a file redirect.
-* ` \>filename`: Redirect stream to file and emit filename
-  * Consumes the stream and outputs it to the file named `filename`, and emits the filename.
-  * Note that there is no whitespace between the angle-bracket and the filename.
-* `=\>filename`: Duplicate stream to file
-  * This operation combines the `=` operator (described below) with `\>filename`.
-  * Whereas `\>` will consume your entire stream, ending any future processing, `=\>` duplicates the stream, sending one version to a file, while the other can continue to be processed.
-* `z`: Compress stream
-  * Defaults to applying `gzip` compression, but can use any number of operations. 
-  * `zg`: explicit gzip with default compression
-  * `zg9`: gzip with compression level 9
-  * `zn` writes all output to `dev/null`; useful for forcing an operation to complete.
-  * `zo`: lzo compression
-  * `zx`: xzip compression
-  * `zb`: bzip2 compression
-  * `z4`: lz4 compression (note, some Docker images have a too-old version of LZ4)
 
 
 ##Basic Row Operations
