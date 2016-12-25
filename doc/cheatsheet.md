@@ -22,7 +22,8 @@
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
-  * `ni` implements a very fast (but not quite complete) JSON parser,
+  * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
+  * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
 ##File Output and Compression
 * ` > filename`: Redirect stream to file
@@ -57,10 +58,10 @@
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
    * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
-* Combining `p'...'` with `r`
+* `rp'...'`: Take rows with Perl
   * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
   * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-  * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
+  * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
 ##Basic `ni` Philosophy and Style
 
@@ -74,24 +75,26 @@
   * Nothing stopping you from joyful hacking.
 * If you find a common operation is taking a while, there's probably a faster way to do it. Ask. It may require more Perl, though.
 
-####Everything in `ni` is optional *unless its absence would create ambiguity*.
+####Everything is optional *unless its absence would create ambiguity*.
 
-* Starting with an example:
-  * Here is a clear `ni` spell: `ni n10 rp'a > 3'`
-  * Here is the same spell, written compactly: `ni n10rpa\>3`
-  * Escaping characters to avoid quoting probably isn't the best thing to do, but to an experienced `ni` developer, both of these spells will be about equally readable.
-* Here's another:
-  * Clear: `ni n10p'r "hello"'`
-  * Conciser: `ni n10p'hello'`
+* Consider the following three `ni` spells, all with the same output.
+  * Explicit: `ni n10p'r "hello"'`
+  * Concise: `ni n10p'hello'`
   * Compact: `ni n10phello`
-  * The technical details behind the `ni` parser are out of scope, but 
+* The technical details behind the `ni` parser are out of scope for right now, but note that `ni` does not bat an eyelash when a raw variable name (in Perl-speak, a bareword) is thrown into the mix; in this case, it is correctly interpreted as a string. 
+* Moreover, the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
+* Another example:
+  * Explicit: `ni n10 rp'a > 3'`
+  * Compact: `ni n10rpa\>3`
+* Escaping characters to avoid quoting probably isn't the best thing to do, but to an experienced `ni` developer, both of these spells will be about equally readable.
 
 
 ####`ni` is not meant to be easy to read for those who do not speak `ni`.
 
-* The `ni` learning curve is rather steep; if you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
-* However, just as most `ni` spells are built front-to-back, `ni` spells can be understood back-to-front. By repeatedly clipping operations off the end, you can see the entire 
-* And moreover, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are  properly referred to as spells.
+* This principle naturally follows from the two, but it is worth articulating so you understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
+* If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
+* Just as most `ni` spells are built front-to-back, they can be understood back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of data processing steps, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
+* And to emphasize the point, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
 
 
 ##Basic Column Operations
@@ -179,8 +182,10 @@ We can weave together row, column, and Perl operations to create more complex ro
 
 * `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
+  * `w` will add columns only up to the length of the input stream
 * `W`: Prepend column stream
   * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+  * `W` will add rows only up to the length of the input stream
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
 
@@ -266,18 +271,14 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 ##Intermediate `ni` Philosophy and Style
-####`ni` is a domain-specific language; `ni`'s domain is processing single lines and chunks of data that fit in memory
-
+####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
 * Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`-ic operation, while compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed. 
-
+* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
 
 ####What `ni` doesnt do.
-  * `ni` isn't meant to replace your heavy-featured easy-to-read scripting language (completely... yet); just all of the operations that aren't heavily-optimized and complicated math.
-  * If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
-  
+* `ni` is adequate at arithmetic and line-based function application, but generally `ni` is bad at math. 
 
 
 ##Basic Perl Reducers
@@ -302,7 +303,7 @@ These provide keystroke-efficient ways to do transformations on a single column 
 
 * `,a`: Running average
 * `,d`: Difference between consecutive rows
-* `,e`: Natural exponential (`e^x`)
+* `,e`: Natural exponential (`e**x`)
 * `,h`: Murmurhash (deterministic 32-bit hash function)
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,l`: Natural log (`ln x`)
