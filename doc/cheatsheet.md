@@ -1,23 +1,30 @@
 #Cheatsheet
+###...well, it was before it got out of hand.
+######(I'm working on it.)
 
 `ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
 
 `$ni ...`
 
-##Basic I/O Operations
+
+##Input Operations
 * `n`: Integer stream
   * `n#`: Stream the sequence `1..#`, one number per line
   * `n0#`: Stream the sequence `0..#-1`, one number per line
   * `n`: Stream the sequence `1..`, one number per line.
-* `filename{, .gz, .bz, .xz, .lzo, .txt, .csv, etc}`: File input
+* `filename{, .gz, .bz, .xz, .lzo, .txt, .csv, .json, etc}`: File input
   * Automatically decompresses the file and streams out one line of the file out at a time.
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
 * `id:<text>`: Literal text input
   * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
   * `$ ni id:'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
-* `input_source \<`: Read from `input_source`
-  * This 
+* `input_directory \<`: Read from directory
+  * This tool can be powerful in combination with Hadoop operations, described below.
+* `D:<field1>,:<field2>...`: JSON Destructure
+  * `ni` implements a very fast (but not quite complete) JSON parser,
+
+##File Output and Compression
 * ` > filename`: Redirect stream to file
   * Redirects the stream to `filename`, emits nothing
   * This is not a `ni` operation, just a file redirect.
@@ -50,6 +57,42 @@
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
    * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
+* Combining `p'...'` with `r`
+  * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
+  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
+  * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
+
+##Basic `ni` Philosophy and Style
+
+####`ni` is written for concision, fast testing, and productivity.
+
+* Because `ni` processes streams of data in a streaming way, you should be able to build pipelines up from front-to-back, checking the integrity of the output at each step, for example by taking some rows using `r30` and/or sinking the output to a file.
+* As a result of this, `ni` spells can be developed completely in the command line; there is:
+  * No compilation (in the most common sense).
+  * No need for a text editor.
+  * No need to switch windows.
+  * Nothing stopping you from joyful hacking.
+* If you find a common operation is taking a while, there's probably a faster way to do it. Ask. It may require more Perl, though.
+
+####Everything in `ni` is optional *unless its absence would create ambiguity*.
+
+* Starting with an example:
+  * Here is a clear `ni` spell: `ni n10 rp'a > 3'`
+  * Here is the same spell, written compactly: `ni n10rpa\>3`
+  * Escaping characters to avoid quoting probably isn't the best thing to do, but to an experienced `ni` developer, both of these spells will be about equally readable.
+* Here's another:
+  * Clear: `ni n10p'r "hello"'`
+  * Conciser: `ni n10p'hello'`
+  * Compact: `ni n10phello`
+  * The technical details behind the `ni` parser are out of scope, but 
+
+
+####`ni` is not meant to be easy to read for those who do not speak `ni`.
+
+* The `ni` learning curve is rather steep; if you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
+* However, just as most `ni` spells are built front-to-back, `ni` spells can be understood back-to-front. By repeatedly clipping operations off the end, you can see the entire 
+* And moreover, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are  properly referred to as spells.
+
 
 ##Basic Column Operations
 Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
@@ -63,6 +106,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
+    * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
   * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
   * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
   the field values.
@@ -117,9 +161,18 @@ Note that whitespace is required after every `p'code'` operator; otherwise ni wi
     * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
     * `FM` is the number of fields in the row.
     * `FR n` is equivalent to `F_ n..FM`
-* Combining Perl with `r`
-  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-    * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl; `$ ni n10 p'r a, 0' rpb` returns an empty stream.  
+ 
+
+##JSON Encoding
+
+*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
+  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
+  *  Here's an example:
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \>jsons```
 
 ##Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
@@ -212,6 +265,20 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * `ni ... \'hdfst://<path> HS...`
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
+##Intermediate `ni` Philosophy and Style
+####`ni` is a domain-specific language; `ni`'s domain is processing single lines and chunks of data that fit in memory
+
+
+* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
+* Because of this philosophy, large-scale sorting is not a `ni`-ic operation, while compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed. 
+
+
+####What `ni` doesnt do.
+  * `ni` isn't meant to replace your heavy-featured easy-to-read scripting language (completely... yet); just all of the operations that aren't heavily-optimized and complicated math.
+  * If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
+  
+
 
 ##Basic Perl Reducers
 
@@ -352,3 +419,14 @@ Look, these are here, and if it helps you get started with `ni`, great. But `ni`
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
+   
+##Writing Your Own `ni` Extensions
+**TODO** Understand how this works
+
+##Obscure Interops
+Here be dragons, and files that start with `<<EOF`.
+
+* [SQL](sql.md)
+* [PySpark](pyspark.md)
+* [Scripting](script.md)
+* 
