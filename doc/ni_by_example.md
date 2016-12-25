@@ -1,4 +1,7 @@
-#Cheatsheet
+#Ni by Example
+
+
+
 ###...well, it was before it got out of hand.
 ######(I'm working on it.)
 
@@ -6,7 +9,7 @@
 
 `$ni ...`
 
-Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be an exhaustive and functional introduction to `ni` as a language.
+Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be a mostly complete functional introduction to `ni` as a language.
 
 ##Input Operations
 * `n`: Integer stream
@@ -85,15 +88,16 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * The technical details behind the `ni` parser are out of scope for right now, but note that `ni` does not bat an eyelash when a raw variable name (in Perl-speak, a bareword) is thrown into the mix; in this case, it is correctly interpreted as a string. 
 * Moreover, the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
 * Another example:
-  * Explicit: `ni n10p'"HELLO"' p'lc(a)'`
-  * Compact: `ni n10pHELLO plc`
-* `ni` carries over some of the philosophy of implicit and default values from Perl, so you don't need to tell the lowercase function `lc` on what to operate; it will operate on the entire input line.
+  * Explicit: `ni n10 rp'a > 3'`
+  * Compact: `ni n10rpa\>3`
+* Escaping characters to avoid quoting probably isn't the best thing to do, but to an experienced `ni` developer, both of these spells will be about equally readable.
+
 
 ####`ni` is not meant to be easy to read for those who do not speak `ni`.
 
-* This principle naturally follows from the two, but it is worth articulating to understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
+* This principle naturally follows from the two, but it is worth articulating so you understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
 * If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
-* Just as most `ni` spells are built front-to-back, they are best understood by `ni` learners back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of intermediate outputs of the processing pipeline, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
+* Just as most `ni` spells are built front-to-back, they can be understood back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of data processing steps, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
 * And to emphasize the point, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
 
 
