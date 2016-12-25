@@ -149,6 +149,13 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
   * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
   * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
   
+##Understanding the `ni` monitor
+More details [here](monitor.md). Overall:
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+  
 ##Perl for `ni` Fundamentals
 `ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
 
@@ -451,11 +458,11 @@ Look, these are here, and if it helps you get started with `ni`, great. But `ni`
 ##Writing Your Own `ni` Extensions
 **TODO** Understand how this works
 
-##Obscure Interops
+##Obscure Interops/Extensions
 Here be dragons, and files that start with `<<EOF`.
 
 * [SQL](sql.md)
 * [PySpark](pyspark.md)
 * [Scripting](script.md)
 * [HTTP Operations](net.md)
-* 
+* [Defining `ni` functions](fn.md)
