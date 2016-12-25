@@ -6,6 +6,7 @@
 
 `$ni ...`
 
+Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be a mostly complete functional introduction to `ni` as a language.
 
 ##Input Operations
 * `n`: Integer stream
@@ -61,7 +62,7 @@
 * `rp'...'`: Take rows with Perl
   * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
   * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-  * Be careful using `rp'...'` with numeric values, because `0` is not truthy in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
+  * Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
 ##Basic `ni` Philosophy and Style
 
@@ -164,18 +165,22 @@ Note that whitespace is required after every `p'code'` operator; otherwise ni wi
     * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
     * `FM` is the number of fields in the row.
     * `FR n` is equivalent to `F_ n..FM`
- 
 
-##JSON Encoding
+##SSH and Containers
 
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-  *  Here's an example:
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons```
+* `C<container_name>[...]`: execute `[...]` in `<container_name>`
+  * Running in containers requires that Docker be installed on your machine.
+  * Running containers can be especially useful to take advantage of better OS-dependent utilities.
+  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase by replacing:
+    * `ni n1E7 g` with
+    * `ni n1E7 Cubuntu[g]`
+  * Containers are also useful for testing the portability of your code.
+* `s<host>[...]`: execute `[...]` in `<host>`
+  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
+  * You will want to do this to reduce keystrokes.
+  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
+  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
+
 
 ##Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
@@ -238,6 +243,13 @@ The operators in this section refer specifically to the
 * `timezone_seconds`
   * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
   
+  
+##Plotting with `ni --js`
+Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
+
+**TODO**: Say something useful.
+
+
 ##Data Closure Basics and Array-Based Operators
 Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
 
@@ -376,7 +388,8 @@ I don't find these operators particularly useful in practice (with the exception
   
 
 ##Matrix Operations
-These operations are suited best to 
+
+Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
 
 
 * `N'x = ...'`: Numpy-style matrix operations
@@ -404,13 +417,27 @@ These operations are suited best to
   * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
   * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
   
-##Plotting with `ni --js`
+##Binary Operations
+In theory, this can save you a lot of space. But I haven't used this in practice.
+  
 
 ##Less Useful `ni`-specific Perl Extensions
-* Array functions
+###JSON Encoding
+
+*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
+  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
+  *  Here's an example:
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \>jsons```
+
+
+###Array Functions
   * `clip`
   * `within`
-
+  
 
 ##Things other than Perl 
 
@@ -430,4 +457,5 @@ Here be dragons, and files that start with `<<EOF`.
 * [SQL](sql.md)
 * [PySpark](pyspark.md)
 * [Scripting](script.md)
+* [HTTP Operations](net.md)
 * 
