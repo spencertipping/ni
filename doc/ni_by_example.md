@@ -2,26 +2,86 @@
 
 The learning curve for `ni` is steep, but the power curve is exponential.
 
-The goal of this tutorial is not to be exhaustive, but to be practical and productive. The goal is that this will be the first tutorial you read about `ni`, and may there's plenty of time to explore `ni` once you've learned to swing there are rich-text explanations.
+This tutorial is not exhaustive, but it is practical; it will introduce you to the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with (probably); and give you the tools to explore the rest of `ni`'s rich and wonderful documentation.
 
 ##Installation
-`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get VirtualBox or Docker or whatever. Installation should be easy*.
+`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. Installation should be *easy*.
 
 ```
-git clone git@github.com:spencertipping/ni
+git clone git@github.com:spencertipping/ni.git
 cd ni
 ./build
 ln -s ni ~/bin/ni  # or whatwever to add it to your path
 ```
 
-##
+##`ni` Development Environment
 
-##Integer Streams, Output, Compression
-`ni n10 =\>ten.txt fAAz\>tens.gz \< >  tens.txt`
+It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one that is as vanilla as possible; if you're using some other CLI and have `bash` installed, `bash` at the command line will open a bash shell (using your `~/.bash_profile` settings)
 
-We'll start each example with 
 
-We'll be using the `=\>` operator a lot in these examples, because it will allow us to  
+##Integer Streams and Output
+`$ ni n10 \>ten.txt`
+
+We'll start each example with a `ni` spell you can copy directly into the command line, then break it down front-to-back.
+
+If you enter the command into the command line, something like this will be returned:
+
+```
+ten.txt
+(END)
+```
+
+If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. If you look in the directory you ran this command from, you should have a file called `ten.txt` there.  If you open the file in `vi` or `less`, you should find the integers from 1 to 10 each printed on their own line.
+
+`ni` commands are usually built from 
+
+**`n` generates a stream of integers starting at 1**. 
+
+`$ ni n3` returns the following output into a `less`-like environment:
+
+```
+1
+2
+3
+(END)
+```
+
+Remember, `q` will quit you out of this, and `s` will save the contents of the less to a filename that you'll type (at the bottom of the screen) once
+
+
+
+**`\>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name**
+
+Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is sometimes important (but it's usually not).
+
+Try the command 
+
+
+##`ni` Coding and Debugging
+
+
+
+As you advance through the tutorial, or start working with `ni` spells written by others, you'll want a quicker way 
+
+ advanced beyond the tutorial phase, you'll want  you'll still have commands that don't work quite the way they're supposed to. `ni` offers two utilities for this task; `ni --explain`
+
+
+##Stream Duplication and Compression
+`ni n10 =\>ten.txt z\>ten.gz`
+
+##Basic Column Operations; Input
+`ni n10 =\>ten.txt fAAz\>tens.gz \< > tens.txt`
+
+
+
+The next operator in our spell is `=\>ten.txt`; in fact this is the combination of two operators, `=` and `\>ten.txt`; however, these operations are so tightly coupled that I often think of this as a single operation. `=\>fn` outputs a copy of the stream to the file named `fn`
+
+Equals sign is two parallel lines, and the equals sign operator splits the stream into two parallel streams (and throws away the output of one of them)
+
+
+
+
+We'll be using the `=\>` operator a lot in these examples, because it will allow us to view the 
 
 
 
