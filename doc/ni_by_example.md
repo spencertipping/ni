@@ -61,9 +61,14 @@ Note that there is **no space** between `\>` and `ten.txt`. This is the first in
 
 ####Enrichment
 
-You can use scientific notation with `n`. `ni n1E5` will give you 10^5 integers.
+Without an argument, `ni n` gives an infinite stream of integers starting from 1.
 
-ni `n0` gives you integers starting from zero.
+`ni n0` gives you integers starting from zero.
+
+**BUG** `ni n0` raises error instead of generating 0-based infinite stream of integers.
+
+To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you `3.2 x 10^5` consecutive integers, starting from 1.
+
 
 
 ##`ni` Coding and Debugging
@@ -88,7 +93,7 @@ From now on, we'll use `ni --explain <spell>` to start the analysis of each of t
 
 
 ##Stream Duplication and Compression
-`ni n10 =[\>ten.txt] z\>ten.gz`
+`$ ni n10 =[\>ten.txt] z\>ten.gz`
 
 Running the script puts us back in `less`:
 
@@ -113,18 +118,7 @@ We recognize the first and last operators instantly; the middle two operators ar
 
 ####`=[...]`: Divert Stream
 
-`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
-
-One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
-
-For simple operations, the square brackets are unnecessary; we could have equivalently written:
-
-`ni n10 =\>ten.txt z\>ten.gz`
-
-This more aesthetically-pleasing statement is the preferred `ni` style; note that the lack of whitespace between `=` and the file write is critical in this case.
-
 Looking at the output of `ni --explain`:
-
 
 ```
 ...
@@ -134,6 +128,15 @@ Looking at the output of `ni --explain`:
 
 We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
 
+`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
+
+One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
+
+For simple operations, the square brackets are unnecessary; we could have equivalently written:
+
+`ni n10 =\>ten.txt z\>ten.gz`
+
+This more aesthetically-pleasing statement is the preferred `ni` style. In this case, the lack of whitespace between `=` and the file write is critical.
 
 ####`z`: Compression
 
@@ -143,28 +146,28 @@ Compression is fundamental to improving throughput in networked computation, and
 ####Enrichment
 `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). The most important one to know about is `zn`, the lossy perfect compression operator. `zn` writes the stream to `dev/null`; this operator is sometimes useful because it can force the previous operation in the stream to complete before the next one w
 
-##Basic Column Operations; Redirect
-`ni n10 =\>ten.txt fAAz\>tens.gz \< > tens.txt`
+##Basic Column Operations, File Reading, and Output Redirection
+`$ ni n10 =\>ten.txt fAAz\>tens.gz \< | wc -l`
+
+Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
+
+```
+$ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l
+      10
+```
 
 
+####`f`: Column Selection
 
-The next operator in our spell is `=\>ten.txt`; in fact this is the combination of two operators, `=` and `\>ten.txt`; however, these operations are so tightly coupled that I often think of this as a single operation. `=\>fn` outputs a copy of the stream to the file named `fn`
-
-Equals sign is two parallel lines, and the equals sign operator splits the stream into two parallel streams (and throws away the output of one of them)
-
+####`\<`: File and Directory Reading
 
 
+####`|` and `>`: Piping and Redirecting Output
 
-We'll be using the `=\>` operator a lot in these examples, because it will allow us to view the 
-
-
+Like other command-line utilities, `ni` respects pipe symbols and redirect symbols. 
 
 
 ##Input Operations
-* `n`: Integer stream
-  * `n#`: Stream the sequence `1..#`, one number per line
-  * `n0#`: Stream the sequence `0..#-1`, one number per line
-  * `n`: Stream the sequence `1..`, one number per line.
 * `filename{, .gz, .bz, .xz, .lzo, .txt, .csv, .json, etc}`: File input
   * Automatically decompresses the file and streams out one line of the file out at a time.
 * `e[<script>]`: Evaluate script
