@@ -4,8 +4,10 @@ The learning curve for `ni` is steep, but the power curve is exponential.
 
 This tutorial is not exhaustive, but it is practical; it will introduce you to the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with (probably); and give you the tools to explore the rest of `ni`'s rich and wonderful documentation.
 
+In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there.
+
 ##Installation
-`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
+`ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
 
 ```
 git clone git@github.com:spencertipping/ni.git
@@ -19,47 +21,27 @@ ln -s ni ~/bin/ni  # or whatever to add it to your path
 It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one that is as vanilla as possible; if you're using some other CLI and have `bash` installed, `bash` at the command line will open a bash shell (using your `~/.bash_profile` settings)
 
 
-##Integer Streams and Output
-`$ ni n10 \>ten.txt`
-
-We'll start each example with a `ni` spell you can copy directly into the command line, then break it down front-to-back.
-
-If you enter the command into the command line, something like this will be returned:
-
-```
-ten.txt
-(END)
-```
-
-If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
-
-The directory you ran this command from, you should have a file called `ten.txt`.  If you open the file in `vi` or `less`, you should find the integers from 1 to 10, each printed on its own line.
-
-`ni` commands are usually built from forward to back; 
-
-####`n`: Integer Stream
-
-The `ni` `n` generates a stream of integers starting at 1. The number after determines how many numbers will be generated.
-
-`$ ni n3` returns the following output into a `less`-like environment:
+##Integer Streams
+`$ ni n10` will drop you into a screen that looks like this:
 
 ```
 1
 2
 3
+4
+5
+6
+7
+8
+9
+10
 (END)
 ```
 
-Remember, `q` will quit you out of this, and `s` will save the contents of the `less` pager to a filename that you type at the bottom of the screen.
+If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
 
-####`\>`: Output and Emit Filename
-
-`ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
-
-Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is sometimes important (but it's usually not).
-
-
-####Enrichment
+####`n`: Integer Stream
+`ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
 
 Without an argument, `ni n` gives an infinite stream of integers starting from 1.
 
@@ -69,6 +51,26 @@ Without an argument, `ni n` gives an infinite stream of integers starting from 1
 
 To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you `3.2 x 10^5` consecutive integers, starting from 1.
 
+
+
+##File Output
+`$ ni n10 \>ten.txt`
+
+Running this command will drop you into `less` with this as output:
+
+```
+ten.txt
+(END)
+```
+
+The directory you ran this command from, you should have a file called `ten.txt`.  If you open `ten.txt` in your text editor of choice, you should find the integers from 1 to 10, each printed on its own line.
+
+
+####`\>`: Output and Emit Filename
+
+`ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
+
+Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is frequently important.
 
 
 ##`ni` Coding and Debugging
@@ -103,6 +105,8 @@ ten.gz
 ```
 
 The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
+
+To examine the contents 
 
 Let's take a look at this with `--explain`:
 
@@ -156,8 +160,12 @@ $ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l
       10
 ```
 
+Because of the pipe, you cannot simply run `$ ni --explain n10 =\>ten.txt fAAz\>tens.gz \< | wc -l`, which will instead 
+
 
 ####`f`: Column Selection
+
+
 
 ####`\<`: File and Directory Reading
 
