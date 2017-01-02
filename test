@@ -75,5 +75,9 @@ case $c in
     echo
     tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
     echo
+    if [[ -e .test-cancel ]]; then
+      rm .test-cancel
+      exit 1
+    fi
   done 2>test.log
 esac
