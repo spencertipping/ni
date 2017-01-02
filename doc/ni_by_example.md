@@ -68,9 +68,11 @@ ni `n0` gives you integers starting from zero.
 
 ##`ni` Coding and Debugging
 
-The simplest way to build up a `ni` spell is by writing each intuitive step in order from beginning ot end, and testing each step in order. In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly); once the output of one step in the spell looks good, you can move 
+The simplest way to build up a `ni` spell is by writing one step of the spell, and checking each step's output for correctness.
 
-As you advance through the tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
+In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
+
+As you advance through this tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
 
 For this, use `ni --explain <spell>`. Using the example above:
 
@@ -80,17 +82,68 @@ $ ni --explain n10 \>ten.txt
 ["file_write","ten.txt"]
 ```
 
-Each line represents one step of the pipeline defined by the spell, and the na
-
-
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parsleyer interprets the 
 
 From now on, we'll use `ni --explain <spell>` to start the analysis of each of the spells we write. 
 
 
 ##Stream Duplication and Compression
+`ni n10 =[\>ten.txt] z\>ten.gz`
+
+Running the script puts us back in `less`:
+
+```
+ten.gz
+(END)
+```
+
+The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
+
+Let's take a look at this with `--explain`:
+
+```
+$ ni --explain n10 =[\>ten.txt] z\>ten.gz
+["n",1,11]
+["divert",["file_write","ten.txt"]]
+["sh","gzip"]
+["file_write","ten.gz"]
+```
+
+We recognize the first and last operators instantly; the middle two operators are new.
+
+####`=[...]`: Divert Stream
+
+`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
+
+One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
+
+For simple operations, the square brackets are unnecessary; we could have equivalently written:
+
 `ni n10 =\>ten.txt z\>ten.gz`
 
-##Basic Column Operations; Input
+This more aesthetically-pleasing statement is the preferred `ni` style; note that the lack of whitespace between `=` and the file write is critical in this case.
+
+Looking at the output of `ni --explain`:
+
+
+```
+...
+["divert",["file_write","ten.txt"]]
+...
+```
+
+We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
+
+
+####`z`: Compression
+
+Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell.
+
+
+####Enrichment
+`z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). The most important one to know about is `zn`, the lossy perfect compression operator. `zn` writes the stream to `dev/null`; this operator is sometimes useful because it can force the previous operation in the stream to complete before the next one w
+
+##Basic Column Operations; Redirect
 `ni n10 =\>ten.txt fAAz\>tens.gz \< > tens.txt`
 
 
