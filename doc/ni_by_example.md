@@ -43,14 +43,13 @@ If you're familiar with the Unix terminal pager utility `less`, this will look a
 ####`n`: Integer Stream
 `ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
 
-Without an argument, `ni n` gives an infinite stream of integers starting from 1.
+Without an argument, `ni n` gives an infinite stream of consecutive integers starting from 1.
 
-`ni n0` gives you integers starting from zero.
+`ni n0` gives you consecutive integers starting from zero.
 
 **BUG** `ni n0` raises error instead of generating 0-based infinite stream of integers.
 
 To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you `3.2 x 10^5` consecutive integers, starting from 1.
-
 
 
 ##File Output
@@ -140,18 +139,34 @@ For simple operations, the square brackets are unnecessary; we could have equiva
 
 `ni n10 =\>ten.txt z\>ten.gz`
 
-This more aesthetically-pleasing statement is the preferred `ni` style. In this case, the lack of whitespace between `=` and the file write is critical.
+This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
 
 ####`z`: Compression
 
-Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell.
+Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell. `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). 
+
+`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ cat ten.gz | ni`, which returns:
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+(END)
+```
+
+as we would expect.
 
 
-####Enrichment
-`z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). The most important one to know about is `zn`, the lossy perfect compression operator. `zn` writes the stream to `dev/null`; this operator is sometimes useful because it can force the previous operation in the stream to complete before the next one w
 
 ##Basic Column Operations, File Reading, and Output Redirection
-`$ ni n10 =\>ten.txt fAAz\>tens.gz \< | wc -l`
+`$ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l`
 
 Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
 
@@ -160,31 +175,67 @@ $ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l
       10
 ```
 
-Because of the pipe, you cannot simply run `$ ni --explain n10 =\>ten.txt fAAz\>tens.gz \< | wc -l`, which will instead 
+Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz fAA \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
+
+```
+$ ni --explain n10 =z\>ten.gz fAA \>tens.txt \<
+["n",1,11]
+["divert",["sh","gzip"],["file_write","ten.gz"]]
+["cols",1,0,0]
+["file_write","tens.txt"]
+["file_read"]
+```
+
+A wrinkle has been added into the `divert` statement, demonstrating the ability to do more complicated operation of compressing and writing to a file. The lack of whitespace here is critical, and this more concise command is preferred stylistically to the explicit and functionally equivalent `=[ z \>ten.gz ]`.
 
 
 ####`f`: Column Selection
+Row and column selection and manipulation form the backbone of `ni` operations. Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl interface, discussed later.
 
+`ni ... fAA` will return two copies of the first column, and as such, `$ ni n10 =z\>ten.gz fAA` returns:
 
+```
+1       1
+2       2
+3       3
+4       4
+5       5
+6       6
+7       7
+8       8
+9       9
+10      10
+(END)
+```
 
-####`\<`: File and Directory Reading
+####`\<`: Read from Files
+When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
+
+`\<` interprets its input stream as file names, and it will output the contents of these files in order. Note that `ni` does not insert newlines between separate files.
+
+**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.
+
+Let's look at some cool tricks that `\<` can do for us:
+
+```
+$ rm -rf test && mkdir test
+$ echo "hi\n" > test/hi
+$ echo "ya\n" > test/there
+$ ni test \<
+```
 
 
 ####`|` and `>`: Piping and Redirecting Output
 
-Like other command-line utilities, `ni` respects pipe symbols and redirect symbols. 
+Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
 
 
 ##Input Operations
-* `filename{, .gz, .bz, .xz, .lzo, .txt, .csv, .json, etc}`: File input
-  * Automatically decompresses the file and streams out one line of the file out at a time.
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
 * `id:<text>`: Literal text input
   * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
   * `$ ni id:'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
-* `input_directory \<`: Read from directory
-  * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
