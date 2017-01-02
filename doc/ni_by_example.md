@@ -5,13 +5,13 @@ The learning curve for `ni` is steep, but the power curve is exponential.
 This tutorial is not exhaustive, but it is practical; it will introduce you to the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with (probably); and give you the tools to explore the rest of `ni`'s rich and wonderful documentation.
 
 ##Installation
-`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. Installation should be *easy*.
+`ni` should work on any Unix-based OS. If you have Windows and you want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
 
 ```
 git clone git@github.com:spencertipping/ni.git
 cd ni
 ./build
-ln -s ni ~/bin/ni  # or whatwever to add it to your path
+ln -s ni ~/bin/ni  # or whatever to add it to your path
 ```
 
 ##`ni` Development Environment
@@ -31,11 +31,15 @@ ten.txt
 (END)
 ```
 
-If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. If you look in the directory you ran this command from, you should have a file called `ten.txt` there.  If you open the file in `vi` or `less`, you should find the integers from 1 to 10 each printed on their own line.
+If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
 
-`ni` commands are usually built from 
+The directory you ran this command from, you should have a file called `ten.txt`.  If you open the file in `vi` or `less`, you should find the integers from 1 to 10, each printed on its own line.
 
-**`n` generates a stream of integers starting at 1**. 
+`ni` commands are usually built from forward to back; 
+
+####`n`: Integer Stream
+
+The `ni` `n` generates a stream of integers starting at 1. The number after determines how many numbers will be generated.
 
 `$ ni n3` returns the following output into a `less`-like environment:
 
@@ -46,24 +50,41 @@ If you're familiar with the Unix terminal pager utility `less`, this will look a
 (END)
 ```
 
-Remember, `q` will quit you out of this, and `s` will save the contents of the less to a filename that you'll type (at the bottom of the screen) once
+Remember, `q` will quit you out of this, and `s` will save the contents of the `less` pager to a filename that you type at the bottom of the screen.
 
+####`\>`: Output and Emit Filename
 
-
-**`\>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name**
+`ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
 Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is sometimes important (but it's usually not).
 
-Try the command 
+
+####Enrichment
+
+You can use scientific notation with `n`. `ni n1E5` will give you 10^5 integers.
+
+ni `n0` gives you integers starting from zero.
 
 
 ##`ni` Coding and Debugging
 
+The simplest way to build up a `ni` spell is by writing each intuitive step in order from beginning ot end, and testing each step in order. In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly); once the output of one step in the spell looks good, you can move 
+
+As you advance through the tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
+
+For this, use `ni --explain <spell>`. Using the example above:
+
+```
+$ ni --explain n10 \>ten.txt
+["n",1,11]
+["file_write","ten.txt"]
+```
+
+Each line represents one step of the pipeline defined by the spell, and the na
 
 
-As you advance through the tutorial, or start working with `ni` spells written by others, you'll want a quicker way 
 
- advanced beyond the tutorial phase, you'll want  you'll still have commands that don't work quite the way they're supposed to. `ni` offers two utilities for this task; `ni --explain`
+From now on, we'll use `ni --explain <spell>` to start the analysis of each of the spells we write. 
 
 
 ##Stream Duplication and Compression
