@@ -49,7 +49,7 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
     * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
-*  `p'<...>'`: Perl
+* `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
    * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
 * `rp'...'`: Take rows with Perl

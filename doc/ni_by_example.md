@@ -241,7 +241,7 @@ $ ni --explain n10 =z\>ten.gz r3 \>tens.txt \<
 A wrinkle has been added into the `divert` statement, demonstrating the ability to do more complicated operation of compressing and writing to a file. The lack of whitespace here is critical, and this more concise command is preferred stylistically to the explicit and functionally equivalent `=[ z \>ten.gz ]`.
 
 
-####`r`: Row Filtering Operation
+####`r`: Take Rows
 
 `r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities:
 
@@ -262,7 +262,7 @@ Because you're typing directly into the bash shell, some characters may need to 
 
 Use of escape characters in `ni` operators is acceptable style only if there is not a simpler way to do the job. In this case, better `ni` style would be to use the Perl operator, introduced in the next section, The above spell is more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
 
-The `r` operator is especially useful during development; for example, 
+The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using 
 
 
 
@@ -319,8 +319,6 @@ Remember that `\<` takes a list of file names
 
 
 ##Basic Column Operations
-
-
 ####`f`: Column Selection
 Row and column selection and manipulation form the backbone of `ni` operations. Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl interface, discussed later.
 
@@ -339,6 +337,13 @@ Row and column selection and manipulation form the backbone of `ni` operations. 
 10      10
 (END)
 ```
+
+
+##Sort, Unique, and Count
+
+##
+
+
 
 ##Input Operations
 * `e[<script>]`: Evaluate script
