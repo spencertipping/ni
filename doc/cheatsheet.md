@@ -45,7 +45,7 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * `$ ni <data> r3` - take the first 3 rows of the stream
   * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
   * `$ ni <data> r~3` - take the last 3 rows of the stream
-  * `$ ni <data> r100x` - take every 100th row in the stream
+  * `$ ni <data> rx100` - take every 100th row in the stream
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
     * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.

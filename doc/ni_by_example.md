@@ -65,22 +65,74 @@ ten.txt
 The directory you ran this command from, you should have a file called `ten.txt`.  If you open `ten.txt` in your text editor of choice, you should find the integers from 1 to 10, each printed on its own line.
 
 
-####`\>`: Output and Emit Filename
+####`\>`: Output and Emit File Name
 
 `ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
 Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is frequently important.
 
+##File Input
+`$ ni ten.txt ten.txt`
+
+If you don't have the `ten.txt` file in your current directory, run `$ ni n10 \>ten.txt`.
+
+This should yield:
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+(END)
+```
+
+Entering the name of a file at the command line will cause `ni` to `cat` the contents of the file into the stream. If more than one file name is entered, they will be added to the stream in order. `ni` also automatically decompresses most common formats, including gzip, bzip, xzip, lzo, and lz4.
+
+`ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example,
+
+```
+$ ni n5 \>n10
+$ ni n10
+```
+
+yields:
+
+```
+1
+2
+3
+4
+5
+(END)
+```
+because it is reading from the file named `n10`.
+
 
 ##`ni` Coding and Debugging
 
-The simplest way to build up a `ni` spell is by writing one step of the spell, and checking each step's output for correctness.
+The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
 
 In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
 
 As you advance through this tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
 
-For this, use `ni --explain <spell>`. Using the example above:
+For this, use `ni --explain <spell>`. Using the example from the file output section:
 
 ```
 $ ni --explain n10 \>ten.txt
@@ -165,28 +217,108 @@ as we would expect.
 
 
 
-##Basic Column Operations, File Reading, and Output Redirection
-`$ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l`
+##Basic Row Operations, File Reading, and Output Redirection
+`$ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l`
 
 Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
 
 ```
-$ ni n10 =z\>ten.gz fAA \>tens.txt \< | wc -l
-      10
+$ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l
+      3
 ```
 
-Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz fAA \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
+Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
 
 ```
-$ ni --explain n10 =z\>ten.gz fAA \>tens.txt \<
+$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \<
 ["n",1,11]
 ["divert",["sh","gzip"],["file_write","ten.gz"]]
-["cols",1,0,0]
+["head","-n",3]
 ["file_write","tens.txt"]
 ["file_read"]
 ```
 
 A wrinkle has been added into the `divert` statement, demonstrating the ability to do more complicated operation of compressing and writing to a file. The lack of whitespace here is critical, and this more concise command is preferred stylistically to the explicit and functionally equivalent `=[ z \>ten.gz ]`.
+
+
+####`r`: Row Filtering Operation
+
+`r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities:
+
+* `$ ni n10 r3` - take the first 3 rows of the stream
+* `$ ni n10 r-3` - take everything after the first 3 rows of the stream
+* `$ ni n10 r~3` - take the last 3 rows of the stream
+* `$ ni n10 rx3` - take every 3rd row in the stream
+* `$ ni n10 r.15` - sample 15% of the rows in the stream
+  * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the first row.
+
+`r` also can take a regex: `$ ni <data> r/<regex>/` takes all rows where the regex has a match.
+
+For example, you can take all of the numbers that end in 0, 1, or 5 with the following spell: `$ ni n20 r/[015]$/`
+
+Because you're typing directly into the bash shell, some characters may need to be escaped, for example in this expression which identifies numbers that are all repeating digits.
+
+`ni n1000 r/^\(\\d\)\\1+$/`
+
+Use of escape characters in `ni` operators is acceptable style only if there is not a simpler way to do the job. In this case, better `ni` style would be to use the Perl operator, introduced in the next section, The above spell is more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
+
+The `r` operator is especially useful during development; for example, 
+
+
+
+####`\<`: Read from File Names in Stream
+When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
+
+`\<` interprets its input stream as file names, and it will output the contents of these files in order. Note that `ni` does not insert newlines between input from separate files.
+
+**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.
+
+####`|` and `>`: Piping and Redirecting Output
+
+Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
+
+####Enrichment: `ni` and directories
+
+Enrichment sections explore relevant but non-critical `ni` functions. They can be skipped or skimmed without 
+
+Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
+
+```
+$ rm -rf test && mkdir test
+$ echo -e "hello\n" > test/hi
+$ echo -e "you\n" > test/there
+```
+
+Let's start with `$ ni test`
+
+```
+test/hi
+test/there
+(END)
+```
+
+
+
+
+`$ ni test \<`
+
+yields:
+
+```
+hello
+you
+(END)
+```
+
+Remember that `\<` takes a list of file names
+
+`ni` is built on bash and Perl, because pretty much every machine that has bash also has Perl.  We'll take a look at how `ni` interacts with directories.
+
+
+##Basic Perl Operations
+
+
+##Basic Column Operations
 
 
 ####`f`: Column Selection
@@ -208,28 +340,6 @@ Row and column selection and manipulation form the backbone of `ni` operations. 
 (END)
 ```
 
-####`\<`: Read from Files
-When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
-
-`\<` interprets its input stream as file names, and it will output the contents of these files in order. Note that `ni` does not insert newlines between separate files.
-
-**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.
-
-Let's look at some cool tricks that `\<` can do for us:
-
-```
-$ rm -rf test && mkdir test
-$ echo "hi\n" > test/hi
-$ echo "ya\n" > test/there
-$ ni test \<
-```
-
-
-####`|` and `>`: Piping and Redirecting Output
-
-Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
-
-
 ##Input Operations
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
@@ -243,14 +353,6 @@ Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`)
 
 
 ##Basic Row Operations
-* `r`: Take rows
-  * `$ ni <data> r3` - take the first 3 rows of the stream
-  * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
-  * `$ ni <data> r~3` - take the last 3 rows of the stream
-  * `$ ni <data> r100x` - take every 100th row in the stream
-  * `$ ni <data> r.05` - sample 5% of the rows in the stream.
-    * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
-  * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
 *  `p'<...>'`: Perl
    * applies the Perl snippet `<...>` to each row of the stream 
    * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
