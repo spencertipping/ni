@@ -605,7 +605,7 @@ BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
 
 docparser filename   => q{The name of an existing file};
 docparser nefilename => q{The name of a possibly-nonexisting file};
-131 core/boot/cli.pl.sdoc
+136 core/boot/cli.pl.sdoc
 CLI grammar.
 ni's command line grammar uses some patterns on top of the parser combinator
 primitives defined in parse.pl.sdoc. Probably the most important one to know
@@ -693,6 +693,11 @@ sub defshort($$) {
 sub deflong($$) {
   my ($context, $name) = split /\//, $_[0], 2;
   unshift @{$long_refs{$context}}, $longs{$_[0]} = $_[1];
+}
+
+sub deflongafter($$) {
+  my ($context, $name) = split /\//, $_[0], 2;
+  push @{$long_refs{$context}}, $longs{$_[0]} = $_[1];
 }
 
 sub rmshort($) {
@@ -2746,7 +2751,7 @@ defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
-deflong '/fs', pmap q{cat_op $_}, filename;
+deflongafter '/fs', pmap q{cat_op $_}, filename;
 
 docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
 docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
@@ -8863,7 +8868,7 @@ Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-437 doc/perl.md
+432 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8941,14 +8946,10 @@ sub b() {F_ 1}
 ```
 
 ### `F_`: the array of fields
-The Perl code given to `p` is invoked on each line of input, which is stored
-both in `$l` and, for convenience, in `$_`. ni doesn't split `$l` into fields
-until you call `F_`, at which point the split happens and the fields are
-cached for efficiency.
-
-`F_(...)` takes one or more column indexes (as zero-based integers) and returns
-the field values. If you don't pass in anything, it returns all of the fields
-for the line. For example:
+The Perl code given to `p` is invoked on each line of input, which is stored in
+`$_`. `F_(...)` takes one or more column indexes (as zero-based integers) and
+returns the field values. If you don't pass in anything, it returns all of the
+fields for the line. For example:
 
 ```bash
 $ ni /etc/passwd F::r3
@@ -8991,7 +8992,6 @@ sub row {
   # your code goes here
 }
 while (<STDIN>) {
-  $l = $_;
   defined $_ && print "$_\n" for row();
 }
 ```

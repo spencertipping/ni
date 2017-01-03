@@ -75,10 +75,10 @@ sub b() {F_ 1}
 ```
 
 ### `F_`: the array of fields
-The Perl code given to `p` is invoked on each line of input, which is stored in `$_`. 
-`F_(...)` takes one or more column indexes (as zero-based integers) and returns
-the field values. If you don't pass in anything, it returns all of the fields
-for the line. For example:
+The Perl code given to `p` is invoked on each line of input, which is stored in
+`$_`. `F_(...)` takes one or more column indexes (as zero-based integers) and
+returns the field values. If you don't pass in anything, it returns all of the
+fields for the line. For example:
 
 ```bash
 $ ni /etc/passwd F::r3

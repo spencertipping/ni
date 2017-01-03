@@ -87,6 +87,11 @@ sub deflong($$) {
   unshift @{$long_refs{$context}}, $longs{$_[0]} = $_[1];
 }
 
+sub deflongafter($$) {
+  my ($context, $name) = split /\//, $_[0], 2;
+  push @{$long_refs{$context}}, $longs{$_[0]} = $_[1];
+}
+
 sub rmshort($) {
   my ($context, $dsp) = split /\//, $_[0], 2;
   delete $shorts{$_[0]};

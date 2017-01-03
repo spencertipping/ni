@@ -73,7 +73,7 @@ defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0',  pmap q{n_op 0, $_}, number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
-deflong '/fs', pmap q{cat_op $_}, filename;
+deflongafter '/fs', pmap q{cat_op $_}, filename;
 
 docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
 docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};

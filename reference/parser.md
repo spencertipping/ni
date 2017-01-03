@@ -83,8 +83,8 @@
 	      <empty>?
 	    ) -> {$$_[0]} -> {resource_append_op "sftp://$_"}
 	  )
-	| <filename> -> {cat_op $_}
 	| </short>
+	| <filename> -> {cat_op $_}
 	)
 
 # PARSER /qfn
