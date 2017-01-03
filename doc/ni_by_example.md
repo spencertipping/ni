@@ -366,10 +366,16 @@ $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 
 ```
 
 ####`p'...'`: Map Perl
+When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run (or, it will run, but it's _dangerous_)
 
 ####Column Accessor Functions `a` and `a()`
 
 ####`p'... r ..., ..., ...'`: Perl emit row
+
+####`rp'...'`: Take rows based on Perl
+
+####Enrichment: `ni` is a quine!
+
 
 
 
@@ -427,13 +433,6 @@ Row and column selection and manipulation form the backbone of `ni` operations. 
 
 
 ##Basic Row Operations
-*  `p'<...>'`: Perl
-   * applies the Perl snippet `<...>` to each row of the stream 
-   * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
-* `rp'...'`: Take rows with Perl
-  * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
-  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-  * Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
 ##Basic `ni` Philosophy and Style
 
