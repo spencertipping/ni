@@ -123,6 +123,8 @@ yields:
 ```
 because it is reading from the file named `n10`.
 
+**BUG**: `ni` will let you name your files the same name as `ni` commands. should a warning be raised?
+
 
 ##`ni` Coding and Debugging
 
@@ -271,7 +273,7 @@ When the `\>` file writing operator was introduced, you may have questioned what
 
 `\<` interprets its input stream as file names, and it will output the contents of these files in order. Note that `ni` does not insert newlines between input from separate files.
 
-**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.
+**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.  **RAN THIS AGAIN, DID NOT FIND**
 
 ####`|` and `>`: Piping and Redirecting Output
 
@@ -284,23 +286,22 @@ Enrichment sections explore relevant but non-critical `ni` functions. They can b
 Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
 
 ```
-$ rm -rf test && mkdir test
-$ echo -e "hello\n" > test/hi
-$ echo -e "you\n" > test/there
+$ rm -rf dir_test && mkdir test
+$ echo -e "hello\n" > dir_test/hi
+$ echo -e "you\n" > dir_test/there
 ```
 
 Let's start with `$ ni test`
 
 ```
-test/hi
-test/there
+dir_test/hi
+dir_test/there
 (END)
 ```
 
+`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
 
-
-
-`$ ni test \<`
+`$ ni dir_test \<`
 
 yields:
 
@@ -310,15 +311,81 @@ you
 (END)
 ```
 
-Remember that `\<` takes a list of file names
+`ni` also works with the bash expansion operator `*`.
 
-`ni` is built on bash and Perl, because pretty much every machine that has bash also has Perl.  We'll take a look at how `ni` interacts with directories.
+For example, `ni dir_test/*` yields:
+
+```
+hello
+you
+(END)
+```
+
+`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
+
+```
+$ ni --explain dir_test/*
+["cat","dir_test/hi"]
+["cat","dir_test/there"]
+```
+
+##Perl Operations
+`ni` offers direct interfaces to Ruby, Lisp, and Perl. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. Also, if you want to develop `ni`, which is itself complex and fascinating, you'll need to know Perl. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course]() on Udemy useful for learning Perl's odd syntax.
+
+`ni` and Perl (5) go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. 
+
+Anything you can run in Perl, you can run in `ni`; and as long as you have the necessary libraries installed on the machines on which `ni` is executing, you can access them as well.
 
 
-##Basic Perl Operations
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
+
+The output here will be machine-dependent (on what words are in your `/usr/share/dict/words/`), but you should have 2 columns with up to 3 letters in each column, and one column with the remaining letters of each word.
+
+```
+aba     iss     ed
+aba     sta     rdize
+abb     rev     iature
+abd     uct     ion
+abe     tme     nt
+abi     gai     l
+abj     udg     e
+abl     est     
+abo     lis     h
+abo     rti     vely
+(END)
+```
+
+We have reviewed every operator before except the last. 
+
+```
+$ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
+["cat","/usr/share/dict/words"]
+["row_every",40]
+["head","-n",10]
+["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
+```
+
+####`p'...'`: Map Perl
+
+####Column Accessor Functions `a` and `a()`
+
+####`p'... r ..., ..., ...'`: Perl emit row
+
 
 
 ##Basic Column Operations
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fBC rB`
+
+```
+ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fBC rB
+["cat","/usr/share/dict/words"]
+["row_every",40]
+["head","-n",10]
+["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
+["cols",3,1,2]
+["row_cols_defined",2,1]
+```
+
 ####`f`: Column Selection
 Row and column selection and manipulation form the backbone of `ni` operations. Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl interface, discussed later.
 
@@ -338,10 +405,12 @@ Row and column selection and manipulation form the backbone of `ni` operations. 
 (END)
 ```
 
+`r` followed by a column name will filter out all columns 
+
 
 ##Sort, Unique, and Count
 
-##
+##Perl for `ni` fundamentals
 
 
 
