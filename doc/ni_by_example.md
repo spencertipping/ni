@@ -375,7 +375,7 @@ Even the act of writing a script that reads from standard input and writes to st
 
 `ni` removes all of that; the moment you type `p'...'`, you're thrown directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
 
-**FEATURE REQUEST**: `ni` introspection inside `p'...'`--probably a huge pain.
+**FEATURE REQUEST**: `ni` introspection inside `p'...'`--probably a huge pain. And then people would ask you to do `m'...'` and `l'...'`.
 
 ####`p'r ...'`: Perl emit row
 
@@ -407,14 +407,25 @@ The `p'r ...` operator, on the other hand, **returns undefined** (`undef` in Per
 
 Now that the practical differences between `p'r...'` and `p'...'` have been explained, we can examine the stylistic differences that are entailed.  
 
-If the desired output of the perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of this step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
+If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of this step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
 
 When it is clear from context (as above), `p'r...'` is often referred to as `r` for efficiency. It should be very clear that this is not the take-rows operator (also called `r`).
 
 ####Column Accessor Functions `a` and `a()`
 
+`ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
 
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. 
 
+However, these functions are  which is shortened to `a` when it i
+ 
+Note that these functions do not end up polluting your namespace, so you can write confusing and pointless `ni` spells like this:
+
+`ni n1 p'my $a = 5; r a, $a'`
+
+If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
+
+If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (like pipes or ampersands, etc.)
 
 ####`rp'...'`: Take rows based on Perl
 
@@ -438,7 +449,7 @@ Examples:
 
 ####Enrichment: `ni` is a quine!
 
-I don't understand this yet, but it's pretty cool.
+I don't understand this yet, but it's pretty cool, and I think it goes here.
 
 
 ##Basic Column Operations
@@ -473,61 +484,41 @@ Row and column selection and manipulation form the backbone of `ni` operations. 
 (END)
 ```
 
-`r` followed by a column name will filter out all columns 
+`r` followed by a column name will filter out all columns that have an empty value for that column.
 
 
 ##Sort, Unique, and Count
+Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
+* `g`: General sorting
+  * `gB` - sort rows ascending by the lexicographic value of the second column
+    * Lexicographic value is determined by the ordering of characters in the ASCII table.
+    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+  * `gC-` - sort rows *descending* by the lexicographic value of the third column
+   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
+  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
+    * The numeric sort works on integers and floating-point numbers written as decimals.
+    * The numeric sort will **not** work on numbers written in exponential/scientific notation
+  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
+  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+
 
 ##Perl for `ni` fundamentals
 
+##Connecting `bash` and `ni`
 
-
-##Input Operations
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
-* `id:<text>`: Literal text input
-  * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
-  * `$ ni id:'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+
+##Input Operations
 * `D:<field1>,:<field2>...`: JSON Destructure
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
-
-
-##Basic Row Operations
-
-##Basic `ni` Philosophy and Style
-
-####`ni` is written for concision, fast testing, and productivity.
-
-* Because `ni` processes streams of data in a streaming way, you should be able to build pipelines up from front-to-back, checking the integrity of the output at each step, for example by taking some rows using `r30` and/or sinking the output to a file.
-* As a result of this, `ni` spells can be developed completely in the command line; there is:
-  * No compilation (in the most common sense).
-  * No need for a text editor.
-  * No need to switch windows.
-  * Nothing stopping you from joyful hacking.
-* If you find a common operation is taking a while, there's probably a faster way to do it. Ask. It may require more Perl, though.
-
-####Everything is optional *unless its absence would create ambiguity*.
-
-* Consider the following three `ni` spells, all with the same output.
-  * Explicit: `ni n10p'r "hello"'`
-  * Concise: `ni n10p'hello'`
-  * Compact: `ni n10phello`
-* The technical details behind the `ni` parser are out of scope for right now, but note that `ni` does not bat an eyelash when a raw variable name (in Perl-speak, a bareword) is thrown into the mix; in this case, it is correctly interpreted as a string. 
-* Moreover, the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
-* Another example:
-  * Explicit: `ni n10 rp'a > 3'`
-  * Compact: `ni n10rpa\>3`
-* Escaping characters to avoid quoting probably isn't the best thing to do, but to an experienced `ni` developer, both of these spells will be about equally readable.
-
-
-####`ni` is not meant to be easy to read for those who do not speak `ni`.
-
-* This principle naturally follows from the two, but it is worth articulating so you understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
-* If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
-* Just as most `ni` spells are built front-to-back, they can be understood back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of data processing steps, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
-* And to emphasize the point, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
 
 
 ##Basic Column Operations
@@ -561,25 +552,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
     * Equivalent to `fBECDA.`
 
   
-##Sort, Unique & Count Operations
 
-Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
-
-* `g`: General sorting
-  * `gB` - sort rows ascending by the lexicographic value of the second column
-    * Lexicographic value is determined by the ordering of characters in the ASCII table.
-    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
-  * `gC-` - sort rows *descending* by the lexicographic value of the third column
-   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
-  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
-    * The numeric sort works on integers and floating-point numbers written as decimals.
-    * The numeric sort will **not** work on numbers written in exponential/scientific notation
-  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
-* `u`: unique sorted rows
-  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
-* `c`: count sorted rows
-  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
-  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
   
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
