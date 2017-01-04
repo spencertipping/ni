@@ -459,21 +459,6 @@ Examples:
 * `ni n03 rp'r b'` -- returns 5 empty lines **BUG** (i think)
 * `ni n03 rp'false'` -- returns 0, 1, 2 because the return value of each row is the string `"false"`, which is truthy.
 
-####`p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
-
-In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
-
-However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n'`
-
-It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
-
-`p'F_ ...'` takes a range (or a single number) as its second argument.
-
-To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
-
-The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
-
-It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
 
 
 ####Enrichment: `ni` is a quine!
@@ -538,22 +523,61 @@ The spell for this exercise could equivalently be written:
 
 `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
 
-##`ni` Philosophy and Style
+##Column Operation Shortand
+The operations in this section complete the set of column generation and access; none of them are particularly difficult to impelment in Perl, but they are common enough that `ni` has added shorthand for them.  The first set of operators, `F`, is used to create columns of data out of a stream of text columns. The second set `p'F_ ...', p'FM', and p'FR n'`, are used for general purpose access to columns in the stream.
 
-####ok
+####`F`: Split text stream into columns
 
-####Outsource hard jobs to more appropriate tools.
-The most obvious 
+* `F:<char>`: split on character
+  * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
+* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
+* `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
+* `FC`: split on commas (doesn't handle special CSV cases)
+* `FV`: parse CSV "correctly", up to newlines in fields
+* `FS`: split on runs of horizontal whitespace
+* `FW`: split on runs of non-word characters
+* `FP`: split on pipe symbols
 
-Some jobs that are difficult for `ni`:
-* Sorting
-* Matrix Multiplication
-* SQL Joins
+####`p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
+
+In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
+
+However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n'`
+
+It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
+
+`p'F_ ...'` takes a range (or a single number) as its second argument.
+
+To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
+
+The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
+
+It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
+
+
 
 ##Sort, Unique, and Count
-Sorting large amounts of data requires buffering to disk.
+Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop or PySpark operations.  Or if you've made it this far in the tutorial, come work at [Factual](www.factual.com/jobs), where `ni` was developed, this tutorial was written, and we just made another huge addition to our cluster.
 
-Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
+
+`$ ni /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt`
+
+You'll probably see the `ni` monitor for the first time, showing the steps of the computation, and what steps are taking time.  The whole process takes about 90 seconds on my computer.
+
+```
+$ ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
+ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
+["cat","/usr/share/dict/words"]
+["split_regex",""]
+["perl_mapper","FR 0"]
+["row_sort","-t","\t"]
+["count"]
+["file_write","letter_counts.txt"]
+```
+
+We've used some new operations here, which will be covered in more depth in later sections.  `F` is the field split operator;
+
 
 * `g`: General sorting
   * `gB` - sort rows ascending by the lexicographic value of the second column
@@ -570,6 +594,28 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 * `c`: count sorted rows
   * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
   * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+  
+####Useful Syntactic Sugar
+* `o` and `O`: Numeric sorting
+  * `o`: Sort rows ascending (numerical)
+    * `oA` is syntactic sugar for `$ ni <data> gAn`
+  * `O`: sort rows descending (numerical)
+    * `OB` is equivalent to `$ ni <data> gBn-` 
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
+
+##`ni` Philosophy and Style
+
+####ok
+
+####Outsource hard jobs to more appropriate tools.
+The most obvious 
+
+Some jobs that are difficult for `ni`:
+* Sorting
+* Matrix Multiplication
+* SQL Joins
+
+
 
 
 ##Perl for `ni` fundamentals
@@ -585,26 +631,6 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 * `D:<field1>,:<field2>...`: JSON Destructure
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
-
-
-
-##Basic Column Operations
-Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
-
-* `F`: Split stream into columns
-  * `F:<char>`: split on character
-    * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
-  * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
-  * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
-  the field values.
-  * `FC`: split on commas (doesn't handle special CSV cases)
-  * `FV`: parse CSV "correctly", up to newlines in fields
-  * `FS`: split on runs of horizontal whitespace
-  * `FW`: split on runs of non-word characters
-  * `FP`: split on pipe symbols
-
-
-  
 
   
 ##Understanding the `ni` monitor
@@ -662,13 +688,7 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
   * `$<v> = y/regex//`
 
 
-##Useful Syntactic Sugar
-* `o` and `O`: Numeric sorting
-  * `o`: Sort rows ascending (numerical)
-    * `oA` is syntactic sugar for `$ ni <data> gAn`
-  * `O`: sort rows descending (numerical)
-    * `OB` is equivalent to `$ ni <data> gBn-` 
-  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
+
 
 ##Useful `ni`-specific Perl Subroutines
 The operators in this section refer specifically to the 
