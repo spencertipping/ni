@@ -426,7 +426,7 @@ Note that these functions do not pollute your namespace, so you can write confus
 
 If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
 
-Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. The code is quite resilient.
+Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient (except when it's not); as in the following example.
 
 `ni n1 p'sub a { "RUDE" }; my $a=19; r $a, a, $a, a' p'r a, b, c, d'`
 
@@ -436,7 +436,9 @@ Prototype mismatch: sub ni::pl::a () vs none at - line 411.
 (END)
 ```
 
-**BUG**
+Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` or any of the other column accessors in the second mapper.
+
+**BUG** Should we actually let these functions be overwritten? Can these examples be stretched out to actually break `ni` core functions?
 
 ####`rp'...'`: Take rows based on Perl
 
@@ -450,7 +452,8 @@ Other caveats: the number 0, the string 0 (which is the same as the number 0), a
 
 Examples:
 
-* `ni n03 rp'a' -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'$_' -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
 * `ni n03 rp'r a'` -- returns 0, 1, 2 because the return value of each row is undef, which is truthy.
 * `ni n03 rp'b' -- returns nothing because the return value of each row is the empty string, which is falsey.
 * `ni n03 rp'r b'` -- returns 5 empty lines **BUG** (i think)
@@ -464,38 +467,58 @@ I don't understand this yet, but it's pretty cool, and I think it goes here.
 
 
 ##Basic Column Operations
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fBC rB`
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA`
 
 ```
-ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fBC rB
+ed      iss
+rdize   sta
+iature  rev
+ion     uct
+nt      tme
+l       gai
+e       udg
+h       lis
+vely    rti
+(END)
+```
+
+Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.
+
+```
+$ ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
 ["cat","/usr/share/dict/words"]
 ["row_every",40]
 ["head","-n",10]
 ["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
-["cols",3,1,2]
-["row_cols_defined",2,1]
+["cols",3,2,1]
+["row_cols_defined",1,0]
 ```
 
 ####`f`: Column Selection
-Row and column selection and manipulation form the backbone of `ni` operations. Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl interface, discussed later.
+Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
 
-`ni ... fAA` will return two copies of the first column, and as such, `$ ni n10 =z\>ten.gz fAA` returns:
+`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
 
-```
-1       1
-2       2
-3       3
-4       4
-5       5
-6       6
-7       7
-8       8
-9       9
-10      10
-(END)
-```
+Like `r`, there is a lot you can do with `f`:
 
-`r` followed by a column name will filter out all columns that have an empty value for that column.
+* `$ ni <data> fAA` - select the first column and duplicate it
+* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
+* `$ ni <data> fB-E` - select columns 2-5
+* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+
+
+####`x`: Column Exchange
+
+`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
+
+* `x` -- exchange the first two columns. 
+  * Equivalent to `fBA.`
+* `xC` -- exchange column 3 with column 1. 
+  * Equivalent to `fCBA.`
+* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
+  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
+  * Equivalent to `fBECDA.`
+
 
 
 ##Sort, Unique, and Count
@@ -519,6 +542,20 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 
 
 ##Perl for `ni` fundamentals
+Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
+
+* Returning data 
+  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
+  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
+* Field selection operations
+  * `a`, `a()` through `l` and `l()`: Parsimonious field access
+    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
+    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+  * `F_`: Explicit field access
+    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
+    * `FM` is the number of fields in the row.
+    * `FR n` is equivalent to `F_ n..FM`
+
 
 ##Connecting `bash` and `ni`
 
@@ -535,13 +572,6 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 ##Basic Column Operations
 Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
 
-* `f`: Take columns
-  * `$ ni <data> fAA` - select the first column and duplicate it
-  * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
-  * `$ ni <data> fB-E` - select columns 2-5
-  * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
-* Combining column operations with `r`
-  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
     * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
@@ -553,14 +583,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `FS`: split on runs of horizontal whitespace
   * `FW`: split on runs of non-word characters
   * `FP`: split on pipe symbols
-* `x`: Exchange columns
-  * `x` -- exchange the first two columns. 
-    * Equivalent to `fBA.`
-  * `xC` -- exchange column 3 with column 1. 
-    * Equivalent to `fCBA.`
-  * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
-    * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
-    * Equivalent to `fBECDA.`
+
 
   
 
@@ -571,23 +594,7 @@ More details [here](monitor.md). Overall:
 * Negative numbers = non-rate-determining step
 * Positive numbers = rate-determining step
 * Large Positive numbers = slow step
-  
-##Perl for `ni` Fundamentals
-`ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
 
-Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
-
-* Returning data 
-  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
-  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
-* Field selection operations
-  * `a`, `a()` through `l` and `l()`: Parsimonious field access
-    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
-    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
-  * `F_`: Explicit field access
-    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
-    * `FM` is the number of fields in the row.
-    * `FR n` is equivalent to `F_ n..FM`
 
 ##SSH and Containers
 
