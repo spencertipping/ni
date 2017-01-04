@@ -459,6 +459,21 @@ Examples:
 * `ni n03 rp'r b'` -- returns 5 empty lines **BUG** (i think)
 * `ni n03 rp'false'` -- returns 0, 1, 2 because the return value of each row is the string `"false"`, which is truthy.
 
+####`p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
+
+In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
+
+However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n'`
+
+It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
+
+`p'F_ ...'` takes a range (or a single number) as its second argument.
+
+To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
+
+The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
+
+It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
 
 
 ####Enrichment: `ni` is a quine!
@@ -519,9 +534,25 @@ Like `r`, there is a lot you can do with `f`:
   * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
   * Equivalent to `fBECDA.`
 
+The spell for this exercise could equivalently be written:
 
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
+
+##`ni` Philosophy and Style
+
+####ok
+
+####Outsource hard jobs to more appropriate tools.
+The most obvious 
+
+Some jobs that are difficult for `ni`:
+* Sorting
+* Matrix Multiplication
+* SQL Joins
 
 ##Sort, Unique, and Count
+Sorting large amounts of data requires buffering to disk.
+
 Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
 
 * `g`: General sorting
@@ -542,19 +573,7 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 
 
 ##Perl for `ni` fundamentals
-Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
 
-* Returning data 
-  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
-  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
-* Field selection operations
-  * `a`, `a()` through `l` and `l()`: Parsimonious field access
-    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
-    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
-  * `F_`: Explicit field access
-    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
-    * `FM` is the number of fields in the row.
-    * `FR n` is equivalent to `F_ n..FM`
 
 
 ##Connecting `bash` and `ni`
