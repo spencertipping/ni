@@ -1,10 +1,23 @@
-#`ni` by Example, Part 2 (WIP)g
+#`ni` by Example, Part 2 (WIP)
 
-Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over
+Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
+
+The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
+
+Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
+
+
+At this point, it's important to have a general idea of how `ni` works
+
+##`ni` is a quine
+
 
 ##`ni` Philosophy and Style
 
-####ok
+####`ni` demands expertise
+
+####Conciseness matters; readability to the uninitiated does not.
+`ni` spells should be beautiful
 
 ####Outsource hard jobs to more appropriate tools.
 The most obvious 
