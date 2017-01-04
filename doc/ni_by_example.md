@@ -2,7 +2,7 @@
 
 The learning curve for `ni` is steep, but the power curve is exponential.
 
-This tutorial is not exhaustive, but it is practical; it will introduce you to the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with (probably); and give you the tools to explore the rest of `ni`'s rich and wonderful documentation.
+This tutorial is comprehensive, but not exhaustive. It will introduce you to the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with; and give you the tools to explore the rest of `ni`'s rich and wonderful documentation.
 
 In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there.
 
@@ -104,6 +104,9 @@ This should yield:
 
 Entering the name of a file at the command line will cause `ni` to `cat` the contents of the file into the stream. If more than one file name is entered, they will be added to the stream in order. `ni` also automatically decompresses most common formats, including gzip, bzip, xzip, lzo, and lz4.
 
+**BUG**: `ni` will let you name your files the same name as `ni` commands. should a warning be raised?
+
+
 `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example,
 
 ```
@@ -123,8 +126,6 @@ yields:
 ```
 because it is reading from the file named `n10`.
 
-**BUG**: `ni` will let you name your files the same name as `ni` commands. should a warning be raised?
-
 
 ##`ni` Coding and Debugging
 
@@ -134,7 +135,7 @@ In general, `ni` spells will start producing output very quickly (or can be coer
 
 As you advance through this tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
 
-For this, use `ni --explain <spell>`. Using the example from the file output section:
+For this, use `ni --explain ...`. Using the example from the file output section:
 
 ```
 $ ni --explain n10 \>ten.txt
@@ -144,13 +145,13 @@ $ ni --explain n10 \>ten.txt
 
 Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parsleyer interprets the 
 
-From now on, we'll use `ni --explain <spell>` to start the analysis of each of the spells we write. 
+From now on, we'll use `ni --explain ...` to start the analysis of each of the spells we write. 
 
 
 ##Stream Duplication and Compression
 `$ ni n10 =[\>ten.txt] z\>ten.gz`
 
-Running the script puts us back in `less`:
+Running the spell puts us back in `less`:
 
 ```
 ten.gz
@@ -199,7 +200,7 @@ This more aesthetically-pleasing statement is the preferred `ni` style. The lack
 
 Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell. `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). 
 
-`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ cat ten.gz | ni`, which returns:
+`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ ni ten.gz` or `$ cat ten.gz | ni`, which returns:
 
 ```
 1
@@ -260,12 +261,11 @@ For example, you can take all of the numbers that end in 0, 1, or 5 with the fol
 
 Because you're typing directly into the bash shell, some characters may need to be escaped, for example in this expression which identifies numbers that are all repeating digits.
 
-`ni n1000 r/^\(\\d\)\\1+$/`
+`$ ni n1000 r/^\(\\d\)\\1+$/`
 
-Use of escape characters in `ni` operators is acceptable style only if there is not a simpler way to do the job. In this case, better `ni` style would be to use the Perl operator, introduced in the next section, The above spell is more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
+Use of escape characters in `ni` operators is acceptable style only if there is not a conciser way that is at least as readable, or a more readable way that is at least as concise. way to do the job. In this case, there is both. Making use of the Perl operator, introduced in the next section allows the above spell to be written more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
 
-The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using 
-
+The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  With the exception of operators that require processing the entire stream (sorting, for example), **PULL QUOTE all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.**
 
 
 ####`\<`: Read from File Names in Stream
@@ -281,12 +281,12 @@ Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`)
 
 ####Enrichment: `ni` and directories
 
-Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed without fear.
+Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed.
 
 Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
 
 ```
-$ rm -rf dir_test && mkdir test
+$ rm -rf dir_test && mkdir dir_test
 $ echo -e "hello\n" > dir_test/hi
 $ echo -e "you\n" > dir_test/there
 ```
@@ -334,12 +334,11 @@ $ ni --explain dir_test/*
 
 In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course]() on Udemy useful for learning Perl's odd syntax.
 
-Anything you can run in Perl, you can run in `ni`; and as long as you have the necessary libraries installed on the machines on which `ni` is executing, you can access them as well.
-
+We'll start with the following `ni` spell.
 
 `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
 
-The output here will be machine-dependent (on what words are in your `/usr/share/dict/words/`), but you should have 2 columns with up to 3 letters in each column, and one column with the remaining letters of each word.
+The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
 
 ```
 aba     iss     ed
@@ -371,7 +370,9 @@ We have reviewed every operator previously except the last.
 ####`p'...'`: Map Perl over rows
 When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run (or, it will run, but it's bad style, or it's hard to test, or it's okay for a small script, but it's too hard to read, or it's _dangerous_).
 
-Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.
+Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
+
+**PULL QUOTE** `ni` is like `python -c` if `python -c` could do more than one useful thing.
 
 `ni` removes all of that; the moment you type `p'...'`, you're thrown directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
 
@@ -403,29 +404,39 @@ uct
 
 Without `r`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
 
-The `p'r ...` operator, on the other hand, **returns undefined** (`undef` in Perl). It works by printing the values separated by columns to a single tab-delimited row of the output stream.
+The `p'r ...` operator, on the other hand, **returns _undefined_** (`undef` in Perl). It works by printing the values separated by columns to a single tab-delimited row of the output stream.
 
-Now that the practical differences between `p'r...'` and `p'...'` have been explained, we can examine the stylistic differences that are entailed.  
+Now that the practical differences between `p'r...'` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
 
-If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of this step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
+Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of the perl mapper step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
 
-When it is clear from context (as above), `p'r...'` is often referred to as `r` for efficiency. It should be very clear that this is not the take-rows operator (also called `r`).
+When it is clear from context (as above), `p'r...'` is often referred to as `r` for efficiency. This is not the take-rows operator (also called `r`).
 
 ####Column Accessor Functions `a` and `a()`
 
 `ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
 
-The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. 
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (like pipes or ampersands, etc.)
 
-However, these functions are  which is shortened to `a` when it i
+The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous.  In general this is the case;  the one important exception to this rule is hash lookup, which requires that the user call the function explicitly.
  
-Note that these functions do not end up polluting your namespace, so you can write confusing and pointless `ni` spells like this:
+Note that these functions do not pollute your namespace, so you can write confusing and pointless `ni` spells like this:
 
 `ni n1 p'my $a = 5; r a, $a'`
 
 If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
 
-If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (like pipes or ampersands, etc.)
+Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. The code is quite resilient.
+
+`ni n1 p'sub a { "RUDE" }; my $a=19; r $a, a, $a, a' p'r a, b, c, d'`
+
+```
+Prototype mismatch: sub ni::pl::a () vs none at - line 411.
+19      RUDE    19      RUDE
+(END)
+```
+
+**BUG**
 
 ####`rp'...'`: Take rows based on Perl
 
