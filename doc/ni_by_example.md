@@ -381,7 +381,7 @@ Even the act of writing a script that reads from standard input and writes to st
 
 Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
 
-Let's take a look at the output of our script when we take out the `r` from inside the Perl mapper.
+Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
 
 ```
 ni /usr/share/dict/words rx40 r10 p'substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
@@ -397,12 +397,19 @@ iature
 abd
 uct
 ...
+...
+...
 ```
 
+Without `r`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
 
-The p'r ...` operator 
+The `p'r ...` operator, on the other hand, **returns undefined** (`undef` in Perl). It works by printing the values separated by columns to a single tab-delimited row of the output stream.
 
-This operator is sometimes referred to as `r` in the documentation for efficiency. With enough experience, it will be clear from context which `r` is meant.
+Now that the practical differences between `p'r...'` and `p'...'` have been explained, we can examine the stylistic differences that are entailed.  
+
+If the desired output of the perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of this step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
+
+When it is clear from context (as above), `p'r...'` is often referred to as `r` for efficiency. It should be very clear that this is not the take-rows operator (also called `r`).
 
 ####Column Accessor Functions `a` and `a()`
 
@@ -413,11 +420,25 @@ This operator is sometimes referred to as `r` in the documentation for efficienc
 
 We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
 
-Because the `p'r...'` operator returns undefined (`undef` in Perl), `rp'r...'` 
+Because the `p'r...'` operator returns undefined (`undef` in Perl), which is **_truthy_(!)**, `rp'r...'` will act as the identity function on the stream.
+
+Other caveats: the number 0, the string 0 (which is the same as the number 0), and the empty string are all **falsey** in Perl. Pretty much everything else is truthy. Moreover, there is no boolean True or False in Perl, so `false` and `False` are still truthy.
+
+**BUG**: Ask spencer if I'm right about this stuff.
+
+Examples:
+
+* `ni n03 rp'a' -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'r a'` -- returns 0, 1, 2 because the return value of each row is undef, which is truthy.
+* `ni n03 rp'b' -- returns nothing because the return value of each row is the empty string, which is falsey.
+* `ni n03 rp'r b'` -- returns 5 empty lines **BUG** (i think)
+* `ni n03 rp'false'` -- returns 0, 1, 2 because the return value of each row is the string `"false"`, which is truthy.
+
+
 
 ####Enrichment: `ni` is a quine!
 
-
+I don't understand this yet, but it's pretty cool.
 
 
 ##Basic Column Operations
