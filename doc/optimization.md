@@ -21,7 +21,7 @@ Sorting a large amount of data is going to be a slow operation on any machine, p
 
 `ni n1E7 g` runs in about 80 seconds on a Late 2013 2.6 GHz Intel Core i5, whereas
 
-`ni n1E7 Cubuntu[g]` <TODO: find the example where this actually work>
+`ni n1E7 Cubuntu[g]` **TODO**: find the example where this actually work>
  
 If you're trying to sort gigabytes (or more) of data, you should consider rewriting your workflow to use Hadoop operations (if you have access to a cluster)
 
