@@ -49,7 +49,7 @@ Without an argument, `ni n` gives an infinite stream of consecutive integers sta
 
 **BUG** `ni n0` raises error instead of generating 0-based infinite stream of integers.
 
-To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you `3.2 x 10^5` consecutive integers, starting from 1.
+To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 3.2 x 10<sup>5</sup> consecutive integers, starting from 1.
 
 
 ##File Output
@@ -69,7 +69,7 @@ The directory you ran this command from, you should have a file called `ten.txt`
 
 `ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
-Note that there is **no space** between `\>` and `ten.txt`. This is the first in a set of critical lessons on `ni`; because the language is concise, whitespace is frequently important.
+Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
 
 ##File Input
 `$ ni ten.txt ten.txt`
@@ -271,9 +271,9 @@ The `r` operator is especially useful during development; for example, if you ar
 ####`\<`: Read from File Names in Stream
 When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
 
-`\<` interprets its input stream as file names, and it will output the contents of these files in order. Note that `ni` does not insert newlines between input from separate files.
+`\<` interprets its input stream as file names, and it will output the contents of these files in order. 
 
-**BUG (possibly feature)**: `ni` does not add a newline between files in a directory.  **RAN THIS AGAIN, DID NOT FIND**
+Note that `ni` does not insert newlines between input from separate files. In general, this is a feature, as it allows zip files to be partitioned (for example, in HDFS). However, if you're reading from multiple raw text files, you may need to make sure that the file ends with a newline.
 
 ####`|` and `>`: Piping and Redirecting Output
 
@@ -281,7 +281,7 @@ Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`)
 
 ####Enrichment: `ni` and directories
 
-Enrichment sections explore relevant but non-critical `ni` functions. They can be skipped or skimmed without 
+Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed without fear.
 
 Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
 
@@ -330,9 +330,9 @@ $ ni --explain dir_test/*
 ```
 
 ##Perl Operations
-`ni` offers direct interfaces to Ruby, Lisp, and Perl. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. Also, if you want to develop `ni`, which is itself complex and fascinating, you'll need to know Perl. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course]() on Udemy useful for learning Perl's odd syntax.
+`ni` and Perl (5) go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
 
-`ni` and Perl (5) go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. 
+In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course]() on Udemy useful for learning Perl's odd syntax.
 
 Anything you can run in Perl, you can run in `ni`; and as long as you have the necessary libraries installed on the machines on which `ni` is executing, you can access them as well.
 
@@ -355,7 +355,7 @@ abo     rti     vely
 (END)
 ```
 
-We have reviewed every operator before except the last. 
+Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
 
 ```
 $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
@@ -365,14 +365,55 @@ $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 
 ["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
 ```
 
-####`p'...'`: Map Perl
-When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run (or, it will run, but it's _dangerous_)
+We have reviewed every operator previously except the last. 
+
+
+####`p'...'`: Map Perl over rows
+When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run (or, it will run, but it's bad style, or it's hard to test, or it's okay for a small script, but it's too hard to read, or it's _dangerous_).
+
+Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.
+
+`ni` removes all of that; the moment you type `p'...'`, you're thrown directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
+
+**FEATURE REQUEST**: `ni` introspection inside `p'...'`--probably a huge pain.
+
+####`p'r ...'`: Perl emit row
+
+Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
+
+Let's take a look at the output of our script when we take out the `r` from inside the Perl mapper.
+
+```
+ni /usr/share/dict/words rx40 r10 p'substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
+aba
+iss
+ed
+aba
+sta
+rdize
+abb
+rev
+iature
+abd
+uct
+...
+```
+
+
+The p'r ...` operator 
+
+This operator is sometimes referred to as `r` in the documentation for efficiency. With enough experience, it will be clear from context which `r` is meant.
 
 ####Column Accessor Functions `a` and `a()`
 
-####`p'... r ..., ..., ...'`: Perl emit row
+
+
 
 ####`rp'...'`: Take rows based on Perl
+
+We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
+
+Because the `p'r...'` operator returns undefined (`undef` in Perl), `rp'r...'` 
 
 ####Enrichment: `ni` is a quine!
 
