@@ -44,6 +44,57 @@ Some jobs that are difficult for `ni`:
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
+####`ni` and directories
+
+Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed.
+
+Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
+
+```
+$ rm -rf dir_test && mkdir dir_test
+$ echo -e "hello\n" > dir_test/hi
+$ echo -e "you\n" > dir_test/there
+```
+
+Let's start with `$ ni test`
+
+```
+dir_test/hi
+dir_test/there
+(END)
+```
+
+`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
+
+`$ ni dir_test \<`
+
+yields:
+
+```
+hello
+you
+(END)
+```
+
+`ni` also works with the bash expansion operator `*`.
+
+For example, `ni dir_test/*` yields:
+
+```
+hello
+you
+(END)
+```
+
+`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
+
+```
+$ ni --explain dir_test/*
+["cat","dir_test/hi"]
+["cat","dir_test/there"]
+```
+
+
   
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:

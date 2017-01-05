@@ -264,7 +264,9 @@ Because you're typing directly into the bash shell, some characters may need to 
 
 Use of escape characters in `ni` operators is acceptable style only if there is not a conciser way that is at least as readable, or a more readable way that is at least as concise. way to do the job. In this case, there is both. Making use of the Perl operator, introduced in the next section allows the above spell to be written more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
 
-The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  With the exception of operators that require processing the entire stream (sorting, for example), **PULL QUOTE all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.**
+The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  
+
+> With the exception of operators that require processing the entire stream (sorting, for example) all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.
 
 
 ####`\<`: Read from File Names in Stream
@@ -278,55 +280,6 @@ Note that `ni` does not insert newlines between input from separate files. In ge
 
 Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
 
-####Enrichment: `ni` and directories
-
-Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed.
-
-Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
-
-```
-$ rm -rf dir_test && mkdir dir_test
-$ echo -e "hello\n" > dir_test/hi
-$ echo -e "you\n" > dir_test/there
-```
-
-Let's start with `$ ni test`
-
-```
-dir_test/hi
-dir_test/there
-(END)
-```
-
-`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
-
-`$ ni dir_test \<`
-
-yields:
-
-```
-hello
-you
-(END)
-```
-
-`ni` also works with the bash expansion operator `*`.
-
-For example, `ni dir_test/*` yields:
-
-```
-hello
-you
-(END)
-```
-
-`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
-
-```
-$ ni --explain dir_test/*
-["cat","dir_test/hi"]
-["cat","dir_test/there"]
-```
 
 ##Perl Operations
 `ni` and Perl (5) go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
@@ -371,13 +324,10 @@ When you think of writing a simple data processing program in Python, Ruby, C, o
 
 Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
 
-**PULL QUOTE** `ni` is like `python -c` if `python -c` could do more than one useful thing.
-
 `ni` removes all of that; the moment you type `p'...'`, you're thrown directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
 
-**FEATURE REQUEST**: `ni` introspection inside `p'...'`--probably a huge pain. And then people would ask you to do `m'...'` and `l'...'`.
 
-####`p'r ...'`: Perl emit row
+####`r()`: Emit row
 
 Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
 
@@ -401,15 +351,15 @@ uct
 ...
 ```
 
-Without `r`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
+Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
 
-The `p'r ...` operator, on the other hand, **returns _undefined_** (`undef` in Perl). It works by printing the values separated by columns to a single tab-delimited row of the output stream.
+The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
 
-Now that the practical differences between `p'r...'` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
+Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
 
-Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r`. If the desired output of the perl mapper step is a single column per row, you could either use `r` or not.  The more concise statement leaving out `r` is preferred.
+Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
 
-When it is clear from context (as above), `p'r...'` is often referred to as `r` for efficiency. This is not the take-rows operator (also called `r`).
+When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written. This differs from the take-rows operator (also called `r`).
 
 ####Column Accessor Functions `a` and `a()`
 
@@ -425,44 +375,42 @@ Note that these functions do not pollute your namespace, so you can write confus
 
 If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
 
-Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient (except when it's not); as in the following example.
+Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
 
-`ni n1 p'sub a { "RUDE" }; my $a=19; r $a, a, $a, a' p'r a, b, c, d'`
+`ni n1 p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r{ "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
 
 ```
 Prototype mismatch: sub ni::pl::a () vs none at - line 411.
-19      RUDE    19      RUDE
+Prototype mismatch: sub ni::pl::r (@) vs none at - line 411.
+H
+1
+Y
+1
+Y
 (END)
 ```
 
-Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` or any of the other column accessors in the second mapper.
+Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
 
-**BUG** Should we actually let these functions be overwritten? Can these examples be stretched out to actually break `ni` core functions?
+This brings us to an important point about `ni` processes in general:
+
+> `ni op1 op2` is equivalent to `ni op1 | ni op2`.
 
 ####`rp'...'`: Take rows based on Perl
 
 We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
 
-Because the `p'r...'` operator returns undefined (`undef` in Perl), which is **_truthy_(!)**, `rp'r...'` will act as the identity function on the stream.
 
-Other caveats: the number 0, the string 0 (which is the same as the number 0), and the empty string are all **falsey** in Perl. Pretty much everything else is truthy. Moreover, there is no boolean True or False in Perl, so `false` and `False` are still truthy.
-
-**BUG**: Ask spencer if I'm right about this stuff.
+Other caveats: the number 0, the string 0 (which is the same as the number 0), the empyt list, and the empty string are all **falsey** in Perl. Pretty much everything else is truthy. Moreover, there is no boolean True or False in Perl, so `false` and `False` are still truthy.
 
 Examples:
 
-* `ni n03 rp'$_' -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'$_' -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
 * `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'r a'` -- returns 0, 1, 2 because the return value of each row is undef, which is truthy.
-* `ni n03 rp'b' -- returns nothing because the return value of each row is the empty string, which is falsey.
-* `ni n03 rp'r b'` -- returns 5 empty lines **BUG** (i think)
-* `ni n03 rp'false'` -- returns 0, 1, 2 because the return value of each row is the string `"false"`, which is truthy.
-
-
-
-####Enrichment: `ni` is a quine!
-
-I don't understand this yet, but it's pretty cool, and I think it goes here.
+* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
+  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
+  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
+* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
 
 ##Basic Column Operations
@@ -528,11 +476,11 @@ The operations in this section complete the set of column generation and access;
 ####`F`: Split text stream into columns
 
 * `F:<char>`: split on character
-  * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
+  * Note: some characters need to be escaped (for example, forward-slash); use `F/regex/` below for more flexibility (at the cost of less concision).
 * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
 * `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
 * `FC`: split on commas (doesn't handle special CSV cases)
-* `FV`: parse CSV "correctly", up to newlines in fields
+* `FV`: parse CSV "correctly," up to newlines in fields
 * `FS`: split on runs of horizontal whitespace
 * `FW`: split on runs of non-word characters
 * `FP`: split on pipe symbols
@@ -556,7 +504,7 @@ It is often useful to take everything after a certain point in a line. This can 
 
 
 ##Sort, Unique, and Count
-Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop or PySpark operations.  Or if you've made it this far in the tutorial, come work at [Factual](www.factual.com/jobs), where `ni` was developed, this tutorial was written, and we just made another huge addition to our cluster.
+Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop or PySpark operations.
 
 If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
 
@@ -574,9 +522,6 @@ ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
 ["count"]
 ["file_write","letter_counts.txt"]
 ```
-
-We've used some new operations here, which will be covered in more depth in later sections.  `F` is the field split operator;
-
 
 * `g`: General sorting
   * `gB` - sort rows ascending by the lexicographic value of the second column
