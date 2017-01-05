@@ -513,7 +513,7 @@
 	Append integers 0..N-1, or 0..infinity if N is unspecified
 
 ## SYNTAX
-	<number> -> {n_op 0, $_}
+	<number>? -> {n_op 0, defined $_ ? $_ : -1}
 
 # SHORT OPERATOR /o
 

@@ -2743,7 +2743,7 @@ defoperator n => q{
 docoperator n => q{Append consecutive integers within a range};
 
 defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
-defshort '/n0',  pmap q{n_op 0, $_}, number;
+defshort '/n0',  pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
 defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
 deflong '/fs', pmap q{cat_op $_}, filename;
@@ -8863,7 +8863,7 @@ Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-437 doc/perl.md
+432 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8941,11 +8941,7 @@ sub b() {F_ 1}
 ```
 
 ### `F_`: the array of fields
-The Perl code given to `p` is invoked on each line of input, which is stored
-both in `$l` and, for convenience, in `$_`. ni doesn't split `$l` into fields
-until you call `F_`, at which point the split happens and the fields are
-cached for efficiency.
-
+The Perl code given to `p` is invoked on each line of input, which is stored in `$_`. 
 `F_(...)` takes one or more column indexes (as zero-based integers) and returns
 the field values. If you don't pass in anything, it returns all of the fields
 for the line. For example:
@@ -8991,7 +8987,6 @@ sub row {
   # your code goes here
 }
 while (<STDIN>) {
-  $l = $_;
   defined $_ && print "$_\n" for row();
 }
 ```
