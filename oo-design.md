@@ -1,8 +1,8 @@
 # OO refactor design
 1. Metaclasses+documenting origin.
 2. Objects can be referenced by URL relative to referrer, including across
-   remote connections. This means bidirectional stdio-RMI, of which we
-   currently have half.
+   remote connections. This means bidirectional stdio-RMI (security?), of which
+   we currently have half.
 3. ni can examine environment for dependencies, run tests. No more offline
    test suite.
 4. Parse states are mutable objects with open-ended continuations.
