@@ -1,12 +1,11 @@
 #Ni by Example, Part 1 (alpha release)
 
-The learning curve for `ni` is steep, but the power curve is exponential.
+Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and incredibly fast and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-This tutorial is comprehensive, but not exhaustive. It will introduce you to some of the philosophy behind `ni`, which is quite different from many of the scripting languages that you have worked with and give you the tools to explore the rest of `ni`'s rich and wonderful documentation. 
+By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. `ni` suffers from having both a steep learning curve and an exponential power curve; learning the basics of the syntax is the hardest part, and knowing the basics won't make you much more productive (especially if you have a couple of years of Python under your belt and know another data processing language like `pandas`). This knowledge is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This is covered in depth in [Part 2](ni_by_example_2.md).  Stick with it, and you'll be rewarded (we promise).
 
-By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. This knowledge is fundamental, but only scratches the surface of `ni`'s power
+In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
-In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there.
 
 ##Installation
 `ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
@@ -48,8 +47,6 @@ If you're familiar with the Unix terminal pager utility `less`, this will look a
 Without an argument, `ni n` gives an infinite stream of consecutive integers starting from 1.
 
 `ni n0` gives you consecutive integers starting from zero.
-
-**BUG** `ni n0` raises error instead of generating 0-based infinite stream of integers.
 
 To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 3.2 x 10<sup>5</sup> consecutive integers, starting from 1.
 
