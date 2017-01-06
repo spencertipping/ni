@@ -47,8 +47,8 @@ implemented by metaclasses and broadcasting.
 - `+async`: modify all methods to return futures of results and not block
 - `+rm`: autonuke after reading
 - `+tmp`: construct the path as a tempfile, e.g. `file+tmp:foo`
-  - `+tmp+rm` works as intended because `+tmp` proxies operations.
-  - `+rm+tmp` also works as intended, though for a different reason.
+  - `file+tmp+rm` and `file+rm+tmp` end up doing the same thing because `+tmp`
+    removes itself from the URI scheme when constructed.
 
 ## RMI object URIs
 ```pl
@@ -64,3 +64,11 @@ $host_rmi->kill(9);             # kill the mapper processes
 Not quite right: why would an RMI always operate against the "current ni
 instance?" That seems like a recipe for disaster; it really should apply to a
 pipeline or something (i.e. a specified receiver).
+
+## Monitors
+```pl
+my $mon = uri 'ni.wmonitor:fd:1';       # new write monitor around FD 1
+print $mon "foo";                       # write data to it
+my @h = $mon->sample;                   # some of the rows
+my $bytes_s = $mon->throughput;         # bytes/sec throughput
+```
