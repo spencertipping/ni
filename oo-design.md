@@ -19,18 +19,17 @@
 ```pl
 $r = uri 'http://foo.com';                      # stream resource
 $r = uri 'data:,foo';                           # literal string "foo"
+$r = uri 'file://./foo';                        # local file
+$r = uri 'hdfs:///foo/bar/bif';                 # HDFS file
+$r = uri './foo';                               # file shorthand
 $r = uri 'ni.self:/core/pl/init.pl';            # ni state resource
 $r = uri 'ni.ls:/core';                         # list resource names
 $r = uri 'ni.pid:31891';                        # process resource
 $r = uri 'ni.op:["n",10]';                      # stream operation
-$r = uri 'file://./foo';                        # local file
-$r = uri 'hdfs:///foo/bar/bif';                 # HDFS file
-$r = uri './foo';                               # file shorthand
-$r = uri 'ssh://user@host:port/ni.pid:19241';   # forwarded resource
+$r = uri 'ni.rmi.ssh://user@host:port/ni.pid:19241';
 
 print "$r\n";           # named
 print while <$r>;       # readable
-print "$_\n" for @$r;   # required for memory-based resources
 print $r->explain;      # human-readable description
 ```
 
@@ -52,23 +51,33 @@ implemented by metaclasses and broadcasting.
 
 ## RMI object URIs
 ```pl
-my $mapper_rmi    = uri 'ni.rmi.hdfs-multi+async:///path';
-my $host_rmi      = uri 'ni.rmi.hdfs:///path';
-my $future_result = $mapper_rmi->log_monitor("line of data");
-$future_result->await(sub {
-  print "got a reply from the host: $_[0]\n";
-});
-$host_rmi->kill(9);             # kill the mapper processes
+# obviously we don't construct using interpolation
+my $obj         = uri '...';
+my $pipeline    = uri '...';
+my $hadoop_side = uri qq{ni.rmi.fs-multi+async:["hdfs:///path","$obj"]};
+my $host_side   = uri qq{ni.rmi.fs:["hdfs:///path","$pipeline"]};
+$host_side->enable_monitoring($monitor_uri);
 ```
 
-Not quite right: why would an RMI always operate against the "current ni
-instance?" That seems like a recipe for disaster; it really should apply to a
-pipeline or something (i.e. a specified receiver).
+## Protocol metaclasses
+```pl
+$p = uri 'ni.protocol:readable';
+$c = uri 'ni.scheme:http';
+$c->implement($p,
+  read => fn q{ ... },
+  fd   => fn q{ ... }, ...);
+```
+
+## Meta-URI syntax
+```pl
+$c = uri 'ni.scheme:http';              # normal URI syntax
+$c = uri 'ni.scheme.json:ni.op';        # modified JSON syntax
+```
 
 ## Monitors
 ```pl
 my $mon = uri 'ni.wmonitor:fd:1';       # new write monitor around FD 1
 print $mon "foo";                       # write data to it
-my @h = $mon->sample;                   # some of the rows
+my @xs = $mon->sample;                  # some of the rows
 my $bytes_s = $mon->throughput;         # bytes/sec throughput
 ```
