@@ -59,15 +59,6 @@ $host_side->enable_monitoring($monitor_uri);
 print "$host_side\n";   # -> ni.rmi.fs:["hdfs:///path","<pipeline-url>"]
 ```
 
-## Protocol metaclasses
-```pl
-$p = u"ni.protocol:readable";
-$c = u"ni.scheme:http";
-$c->implement($p,
-  read => q{ ... },
-  fd   => q{ ... }, ...);
-```
-
 ## Monitors
 ```pl
 my $mon = u"ni.wmonitor:fd:1";          # new write monitor around FD 1
@@ -80,45 +71,50 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 ```pl
 u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
   name        => 'SSH RMI forwarder',
-  synopsis    => 'u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"',
-  description => '
+  synopsis    => q{u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"},
+  description => q{
     Sends ni to the remote machine, creates an instance, and connects to it.
     This allows you to access remote resources as though they were local; all
     method calls issued to the RMI forwarder will be synchronously
     network-forwarded to the remote resource URI and their results returned.
 
     The remote instance runs until this object is destroyed, at which point the
-    SSH process and remote ni instance are both killed via SIGTERM.')
+    SSH process and remote ni instance are both killed via SIGTERM.})
 
-->rmi_delegation_behavior(
-    create => fn(
-      'Establishes the connection used for RMI communication, storing the
-       process locally into $$self{rmi_state}{connection}.',
-      '$self' => q{
-        ...
-      }),
-
-    method_call => fn(
-      'Uses the builtin ni.rmi encoding to send data down the SSH connection,
-       then awaits a reply.',
-      '$self, $method, @args' => q{
-        my $packet = ni_rmi_encode $method, @args;
-        $$self{rmi_state}{connection}->stdin->write($packet);
-        my $reply = $$self{rmi_state}{connection}->stdout->read_packet;
-        ni_rmi_decode $reply;
-      }),
-
-    destroy => q{
-      my ($self) = @_;
-      $$self{rmi_state}{connection}->kill('TERM');
+->uses(u"ni.behavior:rmi-delegation"
+  ->create(
+    'Establishes the connection used for RMI communication, storing the
+     process locally into $$self{rmi_state}{connection}.',
+    TODO"Is it appropriate for +packet to be explicit, rather than an implicit
+         extension to everything that's readable/writable?",
+    '$self, $uri' => q{
+      $$self{rmi_state}{connection} =
+        u"ni.pipe.ssh+packet", $uri->host, $uri->path;
     })
+
+  ->method_call(
+    'Uses the builtin ni.rmi encoding to send data down the SSH connection,
+     then awaits a reply.',
+    NB"Obviously we can't monopolize the connection this way because in
+       practice it would be multiplexed.",
+    '$self, $method, @args' => q{
+      $$self{rmi_state}{connection}->write_packet(ni_rmi_encode $method, @args);
+      ni_rmi_decode $$self{rmi_state}{connection}->read_packet;
+    })
+
+  # this one isn't really necessary due to refcounting GC, but if it were,
+  # here's what it might look like:
+  ->destroy(
+    'Closes the SSH pipe',
+    '$self' => q{$$self{rmi_state}{connection}->close}))
 
 ->eg('Trivial resource access',
      'u"data:,foo"->read returns "foo", so we can access the same resource over
       an SSH connection to localhost. This will only be the case if we can ssh
       to localhost without a password.',
-     q{provided `pgrep sshd` and `ssh localhost true`,
-       is "foo", u"ni.rmi.ssh://localhost/data:,foo"->read})
+     q{provided `pgrep sshd` ne ""
+            and `ssh -o PasswordAuthentication=no localhost echo hi` eq "hi\n",
+       we_expect "foo", from => u"ni.rmi.ssh://localhost/data:,foo"->read})
 
 ->eg('Connecting to an existing remote',
      'The trick here is to use a ni.pid:X URI...',
