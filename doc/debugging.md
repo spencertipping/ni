@@ -1,6 +1,6 @@
 #Debugging
 
-As a result of `ni`'s concision, even experienced developers can have difficulty eyeballing errors. However, `ni`'s structure as a stream-processing language makes development and debugging both very easy.
+As a result of `ni`'s concision and the compactness of its namespace, even experienced developers can have difficulty eyeballing errors. However, `ni`'s structure as a stream-processing language makes development and debugging both very easy.
 
 ##Compilation Errors
 Generally these will stem from an error with some of your Perl. Ask someone for help.
@@ -8,10 +8,10 @@ Generally these will stem from an error with some of your Perl. Ask someone for 
 ##Job is too slow
 `ni` is a stream-processing language; every job should be fast (or at least, start spitting out output fast).  See [optimization.md](optimization.md) for tips on speeding up slow jobs.
 
+
 ##Parsing Errors
 
 ###Bracketed operators
-
 If you get an error involving a bracketed operator and you're sure you've written everything correctly, try inserting whitespace after the opening bracket and before the closing bracket. `ni` is usually good about telling you when that's necessary.
 
 ###Hadoop Streaming
@@ -19,8 +19,7 @@ Take a look at the following snippet:
 
 `$ ni n1 HS [p'r a'] _ _`
 
-It fails with the error: `ni: failed to parse starting here (ni --dev/parse to trace):
-  _`
+It fails with the error: `ni: failed to parse starting here (ni --dev/parse to trace):  _`
   
 Running $ `ni --dev/parse n1 HS [p'r a'] _ _`
 
@@ -63,3 +62,26 @@ Note that when using a HDFS paths for Hadoop Streaming jobs, you __must*__  quot
 
 ###Perl 
 If something's going wrong in a Perl context, but it looks right, try being more explicit (for example, using `b()` rather than `b` to reference the second field)
+
+##I can get it to work, but... 
+
+###... it's not intuitive!
+Two possibilities here: 
+
+1. You're right. `ni` should be intuitive to experienced developers with a moderate Perl background (note: raw Perl code not guaranteed to be intuitive). Talk to one of the developers. This is how we got the hash-construction syntactic sugar.
+1. Your intuition is wrong, and there's an even more intuitive solution that you haven't yet even heard of yet.  Reach out.  
+
+###... I'm typing the same thing over and over
+
+One of the goals of `ni` is keystroke-efficiency; if you have a general-enough operator, speak to one of the developers and it may be added as a feature to the language.
+
+##Easily Confused Operators
+
+* `f` and `F`
+  * `f` selects columns, and will always be followed by a number of capitalized alphabetical characters
+  * `F` is used to split a single column of raw text into columns.
+* `a`, `a()`, and `a_` (within `p'...'`)
+  * `a` and `a()` are identical operators, returning **the first element of a tab-separated row**. `a` is more common, and works everywhere except when the context is unclear (and `a` alone would be interpreted as a string). In this case, use `a()`.
+  * `a_` is an operator on arrays of lines of the stream, returning the first element of each line **as an array**. These arrays can be operated on by buffered readahead reducers.
+
+
