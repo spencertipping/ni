@@ -1,4 +1,4 @@
-#Ni by Example, Part 1 (alpha release)
+#Ni by Example, Chapter 1 (alpha release)
 
 Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
@@ -525,26 +525,40 @@ ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
 ["file_write","letter_counts.txt"]
 ```
 
-* `g`: General sorting
-  * `gB` - sort rows ascending by the lexicographic value of the second column
-    * Lexicographic value is determined by the ordering of characters in the ASCII table.
-    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
-  * `gC-` - sort rows *descending* by the lexicographic value of the third column
-   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
-  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
-    * The numeric sort works on integers and floating-point numbers written as decimals.
-    * The numeric sort will **not** work on numbers written in exponential/scientific notation
-  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
-* `u`: unique sorted rows
-  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
-* `c`: count sorted rows
-  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
-  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+What's interesting here is that your Unix dictionary is probably only about 2.5 MB in size; the dictionary itself can be streamed into memory in a fraction of a second. Remembering that all `ni` development code such that it is I/O bounded; in this case, there is an I/O bounded step where the data must be written to disk in order to be sorted. One can avoid this bound by adding `r10` after the filename, however.
+
+
+#### `g`: General sorting
+`g` is the most general sorting operator; there are two other sorting operators within `ni`, but they are highly specific.
+
+With a single column of data, as in the example, the simple command `g` will give you lexicographic sorting **in ASCII, in ascending order**. 
+
+**Feature test: Unicode**
+
+To do more complicated sorts, you can give `g` columns and modifiers. As with `f`, columns are indexed `A-Z`. `g` has two modifiers, `n` and `-`. `n` makes the sort numeric, and `-` makes the sort descending, rather tahn ascending.
+
+Examples: 
+
+`$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt gAn =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
+
+As above, if you have more than one column, you currently **must** specify the columns you want sorted; the reason for this is a system-to-system instability with regard to how the unix `sort` interacts).
   
-####Useful Syntactic Sugar
-* `o` and `O`: Numeric sorting
-  * `o`: Sort rows ascending (numerical)
-    * `oA` is syntactic sugar for `$ ni <data> gAn`
-  * `O`: sort rows descending (numerical)
-    * `OB` is equivalent to `$ ni <data> gBn-` 
-  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
+####`c`: Count Sorted Rows
+`c` is `ni` syntax for `uniq -c`, which counts the number of unique rows.
+    
+####`u`: Unique Sorted Rows
+`u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
+  
+####`o` and `O`: Syntactic Sugar for Numeric Sorting
+Often you will want numeric sorting in a more keystroke-efficient way than `gn<column>-`. The `o` (sort rows ascending, numerically) and `O` (sort rows  descending, numerically) operator has been provided for this purpose.
+
+The command from the `g` section can be rewritten as:
+
+`$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt oA =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
+
+**Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+##Conclusion of Chapter 1
+Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
+
+If you've only done this tutorial, you might be a little disappointed that your productivity as a programmer hasn't increased by much yet. Don't worry; when we start talking about Hadoop streaming operations in [Chapter 2](ni_by_example_2.md), you'll see your productivity grow by leaps and bounds. We'll see you in the next tutorial.
