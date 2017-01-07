@@ -130,10 +130,10 @@ u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
       ni_rmi_decode $$self{rmi_state}{connection}->read_packet;
     })
 
-  # this one isn't really necessary due to refcounting GC, but if it were,
-  # here's what it might look like:
   ->destroy(
     'Closes the SSH pipe',
+    NB"This one isn't really necessary due to refcounting GC, but if it were,
+       this is what it would look like.",
     '$self' => q{$$self{rmi_state}{connection}->close}))
 
 ->eg('Trivial resource access',
