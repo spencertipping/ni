@@ -17,16 +17,16 @@
 
 ## URIs for objects
 ```pl
-$r = uri 'http://foo.com';                      # stream resource
-$r = uri 'data:,foo';                           # literal string "foo"
-$r = uri 'file://./foo';                        # local file
-$r = uri 'hdfs:///foo/bar/bif';                 # HDFS file
-$r = uri './foo';                               # file shorthand
-$r = uri 'ni.self:/core/pl/init.pl';            # ni state resource
-$r = uri 'ni.ls:/core';                         # list resource names
-$r = uri 'ni.pid:31891';                        # process resource
-$r = uri 'ni.op:["n",10]';                      # stream operation
-$r = uri 'ni.rmi.ssh://user@host:port/ni.pid:19241';
+$r = u"http://foo.com";                         # stream resource
+$r = u"data:,foo";                              # literal string "foo"
+$r = u"file://./foo";                           # local file
+$r = u"hdfs:///foo/bar/bif";                    # HDFS file
+$r = u"./foo";                                  # file shorthand
+$r = u"ni.self:/core/pl/init.pl";               # ni state resource
+$r = u"ni.ls:/core";                            # list resource names
+$r = u"ni.pid:31891";                           # process resource
+$r = u"ni.op:[\"n\",10]";                       # stream operation
+$r = u"ni.rmi.ssh://user@host:port/ni.pid:19241";
 
 print "$r\n";           # named
 print while <$r>;       # readable
@@ -51,36 +51,63 @@ implemented by metaclasses and broadcasting.
 
 ## RMI object URIs
 ```pl
-# obviously we don't construct using interpolation
-my $obj         = uri '...';
-my $pipeline    = uri '...';
-my $hadoop_side = uri qq{ni.rmi.fs-multi+async:["hdfs:///path","$obj"]};
-my $host_side   = uri qq{ni.rmi.fs:["hdfs:///path","$pipeline"]};
-my $host_side   = uri 'ni.rmi.fs:', 'hdfs:///path', $pipeline;
+my $obj         = u"...";
+my $pipeline    = u"...";
+my $hadoop_side = u"ni.rmi.fs-multi+async", 'hdfs:///path', $obj;
+my $host_side   = u"ni.rmi.fs", 'hdfs:///path', $pipeline;
 $host_side->enable_monitoring($monitor_uri);
+print "$host_side\n";   # -> ni.rmi.fs:["hdfs:///path","<pipeline-url>"]
 ```
 
 ## Protocol metaclasses
 ```pl
-$p = uri 'ni.protocol:readable';
-$c = uri 'ni.scheme:http';
+$p = u"ni.protocol:readable";
+$c = u"ni.scheme:http";
 $c->implement($p,
-  read => fn q{ ... },
-  fd   => fn q{ ... }, ...);
+  read => q{ ... },
+  fd   => q{ ... }, ...);
 ```
-
-## Meta-URI syntax
-```pl
-$c = uri 'ni.scheme:http';              # normal URI syntax
-$c = uri 'ni.scheme.json:ni.op';        # modified JSON syntax
-```
-
-This feels wrong; it seems like the syntax should be a protocol implementation.
 
 ## Monitors
 ```pl
-my $mon = uri 'ni.wmonitor:fd:1';       # new write monitor around FD 1
+my $mon = u"ni.wmonitor:fd:1";          # new write monitor around FD 1
 print $mon "foo";                       # write data to it
 my @xs = $mon->sample;                  # some of the rows
 my $bytes_s = $mon->throughput;         # bytes/sec throughput
+```
+
+## Documentation
+```pl
+u"ni.scheme:ni.rmi"->create('ni.rmi.ssh',
+  name        => 'SSH RMI forwarder',
+  synopsis    => 'u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"',
+  description => '
+    Sends ni to the remote machine, creates an instance, and connects to it.
+    This allows you to access remote resources as though they were local; all
+    method calls issued to the RMI forwarder will be synchronously
+    network-forwarded to the remote resource URI and their results returned.
+
+    The remote instance runs until this object is destroyed, at which point the
+    SSH process and remote ni instance are both killed via SIGTERM.')
+
+->rmi_delegation_behavior(
+    create => q{
+      my ($self) = @_;
+      ...
+    },
+    method_call => q{
+      my ($self, $method, @args) = @_;
+      ...
+    },
+    destroy => q{
+      my ($self) = @_;
+      ...
+    })
+
+->eg('Trivial resource access',
+     'u"data:,foo"->read returns "foo", so we can access the same resource over
+      an SSH connection to localhost. This will only be the case if we can ssh
+      to localhost without a password.',
+     q{provided `pgrep sshd` and `ssh localhost true`,
+       is "foo", u"ni.rmi.ssh://localhost/data:,foo"->read});
 ```
