@@ -76,9 +76,9 @@ my @xs = $mon->sample;                  # some of the rows
 my $bytes_s = $mon->throughput;         # bytes/sec throughput
 ```
 
-## Documentation
+## Documentation/tests
 ```pl
-u"ni.scheme:ni.rmi"->create('ni.rmi.ssh',
+u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
   name        => 'SSH RMI forwarder',
   synopsis    => 'u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"',
   description => '
@@ -91,17 +91,26 @@ u"ni.scheme:ni.rmi"->create('ni.rmi.ssh',
     SSH process and remote ni instance are both killed via SIGTERM.')
 
 ->rmi_delegation_behavior(
-    create => q{
-      my ($self) = @_;
-      ...
-    },
-    method_call => q{
-      my ($self, $method, @args) = @_;
-      ...
-    },
+    create => fn(
+      'Establishes the connection used for RMI communication, storing the
+       process locally into $$self{rmi_state}{connection}.',
+      '$self' => q{
+        ...
+      }),
+
+    method_call => fn(
+      'Uses the builtin ni.rmi encoding to send data down the SSH connection,
+       then awaits a reply.',
+      '$self, $method, @args' => q{
+        my $packet = ni_rmi_encode $method, @args;
+        $$self{rmi_state}{connection}->stdin->write($packet);
+        my $reply = $$self{rmi_state}{connection}->stdout->read_packet;
+        ni_rmi_decode $reply;
+      }),
+
     destroy => q{
       my ($self) = @_;
-      ...
+      $$self{rmi_state}{connection}->kill('TERM');
     })
 
 ->eg('Trivial resource access',
@@ -109,5 +118,9 @@ u"ni.scheme:ni.rmi"->create('ni.rmi.ssh',
       an SSH connection to localhost. This will only be the case if we can ssh
       to localhost without a password.',
      q{provided `pgrep sshd` and `ssh localhost true`,
-       is "foo", u"ni.rmi.ssh://localhost/data:,foo"->read});
+       is "foo", u"ni.rmi.ssh://localhost/data:,foo"->read})
+
+->eg('Connecting to an existing remote',
+     'The trick here is to use a ni.pid:X URI...',
+     q{...});
 ```
