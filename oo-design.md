@@ -39,12 +39,12 @@ defined on any class.
 
 ## Scheme modifiers
 These correspond to usage patterns; e.g. `hdfs+rm:` or `file+rm:` when you want
-to automatically delete a resource after reading it. The `+rm` here is a
-generic modifier that applies to any removable, readable resource and is
-implemented by metaclasses and broadcasting.
+to automatically delete a resource after it goes out of scope. The `+rm` here
+is a generic modifier that applies to any removable resource and is implemented
+by metaclasses and broadcasting.
 
 - `+async`: modify all methods to return futures of results and not block
-- `+rm`: autonuke after reading
+- `+rm`: autonuke when GC'd
 - `+tmp`: construct the path as a tempfile, e.g. `file+tmp:foo`
   - `file+tmp+rm` and `file+rm+tmp` end up doing the same thing because `+tmp`
     removes itself from the URI scheme when constructed.
@@ -69,9 +69,10 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 
 ## Documentation/tests
 ```pl
-u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
+u"ni.scheme:ni.rmi"->child('ssh',
   name        => 'SSH RMI forwarder',
-  synopsis    => q{u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"},
+  synopsis    => q{u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
+                 | u"ni.rmi.ssh", $authority, $remote_resource},
   description => q{
     Sends ni to the remote machine, creates an instance, and connects to it.
     This allows you to access remote resources as though they were local; all
@@ -126,8 +127,8 @@ u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
     NB"Obviously we can't monopolize the connection this way because in
        practice it would be multiplexed.",
     '$self, $method, @args' => q{
-      $$self{rmi_state}{connection}->write_packet(ni_rmi_encode $method, @args);
-      ni_rmi_decode $$self{rmi_state}{connection}->read_packet;
+      $$self{connection}->write_packet(ni_rmi_encode $method, @args);
+      ni_rmi_decode $$self{connection}->read_packet;
     })
 
   ->destroy(
