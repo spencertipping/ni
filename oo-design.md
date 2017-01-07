@@ -84,13 +84,41 @@ u"ni.scheme:ni.scheme.rmi"->create('ni.rmi.ssh',
 ->uses(u"ni.behavior:rmi-delegation"
   ->create(
     'Establishes the connection used for RMI communication, storing the
-     process locally into $$self{rmi_state}{connection}.',
+     process locally into $$self{connection}. The $self here is different from
+     the RMI method receiver.',
+
     TODO"Is it appropriate for +packet to be explicit, rather than an implicit
          extension to everything that's readable/writable?",
+
+    NB"The failure modes below are contrived: in practice we'd inherit failure
+       modes from things like TCP connections and propagate errors outwards;
+       this would result in a very small set of failure modes specific to this
+       class.",
+
     '$self, $uri' => q{
-      $$self{rmi_state}{connection} =
-        u"ni.pipe.ssh+packet", $uri->host, $uri->path;
-    })
+      my ($remote_argv, $init) = remote_instantiation;
+      ($$self{connection} =
+       u"ni.tcp.ssh+packet", $uri->authority, @$remote_argv)->write($init);
+    },
+
+    failure_modes(
+    '$self, $uri' => q{
+      my $tcp = u"ni.tcp", $uri->authority(port => 22);
+      check "DNS lookup of $uri->host"
+         => we_expect_defined_from $uri->host->ip;
+
+      check "Connections to $tcp"
+         => we_expect_true_from $tcp->connected;
+
+      check "SSH protocol compliance of $tcp"
+         => we_expect 'SSH', from => $tcp->peek(3);
+
+      check "SSH client is installed"
+         => we_expect_true_from u"ni.program:ssh"->executable;
+
+      check "SSH access for $uri->authority"
+         => we_expect qr/^hi/, from => `ssh "$uri->authority" echo hi`;
+    }))
 
   ->method_call(
     'Uses the builtin ni.rmi encoding to send data down the SSH connection,
