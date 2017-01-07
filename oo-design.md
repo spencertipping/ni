@@ -56,6 +56,7 @@ my $obj         = uri '...';
 my $pipeline    = uri '...';
 my $hadoop_side = uri qq{ni.rmi.fs-multi+async:["hdfs:///path","$obj"]};
 my $host_side   = uri qq{ni.rmi.fs:["hdfs:///path","$pipeline"]};
+my $host_side   = uri 'ni.rmi.fs:', 'hdfs:///path', $pipeline;
 $host_side->enable_monitoring($monitor_uri);
 ```
 
@@ -73,6 +74,8 @@ $c->implement($p,
 $c = uri 'ni.scheme:http';              # normal URI syntax
 $c = uri 'ni.scheme.json:ni.op';        # modified JSON syntax
 ```
+
+This feels wrong; it seems like the syntax should be a protocol implementation.
 
 ## Monitors
 ```pl
