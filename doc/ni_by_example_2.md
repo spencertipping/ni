@@ -7,9 +7,11 @@ The key concept that we will cover (and really, the key to `ni`'s power) is the 
 Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
 
 
-At this point, it's important to have a general idea of how `ni` works
+To start this tutorial, At this point, it's important to have a general idea of how `ni` works
 
 ##`ni` is a quine
+
+A quine is a program that prints its source code. 
 
 
 ##`ni` Philosophy and Style

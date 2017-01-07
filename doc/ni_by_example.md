@@ -1,8 +1,10 @@
 #Ni by Example, Part 1 (alpha release)
 
-Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and incredibly fast and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
+Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. `ni` suffers from having both a steep learning curve and an exponential power curve; learning the basics of the syntax is the hardest part, and knowing the basics won't make you much more productive (especially if you have a couple of years of Python under your belt and know another data processing language like `pandas`). This knowledge is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This is covered in depth in [Part 2](ni_by_example_2.md).  Stick with it, and you'll be rewarded (we promise).
+By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. `ni` suffers from having both a steep learning curve and an exponential power curve; learning the basics of the syntax is the hardest part, and knowing the basics won't make you much more productive (especially if you have a couple of years of Python under your belt and know another data processing language like `pandas`).
+
+The knowledge represented in this tutorial is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This is covered in depth in [Part 2](ni_by_example_2.md).  Stick with it, and you'll be rewarded (we promise).
 
 In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
@@ -245,7 +247,7 @@ A wrinkle has been added into the `divert` statement, demonstrating the ability 
 
 ####`r`: Take Rows
 
-`r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities:
+`r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities. Eventually you will have all of these operations memorized, but for now, just try to remember that you have these options available to you.
 
 * `$ ni n10 r3` - take the first 3 rows of the stream
 * `$ ni n10 r-3` - take everything after the first 3 rows of the stream
@@ -258,7 +260,7 @@ A wrinkle has been added into the `divert` statement, demonstrating the ability 
 
 For example, you can take all of the numbers that end in 0, 1, or 5 with the following spell: `$ ni n20 r/[015]$/`
 
-Because you're typing directly into the bash shell, some characters may need to be escaped, for example in this expression which identifies numbers that are all repeating digits.
+Because you're typing directly into the `bash` shell, some characters may need to be escaped, for example in this expression which identifies numbers that are all repeating digits.
 
 `$ ni n1000 r/^\(\\d\)\\1+$/`
 
@@ -324,7 +326,7 @@ When you think of writing a simple data processing program in Python, Ruby, C, o
 
 Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
 
-`ni` removes all of that; the moment you type `p'...'`, you're thrown directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
+`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
 
 
 ####`r()`: Emit row
@@ -359,13 +361,13 @@ Now that the practical differences between `r()` and `p'...'` have been explaine
 
 Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
 
-When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written. This differs from the take-rows operator (also called `r`).
+When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
 
 ####Column Accessor Functions `a` and `a()`
 
 `ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
 
-The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (like pipes or ampersands, etc.)
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
 
 The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous.  In general this is the case;  the one important exception to this rule is hash lookup, which requires that the user call the function explicitly.
  
@@ -377,7 +379,7 @@ If you can understand that, you're well on your way on mastering enough Perl to 
 
 Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
 
-`ni n1 p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r{ "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
+`ni n1 p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
 
 ```
 Prototype mismatch: sub ni::pl::a () vs none at - line 411.
@@ -401,11 +403,11 @@ This brings us to an important point about `ni` processes in general:
 We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
 
 
-Other caveats: the number 0, the string 0 (which is the same as the number 0), the empyt list, and the empty string are all **falsey** in Perl. Pretty much everything else is truthy. Moreover, there is no boolean True or False in Perl, so `false` and `False` are still truthy.
+Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
 
 Examples:
 
-* `ni n03 rp'$_' -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'$_'` -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
 * `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
 * `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
   * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
@@ -504,7 +506,7 @@ It is often useful to take everything after a certain point in a line. This can 
 
 
 ##Sort, Unique, and Count
-Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop or PySpark operations.
+Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
 
 If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
 
@@ -546,4 +548,3 @@ ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
   * `O`: sort rows descending (numerical)
     * `OB` is equivalent to `$ ni <data> gBn-` 
   * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
-
