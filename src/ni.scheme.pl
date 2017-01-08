@@ -41,8 +41,10 @@ u"ni.scheme:ni.scheme"->create('ni.scheme',
     metaprogramming doubly expensive: every long string like this documentation
     would be stored not only in the initial image but also as a
     runtime-allocated string. However, ni's boot image is invariant and
-    attributes are represented verbatim; this means we can rereference almost
-    every string as a byte range in the original image with almost no overhead.
+    attributes are represented verbatim (that is, their bytes are within
+    fixed-point regions of the Perl evaluator); this means we can rereference
+    almost every string as a byte range in the original image with almost no
+    overhead.
 
     # URI addressing
     Every object in ni's system can be referred to using a URI-like string. ni
