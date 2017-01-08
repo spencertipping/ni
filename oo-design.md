@@ -71,8 +71,8 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 ```pl
 u"ni.scheme:ni.rmi"->child('ssh',
   name        => 'SSH RMI forwarder',
-  synopsis    => q{u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
-                 | u"ni.rmi.ssh", $authority, $remote_resource},
+  synopsis    => q{ u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
+                  | u"ni.rmi.ssh", $authority, $remote_resource },
   description => q{
     Sends ni to the remote machine, creates an instance, and connects to it.
     This allows you to access remote resources as though they were local; all
@@ -146,6 +146,6 @@ u"ni.scheme:ni.rmi"->child('ssh',
        we_expect "foo", from => u"ni.rmi.ssh://localhost/data:,foo"->read})
 
 ->eg('Connecting to an existing remote',
-     'The trick here is to use a ni.pid:X URI...',
+     'The trick here is to use a ni.rmi.pid:X URI...',
      q{...});
 ```
