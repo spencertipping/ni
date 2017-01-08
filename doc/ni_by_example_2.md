@@ -6,7 +6,8 @@ The key concept that we will cover (and really, the key to `ni`'s power) is the 
 
 Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
 
-Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`.
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
+
 
 ##Quines
 A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
@@ -33,7 +34,7 @@ Here's what you need to know:
   * `(lambda (u v) (u + v))` yields a closure. There's a lot of ink spilled on what a closure is and does. For the purpose of this tutorial, you can think of a closure as a a function that has not been supplied its arguments.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
 
-####A simple quine
+####A simple quine in Scheme
 Let's build a quine, starting with this piece:
 
 ```
@@ -65,7 +66,7 @@ What we need now is the appropriate piece of data to feed to the code. We know o
 => ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
 ```
 
-Note that not all quines are structured this way
+Note that not all quines are structured this way (with code and data to interpret the code), but these are the simplest types of quines to write and explain.
 
 For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
 
@@ -78,6 +79,30 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
+This code uses heredoc syntax, which is a way of writing multi-line strings in bash, POSIX, and Perl (and probably other languages). Enrichment on heredocs is available[... here](http://www.tldp.org/LDP/abs/html/here-docs.html).
+
+Heredocs start with `<<` followed by a delimiter which is the instruction to the interpreter of where the string stops. In this case, the delimiter is the character `_`. Surrounding the delimiter with single quotes, as above, allows for string interpolation within heredocs; without these quotes around the delimiter, no string interpolation is allowed.
+
+Heredocs can be parsed in non-obvious ways, and the non-obvious parsing is used in this quine. The heredoc can be parsed starting on the line after the `<<` and the delimiter, and that is what is used here. Due to the parsing, the string `print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"` is stored into `$_`.
+
+
+If you found the previous paragraphs on heredocs inscrutable, don't worry too much because it's not so important; like the quine we saw in the previous section, this quine is composed of code:
+
+```
+#!/usr/bin/perl
+eval($_=<<'_');
+print 
+```
+and data:
+
+```
+"#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, Perl.
+
+
 Copying the lines and running: 
 
 ```
@@ -89,7 +114,7 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-This quine looks odd, but most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with `<<`). Heredocs are parsed in a non-obvious way; at a high level, the code works like this:
+This quine looks odd, but most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with ). Heredocs are parsed in a non-obvious way. In this case, at a high level, the code works like this:
 
 1. `$_` becomes the code written as a heredoc, which is just the 3rd line. The heredoc parser knows to skip the end of the line.
 2. `eval $_` happens, causing that code to be executed
@@ -111,12 +136,16 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output.
+We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output; it is a fixed point under the evaluation/interpretation operator
 
 
-##`ni` is a quine
+##`ni` is a self-modifying quine
 
-A quine is a program that prints its source code when run, and ni is (essentially) a quine. To get `ni` to print its source, run:
+As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
+
+
+####`//ni`: Get `ni` source
+`ni` is a quine. To get `ni` to print its source, run:
 
 `$ ni //ni`
 
@@ -125,22 +154,18 @@ A quine is a program that prints its source code when run, and ni is (essentiall
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 Copyright (c) 2016 Spencer Tipping | MIT license
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+....
+_
 ....
 ```
-
-A few things to think about here, but the most important thing is, "so what?" `ni` can print it's own source code; it's not hard to get a python program to print its source. 
-
-The `<<'_'` starts a multi-line string in Perl. It borrows from the heredoc syntax in `bash`, and starts 
+Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string.
 
 
+####`::closure_name[...]`: Create a data closure
+  * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
+  * The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
 
+####
 
 
 ##`ni` Philosophy and Style
@@ -157,6 +182,11 @@ Some jobs that are difficult for `ni`:
 * Sorting
 * Matrix Multiplication
 * SQL Joins
+
+Here's how `ni` solves those:
+
+
+
 
 
 
@@ -313,14 +343,11 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 **TODO**: Say something useful.
 
 
-##Data Closure Basics and Array-Based Operators
-Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
+##Multiline Selection Operators
 
-* `closure_name::[...]`: Create a data closure
-  * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
-  * The closure can be referenced within a Perl snippet as  `p' ... closure_name ...'`
-* `a_` through `l_`: Array-based line operations 
-  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use array-based line operators `a_` through `l_`, which are the array-based analogs to the line-based operators `a/a()` through `l/l()`.
+
+* `a_` through `l_`: Multiline Selection operations 
+  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
@@ -417,15 +444,18 @@ These operations are good for reducing
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
-###Line-Array Reducers
+###Multiline Reducers
 These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
 
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} re {b}'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, re{b}` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+
+`rea` is the more commonly used shorthand for `re {a}`
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
 
 ##Stream Splitting/Joining/Duplication
 I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
