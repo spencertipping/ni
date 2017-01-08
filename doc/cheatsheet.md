@@ -178,7 +178,6 @@ Note that whitespace is required after every `p'code'` operator; otherwise ni wi
   * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
   * You will want to do this to reduce keystrokes.
   * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
-  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
 
 
 ##Intermediate Column Operations
@@ -190,6 +189,9 @@ We can weave together row, column, and Perl operations to create more complex ro
 * `W`: Prepend column stream
   * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
   * `W` will add rows only up to the length of the input stream
+* `j` - streaming join
+  * This will join two streams based on the value of their first column, which is assumed to be sorted.
+  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
 
@@ -390,9 +392,7 @@ I don't find these operators particularly useful in practice (with the exception
 * `=`: duplicate this stream through a process, discarding its output
 
 
-##Advanced Row and Column Operations
-* `j` - streaming join
-  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
+##Matrix Operations
 * `Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
     * The index of the row that the input data that came from
@@ -400,25 +400,19 @@ I don't find these operators particularly useful in practice (with the exception
     * The value of the input stream at the row + column specified by the first two columns.
 * `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * In the case that there are collisions for locations `X`, `X` will sum the values
+  * For example: `ni n010p'r 0, a%3, 1' X`
   * The specification for what the input matrix must look like is described above in the `Y` operator.
-  
-  
-
-##Matrix Operations
-
-Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
-
-
-* `N'x = ...'`: Numpy-style matrix operations
+* `N'x = ...'`: Numpy matrix operations
   * Dense matrices can be transformed using Numpy-like operations
   * The entire input matrix (i.e. the stream) is referred to as `x`.
   * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
-  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
-* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * **TODO**: understand how these actually work.
-* `X`: sparse-to-dense transformation
-  * In the case that there are collisions for locations `X`, `X` will sum the values
-  * For example: `ni n010p'r 0, a%3, 1' X`
+  * Example `ni n5p'r map a*$_, 1..10' N'x = x.T'`
+  * You also have available the entire numpy package at your disposal:
+    * Example: `ni n10p'r map a*$_, 1..10' N'x = dot(x, x.T)'`
+    * Example: `ni n1N'x = random.normal(size=(5,3))'`
+  * Note that your statements must always store the matrix back in the variable `x`.
+ 
 
 ##Advanced Data Closures & Checkpoints
 
@@ -454,7 +448,15 @@ ni //license FWpF_ p'r pl 3' \
 ###Array Functions
   * `clip`
   * `within`
-  
+
+
+##Partitioned Matrix Operations
+One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that operations on wide matrices have better support through partitioning.
+
+`ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex 
+
+* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
+  * 
 
 ##Things other than Perl 
 

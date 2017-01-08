@@ -6,7 +6,113 @@ The key concept that we will cover (and really, the key to `ni`'s power) is the 
 
 Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
 
-Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni` over 
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`.
+
+##Quines
+A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
+
+We'll write a classic quine in Scheme (or Lisp), and then a quine in Perl.
+
+####Scheme/Lisp mini-tutorial
+If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
+
+Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
+
+Here's what you need to know:
+
+* Function applcation in Scheme/Lisp starts with an open parenthesis.
+  * `(+ 1 2)` yields `3`. 
+  * `(* 5 6 7)` yields `210`
+* Scheme lists are written in parentheses and are delimited by spaces.
+* The function `list` returns a list of its arguments:
+  * `(list 1 3 5)` yields `(1 3 5)`
+* The function `quote` takes one argument and returns its literal value:
+  * `(quote 5)` yields `5`
+  * `(quote (list 1 2 3))` yields `(list 1 2 3)`--note that the list function was not evaluated.
+* `lambda` defines an anonymous function with any number of named parameters.
+  * `(lambda (u v) (u + v))` yields a closure. There's a lot of ink spilled on what a closure is and does. For the purpose of this tutorial, you can think of a closure as a a function that has not been supplied its arguments.
+  * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
+
+####A simple quine
+Let's build a quine, starting with this piece:
+
+```
+(lambda (x)
+   (list x (list (quote quote) x))
+```
+
+`lambda` creates an anonymous function which, on input x, returns a list with first element `x`. The second element of the list is also a list. The first element of the sublist is the result of  `(quote quote)`, and the second element is `x`. To make the operation of this function more concrete, head over to  and look at what happens when we do the following:
+
+```
+((lambda (x)
+    (list x (list (quote quote) x)))
+  1)
+=> (1 (quote 1))
+```
+So when we apply ths function to an argument, we get back the argument, followed by a list consisting of `quote` and the argument.
+
+Already that should feel like a step in the right direction; we have a function that takes a piece of data, reproduces that data and then a quoted representation of that data. In quines with this structure, this function is often referred to as "the code."
+
+What we need now is the appropriate piece of data to feed to the code. We know our data has to reproduce our code, so that means what we feed to our code must be a string representation of itself. We do this by applying `quote` to the text of the code.
+
+```
+((lambda (x)
+  (list x (list (quote quote) x)))
+ (quote
+  (lambda (x)
+   (list x (list (quote quote) x)))))
+   
+=> ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
+```
+
+Note that not all quines are structured this way
+
+For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
+
+####A quine in Perl
+
+```
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+Copying the lines and running: 
+
+```
+$ pbpaste > quine.pl
+$ cat quine.pl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+This quine looks odd, but most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with `<<`). Heredocs are parsed in a non-obvious way; at a high level, the code works like this:
+
+1. `$_` becomes the code written as a heredoc, which is just the 3rd line. The heredoc parser knows to skip the end of the line.
+2. `eval $_` happens, causing that code to be executed
+3. inside `eval $_`, `print "#!... ${_}..."` happens -- notice the reference back to `$_`, which contains the code being evaled
+
+The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
+
+####Quines, so what?
+
+When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
+
+Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above
+
+```
+$  cat quine.pl | perl | perl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output.
+
 
 ##`ni` is a quine
 
@@ -26,11 +132,15 @@ in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
+....
 ```
 
 A few things to think about here, but the most important thing is, "so what?" `ni` can print it's own source code; it's not hard to get a python program to print its source. 
 
-The `<<'_'` starts a multi-line string in Perl. It borrows from the heredoc syntax in `bash`.
+The `<<'_'` starts a multi-line string in Perl. It borrows from the heredoc syntax in `bash`, and starts 
+
+
+
 
 
 ##`ni` Philosophy and Style
