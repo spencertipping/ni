@@ -269,14 +269,14 @@ Set the second x component to 0 to flatten the image's depth dimension; then
 set the first R component to 0 and the second R component to 90 to show a
 front-facing view of your plot.
 
-##Data Closure Basics and Array-Based Operators
+##Data Closure Basics and Multiline Selection Operators
 Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
 
 * `closure_name::[...]`: Create a data closure
   * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
   * The closure can be referenced within a Perl snippet as  `p' ... closure_name ...'`
-* `a_` through `l_`: Array-based line operations 
-  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use array-based line operators `a_` through `l_`, which are the array-based analogs to the line-based operators `a/a()` through `l/l()`.
+* `a_` through `l_`: Multiline Selectio Operators
+  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
@@ -373,22 +373,24 @@ These operations are good for reducing
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
-###Line-Array Reducers
+###Multiline Reducers
 These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
 
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} re {b}'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, re{b}` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+
+`rea` is the more commonly used shorthand for `re {a}`
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
 
 ##Stream Splitting/Joining/Duplication
 I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
 
 * `+`: append a stream to this one
 * `^`: prepend a stream to this one
-* `%`: duplicate this stream through a process, and include output
 * `=`: duplicate this stream through a process, discarding its output
 
 
@@ -429,7 +431,7 @@ I don't find these operators particularly useful in practice (with the exception
   * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
   
 ##Binary Operations
-In theory, this can save you a lot of space. But I haven't used this in practice.
+The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
   
 
 ##Less Useful `ni`-specific Perl Extensions
@@ -451,12 +453,12 @@ ni //license FWpF_ p'r pl 3' \
 
 
 ##Partitioned Matrix Operations
-One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that operations on wide matrices have better support through partitioning.
+One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that mathematical operations on tall and wide matrices have better support through partitioning.
 
 `ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex 
 
 * `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * 
+  * **BUG**: Still don't really get this 
 
 ##Things other than Perl 
 
