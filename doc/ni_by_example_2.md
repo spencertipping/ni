@@ -1,17 +1,36 @@
 #`ni` by Example, Part 2 (WIP)
 
-Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
+Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the first part of the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
 
 The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
 
 Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
 
-
-To start this tutorial, At this point, it's important to have a general idea of how `ni` works
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni` over 
 
 ##`ni` is a quine
 
-A quine is a program that prints its source code. 
+A quine is a program that prints its source code when run, and ni is (essentially) a quine. To get `ni` to print its source, run:
+
+`$ ni //ni`
+
+```
+#!/usr/bin/env perl
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
+Copyright (c) 2016 Spencer Tipping | MIT license
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+```
+
+A few things to think about here, but the most important thing is, "so what?" `ni` can print it's own source code; it's not hard to get a python program to print its source. 
+
+The `<<'_'` starts a multi-line string in Perl. It borrows from the heredoc syntax in `bash`.
 
 
 ##`ni` Philosophy and Style
