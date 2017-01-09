@@ -8,6 +8,22 @@ u("ni.scheme:ni.scheme")->create('ni.behavior.code',
 
   ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
 
+u("ni.scheme:ni.scheme")->create('ni.fn',
+  name        => 'A function, optionally with annotations',
+  synopsis    => q{ u("ni.fn:<code>")
+                  | fn(@annotations, '<code>')
+                  | fn(@annotations, '<args>' => '<code>') },
+  description => q{
+    Compiles the specified code into a callable object. Functions can install
+    themselves into Perl's symbol table, a property used by behaviors when
+    modifying classes.})
+
+  ->uses(u"ni.behavior.code:" . q{
+    use overload qw/&{} as_fn/;
+    die "uh oh";                # FIXME: this should happen
+    # TODO
+  });
+
 u("ni.scheme:ni.scheme")->create('ni.scheme',
   name        => 'URI scheme describing URI schemes',
   synopsis    => ' u"ni.scheme:http"->u("google.com")

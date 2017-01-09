@@ -45,8 +45,13 @@ sub u {
 
 eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
 sub u {no strict 'refs'; &{$_[0]->package . "::create"}(@_)}
-sub uses {$_[1]->modify($_[0])}
 sub package {(my $p = ${$_[0]}{id}) =~ s/\./::/g; $p}
+sub uses {
+  my ($self, @bs) = @_;
+  $_->modify($self) for @bs;
+  push @{$$self{behaviors}}, @bs;
+  $self;
+}
 sub create {
   my ($self, $child, %stuff) = @_;
   $ni::schemes{$child}
@@ -59,7 +64,7 @@ sub modify {
   my ($self, $scheme) = @_;
   my $p = $scheme->package;
   eval "package $p;\n$$self{code}";
-  die "ni: error applying $self to $scheme: $@" if $@;
+  die $@ if $@;
   $self;
 }
 });
