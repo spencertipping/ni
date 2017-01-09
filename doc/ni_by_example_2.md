@@ -8,14 +8,16 @@ Other key concepts for this tutorial include streaming reduce operations, data c
 
 Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
 
-##`ni` execution
+##`ni` is self-modifying
 
+
+####`ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
 ```
 ni <op1> <op2> <op3> ... <opN>
 ``` 
-is essentially equivalent to 
+is, for the most part, equivalent to 
 
 ```
 ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
@@ -23,18 +25,63 @@ ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
 
 `ni --explain` works by telling you what each `<op>` above is.
 
-
-
-##`ni` is self-modifying
-
-One thing that wasn't necessary to see in Chapter 1 is that `ni` can modify itself by the creation of data closures.  Data closures are collections of data that are packaged with ni's source code, and can be executed wherever it executes.
+However, this isn't quite the whole story. 
 
 ####`::closure_name[...]`: Create a data closure
 
-`$ ni ::ten[n10] n3p'r a, ten'`
+`$ ni ::five[n5] n3p'r a, five'`
 
-Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
-  * The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
+```
+1       12345
+2       12345
+3       12345
+(END)
+```
+Any `ni` operations executable on the machine from whose context `ni` is being executed can be turned into a data closure. This caveat will become more important when we start using `ni` to execute on machines other than the ones we develop on.  The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
+
+```
+$ ni --explain ::five[n5] n3p'r a, five'
+["memory_data_closure","five",[["n",1,6]]]
+["n",1,4]
+["perl_mapper","r a, five"]
+```
+
+
+Data closures provide a counterexample to the basics of `ni` evaluation written above. 
+
+`$ ni ::five[n5] | ni n3p'r a, five'`
+
+```
+1       five
+2       five
+3       five
+(END)
+```
+
+The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
+
+####Data Closure Evaluation and `ni` self-modification
+Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else and independently from each other.
+
+That means that `$ ni ::ten[n10] n3p'r a, ten'` ie equivalent to `$ ni n3p'r a, ten' ::ten[n10]`, even though the latter looks like it shouldn't make sense.
+
+You also cannot use one data closure to compute another; 
+
+####Perl Bareword Interpretation
+The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
+
+`$ ni ::five[n5] | ni n3p'r a, five'`
+
+```
+1       five
+2       five
+3       five
+(END)
+```
+
+The Perl interpreter will convert missing barewords (i.e. things that do not start with a Perl sigil [`$, @, %`, etc.]) as a string. This trick is useful for writing strings without spaces within Perl environments; most of them do not need to be quoted. It is good `ni` style to avoid using quotes when they are unnecessary.
+
+We now return to our regularly-scheduled programming.
 
 
 ##`ni` is a quine
