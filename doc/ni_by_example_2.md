@@ -10,7 +10,8 @@ Before we get into anything too useful, however, we need to take a detour into h
 
 ##`ni` is self-modifying
 
-`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; by modifying itself, 
+`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
+
 
 ####`ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
@@ -230,7 +231,7 @@ We can keep connecting output pipes to input pipes and getting the same output. 
 
 
 
-####`//ni`: Get `ni` source
+####`//ni`: Print `ni`'s current source
 As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
 
 `ni` is a quine. To get `ni` to print its source, run:
@@ -246,44 +247,114 @@ Copyright (c) 2016 Spencer Tipping | MIT license
 _
 ....
 ```
+
 Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string.
+
+This provides us with a surprising power. We can now state the  `ni` indirectly via the following:
+
+> `$ ni ...` is equivalent to `ni //ni | perl - ...`
+
+If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, there is a 
+
+
+The `-` in the perl command instructs it to read code from the command line.
+
+
+Remember that `ni` is self-modifying, so `//ni` cannot be said to print `ni`'s source per se; instead it prints `ni`'s source at the time that it is called.
 
 
 
 ##`ni` is a self-modifying quine
 
+In the section on `ni` being self-modifying, it was mentioned that `ni` execution follows a structure something like this:
 
-##`ni` Philosophy and Style
+```
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
 
-####`ni` demands expertise
+is equivalent to
 
-####Conciseness matters; readability to the uninitiated does not.
-`ni` spells should be beautiful
+```
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
 
-####Outsource hard jobs to more appropriate tools.
-The most obvious 
+In fact, this `ni_prime` is a local modification of `ni`. Here's some evidence that this is going on.
 
-Some jobs that are difficult for `ni`:
-* Sorting
-* Matrix Multiplication
-* SQL Joins
+```
+$ ni //ni | wc -c
+  743514
+```
 
-Here's how `ni` solves those:
-
-
-
-
-
-
-
-##Perl for `ni` fundamentals
-
+```
+$ ni ::ten[n10] //ni | wc -c
+  743569
+```
 
 
-##Connecting `bash` and `ni`
+It looks like `ni` has changed, but a clever reader will ask if we've just waved our hands and hidden some characters in the stream. We haven't, for example, shown that the data closure exists **inside** of `ni`, and we also have that 
 
-* `e[<script>]`: Evaluate script
-  * evaluate `<script>` in bash, and stream out the results one line at a time.
+```
+$ ni n10 //ni | wc -c
+  743535
+```
+
+If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
+
+```
+$ ni ::ten[n10] //ni | perl - n1p'ten'
+```
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+(END)
+```
+
+The potential counterexample fails this test.
+
+```
+ni n10 //ni | perl - n1p'ten'
+```
+
+```
+Number found where operator expected at - line 2, near "2"
+	(Missing semicolon on previous line?)
+...
+Scalar found where operator expected at - line 12, near "$ni::self"
+	(Missing semicolon on previous line?)
+syntax error at - line 2, near "2"
+Execution of - aborted due to compilation errors.
+```
+
+
+
+
+##SSH and Containers
+
+Now that we've covered why `ni` can easily cross between machines and execute appropriately (becasue it's a self-modifying quine), let's look at how to execute 
+
+* `C<container_name>[...]`: execute `[...]` in `<container_name>`
+  * Running in containers requires that Docker be installed on your machine.
+  * Running containers can be especially useful to take advantage of better OS-dependent utilities.
+  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase by replacing:
+    * `ni n1E7 g` with
+    * `ni n1E7 Cubuntu[g]`
+  * Containers are also useful for testing the portability of your code.
+* `s<host>[...]`: execute `[...]` in `<host>`
+  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
+  * You will want to do this to reduce keystrokes.
+  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
+  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
+
 
 ##Input Operations
 * `D:<field1>,:<field2>...`: JSON Destructure
@@ -340,32 +411,6 @@ $ ni --explain dir_test/*
 ["cat","dir_test/there"]
 ```
 
-
-  
-##Understanding the `ni` monitor
-More details [here](monitor.md). Overall:
-
-* Negative numbers = non-rate-determining step
-* Positive numbers = rate-determining step
-* Large Positive numbers = slow step
-
-
-##SSH and Containers
-
-* `C<container_name>[...]`: execute `[...]` in `<container_name>`
-  * Running in containers requires that Docker be installed on your machine.
-  * Running containers can be especially useful to take advantage of better OS-dependent utilities.
-  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase by replacing:
-    * `ni n1E7 g` with
-    * `ni n1E7 Cubuntu[g]`
-  * Containers are also useful for testing the portability of your code.
-* `s<host>[...]`: execute `[...]` in `<host>`
-  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
-  * You will want to do this to reduce keystrokes.
-  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
-  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
-
-
 ##Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
@@ -377,6 +422,77 @@ We can weave together row, column, and Perl operations to create more complex ro
   * `W` will add rows only up to the length of the input stream
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
+  
+##HDFS I/O & Hadoop Streaming
+###How `ni` Interacts with Hadoop Streaming
+When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
+
+When `ni` uploads itself, it will also upload all data that is stored in data closures; if these closures are too large, the Hadoop server will refuse the job.
+
+###Hadoop Operators
+* `hdfs://<path>`: HDFS `cat`
+  * Equivalent to `hadoop fs -cat <path>`
+* `hdfst://<path>`: HDFS `text`
+  * Equivalent to `hadoop fs -text <path>`
+* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
+  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
+  * `_` -- skip the mapper/reducer/combiner. 
+  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
+  * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
+  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
+* Using HDFS paths in Hadoop Streaming Jobs:
+  * `ni ... \'hdfst://<path> HS...`
+  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+
+  
+
+##`ni` Philosophy and Style
+
+####`ni` demands expertise
+
+####Conciseness matters; readability to the uninitiated does not.
+`ni` spells should be beautiful
+
+####Outsource hard jobs to more appropriate tools.
+The most obvious 
+
+Some jobs that are difficult for `ni`:
+* Sorting
+* Matrix Multiplication
+* SQL Joins
+
+Here's how `ni` solves those:
+
+
+
+
+
+
+
+##Perl for `ni` fundamentals
+
+
+
+##Connecting `bash` and `ni`
+
+* `e[<script>]`: Evaluate script
+  * evaluate `<script>` in bash, and stream out the results one line at a time.
+
+
+
+  
+##Understanding the `ni` monitor
+More details [here](monitor.md). Overall:
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+
+
+
+
+
+
 
 ##Perl for `ni`
 A few important operators for doing data manipulation in Perl. Many Perl subroutines can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
@@ -436,26 +552,6 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
-##HDFS I/O & Hadoop Streaming
-###How `ni` Interacts with Hadoop Streaming
-When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
-
-When `ni` uploads itself, it will also upload all data that is stored in data closures; if these closures are too large, the Hadoop server will refuse the job.
-
-###Hadoop Operators
-* `hdfs://<path>`: HDFS `cat`
-  * Equivalent to `hadoop fs -cat <path>`
-* `hdfst://<path>`: HDFS `text`
-  * Equivalent to `hadoop fs -text <path>`
-* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
-  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
-  * `_` -- skip the mapper/reducer/combiner. 
-  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
-  * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
-  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
-* Using HDFS paths in Hadoop Streaming Jobs:
-  * `ni ... \'hdfst://<path> HS...`
-  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 ##Intermediate `ni` Philosophy and Style
 ####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
