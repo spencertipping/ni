@@ -25,6 +25,7 @@ SOFTWARE.
 _
 $ni::init = <<'_';
 require 'ni.scheme.pl';
+exit 0;
 _
 $ni::data = \*DATA;
 eval($ni::boot = <<'_' . $ni::init);
@@ -52,11 +53,9 @@ sub create {
     = $ni::live{"ni.scheme:$child"}
     = bless {id => $child, %stuff}, $self->package}});
 
-bless({id => 'ni.scheme'}, 'ni::scheme')->create('ni.scheme');
-
 eval 'package ni::behavior;' . ($ni::behavior_meta_boot = q{
-sub ni::behavior::create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
-sub ni::behavior::modify {
+sub create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
+sub modify {
   my ($self, $scheme) = @_;
   my $p = $scheme->package;
   eval "package $p;\n$$self{code}";
@@ -64,6 +63,8 @@ sub ni::behavior::modify {
   $self;
 }
 });
+
+bless({id => 'ni.scheme'}, 'ni::scheme')->create('ni.scheme');
 _
 die $@;
 __DATA__
