@@ -10,6 +10,8 @@ Before we get into anything too useful, however, we need to take a detour into h
 
 ##`ni` is self-modifying
 
+`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; by modifying itself, 
+
 ####`ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
