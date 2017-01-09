@@ -69,7 +69,7 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 
 ## Documentation/tests
 ```pl
-u("ni.scheme:ni.rmi")->child('ssh',
+u("ni.scheme:ni.rmi")->create('ssh',
   name        => 'SSH RMI forwarder',
   synopsis    => q{ u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
                   | u"ni.rmi.ssh", $authority, $remote_resource },
@@ -80,10 +80,10 @@ u("ni.scheme:ni.rmi")->child('ssh',
     network-forwarded to the remote resource URI and their results returned.
 
     The remote instance runs until this object is destroyed, at which point the
-    SSH process and remote ni instance are both killed via SIGTERM.})
+    SSH process and remote ni instance are both killed via SIGTERM.});
 
-->uses(u("ni.behavior:rmi-delegation")
-  ->create(
+u("ni.behavior:rmi-delegation")->create('ssh',
+  create => fn(
     'Establishes the connection used for RMI communication, storing the
      process locally into $$self{connection}. The $self here is different from
      the RMI method receiver.',
@@ -119,9 +119,9 @@ u("ni.scheme:ni.rmi")->child('ssh',
 
       check "SSH access for $uri->authority"
          => we_expect qr/^hi/, from => `ssh "$uri->authority" echo hi`;
-    }))
+    })),
 
-  ->method_call(
+  method_call => fn(
     'Uses the builtin ni.rmi encoding to send data down the SSH connection,
      then awaits a reply.',
     NB"Obviously we can't monopolize the connection this way because in
@@ -129,13 +129,15 @@ u("ni.scheme:ni.rmi")->child('ssh',
     '$self, $method, @args' => q{
       $$self{connection}->write_packet(ni_rmi_encode $method, @args);
       ni_rmi_decode $$self{connection}->read_packet;
-    })
+    }),
 
-  ->destroy(
+  destroy => fn(
     'Closes the SSH pipe',
     NB"This one isn't really necessary due to refcounting GC, but if it were,
        this is what it would look like.",
-    '$self' => q{$$self{connection}->close}))
+    '$self' => q{$$self{connection}->close}));
+
+u("ni.scheme:ni.rmi.ssh")->uses(u"ni.behavior.rmi-delegation:ssh")
 
 ->eg('Trivial resource access',
      'u("data:,foo")->read returns "foo", so we can access the same resource

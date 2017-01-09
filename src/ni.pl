@@ -53,7 +53,7 @@ sub create {
     = $ni::live{"ni.scheme:$child"}
     = bless {id => $child, %stuff}, $self->package}});
 
-eval 'package ni::behavior;' . ($ni::behavior_meta_boot = q{
+eval 'package ni::behavior::code;' . ($ni::behavior_code_meta_boot = q{
 sub create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
 sub modify {
   my ($self, $scheme) = @_;
