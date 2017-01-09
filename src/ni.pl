@@ -31,16 +31,14 @@ $ni::data = \*DATA;
 eval($ni::boot = <<'_' . $ni::init);
 package ni;
 use strict;
-use warnings;
 
-our $image = join '', $ni::boot, $ni::init, map <$ni::data>, 1..<$ni::data>;
-our %schemes;
+our $image = join '', $ni::boot, map <$ni::data>, 1..<$ni::data>;
 our %live;
 
 sub u {
   return $_[0] if ref $_[0];
   return $live{$_[0]} if defined $live{$_[0]};
-  return $schemes{$1}->u($2) if $_[0] =~ /^([^:]+):(.*)/;
+  return $live{"ni.scheme:$1"}->u($2) if $_[0] =~ /^([^:]+):([\s\S]*)/;
 }
 
 eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
@@ -49,13 +47,12 @@ sub package {(my $p = ${$_[0]}{id}) =~ s/\./::/g; $p}
 sub uses {
   my ($self, @bs) = @_;
   $_->modify($self) for @bs;
-  push @{$$self{behaviors}}, @bs;
+  push @{$$self{behaviors} ||= []}, @bs;
   $self;
 }
 sub create {
   my ($self, $child, %stuff) = @_;
-  $ni::schemes{$child}
-    = $ni::live{"ni.scheme:$child"}
+  $ni::live{"ni.scheme:$child"}
     = bless {id => $child, %stuff}, $self->package}});
 
 eval 'package ni::behavior::code;' . ($ni::behavior_code_meta_boot = q{

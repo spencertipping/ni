@@ -4,9 +4,25 @@ u("ni.scheme:ni.scheme")->create('ni.behavior.code',
   description => q{
     Evaluates the specified code within the Perl package corresponding to a
     scheme. No higher-level structure is imposed on the code, so instances of
-    this class are functionally opaque.})
+    this class are functionally opaque.
+
+    In general you should try to use more structured behaviors, but this one is
+    provided to make it possible to promote URIs directly into code; this
+    simplifies ni's bootstrapping logic.})
 
   ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
+
+u("ni.scheme:ni.scheme")->create('ni.behavior.alias',
+  name        => 'Provides a named constructor function for a class',
+  synopsis    => 'u("ni.scheme:<name>")->uses(u"ni.behavior.alias:<fname>")',
+  description => q{
+    Creates a function in the ni:: namespace that generates instances of this
+    class. Calling the function is equivalent to calling the class's create()
+    method on the given arguments.})
+
+  ->uses(u"ni.behavior.code:" . q{
+    # TODO
+  });
 
 u("ni.scheme:ni.scheme")->create('ni.fn',
   name        => 'A function, optionally with annotations',
@@ -20,7 +36,6 @@ u("ni.scheme:ni.scheme")->create('ni.fn',
 
   ->uses(u"ni.behavior.code:" . q{
     use overload qw/&{} as_fn/;
-    die "uh oh";                # FIXME: this should happen
     # TODO
   });
 
