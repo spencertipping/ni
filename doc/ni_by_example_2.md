@@ -8,11 +8,40 @@ Other key concepts for this tutorial include streaming reduce operations, data c
 
 Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
 
+##`ni` execution
 
-##Quines
+Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
+
+```
+ni <op1> <op2> <op3> ... <opN>
+``` 
+is essentially equivalent to 
+
+```
+ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
+```
+
+`ni --explain` works by telling you what each `<op>` above is.
+
+
+
+##`ni` is self-modifying
+
+One thing that wasn't necessary to see in Chapter 1 is that `ni` can modify itself by the creation of data closures.  Data closures are collections of data that are packaged with ni's source code, and can be executed wherever it executes.
+
+####`::closure_name[...]`: Create a data closure
+
+`$ ni ::ten[n10] n3p'r a, ten'`
+
+Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
+  * The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
+
+
+##`ni` is a quine
+
 A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
 
-We'll write a classic quine in Scheme (or Lisp), and then a quine in Perl.
+We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
 
 ####Scheme/Lisp mini-tutorial
 If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
@@ -79,7 +108,7 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-This code uses heredoc syntax, which is a way of writing multi-line strings in bash, POSIX, and Perl (and probably other languages). Enrichment on heredocs is available[... here](http://www.tldp.org/LDP/abs/html/here-docs.html).
+This code uses heredoc syntax, which is a way of writing multi-line strings in bash, POSIX, and Perl (and other Perl-influenced languages like PHP and Ruby). Enrichment on heredocs is available[... here](http://www.tldp.org/LDP/abs/html/here-docs.html).
 
 Heredocs start with `<<` followed by a delimiter which is the instruction to the interpreter of where the string stops. In this case, the delimiter is the character `_`. Surrounding the delimiter with single quotes, as above, allows for string interpolation within heredocs; without these quotes around the delimiter, no string interpolation is allowed.
 
@@ -136,15 +165,13 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output; it is a fixed point under the evaluation/interpretation operator
+We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output; it is a fixed point of the code under the evaluation/interpretation operator.
 
-
-##`ni` is a self-modifying quine
-
-As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
 
 
 ####`//ni`: Get `ni` source
+As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
+
 `ni` is a quine. To get `ni` to print its source, run:
 
 `$ ni //ni`
@@ -161,11 +188,8 @@ _
 Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string.
 
 
-####`::closure_name[...]`: Create a data closure
-  * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
-  * The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
 
-####
+##`ni` is a self-modifying quine
 
 
 ##`ni` Philosophy and Style
