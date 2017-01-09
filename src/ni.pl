@@ -24,35 +24,47 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 $ni::init = <<'_';
-MAP_GOES_HERE
+require 'ni.scheme.pl';
 _
-eval($ni::boot = <<'_');
+$ni::data = \*DATA;
+eval($ni::boot = <<'_' . $ni::init);
 package ni;
 use strict;
 use warnings;
 
-our $data = \*DATA;
-our $size = <$data>;
-our $image;
-read $data, $image, $size - length $image, length $image
-  until $! ? die "ni boot error: $! while reading state"
-           : length $image >= $size;
-
+our $image = join '', $ni::boot, $ni::init, map <$ni::data>, 1..<$ni::data>;
+our %schemes;
 our %live;
-sub fn {$live{"ni.fn:$_[$#_]"} = eval "sub {$_[$#_]\n}"}
-sub u  {ref $_[0] ? $_[0] : $live{$_[0]}}
 
-$live{'ni.scheme:ni.scheme'} = bless {id => 'ni.scheme'}, ni::scheme;
-sub ni::scheme::create {
-  my ($self, $child, %stuff) = @_;
-  $live{"ni.scheme:$child"} = bless {id => $child, %stuff}, ni::scheme;
+sub u {
+  return $_[0] if ref $_[0];
+  return $live{$_[0]} if defined $live{$_[0]};
+  return $schemes{$1}->u($2) if $_[0] =~ /^([^:]+):(.*)/;
 }
-sub ni::scheme::uses {
-  my ($self, $behavior) = @_;
-  u$behavior->modify($self);
+
+eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
+sub u {no strict 'refs'; &{$_[0]->package . "::create"}(@_)}
+sub uses {$_[1]->modify($_[0])}
+sub package {(my $p = ${$_[0]}{id}) =~ s/\./::/g; $p}
+sub create {
+  my ($self, $child, %stuff) = @_;
+  $ni::schemes{$child}
+    = $ni::live{"ni.scheme:$child"}
+    = bless {id => $child, %stuff}, $self->package}});
+
+bless({id => 'ni.scheme'}, 'ni::scheme')->create('ni.scheme');
+
+eval 'package ni::behavior;' . ($ni::behavior_meta_boot = q{
+sub ni::behavior::create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
+sub ni::behavior::modify {
+  my ($self, $scheme) = @_;
+  my $p = $scheme->package;
+  eval "package $p;\n$$self{code}";
+  die "ni: error applying $self to $scheme: $@" if $@;
   $self;
 }
-eval $ni::init;
+});
 _
 die $@;
 __DATA__
+0

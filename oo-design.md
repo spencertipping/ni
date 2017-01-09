@@ -69,7 +69,7 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 
 ## Documentation/tests
 ```pl
-u"ni.scheme:ni.rmi"->child('ssh',
+u("ni.scheme:ni.rmi")->child('ssh',
   name        => 'SSH RMI forwarder',
   synopsis    => q{ u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
                   | u"ni.rmi.ssh", $authority, $remote_resource },
@@ -82,7 +82,7 @@ u"ni.scheme:ni.rmi"->child('ssh',
     The remote instance runs until this object is destroyed, at which point the
     SSH process and remote ni instance are both killed via SIGTERM.})
 
-->uses(u"ni.behavior:rmi-delegation"
+->uses(u("ni.behavior:rmi-delegation")
   ->create(
     'Establishes the connection used for RMI communication, storing the
      process locally into $$self{connection}. The $self here is different from
@@ -138,12 +138,12 @@ u"ni.scheme:ni.rmi"->child('ssh',
     '$self' => q{$$self{connection}->close}))
 
 ->eg('Trivial resource access',
-     'u"data:,foo"->read returns "foo", so we can access the same resource over
-      an SSH connection to localhost. This will only be the case if we can ssh
-      to localhost without a password.',
+     'u("data:,foo")->read returns "foo", so we can access the same resource
+      over an SSH connection to localhost. This will only be the case if we can
+      ssh to localhost without a password.',
      q{provided `pgrep sshd` ne ""
             and `ssh -o PasswordAuthentication=no localhost echo hi` eq "hi\n",
-       we_expect "foo", from => u"ni.rmi.ssh://localhost/data:,foo"->read})
+       we_expect "foo", from => u("ni.rmi.ssh://localhost/data:,foo")->read})
 
 ->eg('Connecting to an existing remote',
      'The trick here is to use a ni.rmi.pid:X URI...',
