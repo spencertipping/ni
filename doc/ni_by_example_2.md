@@ -10,7 +10,6 @@ Before we get into anything too useful, however, we need to take a detour into h
 
 ##`ni` is self-modifying
 
-
 ####`ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
@@ -60,13 +59,6 @@ Data closures provide a counterexample to the basics of `ni` evaluation written 
 
 The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
 
-####Data Closure Evaluation and `ni` self-modification
-Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else and independently from each other.
-
-That means that `$ ni ::ten[n10] n3p'r a, ten'` ie equivalent to `$ ni n3p'r a, ten' ::ten[n10]`, even though the latter looks like it shouldn't make sense.
-
-You also cannot use one data closure to compute another; 
-
 ####Perl Bareword Interpretation
 The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
 
@@ -82,6 +74,26 @@ The piped example above bears a second look for the reason that it returns outpu
 The Perl interpreter will convert missing barewords (i.e. things that do not start with a Perl sigil [`$, @, %`, etc.]) as a string. This trick is useful for writing strings without spaces within Perl environments; most of them do not need to be quoted. It is good `ni` style to avoid using quotes when they are unnecessary.
 
 We now return to our regularly-scheduled programming.
+
+####Data Closure Evaluation and `ni` self-modification
+Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else, and in the order that they are written.
+
+That means that `$ ni ::five[n5] n3p'r a, five'` ie equivalent to `$ ni n3p'r a, five' ::five[n5]`, even though in the latter, it looks like it's referencing something that was computed later in the pipeline.
+
+Data closures are (or will be shortly implemented such that they are) computed in order; that means you can use one data closure to compute another, so long as the one computed from is expressed in the stream before the one which uses it to do some computation.
+
+We can rewrite a `ni` pipeline a little more accuartely as the following:
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
+
+We will see how `ni` actually does this in the following sections.
 
 
 ##`ni` is a quine
