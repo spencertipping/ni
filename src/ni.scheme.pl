@@ -1,44 +1,3 @@
-u("ni.scheme:ni.scheme")->create('ni.behavior.code',
-  name        => 'An unstructured behavior described by a block of code',
-  synopsis    => 'u("ni.behavior.code:<code>")->modify(u"ni.scheme:<scheme>")',
-  description => q{
-    Evaluates the specified code within the Perl package corresponding to a
-    scheme. No higher-level structure is imposed on the code, so instances of
-    this class are functionally opaque.
-
-    In general you should try to use more structured behaviors, but this one is
-    provided to make it possible to promote URIs directly into code; this
-    simplifies ni's bootstrapping logic.})
-
-  ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
-
-u("ni.scheme:ni.scheme")->create('ni.behavior.alias',
-  name        => 'Provides a named constructor function for a class',
-  synopsis    => 'u("ni.scheme:<name>")->uses(u"ni.behavior.alias:<fname>")',
-  description => q{
-    Creates a function in the ni:: namespace that generates instances of this
-    class. Calling the function is equivalent to calling the class's create()
-    method on the given arguments.})
-
-  ->uses(u"ni.behavior.code:" . q{
-    # TODO
-  });
-
-u("ni.scheme:ni.scheme")->create('ni.fn',
-  name        => 'A function, optionally with annotations',
-  synopsis    => q{ u("ni.fn:<code>")
-                  | fn(@annotations, '<code>')
-                  | fn(@annotations, '<args>' => '<code>') },
-  description => q{
-    Compiles the specified code into a callable object. Functions can install
-    themselves into Perl's symbol table, a property used by behaviors when
-    modifying classes.})
-
-  ->uses(u"ni.behavior.code:" . q{
-    use overload qw/&{} as_fn/;
-    # TODO
-  });
-
 u("ni.scheme:ni.scheme")->create('ni.scheme',
   name        => 'URI scheme describing URI schemes',
   synopsis    => ' u"ni.scheme:http"->u("google.com")
@@ -107,3 +66,61 @@ u("ni.scheme:ni.scheme")->create('ni.scheme',
     package.})
 
   ->uses(u"ni.behavior.code:$ni::scheme_meta_boot");
+
+u("ni.scheme:ni.scheme")->create('ni.behavior.code',
+  name        => 'An unstructured behavior described by a block of code',
+  synopsis    => 'u("ni.behavior.code:<code>")->modify(u"ni.scheme:<scheme>")',
+  description => q{
+    Evaluates the specified code within the Perl package corresponding to a
+    scheme. No higher-level structure is imposed on the code, so instances of
+    this class are functionally opaque.
+
+    In general you should try to use more structured behaviors, but this one is
+    provided to make it possible to promote URIs directly into code; this
+    simplifies ni's bootstrapping logic.})
+
+  ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
+
+u("ni.scheme:ni.scheme")->create('ni.behavior',
+  name        => 'A specific behavior that can be referred to by name',
+  synopsis    => 'u("ni.behavior:<name>")->modify(u"ni.scheme:<scheme>")',
+  description => q{ TODO })
+
+  ->uses(u"ni.behavior.code:" . q{
+    sub create {
+      my ($self, $name, %stuff) = @_;
+      $ni::live{"ni.behavior:$name"}
+        = bless {id => $name, %stuff}, $self->package;
+    }
+    sub modify {
+      my ($self, $scheme) = @_;
+      $$self{modifier}->($self, $scheme);
+    }});
+
+u("ni.scheme:ni.scheme")->create('ni.fn',
+  name        => 'A function, optionally with annotations',
+  synopsis    => q{ u("ni.fn:<code>")
+                  | fn(@annotations, '<code>')
+                  | fn(@annotations, '<args>' => '<code>') },
+  description => q{
+    Compiles the specified code into a callable object. Functions can install
+    themselves into Perl's symbol table, a property used by behaviors when
+    modifying classes.})
+
+  ->uses(u"ni.behavior.code:" . q{
+    use overload qw/&{} fn/;
+    sub create {
+      my ($self, @ac) = @_;
+      my $fn = {code => pop @ac};
+      $$fn{signature}   = pop   @ac if @ac && $ac[-1] =~ /^[$@%]/;
+      $$fn{description} = shift @ac if @ac && !ref $ac[0];
+      $$fn{annotations} = [@ac];
+      bless $fn, $self->package;
+    }
+    sub fn {
+      $$self{mutable}{fn} ||= eval join "\n",
+        "sub {",
+          $$self{signature} ? "my ($$self{signature}) = \@_;" : '',
+          $$self{code},
+        "}" || die "ni.fn: $@ compiling $$self{code}";
+    }});

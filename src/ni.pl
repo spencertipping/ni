@@ -50,6 +50,13 @@ sub uses {
   push @{$$self{behaviors} ||= []}, @bs;
   $self;
 }
+sub eval {
+  my ($self, $code) = @_;
+  my $p = $self->package;
+  eval "package $p;$code";
+  die $@ if $@;
+  $self;
+}
 sub create {
   my ($self, $child, %stuff) = @_;
   $ni::live{"ni.scheme:$child"}
@@ -59,9 +66,7 @@ eval 'package ni::behavior::code;' . ($ni::behavior_code_meta_boot = q{
 sub create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
 sub modify {
   my ($self, $scheme) = @_;
-  my $p = $scheme->package;
-  eval "package $p;\n$$self{code}";
-  die $@ if $@;
+  $scheme->eval($$self{code});
   $self;
 }
 });
