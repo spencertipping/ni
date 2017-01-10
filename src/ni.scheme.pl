@@ -1,3 +1,17 @@
+u("ni.scheme:ni.scheme")->create('ni.behavior.code',
+  name        => 'An unstructured behavior described by a block of code',
+  synopsis    => 'u("ni.behavior.code:<code>")->modify(u"ni.scheme:<scheme>")',
+  description => q{
+    Evaluates the specified code within the Perl package corresponding to a
+    scheme. No higher-level structure is imposed on the code, so instances of
+    this class are functionally opaque.
+
+    In general you should try to use more structured behaviors, but this one is
+    provided to make it possible to promote URIs directly into code; this
+    simplifies ni's bootstrapping logic.})
+
+  ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
+
 u("ni.scheme:ni.scheme")->create('ni.scheme',
   name        => 'URI scheme describing URI schemes',
   synopsis    => ' u"ni.scheme:http"->u("google.com")
@@ -67,20 +81,6 @@ u("ni.scheme:ni.scheme")->create('ni.scheme',
 
   ->uses(u"ni.behavior.code:$ni::scheme_meta_boot");
 
-u("ni.scheme:ni.scheme")->create('ni.behavior.code',
-  name        => 'An unstructured behavior described by a block of code',
-  synopsis    => 'u("ni.behavior.code:<code>")->modify(u"ni.scheme:<scheme>")',
-  description => q{
-    Evaluates the specified code within the Perl package corresponding to a
-    scheme. No higher-level structure is imposed on the code, so instances of
-    this class are functionally opaque.
-
-    In general you should try to use more structured behaviors, but this one is
-    provided to make it possible to promote URIs directly into code; this
-    simplifies ni's bootstrapping logic.})
-
-  ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
-
 u("ni.scheme:ni.scheme")->create('ni.behavior',
   name        => 'A specific behavior that can be referred to by name',
   synopsis    => 'u("ni.behavior:<name>")->modify(u"ni.scheme:<scheme>")',
@@ -118,9 +118,10 @@ u("ni.scheme:ni.scheme")->create('ni.fn',
       bless $fn, $self->package;
     }
     sub fn {
-      $$self{mutable}{fn} ||= eval join "\n",
+      my ($self) = @_;
+      $$self{mutable}{fn} ||= eval(join "\n",
         "sub {",
           $$self{signature} ? "my ($$self{signature}) = \@_;" : '',
           $$self{code},
-        "}" || die "ni.fn: $@ compiling $$self{code}";
+        "}") || die "ni.fn: $@ compiling $$self{code}";
     }});

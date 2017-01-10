@@ -38,7 +38,7 @@ our %live;
 sub u {
   return $_[0] if ref $_[0];
   return $live{$_[0]} if defined $live{$_[0]};
-  return $live{"ni.scheme:$1"}->u($2) if $_[0] =~ /^([^:]+):([\s\S]*)/;
+  return $live{"ni.scheme:$1"}->u($2, @_[1..$#_]) if $_[0] =~ /^([^:]+):([\s\S]*)/;
 }
 
 eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
