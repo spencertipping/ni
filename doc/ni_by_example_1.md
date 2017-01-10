@@ -1,4 +1,4 @@
-#Ni by Example, Chapter 1 (alpha release)
+#`ni` by Example, Chapter 1 (alpha release)
 
 Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
@@ -16,7 +16,7 @@ In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsh
 git clone git@github.com:spencertipping/ni.git
 cd ni
 ./build
-ln -s ni ~/bin/ni  # or whatever to add it to your path
+ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 ```
 
 ##`ni` Development Environment
