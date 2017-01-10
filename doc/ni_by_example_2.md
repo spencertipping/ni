@@ -1,4 +1,4 @@
-#`ni` by Example, Part 2 (pre-alpha release)
+#`ni` by Example, Chapter 2 (pre-alpha release)
 
 Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the first part of the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
 
@@ -205,7 +205,7 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-This quine looks odd, but most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with ). Heredocs are parsed in a non-obvious way. In this case, at a high level, the code works like this:
+Most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with ). Heredocs are parsed in a non-obvious way. In this case, at a high level, the code works like this:
 
 1. `$_` becomes the code written as a heredoc, which is just the 3rd line. The heredoc parser knows to skip the end of the line.
 2. `eval $_` happens, causing that code to be executed
@@ -231,8 +231,9 @@ We can keep connecting output pipes to input pipes and getting the same output. 
 
 
 
-####`//ni`: Print `ni`'s current source
+####`//ni`: Print `ni`'s _current_ source
 As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
+
 
 `ni` is a quine. To get `ni` to print its source, run:
 
@@ -248,20 +249,13 @@ _
 ....
 ```
 
-Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string.
+Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string. Also, because `ni` is self-modifying, `//ni` cannot be said to print `ni`'s source per se; instead it prints `ni`'s source at the time that it is called.
 
-This provides us with a surprising power. We can now state the  `ni` indirectly via the following:
+This provides us with a surprising power. We can now execute `ni` indirectly by piping `ni`'s source to `perl -`. The `-` instructs perl to read code from the command line.  More generally,
 
 > `$ ni ...` is equivalent to `ni //ni | perl - ...`
 
-If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, there is a 
-
-
-The `-` in the perl command instructs it to read code from the command line.
-
-
-Remember that `ni` is self-modifying, so `//ni` cannot be said to print `ni`'s source per se; instead it prints `ni`'s source at the time that it is called.
-
+If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, you should envision the possibilities of offloading work from one machine to another that's better equipped to solve your target problem.
 
 
 ##`ni` is a self-modifying quine
@@ -279,7 +273,7 @@ $ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
 $ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
 ```
 
-In fact, this `ni_prime` is a local modification of `ni`. Here's some evidence that this is going on.
+In fact, this `ni_prime` is a local modification of `ni`, which incorporates data closures. The details are outside the scope of how this occurs are outside the scope of this tutorial, but here's some evidence that this is going on.
 
 ```
 $ ni //ni | wc -c
@@ -287,16 +281,8 @@ $ ni //ni | wc -c
 ```
 
 ```
-$ ni ::ten[n10] //ni | wc -c
+$ ni ::my_closure[n10] //ni | wc -c
   743569
-```
-
-
-It looks like `ni` has changed, but a clever reader will ask if we've just waved our hands and hidden some characters in the stream. We haven't, for example, shown that the data closure exists **inside** of `ni`, and we also have that 
-
-```
-$ ni n10 //ni | wc -c
-  743535
 ```
 
 If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
@@ -319,51 +305,55 @@ $ ni ::ten[n10] //ni | perl - n1p'ten'
 (END)
 ```
 
-The potential counterexample fails this test.
+This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
 
 ```
-ni n10 //ni | perl - n1p'ten'
+$ ni //ni | perl - n1p'ten'
 ```
 
 ```
-Number found where operator expected at - line 2, near "2"
-	(Missing semicolon on previous line?)
-...
-Scalar found where operator expected at - line 12, near "$ni::self"
-	(Missing semicolon on previous line?)
-syntax error at - line 2, near "2"
-Execution of - aborted due to compilation errors.
+ten
+(END)
 ```
-
-
 
 
 ##SSH and Containers
 
-Now that we've covered why `ni` can easily cross between machines and execute appropriately (becasue it's a self-modifying quine), let's look at how to execute 
+We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`.
 
-* `C<container_name>[...]`: execute `[...]` in `<container_name>`
-  * Running in containers requires that Docker be installed on your machine.
-  * Running containers can be especially useful to take advantage of better OS-dependent utilities.
-  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase by replacing:
-    * `ni n1E7 g` with
-    * `ni n1E7 Cubuntu[g]`
-  * Containers are also useful for testing the portability of your code.
-* `s<host>[...]`: execute `[...]` in `<host>`
-  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
-  * You will want to do this to reduce keystrokes.
-  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
-  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
+## `C<container_name>[...]`: execute in a container
+
+Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
+
+Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
+
+ Containers are also useful for testing the portability of your code.
 
 
-##Input Operations
+## `s<alias>[...]`: execute over `ssh`
+
+You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
+
+```
+host <alias>
+    HostName <host.name>
+    Port <port.number>
+    User <user.name>
+```
+
+You will want to do this to reduce keystrokes; remember that within the bracketed operator, you will have access to the `<host>` filesystem.
+
+
+
+
+##JSON I/O
+* `json_encode`
 * `D:<field1>,:<field2>...`: JSON Destructure
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
-####`ni` and directories
+##Directory I/O
 
-Enrichment sections explore relevant but non-critical `ni` functions. Their contents are not critical to productive `ni` development, and they can be skipped or skimmed.
 
 Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
 
