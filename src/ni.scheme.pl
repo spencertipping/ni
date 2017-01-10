@@ -1,4 +1,4 @@
-u("ni.scheme:ni.scheme")->create('ni.behavior.code',
+u('ni.scheme:ni.scheme')->create('ni.behavior.code',
   name        => 'An unstructured behavior described by a block of code',
   synopsis    => 'u("ni.behavior.code:<code>")->modify(u"ni.scheme:<scheme>")',
   description => q{
@@ -12,7 +12,7 @@ u("ni.scheme:ni.scheme")->create('ni.behavior.code',
 
   ->uses(u"ni.behavior.code:$ni::behavior_code_meta_boot");
 
-u("ni.scheme:ni.scheme")->create('ni.scheme',
+u('ni.scheme:ni.scheme')->create('ni.scheme',
   name        => 'URI scheme describing URI schemes',
   synopsis    => ' u"ni.scheme:http"->u("google.com")
                  | u"ni.scheme:ni.rmi.pid"->behaviors ',
@@ -81,7 +81,7 @@ u("ni.scheme:ni.scheme")->create('ni.scheme',
 
   ->uses(u"ni.behavior.code:$ni::scheme_meta_boot");
 
-u("ni.scheme:ni.scheme")->create('ni.behavior',
+u('ni.scheme:ni.scheme')->create('ni.behavior',
   name        => 'A specific behavior that can be referred to by name',
   synopsis    => 'u("ni.behavior:<name>")->modify(u"ni.scheme:<scheme>")',
   description => q{ TODO })
@@ -97,7 +97,7 @@ u("ni.scheme:ni.scheme")->create('ni.behavior',
       $$self{modifier}->($self, $scheme);
     }});
 
-u("ni.scheme:ni.scheme")->create('ni.fn',
+u('ni.scheme:ni.scheme')->create('ni.fn',
   name        => 'A function, optionally with annotations',
   synopsis    => q{ u("ni.fn:<code>")
                   | fn(@annotations, '<code>')

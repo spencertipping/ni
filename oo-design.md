@@ -72,7 +72,7 @@ my $bytes_s = $mon->throughput;         # bytes/sec throughput
 u("ni.scheme:ni.rmi")->create('ssh',
   name        => 'SSH RMI forwarder',
   synopsis    => q{ u"ni.rmi.ssh://[user@]host[:port]/remote resource URI"
-                  | u"ni.rmi.ssh", $authority, $remote_resource },
+                  | u"ni.rmi.ssh", auth => $authority, path => $resource },
   description => q{
     Sends ni to the remote machine, creates an instance, and connects to it.
     This allows you to access remote resources as though they were local; all

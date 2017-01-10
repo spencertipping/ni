@@ -25,6 +25,7 @@ SOFTWARE.
 _
 $ni::init = <<'_';
 require 'ni.scheme.pl';
+require 'ni.behavior.uri.pl';
 exit 0;
 _
 $ni::data = \*DATA;
@@ -45,6 +46,7 @@ eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
 sub u {no strict 'refs'; &{$_[0]->package . "::create"}(@_)}
 sub package {(my $p = ${$_[0]}{id}) =~ s/\./::/g; $p}
 sub uses {
+  local $_;
   my ($self, @bs) = @_;
   $_->modify($self) for @bs;
   push @{$$self{behaviors} ||= []}, @bs;
@@ -54,7 +56,7 @@ sub eval {
   my ($self, $code) = @_;
   my $p = $self->package;
   eval "package $p;$code";
-  die $@ if $@;
+  die "error evaluating $code: $@" if $@;
   $self;
 }
 sub create {
