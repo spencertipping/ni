@@ -11,12 +11,17 @@ If you're modifying `ni` with a data closure, it may be that the closure is maki
 
 Also, remember that the Hadoop job (probably) does not have access to files on the machine from which it was called; this may cause errors that are somewhat difficult to read.
 
+###Job looks like its reading in data forever
+If you want to use data from HDFS, you need to use a quoted path, for example `$ ni \'hdfst:///path/to/files/... HS...`. 
+
+If you do this without quoting, for example `$ ni hdfst:///path/to/files/... HS...`, `ni` will read all of the data from HDFS into the stream, then output all of the data you read into the stream into a directory on HDFS, and then run the Hadoop Streaming job on that copied data.
+
 
 ##Reading from HDFS is slow
 There are several commands to read from HDFS; be sure that you are using the appropriate one.
 
 ###Using HDFS in a Hadoop Streaming job
-When running a Hadoop streaming job, you should use a **quoted path**. For example, `ni \'hdfst:///path/to/file/part-* HS:_:` will re-partition your data on HDFS.
+When running a Hadoop streaming job, you should use a **quoted path**. For example, `$ ni \'hdfst:///path/to/file/part-* HS:_:` will re-partition your data on HDFS.
 
 ###Using HDFS outside of Hadoop Streaming
 To read HDFS into the input stream, you'll want to use `ni`'s `hdfst` (hadoop file system *text*) operator to get data out, supporting the bash-style use of `*`.

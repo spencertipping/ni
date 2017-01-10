@@ -356,7 +356,7 @@ Running an operator with `S8` on a machine with only two cores is not going to g
 
 
   
-##HDFS I/O & Hadoop Streaming MapReduce
+##Hadoop Streaming MapReduce & HDFS I/O
 
 `ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides
 
@@ -375,14 +375,62 @@ The MapReduce paradigm breaks down into three steps:
 Combine is always optional, and you can also run jobs that are map-only or reduce-only.
 
 
+####MapReduce Example: Word Count
+
+The classic example of a MapReduce job is counting the words in a document.  Let's see how it fits with the MapReduce technique.
+
+If we were going to do this on a single machine, we might follow a process like the following:
+
+1. Read in a line of text
+2. Split the line into words
+3. Emit each word on its own line
+4. Sort the words alphabetically
+5. Count the sorted words.
+
+Let's see how this would work in MapReduce.
+
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Hash each word (mod number of reducers) to determine which reducer to send each word to.
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted words
+  2. Count the sorted words.
+
+
+We could also write this job with a combiner, decreasing network overhead at the cost of some slightly more complicated code.
+
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Sort words and emit one word per line to the combiner
+* **Combiner**
+  1. Count sorted words and emit key-value pairs in the form of (word, count)
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted key-value pairs 
+  2. Sum up the counts, reducing over the individual words.
+
+
+More generally, MapReduce works like this: the mapper reads in some often large, unstructured data, and outputs more highly structured information, in the form of key-value pairs. If the mapper outputs tab-delimited text, then the key of a line is its first column, and the value is everything else.
+
+
+The mapper sorts it output based on the key. If there is a combiner, it will be applied at this step. A hash function is applied to the key of the output of the mapper/combiner  its sorted output to the combiner; the combiner applies a hash function to the key and sends it to the appropriate reducer.
+
 
 ####Taking advantage of MapReduce with `ni`
 An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
 
 This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
 
+The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` is the following:
 
-####How `ni` Interacts with Hadoop Streaming
+> You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
+
+
+
+####How `ni` Interacts with Hadoop Streaming MapReduce
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
 Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
@@ -407,24 +455,59 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
-####Hadoop Streaming
-* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
-  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
-  * `_` -- skip the mapper/reducer/combiner. 
-  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
-  * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
-  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
-  
-**Exercise**: Write a `ni` spell that counts the words in the ni source using Hadoop Streaming.
+####`HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
 
+`HS` creates a hadoop streaming job with a given mapper, combiner, and reducer (specified as `ni` operators). Any `ni` snippet can be used for the mapper, combiner, and reducer. 
+
+Two shorthands for common Hadoop Streaming jobs exist:
+
+* `_` skips the mapper/reducer/combiner. 
+* `:` applies the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner.
+
+A useful Hadoop Streaming job that repartitions your data, for example, to be used in an HDFS join is the following:
+
+`$ ni ... HS:_:`
+
+It has a trivial map step, no combiner, and a trivial reducer; it looks like nothing is being done, but due to the shuffle in the MapReduce 
+
+If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
+
+####Developing Hadoop Streaming Jobs
+
+In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
+
+outputs the name of the directory where the output has been placed.
 
 `ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored.
 
-In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job,
+
+Since the output of the Hadoop Streaming job is a directory, the To read data from the output of a Hadoop Streaming job
 
 
-* Using HDFS paths in Hadoop Streaming Jobs:
-  * `ni ... \'hdfst://<path> HS...`
+
+You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
+
+`$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper (g combiner) g reducer`
+
+This allows you 
+  
+**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job.  All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+
+
+####Using HDFS paths in Hadoop Streaming Jobs:
+
+If you want to use data in HDFS for Hadoop Streaming jobs, you need to use a quoted path, as in:
+```
+$ ni \'hdfst://<abspath> HS...
+```
+
+If you do not the quote path, as in:
+```
+$ ni hdfst://<path> HS...
+```
+
+`ni` will read all of the data out of 
+
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
 ####Hadoop Job Configuration
@@ -458,7 +541,9 @@ If the Hadoop word count example didn't blow your freaking mind, convince you to
 * [Go](http://go-wise.blogspot.com/2011/09/go-on-hadoop.html)
 * [Perl](http://www.perlmonks.org/?node_id=859535)
 
-Not only can I not read any of those, it'd take me at least an hour to get through the tutorial in the language I know best (Python). Look at how convoluted the Java program is; it was taken from the Apache Hadoop site(!). 
+It would it take me at least an hour to get through the tutorial in the language I know best (Python). Look at how convoluted the Java program is; it was taken from the Apache Hadoop site(!).
+
+What's more important is that all of the examples above are completely uninspired, joyless programs. There isn't a single example of a program above that doesn't, on an existential level, suck. 
 
 I wrote the `ni` spell in about 5 seconds, and at this point, I bet it didn't take more than a couple of minutes for you to write the program, either. It's easily tested, readable, concise, and beautiful. You should be excited about the possibilities of what's coming next.
 
