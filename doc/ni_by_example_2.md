@@ -317,11 +317,11 @@ ten
 ```
 
 
-##SSH and Containers
+##SSH, Containers, and Horizontal Scaling
 
-We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`.
+We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines; on machines you control via `ssh`; and on multiple cores in the same machien.
 
-## `C<container_name>[...]`: execute in a container
+####`C`: execute in a container
 
 Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
 
@@ -330,7 +330,7 @@ Running containers can be especially useful to take advantage of better OS-depen
  Containers are also useful for testing the portability of your code.
 
 
-## `s<alias>[...]`: execute over `ssh`
+####`s`: execute over `ssh`
 
 You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
 
@@ -341,89 +341,28 @@ host <alias>
     User <user.name>
 ```
 
-You will want to do this to reduce keystrokes; remember that within the bracketed operator, you will have access to the `<host>` filesystem.
+You would access this as `$ ni ... s<alias>[...]`
 
+You will want to do this to reduce keystrokes; remember that within the brackets , you will have access to the filesystem of the 
 
+####`S`: Horizontal Scaling 
+`$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. However, running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.
 
-
-##JSON I/O
-* `json_encode`
-* `D:<field1>,:<field2>...`: JSON Destructure
-  * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
-  * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
-
-##Directory I/O
-
-
-Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
-
-```
-$ rm -rf dir_test && mkdir dir_test
-$ echo -e "hello\n" > dir_test/hi
-$ echo -e "you\n" > dir_test/there
-```
-
-Let's start with `$ ni test`
-
-```
-dir_test/hi
-dir_test/there
-(END)
-```
-
-`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
-
-`$ ni dir_test \<`
-
-yields:
-
-```
-hello
-you
-(END)
-```
-
-`ni` also works with the bash expansion operator `*`.
-
-For example, `ni dir_test/*` yields:
-
-```
-hello
-you
-(END)
-```
-
-`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
-
-```
-$ ni --explain dir_test/*
-["cat","dir_test/hi"]
-["cat","dir_test/there"]
-```
-
-##Intermediate Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
-
-* `w`: Append column to stream
-  * `$ ni <data> w[np'a*a']`
-  * `w` will add columns only up to the length of the input stream
-* `W`: Prepend column stream
-  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
-  * `W` will add rows only up to the length of the input stream
-* `v`: Vertical operation on columns
-  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
   
 ##HDFS I/O & Hadoop Streaming
-###How `ni` Interacts with Hadoop Streaming
+####How `ni` Interacts with Hadoop Streaming
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
 When `ni` uploads itself, it will also upload all data that is stored in data closures; if these closures are too large, the Hadoop server will refuse the job.
 
-###Hadoop Operators
+####Hadoop I/O
 * `hdfs://<path>`: HDFS `cat`
   * Equivalent to `hadoop fs -cat <path>`
 * `hdfst://<path>`: HDFS `text`
   * Equivalent to `hadoop fs -text <path>`
+
+
+####Hadoop Streaming
 * `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
   * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
   * `_` -- skip the mapper/reducer/combiner. 
@@ -434,13 +373,13 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * `ni ... \'hdfst://<path> HS...`
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
+####Hadoop Streaming Word Count in `ni`
+The classic MapReduce job is counting words; in `ni`, the script is concise and rather beautiful.
 
-##Horizontal Scaling
-Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down, as `ni` tries to spin up more processes than your machine can bear.
+`ni //ni HS[FWpF_ ]_c`
 
-* `S`: Horizontal Scaling 
-  * `$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors.
-  
+When we introduce streaming reduce in the next chapter, we can make this process even more efficient by reducing the amount of text sent from mappers to reducers.
+
 ##Conclusion
 
 Congrats on making it through another section.

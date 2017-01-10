@@ -2,7 +2,7 @@
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
-In this chapter, our goal is to multiply your power by introducing important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And for the time being, we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
+In this chapter, our goal is to multiply your power by introducing more I/O operations, important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
 
 However, we'll first codify `ni` philosophy and style, which we've touched on in the previous two chapters.
 
@@ -51,7 +51,72 @@ More details [here](monitor.md). Overall:
 * Large Positive numbers = slow step
 
 
+##JSON I/O
+* `json_encode`
+* `D:<field1>,:<field2>...`: JSON Destructure
+  * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
+  * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
 
+##Directory I/O
+
+
+Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
+
+```
+$ rm -rf dir_test && mkdir dir_test
+$ echo -e "hello\n" > dir_test/hi
+$ echo -e "you\n" > dir_test/there
+```
+
+Let's start with `$ ni test`
+
+```
+dir_test/hi
+dir_test/there
+(END)
+```
+
+`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
+
+`$ ni dir_test \<`
+
+yields:
+
+```
+hello
+you
+(END)
+```
+
+`ni` also works with the bash expansion operator `*`.
+
+For example, `ni dir_test/*` yields:
+
+```
+hello
+you
+(END)
+```
+
+`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
+
+```
+$ ni --explain dir_test/*
+["cat","dir_test/hi"]
+["cat","dir_test/there"]
+```
+
+##Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+  * `w` will add columns only up to the length of the input stream
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+  * `W` will add rows only up to the length of the input stream
+* `v`: Vertical operation on columns
+  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
 
 
 
