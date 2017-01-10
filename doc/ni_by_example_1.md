@@ -8,6 +8,22 @@ The knowledge represented in this tutorial is fundamental, but only scratches th
 
 In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
+##What is `ni`?
+
+`ni` is write-anywhere, run-everywhere
+
+`ni` is a self-modifying quine.
+
+`ni` is everything-from-the-command-line.
+
+`ni` is what you need from Flink and Spark and Luigi 
+
+`ni` is concise.
+
+`ni` is beautiful.
+
+`ni` is two-fisted data science.
+
 
 ##Installation
 `ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 

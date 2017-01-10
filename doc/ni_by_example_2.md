@@ -1,8 +1,10 @@
-#`ni` by Example, Chapter 2 (pre-alpha release)
+#`ni` by Example, Chapter 2 (alpha release)
 
 Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the first part of the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
 
 The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
+
+This tutorial covers 
 
 Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
 
@@ -327,7 +329,7 @@ Running in containers requires that Docker be installed on your machine. It is e
 
 Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
 
- Containers are also useful for testing the portability of your code.
+Containers are also useful for testing the portability of your code.
 
 
 ####`s`: execute over `ssh`
@@ -341,26 +343,69 @@ host <alias>
     User <user.name>
 ```
 
-You would access this as `$ ni ... s<alias>[...]`
+You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the other `ni` docs is `dev`, for your primary work machien.
 
-You will want to do this to reduce keystrokes; remember that within the brackets , you will have access to the filesystem of the 
+Inside the brackets,  you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
 
 ####`S`: Horizontal Scaling 
-`$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. However, running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.
+Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
+
+`$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
+
+Running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.  
+
 
   
-##HDFS I/O & Hadoop Streaming
+##HDFS I/O & Hadoop Streaming MapReduce
+
+`ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides
+
+####MapReduce Fundamentals
+
+MapReduce landed with a splash in 2004 with this [excellent paper](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) by Jeffrey Dean and Sanjay Ghemawat of Google.
+
+To understand how to best use `ni` with MapReduce, it's important to understand how it works.
+
+The MapReduce paradigm breaks down into three steps:
+
+1. Map
+2. Combine
+3. Reduce
+
+Combine is always optional, and you can also run jobs that are map-only or reduce-only.
+
+
+
+####Taking advantage of MapReduce with `ni`
+An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
+
+This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
+
+
 ####How `ni` Interacts with Hadoop Streaming
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
-When `ni` uploads itself, it will also upload all data that is stored in data closures; if these closures are too large, the Hadoop server will refuse the job.
+Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
 
-####Hadoop I/O
-* `hdfs://<path>`: HDFS `cat`
-  * Equivalent to `hadoop fs -cat <path>`
-* `hdfst://<path>`: HDFS `text`
-  * Equivalent to `hadoop fs -text <path>`
+####HDFS I/O
 
+Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
+
+HDFS stores files in triplicate, and distributes copies of files across different nodes in a cluster. This helps prevent data loss in the event of hard drive failure, and allows for MapReduce jobs to use data-local processing, which decreases network overhead (which is often rate-limiting in Hadoop MapReduce jobs).
+
+There are two `ni` operators 
+
+`$ ni hdfs://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -cat <abspath> | ni ...`
+
+`$ ni hdfst://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -text <abspath> | ni ...`
+
+Files are often stored in compressed form on HDFS, so `hdfst` is usually the operator you want. 
+
+Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
 ####Hadoop Streaming
 * `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
@@ -369,17 +414,52 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
   * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
   * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
+  
+**Exercise**: Write a `ni` spell that counts the words in the ni source using Hadoop Streaming.
+
+
+`ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored.
+
+In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job,
+
+
 * Using HDFS paths in Hadoop Streaming Jobs:
   * `ni ... \'hdfst://<path> HS...`
   * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
+####Hadoop Job Configuration
+
+Depending on the size of your Hadoop cluster and the amount of data with which you're working, there are several environment variables you will want to set:
+
+
+```
+export HADOOP_CONF_DIR=/etc/hadoop/conf
+```
+
+```
+export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
+```
+
+
+```
+export NI_HDFS_TMPDIR=/user/bilow/tmp
+```
+
 ####Hadoop Streaming Word Count in `ni`
-The classic MapReduce job is counting words; in `ni`, the script is concise and rather beautiful.
-
-`ni //ni HS[FWpF_ ]_c`
-
-When we introduce streaming reduce in the next chapter, we can make this process even more efficient by reducing the amount of text sent from mappers to reducers.
+`$ ni //ni HS[FWpF_] _ [c]`
 
 ##Conclusion
 
-Congrats on making it through another section.
+If the Hadoop word count example didn't blow your freaking mind, convince you to move all your work over to `ni`, and feverishly develop its documentation, take a look at the state of the art in:
+
+* [Python](http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/)
+* [Ruby](http://www.bigfastblog.com/map-reduce-with-ruby-using-hadoop)
+* [Java](https://hadoop.apache.org/docs/stable/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html)
+* [Go](http://go-wise.blogspot.com/2011/09/go-on-hadoop.html)
+* [Perl](http://www.perlmonks.org/?node_id=859535)
+
+Not only can I not read any of those, it'd take me at least an hour to get through the tutorial in the language I know best (Python). Look at how convoluted the Java program is; it was taken from the Apache Hadoop site(!). 
+
+I wrote the `ni` spell in about 5 seconds, and at this point, I bet it didn't take more than a couple of minutes for you to write the program, either. It's easily tested, readable, concise, and beautiful. You should be excited about the possibilities of what's coming next.
+
+Congrats on finishing this chapter of the tutorial. In the next chapter we'll develop tools that will 
