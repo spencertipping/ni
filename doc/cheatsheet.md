@@ -178,7 +178,6 @@ Note that whitespace is required after every `p'code'` operator; otherwise ni wi
   * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
   * You will want to do this to reduce keystrokes.
   * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
-  * `ssh` zips its output before transfer over the network which will decrease overhead and increase speed in general (but not always).
 
 
 ##Intermediate Column Operations
@@ -190,6 +189,9 @@ We can weave together row, column, and Perl operations to create more complex ro
 * `W`: Prepend column stream
   * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
   * `W` will add rows only up to the length of the input stream
+* `j` - streaming join
+  * This will join two streams based on the value of their first column, which is assumed to be sorted.
+  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
 
@@ -267,14 +269,14 @@ Set the second x component to 0 to flatten the image's depth dimension; then
 set the first R component to 0 and the second R component to 90 to show a
 front-facing view of your plot.
 
-##Data Closure Basics and Array-Based Operators
+##Data Closure Basics and Multiline Selection Operators
 Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
 
 * `closure_name::[...]`: Create a data closure
   * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
   * The closure can be referenced within a Perl snippet as  `p' ... closure_name ...'`
-* `a_` through `l_`: Array-based line operations 
-  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use array-based line operators `a_` through `l_`, which are the array-based analogs to the line-based operators `a/a()` through `l/l()`.
+* `a_` through `l_`: Multiline Selectio Operators
+  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
@@ -371,28 +373,28 @@ These operations are good for reducing
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
-###Line-Array Reducers
+###Multiline Reducers
 These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
 
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} re {b}'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ re {b}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, re{b}` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+
+`rea` is the more commonly used shorthand for `re {a}`
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
 
 ##Stream Splitting/Joining/Duplication
 I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
 
 * `+`: append a stream to this one
 * `^`: prepend a stream to this one
-* `%`: duplicate this stream through a process, and include output
 * `=`: duplicate this stream through a process, discarding its output
 
 
-##Advanced Row and Column Operations
-* `j` - streaming join
-  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
+##Matrix Operations
 * `Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
     * The index of the row that the input data that came from
@@ -400,25 +402,19 @@ I don't find these operators particularly useful in practice (with the exception
     * The value of the input stream at the row + column specified by the first two columns.
 * `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * In the case that there are collisions for locations `X`, `X` will sum the values
+  * For example: `ni n010p'r 0, a%3, 1' X`
   * The specification for what the input matrix must look like is described above in the `Y` operator.
-  
-  
-
-##Matrix Operations
-
-Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
-
-
-* `N'x = ...'`: Numpy-style matrix operations
+* `N'x = ...'`: Numpy matrix operations
   * Dense matrices can be transformed using Numpy-like operations
   * The entire input matrix (i.e. the stream) is referred to as `x`.
   * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
-  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
-* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * **TODO**: understand how these actually work.
-* `X`: sparse-to-dense transformation
-  * In the case that there are collisions for locations `X`, `X` will sum the values
-  * For example: `ni n010p'r 0, a%3, 1' X`
+  * Example `ni n5p'r map a*$_, 1..10' N'x = x.T'`
+  * You also have available the entire numpy package at your disposal:
+    * Example: `ni n10p'r map a*$_, 1..10' N'x = dot(x, x.T)'`
+    * Example: `ni n1N'x = random.normal(size=(5,3))'`
+  * Note that your statements must always store the matrix back in the variable `x`.
+ 
 
 ##Advanced Data Closures & Checkpoints
 
@@ -435,7 +431,7 @@ Operations on huge matrices are not entirely `ni`ic, since they may require spac
   * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
   
 ##Binary Operations
-In theory, this can save you a lot of space. But I haven't used this in practice.
+The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
   
 
 ##Less Useful `ni`-specific Perl Extensions
@@ -454,7 +450,15 @@ ni //license FWpF_ p'r pl 3' \
 ###Array Functions
   * `clip`
   * `within`
-  
+
+
+##Partitioned Matrix Operations
+One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that mathematical operations on tall and wide matrices have better support through partitioning.
+
+`ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex 
+
+* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
+  * **BUG**: Still don't really get this 
 
 ##Things other than Perl 
 

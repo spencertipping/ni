@@ -1,4 +1,4 @@
-#Ni by Example, Chapter 1 (alpha release)
+#`ni` by Example, Chapter 1 (alpha release)
 
 Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
@@ -8,6 +8,22 @@ The knowledge represented in this tutorial is fundamental, but only scratches th
 
 In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
+##What is `ni`?
+
+`ni` is write-anywhere, run-everywhere
+
+`ni` is a self-modifying quine.
+
+`ni` is everything-from-the-command-line.
+
+`ni` is what you need from Flink and Spark and Luigi 
+
+`ni` is concise.
+
+`ni` is beautiful.
+
+`ni` is two-fisted data science.
+
 
 ##Installation
 `ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
@@ -16,7 +32,7 @@ In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsh
 git clone git@github.com:spencertipping/ni.git
 cd ni
 ./build
-ln -s ni ~/bin/ni  # or whatever to add it to your path
+ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 ```
 
 ##`ni` Development Environment
@@ -495,7 +511,7 @@ However, `ni` implements access to fields beyond the first 12 using the explicit
 
 It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
 
-`p'F_ ...'` takes a range (or a single number) as its second argument.
+`p'F_ ...'` takes a range (or a single number) as an optional second argument. `p'F_` by itself returns all fields of the input stream.
 
 To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
 
@@ -510,16 +526,16 @@ Sorting large amounts of data requires buffering to disk, and the vagaries of ho
 
 If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
 
-`$ ni /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt`
+`$ ni /usr/share/dict/words F// pF_ gc \>letter_counts.txt`
 
 You'll probably see the `ni` monitor for the first time, showing the steps of the computation, and what steps are taking time.  The whole process takes about 90 seconds on my computer.
 
 ```
-$ ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
-ni --explain /usr/share/dict/words F// p'FR 0' gc \>letter_counts.txt
+$ ni --explain /usr/share/dict/words F// pF_ gc \>letter_counts.txt
+ni --explain /usr/share/dict/words F// pF_ gc \>letter_counts.txt
 ["cat","/usr/share/dict/words"]
 ["split_regex",""]
-["perl_mapper","FR 0"]
+["perl_mapper","F_"]
 ["row_sort","-t","\t"]
 ["count"]
 ["file_write","letter_counts.txt"]
@@ -544,8 +560,8 @@ Examples:
 As above, if you have more than one column, you currently **must** specify the columns you want sorted; the reason for this is a system-to-system instability with regard to how the unix `sort` interacts).
   
 ####`c`: Count Sorted Rows
-`c` is `ni` syntax for `uniq -c`, which counts the number of unique rows.
-    
+`c` is `ni`'s version of `uniq -c`, which counts the number of identical  consecutive rows in a stream. The main difference is that `ni`'s `c` tab-delimits the output, while `uniq -c` space-delimits.
+   
 ####`u`: Unique Sorted Rows
 `u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
   
