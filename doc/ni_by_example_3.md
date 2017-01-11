@@ -24,35 +24,52 @@ Some jobs that are difficult for `ni`:
 * SQL Joins
 
 Here's how `ni` solves those:
+* Hadoop Streaming
+* Numpy Operations
+* HDFS Joins
 
 
 
+####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
+
+* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
+* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
 
 
 
+##Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
-##Perl for `ni` fundamentals
-
-
-
-##Connecting `bash` and `ni`
-
-* `e[<script>]`: Evaluate script
-  * evaluate `<script>` in bash, and stream out the results one line at a time.
-
-
-
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+  * `w` will add columns only up to the length of the input stream
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+  * `W` will add rows only up to the length of the input stream
+* `v`: Vertical operation on columns
+  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
   
-##Understanding the `ni` monitor
-More details [here](monitor.md). Overall:
-
-* Negative numbers = non-rate-determining step
-* Positive numbers = rate-determining step
-* Large Positive numbers = slow step
+##Numpy Operations
+  * `N'x = ...'`: Numpy-style matrix operations
+  * Dense matrices can be transformed using Numpy-like operations
+  * The entire input matrix (i.e. the stream) is referred to as `x`.
+  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
+  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
 
 
 ##JSON I/O
-* `json_encode`
+*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
+  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
+  *  Here's an example:
+  
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \>jsons
+```
+
 * `D:<field1>,:<field2>...`: JSON Destructure
   * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
   * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
@@ -106,69 +123,7 @@ $ ni --explain dir_test/*
 ["cat","dir_test/there"]
 ```
 
-##Intermediate Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
-* `w`: Append column to stream
-  * `$ ni <data> w[np'a*a']`
-  * `w` will add columns only up to the length of the input stream
-* `W`: Prepend column stream
-  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
-  * `W` will add rows only up to the length of the input stream
-* `v`: Vertical operation on columns
-  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
-
-
-
-
-##Perl for `ni`
-A few important operators for doing data manipulation in Perl. Many Perl subroutines can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
-
-* `lc`
-* `uc`
-* `substr`
-* `split`
-* `join`
-* `**`: exponent
-* `my $<v> = <expr>`: instantiate a scalar `<v>` with the value of `<expr>`
-* `map`
-* `keys %h`
-* Regular Expressions
-  * `$<v> =~ /regex/`
-  * `$<v> =~ s/regex//`
-  * `$<v> = tr/regex//d`
-  * `$<v> = y/regex//`
-
-
-
-
-##Useful `ni`-specific Perl Subroutines
-The operators in this section refer specifically to the 
-`$ ni <data> p'...'`
-
-* `ghe`: geohash encoding
-  * `ghe($lat, $lng, $precision)`
-    * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
-    * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
-* `ghd`: geohash decoding
-  * `ghd($gh_base32)`
-     * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-  * `ghd($gh_int, $precision)`
-    * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-* `tpe`: time parts to epoch
-  * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
-  * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
-* `tep`: time epoch to parts
-  * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
-  * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
-* `timezone_seconds`
-  * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
-  
-  
-##Plotting with `ni --js`
-Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
-
-**TODO**: Say something useful.
 
 
 ##Multiline Selection Operators
@@ -180,15 +135,7 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
  
-##Intermediate `ni` Philosophy and Style
-####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
-* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
-
-####What `ni` doesnt do.
-* `ni` is adequate at arithmetic and line-based function application, but generally `ni` is bad at math. 
 
 
 ##Basic Perl Reducers
@@ -206,33 +153,8 @@ These operations encapsulate the most common types of reduce operations that you
 * `rc`: Compound reduce
 * `rfn`: Custom compound reduce
 
-##Cell Operations 
-`$ ni <data> ,<op><columns>`
-
-These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
-
-* `,a`: Running average
-* `,d`: Difference between consecutive rows
-* `,e`: Natural exponential (`e**x`)
-* `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
-* `,l`: Natural log (`ln x`)
-* `,s`: Running sum 
-* `,q`: Quantize
-* `,z`: Intify (hash and then convert hash values to integers starting with 1)
 
 
-##Advanced Perl Operations
-* `p'^{BEGIN_BLOCK} ...'`: Begin block
-  * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation takes precedence over 
-  * Begin blocks are useful for converting data closures to Perl data structures, and defining other constants that are used in 
-  These blocks are evaluated in their entirety 
-* `p'%h = <col_1><col_2>_ @lines`: Hash constructor
-  * Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. Hash constructors are useful inside of begin blocks, often using the following workflow:
-    * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
-    * Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
-    * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-    * `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
 
 ##Advanced Perl Reducers
@@ -259,12 +181,6 @@ These operations can be used to reduce the data output by the readahead function
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
 
-##Stream Splitting/Joining/Duplication
-I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
-
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `=`: duplicate this stream through a process, discarding its output
 
 
 ##Advanced Row and Column Operations
@@ -281,58 +197,6 @@ I don't find these operators particularly useful in practice (with the exception
   
   
 
-##Matrix Operations
-
-Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
-
-
-* `N'x = ...'`: Numpy-style matrix operations
-  * Dense matrices can be transformed using Numpy-like operations
-  * The entire input matrix (i.e. the stream) is referred to as `x`.
-  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
-  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
-* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * **TODO**: understand how these actually work.
-* `X`: sparse-to-dense transformation
-  * In the case that there are collisions for locations `X`, `X` will sum the values
-  * For example: `ni n010p'r 0, a%3, 1' X`
-
-##Advanced Data Closures & Checkpoints
-
-* `::closure_name[...]`
-  * Regardless of where they are written in the `ni` command, data closures are computed before anything else, including Perl begin blocks. They are also computed separately from each other, which means that one closure cannot in general reference the value of another closure.
-  * If the value of one closure depends on the value of another, the other closure must be computed within the first closure; this leads to duplication of code. It's not the best, but if you need this, you're probably using `ni` wrong too.
-* `@:[disk_backed_data_closure]`
-* `:[checkpoint]`
-
-##Annoyingly Advanced Perl
-* `use strict` and the `::` prefix in a Perl Environment
-  * When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
-  * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
-  * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
-  
-##Binary Operations
-In theory, this can save you a lot of space. But I haven't used this in practice.
-  
-
-##Less Useful `ni`-specific Perl Extensions
-###JSON Encoding
-
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-  *  Here's an example:
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons```
-
-
-###Array Functions
-  * `clip`
-  * `within`
-  
-
 ##Things other than Perl 
 
 Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
@@ -341,15 +205,3 @@ Look, these are here, and if it helps you get started with `ni`, great. But `ni`
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
-   
-##Writing Your Own `ni` Extensions
-**TODO** Understand how this works
-
-##Obscure Interops/Extensions
-Here be dragons, and files that start with `<<EOF`.
-
-* [SQL](sql.md)
-* [PySpark](pyspark.md)
-* [Scripting](script.md)
-* [HTTP Operations](net.md)
-* [Defining `ni` functions](fn.md)
