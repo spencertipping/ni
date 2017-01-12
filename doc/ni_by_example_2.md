@@ -539,11 +539,24 @@ foo[]   [bar]
 ```
 
 
-####`:[...]`: Checkpoints
-Because `ni` outputs raw HDFS paths from `HS` jobs, and these paths are set to random strings of letters and numbers, they may be difficult to remember.  Using a checkpoint 
+####`:checkpoint_name[...]`: Checkpoints
+
+Checkpoints are used to persist the storage of results across multiple `ni` runs to disk; unlike files, they can be used 
+
+ they can be used in `ni` spells like closures, but they do not modify the `ni` source.
+
+If you have a very expensive operation, you might persist its sto
+
+Because `ni` outputs raw HDFS paths from `HS` jobs, and these paths are set to random strings of letters and numbers, they may be difficult to remember.  Using a checkpoint makes sense when you need to use a particular path multiple times to write more code more efficiently.
 
 
-Checkpoints can hold a lot of data
+`$ ni :clean_data[HS ...]` is a useful way to save these paths; this path can be recalled 
+
+Checkpoints can also be used to hold 
+
+You might ask why checkpoints are useful when data can be persisted in-stream using `=\>`. Here, remember that `=\>` will start executing as quickly as possible, thus it will not save the name of your output directory 
+
+The checkpoint operator will wait until EOF from the generator, and then set the filename, so you won't have a partial result.
 
 
 ####`^{...}`: `ni` configuration
