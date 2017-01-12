@@ -6949,8 +6949,8 @@ defresource 'hdfs',
 defresource 'hdfst',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     my $path = shell_quote $_[1];
-                    sh qq{$hadoop_name fs -text $path \
-                       || $hadoop_name fs -text $path/part*}} @_},
+                    sh qq{$hadoop_name fs -text $path \\
+                       || $hadoop_name fs -text $path"/part*"}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 Streaming.
