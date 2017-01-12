@@ -1,9 +1,10 @@
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
-quote them you should use the `\'` prefix:
+quote them you should use the `\'` prefix or the `i` operator:
 
 | ni http://google.com          # prints contents of google.com
   ni \'http://google.com        # prints "http://google.com"
+  ni ihttp://google.com         # prints "http://google.com"
 
 If you've got a lot of resources, you can use `\'` with a lambda to quote all
 of them:

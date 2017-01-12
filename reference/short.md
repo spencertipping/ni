@@ -473,8 +473,8 @@
 ## SYNTAX
 	<sortspec> -> {row_sort_op        sort_args @$_}
 
-# SHORT OPERATOR /id:
-	Append literal text
+# SHORT OPERATOR /i
+	Identity: append literal text
 
 ## SYNTAX
 	(

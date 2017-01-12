@@ -324,7 +324,7 @@
 	  | <colspec> -> {cols_op @$_}
 	  )
 	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
-	| 'id:' (
+	| 'i' (
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {echo_op $_}

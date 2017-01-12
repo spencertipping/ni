@@ -2742,15 +2742,15 @@ defoperator n => q{
 
 docoperator n => q{Append consecutive integers within a range};
 
-defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
-defshort '/n0',  pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
-defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
+defshort '/n',  pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
+defshort '/n0', pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
+defshort '/i',  pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
 docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
-docshort '/id:' => q{Append literal text};
+docshort '/i' => q{Identity: append literal text};
 docshort '/e' => q{Exec shell command as a filter for the current stream};
 
 doclong '/fs' => q{Append things that appear to be files};
@@ -3159,13 +3159,14 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-112 core/uri/uri.pl.sdoc
+113 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
-quote them you should use the `\'` prefix:
+quote them you should use the `\'` prefix or the `i` operator:
 
 | ni http://google.com          # prints contents of google.com
   ni \'http://google.com        # prints "http://google.com"
+  ni ihttp://google.com         # prints "http://google.com"
 
 If you've got a lot of resources, you can use `\'` with a lambda to quote all
 of them:
@@ -7796,7 +7797,7 @@ $ ni nE3p'r a, $_ for 0..999' r'/0(\t|$)/' p'r a, sin(a/100)*sin(b/100), b'
   below and show what it looks like if we omit it.
 - `p'r a, sin(a/100)*sin(b/100), b'`: the plane coordinates are `a` and `b`, so
   for each plane point we emit a 3D point at `<a, f(a, b), b>`.
-- `@[id:0,4,0 id:0,-4,0 FC]`: two extra data points to expand the min/max along
+- `@[i0,4,0 i0,-4,0 FC]`: two extra data points to expand the min/max along
   the Y axis. This results in flatter output.
 
 ### `r'/0(\t|$)/'` for the grid
@@ -7818,8 +7819,8 @@ more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
 - `+[...]`: append a new stream:
-  - `id:0,4,0`: append the literal text `0,4,0`
-  - `id:0,-4,0`: append the literal text `0,-4,0`
+  - `i0,4,0`: append the literal text `0,4,0`
+  - `i0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
     occupy three columns each.
 
@@ -9956,13 +9957,13 @@ $ ni ::word[n1p'pretty'] n3 w[np'r word']
 The `id` operator puts whitespace-delimited literal text into the stream.
 
 ```bash
-$ ni id:foo                     # literal text
+$ ni ifoo                     # literal text
 foo
 ```
 
 The example above can be written equivalently as:
 ```bash
-$ ni ::word[id:pretty ] n3 w[np'r word']
+$ ni ::word[ipretty ] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -10124,7 +10125,7 @@ $ ni n04                        # integer generator, zero-based
 1
 2
 3
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
 ```
 
@@ -10233,24 +10234,24 @@ $ zcat file3.gz
 `z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip z | gzip -dc               # gzip by default
+$ ni igzip z | gzip -dc                 # gzip by default
 gzip
-$ ni id:gzip zg | gzip -dc              # explicitly specify
+$ ni igzip zg | gzip -dc                # explicitly specify
 gzip
-$ ni id:gzip zg9 | gzip -dc             # specify compression level
+$ ni igzip zg9 | gzip -dc               # specify compression level
 gzip
-$ ni id:xz zx | xz -dc
+$ ni ixz zx | xz -dc
 xz
-$ ni id:lzo zo | lzop -dc
+$ ni ilzo zo | lzop -dc
 lzo
-$ ni id:bzip2 zb | bzip2 -dc
+$ ni ibzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 z4 | lz4 -dc
+$ ni ilz4 z4 | lz4 -dc
 lz4
 ```
 
