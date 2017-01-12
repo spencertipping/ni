@@ -464,7 +464,7 @@ This allows you to iterate fast, within the command line.
   
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job.  All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
-####HDFS I/O
+####`hdfst://<path>` and `hdfs://<path>`: HDFS I/O
 
 Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
 
@@ -484,22 +484,55 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
+
+####`i`: Literal text 
+To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, `i`. `i` operator is the way to put literal text into the command line:
+
+```
+$ ni ihello ithere
+```
+
+yields:
+
+```
+hello
+there
+(END)
+```
+
+You can use single quotes with `i` to include spaces within strings.
+
+```
+$ni i'one whole line'
+```
+
+If you want to include tabs in your text, the easiest way is to comma-separate your text and use `FC` to split on commas.
+
+
+```
+$ni i'tabs,between,entries' FC
+```
+
+
+
+
+
+
+
 ####Using HDFS paths in Hadoop Streaming Jobs:
 
-If you want to use data in HDFS for Hadoop Streaming jobs, you need to use a quoted path, as in:
+If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text; 
 
 ```
-$ ni \'hdfst://<abspath> HS...
+$ ni ihdfst://<abspath> HS...
 ```
 
-If you do not the quote path, as in:
+This will pass the directory path directly to the Hadoop Streaming job. If you do not use path, as in:
 ```
 $ ni hdfst://<path> HS...
 ```
 
-`ni` will read all of the data out of 
-
-  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+`ni` will read all of the data out of HDFS, stream that data to a new HDFS folder, and then run the Hadoop job using the name of the folder that has The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
 ####Hadoop and HDFS Configuration
 
