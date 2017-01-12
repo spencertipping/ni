@@ -477,10 +477,7 @@
 	Identity: append literal text
 
 ## SYNTAX
-	(
-	  /.*/
-	  <empty>?
-	) -> {$$_[0]} -> {echo_op $_}
+	<id_text> -> {echo_op $_}
 
 # SHORT OPERATOR /j
 
@@ -575,7 +572,7 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  | (
-	      <shell_lambda>
+	      <multiword>
 	      <empty>?
 	    ) -> {$$_[0]}
 	  )

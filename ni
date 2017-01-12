@@ -2670,20 +2670,23 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-222 core/stream/ops.pl.sdoc
+225 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 c
 BEGIN {
-  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+  defparseralias multiword    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
 }
 BEGIN {
-  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
-                                         pmap(q{shell_quote @$_}, shell_lambda),
-                                         prx '[^][]+';
+  defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
+                                       pmap(q{shell_quote @$_}, multiword),
+                                       prx '[^][]+';
+  defparseralias id_text => palt pmap(q{join "\t", @$_}, multiword_ws),
+                                 pmap(q{join "\t", @$_}, multiword),
+                                 prx '[^][]+';
 }
 
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -2711,14 +2714,14 @@ defmetaoperator cat => q{
            @$right[$i+1..$#{$right}]]);
 };
 
-docparser shell_lambda => <<'_';
+docparser multiword => <<'_';
 A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
 metacharacters within the arguments won't be expanded). If you use this form,
 no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
 to close the list.
 _
 
-docparser shell_lambda_ws => <<'_';
+docparser multiword_ws => <<'_';
 A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
 metacharacters within the arguments won't be expanded). Whitespace is required
 around both brackets.
@@ -2744,7 +2747,7 @@ docoperator n => q{Append consecutive integers within a range};
 
 defshort '/n',  pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0', pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
-defshort '/i',  pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
+defshort '/i',  pmap q{echo_op $_}, id_text;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
@@ -3527,7 +3530,7 @@ defoperator ssh => q{
 };
 
 defshort '/s', pmap q{ssh_op @$_},
-  pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;
+  pseq palt(pc pmap(q{[$_]}, ssh_host), pc multiword), _qfn;
 
 Network resources.
 
