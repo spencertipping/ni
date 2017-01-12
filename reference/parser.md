@@ -1196,7 +1196,7 @@
 ## DEFINITION
 	<core parser {
 	  my ($self, $x, @xs) = @_;
-	        defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)
+	        !defined $x || $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)
 	}>
 
 # PARSER popt
