@@ -77,13 +77,13 @@ $ ni ::word[n1p'pretty'] n3 w[np'r word']
 The `id` operator puts whitespace-delimited literal text into the stream.
 
 ```bash
-$ ni id:foo                     # literal text
+$ ni ifoo                     # literal text
 foo
 ```
 
 The example above can be written equivalently as:
 ```bash
-$ ni ::word[id:pretty ] n3 w[np'r word']
+$ ni ::word[ipretty ] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -245,7 +245,7 @@ $ ni n04                        # integer generator, zero-based
 1
 2
 3
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
 ```
 
@@ -354,24 +354,24 @@ $ zcat file3.gz
 `z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip z | gzip -dc               # gzip by default
+$ ni igzip z | gzip -dc                 # gzip by default
 gzip
-$ ni id:gzip zg | gzip -dc              # explicitly specify
+$ ni igzip zg | gzip -dc                # explicitly specify
 gzip
-$ ni id:gzip zg9 | gzip -dc             # specify compression level
+$ ni igzip zg9 | gzip -dc               # specify compression level
 gzip
-$ ni id:xz zx | xz -dc
+$ ni ixz zx | xz -dc
 xz
-$ ni id:lzo zo | lzop -dc
+$ ni ilzo zo | lzop -dc
 lzo
-$ ni id:bzip2 zb | bzip2 -dc
+$ ni ibzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 z4 | lz4 -dc
+$ ni ilz4 z4 | lz4 -dc
 lz4
 ```
 

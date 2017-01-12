@@ -17,9 +17,9 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * Automatically decompresses the file and streams out one line of the file out at a time.
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
-* `id:<text>`: Literal text input
-  * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
-  * `$ ni id:'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+* `i<text>`: Literal text input
+  * `$ ni iOK!` -- add the literal text `OK!` to the stream.
+  * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
@@ -128,7 +128,7 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 * `g`: General sorting
   * `gB` - sort rows ascending by the lexicographic value of the second column
     * Lexicographic value is determined by the ordering of characters in the ASCII table.
-    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+    * `ni ia iC g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
   * `gC-` - sort rows *descending* by the lexicographic value of the third column
    * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
   * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
