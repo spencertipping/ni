@@ -6920,7 +6920,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-156 core/hadoop/hadoop.pl.sdoc
+159 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6947,7 +6947,10 @@ defresource 'hdfs',
   nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    my $path = shell_quote $_[1];
+                    sh qq{$hadoop_name fs -text $path \
+                       || $hadoop_name fs -text $path/part*}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 Streaming.
