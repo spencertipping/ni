@@ -77,12 +77,12 @@ ni //license FWpF_ p'r pl 3' \
 ##Directory I/O
 
 
-Start by making some data (Note that you have to be in `bash` for the echo statements to work. [Here](http://stackoverflow.com/questions/8467424/echo-newline-in-bash-prints-literal-n) is a very interesting post about `echo`'s unintuitive behavior):
+Start by making some data:
 
 ```
 $ rm -rf dir_test && mkdir dir_test
-$ echo -e "hello\n" > dir_test/hi
-$ echo -e "you\n" > dir_test/there
+$ echo "hello" > dir_test/hi
+$ echo "you" > dir_test/there
 ```
 
 Let's start with `$ ni test`

@@ -101,13 +101,9 @@ Operations on huge matrices are not entirely `ni`ic, since they may require spac
   * In the case that there are collisions for locations `X`, `X` will sum the values
   * For example: `ni n010p'r 0, a%3, 1' X`
 
-##Advanced Data Closures & Checkpoints
+##Disk-Backed Data Closures
 
-* `::closure_name[...]`
-  * Regardless of where they are written in the `ni` command, data closures are computed before anything else, including Perl begin blocks. They are also computed separately from each other, which means that one closure cannot in general reference the value of another closure.
-  * If the value of one closure depends on the value of another, the other closure must be computed within the first closure; this leads to duplication of code. It's not the best, but if you need this, you're probably using `ni` wrong too.
 * `@:[disk_backed_data_closure]`
-* `:[checkpoint]`
 
 ##Annoyingly Advanced Perl
 * `use strict` and the `::` prefix in a Perl Environment
@@ -137,7 +133,6 @@ I don't find these operators particularly useful in practice (with the exception
 **TODO** Understand how this works
 
 ##Obscure Interops/Extensions
-Here be dragons, and files that start with `<<EOF`.
 
 * [SQL](sql.md)
 * [PySpark](pyspark.md)
