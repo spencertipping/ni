@@ -17,9 +17,9 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
   * Automatically decompresses the file and streams out one line of the file out at a time.
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
-* `id:<text>`: Literal text input
-  * `$ ni id:OK!` -- add the literal text `OK!` to the stream.
-  * `$ ni id:'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+* `i<text>`: Literal text input
+  * `$ ni iOK!` -- add the literal text `OK!` to the stream.
+  * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
@@ -128,7 +128,7 @@ Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and 
 * `g`: General sorting
   * `gB` - sort rows ascending by the lexicographic value of the second column
     * Lexicographic value is determined by the ordering of characters in the ASCII table.
-    * `ni id:a id:C g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+    * `ni ia iC g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
   * `gC-` - sort rows *descending* by the lexicographic value of the third column
    * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
   * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
@@ -298,8 +298,8 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
   * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
 * Using HDFS paths in Hadoop Streaming Jobs:
-  * `ni ... \'hdfst://<path> HS...`
-  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+  * `ni ... ihdfst://<path> HS...`
+  * The path must be input as literal text (with `i`) so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 ##Intermediate `ni` Philosophy and Style
 ####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
