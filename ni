@@ -2893,7 +2893,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-83 core/stream/main.pl.sdoc
+86 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -2909,6 +2909,9 @@ sub child_status_ok($) {
 
 $ni::main_operator = sub {
   my @children;
+
+  # Awkward TMPDIR fix for mac OSX
+  delete $ENV{TMPDIR} unless -d $ENV{TMPDIR} and -w $ENV{TMPDIR};
 
   if (-t STDIN) {
     nuke_stdin;
