@@ -43,7 +43,7 @@ Operator | Status | Example      | Description
 `f`      | T      | `fACB`       | Reorder, duplicate, or drop fields by column
 `g`      | T      | `gA`         | Sort by all or selected columns
 `h`      |        |              |
-`i`      |        |              |
+`i`      | T      | `ifoo`       | Append literal text `foo`
 `j`      | U      | `j foo`      | Join sorted streams on field values
 `k`      |        |              |
 `l`      | T      | `l'(1+ a)'`  | Map over rows using Common Lisp
