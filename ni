@@ -9880,7 +9880,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-485 doc/stream.md
+493 doc/stream.md
 # Stream operations
 
 MORE (because I got rid of your intro).
@@ -9957,27 +9957,35 @@ $ ni ::word[n1p'pretty'] n3 w[np'r word']
 
 ### Literal Text
 
-The `id` operator puts whitespace-delimited literal text into the stream.
+The `i` operator puts whitespace-delimited literal text into the stream.
 
 ```bash
-$ ni ifoo                     # literal text
+$ ni ifoo                       # literal text
 foo
+$ ni i[foo bar]                 # literal two-column text
+foo	bar
+$ ni i[ foo[] [bar] ]           # literal two-column text with brackets
+foo[]	[bar]
 ```
 
 The example above can be written equivalently as:
+
 ```bash
-$ ni ::word[ipretty ] n3 w[np'r word']
+$ ni ::word[ipretty] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
 ```
 
-Note that the whitespace between `pretty` and the closing bracket; if this
-space is not present, the `ni` parser will interpret the closing bracket as
-part of the literal text. This is important to keep in mind for `ni` in
-general, where commands are often very compact: sometimes whitespace (or a lack
-thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
-the common cases where whitespace (or lack thereof) is important.
+@bilow-factual now that `i` is fixed, the below isn't true anymore; but it's a
+good point in general so I didn't want to delete it:
+
+> Note that the whitespace between `pretty` and the closing bracket; if this
+> space is not present, the `ni` parser will interpret the closing bracket as
+> part of the literal text. This is important to keep in mind for `ni` in
+> general, where commands are often very compact: sometimes whitespace (or a lack
+> thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
+> the common cases where whitespace (or lack thereof) is important.
 
 ### bash commands
 ```bash
