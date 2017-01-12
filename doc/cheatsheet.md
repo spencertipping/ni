@@ -4,7 +4,7 @@
 
 `ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
 
-`$ni ...`
+`$ ni ...`
 
 Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be an exhaustive and functional introduction to `ni` as a language.
 
@@ -20,6 +20,7 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * `i<text>`: Literal text input
   * `$ ni iOK!` -- add the literal text `OK!` to the stream.
   * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+  * `$ ni i[these cats]` -- add a tab-separated line consisting of `these   cats`
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure

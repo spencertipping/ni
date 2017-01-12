@@ -486,15 +486,10 @@ Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS
 
 
 ####`i`: Literal text 
-To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, `i`. `i` operator is the way to put literal text into the command line:
+To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, for reasons that will be clear later. `i` operator is the way to put literal text into the command line:
 
 ```
 $ ni ihello ithere
-```
-
-yields:
-
-```
 hello
 there
 (END)
@@ -504,20 +499,25 @@ You can use single quotes with `i` to include spaces within strings.
 
 ```
 $ni i'one whole line'
+one whole line
+(END)
 ```
 
-If you want to include tabs in your text, the easiest way is to comma-separate your text and use `FC` to split on commas.
-
+If you want your text to be tab-delimited, you can put your text inside brackets.
 
 ```
-$ni i'tabs,between,entries' FC
+$ ni i[foo bar]
+foo     bar
+(END)
+``` 
+
+And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
+
 ```
-
-
-
-
-
-
+$ni i[ foo[] [bar] ]
+foo[]   [bar]
+(END)
+```
 
 ####Using HDFS paths in Hadoop Streaming Jobs:
 
@@ -534,14 +534,10 @@ $ ni hdfst://<path> HS...
 
 `ni` will read all of the data out of HDFS, stream that data to a new HDFS folder, and then run the Hadoop job using the name of the folder that has The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
-####Hadoop and HDFS Configuration
+####`^{...}`: `ni` configuration
 
-You can pass in jobconf options using the `hadoop/jobconf` variable or by
-setting `NI_HADOOP_JOBCONF`. Effective variable sizes 
-Depending on the size of your Hadoop cluster and the amount of data with which you're working, there are several environment variables you will want to set:
+You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
 
-
-Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
 
 ```
 $ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
@@ -550,7 +546,7 @@ $ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
   
 ```
 
-You can also control the Hadoop jobconf through environment variables in you `.bash_profile`.
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
 
 ```
 export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
