@@ -458,11 +458,66 @@ Since the output of the Hadoop Streaming job is a directory, the To read data fr
 
 You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
 
-`$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper gA combiner gA reducer`
+> `$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper gA combiner gA reducer`
 
 This identity allows you to iterate fast, completely within `less` and the command line.
   
-**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job.  All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+
+
+####`:checkpoint_name[...]`: Checkpoints
+
+Developing and deploying to producion `ni` pipelines that involve multiple Hadoop streaming steps involves a risk of failure outside the programmer's control; when this happens, we don't want to have to run the entire job again. 
+
+Checkpoints allow you to save the results of difficult jobs while continuing to develop in `ni`.
+
+Checkpoints and files share many commonalities. The key difference between a checkpoint and a file are:
+
+1. A checkpoint will wait for an `EOF` before writing to the specified checkpoint name, so the data in a checkpoint file will consist of all the output of the operator it encloses. A file, on the other hand, will accept all output that is streamed in, with no guarantee that it is complete.
+2. If you run a `ni` pipeline with checkpoints, and there are files that correspond to the checkpoint names in the directory from which `ni` is being run, then `ni` will use the data in the checkpoints in place of running the job. This allows you to save the work of long and expensive jobs, and to run these jobs multiple times without worrying that bhe steps earlier in the pipeline that have succeeded will have to be re-run.
+
+An example of checkpoint use is the following:
+
+```
+$ ni :numbers[n1000000gr4]
+1
+10
+100
+1000
+``` 
+
+This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
+
+
+```
+$ ni :numbers[n1000000gr4]O
+1000
+100
+10
+1
+```
+
+Compare this to the same code writing to a file:
+
+```
+$ ni n1000000gr4 =\>numbers
+1000
+100
+10
+1
+```
+
+Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
+
+```
+$ ni n1000000gr4 =\>numbers O
+1000
+100
+10
+1
+```
+
+One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
 
 
 ##HDFS I/O
@@ -537,26 +592,6 @@ $ni i[ foo[] [bar] ]
 foo[]   [bar]
 (END)
 ```
-
-
-####`:checkpoint_name[...]`: Checkpoints
-
-Checkpoints are used to persist the storage of results across multiple `ni` runs to disk; unlike files, they can be used 
-
- they can be used in `ni` spells like closures, but they do not modify the `ni` source.
-
-If you have a very expensive operation, you might persist its sto
-
-Because `ni` outputs raw HDFS paths from `HS` jobs, and these paths are set to random strings of letters and numbers, they may be difficult to remember.  Using a checkpoint makes sense when you need to use a particular path multiple times to write more code more efficiently.
-
-
-`$ ni :clean_data[HS ...]` is a useful way to save these paths; this path can be recalled 
-
-Checkpoints can also be used to hold 
-
-You might ask why checkpoints are useful when data can be persisted in-stream using `=\>`. Here, remember that `=\>` will start executing as quickly as possible, thus it will not save the name of your output directory 
-
-The checkpoint operator will wait until EOF from the generator, and then set the filename, so you won't have a partial result.
 
 
 ####`^{...}`: `ni` configuration
