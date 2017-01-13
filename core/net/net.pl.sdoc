@@ -13,7 +13,7 @@ defoperator ssh => q{
 };
 
 defshort '/s', pmap q{ssh_op @$_},
-  pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;
+  pseq palt(pc pmap(q{[$_]}, ssh_host), pc multiword), _qfn;
 
 Network resources.
 

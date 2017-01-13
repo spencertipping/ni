@@ -324,10 +324,7 @@
 	  | <colspec> -> {cols_op @$_}
 	  )
 	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
-	| 'id:' (
-	    /.*/
-	    <empty>?
-	  ) -> {$$_[0]} -> {echo_op $_}
+	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
 	    <colspec>?
 	    </qfn>
@@ -338,7 +335,7 @@
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
 	| 'n' <number>? -> {n_op 1, defined $_ ? $_ + 1 : -1}
-	| 'n0' <number> -> {n_op 0, $_}
+	| 'n0' <number>? -> {n_op 0, defined $_ ? $_ : -1}
 	| 'o' <sortspec> -> {row_sort_op '-n',  sort_args @$_}
 	| 'p' (
 	  | <perl_mapper_code> -> {perl_mapper_op $_}
@@ -384,7 +381,7 @@
 	        <empty>?
 	      ) -> {$$_[0]}
 	    | (
-	        <shell_lambda>
+	        <multiword>
 	        <empty>?
 	      ) -> {$$_[0]}
 	    )
@@ -1012,6 +1009,15 @@
 	| </qfn>
 	)
 
+# PARSER id_text
+
+## DEFINITION
+	(
+	| <multiword_ws> -> {join "\t", @$_}
+	| <multiword> -> {join "\t", @$_}
+	| /[^][]+/
+	)
+
 # PARSER integer
 
 ## DEFINITION
@@ -1049,6 +1055,37 @@
 
 ## DEFINITION
 	<number>? -> {$_ || exp 1}
+
+# PARSER multiword
+	A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+	metacharacters within the arguments won't be expanded). If you use this form,
+	no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
+	to close the list.
+
+## DEFINITION
+	(
+	  /\[/
+	  (
+	    /.*[^]]/
+	    <empty>?
+	  ) -> {$$_[0]}+
+	  /\]/
+	) -> {$$_[1]}
+
+# PARSER multiword_ws
+	A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
+	metacharacters within the arguments won't be expanded). Whitespace is required
+	around both brackets.
+
+## DEFINITION
+	(
+	  (
+	    /\[$/
+	    <empty>?
+	  ) -> {$$_[0]}
+	  !/\]$/+
+	  /\]$/
+	) -> {$$_[1]}
 
 # PARSER nefilename
 	The name of a possibly-nonexisting file
@@ -1196,7 +1233,7 @@
 ## DEFINITION
 	<core parser {
 	  my ($self, $x, @xs) = @_;
-	        defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)
+	        !defined $x || $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)
 	}>
 
 # PARSER popt
@@ -1358,41 +1395,10 @@
 
 ## DEFINITION
 	(
-	| <shell_lambda_ws> -> {shell_quote @$_}
-	| <shell_lambda> -> {shell_quote @$_}
+	| <multiword_ws> -> {shell_quote @$_}
+	| <multiword> -> {shell_quote @$_}
 	| /[^][]+/
 	)
-
-# PARSER shell_lambda
-	A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
-	metacharacters within the arguments won't be expanded). If you use this form,
-	no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
-	to close the list.
-
-## DEFINITION
-	(
-	  /\[/
-	  (
-	    /.*[^]]/
-	    <empty>?
-	  ) -> {$$_[0]}+
-	  /\]/
-	) -> {$$_[1]}
-
-# PARSER shell_lambda_ws
-	A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
-	metacharacters within the arguments won't be expanded). Whitespace is required
-	around both brackets.
-
-## DEFINITION
-	(
-	  (
-	    /\[$/
-	    <empty>?
-	  ) -> {$$_[0]}
-	  !/\]$/+
-	  /\]$/
-	) -> {$$_[1]}
 
 # PARSER sortspec
 

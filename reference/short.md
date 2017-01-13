@@ -473,14 +473,11 @@
 ## SYNTAX
 	<sortspec> -> {row_sort_op        sort_args @$_}
 
-# SHORT OPERATOR /id:
-	Append literal text
+# SHORT OPERATOR /i
+	Identity: append literal text
 
 ## SYNTAX
-	(
-	  /.*/
-	  <empty>?
-	) -> {$$_[0]} -> {echo_op $_}
+	<id_text> -> {echo_op $_}
 
 # SHORT OPERATOR /j
 
@@ -513,7 +510,7 @@
 	Append integers 0..N-1, or 0..infinity if N is unspecified
 
 ## SYNTAX
-	<number> -> {n_op 0, $_}
+	<number>? -> {n_op 0, defined $_ ? $_ : -1}
 
 # SHORT OPERATOR /o
 
@@ -575,7 +572,7 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  | (
-	      <shell_lambda>
+	      <multiword>
 	      <empty>?
 	    ) -> {$$_[0]}
 	  )

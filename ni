@@ -496,7 +496,7 @@ BEGIN {
 
   defparser 'pnx', '$',
     q{my ($self, $x, @xs) = @_;
-      defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+      !defined $x || $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($)  {pn 0, prx  $_[0], popt pempty}
@@ -2670,20 +2670,23 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-222 core/stream/ops.pl.sdoc
+225 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
 
 c
 BEGIN {
-  defparseralias shell_lambda    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-  defparseralias shell_lambda_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+  defparseralias multiword    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
+  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
 }
 BEGIN {
-  defparseralias shell_command   => palt pmap(q{shell_quote @$_}, shell_lambda_ws),
-                                         pmap(q{shell_quote @$_}, shell_lambda),
-                                         prx '[^][]+';
+  defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
+                                       pmap(q{shell_quote @$_}, multiword),
+                                       prx '[^][]+';
+  defparseralias id_text => palt pmap(q{join "\t", @$_}, multiword_ws),
+                                 pmap(q{join "\t", @$_}, multiword),
+                                 prx '[^][]+';
 }
 
 defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
@@ -2711,14 +2714,14 @@ defmetaoperator cat => q{
            @$right[$i+1..$#{$right}]]);
 };
 
-docparser shell_lambda => <<'_';
+docparser multiword => <<'_';
 A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
 metacharacters within the arguments won't be expanded). If you use this form,
 no ARGV entry can end in a closing bracket; otherwise ni will assume you wanted
 to close the list.
 _
 
-docparser shell_lambda_ws => <<'_';
+docparser multiword_ws => <<'_';
 A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
 metacharacters within the arguments won't be expanded). Whitespace is required
 around both brackets.
@@ -2742,15 +2745,15 @@ defoperator n => q{
 
 docoperator n => q{Append consecutive integers within a range};
 
-defshort '/n',   pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
-defshort '/n0',  pmap q{n_op 0, $_}, number;
-defshort '/id:', pmap q{echo_op $_}, prc '.*';  # TODO: convert to shell_cmd
+defshort '/n',  pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
+defshort '/n0', pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
+defshort '/i',  pmap q{echo_op $_}, id_text;
 
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
 docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
-docshort '/id:' => q{Append literal text};
+docshort '/i' => q{Identity: append literal text};
 docshort '/e' => q{Exec shell command as a filter for the current stream};
 
 doclong '/fs' => q{Append things that appear to be files};
@@ -2893,7 +2896,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-83 core/stream/main.pl.sdoc
+86 core/stream/main.pl.sdoc
 use POSIX ();
 
 our $pager_fh;
@@ -2909,6 +2912,9 @@ sub child_status_ok($) {
 
 $ni::main_operator = sub {
   my @children;
+
+  # Awkward TMPDIR fix for mac OSX
+  delete $ENV{TMPDIR} unless -d $ENV{TMPDIR} and -w $ENV{TMPDIR};
 
   if (-t STDIN) {
     nuke_stdin;
@@ -3156,13 +3162,14 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl.sdoc
-112 core/uri/uri.pl.sdoc
+113 core/uri/uri.pl.sdoc
 Resources identified by URI.
 A way for ni to interface with URIs. URIs are self-appending like files; to
-quote them you should use the `\'` prefix:
+quote them you should use the `\'` prefix or the `i` operator:
 
 | ni http://google.com          # prints contents of google.com
   ni \'http://google.com        # prints "http://google.com"
+  ni ihttp://google.com         # prints "http://google.com"
 
 If you've got a lot of resources, you can use `\'` with a lambda to quote all
 of them:
@@ -3523,7 +3530,7 @@ defoperator ssh => q{
 };
 
 defshort '/s', pmap q{ssh_op @$_},
-  pseq palt(pc pmap(q{[$_]}, ssh_host), pc shell_lambda), _qfn;
+  pseq palt(pc pmap(q{[$_]}, ssh_host), pc multiword), _qfn;
 
 Network resources.
 
@@ -4329,26 +4336,26 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
 sub argmax(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) > $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
   }
   $m;
 }
 
 sub argmin(&@) {
   local $_;
-  my ($f, $m, @xs) = @_;
-  my $fm = &$f($m);
-  for my $x (@xs) {
-    ($m, $fm) = ($x, $fx) if (my $fx = &$f($x)) < $fm;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
   }
   $m;
 }
 
-sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @_; 0}
-sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @_; 1}
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
 
 sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
@@ -4475,7 +4482,7 @@ sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/)[%d]}',
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ and $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
 Hash constructors.
@@ -4685,7 +4692,7 @@ if (1 << 32) {
 
   *geohash_decode = sub {
     local $_;
-    my $gh12 = $_[0] . "0" x 12;
+    my $gh12 = "$_[0]s" . "0" x 11;
     my ($low_30, $high_30) = (0, 0);
     for (0..5) {
       $low_30  = $low_30  << 5 | $geohash_decode{lc substr $gh12, $_ + 6, 1};
@@ -6917,7 +6924,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-156 core/hadoop/hadoop.pl.sdoc
+158 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6944,7 +6951,9 @@ defresource 'hdfs',
   nuke   => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 defresource 'hdfst',
-  read => q{soproc {exec conf 'hadoop/name', 'fs', '-text', $_[1]} @_},
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    my $path = shell_quote $_[1];
+                    sh qq{$hadoop_name fs -text $path || $hadoop_name fs -text $path"/part*"}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 Streaming.
@@ -7791,7 +7800,7 @@ $ ni nE3p'r a, $_ for 0..999' r'/0(\t|$)/' p'r a, sin(a/100)*sin(b/100), b'
   below and show what it looks like if we omit it.
 - `p'r a, sin(a/100)*sin(b/100), b'`: the plane coordinates are `a` and `b`, so
   for each plane point we emit a 3D point at `<a, f(a, b), b>`.
-- `@[id:0,4,0 id:0,-4,0 FC]`: two extra data points to expand the min/max along
+- `@[i0,4,0 i0,-4,0 FC]`: two extra data points to expand the min/max along
   the Y axis. This results in flatter output.
 
 ### `r'/0(\t|$)/'` for the grid
@@ -7813,8 +7822,8 @@ more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
 - `+[...]`: append a new stream:
-  - `id:0,4,0`: append the literal text `0,4,0`
-  - `id:0,-4,0`: append the literal text `0,-4,0`
+  - `i0,4,0`: append the literal text `0,4,0`
+  - `i0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
     occupy three columns each.
 
@@ -8811,7 +8820,7 @@ Operator | Status | Example      | Description
 `f`      | T      | `fACB`       | Reorder, duplicate, or drop fields by column
 `g`      | T      | `gA`         | Sort by all or selected columns
 `h`      |        |              |
-`i`      |        |              |
+`i`      | T      | `ifoo`       | Append literal text `foo`
 `j`      | U      | `j foo`      | Join sorted streams on field values
 `k`      |        |              |
 `l`      | T      | `l'(1+ a)'`  | Map over rows using Common Lisp
@@ -8863,7 +8872,7 @@ Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-437 doc/perl.md
+432 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -8941,11 +8950,7 @@ sub b() {F_ 1}
 ```
 
 ### `F_`: the array of fields
-The Perl code given to `p` is invoked on each line of input, which is stored
-both in `$l` and, for convenience, in `$_`. ni doesn't split `$l` into fields
-until you call `F_`, at which point the split happens and the fields are
-cached for efficiency.
-
+The Perl code given to `p` is invoked on each line of input, which is stored in `$_`. 
 `F_(...)` takes one or more column indexes (as zero-based integers) and returns
 the field values. If you don't pass in anything, it returns all of the fields
 for the line. For example:
@@ -8991,7 +8996,6 @@ sub row {
   # your code goes here
 }
 while (<STDIN>) {
-  $l = $_;
   defined $_ && print "$_\n" for row();
 }
 ```
@@ -9876,7 +9880,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-485 doc/stream.md
+493 doc/stream.md
 # Stream operations
 
 MORE (because I got rid of your intro).
@@ -9953,27 +9957,35 @@ $ ni ::word[n1p'pretty'] n3 w[np'r word']
 
 ### Literal Text
 
-The `id` operator puts whitespace-delimited literal text into the stream.
+The `i` operator puts whitespace-delimited literal text into the stream.
 
 ```bash
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
+$ ni i[foo bar]                 # literal two-column text
+foo	bar
+$ ni i[ foo[] [bar] ]           # literal two-column text with brackets
+foo[]	[bar]
 ```
 
 The example above can be written equivalently as:
+
 ```bash
-$ ni ::word[id:pretty ] n3 w[np'r word']
+$ ni ::word[ipretty] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
 ```
 
-Note that the whitespace between `pretty` and the closing bracket; if this
-space is not present, the `ni` parser will interpret the closing bracket as
-part of the literal text. This is important to keep in mind for `ni` in
-general, where commands are often very compact: sometimes whitespace (or a lack
-thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
-the common cases where whitespace (or lack thereof) is important.
+@bilow-factual now that `i` is fixed, the below isn't true anymore; but it's a
+good point in general so I didn't want to delete it:
+
+> Note that the whitespace between `pretty` and the closing bracket; if this
+> space is not present, the `ni` parser will interpret the closing bracket as
+> part of the literal text. This is important to keep in mind for `ni` in
+> general, where commands are often very compact: sometimes whitespace (or a lack
+> thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
+> the common cases where whitespace (or lack thereof) is important.
 
 ### bash commands
 ```bash
@@ -10124,7 +10136,7 @@ $ ni n04                        # integer generator, zero-based
 1
 2
 3
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
 ```
 
@@ -10233,24 +10245,24 @@ $ zcat file3.gz
 `z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip z | gzip -dc               # gzip by default
+$ ni igzip z | gzip -dc                 # gzip by default
 gzip
-$ ni id:gzip zg | gzip -dc              # explicitly specify
+$ ni igzip zg | gzip -dc                # explicitly specify
 gzip
-$ ni id:gzip zg9 | gzip -dc             # specify compression level
+$ ni igzip zg9 | gzip -dc               # specify compression level
 gzip
-$ ni id:xz zx | xz -dc
+$ ni ixz zx | xz -dc
 xz
-$ ni id:lzo zo | lzop -dc
+$ ni ilzo zo | lzop -dc
 lzo
-$ ni id:bzip2 zb | bzip2 -dc
+$ ni ibzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 z4 | lz4 -dc
+$ ni ilz4 z4 | lz4 -dc
 lz4
 ```
 

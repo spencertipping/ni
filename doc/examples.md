@@ -92,7 +92,7 @@ $ ni nE3p'r a, $_ for 0..999' r'/0(\t|$)/' p'r a, sin(a/100)*sin(b/100), b'
   below and show what it looks like if we omit it.
 - `p'r a, sin(a/100)*sin(b/100), b'`: the plane coordinates are `a` and `b`, so
   for each plane point we emit a 3D point at `<a, f(a, b), b>`.
-- `@[id:0,4,0 id:0,-4,0 FC]`: two extra data points to expand the min/max along
+- `@[i0,4,0 i0,-4,0 FC]`: two extra data points to expand the min/max along
   the Y axis. This results in flatter output.
 
 ### `r'/0(\t|$)/'` for the grid
@@ -114,8 +114,8 @@ more data points whose Y coordinates expand the range to [-4, 4] so the
 plotting interface scales the sine wave down vertically.
 
 - `+[...]`: append a new stream:
-  - `id:0,4,0`: append the literal text `0,4,0`
-  - `id:0,-4,0`: append the literal text `0,-4,0`
+  - `i0,4,0`: append the literal text `0,4,0`
+  - `i0,-4,0`: append the literal text `0,-4,0`
   - `FC`: fieldsplit on commas: this turns commas into tabs so the two points
     occupy three columns each.
 

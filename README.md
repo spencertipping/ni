@@ -21,6 +21,13 @@ later, which is installed basically everywhere (and in any context involving
 remote jobs, like hadoop, SSH, docker, etc, ni automatically installs itself so
 you don't have to do any configuration).
 
+### Installing ni
+```sh
+$ git clone git://github.com/spencertipping/ni
+$ ln -s $PWD/ni/ni ~/bin/               # if ~/bin is on your $PATH
+$ sudo ln -s $PWD/ni/ni /usr/bin/       # system-wide installation
+```
+
 ## Contributors
 - [Factual, Inc](https://github.com/Factual)
 - [Joyce Tipping](https://github.com/joycetipping)
