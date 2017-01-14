@@ -4,8 +4,73 @@ Welcome to the third part of the tutorial. At this point, you've probably activa
 
 In this chapter, our goal is to multiply your power by introducing more I/O operations, important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
 
-However, we'll first codify `ni` philosophy and style, which we've touched on in the previous two chapters.
+##Perl Reducers
 
+One of the reasons that Perl has been stressed in this tutorial is for streaming reduce; reduction can also be done in Python (introduced in the next section), however, this reduction is limited by a slightly awkward syntax, and the sometimes-unfeasible prospect of needing to hold the entire stream in memory.
+
+Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort + reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
+
+####Streaming Reduce
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using the buffered readahead and line-array reducers.
+
+* `sr`: Reduce over entire stream
+  * `$ ni n1E5p'sr {$_[0] + a} 0'`: sum the integers from 1 to 100,000
+* `se`: Reduce while equal
+  * `@final_state = se {reducer} \&partition_fn, @init_state`
+* `sea` through `seq`: Reduce with partition function `a()...q()`
+* `rc`: Compound reduce
+* `rfn`: Custom compound reduce
+
+
+####Buffered Readahead
+These operations are good for reducing 
+
+* `rw`: read while
+  * `@lines = rw {condition}`: read lines while a condition is met
+* `ru`: read until
+  * `@lines = ru {condition}`: read lines until a condition is met
+* `re`: read equal
+  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+
+####Multiline Reducers
+These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
+
+`rea` is the more commonly used shorthand for `re {a}`
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+
+
+##Numpy Operations
+
+Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
+
+Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni`, you'd be pretty much out of luck. 
+
+However, `ni` provides 
+
+#### `N'x = ...'`: Numpy matrix operations
+  * Dense matrices can be transformed using Numpy-like operations
+  * The entire input matrix (i.e. the stream) is referred to as `x`.
+  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
+  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
+  
+What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
+
+Any legal Python script is allowable, so if you're comfortable with `pandas` you can execute scripts like:
+
+`ni ... N'import pandas as pd; df = pd.DataFrame(x); ... ; x = df.reset_index().values' ...`
+
+The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.
+
+Also, like other operators, `N'...'` requires at least a row for input. `ni N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will return nothing, but adding a dummy row `ni n1N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will.
+
+This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
 
 
 ##`ni` Philosophy and Style
@@ -50,12 +115,7 @@ We can weave together row, column, and Perl operations to create more complex ro
 * `v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
   
-##Numpy Operations
-  * `N'x = ...'`: Numpy-style matrix operations
-  * Dense matrices can be transformed using Numpy-like operations
-  * The entire input matrix (i.e. the stream) is referred to as `x`.
-  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
-  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
+
 
 
 ##JSON I/O
@@ -138,48 +198,6 @@ $ ni --explain dir_test/*
 
 
 
-##Basic Perl Reducers
-
-The operations here are generally dependent on sorting to function properly, which can make them very expensive to execute on a single machine.
-
-###Streaming Reduce
-These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using the buffered readahead and line-array reducers.
-
-* `sr`: Reduce over entire stream
-  * `$ ni n1E5p'sr {$_[0] + a} 0'`: sum the integers from 1 to 100,000
-* `se`: Reduce while equal
-  * `@final_state = se {reducer} \&partition_fn, @init_state`
-* `sea` through `seq`: Reduce with partition function `a()...q()`
-* `rc`: Compound reduce
-* `rfn`: Custom compound reduce
-
-
-
-
-
-##Advanced Perl Reducers
-###Buffered Readahead
-These operations are good for reducing 
-
-* `rw`: read while
-  * `@lines = rw {condition}`: read lines while a condition is met
-* `ru`: read until
-  * `@lines = ru {condition}`: read lines until a condition is met
-* `re`: read equal
-  * `@lines = re {condition}`: read lines while the value of the condition is equal.
-
-###Multiline Reducers
-These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
-
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
-
-`rea` is the more commonly used shorthand for `re {a}`
-
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
 
 
 
