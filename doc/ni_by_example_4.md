@@ -77,17 +77,7 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 
 **TODO**: Say something useful.
 
-##Advanced Perl Operations
-* `p'^{BEGIN_BLOCK} ...'`: Begin block
-  * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation takes precedence over 
-  * Begin blocks are useful for converting data closures to Perl data structures, and defining other constants that are used in 
-  These blocks are evaluated in their entirety 
-* `p'%h = <col_1><col_2>_ @lines`: Hash constructor
-  * Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. Hash constructors are useful inside of begin blocks, often using the following workflow:
-    * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
-    * Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
-    * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-    * `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
+
 
 
 ##Matrix Operations

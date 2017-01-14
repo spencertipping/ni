@@ -4,25 +4,85 @@ Welcome to the third part of the tutorial. At this point, you've probably activa
 
 In this chapter, our goal is to multiply your power by introducing more I/O operations, important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
 
-##Perl Reducers
+But before we explore the breadth of `ni`, we need to return to its depth for an overview of some critical operators.
 
-One of the reasons that Perl has been stressed in this tutorial is for streaming reduce; reduction can also be done in Python (introduced in the next section), however, this reduction is limited by a slightly awkward syntax, and the sometimes-unfeasible prospect of needing to hold the entire stream in memory.
+
+##Advanced Perl Operations
+####`p'^{...} ...'`: Begin Block
+A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a Begin Block, the code is evaluated once and factored over the entire remaining Perl code.
+
+Begin Blocks are useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see Later in this section.
+
+#### `a_` through `l_`: Multiline Selection operations 
+You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
+
+For example:
+
+* `ni ::data[n5] n1p'a(data)'` and `ni ::data[n5] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+* `ni ::data[n5] n1p'a_ data'` works, because `a_` operates on each line.
+
+
+#### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
+Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
+
+* Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
+* Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
+* Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
+* `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
+
+
+##Streaming Reduce
+So far, you have seen many ways to reshape, process, and filter individual rows, but only one way to summarize multiple rows, the count operator `c`. In this section, we will cover `ni`'s highly flexible, constant-space reduce methods in Perl.
+
+One of the reasons that Perl has been stressed in this tutorial is for streaming reduce; reduction can also be done from within `ni` using Python (introduced in the next section), however, this reduction is limited by a slightly awkward syntax, and the sometimes-unfeasible prospect of needing to hold the entire stream in memory.
 
 Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort + reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
 
-####Streaming Reduce
-These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using the buffered readahead and line-array reducers.
-
-* `sr`: Reduce over entire stream
-  * `$ ni n1E5p'sr {$_[0] + a} 0'`: sum the integers from 1 to 100,000
-* `se`: Reduce while equal
-  * `@final_state = se {reducer} \&partition_fn, @init_state`
-* `sea` through `seq`: Reduce with partition function `a()...q()`
-* `rc`: Compound reduce
-* `rfn`: Custom compound reduce
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
 
 
-####Buffered Readahead
+
+
+#### `sr`: Reduce over entire stream
+
+Let's look at a simple example: 
+
+```
+$ ni n1E5p'sr {$_[0] + a} 0'
+5000050000
+(END)
+```
+
+The above code sums the integers from 1 to 100,000, inclusive. For those not familiar with Perl syntax, `$_[i]` refers to the i-th argument to a function. `$_[i]` is a dereferencing of the arguments of a function, stored in the magic variable `@_`. Since the variable returned is a scalar, its sigil is a `$`. Confusingly, `$_[i]` has very little to do with `$_`, the Perl default scalar.
+ 
+Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
+ 
+ ```
+($x, $y, ...) = sr {reducer} $x0, $y0, ...
+```
+
+To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
+
+```
+$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55      3628800 12345678910
+(END)
+```
+
+
+#### `se`: Reduce while equal
+
+`@final_state = se {reducer} \&partition_fn, @init_state`
+
+####`sea` through `seq`: Reduce with partition function `a()...q()`
+
+#### `rc`: Compound reduce
+
+#### `rfn`: Custom compound reduce
+
+
+
+##Buffered Readahead
 These operations are good for reducing 
 
 * `rw`: read while
@@ -186,13 +246,7 @@ $ ni --explain dir_test/*
 
 
 
-##Multiline Selection Operators
 
-
-* `a_` through `l_`: Multiline Selection operations 
-  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
-  * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
-  * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 
  
 
