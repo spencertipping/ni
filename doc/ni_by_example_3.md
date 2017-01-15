@@ -40,12 +40,12 @@ $ ni n1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
 
 ```
-ni n1p'my $v2="4" * "6"; r $v2'
+$ ni n1p'my $v2="4.3" * "6.7"; r $v2'
+28.81
+(END)
 ```
 
-
-
-Well, 5 is easy, but it also works
+You can call floating point multiplication on two string variables with zero consequences.
 
 ```
 $ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
@@ -64,6 +64,8 @@ $ ni n1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 Oh, and the converse? NOT TRUE. Text is numbers. Numbers are not text.
 
 ####Sigils
+
+So far, we've been using without 
 
 Consider the following example:
 
@@ -87,16 +89,15 @@ Perl variables all start with "sigils" (though sometimes these sigils are implic
 
 
 
-
-
 ####Subroutines
 
 Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, procedural languages   
 
+Perl subroutines store the variables with which they are called in a default variable named `@_`. Take a moment here to think about how one would refer to the 
+
 ####Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
 `ni` takes advantage
-
 
 
 ##Intermediate Perl Operations
