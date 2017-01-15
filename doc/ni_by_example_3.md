@@ -4,23 +4,98 @@ Welcome to the third part of the tutorial. At this point, you've probably activa
 
 In this chapter, our goal is to multiply your power by introducing more I/O operations, important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
 
-But before we explore the breadth of `ni`, we need to return to its depth for an overview of some critical operators.
-
+But before we explore the breadth of `ni`, we need to return to Perl in a certain amount of depth.
 
 ##Perl for `ni`
-Much of the next section relies critially on Perl. Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest).
+Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is known for the religious overtones in its construction--let `ni` author Spencer Tipping drop the scales from your eyes in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
-Perl is not a good language; it lacks a syntax that is immediately readable to a skilled programmer in other languages, like Python (especially) or even Scala or C. However, Perl is a highly functional language (sometimes beating out even C for speed), and it is widely distributed--nearly every OS that includes bash also includes Perl.
+>Python, Ruby, and even Javascript were designed to be good languages -- and
+just as importantly, to **feel** like good languages. Each embraces the
+politically correct notion that values are objects by default, distances itself
+from UNIX-as-a-ground-truth, and has a short history that it's willing to
+revise or forget. These languages are convenient and inoffensive by principle
+because that was the currency that made them viable.
+<!--- -->
+>Perl is different.
+<!--- -->
+>In today's world it's a neo-noir character dropped into a Superman comic; but 
+that's only true because it changed our collective notion of what an accessible
+scripting language should look like. People
+often accuse Perl of having no design principles; it's "line noise,"
+pragmatic over consistent. This is superficially true, but at a deeper level
+Perl is uncompromisingly principled in ways that most other languages aren't.
+Perl isn't good; it's complicated, and if you don't know it yet, it will
+probably change your idea of what a good language should be.
 
-With just a few concepts
+####Text is numbers
 
+In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
+
+```
+$ ni n1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+15      555     5 golden rings
+(END)
+```
+
+It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
+
+```
+ni n1p'my $v2="4" * "6"; r $v2'
+```
+
+
+
+Well, 5 is easy, but it also works
+
+```
+$ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
+(END)
+```
+
+Non-numeric strings are automatically cast 0.
+
+```
+$ ni n1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+0       hihihi  hi golden rings
+(END)
+```
+
+Oh, and the converse? NOT TRUE. Text is numbers. Numbers are not text.
 
 ####Sigils
-Consider the following example taken from [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes)
 
-In fact, all of these variables are properly called 
+Consider the following example:
+
+```
+$xs = 5;
+@xs = 1..10;
+%xs = (foo => 1, bar => 2);
+```
+
+Programmers of inoffensive languages may find the above code shocking and abhorrent (as the author of this text once did). That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `xs`, can trigger within a reasonably-skilled but Perl-ignorant programmer, a great deal of cognitive dissonance.
+
+The question here, and its relevance for `ni`, is not whether this language syntax is useful (it is), but how to open our minds and increase our reading skills to take advantage of Perl's unique qualities.
+
+When a Perl variable is brought into existence, its nature is determined by  
+
+Perl variables all start with "sigils" (though sometimes these sigils are implicit). The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
+
+* `$` indicates a scalar, like a string or text
+* `@` indicates an array
+* `%` indicates a hash
+
+
+
+
 
 ####Subroutines
+
+Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, procedural languages   
+
+####Default Variables
+While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
+`ni` takes advantage
 
 
 
