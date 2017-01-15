@@ -7,7 +7,24 @@ In this chapter, our goal is to multiply your power by introducing more I/O oper
 But before we explore the breadth of `ni`, we need to return to its depth for an overview of some critical operators.
 
 
-##Advanced Perl Operations
+##Perl for `ni`
+Much of the next section relies critially on Perl. Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest).
+
+Perl is not a good language; it lacks a syntax that is immediately readable to a skilled programmer in other languages, like Python (especially) or even Scala or C. However, Perl is a highly functional language (sometimes beating out even C for speed), and it is widely distributed--nearly every OS that includes bash also includes Perl.
+
+With just a few concepts
+
+
+####Sigils
+Consider the following example taken from [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes)
+
+In fact, all of these variables are properly called 
+
+####Subroutines
+
+
+
+##Intermediate Perl Operations
 ####`p'^{...} ...'`: Begin Block
 A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a Begin Block, the code is evaluated once and factored over the entire remaining Perl code.
 
