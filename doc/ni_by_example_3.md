@@ -70,24 +70,32 @@ So far, we've been using without
 Consider the following example:
 
 ```
-$xs = 5;
-@xs = 1..10;
-%xs = (foo => 1, bar => 2);
+$x = 5;
+@x = 1..10;
+%x = (foo => 1, bar => 2);
 ```
 
-Programmers of inoffensive languages may find the above code shocking and abhorrent (as the author of this text once did). That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `xs`, can trigger within a reasonably-skilled but Perl-ignorant programmer, a great deal of cognitive dissonance.
+Programmers of inoffensive languages may find the above code shocking and abhorrent (as the author of this text once did). That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `x`, can trigger within a reasonably-skilled but Perl-ignorant programmer, a great deal of cognitive dissonance.
 
 The question here, and its relevance for `ni`, is not whether this language syntax is useful (it is), but how to open our minds and increase our reading skills to take advantage of Perl's unique qualities.
 
-When a Perl variable is brought into existence, its nature is determined by  
+When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it.
 
 Perl variables all start with "sigils" (though sometimes these sigils are implicit). The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
 
-* `$` indicates a scalar, like a string or text
-* `@` indicates an array
-* `%` indicates a hash
+* `$` indicates the variable is a scalar, like a string or a number
+* `@` indicates the variable is an array
+* `%` indicates the variable is a hash
 
+What's even cooler is that, because the syntax for all of these is different, we can use all of these:
 
+```
+print $x;
+print $x[3];    //this gets a scalar value from @x
+print $x{foo};  //this gets a scalar value from %x
+```
+
+At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little tricky, but it's not complicated.
 
 ####Subroutines
 
