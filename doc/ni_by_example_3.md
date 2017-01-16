@@ -316,9 +316,23 @@ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
 
 #### `rc`: Compound reduce
 
+Consider the following reduction operation, which computes the sum, mean, min and max.
+
+```
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[3], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+```
+
+For common operations like these, `ni` offers a shorthand:
+```
+ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+```
+
 #### `rfn`: Custom compound reduce
 
-
+**TODO: Understand this**
 
 ##Buffered Readahead
 These operations are good for reducing 
