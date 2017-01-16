@@ -235,16 +235,19 @@ The above code sums the integers from 1 to 100,000, inclusive. For those not fam
 Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
  
  ```
-($x, $y, ...) = sr {reducer} $x0, $y0, ...
+@final_state = sr {reducer} @init_state
 ```
 
 To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
 
 ```
-$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
-55      3628800 12345678910
+$ ni n1E1p'sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55
+3628800
+12345678910
 (END)
 ```
+A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions. If we wanted all of the results of the reduce on a single line, we would need to use `p'r ...`.
 
 
 #### `se`: Reduce while equal
@@ -259,15 +262,38 @@ In `ni`-speak, the reduce-while-equal operator looks like this:
 ```
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
+`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is just a space Essentialy, this is pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, making use of the implicit as our partition function.
 
-This statement 
-
+**NOTE**: The comma after `partition_fn` is important; don't forget it.
 
 ```
-ni n1000p'se {$_[0] + a} sub {length}, 0'
+$ ni n1000p'se {$_[0] + a} sub {length}, 0'
+45
+4905
+494550
+1000
+(END)
 ```
 
+That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
 
+```
+$ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
+1       45
+2       4905
+3       494550
+4       1000
+(END)
+```
+
+One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines. 
+
+Also note that `se` will in general  you'll need to put a `;` after 
+
+We can be even more efficient though
+
+
+ni n1000p'^{*len = sub {length}} r len a, se {$_[0] + a} len, 0'
 
 
 ####`sea` through `seq`: Reduce with partition function `a()...q()`

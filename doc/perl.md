@@ -282,7 +282,7 @@ the streaming reduce functions `se` and `sr`; and second, compound reducers
 Reduces the entire data stream:
 
 ```pl
-($x, $y, ...) = sr {reducer} $x0, $y0, ...
+@final_state = sr {reducer} @init_state
 ```
 
 For example, to sum arbitrarily many numbers in constant space:
