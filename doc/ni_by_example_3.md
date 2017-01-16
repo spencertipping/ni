@@ -191,8 +191,6 @@ hi 1
 
 Begin Blocks are also useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
 
-
-
 #### `a_` through `l_`: Multiline Selection operations 
 You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
@@ -335,7 +333,7 @@ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 **TODO: Understand this**
 
 ##Buffered Readahead
-These operations are good for reducing 
+These operations are good for reducing over lines. 
 
 * `rw`: read while
   * `@lines = rw {condition}`: read lines while a condition is met
@@ -355,7 +353,7 @@ These operations can be used to reduce the data output by the readahead function
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
 * `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + a} 0, reb` <- DOES NOT WORK BECAUSE BILOW WROTE IT WRONG
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
 
 
 ##Numpy Operations
@@ -494,16 +492,6 @@ $ ni --explain dir_test/*
 ["cat","dir_test/hi"]
 ["cat","dir_test/there"]
 ```
-
-
-
-
-
-
- 
-
-
-
 
 
 
