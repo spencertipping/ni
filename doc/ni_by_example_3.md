@@ -45,15 +45,7 @@ $ ni n1p'my $v2="4.3" * "6.7"; r $v2'
 (END)
 ```
 
-You can call floating point multiplication on two string variables with zero consequences.
-
-```
-$ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
-(END)
-```
-
-Non-numeric strings are automatically cast 0.
+You can call floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. strings that start with valid numbers are cast to th
 
 ```
 $ ni n1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
@@ -61,13 +53,18 @@ $ ni n1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 (END)
 ```
 
-Oh, and the converse? NOT TRUE. Text is numbers. Numbers are not text.
+```
+$ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
+(END)
+```
+
+The converse of this statement, that numbers are text, is false. This is complex, but not ambiguous; Perl stores  Text is numbers. Numbers are not text.
 
 ####Sigils
 
-So far, we've been using without 
+So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
 
-Consider the following example:
 
 ```
 $x = 5;
@@ -75,22 +72,20 @@ $x = 5;
 %x = (foo => 1, bar => 2);
 ```
 
-Programmers of inoffensive languages may find the above code shocking and abhorrent (as the author of this text once did). That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `x`, can trigger within a reasonably-skilled but Perl-ignorant programmer, a great deal of cognitive dissonance.
+Programmers of inoffensive languages may find the above code shocking and abhorrent (as the author of this text once did). That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `x`, can trigger a great deal of cognitive dissonance within a reasonably-skilled but Perl-ignorant programmer.
 
 The question here, and its relevance for `ni`, is not whether this language syntax is useful (it is), but how to open our minds and increase our reading skills to take advantage of Perl's unique qualities.
 
-When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it.
+When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it. The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
 
-Perl variables all start with "sigils" (though sometimes these sigils are implicit). The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
-
-* `$` indicates the variable is a scalar, like a string or a number
-* `@` indicates the variable is an array
-* `%` indicates the variable is a hash
+* `my $x` indicates that `$x` is a scalar, for example a string or a number
+* `my @x` indicates that `@x` is an array
+* `my %x` indicates that `%x` is a hash
 
 What's even cooler is that, because the syntax for all of these is different, we can use all of these:
 
 ```
-print $x;
+print $x;       //this gets the scalar value of $x
 print $x[3];    //this gets a scalar value from @x
 print $x{foo};  //this gets a scalar value from %x
 ```
@@ -124,7 +119,15 @@ $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 
 To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
 
-Subroutines can also be called without the preceding `&`.
+Subroutines can also be called without the preceding `&`, or created uising the following syntax:
+
+```
+$ ni n1p'sub yo {"hi " . $_[0]} yo a'
+hi 1
+(END)
+```
+
+Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
 
 ####Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
@@ -170,17 +173,33 @@ Perl 6 is bad. We use Perl 5.
 
 ##Intermediate Perl Operations
 ####`p'^{...} ...'`: Begin Block
-A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a Begin Block, the code is evaluated once and factored over the entire remaining Perl code.
+A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a Begin Block, the code is evaluated once and factored over the entire remaining Perl code. The example from the previous section:
 
-Begin Blocks are useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see Later in this section.
+```
+$ ni n1p'sub yo {"hi " . $_[0]} yo a'
+hi 1
+(END)
+```
+
+Would be better written as:
+
+```
+$ ni n1p'^{sub yo {"hi " . $_[0]}} yo a'
+hi 1
+(END)
+```
+
+Begin Blocks are also useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+
+
 
 #### `a_` through `l_`: Multiline Selection operations 
 You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
 For example:
 
-* `ni ::data[n5] n1p'a(data)'` and `ni ::data[n5] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
-* `ni ::data[n5] n1p'a_ data'` works, because `a_` operates on each line.
+* `$ ni ::data[n5] n1p'a(data)'` and `$ ni ::data[n5] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+* `$ ni ::data[n5] n1p'a_ data'` works, because `a_` operates on each line.
 
 
 #### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
@@ -189,7 +208,7 @@ Hash constructors are useful for filtering large datasets without having to invo
 * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
 * Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
 * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-* `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
+* `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
 
 ##Streaming Reduce
@@ -200,9 +219,6 @@ One of the reasons that Perl has been stressed in this tutorial is for streaming
 Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort + reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
 
 These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
-
-
-
 
 #### `sr`: Reduce over entire stream
 
@@ -232,10 +248,33 @@ $ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
 
 
 #### `se`: Reduce while equal
+`sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
 
-`@final_state = se {reducer} \&partition_fn, @init_state`
+Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
+
+What we'd like to do is, each time a number streams in, to check if it  number of digits is equal to the number of digits for the previous number we saw in the stream. If it does, we'll add it to a running total, otherwise, we emit the running total to the output stream and start a new running total.
+
+In `ni`-speak, the reduce-while-equal operator looks like this:
+
+```
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+This statement 
+
+
+```
+ni n1000p'se {$_[0] + a} sub {length}, 0'
+```
+
+
+
 
 ####`sea` through `seq`: Reduce with partition function `a()...q()`
+
+```
+$ ni n10p'r a , a %2' gB p'seb {$_[0] + a}'
+```
 
 #### `rc`: Compound reduce
 
