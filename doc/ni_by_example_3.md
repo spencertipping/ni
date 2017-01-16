@@ -286,21 +286,33 @@ $ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
 (END)
 ```
 
-One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines. 
-
-Also note that `se` will in general  you'll need to put a `;` after 
-
-We can be even more efficient though
-
-
-ni n1000p'^{*len = sub {length}} r len a, se {$_[0] + a} len, 0'
+One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
 
 
 ####`sea` through `seq`: Reduce with partition function `a()...q()`
 
+It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
+
 ```
-$ ni n10p'r a , a %2' gB p'seb {$_[0] + a}'
+$ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
+1       45
+2       4905
+3       494550
+4       1000
+(END)
 ```
+
+`ni` offers a shorthand for reducing over a particular column:
+
+```
+ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
+1       45
+2       4905
+3       494550
+4       1000
+(END)
+```
+
 
 #### `rc`: Compound reduce
 
