@@ -97,11 +97,27 @@ print $x{foo};  //this gets a scalar value from %x
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little tricky, but it's not complicated.
 
+
+
 ####Subroutines
 
-Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, procedural languages   
+Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
 
-Perl subroutines store the variables with which they are called in a default variable named `@_`. Take a moment here to think about how one would refer to the 
+Perl subroutines store the variables with which they are called in a default variable named `@_`. Take a moment here to think about how one would refer the elements in `@_`.
+
+Subroutines are stored and referenced with the following syntax:
+
+```
+*x = sub {"hi"}
+$v = &x // $v will be set to "hi"
+```
+
+
+Here's how you'd write a function that copies a stream of values 4 times in `ni`, using Perl.
+
+`ni n10p'*v = sub {$_[0] x 4}; &v(a)'`
+
+To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.
 
 ####Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
