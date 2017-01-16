@@ -95,8 +95,7 @@ print $x[3];    //this gets a scalar value from @x
 print $x{foo};  //this gets a scalar value from %x
 ```
 
-At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little tricky, but it's not complicated.
-
+At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
 
 ####Subroutines
@@ -115,14 +114,59 @@ $v = &x // $v will be set to "hi"
 
 Here's how you'd write a function that copies a stream of values 4 times in `ni`, using Perl.
 
-`ni n10p'*v = sub {$_[0] x 4}; &v(a)'`
+```
+$ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
+1111
+2222
+3333
+(END)
+```
 
-To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.
+To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
+
+Subroutines can also be called without the preceding `&`.
 
 ####Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
-`ni` takes advantage
 
+Consider the following spell:
+
+```
+$ ni n20p'/^(\d)\d*$/'
+```
+
+It looks like the Perl snippet is using a regular expression to take the first digit of a number. What's not clear is which number it's using. Looking at the output:
+
+```
+1
+2
+3
+4
+5
+6
+7
+8
+9
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+2
+(END)
+```
+
+Clearly this regex is operating on each line (the lines input were the integers 1 through 20). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
+
+In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`. Python-style string slicing (which uses square brackets) is not one available in vanilla Perl 5, where the `substr` method (or regexes) are more commonly used.
+
+####Perl 6
+Perl 6 is bad. We use Perl 5.
 
 ##Intermediate Perl Operations
 ####`p'^{...} ...'`: Begin Block
