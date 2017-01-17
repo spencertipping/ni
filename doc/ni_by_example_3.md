@@ -357,12 +357,40 @@ These operations are good for reducing over lines.
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
 ####Multiline Reducers
-These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
+These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, the builtin function `cart`:
 
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
+```
+$ ni n1p'cart [1, 2], ["a", "b", "c"]'
+1       a
+2       a
+1       b
+2       b
+1       c
+2       c
+(END)
+```
 
-`rea` is the more commonly used shorthand for `re {a}`
+
+
+```
+$ ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'
+3
+3
+3
+(END)
+```
+
+`reb` is the more commonly used shorthand for `re {b}`.
+
+```
+$ ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ reb'
+3
+3
+3
+(END)
+```
+
+There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
 
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
 * `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
@@ -430,27 +458,32 @@ Also, like other operators, `N'...'` requires at least a row for input. `ni N'x 
 This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
 
 
-
-
-
 ##JSON I/O
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-  *  Here's an example:
+
+We'll spend the rest of this chapter discussing JSON and directory I/O, which are fundamental to g
+
+####`D:<field1>,:<field2>...`: JSON Destructure
+
+`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
+
+####`p'json_encode {<row to JSON instructions>}`: JSON Encode
+
+The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
 ```
 ni //license FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
+                    word    => c}' =\>jsons \
+     D:type,:word
 ```
+####Other JSON parsing methods
+Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
-* `D:<field1>,:<field2>...`: JSON Destructure
-  * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
-  * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
+
 
 ##Directory I/O
-
+The contents of this section 
 
 Start by making some data:
 
