@@ -2670,7 +2670,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-225 core/stream/ops.pl.sdoc
+229 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2749,12 +2749,16 @@ defshort '/n',  pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0', pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
 defshort '/i',  pmap q{echo_op $_}, id_text;
 
+defshort '/1', pmap q{n_op 1, 2}, pnone;
+
 deflong '/fs', pmap q{cat_op $_}, filename;
 
 docshort '/n' => q{Append integers 1..N, or 1..infinity if N is unspecified};
 docshort '/n0' => q{Append integers 0..N-1, or 0..infinity if N is unspecified};
 docshort '/i' => q{Identity: append literal text};
 docshort '/e' => q{Exec shell command as a filter for the current stream};
+
+docshort '/1' => q{Alias for 'n1'};
 
 doclong '/fs' => q{Append things that appear to be files};
 

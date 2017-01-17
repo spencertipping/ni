@@ -183,6 +183,7 @@
 	    <empty>?
 	  ) -> {$$_[0]} -> {meta_parser_op $_}
 	| '//ni/parsers' '' -> {meta_parsers_op}
+	| '1' '' -> {n_op 1, 2}
 	| ':' (
 	    (
 	      <nefilename>
