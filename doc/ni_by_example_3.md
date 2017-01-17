@@ -374,16 +374,49 @@ These operations can be used to reduce the data output by the readahead function
 
 Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
 
-Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni`, you'd be pretty much out of luck. 
+Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
 
-However, `ni` provides 
+However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations, at the cost of buffering the entire stream into memory, some arbitrary-feeling limitations on I/O and a syntax that clunks.
+
+It's great, you're gonna love it.
 
 #### `N'x = ...'`: Numpy matrix operations
-  * Dense matrices can be transformed using Numpy-like operations
-  * The entire input matrix (i.e. the stream) is referred to as `x`.
-  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
-  * Example `ni n10p'r map a*$_, 1..10' N'x = x.T'`
-  
+
+The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
+
+The values streamed out of `N'...'` are the values of `x`, so all operations that you want to do to the stream must be saved back into `x`. Compared to the Perl syntax, this is inelegant, and if `ni`'s gotten into your soul yet, it should make you more than a little frustrated.
+
+However, the gains in power are quickly manifested:
+
+
+```
+$ ni n3p'r map a*$_, 1..3' N'x = x + 1'
+2       3       4
+3       5       7
+4       7       10
+(END)
+```
+
+```
+$ ni n5p'r map a . $_, 1..3' N'x = x.T'
+11      21      31      41      51
+12      22      32      42      52
+13      23      33      43      53
+(END)
+```
+
+```
+$ ni n1N'x = random.normal(size=(4,3))'
+-0.144392928715457      0.823863130371182       -0.0884075304437077
+-0.696189074356781      1.5246371050062 -2.33198542804912
+1.40260347893123        0.0910618083600519      0.851396708020142
+0.52419501996823        -0.546343207826548      -1.67995253555456
+(END)
+```
+
+
+
+####How `N'x = ...'` works
 What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
 
 Any legal Python script is allowable, so if you're comfortable with `pandas` you can execute scripts like:
