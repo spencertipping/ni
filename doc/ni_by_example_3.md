@@ -82,9 +82,9 @@ When a Perl variable is brought into existence, its nature is determined by the 
 What's even cooler is that, because the syntax for all of these is different, we can use all of these:
 
 ```
-print $x;       //this gets the scalar value of $x
-print $x[3];    //this gets a scalar value from @x
-print $x{foo};  //this gets a scalar value from %x
+print $x;       # gets the scalar value of $x
+print $x[3];    # gets a scalar value from @x
+print $x{foo};  # gets a scalar value from %x
 ```
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
@@ -113,7 +113,7 @@ Subroutines are stored and referenced with the following syntax:
 
 ```
 *x = sub {"hi"}
-$v = &x // $v will be set to "hi"
+$v = &x         # $v will be set to "hi"
 ```
 
 
@@ -127,7 +127,7 @@ $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 (END)
 ```
 
-To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
+To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within `@_`, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
 
 Subroutines can also be called without the preceding `&`, or created using the following syntax:
 
@@ -181,18 +181,10 @@ In fact, the code above is operating on the most important of the Perl default v
 
 ##Intermediate Perl Operations
 ####`p'^{...} ...'`: Begin Block
-A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a Begin Block, the code is evaluated once and factored over the entire remaining Perl code. The example from the previous section:
+A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. The example from the previous section:
 
 ```
 $ ni n1p'sub yo {"hi " . $_[0]} yo a'
-hi 1
-(END)
-```
-
-Would be better written as:
-
-```
-$ ni n1p'^{sub yo {"hi " . $_[0]}} yo a'
 hi 1
 (END)
 ```

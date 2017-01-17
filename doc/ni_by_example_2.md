@@ -553,10 +553,10 @@ $ ni ihdfst://<abspath> HS...
 
 This will pass the directory path directly to the Hadoop Streaming job. If you do not use path, as in:
 ```
-$ ni hdfst://<path> HS...
+$ ni hdfst://<abspath> HS...
 ```
 
-`ni` will read all of the data out of HDFS, stream that data to a new HDFS folder, and then run the Hadoop job using the name of the folder that has The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+When the input path is not quoted, `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder (and clean up the temp-path). That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
 
 ####`i`: Literal text 
