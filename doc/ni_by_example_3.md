@@ -1,10 +1,8 @@
-#`ni` by Example, Chapter 3 (Pre-alpha release)
+#`ni` by Example, Chapter 3 (alpha release)
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
-In this chapter, our goal is to multiply your power by introducing more I/O operations, important Perl operations including reducers, cell operations, and ni-specific functions. We'll also demonstrate `ni`'s connections to Python and numpy, Ruby, and Lisp. And we'll show how to patch one of `ni`'s weaknesses (large-scale joins) using `nfu`.
-
-But before we explore the breadth of `ni`, we need to return to Perl in a certain amount of depth.
+In this chapter, our goal is to multiply your power by introducing reducers. We'll also discuss some more common I/O operations, give an overview of Perl fundamentals, and demonstrate `ni`'s connections to Python and numpy.
 
 ##Perl for `ni`
 Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is known for the religious overtones in its construction--let `ni` author Spencer Tipping drop the scales from your eyes in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
@@ -58,8 +56,6 @@ $ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
 (END)
 ```
-
-The converse of this statement, that numbers are text, is false. This is complex, but not ambiguous; Perl stores  Text is numbers. Numbers are not text.
 
 
 ####Sigils
@@ -133,7 +129,7 @@ $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 
 To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
 
-Subroutines can also be called without the preceding `&`, or created uising the following syntax:
+Subroutines can also be called without the preceding `&`, or created using the following syntax:
 
 ```
 $ ni n1p'sub yo {"hi " . $_[0]} yo a'
@@ -182,8 +178,6 @@ Clearly this regex is operating on each line (the lines input were the integers 
 
 In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`. Python-style string slicing (which uses square brackets) is not one available in vanilla Perl 5, where the `substr` method (or regexes) are more commonly used.
 
-####Perl 6
-Perl 6 is bad. We use Perl 5.
 
 ##Intermediate Perl Operations
 ####`p'^{...} ...'`: Begin Block
@@ -274,7 +268,7 @@ In `ni`-speak, the reduce-while-equal operator looks like this:
 ```
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
-`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is just a space Essentialy, this is pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, making use of the implicit as our partition function.
+`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
 
 **NOTE**: The comma after `partition_fn` is important; don't forget it.
 
@@ -342,12 +336,8 @@ For common operations like these, `ni` offers a shorthand:
 ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 ```
 
-#### `rfn`: Custom compound reduce
-
-**TODO: Understand this**
-
 ##Buffered Readahead
-These operations are good for reducing over lines. 
+These operations are used to convert columnar data into rows, which can then be reduced over. In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce; however, the syntax is often more efficient
 
 * `rw`: read while
   * `@lines = rw {condition}`: read lines while a condition is met
@@ -356,8 +346,8 @@ These operations are good for reducing over lines.
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
-####Multiline Reducers
-These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, the builtin function `cart`:
+####`cart`: Cartesian Product
+To generate examples for our buffered readahead, we'll use the builtin `ni` operation `cart`.
 
 ```
 $ ni n1p'cart [1, 2], ["a", "b", "c"]'
@@ -370,10 +360,10 @@ $ ni n1p'cart [1, 2], ["a", "b", "c"]'
 (END)
 ```
 
-
+####Multiline Reducers
 
 ```
-$ ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'
+$ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
 3
 3
 3
@@ -383,7 +373,7 @@ $ ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'
 `reb` is the more commonly used shorthand for `re {b}`.
 
 ```
-$ ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ reb'
+$ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
 3
 3
 3
@@ -442,14 +432,21 @@ $ ni n1N'x = random.normal(size=(4,3))'
 (END)
 ```
 
+```
+$ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
+1       1
+1       2
+(END)
+```
+
 
 
 ####How `N'x = ...'` works
 What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
 
-Any legal Python script is allowable, so if you're comfortable with `pandas` you can execute scripts like:
+Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
 
-`ni ... N'import pandas as pd; df = pd.DataFrame(x); ... ; x = df.reset_index().values' ...`
+`ni ... N'import pandas as pd; df = pd.DataFrame(x); ... ; df.to_excel(...); x = df.reset_index().values' ...`
 
 The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.
 
@@ -533,34 +530,43 @@ $ ni --explain dir_test/*
 
 ##`ni` Philosophy and Style
 
-If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`, and if you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
+If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
 
-####Conciseness matters; readability to the uninitiated does not.
-`ni` spells should be beautiful
+####`ni` optimizes at-will programmer productivity
+Many data science projects start with a request that you have never seen before; in this case, it's often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
+
+`ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
+
+####Mastery counts
+
+Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
+
+This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
 
 ####Outsource hard jobs to more appropriate tools.
-The most obvious 
 
-Some jobs that are difficult for `ni`:
-* Sorting
-* Matrix Multiplication
-* SQL Joins
-
-Here's how `ni` solves those:
-* Hadoop Streaming
-* Numpy Operations
-* HDFS Joins
-
-
-
-####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
+`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
 * Because of this philosophy, `ni` is fantastic for data munging and cleaning.
 * Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes uncompressed.
 
+Some jobs that are difficult for `ni`, and some ways to resolve them:
 
-
+* Sorting
+  * Challenge: Requires buffering of entire stream (possibly to disk, which is slow)
+  * Solution: Hadoop Streaming will do much of the heavy lifting for you in any sort, and will distribute the computation so it's easy.
+* Matrix Multiplication
+  * Challenge: Difficult to implement in a streaming context
+  * Solution: Numpy operations 
+* SQL Joins
+  * Challenge: SQL joins can take more than one line
+  * Solution:
+    * Small Data: There are several options here. You can use `N'...'` and do the join in numpy, you can use `N'...'` with `import pandas as pd` to do the join in pandas, or you can pipe data in and out of `join -t $'\t'`
+    * Large Data: HDFS Joins
+* Iterating a `ni` process over directories where the directory provides contextual information about its contents.
+  * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
+  * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
 
 
 

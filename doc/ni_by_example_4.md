@@ -113,7 +113,10 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 **TODO**: Say something useful.
 
 
+##Custom Compound Reduce
+#### `rfn`: Custom compound reduce
 
+**TODO: Understand this**
 
 ##Matrix Operations
 
