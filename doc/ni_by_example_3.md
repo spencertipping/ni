@@ -460,7 +460,7 @@ This is not (yet) the cleanest or most beautiful syntax [and that matters!], but
 
 ##JSON I/O
 
-We'll spend the rest of this chapter discussing JSON and directory I/O, which are fundamental to g
+We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
 
 ####`D:<field1>,:<field2>...`: JSON Destructure
 
@@ -533,7 +533,7 @@ $ ni --explain dir_test/*
 
 ##`ni` Philosophy and Style
 
-If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. 
+If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`, and if you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
 
 ####Conciseness matters; readability to the uninitiated does not.
 `ni` spells should be beautiful
