@@ -180,16 +180,39 @@ In fact, the code above is operating on the most important of the Perl default v
 
 
 ##Intermediate Perl Operations
-####`p'^{...} ...'`: Begin Block
-A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. The example from the previous section:
+####`p'^{...} ...'`: BEGIN Block
+A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+
+Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. Here is a contrived example based on the previous section:
 
 ```
-$ ni n1p'sub yo {"hi " . $_[0]} yo a'
-hi 1
+$ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
+1111
+2222
+3333
 (END)
 ```
 
-Begin Blocks are also useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+In this example, `*v` is being computed at runtime for each row. This could be better written as:
+
+```
+$ ni n3p'^{*v = sub {$_[0] x 4}} &v(a)'
+1111
+2222
+3333
+(END)
+```
+
+Using the begin block, `*v` will be computed just once. Outside of variable assignment, `sub` is a `BEGIN`-level construct, so the code is much more simply written as:
+
+```
+$ ni n3p'sub v {$_[0] x 4} &v(a)'
+1111
+2222
+3333
+(END)
+```
+
 
 #### `a_` through `l_`: Multiline Selection operations 
 You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
