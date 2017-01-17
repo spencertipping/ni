@@ -215,6 +215,12 @@
 ## SYNTAX
 	'' -> {meta_parsers_op}
 
+# SHORT OPERATOR /1
+	Alias for 'n1'
+
+## SYNTAX
+	'' -> {n_op 1, 2}
+
 # SHORT OPERATOR /:
 
 ## SYNTAX
