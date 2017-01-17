@@ -9,11 +9,10 @@ $ ./ni --js                     # ...or here if you like to live on the edge
 
 Some places to start reading:
 
-- [doc/README.md](doc/README.md): really smashing documentation
-- [doc/quickstart.md](doc/quickstart.md): a tutorial that won't say "ni" to you
-- [doc/cheatsheet.md](doc/cheatsheet.md): a tutorial that will say "ni" to you
-- [doc/examples.md](doc/examples.md): straight into the deep end with the web
-  UI
+- [The Docs](doc/README.md): really smashing documentation
+- [Ni by Example](doc/ni_by_example_1.md): a tutorial that won't say "ni" to you
+- [The Cheatsheet](doc/cheatsheet.md): a tutorial that will say "ni" to you
+- [Web UI Examples](doc/examples.md): straight into the deep end with the web UI
 
 ## ni works on every machine
 ...in the last decade, except Windows. Its only dependency is Perl 5.8 or

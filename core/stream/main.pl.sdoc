@@ -14,6 +14,9 @@ sub child_status_ok($) {
 $ni::main_operator = sub {
   my @children;
 
+  # Awkward TMPDIR fix for mac OSX
+  delete $ENV{TMPDIR} unless -d $ENV{TMPDIR} and -w $ENV{TMPDIR};
+
   if (-t STDIN) {
     nuke_stdin;
   } else {

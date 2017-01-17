@@ -215,6 +215,12 @@
 ## SYNTAX
 	'' -> {meta_parsers_op}
 
+# SHORT OPERATOR /1
+	Alias for 'n1'
+
+## SYNTAX
+	'' -> {n_op 1, 2}
+
 # SHORT OPERATOR /:
 
 ## SYNTAX
@@ -473,14 +479,11 @@
 ## SYNTAX
 	<sortspec> -> {row_sort_op        sort_args @$_}
 
-# SHORT OPERATOR /id:
-	Append literal text
+# SHORT OPERATOR /i
+	Identity: append literal text
 
 ## SYNTAX
-	(
-	  /.*/
-	  <empty>?
-	) -> {$$_[0]} -> {echo_op $_}
+	<id_text> -> {echo_op $_}
 
 # SHORT OPERATOR /j
 
@@ -575,7 +578,7 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  | (
-	      <shell_lambda>
+	      <multiword>
 	      <empty>?
 	    ) -> {$$_[0]}
 	  )

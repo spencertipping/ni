@@ -35,6 +35,7 @@ Operator | Status | Example      | Description
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |
+`1`      | M      | `1p'"hi"'    | `1` is an alias for `n1`
 `a`      |        |              |
 `b`      | T      | `bL40`       | Block-read and unpack binary data
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
@@ -43,7 +44,7 @@ Operator | Status | Example      | Description
 `f`      | T      | `fACB`       | Reorder, duplicate, or drop fields by column
 `g`      | T      | `gA`         | Sort by all or selected columns
 `h`      |        |              |
-`i`      |        |              |
+`i`      | T      | `ifoo`       | Append literal text `foo`
 `j`      | U      | `j foo`      | Join sorted streams on field values
 `k`      |        |              |
 `l`      | T      | `l'(1+ a)'`  | Map over rows using Common Lisp

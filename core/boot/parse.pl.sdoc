@@ -209,7 +209,7 @@ BEGIN {
 
   defparser 'pnx', '$',
     q{my ($self, $x, @xs) = @_;
-      defined $x && $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
+      !defined $x || $x =~ /^(?:$$self[1])/ ? () : ($x, @xs)};
 }
 
 sub prc($)  {pn 0, prx  $_[0], popt pempty}

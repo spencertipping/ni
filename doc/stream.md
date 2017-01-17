@@ -74,27 +74,35 @@ $ ni ::word[n1p'pretty'] n3 w[np'r word']
 
 ### Literal Text
 
-The `id` operator puts whitespace-delimited literal text into the stream.
+The `i` operator puts whitespace-delimited literal text into the stream.
 
 ```bash
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
+$ ni i[foo bar]                 # literal two-column text
+foo	bar
+$ ni i[ foo[] [bar] ]           # literal two-column text with brackets
+foo[]	[bar]
 ```
 
 The example above can be written equivalently as:
+
 ```bash
-$ ni ::word[id:pretty ] n3 w[np'r word']
+$ ni ::word[ipretty] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
 ```
 
-Note that the whitespace between `pretty` and the closing bracket; if this
-space is not present, the `ni` parser will interpret the closing bracket as
-part of the literal text. This is important to keep in mind for `ni` in
-general, where commands are often very compact: sometimes whitespace (or a lack
-thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
-the common cases where whitespace (or lack thereof) is important.
+@bilow-factual now that `i` is fixed, the below isn't true anymore; but it's a
+good point in general so I didn't want to delete it:
+
+> Note that the whitespace between `pretty` and the closing bracket; if this
+> space is not present, the `ni` parser will interpret the closing bracket as
+> part of the literal text. This is important to keep in mind for `ni` in
+> general, where commands are often very compact: sometimes whitespace (or a lack
+> thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
+> the common cases where whitespace (or lack thereof) is important.
 
 ### bash commands
 ```bash
@@ -245,7 +253,7 @@ $ ni n04                        # integer generator, zero-based
 1
 2
 3
-$ ni id:foo                     # literal text
+$ ni ifoo                       # literal text
 foo
 ```
 
@@ -354,24 +362,24 @@ $ zcat file3.gz
 `z` lets you specify which compressor you want to use; for example:
 
 ```bash
-$ ni id:gzip z | gzip -dc               # gzip by default
+$ ni igzip z | gzip -dc                 # gzip by default
 gzip
-$ ni id:gzip zg | gzip -dc              # explicitly specify
+$ ni igzip zg | gzip -dc                # explicitly specify
 gzip
-$ ni id:gzip zg9 | gzip -dc             # specify compression level
+$ ni igzip zg9 | gzip -dc               # specify compression level
 gzip
-$ ni id:xz zx | xz -dc
+$ ni ixz zx | xz -dc
 xz
-$ ni id:lzo zo | lzop -dc
+$ ni ilzo zo | lzop -dc
 lzo
-$ ni id:bzip2 zb | bzip2 -dc
+$ ni ibzip2 zb | bzip2 -dc
 bzip2
 ```
 
 ```sh
 # this one isn't a unit test because not all test docker images have a
 # straightforward LZ4 install (some are too old)
-$ ni id:lz4 z4 | lz4 -dc
+$ ni ilz4 z4 | lz4 -dc
 lz4
 ```
 
