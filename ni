@@ -8778,7 +8778,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-97 doc/options.md
+98 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8816,6 +8816,7 @@ Operator | Status | Example      | Description
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |
+`1`      | M      | `1p'"hi"'    | `1` is an alias for `n1`
 `a`      |        |              |
 `b`      | T      | `bL40`       | Block-read and unpack binary data
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
