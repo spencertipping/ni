@@ -6957,7 +6957,7 @@ defresource 'hdfs',
 defresource 'hdfst',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     my $path = shell_quote $_[1];
-                    sh qq{$hadoop_name fs -text $path || $hadoop_name fs -text $path"/part*"}} @_},
+                    sh qq{$hadoop_name fs -text $path 2>/dev/null || $hadoop_name fs -text $path"/part*" 2>/dev/null}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
 
 Streaming.
@@ -9162,7 +9162,7 @@ the streaming reduce functions `se` and `sr`; and second, compound reducers
 Reduces the entire data stream:
 
 ```pl
-($x, $y, ...) = sr {reducer} $x0, $y0, ...
+@final_state = sr {reducer} @init_state
 ```
 
 For example, to sum arbitrarily many numbers in constant space:
