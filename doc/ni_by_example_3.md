@@ -1,4 +1,4 @@
-#`ni` by Example, Chapter 3 (WIP)
+#`ni` by Example, Chapter 3 (Pre-alpha release)
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
@@ -61,6 +61,7 @@ $ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 
 The converse of this statement, that numbers are text, is false. This is complex, but not ambiguous; Perl stores  Text is numbers. Numbers are not text.
 
+
 ####Sigils
 
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
@@ -91,6 +92,19 @@ print $x{foo};  //this gets a scalar value from %x
 ```
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
+
+####Barewords are strings
+Consider the following `ni` spell:
+
+```
+$ ni n3p'r a, one'
+1       one
+2       one
+3       one
+(END)
+```
+
+Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist,  Perl gives the programmer a great deal of freedom to be concise. The bareword (a Perl term for a variable not prefixed with a sigil) `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
 
 
 ####Subroutines
