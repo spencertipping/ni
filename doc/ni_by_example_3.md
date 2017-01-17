@@ -294,6 +294,19 @@ $ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
 
 One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
 
+If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
+
+```
+$ ni n1000p'^{sub len($) {length $_[0]}} r len a, se {$_[0] + a} \&len, 0'
+1       45
+2       4905
+3       494550
+4       1000
+(END)
+```
+
+The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
+
 
 ####`sea` through `seq`: Reduce with partition function `a()...q()`
 
