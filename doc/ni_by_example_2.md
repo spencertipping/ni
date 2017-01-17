@@ -353,7 +353,7 @@ Running an operator with `S8` on a machine with only two cores is not going to g
 
 
   
-##Hadoop Streaming MapReduce & HDFS I/O
+##Hadoop Streaming MapReduce
 
 `ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides concise options to 
 
@@ -458,13 +458,71 @@ Since the output of the Hadoop Streaming job is a directory, the To read data fr
 
 You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
 
-`$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper (g combiner) g reducer`
+> `$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper gA combiner gA reducer`
 
-This allows you to iterate fast, within the command line.
+This identity allows you to iterate fast, completely within `less` and the command line.
   
-**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job.  All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
-####HDFS I/O
+
+####`:checkpoint_name[...]`: Checkpoints
+
+Developing and deploying to producion `ni` pipelines that involve multiple Hadoop streaming steps involves a risk of failure outside the programmer's control; when this happens, we don't want to have to run the entire job again. 
+
+Checkpoints allow you to save the results of difficult jobs while continuing to develop in `ni`.
+
+Checkpoints and files share many commonalities. The key difference between a checkpoint and a file are:
+
+1. A checkpoint will wait for an `EOF` before writing to the specified checkpoint name, so the data in a checkpoint file will consist of all the output of the operator it encloses. A file, on the other hand, will accept all output that is streamed in, with no guarantee that it is complete.
+2. If you run a `ni` pipeline with checkpoints, and there are files that correspond to the checkpoint names in the directory from which `ni` is being run, then `ni` will use the data in the checkpoints in place of running the job. This allows you to save the work of long and expensive jobs, and to run these jobs multiple times without worrying that bhe steps earlier in the pipeline that have succeeded will have to be re-run.
+
+An example of checkpoint use is the following:
+
+```
+$ ni :numbers[n1000000gr4]
+1
+10
+100
+1000
+``` 
+
+This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
+
+
+```
+$ ni :numbers[n1000000gr4]O
+1000
+100
+10
+1
+```
+
+Compare this to the same code writing to a file:
+
+```
+$ ni n1000000gr4 =\>numbers
+1000
+100
+10
+1
+```
+
+Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
+
+```
+$ ni n1000000gr4 =\>numbers O
+1000
+100
+10
+1
+```
+
+One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
+
+
+##HDFS I/O
+
+####`hdfst://<path>` and `hdfs://<path>`: HDFS I/O
 
 Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
 
@@ -484,31 +542,62 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
+
 ####Using HDFS paths in Hadoop Streaming Jobs:
 
-If you want to use data in HDFS for Hadoop Streaming jobs, you need to use a quoted path, as in:
+If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (explained in more detail below)
 
 ```
-$ ni \'hdfst://<abspath> HS...
+$ ni ihdfst://<abspath> HS...
 ```
 
-If you do not the quote path, as in:
+This will pass the directory path directly to the Hadoop Streaming job. If you do not use path, as in:
 ```
 $ ni hdfst://<path> HS...
 ```
 
-`ni` will read all of the data out of 
-
-  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
-
-####Hadoop and HDFS Configuration
-
-You can pass in jobconf options using the `hadoop/jobconf` variable or by
-setting `NI_HADOOP_JOBCONF`. Effective variable sizes 
-Depending on the size of your Hadoop cluster and the amount of data with which you're working, there are several environment variables you will want to set:
+`ni` will read all of the data out of HDFS, stream that data to a new HDFS folder, and then run the Hadoop job using the name of the folder that has The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
 
 
-Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
+####`i`: Literal text 
+To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, for reasons that will be clear later. `i` operator is the way to put literal text into the command line:
+
+```
+$ ni ihello ithere
+hello
+there
+(END)
+```
+
+You can use single quotes with `i` to include spaces within strings.
+
+```
+$ni i'one whole line'
+one whole line
+(END)
+```
+
+If you want your text to be tab-delimited, you can put your text inside brackets.
+
+```
+$ ni i[foo bar]
+foo     bar
+(END)
+``` 
+
+And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
+
+```
+$ni i[ foo[] [bar] ]
+foo[]   [bar]
+(END)
+```
+
+
+####`^{...}`: `ni` configuration
+
+You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
+
 
 ```
 $ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
@@ -517,7 +606,7 @@ $ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
   
 ```
 
-You can also control the Hadoop jobconf through environment variables in you `.bash_profile`.
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
 
 ```
 export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
@@ -529,12 +618,14 @@ Hadoop jobs are generally intelligent about where they spill their contents; if 
 export NI_HDFS_TMPDIR=/user/bilow/tmp
 ```
 
-####Hadoop Streaming MapReduce Word Count in `ni`
->`$ ni //ni HS[FWpF_] _ [c]`
 
 ##Conclusion
 
-If the Hadoop word count example didn't blow your freaking mind, convince you to move all your work over to `ni`, and feverishly develop its documentation, take a look at the state of the art in:
+The classic word count program for Hadoop can be written like this.
+
+>`$ ni //ni HS[FWpF_] _ [c]`
+
+If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
 
 * [Python](http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/)
 * [Ruby](http://www.bigfastblog.com/map-reduce-with-ruby-using-hadoop)
@@ -546,6 +637,6 @@ It would it take me at least an hour to get through the tutorial in the language
 
 What's more important is that all of the examples above are completely uninspired, joyless programs. Every single one of those programs makes make me hate programming.
 
-`ni` does the opposite. I wrote the `ni` spell in about 5 seconds, and I can explain how it works in about 30. Even at this early stage, I bet it didn't take more than a couple of minutes to figure out how to write the program either. It's easily tested, readable, concise, and beautiful. You should be excited about the possibilities just over the horizon.
+`ni` does the opposite. I wrote the `ni` spell in about 5 seconds, and I can explain how it works in about 30. Even at this early stage, I bet it didn't take more than a couple of minutes to figure out how to write the program either. It's easily tested by dro, readable, concise, and beautiful. You should be excited about the possibilities just over the horizon.
 
 Congrats on finishing this chapter of the tutorial. In the first two chapters, you've been introduced tools for manipulating and expanding individual rows of data; in the next chapter we'll develop tools that condense and combine multiple rows of data into one. We'll also look at some specialized `ni` functions, and `ni` interoperability with Ruby, Lisp, and Python/numpy.

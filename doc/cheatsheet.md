@@ -4,7 +4,7 @@
 
 `ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
 
-`$ni ...`
+`$ ni ...`
 
 Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be an exhaustive and functional introduction to `ni` as a language.
 
@@ -20,6 +20,7 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * `i<text>`: Literal text input
   * `$ ni iOK!` -- add the literal text `OK!` to the stream.
   * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+  * `$ ni i[these cats]` -- add a tab-separated line consisting of `these   cats`
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
@@ -298,8 +299,8 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
   * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
 * Using HDFS paths in Hadoop Streaming Jobs:
-  * `ni ... \'hdfst://<path> HS...`
-  * The path must be quoted so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+  * `ni ... ihdfst://<path> HS...`
+  * The path must be input as literal text (with `i`) so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
  
 ##Intermediate `ni` Philosophy and Style
 ####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
