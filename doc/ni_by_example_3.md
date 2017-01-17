@@ -430,48 +430,6 @@ Also, like other operators, `N'...'` requires at least a row for input. `ni N'x 
 This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
 
 
-##`ni` Philosophy and Style
-
-####`ni` demands expertise
-
-####Conciseness matters; readability to the uninitiated does not.
-`ni` spells should be beautiful
-
-####Outsource hard jobs to more appropriate tools.
-The most obvious 
-
-Some jobs that are difficult for `ni`:
-* Sorting
-* Matrix Multiplication
-* SQL Joins
-
-Here's how `ni` solves those:
-* Hadoop Streaming
-* Numpy Operations
-* HDFS Joins
-
-
-
-####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
-
-* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
-
-
-
-##Intermediate Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
-
-* `w`: Append column to stream
-  * `$ ni <data> w[np'a*a']`
-  * `w` will add columns only up to the length of the input stream
-* `W`: Prepend column stream
-  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
-  * `W` will add rows only up to the length of the input stream
-* `v`: Vertical operation on columns
-  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
-  
 
 
 
@@ -540,27 +498,36 @@ $ ni --explain dir_test/*
 ["cat","dir_test/there"]
 ```
 
+##`ni` Philosophy and Style
+
+If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. 
+
+####Conciseness matters; readability to the uninitiated does not.
+`ni` spells should be beautiful
+
+####Outsource hard jobs to more appropriate tools.
+The most obvious 
+
+Some jobs that are difficult for `ni`:
+* Sorting
+* Matrix Multiplication
+* SQL Joins
+
+Here's how `ni` solves those:
+* Hadoop Streaming
+* Numpy Operations
+* HDFS Joins
 
 
-##Advanced Row and Column Operations
-* `j` - streaming join
-  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
-* `Y` - dense-to-sparse transformation
-  * Explodes each row of the stream into several rows, each with three columns:
-    * The index of the row that the input data that came from
-    * The index of the column that the input data came from
-    * The value of the input stream at the row + column specified by the first two columns.
-* `X` - sparse-to-dense transformation
-  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
-  * The specification for what the input matrix must look like is described above in the `Y` operator.
-  
-  
 
-##Things other than Perl 
+####`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
-Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
+* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
+* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.
 
-*  `m'<...>'`: Ruby
-   * applies the Ruby snippet `<...>` to each row of the stream 
-*  `l'<...>'`: Lisp
-   * applies the Lisp snippet `<...>` to each row of the stream 
+
+
+
+
+

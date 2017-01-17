@@ -1,3 +1,38 @@
+##Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+  * `w` will add columns only up to the length of the input stream
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+  * `W` will add rows only up to the length of the input stream
+* `v`: Vertical operation on columns
+  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
+  
+##Advanced Row and Column Operations
+* `j` - streaming join
+  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
+* `Y` - dense-to-sparse transformation
+  * Explodes each row of the stream into several rows, each with three columns:
+    * The index of the row that the input data that came from
+    * The index of the column that the input data came from
+    * The value of the input stream at the row + column specified by the first two columns.
+* `X` - sparse-to-dense transformation
+  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * The specification for what the input matrix must look like is described above in the `Y` operator.
+  
+  
+
+##Things other than Perl 
+
+Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
+
+*  `m'<...>'`: Ruby
+   * applies the Ruby snippet `<...>` to each row of the stream 
+*  `l'<...>'`: Lisp
+   * applies the Lisp snippet `<...>` to each row of the stream 
+
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
 
@@ -28,7 +63,7 @@ These provide keystroke-efficient ways to do transformations on a single column 
   * evaluate `<script>` in bash, and stream out the results one line at a time.
 
 
-##Perl for `ni`
+##More Perl for `ni`
 A few important operators for doing data manipulation in Perl. Many Perl subroutines can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
 
 * `lc`
