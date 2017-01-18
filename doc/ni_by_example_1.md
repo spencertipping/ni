@@ -482,13 +482,13 @@ The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when thei
  
 Note that these functions do not pollute your namespace, so you can write confusing and pointless `ni` spells like this:
 
-`ni n1 p'my $a = 5; r a, $a'`
+`ni 1p'my $a = 5; r a, $a'`
 
 If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
 
 Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
 
-`ni n1 p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
+`ni 1p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
 
 ```
 Prototype mismatch: sub ni::pl::a () vs none at - line 411.
