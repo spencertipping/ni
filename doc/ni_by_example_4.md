@@ -9,6 +9,32 @@ There's an important reason
 
 `e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
 
+bash first scans for metacharacters before ni is even run
+
+[7:09]  
+so what you ran is this
+
+[7:10]  
+`~/bin/ni "e[seq" "10" | /bin/grep "1]"`
+
+
+spencer [7:10 AM] 
+you've also encountered a not-entirely-obvious (feature?) of `e`
+
+[7:11]  
+`e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`
+
+[7:11]  
+i.e. "here's argv for the unix command to run"
+
+[7:11]  
+`e'stuff'` turns into `exec("/bin/sh", "-c", "stuff")`
+
+[7:11]  
+which means you'll get shell character expansion with quotes, but not with brackets
+
+[7:11]  
+(the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`)
 
 ##`nfu` HDFS Joins
 
