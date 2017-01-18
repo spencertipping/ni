@@ -1,9 +1,15 @@
 #`ni` by Example Chapter 4 (WIP)
-Welcome to chapter 4. I thought I would have been finished by Chapter 3, but it turns out there's more of this weird and wonderful language. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer focused on introducing you to the possibilities of each operator, This chapter is focused on productivity. 
+Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
 ##`nfu` HDFS Joins
 
-I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to 
+I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to do large-scale joins is using `nfu`.
+
+To install:
+
+```
+
+```
 
 ##Cell Operations 
 `$ ni <data> ,<op><columns>`
