@@ -30,7 +30,7 @@ probably change your idea of what a good language should be.
 In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
 
 ```
-$ ni n1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+$ ni 1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 15      555     5 golden rings
 (END)
 ```
@@ -38,7 +38,7 @@ $ ni n1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
 
 ```
-$ ni n1p'my $v2="4.3" * "6.7"; r $v2'
+$ ni 1p'my $v2="4.3" * "6.7"; r $v2'
 28.81
 (END)
 ```
@@ -46,13 +46,13 @@ $ ni n1p'my $v2="4.3" * "6.7"; r $v2'
 You can call floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. strings that start with valid numbers are cast to th
 
 ```
-$ ni n1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+$ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 0       hihihi  hi golden rings
 (END)
 ```
 
 ```
-$ ni n1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+$ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
 (END)
 ```
@@ -132,7 +132,7 @@ To review the syntax, the *name* of the variable is `_`, and within the body of 
 Subroutines can also be called without the preceding `&`, or created using the following syntax:
 
 ```
-$ ni n1p'sub yo {"hi " . $_[0]} yo a'
+$ ni 1p'sub yo {"hi " . $_[0]} yo a'
 hi 1
 (END)
 ```
@@ -219,8 +219,8 @@ You have seen one way to generate multiple lines through the production of data 
 
 For example:
 
-* `$ ni ::data[n5] n1p'a(data)'` and `$ ni ::data[n5] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
-* `$ ni ::data[n5] n1p'a_ data'` works, because `a_` operates on each line.
+* `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+* `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
 
 
 #### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
@@ -378,7 +378,7 @@ These operations are used to convert columnar data into rows, which can then be 
 To generate examples for our buffered readahead, we'll use the builtin `ni` operation `cart`.
 
 ```
-$ ni n1p'cart [1, 2], ["a", "b", "c"]'
+$ ni 1p'cart [1, 2], ["a", "b", "c"]'
 1       a
 2       a
 1       b
@@ -388,10 +388,21 @@ $ ni n1p'cart [1, 2], ["a", "b", "c"]'
 (END)
 ```
 
+Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
+
+```
+$ ni 1p'r cart [1], ["a", "b", "c"]'
+ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
+(END)
+```
+
+
+
+
 ####Multiline Reducers
 
 ```
-$ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
+$ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
 3
 3
 3
@@ -401,7 +412,7 @@ $ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
 `reb` is the more commonly used shorthand for `re {b}`.
 
 ```
-$ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
+$ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
 3
 3
 3
@@ -410,10 +421,10 @@ $ ni n1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
 
 There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
 
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni 1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
 
 
 ##Numpy Operations
