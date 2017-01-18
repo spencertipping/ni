@@ -5,6 +5,21 @@ Welcome to chapter 4. I thought I would have been finished by Chapter 3, but it 
 
 I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to 
 
+##Cell Operations 
+`$ ni <data> ,<op><columns>`
+
+These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
+
+* `,a`: Running average
+* `,d`: Difference between consecutive rows
+* `,e`: Natural exponential (`e**x`)
+* `,h`: Murmurhash (deterministic 32-bit hash function)
+* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
+* `,l`: Natural log (`ln x`)
+* `,s`: Running sum 
+* `,q`: Quantize
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
+
 ##Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
@@ -39,10 +54,11 @@ We can weave together row, column, and Perl operations to create more complex ro
 
 Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
 
-*  `m'<...>'`: Ruby
-   * applies the Ruby snippet `<...>` to each row of the stream 
-*  `l'<...>'`: Lisp
-   * applies the Lisp snippet `<...>` to each row of the stream 
+##`m'<...>'`: Ruby
+* applies the Ruby snippet `<...>` to each row of the stream 
+
+##`l'<...>'`: Lisp
+* applies the Lisp snippet `<...>` to each row of the stream 
 
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
@@ -51,20 +67,7 @@ More details [here](monitor.md). Overall:
 * Positive numbers = rate-determining step
 * Large Positive numbers = slow step
 
-##Cell Operations 
-`$ ni <data> ,<op><columns>`
 
-These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
-
-* `,a`: Running average
-* `,d`: Difference between consecutive rows
-* `,e`: Natural exponential (`e**x`)
-* `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
-* `,l`: Natural log (`ln x`)
-* `,s`: Running sum 
-* `,q`: Quantize
-* `,z`: Intify (hash and then convert hash values to integers starting with 1)
 
 
 
