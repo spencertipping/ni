@@ -40,8 +40,16 @@ ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one that is as vanilla as possible; if you're using some other CLI and have `bash` installed, `bash` at the command line will open a bash shell (using your `~/.bash_profile` settings)
 
 
-##Integer Streams
-`$ ni n10` will drop you into a screen that looks like this:
+##Basic Streams
+`ni` is at it score, a stream-processing language, and every operator we will introduce in this chapter will function on lines of a stream. In this section, we'll cover integer streams as well as how to create streams using bash scripts.
+
+####`n`: Integer Stream
+`ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
+
+```
+$ ni n10
+```
+ will drop you into a screen that looks like this:
 
 ```
 1
@@ -59,18 +67,83 @@ It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one th
 
 If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
 
-####`n`: Integer Stream
-`ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
+`ni n0` gives you consecutive integers starting from zero. For example:
 
-Without an argument, `ni n` gives an infinite stream of consecutive integers starting from 1.
+```
+$ ni n03
+```
 
-`ni n0` gives you consecutive integers starting from zero.
+yields
+
+```
+0
+1
+2
+(END)
+```
 
 To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 3.2 x 10<sup>5</sup> consecutive integers, starting from 1.
 
 
+Without an argument, `ni n` and ni `n0` give an infinite stream of consecutive integers starting from 1 and 0, respectively.
+
+
+####`e'...'`: Evaluate `bash` script
+
+`ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
+
+```
+$ ni e'seq 500 | grep 22'
+```
+
+yields: 
+
+```
+22
+122
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+322
+422
+(END)
+```
+
+You can also link bash operators with stream operators (and all of the rest of the operators we'll introduce), for example:
+
+```
+$ ni n100 e'grep -E "(.)\1"'
+```
+
+Which yields:
+
+```
+11
+22
+33
+44
+55
+66
+77
+88
+99
+100
+(END)
+```
+
+If you find regular expression used above hard to understand, here's a [StackExchange post](http://unix.stackexchange.com/questions/70933/regular-expression-for-finding-double-characters-in-bash) that explains it.
+
 ##File Output
-`$ ni n10 \>ten.txt`
+```
+$ ni n10 \>ten.txt
+```
 
 Running this command will drop you into `less` with this as output:
 
@@ -121,10 +194,7 @@ This should yield:
 
 Entering the name of a file at the command line will cause `ni` to `cat` the contents of the file into the stream. If more than one file name is entered, they will be added to the stream in order. `ni` also automatically decompresses most common formats, including gzip, bzip, xzip, lzo, and lz4.
 
-**BUG**: `ni` will let you name your files the same name as `ni` commands. should a warning be raised?
-
-
-`ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example,
+**WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
 
 ```
 $ ni n5 \>n10
@@ -141,7 +211,7 @@ yields:
 5
 (END)
 ```
-because it is reading from the file named `n10`.
+because `ni` is reading from the file named `n10`.
 
 
 ##`ni` Coding and Debugging
@@ -379,6 +449,29 @@ Clearly, If the desired output of the Perl mapper is two or more columns per row
 
 When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
 
+####`1`: Dummy pulse
+Suppose that you have a Perl script that generates data, and you want to generate data from that script directly. You might be surprised that the following code generates no output:
+
+```
+$ ni p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
+```
+
+One of the complicated aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run.
+
+In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
+
+```
+$ ni 1p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
+1       2       3
+2       4       6
+3       6       9
+4       8       12
+5       10      15
+(END)
+```
+
+Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
+
 ####Column Accessor Functions `a` and `a()`
 
 `ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
@@ -430,6 +523,10 @@ Examples:
   * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
 * `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
+
+  
+
+```
 
 ##Basic Column Operations
 `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA`

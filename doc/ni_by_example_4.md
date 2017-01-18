@@ -1,6 +1,15 @@
 #`ni` by Example Chapter 4 (WIP)
 Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
+##`ni` and `bash`
+
+[Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet.
+
+There's an important reason
+
+`e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
+
+
 ##`nfu` HDFS Joins
 
 I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to do large-scale joins is using `nfu`.
@@ -8,7 +17,29 @@ I look forward to the day I rename this section to `ni` HDFS Joins, but for now,
 To install:
 
 ```
+$ git clone git://github.com/spencertipping/nfu
+$ cd nfu
+$ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
+```
 
+HDFS joins are inner joins between 
+
+
+You can then process the output paths.
+
+Differing from `ni`, which uses the standard 3-slash syntax in hdfs paths, 
+
+HDFS joins occur only between the keys of the two datasets: 
+
+To do an HDFS join, the 
+To do an HDFS join 
+`nfu` 
+
+HDFS joins will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
+
+```
+$ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
+$ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
 ```
 
 ##Cell Operations 
@@ -53,14 +84,10 @@ We can weave together row, column, and Perl operations to create more complex ro
 #### `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
   * The specification for what the input matrix must look like is described above in the `Y` operator.
-  
-  
-
-##Things other than Perl 
-
-Look, these are here, and if it helps you get started with `ni`, great. But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
 
 ##`m'<...>'`: Ruby
+
+But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
 * applies the Ruby snippet `<...>` to each row of the stream 
 
 ##`l'<...>'`: Lisp
@@ -73,14 +100,6 @@ More details [here](monitor.md). Overall:
 * Positive numbers = rate-determining step
 * Large Positive numbers = slow step
 
-
-
-
-
-##Connecting `bash` and `ni`
-
-* `e[<script>]`: Evaluate script
-  * evaluate `<script>` in bash, and stream out the results one line at a time.
 
 
 ##More Perl for `ni`
