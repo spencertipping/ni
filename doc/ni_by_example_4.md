@@ -1,40 +1,38 @@
 #`ni` by Example Chapter 4 (WIP)
 Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
-##`ni` and `bash`
+##`ni` and bash
 
-[Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet.
-
-There's an important reason
+[Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
 
 `e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
 
-bash first scans for metacharacters before ni is even run
+When you run a script without quotes, bash will first scan for metacharacters. So the script 
 
-[7:09]  
-so what you ran is this
+```
+$ ni e[seq 10 | grep 1]
+```
 
-[7:10]  
-`~/bin/ni "e[seq" "10" | /bin/grep "1]"`
+is run as 
 
+```
+~/bin/ni "e[seq" "10" | /bin/grep "1]"
+```
 
-spencer [7:10 AM] 
-you've also encountered a not-entirely-obvious (feature?) of `e`
+because bash will execute the pipe first.
 
-[7:11]  
-`e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`
+The correct way to execute the script: 
 
-[7:11]  
-i.e. "here's argv for the unix command to run"
+```
+$ni e'seq 10 | grep 1'
+``` 
 
-[7:11]  
-`e'stuff'` turns into `exec("/bin/sh", "-c", "stuff")`
+turns into 
+```
+exec("/bin/sh", "-c", "stuff")
+```
 
-[7:11]  
-which means you'll get shell character expansion with quotes, but not with brackets
-
-[7:11]  
-(the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`)
+This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
 
 ##`nfu` HDFS Joins
 
@@ -50,12 +48,7 @@ $ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
 
 HDFS joins are inner joins between 
 
-
-You can then process the output paths.
-
-Differing from `ni`, which uses the standard 3-slash syntax in hdfs paths, 
-
-HDFS joins occur only between the keys of the two datasets: 
+HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV.
 
 To do an HDFS join, the 
 To do an HDFS join 
