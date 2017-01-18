@@ -46,39 +46,50 @@ $ cd nfu
 $ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
 ```
 
-HDFS joins are inner joins between 
-
-HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV.
-
-To do an HDFS join, the 
-To do an HDFS join 
-`nfu` 
-
-HDFS joins will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
+HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV). They will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
 
 ```
 $ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
 $ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
 ```
 
-##Cell Operations 
-`$ ni <data> ,<op><columns>`
+You can appropriately process the checkopoint files to to get the correct paths, then use 
 
-These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
+```
+nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
+```
 
-* `,a`: Running average
-* `,d`: Difference between consecutive rows
-* `,e`: Natural exponential (`e**x`)
+
+
+
+##Cell Operations
+
+Cell operations provide keystroke-efficient ways to do transformations on a single column of the input data. 
+
+Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
+
+Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
+
+####Hashing Algorithms
 * `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
-* `,l`: Natural log (`ln x`)
-* `,s`: Running sum 
-* `,q`: Quantize
 * `,z`: Intify (hash and then convert hash values to integers starting with 1)
 
-##Intermediate Column Operations
-We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+####Cell Math Operations
+* `,e`: Natural exponential e<sup>x</sup>
+* `,l`: Natural log (`ln x`)
+* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
+* `,q<amt>`: Round to the nearest integer multiple of `<amt>`
 
+
+####Column Math Operations
+* `,a`: Running average
+* `,d`: Difference between consecutive rows
+* `,s`: Running sum 
+
+
+
+##Intermediate Column Operations
+These operations are less commonly used, but still find use.
 
 #### `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
@@ -89,27 +100,29 @@ We can weave together row, column, and Perl operations to create more complex ro
   * `W` will add rows only up to the length of the input stream
   
 ####`v`: Vertical operation on columns
-  * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
+  * **Important Note**: As of 2017-01-18, this operator is too slow to use in production.
   
 ###`j` - streaming join
   * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 
 ####`Y` - dense-to-sparse transformation
-  * Explodes each row of the stream into several rows, each with three columns:
-    * The index of the row that the input data that came from
-    * The index of the column that the input data came from
-    * The value of the input stream at the row + column specified by the first two columns.
+`Y` Explodes each row of the stream into several rows, each with three columns:
+
+* The index of the row that the input data that came from
+* The index of the column that the input data came from
+* The value of the input stream at the row + column specified by the first two columns.
 
 #### `X` - sparse-to-dense transformation
-  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+`X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+
   * The specification for what the input matrix must look like is described above in the `Y` operator.
 
-##`m'<...>'`: Ruby
+##`m'...'`: Ruby
 
 But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
 * applies the Ruby snippet `<...>` to each row of the stream 
 
-##`l'<...>'`: Lisp
+##`l'...'`: Lisp
 * applies the Lisp snippet `<...>` to each row of the stream 
 
 ##Understanding the `ni` monitor
@@ -143,7 +156,7 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
 
 
 ##Useful `ni`-specific Perl Subroutines
-The operators in this section refer specifically to the 
+`ni` was developed at [Factual, Inc.](www.factual.com), and he operators in this section refer specifically to the 
 `$ ni <data> p'...'`
 
 * `ghe`: geohash encoding
