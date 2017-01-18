@@ -1,24 +1,35 @@
+#`ni` by Example Chapter 4 (WIP)
+Welcome to chapter 4. I thought I would have been finished by Chapter 3, but it turns out there's more of this weird and wonderful language. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer focused on introducing you to the possibilities of each operator, This chapter is focused on productivity. 
+
+##`nfu` HDFS Joins
+
+I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to 
+
 ##Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
-* `w`: Append column to stream
+
+#### `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
   * `w` will add columns only up to the length of the input stream
-* `W`: Prepend column stream
+  
+####`W`: Prepend column stream
   * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
   * `W` will add rows only up to the length of the input stream
-* `v`: Vertical operation on columns
+  
+####`v`: Vertical operation on columns
   * **Important Note**: As of 2016-12-23, this operator is too slow to use in production.
   
-##Advanced Row and Column Operations
-* `j` - streaming join
+###`j` - streaming join
   * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
-* `Y` - dense-to-sparse transformation
+
+####`Y` - dense-to-sparse transformation
   * Explodes each row of the stream into several rows, each with three columns:
     * The index of the row that the input data that came from
     * The index of the column that the input data came from
     * The value of the input stream at the row + column specified by the first two columns.
-* `X` - sparse-to-dense transformation
+
+#### `X` - sparse-to-dense transformation
   * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
   * The specification for what the input matrix must look like is described above in the `Y` operator.
   
