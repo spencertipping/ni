@@ -648,6 +648,14 @@
 	  cell_eval {args => 'undef',
 	             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
 
+# OPERATOR real_hash
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$seed',
+	             begin => '$seed ||= 0',
+	             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+
 # OPERATOR resource_append
 
 ## IMPLEMENTATION

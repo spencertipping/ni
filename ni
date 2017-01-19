@@ -4179,7 +4179,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-128 core/cell/cell.pl.sdoc
+135 core/cell/cell.pl.sdoc
 Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
@@ -4232,8 +4232,15 @@ defoperator intify_hash => q{
              each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
 };
 
+defoperator real_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+};
+
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
+defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
 
 Numerical transformations.
 Trivial stuff that applies to each cell individually.
@@ -8778,7 +8785,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-98 doc/options.md
+99 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8876,6 +8883,7 @@ Operator | Status | Example      | Description
 Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
+`H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
 432 doc/perl.md
 # Perl interface

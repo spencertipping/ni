@@ -623,6 +623,14 @@
 ## SYNTAX
 	<'', evaluate as [sink_null]>
 
+# SHORT OPERATOR cell/H
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <integer>?
+	) -> {real_hash_op      @$_}
+
 # SHORT OPERATOR cell/a
 
 ## SYNTAX

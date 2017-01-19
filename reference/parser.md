@@ -595,6 +595,10 @@
 
 ## DEFINITION
 	(
+	| 'H' (
+	    <cellspec_fixed>
+	    <integer>?
+	  ) -> {real_hash_op      @$_}
 	| 'a' <cellspec_fixed> -> {col_average_op $_}
 	| 'd' <cellspec_fixed> -> {col_delta_op   $_}
 	| 'e' (
