@@ -274,45 +274,47 @@
 	
 	  my ($map, $combine, $reduce) = @_;
 	  my ($nuke_inputs, @ipath) = hdfs_input_path;
-	  my $opath = resource_tmp "hdfs://";
 	  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
 	  my ($combiner, @combine_cmd) = $combine
 	    ? hadoop_lambda_file 'combiner', $combine : ();
 	  my ($reducer, @reduce_cmd) = $reduce
 	    ? hadoop_lambda_file 'reducer', $reduce : ();
 	  my $streaming_jar = hadoop_streaming_jar;
-	  my $hadoop_fh = siproc {
-	    $mapper   =~ s|^file://||;
-	    $combiner =~ s|^file://|| if $combiner;
-	    $reducer  =~ s|^file://|| if $reducer;
-	    (my $mapper_file   = $mapper)         =~ s|.*/||;
-	    (my $combiner_file = $combiner || '') =~ s|.*/||;
-	    (my $reducer_file  = $reducer  || '') =~ s|.*/||;
-	    my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
-	    my $cmd = shell_quote
-	      conf 'hadoop/name',
-	      jar => $streaming_jar,
-	      -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
-	      map((-D => $_), @jobconf),
-	      map((-input => $_), @ipath),
-	      -output => $opath,
-	      -file   => $mapper,
-	      -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
-	      (defined $combiner
-	        ? (-file     => $combiner,
-	           -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
-	        : ()),
-	      (defined $reducer
-	        ? (-file    => $reducer,
-	           -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-	        : ());
-	    sh "$cmd 1>&2";
-	  };
-	  close $hadoop_fh;
-	  die "ni: hadoop streaming failed" if $hadoop_fh->await;
-	  (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
-	  print "$result_path/part-*\n";
-	  if ($nuke_inputs) {resource_nuke $_ for @ipath}
+	  for my $ipaths (@ipath) {
+	    my $opath = resource_tmp "hdfs://";
+	    my $hadoop_fh = siproc {
+	      $mapper   =~ s|^file://||;
+	      $combiner =~ s|^file://|| if $combiner;
+	      $reducer  =~ s|^file://|| if $reducer;
+	      (my $mapper_file   = $mapper)         =~ s|.*/||;
+	      (my $combiner_file = $combiner || '') =~ s|.*/||;
+	      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+	      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+	      my $cmd = shell_quote
+	        conf 'hadoop/name',
+	        jar => $streaming_jar,
+	        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+	        map((-D => $_), @jobconf),
+	        map((-input => $_), @$ipaths),
+	        -output => $opath,
+	        -file   => $mapper,
+	        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+	        (defined $combiner
+	          ? (-file     => $combiner,
+	             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+	          : ()),
+	        (defined $reducer
+	          ? (-file    => $reducer,
+	             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+	          : ());
+	      sh "$cmd 1>&2";
+	    };
+	    close $hadoop_fh;
+	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+	    print "$result_path/part-*\n";
+	  }
+	  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
 	  resource_nuke $mapper;
 	  resource_nuke $combiner if defined $combiner;
 	  resource_nuke $reducer  if defined $reducer;
@@ -647,6 +649,14 @@
 	  my $iq = 1 / $q;
 	  cell_eval {args => 'undef',
 	             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
+
+# OPERATOR real_hash
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$seed',
+	             begin => '$seed ||= 0',
+	             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
 
 # OPERATOR resource_append
 

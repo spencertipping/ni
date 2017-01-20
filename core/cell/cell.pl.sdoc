@@ -50,8 +50,15 @@ defoperator intify_hash => q{
              each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
 };
 
+defoperator real_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+};
+
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
+defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
 
 Numerical transformations.
 Trivial stuff that applies to each cell individually.

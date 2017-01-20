@@ -72,6 +72,19 @@ $ ni tide.csv ,h
 1918171572
 ```
 
+A variant, `H`, also hashes, but then scales each entry to fall into the unit
+interval:
+
+```bash
+$ ni tide.csv ,H
+0.667446143226698
+0.499277009163052
+0.357681484427303
+0.73626133101061
+0.499277009163052
+0.446609121747315
+```
+
 ## Numerical transformations
 
 ni provides four numerical transformation functions. The first two are the

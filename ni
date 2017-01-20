@@ -4179,7 +4179,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-128 core/cell/cell.pl.sdoc
+135 core/cell/cell.pl.sdoc
 Cell-level operators.
 Cell-specific transformations that are often much shorter than the equivalent
 Perl code. They're also optimized for performance.
@@ -4232,8 +4232,15 @@ defoperator intify_hash => q{
              each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
 };
 
+defoperator real_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+};
+
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
+defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
 
 Numerical transformations.
 Trivial stuff that applies to each cell individually.
@@ -6928,7 +6935,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-158 core/hadoop/hadoop.pl.sdoc
+161 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6996,7 +7003,7 @@ sub hdfs_input_path {
   if (/^hdfst?:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
     s/^hdfst:/hdfs:/gm;
-    (0, grep length, split /\n/);
+    (0, map [split /\t/], grep length, split /\n/);
   } else {
     my $hdfs_tmp    = resource_tmp 'hdfs://';
     my $hdfs_writer = resource_write $hdfs_tmp;
@@ -7004,7 +7011,7 @@ sub hdfs_input_path {
     safewrite $hdfs_writer, $_ while saferead \*STDIN, $_, 8192;
     close $hdfs_writer;
     $hdfs_writer->await;
-    (1, $hdfs_tmp);
+    (1, [$hdfs_tmp]);
   }
 }
 
@@ -7025,7 +7032,7 @@ sub hadoop_embedded_cmd($@) {
 defoperator hadoop_streaming => q{
   my ($map, $combine, $reduce) = @_;
   my ($nuke_inputs, @ipath) = hdfs_input_path;
-  my $opath = resource_tmp "hdfs://";
+
   my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
   my ($combiner, @combine_cmd) = $combine
     ? hadoop_lambda_file 'combiner', $combine : ();
@@ -7034,44 +7041,47 @@ defoperator hadoop_streaming => q{
 
   my $streaming_jar = hadoop_streaming_jar;
 
-  my $hadoop_fh = siproc {
-    $mapper   =~ s|^file://||;
-    $combiner =~ s|^file://|| if $combiner;
-    $reducer  =~ s|^file://|| if $reducer;
+  for my $ipaths (@ipath) {
+    my $opath = resource_tmp "hdfs://";
+    my $hadoop_fh = siproc {
+      $mapper   =~ s|^file://||;
+      $combiner =~ s|^file://|| if $combiner;
+      $reducer  =~ s|^file://|| if $reducer;
 
-    (my $mapper_file   = $mapper)         =~ s|.*/||;
-    (my $combiner_file = $combiner || '') =~ s|.*/||;
-    (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+      (my $mapper_file   = $mapper)         =~ s|.*/||;
+      (my $combiner_file = $combiner || '') =~ s|.*/||;
+      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
-    my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 
-    my $cmd = shell_quote
-      conf 'hadoop/name',
-      jar => $streaming_jar,
-      -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
-      map((-D => $_), @jobconf),
-      map((-input => $_), @ipath),
-      -output => $opath,
-      -file   => $mapper,
-      -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
-      (defined $combiner
-        ? (-file     => $combiner,
-           -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
-        : ()),
-      (defined $reducer
-        ? (-file    => $reducer,
-           -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-        : ());
-    sh "$cmd 1>&2";
-  };
+      my $cmd = shell_quote
+        conf 'hadoop/name',
+        jar => $streaming_jar,
+        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+        map((-D => $_), @jobconf),
+        map((-input => $_), @$ipaths),
+        -output => $opath,
+        -file   => $mapper,
+        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+        (defined $combiner
+          ? (-file     => $combiner,
+             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+          : ()),
+        (defined $reducer
+          ? (-file    => $reducer,
+             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+          : ());
+      sh "$cmd 1>&2";
+    };
 
-  close $hadoop_fh;
-  die "ni: hadoop streaming failed" if $hadoop_fh->await;
+    close $hadoop_fh;
+    die "ni: hadoop streaming failed" if $hadoop_fh->await;
 
-  (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
-  print "$result_path/part-*\n";
+    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+    print "$result_path/part-*\n";
+  }
 
-  if ($nuke_inputs) {resource_nuke $_ for @ipath}
+  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
 
   resource_nuke $mapper;
   resource_nuke $combiner if defined $combiner;
@@ -8778,7 +8788,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-98 doc/options.md
+99 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -8876,6 +8886,7 @@ Operator | Status | Example      | Description
 Operator | Status | Example | Description
 ---------|--------|---------|------------
 `h`      | T      | `,z`    | Turns each unique value into a hash.
+`H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
 432 doc/perl.md
 # Perl interface
