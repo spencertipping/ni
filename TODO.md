@@ -62,6 +62,8 @@ e.g. `//m9drc24` for `/mnt/t9/data/reddit-comments-2015.lz4`
 #### Enable WebGL rendering for browsers that support it
 Also think about using WebGL for realtime query/compute.
 
+[It's possible.](https://gist.github.com/adrianseeley/08ca986403368018c1c3)
+
 #### Buffer on the server and pull down with AJAX
 Browsers don't have client-side rate limiting for web sockets, so we can get
 situations where it falls over if you stream too much data too quickly.
