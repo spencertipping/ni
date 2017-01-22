@@ -72,7 +72,7 @@
 ## IMPLEMENTATION
 	
 	  my ($floor, @cs) = @_;
-	  my $asc = join('', @cs) eq join('', sort @cs);
+	  my $asc = join('', @cs) eq join('', sort {$a <=> $b} @cs);
 	  my %dup; ++$dup{$_} for @cs;
 	  return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
 	    if $asc && !grep $_ > 1, values %dup;
