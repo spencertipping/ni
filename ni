@@ -6362,7 +6362,7 @@ pixel. Brightness is stored in the alpha channel and converges to 255 by an expo
 Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
 constantly low.
 
-  -where[slice_size      = 256,
+  -where[slice_size      = 4096,
          slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
@@ -6380,12 +6380,13 @@ Here's the calculation:
         az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
-        t  = +new Date, sr = state.saturation_rate;
+        sr = state.saturation_rate;
 
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
-    for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
+    var t = +new Date;
+    for (; state.i < slice_size && +new Date - t < 30; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -6436,11 +6437,10 @@ Here's the calculation:
       if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * slice_size);
     }
 
-    last_render = +new Date;
-
     state.l           = l;
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
+    last_render = +new Date;
   }]})();
 57 core/jsplot/camera.waul.sdoc
 Camera state, geometry, and UI.
@@ -6640,7 +6640,7 @@ $(caterwaul(':all')(function ($) {
         update_screen()    = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  update_overlay(v)
                      -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
+                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
