@@ -459,10 +459,11 @@ You have always had permission to use Ruby, but I've held off documenting it unt
 
 You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
 
-* `f`: `to_f`g
+* `f`: `to_f`
 * `i`: `to_i`
 * `s`: `to_s`
 
+To fix the example above, you need to run:
 
 ```
 $ ni n4m'r a, ai + 1'
@@ -474,7 +475,7 @@ $ ni n4m'r a, ai + 1'
 ```
 
 ####`m'fields'`: Array of fields.
-Analogous to `p'F_ ...'`. You can use array syntax to get particular fields, for example: 
+Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
 ```
 $  ni //license FWr2m'r fields[0..3]'
