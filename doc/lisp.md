@@ -53,8 +53,8 @@ $ ni n4l'(r a (1+ a))' l'(r (+ a b))'   # ... and sum them
 9
 ```
 
-Note that whitespace is required after every `p'code'` operator; otherwise ni
-will assume that everything following your quoted code is also Perl.
+Note that whitespace is required after every `l'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Lisp.
 
 It is possible to omit `r` altogether; then you're returning one or more
 values, each of which will become a row of output:

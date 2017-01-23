@@ -157,13 +157,82 @@ Also note that the Perl upper-case operator is written as `puc`, without quotes,
 
 Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
 
-There is : 
+Example:
 
 ```
-$ ni :letters[e'echo {a..e}' p'split / /'] wn +[letters] wn gABn j[letters]
+$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn j[letters]
+a       5       1       a
+b       4       2       b
+c       3       3       c
+d       2       4       d
+e       1       5       e
+(END)
 ```
 
-This operation is a little long-winded, and it will probably help to 
+This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
+
+```
+$ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA
+a       5
+b       4
+c       3
+d       2
+e       1
+```
+
+This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
+
+```
+$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters]
+a       5
+b       4
+c       3
+d       2
+e       1
+a
+b
+c
+d
+e
+(END)
+```
+
+We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
+
+```
+$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn
+a       5       1
+b       4       2
+c       3       3
+d       2       4
+e       1       5
+a       6
+b       7
+c       8
+d       9
+e       10
+(END)
+```
+
+We append another column of numbers; note that `w` adds new columns to every row, but does not make sure that the rows are the same length, so the 
+
+
+```
+$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn
+a       5       1
+a       6
+b       4       2
+b       7
+c       3       3
+c       8
+d       2       4
+d       9
+e       1       5
+e       10
+(END)
+```
+
+We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
 
 
 
@@ -202,26 +271,29 @@ Copyright       c       2016    Spencer
 ```
 
 ##Useful `ni`-specific Perl Subroutines
-`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these operators are general
+`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these opertoars work only inside a Perl mapper context (`p'...'`)
  
-`$ ni <data> p'...'`
 
-* `ghe`: geohash encoding
+####`ghe`: geohash encoding
   * `ghe($lat, $lng, $precision)`
     * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
     * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
-* `ghd`: geohash decoding
+
+####`ghd`: geohash decoding
   * `ghd($gh_base32)`
      * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
   * `ghd($gh_int, $precision)`
     * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-* `tpe`: time parts to epoch
+    
+#### `tpe`: time parts to epoch
   * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
   * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
-* `tep`: time epoch to parts
+
+#### `tep`: time epoch to parts
   * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
   * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
-* `timezone_seconds`
+
+#### `timezone_seconds`: convert epoch to local time
   * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
   
 ##Understanding the `ni` monitor
@@ -252,29 +324,38 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
   * `$<v> = y/regex//`
 
 ##`m'...'`: Ruby
-You have always had permission to use Ruby, but now hopefully you can do it responsibly.
+You have always had permission to use Ruby, but I've held off documenting it until you can do so responsibly. Why does Ruby require responsibility, whereas Python/numpy gets a pass (mostly)?
 
-Why am I not giving Ruby the same loving treatment I gave Python in the previous section?
+1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, the Python environment can do things that `ni` alone cannot do. The Ruby operators are weak-tea versions of cutting-edge Perl operators.
+1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). Thus, most of your Ruby code should look something like: `ni ... m'require "lib1"; require "lib2"; <do stuff with those libraries>'`
+1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up.
 
-1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, Python can do things that `ni` alone cannot do, and 
-1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). If you have a Ruby gem that does something that would be odious to implement in Perl, it's a good idea to 
 
 
-##`l'...'`: Lisp
+
+
+##`l"..."`: Lisp
 
 Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. One day, when `ni` is a more mature language, and it becomes a multi-quine written in every language that it can also execute.
 
 Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
 
+So, if Ruby has gems, why even support Lisp? Here's why:
+
+```
+ni n4fAA l"(r (sr ('+ a) ('* b)))"
+```
+
+Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
+
+####`l"a" ... l"q": Lisp Column Accessors
+
+You can get the first 17 tab-delimited columns using the Lisp `a` through `q` operators.
+
+####`l"(r ...)": Print row
+
+Similar to `p'r ...'` in
 Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
-
-
-
-
-
-
-
-
   
   
 ##Plotting with `ni --js`
