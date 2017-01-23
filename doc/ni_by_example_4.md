@@ -1,5 +1,7 @@
-#`ni` by Example Chapter 4 (WIP)
-Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter shoud read a little briefer because it is focused on introducing you to the possibilities of each operator.
+#`ni` by Example Chapter 4 (pre-alpha release)
+Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
+
+Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
 
 ##`ni` and bash
 
@@ -109,16 +111,25 @@ $ ni n1E4 fAA ,aA ,sB r~1
 ```
 
 
-##Stream Appending and Duplication
-You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. There are two more useful stream operators to cover:
+##Stream Appending, Interleaving, and Duplication
+You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
 
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `=`: duplicate this stream through a process, discarding its output
+####`+` and `^`: append (prepend) a stream
+
+`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process) internally, ni is basically doing this
 
 
-In order to append to a stream, the entire stream must first be processed, so `ni` will buffer operations that use `+` to disk (I think)
-`+`
+```
+while ($data = read from stream 1) {print $data}
+while ($data = read from stream 2) {print $data}
+```
+
+####`=`: duplicate this stream and discard its output
+
+
+####`%<val>`: interleave stream with ratio of `<val>:1`
+
+
 
 
 ##Intermediate Column Operations
@@ -265,8 +276,6 @@ e       10
 We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
 
 
-
-
 ####`Y` - dense-to-sparse transformation
 `Y` Explodes each row of the stream into several rows, each with three columns:
 
@@ -384,6 +393,15 @@ If you need a regex tutorial, [this one](https://regexone.com) looks good to me.
 `$<v> = tr/regex//d`
 
 `$<v> = y/regex//`
+
+######String Slicing with Regex
+I don't like the asymmetry of Perl's `substr` method; to recover most of what I like about from Python's string slicing syntax, I use regex.
+
+```
+s[:-4] === s =~ /^(.*).{4}$/
+s[3:]  === s =~ /^.{3}(.*)$/
+s[-5:] === s =~ /^.*(.{5})$/
+```
   
 ####`map`
 
