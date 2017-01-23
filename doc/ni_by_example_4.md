@@ -90,6 +90,20 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 * `,d`: Difference between consecutive rows
 * `,s`: Running sum 
 
+You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
+
+```
+$ ni n1E4 fAA ,aA ,sB r~1
+5000.5  50005000
+```
+
+
+##Stream Splitting/Joining/Duplication
+You've seen one of these operators before, the highly useful `=\>`, which silently writes a file. They can be useful for 
+
+* `+`: append a stream to this one
+* `^`: prepend a stream to this one
+* `=`: duplicate this stream through a process, discarding its output
 
 ##Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
@@ -401,12 +415,7 @@ In theory, this can save you a lot of space. But I haven't used this in practice
   * `clip`
   * `within`
   
-##Stream Splitting/Joining/Duplication
-I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
 
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `=`: duplicate this stream through a process, discarding its output
    
 ##Writing Your Own `ni` Extensions
 **TODO** Understand how this works
