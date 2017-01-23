@@ -59,6 +59,18 @@ You can appropriately process the checkopoint files to to get the correct paths,
 nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
 ```
 
+##Understanding the `ni` monitor
+
+At this point, you've probably executed a long-running enough `ni` job to see the `ni` monitor appear at the top of your screen. 
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+
+Some things to keep in mind when examining the output of the monitor: if you have access to more compute resources for slow steps, you can use them for that step alone, and this can be done in a very simple way via the `S` horizontal scaling operator.
+
+You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the monitor [docs](monitor.md) and in the optimization [docs](optimization.md).
+
 
 ##Cell Operations
 
@@ -340,12 +352,6 @@ A specific format string can also be provided, in which case `tep` is called as 
 
 For example, 
   
-##Understanding the `ni` monitor
-More details [here](monitor.md). Overall:
-
-* Negative numbers = non-rate-determining step
-* Positive numbers = rate-determining step
-* Large Positive numbers = slow step
 
 
 
