@@ -150,29 +150,60 @@ $ ni e'echo {a..e}' p'split / /' Wn vBpuc
 
 **Important Note**: As of 2017-01-22, this operator is too slow to use in production.
 
-Also note that the upper-case
+Also note that the Perl upper-case operator is written as `puc`, without quotes, as it's good `ni` style to do so.
 
   
 ###`j` - streaming join
-  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
-  
-Example: 
+
+Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
+
+There is : 
+
+```
+$ ni :letters[e'echo {a..e}' p'split / /'] wn +[letters] wn gABn j[letters]
+```
+
+This operation is a little long-winded, and it will probably help to 
+
+
+
 
 ####`Y` - dense-to-sparse transformation
 `Y` Explodes each row of the stream into several rows, each with three columns:
 
 * The index of the row that the input data that came from
 * The index of the column that the input data came from
-* The value of the input stream at the row + column specified by the first two columns.
+* The value of the input stream at the row and column specified by the first two columns.
+
+
+```
+$ ni //license FW Y r10
+0       0       ni
+0       1       https
+0       2       github
+0       3       com
+0       4       spencertipping
+0       5       ni
+1       0       Copyright
+1       1       c
+1       2       2016
+1       3       Spencer
+(END)
+```
 
 #### `X` - sparse-to-dense transformation
-`X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
-  * The specification for what the input matrix must look like is described above in the `Y` operator.
-
+```
+$ ni //license FW Y r10 X
+ni      https   github  com     spencertipping  ni
+Copyright       c       2016    Spencer
+(END)
+```
 
 ##Useful `ni`-specific Perl Subroutines
-`ni` was developed at [Factual, Inc.](www.factual.com), and while the operators in this section are general, specifically to the 
+`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these operators are general
+ 
 `$ ni <data> p'...'`
 
 * `ghe`: geohash encoding
@@ -192,25 +223,7 @@ Example:
   * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
 * `timezone_seconds`
   * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
-
-##`m'...'`: Ruby
-You have always had permission to use Ruby, but now hopefully you can do it responsibly.
-
-Why am I not giving Ruby the same loving treatment I gave Python in the previous section?
-
-1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, Python can do things that `ni` alone cannot do, and 
-1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). If you have a Ruby gem that does something that would be odious to implement in Perl, it's a good idea to 
-
-
-##`l'...'`: Lisp
-
-Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. One day, when `ni` is a more mature language, and it becomes a multi-quine written in every language that it can also execute.
-
-Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
-
-Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
-
-
+  
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
 
@@ -237,6 +250,26 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
   * `$<v> =~ s/regex//`
   * `$<v> = tr/regex//d`
   * `$<v> = y/regex//`
+
+##`m'...'`: Ruby
+You have always had permission to use Ruby, but now hopefully you can do it responsibly.
+
+Why am I not giving Ruby the same loving treatment I gave Python in the previous section?
+
+1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, Python can do things that `ni` alone cannot do, and 
+1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). If you have a Ruby gem that does something that would be odious to implement in Perl, it's a good idea to 
+
+
+##`l'...'`: Lisp
+
+Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. One day, when `ni` is a more mature language, and it becomes a multi-quine written in every language that it can also execute.
+
+Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
+
+Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
+
+
+
 
 
 
