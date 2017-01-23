@@ -293,7 +293,7 @@
 	      my $cmd = shell_quote
 	        conf 'hadoop/name',
 	        jar => $streaming_jar,
-	        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+	        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
 	        map((-D => $_), @jobconf),
 	        map((-input => $_), @$ipaths),
 	        -output => $opath,
