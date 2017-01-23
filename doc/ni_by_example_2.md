@@ -519,6 +519,9 @@ $ ni n1000000gr4 =\>numbers O
 
 One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
 
+####A Final Note on Hadoop Streaming Jobs
+There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
+
 
 ##HDFS I/O
 

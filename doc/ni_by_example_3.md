@@ -2,7 +2,7 @@
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
-In this chapter, our goal is to multiply your power by introducing reducers. We'll also discuss some more common I/O operations, give an overview of Perl fundamentals, and demonstrate `ni`'s connections to Python and numpy.
+In this chapter, our goal is to multiply your power by introducing reducers. We'll also discuss some more common I/O operations, give an overview of Perl fundamentals, and demonstrate `ni`'s connections to Python and numpy. 
 
 ##Perl for `ni`
 Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is known for the religious overtones in its construction--let `ni` author Spencer Tipping drop the scales from your eyes in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 

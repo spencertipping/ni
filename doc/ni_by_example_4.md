@@ -3,6 +3,7 @@ Welcome to chapter 4. At this point you have enough skills to read the documenta
 
 Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
 
+
 ##`ni` and bash
 
 [Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
@@ -111,7 +112,7 @@ $ ni n1E4 fAA ,aA ,sB r~1
 ```
 
 
-##Stream Appending, Interleaving, and Duplication
+##Stream Appending, Interleaving, Duplication, and Buffering
 You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
 
 ####`+` and `^`: append (prepend) a stream
@@ -125,10 +126,31 @@ while ($data = read from stream 2) {print $data}
 ```
 
 ####`=`: duplicate this stream and discard its output
+This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
+```
+$ ni n1E7 =[r5 \>short] r3fAA
+1       1
+2       2
+3       3
+(END)
+$ ni short
+1
+2
+3
+4
+5
+(END)
+```
+
+One thing to be aware of is that the duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell.
 
 ####`%<val>`: interleave stream with ratio of `<val>:1`
 
+
+####`B<op>`: Buffer operation
+
+Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
 
 
 
