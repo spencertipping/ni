@@ -350,13 +350,16 @@ A specific format string can also be provided, in which case `tep` is called as 
 
 `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
-For example, 
-  
+For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
+```$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485151713; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); join "\t", @local_time_parts'
+2017    1       22      22      44      33
+(END)
+```
 
 
 ##More Perl for `ni`
-There's a lot more Perl out there to be learned, but here's 
+There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.
 
 ####Useful function list
 
@@ -385,6 +388,14 @@ If you need a regex tutorial, [this one](https://regexone.com) looks good to me.
 ####`map`
 
 ####`for`
+
+####`use strict` and the `::` prefix within `p'...'`
+
+When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
+
+The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`. 
+
+It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
 
 
 ##`m'...'`: Ruby
@@ -449,6 +460,17 @@ Similar to `p'r ...'` in
 Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
   
   
+
+
+
+##Annoyingly Advanced Perl
+
+  
+
+
+
+#Future Chapter 5 Below
+
 ##Plotting with `ni --js`
 Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
 
@@ -460,7 +482,7 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 
 **TODO: Understand this**
 
-##Matrix Operations
+##Partitioned Matrix Operations
 
 Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
 
@@ -475,15 +497,8 @@ Operations on huge matrices are not entirely `ni`ic, since they may require spac
 
 * `@:[disk_backed_data_closure]`
 
-##Annoyingly Advanced Perl
-* `use strict` and the `::` prefix in a Perl Environment
-  * When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
-  * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
-  * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
-  
 ##Binary Operations
 In theory, this can save you a lot of space. But I haven't used this in practice.
-  
 
 ##Less Useful `ni`-specific Perl Extensions
 
