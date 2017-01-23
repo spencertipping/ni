@@ -444,8 +444,8 @@ The primary use of binary operations is to operate on data that is most effectiv
 ni //license FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons```
-
+                    word    => c}' \>jsons
+```
 
 ###Array Functions
   * `clip`
