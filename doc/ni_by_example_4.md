@@ -4,7 +4,11 @@ Welcome to Chapter 4. At this point you have enough skills to read the documenta
 Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
 
 
-##`ni` and bash
+##Calling`ni` from other programming languages
+
+You've already been using `ni` within bash, so you've always been using `ni` from another langauge. In this section, we'll make the connections more explicit, and briefly discuss how to use `ni` from Ruby.
+
+####`ni` and bash
 
 [Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
 
@@ -36,6 +40,9 @@ exec("/bin/sh", "-c", "stuff")
 ```
 
 This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
+
+####`ni` and Ruby
+Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`, so to execute your `ni` spells from Ruby, you will want to create them as strings, and execute them with `bash -c "#{cmd}"`
 
 ##`nfu` HDFS Joins
 
@@ -76,11 +83,10 @@ You may also want to consider refactoring your job to make use of Hadoop Streami
 
 
 
-
 ##Stream Appending, Interleaving, Duplication, and Buffering
 You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
 
-####`+` and `^`: append (prepend) a stream
+####`+` and `^`: Append (Prepend) Stream
 
 
 `+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
@@ -92,7 +98,7 @@ while ($data = read from stream 2) {print $data}
 The second stream waits to execute until an `EOF` is received from the first stream.
 
 
-####`%`: Interleave stream
+####`%`: Interleave Streams
 
 The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will put the second stream somewhere in the middle.
 
@@ -101,7 +107,7 @@ You can also call `%#` with a number, in which case the streams will be interlea
 Interleaving streams with a numeric argument will cut off when either stream is exhausted.
 
 
-####`=`: Duplicate Stream and discard output
+####`=`: Duplicate Stream and Discard
 This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
 ```
@@ -120,6 +126,8 @@ $ ni short
 ```
 
 One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
+
+If you need to do something like this, you may be better off writing two `ni` spells, or using a `ni` [script](script.md).
 
 
 ####`B<op>`: Buffer operation
@@ -417,13 +425,17 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 #### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Assuming you already know how to write a regular expression, there are a number of Perl syntaxes you should know.
 
-`$<v> =~ /regex/`
+######`my @v = /regex/;` and `my ($v) = /regex/;`
 
-`$<v> =~ s/regex//`
+This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to 
 
-`$<v> = tr/regex//d`
+This is syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
 
-`$<v> = y/regex//`
+######`$<v> =~ s/regex//`
+
+######`$<v> = tr/regex//d`
+
+######`$<v> = y/regex//`
 
 ######String Slicing with Regex
 I don't like the asymmetry of Perl's `substr` method; to recover most of what I like about from Python's string slicing syntax, I use regex.
@@ -488,9 +500,10 @@ Copyright       c       2016    Spencer
 Analogous to `p'r ...'`.
 
 
+
 ##`l"..."`: Lisp
 
-Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
+Lisp is in the same boat as Ruby, as a language that `ni` supports. Lisp operates in a streaming context, which is much better learned (and in most cases executed) in Perl. Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
 
 So, if Ruby has gems, why even support Lisp? Here's why:
 
