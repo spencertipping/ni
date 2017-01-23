@@ -117,15 +117,27 @@ You've seen one of these operators before, the very useful `=\>`, which we've us
 
 ####`+` and `^`: append (prepend) a stream
 
-`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process) internally, ni is basically doing this
 
+`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
 
 ```
 while ($data = read from stream 1) {print $data}
 while ($data = read from stream 2) {print $data}
 ```
+The second stream waits to execute until an `EOF` is received from the first stream.
 
-####`=`: duplicate this stream and discard its output
+
+####`%`: Interleave stream
+
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]`
+
+
+You can also call `%#` with a number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1 `
+
+Interleaving streams with a numeric argument will cut off when either stream is exhausted.
+
+
+####`=`: Duplicate Stream and discard output
 This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
 ```
@@ -143,16 +155,12 @@ $ ni short
 (END)
 ```
 
-One thing to be aware of is that the duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell.
-
-####`%<val>`: interleave stream with ratio of `<val>:1`
+One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
 
 
 ####`B<op>`: Buffer operation
 
 Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
-
-
 
 ##Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
