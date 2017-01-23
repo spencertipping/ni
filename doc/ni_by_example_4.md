@@ -66,13 +66,17 @@ nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
 
 Cell operations provide keystroke-efficient ways to do transformations on a single column of the input data. 
 
-Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
-
-Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
 
 ####Hashing Algorithms
 * `,h`: Murmurhash (deterministic 32-bit hash function)
 * `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,H`: Murmurhash and map the result into the unit interval.
+
+Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
+
+Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
+
+
 
 ####Cell Math Operations
 * `,e`: Natural exponential e<sup>x</sup>
@@ -87,23 +91,72 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 * `,s`: Running sum 
 
 
-
 ##Intermediate Column Operations
-These operations are less commonly used, but still find use.
+These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
 
 #### `w`: Append column to stream
-  * `$ ni <data> w[np'a*a']`
-  * `w` will add columns only up to the length of the input stream
+
+`w` adds a column to the end of a stream, up to the minimum length of either stream.
+
+```
+$ ni //license w[n3p'a*a']
+ni: https://github.com/spencertipping/ni        1
+Copyright (c) 2016 Spencer Tipping | MIT license        4
+        9
+(END)
+```
+
   
 ####`W`: Prepend column stream
-  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
-  * `W` will add rows only up to the length of the input stream
+
+`W` operates like `w`, except its output column is prepended. 
+
+```
+$ ni e'echo {a..e}' p'split / /' Wn
+1       a
+2       b
+3       c
+4       d
+5       e
+(END)
+```
   
+
 ####`v`: Vertical operation on columns
-  * **Important Note**: As of 2017-01-18, this operator is too slow to use in production.
+
+We can upper-case the letters in the previous example via:
+
+```
+$ ni e'echo {a..e}' p'split / /' Wn p'r a, uc(b)'
+1       A
+2       B
+3       C
+4       D
+5       E
+(END)
+```
+
+However `ni` also offers a shorter syntax using the `v` operator.
+
+```
+$ ni e'echo {a..e}' p'split / /' Wn vBpuc
+1       A
+2       B
+3       C
+4       D
+5       E
+(END)
+```
+
+**Important Note**: As of 2017-01-22, this operator is too slow to use in production.
+
+Also note that the upper-case
+
   
 ###`j` - streaming join
   * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
+  
+Example: 
 
 ####`Y` - dense-to-sparse transformation
 `Y` Explodes each row of the stream into several rows, each with three columns:
@@ -117,13 +170,46 @@ These operations are less commonly used, but still find use.
 
   * The specification for what the input matrix must look like is described above in the `Y` operator.
 
-##`m'...'`: Ruby
 
-But `ni` is written in Perl, for Perl, and in a Perlic style. Use these, but go learn Perl.
-* applies the Ruby snippet `<...>` to each row of the stream 
+##Useful `ni`-specific Perl Subroutines
+`ni` was developed at [Factual, Inc.](www.factual.com), and while the operators in this section are general, specifically to the 
+`$ ni <data> p'...'`
+
+* `ghe`: geohash encoding
+  * `ghe($lat, $lng, $precision)`
+    * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
+    * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
+* `ghd`: geohash decoding
+  * `ghd($gh_base32)`
+     * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+  * `ghd($gh_int, $precision)`
+    * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+* `tpe`: time parts to epoch
+  * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
+  * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
+* `tep`: time epoch to parts
+  * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
+  * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
+* `timezone_seconds`
+  * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+
+##`m'...'`: Ruby
+You have always had permission to use Ruby, but now hopefully you can do it responsibly.
+
+Why am I not giving Ruby the same loving treatment I gave Python in the previous section?
+
+1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, Python can do things that `ni` alone cannot do, and 
+1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). If you have a Ruby gem that does something that would be odious to implement in Perl, it's a good idea to 
+
 
 ##`l'...'`: Lisp
-* applies the Lisp snippet `<...>` to each row of the stream 
+
+Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. One day, when `ni` is a more mature language, and it becomes a multi-quine written in every language that it can also execute.
+
+Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
+
+Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
+
 
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
@@ -155,27 +241,7 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
 
 
 
-##Useful `ni`-specific Perl Subroutines
-`ni` was developed at [Factual, Inc.](www.factual.com), and he operators in this section refer specifically to the 
-`$ ni <data> p'...'`
 
-* `ghe`: geohash encoding
-  * `ghe($lat, $lng, $precision)`
-    * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
-    * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
-* `ghd`: geohash decoding
-  * `ghd($gh_base32)`
-     * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-  * `ghd($gh_int, $precision)`
-    * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-* `tpe`: time parts to epoch
-  * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
-  * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
-* `tep`: time epoch to parts
-  * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
-  * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
-* `timezone_seconds`
-  * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
   
   
 ##Plotting with `ni --js`
