@@ -60,8 +60,6 @@ nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
 ```
 
 
-
-
 ##Cell Operations
 
 Cell operations provide keystroke-efficient ways to do transformations on a single column of the input data. 
@@ -84,6 +82,7 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,q<amt>`: Round to the nearest integer multiple of `<amt>`
 
+These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
 
 ####Column Math Operations
 * `,a`: Running average
@@ -98,12 +97,17 @@ $ ni n1E4 fAA ,aA ,sB r~1
 ```
 
 
-##Stream Splitting/Joining/Duplication
-You've seen one of these operators before, the highly useful `=\>`, which silently writes a file. They can be useful for 
+##Stream Appending and Duplication
+You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. There are two more useful stream operators to cover:
 
 * `+`: append a stream to this one
 * `^`: prepend a stream to this one
 * `=`: duplicate this stream through a process, discarding its output
+
+
+In order to append to a stream, the entire stream must first be processed, so `ni` will buffer operations that use `+` to disk (I think)
+`+`
+
 
 ##Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
@@ -318,7 +322,7 @@ If `$precision > 0`, the geohash is specified with `$precison` base-32 character
 
 `ghd($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
 
-`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.g
+`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.
     
 #### `tpe`: time parts to epoch
 
@@ -346,22 +350,36 @@ More details [here](monitor.md). Overall:
 
 
 ##More Perl for `ni`
-A few important operators for doing data manipulation in Perl. Many Perl subroutines can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
+There's a lot more Perl out there to be learned, but here's 
 
-* `lc`
-* `uc`
-* `substr`
-* `split`
-* `join`
+####Useful function list
+
+You've probably come across most of these already, but I'd feel remiss if I didn't put these down somewhere.
+
+* `lc`: lowercase
+* `uc`: uppercase
+* `substr`: slice a string using a function (you can also slice with a regex)
+* `split`: split a string into a list
+* `join`: join a list into a string
 * `**`: exponent
-* `my $<v> = <expr>`: instantiate a scalar `<v>` with the value of `<expr>`
-* `map`
-* `keys %h`
-* Regular Expressions
-  * `$<v> =~ /regex/`
-  * `$<v> =~ s/regex//`
-  * `$<v> = tr/regex//d`
-  * `$<v> = y/regex//`
+* `keys %h`: get keys from hash
+* `values %h`: get values from hash
+
+#### Regular Expressions
+If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Assuming you already know how to write a regular expression, there are a number of Perl syntaxes you should know.
+
+`$<v> =~ /regex/`
+
+`$<v> =~ s/regex//`
+
+`$<v> = tr/regex//d`
+
+`$<v> = y/regex//`
+  
+####`map`
+
+####`for`
+
 
 ##`m'...'`: Ruby
 You have always had permission to use Ruby, but I've held off documenting it until you can do so responsibly. Why does Ruby require responsibility, whereas Python/numpy gets a pass (mostly)?
