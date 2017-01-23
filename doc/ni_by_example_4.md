@@ -386,17 +386,44 @@ You have always had permission to use Ruby, but I've held off documenting it unt
 
 1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, the Python environment can do things that `ni` alone cannot do. The Ruby operators are weak-tea versions of cutting-edge Perl operators.
 1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). Thus, most of your Ruby code should look something like: `ni ... m'require "lib1"; require "lib2"; <do stuff with those libraries>'`
-1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up.
+1. Because the primary use of Ruby is access to Ruby gems, your code becomes less portable. Here's a [good article](http://zachmoshe.com/2015/02/23/use-ruby-gems-with-hadoop-streaming.html) about using Ruby gems with Hadoop Streaming. It's really complicated!
+1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up. Concretely: `ni n4m'r a, a + 1'` will complain about conversion of Fixnum to String without a proper cast.
+
+####`m'a' ... m'q': Ruby Column Accessors
+
+You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
+
+* `f`: `to_f`g
+* `i`: `to_i`
+* `s`: `to_s`
 
 
+```
+$ ni n4m'r a, ai + 1'
+1   2
+2   3
+3   4
+4   5
+(END)
+```
 
+####`m'fields'`: Array of fields.
+Analogous to `p'F_ ...'`. You can use array syntax to get particular fields, for example: 
+
+```
+$  ni //license FWr2m'r fields[0..3]'
+ni      https   github  com
+Copyright       c       2016    Spencer
+(END)
+```
+
+####`m'r ...'`: Print row
+Analogous to `p'r ...'`.
 
 
 ##`l"..."`: Lisp
 
-Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. One day, when `ni` is a more mature language, and it becomes a multi-quine written in every language that it can also execute.
-
-Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
+Lisp is in the same boat as Ruby; it operates in a streaming context, which is much better learned (and in most cases executed) in Perl. Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
 
 So, if Ruby has gems, why even support Lisp? Here's why:
 
