@@ -284,31 +284,57 @@ Copyright       c       2016    Spencer
 (END)
 ```
 
-##Useful `ni`-specific Perl Subroutines
+##Geographic and Time Perl Functions
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these opertoars work only inside a Perl mapper context (`p'...'`)
  
 
 ####`ghe`: geohash encoding
-  * `ghe($lat, $lng, $precision)`
-    * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
-    * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
+Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
+
+The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
+
+base-32 characters | Approximate geohash size
+--- |  ----
+1 | 5,000km x 5,000km
+2 | 1,250km x 625km
+3 | 160km x 160km
+4 | 40km x 20km
+5 | 5km x 5km
+6 | 1.2km x 600m
+7 | 150m x 150m
+8 | 40m x 20m
+9 | 5m x 5m
+10 | 1.2m x 60cm
+11 | 15cm x 15cm
+12 | 4cm x 2cm
+
+`ghe($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer.
+
+If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
 
 ####`ghd`: geohash decoding
-  * `ghd($gh_base32)`
-     * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
-  * `ghd($gh_int, $precision)`
-    * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+
+`ni` provides two prototypes for geohash decoding:
+
+`ghd($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
+
+`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.g
     
 #### `tpe`: time parts to epoch
-  * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
-  * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
+
+`tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order. You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
 
 #### `tep`: time epoch to parts
-  * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
-  * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
+
+`tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
+
+A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
 #### `timezone_seconds`: convert epoch to local time
-  * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+
+`tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+
+For example, 
   
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
