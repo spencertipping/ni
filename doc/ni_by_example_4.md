@@ -1,5 +1,5 @@
 #`ni` by Example Chapter 4 (pre-alpha release)
-Welcome to chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
+Welcome to Chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
 Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
 
@@ -75,41 +75,6 @@ Some things to keep in mind when examining the output of the monitor: if you hav
 You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the monitor [docs](monitor.md) and in the optimization [docs](optimization.md).
 
 
-##Cell Operations
-
-Cell operations provide keystroke-efficient ways to do transformations on a single column of the input data. 
-
-
-####Hashing Algorithms
-* `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,z`: Intify (hash and then convert hash values to integers starting with 1)
-* `,H`: Murmurhash and map the result into the unit interval.
-
-Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
-
-Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
-
-
-
-####Cell Math Operations
-* `,e`: Natural exponential e<sup>x</sup>
-* `,l`: Natural log (`ln x`)
-* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
-* `,q<amt>`: Round to the nearest integer multiple of `<amt>`
-
-These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
-
-####Column Math Operations
-* `,a`: Running average
-* `,d`: Difference between consecutive rows
-* `,s`: Running sum 
-
-You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
-
-```
-$ ni n1E4 fAA ,aA ,sB r~1
-5000.5  50005000
-```
 
 
 ##Stream Appending, Interleaving, Duplication, and Buffering
@@ -129,8 +94,7 @@ The second stream waits to execute until an `EOF` is received from the first str
 
 ####`%`: Interleave stream
 
-The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]`
-
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will put the second stream somewhere in the middle.
 
 You can also call `%#` with a number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1 `
 
@@ -339,6 +303,43 @@ Copyright       c       2016    Spencer
 (END)
 ```
 
+##Cell Operations
+
+Cell operations are similar to column operations, in that they are keystroke-efficient ways to do transformations on a single column of the input data.
+
+
+####Hashing Algorithms
+* `,h`: Murmurhash (deterministic 32-bit hash function)
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,H`: Murmurhash and map the result into the unit interval.
+
+Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
+
+Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
+
+
+
+####Cell Math Operations
+* `,e`: Natural exponential e<sup>x</sup>
+* `,l`: Natural log (`ln x`)
+* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
+* `,q<amt>`: Round to the nearest integer multiple of `<amt>`
+
+These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
+
+####Column Math Operations
+* `,a`: Running average
+* `,d`: Difference between consecutive rows
+* `,s`: Running sum 
+
+You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
+
+```
+$ ni n1E4 fAA ,aA ,sB r~1
+5000.5  50005000
+```
+
+
 ##Geographic and Time Perl Functions
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these opertoars work only inside a Perl mapper context (`p'...'`)
  
@@ -500,70 +501,14 @@ Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. Ther
 
 ####`l"a" ... l"q": Lisp Column Accessors
 
-You can get the first 17 tab-delimited columns using the Lisp `a` through `q` operators.
+Analogous to the Perl and Ruby column accessors.
 
 ####`l"(r ...)": Print row
 
-Similar to `p'r ...'` in
+Analogous to `p'r ...'`; prints its arguments.
+
 Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
   
   
-
-
-
-##Annoyingly Advanced Perl
-
-  
-
-
-
-#Future Chapter 5 Below
-
-##Plotting with `ni --js`
-Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
-
-**TODO**: Say something useful.
-
-
-##Custom Compound Reduce
-#### `rfn`: Custom compound reduce
-
-**TODO: Understand this**
-
-##Partitioned Matrix Operations
-
-Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
-
-
-* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * **TODO**: understand how these actually work.
-* `X`: sparse-to-dense transformation
-  * In the case that there are collisions for locations `X`, `X` will sum the values
-  * For example: `ni n010p'r 0, a%3, 1' X`
-
-##Disk-Backed Data Closures
-
-* `@:[disk_backed_data_closure]`
-
-##Binary Operations
-In theory, this can save you a lot of space. But I haven't used this in practice.
-
-##Less Useful `ni`-specific Perl Extensions
-
-
-###Array Functions
-  * `clip`
-  * `within`
-  
-
-   
-##Writing Your Own `ni` Extensions
-**TODO** Understand how this works
-
-##Obscure Interops/Extensions
-
-* [SQL](sql.md)
-* [PySpark](pyspark.md)
-* [Scripting](script.md)
-* [HTTP Operations](net.md)
-* [Defining `ni` functions](fn.md)
+##Conclusion
+You've reached the end of chapter 4 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters, and more old ideas made fresh and useful.
