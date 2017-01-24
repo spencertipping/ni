@@ -36,13 +36,13 @@ $ni e'seq 10 | grep 1'
 
 turns into 
 ```
-exec("/bin/sh", "-c", "stuff")
+exec("/bin/sh", "-c", "seq 10 | grep 1/")
 ```
 
 This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
 
 ###`ni` and Ruby
-Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`, so to execute your `ni` spells from Ruby, you will want to create them as strings, and execute them with `bash -c "#{cmd}"`
+Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. For most purposes bash and sh will behave the same way for `ni` -- the main exceptions are things like {x..y} (a bash-ism) and some environment-variable expansion forms. So it should be fine to use backquotes directly in all but the weirdest cases. However, if you do run into the weird case, you can create your command as a string `cmd` and run it with `bash -c "#{cmd}"`.
 
 ##`nfu` HDFS Joins
 
@@ -146,9 +146,9 @@ first stream and the start of the second.
 
 ###`%`: Interleave Streams
 
-The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will put the second stream somewhere in the middle.
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
 
-You can also call `%#` with a number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1 `
+You can also call `%#` with a positive number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1.` You can also call `%-#`, and the streams will be interleaved with a ratio: `first stream : second stream :: 1:#.`
 
 Interleaving streams with a numeric argument will cut off the output stream when either stream is exhausted.
 
