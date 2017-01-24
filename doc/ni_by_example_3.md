@@ -43,11 +43,17 @@ $ ni 1p'my $v2="4.3" * "6.7"; r $v2'
 (END)
 ```
 
-You can call floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. strings that start with valid numbers are cast to th
+You can call floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero in a numeric context.
 
 ```
 $ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 0       hihihi  hi golden rings
+(END)
+```
+
+```
+$ ni 1p'my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+9.42    3.14hi3.14hi3.14hi      3.14hi golden rings
 (END)
 ```
 
