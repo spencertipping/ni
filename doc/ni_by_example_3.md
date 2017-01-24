@@ -243,13 +243,13 @@ So far, you have seen many ways to reshape, process, and filter individual rows,
 
 One of the reasons that Perl has been stressed in this tutorial is for streaming reduce; reduction can also be done from within `ni` using Python (introduced in the next section), however, this reduction is limited by a slightly awkward syntax, and the sometimes-unfeasible prospect of needing to hold the entire stream in memory.
 
-Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort + reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
+Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort and reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
 
 These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
 
 ### `sr`: Reduce over entire stream
 
-Let's look at a simple example: 
+Let's look at a simple example, summing the integers from 1 to 100,000: 
 
 ```
 $ ni n1E5p'sr {$_[0] + a} 0'
@@ -257,8 +257,6 @@ $ ni n1E5p'sr {$_[0] + a} 0'
 (END)
 ```
 
-The above code sums the integers from 1 to 100,000, inclusive. For those not familiar with Perl syntax, `$_[i]` refers to the i-th argument to a function. `$_[i]` is a dereferencing of the arguments of a function, stored in the magic variable `@_`. Since the variable returned is a scalar, its sigil is a `$`. Confusingly, `$_[i]` has very little to do with `$_`, the Perl default scalar.
- 
 Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
  
  ```
@@ -268,13 +266,11 @@ Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an
 To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
 
 ```
-$ ni n1E1p'sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
-55
-3628800
-12345678910
+$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55      3628800 12345678910
 (END)
 ```
-A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions. If we wanted all of the results of the reduce on a single line, we would need to use `p'r ...`.
+A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
 
 
 ### `se`: Reduce while equal
@@ -289,9 +285,10 @@ In `ni`-speak, the reduce-while-equal operator looks like this:
 ```
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
+
 `se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
 
-**NOTE**: The comma after `partition_fn` is important; don't forget it.
+**NOTE**: The comma after `partition_fn` is important.
 
 ```
 $ ni n1000p'se {$_[0] + a} sub {length}, 0'
@@ -366,6 +363,7 @@ $ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 ```
 
 For common operations like these, `ni` offers a shorthand:
+
 ```
 ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 ```
@@ -439,7 +437,7 @@ Writing Perl reducers is among the most challenging aspects of `ni` development,
 
 Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
 
-However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations, at the cost of buffering the entire stream into memory, some arbitrary-feeling limitations on I/O and a syntax that clunks.
+However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory; 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
 
 It's great, you're gonna love it.
 
