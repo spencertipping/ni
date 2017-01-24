@@ -93,7 +93,7 @@ print $x[3];    # gets a scalar value from @x
 print $x{foo};  # gets a scalar value from %x
 ```
 
-At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
+At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by calling it with curly braces, you get a scalar value out of an array by calling it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
 ###Barewords are strings
 Consider the following `ni` spell:
@@ -113,7 +113,7 @@ Whereas in almost any other language, a syntax error or name error would be rais
 
 Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
 
-Perl subroutines store the variables with which they are called in a default variable named `@_`. Take a moment here to think about how one would refer the elements in `@_`.
+Perl subroutines store the variables with which they are called in a default variable named `@_`. Before continuing, take a moment to think about how one would refer the elements in `@_`.
 
 Subroutines are stored and referenced with the following syntax:
 
@@ -199,7 +199,7 @@ $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 (END)
 ```
 
-In this example, `*v` is being computed at runtime for each row. This could be better written as:
+In this example, `*v` is being computed at runtime for each row. Using a begin block, however, `*v` will be computed just once, so this could be better written as:
 
 ```
 $ ni n3p'^{*v = sub {$_[0] x 4}} &v(a)'
@@ -209,7 +209,7 @@ $ ni n3p'^{*v = sub {$_[0] x 4}} &v(a)'
 (END)
 ```
 
-Using the begin block, `*v` will be computed just once. Outside of variable assignment, `sub` is a `BEGIN`-level construct, so the code is much more simply written as:
+However useful to exemplify the concept of a begin block, it turns out that all of the previous definitions are not practical. Outside of variable assignment, `sub` is a `BEGIN`-level construct, so the code is much more simply written as:
 
 ```
 $ ni n3p'sub v {$_[0] x 4} &v(a)'
