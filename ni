@@ -4719,7 +4719,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-54 core/pl/time.pm.sdoc
+57 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4733,6 +4733,8 @@ to shift your epochs by some multiple of 3600.
 use POSIX ();
 
 use constant time_pieces => 'SMHdmYwjDN';
+
+our $mktime_error;              # bugfix for OSX
 
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
@@ -4753,7 +4755,7 @@ sub time_pieces_epoch {
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
   $tvs[4]--;
-  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
+  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000 - $mktime_error;
 }
 
 Approximate timezone shifts by lat/lng.
@@ -4770,6 +4772,7 @@ c
 BEGIN {
   local $ENV{TZ} = '';
   POSIX::tzset();
+  $mktime_error = time_epoch_pieces(2000, 1, 1, 0, 0, 0) - 946710000;
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
