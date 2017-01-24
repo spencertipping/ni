@@ -37,14 +37,15 @@ The first thing to do when hunting for errors in hadoop streaming jobs is to mak
 ###Hadoop Streaming .jar too large
 When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the job server. If you have a large data closure, that closure will be included in the payload sent to the job server. If your closure is larger than a couple hundred megabytes, you should try a different approach to the problem (e.g. use an HDFS join [coming soon to `ni`, use [nfu]`nfu` for now]).
 
-
+###Hadoop Job killed by SIGPIPE
+Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` within a mapper, combiner, or reducer within `HS`. Instead, use `Bnr1000`, which will buffer excess input to null.
 
 
 ##Erroneous Output
-The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls of these 
+The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls you might run into.
 
 ###Sorting doesn't work how I want
-As of 2016-12-18, sorting works in a way that is unintuitive on **certain** operating systems. Specifically, `ni`'s `g` operator ignores blanks (i.e. separators between columns) on certain operating systems (not Mac or Ubuntu). In general, if you need to sort by a particular column of the data, you will be better served using `g<column name>`.
+As of 2017-01-22, sorting works in a way that is unintuitive on **certain** operating systems. Specifically, `ni`'s `g` operator ignores blanks (i.e. separators between columns) on certain operating systems (not Mac or Ubuntu). In general, if you need to sort by a particular column of the data, you will be better served using `g<column name>`.
 
 ###Referencing the wrong column after re-indexing
 
