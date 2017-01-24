@@ -88,7 +88,7 @@ At this point, you've probably executed a long-running enough `ni` job to see th
 
 Some things to keep in mind when examining the output of the monitor: if you have access to more compute resources for slow steps, you can use them for that step alone, and this can be done in a very simple way via the `S` horizontal scaling operator.
 
-You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the monitor [docs](monitor.md) and in the optimization [docs](optimization.md).
+You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the [monitor docs](monitor.md) and in the [optimization docs](optimization.md).
 
 
 
@@ -98,13 +98,50 @@ You've seen one of these operators before, the very useful `=\>`, which we've us
 ###`+` and `^`: Append (Prepend) Stream
 
 
+Streams in `ni` can be concatenated, however, once concatenated,
+any operator on the stream will apply to the stream in its entirety.
+`+` and `^` are useful when you have a complicated operator you want
+to apply to only part of the stream.
+
+Examples:
+
+```
+$ ni n3 ^[n05 fAA]
+0       0
+1       1
+2       2
+3       3
+4       4
+1
+2
+3
+(END)
+```
+
+
+```
+$ ni n3 +[n05 fAA]
+1
+2
+3
+0       0
+1       1
+2       2
+3       3
+4       4
+(END)
+```
+
 `+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
 
 ```
 while ($data = read from stream 1) {print $data}
 while ($data = read from stream 2) {print $data}
 ```
-The second stream waits to execute until an `EOF` is received from the first stream.
+The second stream waits to execute until an `EOF` is received from the first stream, so
+for even simple streams, you may see a noticeable pause between the end of the
+first stream and the start of the second.
+
 
 
 ###`%`: Interleave Streams
@@ -113,7 +150,7 @@ The bare `%` will interleave streams as the data is output, and will consume bot
 
 You can also call `%#` with a number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1 `
 
-Interleaving streams with a numeric argument will cut off when either stream is exhausted.
+Interleaving streams with a numeric argument will cut off the output stream when either stream is exhausted.
 
 
 ###`=`: Duplicate Stream and Discard
@@ -327,8 +364,8 @@ Cell operations are similar to column operations, in that they are keystroke-eff
 
 ###Hashing Algorithms
 * `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,z`: Intify (hash and then convert hash values to integers starting with 1)
 * `,H`: Murmurhash and map the result into the unit interval.
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
 
 Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
 
