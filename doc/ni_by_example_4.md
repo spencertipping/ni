@@ -425,28 +425,63 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 #### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Assuming you already know how to write a regular expression, there are a number of Perl syntaxes you should know.
 
-######`my @v = /regex/;` and `my ($v) = /regex/;`
-
-This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to 
-
-This is syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
-
-######`$<v> =~ s/regex//`
-
-######`$<v> = tr/regex//d`
-
-######`$<v> = y/regex//`
-
 ######String Slicing with Regex
-I don't like the asymmetry of Perl's `substr` method; to recover most of what I like about from Python's string slicing syntax, I use regex.
+I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
 
 ```
-s[:-4] === s =~ /^(.*).{4}$/
-s[3:]  === s =~ /^.{3}(.*)$/
-s[-5:] === s =~ /^.*(.{5})$/
+$ ni iabcdefgh p'/^(.*).{4}$/'  #[:-4] in Python
+abcd
+(END)
 ```
+
+```
+$ ni iabcdefgh p'/^.{3}(.*)$/' #[3:] in Python
+defgh
+(END)
+```
+
+```
+$ ni iabcdefgh p'/^.*(.{2})$/' #[-2:] in Python
+gh
+(END)
+```
+
+######Using Capture Groups
+
+One way to get capture groups syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
+
+This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to capture one or more groups.
+
+For example:
+
+```
+$ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
+a       b
+(END)
+```
+
+```
+$ ni iabcdefgh p'my ($w) = /^(.)/; r $w'
+a
+(END)
+```
+
+```
+ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
+a       b
+(END)
+```
+
+
+######Substitution `s///`, Translation `tr///` and `y///`
+
+These operators have a slightly tricky syntax
+
+
   
 ####`map`
+
+
 
 ####`for`
 
