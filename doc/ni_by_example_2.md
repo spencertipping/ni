@@ -13,7 +13,7 @@ Before we get into anything too useful, however, we need to take a detour into h
 `ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
 
 
-####`ni` evaluation basics
+###`ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
 ```
@@ -29,7 +29,7 @@ ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
 
 However, this isn't quite the whole story. 
 
-####`::closure_name[...]`: Create a data closure
+###`::closure_name[...]`: Create a data closure
 
 `$ ni ::five[n5] n3p'r a, five'`
 
@@ -62,7 +62,7 @@ Data closures provide a counterexample to the basics of `ni` evaluation written 
 
 The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
 
-####Perl Bareword Interpretation
+###Perl Bareword Interpretation
 The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
 
 `$ ni ::five[n5] | ni n3p'r a, five'`
@@ -78,7 +78,7 @@ The Perl interpreter will convert missing barewords (i.e. things that do not sta
 
 We now return to our regularly-scheduled programming.
 
-####Data Closure Evaluation and `ni` self-modification
+###Data Closure Evaluation and `ni` self-modification
 Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else, and in the order that they are written.
 
 That means that `$ ni ::five[n5] n3p'r a, five'` ie equivalent to `$ ni n3p'r a, five' ::five[n5]`, even though in the latter, it looks like it's referencing something that was computed later in the pipeline.
@@ -105,7 +105,7 @@ A _quine_ (pronounced: KWINE) is a program that prints its source code when it i
 
 We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
 
-####Scheme/Lisp mini-tutorial
+###Scheme/Lisp mini-tutorial
 If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
 
 Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
@@ -125,7 +125,7 @@ Here's what you need to know:
   * `(lambda (u v) (u + v))` yields a closure. There's a lot of ink spilled on what a closure is and does. For the purpose of this tutorial, you can think of a closure as a a function that has not been supplied its arguments.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
 
-####A simple quine in Scheme
+###A simple quine in Scheme
 Let's build a quine, starting with this piece:
 
 ```
@@ -161,7 +161,7 @@ Note that not all quines are structured this way (with code and data to interpre
 
 For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
 
-####A quine in Perl
+###A quine in Perl
 
 ```
 #!/usr/bin/perl
@@ -213,7 +213,7 @@ Most of the trickery is done using the heredoc syntax (which is a way of writing
 
 The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
 
-####Quines, so what?
+###Quines, so what?
 
 When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
 
@@ -231,7 +231,7 @@ We can keep connecting output pipes to input pipes and getting the same output. 
 
 
 
-####`//ni`: Print `ni`'s _current_ source
+###`//ni`: Print `ni`'s _current_ source
 As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
 
 
@@ -322,14 +322,14 @@ One final note; by the ordering of the data, it may appear that the fact that `n
 
 We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`. While horizontal scaling (running a process on multiple cores) has nothing to do with the indirect execution in containerized operations, it has functional and semantic similarity with these other operators in this section.
 
-####`C`: execute in a container
+###`C`: execute in a container
 
 Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
 
 Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
 
 
-####`s`: execute over `ssh`
+###`s`: execute over `ssh`
 
 You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
 
@@ -344,7 +344,7 @@ You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the
 
 Inside the brackets,  you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
 
-####`S`: Horizontal Scaling 
+###`S`: Horizontal Scaling 
 Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
 
 `$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
@@ -357,7 +357,7 @@ Running an operator with `S8` on a machine with only two cores is not going to g
 
 `ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides concise options to 
 
-####MapReduce Fundamentals
+###MapReduce Fundamentals
 
 MapReduce landed with a splash in 2004 with this [excellent paper](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) by Jeffrey Dean and Sanjay Ghemawat of Google and (with Hadoop) in many ways ushered in the era of "big data."
 
@@ -371,7 +371,7 @@ The MapReduce paradigm breaks down into three steps:
 
 In general, a mapper will read in large, often unstructured data, and output  more highly structured information, which will be combined into statements about the original data by the reduce operation.  Because both map and reduce occur across many processors, there is often high network overhead transferring data from mappers to reducers. A combiner is used to reduce the amount of data passed between mappers and reducers.
 
-####MapReduce Example: Word Count
+###MapReduce Example: Word Count
 
 The classic example of a MapReduce job is counting the words in a document.  Let's see how it fits with the MapReduce technique.
 
@@ -410,7 +410,7 @@ We could also write this job with a combiner, decreasing network overhead at the
 
 
 
-####Taking advantage of MapReduce with `ni`
+###Taking advantage of MapReduce with `ni`
 An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
 
 This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
@@ -421,13 +421,13 @@ The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` 
 
 
 
-####How `ni` Interacts with Hadoop Streaming MapReduce
+###How `ni` Interacts with Hadoop Streaming MapReduce
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
 Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
 
 
-####`HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
+###`HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
 
 `HS` creates a hadoop streaming job with a given mapper, combiner, and reducer (specified as `ni` operators). Any `ni` snippet can be used for the mapper, combiner, and reducer. 
 
@@ -445,7 +445,7 @@ It has a trivial map step, no combiner, and a trivial reducer; it looks like not
 If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
 
 
-####Developing Hadoop Streaming Jobs
+###Developing Hadoop Streaming Jobs
 
 In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
 
@@ -465,7 +465,7 @@ This identity allows you to iterate fast, completely within `less` and the comma
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
 
-####`:checkpoint_name[...]`: Checkpoints
+###`:checkpoint_name[...]`: Checkpoints
 
 Developing and deploying to producion `ni` pipelines that involve multiple Hadoop streaming steps involves a risk of failure outside the programmer's control; when this happens, we don't want to have to run the entire job again. 
 
@@ -519,13 +519,13 @@ $ ni n1000000gr4 =\>numbers O
 
 One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
 
-####A Final Note on Hadoop Streaming Jobs
+###A Final Note on Hadoop Streaming Jobs
 There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
 
 
 ##HDFS I/O
 
-####`hdfst://<path>` and `hdfs://<path>`: HDFS I/O
+###`hdfst://<path>` and `hdfs://<path>`: HDFS I/O
 
 Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
 
@@ -546,7 +546,7 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
 
-####Using HDFS paths in Hadoop Streaming Jobs:
+###Using HDFS paths in Hadoop Streaming Jobs:
 
 If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (explained in more detail below)
 
@@ -562,7 +562,7 @@ $ ni hdfst://<abspath> HS...
 When the input path is not quoted, `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder (and clean up the temp-path). That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
 
-####`i`: Literal text 
+###`i`: Literal text 
 To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, for reasons that will be clear later. `i` operator is the way to put literal text into the command line:
 
 ```
@@ -597,7 +597,7 @@ foo[]   [bar]
 ```
 
 
-####`^{...}`: `ni` configuration
+###`^{...}`: `ni` configuration
 
 You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
 

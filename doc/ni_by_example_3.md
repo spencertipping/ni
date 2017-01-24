@@ -25,7 +25,7 @@ Perl is uncompromisingly principled in ways that most other languages aren't.
 Perl isn't good; it's complicated, and if you don't know it yet, it will
 probably change your idea of what a good language should be.
 
-####Text is numbers
+###Text is numbers
 
 In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
 
@@ -58,7 +58,7 @@ $ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 ```
 
 
-####Sigils
+###Sigils
 
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
 
@@ -89,7 +89,7 @@ print $x{foo};  # gets a scalar value from %x
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you  get a scalar value (i.e `$`) out of a hash with curly braces, you get a scalar value out of an array with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
-####Barewords are strings
+###Barewords are strings
 Consider the following `ni` spell:
 
 ```
@@ -103,7 +103,7 @@ $ ni n3p'r a, one'
 Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist,  Perl gives the programmer a great deal of freedom to be concise. The bareword (a Perl term for a variable not prefixed with a sigil) `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
 
 
-####Subroutines
+###Subroutines
 
 Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
 
@@ -139,7 +139,7 @@ hi 1
 
 Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
 
-####Default Variables
+###Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
 
 Consider the following spell:
@@ -180,7 +180,7 @@ In fact, the code above is operating on the most important of the Perl default v
 
 
 ##Intermediate Perl Operations
-####`p'^{...} ...'`: BEGIN Block
+###`p'^{...} ...'`: BEGIN Block
 A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
 
 Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. Here is a contrived example based on the previous section:
@@ -214,7 +214,7 @@ $ ni n3p'sub v {$_[0] x 4} &v(a)'
 ```
 
 
-#### `a_` through `l_`: Multiline Selection operations 
+### `a_` through `l_`: Multiline Selection operations 
 You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
 For example:
@@ -223,7 +223,7 @@ For example:
 * `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
 
 
-#### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
+### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
 Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
 
 * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
@@ -241,7 +241,7 @@ Reduction is dependent on the stream being appropriately sorted, which can make 
 
 These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
 
-#### `sr`: Reduce over entire stream
+### `sr`: Reduce over entire stream
 
 Let's look at a simple example: 
 
@@ -271,7 +271,7 @@ $ ni n1E1p'sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
 A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions. If we wanted all of the results of the reduce on a single line, we would need to use `p'r ...`.
 
 
-#### `se`: Reduce while equal
+### `se`: Reduce while equal
 `sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
 
 Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
@@ -323,7 +323,7 @@ $ ni n1000p'^{sub len($) {length $_[0]}} r len a, se {$_[0] + a} \&len, 0'
 The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
 
 
-####`sea` through `seq`: Reduce with partition function `a()...q()`
+###`sea` through `seq`: Reduce with partition function `a()...q()`
 
 It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
 
@@ -348,7 +348,7 @@ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
 ```
 
 
-#### `rc`: Compound reduce
+### `rc`: Compound reduce
 
 Consider the following reduction operation, which computes the sum, mean, min and max.
 
@@ -374,7 +374,7 @@ These operations are used to convert columnar data into rows, which can then be 
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
-####`cart`: Cartesian Product
+###`cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll use the builtin `ni` operation `cart`.
 
 ```
@@ -399,7 +399,7 @@ ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 
 
 
-####Multiline Reducers
+###Multiline Reducers
 
 ```
 $ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
@@ -437,7 +437,7 @@ However, `ni` provides an interface to numpy (and all of the other Python packag
 
 It's great, you're gonna love it.
 
-#### `N'x = ...'`: Numpy matrix operations
+### `N'x = ...'`: Numpy matrix operations
 
 The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
 
@@ -480,7 +480,7 @@ $ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
 
 
 
-####How `N'x = ...'` works
+###How `N'x = ...'` works
 What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
 
 Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
@@ -498,11 +498,11 @@ This is not (yet) the cleanest or most beautiful syntax [and that matters!], but
 
 We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
 
-####`D:<field1>,:<field2>...`: JSON Destructure
+###`D:<field1>,:<field2>...`: JSON Destructure
 
 `ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
 
-####`p'json_encode {<row to JSON instructions>}`: JSON Encode
+###`p'json_encode {<row to JSON instructions>}`: JSON Encode
 
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
@@ -513,7 +513,7 @@ ni //license FWpF_ p'r pl 3' \
                     word    => c}' =\>jsons \
      D:type,:word
 ```
-####Other JSON parsing methods
+###Other JSON parsing methods
 Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
 
@@ -571,18 +571,18 @@ $ ni --explain dir_test/*
 
 If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
 
-####`ni` optimizes at-will programmer productivity
+###`ni` optimizes at-will programmer productivity
 Many data science projects start with a request that you have never seen before; in this case, it's often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
 
 `ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
 
-####Mastery counts
+###Mastery counts
 
 Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
 
 This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
 
-####Outsource hard jobs to more appropriate tools.
+###Outsource hard jobs to more appropriate tools.
 
 `ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 

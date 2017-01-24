@@ -8,7 +8,7 @@ Unlike the other chapters thus far, this chapter has no theme; it's a list of us
 
 You've already been using `ni` within bash, so you've always been using `ni` from another langauge. In this section, we'll make the connections more explicit, and briefly discuss how to use `ni` from Ruby.
 
-####`ni` and bash
+###`ni` and bash
 
 [Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
 
@@ -41,7 +41,7 @@ exec("/bin/sh", "-c", "stuff")
 
 This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
 
-####`ni` and Ruby
+###`ni` and Ruby
 Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`, so to execute your `ni` spells from Ruby, you will want to create them as strings, and execute them with `bash -c "#{cmd}"`
 
 ##`nfu` HDFS Joins
@@ -86,7 +86,7 @@ You may also want to consider refactoring your job to make use of Hadoop Streami
 ##Stream Appending, Interleaving, Duplication, and Buffering
 You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
 
-####`+` and `^`: Append (Prepend) Stream
+###`+` and `^`: Append (Prepend) Stream
 
 
 `+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
@@ -98,7 +98,7 @@ while ($data = read from stream 2) {print $data}
 The second stream waits to execute until an `EOF` is received from the first stream.
 
 
-####`%`: Interleave Streams
+###`%`: Interleave Streams
 
 The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will put the second stream somewhere in the middle.
 
@@ -107,7 +107,7 @@ You can also call `%#` with a number, in which case the streams will be interlea
 Interleaving streams with a numeric argument will cut off when either stream is exhausted.
 
 
-####`=`: Duplicate Stream and Discard
+###`=`: Duplicate Stream and Discard
 This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
 ```
@@ -130,14 +130,14 @@ One thing to be aware of is that the stream's duplication does not block the str
 If you need to do something like this, you may be better off writing two `ni` spells, or using a `ni` [script](script.md).
 
 
-####`B<op>`: Buffer operation
+###`B<op>`: Buffer operation
 
 Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
 
 ##Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
 
-#### `w`: Append column to stream
+### `w`: Append column to stream
 
 `w` adds a column to the end of a stream, up to the minimum length of either stream.
 
@@ -150,7 +150,7 @@ Copyright (c) 2016 Spencer Tipping | MIT license        4
 ```
 
   
-####`W`: Prepend column stream
+###`W`: Prepend column stream
 
 `W` operates like `w`, except its output column is prepended. 
 
@@ -165,7 +165,7 @@ $ ni e'echo {a..e}' p'split / /' Wn
 ```
   
 
-####`v`: Vertical operation on columns
+###`v`: Vertical operation on columns
 
 We can upper-case the letters in the previous example via:
 
@@ -278,7 +278,7 @@ e       10
 We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
 
 
-####`Y` - dense-to-sparse transformation
+###`Y` - dense-to-sparse transformation
 `Y` Explodes each row of the stream into several rows, each with three columns:
 
 * The index of the row that the input data that came from
@@ -301,7 +301,7 @@ $ ni //license FW Y r10
 (END)
 ```
 
-#### `X` - sparse-to-dense transformation
+### `X` - sparse-to-dense transformation
 `X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
 ```
@@ -316,7 +316,7 @@ Copyright       c       2016    Spencer
 Cell operations are similar to column operations, in that they are keystroke-efficient ways to do transformations on a single column of the input data.
 
 
-####Hashing Algorithms
+###Hashing Algorithms
 * `,h`: Murmurhash (deterministic 32-bit hash function)
 * `,z`: Intify (hash and then convert hash values to integers starting with 1)
 * `,H`: Murmurhash and map the result into the unit interval.
@@ -327,7 +327,7 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 
 
 
-####Cell Math Operations
+###Cell Math Operations
 * `,e`: Natural exponential e<sup>x</sup>
 * `,l`: Natural log (`ln x`)
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
@@ -335,7 +335,7 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 
 These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
 
-####Column Math Operations
+###Column Math Operations
 * `,a`: Running average
 * `,d`: Difference between consecutive rows
 * `,s`: Running sum 
@@ -352,7 +352,7 @@ $ ni n1E4 fAA ,aA ,sB r~1
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these opertoars work only inside a Perl mapper context (`p'...'`)
  
 
-####`ghe`: geohash encoding
+###`ghe`: geohash encoding
 Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
 
 The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
@@ -376,7 +376,7 @@ base-32 characters | Approximate geohash size
 
 If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
 
-####`ghd`: geohash decoding
+###`ghd`: geohash decoding
 
 `ni` provides two prototypes for geohash decoding:
 
@@ -384,17 +384,17 @@ If `$precision > 0`, the geohash is specified with `$precison` base-32 character
 
 `ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.
     
-#### `tpe`: time parts to epoch
+### `tpe`: time parts to epoch
 
 `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order. You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
 
-#### `tep`: time epoch to parts
+### `tep`: time epoch to parts
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
-#### `timezone_seconds`: convert epoch to local time
+### `timezone_seconds`: convert epoch to local time
 
 `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
@@ -409,7 +409,7 @@ For example, let's say you have the Unix timestamp and want to know what time it
 ##More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.
 
-####Useful function list
+###Useful function list
 
 You've probably come across most of these already, but I'd feel remiss if I didn't put these down somewhere.
 
@@ -422,14 +422,14 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 * `keys %h`: get keys from hash
 * `values %h`: get values from hash
 
-#### Regular Expressions
+### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
 
-######Efficient Regex Design
+####Efficient Regex Design
 
 Regexes should be designed to fail quickly, so reduce the number of possible evaluation paths.  The use of anchor tags (`^$`) and avoiding `.` when possible is also a good idea. 
 
-######String Slicing with Regex
+####String Slicing with Regex
 I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
 
 ```
@@ -450,7 +450,7 @@ gh
 (END)
 ```
 
-######Using Capture Groups
+####Using Capture Groups
 
 Capture groups are set off using parentheses; to get them explicitly,  syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
 
@@ -477,7 +477,7 @@ a       b
 ```
 
 
-######Substitution `s///`, Translation `tr///` and `y///`
+####Substitution `s///`, Translation `tr///` and `y///`
 
 These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
 
@@ -516,7 +516,7 @@ ABCdefgh
 (END)
 ```
 
-####`map`
+###`map`
 
 `map` takes two arguments, a block of code and a perl array, and returns an array.
 
@@ -547,7 +547,7 @@ aa      bb      cc      dd      ee      ff      gg      hh
 
 Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't _nice_.  
 
-####`for`
+###`for`
 `for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
 
 ```
@@ -565,7 +565,7 @@ hh
 
 This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
 
-####`use strict` and the `::` prefix within `p'...'`
+###`use strict` and the `::` prefix within `p'...'`
 
 When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
 
@@ -582,7 +582,7 @@ You have always had permission to use Ruby, but I've held off documenting it unt
 1. Because the primary use of Ruby is access to Ruby gems, your code becomes less portable. Here's a [good article](http://zachmoshe.com/2015/02/23/use-ruby-gems-with-hadoop-streaming.html) about using Ruby gems with Hadoop Streaming. It's really complicated!
 1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up. Concretely: `ni n4m'r a, a + 1'` will complain about conversion of Fixnum to String without a proper cast.
 
-####`m'a' ... m'q'`: Ruby Column Accessors
+###`m'a' ... m'q'`: Ruby Column Accessors
 
 You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
 
@@ -601,7 +601,7 @@ $ ni n4m'r a, ai + 1'
 (END)
 ```
 
-####`m'fields'`: Array of fields.
+###`m'fields'`: Array of fields.
 Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
 ```
@@ -611,7 +611,7 @@ Copyright       c       2016    Spencer
 (END)
 ```
 
-####`m'r ...'`: Print row
+###`m'r ...'`: Print row
 Analogous to `p'r ...'`.
 
 
@@ -628,11 +628,11 @@ ni n4fAA l"(r (sr ('+ a) ('* b)))"
 
 Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
 
-####`l"a" ... l"q"`: Lisp Column Accessors
+###`l"a" ... l"q"`: Lisp Column Accessors
 
 Analogous to the Perl and Ruby column accessors.
 
-####`l"(r ...)"`: Print row
+###`l"(r ...)"`: Print row
 
 Analogous to `p'r ...'`; prints its arguments.
 
