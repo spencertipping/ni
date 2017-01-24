@@ -545,10 +545,25 @@ aa      bb      cc      dd      ee      ff      gg      hh
 (END)
 ```
 
-Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
+Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't _nice_.  
 
 ####`for`
 `for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
+
+```
+$ ni iabcdefgh p'r $_ x 2 for split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+(END)
+```
+
+This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
 
 ####`use strict` and the `::` prefix within `p'...'`
 
@@ -567,7 +582,7 @@ You have always had permission to use Ruby, but I've held off documenting it unt
 1. Because the primary use of Ruby is access to Ruby gems, your code becomes less portable. Here's a [good article](http://zachmoshe.com/2015/02/23/use-ruby-gems-with-hadoop-streaming.html) about using Ruby gems with Hadoop Streaming. It's really complicated!
 1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up. Concretely: `ni n4m'r a, a + 1'` will complain about conversion of Fixnum to String without a proper cast.
 
-####`m'a' ... m'q': Ruby Column Accessors
+####`m'a' ... m'q'`: Ruby Column Accessors
 
 You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
 
@@ -613,11 +628,11 @@ ni n4fAA l"(r (sr ('+ a) ('* b)))"
 
 Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
 
-####`l"a" ... l"q": Lisp Column Accessors
+####`l"a" ... l"q"`: Lisp Column Accessors
 
 Analogous to the Perl and Ruby column accessors.
 
-####`l"(r ...)": Print row
+####`l"(r ...)"`: Print row
 
 Analogous to `p'r ...'`; prints its arguments.
 
