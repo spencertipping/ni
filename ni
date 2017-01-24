@@ -4719,7 +4719,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-57 core/pl/time.pm.sdoc
+59 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4734,7 +4734,7 @@ use POSIX ();
 
 use constant time_pieces => 'SMHdmYwjDN';
 
-our $mktime_error;              # bugfix for OSX
+our $mktime_error = 0;          # bugfix for OSX
 
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
@@ -4768,11 +4768,13 @@ sub timezone_seconds($$) {
   240 * int($lng + 7);
 }
 
+{
+  my $t = time;
+  $mktime_error = time_pieces_epoch(time_epoch_pieces $t) - $t;
+}
+
 c
 BEGIN {
-  local $ENV{TZ} = '';
-  POSIX::tzset();
-  $mktime_error = time_pieces_epoch(2000, 1, 1, 0, 0, 0) - 946710000;
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
