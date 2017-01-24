@@ -423,7 +423,11 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 * `values %h`: get values from hash
 
 #### Regular Expressions
-If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Assuming you already know how to write a regular expression, there are a number of Perl syntaxes you should know.
+If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
+
+######Efficient Regex Design
+
+Regexes should be designed to fail quickly, so reduce the number of possible evaluation paths.  The use of anchor tags (`^$`) and avoiding `.` when possible is also a good idea. 
 
 ######String Slicing with Regex
 I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
@@ -448,7 +452,7 @@ gh
 
 ######Using Capture Groups
 
-One way to get capture groups syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
+Capture groups are set off using parentheses; to get them explicitly,  syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
 
 This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to capture one or more groups.
 
@@ -467,7 +471,7 @@ a
 ```
 
 ```
-ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
+$ ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
 a       b
 (END)
 ```
@@ -475,15 +479,76 @@ a       b
 
 ######Substitution `s///`, Translation `tr///` and `y///`
 
-These operators have a slightly tricky syntax
+These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
+
+```
+$ ni iabcdefgh p'tr/a-z/A-Z/'
+8
+(END)
+```
+
+```
+$ ni iabcdefgh p's/abc/ABC/'
+1
+(END)
+```
+
+The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
+This also will give somewhat-surprising behavior to code like:
+
+```
+$ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
+8
+```
+
+Instead, these operators work as side-effects.
+
+```
+$ ni iabcdefgh p'tr/a-z/A-Z/; $_'
+ABCDEFGH
+(END)
+```
 
 
-  
+```
+$ ni iabcdefgh p's/abc/ABC/; $_'
+ABCdefgh
+(END)
+```
+
 ####`map`
 
+`map` takes two arguments, a block of code and a perl array, and returns an array.
 
+```
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r @v'
+aa      bb      cc      dd      ee      ff      gg      hh
+(END)
+```
+
+This code is complicated if you haven't been exposed to the syntax before, so let's break it down.
+
+The block that `map` is using is easy to spot--it's some code wrapped in curly braces, so that's `{$_ x 2}`. Because a `map` block will operate on one argument at a time, we refer to that argument as `$_` (unlike subroutine syntax, which takes its arguments in the array `@_`). The `$_` within the block is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
+
+
+```
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
+abcdefgh
+(END)
+```
+
+Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and said 
+
+```
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r $_'
+aa      bb      cc      dd      ee      ff      gg      hh
+(END)
+```
+
+Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
 
 ####`for`
+`for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
 
 ####`use strict` and the `::` prefix within `p'...'`
 
