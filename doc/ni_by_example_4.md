@@ -358,7 +358,7 @@ $ ni n1E4 fAA ,aA ,sB r~1
 
 
 ##Geographic and Time Perl Functions
-`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these opertoars work only inside a Perl mapper context (`p'...'`)
+`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these operators work only inside a Perl mapper context (`p'...'`).
  
 
 ###`ghe`: geohash encoding
@@ -383,7 +383,7 @@ base-32 characters | Approximate geohash size
 
 `ghe($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer.
 
-If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. The values returned by the positive-precision If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
+If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. When geohashes are specified in this way, they are referred to in short as `gh<$precision>`, for example gh6, gh8, or gh12. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
 
 Examples:
 
@@ -399,7 +399,22 @@ ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
 (END)
 ```
 
-The default is to encode with 12 base-32 characters, i.e. a gh12
+The default is to encode with 12 base-32 characters, i.e. a gh12, or 60 bits of precision.
+
+```
+$ ni i[34.058566 -118.416526] p'ghe(a, b)'
+9q5cc25twby7
+(END)
+```
+
+The parentheses are also often unnecessary:
+
+```
+$ ni i[34.058566 -118.416526] p'ghe a, b, 9'
+9q5cc25tw
+(END)
+```
+
 
 
 ###`ghd`: geohash decoding
@@ -408,40 +423,72 @@ The default is to encode with 12 base-32 characters, i.e. a gh12
 
 `ghd($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
 
-`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.
+`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.  As with `ghe`, parentheses are not always necessary.
 
 Examples:
 
 ```
-$ 
+$ ni i[34.058566 -118.416526] p'r ghd ghe a, b'
 34.058565851301 -118.416526280344
 (END)
+```
 
-
-
+```
+$ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
+34.0584754943848        -118.416652679443
+(END)
+```
     
 ### `tpe`: time parts to epoch
+`tpe(@time_pieces)`: Returns the epoch time in GMT (see important note below)
+and assumes that the pieces are year, month, day, hour, minute, and second, 
+in that order. 
 
-`tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order. You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
+```
+$ ni 1p'tpe(2017, 1, 22, 8, 5, 13)'
+1485079513
+(END)
+```
+
+You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
+
+```
+$ ni 1p'tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'
+1485079513
+(END)
+```
+
+**IMPORTANT NOTE**: `tpe` does not work correctly on Mac as of 2017-01-23,
+due to an implementation issue with `POSIX::mktime`.
+This will result in your code giving the local time rather than GMT; use
+`Cubuntu[...]` for the expected behavior.
+
 
 ### `tep`: time epoch to parts
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
+```
+$ ni 1p'tep tpe 2017, 1, 22, 8, 5, 13'
+2017    1       22      8       5      13
+```
+
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
-### `timezone_seconds`: convert epoch to local time
+### `timezone_seconds`: approximately convert epoch to local time
 
 `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
 ```
-$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485151713; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); join "\t", @local_time_parts'
-2017    1       22      22      44      33
+$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
+2017    1       22      2       41      13
 (END)
 ```
 
+This correction cuts the globe into 4-minute strips by degree of longitude.
+It is meant for approximation of local time, not the actual time.
 
 ##More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.
