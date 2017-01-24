@@ -8336,8 +8336,8 @@ $ ni n4l'(r a (1+ a))' l'(r (+ a b))'   # ... and sum them
 9
 ```
 
-Note that whitespace is required after every `p'code'` operator; otherwise ni
-will assume that everything following your quoted code is also Perl.
+Note that whitespace is required after every `l'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Lisp.
 
 It is possible to omit `r` altogether; then you're returning one or more
 values, each of which will become a row of output:
@@ -9896,11 +9896,8 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-493 doc/stream.md
+507 doc/stream.md
 # Stream operations
-
-MORE (because I got rid of your intro).
-
 ## Files
 ni accepts file names and opens their contents in less.
 
@@ -9962,10 +9959,15 @@ $ ni n                          # infinite stream of ints
 .
 ```
 
-`n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
+### Pulse Stream
+Many operators, for example the perl operator `p'...'` and the numpy operator
+`N'...'` require an input stream. In some cases, you want to generate a dummy
+stream. For this purpose you can use `n1` or its shorthand `1` to cause the
+operator in question to execute.
+
 
 ```bash
-$ ni ::word[n1p'pretty'] n3 w[np'r word']
+$ ni ::word[1p'pretty'] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -9993,16 +9995,6 @@ $ ni ::word[ipretty] n3 w[np'r word']
 3	pretty
 ```
 
-@bilow-factual now that `i` is fixed, the below isn't true anymore; but it's a
-good point in general so I didn't want to delete it:
-
-> Note that the whitespace between `pretty` and the closing bracket; if this
-> space is not present, the `ni` parser will interpret the closing bracket as
-> part of the literal text. This is important to keep in mind for `ni` in
-> general, where commands are often very compact: sometimes whitespace (or a lack
-> thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
-> the common cases where whitespace (or lack thereof) is important.
-
 ### bash commands
 ```bash
 $ ni e'seq 4'                  # output of shell command "seq 4"
@@ -10011,6 +10003,28 @@ $ ni e'seq 4'                  # output of shell command "seq 4"
 3
 4
 ```
+
+### Whitespace
+
+```bash
+$ ni 1p'hi' +1p'there'
+hi
+there
+```
+
+Note that the whitespace between `hi` and `there`. If this is missing, the `ni`
+parser will interpret it as follows:
+
+
+```bash
+$ ni 1p'hi'1p'there'
+hi1pthere
+```
+
+This is important to keep in mind for `ni` in general, where commands are often
+very compact: sometimes whitespace (or a lack thereof) is needed for clarity.
+See [debugging.md](debugging.md) for some of the common cases where whitespace
+(or lack thereof) is important.
 
 ## Transformation
 ni can stream data through a shell process, which is often shorter than

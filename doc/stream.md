@@ -1,7 +1,4 @@
 # Stream operations
-
-MORE (because I got rid of your intro).
-
 ## Files
 ni accepts file names and opens their contents in less.
 
@@ -64,7 +61,10 @@ $ ni n                          # infinite stream of ints
 ```
 
 ### Pulse Stream
-Many operators, for example the perl operator `p'...'` and the numpy operator `N'...'` require an input stream. In some cases, you want to generate a dummy stream. For this purpose you can use `n1` or its shorthand `1` to cause the operator in question to execute.
+Many operators, for example the perl operator `p'...'` and the numpy operator
+`N'...'` require an input stream. In some cases, you want to generate a dummy
+stream. For this purpose you can use `n1` or its shorthand `1` to cause the
+operator in question to execute.
 
 
 ```bash
@@ -108,12 +108,13 @@ $ ni e'seq 4'                  # output of shell command "seq 4"
 ### Whitespace
 
 ```bash
-$ ni 1p'hi' 1p'there'
+$ ni 1p'hi' +1p'there'
 hi
 there
 ```
 
-Note that the whitespace between `hi` and `there`. If this is missing, the `ni` parser will interpret it as follows:
+Note that the whitespace between `hi` and `there`. If this is missing, the `ni`
+parser will interpret it as follows:
 
 
 ```bash
@@ -121,7 +122,10 @@ $ ni 1p'hi'1p'there'
 hi1pthere
 ```
 
-This is important to keep in mind for `ni` in general, where commands are often very compact: sometimes whitespace (or a lack thereof) is needed for clarity. See [debugging.md](debugging.md) for some of the common cases where whitespace (or lack thereof) is important.
+This is important to keep in mind for `ni` in general, where commands are often
+very compact: sometimes whitespace (or a lack thereof) is needed for clarity.
+See [debugging.md](debugging.md) for some of the common cases where whitespace
+(or lack thereof) is important.
 
 ## Transformation
 ni can stream data through a shell process, which is often shorter than
