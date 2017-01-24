@@ -72,7 +72,7 @@
 ## IMPLEMENTATION
 	
 	  my ($floor, @cs) = @_;
-	  my $asc = join('', @cs) eq join('', sort @cs);
+	  my $asc = join('', @cs) eq join('', sort {$a <=> $b} @cs);
 	  my %dup; ++$dup{$_} for @cs;
 	  return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
 	    if $asc && !grep $_ > 1, values %dup;
@@ -293,7 +293,7 @@
 	      my $cmd = shell_quote
 	        conf 'hadoop/name',
 	        jar => $streaming_jar,
-	        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+	        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
 	        map((-D => $_), @jobconf),
 	        map((-input => $_), @$ipaths),
 	        -output => $opath,

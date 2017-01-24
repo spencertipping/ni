@@ -16,6 +16,12 @@ If you want to use data from HDFS, you need to use a quoted path, for example `$
 
 If you do this without quoting, for example `$ ni hdfst:///path/to/files/... HS...`, `ni` will read all of the data from HDFS into the stream, then output all of the data you read into the stream into a directory on HDFS, and then run the Hadoop Streaming job on that copied data.
 
+###Hadoop Job killed by sigpipe signal
+You're not allowed not to read all the data in a Hadoop Streaming
+
+###How can I run a job on only a small number of lines from Hadoop?
+Hadoop
+
 
 ##Reading from HDFS is slow
 There are several commands to read from HDFS; be sure that you are using the appropriate one.

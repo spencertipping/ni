@@ -3628,7 +3628,7 @@ use constant cols_gen =>
 
 defoperator cols => q{
   my ($floor, @cs) = @_;
-  my $asc = join('', @cs) eq join('', sort @cs);
+  my $asc = join('', @cs) eq join('', sort {$a <=> $b} @cs);
   my %dup; ++$dup{$_} for @cs;
   return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
     if $asc && !grep $_ > 1, values %dup;
@@ -4719,7 +4719,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-53 core/pl/time.pm.sdoc
+59 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4733,6 +4733,8 @@ to shift your epochs by some multiple of 3600.
 use POSIX ();
 
 use constant time_pieces => 'SMHdmYwjDN';
+
+our $mktime_error = 0;          # bugfix for OSX
 
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
@@ -4753,7 +4755,7 @@ sub time_pieces_epoch {
   @tvs[time_element_indexes $es] = @ps;
   $tvs[5] -= 1900;
   $tvs[4]--;
-  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000;
+  POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000 - $mktime_error;
 }
 
 Approximate timezone shifts by lat/lng.
@@ -4766,9 +4768,13 @@ sub timezone_seconds($$) {
   240 * int($lng + 7);
 }
 
+{
+  my $t = time;
+  $mktime_error = time_pieces_epoch(time_epoch_pieces $t) - $t;
+}
+
 c
 BEGIN {
-  POSIX::tzset();
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
@@ -6362,7 +6368,7 @@ pixel. Brightness is stored in the alpha channel and converges to 255 by an expo
 Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
 constantly low.
 
-  -where[slice_size      = 256,
+  -where[slice_size      = 4096,
          slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
@@ -6380,12 +6386,13 @@ Here's the calculation:
         az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
-        t  = +new Date, sr = state.saturation_rate;
+        sr = state.saturation_rate;
 
     if (state.i < slice_size) request_frame();
     if (state.i === 0)        id.fill(0);
 
-    for (; state.i < slice_size && +new Date - t < 20; ++state.i) {
+    var t = +new Date;
+    for (; state.i < slice_size && +new Date - t < 30; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -6436,11 +6443,10 @@ Here's the calculation:
       if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * slice_size);
     }
 
-    last_render = +new Date;
-
     state.l           = l;
     state.total_shade = total_shade;
     state.ctx.putImageData(state.id, 0, 0);
+    last_render = +new Date;
   }]})();
 57 core/jsplot/camera.waul.sdoc
 Camera state, geometry, and UI.
@@ -6640,7 +6646,7 @@ $(caterwaul(':all')(function ($) {
         update_screen()    = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  update_overlay(v)
                      -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
+                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
@@ -6935,7 +6941,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-161 core/hadoop/hadoop.pl.sdoc
+162 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7019,6 +7025,7 @@ sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
   my $w   = resource_write $tmp;
+  local $ENV{NI_NO_MONITOR} = 'yes';
   safewrite $w, ni_quoted_image 1, @$lambda;
   sforward_quoted resource_read($_), $w for quoted_resources;
   close $w;
@@ -7057,7 +7064,7 @@ defoperator hadoop_streaming => q{
       my $cmd = shell_quote
         conf 'hadoop/name',
         jar => $streaming_jar,
-        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @ipath -> $opath"),
+        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
         map((-D => $_), @jobconf),
         map((-input => $_), @$ipaths),
         -output => $opath,
@@ -8336,8 +8343,8 @@ $ ni n4l'(r a (1+ a))' l'(r (+ a b))'   # ... and sum them
 9
 ```
 
-Note that whitespace is required after every `p'code'` operator; otherwise ni
-will assume that everything following your quoted code is also Perl.
+Note that whitespace is required after every `l'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Lisp.
 
 It is possible to omit `r` altogether; then you're returning one or more
 values, each of which will become a row of output:
@@ -9896,11 +9903,8 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-493 doc/stream.md
+507 doc/stream.md
 # Stream operations
-
-MORE (because I got rid of your intro).
-
 ## Files
 ni accepts file names and opens their contents in less.
 
@@ -9962,10 +9966,15 @@ $ ni n                          # infinite stream of ints
 .
 ```
 
-`n1` is useful for generating a single value to be stored in a data closure, and `n` can be useful for adding a column to a dataset, for example
+### Pulse Stream
+Many operators, for example the perl operator `p'...'` and the numpy operator
+`N'...'` require an input stream. In some cases, you want to generate a dummy
+stream. For this purpose you can use `n1` or its shorthand `1` to cause the
+operator in question to execute.
+
 
 ```bash
-$ ni ::word[n1p'pretty'] n3 w[np'r word']
+$ ni ::word[1p'pretty'] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -9993,16 +10002,6 @@ $ ni ::word[ipretty] n3 w[np'r word']
 3	pretty
 ```
 
-@bilow-factual now that `i` is fixed, the below isn't true anymore; but it's a
-good point in general so I didn't want to delete it:
-
-> Note that the whitespace between `pretty` and the closing bracket; if this
-> space is not present, the `ni` parser will interpret the closing bracket as
-> part of the literal text. This is important to keep in mind for `ni` in
-> general, where commands are often very compact: sometimes whitespace (or a lack
-> thereof) is needed for clarity. See [debugging.md](debugging.md) for some of
-> the common cases where whitespace (or lack thereof) is important.
-
 ### bash commands
 ```bash
 $ ni e'seq 4'                  # output of shell command "seq 4"
@@ -10011,6 +10010,28 @@ $ ni e'seq 4'                  # output of shell command "seq 4"
 3
 4
 ```
+
+### Whitespace
+
+```bash
+$ ni 1p'hi' +1p'there'
+hi
+there
+```
+
+Note that the whitespace between `hi` and `there`. If this is missing, the `ni`
+parser will interpret it as follows:
+
+
+```bash
+$ ni 1p'hi'1p'there'
+hi1pthere
+```
+
+This is important to keep in mind for `ni` in general, where commands are often
+very compact: sometimes whitespace (or a lack thereof) is needed for clarity.
+See [debugging.md](debugging.md) for some of the common cases where whitespace
+(or lack thereof) is important.
 
 ## Transformation
 ni can stream data through a shell process, which is often shorter than

@@ -137,7 +137,7 @@ $(caterwaul(':all')(function ($) {
         update_screen()    = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
                      -then-  update_overlay(v)
                      -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 30]
+                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
                      -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
