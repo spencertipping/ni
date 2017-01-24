@@ -43,7 +43,7 @@ $ ni 1p'my $v2="4.3" * "6.7"; r $v2'
 (END)
 ```
 
-You can call floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero in a numeric context.
+You can perform floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero when used in an arithmetic context.
 
 ```
 $ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
@@ -93,7 +93,7 @@ print $x[3];    # gets a scalar value from @x
 print $x{foo};  # gets a scalar value from %x
 ```
 
-At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by calling it with curly braces, you get a scalar value out of an array by calling it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
+At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
 ###Barewords are strings
 Consider the following `ni` spell:
@@ -437,7 +437,7 @@ Writing Perl reducers is among the most challenging aspects of `ni` development,
 
 Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
 
-However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory; 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
+However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory (though you can use partitioned matrix operations to get around this in some cases); 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
 
 It's great, you're gonna love it.
 
@@ -512,7 +512,7 @@ We'll spend the rest of this chapter discussing JSON and directory I/O; the form
 
 `ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
 
-###`p'json_encode {<row to JSON instructions>}`: JSON Encode
+###`p'json_encode <hash or array reference>`: JSON Encode
 
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
