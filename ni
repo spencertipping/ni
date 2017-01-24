@@ -6941,7 +6941,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-161 core/hadoop/hadoop.pl.sdoc
+162 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7025,6 +7025,7 @@ sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
   my $w   = resource_write $tmp;
+  local $ENV{NI_NO_MONITOR} = 'yes';
   safewrite $w, ni_quoted_image 1, @$lambda;
   sforward_quoted resource_read($_), $w for quoted_resources;
   close $w;
