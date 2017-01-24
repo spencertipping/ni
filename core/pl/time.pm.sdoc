@@ -46,6 +46,7 @@ sub timezone_seconds($$) {
 
 c
 BEGIN {
+  local $ENV{TZ} = '';
   POSIX::tzset();
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;

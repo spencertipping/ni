@@ -4719,7 +4719,7 @@ if (1 << 32) {
 *ghd = \&geohash_decode;
 
 }
-53 core/pl/time.pm.sdoc
+54 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4768,6 +4768,7 @@ sub timezone_seconds($$) {
 
 c
 BEGIN {
+  local $ENV{TZ} = '';
   POSIX::tzset();
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
