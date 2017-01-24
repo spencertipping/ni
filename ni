@@ -4772,7 +4772,7 @@ c
 BEGIN {
   local $ENV{TZ} = '';
   POSIX::tzset();
-  $mktime_error = time_epoch_pieces(2000, 1, 1, 0, 0, 0) - 946710000;
+  $mktime_error = time_pieces_epoch(2000, 1, 1, 0, 0, 0) - 946710000;
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
