@@ -489,9 +489,15 @@ What `ni` is actually doing here is taking the code that you write and inserting
 
 Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
 
-`ni ... N'import pandas as pd; df = pd.DataFrame(x); ... ; df.to_excel(...); x = df.reset_index().values' ...`
+```
+ni ... N'import pandas as pd; 
+		 df = pd.DataFrame(x); ... ; 
+		 df.to_excel(...); 
+		 x = df.reset_index().values;' 
+		 ...
+```
 
-The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.
+The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.  You can also use indented code within `N'...'`, and it will be processed correctly.
 
 Also, like other operators, `N'...'` requires at least a row for input. `ni N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will return nothing, but adding a dummy row `ni n1N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will.
 
@@ -586,7 +592,7 @@ Just because you can read a Python script and understand what it does at a basic
 
 This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
 
-###Outsource hard jobs to more appropriate tools.
+###Outsource hard jobs to more appropriate tools
 
 `ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
