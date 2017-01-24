@@ -1,4 +1,4 @@
-#`ni` by Example Chapter 4 (pre-alpha release)
+#`ni` by Example Chapter 4 (alpha release)
 Welcome to Chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
 Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
@@ -14,7 +14,7 @@ You've already been using `ni` within bash, so you've always been using `ni` fro
 
 `e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
 
-When you run a script without quotes, bash will first scan for metacharacters. So the script 
+When you run a script without quotes, bash will first scan for metacharacters. So the script
 
 ```
 $ ni e[seq 10 | grep 1]
@@ -63,11 +63,20 @@ $ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
 $ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
 ```
 
-You can appropriately process the checkopoint files to to get the correct paths, then use 
+You can appropriately process the checkopoint files to to get the correct paths, then use:
 
 ```
 nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
 ```
+
+`nfu` offers two types of joins, inner and left-outer, and two options for whether the inputs need to be sorted. 
+
+* `i`: Inner join with preceding sort
+* `j`: Inner join without sort
+* `I`: Left-outer join with preceding sort
+* `J`: Left-outer join without sort
+
+
 
 ##Understanding the `ni` monitor
 
@@ -374,7 +383,24 @@ base-32 characters | Approximate geohash size
 
 `ghe($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer.
 
-If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
+If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. The values returned by the positive-precision If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
+
+Examples:
+
+```
+$ ni i[34.058566 -118.416526] p'ghe(a, b, 7)'
+9q5cc25
+(END)
+```
+
+```
+ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
+10407488581
+(END)
+```
+
+The default is to encode with 12 base-32 characters, i.e. a gh12
+
 
 ###`ghd`: geohash decoding
 
@@ -383,6 +409,16 @@ If `$precision > 0`, the geohash is specified with `$precison` base-32 character
 `ghd($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
 
 `ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.
+
+Examples:
+
+```
+$ 
+34.058565851301 -118.416526280344
+(END)
+
+
+
     
 ### `tpe`: time parts to epoch
 
@@ -400,7 +436,8 @@ A specific format string can also be provided, in which case `tep` is called as 
 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
-```$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485151713; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); join "\t", @local_time_parts'
+```
+$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485151713; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); join "\t", @local_time_parts'
 2017    1       22      22      44      33
 (END)
 ```
@@ -508,7 +545,6 @@ $ ni iabcdefgh p'tr/a-z/A-Z/; $_'
 ABCDEFGH
 (END)
 ```
-
 
 ```
 $ ni iabcdefgh p's/abc/ABC/; $_'
@@ -640,4 +676,4 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
   
 ##Conclusion
-You've reached the end of chapter 4 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters, and more old ideas made fresh and useful.
+You've reached the end of chapter 4 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
