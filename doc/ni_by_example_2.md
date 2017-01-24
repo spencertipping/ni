@@ -122,7 +122,7 @@ Here's what you need to know:
   * `(quote 5)` yields `5`
   * `(quote (list 1 2 3))` yields `(list 1 2 3)`--note that the list function was not evaluated.
 * `lambda` defines an anonymous function with any number of named parameters.
-  * `(lambda (u v) (u + v))` yields a closure. There's a lot of ink spilled on what a closure is and does. For the purpose of this tutorial, you can think of a closure as a a function that has not been supplied its arguments.
+  * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
 
 ###A simple quine in Scheme

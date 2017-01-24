@@ -461,7 +461,7 @@ One of the complicated aspects of `ni` is that the Perl operator `p'...'` requir
 In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
 
 ```
-$ ni 1p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
+$ ni 1p'for(my $i(1..5); $i++) {r map $i * $_, 1..3}'
 1       2       3
 2       4       6
 3       6       9
@@ -523,10 +523,6 @@ Examples:
   * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
 * `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
-
-  
-
-```
 
 ##Basic Column Operations
 `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA`
