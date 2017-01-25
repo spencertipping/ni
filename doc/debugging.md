@@ -54,9 +54,9 @@ Now onto non-obvious causes:
 
 For most purposes bash and sh will behave the same way for `ni` -- the main exceptions are things like `{x..y}` (a bash-ism) and some environment-variable expansion forms. In particular, `bin/sh` may not like some of your environment variables, especially those that use `~` for the home directory. 
 
-A quick way to check for the above is to run `which ni`, which should use `bin/sh` rather than `bin/bash`. If nothing shows up, but you are still able to run commands, you can need to change `~/bin` to `$HOME/ni` for the same effect.
+A quick way to check for the above is to run `which ni`, which should use `bin/sh` rather than `bin/bash`. If nothing shows up, but you are still able to run `ni` from `bash`, you probably need to change `~/bin` in your `$PATH` to `$HOME/bin` so `bin/sh` can see it.
 
-If you do run into a bash-specific case, you can create your command as a string `cmd` and run it with `bash -c "#{cmd}"`.
+If you do run into a bash-specific case, you can create your command as a string `cmd` and run it (in Ruby) with `bash -c "#{cmd}"`.
 
 ##Erroneous Output
 The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls you might run into.
@@ -79,7 +79,7 @@ Note that when using a HDFS paths for Hadoop Streaming jobs, you __must*__  quot
 *Okay, it might work if you don't quote the path, but it'll take [forever](optimization.md).
 
 ###Perl 
-If something's going wrong in a Perl context, but it looks right, try being more explicit (for example, using `b()` rather than `b` to reference the second field)
+If something's going wrong in a Perl context, but it looks right, try being more explicit (for example, using `b()` rather than `b` to reference the second field).
 
 ##I can get it to work, but... 
 

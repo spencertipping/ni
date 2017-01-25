@@ -248,6 +248,8 @@ Also note that the Perl upper-case operator is written as `puc`, without quotes,
   
 ###`j` - streaming join
 
+**Important note**: [Spencer](https://github.com/spencertipping) considers `j` to be broken. This section is liable to change.
+
 Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
 
 Example:
