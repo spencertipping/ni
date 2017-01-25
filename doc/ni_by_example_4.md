@@ -42,7 +42,11 @@ exec("/bin/sh", "-c", "seq 10 | grep 1/")
 This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
 
 ###`ni` and Ruby
-Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. For most purposes bash and sh will behave the same way for `ni` -- the main exceptions are things like {x..y} (a bash-ism) and some environment-variable expansion forms. So it should be fine to use backquotes directly in all but the weirdest cases. However, if you do run into the weird case, you can create your command as a string `cmd` and run it with `bash -c "#{cmd}"`.
+Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). 
+
+Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. There are a few caveats for running in `bin/sh`, which are covered in the [debugging docs](debugging.md).
+   
+
 
 ##`nfu` HDFS Joins
 

@@ -40,6 +40,23 @@ When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the jo
 ###Hadoop Job killed by SIGPIPE
 Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` within a mapper, combiner, or reducer within `HS`. Instead, use `Bnr1000`, which will buffer excess input to null.
 
+##`ni` is installed but my machine can't find it
+
+Quick rundown of the obvious causes:
+
+1. `ni` isn't installed; head over to your `ni` directory and execute `./build`
+1. `ni` isn't linked; from the `ni` directory execute `ln -s $PWD/ni ~/bin/ni` to install it for your user or `ln -s $PWD/ni /usr/bin/ni` for all users.
+1. The folder where you linked `ni` isn't in your `$PATH`. Check your `.bash_profile`.
+
+Now onto non-obvious causes:
+
+###Running in `bin/sh`, with Ruby backticks, as a Python subprocess, etc.
+
+For most purposes bash and sh will behave the same way for `ni` -- the main exceptions are things like `{x..y}` (a bash-ism) and some environment-variable expansion forms. In particular, `bin/sh` may not like some of your environment variables, especially those that use `~` for the home directory. 
+
+A quick way to check for the above is to run `which ni`, which should use `bin/sh` rather than `bin/bash`. If nothing shows up, but you are still able to run commands, you can need to change `~/bin` to `$HOME/ni` for the same effect.
+
+If you do run into a bash-specific case, you can create your command as a string `cmd` and run it with `bash -c "#{cmd}"`.
 
 ##Erroneous Output
 The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls you might run into.
@@ -81,8 +98,7 @@ One of the goals of `ni` is keystroke-efficiency; if you have a general-enough o
 * `f` and `F`
   * `f` selects columns, and will always be followed by a number of capitalized alphabetical characters
   * `F` is used to split a single column of raw text into columns.
-* `a`, `a()`, and `a_` (within `p'...'`)
+* `a`, `a()`, and `a_`
   * `a` and `a()` are identical operators, returning **the first element of a tab-separated row**. `a` is more common, and works everywhere except when the context is unclear (and `a` alone would be interpreted as a string). In this case, use `a()`.
   * `a_` is an operator on arrays of lines of the stream, returning the first element of each line **as an array**. These arrays can be operated on by buffered readahead reducers.
-
 
