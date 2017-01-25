@@ -519,6 +519,42 @@ $ ni n1000000gr4 =\>numbers O
 
 One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
 
+Checkpoints do not read in from the stream, so you cannot for example do:
+
+```
+$ ni n5 :chkpt[p'a*2']
+1
+2
+3
+4
+5
+(END)
+$ ni :chkpt
+(END)
+```
+
+To store the first 5 multiples of 2 in the checkpoint, first clear the checkpoint file and execute:
+
+```
+$ ni :chkpt[n5 p'a*2']
+2
+4
+6
+8
+10
+(END)
+$ ni :chkpt
+2
+4
+6
+8
+10
+(END)
+```
+
+
+####Checkpoints and Hadoop Streaming
+
 ###A Final Note on Hadoop Streaming Jobs
 There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
 
