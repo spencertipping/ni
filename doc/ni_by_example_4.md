@@ -653,6 +653,14 @@ ABCdefgh
 (END)
 ```
 
+However, as you might expect from Perl, there is a syntax that allows `s` to return the value; however, this will not work on Perls before 5.12 or 5.14.
+
+```
+$ ni iabcdefgh p's/abc/ABC/r'
+ABCdefgh
+(END)
+```
+
 ###`map`
 
 `map` takes two arguments, a block of code and a perl array, and returns an array.
@@ -674,15 +682,15 @@ abcdefgh
 (END)
 ```
 
-Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and said 
+Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
 
 ```
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r $_'
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_, r @v'
 aa      bb      cc      dd      ee      ff      gg      hh
 (END)
 ```
 
-Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't _nice_.  
+Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
 
 ###`for`
 `for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
