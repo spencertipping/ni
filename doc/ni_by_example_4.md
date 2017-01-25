@@ -377,6 +377,16 @@ Likely the most important of these functions is the deterministic hashing functi
 
 Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
 
+Let's check that invariant:
+
+```
+$ ni :small_hashes[n4E7 ,hA Cubuntu[o]] up'sr {$_[0] + 1} , 0'
+39814375
+(END)
+```
+
+That means we had about 200,000 hash collisions in 40 million IDs, a rate of about .5%, which is good enough for my back-of-the envelope calculations.
+
 
 
 ###Cell Math Operations
@@ -385,7 +395,7 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,q<amt>`: Round to the nearest integer multiple of `<amt>`
 
-These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
+These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color.
 
 ###Column Math Operations
 * `,a`: Running average
@@ -395,8 +405,9 @@ These operations are mostly self-explanatory; jitter is often used for `ni --js`
 You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
 
 ```
-$ ni n1E4 fAA ,aA ,sB r~1
-5000.5  50005000
+$ ni n1E4 fAAA ,aA ,sB, dC r~1
+5000.5  50005000        1
+(END)
 ```
 
 
@@ -604,7 +615,7 @@ a       b
 ```
 
 
-####Substitution `s///`, Translation `tr///` and `y///`
+####Substitution `s///`, Transliteration `tr///` and `y///`
 
 These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
 
