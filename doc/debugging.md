@@ -40,6 +40,9 @@ When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the jo
 ###Hadoop Job killed by SIGPIPE
 Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` within a mapper, combiner, or reducer within `HS`. Instead, use `Bnr1000`, which will buffer excess input to null.
 
+###Too many partfiles
+The YARN resource manager will get angry 
+
 ##`ni` is installed but my machine can't find it
 
 Quick rundown of the obvious causes:

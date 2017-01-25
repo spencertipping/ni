@@ -553,7 +553,10 @@ $ ni :chkpt
 ```
 
 
-####Checkpoints and Hadoop Streaming
+###Developing Hadoop Streaming pipelines with checkpoints
+
+As of now, `ni` auto-generates the names for your 
+
 
 ###A Final Note on Hadoop Streaming Jobs
 There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
