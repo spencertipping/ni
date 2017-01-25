@@ -5110,7 +5110,7 @@ defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
     pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, pstr 'm', rbcode;
+defrowalt pmap q{ruby_grepper_op $_}, pn 1, pstr 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
