@@ -78,7 +78,7 @@
 	| (
 	    'm'
 	    <rbcode>
-	  ) -> {$$_[1]} -> {perl_grepper_op $_}
+	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
 	    'p'
 	    <perl_grepper_code>
