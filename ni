@@ -8938,7 +8938,7 @@ $ ni n5p'a * a'                 # square some numbers
 are concerned:
 
 ```bash
-$ ni :plfoo[n4p'a*a']
+$ ni ::plfoo[n4p'a*a'] //:plfoo
 1
 4
 9
@@ -9679,7 +9679,7 @@ $ ni n5m'ai * ai'               # square some numbers
 Like `p`, `m` has lambda-end detection using Ruby syntax checking:
 
 ```bash
-$ ni :rbfoo[n4m'ai*ai']
+$ ni ::rbfoo[n4m'ai*ai'] //:rbfoo
 1
 4
 9
