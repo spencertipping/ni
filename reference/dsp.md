@@ -42,10 +42,10 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  ) -> {my ($m, $c, $r) = @$_;
-	                            [file_read_op,
-	                             @$m, row_sort_op(sort_args [0]), @$c,
-	                                  row_sort_op(sort_args [0]), @$r,
-	                             file_write_op resource_tmp("file://")]}
+	                            my @cr =
+	                              (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+	                               defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+	                            [@$m, @cr]}
 	| 'S' (
 	    (
 	      <hadoop_streaming_lambda>

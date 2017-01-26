@@ -7115,10 +7115,10 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                        pc hadoop_streaming_lambda;
 
 defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
-                          [file_read_op,
-                           @$m, row_sort_op(sort_args [0]), @$c,
-                                row_sort_op(sort_args [0]), @$r,
-                           file_write_op resource_tmp("file://")]},
+                          my @cr =
+                            (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+                             defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+                          [@$m, @cr]},
                    pseq pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda;
