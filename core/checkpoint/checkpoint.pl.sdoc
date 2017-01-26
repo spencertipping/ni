@@ -1,17 +1,22 @@
 Checkpoint files.
 You can break a long pipeline into a series of smaller files using
 checkpointing, whose operator is `:`. The idea is to cache intermediate
-results. A checkpoint specifies a file and a lambda whose output it should
-capture.
+results. A checkpoint specifies a file.
 
 sub checkpoint_create($$) {
   stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
   rename "$_[0].part", $_[0];
 }
 
-defoperator 'checkpoint', q{
+defoperator checkpoint => q{
   my ($file, $generator) = @_;
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
+defmetaoperator inline_checkpoint => q{
+  my ($args, $left, $right) = @_;
+  my ($file) = @$args;
+  ([], [checkpoint_op($file, $left), @$right]);
+};
+
+defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;

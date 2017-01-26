@@ -3502,24 +3502,29 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
-17 core/checkpoint/checkpoint.pl.sdoc
+22 core/checkpoint/checkpoint.pl.sdoc
 Checkpoint files.
 You can break a long pipeline into a series of smaller files using
 checkpointing, whose operator is `:`. The idea is to cache intermediate
-results. A checkpoint specifies a file and a lambda whose output it should
-capture.
+results. A checkpoint specifies a file.
 
 sub checkpoint_create($$) {
   stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
   rename "$_[0].part", $_[0];
 }
 
-defoperator 'checkpoint', q{
+defoperator checkpoint => q{
   my ($file, $generator) = @_;
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
+defmetaoperator inline_checkpoint => q{
+  my ($args, $left, $right) = @_;
+  my ($file) = @$args;
+  ([], [checkpoint_op($file, $left), @$right]);
+};
+
+defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;
 1 core/net/lib
 net.pl.sdoc
 33 core/net/net.pl.sdoc
@@ -6945,7 +6950,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-162 core/hadoop/hadoop.pl.sdoc
+171 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7108,6 +7113,15 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
+
+defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
+                          [file_read_op,
+                           @$m, row_sort_op(sort_args [0]), @$c,
+                                row_sort_op(sort_args [0]), @$r,
+                           file_write_op resource_tmp("file://")]},
+                   pseq pc hadoop_streaming_lambda,
+                        pc hadoop_streaming_lambda,
+                        pc hadoop_streaming_lambda;
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
@@ -9907,7 +9921,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-507 doc/stream.md
+483 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -10345,10 +10359,10 @@ $ ni n1000000gr4
 ```
 
 If we wanted to iterate on the pipeline from this point onwards, we could do
-this quickly by checkpointing the result:
+this quickly by checkpointing the stream at that point:
 
 ```bash
-$ ni :numbers[n1000000gr4]
+$ ni n1000000gr4 :numbers
 1
 10
 100
@@ -10358,7 +10372,7 @@ $ ni :numbers[n1000000gr4]
 Now this data will be reused if we rerun it:
 
 ```bash
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 1000
 100
 10
@@ -10370,7 +10384,7 @@ checkpoint file:
 
 ```bash
 $ echo 'checkpointed' > numbers
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 checkpointed
 ```
 
@@ -10378,42 +10392,18 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-```
-
-Checkpointing, like most operators that accept lambda expressions, can also be
-written with the lambda implicit. In this case the lambda ends when you break
-the operators using whitespace:
-
-```bash
-$ ni :biglist n100000z r5
-1
-2
-3
-4
-5
-```
-
-Using `ni --explain`, you can see that in this case the lambda is contained
-within the `checkpoint` array:
-
-```bash
-$ ni --explain :biglist n100000z r5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"]]]
-["head","-n",5]
-$ ni --explain :biglist n100000zr5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
 46 doc/tutorial.md
 # ni tutorial

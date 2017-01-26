@@ -225,12 +225,9 @@
 
 ## SYNTAX
 	(
-	  (
-	    <nefilename>
-	    <empty>?
-	  ) -> {$$_[0]}
-	  </qfn>
-	) -> {checkpoint_op @$_}
+	  <nefilename>
+	  <empty>?
+	) -> {$$_[0]} -> {inline_checkpoint_op $_}
 
 # SHORT OPERATOR /::
 
@@ -365,6 +362,24 @@
 
 ## SYNTAX
 	(
+	| 'DS' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {my ($m, $c, $r) = @$_;
+	                            [file_read_op,
+	                             @$m, row_sort_op(sort_args [0]), @$c,
+	                                  row_sort_op(sort_args [0]), @$r,
+	                             file_write_op resource_tmp("file://")]}
 	| 'S' (
 	    (
 	      <hadoop_streaming_lambda>
