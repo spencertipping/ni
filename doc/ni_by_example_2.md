@@ -555,7 +555,7 @@ $ ni :chkpt
 
 ###Developing Hadoop Streaming pipelines with checkpoints
 
-As of now, `ni` auto-generates the names for your 
+As of now, `ni` auto-generates the names for the Hadoop directories. The location of these directi
 
 
 ###A Final Note on Hadoop Streaming Jobs

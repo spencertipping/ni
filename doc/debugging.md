@@ -41,7 +41,7 @@ When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the jo
 Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` within a mapper, combiner, or reducer within `HS`. Instead, use `Bnr1000`, which will buffer excess input to null.
 
 ###Too many partfiles
-The YARN resource manager will get angry 
+The YARN resource manager will refuse to accept jobs that use too many (for example, >100K) partfiles as input; if you have too many partfiles, then you can use the `HS` syntax to run multiple identical jobs over time.
 
 ##`ni` is installed but my machine can't find it
 
