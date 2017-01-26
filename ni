@@ -3101,7 +3101,7 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl.sdoc
-69 core/monitor/monitor.pl.sdoc
+70 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
@@ -3156,8 +3156,9 @@ defoperator stderr_monitor => q{
       my $factor_log = log(($otime || 1) / ($itime || 1)) / log 2;
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
+        sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
           $monitor_id + 1,
+          int($t3),
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
           $factor_log * 10,
