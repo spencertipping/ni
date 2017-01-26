@@ -819,7 +819,7 @@ sub operate {
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }
-56 core/boot/self.pl.sdoc
+63 core/boot/self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
@@ -828,6 +828,13 @@ our %self;
 
 our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
 our $ni_map      = 'core/boot/ni.map';
+
+sub self_append_resource($$) {
+  my ($k, $v) = @_;
+  $self{$ni_map_sdoc} .= "\nresource $k";
+  $self{$ni_map}      .= "\nresource $k";
+  $self{$k} = $v;
+}
 
 sub lib_entries($$) {
   local $_;
@@ -3376,18 +3383,15 @@ sub defexpander($@) {
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
-35 core/closure/closure.pl.sdoc
+32 core/closure/closure.pl.sdoc
 Data closures.
 Data closures are a way to ship data along with a process, for example over
 hadoop or SSH. The idea is to make your data as portable as ni is.
 
 sub add_closure_key($$) {
   # TODO: use a lib for all data closures
-  # TODO: use functions to extend the image; don't write keys directly
   my ($k, $v) = @_;
-  $k = "transient/closure/$k";
-  $ni::self{$k} = pack 'u', $v;
-  $ni::self{'core/boot/ni.map'} .= "\nresource $k";
+  self_append_resource "transient/closure/$k", pack 'u', $v;
 }
 
 sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
