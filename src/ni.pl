@@ -23,58 +23,105 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
-$ni::init = <<'_';
-require 'ni.scheme.pl';
-require 'ni.behavior.uri.pl';
-exit 0;
+BEGIN{eval($ni::code{boot} = <<'_')}
+package ni::code;
+push our @ISA, 'ni::obj';
+sub init {
+  my $self = shift;
+  @$self{qw/name code/} = @_;
+  $ni::code{$$self{name}} = $self;
+}
+sub named {$ni::code{$_[0]}}
+sub eval {
+  my ($self, $package) = @_;
+  my $p = defined $package ? "package $package;" : '';
+  eval qq{$p$$self{code}};
+  die "$@ evaluating $self in $package" if $@;
+}
+
+package ni::obj;
+sub new {
+  local $_;
+  my $class = shift;
+  my $self = bless {}, $class;
+  $self->init(@_);
+  $self;
+}
+sub class {$ni::classes{ref shift}}
+
+package ni::class;
+push our @ISA, 'ni::obj';
+sub init {
+  my ($self, $name, @meta) = @_;
+  $ni::class{$name} = $self;
+  $$self{name} = $name;
+  $$self{journal} = [];
+  $self->eval(@meta);
+}
+sub named {$ni::class{$_[0]}}
+sub package {shift->{name}}
+sub eval {
+  local $_;
+  my $self = shift;
+  push @{$$self{journal}}, @_;
+  $_->eval($self->package) for @_;
+}
+
+ni::class->new("ni::$_") for qw/class obj code/;
+ni::code->new('boot', $ni::code{boot});
 _
-$ni::data = \*DATA;
-eval($ni::boot = <<'_' . $ni::init);
+die $@ if $@;
+
 package ni;
 use strict;
+use warnings;
 
-our $image = join '', $ni::boot, map <$ni::data>, 1..<$ni::data>;
-our %live;
-
-sub u {
-  return $_[0] if ref $_[0];
-  return $live{$_[0]} if defined $live{$_[0]};
-  return $live{"ni.scheme:$1"}->u($2, @_[1..$#_]) if $_[0] =~ /^([^:]+):([\s\S]*)/;
+ni::code->new('ni::obj::serialize', q{
+sub dependencies {
+  my @immediates = @_;
+  my %ds = ($immediates[0] => 1);
+  my @ds;
+  while (@immediates = grep !exists $ds{$_},
+                       map $_->immediate_dependencies, @immediates) {
+    @ds{@immediates} = @immediates;
+    push @ds, @immediates;
+  }
+  @ds;
 }
 
-eval 'package ni::scheme;' . ($ni::scheme_meta_boot = q{
-sub u {no strict 'refs'; &{$_[0]->package . "::create"}(@_)}
-sub package {(my $p = ${$_[0]}{id}) =~ s/\./::/g; $p}
-sub uses {
-  local $_;
-  my ($self, @bs) = @_;
-  $_->modify($self) for @bs;
-  push @{$$self{behaviors} ||= []}, @bs;
-  $self;
-}
-sub eval {
-  my ($self, $code) = @_;
-  my $p = $self->package;
-  eval "package $p;$code";
-  die "error evaluating $code: $@" if $@;
-  $self;
-}
-sub create {
-  my ($self, $child, %stuff) = @_;
-  $ni::live{"ni.scheme:$child"}
-    = bless {id => $child, %stuff}, $self->package}});
-
-eval 'package ni::behavior::code;' . ($ni::behavior_code_meta_boot = q{
-sub create {bless {code => $_[1], @_[2..$#_]}, $_[0]->package}
-sub modify {
-  my ($self, $scheme) = @_;
-  $scheme->eval($$self{code});
-  $self;
+sub serialize {
+  my $self = shift;
+  $_->serialize_self(@_) for $self->dependencies;
+  $self->serialize_self(@_);
+  shift;
 }
 });
 
-bless({id => 'ni.scheme'}, 'ni::scheme')->create('ni.scheme');
-_
-die $@;
-__DATA__
-0
+ni::code->new('ni::class::serialize', q{
+sub immediate_dependencies {my $self = shift; $self->class, @{$$self{journal}}}
+sub name {my $self = shift; "ni::class::named('$$self{name}')"}
+sub serialize_self {
+  my ($self, $dest) = @_;
+  $dest->method_call('ni::class->new', $self->name, @{$$self{journal}});
+}
+});
+
+ni::code->new('ni::code::serialize', q{
+sub immediate_dependencies {shift->class}
+sub name {my $self = shift; "ni::code::named('$$self{name}')"}
+sub serialize_self {
+  my ($self, $dest) = @_;
+  $dest->method_call('ni::code->new', @$self{qw/name code/});
+}
+});
+
+ni::class::named('ni::obj')->eval(ni::code::named('ni::obj::serialize'));
+ni::class::named('ni::class')->eval(ni::code::named('ni::class::serialize'));
+ni::class::named('ni::code')->eval(ni::code::named('ni::code::serialize'));
+
+package s;
+sub method_call {push @{$_[0]}, "[" . join(' ', @_) . "]"}
+
+my $s = bless [], 's';
+ni::class::named('ni::code')->serialize($s);
+print "$_\n" for @$s;
