@@ -22,12 +22,14 @@ fi
 
 chmod 755 ni
 
-seq 10 | xargs -n1 -I{} echo > /dev/null
+if (( ! $# )); then
+  seq 10 | xargs -n1 -I{} echo > /dev/null
 
-ni_startups=100
-start_nanos=$(date +%s%N)
-seq $ni_startups | xargs -n1 -I{} ./ni //ni > /dev/null
-end_nanos=$(date +%s%N)
+  ni_startups=100
+  start_nanos=$(date +%s%N)
+  seq $ni_startups | xargs -n1 -I{} ./ni //ni > /dev/null
+  end_nanos=$(date +%s%N)
 
-echo "$(wc -c < ni) bytes" >&2
-echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
+  echo "$(wc -c < ni) bytes" >&2
+  echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
+fi

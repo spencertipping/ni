@@ -22,7 +22,7 @@ $ ni n5p'a * a'                 # square some numbers
 are concerned:
 
 ```bash
-$ ni :plfoo[n4p'a*a']
+$ ni ::plfoo[n4p'a*a'] //:plfoo
 1
 4
 9

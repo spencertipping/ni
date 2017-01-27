@@ -7,6 +7,13 @@ our %self;
 our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
 our $ni_map      = 'core/boot/ni.map';
 
+sub self_append_resource($$) {
+  my ($k, $v) = @_;
+  $self{$ni_map_sdoc} .= "\nresource $k";
+  $self{$ni_map}      .= "\nresource $k";
+  $self{$k} = $v;
+}
+
 sub lib_entries($$) {
   local $_;
   my ($name, $text) = @_;
