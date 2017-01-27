@@ -1,0 +1,62 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+use Time::HiRes qw/time/;
+
+my $small_n = 1000;
+my $large_n = int sqrt $small_n;
+
+my $short_q_strings  = join "\n", map "'$_';", 1..$small_n;
+my $short_qq_strings = join "\n", map "\"$_\";", 1..$small_n;
+my $short_q_block_strings = join "\n", map "q{$_}", 1..$small_n;
+my $short_q_block_bracket_strings = join "\n", map "q{{$_}}", 1..$small_n;
+my $short_q_hash_strings = join "\n", map "q#$_#", 1..$small_n;
+my $short_q_tick_strings = join "\n", map "q'$_'", 1..$small_n;
+my $short_qq_block_strings = join "\n", map "qq{$_}", 1..$small_n;
+my $short_q_heredocs = join "\n", map "<<'_';\n$_\n_", 1..$small_n;
+my $short_qq_heredocs = join "\n", map "<<_;\n$_\n_", 1..$small_n;
+
+my $long_q_strings  = join "\n", map "'$_';", map join(':', 1..$_), 1..$large_n;
+my $long_qq_strings = join "\n", map "\"$_\";", map join(':', 1..$_), 1..$large_n;
+my $long_q_block_strings = join "\n", map "q{$_}", map join(':', 1..$_), 1..$large_n;
+my $long_q_block_bracket_strings = join "\n", map "q{{$_}}", map join(':', 1..$_), 1..$large_n;
+my $long_q_hash_strings = join "\n", map "q#$_#", map join(':', 1..$_), 1..$large_n;
+my $long_q_tick_strings = join "\n", map "q'$_'", map join(':', 1..$_), 1..$large_n;
+my $long_qq_block_strings = join "\n", map "qq{$_}", map join(':', 1..$_), 1..$large_n;
+my $long_q_heredocs = join "\n", map "<<'_';\n$_\n_", map join(':', 1..$_), 1..$large_n;
+my $long_qq_heredocs = join "\n", map "<<_;\n$_\n_", map join(':', 1..$_), 1..$large_n;
+
+if ($ARGV[0] eq '--cmp') {
+  cmpthese 1000000 / $small_n, {
+    sq => sub {eval $short_q_strings},
+    sqq => sub {eval $short_qq_strings},
+    sq_block => sub {eval $short_q_block_strings},
+    sq_bb => sub {eval $short_q_block_bracket_strings},
+    sq_hash => sub {eval $short_q_hash_strings},
+    sq_tick => sub {eval $short_q_tick_strings},
+    sqq_block => sub {eval $short_qq_block_strings},
+    sq_h => sub {eval $short_q_heredocs},
+    sqq_h => sub {eval $short_qq_heredocs},
+  };
+
+  cmpthese int 1000000 / $large_n, {
+    lq => sub {eval $long_q_strings},
+    lqq => sub {eval $long_qq_strings},
+    lq_block => sub {eval $long_q_block_strings},
+    lq_bb => sub {eval $long_q_block_bracket_strings},
+    lq_hash => sub {eval $long_q_hash_strings},
+    lq_tick => sub {eval $long_q_tick_strings},
+    lqq_block => sub {eval $long_qq_block_strings},
+    lq_h => sub {eval $long_q_heredocs},
+    lqq_h => sub {eval $long_qq_heredocs},
+  };
+} elsif ($ARGV[0] eq '--mbs') {
+  my $n = 2000000;
+  my $t0 = time; eval $short_q_tick_strings for 1..$n / $small_n;
+  my $t1 = time; eval $long_q_tick_strings  for 1..$n / $large_n; my $t2 = time;
+
+  print "short tick: ", length($short_q_tick_strings) * $n / $small_n / 1048576 / ($t1 - $t0), "MB/sec\n";
+  print "long tick:  ", length($long_q_tick_strings)  * $n / $large_n / 1048576 / ($t2 - $t1), "MB/sec\n";
+} else {
+  print "USAGE: $0 {--cmp|--mbs}\n";
+  exit 1;
+}
