@@ -91,8 +91,6 @@ sub eval {
 package ni::boot_class;
 push our @ISA, qw/ni::class/;
 sub scheme {\'ni.class\'}
-
-ni::boot_class->new(name => \'ni::boot_class\');
 ',q'dependencies',[q'ni.module:/boot'],q'name',q'/class');
 ni::boot_class::->new(q'name',q'ni::boot_class');
 ni::boot_class::->new(q'name',q'ni::boot_module');

@@ -21,12 +21,11 @@ sub eval {
 package ni::boot_class;
 push our @ISA, qw/ni::class/;
 sub scheme {'ni.class'}
-
-ni::boot_class->new(name => 'ni::boot_class');
 _
 
 ni::boot_class->new(name => "ni::$_")
-  for qw/boot_module
+  for qw/boot_class
+         boot_module
          class
          constructable
          module
