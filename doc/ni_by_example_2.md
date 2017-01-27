@@ -420,7 +420,6 @@ The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` 
 > You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
 
 
-
 ###How `ni` Interacts with Hadoop Streaming MapReduce
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
@@ -444,10 +443,13 @@ It has a trivial map step, no combiner, and a trivial reducer; it looks like not
 
 If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
 
+###Initializing `HS` Jobs
+`HS` takes data in several formats. You can stream 
 
-###Developing Hadoop Streaming Jobs
 
-In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
+##Developing Hadoop Streaming Jobs
+
+Because Hadoop is such an important part of `ni`'s power, we're devoting a section not just to the operator, but to the principles of development using `HS`. `HS` is, in fact actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
 
 outputs the name of the directory where the output has been placed.
 
@@ -463,6 +465,8 @@ You can convert a hadoop streaming job to a `ni` job without Hadoop streaming vi
 This identity allows you to iterate fast, completely within `less` and the command line.
   
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+
+###`HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming
 
 
 ###`:checkpoint_name[...]`: Checkpoints
@@ -522,8 +526,7 @@ One caveat with checkpoint files is that they are persisted, so these files must
 
 ###Developing Hadoop Streaming pipelines with checkpoints
 
-As of now, `ni` auto-generates the names for the Hadoop directories. The location of these directions 
-
+As of now, `ni` auto-generates the names for the Hadoop directories, and these can be hard to remember off the top of your head.
 
 ###A Final Note on Hadoop Streaming Jobs
 There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
