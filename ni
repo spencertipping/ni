@@ -6951,7 +6951,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-171 core/hadoop/hadoop.pl.sdoc
+176 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7123,6 +7123,11 @@ defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
                    pseq pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda;
+
+defhadoopalt R =>
+  pmap q{configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+                      [hadoop_streaming_op [], undef, []]},
+  pc number;
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
