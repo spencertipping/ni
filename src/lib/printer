@@ -1,0 +1,12 @@
+ni::module->new(name         => 'ni.module:/lib/printer',
+                dependencies => ['ni.module:/lib/quote'],
+                code         => <<'_');
+package ni::printer;
+use overload qw/<< print/;
+sub new {
+  my $class = shift;
+  bless {fh => shift}, $class;
+}
+sub print {shift->{fh}->print(@_, ';')}
+$ni::context{'ni.module:/lib/printer'}->serialize(ni::printer->new(\*STDOUT));
+_

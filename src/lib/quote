@@ -1,0 +1,42 @@
+ni::module->new(name         => 'ni.module:/lib/quote',
+                dependencies => ['ni.module:/boot'],
+                code         => <<'_');
+sub ni::quote($)       {bless {expr => shift}, 'ni::quotation'}
+sub ni::quote_hash($)  {ni::quote '{' . join(',', map ni::quote_value($_), %{+shift}) . '}'}
+sub ni::quote_array($) {ni::quote '[' . join(',', map ni::quote_value($_), @{+shift}) . ']'}
+sub ni::quote_context_lookup($) {"ni::context(" . ni::quote_scalar(shift) . ")"}
+sub ni::quote_scalar($) {
+  my $v = shift;
+  return 'undef' unless defined $v;
+  return $v if Scalar::Util::looks_like_number $v;
+  $v =~ s/([\\'])/\\$1/g;
+  "q'$v'";
+}
+sub ni::quote_value($) {
+  my $v = shift;
+  return ni::quote_hash($v)  if 'HASH'  eq ref $v;
+  return ni::quote_array($v) if 'ARRAY' eq ref $v;
+  return ni::quote_context_lookup($v->name) if ref $v;
+  ni::quote_scalar($v);
+}
+
+package ni::quotation;
+use Scalar::Util;
+use overload qw/"" __str/;
+push @ni::quotation::method_call::ISA, 'ni::quotation';
+our $AUTOLOAD;
+sub AUTOLOAD {
+  my $self = shift;
+  (my $method = $AUTOLOAD) =~ s/^.*:://;
+  bless {receiver => $self,
+         method   => $method,
+         args     => [map ni::quote_value($_), @_]},
+        'ni::quotation::method_call';
+}
+sub __str {shift->{expr}}
+sub ni::quotation::method_call::__str {
+  my $self = shift;
+  join '', $$self{receiver}, '->', $$self{method},
+           '(', join(',', @{$$self{args}}), ')';
+}
+_

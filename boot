@@ -1,42 +1,20 @@
 #!/bin/bash
-# Builds the core ni image from the files in core/boot.
+# Builds the core ni image from the files in src/.
 cd $(dirname $0)
 
-# Preprocessor to erase SDoc documentation. This minimizes the image size but
-# still makes it possible to document code in some detail.
-unsdoc() { perl -e 'print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//,
-                                   split /\n(\h*\n)+/, join "", <>'; }
+cat src/boot \
+    src/lib/quote \
+    src/lib/printer \
+  > ni0
 
-# Resource format is "<nlines> <filename>\n<data...>", e.g.
-#
-# 5 foo.pl
-# #!/usr/bin/env perl
-# # stuff
-# while (<>) {
-#   print "hi $_";
-# }
-#
-# See src/ni for the logic that parses this from the __DATA__ section.
-
-# NB: these three functions are named to correspond to directives in
-# src/ni.map.sdoc.
-bootcode() { cat core/boot/ni; }
-
-resource() {
-  for r; do
-    wc -l $r
-    cat $r
-  done
-}
-
-# Build the ni image by including the header verbatim, then bundling the rest
-# of the files as resources. The header knows how to unpack resources from the
-# __DATA__ section of the script, and it evaluates the ones ending in .pl. This
-# mechanism makes it possible for ni to serialize its code without being stored
-# anywhere (which is useful if you're piping it to a system whose filesystem is
-# read-only).
-eval "$(unsdoc < core/boot/ni.map.sdoc)" > ni
-
-chmod +x ni
-
+perl ni0 //ni > ni && cp ni ni0
+perl ni0 //ni > ni
 wc -c ni
+
+if [[ "$(<ni0)" != "$(<ni)" ]]; then
+  echo 'ni is unstable under replication'
+  diff -C 3 ni0 ni
+  exit 1
+fi
+
+chmod 755 ni

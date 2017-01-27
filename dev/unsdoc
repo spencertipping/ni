@@ -1,2 +1,0 @@
-#!/usr/bin/env perl
-print join "", grep !/^\h*[|A-Z]/ + s/^\h*c\n//, split /\n(\h*\n)+/, join "", <>;
