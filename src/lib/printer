@@ -1,5 +1,6 @@
 ni::module->new(name         => '/lib/printer',
-                dependencies => ['ni.module:/lib/serializable', 'ni.module:/lib/quote'],
+                dependencies => ['ni.module:/lib/serializable',
+                                 'ni.module:/lib/quote'],
                 code         => <<'_');
 package ni::printer;
 use overload qw/<< print/;

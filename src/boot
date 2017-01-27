@@ -31,6 +31,13 @@ sub ni::context {
     . join(', ', grep !defined($ni::context{$_}), @_);
 }
 
+sub ni::eval {
+  my @r;
+  wantarray ? @r = eval $_[0] : $r[0] = eval $_[0];
+  die "$@ evaluating " . ($_[1] || "anon {$_[0]}") if $@;
+  wantarray ? @r : $r[0];
+}
+
 package ni::constructable;
 sub new {
   my $class = shift;
@@ -40,15 +47,9 @@ sub new {
 }
 
 package ni::named;
-use overload qw/"" name/;
+use overload qw/"" name fallback 1/;
 sub scheme {(my $s = ref shift) =~ s/::/./g; $s}
 sub name {my $self = shift; $self->scheme . ":$$self{name}"}
-
-package ni::transient_identity;
-push our @ISA, 'ni::named';
-use Scalar::Util qw/weaken/;
-sub DESTROY {delete $ni::context{shift->name}}
-sub add_to_context {my $self = shift; weaken($ni::context{$self->name} = $self); $self}
 
 package ni::persistent_identity;
 push our @ISA, 'ni::named';
@@ -67,6 +68,6 @@ ni::boot_module->new(name => '/boot', code => ni::context 'ni.module:/boot');
 package ni::module;
 push our @ISA, qw/ni::constructable ni::persistent_identity/;
 sub init {my $self = shift; $self->add_to_context; $self->eval}
-sub eval {my $self = shift; eval $$self{code}; die "$@ evaluating $$self{name}" if $@}
+sub eval {my $self = shift; ni::eval $$self{code}, $self->name}
 _
 die "$@ evaluating ni.module:/boot" if $@;

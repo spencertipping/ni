@@ -31,6 +31,13 @@ sub ni::context {
     . join(', ', grep !defined($ni::context{$_}), @_);
 }
 
+sub ni::eval {
+  my @r;
+  wantarray ? @r = eval $_[0] : $r[0] = eval $_[0];
+  die "$@ evaluating " . ($_[1] || "anon {$_[0]}") if $@;
+  wantarray ? @r : $r[0];
+}
+
 package ni::constructable;
 sub new {
   my $class = shift;
@@ -40,15 +47,9 @@ sub new {
 }
 
 package ni::named;
-use overload qw/"" name/;
+use overload qw/"" name fallback 1/;
 sub scheme {(my $s = ref shift) =~ s/::/./g; $s}
 sub name {my $self = shift; $self->scheme . ":$$self{name}"}
-
-package ni::transient_identity;
-push our @ISA, 'ni::named';
-use Scalar::Util qw/weaken/;
-sub DESTROY {delete $ni::context{shift->name}}
-sub add_to_context {my $self = shift; weaken($ni::context{$self->name} = $self); $self}
 
 package ni::persistent_identity;
 push our @ISA, 'ni::named';
@@ -67,10 +68,58 @@ ni::boot_module->new(name => '/boot', code => ni::context 'ni.module:/boot');
 package ni::module;
 push our @ISA, qw/ni::constructable ni::persistent_identity/;
 sub init {my $self = shift; $self->add_to_context; $self->eval}
-sub eval {my $self = shift; eval $$self{code}; die "$@ evaluating $$self{name}" if $@}
+sub eval {my $self = shift; ni::eval $$self{code}, $self->name}
 _
 die "$@ evaluating /boot" if $@;
-ni::module::->new(q'code',q'sub ni::quote($)       {bless {expr => shift}, \'ni::quotation\'}
+ni::module::->new(q'code',q'package ni::class;
+push our @ISA, qw/ni::constructable ni::persistent_identity/;
+sub class {ni::context \'ni.class:\' . ref shift}
+sub init {
+  my $self = shift;
+  $self->add_to_context;
+  *{$self->package . "::class"} = \\&ni::class::class;
+  $self->eval($$self{code}) if exists $$self{code};
+}
+sub parents {map ni::context("ni.class:$_"), @{shift->package . "::ISA"}}
+sub package {shift->{name}}
+sub eval {
+  my $self = shift;
+  ni::eval "package " . $self->package . ";$_[0]",
+           $_[1] || "anon : " . $self->name . " {$_[0]}";
+}
+
+package ni::boot_class;
+push our @ISA, qw/ni::class/;
+sub scheme {\'ni.class\'}
+
+ni::boot_class->new(name => \'ni::boot_class\');
+',q'dependencies',[q'ni.module:/boot'],q'name',q'/class');
+ni::boot_class::->new(q'name',q'ni::boot_class');
+ni::boot_class::->new(q'name',q'ni::boot_module');
+ni::boot_class::->new(q'name',q'ni::class');
+ni::boot_class::->new(q'name',q'ni::constructable');
+ni::boot_class::->new(q'name',q'ni::module');
+ni::boot_class::->new(q'name',q'ni::persistent_identity');
+ni::class::->new(q'code',q'use overload qw/"" __str/;
+push @ni::quotation::method_call::ISA, \'ni::quotation\';
+our $AUTOLOAD;
+sub AUTOLOAD {
+  my $self = shift;
+  (my $method = $AUTOLOAD) =~ s/^.*:://;
+  bless {receiver => $self,
+         method   => $method,
+         args     => [map ni::quote_value($_), @_]},
+        \'ni::quotation::method_call\';
+}
+sub __str {shift->{expr}}
+sub ni::quotation::method_call::__str {
+  my $self = shift;
+  join \'\', $$self{receiver}, \'->\', $$self{method},
+           \'(\', join(\',\', @{$$self{args}}), \')\';
+}
+',q'dependencies',[],q'name',q'ni::quotation');
+ni::module::->new(q'code',q'use Scalar::Util;
+sub ni::quote($)       {bless {expr => shift}, \'ni::quotation\'}
 sub ni::quote_hash($)  {ni::quote \'{\' . join(\',\', map ni::quote_value($_), %{+shift}) . \'}\'}
 sub ni::quote_array($) {ni::quote \'[\' . join(\',\', map ni::quote_value($_), @{+shift}) . \']\'}
 sub ni::quote_context_lookup($) {"ni::context(" . ni::quote_scalar(shift) . ")"}
@@ -88,46 +137,44 @@ sub ni::quote_value($) {
   return ni::quote_context_lookup($v->name) if ref $v;
   ni::quote_scalar($v);
 }
-
-package ni::quotation;
-use Scalar::Util;
-use overload qw/"" __str/;
-push @ni::quotation::method_call::ISA, \'ni::quotation\';
-our $AUTOLOAD;
-sub AUTOLOAD {
-  my $self = shift;
-  (my $method = $AUTOLOAD) =~ s/^.*:://;
-  bless {receiver => $self,
-         method   => $method,
-         args     => [map ni::quote_value($_), @_]},
-        \'ni::quotation::method_call\';
-}
-sub __str {shift->{expr}}
-sub ni::quotation::method_call::__str {
-  my $self = shift;
-  join \'\', $$self{receiver}, \'->\', $$self{method},
-           \'(\', join(\',\', @{$$self{args}}), \')\';
-}
-',q'dependencies',[q'ni.module:/boot'],q'name',q'/lib/quote');
-ni::module::->new(q'code',q'package ni::serializable;
-sub dependencies {
-  my %ds;
-  @ds{my @ds = my @i = shift} = 1;
-  push @ds, @i while @i = grep !$ds{$_}++, map $_->immediate_dependencies, @i;
-  @ds;
+',q'dependencies',[q'ni.class:ni::quotation'],q'name',q'/lib/quote');
+ni::class::->new(q'code',q'sub dependencies {
+  my @q;
+  my %d = ($_[0] => [@q = $_[0]->immediate_dependencies]);
+  @q = grep !$d{$_}, map @{$d{$_} ||= [$_->immediate_dependencies]}, @q while @q;
+  my @d;
+  while (keys %d) {
+    my @ks = grep {my $k = $_; !grep {$_->name ne $k && exists $d{$_}} @{$d{$k}}} sort keys %d;
+    die "ni::serializable/dependencies: circular dependencies in\\n"
+      . join("\\n", map "  $_ [@{$d{$_}}]", sort keys %d) unless @ks;
+    push @d, @ks;
+    delete @d{@ks};
+  }
+  ni::context @d;
 }
 sub serialize {
   my $self = shift;
-  $_->serialize_self(@_) for reverse $self->dependencies;
+  $_->serialize_self(@_) for $self->dependencies;
   shift;
 }
 sub serialize_self {
   my ($self, $into) = @_;
-  $into << ni::quote(ref($self) . \'::\')->new(%$self{sort keys %$self});
+  $into << ni::quote(ref($self) . \'::\')
+             ->new(%$self{sort grep !/^_/, keys %$self});
 }
-
-package ni::boot_module;
-push our @ISA, qw/ni::serializable/;
+',q'dependencies',[q'ni.module:/lib/quote'],q'name',q'ni::serializable');
+ni::class::->new(q'code',q'push our @ISA, qw/ni::constructable ni::persistent_identity/;
+sub init {
+  my $self = shift;
+  $self->add_to_context;
+  $self->target_class->eval($$self{code}, $self->name) if exists $$self{code};
+}
+sub target_class {ni::context "ni.class:$1" if shift->{name} =~ /^([^\\/]+)\\//}
+',q'dependencies',[],q'name',q'ni::slice');
+ni::slice::->new(q'code',q'sub immediate_dependencies {
+  ni::context \'ni.module:/class\'}
+',q'dependencies',[],q'name',q'ni::boot_class/serializable');
+ni::slice::->new(q'code',q'push our @ISA, qw/ni::serializable/;
 sub immediate_dependencies {}
 sub serialize_self {
   my ($self, $into) = @_;
@@ -137,11 +184,23 @@ sub serialize_self {
     \'eval($ni::context{\\\'\' . $self->name . \'\\\'} = <<\\\'_\\\');\', $$self{code}, \'_\',
     qq{die "\\$@ evaluating $$self{name}" if \\$@};
 }
-
-package ni::module;
-push our @ISA, qw/ni::serializable/;
+',q'dependencies',[],q'name',q'ni::boot_module/serializable');
+ni::slice::->new(q'code',q'push our @ISA, qw/ni::serializable/;
+sub immediate_dependencies {
+  my $self = shift;
+  ni::context(@{$$self{dependencies}}), $self->class, $self->parents;
+}
+',q'dependencies',[],q'name',q'ni::class/serializable');
+ni::slice::->new(q'code',q'push our @ISA, qw/ni::serializable/;
 sub immediate_dependencies {ni::context @{shift->{dependencies}}}
-',q'dependencies',[q'ni.module:/boot'],q'name',q'/lib/serializable');
+',q'dependencies',[],q'name',q'ni::module/serializable');
+ni::slice::->new(q'code',q'push our @ISA, qw/ni::serializable/;
+sub immediate_dependencies {
+  my $self = shift;
+  ni::context(@{$$self{dependencies}}), $self->class, $self->target_class;
+}
+',q'dependencies',[],q'name',q'ni::slice/serializable');
+ni::module::->new(q'dependencies',[q'ni.slice:ni::boot_module/serializable',q'ni.slice:ni::module/serializable',q'ni.slice:ni::boot_class/serializable',q'ni.slice:ni::class/serializable',q'ni.slice:ni::slice/serializable'],q'name',q'/lib/serializable');
 ni::module::->new(q'code',q'package ni::printer;
 use overload qw/<< print/;
 sub new {

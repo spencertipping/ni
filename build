@@ -3,10 +3,10 @@
 cd $(dirname $0)
 
 cat src/boot \
+    src/class \
     src/lib/serializable \
     src/lib/quote \
     src/lib/printer \
-    src/lib/class \
   > ni0
 
 wc -c ni0
@@ -16,10 +16,12 @@ wc -c ni
 
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
   echo 'ni is unstable under replication'
-  diff -C 3 ni0 ni
+  [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] && diff -C 3 ni0 ni
   exit 1
 else
   rm ni0
 fi
 
 chmod 755 ni
+
+time ./ni > /dev/null

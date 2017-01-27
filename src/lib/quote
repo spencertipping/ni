@@ -1,6 +1,7 @@
 ni::module->new(name         => '/lib/quote',
-                dependencies => ['ni.module:/boot'],
+                dependencies => ['ni.class:ni::quotation'],
                 code         => <<'_');
+use Scalar::Util;
 sub ni::quote($)       {bless {expr => shift}, 'ni::quotation'}
 sub ni::quote_hash($)  {ni::quote '{' . join(',', map ni::quote_value($_), %{+shift}) . '}'}
 sub ni::quote_array($) {ni::quote '[' . join(',', map ni::quote_value($_), @{+shift}) . ']'}
@@ -19,9 +20,10 @@ sub ni::quote_value($) {
   return ni::quote_context_lookup($v->name) if ref $v;
   ni::quote_scalar($v);
 }
+_
 
-package ni::quotation;
-use Scalar::Util;
+ni::class->new(name => 'ni::quotation',
+               code => <<'_');
 use overload qw/"" __str/;
 push @ni::quotation::method_call::ISA, 'ni::quotation';
 our $AUTOLOAD;

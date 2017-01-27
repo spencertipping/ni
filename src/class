@@ -1,0 +1,45 @@
+ni::module->new(name         => '/class',
+                dependencies => ['ni.module:/boot'],
+                code         => <<'_');
+package ni::class;
+push our @ISA, qw/ni::constructable ni::persistent_identity/;
+sub class {ni::context 'ni.class:' . ref shift}
+sub init {
+  my $self = shift;
+  $self->add_to_context;
+  *{$self->package . "::class"} = \&ni::class::class;
+  $self->eval($$self{code}) if exists $$self{code};
+}
+sub parents {map ni::context("ni.class:$_"), @{shift->package . "::ISA"}}
+sub package {shift->{name}}
+sub eval {
+  my $self = shift;
+  ni::eval "package " . $self->package . ";$_[0]",
+           $_[1] || "anon : " . $self->name . " {$_[0]}";
+}
+
+package ni::boot_class;
+push our @ISA, qw/ni::class/;
+sub scheme {'ni.class'}
+
+ni::boot_class->new(name => 'ni::boot_class');
+_
+
+ni::boot_class->new(name => "ni::$_")
+  for qw/boot_module
+         class
+         constructable
+         module
+         named
+         persistent_identity/;
+
+ni::class->new(name => 'ni::slice',
+               code => <<'_');
+push our @ISA, qw/ni::constructable ni::persistent_identity/;
+sub init {
+  my $self = shift;
+  $self->add_to_context;
+  $self->target_class->eval($$self{code}, $self->name) if exists $$self{code};
+}
+sub target_class {ni::context "ni.class:$1" if shift->{name} =~ /^([^\/]+)\//}
+_
