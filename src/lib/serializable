@@ -3,11 +3,19 @@ ni::module->new(name         => '/lib/serializable',
                                     ni.slice:ni::module/serializable
                                     ni.slice:ni::boot_class/serializable
                                     ni.slice:ni::class/serializable
-                                    ni.slice:ni::slice/serializable]]);
+                                    ni.slice:ni::slice/serializable
+                                    ni.class:ni::serializable]]);
 
 ni::class->new(name         => 'ni::serializable',
                dependencies => ['ni.module:/lib/quote'],
                code         => <<'_');
+push @ni::persistent_object::ISA, __PACKAGE__;
+sub declared_dependencies {
+  my $ds = shift->{dependencies};
+  return () unless $ds;
+  return @$ds if 'ARRAY' eq ref $ds;
+  return &$ds;
+}
 sub dependencies {
   my @q;
   my %d = ($_[0] => [@q = $_[0]->immediate_dependencies]);
@@ -32,11 +40,14 @@ sub serialize_self {
   $into << ni::quote(ref($self) . '::')
              ->new(%$self{sort grep !/^_/, keys %$self});
 }
+sub immediate_dependencies {
+  my $self = shift;
+  $self->declared_dependencies, $self->class;
+}
 _
 
 ni::slice->new(name => 'ni::boot_module/serializable',
                code => <<'_');
-push our @ISA, qw/ni::serializable/;
 sub immediate_dependencies {}
 sub serialize_self {
   my ($self, $into) = @_;
@@ -50,30 +61,26 @@ _
 
 ni::slice->new(name => 'ni::module/serializable',
                code => <<'_');
-push our @ISA, qw/ni::serializable/;
-sub immediate_dependencies {ni::context @{shift->{dependencies}}}
+sub immediate_dependencies {ni::context shift->declared_dependencies}
 _
 
 ni::slice->new(name => 'ni::class/serializable',
                code => <<'_');
-push our @ISA, qw/ni::serializable/;
 sub immediate_dependencies {
   my $self = shift;
-  ni::context(@{$$self{dependencies}}), $self->class, $self->parents;
+  ni::context($self->declared_dependencies), $self->class, $self->parents;
 }
 _
 
 ni::slice->new(name => 'ni::boot_class/serializable',
                code => <<'_');
-sub immediate_dependencies {
-  ni::context 'ni.module:/class'}
+sub immediate_dependencies {ni::context 'ni.module:/class.boot'}
 _
 
 ni::slice->new(name => 'ni::slice/serializable',
                code => <<'_');
-push our @ISA, qw/ni::serializable/;
 sub immediate_dependencies {
   my $self = shift;
-  ni::context(@{$$self{dependencies}}), $self->class, $self->target_class;
+  ni::context($self->declared_dependencies), $self->class, $self->target_class;
 }
 _

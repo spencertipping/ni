@@ -1,0 +1,14 @@
+ni::module->new(name         => '/lib/doc',
+                dependencies => ['ni.class:ni::documentation']);
+
+ni::defn(doc => q{ni::documentation->new(name => $_[0], doc => @_)});
+ni::defn(undocumented_objects => q{grep !$_->is_documented, sort keys %ni::context});
+
+ni::slice->new(name => 'ni::named/documentable',
+               code => <<'_');
+sub ni::named::documentation {ni::context "ni.documentation:" . shift}
+sub ni::named::is_documented {exists $ni::context{"ni.documentation:" . shift}}
+_
+
+ni::class->new(name => 'ni::documentation',
+               isa  => ['ni::persistent_object']);

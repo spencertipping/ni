@@ -1,21 +1,30 @@
 ni::module->new(name         => '/class',
+                dependencies => ['ni.class:ni::slice', 'ni.fn:ni/defn']);
+
+ni::module->new(name         => '/class.boot',
                 dependencies => ['ni.module:/boot'],
                 code         => <<'_');
 package ni::class;
-push our @ISA, qw/ni::constructable ni::persistent_identity/;
+push our @ISA, qw/ni::persistent_object/;
 sub class {ni::context 'ni.class:' . ref shift}
 sub init {
   my $self = shift;
   $self->add_to_context;
   *{$self->package . "::class"} = \&ni::class::class;
+  @{$self->package . "::ISA"} = @{$$self{isa}} if exists $$self{isa};
   $self->eval($$self{code}) if exists $$self{code};
 }
 sub parents {map ni::context("ni.class:$_"), @{shift->package . "::ISA"}}
 sub package {shift->{name}}
 sub eval {
   my $self = shift;
-  ni::eval "package " . $self->package . ";$_[0]",
+  ni::eval "package " . $self->package . ";use strict;use warnings;$_[0]",
            $_[1] || "anon : " . $self->name . " {$_[0]}";
+}
+sub def {
+  my $self = shift;
+  my %ks = @_;
+  *{$self->package . "::$_"} = $ks{$_} for keys %ks;
 }
 
 package ni::boot_class;
@@ -23,6 +32,7 @@ push our @ISA, qw/ni::class/;
 sub scheme {'ni.class'}
 _
 
+ni::boot_class->new(name => 'ni');
 ni::boot_class->new(name => "ni::$_")
   for qw/boot_class
          boot_module
@@ -30,11 +40,34 @@ ni::boot_class->new(name => "ni::$_")
          constructable
          module
          named
-         persistent_identity/;
+         persistent_identity
+         persistent_object/;
+
+ni::class->new(name => 'ni::fn',
+               isa  => ['ni::persistent_object'],
+               code => <<'_');
+sub init {
+  my $self = shift;
+  $self->add_to_context;
+  $self->target_class->def($self->fn_name => $self->fn);
+}
+sub target_class {ni::context "ni.class:$1" if shift->{name} =~ /^([^\/]+)\//}
+sub fn_name   {my ($n) = shift->{name} =~ /\/([^(]+)/; $n}
+sub prototype {my ($p) = shift->{name} =~ /\/[^(]+(\(.*\))$/; $p || ''}
+sub fn {
+  my $self = shift;
+  $$self{_fn} ||= $self->target_class->eval(
+    "sub" . $self->prototype . "{$$self{code}\n}");
+}
+_
+
+ni::fn->new(name => 'ni/defn', code => <<'_');
+ni::fn->new(name => $_[0] =~ /\// ? $_[0] : "ni/$_[0]", code => $_[1]);
+_
 
 ni::class->new(name => 'ni::slice',
+               isa  => ['ni::persistent_object'],
                code => <<'_');
-push our @ISA, qw/ni::constructable ni::persistent_identity/;
 sub init {
   my $self = shift;
   $self->add_to_context;

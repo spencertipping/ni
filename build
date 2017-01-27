@@ -7,13 +7,11 @@ cat src/boot \
     src/lib/serializable \
     src/lib/quote \
     src/lib/printer \
+    src/lib/doc \
   > ni0
 
-wc -c ni0
 perl ni0 //ni > ni && cp ni ni0
 perl ni0 //ni > ni
-wc -c ni
-
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
   echo 'ni is unstable under replication'
   [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] && diff -C 3 ni0 ni
@@ -24,4 +22,12 @@ fi
 
 chmod 755 ni
 
-time ./ni > /dev/null
+seq 10 | xargs -n1 -I{} echo > /dev/null
+
+ni_startups=100
+start_nanos=$(date +%s%N)
+seq $ni_startups | xargs -n1 -I{} ./ni //ni > /dev/null
+end_nanos=$(date +%s%N)
+
+echo "$(wc -c < ni) bytes" >&2
+echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
