@@ -3,10 +3,13 @@
 cd $(dirname $0)
 
 cat src/boot \
+    src/lib/serializable \
     src/lib/quote \
     src/lib/printer \
+    src/lib/class \
   > ni0
 
+wc -c ni0
 perl ni0 //ni > ni && cp ni ni0
 perl ni0 //ni > ni
 wc -c ni

@@ -1,0 +1,36 @@
+ni::module->new(name         => '/lib/serializable',
+                dependencies => ['ni.module:/boot'],
+                code         => <<'_');
+package ni::serializable;
+sub dependencies {
+  my %ds;
+  @ds{my @ds = my @i = shift} = 1;
+  push @ds, @i while @i = grep !$ds{$_}++, map $_->immediate_dependencies, @i;
+  @ds;
+}
+sub serialize {
+  my $self = shift;
+  $_->serialize_self(@_) for reverse $self->dependencies;
+  shift;
+}
+sub serialize_self {
+  my ($self, $into) = @_;
+  $into << ni::quote(ref($self) . '::')->new(%$self{sort keys %$self});
+}
+
+package ni::boot_module;
+push our @ISA, qw/ni::serializable/;
+sub immediate_dependencies {}
+sub serialize_self {
+  my ($self, $into) = @_;
+  $into << join "\n",
+    '#!/usr/bin/env perl',
+    q{chomp($ni::license = <<'_');}, $ni::license, '_',
+    'eval($ni::context{\'' . $self->name . '\'} = <<\'_\');', $$self{code}, '_',
+    qq{die "\$@ evaluating $$self{name}" if \$@};
+}
+
+package ni::module;
+push our @ISA, qw/ni::serializable/;
+sub immediate_dependencies {ni::context @{shift->{dependencies}}}
+_

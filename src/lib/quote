@@ -1,4 +1,4 @@
-ni::module->new(name         => 'ni.module:/lib/quote',
+ni::module->new(name         => '/lib/quote',
                 dependencies => ['ni.module:/boot'],
                 code         => <<'_');
 sub ni::quote($)       {bless {expr => shift}, 'ni::quotation'}
