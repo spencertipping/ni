@@ -479,7 +479,7 @@ Checkpoints and files share many commonalities. The key difference between a che
 An example of checkpoint use is the following:
 
 ```
-$ ni :numbers[n1000000gr4]
+$ ni n1000000gr4 :numbers
 1
 10
 100
@@ -490,7 +490,7 @@ This computation will take a while, because `g` requires buffering to disk; Howe
 
 
 ```
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 1000
 100
 10
@@ -519,43 +519,10 @@ $ ni n1000000gr4 =\>numbers O
 
 One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
 
-Checkpoints do not read in from the stream, so you cannot for example do:
-
-```
-$ ni n5 :chkpt[p'a*2']
-1
-2
-3
-4
-5
-(END)
-$ ni :chkpt
-(END)
-```
-
-To store the first 5 multiples of 2 in the checkpoint, first clear the checkpoint file and execute:
-
-```
-$ ni :chkpt[n5 p'a*2']
-2
-4
-6
-8
-10
-(END)
-$ ni :chkpt
-2
-4
-6
-8
-10
-(END)
-```
-
 
 ###Developing Hadoop Streaming pipelines with checkpoints
 
-As of now, `ni` auto-generates the names for the Hadoop directories. The location of these directi
+As of now, `ni` auto-generates the names for the Hadoop directories. The location of these directions 
 
 
 ###A Final Note on Hadoop Streaming Jobs

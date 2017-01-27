@@ -43,6 +43,19 @@ Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` wit
 ###Too many partfiles
 The YARN resource manager will refuse to accept jobs that use too many (for example, >100K) partfiles as input; if you have too many partfiles, then you can use the `HS` syntax to run multiple identical jobs over time.
 
+##Hadoop Streaming Job is Slow
+Likely it's that you have a slow step 
+
+###Reading the Hadoop Logs
+The montior for Hadoop jobs includes the unix timestamp; this will be in the `stderr` logs. 
+
+###Many killed tasks "Container preempted by scheduler"
+
+In this case, the tasks that you are running are taking too long. The "ideal" mapreduce task takes something in the range of minutes to run. Once you've gone up to over an hour, you're beyond the pale of what you *should* be doing. Split your data up into a larger number of partfiles using `^{mapreduce.jobs.reduces=<lots>} HS:_:`, or use the upcoming hadoop repartition operator.
+
+
+
+
 ##`ni` is installed but my machine can't find it
 
 Quick rundown of the obvious causes:
