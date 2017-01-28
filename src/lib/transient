@@ -5,12 +5,10 @@ ni::class->new(name => 'ni::transient_identity',
                isa  => ['ni::named'],
                code => <<'_');
 use Scalar::Util;
+sub DESTROY {delete $ni::context{shift->name}}
 sub add_to_context {
   my $self = shift;
   Scalar::Util::weaken($ni::context{$self->name} = $self);
   $self;
-}
-sub DESTROY {
-  delete $ni::context{$self->name};
 }
 _

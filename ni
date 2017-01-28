@@ -23,7 +23,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
-package ni;
 eval($ni::context{'ni.module:/boot'} = <<'_');
 sub ni::context {
   my @r = @ni::context{@_};
@@ -165,7 +164,6 @@ sub serialize_self {
   $into << join "\\n",
     \'#!/usr/bin/env perl\',
     q{chomp($ni::license = <<\'_\');}, $ni::license, \'_\',
-    \'package ni;\',
     \'eval($ni::context{\\\'\' . $self->name . \'\\\'} = <<\\\'_\\\');\', $$self{code}, \'_\',
     qq{die "\\$@ evaluating $$self{name}" if \\$@};
 }
