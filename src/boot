@@ -31,6 +31,11 @@ sub ni::context {
     . join(', ', grep !defined($ni::context{$_}), @_);
 }
 
+sub ni::exists {exists $ni::context{$_[0]}}
+
+*ni::c = \&ni::context;
+*ni::e = \&ni::exists;
+
 sub ni::eval {
   my @r;
   wantarray ? @r = eval $_[0] : $r[0] = eval $_[0];

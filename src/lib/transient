@@ -1,0 +1,16 @@
+ni::class->new(name => 'ni::transient_object',
+               isa  => ['ni::constructable', 'ni::transient_identity']);
+
+ni::class->new(name => 'ni::transient_identity',
+               isa  => ['ni::named'],
+               code => <<'_');
+use Scalar::Util;
+sub add_to_context {
+  my $self = shift;
+  Scalar::Util::weaken($ni::context{$self->name} = $self);
+  $self;
+}
+sub DESTROY {
+  delete $ni::context{$self->name};
+}
+_

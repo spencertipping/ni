@@ -4,11 +4,14 @@ cd $(dirname $0)
 
 cat src/boot \
     src/class \
+    src/lib/transient \
     src/lib/serializable \
     src/lib/quote \
     src/lib/printer \
     src/lib/doc \
   > ni0
+
+echo "initially $(wc -c < ni0) bytes"
 
 perl ni0 //ni > ni && cp ni ni0
 perl ni0 //ni > ni
@@ -25,11 +28,11 @@ chmod 755 ni
 if (( ! $# )); then
   seq 10 | xargs -n1 -I{} echo > /dev/null
 
-  ni_startups=100
+  ni_startups=20
   start_nanos=$(date +%s%N)
   seq $ni_startups | xargs -n1 -I{} ./ni //ni > /dev/null
   end_nanos=$(date +%s%N)
 
-  echo "$(wc -c < ni) bytes" >&2
+  echo "$(wc -c < ni) bytes after rewriting" >&2
   echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
 fi
