@@ -24,7 +24,7 @@ sub dependencies {
   while (keys %d) {
     my @ks = grep {my $k = $_; !grep {$_->name ne $k && exists $d{$_}} @{$d{$k}}} sort keys %d;
     die "ni::serializable/dependencies: circular dependencies in\n"
-      . join("\n", map "  $_ [@{$d{$_}}]", sort keys %d) unless @ks;
+      . join "\n", map "  $_ [@{$d{$_}}]", sort keys %d unless @ks;
     push @d, @ks;
     delete @d{@ks};
   }
