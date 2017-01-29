@@ -13,8 +13,9 @@ cat src/boot \
 
 echo "initially $(wc -c < ni0) bytes"
 
-perl ni0 //ni > ni && cp ni ni0
-perl ni0 //ni > ni
+perl ni0 //ni > ni && cp ni ni0 || exit $?
+perl ni0 //ni > ni || exit $?
+
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
   echo 'ni is unstable under replication'
   [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] && diff -C 3 ni0 ni

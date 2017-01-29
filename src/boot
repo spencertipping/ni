@@ -24,17 +24,17 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 BEGIN{eval($ni::boot = <<'_');}
-$ni::self = bless {record => []}, '/ni/self';
+$ni::self = bless {record => []}, '/class/ni';
 sub ni(;$) {@_ ? $ni::named{+shift} : $ni::self}
 sub ni::eval {eval shift}
-*{"/ni/self::module"} = sub {
+*{"/class/ni::module"} = sub {
   my ($self, $name, %args) = @_;
   $args{name} = $name;
   push @{$self->{record}}, \%args;
   ni::eval($args{code}),
     $@ && die "$@ evaluating ni.module:$args{name}" if exists $args{code};
 };
-*{"/ni/self::def"} = sub {
+*{"/class/ni::def"} = sub {
   my ($self, %kvs) = @_;
   *$_ = $kvs{$_} for keys %kvs;
 };

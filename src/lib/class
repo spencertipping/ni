@@ -1,68 +1,114 @@
 ni->module('/lib/class', code => <<'_');
-ni->def(
-  '/obj/object::class' => sub {shift->{class}},
-  '/obj/object::init' => sub {},
-  '/obj/object::init_parents' => sub {
-    my $self = $_[0];
-    $_->package->can('init')->(@_) for $self->class->parents});
+use Scalar::Util;
 
 ni->def(
-  '/obj/class::new' => sub {
+  '/class/object::class' => sub {shift->{class}},
+  '/class/object::init' => sub {},
+  '/class/object::init_parents' => sub {
+    my $self = $_[0];
+    $_ = $_->package->can('init') and $_->(@_) for $self->class->parents});
+
+ni->def(
+  '/behavior/namespaced::package' => sub {shift->{name}},
+  '/behavior/namespaced::methods' => sub {
+    my $self = shift;
+    grep exists ${$self->package . "::$_"}{CODE},
+      sort keys %{$self->package . "::"}},
+
+  '/behavior/namespaced::def' => sub {
+    my ($self, %kvs) = @_;
+    *{$self->package . "::$_"} = $kvs{$_} for keys %kvs});
+
+ni->def(
+  '/behavior/named::is_persistent' => sub {1},
+  '/behavior/named::namespace' => sub {'ni'},
+  '/behavior/named::name' => sub {
+    my $self = shift;
+    $self->namespace . ":" . $$self{name}},
+
+  '/behavior/named::init' => sub {
+    my $self = shift;
+    $ni::named{$self->name} = $self unless $$self{anonymous};
+    Scalar::Util::weaken $ni::named{$self->name}
+      unless $self->is_persistent});
+
+ni->def(
+  '/class/class::new' => sub {
     my $o = shift->instantiate;
-    $o->init_parents(@_);
     $o->init(@_);
+    $o->init_parents(@_);
     $o},
 
-  '/obj/class::init' => sub {
+  '/class/class::init' => sub {
     my ($self, $name) = @_;
     @$self{qw/name anonymous parents/}
-      = $name ? ($name, 0, []) : (ni->gensym, 1, []);
-    $ni::named{"ni.class:$$self{name}"} = $self unless $$self{anonymous}},
+      = $name ? ($name, 0, []) : (ni->gensym, 1, [])},
 
-  '/obj/class::def' => sub {
-    my ($self, %kvs) = @_;
-    *{$self->package . "::$_"} = $kvs{$_} for keys %kvs},
-
-  '/obj/class::DESTROY' => sub {
+  '/class/class::DESTROY' => sub {
     my $self = shift;
+    delete $ni::named{$self->name};
     delete @{$self->package . "::"}{keys %{$self->package . "::"}}
         if $$self{anonymous}},
 
-  '/obj/class::package' => sub {shift->{name}},
-  '/obj/class::parents' => sub {@{shift->{parents}}},
+  '/class/class::parents' => sub {@{shift->{parents}}},
 
-  '/obj/class::inherit_from' => sub {
+  '/class/class::inherit_from' => sub {
     my $self = shift;
     push @{$$self{parents}}, @_;
     @{$self->package . "::ISA"} = map $_->package, @{$$self{parents}};
     $self},
 
-  '/obj/class::instantiate' => sub {
+  '/class/class::instantiate' => sub {
     my $self = shift;
     bless {class => $self}, $self->package},
 
-  '/obj/class::child' => sub {
-    my ($self, $name) = @_;
-    $self->class->child("${name}_")->new($name)->inherit_from($self)});
+  '/class/class::child' => sub {
+    my ($self, $name, @ps) = @_;
+    $self->class->child("${name}_")->new($name)->inherit_from($self, @ps)});
 
-ni->def('/obj/metaclass_::child' => sub {shift});
+ni->def('/class/metaclass_::child' => sub {shift});
 
-ni->def('/obj/class::ISA'      => ['/obj/object'],
-        '/obj/object_::ISA'    => ['/obj/class'],
-        '/obj/class_::ISA'     => ['/obj/object_'],
-        '/obj/metaclass::ISA'  => ['/obj/class'],
-        '/obj/metaclass_::ISA' => ['/obj/class_']);
+ni->def('/class/class::ISA'      => ['/class/behavior'],
+        '/class/class_::ISA'     => ['/class/behavior_'],
+        '/class/behavior::ISA'   => ['/class/object', '/behavior/namespaced', '/behavior/named'],
+        '/class/behavior_::ISA'  => ['/class/object_'],
+        '/class/object::ISA'     => [],
+        '/class/object_::ISA'    => ['/class/class'],
+        '/class/metaclass::ISA'  => ['/class/class'],
+        '/class/metaclass_::ISA' => ['/class/class_']);
 
-my $metaclass_ = bless {}, '/obj/metaclass';
+my $metaclass_ = bless {}, '/class/metaclass';
+print STDERR "1\n";
 $$metaclass_{class} = $metaclass;
-$metaclass_->init('/obj/metaclass_');
-my $metaclass = $metaclass_->new('/obj/metaclass');
+$metaclass_->init('/class/metaclass_');
+my $metaclass = $metaclass_->new('/class/metaclass');
 
-my $object_ = $metaclass->new('/obj/object_');
-my $object  = $object_->new('/obj/object');
+print STDERR "2\n";
+my $object_  = $metaclass->new('/class/object_');
 
-my $class   = $object->child('/obj/class');
-my $ni_self = $object->child('/ni/self');
+print STDERR "3\n";
+my $object   = $object_->new('/class/object');
 
-$ni_self->def(gensym => sub {"/gensym::" . ++shift->{gensym_index}});
+print STDERR "4\n";
+my $behavior =
+  $object->child('/class/behavior',
+    bless({name => '/behavior/namespaced'}, '/behavior/namespaced'),
+    bless({name => '/behavior/named'},      '/behavior/namespaced'));
+
+print STDERR "4.1\n";
+my $namespaced = $behavior->new('/behavior/namespaced');
+
+print STDERR "4.2\n";
+my $named      = $behavior->new('/behavior/named');
+
+print STDERR "4.3\n";
+$behavior = $object->child('/class/behavior', $namespaced, $named);
+
+print STDERR "4.4\n";
+my $class = $behavior->child('/class/class');
+print STDERR "4.5\n";
+$metaclass = $class->child('/class/metaclass');
+
+$object->child('/class/ni')->def(
+  gensym => sub {"/gensym::" . ++shift->{gensym_index}});
 _
