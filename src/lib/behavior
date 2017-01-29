@@ -24,10 +24,6 @@ ni->def(
     my $self = shift;
     push @{"$_\::dtors"}, $$self{dtor} for @_},
 
-  '/behavior/instantiate_as_hash::apply' => sub {
-    my $self = shift;
-    *{"$_\::instantiate"} = sub {bless {}, shift} for @_},
-
   '/behavior/ctor_protocol::apply' => sub {
     my $self = shift;
     for (@_) {
