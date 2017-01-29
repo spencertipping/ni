@@ -25,7 +25,7 @@ SOFTWARE.
 _
 BEGIN{eval($ni::boot = <<'_');}
 $ni::self = bless {record => []}, '/class/ni';
-sub ni(;$) {@_ ? $ni::named{+shift} : $ni::self}
+sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
 sub ni::eval {eval shift}
 *{"/class/ni::module"} = sub {
   my ($self, $name, %args) = @_;

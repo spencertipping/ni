@@ -9,13 +9,13 @@ ni('ni:/class/ni')->def(
   module => sub {
     push @{shift->{modules}}, ni('ni:/class/module')->new(@_)});
 
-ni('ni:/class/object')->child('/class/module')
-  ->inherit_from(ni('ni:/behavior/named'),
-                 ni('ni:/behavior/namespaced'))
+ni('ni:/class/object')->child('/class/module',
+                              'ni:/behavior/named',
+                              'ni:/behavior/namespaced')
   ->def(
-    namespace => sub {'ni.module'},
-    init => sub {
-      my ($self, %args) = @_;
-      $$self{$_} = $args{$_} for keys %args;
-    });
+      namespace => sub {'ni.module'},
+      init => sub {
+        my ($self, %args) = @_;
+        $$self{$_} = $args{$_} for keys %args;
+      });
 _
