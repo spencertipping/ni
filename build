@@ -3,13 +3,7 @@
 cd $(dirname $0)
 
 cat src/boot \
-    src/lib/class \
-    src/lib/module \
-    src/lib/transient \
-    src/lib/serializable \
-    src/lib/quote \
-    src/lib/printer \
-    src/lib/doc \
+    src/lib/behavior \
   > ni0
 
 echo "initially $(wc -c < ni0) bytes"

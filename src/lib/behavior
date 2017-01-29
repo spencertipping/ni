@@ -1,0 +1,43 @@
+ni->module('/lib/behavior', code => <<'_');
+use strict;
+use warnings;
+use Scalar::Util;
+
+no strict 'refs';
+
+ni->def(
+  '/behavior/slice::apply' => sub {
+    my $self = shift;
+    for my $p (@_) {
+      *{"$p\::$_"}{CODE} && die "$self: overlapping method $p\::$_",
+      *{"$p\::$_"} = $$self{methods}{$_} for keys %{$$self{methods}}}},
+
+  '/behavior/sum::apply' => sub {
+    my $self = shift;
+    $_->apply(@_) for @$self},
+
+  '/behavior/ctor::apply' => sub {
+    my $self = shift;
+    push @{"$_\::ctors"}, $$self{ctor} for @_},
+
+  '/behavior/dtor::apply' => sub {
+    my $self = shift;
+    push @{"$_\::dtors"}, $$self{dtor} for @_},
+
+  '/behavior/instantiate_as_hash::apply' => sub {
+    my $self = shift;
+    *{"$_\::instantiate"} = sub {bless {}, shift} for @_},
+
+  '/behavior/ctor_protocol::apply' => sub {
+    my $self = shift;
+    for (@_) {
+      *{"$_\::ctors"} = [];
+      *{"$_\::dtors"} = [];
+      *{"$_\::new"} = sub {
+        my $self = shift->instantiate(@_);
+        $_->($self, @_) for @{ref($self) . "::ctors"};
+        $self};
+      *{"$_\::DESTROY"} = sub {
+        my $self = shift;
+        $_->($self) for @{ref($self) . "::dtors"}}}});
+_
