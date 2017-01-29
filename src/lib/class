@@ -1,0 +1,64 @@
+ni->module('/lib/class', code => <<'_');
+*{'/ni/self::def'} = sub {
+  my ($self, %kvs) = @_;
+  *$_ = $kvs{$_} for keys %kvs;
+};
+
+ni->def(
+  '/obj/object::new'   => sub {my $o = shift->instantiate; $o->init(@_); $o},
+  '/obj/object::class' => sub {shift->{class}},
+  '/obj/object::init'  => sub {});
+
+ni->def(
+  '/obj/class::init' => sub {
+    my ($self, $name) = @_;
+    @$self{qw/name anonymous parents/}
+      = $name ? ($name, 0, []) : (ni->gensym, 1, []);
+    $ni::named{$$self{name}} = $self unless $$self{anonymous}},
+
+  '/obj/class::def' => sub {
+    my ($self, %kvs) = @_;
+    *{$self->package . "::$_"} = $kvs{$_} for keys %kvs},
+
+  '/obj/class::DESTROY' => sub {
+    my $self = shift;
+    delete @{$self->package . "::"}{keys %{$self->package . "::"}}
+        if $$self{anonymous}},
+
+  '/obj/class::package' => sub {shift->{name}},
+
+  '/obj/class::inherit_from' => sub {
+    my $self = shift;
+    push @{$$self{parents}}, @_;
+    push @{$self->package . "::ISA"}, map $_->package, @_;
+    $self},
+
+  '/obj/class::instantiate' => sub {
+    my $self = shift;
+    bless {class => $self}, $self->package},
+
+  '/obj/class::child' => sub {
+    my ($self, $name) = @_;
+    $self->class->child("${name}_")->new($name)->inherit_from($self)});
+
+ni->def('/obj/metaclass_::child' => sub {shift});
+
+ni->def('/obj/class::ISA'      => ['/obj/object'],
+        '/obj/object_::ISA'    => ['/obj/class'],
+        '/obj/class_::ISA'     => ['/obj/object_'],
+        '/obj/metaclass::ISA'  => ['/obj/class'],
+        '/obj/metaclass_::ISA' => ['/obj/class_']);
+
+my $metaclass_ = bless {}, '/obj/metaclass';
+$$metaclass_{class} = $metaclass;
+$metaclass_->init('/obj/metaclass_');
+my $metaclass = $metaclass_->new('/obj/metaclass');
+
+my $object_ = $metaclass->new('/obj/object_');
+my $object  = $object_->new('/obj/object');
+
+my $class   = $object->child('/obj/class');
+my $ni_self = $object->child('/ni/self');
+
+$ni_self->def(gensym => sub {"/gensym::" . ++shift->{gensym_index}});
+_

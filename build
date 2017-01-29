@@ -3,7 +3,7 @@
 cd $(dirname $0)
 
 cat src/boot \
-    src/class \
+    src/lib/class \
     src/lib/transient \
     src/lib/serializable \
     src/lib/quote \

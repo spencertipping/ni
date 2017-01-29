@@ -23,59 +23,21 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
-eval($ni::context{'ni.module:/boot'} = <<'_');
-sub ni::context {
-  my @r = @ni::context{@_};
-  return wantarray ? @r : $r[0] unless grep !defined, @r;
-  die 'ni::context: failed to resolve '
-    . join(', ', grep !defined($ni::context{$_}), @_);
-}
-
-sub ni::exists {exists $ni::context{$_[0]}}
-
-*ni::c = \&ni::context;
-*ni::e = \&ni::exists;
-
-sub ni::eval {
-  my @r;
-  wantarray ? @r = eval $_[0] : $r[0] = eval $_[0];
-  die "$@ evaluating " . ($_[1] || "anon {$_[0]}") if $@;
-  wantarray ? @r : $r[0];
-}
-
-package ni::persistent_object;
-push our @ISA, qw/ni::constructable ni::persistent_identity/;
-
-package ni::constructable;
-sub new {
-  my $class = shift;
-  my $self = bless {@_}, $class;
-  $self->init;
-  $self;
-}
-
-package ni::named;
-use overload qw/"" name fallback 1/;
-sub scheme {(my $s = ref shift) =~ s/::/./g; $s}
-sub name {my $self = shift; $self->scheme . ":$$self{name}"}
-
-package ni::persistent_identity;
-push our @ISA, 'ni::named';
-sub add_to_context {my $self = shift; $ni::context{$self->name} = $self}
-
-package ni::module;
-push our @ISA, qw/ni::persistent_object/;
-sub init {my $self = shift; $self->add_to_context; $self->eval}
-sub eval {my $self = shift; ni::eval $$self{code}, $self->name if exists $$self{code}}
-
-package ni::boot_module;
-push our @ISA, qw/ni::module/;
-sub scheme {'ni.module'}
-sub init {
-  my $self = shift;
-  chomp $$self{code};
-  $self->add_to_context;
-}
-ni::boot_module->new(name => '/boot', code => ni::context 'ni.module:/boot');
+BEGIN{eval($ni::boot = <<'_');}
+$ni::self = bless {record => []}, '/ni/self';
+sub ni(;$) {@_ ? $ni::named{+shift} : $ni::self}
+sub ni::eval {eval shift}
+*{"/ni/self::module"} = sub {
+  my ($self, $name, %args) = @_;
+  $args{name} = $name;
+  push @{$self->{record}}, \%args;
+  ni::eval($args{code}),
+    $@ && die "$@ evaluating ni.module:$args{name}" if exists $args{code};
+};
 _
-die "$@ evaluating ni.module:/boot" if $@;
+die "$@ evaluating ni boot code" if $@;
+
+# This method call is present here only the first time around; ni rewrites
+# itself to make this call at the end of its image, outside of END{} blocks (so
+# you can use END{} for normal purposes).
+END {ni->run(@ARGV)}
