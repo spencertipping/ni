@@ -1,20 +1,23 @@
 ni->module('/lib/class', code => <<'_');
-*{'/ni/self::def'} = sub {
-  my ($self, %kvs) = @_;
-  *$_ = $kvs{$_} for keys %kvs;
-};
-
 ni->def(
-  '/obj/object::new'   => sub {my $o = shift->instantiate; $o->init(@_); $o},
   '/obj/object::class' => sub {shift->{class}},
-  '/obj/object::init'  => sub {});
+  '/obj/object::init' => sub {},
+  '/obj/object::init_parents' => sub {
+    my $self = $_[0];
+    $_->package->can('init')->(@_) for $self->class->parents});
 
 ni->def(
+  '/obj/class::new' => sub {
+    my $o = shift->instantiate;
+    $o->init_parents(@_);
+    $o->init(@_);
+    $o},
+
   '/obj/class::init' => sub {
     my ($self, $name) = @_;
     @$self{qw/name anonymous parents/}
       = $name ? ($name, 0, []) : (ni->gensym, 1, []);
-    $ni::named{$$self{name}} = $self unless $$self{anonymous}},
+    $ni::named{"ni.class:$$self{name}"} = $self unless $$self{anonymous}},
 
   '/obj/class::def' => sub {
     my ($self, %kvs) = @_;
@@ -26,11 +29,12 @@ ni->def(
         if $$self{anonymous}},
 
   '/obj/class::package' => sub {shift->{name}},
+  '/obj/class::parents' => sub {@{shift->{parents}}},
 
   '/obj/class::inherit_from' => sub {
     my $self = shift;
     push @{$$self{parents}}, @_;
-    push @{$self->package . "::ISA"}, map $_->package, @_;
+    @{$self->package . "::ISA"} = map $_->package, @{$$self{parents}};
     $self},
 
   '/obj/class::instantiate' => sub {

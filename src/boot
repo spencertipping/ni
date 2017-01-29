@@ -34,6 +34,10 @@ sub ni::eval {eval shift}
   ni::eval($args{code}),
     $@ && die "$@ evaluating ni.module:$args{name}" if exists $args{code};
 };
+*{"/ni/self::def"} = sub {
+  my ($self, %kvs) = @_;
+  *$_ = $kvs{$_} for keys %kvs;
+};
 _
 die "$@ evaluating ni boot code" if $@;
 
