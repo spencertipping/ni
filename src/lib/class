@@ -6,11 +6,11 @@ use Scalar::Util;
 no strict 'refs';
 
 ni->def(
-  '/class/object::class' => sub {shift->{class}},
-  '/class/object::init' => sub {},
-  '/class/object::init_parents' => sub {
-    print STDERR "init_parents on " . $_[0]->name . "\n";
-    $_ = ni($_)->package->can('init') and $_->(@_) for $_[0]->class->isa});
+  '/class/object::class'   => sub {shift->{class}},
+  '/class/object::init'    => sub {},
+  '/class/object::DESTROY' => sub {
+    my $self = shift;
+    $self->class->destroy_instance($self));
 
 ni->def(
   '/behavior/namespaced::package' => sub {shift->{name}},
@@ -24,13 +24,13 @@ ni->def(
     *{$self->package . "::$_"} = $kvs{$_} for keys %kvs});
 
 ni->def(
-  '/behavior/named::is_persistent' => sub {1},
-  '/behavior/named::namespace' => sub {'ni'},
-  '/behavior/named::DESTROY' => sub {delete $ni::named{shift->name}},
-  '/behavior/named::name' => sub {
+  '/behavior/named::instance::is_persistent' => sub {1},
+  '/behavior/named::instance::namespace' => sub {'ni'},
+  '/behavior/named::instance::name' => sub {
     my $self = shift;
     $self->namespace . ":" . $$self{name}},
 
+  '/behavior/named::destroy' => sub {delete $ni::named{shift->name}},
   '/behavior/named::init' => sub {
     my ($self) = @_;
     print STDERR "named init for $$self{name}\n";
@@ -44,6 +44,11 @@ ni->def(
     $o->init(@_);
     $o->init_parents(@_);
     $o},
+
+  '/class/class::behaviors' => sub {
+    my $self = shift;
+    @{$$self{behaviors}}, $self->SUPER::behaviors;
+  },
 
   '/class/class::init' => sub {
     my ($self, $name, %args) = @_;
@@ -79,7 +84,9 @@ ni->def('/class/metaclass_::child' => sub {shift});
 ni->def(
   '/class/class::ISA'      => ['/class/behavior'],
   '/class/class_::ISA'     => ['/class/behavior_'],
-  '/class/behavior::ISA'   => ['/class/object', '/behavior/namespaced', '/behavior/named'],
+  '/class/behavior::ISA'   => ['/class/object',
+                               '/behavior/namespaced::instance',
+                               '/behavior/named::instance'],
   '/class/behavior_::ISA'  => ['/class/object_'],
   '/class/object::ISA'     => [],
   '/class/object_::ISA'    => ['/class/class'],
