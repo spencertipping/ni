@@ -12,26 +12,47 @@ ni::name('ni:/behavior/slice' =>
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
         return if $$self{applied_to}{$p}++;
+        $_->apply($p) for @{$$self{isa}};
         ${"$p\::ctors"}{$self} = $$self{ctor} if defined $$self{ctor};
         ${"$p\::dtors"}{$self} = $$self{dtor} if defined $$self{dtor};
         *{"$p\::(("} = sub {} if grep /^\(/, keys %{$$self{methods}};
         for (keys %{$$self{methods}}) {
           die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
-          *{"$p\::$_"} = $$self{methods}{$_};
+          *{"$p\::$_"} = \&{$$self{methods}{$_}};
         }
         $self;
-      },
-      instantiate => sub {
-        my ($class, %args) = @_;
-        +{ctor    => delete($args{ctor}),
-          dtor    => delete($args{dtor}),
-          methods => {%args}};
       }
     }
   }, '/behavior/slice');
 
 ni('ni:/behavior/slice')->{methods}->{apply}
   ->(ni('ni:/behavior/slice'), '/behavior/slice');
+
+ni::name('ni:/behavior/slice_init' =>
+  bless {
+    methods => {
+      instantiate => sub {
+        my $class = shift;
+        my @isa;
+        push @isa, shift while ref $_[0];
+        my %args = @_;
+        +{ctor    => delete($args{ctor}),
+          dtor    => delete($args{dtor}),
+          isa     => [@isa],
+          methods => {%args}};
+      },
+
+      instantiation => sub {
+        my $self = shift;
+        (@{$$self{isa}},
+         %{$$self{methods}},
+         $$self{ctor} ? (ctor => $$self{ctor}) : (),
+         $$self{dtor} ? (dtor => $$self{dtor}) : ());
+      }
+    }
+  }, '/behavior/slice');
+
+ni('ni:/behavior/slice_init')->apply('/behavior/slice');
 
 ni::name('ni:/behavior/lifecycle' =>
   bless {
@@ -81,8 +102,9 @@ ni::name(
   'ni:/behavior/named' =>
     '/behavior/slice'->new(
       '(""' => sub {shift->name},
-      name  => sub {my $s = shift; $s->namespace . ":$$s{name}"}),
+      name  => sub {my $s = shift; $s->namespace . ":$$s{name}"}));
 
+ni::name(
   'ni:/behavior/ni_namespaced' =>
     '/behavior/slice'->new(
       namespace => sub {'ni'}),
@@ -93,16 +115,19 @@ ni::name(
 
   'ni:/behavior/named_transient' =>
     '/behavior/slice'->new(
+      ni"ni:/behavior/named",
       ctor => sub {my $s = shift; Scalar::Util::weaken($ni::named{$s->name} = $s)},
       dtor => sub {delete $ni::named{shift->name}}),
 
   'ni:/behavior/named_persistent' =>
     '/behavior/slice'->new(
+      ni"ni:/behavior/named",
       ctor => sub {my $self = shift; ni::name($self->name, $self)}));
 
 ni::name(
   'ni:/behavior/class_init' =>
     '/behavior/slice'->new(
+      ctor => sub {my $s = shift; $s->apply($s->package)},
       instantiate => sub {
         my ($class, $name, @slices) = @_;
         +{name   => $name,
@@ -116,11 +141,12 @@ ni::name(
 
 ni('ni:/behavior/branch')->apply('/class/class');
 ni('ni:/class/class')->apply('/class/class');
-ni('ni:/class/class')->add(ni"ni:/behavior/class_init",
-                           ni"ni:/behavior/mapped_to_package",
-                           ni"ni:/behavior/lifecycle",
-                           ni"ni:/behavior/ni_namespaced",
-                           ni"ni:/behavior/named_persistent");
+ni('ni:/class/class')->add(
+  ni"ni:/behavior/class_init",
+  ni"ni:/behavior/mapped_to_package",
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/ni_namespaced",
+  ni"ni:/behavior/named_persistent");
 
 ni('ni:/class/class')->new('/class/behavior',
   ni"ni:/behavior/lifecycle",
@@ -128,7 +154,42 @@ ni('ni:/class/class')->new('/class/behavior',
   ni"ni:/behavior/ni_namespaced",
   ni"ni:/behavior/named_persistent");
 
+ni::name('ni:/behavior/slice_named_init' =>
+  '/behavior/slice'->new(
+    instantiate => sub {
+      my ($class, $name, %methods) = @_;
+      my $self = &{'/behavior/slice_init::initialize'}($class, %methods);
+      $$self{name} = $name;
+      $self;
+    }));
+
 ni('ni:/class/class')->new('/class/slice',
   ni"ni:/class/behavior",
-  ni"ni:/behavior/slice");
+  ni"ni:/behavior/slice",
+  ni"ni:/behavior/slice_named_init");
+
+ni('ni:/class/slice')->new("/behavior/$_" =>
+                           ni("ni:/behavior/$_")->instantiation)
+  for qw/slice slice_init lifecycle tag branch named ni_namespaced
+         mapped_to_package named_transient named_persistent class_init
+         slice_named_init/;
+
+ni('ni:/class/slice')->new('/behavior/class_method_def',
+  def => sub {shift->add(ni('ni:/behavior/slice')->new(@_))});
+
+ni('ni:/class/slice')->new('/behavior/fn', '(&{}' => sub {shift->{compiled}});
+
+ni('ni:/class/slice')->new('/behavior/anonymous_fn_init',
+  initialize => sub {
+    my $class = shift;
+    my $code  = pop;
+    my $compiled = ni::eval "sub {$code\n}";
+    die "ni:/behavior/anonymous_fn_init: failed to compile $code: $@" if $@;
+    +{code        => $code,
+      annotations => [@_]};
+  });
+
+ni('ni:/class/class')->new('/class/fn',
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/cached_fn");
 _
