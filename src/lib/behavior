@@ -6,34 +6,72 @@ use Scalar::Util;
 no strict 'refs';
 
 ni->def(
-  '/behavior/slice::apply' => sub {
-    my $self = shift;
-    for my $p (@_) {
-      *{"$p\::$_"}{CODE} && die "$self: overlapping method $p\::$_",
-      *{"$p\::$_"} = $$self{methods}{$_} for keys %{$$self{methods}}}},
+  # TODO: figure out degrees of invariance here. It seems ambiguous:
+  # ctors/dtors are more fixed than methods are. Why? Why even support a
+  # definition syntax like this?
+  '/behavior/slice::def' => sub {
+    my ($self, %ms) = @_;
+    @{$$self{methods}}{keys %ms} = values %ms;
 
-  '/behavior/sum::apply' => sub {
-    my $self = shift;
-    $_->apply(@_) for @$self},
+    # TODO: slices should probably be immutable even though that means a
+    # clunkier initialization process.
+    if (keys %{$$self{applied_to}}) {
+      my $delta = bless {methods => \%ms}, ref $self;
+      $delta->apply($_) for keys %{$$self{applied_to}};
+    }
+    $self;
+  },
 
-  '/behavior/ctor::apply' => sub {
-    my $self = shift;
-    push @{"$_\::ctors"}, $$self{ctor} for @_},
+  # TODO: have this return a value? Not sure, but we can't use this as a
+  # constructor function because state modifications can occur in any order.
+  # Maybe integrate memoized state updates in the lifecycle behavior.
+  '/behavior/slice::parse_ctor_args' => sub {
+    my ($self, %kv) = @_;
+    @$self{keys %kv} = values %kv;
+  });
 
-  '/behavior/dtor::apply' => sub {
-    my $self = shift;
-    push @{"$_\::dtors"}, $$self{dtor} for @_},
+ni::name('ni:/behavior/slice' =>
+  bless {methods => {def => \&{'/behavior/slice::def'}},
+         ctor    => \&{'/behavior/slice::parse_ctor_args'}},
+  '/behavior/slice');
 
-  '/behavior/ctor_protocol::apply' => sub {
+ni('ni:/behavior/slice')->def(
+  apply => sub {
+    my ($self, $p) = @_;
+    return if $$self{applied_to}{$p}++;
+    ${"$p\::ctors"}{$self} = $$self{ctor} if defined $$self{ctor};
+    ${"$p\::dtors"}{$self} = $$self{dtor} if defined $$self{dtor};
+    for (keys %{$$self{methods}}) {
+      die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
+      *{"$p\::$_"} = $$self{methods}{$_};
+    }
+    $self;
+  },
+  instantiate => sub {bless {}, shift});
+
+delete ${'/behavior/slice::'}{def};
+ni('ni:/behavior/slice')->{methods}->{apply}
+  ->(ni('ni:/behavior/slice'), '/behavior/slice');
+
+ni::name('ni:/behavior/lifecycle', bless({}, '/behavior/slice')->def(
+  new => sub {
+    my $self = shift->instantiate(@_);
+    $_->($self, @_) for values %{ref($self) . "::ctors"};
+    $self;
+  },
+  DESTROY => sub {
     my $self = shift;
-    for (@_) {
-      *{"$_\::ctors"} = [];
-      *{"$_\::dtors"} = [];
-      *{"$_\::new"} = sub {
-        my $self = shift->instantiate(@_);
-        $_->($self, @_) for @{ref($self) . "::ctors"};
-        $self};
-      *{"$_\::DESTROY"} = sub {
-        my $self = shift;
-        $_->($self) for @{ref($self) . "::dtors"}}}});
+    $_->($self) for values %{ref($self) . "::dtors"};
+  }));
+
+ni('ni:/behavior/lifecycle')->apply('/behavior/slice');
+
+ni::name('ni:/behavior/named_transient' =>
+  '/behavior/slice'->new(
+    ctor => sub {my $s = shift; Scalar::Util::weaken(ni::name($s->name, $s))},
+    dtor => sub {delete $ni::named{shift->name}}));
+
+ni::name('ni:/behavior/named_persistent' =>
+  '/behavior/slice'->new(
+    ctor => sub {my $self = shift; ni::name($self->name, $self)}));
 _
