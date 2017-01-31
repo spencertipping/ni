@@ -5,73 +5,130 @@ use Scalar::Util;
 
 no strict 'refs';
 
-ni->def(
-  # TODO: figure out degrees of invariance here. It seems ambiguous:
-  # ctors/dtors are more fixed than methods are. Why? Why even support a
-  # definition syntax like this?
-  '/behavior/slice::def' => sub {
-    my ($self, %ms) = @_;
-    @{$$self{methods}}{keys %ms} = values %ms;
-
-    # TODO: slices should probably be immutable even though that means a
-    # clunkier initialization process.
-    if (keys %{$$self{applied_to}}) {
-      my $delta = bless {methods => \%ms}, ref $self;
-      $delta->apply($_) for keys %{$$self{applied_to}};
-    }
-    $self;
-  },
-
-  # TODO: have this return a value? Not sure, but we can't use this as a
-  # constructor function because state modifications can occur in any order.
-  # Maybe integrate memoized state updates in the lifecycle behavior.
-  '/behavior/slice::parse_ctor_args' => sub {
-    my ($self, %kv) = @_;
-    @$self{keys %kv} = values %kv;
-  });
-
 ni::name('ni:/behavior/slice' =>
-  bless {methods => {def => \&{'/behavior/slice::def'}},
-         ctor    => \&{'/behavior/slice::parse_ctor_args'}},
-  '/behavior/slice');
-
-ni('ni:/behavior/slice')->def(
-  apply => sub {
-    my ($self, $p) = @_;
-    return if $$self{applied_to}{$p}++;
-    ${"$p\::ctors"}{$self} = $$self{ctor} if defined $$self{ctor};
-    ${"$p\::dtors"}{$self} = $$self{dtor} if defined $$self{dtor};
-    for (keys %{$$self{methods}}) {
-      die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
-      *{"$p\::$_"} = $$self{methods}{$_};
+  bless {
+    methods => {
+      apply => sub {
+        my ($self, $p) = @_;
+        $p = $p->package if ref $p;
+        return if $$self{applied_to}{$p}++;
+        ${"$p\::ctors"}{$self} = $$self{ctor} if defined $$self{ctor};
+        ${"$p\::dtors"}{$self} = $$self{dtor} if defined $$self{dtor};
+        *{"$p\::(("} = sub {} if grep /^\(/, keys %{$$self{methods}};
+        for (keys %{$$self{methods}}) {
+          die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
+          *{"$p\::$_"} = $$self{methods}{$_};
+        }
+        $self;
+      },
+      instantiate => sub {
+        my ($class, %args) = @_;
+        +{ctor    => delete($args{ctor}),
+          dtor    => delete($args{dtor}),
+          methods => {%args}};
+      }
     }
-    $self;
-  },
-  instantiate => sub {bless {}, shift});
+  }, '/behavior/slice');
 
-delete ${'/behavior/slice::'}{def};
 ni('ni:/behavior/slice')->{methods}->{apply}
   ->(ni('ni:/behavior/slice'), '/behavior/slice');
 
-ni::name('ni:/behavior/lifecycle', bless({}, '/behavior/slice')->def(
-  new => sub {
-    my $self = shift->instantiate(@_);
-    $_->($self, @_) for values %{ref($self) . "::ctors"};
-    $self;
-  },
-  DESTROY => sub {
-    my $self = shift;
-    $_->($self) for values %{ref($self) . "::dtors"};
-  }));
+ni::name('ni:/behavior/lifecycle' =>
+  bless {
+    methods => {
+      new => sub {
+        my $class = shift;
+        my $self  = bless $class->instantiate(@_),
+                    ref($class) ? $class->package : $class;
+        $_->($self, @_) for values %{ref($self) . "::ctors"};
+        $self;
+      },
+      DESTROY => sub {
+        my $self = shift;
+        $_->($self) for values %{ref($self) . "::dtors"};
+      }
+    }
+  }, '/behavior/slice');
 
 ni('ni:/behavior/lifecycle')->apply('/behavior/slice');
 
-ni::name('ni:/behavior/named_transient' =>
-  '/behavior/slice'->new(
-    ctor => sub {my $s = shift; Scalar::Util::weaken(ni::name($s->name, $s))},
-    dtor => sub {delete $ni::named{shift->name}}));
+ni::name(
+  'ni:/behavior/tag' =>
+    '/behavior/slice'->new(
+      apply => sub {
+        my ($self, $p) = @_;
+        $_->apply($p) for @{$$self{slices}};
+        $self;
+      }),
 
-ni::name('ni:/behavior/named_persistent' =>
-  '/behavior/slice'->new(
-    ctor => sub {my $self = shift; ni::name($self->name, $self)}));
+  'ni:/behavior/branch' =>
+    '/behavior/slice'->new(
+      apply => sub {
+        my ($self, $p) = @_;
+        $p = $p->package if ref $p;
+        return if $$self{applied_to}{$p}++;
+        $_->apply($p) for @{$$self{slices}};
+        $self;
+      },
+      add => sub {
+        my $self = shift;
+        push @{$$self{slices}}, @_;
+        for my $p (keys %{$$self{applied_to}}) {$_->apply($p) for @_}
+        $self;
+      }));
+
+ni::name(
+  'ni:/behavior/named' =>
+    '/behavior/slice'->new(
+      '(""' => sub {shift->name},
+      name  => sub {my $s = shift; $s->namespace . ":$$s{name}"}),
+
+  'ni:/behavior/ni_namespaced' =>
+    '/behavior/slice'->new(
+      namespace => sub {'ni'}),
+
+  'ni:/behavior/mapped_to_package' =>
+    '/behavior/slice'->new(
+      package => sub {shift->{name}}),
+
+  'ni:/behavior/named_transient' =>
+    '/behavior/slice'->new(
+      ctor => sub {my $s = shift; Scalar::Util::weaken($ni::named{$s->name} = $s)},
+      dtor => sub {delete $ni::named{shift->name}}),
+
+  'ni:/behavior/named_persistent' =>
+    '/behavior/slice'->new(
+      ctor => sub {my $self = shift; ni::name($self->name, $self)}));
+
+ni::name(
+  'ni:/behavior/class_init' =>
+    '/behavior/slice'->new(
+      instantiate => sub {
+        my ($class, $name, @slices) = @_;
+        +{name   => $name,
+          slices => [map ref($_) ? $_ : ni($_), @slices]};
+      }),
+
+  'ni:/class/class' =>
+    bless {name   => '/class/class',
+           slices => [ni"ni:/behavior/branch"]},
+    '/class/class');
+
+ni('ni:/behavior/branch')->apply('/class/class');
+ni('ni:/class/class')->apply('/class/class');
+ni('ni:/class/class')->add(ni"ni:/behavior/class_init",
+                           ni"ni:/behavior/mapped_to_package",
+                           ni"ni:/behavior/lifecycle",
+                           ni"ni:/behavior/ni_namespaced",
+                           ni"ni:/behavior/named_persistent");
+
+ni('ni:/class/class')->new('/class/behavior',
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/mapped_to_package",
+  ni"ni:/behavior/ni_namespaced",
+  ni"ni:/behavior/named_persistent");
+
+ni('ni:/class/class')->new('/class/slice',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/slice");
 _
