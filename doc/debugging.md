@@ -53,7 +53,14 @@ The montior for Hadoop jobs includes the unix timestamp; this will be in the `st
 
 In this case, the tasks that you are running are taking too long. The "ideal" mapreduce task takes something in the range of minutes to run. Once you've gone up to over an hour, you're beyond the pale of what you *should* be doing. Split your data up into a larger number of partfiles using `^{mapreduce.jobs.reduces=<lots>} HS:_:`, or use the upcoming hadoop repartition operator.
 
+##Hadoop Streaming Erroneous Output
 
+###Modifying the sort column
+
+`ni ihdfst:///<path> HS[p'r a =~/^(.{8})/, FR 1' ] [p'@ls = sort {f_($b) <=> f_($a)} rea; $n = min($#ls, 10); @ls[0..$n-1]' ] :`sl
+
+The code above is designed to get the top values based on column `f` of some data. However, when this code is run, it was found that a bunch of the data idiosyncratically disappeared, and that some of the output had more than  find that is a case of the classic bug optimizing too early
+ 
 
 
 ##`ni` is installed but my machine can't find it
