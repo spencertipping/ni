@@ -4,8 +4,8 @@ included are numeric generators, shell commands, etc.
 
 c
 BEGIN {
-  defparseralias multiword    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+  defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
+  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
 }
 BEGIN {
   defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),

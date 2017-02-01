@@ -26,6 +26,14 @@
 	  add_quoted_resource $c;
 	  ();
 
+# META OPERATOR inline_checkpoint
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my ($file) = @$args;
+	  ([], [checkpoint_op($file, $left), @$right]);
+
 # META OPERATOR memory_data_closure
 
 ## IMPLEMENTATION

@@ -819,7 +819,7 @@ sub operate {
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }
-56 core/boot/self.pl.sdoc
+63 core/boot/self.pl.sdoc
 Image functions.
 ni needs to be able to reconstruct itself from a map. These functions implement
 the map commands required to do this.
@@ -828,6 +828,13 @@ our %self;
 
 our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
 our $ni_map      = 'core/boot/ni.map';
+
+sub self_append_resource($$) {
+  my ($k, $v) = @_;
+  $self{$ni_map_sdoc} .= "\nresource $k";
+  $self{$ni_map}      .= "\nresource $k";
+  $self{$k} = $v;
+}
 
 sub lib_entries($$) {
   local $_;
@@ -2677,8 +2684,8 @@ included are numeric generators, shell commands, etc.
 
 c
 BEGIN {
-  defparseralias multiword    => pn 1, prx '\[',  prep(prc '.*[^]]', 1), prx '\]';
-  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',    1), prx '\]$';
+  defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
+  defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
 }
 BEGIN {
   defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
@@ -3094,7 +3101,7 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl.sdoc
-69 core/monitor/monitor.pl.sdoc
+70 core/monitor/monitor.pl.sdoc
 Pipeline monitoring.
 nfu provided a simple throughput/data count for each pipeline stage. ni can do
 much more, for instance determining the cause of a bottleneck and previewing
@@ -3149,8 +3156,9 @@ defoperator stderr_monitor => q{
       my $factor_log = log(($otime || 1) / ($itime || 1)) / log 2;
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H\033[K%5d%s %5d%s/s% 4d %s\n",
+        sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
           $monitor_id + 1,
+          int($t3),
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
           $factor_log * 10,
@@ -3376,18 +3384,15 @@ sub defexpander($@) {
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
-35 core/closure/closure.pl.sdoc
+32 core/closure/closure.pl.sdoc
 Data closures.
 Data closures are a way to ship data along with a process, for example over
 hadoop or SSH. The idea is to make your data as portable as ni is.
 
 sub add_closure_key($$) {
   # TODO: use a lib for all data closures
-  # TODO: use functions to extend the image; don't write keys directly
   my ($k, $v) = @_;
-  $k = "transient/closure/$k";
-  $ni::self{$k} = pack 'u', $v;
-  $ni::self{'core/boot/ni.map'} .= "\nresource $k";
+  self_append_resource "transient/closure/$k", pack 'u', $v;
 }
 
 sub closure_keys()  {grep s/^transient\/closure\///, keys %ni::self}
@@ -3498,24 +3503,29 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
-17 core/checkpoint/checkpoint.pl.sdoc
+22 core/checkpoint/checkpoint.pl.sdoc
 Checkpoint files.
 You can break a long pipeline into a series of smaller files using
 checkpointing, whose operator is `:`. The idea is to cache intermediate
-results. A checkpoint specifies a file and a lambda whose output it should
-capture.
+results. A checkpoint specifies a file.
 
 sub checkpoint_create($$) {
   stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
   rename "$_[0].part", $_[0];
 }
 
-defoperator 'checkpoint', q{
+defoperator checkpoint => q{
   my ($file, $generator) = @_;
   sio; -r $file ? scat $file : checkpoint_create $file, $generator;
 };
 
-defshort '/:', pmap q{checkpoint_op @$_}, pseq pc nefilename, _qfn;
+defmetaoperator inline_checkpoint => q{
+  my ($args, $left, $right) = @_;
+  my ($file) = @$args;
+  ([], [checkpoint_op($file, $left), @$right]);
+};
+
+defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;
 1 core/net/lib
 net.pl.sdoc
 33 core/net/net.pl.sdoc
@@ -4493,7 +4503,7 @@ sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ and $1)[%d]}',
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
 Hash constructors.
@@ -5110,7 +5120,7 @@ defshort '/m',
   defalt 'rubyalt', 'alternatives for the /m ruby operator',
     pmap q{ruby_mapper_op $_}, rbcode;
 
-defrowalt pmap q{perl_grepper_op $_}, pn 1, pstr 'm', rbcode;
+defrowalt pmap q{ruby_grepper_op $_}, pn 1, pstr 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl.sdoc
@@ -6941,7 +6951,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-162 core/hadoop/hadoop.pl.sdoc
+176 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7104,6 +7114,20 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
+
+defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
+                          my @cr =
+                            (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+                             defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+                          [@$m, @cr]},
+                   pseq pc hadoop_streaming_lambda,
+                        pc hadoop_streaming_lambda,
+                        pc hadoop_streaming_lambda;
+
+defhadoopalt R =>
+  pmap q{configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+                      [hadoop_streaming_op [], undef, []]},
+  pc number;
 2 core/pyspark/lib
 pyspark.pl.sdoc
 local.pl.sdoc
@@ -8920,7 +8944,7 @@ $ ni n5p'a * a'                 # square some numbers
 are concerned:
 
 ```bash
-$ ni :plfoo[n4p'a*a']
+$ ni ::plfoo[n4p'a*a'] //:plfoo
 1
 4
 9
@@ -9661,7 +9685,7 @@ $ ni n5m'ai * ai'               # square some numbers
 Like `p`, `m` has lambda-end detection using Ruby syntax checking:
 
 ```bash
-$ ni :rbfoo[n4m'ai*ai']
+$ ni ::rbfoo[n4m'ai*ai'] //:rbfoo
 1
 4
 9
@@ -9903,7 +9927,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-507 doc/stream.md
+483 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -10341,10 +10365,10 @@ $ ni n1000000gr4
 ```
 
 If we wanted to iterate on the pipeline from this point onwards, we could do
-this quickly by checkpointing the result:
+this quickly by checkpointing the stream at that point:
 
 ```bash
-$ ni :numbers[n1000000gr4]
+$ ni n1000000gr4 :numbers
 1
 10
 100
@@ -10354,7 +10378,7 @@ $ ni :numbers[n1000000gr4]
 Now this data will be reused if we rerun it:
 
 ```bash
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 1000
 100
 10
@@ -10366,7 +10390,7 @@ checkpoint file:
 
 ```bash
 $ echo 'checkpointed' > numbers
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 checkpointed
 ```
 
@@ -10374,42 +10398,18 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-```
-
-Checkpointing, like most operators that accept lambda expressions, can also be
-written with the lambda implicit. In this case the lambda ends when you break
-the operators using whitespace:
-
-```bash
-$ ni :biglist n100000z r5
-1
-2
-3
-4
-5
-```
-
-Using `ni --explain`, you can see that in this case the lambda is contained
-within the `checkpoint` array:
-
-```bash
-$ ni --explain :biglist n100000z r5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"]]]
-["head","-n",5]
-$ ni --explain :biglist n100000zr5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```
 46 doc/tutorial.md
 # ni tutorial

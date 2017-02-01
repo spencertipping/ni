@@ -185,12 +185,9 @@
 	| '//ni/parsers' '' -> {meta_parsers_op}
 	| '1' '' -> {n_op 1, 2}
 	| ':' (
-	    (
-	      <nefilename>
-	      <empty>?
-	    ) -> {$$_[0]}
-	    </qfn>
-	  ) -> {checkpoint_op @$_}
+	    <nefilename>
+	    <empty>?
+	  ) -> {$$_[0]} -> {inline_checkpoint_op $_}
 	| '::' (
 	    (
 	      <closure_name>
@@ -273,6 +270,29 @@
 	  | <gnuplot/suffix>
 	  ) -> {stream_to_gnuplot_op $_}
 	| 'H' (
+	  | 'DS' (
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	    ) -> {my ($m, $c, $r) = @$_;
+	                              my @cr =
+	                                (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+	                                 defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+	                              [@$m, @cr]}
+	  | 'R' (
+	      <number>
+	      <empty>?
+	    ) -> {$$_[0]} -> {configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+	                          [hadoop_streaming_op [], undef, []]}
 	  | 'S' (
 	      (
 	        <hadoop_streaming_lambda>
@@ -350,7 +370,7 @@
 	  | (
 	      'm'
 	      <rbcode>
-	    ) -> {$$_[1]} -> {perl_grepper_op $_}
+	    ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	  | (
 	      'p'
 	      <perl_grepper_code>
@@ -480,7 +500,7 @@
 	| (
 	    'm'
 	    <rbcode>
-	  ) -> {$$_[1]} -> {perl_grepper_op $_}
+	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
 	    'p'
 	    <perl_grepper_code>
@@ -778,6 +798,29 @@
 
 ## DEFINITION
 	(
+	| 'DS' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {my ($m, $c, $r) = @$_;
+	                            my @cr =
+	                              (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+	                               defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+	                            [@$m, @cr]}
+	| 'R' (
+	    <number>
+	    <empty>?
+	  ) -> {$$_[0]} -> {configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+	                        [hadoop_streaming_op [], undef, []]}
 	| 'S' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -1071,7 +1114,7 @@
 	(
 	  /\[/
 	  (
-	    /.*[^]]/
+	    /[\s\S]*[^]]/
 	    <empty>?
 	  ) -> {$$_[0]}+
 	  /\]/
