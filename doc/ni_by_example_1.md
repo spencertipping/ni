@@ -352,7 +352,6 @@ abj     udg     e
 abl     est     
 abo     lis     h
 abo     rti     vely
-(END)
 ```
 
 Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
@@ -458,7 +457,6 @@ H
 Y
 1
 Y
-(END)
 ```
 
 Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
@@ -485,9 +483,9 @@ Examples:
 
 
 ##Basic Column Operations
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA`
 
-```
+
+```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
 ed      iss
 rdize   sta
 iature  rev
@@ -497,7 +495,6 @@ l       gai
 e       udg
 h       lis
 vely    rti
-(END)
 ```
 
 Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.

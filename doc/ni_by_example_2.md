@@ -31,17 +31,15 @@ However, this isn't quite the whole story.
 
 ###`::closure_name[...]`: Create a data closure
 
-`$ ni ::five[n5] n3p'r a, five'`
-
-```
-1       12345
-2       12345
-3       12345
-(END)
+```bash
+$ ni ::five[n5] n3p'r a, five'
+1	12345
+2	12345
+3	12345
 ```
 Any `ni` operations executable on the machine from whose context `ni` is being executed can be turned into a data closure. This caveat will become more important when we start using `ni` to execute on machines other than the ones we develop on.  The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
 
-```
+```bash
 $ ni --explain ::five[n5] n3p'r a, five'
 ["memory_data_closure","five",[["n",1,6]]]
 ["n",1,4]
@@ -51,13 +49,11 @@ $ ni --explain ::five[n5] n3p'r a, five'
 
 Data closures provide a counterexample to the basics of `ni` evaluation written above. 
 
-`$ ni ::five[n5] | ni n3p'r a, five'`
-
-```
-1       five
-2       five
-3       five
-(END)
+```bash
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
 ```
 
 The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
@@ -65,13 +61,11 @@ The reason that the example including pipes gives different results than the exa
 ###Perl Bareword Interpretation
 The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
 
-`$ ni ::five[n5] | ni n3p'r a, five'`
-
-```
-1       five
-2       five
-3       five
-(END)
+```bash
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
 ```
 
 The Perl interpreter will convert missing barewords (i.e. things that do not start with a Perl sigil [`$, @, %`, etc.]) as a string. This trick is useful for writing strings without spaces within Perl environments; most of them do not need to be quoted. It is good `ni` style to avoid using quotes when they are unnecessary.
@@ -153,7 +147,6 @@ What we need now is the appropriate piece of data to feed to the code. We know o
  (quote
   (lambda (x)
    (list x (list (quote quote) x)))))
-   
 => ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
 ```
 
@@ -217,7 +210,7 @@ The key here is that because the code is inside a single-quoted heredoc, it can 
 
 When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
 
-Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above
+Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above into `quine.pl`:
 
 ```
 $  cat quine.pl | perl | perl | perl
@@ -288,32 +281,19 @@ $ ni ::my_closure[n10] //ni | wc -c
 If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
 
 ```
-$ ni ::ten[n10] //ni | perl - n1p'ten'
-```
-
-```
+$ ni ::five[n5] //ni | perl - n1p'five'
 1
 2
 3
 4
 5
-6
-7
-8
-9
-10
-(END)
 ```
 
 This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
 
-```
+```bash
 $ ni //ni | perl - n1p'ten'
-```
-
-```
 ten
-(END)
 ```
 
 One final note; by the ordering of the data, it may appear that the fact that `ni` is self-modifying and the fact that it is a quine are separate; or that the self-modifying power of `ni` makes it a quine. In fact, the opposite is true; it is because `ni` is a quine that allows it to be self-modifying.
@@ -482,18 +462,18 @@ Checkpoints and files share many commonalities. The key difference between a che
 
 An example of checkpoint use is the following:
 
-```
+```bash
 $ ni n1000000gr4 :numbers
 1
 10
 100
 1000
-``` 
+```
 
 This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
 
 
-```
+```bash
 $ ni n1000000gr4 :numbers O
 1000
 100
@@ -564,6 +544,7 @@ $ ni ihdfst://<abspath> HS...
 ```
 
 This will pass the directory path directly to the Hadoop Streaming job. If you do not use path, as in:
+
 ```
 $ ni hdfst://<abspath> HS...
 ```
@@ -574,35 +555,32 @@ When the input path is not quoted, `ni` will read all of the data out of HDFS to
 ###`i`: Literal text 
 To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, for reasons that will be clear later. `i` operator is the way to put literal text into the command line:
 
-```
+```bash
 $ ni ihello ithere
 hello
 there
-(END)
 ```
 
 You can use single quotes with `i` to include spaces within strings.
 
-```
-$ni i'one whole line'
+```bash
+$ ni i'one whole line'
 one whole line
-(END)
 ```
 
 If you want your text to be tab-delimited, you can put your text inside brackets.
 
-```
+```bash
 $ ni i[foo bar]
-foo     bar
-(END)
-``` 
+foo	bar
+```
 
 And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
 
-```
-$ni i[ foo[] [bar] ]
-foo[]   [bar]
-(END)
+
+```bash
+$ ni i[ foo[] [bar] ]
+foo[]	[bar]
 ```
 
 
