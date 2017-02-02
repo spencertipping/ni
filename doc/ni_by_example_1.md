@@ -548,6 +548,7 @@ The operations in this section complete the set of column generation and access;
 * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
 * `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
 * `FC`: split on commas (doesn't handle special CSV cases)
+* `FD`: split on forward slashes
 * `FV`: parse CSV "correctly," up to newlines in fields
 * `FS`: split on runs of horizontal whitespace
 * `FW`: split on runs of non-word characters
