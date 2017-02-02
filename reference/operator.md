@@ -542,8 +542,9 @@
 	
 	  my ($col, $f) = @_;
 	  $col ||= 0;
-	  my ($i, $o) = sioproc {exec 'python', '-c',
-	                           numpy_gen->(body => indent $f, 2)};
+	  my ($i, $o) = sioproc {
+	    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+	      or die "ni: failed to execute python: $!"};
 	  my @q;
 	  my ($rows, $cols);
 	  while (defined($_ = @q ? shift @q : <STDIN>)) {
