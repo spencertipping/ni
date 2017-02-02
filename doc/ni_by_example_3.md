@@ -13,9 +13,9 @@ politically correct notion that values are objects by default, distances itself
 from UNIX-as-a-ground-truth, and has a short history that it's willing to
 revise or forget. These languages are convenient and inoffensive by principle
 because that was the currency that made them viable.
-<!--- -->
+<!--- --->
 >Perl is different.
-<!--- -->
+<!--- --->
 >In today's world it's a neo-noir character dropped into a Superman comic; but 
 that's only true because it changed our collective notion of what an accessible
 scripting language should look like. People
@@ -29,38 +29,33 @@ probably change your idea of what a good language should be.
 
 In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
 
-```
+```bash
 $ ni 1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-15      555     5 golden rings
-(END)
+15	555	5 golden rings
 ```
 
 It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
 
-```
+```bash
 $ ni 1p'my $v2="4.3" * "6.7"; r $v2'
 28.81
-(END)
 ```
 
 You can perform floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero when used in an arithmetic context.
 
-```
+```bash
 $ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-0       hihihi  hi golden rings
-(END)
+0	hihihi	hi golden rings
 ```
 
-```
+```bash
 $ ni 1p'my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-9.42    3.14hi3.14hi3.14hi      3.14hi golden rings
-(END)
+9.42	3.14hi3.14hi3.14hi	3.14hi golden rings
 ```
 
-```
+```bash
 $ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-930000000000000000      3.1E173.1E173.1E17      3.1E17 golden rings
-(END)
+930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
 ```
 
 
@@ -98,12 +93,11 @@ At first glance, this is very confusing; all of these values start with `$x`--bu
 ###Barewords are strings
 Consider the following `ni` spell:
 
-```
+```bash
 $ ni n3p'r a, one'
-1       one
-2       one
-3       one
-(END)
+1	one
+2	one
+3	one
 ```
 
 Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist,  Perl gives the programmer a great deal of freedom to be concise. The bareword (a Perl term for a variable not prefixed with a sigil) `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
@@ -125,22 +119,20 @@ $v = &x         # $v will be set to "hi"
 
 Here's how you'd write a function that copies a stream of values 4 times in `ni`, using Perl.
 
-```
+```bash
 $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 1111
 2222
 3333
-(END)
 ```
 
 To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within `@_`, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
 
 Subroutines can also be called without the preceding `&`, or created using the following syntax:
 
-```
+```bash
 $ ni 1p'sub yo {"hi " . $_[0]} yo a'
 hi 1
-(END)
 ```
 
 Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
@@ -148,15 +140,13 @@ Note that in these examples, a new function will be defined for every line in th
 ###Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
 
-Consider the following spell:
+Consider the spell `ni n20p'/^(\d)\d*$/'`:
 
-```
-$ ni n20p'/^(\d)\d*$/'
-```
 
 It looks like the Perl snippet is using a regular expression to take the first digit of a number. What's not clear is which number it's using. Looking at the output:
 
-```
+```bash
+$ ni n20p'/^(\d)\d*$/'
 1
 2
 3
@@ -177,7 +167,6 @@ It looks like the Perl snippet is using a regular expression to take the first d
 1
 1
 2
-(END)
 ```
 
 Clearly this regex is operating on each line (the lines input were the integers 1 through 20). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
@@ -191,32 +180,29 @@ A begin block is indicated by attaching a caret (`^`) to a block of code (enclos
 
 Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. Here is a contrived example based on the previous section:
 
-```
+```bash
 $ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
 1111
 2222
 3333
-(END)
 ```
 
 In this example, `*v` is being computed at runtime for each row. Using a begin block, however, `*v` will be computed just once, so this could be better written as:
 
-```
+```bash
 $ ni n3p'^{*v = sub {$_[0] x 4}} &v(a)'
 1111
 2222
 3333
-(END)
 ```
 
 However useful to exemplify the concept of a begin block, it turns out that all of the previous definitions are not practical. Outside of variable assignment, `sub` is a `BEGIN`-level construct, so the code is much more simply written as:
 
-```
+```bash
 $ ni n3p'sub v {$_[0] x 4} &v(a)'
 1111
 2222
 3333
-(END)
 ```
 
 
@@ -227,6 +213,15 @@ For example:
 
 * `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 * `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
+
+```bash
+$ ni ::data[n5] 1p'a_ data'
+1
+2
+3
+4
+5
+```
 
 
 ### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
@@ -251,10 +246,9 @@ These operations encapsulate the most common types of reduce operations that you
 
 Let's look at a simple example, summing the integers from 1 to 100,000: 
 
-```
+```bash
 $ ni n1E5p'sr {$_[0] + a} 0'
 5000050000
-(END)
 ```
 
 Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
@@ -265,10 +259,9 @@ Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an
 
 To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
 
-```
+```bash
 $ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
-55      3628800 12345678910
-(END)
+55	3628800	12345678910
 ```
 A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
 
@@ -290,37 +283,34 @@ In `ni`-speak, the reduce-while-equal operator looks like this:
 
 **NOTE**: The comma after `partition_fn` is important.
 
-```
+```bash
 $ ni n1000p'se {$_[0] + a} sub {length}, 0'
 45
 4905
 494550
 1000
-(END)
 ```
 
 That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
 
-```
+```bash
 $ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
-1       45
-2       4905
-3       494550
-4       1000
-(END)
+1	45
+2	4905
+3	494550
+4	1000
 ```
 
 One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
 
 If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
 
-```
-$ ni n1000p'^{sub len($) {length $_[0]}} r len a, se {$_[0] + a} \&len, 0'
-1       45
-2       4905
-3       494550
-4       1000
-(END)
+```bash
+$ ni n1000p'sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'
+1	45
+2	4905
+3	494550
+4	1000
 ```
 
 The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
@@ -330,24 +320,22 @@ The code above uses a Perl function signature `sub len($)` tells Perl that the f
 
 It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
 
-```
+```bash
 $ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
-1       45
-2       4905
-3       494550
-4       1000
-(END)
+1	45
+2	4905
+3	494550
+4	1000
 ```
 
 `ni` offers a shorthand for reducing over a particular column:
 
-```
-ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
-1       45
-2       4905
-3       494550
-4       1000
-(END)
+```bash
+$ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
+1	45
+2	4905
+3	494550
+4	1000
 ```
 
 
@@ -355,17 +343,19 @@ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
 
 Consider the following reduction operation, which computes the sum, mean, min and max.
 
-```
+```bash
 $ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[3], a)}
                                            0, 0, a, a;
             r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
 ```
 
 For common operations like these, `ni` offers a shorthand:
 
-```
-ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+```bash
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+5050	50.5	1	100
 ```
 
 ##Buffered Readahead
@@ -381,15 +371,14 @@ These operations are used to convert columnar data into rows, which can then be 
 ###`cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll use the builtin `ni` operation `cart`.
 
-```
+```bash
 $ ni 1p'cart [1, 2], ["a", "b", "c"]'
-1       a
-2       a
-1       b
-2       b
-1       c
-2       c
-(END)
+1	a
+2	a
+1	b
+2	b
+1	c
+2	c
 ```
 
 Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
@@ -405,22 +394,20 @@ ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 
 ###Multiline Reducers
 
-```
+```bash
 $ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
 3
 3
 3
-(END)
 ```
 
 `reb` is the more commonly used shorthand for `re {b}`.
 
-```
+```bash
 $ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
 3
 3
 3
-(END)
 ```
 
 There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
@@ -450,20 +437,18 @@ The values streamed out of `N'...'` are the values of `x`, so all operations tha
 However, the gains in power are quickly manifested:
 
 
-```
+```bash
 $ ni n3p'r map a*$_, 1..3' N'x = x + 1'
-2       3       4
-3       5       7
-4       7       10
-(END)
+2	3	4
+3	5	7
+4	7	10
 ```
 
-```
+```bash
 $ ni n5p'r map a . $_, 1..3' N'x = x.T'
-11      21      31      41      51
-12      22      32      42      52
-13      23      33      43      53
-(END)
+11	21	31	41	51
+12	22	32	42	52
+13	23	33	43	53
 ```
 
 ```
@@ -475,11 +460,10 @@ $ ni n1N'x = random.normal(size=(4,3))'
 (END)
 ```
 
-```
+```bash
 $ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
-1       1
-1       2
-(END)
+1	1
+1	2
 ```
 
 
