@@ -106,12 +106,10 @@ ni::name(
 
 ni::name(
   'ni:/behavior/ni_namespaced' =>
-    '/behavior/slice'->new(
-      namespace => sub {'ni'}),
+    '/behavior/slice'->new(namespace => sub {'ni'}),
 
   'ni:/behavior/mapped_to_package' =>
-    '/behavior/slice'->new(
-      package => sub {shift->{name}}),
+    '/behavior/slice'->new(package => sub {shift->{name}}),
 
   'ni:/behavior/named_transient' =>
     '/behavior/slice'->new(
@@ -140,13 +138,8 @@ ni::name(
     '/class/class');
 
 ni('ni:/behavior/branch')->apply('/class/class');
+ni('ni:/behavior/class_init')->apply('/class/class');
 ni('ni:/class/class')->apply('/class/class');
-ni('ni:/class/class')->add(
-  ni"ni:/behavior/class_init",
-  ni"ni:/behavior/mapped_to_package",
-  ni"ni:/behavior/lifecycle",
-  ni"ni:/behavior/ni_namespaced",
-  ni"ni:/behavior/named_persistent");
 
 ni('ni:/class/class')->new('/class/behavior',
   ni"ni:/behavior/lifecycle",
@@ -154,11 +147,13 @@ ni('ni:/class/class')->new('/class/behavior',
   ni"ni:/behavior/ni_namespaced",
   ni"ni:/behavior/named_persistent");
 
+ni('ni:/class/class')->add(ni"ni:/class/behavior");
+
 ni::name('ni:/behavior/slice_named_init' =>
   '/behavior/slice'->new(
     instantiate => sub {
       my ($class, $name, %methods) = @_;
-      my $self = &{'/behavior/slice_init::initialize'}($class, %methods);
+      my $self = &{'/behavior/slice::initialize'}($class, %methods);
       $$self{name} = $name;
       $self;
     }));
