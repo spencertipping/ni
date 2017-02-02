@@ -132,49 +132,60 @@ ni::name(
           slices => [map ref($_) ? $_ : ni($_), @slices]};
       }),
 
-  'ni:/class/class' =>
-    bless {name   => '/class/class',
-           slices => [ni"ni:/behavior/branch"]},
+  'ni:/class/behavior' =>
+    bless {name   => '/class/behavior',
+           slices => [ni"ni:/behavior/lifecycle",
+                      ni"ni:/behavior/mapped_to_package",
+                      ni"ni:/behavior/ni_namespaced",
+                      ni"ni:/behavior/named_persistent"]},
     '/class/class');
 
-ni('ni:/behavior/branch')->apply('/class/class');
 ni('ni:/behavior/class_init')->apply('/class/class');
-ni('ni:/class/class')->apply('/class/class');
+ni('ni:/behavior/branch')->apply('/class/class');
 
-ni('ni:/class/class')->new('/class/behavior',
-  ni"ni:/behavior/lifecycle",
-  ni"ni:/behavior/mapped_to_package",
-  ni"ni:/behavior/ni_namespaced",
-  ni"ni:/behavior/named_persistent");
+ni('ni:/class/behavior')->apply('/class/class');
 
-ni('ni:/class/class')->add(ni"ni:/class/behavior");
+'/class/class'->new('/class/class',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/branch");
 
 ni::name('ni:/behavior/slice_named_init' =>
   '/behavior/slice'->new(
     instantiate => sub {
-      my ($class, $name, %methods) = @_;
-      my $self = &{'/behavior/slice::initialize'}($class, %methods);
+      my ($class, $name, @methods) = @_;
+      my $self = &{'/behavior/slice::instantiate'}($class, @methods);
       $$self{name} = $name;
       $self;
     }));
 
-ni('ni:/class/class')->new('/class/slice',
+# TODO: here's the problem.
+# ni:/class/slice is an instance of ni:/class/class, whose package is
+# /class/class. /class/class is an instance of itself. Because of this instance
+# relationship, /class/slice->new is the instance-method version of
+# '/class/class'->new -- there's no distinction.
+#
+# So the object form ni("foo")->new is analogous to
+# ref(ni("foo"))->new(ni("foo")) -- not the usual instantiation strategy. This
+# seems like a real problem in a world where perl-style instantiation is even a
+# remote possibility. Need to think about how to resolve this.
+
+'/class/class'->new('/class/slice',
   ni"ni:/class/behavior",
   ni"ni:/behavior/slice",
   ni"ni:/behavior/slice_named_init");
 
-ni('ni:/class/slice')->new("/behavior/$_" =>
-                           ni("ni:/behavior/$_")->instantiation)
+'/class/slice'->new("/behavior/$_" =>
+                    ni("ni:/behavior/$_")->instantiation)
   for qw/slice slice_init lifecycle tag branch named ni_namespaced
          mapped_to_package named_transient named_persistent class_init
          slice_named_init/;
 
-ni('ni:/class/slice')->new('/behavior/class_method_def',
+'/class/slice'->new('/behavior/class_method_def',
   def => sub {shift->add(ni('ni:/behavior/slice')->new(@_))});
 
-ni('ni:/class/slice')->new('/behavior/fn', '(&{}' => sub {shift->{compiled}});
+'/class/slice'->new('/behavior/fn', '(&{}' => sub {shift->{compiled}});
 
-ni('ni:/class/slice')->new('/behavior/anonymous_fn_init',
+'/class/slice'->new('/behavior/anonymous_fn_init',
   initialize => sub {
     my $class = shift;
     my $code  = pop;
@@ -184,7 +195,8 @@ ni('ni:/class/slice')->new('/behavior/anonymous_fn_init',
       annotations => [@_]};
   });
 
-ni('ni:/class/class')->new('/class/fn',
+'/class/class'->new('/class/fn',
   ni"ni:/behavior/lifecycle",
-  ni"ni:/behavior/cached_fn");
+  ni"ni:/behavior/anonymous_fn_init",
+  ni"ni:/behavior/fn");
 _
