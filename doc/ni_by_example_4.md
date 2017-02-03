@@ -109,31 +109,29 @@ to apply to only part of the stream.
 
 Examples:
 
-```
+```bash
 $ ni n3 ^[n05 fAA]
-0       0
-1       1
-2       2
-3       3
-4       4
+0	0
+1	1
+2	2
+3	3
+4	4
 1
 2
 3
-(END)
 ```
 
 
-```
+```bash
 $ ni n3 +[n05 fAA]
 1
 2
 3
-0       0
-1       1
-2       2
-3       3
-4       4
-(END)
+0	0
+1	1
+2	2
+3	3
+4	4
 ```
 
 `+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
@@ -150,7 +148,7 @@ first stream and the start of the second.
 
 ###`%`: Interleave Streams
 
-The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni nE5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
 
 You can also call `%#` with a positive number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1.` You can also call `%-#`, and the streams will be interleaved with a ratio: `first stream : second stream :: 1:#.`
 
@@ -160,19 +158,20 @@ Interleaving streams with a numeric argument will cut off the output stream when
 ###`=`: Duplicate Stream and Discard
 This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
+```bash
+$ ni n10 =[r5 \>short] r3fAA
+1	1
+2	2
+3	3
 ```
-$ ni n1E7 =[r5 \>short] r3fAA
-1       1
-2       2
-3       3
-(END)
+
+```bash
 $ ni short
 1
 2
 3
 4
 5
-(END)
 ```
 
 One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
@@ -191,12 +190,11 @@ These operations are used to add columns vertically to to a stream, either by me
 
 `w` adds a column to the end of a stream, up to the minimum length of either stream.
 
-```
+```bash
 $ ni //license w[n3p'a*a']
-ni: https://github.com/spencertipping/ni        1
-Copyright (c) 2016 Spencer Tipping | MIT license        4
-        9
-(END)
+ni: https://github.com/spencertipping/ni	1
+Copyright (c) 2016 Spencer Tipping | MIT license	4
+	9
 ```
 
   
@@ -204,14 +202,13 @@ Copyright (c) 2016 Spencer Tipping | MIT license        4
 
 `W` operates like `w`, except its output column is prepended. 
 
-```
+```bash
 $ ni e'echo {a..e}' p'split / /' Wn
-1       a
-2       b
-3       c
-4       d
-5       e
-(END)
+1	a
+2	b
+3	c
+4	d
+5	e
 ```
   
 
@@ -219,26 +216,24 @@ $ ni e'echo {a..e}' p'split / /' Wn
 
 We can upper-case the letters in the previous example via:
 
-```
+```bash
 $ ni e'echo {a..e}' p'split / /' Wn p'r a, uc(b)'
-1       A
-2       B
-3       C
-4       D
-5       E
-(END)
+1	A
+2	B
+3	C
+4	D
+5	E
 ```
 
 However `ni` also offers a shorter syntax using the `v` operator.
 
-```
+```bash
 $ ni e'echo {a..e}' p'split / /' Wn vBpuc
-1       A
-2       B
-3       C
-4       D
-5       E
-(END)
+1	A
+2	B
+3	C
+4	D
+5	E
 ```
 
 **Important Note**: As of 2017-01-22, this operator is too slow to use in production.
@@ -254,77 +249,73 @@ Streaming joins are performed by matching two sorted streams on the value of the
 
 Example:
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn j[letters]
-a       5       1       a
-b       4       2       b
-c       3       3       c
-d       2       4       d
-e       1       5       e
-(END)
+```bash
+$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
+a	5	1	a
+b	4	2	b
+c	3	3	c
+d	2	4	d
+e	1	5	e
 ```
 
 This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
 
-```
-$ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA
-a       5
-b       4
-c       3
-d       2
-e       1
+```bash
+$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA
+a	5
+b	4
+c	3
+d	2
+e	1
 ```
 
 This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters]
-a       5
-b       4
-c       3
-d       2
-e       1
+```bash
+$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters]
+a	5
+b	4
+c	3
+d	2
+e	1
 a
 b
 c
 d
 e
-(END)
 ```
 
 We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn
-a       5       1
-b       4       2
-c       3       3
-d       2       4
-e       1       5
-a       6
-b       7
-c       8
-d       9
-e       10
-(END)
+```bash
+$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn
+a	5	1
+b	4	2
+c	3	3
+d	2	4
+e	1	5
+a	6
+b	7
+c	8
+d	9
+e	10
 ```
 
 We append another column of numbers; note that `w` adds new columns to every row, but does not make sure that the rows are the same length, so the 
 
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn
-a       5       1
-a       6
-b       4       2
-b       7
-c       3       3
-c       8
-d       2       4
-d       9
-e       1       5
-e       10
-(END)
+```bash
+$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn gABn
+a	5	1
+a	6
+b	4	2
+b	7
+c	3	3
+c	8
+d	2	4
+d	9
+e	1	5
+e	10
 ```
 
 We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
@@ -338,29 +329,27 @@ We sort the data (necessary to perform the join) first ascending lexicographical
 * The value of the input stream at the row and column specified by the first two columns.
 
 
-```
+```bash
 $ ni //license FW Y r10
-0       0       ni
-0       1       https
-0       2       github
-0       3       com
-0       4       spencertipping
-0       5       ni
-1       0       Copyright
-1       1       c
-1       2       2016
-1       3       Spencer
-(END)
+0	0	ni
+0	1	https
+0	2	github
+0	3	com
+0	4	spencertipping
+0	5	ni
+1	0	Copyright
+1	1	c
+1	2	2016
+1	3	Spencer
 ```
 
 ### `X` - sparse-to-dense transformation
 `X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
-```
+```bash
 $ ni //license FW Y r10 X
-ni      https   github  com     spencertipping  ni
-Copyright       c       2016    Spencer
-(END)
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer
 ```
 
 ##Cell Operations
@@ -380,9 +369,8 @@ Using a little math, with ~40 million IDs, there will be only be about 1% hash c
 Let's check that invariant:
 
 ```
-$ ni :small_hashes[n4E7 ,hA Cubuntu[o]] up'sr {$_[0] + 1} , 0'
+$ ni n4E7 ,hA Cubuntu[o] uc
 39814375
-(END)
 ```
 
 That means we had about 200,000 hash collisions in 40 million IDs, a rate of about .5%, which is good enough for my back-of-the envelope calculations.
@@ -404,10 +392,9 @@ These operations are mostly self-explanatory; jitter is often used for `ni --js`
 
 You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
 
-```
+```bash
 $ ni n1E4 fAAA ,aA ,sB, dC r~1
 5000.5  50005000        1
-(END)
 ```
 
 
@@ -441,32 +428,29 @@ If `$precision > 0`, the geohash is specified with `$precison` base-32 character
 
 Examples:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe(a, b, 7)'
 9q5cc25
-(END)
 ```
 
-```
+
+```bash
 ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
 10407488581
-(END)
 ```
 
 The default is to encode with 12 base-32 characters, i.e. a gh12, or 60 bits of precision.
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe(a, b)'
 9q5cc25twby7
-(END)
 ```
 
-The parentheses are also often unnecessary:
+The parentheses are also often unnecessary, because of the prototypin:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 9q5cc25tw
-(END)
 ```
 
 
@@ -481,16 +465,14 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 
 Examples:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'r ghd ghe a, b'
-34.058565851301 -118.416526280344
-(END)
+34.058565851301	-118.416526280344
 ```
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
-34.0584754943848        -118.416652679443
-(END)
+34.0584754943848	-118.416652679443
 ```
     
 ### `tpe`: time parts to epoch
@@ -498,18 +480,16 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 and assumes that the pieces are year, month, day, hour, minute, and second, 
 in that order. 
 
-```
+```bash
 $ ni 1p'tpe(2017, 1, 22, 8, 5, 13)'
-1485079513
-(END)
+1485072313
 ```
 
 You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
 
-```
+```bash
 $ ni 1p'tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'
-1485079513
-(END)
+1485072313
 ```
 
 **IMPORTANT NOTE**: `tpe` does not work correctly on Mac as of 2017-01-23,
@@ -522,9 +502,9 @@ This will result in your code giving the local time rather than GMT; use
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
-```
-$ ni 1p'tep tpe 2017, 1, 22, 8, 5, 13'
-2017    1       22      8       5      13
+```bash
+$ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
+2017	1	22	8	5	13
 ```
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
