@@ -435,10 +435,10 @@ $ ni n1000000gr4
 ```
 
 If we wanted to iterate on the pipeline from this point onwards, we could do
-this quickly by checkpointing the result:
+this quickly by checkpointing the stream at that point:
 
 ```bash
-$ ni :numbers[n1000000gr4]
+$ ni n1000000gr4 :numbers
 1
 10
 100
@@ -448,7 +448,7 @@ $ ni :numbers[n1000000gr4]
 Now this data will be reused if we rerun it:
 
 ```bash
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 1000
 100
 10
@@ -460,7 +460,7 @@ checkpoint file:
 
 ```bash
 $ echo 'checkpointed' > numbers
-$ ni :numbers[n1000000gr4]O
+$ ni n1000000gr4 :numbers O
 checkpointed
 ```
 
@@ -468,40 +468,16 @@ You can write compressed data into a checkpoint. The checkpointing operator
 itself will decode any compressed data you feed into it; for example:
 
 ```bash
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-$ ni :biglist[n100000z]r+5
+$ ni n100000z :biglist r+5
 99996
 99997
 99998
 99999
 100000
-```
-
-Checkpointing, like most operators that accept lambda expressions, can also be
-written with the lambda implicit. In this case the lambda ends when you break
-the operators using whitespace:
-
-```bash
-$ ni :biglist n100000z r5
-1
-2
-3
-4
-5
-```
-
-Using `ni --explain`, you can see that in this case the lambda is contained
-within the `checkpoint` array:
-
-```bash
-$ ni --explain :biglist n100000z r5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"]]]
-["head","-n",5]
-$ ni --explain :biglist n100000zr5
-["checkpoint","biglist",[["n",1,100001],["sh","gzip"],["head","-n",5]]]
 ```

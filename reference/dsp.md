@@ -28,6 +28,29 @@
 
 ## OPTIONS
 	(
+	| 'DS' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {my ($m, $c, $r) = @$_;
+	                            my @cr =
+	                              (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
+	                               defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
+	                            [@$m, @cr]}
+	| 'R' (
+	    <number>
+	    <empty>?
+	  ) -> {$$_[0]} -> {configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+	                        [hadoop_streaming_op [], undef, []]}
 	| 'S' (
 	    (
 	      <hadoop_streaming_lambda>
