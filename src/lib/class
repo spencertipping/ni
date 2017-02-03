@@ -1,119 +1,88 @@
 ni->module('/lib/class', code => <<'_');
 use strict;
 use warnings;
-use Scalar::Util;
-
 no strict 'refs';
 
-ni->def(
-  '/class/object::class'   => sub {shift->{class}},
-  '/class/object::init'    => sub {},
-  '/class/object::DESTROY' => sub {
-    my $self = shift;
-    $self->class->destroy_instance($self));
+ni::name(
+  'ni:/behavior/class_init' =>
+    '/behavior/slice'->new(
+      ctor => sub {my $s = shift; $s->apply($s->package)},
+      instantiate => sub {
+        my ($class, $name, @slices) = @_;
+        +{name   => $name,
+          slices => [map ref($_) ? $_ : ni($_), @slices]};
+      }),
 
-ni->def(
-  '/behavior/namespaced::package' => sub {shift->{name}},
-  '/behavior/namespaced::methods' => sub {
-    my $self = shift;
-    grep defined ${$self->package . "::$_"}{CODE},
-      sort keys %{$self->package . "::"}},
+  'ni:/class/behavior' =>
+    bless {name   => '/class/behavior',
+           slices => [ni"ni:/behavior/lifecycle",
+                      ni"ni:/behavior/mapped_to_package",
+                      ni"ni:/behavior/ni_namespaced",
+                      ni"ni:/behavior/named_persistent"]},
+    '/class/class');
 
-  '/behavior/namespaced::def' => sub {
-    my ($self, %kvs) = @_;
-    *{$self->package . "::$_"} = $kvs{$_} for keys %kvs});
+# TODO: how do we implement a metaclass protocol if we don't have inheritance?
+# Branches don't create subclasses; that's about instantiation.
 
-ni->def(
-  '/behavior/named::instance::is_persistent' => sub {1},
-  '/behavior/named::instance::namespace' => sub {'ni'},
-  '/behavior/named::instance::name' => sub {
-    my $self = shift;
-    $self->namespace . ":" . $$self{name}},
+ni('ni:/behavior/class_init')->apply('/class/class');
+ni('ni:/behavior/branch')->apply('/class/class');
 
-  '/behavior/named::destroy' => sub {delete $ni::named{shift->name}},
-  '/behavior/named::init' => sub {
-    my ($self) = @_;
-    print STDERR "named init for $$self{name}\n";
-    $_[0] = $self = $ni::named{$self->name} if exists $ni::named{$self->name};
-    $ni::named{$self->name} = $self unless $$self{anonymous};
-    Scalar::Util::weaken $ni::named{$self->name} unless $self->is_persistent});
+ni('ni:/class/behavior')->apply('/class/class');
 
-ni->def(
-  '/class/class::new' => sub {
-    my $o = shift->instantiate;
-    $o->init(@_);
-    $o->init_parents(@_);
-    $o},
+'/class/class'->new('/class/class',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/branch");
 
-  '/class/class::behaviors' => sub {
-    my $self = shift;
-    @{$$self{behaviors}}, $self->SUPER::behaviors;
-  },
+ni::name('ni:/behavior/slice_named_init' =>
+  '/behavior/slice'->new(
+    instantiate => sub {
+      my ($class, $name, @methods) = @_;
+      my $self = &{'/behavior/slice::instantiate'}($class, @methods);
+      $$self{name} = $name;
+      $self;
+    }));
 
-  '/class/class::init' => sub {
-    my ($self, $name, %args) = @_;
-    @$self{qw/name anonymous/} = defined $name ? ($name, 0) : (ni->gensym, 1);
-    $$self{isa} = $args{isa} || [map "ni:$_", @{$self->package . "::ISA"}];
-    $self->inherit_from(@{$$self{isa}});
-    print STDERR "$$self{name} parents: (@{$$self{isa}})\n"
-    },
+# TODO: here's the problem.
+# ni:/class/slice is an instance of ni:/class/class, whose package is
+# /class/class. /class/class is an instance of itself. Because of this instance
+# relationship, /class/slice->new is the instance-method version of
+# '/class/class'->new -- there's no distinction.
+#
+# So the object form ni("foo")->new is analogous to
+# ref(ni("foo"))->new(ni("foo")) -- not the usual instantiation strategy. This
+# seems like a real problem in a world where perl-style instantiation is even a
+# remote possibility. Need to think about how to resolve this.
+#
+# I think the ST-80 metaclass protocol solves this for us.
 
-  '/class/class::DESTROY' => sub {
-    my $self = shift;
-    delete @{$self->package . "::"}{keys %{$self->package . "::"}}
-        if $$self{anonymous}},
+'/class/class'->new('/class/slice',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/slice",
+  ni"ni:/behavior/slice_named_init");
 
-  '/class/class::isa' => sub {@{shift->{isa}}},
+'/class/slice'->new("/behavior/$_" =>
+                    ni("ni:/behavior/$_")->instantiation)
+  for qw/slice slice_init lifecycle tag branch named ni_namespaced
+         mapped_to_package named_transient named_persistent class_init
+         slice_named_init/;
 
-  '/class/class::inherit_from' => sub {
-    my $self = shift;
-    print STDERR "$$self{name} inheriting from @_\n";
-    @{$self->package . "::ISA"} = map ni($_)->package, @{$$self{isa}} = @_;
-    $self},
+'/class/slice'->new('/behavior/class_method_def',
+  def => sub {shift->add('/behavior/slice'->new(@_))});
 
-  '/class/class::instantiate' => sub {
-    my $self = shift;
-    bless {class => $self}, $self->package},
+'/class/slice'->new('/behavior/fn', '(&{}' => sub {shift->{compiled}});
 
-  '/class/class::child' => sub {
-    my ($self, $name, @ps) = @_;
-    $self->class->child("${name}_")->new($name, isa => [$self->name, @ps])});
+'/class/slice'->new('/behavior/anonymous_fn_init',
+  initialize => sub {
+    my $class = shift;
+    my $code  = pop;
+    my $compiled = ni::eval "sub {$code\n}";
+    die "ni:/behavior/anonymous_fn_init: failed to compile $code: $@" if $@;
+    +{code        => $code,
+      annotations => [@_]};
+  });
 
-ni->def('/class/metaclass_::child' => sub {shift});
-
-ni->def(
-  '/class/class::ISA'      => ['/class/behavior'],
-  '/class/class_::ISA'     => ['/class/behavior_'],
-  '/class/behavior::ISA'   => ['/class/object',
-                               '/behavior/namespaced::instance',
-                               '/behavior/named::instance'],
-  '/class/behavior_::ISA'  => ['/class/object_'],
-  '/class/object::ISA'     => [],
-  '/class/object_::ISA'    => ['/class/class'],
-  '/class/metaclass::ISA'  => ['/class/class'],
-  '/class/metaclass_::ISA' => ['/class/class_']);
-
-{
-  my @boot_objects = (
-    bless({name => '/behavior/named'},      '/class/behavior'),
-    bless({name => '/behavior/namespaced'}, '/class/behavior'),
-    bless({name => '/class/behavior'},      '/class/behavior_'),
-    bless({name => '/class/behavior_'},     '/class/metaclass'),
-    bless({name => '/class/class'},         '/class/class_'),
-    bless({name => '/class/class_'},        '/class/metaclass'),
-    bless({name => '/class/metaclass'},     '/class/metaclass_'),
-    bless({name => '/class/metaclass_'},    '/class/metaclass'),
-    bless({name => '/class/object'},        '/class/object_'),
-    bless({name => '/class/object_'},       '/class/metaclass'));
-
-  &{'/behavior/named::init'}($_) for @boot_objects;
-  $$_{class} = ni('ni:' . ref $_) for @boot_objects;
-  $_->init($$_{name}) for @boot_objects;
-  $_->init_parents($$_{name}) for @boot_objects;
-
-  print STDERR "$$_{name} :: (@{$$_{isa} || []})\n" for @boot_objects;
-}
-
-ni('ni:/class/object')->child('/class/ni')->def(
-  gensym => sub {"/gensym::" . ++shift->{gensym_index}});
+'/class/class'->new('/class/fn',
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/anonymous_fn_init",
+  ni"ni:/behavior/fn");
 _
