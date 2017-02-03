@@ -1002,6 +1002,22 @@
 ## IMPLEMENTATION
 	exec 'tail', $_[0], join "", @_[1..$#_]
 
+# OPERATOR unflatten
+
+## IMPLEMENTATION
+	
+	  my ($n_cols) = @_;
+	  my @row = ();
+	  while(<STDIN>) {
+	    chomp;
+	    push @row, $_;
+	    if(@row == $n_cols) {
+	      print(join("\t", @row) . "\n"); 
+	      @row = ();
+	    }
+	  }
+	  if (@row > 0) {print(join("\t", @row) . "\n");}
+
 # OPERATOR uniq
 
 ## IMPLEMENTATION
