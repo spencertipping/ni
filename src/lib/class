@@ -69,20 +69,20 @@ ni::name('ni:/behavior/slice_named_init' =>
 '/class/slice'->new('/behavior/class_method_def',
   def => sub {shift->add('/behavior/slice'->new(@_))});
 
-'/class/slice'->new('/behavior/fn', '(&{}' => sub {shift->{compiled}});
-
 '/class/slice'->new('/behavior/anonymous_fn_init',
   initialize => sub {
     my $class = shift;
     my $code  = pop;
-    my $compiled = ni::eval "sub {$code\n}";
+    my $fn = ni::eval "sub {$code\n}";
     die "ni:/behavior/anonymous_fn_init: failed to compile $code: $@" if $@;
     +{code        => $code,
-      annotations => [@_]};
+      annotations => [@_],
+      fn          => $fn};
   });
+
+delete ${'/class/fn::'}{new};
 
 '/class/class'->new('/class/fn',
   ni"ni:/behavior/lifecycle",
-  ni"ni:/behavior/anonymous_fn_init",
-  ni"ni:/behavior/fn");
+  ni"ni:/behavior/anonymous_fn_init");
 _

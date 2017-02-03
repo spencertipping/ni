@@ -8,7 +8,7 @@ no strict 'refs';
 ni::name('ni:/behavior/slice' =>
   bless {
     methods => {
-      apply => sub {
+      apply => fn q{
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
         return if $$self{applied_to}{$p}++;
@@ -31,7 +31,7 @@ ni('ni:/behavior/slice')->{methods}->{apply}
 ni::name('ni:/behavior/slice_init' =>
   bless {
     methods => {
-      instantiate => sub {
+      instantiate => fn q{
         my $class = shift;
         my @isa;
         push @isa, shift while ref $_[0];
@@ -42,7 +42,7 @@ ni::name('ni:/behavior/slice_init' =>
           methods => {%args}};
       },
 
-      instantiation => sub {
+      instantiation => fn q{
         my $self = shift;
         (@{$$self{isa}},
          %{$$self{methods}},
@@ -57,14 +57,14 @@ ni('ni:/behavior/slice_init')->apply('/behavior/slice');
 ni::name('ni:/behavior/lifecycle' =>
   bless {
     methods => {
-      new => sub {
+      new => fn q{
         my $class = shift;
         my $self  = bless $class->instantiate(@_),
                     ref($class) ? $class->package : $class;
         $_->($self, @_) for values %{ref($self) . "::ctors"};
         $self;
       },
-      DESTROY => sub {
+      DESTROY => fn q{
         my $self = shift;
         $_->($self) for values %{ref($self) . "::dtors"};
       }
@@ -76,7 +76,7 @@ ni('ni:/behavior/lifecycle')->apply('/behavior/slice');
 ni::name(
   'ni:/behavior/tag' =>
     '/behavior/slice'->new(
-      apply => sub {
+      apply => fn q{
         my ($self, $p) = @_;
         $_->apply($p) for @{$$self{slices}};
         $self;
@@ -84,14 +84,14 @@ ni::name(
 
   'ni:/behavior/branch' =>
     '/behavior/slice'->new(
-      apply => sub {
+      apply => fn q{
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
         return if $$self{applied_to}{$p}++;
         $_->apply($p) for @{$$self{slices}};
         $self;
       },
-      add => sub {
+      add => fn q{
         my $self = shift;
         push @{$$self{slices}}, @_;
         for my $p (keys %{$$self{applied_to}}) {$_->apply($p) for @_}
@@ -101,24 +101,24 @@ ni::name(
 ni::name(
   'ni:/behavior/named' =>
     '/behavior/slice'->new(
-      '(""' => sub {shift->name},
-      name  => sub {my $s = shift; $s->namespace . ":$$s{name}"}));
+      '(""' => fn q{shift->name},
+      name  => fn q{my $s = shift; $s->namespace . ":$$s{name}"}));
 
 ni::name(
   'ni:/behavior/ni_namespaced' =>
-    '/behavior/slice'->new(namespace => sub {'ni'}),
+    '/behavior/slice'->new(namespace => fn q{'ni'}),
 
   'ni:/behavior/mapped_to_package' =>
-    '/behavior/slice'->new(package => sub {shift->{name}}),
+    '/behavior/slice'->new(package => fn q{shift->{name}}),
 
   'ni:/behavior/named_transient' =>
     '/behavior/slice'->new(
       ni"ni:/behavior/named",
-      ctor => sub {my $s = shift; Scalar::Util::weaken($ni::named{$s->name} = $s)},
-      dtor => sub {delete $ni::named{shift->name}}),
+      ctor => fn q{my $s = shift; Scalar::Util::weaken($ni::named{$s->name} = $s)},
+      dtor => fn q{delete $ni::named{shift->name}}),
 
   'ni:/behavior/named_persistent' =>
     '/behavior/slice'->new(
       ni"ni:/behavior/named",
-      ctor => sub {my $self = shift; ni::name($self->name, $self)}));
+      ctor => fn q{my $self = shift; ni::name($self->name, $self)}));
 _
