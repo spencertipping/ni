@@ -624,7 +624,7 @@ ABCdefgh
 
 However, as you might expect from Perl, there is a syntax that allows `s` to return the value; however, this will not work on Perls before 5.12 or 5.14.
 
-```bash
+```
 $ ni iabcdefgh p's/abc/ABC/r'
 ABCdefgh
 ```
