@@ -46,40 +46,24 @@ It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one th
 ###`n`: Integer Stream
 `ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
 
-```
-$ ni n10
-```
- will drop you into a screen that looks like this:
-
-```
+```bash
+$ ni n5
 1
 2
 3
 4
 5
-6
-7
-8
-9
-10
-(END)
 ```
 
 If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
 
 `ni n0` gives you consecutive integers starting from zero. For example:
 
-```
+```bash
 $ ni n03
-```
-
-yields
-
-```
 0
 1
 2
-(END)
 ```
 
 To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 3.2 x 10<sup>5</sup> consecutive integers, starting from 1.
@@ -92,13 +76,8 @@ Without an argument, `ni n` and ni `n0` give an infinite stream of consecutive i
 
 `ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
 
-```
+```bash
 $ ni e'seq 500 | grep 22'
-```
-
-yields: 
-
-```
 22
 122
 220
@@ -113,18 +92,12 @@ yields:
 229
 322
 422
-(END)
 ```
 
 You can also link bash operators with stream operators (and all of the rest of the operators we'll introduce), for example:
 
 ```
 $ ni n100 e'grep -E "(.)\1"'
-```
-
-Which yields:
-
-```
 11
 22
 33
@@ -135,40 +108,32 @@ Which yields:
 88
 99
 100
-(END)
 ```
 
 If you find regular expression used above hard to understand, here's a [StackExchange post](http://unix.stackexchange.com/questions/70933/regular-expression-for-finding-double-characters-in-bash) that explains it.
 
-##File Output
-```
-$ ni n10 \>ten.txt
-```
+##File I/O
 
-Running this command will drop you into `less` with this as output:
-
-```
-ten.txt
-(END)
-```
 
 The directory you ran this command from, you should have a file called `ten.txt`.  If you open `ten.txt` in your text editor of choice, you should find the integers from 1 to 10, each printed on its own line.
-
 
 ###`\>`: Output and Emit File Name
 
 `ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
+```bash
+$ ni n10 \>ten.txt
+ten.txt
+```
+
 Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
 
-##File Input
-`$ ni ten.txt ten.txt`
+###File Input
 
-If you don't have the `ten.txt` file in your current directory, run `$ ni n10 \>ten.txt`.
+If you don't have the `ten.txt` file in your current directory, run `$ ni n10 \>ten.txt`. Files are appended to the stream  
 
-This should yield:
-
-```
+```bash
+$ ni ten.txt ten.txt
 1
 2
 3
@@ -189,27 +154,24 @@ This should yield:
 8
 9
 10
-(END)
 ```
 
 Entering the name of a file at the command line will cause `ni` to `cat` the contents of the file into the stream. If more than one file name is entered, they will be added to the stream in order. `ni` also automatically decompresses most common formats, including gzip, bzip, xzip, lzo, and lz4.
 
 **WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
 
-```
-$ ni n5 \>n10
-$ ni n10
+```bash
+$ ni n5 \>n1.3E5
+n1.3E5
 ```
 
-yields:
-
-```
+```bash
+$ ni n1.3E5
 1
 2
 3
 4
 5
-(END)
 ```
 because `ni` is reading from the file named `n10`.
 
@@ -224,25 +186,27 @@ As you advance through this tutorial, or start working with `ni` spells written 
 
 For this, use `ni --explain ...`. Using the example from the file output section:
 
-```
+```bash
 $ ni --explain n10 \>ten.txt
 ["n",1,11]
 ["file_write","ten.txt"]
 ```
 
-Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parsleyer interprets the 
-
-From now on, we'll use `ni --explain ...` to start the analysis of each of the spells we write. 
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
 
 
 ##Stream Duplication and Compression
-`$ ni n10 =[\>ten.txt] z\>ten.gz`
+In this section, we'll cover two useful operations
 
-Running the spell puts us back in `less`:
+We recognize the first and last operators instantly; the middle two operators are new.
 
-```
+###`=[...]`: Divert Stream
+
+The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
+
+```bash
+$ ni n10 =[\>ten.txt] z\>ten.gz
 ten.gz
-(END)
 ```
 
 The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
@@ -251,7 +215,7 @@ To examine the contents
 
 Let's take a look at this with `--explain`:
 
-```
+```bash
 $ ni --explain n10 =[\>ten.txt] z\>ten.gz
 ["n",1,11]
 ["divert",["file_write","ten.txt"]]
@@ -259,9 +223,6 @@ $ ni --explain n10 =[\>ten.txt] z\>ten.gz
 ["file_write","ten.gz"]
 ```
 
-We recognize the first and last operators instantly; the middle two operators are new.
-
-###`=[...]`: Divert Stream
 
 Looking at the output of `ni --explain`:
 
@@ -287,9 +248,10 @@ This more aesthetically-pleasing statement is the preferred `ni` style. The lack
 
 Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell. `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). 
 
-`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ ni ten.gz` or `$ cat ten.gz | ni`, which returns:
+`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ ni ten.gz` or `$ cat ten.gz | ni`.
 
-```
+```bash
+$ cat ten.gz | ni
 1
 2
 3
@@ -300,7 +262,6 @@ Compression is fundamental to improving throughput in networked computation, and
 8
 9
 10
-(END)
 ```
 
 as we would expect.
@@ -312,14 +273,14 @@ as we would expect.
 
 Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
 
-```
+```bash
 $ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l
-      3
+3
 ```
 
 Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
 
-```
+```bash
 $ ni --explain n10 =z\>ten.gz r3 \>tens.txt \<
 ["n",1,11]
 ["divert",["sh","gzip"],["file_write","ten.gz"]]
@@ -391,12 +352,11 @@ abj     udg     e
 abl     est     
 abo     lis     h
 abo     rti     vely
-(END)
 ```
 
 Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
 
-```
+```bash
 $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
 ["cat","/usr/share/dict/words"]
 ["row_every",40]
@@ -460,14 +420,13 @@ One of the complicated aspects of `ni` is that the Perl operator `p'...'` requir
 
 In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
 
-```
-$ ni 1p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
-1       2       3
-2       4       6
-3       6       9
-4       8       12
-5       10      15
-(END)
+```bash
+$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
+1	2	3
+2	4	6
+3	6	9
+4	8	12
+5	10	15
 ```
 
 Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
@@ -498,7 +457,6 @@ H
 Y
 1
 Y
-(END)
 ```
 
 Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
@@ -524,14 +482,10 @@ Examples:
 * `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
 
-  
-
-```
-
 ##Basic Column Operations
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA`
 
-```
+
+```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
 ed      iss
 rdize   sta
 iature  rev
@@ -541,12 +495,11 @@ l       gai
 e       udg
 h       lis
 vely    rti
-(END)
 ```
 
 Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.
 
-```
+```bash
 $ ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
 ["cat","/usr/share/dict/words"]
 ["row_every",40]
@@ -595,6 +548,7 @@ The operations in this section complete the set of column generation and access;
 * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
 * `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
 * `FC`: split on commas (doesn't handle special CSV cases)
+* `FD`: split on forward slashes
 * `FV`: parse CSV "correctly," up to newlines in fields
 * `FS`: split on runs of horizontal whitespace
 * `FW`: split on runs of non-word characters
@@ -627,9 +581,8 @@ If you're not convinced that anything could go slow in `ni`, let's try counting 
 
 You'll probably see the `ni` monitor for the first time, showing the steps of the computation, and what steps are taking time.  The whole process takes about 90 seconds on my computer.
 
-```
+```bash
 $ ni --explain /usr/share/dict/words F// pF_ gc \>letter_counts.txt
-ni --explain /usr/share/dict/words F// pF_ gc \>letter_counts.txt
 ["cat","/usr/share/dict/words"]
 ["split_regex",""]
 ["perl_mapper","F_"]
@@ -671,7 +624,7 @@ The command from the `g` section can be rewritten as:
 
 **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
 
-##Conclusion of Chapter 1
+##Conclusion
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
 If you've only done this tutorial, you might be a little disappointed that your productivity as a programmer hasn't increased by much yet. Don't worry; when we start talking about Hadoop streaming operations in [Chapter 2](ni_by_example_2.md), you'll see your productivity grow by leaps and bounds. We'll see you in the next tutorial.

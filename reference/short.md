@@ -340,6 +340,7 @@
 	| '/' <regex> -> {split_regex_op $_}
 	| ':' /./ -> {split_chr_op   $_}
 	| 'C' '' -> {split_chr_op   ','}
+	| 'D' '' -> {split_chr_op   '\/'}
 	| 'P' '' -> {split_chr_op   '|'}
 	| 'S' '' -> {split_regex_op '\s+'}
 	| 'V' '' -> {split_proper_csv_op}
