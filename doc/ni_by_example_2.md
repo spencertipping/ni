@@ -463,7 +463,7 @@ Checkpoints and files share many commonalities. The key difference between a che
 An example of checkpoint use is the following:
 
 ```bash
-$ ni n1000000gr4 :numbers
+$ ni nE6gr4 :numbers
 1
 10
 100
@@ -474,7 +474,7 @@ This computation will take a while, because `g` requires buffering to disk; Howe
 
 
 ```bash
-$ ni n1000000gr4 :numbers O
+$ ni nE6gr4 :numbers O
 1000
 100
 10
@@ -484,7 +484,7 @@ $ ni n1000000gr4 :numbers O
 Compare this to the same code writing to a file:
 
 ```
-$ ni n1000000gr4 =\>numbers
+$ ni nE6gr4 =\>numbers
 1000
 100
 10
@@ -494,7 +494,7 @@ $ ni n1000000gr4 =\>numbers
 Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
 
 ```
-$ ni n1000000gr4 =\>numbers O
+$ ni nE6gr4 =\>numbers O
 1000
 100
 10

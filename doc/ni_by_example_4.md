@@ -203,7 +203,7 @@ Copyright (c) 2016 Spencer Tipping | MIT license	4
 `W` operates like `w`, except its output column is prepended. 
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' Wn
+$ ni 1p'"a".."e"' p'split / /' Wn
 1	a
 2	b
 3	c
@@ -217,7 +217,7 @@ $ ni e'echo {a..e}' p'split / /' Wn
 We can upper-case the letters in the previous example via:
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' Wn p'r a, uc(b)'
+$ ni 1p'"a".."e"' p'split / /' Wn p'r a, uc(b)'
 1	A
 2	B
 3	C
@@ -228,7 +228,7 @@ $ ni e'echo {a..e}' p'split / /' Wn p'r a, uc(b)'
 However `ni` also offers a shorter syntax using the `v` operator.
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' Wn vBpuc
+$ ni 1p'"a".."e"' p'split / /' Wn vBpuc
 1	A
 2	B
 3	C
@@ -249,8 +249,8 @@ Streaming joins are performed by matching two sorted streams on the value of the
 
 Example:
 
-```bash
-$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
+```
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
 a	5	1	a
 b	4	2	b
 c	3	3	c
@@ -261,7 +261,7 @@ e	1	5	e
 This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA
 a	5
 b	4
 c	3
@@ -272,7 +272,7 @@ e	1
 This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters]
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters]
 a	5
 b	4
 c	3
@@ -288,7 +288,7 @@ e
 We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn
 a	5	1
 b	4	2
 c	3	3
@@ -305,7 +305,7 @@ We append another column of numbers; note that `w` adds new columns to every row
 
 
 ```bash
-$ ni e'echo {a..e}' p'split / /' :letters gA- wn gA +[letters] wn gABn
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn
 a	5	1
 a	6
 b	4	2
@@ -319,6 +319,7 @@ e	10
 ```
 
 We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
+
 
 
 ###`Y` - dense-to-sparse transformation

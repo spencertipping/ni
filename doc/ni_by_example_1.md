@@ -275,7 +275,7 @@ Running the spell, we are not dropped into a `less` environment; the output has 
 
 ```bash
 $ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l
-       3
+3
 ```
 
 Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
