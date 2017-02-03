@@ -76,7 +76,7 @@ use constant numpy_gen => gen pydent q{
   while True:
     try:
       dimensions = fromstring(stdin.read(8), dtype=">u4", count=2)
-    except Exception as e:
+    except:
       exit()
     x = fromstring(stdin.read(8*dimensions[0]*dimensions[1]),
                    dtype="d",
