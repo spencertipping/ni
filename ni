@@ -3609,7 +3609,7 @@ defoperator script => q{
 };
 1 core/col/lib
 col.pl.sdoc
-185 core/col/col.pl.sdoc
+187 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -3664,6 +3664,7 @@ Adapters for input formats that don't have tab delimiters. Common ones are,
 with their split-spec mnemonics:
 
 | commas:       C
+  slashes:      D
   "proper CSV": V
   pipes:        P
   whitespace:   S
@@ -3688,6 +3689,7 @@ defoperator split_proper_csv => q{
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
     'C' => pmap(q{split_chr_op   ','},               pnone),
+    'D' => pmap(q{split_chr_op   '\/'},               pnone),
     'V' => pmap(q{split_proper_csv_op},              pnone),
     'P' => pmap(q{split_chr_op   '|'},               pnone),
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
