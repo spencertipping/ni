@@ -1,4 +1,3 @@
-ni->module('/lib/class', code => <<'_');
 use strict;
 use warnings;
 no strict 'refs';
@@ -85,4 +84,3 @@ delete ${'/class/fn::'}{new};
 '/class/class'->new('/class/fn',
   ni"ni:/behavior/lifecycle",
   ni"ni:/behavior/anonymous_fn_init");
-_

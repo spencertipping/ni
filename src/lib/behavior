@@ -1,4 +1,3 @@
-ni->module('/lib/behavior', code => <<'_');
 use strict;
 use warnings;
 use Scalar::Util;
@@ -121,4 +120,3 @@ ni::name(
     '/behavior/slice'->new(
       ni"ni:/behavior/named",
       ctor => fn q{my $self = shift; ni::name($self->name, $self)}));
-_

@@ -1,4 +1,4 @@
-ni->module('/lib/fn', code => <<'_');
+BEGIN{ni->module('/lib/fn', code => <<'_')}
 use strict;
 use warnings;
 no strict 'refs';
