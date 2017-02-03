@@ -393,8 +393,8 @@ These operations are mostly self-explanatory; jitter is often used for `ni --js`
 You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
 
 ```bash
-$ ni n1E4 fAAA ,aA ,sB, dC r~1
-5000.5  50005000        1
+$ ni nE4 fAAA ,aA ,sB, ,dC r~1
+5000.5	50005000	1
 ```
 
 
@@ -433,9 +433,8 @@ $ ni i[34.058566 -118.416526] p'ghe(a, b, 7)'
 9q5cc25
 ```
 
-
 ```bash
-ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
+$ ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
 10407488581
 ```
 
@@ -515,10 +514,9 @@ A specific format string can also be provided, in which case `tep` is called as 
 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
-2017    1       22      2       41      13
-(END)
+2017	1	22	2	41	13
 ```
 
 This correction cuts the globe into 4-minute strips by degree of longitude.
@@ -550,22 +548,19 @@ Regexes should be designed to fail quickly, so reduce the number of possible eva
 ####String Slicing with Regex
 I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
 
-```
+```bash
 $ ni iabcdefgh p'/^(.*).{4}$/'  #[:-4] in Python
 abcd
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'/^.{3}(.*)$/' #[3:] in Python
 defgh
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'/^.*(.{2})$/' #[-2:] in Python
 gh
-(END)
 ```
 
 ####Using Capture Groups
@@ -576,22 +571,19 @@ This will get capture groups and store them in `@v`. Using parentheses around `$
 
 For example:
 
-```
+```bash
 $ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
-a       b
-(END)
+a	b
 ```
 
-```
+```bash
 $ ni iabcdefgh p'my ($w) = /^(.)/; r $w'
 a
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
-a       b
-(END)
+a	b
 ```
 
 
@@ -599,56 +591,50 @@ a       b
 
 These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
 
-```
+```bash
 $ ni iabcdefgh p'tr/a-z/A-Z/'
 8
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p's/abc/ABC/'
 1
-(END)
 ```
 
 The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
 This also will give somewhat-surprising behavior to code like:
 
-```
+```bash
 $ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
 8
 ```
 
 Instead, these operators work as side-effects.
 
-```
+```bash
 $ ni iabcdefgh p'tr/a-z/A-Z/; $_'
 ABCDEFGH
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p's/abc/ABC/; $_'
 ABCdefgh
-(END)
 ```
 
 However, as you might expect from Perl, there is a syntax that allows `s` to return the value; however, this will not work on Perls before 5.12 or 5.14.
 
-```
+```bash
 $ ni iabcdefgh p's/abc/ABC/r'
 ABCdefgh
-(END)
 ```
 
 ###`map`
 
 `map` takes two arguments, a block of code and a perl array, and returns an array.
 
-```
+```bash
 $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r @v'
-aa      bb      cc      dd      ee      ff      gg      hh
-(END)
+aa	bb	cc	dd	ee	ff	gg	hh
 ```
 
 This code is complicated if you haven't been exposed to the syntax before, so let's break it down.
@@ -656,18 +642,16 @@ This code is complicated if you haven't been exposed to the syntax before, so le
 The block that `map` is using is easy to spot--it's some code wrapped in curly braces, so that's `{$_ x 2}`. Because a `map` block will operate on one argument at a time, we refer to that argument as `$_` (unlike subroutine syntax, which takes its arguments in the array `@_`). The `$_` within the block is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
 
 
-```
+```bash
 $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
 abcdefgh
-(END)
 ```
 
 Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
 
-```
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_, r @v'
-aa      bb      cc      dd      ee      ff      gg      hh
-(END)
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r @v'
+aa	bb	cc	dd	ee	ff	gg	hh
 ```
 
 Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
@@ -675,7 +659,7 @@ Another facet of the map syntax is that there is no comma between the block and 
 ###`for`
 `for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
 
-```
+```bash
 $ ni iabcdefgh p'r $_ x 2 for split //'
 aa
 bb
@@ -685,7 +669,6 @@ ee
 ff
 gg
 hh
-(END)
 ```
 
 This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
@@ -717,23 +700,21 @@ You can get the first 17 tab-delimited columns using the Ruby `a` through `q` op
 
 To fix the example above, you need to run:
 
-```
+```bash
 $ ni n4m'r a, ai + 1'
-1   2
-2   3
-3   4
-4   5
-(END)
+1	2
+2	3
+3	4
+4	5
 ```
 
 ###`m'fields'`: Array of fields.
 Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
-```
-$  ni //license FWr2m'r fields[0..3]'
-ni      https   github  com
-Copyright       c       2016    Spencer
-(END)
+```bash
+$ ni //license FWr2m'r fields[0..3]'
+ni	https	github	com
+Copyright	c	2016	Spencer
 ```
 
 ###`m'r ...'`: Print row
@@ -747,8 +728,9 @@ Lisp is in the same boat as Ruby, as a language that `ni` supports. Lisp operate
 
 So, if Ruby has gems, why even support Lisp? Here's why:
 
-```
-ni n4fAA l"(r (sr ('+ a) ('* b)))"
+```bash
+$ ni n4fAA l"(r (sr ('+ a) ('* b)))"
+10	24
 ```
 
 Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
