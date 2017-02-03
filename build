@@ -3,7 +3,6 @@
 cd $(dirname $0)
 
 cat src/boot \
-    src/lib/fn \
     src/lib/behavior \
     src/lib/class \
   > ni0

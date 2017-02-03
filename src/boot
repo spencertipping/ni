@@ -24,21 +24,24 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 BEGIN{eval($ni::boot = <<'_');}
-$ni::self = bless {record => []}, '/class/ni';
+$ni::self = bless {}, '/class/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
 sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}
 sub ni::eval {eval shift}
-*{"/class/ni::module"} = sub {
-  my ($self, $name, %args) = @_;
-  $args{name} = $name;
-  push @{$self->{record}}, \%args;
-  ni::eval($args{code}),
-    $@ && die "$@ evaluating ni.module:$args{name}" if exists $args{code};
-};
 *{"/class/ni::def"} = sub {
   my ($self, %kvs) = @_;
   *$_ = $kvs{$_} for keys %kvs;
 };
+*{'/class/fn::new'} = sub {
+  my ($class, $code) = @_;
+  my $fn = ni::eval "sub{$code\n}";
+  die "ni:/class/fn failed to compile $code: $@\n" if $@;
+  bless {code => $code, fn => $fn}, $class;
+};
+*{'/class/fn::(('}    = sub {};
+*{'/class/fn::(&{}'}  = sub {shift->{fn}};
+*{'/class/fn::(bool'} = sub {1};
+sub fn($) {'/class/fn'->new(shift)}
 _
 die "$@ evaluating ni boot code" if $@;
 
