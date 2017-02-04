@@ -6,7 +6,6 @@ cat src/boot \
     src/lib/behavior \
     src/lib/class \
     src/lib/fn \
-    src/lib/quote \
     src/lib/image \
   > ni0
 

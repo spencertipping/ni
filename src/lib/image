@@ -14,6 +14,17 @@ ni->defclass('image',
   ni->defslice('image_quoting',
     gensym => fn q{'$g' . shift->{gensym_n}++},
 
+    '(""' => fn q{
+      my $self = shift;
+      join "\n",
+        "#!/usr/bin/env perl",
+        "\$ni::license = <<'_';", $ni::license, "_",
+        "BEGIN{eval(\$ni::boot = <<'_')}", $ni::boot, "_",
+        map("my $_=$$self{gensyms}{$_};", @{$$self{ordering}}),
+        "ni->run(\@ARGV);",
+        "__DATA__\n";
+    },
+
     quote => fn q{
       my $self = shift;
       my $a = Scalar::Util::refaddr(ref $_[0] ? $_[0] : \$_[0]);
@@ -48,6 +59,6 @@ ni->defclass('image',
       my $class    = $self->quote_scalar(ref $_[0]);
       my $quote_fn = 'quote_' . lc Scalar::Util::reftype($_[0]);
       my $quoted   = $self->$quote_fn($_[0]);
-      
+      ni("ni:$class")->serialize($self) if exists $ni::named{"ni:$class"};
       "bless($quoted,$class)";
     }));

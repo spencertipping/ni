@@ -51,5 +51,5 @@ ni('ni:/class/class')->add(ni('ni:/behavior/class_method_def'));
 ni('ni:/class/class')->new('/class/ni');
 
 ni('ni:/class/ni')->def(
-  defclass => fn q{ni('ni:/class/class')->new("/class/$_[0]", @_[1..$#_])},
-  defslice => fn q{ni('ni:/class/slice')->new("/behavior/$_[0]", @_[1..$#_])});
+  defclass => fn q{shift; ni('ni:/class/class')->new("/class/$_[0]", @_[1..$#_])},
+  defslice => fn q{shift; ni('ni:/class/slice')->new("/behavior/$_[0]", @_[1..$#_])});
