@@ -7,12 +7,13 @@ cat src/boot \
     src/lib/class \
     src/lib/fn \
     src/lib/image \
+    src/lib/main \
   > ni0
 
 echo "initially $(wc -c < ni0) bytes"
 
-perl ni0 //ni > ni && cp ni ni0 || exit $?
-perl ni0 //ni > ni || exit $?
+perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+perl ni0 --internal/image > ni || exit $?
 
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
   echo 'ni is unstable under replication'

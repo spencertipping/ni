@@ -4,23 +4,23 @@ ni->defclass('image',
       my $class = shift;
       my %include;
       @include{@_} = map 1, @_;
-      +{include  => \%include,
-        gensym_n => 0,
-        gensyms  => {},
-        visited  => {},
-        ordering => []};
+      +{include     => \%include,
+        gensym_n    => 0,
+        definitions => {},
+        visited     => {},
+        ordering    => []};
     }),
 
   ni->defslice('image_quoting',
     gensym => fn q{'$g' . shift->{gensym_n}++},
 
-    '(""' => fn q{
+    str => fn q{
       my $self = shift;
       join "\n",
         "#!/usr/bin/env perl",
-        "\$ni::license = <<'_';", $ni::license, "_",
-        "BEGIN{eval(\$ni::boot = <<'_')}", $ni::boot, "_",
-        map("my $_=$$self{gensyms}{$_};", @{$$self{ordering}}),
+        "\$ni::license=<<'_';", $ni::license, '_',
+        "BEGIN{eval(\$ni::boot=<<'_')}", $ni::boot, '_',
+        @{$$self{definitions}}{@{$$self{ordering}}},
         "ni->run(\@ARGV);",
         "__DATA__\n";
     },
@@ -29,36 +29,88 @@ ni->defclass('image',
       my $self = shift;
       my $a = Scalar::Util::refaddr(ref $_[0] ? $_[0] : \$_[0]);
       return $$self{visited}{$a} if exists $$self{visited}{$a};
-      my $gs = $$self{visited}{$a} = $self->gensym;
-      $$self{gensyms}{$gs} = $self->quote_value(shift);
-      push @{$$self{ordering}}, $gs;
-      $gs;
+      $self->allocate_gensym($a, $self->quote_value(shift));
+    },
+
+    allocate_gensym => fn q{
+      my ($self, $a) = @_;
+      my $g = $$self{visited}{$a} = $self->gensym;
+      $$self{definitions}{$g} = "my $g=" . $_[2] . ";";
+      push @{$$self{ordering}}, $g;
+      $g;
+    },
+
+    side_effect => fn q{
+      my $self = shift;
+      my $g = $self->gensym;
+      $$self{definitions}{$g} = shift;
+      push @{$$self{ordering}}, $g;
+      $self;
     },
 
     quote_value => fn q{
       my $self = shift;
-      return $self->quote_scalar(shift) unless defined ref $_[0];
+      return $self->quote_scalar(shift) unless ref $_[0];
       return $self->quote_array(shift)  if 'ARRAY' eq ref $_[0];
       return $self->quote_hash(shift)   if 'HASH'  eq ref $_[0];
       $self->quote_object(shift);
     },
 
     quote_hash   => fn q{my $self = shift; '{' . join(',', map $self->quote($_), %{+shift}) . '}'},
-    quote_array  => fn q{my $self = shift; '[' . join(',', map $self->quote($_), %{+shift}) . ']'},
+    quote_array  => fn q{my $self = shift; '[' . join(',', map $self->quote($_), @{+shift}) . ']'},
     quote_scalar => fn q{
       my $v = shift;
       return 'undef' unless defined $v;
       return $v if Scalar::Util::looks_like_number $v;
-      $v =~ s/([\\'])/\\$1/g;
+      $v =~ s/([\\\\'])/\\\\$1/g;
       "q'$v'";
+    },
+
+    quote_blessed => fn q{
+      my $self     = shift;
+      my $class    = $_[1] || ref $_[0];
+      my $quote_fn = 'quote_' . lc Scalar::Util::reftype $_[0];
+      my $quoted   = $self->$quote_fn($_[0]);
+      ni("ni:$class")->serialize($self) if exists $ni::named{"ni:$class"};
+      "bless($quoted," . $self->quote_scalar($class) . ")";
     },
 
     quote_object => fn q{
       my $self = shift;
-      return $_[0]->serialize($self) if $_[0]->can('serialize');
-      my $class    = $self->quote_scalar(ref $_[0]);
-      my $quote_fn = 'quote_' . lc Scalar::Util::reftype($_[0]);
-      my $quoted   = $self->$quote_fn($_[0]);
-      ni("ni:$class")->serialize($self) if exists $ni::named{"ni:$class"};
-      "bless($quoted,$class)";
+      return shift->serialize($self) if $_[0]->can('serialize');
+      $self->quote_blessed(@_);
     }));
+
+ni('ni:/class/class')->def(
+  serialize => fn q{
+    my ($self, $quote) = @_;
+    $quote->allocate_gensym(
+      Scalar::Util::refaddr($self),
+      $quote->quote_blessed($self));
+  });
+
+ni('ni:/class/fn')->def(
+  serialize => fn q{
+    my ($self, $quote) = @_;
+    my $g = $quote->allocate_gensym(
+      Scalar::Util::refaddr($self),
+      $quote->quote_blessed({code        => $$self{code},
+                             annotations => $$self{annotations}}, ref $self));
+    $quote->side_effect("$g->compile;");
+    $g;
+  });
+
+ni('ni:/class/slice')->def(
+  serialize => fn q{
+    my ($self, $quote) = @_;
+    my %methods;
+    @methods{keys %{$$self{methods}}} =
+      map $quote->quote($_), values %{$$self{methods}};
+    for my $p (sort keys %{$$self{applied_to}}) {
+      my $qp = $quote->quote_scalar("$p\::");
+      $quote->side_effect("\*{$qp}{$_}=$methods{$_};") for sort keys %methods;
+    }
+    $quote->allocate_gensym(
+      Scalar::Util::refaddr($self),
+      $quote->quote_blessed($self));
+  });

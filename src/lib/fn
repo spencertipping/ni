@@ -2,12 +2,16 @@ ni->defslice('fn_init',
   instantiate => fn q{
     my $class = shift;
     my $code  = pop;
-    my $fn    = ni::eval "sub {$code\n}";
-    die "ni:/behavior/fn_init: failed to compile $code: $@" if $@;
     +{code        => $code,
-      annotations => [@_],
-      fn          => $fn};
-  });
+      annotations => [@_]};
+  },
+  compile => fn q{
+    my $self = shift;
+    $$self{fn} = ni::eval "sub{$$self{code}\n}";
+    die "ni:/behavior/fn_init: failed to compile $$self{code}: $@" if $@;
+    $self;
+  },
+  ctor => fn q{shift->compile});
 
 # NB: this is a one-off that won't appear in the serialized image. It does
 # constrain the serialization protocol, though, in that we can't rely on method

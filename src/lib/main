@@ -1,0 +1,14 @@
+ni('ni:/class/ni')->def(
+  run => fn q{
+    my $self = shift;
+    exit $self->$1(@_) if $_[0] =~ /^--(.*)/ && $self->can($1);
+    exit $self->default(@_);
+  },
+
+  'internal/image' => fn q{
+    my $self = shift;
+    my $q = ni('ni:/class/image')->new;
+    $q->quote($self);
+    print $q->str, "\n";
+    0;
+  });
