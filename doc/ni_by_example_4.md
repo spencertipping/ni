@@ -345,12 +345,22 @@ $ ni //license FW Y r10
 ```
 
 ### `X` - sparse-to-dense transformation
-`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
+`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specialfication for what the input matrix must look like is described above in the `Y` operator.
 
 ```bash
 $ ni //license FW Y r10 X
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer
+```
+
+###`Z<n_cols>` - unflatten
+`Z` takes data in the form of a single column and returns the same data reshaped into rows with the specified number of columns. Any overhanging data is pushed onto an incomplete row.
+
+```bash
+$ ni 1p'"a".."l"' Z4
+a       b       c       d
+e       f       g       h
+i       j       k       l
 ```
 
 ##Cell Operations
@@ -379,12 +389,21 @@ That means we had about 200,000 hash collisions in 40 million IDs, a rate of abo
 
 
 ###Cell Math Operations
-* `,e`: Natural exponential e<sup>x</sup>
-* `,l`: Natural log (`ln x`)
+* `,e<b>`: exponent b<sup>x</sup> -- deafults to e<sup>x</sup>
+* `,l<b>`: logarithm (log<sub>b</sub>x) -- defaults to natural log
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,q<amt>`: Round to the nearest integer multiple of `<amt>`
 
 These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color.
+
+```bash
+$ ni n5 fAAAAAA ,eB ,eC2 ,lD ,lE3 ,eF ,lF
+1       2.71828182845905        2       0       0       1
+2       7.38905609893065        4       0.693147180559945       0.630929753571457       2
+3       20.0855369231877        7.99999999999999        1.09861228866811        1       3
+4       54.5981500331442        16      1.38629436111989        1.26185950714291        4
+5       148.413159102577        31.9999999999999        1.6094379124341 1.46497352071793        5
+``` 
 
 ###Column Math Operations
 * `,a`: Running average

@@ -26,7 +26,7 @@
 	
 	  my ($cs, $base) = @_;
 	  my $eb = log $base;
-	  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+	  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 
 # OPERATOR cell_log
 
