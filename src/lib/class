@@ -1,7 +1,3 @@
-use strict;
-use warnings;
-no strict 'refs';
-
 ni::name(
   'ni:/behavior/class_init' =>
     '/behavior/slice'->new(
@@ -22,6 +18,17 @@ ni::name(
 
 # TODO: how do we implement a metaclass protocol if we don't have inheritance?
 # Branches don't create subclasses; that's about instantiation.
+#
+# Maybe the implementation here is that each class has a backing metaclass like
+# in ST-80, but they're built from meta-slices? I'm not sure the pairing makes
+# sense here. If we have MC -> C, then MS1 + MS2 -> S1 + S2?
+#
+# More to the point ... does this really solve the problem? If MS1 instanceof
+# MS, then its ->new is fixed by MS -- but if S1 instanceof MS1, then S1's
+# ->new is free. Is this good enough? (It has to be: any instance methods must
+# all come from a class.)
+#
+# How about this.
 
 ni('ni:/behavior/class_init')->apply('/class/class');
 ni('ni:/behavior/branch')->apply('/class/class');
@@ -59,8 +66,7 @@ ni::name('ni:/behavior/slice_named_init' =>
   ni"ni:/behavior/slice",
   ni"ni:/behavior/slice_named_init");
 
-'/class/slice'->new("/behavior/$_" =>
-                    ni("ni:/behavior/$_")->instantiation)
+'/class/slice'->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiation)
   for qw/slice slice_init lifecycle tag branch named ni_namespaced
          mapped_to_package named_transient named_persistent class_init
          slice_named_init/;
