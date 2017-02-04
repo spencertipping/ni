@@ -5,6 +5,8 @@ cd $(dirname $0)
 cat src/boot \
     src/lib/behavior \
     src/lib/class \
+    src/lib/fn \
+    src/lib/quote \
   > ni0
 
 echo "initially $(wc -c < ni0) bytes"

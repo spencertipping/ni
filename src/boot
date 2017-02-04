@@ -30,6 +30,7 @@ sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}
 sub ni::eval {eval shift}
 *{"/class/ni::def"} = sub {
   my ($self, %kvs) = @_;
+  $ni::named{"ni.def:$_"} = $kvs{$_} for keys %kvs;
   *$_ = $kvs{$_} for keys %kvs;
 };
 *{'/class/fn::new'} = sub {

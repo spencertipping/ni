@@ -1,0 +1,20 @@
+'/class/slice'->new('/behavior/anonymous_fn_init',
+  instantiate => fn q{
+    my $class = shift;
+    my $code  = pop;
+    my $fn = ni::eval "sub {$code\n}";
+    die "ni:/behavior/anonymous_fn_init: failed to compile $code: $@" if $@;
+    +{code        => $code,
+      annotations => [@_],
+      fn          => $fn};
+  });
+
+# NB: this is a one-off that won't appear in the serialized image. It does
+# constrain the serialization protocol, though, in that we can't rely on method
+# calls against slices to reconstruct our state. (We have to construct the
+# objects and packages separately.)
+delete ${'/class/fn::'}{new};
+
+'/class/class'->new('/class/fn',
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/anonymous_fn_init");

@@ -34,23 +34,6 @@ ni::name('ni:/behavior/slice_named_init' =>
       $self;
     }));
 
-# TODO: here's the problem.
-# ni:/class/slice is an instance of ni:/class/class, whose package is
-# /class/class. /class/class is an instance of itself. Because of this instance
-# relationship, /class/slice->new is the instance-method version of
-# '/class/class'->new -- there's no distinction.
-#
-# So the object form ni("foo")->new is analogous to
-# ref(ni("foo"))->new(ni("foo")) -- not the usual instantiation strategy. This
-# seems like a real problem in a world where perl-style instantiation is even a
-# remote possibility. Need to think about how to resolve this.
-#
-# I think the ST-80 metaclass protocol solves this for us. (Eh, not quite --
-# see doc/internal/class.)
-#
-# Invariant we want: ni("ni:/foo/bar")->new == "/foo/bar"->new
-# ...or, "/foo/bar"->new fails miserably. Either is totally fine.
-
 '/class/class'->new('/class/slice',
   ni"ni:/class/behavior",
   ni"ni:/behavior/slice",
@@ -63,20 +46,3 @@ ni::name('ni:/behavior/slice_named_init' =>
 
 '/class/slice'->new('/behavior/class_method_def',
   def => sub {shift->add('/behavior/slice'->new(@_))});
-
-'/class/slice'->new('/behavior/anonymous_fn_init',
-  initialize => sub {
-    my $class = shift;
-    my $code  = pop;
-    my $fn = ni::eval "sub {$code\n}";
-    die "ni:/behavior/anonymous_fn_init: failed to compile $code: $@" if $@;
-    +{code        => $code,
-      annotations => [@_],
-      fn          => $fn};
-  });
-
-delete ${'/class/fn::'}{new};
-
-'/class/class'->new('/class/fn',
-  ni"ni:/behavior/lifecycle",
-  ni"ni:/behavior/anonymous_fn_init");
