@@ -39,10 +39,17 @@ ni::name('ni:/behavior/slice_named_init' =>
   ni"ni:/behavior/slice",
   ni"ni:/behavior/slice_named_init");
 
-'/class/slice'->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiation)
+ni('ni:/class/slice')->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiation)
   for qw/slice slice_init lifecycle tag branch named ni_namespaced
          mapped_to_package named_transient named_persistent class_init
          slice_named_init/;
 
-'/class/slice'->new('/behavior/class_method_def',
-  def => sub {shift->add('/behavior/slice'->new(@_))});
+ni('ni:/class/slice')->new('/behavior/class_method_def',
+  def => sub {shift->add(ni('ni:/behavior/slice')->new(@_))});
+
+ni('ni:/class/class')->add(ni('ni:/behavior/class_method_def'));
+ni('ni:/class/class')->new('/class/ni');
+
+ni('ni:/class/ni')->def(
+  defclass => fn q{ni('ni:/class/class')->new("/class/$_[0]", @_[1..$#_])},
+  defslice => fn q{ni('ni:/class/slice')->new("/behavior/$_[0]", @_[1..$#_])});

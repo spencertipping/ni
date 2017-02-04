@@ -1,0 +1,53 @@
+ni->defclass('image',
+  ni->defslice('image_init',
+    instantiate => fn q{
+      my $class = shift;
+      my %include;
+      @include{@_} = map 1, @_;
+      +{include  => \%include,
+        gensym_n => 0,
+        gensyms  => {},
+        visited  => {},
+        ordering => []};
+    }),
+
+  ni->defslice('image_quoting',
+    gensym => fn q{'$g' . shift->{gensym_n}++},
+
+    quote => fn q{
+      my $self = shift;
+      my $a = Scalar::Util::refaddr(ref $_[0] ? $_[0] : \$_[0]);
+      return $$self{visited}{$a} if exists $$self{visited}{$a};
+      my $gs = $$self{visited}{$a} = $self->gensym;
+      $$self{gensyms}{$gs} = $self->quote_value(shift);
+      push @{$$self{ordering}}, $gs;
+      $gs;
+    },
+
+    quote_value => fn q{
+      my $self = shift;
+      return $self->quote_scalar(shift) unless defined ref $_[0];
+      return $self->quote_array(shift)  if 'ARRAY' eq ref $_[0];
+      return $self->quote_hash(shift)   if 'HASH'  eq ref $_[0];
+      $self->quote_object(shift);
+    },
+
+    quote_hash   => fn q{my $self = shift; '{' . join(',', map $self->quote($_), %{+shift}) . '}'},
+    quote_array  => fn q{my $self = shift; '[' . join(',', map $self->quote($_), %{+shift}) . ']'},
+    quote_scalar => fn q{
+      my $v = shift;
+      return 'undef' unless defined $v;
+      return $v if Scalar::Util::looks_like_number $v;
+      $v =~ s/([\\'])/\\$1/g;
+      "q'$v'";
+    },
+
+    quote_object => fn q{
+      my $self = shift;
+      return $_[0]->serialize($self) if $_[0]->can('serialize');
+      my $class    = $self->quote_scalar(ref $_[0]);
+      my $quote_fn = 'quote_' . lc Scalar::Util::reftype($_[0]);
+      my $quoted   = $self->$quote_fn($_[0]);
+      
+      "bless($quoted,$class)";
+    }));
