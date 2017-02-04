@@ -1,8 +1,8 @@
 ni::name(
   'ni:/behavior/class_init' =>
     '/behavior/slice'->new(
-      ctor => sub {my $s = shift; $s->apply($s->package)},
-      instantiate => sub {
+      ctor => fn q{my $s = shift; $s->apply($s->package)},
+      instantiate => fn q{
         my ($class, $name, @slices) = @_;
         +{name   => $name,
           slices => [map ref($_) ? $_ : ni($_), @slices]};
@@ -27,7 +27,7 @@ ni('ni:/class/behavior')->apply('/class/class');
 
 ni::name('ni:/behavior/slice_named_init' =>
   '/behavior/slice'->new(
-    instantiate => sub {
+    instantiate => fn q{
       my ($class, $name, @methods) = @_;
       my $self = &{'/behavior/slice::instantiate'}($class, @methods);
       $$self{name} = $name;
@@ -45,7 +45,7 @@ ni('ni:/class/slice')->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiatio
          slice_named_init/;
 
 ni('ni:/class/slice')->new('/behavior/class_method_def',
-  def => sub {shift->add(ni('ni:/behavior/slice')->new(@_))});
+  def => fn q{shift->add(ni('ni:/behavior/slice')->new(@_))});
 
 ni('ni:/class/class')->add(ni('ni:/behavior/class_method_def'));
 ni('ni:/class/class')->new('/class/ni');

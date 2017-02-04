@@ -24,6 +24,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 BEGIN{eval($ni::boot = <<'_');}
+use Scalar::Util;
+chomp $ni::boot, $ni::license;
 $ni::self = bless {}, '/class/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
 sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}

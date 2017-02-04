@@ -1,7 +1,7 @@
 ni('ni:/class/ni')->def(
   run => fn q{
     my $self = shift;
-    exit $self->$1(@_) if $_[0] =~ /^--(.*)/ && $self->can($1);
+    shift, exit $self->$1(@_) if $_[0] =~ /^--(.*)$/ && $self->can($1);
     exit $self->default(@_);
   },
 
