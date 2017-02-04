@@ -26,7 +26,7 @@
 	
 	  my ($cs, $base) = @_;
 	  my $eb = log $base;
-	  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+	  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 
 # OPERATOR cell_log
 
@@ -1001,6 +1001,22 @@
 
 ## IMPLEMENTATION
 	exec 'tail', $_[0], join "", @_[1..$#_]
+
+# OPERATOR unflatten
+
+## IMPLEMENTATION
+	
+	  my ($n_cols) = @_;
+	  my @row = ();
+	  while(<STDIN>) {
+	    chomp;
+	    push @row, $_;
+	    if(@row == $n_cols) {
+	      print(join("\t", @row) . "\n"); 
+	      @row = ();
+	    }
+	  }
+	  if (@row > 0) {print(join("\t", @row) . "\n");}
 
 # OPERATOR uniq
 
