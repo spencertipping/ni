@@ -49,6 +49,7 @@ ni::name('ni:/behavior/slice_named_init' =>
 # see doc/internal/class.)
 #
 # Invariant we want: ni("ni:/foo/bar")->new == "/foo/bar"->new
+# ...or, "/foo/bar"->new fails miserably. Either is totally fine.
 
 '/class/class'->new('/class/slice',
   ni"ni:/class/behavior",
