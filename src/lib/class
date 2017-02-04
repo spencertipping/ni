@@ -16,20 +16,6 @@ ni::name(
                       ni"ni:/behavior/named_persistent"]},
     '/class/class');
 
-# TODO: how do we implement a metaclass protocol if we don't have inheritance?
-# Branches don't create subclasses; that's about instantiation.
-#
-# Maybe the implementation here is that each class has a backing metaclass like
-# in ST-80, but they're built from meta-slices? I'm not sure the pairing makes
-# sense here. If we have MC -> C, then MS1 + MS2 -> S1 + S2?
-#
-# More to the point ... does this really solve the problem? If MS1 instanceof
-# MS, then its ->new is fixed by MS -- but if S1 instanceof MS1, then S1's
-# ->new is free. Is this good enough? (It has to be: any instance methods must
-# all come from a class.)
-#
-# How about this.
-
 ni('ni:/behavior/class_init')->apply('/class/class');
 ni('ni:/behavior/branch')->apply('/class/class');
 
@@ -59,7 +45,10 @@ ni::name('ni:/behavior/slice_named_init' =>
 # seems like a real problem in a world where perl-style instantiation is even a
 # remote possibility. Need to think about how to resolve this.
 #
-# I think the ST-80 metaclass protocol solves this for us.
+# I think the ST-80 metaclass protocol solves this for us. (Eh, not quite --
+# see doc/internal/class.)
+#
+# Invariant we want: ni("ni:/foo/bar")->new == "/foo/bar"->new
 
 '/class/class'->new('/class/slice',
   ni"ni:/class/behavior",
