@@ -345,7 +345,7 @@ $ ni //license FW Y r10
 ```
 
 ### `X` - sparse-to-dense transformation
-`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specialfication for what the input matrix must look like is described above in the `Y` operator.
+`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
 ```bash
 $ ni //license FW Y r10 X
