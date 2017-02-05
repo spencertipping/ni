@@ -2,10 +2,7 @@ ni->defclass('image',
   ni->defslice('image_init',
     instantiate => fn q{
       my $class = shift;
-      my %include;
-      @include{@_} = map 1, @_;
-      +{include      => \%include,
-        gensym_n     => 0,
+      +{gensym_n     => 0,
         circular     => [],
         definitions  => {},
         side_effects => [],
@@ -29,6 +26,7 @@ ni->defclass('image',
     },
 
     circular_links => fn q{
+      local $_;
       my $self = shift;
       map "$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
           @{$$self{circular}};
@@ -43,6 +41,7 @@ ni->defclass('image',
     },
 
     write => fn q{
+      local $_;
       my ($self, $fh) = @_;
       $fh->print($_) for
         "#!/usr/bin/env perl\n",
@@ -56,8 +55,8 @@ ni->defclass('image',
     },
 
     address => fn q{
-      return $_[1] if !ref $_[1] && length $_[1] < 64;
-      Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
+      return "id:$_[1]" if !ref $_[1] && length $_[1] < 64;
+      "addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
     },
 
     quote => fn q{
@@ -98,6 +97,7 @@ ni->defclass('image',
     },
 
     quote_hash => fn q{
+      local $_;
       my ($self, $v) = @_;
       my $a = $self->address($v);
       my @ks = sort keys %$v;
@@ -105,10 +105,12 @@ ni->defclass('image',
         && push @{$$self{circular}}, [$a, "{" . $self->quote($_) . "}",
                                           $self->address($$v{$_})]
       for @ks;
-      '{' . join(',', map $self->quote($_), %$v{@ks}) . '}';
+      '{' . join(',', map $self->quote($_) . "," . $self->quote($$v{$_}), @ks)
+          . '}';
     },
 
     quote_array => fn q{
+      local $_;
       my ($self, $v) = @_;
       my $a = $self->address($v);
       $self->is_circular($$v[$_])
@@ -129,8 +131,8 @@ ni->defclass('image',
       my ($self, $x, $r) = @_;
       $r ||= ref $x;
       $self->quote_class($r);
-      my $quote_fn = 'quote_' . lc Scalar::Util::reftype $x;
-      my $quoted   = $self->$quote_fn($x);
+      my $t = Scalar::Util::reftype $x;
+      my $quoted = $t eq 'HASH' ? $self->quote_hash($x) : $self->quote_array($x);
       "bless($quoted," . $self->quote($r) . ")";
     },
 
@@ -147,14 +149,15 @@ ni->defclass('image',
 
 ni('ni:/class/fn')->def(
   serialize => fn q{
+    local $_;
     my ($self, $quote) = @_;
     $quote->quote_class(ref $self);
 
-    (my $code = $$self{code}) =~ s/^\s*|\s*$//g;
+    (my $code = $$self{code}) =~ s/^(?:\h*\n)*|\s*$//g;
     my @lines = split /\n/, $code;
     my $spaces = length $code;
     for (@lines) {
-      $spaces = length $1 if /^(\h+)/ && length $1 < $spaces;
+      $spaces = length $1 if /^(\h*)\S/ && length $1 < $spaces;
     }
     my $pattern = ' ' x $spaces;
     s/^$pattern// for @lines;
@@ -167,11 +170,12 @@ ni('ni:/class/fn')->def(
 
 ni('ni:/class/slice')->def(
   serialize => fn q{
+    local $_;
     my ($self, $quote) = @_;
     if ($self->name eq 'ni:/behavior/slice') {
       my %methods;
-      @methods{keys %{$$self{methods}}} =
-        map $quote->quote($_), values %{$$self{methods}};
+      my @ks = sort keys %{$$self{methods}};
+      @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};
       for my $p (sort keys %{$$self{applied_to}}) {
         $quote->boot_side_effect(
           "\*{" . $quote->quote("$p\::$_") . "}=\\\\\&$methods{$_};")

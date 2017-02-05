@@ -3,6 +3,7 @@ ni::name(
     '/behavior/slice'->new(
       ctor => fn q{my $s = shift; $s->apply($s->package)},
       instantiate => fn q{
+        local $_;
         my ($class, $name, @slices) = @_;
         +{name   => $name,
           slices => [map ref($_) ? $_ : ni($_), @slices]};

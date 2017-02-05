@@ -8,6 +8,7 @@ ni::name('ni:/behavior/slice' =>
   bless {
     methods => {
       apply => fn q{
+        local $_;
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
         return if $$self{applied_to}{$p};
@@ -18,6 +19,7 @@ ni::name('ni:/behavior/slice' =>
       },
 
       apply_unsafe => fn q{
+        local $_;
         my ($self, $p) = @_;
         return if $$self{applied_to}{$p}++;
         $_->apply($p) for @{$$self{isa}};
@@ -52,9 +54,7 @@ ni::name('ni:/behavior/slice_init' =>
         my $self = shift;
         (@{$$self{isa}},
          %{$$self{methods}},
-         applied_to => $$self{applied_to},
-         $$self{ctor} ? (ctor => $$self{ctor}) : (),
-         $$self{dtor} ? (dtor => $$self{dtor}) : ());
+         %$self{qw/applied_to ctor dtor/});
       }
     }
   }, '/behavior/slice');
@@ -65,12 +65,14 @@ ni::name('ni:/behavior/lifecycle' =>
   bless {
     methods => {
       new => fn q{
+        local $_;
         my $class = ref $_[0] ? shift->package : shift;
         my $self = bless $class->instantiate(@_), $class;
         $_->($self, @_) for @{ref($self) . "::ctors"};
         $self;
       },
       DESTROY => fn q{
+        local $_;
         my $self = shift;
         $_->($self) for @{ref($self) . "::dtors"};
       }
@@ -86,6 +88,7 @@ ni::name(
   'ni:/behavior/tag' =>
     '/behavior/slice'->new(
       apply => fn q{
+        local $_;
         my ($self, $p) = @_;
         $_->apply($p) for @{$$self{slices}};
         $self;
@@ -94,6 +97,7 @@ ni::name(
   'ni:/behavior/branch' =>
     '/behavior/slice'->new(
       apply => fn q{
+        local $_;
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
         return if $$self{applied_to}{$p}++;
@@ -101,9 +105,10 @@ ni::name(
         $self;
       },
       add => fn q{
+        local $_;
         my $self = shift;
         push @{$$self{slices}}, @_;
-        for my $p (keys %{$$self{applied_to}}) {$_->apply($p) for @_}
+        for my $p (sort keys %{$$self{applied_to}}) {$_->apply($p) for @_}
         $self;
       }));
 
