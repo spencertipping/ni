@@ -1,3 +1,7 @@
+# TODO
+# Rewrite or formalize most of this. /class/class being self-referential
+# doesn't work; we need some kind of metaclasses.
+
 ni::name(
   'ni:/behavior/class_init' =>
     '/behavior/slice'->new(
@@ -65,7 +69,8 @@ ni('ni:/class/class')->new('/class/behavior',
 
 ni('ni:/class/class')->new('/class/class',
   ni"ni:/class/behavior",
-  ni"ni:/behavior/branch");
+  ni"ni:/behavior/branch",
+  ni"ni:/behavior/class_init");
 
 ni('ni:/class/class')->new('/class/slice',
   ni"ni:/class/behavior",

@@ -7,6 +7,7 @@ ni->defclass('image',
         include_license => 1,
         include_boot    => 1,
         include_classes => 1,
+        include_run     => 1,
         local_vars      => 0,
         use_newlines    => 0,
         @_);
@@ -15,6 +16,7 @@ ni->defclass('image',
         include_license => $args{include_license},
         include_boot    => $args{include_boot},
         include_classes => $args{include_classes},
+        include_run     => $args{include_run},
         local_vars      => $args{local_vars},
         use_newlines    => $args{use_newlines},
 
@@ -74,8 +76,7 @@ ni->defclass('image',
         ($$self{include_license} ? ("chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n") : ()),
         ($$self{include_boot}    ? ("BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n") : ()),
         ($$self{use_newlines}    ? map("$_\n", $self->reconstruction) : $self->reconstruction),
-        "ni->run(\@ARGV);",
-        "\n__DATA__\n";
+        ($$self{include_run}     ? ("ni->run(\@ARGV);", "\n__DATA__\n") : ());
     },
 
     address => fn q{
