@@ -34,7 +34,7 @@ $ni::self = bless {}, '/class/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
 sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}
 sub ni::eval {eval shift}
-*{"/class/ni::def"} = sub {
+*{'/class/ni::def'} = sub {
   my ($self, %kvs) = @_;
   *$_ = $ni::named{"ni.def:$_"} = $kvs{$_} for keys %kvs;
 };
