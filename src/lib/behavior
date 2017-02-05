@@ -1,4 +1,4 @@
-ni::name('ni:/behavior/slice' =>
+ni::name('ni:/b/slice' =>
   bless {
     methods => {
       apply => fn q{
@@ -16,7 +16,6 @@ ni::name('ni:/behavior/slice' =>
         local $_;
         my ($self, $p) = @_;
         return if $$self{applied_to}{$p}++;
-        $_->apply($p) for @{$$self{isa}};
         push @{"$p\::ctors"}, $$self{ctor} if $$self{ctor};
         push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};
         *{"$p\::(("} = sub {} if grep /^\(/, keys %{$$self{methods}};
@@ -34,20 +33,16 @@ ni::name('ni:/behavior/slice_init' =>
     methods => {
       instantiate => fn q{
         my $class = shift;
-        my @isa;
-        push @isa, shift while ref $_[0];
         my %args = @_;
         +{ctor       => delete($args{ctor}),
           dtor       => delete($args{dtor}),
           applied_to => delete($args{applied_to}),
-          isa        => \@isa,
           methods    => \%args};
       },
 
       instantiation => fn q{
         my $self = shift;
-        (@{$$self{isa}},
-         %{$$self{methods}},
+        (%{$$self{methods}},
          %$self{qw/applied_to ctor dtor/});
       }
     }
@@ -123,5 +118,4 @@ ni::name(
 
   'ni:/behavior/named_persistent' =>
     '/behavior/slice'->new(
-      ni"ni:/behavior/named",
       ctor => fn q{my $self = shift; ni::name($self->name, $self) if defined $self->name}));
