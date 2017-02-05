@@ -2,32 +2,46 @@
 # Builds the core ni image from the files in src/.
 cd $(dirname $0)
 
-cat src/boot \
-    src/lib/behavior \
-    src/lib/class \
-    src/lib/fn \
-    src/lib/image \
-    src/lib/main \
-  > ni0
+boot_image() {
+  cat src/boot \
+      src/lib/behavior \
+      src/lib/class \
+      src/lib/fn \
+      src/lib/image \
+      src/lib/main
+}
 
-echo "initially $(wc -c < ni0) bytes"
-perl ni0 --internal/image > ni && cp ni ni0 || exit $?
-echo "       >> $(wc -c < ni0) bytes"
-perl ni0 --internal/image > ni || exit $?
-echo "       >> $(wc -c < ni) bytes"
+boot_build() {
+  boot_image > ni0
 
-if [[ "$(<ni0)" != "$(<ni)" ]]; then
-  echo 'ni is unstable under replication; diff in ni.diff'
-  [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] \
-    && diff -C 3 ni0 ni > ni.diff
-  exit 1
-else
-  rm ni0
-fi
+  echo "initially $(wc -c < ni0) bytes"
+  perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+  echo "       >> $(wc -c < ni0) bytes"
+  perl ni0 --internal/image > ni || exit $?
+  echo "       >> $(wc -c < ni) bytes"
 
-chmod 755 ni
+  if [[ "$(<ni0)" != "$(<ni)" ]]; then
+    echo 'ni is unstable under replication; diff in ni.diff'
+    [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] \
+      && diff -C 3 ni0 ni > ni.diff
+    exit 1
+  else
+    rm ni0
+  fi
 
-if (( ! $# )); then
+  chmod 755 ni
+}
+
+case $1 in
+boot-nondeterminism)
+  boot_image > ni0
+  for i in `seq 9`; do
+    perl ni0 --internal/image | ni p's/\$\w+/\$/gr' > ni$i
+  done
+  ;;
+
+bench)
+  boot_build
   seq 10 | xargs -n1 -I{} echo > /dev/null
 
   ni_startups=20
@@ -37,4 +51,9 @@ if (( ! $# )); then
 
   echo "$(wc -c < ni) bytes after rewriting" >&2
   echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
-fi
+  ;;
+
+*)
+  boot_build
+  ;;
+esac

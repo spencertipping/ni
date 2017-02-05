@@ -1,9 +1,3 @@
-use strict;
-use warnings;
-use Scalar::Util;
-
-no strict 'refs';
-
 ni::name('ni:/behavior/slice' =>
   bless {
     methods => {
