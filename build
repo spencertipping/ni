@@ -39,7 +39,7 @@ boot)
 
 boot-nd)
   boot_image > ni0
-  ni nE3 p'`perl ni0 --internal/image`' p's/\$\w+/\$/gr' gcrp'a%100'
+  ni nE2 p'`perl ni0 --internal/image`' p's/\$\w+/\$/gr' gcrp'a%100'
   ;;
 
 bench)
