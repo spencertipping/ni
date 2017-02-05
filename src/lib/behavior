@@ -62,7 +62,7 @@ ni::name('ni:/behavior/lifecycle' =>
         local $_;
         my $class = ref $_[0] ? shift->package : shift;
         my $self = bless $class->instantiate(@_), $class;
-        $_->($self, @_) for @{ref($self) . "::ctors"};
+        $_->($self) for @{ref($self) . "::ctors"};
         $self;
       },
       DESTROY => fn q{
@@ -94,7 +94,7 @@ ni::name(
         local $_;
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
-        return if $$self{applied_to}{$p}++;
+        $$self{applied_to}{$p}++;
         $_->apply($p) for @{$$self{slices}};
         $self;
       },
@@ -120,12 +120,6 @@ ni::name(
 
   'ni:/behavior/mapped_to_package' =>
     '/behavior/slice'->new(package => fn q{shift->{name}}),
-
-  'ni:/behavior/named_transient' =>
-    '/behavior/slice'->new(
-      ni"ni:/behavior/named",
-      ctor => fn q{my $s = shift; Scalar::Util::weaken($ni::named{$s->name} = $s)},
-      dtor => fn q{delete $ni::named{shift->name}}),
 
   'ni:/behavior/named_persistent' =>
     '/behavior/slice'->new(

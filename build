@@ -17,6 +17,8 @@ boot_build() {
   echo "initially $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
   echo "       >> $(wc -c < ni0) bytes"
+  perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+  echo "       >> $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni || exit $?
   echo "       >> $(wc -c < ni) bytes"
 
@@ -44,15 +46,24 @@ boot-nd)
 
 bench)
   boot_build
+  boot_image > ni0
   seq 10 | xargs -n1 -I{} echo > /dev/null
 
-  ni_startups=20
-  start_nanos=$(date +%s%N)
-  seq $ni_startups | xargs -n1 -I{} ./ni //ni > /dev/null
-  end_nanos=$(date +%s%N)
+  perl ni0 --internal/eval 1 > /dev/null
+  ni_startups=100
+  start1_nanos=$(date +%s%N)
+  seq $ni_startups | xargs -n1 -I{} perl ni0 --internal/eval 1 > /dev/null
+  end1_nanos=$(date +%s%N)
 
-  echo "$(wc -c < ni) bytes after rewriting" >&2
-  echo "$(( (end_nanos - start_nanos) / (ni_startups * 1000) ))μs overhead" >&2
+  perl ni --internal/eval 1 > /dev/null
+  start2_nanos=$(date +%s%N)
+  seq $ni_startups | xargs -n1 -I{} perl ni --internal/eval 1 > /dev/null
+  end2_nanos=$(date +%s%N)
+
+  rm ni0
+
+  echo "original: $(( (end1_nanos - start1_nanos) / (ni_startups * 1000) ))μs overhead" >&2
+  echo "compiled: $(( (end2_nanos - start2_nanos) / (ni_startups * 1000) ))μs overhead" >&2
   ;;
 
 *)

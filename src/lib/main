@@ -8,7 +8,6 @@ ni('ni:/class/ni')->def(
   'internal/eval' => fn q{
     my $self = shift;
     for (@_) {
-      print "$_ -> ";
       my $r = ni::eval($_);
       print $@ ? "ERROR $@\n" : "$r\n";
     }
@@ -17,7 +16,8 @@ ni('ni:/class/ni')->def(
 
   'internal/image' => fn q{
     my $self = shift;
-    my $q = ni('ni:/class/image')->new->partial_image(grep !/^ni\.eval/, keys %ni::named);
+    my $q = ni('ni:/class/image')->new
+      ->partial_image('ni:/class/ni', 'ni:/class/image');
     $q->write(\*STDOUT);
     0;
   });

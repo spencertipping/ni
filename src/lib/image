@@ -2,11 +2,28 @@ ni->defclass('image',
   ni->defslice('image_init',
     instantiate => fn q{
       my $class = shift;
-      +{gensym_n     => 0,
+      my %args  = (
+        include_shebang => 1,
+        include_license => 1,
+        include_boot    => 1,
+        include_classes => 1,
+        local_vars      => 0,
+        use_newlines    => 0,
+        @_);
+
+      +{include_shebang => $args{include_shebang},
+        include_license => $args{include_license},
+        include_boot    => $args{include_boot},
+        include_classes => $args{include_classes},
+        local_vars      => $args{local_vars},
+        use_newlines    => $args{use_newlines},
+
+        gensym_n     => 0,
         circular     => [],
         definitions  => {},
         objects      => {},
         side_effects => [],
+        finalizers   => [],
         visited      => {},
         ordering     => []};
     }),
@@ -38,19 +55,25 @@ ni->defclass('image',
       my %names;
       @names{@_} = @ni::named{@_};
       my $g = $self->quote(\%names);
-      $self->side_effect("\%ni::named=\%$g;");
+      $self->side_effect("\@ni::named{keys\%$g}=values\%$g;");
+    },
+
+    reconstruction => fn q{
+      my $self = shift;
+      (@{$$self{definitions}}{@{$$self{ordering}}},
+       $self->circular_links,
+       @{$$self{side_effects}},
+       @{$$self{finalizers}});
     },
 
     write => fn q{
       local $_;
       my ($self, $fh) = @_;
       $fh->print($_) for
-        "#!/usr/bin/env perl\n",
-        "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
-        "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
-        @{$$self{definitions}}{@{$$self{ordering}}},
-        $self->circular_links,
-        @{$$self{side_effects}},
+        ($$self{include_shebang} ? ("#!/usr/bin/env perl\n") : ()),
+        ($$self{include_license} ? ("chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n") : ()),
+        ($$self{include_boot}    ? ("BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n") : ()),
+        ($$self{use_newlines}    ? map("$_\n", $self->reconstruction) : $self->reconstruction),
         "ni->run(\@ARGV);",
         "\n__DATA__\n";
     },
@@ -76,14 +99,16 @@ ni->defclass('image',
     allocate_gensym => fn q{
       my $self = shift;
       my $a = $self->address(shift);
+      return $$self{visited}{$a} if $_[0] =~ /^\$\w+$/;
       my $g = $$self{visited}{$a} = $self->gensym;
-      $$self{definitions}{$g} = "$g=$_[0];";
+      $$self{definitions}{$g} = $$self{local_vars} ? "my$g=$_[0];" : "$g=$_[0];";
       push @{$$self{ordering}}, $g;
       $g;
     },
 
     side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
+    finalizer        => fn q{push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]},
 
     quote_value => fn q{
       my $self = shift;
@@ -143,13 +168,15 @@ ni->defclass('image',
 
     quote_class => fn q{
       my ($self, $class) = @_;
-      $self->quote(ni"ni:$class") if exists $ni::named{"ni:$class"};
+      $self->quote(ni"ni:$class") if $$self{include_classes} && exists $ni::named{"ni:$class"};
     },
 
     quote_object => fn q{
       my $self = shift;
-      return $_[0]->serialize($self) if $_[0]->can('serialize');
-      $self->quote_blessed(@_);
+      my $q = $self->allocate_gensym($_[0],
+        $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
+      $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
+      $q;
     }));
 
 ni('ni:/class/fn')->def(
@@ -186,15 +213,13 @@ ni('ni:/class/slice')->def(
       @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};
       for my $p (sort keys %{$$self{applied_to}}) {
         $quote->boot_side_effect(
-          "\*{" . $quote->quote("$p\::$_") . "}=\\\\\&$methods{$_};")
+          '*' . $quote->quote("$p\::$_") . "=\\\\\&$methods{$_};")
           for @ks;
       }
     }
 
-    my %state = %$self;
-    $state{applied_to} = {};
     my $g = $quote->allocate_gensym($self,
-      $quote->quote_blessed(\%state, ref $self));
+      $quote->quote_blessed({%$self, applied_to => {}}, ref $self));
     $quote->side_effect("$g\->apply_unsafe(" . $quote->quote($_) . ");")
       for sort keys %{$$self{applied_to}};
     $g;

@@ -42,8 +42,35 @@ ni::name('ni:/behavior/slice_named_init' =>
 
 ni('ni:/class/slice')->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiation)
   for qw/slice slice_init lifecycle tag branch named ni_namespaced
-         mapped_to_package named_transient named_persistent class_init
-         slice_named_init/;
+         mapped_to_package class_init slice_named_init/;
+
+# This is a hack, but a necessary one.
+# ni:/behavior/named_persistent refers to the unnamed version of
+# /behavior/named in its "isa" list, which is, by this point, incorrect. So we
+# forcibly replace it now that we have a named version. (Sorry. I know how
+# horrible this is.)
+{
+  my @i = ni('ni:/behavior/named_persistent')->instantiation;
+  shift @i while ref $i[0];
+  ni('ni:/class/slice')->new('/behavior/named_persistent' =>
+    ni('ni:/behavior/named'),
+    @i);
+}
+
+ni('ni:/class/class')->new('/class/behavior',
+  ni"ni:/behavior/lifecycle",
+  ni"ni:/behavior/mapped_to_package",
+  ni"ni:/behavior/ni_namespaced",
+  ni"ni:/behavior/named_persistent");
+
+ni('ni:/class/class')->new('/class/class',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/branch");
+
+ni('ni:/class/class')->new('/class/slice',
+  ni"ni:/class/behavior",
+  ni"ni:/behavior/slice",
+  ni"ni:/behavior/slice_named_init");
 
 ni('ni:/class/slice')->new('/behavior/class_method_def',
   def => fn q{shift->add(ni('ni:/class/slice')->new(undef, @_))});
