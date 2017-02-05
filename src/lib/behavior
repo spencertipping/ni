@@ -23,12 +23,12 @@ ni::name('ni:/b/slice' =>
         $self;
       }
     }
-  }, '/behavior/slice');
+  }, '/b/slice');
 
-ni('ni:/behavior/slice')->{methods}->{apply_unsafe}
-  ->(ni('ni:/behavior/slice'), '/behavior/slice');
+ni('ni:/b/slice')->{methods}->{apply_unsafe}
+  ->(ni('ni:/b/slice'), '/b/slice');
 
-ni::name('ni:/behavior/slice_init' =>
+ni::name('ni:/b/slice_init' =>
   bless {
     methods => {
       instantiate => fn q{
@@ -46,11 +46,11 @@ ni::name('ni:/behavior/slice_init' =>
          %$self{qw/applied_to ctor dtor/});
       }
     }
-  }, '/behavior/slice');
+  }, '/b/slice');
 
-ni('ni:/behavior/slice_init')->apply('/behavior/slice');
+ni('ni:/b/slice_init')->apply('/b/slice');
 
-ni::name('ni:/behavior/lifecycle' =>
+ni::name('ni:/b/lifecycle' =>
   bless {
     methods => {
       new => fn q{
@@ -66,16 +66,16 @@ ni::name('ni:/behavior/lifecycle' =>
         $_->($self) for @{ref($self) . "::dtors"};
       }
     }
-  }, '/behavior/slice');
+  }, '/b/slice');
 
-# NB: theoretically we could start using ni("ni:/behavior/slice")->new after
+# NB: theoretically we could start using ni("ni:/b/slice")->new after
 # this statement, but slices won't support ->package until we replace
-# /behavior/slice with the class version in /lib/class.
-ni('ni:/behavior/lifecycle')->apply('/behavior/slice');
+# /b/slice with the class version in /lib/class.
+ni('ni:/b/lifecycle')->apply('/b/slice');
 
 ni::name(
-  'ni:/behavior/tag' =>
-    '/behavior/slice'->new(
+  'ni:/b/tag' =>
+    '/b/slice'->new(
       apply => fn q{
         local $_;
         my ($self, $p) = @_;
@@ -83,8 +83,8 @@ ni::name(
         $self;
       }),
 
-  'ni:/behavior/branch' =>
-    '/behavior/slice'->new(
+  'ni:/b/branch' =>
+    '/b/slice'->new(
       apply => fn q{
         local $_;
         my ($self, $p) = @_;
@@ -102,20 +102,20 @@ ni::name(
       }));
 
 ni::name(
-  'ni:/behavior/named' =>
-    '/behavior/slice'->new(
+  'ni:/b/named' =>
+    '/b/slice'->new(
       name => fn q{
         my $s = shift;
         defined $$s{name} ? $s->namespace . ":$$s{name}" : undef;
       }));
 
 ni::name(
-  'ni:/behavior/ni_namespaced' =>
-    '/behavior/slice'->new(namespace => fn q{'ni'}),
+  'ni:/b/ni_namespaced' =>
+    '/b/slice'->new(namespace => fn q{'ni'}),
 
-  'ni:/behavior/mapped_to_package' =>
-    '/behavior/slice'->new(package => fn q{shift->{name}}),
+  'ni:/b/mapped_to_package' =>
+    '/b/slice'->new(package => fn q{shift->{name}}),
 
-  'ni:/behavior/named_persistent' =>
-    '/behavior/slice'->new(
+  'ni:/b/named_persistent' =>
+    '/b/slice'->new(
       ctor => fn q{my $self = shift; ni::name($self->name, $self) if defined $self->name}));

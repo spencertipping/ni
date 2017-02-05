@@ -30,29 +30,29 @@ no warnings 'redefine';
 no strict 'refs';
 use Scalar::Util;
 chomp $ni::boot;
-$ni::self = bless {}, '/class/ni';
+$ni::self = bless {}, '/c/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
 sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}
 sub ni::eval {eval shift}
-*{'/class/ni::def'} = sub {
+*{'/c/ni::def'} = sub {
   my ($self, %kvs) = @_;
   *$_ = $ni::named{"ni.def:$_"} = $kvs{$_} for keys %kvs;
 };
-*{'/class/fn::new'} = sub {
+*{'/c/fn::new'} = sub {
   my $self = bless {code => $_[1]}, $_[0];
   $self->compile;
   $self;
 };
-*{'/class/fn::compile'} = sub {
+*{'/c/fn::compile'} = sub {
   my $self = shift;
   $$self{fn} = ni::eval "sub{$$self{code}\n}";
-  die "ni:/class/fn failed to compile $$self{code}: $@\n" if $@;
+  die "ni:/c/fn failed to compile $$self{code}: $@\n" if $@;
   $$self{fn};
 };
-*{'/class/fn::(('}    = sub {};
-*{'/class/fn::(&{}'}  = sub {$_[0]->{fn} ||= $_[0]->compile};
-*{'/class/fn::(bool'} = sub {1};
-sub fn($) {'/class/fn'->new(shift)}
+*{'/c/fn::(('}    = sub {};
+*{'/c/fn::(&{}'}  = sub {$_[0]->{fn} ||= $_[0]->compile};
+*{'/c/fn::(bool'} = sub {1};
+sub fn($) {'/c/fn'->new(shift)}
 _
 die "$@ evaluating ni boot code" if $@;
 

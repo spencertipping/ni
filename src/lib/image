@@ -180,7 +180,7 @@ ni->defclass('image',
       $q;
     }));
 
-ni('ni:/class/fn')->def(
+ni('ni:/c/fn')->def(
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
@@ -201,14 +201,14 @@ ni('ni:/class/fn')->def(
     $quote->quote_blessed(\%state, ref $self);
   });
 
-ni('ni:/class/slice')->def(
+ni('ni:/c/slice')->def(
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
     my $name = $self->name;
     $quote->quote_class(ref $self);
 
-    if (defined $name and $name eq 'ni:/behavior/slice') {
+    if (defined $name and $name eq 'ni:/b/slice') {
       my %methods;
       my @ks = sort keys %{$$self{methods}};
       @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};

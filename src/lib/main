@@ -1,4 +1,4 @@
-ni('ni:/class/ni')->def(
+ni('ni:/c/ni')->def(
   run => fn q{
     my $self = shift;
     shift, exit $self->$1(@_) if $_[0] =~ /^--(.*)$/ && $self->can($1);
@@ -16,8 +16,8 @@ ni('ni:/class/ni')->def(
 
   'internal/image' => fn q{
     my $self = shift;
-    my $q = ni('ni:/class/image')->new
-      ->partial_image('ni:/class/ni', 'ni:/class/image');
+    my $q = ni('ni:/c/image')->new
+      ->partial_image('ni:/c/ni', 'ni:/c/image');
     $q->write(\*STDOUT);
     0;
   });
