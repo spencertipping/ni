@@ -7,7 +7,7 @@ ni('ni:/class/ni')->def(
 
   'internal/image' => fn q{
     my $self = shift;
-    my $q = ni('ni:/class/image')->new;
+    my $q = ni('ni:/class/image')->new->partial_image(keys %ni::named);
     $q->quote($self);
     print $q->str, "\n";
     0;

@@ -4,15 +4,43 @@ ni->defclass('image',
       my $class = shift;
       my %include;
       @include{@_} = map 1, @_;
-      +{include     => \%include,
-        gensym_n    => 0,
-        definitions => {},
-        visited     => {},
-        ordering    => []};
+      +{include      => \%include,
+        gensym_n     => 0,
+        circular     => [],
+        definitions  => {},
+        side_effects => [],
+        visited      => {},
+        ordering     => []};
     }),
 
   ni->defslice('image_quoting',
-    gensym => fn q{'$g' . shift->{gensym_n}++},
+    gensym => fn q{
+      my $n = shift->{gensym_n}++;
+      my $s = '$' .
+        substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+               $n % 50, 1;
+      $n = int $n / 50;
+      while ($n) {
+        $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+                     $n % 63, 1;
+        $n = int %n / 63;
+      }
+      $s;
+    },
+
+    circular_links => fn q{
+      my $self = shift;
+      map "$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
+          @{$$self{circular}};
+    },
+
+    partial_image => fn q{
+      my $self = shift;
+      my %names;
+      @names{@_} = @ni::named{@_};
+      my $g = $self->quote(\%names);
+      $self->side_effect("\%ni::named=\%$g;");
+    },
 
     str => fn q{
       my $self = shift;
@@ -21,19 +49,25 @@ ni->defclass('image',
         "\$ni::license=<<'_';", $ni::license, '_',
         "BEGIN{eval(\$ni::boot=<<'_')}", $ni::boot, '_',
         @{$$self{definitions}}{@{$$self{ordering}}},
+        $self->circular_links,
+        @{$$self{side_effects}},
         "ni->run(\@ARGV);",
         "__DATA__\n";
     },
 
-    address  => fn q{Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1])},
-    identity => fn q{$_[0]->{visited}{$_[0]->address($_[1])}},
+    address => fn q{
+      return $_[1] if !ref $_[1] && length $_[1] < 64;
+      Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
+    },
 
     quote => fn q{
       my $self = shift;
+      return $self->quote_scalar($_[0])
+        if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
       my $a = $self->address($_[0]);
-      return $$self{visited}{$a} if exists $$self{visited}{$a};
-      print STDERR "$_[0] : " . ref($_[0]) . "\n";
-      $$self{visited}{$a} = 'die("circular reference");';
+      my $v = $$self{visited}{$a};
+      return ref $v ? 'undef' : $v if defined $v;
+      $$self{visited}{$a} = \'undef';
       $self->allocate_gensym($_[0], $self->quote_value($_[0]));
     },
 
@@ -41,18 +75,13 @@ ni->defclass('image',
       my $self = shift;
       my $a = $self->address(shift);
       my $g = $$self{visited}{$a} = $self->gensym;
-      $$self{definitions}{$g} = "my $g=" . $_[0] . ";";
+      $$self{definitions}{$g} = "$g=$_[0];";
       push @{$$self{ordering}}, $g;
       $g;
     },
 
-    side_effect => fn q{
-      my $self = shift;
-      my $g = $self->gensym;
-      $$self{definitions}{$g} = shift;
-      push @{$$self{ordering}}, $g;
-      $self;
-    },
+    side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
+    boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
 
     quote_value => fn q{
       my $self = shift;
@@ -63,30 +92,51 @@ ni->defclass('image',
       $self->quote_object($_[0]);
     },
 
-    quote_hash   => fn q{my $self = shift; '{' . join(',', map $self->quote($_), %{+shift}) . '}'},
-    quote_array  => fn q{my $self = shift; '[' . join(',', map $self->quote($_), @{+shift}) . ']'},
+    is_circular => fn q{
+      my $self = shift;
+      ref $$self{visited}{$self->address($_[0])};
+    },
+
+    quote_hash => fn q{
+      my ($self, $v) = @_;
+      my $a = $self->address($v);
+      my @ks = sort keys %$v;
+      $self->is_circular($$v{$_})
+        && push @{$$self{circular}}, [$a, "{" . $self->quote($_) . "}",
+                                          $self->address($$v{$_})]
+      for @ks;
+      '{' . join(',', map $self->quote($_), %$v{@ks}) . '}';
+    },
+
+    quote_array => fn q{
+      my ($self, $v) = @_;
+      my $a = $self->address($v);
+      $self->is_circular($$v[$_])
+        && push @{$$self{circular}}, [$a, "[$_]", $self->address($$v[$_])]
+      for 0..$#v;
+      '[' . join(',', map $self->quote($_), @$v) . ']';
+    },
+
     quote_scalar => fn q{
       my $v = $_[1];
       return 'undef' unless defined $v;
       return $v if Scalar::Util::looks_like_number $v;
       $v =~ s/([\\\\'])/\\\\$1/g;
-      "q'$v'";
+      length $v > 8 ? "q'$v'" : "'$v'";
     },
 
     quote_blessed => fn q{
       my ($self, $x, $r) = @_;
       $r ||= ref $x;
-      print STDERR "quoting blessed $x: $r\n";
+      $self->quote_class($r);
       my $quote_fn = 'quote_' . lc Scalar::Util::reftype $x;
       my $quoted   = $self->$quote_fn($x);
-      $self->quote_class($r);
-      "bless($quoted," . $self->quote_scalar($r) . ")";
+      "bless($quoted," . $self->quote($r) . ")";
     },
 
     quote_class => fn q{
       my ($self, $class) = @_;
-      print STDERR "quoting class $class: $ni::named{qq{ni:$class}}\n";
-      $self->quote(ni("ni:$class")) if exists $ni::named{"ni:$class"};
+      $self->quote(ni"ni:$class") if exists $ni::named{"ni:$class"};
     },
 
     quote_object => fn q{
@@ -95,35 +145,46 @@ ni->defclass('image',
       $self->quote_blessed(@_);
     }));
 
-ni('ni:/class/class')->def(
-  serialize => fn q{
-    my ($self, $quote) = @_;
-    $quote->allocate_gensym($self, $quote->quote_blessed($self));
-  });
-
 ni('ni:/class/fn')->def(
   serialize => fn q{
     my ($self, $quote) = @_;
     $quote->quote_class(ref $self);
-    my $g = $quote->allocate_gensym(
-      $self,
-      $quote->quote_blessed({code        => $$self{code},
-                             annotations => $$self{annotations}}, ref $self));
-    $quote->side_effect("$g\->compile;");
-    $g;
+
+    (my $code = $$self{code}) =~ s/^\s*|\s*$//g;
+    my @lines = split /\n/, $code;
+    my $spaces = length $code;
+    for (@lines) {
+      $spaces = length $1 if /^(\h+)/ && length $1 < $spaces;
+    }
+    my $pattern = ' ' x $spaces;
+    s/^$pattern// for @lines;
+
+    my %state = %$self;
+    delete $state{fn};
+    $state{code} = join "\n", @lines;
+    $quote->quote_blessed(\%state, ref $self);
   });
 
 ni('ni:/class/slice')->def(
   serialize => fn q{
     my ($self, $quote) = @_;
-    my $i = $quote->identity($self);
-    my %methods;
-    @methods{keys %{$$self{methods}}} =
-      map $quote->quote($_), values %{$$self{methods}};
-    for my $p (sort keys %{$$self{applied_to}}) {
-      my $qp = $quote->quote_scalar("$p\::");
-      $quote->side_effect("\*{$qp}{$_}=\\\\\&{$methods{$_}};")
-        for sort keys %methods;
+    if ($self->name eq 'ni:/behavior/slice') {
+      my %methods;
+      @methods{keys %{$$self{methods}}} =
+        map $quote->quote($_), values %{$$self{methods}};
+      for my $p (sort keys %{$$self{applied_to}}) {
+        $quote->boot_side_effect(
+          "\*{" . $quote->quote("$p\::$_") . "}=\\\\\&$methods{$_};")
+          for sort keys %methods;
+      }
     }
-    $quote->allocate_gensym($self, $quote->quote_blessed($self));
+
+    $quote->quote_class(ref $self);
+    my %state = %$self;
+    $state{applied_to} = {};
+    my $g = $quote->allocate_gensym($self,
+      $quote->quote_blessed(\%state, ref $self));
+    $quote->side_effect("$g\->apply_unsafe(" . $quote->quote($_) . ");")
+      for sort keys %{$$self{applied_to}};
+    $g;
   });

@@ -9,7 +9,7 @@ ni->defslice('fn_init',
     my $self = shift;
     $$self{fn} = ni::eval "sub{$$self{code}\n}";
     die "ni:/behavior/fn_init: failed to compile $$self{code}: $@" if $@;
-    $self;
+    $$self{fn};
   },
   ctor => fn q{shift->compile});
 
@@ -17,7 +17,7 @@ ni->defslice('fn_init',
 # constrain the serialization protocol, though, in that we can't rely on method
 # calls against slices to reconstruct our state. (We have to construct the
 # objects and packages separately.)
-delete ${'/class/fn::'}{new};
+delete @{'/class/fn::'}{qw/new compile/};
 
 ni->defclass('fn',
   ni"ni:/behavior/lifecycle",

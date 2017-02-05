@@ -45,9 +45,9 @@ ni('ni:/class/slice')->new("/behavior/$_" => ni("ni:/behavior/$_")->instantiatio
          slice_named_init/;
 
 ni('ni:/class/slice')->new('/behavior/class_method_def',
-  def => fn q{shift->add(ni('ni:/behavior/slice')->new(@_))});
+  def => fn q{shift->add(ni('ni:/class/slice')->new(undef, @_))});
 
-ni('ni:/class/class')->add(ni('ni:/behavior/class_method_def'));
+ni('ni:/class/class')->add(ni"ni:/behavior/class_method_def");
 ni('ni:/class/class')->new('/class/ni');
 
 ni('ni:/class/ni')->def(

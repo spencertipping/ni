@@ -11,9 +11,10 @@ cat src/boot \
   > ni0
 
 echo "initially $(wc -c < ni0) bytes"
-
 perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+echo "       >> $(wc -c < ni0) bytes"
 perl ni0 --internal/image > ni || exit $?
+echo "       >> $(wc -c < ni) bytes"
 
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
   echo 'ni is unstable under replication'
