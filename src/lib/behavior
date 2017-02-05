@@ -21,8 +21,8 @@ ni::name('ni:/behavior/slice' =>
         my ($self, $p) = @_;
         return if $$self{applied_to}{$p}++;
         $_->apply($p) for @{$$self{isa}};
-        ${"$p\::ctors"}{$self} = $$self{ctor} if defined $$self{ctor};
-        ${"$p\::dtors"}{$self} = $$self{dtor} if defined $$self{dtor};
+        push @{"$p\::ctors"}, $$self{ctor} if $$self{ctor};
+        push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};
         *{"$p\::(("} = sub {} if grep /^\(/, keys %{$$self{methods}};
         *{"$p\::$_"} = \&{$$self{methods}{$_}} for keys %{$$self{methods}};
         $self;
@@ -51,8 +51,8 @@ ni::name('ni:/behavior/slice_init' =>
       instantiation => fn q{
         my $self = shift;
         (@{$$self{isa}},
-         applied_to => $$self{applied_to},
          %{$$self{methods}},
+         applied_to => $$self{applied_to},
          $$self{ctor} ? (ctor => $$self{ctor}) : (),
          $$self{dtor} ? (dtor => $$self{dtor}) : ());
       }
@@ -67,14 +67,12 @@ ni::name('ni:/behavior/lifecycle' =>
       new => fn q{
         my $class = ref $_[0] ? shift->package : shift;
         my $self = bless $class->instantiate(@_), $class;
-        my $h = \%{ref($self) . "::ctors"};
-        $_->($self, @_) for @$h{sort keys %$h};
+        $_->($self, @_) for @{ref($self) . "::ctors"};
         $self;
       },
       DESTROY => fn q{
         my $self = shift;
-        my $h = \%{ref($self) . "::dtors"};
-        $_->($self) for @$h{sort keys %$h};
+        $_->($self) for @{ref($self) . "::dtors"};
       }
     }
   }, '/behavior/slice');
@@ -112,8 +110,7 @@ ni::name(
 ni::name(
   'ni:/behavior/named' =>
     '/behavior/slice'->new(
-      '(""' => fn q{shift->name},
-      name  => fn q{
+      name => fn q{
         my $s = shift;
         return undef unless defined $$s{name};
         $s->namespace . ":$$s{name}";

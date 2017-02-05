@@ -44,16 +44,15 @@ ni->defclass('image',
 
     write => fn q{
       my ($self, $fh) = @_;
-      my $n = 0;
-      $fh->print("print STDERR " . ++$n . ", \"\\n\";\n", $_, "\n") for
-        "#!/usr/bin/env perl",
-        "\$ni::license=<<'_';", $ni::license, '_',
-        "BEGIN{eval(\$ni::boot=<<'_')}", $ni::boot, '_',
-        @{$$self{definitions}}{@{$$self{ordering}}},
-        $self->circular_links,
-        @{$$self{side_effects}},
+      $fh->print($_) for
+        "#!/usr/bin/env perl\n",
+        "\$ni::license=<<'_';\n", $ni::license, "\n_\n",
+        "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
+        map("$_\n", @{$$self{definitions}}{@{$$self{ordering}}},
+                    $self->circular_links,
+                    @{$$self{side_effects}}),
         "ni->run(\@ARGV);",
-        "__DATA__";
+        "\n__DATA__\n";
     },
 
     address => fn q{

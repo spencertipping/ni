@@ -17,8 +17,9 @@ perl ni0 --internal/image > ni || exit $?
 echo "       >> $(wc -c < ni) bytes"
 
 if [[ "$(<ni0)" != "$(<ni)" ]]; then
-  echo 'ni is unstable under replication'
-  [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] && diff -C 3 ni0 ni
+  echo 'ni is unstable under replication; diff in ni.diff'
+  [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] \
+    && diff -C 3 ni0 ni > ni.diff
   exit 1
 else
   rm ni0
