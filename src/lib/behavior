@@ -117,8 +117,7 @@ ni::name(
     '/behavior/slice'->new(
       name => fn q{
         my $s = shift;
-        return undef unless defined $$s{name};
-        $s->namespace . ":$$s{name}";
+        defined $$s{name} ? $s->namespace . ":$$s{name}" : undef;
       }));
 
 ni::name(
@@ -137,4 +136,4 @@ ni::name(
   'ni:/behavior/named_persistent' =>
     '/behavior/slice'->new(
       ni"ni:/behavior/named",
-      ctor => fn q{my $self = shift; ni::name($self->name, $self)}));
+      ctor => fn q{my $self = shift; ni::name($self->name, $self) if defined $self->name}));

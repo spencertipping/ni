@@ -20,7 +20,7 @@ ni->defclass('image',
       while ($n) {
         $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
                      $n % 63, 1;
-        $n = int %n / 63;
+        $n = int $n / 63;
       }
       $s;
     },
@@ -55,6 +55,7 @@ ni->defclass('image',
     },
 
     address => fn q{
+      return 'undef' unless defined $_[1];
       return "id:$_[1]" if !ref $_[1] && length $_[1] < 64;
       "addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
     },
@@ -115,7 +116,7 @@ ni->defclass('image',
       my $a = $self->address($v);
       $self->is_circular($$v[$_])
         && push @{$$self{circular}}, [$a, "[$_]", $self->address($$v[$_])]
-      for 0..$#v;
+      for 0..$#{$v};
       '[' . join(',', map $self->quote($_), @$v) . ']';
     },
 
@@ -172,14 +173,15 @@ ni('ni:/class/slice')->def(
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
-    if ($self->name eq 'ni:/behavior/slice') {
+    my $name = $self->name;
+    if (defined $name and $name eq 'ni:/behavior/slice') {
       my %methods;
       my @ks = sort keys %{$$self{methods}};
       @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};
       for my $p (sort keys %{$$self{applied_to}}) {
         $quote->boot_side_effect(
           "\*{" . $quote->quote("$p\::$_") . "}=\\\\\&$methods{$_};")
-          for sort keys %methods;
+          for @ks;
       }
     }
 

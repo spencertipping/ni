@@ -24,11 +24,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 _
 BEGIN{eval($ni::boot = <<'_');}
+use strict;
+use warnings;
+no warnings 'redefine';
+no strict 'refs';
 use Scalar::Util;
-chomp($ni::boot, $ni::license);
+chomp $ni::boot;
 $ni::self = bless {}, '/class/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::named{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
-sub ni::name {my %h = @_; delete @h{grep !defined, keys %h}; @ni::named{keys %h} = values %h}
+sub ni::name {my %h = @_; @ni::named{keys %h} = values %h}
 sub ni::eval {eval shift}
 *{"/class/ni::def"} = sub {
   my ($self, %kvs) = @_;
