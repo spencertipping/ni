@@ -104,6 +104,21 @@ $ ni n4 ,e
 54.5981500331442
 ```
 
+These functions also `,e` and `,l` also take an optional paramter as a base:
+
+```bash
+$ ni n4 ,l2
+0
+0.999999999999998
+1.58496250072115
+2
+$ ni n4 ,e2
+2
+4
+7.99999999999999
+16
+```
+
 The jitter function, `j`, adds a small random quantity to each cell, which is
 handy for visualizing discrete quantities.
 
