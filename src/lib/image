@@ -46,7 +46,7 @@ ni->defclass('image',
       my ($self, $fh) = @_;
       $fh->print($_) for
         "#!/usr/bin/env perl\n",
-        "\$ni::license=<<'_';\n", $ni::license, "\n_\n",
+        "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
         "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
         map("$_\n", @{$$self{definitions}}{@{$$self{ordering}}},
                     $self->circular_links,

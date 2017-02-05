@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-$ni::license=<<'_';
+chomp($ni::license=<<'_');
 ni: https://github.com/spencertipping/ni
 Copyright (c) 2016-2017 Spencer Tipping
 
@@ -22,7 +22,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 _
 BEGIN{eval($ni::boot=<<'_')}
 use strict;
@@ -460,7 +459,7 @@ $T4=q'local $_;
 my ($self, $fh) = @_;
 $fh->print($_) for
   "#!/usr/bin/env perl\\n",
-  "\\$ni::license=<<\'_\';\\n", $ni::license, "\\n_\\n",
+  "chomp(\\$ni::license=<<\'_\');\\n", $ni::license, "\\n_\\n",
   "BEGIN{eval(\\$ni::boot=<<\'_\')}\\n", $ni::boot, "\\n_\\n",
   map("$_\\n", @{$$self{definitions}}{@{$$self{ordering}}},
               $self->circular_links,
