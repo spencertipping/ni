@@ -38,9 +38,6 @@ because `less` captures terminal input immediately.
 If a prior step introduces buffering latency, we shouldn't count this against
 the throughput of everything downstream.
 
-### Smaller replicated image
-No sense in shipping documentation+tests inside remote self-installs.
-
 ### Better abstraction around procfhs
 We need more detailed process tracking, and ideally some more structured
 interface to pipelines. Streams should be objects since we aren't

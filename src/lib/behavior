@@ -1,5 +1,6 @@
 ni::name('ni:/b/slice' =>
   bless {
+    name => '/b/slice',
     methods => {
       apply => fn q{
         local $_;
@@ -30,6 +31,7 @@ ni('ni:/b/slice')->{methods}->{apply_unsafe}
 
 ni::name('ni:/b/slice_init' =>
   bless {
+    name => '/b/slice_init',
     methods => {
       instantiate => fn q{
         my $class = shift;
@@ -52,6 +54,7 @@ ni('ni:/b/slice_init')->apply('/b/slice');
 
 ni::name('ni:/b/lifecycle' =>
   bless {
+    name => '/b/lifecycle',
     methods => {
       new => fn q{
         local $_;
@@ -118,4 +121,4 @@ ni::name(
 
   'ni:/b/named_persistent' =>
     '/b/slice'->new(
-      ctor => fn q{my $self = shift; ni::name($self->name, $self) if defined $self->name}));
+      ctor => fn q{my $s = shift; ni::name($s->name, $s) if defined $s->name}));
