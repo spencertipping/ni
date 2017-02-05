@@ -12,6 +12,7 @@ ni('ni:/class/ni')->def(
       my $r = ni::eval($_);
       print $@ ? "ERROR $@\n" : "$r\n";
     }
+    0;
   },
 
   'internal/image' => fn q{

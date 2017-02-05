@@ -33,11 +33,13 @@ boot_build() {
 }
 
 case $1 in
-boot-nondeterminism)
+boot)
   boot_image > ni0
-  for i in `seq 9`; do
-    perl ni0 --internal/image | ni p's/\$\w+/\$/gr' > ni$i
-  done
+  ;;
+
+boot-nd)
+  boot_image > ni0
+  ni nE3 p'`perl ni0 --internal/image`' p's/\$\w+/\$/gr' gcrp'a%100'
   ;;
 
 bench)
