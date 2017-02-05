@@ -42,9 +42,10 @@ ni->defclass('image',
       $self->side_effect("\%ni::named=\%$g;");
     },
 
-    str => fn q{
-      my $self = shift;
-      join "\n",
+    write => fn q{
+      my ($self, $fh) = @_;
+      my $n = 0;
+      $fh->print("print STDERR " . ++$n . ", \"\\n\";\n", $_, "\n") for
         "#!/usr/bin/env perl",
         "\$ni::license=<<'_';", $ni::license, '_',
         "BEGIN{eval(\$ni::boot=<<'_')}", $ni::boot, '_',
@@ -52,7 +53,7 @@ ni->defclass('image',
         $self->circular_links,
         @{$$self{side_effects}},
         "ni->run(\@ARGV);",
-        "__DATA__\n";
+        "__DATA__";
     },
 
     address => fn q{

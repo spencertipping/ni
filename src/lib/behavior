@@ -67,12 +67,14 @@ ni::name('ni:/behavior/lifecycle' =>
       new => fn q{
         my $class = ref $_[0] ? shift->package : shift;
         my $self = bless $class->instantiate(@_), $class;
-        $_->($self, @_) for values %{ref($self) . "::ctors"};
+        my $h = \%{ref($self) . "::ctors"};
+        $_->($self, @_) for @$h{sort keys %$h};
         $self;
       },
       DESTROY => fn q{
         my $self = shift;
-        $_->($self) for values %{ref($self) . "::dtors"};
+        my $h = \%{ref($self) . "::dtors"};
+        $_->($self) for @$h{sort keys %$h};
       }
     }
   }, '/behavior/slice');
