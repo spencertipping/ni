@@ -1,3 +1,6 @@
+print STDERR "inside lib/class\n";
+
+
 # TODO
 # Rewrite or formalize most of this. /c/class being self-referential
 # doesn't work; we need some kind of metaclasses.
