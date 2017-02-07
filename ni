@@ -2677,7 +2677,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-229 core/stream/ops.pl.sdoc
+240 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2686,12 +2686,23 @@ c
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
   defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
+
+  defparser 'super_brackets', '', q{
+    my ($self, @xs) = @_;
+    return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+    my $superness = $1;
+    my @r;
+    push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+    $1 eq $superness ? (\@r, @xs) : ();
+  };
 }
 BEGIN {
-  defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
+  defparseralias shell_command => palt pmap(q{shell_quote @$_}, super_brackets),
+                                       pmap(q{shell_quote @$_}, multiword_ws),
                                        pmap(q{shell_quote @$_}, multiword),
                                        prx '[^][]+';
-  defparseralias id_text => palt pmap(q{join "\t", @$_}, multiword_ws),
+  defparseralias id_text => palt pmap(q{join "\t", @$_}, super_brackets),
+                                 pmap(q{join "\t", @$_}, multiword_ws),
                                  pmap(q{join "\t", @$_}, multiword),
                                  prx '[^][]+';
 }

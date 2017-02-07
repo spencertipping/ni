@@ -1082,6 +1082,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {join "\t", @$_}
 	| <multiword_ws> -> {join "\t", @$_}
 	| <multiword> -> {join "\t", @$_}
 	| /[^][]+/
@@ -1464,6 +1465,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {shell_quote @$_}
 	| <multiword_ws> -> {shell_quote @$_}
 	| <multiword> -> {shell_quote @$_}
 	| /[^][]+/
@@ -1585,3 +1587,17 @@
 
 ## DEFINITION
 	/[^][/,]+/
+
+# PARSER super_brackets
+
+## DEFINITION
+	<core parser {
+	  
+	      my ($self, @xs) = @_;
+	      return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+	      my $superness = $1;
+	      my @r;
+	      push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+	      $1 eq $superness ? (\@r, @xs) : ();
+	    
+	}>
