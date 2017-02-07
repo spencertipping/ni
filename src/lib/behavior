@@ -17,6 +17,7 @@ ni::name('ni:/lib/slice.b' =>
       apply_unsafe => fn q{
         local $_;
         my ($self, $p) = @_;
+        # TODO: can't just increment this; it never converges
         return if $$self{applied_to}{$p}++;
         push @{"$p\::ctors"}, $$self{ctor} if $$self{ctor};
         push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};

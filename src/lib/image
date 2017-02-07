@@ -48,7 +48,7 @@ ni('ni:/object')->child('/lib/image')
     circular_links => fn q{
       local $_;
       my $self = shift;
-      map "$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
+      map "\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
           @{$$self{circular}};
     },
 
