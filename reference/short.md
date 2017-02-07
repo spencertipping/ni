@@ -458,6 +458,11 @@
 ## SYNTAX
 	<colspec1>? -> {dense_to_sparse_op $_}
 
+# SHORT OPERATOR /Z
+
+## SYNTAX
+	<integer> -> {unflatten_op 0 + $_}
+
 # SHORT OPERATOR /^
 
 ## SYNTAX

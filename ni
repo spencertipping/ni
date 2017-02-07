@@ -4275,7 +4275,7 @@ defoperator cell_log => q{
 defoperator cell_exp => q{
   my ($cs, $base) = @_;
   my $eb = log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 };
 
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
@@ -5605,7 +5605,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-133 core/matrix/matrix.pl.sdoc
+148 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -5667,8 +5667,23 @@ defoperator sparse_to_dense => q{
   }
 };
 
+defoperator unflatten => q{
+  my ($n_cols) = @_;
+  my @row = ();
+  while(<STDIN>) {
+    chomp;
+    push @row, $_;
+    if(@row == $n_cols) {
+      print(join("\t", @row) . "\n"); 
+      @row = ();
+    }
+  }
+  if (@row > 0) {print(join("\t", @row) . "\n");}
+};
+
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
+defshort '/Z', pmap q{unflatten_op 0 + $_}, integer;
 
 NumPy interop.
 Partitioned by the first row value and sent in as dense matrices.

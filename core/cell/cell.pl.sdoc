@@ -81,7 +81,7 @@ defoperator cell_log => q{
 defoperator cell_exp => q{
   my ($cs, $base) = @_;
   my $eb = log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 };
 
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
