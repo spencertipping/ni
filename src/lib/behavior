@@ -17,8 +17,8 @@ ni::name('ni:/lib/slice.b' =>
       apply_unsafe => fn q{
         local $_;
         my ($self, $p) = @_;
-        # TODO: can't just increment this; it never converges
-        return if $$self{applied_to}{$p}++;
+        return if $$self{applied_to}{$p};
+        $$self{applied_to}{$p} = 1;
         push @{"$p\::ctors"}, $$self{ctor} if $$self{ctor};
         push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};
         *{"$p\::(("} = sub {} if grep /^\(/, keys %{$$self{methods}};
@@ -118,7 +118,7 @@ ni('ni:/lib/resolver.b')->apply('/lib/tag');
     local $_;
     my ($self, $p) = @_;
     $p = $p->package if ref $p;
-    $$self{applied_to}{$p}++;
+    $$self{applied_to}{$p} = 1;
     $_->apply($p) for @{$$self{slices}};
     $self;
   },

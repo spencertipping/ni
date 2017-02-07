@@ -155,7 +155,7 @@ ni('ni:/object')->child('/lib/image')
       return 'undef' unless defined $v;
       return $v if Scalar::Util::looks_like_number $v;
       $v =~ s/([\\\\'])/\\\\$1/g;
-      length $v > 8 ? "q'$v'" : "'$v'";
+      "q'$v'";
     },
 
     quote_blessed => fn q{
