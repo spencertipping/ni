@@ -3683,8 +3683,8 @@ with their split-spec mnemonics:
 You can also field-split on arbitrary regexes, or extend the splitalt dsp to
 add custom split operators.
 
-defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
-defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
+defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#" : "y/$_[0]/\\t/"};
+defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
 # TODO: collapse multiline fields
@@ -3699,7 +3699,7 @@ defoperator split_proper_csv => q{
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
     'C' => pmap(q{split_chr_op   ','},               pnone),
-    'D' => pmap(q{split_chr_op   '\/'},               pnone),
+    'D' => pmap(q{split_chr_op   '\/'},              pnone),
     'V' => pmap(q{split_proper_csv_op},              pnone),
     'P' => pmap(q{split_chr_op   '|'},               pnone),
     'S' => pmap(q{split_regex_op '\s+'},             pnone),

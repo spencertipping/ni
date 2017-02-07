@@ -925,7 +925,7 @@
 # OPERATOR split_chr
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "y/$_[0]/\t/"
+	exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\t#" : "y/$_[0]/\t/"
 
 # OPERATOR split_proper_csv
 
@@ -940,7 +940,7 @@
 # OPERATOR split_regex
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "s/$_[0]/\$1\t/g"
+	my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\t/g"
 
 # OPERATOR sql_preview
 
