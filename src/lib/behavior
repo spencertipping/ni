@@ -1,3 +1,4 @@
+# /lib/slice.b
 ni::name('ni:/lib/slice.b' =>
   bless {
     name => '/lib/slice.b',
@@ -82,6 +83,7 @@ ni('ni:/lib/named.b')->apply('/lib/slice');
 
 ni('ni:/lib/namespaced.b')->apply('/lib/slice');
 
+# /lib/tag.b
 '/lib/slice'->new('/lib/tag.b',
   apply => fn q{
     local $_;
@@ -90,6 +92,20 @@ ni('ni:/lib/namespaced.b')->apply('/lib/slice');
     $self;
   });
 
+'/lib/slice'->new('/lib/tag_init.b',
+  instantiate => fn q{
+    my $class = shift;
+    my $name  = shift;
+    +{name => $name, slices => [@_]};
+  });
+
+ni('ni:/lib/tag.b')->apply('/lib/tag');
+ni('ni:/lib/tag_init.b')->apply('/lib/tag');
+ni('ni:/lib/named.b')->apply('/lib/tag');
+ni('ni:/lib/namespaced.b')->apply('/lib/tag');
+ni('ni:/lib/instantiable.b')->apply('/lib/tag');
+
+# /lib/branch.b
 '/lib/slice'->new('/lib/branch.b',
   apply => fn q{
     local $_;
@@ -106,3 +122,23 @@ ni('ni:/lib/namespaced.b')->apply('/lib/slice');
     for my $p (sort keys %{$$self{applied_to}}) {$_->apply($p) for @_}
     $self;
   });
+
+'/lib/slice'->new('/lib/branch_init.b',
+  instantiate => fn q{
+    my $class = shift;
+    my $name  = shift;
+    +{name       => $name,
+      applied_to => {},
+      slices     => [@_]};
+  });
+
+'/lib/tag'->new('/lib/perlbranch.b',
+  ni"ni:/lib/branch.b",
+  ni"ni:/lib/instantiable.b",
+  ni"ni:/lib/named.b",
+  ni"ni:/lib/namespaced.b");
+
+ni('ni:/lib/perlbranch.b')->apply('/lib/branch');
+ni('ni:/lib/branch_init.b')->apply('/lib/branch');
+
+'/lib/slice'->new('/lib/instance.b', class => fn q{ni 'ni:' . ref shift});
