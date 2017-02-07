@@ -1,5 +1,5 @@
-ni->defclass('image',
-  ni->defslice('image_init',
+ni('ni:/object')->child('/lib/image')
+  ->def('/lib/image_init.b',
     instantiate => fn q{
       my $class = shift;
       my %args  = (
@@ -28,9 +28,9 @@ ni->defclass('image',
         finalizers   => [],
         visited      => {},
         ordering     => []};
-    }),
+    })
 
-  ni->defslice('image_quoting',
+  ->def('/lib/image_quoting.b',
     gensym => fn q{
       my $n = shift->{gensym_n}++;
       my $s = '$' .
@@ -178,9 +178,9 @@ ni->defclass('image',
         $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
       $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
       $q;
-    }));
+    });
 
-ni('ni:/c/fn')->def(
+ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
@@ -201,14 +201,14 @@ ni('ni:/c/fn')->def(
     $quote->quote_blessed(\%state, ref $self);
   });
 
-ni('ni:/c/slice')->def(
+ni('ni:/lib/slice')->def('/lib/slice_serialize.b',
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
     my $name = $self->name;
     $quote->quote_class(ref $self);
 
-    if (defined $name and $name eq 'ni:/b/slice') {
+    if (defined $name and $name eq 'ni:/lib/slice.b') {
       my %methods;
       my @ks = sort keys %{$$self{methods}};
       @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};

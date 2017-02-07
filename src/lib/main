@@ -1,4 +1,4 @@
-ni('ni:/c/ni')->def(
+ni('ni:/lib/ni')->def('/lib/ni_main.b',
   run => fn q{
     my $self = shift;
     shift, exit $self->$1(@_) if $_[0] =~ /^--(.*)$/ && $self->can($1);
@@ -16,8 +16,8 @@ ni('ni:/c/ni')->def(
 
   'internal/image' => fn q{
     my $self = shift;
-    my $q = ni('ni:/c/image')->new
-      ->partial_image('ni:/c/ni', 'ni:/c/image');
+    my $q = ni('ni:/lib/image')->new(use_newlines => 1)
+      ->partial_image('ni:/lib/ni', 'ni:/lib/image');
     $q->write(\*STDOUT);
     0;
   });

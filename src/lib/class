@@ -1,101 +1,56 @@
 # /class and /metaclass
-'/lib/slice'->new('ni:/lib/class_init.b',
+'/lib/slice'->new('/lib/class_init.b',
   ctor => fn q{my $s = shift; $s->apply($s->package)},
   instantiate => fn q{
     local $_;
     my ($class, $name, @slices) = @_;
     +{name   => $name,
-      slices => [map ref($_) ? $_ : ni($_), @slices]};
-  }));
+      slices => [map $class->resolve($_), @slices]};
+  });
 
-ni('/lib/perlbranch.b')->apply('/metaclass');
-ni('/lib/class_init.b')->apply('/metaclass');
-
-'/metaclass'->new('/metaclass.c');
-'/metaclass'->new('/class.c');
-
-'/class.c'->new('/class', '/lib/perlbranch.b', '/lib/class_init.b');
-
-'/metaclass'->new($_) for qw#
-  /object.c /class.c /metaclass.c /fn.c
-  /lib/slice.c /lib/branch.c /lib/tag.c /lib/behavior.c #;
-
-# TODO
-# Rewrite or formalize most of this. /c/class being self-referential
-# doesn't work; we need some kind of metaclasses.
-
-ni::name(
-
-  'ni:/c/behavior' =>
-    bless {name   => '/c/behavior',
-           slices => [ni"ni:/b/lifecycle",
-                      ni"ni:/b/mapped_to_package",
-                      ni"ni:/b/ni_namespaced",
-                      ni"ni:/b/named_persistent"]},
-    '/c/class');
-
-ni('ni:/b/class_init')->apply('/c/class');
-ni('ni:/b/branch')->apply('/c/class');
-
-ni('ni:/c/behavior')->apply('/c/class');
-
-'/c/class'->new('/c/class',
-  ni"ni:/c/behavior",
-  ni"ni:/b/branch");
-
-ni::name('ni:/b/slice_named_init' =>
-  '/b/slice'->new(
-    instantiate => fn q{
-      my ($class, $name, @methods) = @_;
-      my $self = &{'/b/slice::instantiate'}($class, @methods);
-      $$self{name} = $name;
-      $self;
-    }));
-
-'/c/class'->new('/c/slice',
-  ni"ni:/c/behavior",
-  ni"ni:/b/slice",
-  ni"ni:/b/slice_named_init");
-
-ni('ni:/c/slice')->new("/b/$_" => ni("ni:/b/$_")->instantiation)
-  for qw/slice slice_init lifecycle tag branch named ni_namespaced
-         mapped_to_package class_init slice_named_init/;
-
-# This is a hack, but a necessary one.
-# ni:/b/named_persistent refers to the unnamed version of
-# /b/named in its "isa" list, which is, by this point, incorrect. So we
-# forcibly replace it now that we have a named version. (Sorry. I know how
-# horrible this is.)
-{
-  my @i = ni('ni:/b/named_persistent')->instantiation;
-  shift @i while ref $i[0];
-  ni('ni:/c/slice')->new('/b/named_persistent' =>
-    ni('ni:/b/named'),
-    @i);
+for (qw/ class metaclass class.c metaclass.c /) {
+  ni('ni:/lib/perlbranch.b')->apply("/$_");
+  ni('ni:/lib/class_init.b')->apply("/$_");
 }
 
-ni('ni:/c/class')->new('/c/behavior',
-  ni"ni:/b/lifecycle",
-  ni"ni:/b/mapped_to_package",
-  ni"ni:/b/ni_namespaced",
-  ni"ni:/b/named_persistent");
+'/metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/class_init.b');
 
-ni('ni:/c/class')->new('/c/class',
-  ni"ni:/c/behavior",
-  ni"ni:/b/branch",
-  ni"ni:/b/class_init");
+ni('ni:/metaclass')->new('/metaclass.c');
+ni('ni:/metaclass')->new('/object.c');
+ni('ni:/metaclass')->new('/class.c', '/object.c');
 
-ni('ni:/c/class')->new('/c/slice',
-  ni"ni:/c/behavior",
-  ni"ni:/b/slice",
-  ni"ni:/b/slice_named_init");
+ni('ni:/class.c')->new('/class', '/lib/perlbranch.b', '/lib/class_init.b');
+ni('ni:/metaclass.c')->add('/class');
 
-ni('ni:/c/slice')->new('/b/class_method_def',
-  def => fn q{shift->add(ni('ni:/c/slice')->new(undef, @_))});
+ni('ni:/object.c')->add('/class');
+ni('ni:/object.c')->new('/object', '/lib/instance.b');
 
-ni('ni:/c/class')->add(ni"ni:/b/class_method_def");
-ni('ni:/c/class')->new('/c/ni');
+ni('ni:/class')->add('/object');
+ni('ni:/metaclass')->add('/object');
 
-ni('ni:/c/ni')->def(
-  defclass => fn q{shift; ni('ni:/c/class')->new("/c/$_[0]", @_[1..$#_])},
-  defslice => fn q{shift; ni('ni:/c/slice')->new("/b/$_[0]", @_[1..$#_])});
+# /lib/{slice,tag,branch}
+ni('ni:/metaclass')->new('/lib/behavior.c', '/object.c');
+ni('ni:/metaclass')->new('/lib/slice.c',    '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/tag.c',      '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/branch.c',   '/lib/behavior.c');
+
+ni('ni:/lib/behavior.c')->new('/lib/behavior', '/object');
+ni("ni:/lib/$_.c")->new("/lib/$_",
+  '/lib/behavior', '/lib/named.b',
+  "/lib/$_.b", "/lib/$_\_init.b") for qw/slice branch tag/;
+
+# Definition
+ni('ni:/class')->add(
+  ni('ni:/lib/slice')->new('/lib/classdef.b',
+    def => fn q{shift->add(ni('ni:/lib/slice')->new(@_))}));
+
+# Subclassing
+ni('ni:/class')->def('/lib/subclass.b',
+  child => fn q{
+    my ($self, $name, @slices) = @_;
+    ni("ni:/metaclass")->new("$name.c", $self->class)
+    ->new($name, @slices);
+  });
+
+# Reflection for /lib/ni
+ni('ni:/object')->child('/lib/ni');

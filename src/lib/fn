@@ -1,4 +1,4 @@
-ni->defslice('fn_init',
+ni('ni:/lib/slice')->new('/lib/fn_init.b',
   instantiate => fn q{
     my $class = shift;
     my $code  = pop;
@@ -20,8 +20,6 @@ ni->defslice('fn_init',
 # constrain the serialization protocol, though, in that we can't rely on method
 # calls against slices to reconstruct our state. (We have to construct the
 # objects and packages separately.)
-delete @{'/c/fn::'}{qw/new compile/};
+delete @{'/lib/fn::'}{qw/new compile/};
 
-ni->defclass('fn',
-  ni"ni:/b/lifecycle",
-  ni"ni:/b/fn_init");
+ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
