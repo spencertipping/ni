@@ -6961,7 +6961,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-176 core/hadoop/hadoop.pl.sdoc
+190 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6992,6 +6992,13 @@ defresource 'hdfst',
                     my $path = shell_quote $_[1];
                     sh qq{$hadoop_name fs -text $path 2>/dev/null || $hadoop_name fs -text $path"/part*" 2>/dev/null}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
+defresource 'hdfsrm',
+  read => q{soproc {my $o = resource_read "hdfst://$_[1]";
+                    sforward $o, \*STDOUT;
+                    $o->await;
+                    resource_nuke "hdfst://$_[1]"} @_},
+  nuke => q{resource_nuke "hdfst://$_[1]"};
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -7026,7 +7033,7 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfst?:\/\//) {
+  if (/^hdfs\w*:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
     s/^hdfst:/hdfs:/gm;
     (0, map [split /\t/], grep length, split /\n/);
@@ -7104,6 +7111,8 @@ defoperator hadoop_streaming => q{
     close $hadoop_fh;
     die "ni: hadoop streaming failed" if $hadoop_fh->await;
 
+    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+
     (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
     print "$result_path/part-*\n";
   }
@@ -7115,6 +7124,9 @@ defoperator hadoop_streaming => q{
   resource_nuke $reducer  if defined $reducer;
 };
 
+defoperator hadoop_make_nukeable =>
+  q{print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>};
+
 c
 BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                                       pmap(q{[]},    prc ':'),
@@ -7124,6 +7136,8 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
+
+defhadoopalt '#' => pmap q{hadoop_make_nukeable_op}, pnone;
 
 defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
                           my @cr =

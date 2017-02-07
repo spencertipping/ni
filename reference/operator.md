@@ -268,6 +268,11 @@
 	  sforward \*STDIN, swfile $file;
 	  print "$file\n";
 
+# OPERATOR hadoop_make_nukeable
+
+## IMPLEMENTATION
+	print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>
+
 # OPERATOR hadoop_streaming
 
 ## IMPLEMENTATION
@@ -311,6 +316,7 @@
 	    };
 	    close $hadoop_fh;
 	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
 	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
 	    print "$result_path/part-*\n";
 	  }

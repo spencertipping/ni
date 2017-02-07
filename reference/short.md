@@ -363,6 +363,7 @@
 
 ## SYNTAX
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>

@@ -28,6 +28,7 @@
 
 ## OPTIONS
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -84,6 +85,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -116,6 +121,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?
