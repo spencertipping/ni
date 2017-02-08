@@ -1,5 +1,5 @@
 # /lib/slice.b
-ni::name('ni:/lib/slice.b' =>
+ni->def('ni:/lib/slice.b' =>
   bless {
     name => '/lib/slice.b',
     methods => {
@@ -31,7 +31,7 @@ ni::name('ni:/lib/slice.b' =>
 ni('ni:/lib/slice.b')->{methods}->{apply_unsafe}
   ->(ni('ni:/lib/slice.b'), '/lib/slice');
 
-ni::name('ni:/lib/slice_init.b' =>
+ni->def('ni:/lib/slice_init.b' =>
   bless {
     name => '/lib/slice_init.b',
     methods => {
@@ -50,7 +50,7 @@ ni::name('ni:/lib/slice_init.b' =>
 
 ni('ni:/lib/slice_init.b')->apply('/lib/slice');
 
-ni::name('ni:/lib/instantiable.b' =>
+ni->def('ni:/lib/instantiable.b' =>
   bless {
     name => '/lib/instantiable.b',
     methods => {
@@ -71,13 +71,13 @@ ni::name('ni:/lib/instantiable.b' =>
 
 ni('ni:/lib/instantiable.b')->apply('/lib/slice');
 
-ni::name(
+ni->def(
   'ni:/lib/named_in_ni.b' =>
     '/lib/slice'->new('/lib/named_in_ni.b',
       namespace => fn q{'ni'}),
   'ni:/lib/named.b' =>
     '/lib/slice'->new('/lib/named.b',
-      ctor => fn q{my $s = shift; ni::name($s->name, $s)},
+      ctor => fn q{my $s = shift; ni->def($s->name, $s)},
       name => fn q{$_[0]->namespace . ":" . $_[0]->{name}}));
 
 ni('ni:/lib/named.b')->apply('/lib/slice');

@@ -18,9 +18,13 @@ ni('ni:/object')->child('/lib/ni')
     })
 
   ->def('/lib/ni_image.b',
+    exists => fn q{exists $_[0]->{named}{$_[1]}},
     quoted => fn q{
       my $self = shift;
-      ni('ni:/lib/image')->new(@_)->partial_image(grep !/^ni\.eval:/, keys %ni::named);
+      my $q = ni('ni:/lib/image')->new(@_);
+      my $gs = $q->quote($self);
+      $q->side_effect("\$ni::self=$gs;");
+      $q;
     })
 
   ->def('/lib/ni_main.b',

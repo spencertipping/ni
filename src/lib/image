@@ -52,14 +52,6 @@ ni('ni:/object')->child('/lib/image')
           @{$$self{circular}};
     },
 
-    partial_image => fn q{
-      my $self = shift;
-      my %names;
-      @names{@_} = @ni::named{@_};
-      my $g = $self->quote(\%names);
-      $self->side_effect("\@ni::named{keys\%$g}=values\%$g;");
-    },
-
     reconstruction => fn q{
       my $self = shift;
       (@{$$self{definitions}}{@{$$self{ordering}}},
@@ -169,7 +161,7 @@ ni('ni:/object')->child('/lib/image')
 
     quote_class => fn q{
       my ($self, $class) = @_;
-      $self->quote(ni"ni:$class") if $$self{include_classes} && exists $ni::named{"ni:$class"};
+      $self->quote(ni"ni:$class") if $$self{include_classes} && ni->exists("ni:$class");
     },
 
     quote_object => fn q{
