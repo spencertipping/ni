@@ -1,0 +1,16 @@
+ni('ni:/object')->child('/unix/proc')
+  ->ro('/unix/proc_readers.b', qw/pid stdin stdout stderr/)
+  ->def('/unix/proc_init.b',
+    instantiate => fn q{
+      my ($class, $pid, $i, $o, $e) = @_;
+      +{pid    => $pid,
+        stdin  => $i,
+        stdout => $o,
+        stderr => $e};
+    })
+
+  ->def('/unix/proc_io.b',
+    io_read  => fn q{read shift->{stdout}, @_},
+    io_write => fn q{shift->{stdin}->print(@_)},
+    r_fds    => fn q{map fileno $_, $_[0]->{stdout}, $_[0]->{stderr}},
+    w_fds    => fn q{map fileno $_, $_[0]->{stdin}});

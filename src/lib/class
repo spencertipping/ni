@@ -40,9 +40,29 @@ ni("ni:/lib/$_.c")->new("/lib/$_",
   "/lib/$_.b", "/lib/$_\_init.b") for qw/slice branch tag/;
 
 # Definition
-ni('ni:/class')->add(
+ni('ni:/lib/branch')->new('/lib/definition.b');
+ni('ni:/lib/branch')->add('/lib/definition.b');
+
+ni('ni:/class')->add('/lib/definition.b');
+ni('ni:/metaclass')->add('/lib/definition.b');
+
+ni('ni:/lib/definition.b')->add(
   ni('ni:/lib/slice')->new('/lib/classdef.b',
     def => fn q{shift->add(ni('ni:/lib/slice')->new(@_))}));
+
+ni('ni:/lib/definition.b')->def('/lib/accessor.b',
+  ro => fn q{
+    my ($self, $slice, @rs) = @_;
+    $self->add(ni('ni:/lib/slice')->new(
+      $slice,
+      map +($_ => fn qq{shift->{'$_'}}), @rs));
+  },
+  rw => fn q{
+    my ($self, $slice, @as) = @_;
+    $self->add(ni('ni:/lib/slice')->new(
+      $slice,
+      map +($_ => fn qq{\@_ == 2 ? \$_[0]->{'$_'} = \$_[1] : shift->{'$_'}}), @as));
+  });
 
 # Subclassing
 ni('ni:/class')->def('/lib/subclass.b',
@@ -51,6 +71,3 @@ ni('ni:/class')->def('/lib/subclass.b',
     ni("ni:/metaclass")->new("$name.c", $self->class)
     ->new($name, @slices);
   });
-
-# Reflection for /lib/ni
-ni('ni:/object')->child('/lib/ni');

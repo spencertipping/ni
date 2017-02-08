@@ -72,12 +72,16 @@ ni::name('ni:/lib/instantiable.b' =>
 ni('ni:/lib/instantiable.b')->apply('/lib/slice');
 
 ni::name(
+  'ni:/lib/named_in_ni.b' =>
+    '/lib/slice'->new('/lib/named_in_ni.b',
+      namespace => fn q{'ni'}),
   'ni:/lib/named.b' =>
     '/lib/slice'->new('/lib/named.b',
       ctor => fn q{my $s = shift; ni::name($s->name, $s)},
-      name => fn q{"ni:" . shift->{name}}));
+      name => fn q{$_[0]->namespace . ":" . $_[0]->{name}}));
 
 ni('ni:/lib/named.b')->apply('/lib/slice');
+ni('ni:/lib/named_in_ni.b')->apply('/lib/slice');
 
 '/lib/slice'->new('/lib/namespaced.b',
   package => fn q{shift->{name}});
@@ -108,6 +112,7 @@ ni('ni:/lib/namespaced.b')->apply('/lib/slice');
 ni('ni:/lib/tag.b')->apply('/lib/tag');
 ni('ni:/lib/tag_init.b')->apply('/lib/tag');
 ni('ni:/lib/named.b')->apply('/lib/tag');
+ni('ni:/lib/named_in_ni.b')->apply('/lib/tag');
 ni('ni:/lib/namespaced.b')->apply('/lib/tag');
 ni('ni:/lib/instantiable.b')->apply('/lib/tag');
 ni('ni:/lib/resolver.b')->apply('/lib/tag');
@@ -145,6 +150,7 @@ ni('ni:/lib/resolver.b')->apply('/lib/tag');
   '/lib/branch.b',
   '/lib/instantiable.b',
   '/lib/named.b',
+  '/lib/named_in_ni.b',
   '/lib/namespaced.b',
   '/lib/resolver.b');
 

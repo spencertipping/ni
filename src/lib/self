@@ -1,0 +1,57 @@
+ni('ni:/object')->child('/lib/ni')
+  ->def('/lib/ni_self.b',
+    is_mutable => fn q{$0 ne "-" && -w $0},
+    modify => fn q{
+      my ($self, $fn) = @_;
+      die "ni: cannot modify immutable instance" unless $self->is_mutable;
+      my (undef, undef, $mode) = stat $0;
+      my $temp = map chr 97 + rand(26), 1..16;
+      my @r = split /\//, $0;
+      $r[-1] =~ s/^/./;
+      $r[-1] =~ s/$/.$temp/;
+      my $r = join '/', @r;
+      open my $w, '>', $r or die "ni: failed to create staging file: $!";
+      chmod $mode, $r or die "ni: failed to chmod $r to $mode: $!";
+      &$fn($w);
+      close $w;
+      rename $r, $0 or die "ni: failed to rename: $!";
+    })
+
+  ->def('/lib/ni_main.b',
+    run => fn q{
+      my $self = shift;
+      shift, exit $self->$1(@_) if $_[0] =~ /^--(.*)$/ && $self->can($1);
+      exit $self->default(@_);
+    },
+
+    'internal/eval' => fn q{
+      my $self = shift;
+      for (@_) {
+        my $r = ni::eval($_);
+        print $@ ? "ERROR $@\n" : "$r\n";
+      }
+      0;
+    },
+
+    'internal/+=' => fn q{
+      my $self = shift;
+      for (@_) {
+        my $r = do $_;
+        die "ni: failed to parse $_: $@" if $@;
+        die "ni: failed to execute $_: $!" unless defined $r;
+        die "ni: failed to run $_: $!" unless $r;
+      }
+      # TODO: fix this by using namespace objects that indicate whether they
+      # should be serialized
+      my @ks = grep !/^ni\.eval:/, sort keys %ni::named;
+      my $q = ni('ni:/lib/image')->new->partial_image(@ks);
+      $self->modify(sub {$q->write(shift)});
+      0;
+    },
+
+    'internal/image' => fn q{
+      my $self = shift;
+      my $q = ni('ni:/lib/image')->new->partial_image('ni:/lib/ni', 'ni:/lib/image');
+      $q->write(\*STDOUT);
+      0;
+    });

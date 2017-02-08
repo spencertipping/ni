@@ -8,13 +8,20 @@ boot_image() {
       src/lib/class \
       src/lib/fn \
       src/lib/image \
-      src/lib/main
+      src/lib/self
+}
+
+install_stuff() {
+  perl ni0 --internal/+= src/lib/doc
 }
 
 boot_build() {
   boot_image > ni0
-
   echo "initially $(wc -c < ni0) bytes"
+
+  $1
+
+  echo "       >> $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
   echo "       >> $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
@@ -34,39 +41,43 @@ boot_build() {
   chmod 755 ni
 }
 
+time_n() {
+  n=$1
+  min=none
+  shift
+
+  k=$((n / 10))
+  date +%s%N > /dev/null
+  seq 4 | xargs -n1 -I{} "$@" > /dev/null
+  for i in `seq 10`; do
+    start_nanos=$(date +%s%N)
+    seq $k | xargs -n1 -I{} "$@" > /dev/null
+    end_nanos=$(date +%s%N)
+
+    if [[ $min == none ]] || (( (end_nanos - start_nanos) < min )); then
+      min=$((end_nanos - start_nanos))
+    fi
+  done
+  echo "$(( (end_nanos - start_nanos) / (k * 1000) ))μs"
+}
+
 case $1 in
 boot)
   boot_image > ni0
   ;;
 
-boot-nd)
-  boot_image > ni0
-  ni nE2 p'`perl ni0 --internal/image`' p's/\$\w+/\$/gr' gcrp'a%100'
-  ;;
-
 bench)
-  boot_build
+  boot_build :
   boot_image > ni0
-  seq 10 | xargs -n1 -I{} echo > /dev/null
-
-  perl ni0 --internal/eval 1 > /dev/null
-  ni_startups=100
-  start1_nanos=$(date +%s%N)
-  seq $ni_startups | xargs -n1 -I{} perl ni0 --internal/eval 1 > /dev/null
-  end1_nanos=$(date +%s%N)
-
-  perl ni --internal/eval 1 > /dev/null
-  start2_nanos=$(date +%s%N)
-  seq $ni_startups | xargs -n1 -I{} perl ni --internal/eval 1 > /dev/null
-  end2_nanos=$(date +%s%N)
+  echo "original: $(time_n 200 perl ni0 --internal/eval 1) overhead"
+  echo "compiled: $(time_n 200 perl ni  --internal/eval 1) overhead"
 
   rm ni0
-
-  echo "original: $(( (end1_nanos - start1_nanos) / (ni_startups * 1000) ))μs overhead" >&2
-  echo "compiled: $(( (end2_nanos - start2_nanos) / (ni_startups * 1000) ))μs overhead" >&2
+  boot_build install_stuff
+  echo "full: $(time_n 200 perl ni --internal/eval 1) overhead"
   ;;
 
 *)
-  boot_build
+  boot_build install_stuff
   ;;
 esac

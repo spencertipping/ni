@@ -1,0 +1,13 @@
+ni('ni:/object')->child('/unix/pipeline')
+  ->def('/unix/pipeline_init.b',
+    instantiate => fn q{
+      my $class = shift;
+      +{elements => [@_],
+        r_fds    => [map $_->r_fds, @_],
+        w_fds    => [map $_->w_fds, @_],
+        
+    }),
+
+  ->def('/unix/pipeline_list.b',
+    '(@{}' => fn q{
+    },

@@ -1,0 +1,21 @@
+ni('ni:/object')->child('/lib/doc')
+  ->def('/lib/doc_init.b',
+    instantiate => fn q{
+      my $class = shift;
+      my $name  = shift;
+      my $doc   = pop;
+      +{name    => $name,
+        doc     => $doc,
+        apropos => [map ref($_) ? $_->name : $_, @_]};
+    })
+
+  ->add('/lib/named.b')
+  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'});
+
+ni('ni:/object.c')->def('/lib/documentable.b',
+  doc => fn q{
+    my $self = shift;
+    my $doc  = pop;
+    ni('ni:/lib/doc')->new(@_, $self, $doc);
+    $self;
+  });
