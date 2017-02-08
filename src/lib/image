@@ -1,3 +1,7 @@
+# TODO
+# Extend the serialization protocol by making a "running context" that is aware
+# of sessions and can be used to implement RMI.
+
 ni('ni:/object')->child('/lib/image')
   ->def('/lib/image_init.b',
     instantiate => fn q{
@@ -99,6 +103,7 @@ ni('ni:/object')->child('/lib/image')
       $g;
     },
 
+    # TODO: replace this with more structured alternatives
     side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     finalizer        => fn q{push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]},

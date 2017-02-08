@@ -161,6 +161,8 @@ $self->add(ni(\'ni:/lib/slice\')->new(
   map +($_ => fn qq{\\@_ == 2 ? \\$_[0]->{\'$_\'} = \\$_[1] : shift->{\'$_\'}}), @as));';$h5=bless({$Z,$g5},$V);$i5={$c5,$e5,$f5,$h5};$j5=q'/lib/accessor.b';$k5=bless({$c,$Z4,$M,$N,$O,$N,$P,$i5,$f,$j5},$C);$l5=q'/lib/slice::ctors';$m5=[$X4,$k5];$n5=bless({$c,$P4,$f,$Q4,$g,$m5},$F);$o5=q'/lib/branch::ctors';$p5={};$q5=q'child';$r5=q'my ($self, $name, @slices) = @_;
 ni("ni:/metaclass")->new("$name.c", $self->class)
 ->new($name, @slices);';$s5=bless({$Z,$r5},$V);$t5={$q5,$s5};$u5=q'/lib/subclass.b';$v5=bless({$c,$p5,$M,$N,$O,$N,$P,$t5,$f,$u5},$C);$w5=q'/lib/slice::ctors';$x5=[$p4,$y4,$T1,$n5,$v5];$y5=bless({$c,$g3,$f,$I,$g,$x5},$h);$z5=q'/class.c::ctors';$A5=[$y5];$B5=bless({$c,$e,$f,$d,$g,$A5},$w);$C5=q'/metaclass::ctors';$D5={$w,1};$E5=[$p4,$y4,$T1,$n5];$F5=bless({$c,$D5,$f,$w,$g,$E5},$d);$G5=q'/metaclass.c::ctors';$H5={$o,1};$I5=[$Z2];$J5=bless({$c,$H5,$f,$o,$g,$I5},$w);$K5=q'/metaclass::ctors';$L5=q'/lib/ni';$M5={$L5,1};$N5={};$O5=q'is_mutable';$P5=[];$Q5=q'$0 ne "-" && -w $0';$R5=bless({$B1,$P5,$Z,$Q5},$V);$S5=q'modify';$T5=[];$U5=q'my ($self, $fn) = @_;
+# TODO: replace all of this with a generalized "atomic-update" function
+# against UNIX files.
 die "ni: cannot modify immutable instance" unless $self->is_mutable;
 my (undef, undef, $mode) = stat $0;
 my $temp = map chr 97 + rand(26), 1..16;
@@ -176,7 +178,7 @@ rename $r, $0 or die "ni: failed to rename: $!";';$V5=bless({$B1,$T5,$Z,$U5},$V)
 my $q = ni(\'ni:/lib/image\')->new(@_);
 my $gs = $q->quote($self);
 $q->side_effect("\\$ni::self=$gs;");
-$q;';$k6=bless({$B1,$i6,$Z,$j6},$V);$l6={$d6,$g6,$h6,$k6};$m6=q'/lib/ni_image.b';$n6=bless({$c,$c6,$M,$N,$O,$N,$P,$l6,$f,$m6},$C);$o6=q'/lib/slice::ctors';$p6={};$q6=q'internal/+=';$r6=[];$s6=q'my $self = shift;
+$q;';$k6=bless({$B1,$i6,$Z,$j6},$V);$l6={$d6,$g6,$h6,$k6};$m6=q'/lib/ni_image.b';$n6=bless({$c,$c6,$M,$N,$O,$N,$P,$l6,$f,$m6},$C);$o6=q'/lib/slice::ctors';$p6={};$q6=q'--internal/+=';$r6=[];$s6=q'my $self = shift;
 for (@_) {
   my $r = do $_;
   die "ni: failed to parse $_: $@" if $@;
@@ -185,14 +187,14 @@ for (@_) {
 }
 my $q = $self->quoted;
 $self->modify(sub {$q->write(shift)});
-0;';$t6=bless({$B1,$r6,$Z,$s6},$V);$u6=q'internal/eval';$v6=[];$w6=q'my $self = shift;
+0;';$t6=bless({$B1,$r6,$Z,$s6},$V);$u6=q'--internal/eval';$v6=[];$w6=q'my $self = shift;
 for (@_) {
   my $r = ni::eval($_);
   print $@ ? "ERROR $@\\n" : "$r\\n";
 }
-0;';$x6=bless({$B1,$v6,$Z,$w6},$V);$y6=q'internal/image';$z6=[];$A6=q'shift->quoted->write(\\*STDOUT);
+0;';$x6=bless({$B1,$v6,$Z,$w6},$V);$y6=q'--internal/image';$z6=[];$A6=q'shift->quoted->write(\\*STDOUT);
 0;';$B6=bless({$B1,$z6,$Z,$A6},$V);$C6=q'run';$D6=[];$E6=q'my $self = shift;
-shift, exit $self->$1(@_) if $_[0] =~ /^--(.*)$/ && $self->can($1);
+shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
 exit $self->default(@_);';$F6=bless({$B1,$D6,$Z,$E6},$V);$G6={$q6,$t6,$u6,$x6,$y6,$B6,$C6,$F6};$H6=q'/lib/ni_main.b';$I6=bless({$c,$p6,$M,$N,$O,$N,$P,$G6,$f,$H6},$C);$J6=q'/lib/slice::ctors';$K6=[$Y5,$n6,$I6];$L6=bless({$c,$M5,$f,$L5,$g,$K6},$o);$M6=q'/lib/ni.c::ctors';$N6=q'named';$O6=q'ni.doc:/class';$P6={$l,1};$Q6=[$Z2];$R6=bless({$c,$P6,$f,$l,$g,$Q6},$w);$S6=q'/metaclass::ctors';$T6={$i2,1};$U6={};$V6=[];$W6=q'my $class = shift;
 my $name  = shift;
 my $doc   = pop;
