@@ -34,7 +34,20 @@
 	  my ($file) = @$args;
 	  ([], [checkpoint_op($file, $left), @$right]);
 
-# META OPERATOR let
+# META OPERATOR memory_data_closure
+
+## IMPLEMENTATION
+	
+	  my ($name, $f) = @{$_[0]};
+	  my $data;
+	  my $fh = sni @$f;
+	  1 while saferead $fh, $data, 8192, length $data;
+	  close $fh;
+	  $fh->await;
+	  add_closure_key $name, $data;
+	  ();
+
+# META OPERATOR op_let
 
 ## IMPLEMENTATION
 	
@@ -48,19 +61,6 @@
 	    $a;
 	  };
 	  ($left, [@$rewritten, @$right]);
-
-# META OPERATOR memory_data_closure
-
-## IMPLEMENTATION
-	
-	  my ($name, $f) = @{$_[0]};
-	  my $data;
-	  my $fh = sni @$f;
-	  1 while saferead $fh, $data, 8192, length $data;
-	  close $fh;
-	  $fh->await;
-	  add_closure_key $name, $data;
-	  ();
 
 # META OPERATOR stderr_monitor_transform
 

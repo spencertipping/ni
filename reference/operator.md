@@ -580,6 +580,25 @@
 	  close $o;
 	  $o->await;
 
+# OPERATOR op_fn
+
+## IMPLEMENTATION
+	
+	  my ($bindings, $ops) = @_;
+	  while (<STDIN>) {
+	    chomp;
+	    my @vars = split /\t/;
+	    my %replacements;
+	    @replacements{@$bindings} = @vars;
+	    my $rewritten = rewrite_atoms_in $ops, sub {
+	      my $a = shift;
+	      $a =~ s/\Q$_\E/$replacements{$_}/g for @$bindings;
+	      $a;
+	    };
+	    close(my $fh = siproc {exec_ni @$rewritten});
+	    $fh->await;
+	  }
+
 # OPERATOR perl_assert
 
 ## IMPLEMENTATION

@@ -355,6 +355,12 @@
 	| 'f' (
 	  | <colspec> -> {cols_op @$_}
 	  )
+	| 'f[' (
+	    <empty>?
+	    <fn_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
@@ -368,7 +374,7 @@
 	    <let_bindings>
 	    </series>
 	    ']'
-	  ) -> {[@$_[1,2]]} -> {let_op @$_}
+	  ) -> {[@$_[1,2]]} -> {op_let_op @$_}
 	| 'm' (
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
@@ -983,6 +989,20 @@
 ## DEFINITION
 	/-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?/ such that {length} -> {0 + $_}
 
+# PARSER fn_bindings
+
+## DEFINITION
+	(
+	  (
+	    /(?^:[^:=]+)/
+	    <empty>?
+	  ) -> {$$_[0]}*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
+
 # PARSER fn_expander
 
 ## DEFINITION
@@ -1123,7 +1143,7 @@
 
 ## DEFINITION
 	(
-	  /(?^:[^=]+)/
+	  /(?^:[^:=]+)/
 	  '='
 	  (
 	    /[\s\S]+/

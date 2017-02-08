@@ -501,6 +501,16 @@
 	| <colspec> -> {cols_op @$_}
 	)
 
+# SHORT OPERATOR /f[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <fn_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {op_fn_op @$_}
+
 # SHORT OPERATOR /g
 
 ## SYNTAX
@@ -534,7 +544,7 @@
 	  <let_bindings>
 	  </series>
 	  ']'
-	) -> {[@$_[1,2]]} -> {let_op @$_}
+	) -> {[@$_[1,2]]} -> {op_let_op @$_}
 
 # SHORT OPERATOR /m
 
