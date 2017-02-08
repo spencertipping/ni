@@ -1,3 +1,4 @@
+ni('ni:/class')->doc('/class', <<'_');
 # Classes and metaclasses
 This documentation assumes that you understand how Smalltalk-80 metaclasses
 work (Ruby eigenclasses might do it, but they're fairly different). The
@@ -67,3 +68,4 @@ In the table below I use the following notation:
                                + /lib/namespaced.b
                                + /lib/resolver.b
 ```
+_
