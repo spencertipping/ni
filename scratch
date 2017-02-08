@@ -1,2 +1,2 @@
 #!/bin/bash
-./ni --internal/eval 'my $q = ni("ni:/class/image")->new(include_boot => 0, include_license => 0, include_run => 0, include_shebang => 0, use_newlines => 1, local_vars => 1); print $q->quote(ni("ni:/class/class")->new("/foo")), "\n"; $q->write(\*STDOUT)'
+./ni --internal/eval 'my $q = ni("ni:/lib/image")->new(include_boot => 0, include_license => 0, include_run => 0, include_shebang => 0, use_newlines => 1, local_vars => 1); print $q->quote(ni("ni:/class")->new("/foo")), "\n"; $q->write(\*STDOUT)'
