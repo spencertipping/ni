@@ -63,6 +63,7 @@ $_->($self) for @{ref($self) . "::ctors"};
 $self;';$q1=bless({$k1,$p1},$f1);$r1={$j1,$m1,$o1,$q1};$s1=q'/lib/instantiable.b';$t1=bless({$d,$h1,$i1,$r1,$g,$s1},$O);$u1=q'/lib/slice::ctors';$v1={};$w1=q'shift->compile';$x1=bless({$k1,$w1},$f1);$y1=q'dtor';$z1=undef;$A1=q'compile';$B1=q'local $@;
 my $self = shift;
 my ($eval_n) = eval(\'__FILE__\') =~ /eval (\\d+)/;
+++$eval_n;
 ni::name "ni.eval:$eval_n", $self;
 $$self{fn} = ni::eval "sub{$$self{code}\\n}";
 die "ni:/b/fn_init: failed to compile $$self{code}: $@" if $@;

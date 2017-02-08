@@ -9,6 +9,7 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     local $@;
     my $self = shift;
     my ($eval_n) = eval('__FILE__') =~ /eval (\d+)/;
+    ++$eval_n;
     ni::name "ni.eval:$eval_n", $self;
     $$self{fn} = ni::eval "sub{$$self{code}\n}";
     die "ni:/b/fn_init: failed to compile $$self{code}: $@" if $@;
@@ -16,10 +17,5 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
   },
   ctor => fn q{shift->compile});
 
-# NB: this is a one-off that won't appear in the serialized image. It does
-# constrain the serialization protocol, though, in that we can't rely on method
-# calls against slices to reconstruct our state. (We have to construct the
-# objects and packages separately.)
 delete @{'/lib/fn::'}{qw/new compile/};
-
 ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
