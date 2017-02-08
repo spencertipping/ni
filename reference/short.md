@@ -526,6 +526,16 @@
 	<lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                 body   => $_)}
 
+# SHORT OPERATOR /l[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <let_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {let_op @$_}
+
 # SHORT OPERATOR /m
 
 ## SYNTAX

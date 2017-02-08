@@ -363,6 +363,12 @@
 	  ) -> {join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]}
 	| 'l' <lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                   body   => $_)}
+	| 'l[' (
+	    <empty>?
+	    <let_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {let_op @$_}
 	| 'm' (
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
@@ -1112,6 +1118,29 @@
 	| /,/ -> {0.9}
 	| <number>?
 	) -> {$_ || 1}
+
+# PARSER let_binding
+
+## DEFINITION
+	(
+	  /(?^:[^=]+)/
+	  '='
+	  (
+	    /[\s\S]+/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {[@$_[0,2]]}
+
+# PARSER let_bindings
+
+## DEFINITION
+	(
+	  <let_binding>*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
 
 # PARSER lispcode
 

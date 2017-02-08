@@ -3299,8 +3299,9 @@ defresource 'file',
   exists => q{-e $_[1]},
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
-1 core/fn/lib
+2 core/fn/lib
 fn.pl.sdoc
+op-rewrite.pl.sdoc
 90 core/fn/fn.pl.sdoc
 Operator->operator functions.
 This provides a mechanism for ni to implement aliases and other shorthands.
@@ -3392,6 +3393,37 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
+30 core/fn/op-rewrite.pl.sdoc
+Operator-level text substitution.
+WARNING: This is a hack, but possibly a useful one.
+
+sub rewrite_atoms_in {
+  my ($op, $fn) = @_;
+  return $fn->($op) unless ref $op;
+  return [map rewrite_atoms_in($_, $fn), @$op] if ref $op eq 'ARRAY';
+  return {map rewrite_atoms_in($_, $fn), %$op} if ref $op eq 'HASH';
+  die "rewrite_atoms_in: not sure how to rewrite $op of type " . ref($op);
+}
+
+defmetaoperator let => q{
+  my ($args, $left, $right) = @_;
+  my ($bindings, $ops) = @$args;
+  my @keys = map $$_[0], @$bindings;
+  my %replacements = map @$_, @$bindings;
+  my $rewritten = rewrite_atoms_in $ops, sub {
+    my $a = shift;
+    $a =~ s/\Q$_\E/$replacements{$_}/g for @keys;
+    $a;
+  };
+  ($left, [@$rewritten, @$right]);
+};
+
+c
+BEGIN {defparseralias let_binding => pn [0, 2], prx qr/[^=]+/, pstr '=', prc '[\s\S]+'}
+BEGIN {defparseralias let_bindings => pn 0, prep(let_binding), prc qr/:/}
+
+defshort '/l[' => pmap q{let_op @$_},
+                  pn [1, 2], popt pempty, let_bindings, '/series', pstr ']';
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
