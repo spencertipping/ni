@@ -6,6 +6,7 @@ boot_image() {
   cat src/boot \
       src/lib/behavior \
       src/lib/class \
+      src/lib/doc \
       src/lib/fn \
       src/lib/image \
       src/lib/self
@@ -14,7 +15,6 @@ boot_image() {
 install_stuff() {
   perl ni0 --internal/+= \
     src/lib/util \
-    src/lib/doc \
     src/doc/internal/class \
     src/unix/io \
     src/unix/has_fd \
