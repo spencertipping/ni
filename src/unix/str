@@ -1,0 +1,36 @@
+ni('ni:/unix/io')->child('/unix/str')
+  ->def('/unix/str_init.b',
+    instantiate => fn q{
+      my $class = shift;
+      +{data  => \$_[0],
+        start => $_[1] || 0,
+        end   => $_[2] || length $_[0]};
+    })
+
+  ->def('/unix/str_io.b',
+    remaining => fn q{my $self = shift; $$self{end} - $$self{start}},
+
+    read => fn q{
+      my $self = shift;
+      return 0 if $$self{start} >= $$self{end};
+      my $l = ni::min $self->remaining, $_[1];
+      if (@_ == 3) {
+        substr($_[0], $_[2] || 0, $l, substr(${$$self{data}}, $$self{start}, $l));
+      } else {
+        $_[0] = substr ${$$self{data}}, $$self{start}, $l;
+      }
+      $$self{start} += $l;
+      $l;
+    },
+    write => fn q{
+      my $self = shift;
+      ${$$self{data}} .= $_[0];
+      $$self{start} += $_[0];
+      $$self{end} = length ${$$self{data}};
+      length $_[0];
+    });
+
+ni->resolver_for(str => fn q{
+  my $s = shift;
+  ni('ni:/unix/str')->new(substr($s, 4) . "\n");
+});
