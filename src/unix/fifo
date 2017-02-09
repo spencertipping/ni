@@ -1,4 +1,4 @@
-ni('ni:/object')->child('/unix/fifo')
+ni('ni:/unix/io')->child('/unix/fifo')
   ->ro('/unix/fifo_io.b', qw/read_fh write_fh/)
   ->def('/unix/fifo_init.b',
     instantiate => fn q{
