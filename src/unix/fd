@@ -6,6 +6,18 @@ ni('ni:/unix/io')->child('/unix/fd')
       +{fd => $fd, fh => undef};
     })
 
+  ->def('/unix/fd_shell.b',
+    move_to => fn q{
+      use POSIX qw/dup2/;
+      my ($self, $new) = @_;
+      return $self if $new == $$self{fd};
+      close $$self{fh} if Scalar::Util::openhandle $$self{fh};
+      dup2 $$self{fd}, $new or die "ni:/unix/fd: dup2($$self{fd}, $new): $!";
+      POSIX::close $$self{fd};
+      $$self{fd} = $new;
+      $self;
+    })
+
   ->add('/unix/has_fd.b')
   ->def('/unix/fd_io.b',
     read_fh => fn q{
