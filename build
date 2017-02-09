@@ -14,7 +14,11 @@ boot_image() {
 install_stuff() {
   perl ni0 --internal/+= \
     src/lib/doc \
-    src/doc/internal/class
+    src/doc/internal/class \
+    src/unix/io \
+    src/unix/fd \
+    src/unix/file \
+    src/unix/pid
 }
 
 boot_build() {

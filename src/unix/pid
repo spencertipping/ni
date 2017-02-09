@@ -1,0 +1,14 @@
+ni('ni:/object')->child('/unix/pid')
+  ->ro('/unix/pid_readers.b', qw/pid stdin stdout stderr/)
+  ->def('/unix/pid_init.b',
+    instantiate => fn q{
+      my ($class, $pid, $i, $o, $e) = @_;
+      +{pid    => $pid,
+        stdin  => $i,
+        stdout => $o,
+        stderr => $e};
+    })
+
+  ->def('/unix/pid_io.b',
+    read_fh  => fn q{shift->{stdout}},
+    write_fh => fn q{shift->{stdin}});
