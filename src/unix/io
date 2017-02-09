@@ -3,8 +3,8 @@ ni('ni:/object')->child('/unix/io')
     into => fn q{
       local $_;
       my ($self, $dest, $each) = @_;
-      my $block_size = $self->read_size;
-      while (defined($self->read($_, $block_size))) {
+      my $block_size = $self->can('read_size') ? $self->read_size : 8192;
+      while ($self->read($_, $block_size)) {
         &$each($_) if defined $each;
         $dest->write($_);
       }

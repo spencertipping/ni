@@ -69,5 +69,5 @@ ni('ni:/class')->def('/lib/subclass.b',
   child => fn q{
     my ($self, $name, @slices) = @_;
     ni("ni:/metaclass")->new("$name.c", $self->class)
-    ->new($name, @slices);
+    ->new($name, $self, @slices);
   });
