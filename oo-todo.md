@@ -1,4 +1,4 @@
-- structured documentation
+- structured documentation + unit tests
 - fix /unix/pipeline
 - io methods for line-sensitive split/combine/parallelism
 - sigchld handler + exit waiting
