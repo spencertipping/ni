@@ -13,9 +13,10 @@ ni('ni:/unix/io')->child('/unix/pid')
     # TODO
     )
 
+  ->add('/unix/has_fd.b')
   ->def('/unix/pid_io.b',
-    read_fh  => fn q{shift->{stdout}},
-    write_fh => fn q{shift->{stdin}});
+    read_fh  => fn q{shift->{stdout}->read_fh},
+    write_fh => fn q{shift->{stdin}->write_fh});
 
 ni('ni:/lib/ni')->def('/lib/ni_pid_ctors',
   fork_exec => fn q{

@@ -23,7 +23,8 @@ install_stuff() {
     src/unix/cat \
     src/unix/str \
     src/unix/pid \
-    src/unix/fifo
+    src/unix/fifo \
+    src/unix/pipeline
 }
 
 boot_build() {
