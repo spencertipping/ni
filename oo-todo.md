@@ -1,0 +1,6 @@
+- structured documentation
+- fix /unix/pipeline
+- io methods for line-sensitive split/combine/parallelism
+- sigchld handler + exit waiting
+- port parsers
+- stty + editor
