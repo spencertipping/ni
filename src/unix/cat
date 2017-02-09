@@ -1,7 +1,5 @@
-ni('ni:/object')->child('/unix/cat')
-  ->def('/unix/cat_init.b',
-    instantiate => fn q{shift; [@_]})
-
+ni('ni:/unix/io')->child('/unix/cat')
+  ->def('/unix/cat_init.b', instantiate => fn q{shift; [@_]})
   ->def('/unix/cat_read.b',
     read => fn q{
       my $self = shift;

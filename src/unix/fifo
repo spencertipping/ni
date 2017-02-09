@@ -6,7 +6,6 @@ ni('ni:/object')->child('/unix/fifo')
       +{read_fh => $r, write_fh => $w};
     })
 
-  ->add('/unix/io.b')
   ->add('/unix/fd.b')
   ->def('/unix/file_io.b',
     read_fh => fn q{shift->{read_fh}},

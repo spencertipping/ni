@@ -31,8 +31,9 @@ no strict 'refs';
 use Scalar::Util;
 chomp $ni::boot;
 $ni::self = bless {named => {}}, '/lib/ni';
-sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->{named}{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
+sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->resolve($_[0]) : $ni::self}
 sub ni::eval {eval shift}
+*{'/lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
 *{'/lib/ni::def'} = sub {
   my ($self, %kvs) = @_;
   $$self{named}{$_} = $kvs{$_} for keys %kvs;
@@ -53,20 +54,20 @@ sub ni::eval {eval shift}
 *{'/lib/fn::(bool'} = sub {1};
 sub fn($) {'/lib/fn'->new(shift)}
 _
-$c=q'applied_to';$d=q'/metaclass.c';$e={$d,1};$f=q'name';$g=q'slices';$h=q'/class.c';$i={$h,1};$j=q'/lib/behavior.c';$k=q'/lib/branch.c';$l=q'/lib/doc.c';$m=q'/lib/fn.c';$n=q'/lib/image.c';$o=q'/lib/ni.c';$p=q'/lib/slice.c';$q=q'/lib/tag.c';$r=q'/object.c';$s=q'/unix/cat.c';$t=q'/unix/fifo.c';$u=q'/unix/file.c';$v=q'/unix/pid.c';$w={$h,1,$j,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$r,1,$s,1,$t,1,$u,1,$v,1};$x={$p,1};$y={$j,1,$k,1,$p,1,$q,1};$z=[undef];$A=q'/metaclass';$B=bless({$c,$y,$f,$j,$g,$z},$A);$C=q'/metaclass::ctors';$D=[$B];$E=bless({$c,$x,$f,$p,$g,$D},$A);$F=q'/metaclass::ctors';$G=q'/lib/slice';$H={$G,1};$I=q'/lib/behavior';$J=q'/lib/branch';$K=q'/lib/tag';$L={$I,1,$J,1,$G,1,$K,1};$M=q'/class';$N=q'/object';$O={$M,1,$h,1,$I,1,$j,1,$J,1,$k,1,$l,1,$m,1,$n,1,$o,1,$G,1,$p,1,$K,1,$q,1,$A,1,$d,1,$N,1,$r,1,$s,1,$t,1,$u,1,$v,1};$P={};$Q=q'ctor';$R=undef;$S=q'dtor';$T=q'methods';$U=q'class';$V={$m,1};$W=[undef];$X=bless({$c,$V,$f,$m,$g,$W},$A);$Y=q'/metaclass::ctors';$Z=q'/lib/fn';$c1={$Z,1};$d1={};$e1=q'DESTROY';$f1=q'code';$g1=q'local $_;
+$c=q'applied_to';$d=q'/metaclass.c';$e={$d,1};$f=q'name';$g=q'slices';$h=q'/class.c';$i={$h,1};$j=q'/lib/behavior.c';$k=q'/lib/branch.c';$l=q'/lib/doc.c';$m=q'/lib/fn.c';$n=q'/lib/image.c';$o=q'/lib/ni.c';$p=q'/lib/slice.c';$q=q'/lib/tag.c';$r=q'/object.c';$s=q'/unix/cat.c';$t=q'/unix/fifo.c';$u=q'/unix/file.c';$v=q'/unix/io.c';$w=q'/unix/pid.c';$x={$h,1,$j,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$r,1,$s,1,$t,1,$u,1,$v,1,$w,1};$y={$p,1};$z={$j,1,$k,1,$p,1,$q,1};$A=[undef];$B=q'/metaclass';$C=bless({$c,$z,$f,$j,$g,$A},$B);$D=q'/metaclass::ctors';$E=[$C];$F=bless({$c,$y,$f,$p,$g,$E},$B);$G=q'/metaclass::ctors';$H=q'/lib/slice';$I={$H,1};$J=q'/lib/behavior';$K=q'/lib/branch';$L=q'/lib/tag';$M={$J,1,$K,1,$H,1,$L,1};$N=q'/class';$O=q'/object';$P={$N,1,$h,1,$J,1,$j,1,$K,1,$k,1,$l,1,$m,1,$n,1,$o,1,$H,1,$p,1,$L,1,$q,1,$B,1,$d,1,$O,1,$r,1,$s,1,$t,1,$u,1,$v,1,$w,1};$Q={};$R=q'ctor';$S=undef;$T=q'dtor';$U=q'methods';$V=q'class';$W={$m,1};$X=[undef];$Y=bless({$c,$W,$f,$m,$g,$X},$B);$Z=q'/metaclass::ctors';$c1=q'/lib/fn';$d1={$c1,1};$e1={};$f1=q'DESTROY';$g1=q'code';$h1=q'local $_;
 my $self = shift;
-$_->($self) for @{ref($self) . "::dtors"};';$h1=bless({$f1,$g1},$Z);$i1=q'/lib/fn::ctors';$j1=q'new';$k1=q'local $_;
+$_->($self) for @{ref($self) . "::dtors"};';$i1=bless({$g1,$h1},$c1);$j1=q'/lib/fn::ctors';$k1=q'new';$l1=q'local $_;
 my $class = ref $_[0] ? shift->package : shift;
 my $self = bless $class->instantiate(@_), $class;
 $_->($self) for @{ref($self) . "::ctors"};
-$self;';$l1=bless({$f1,$k1},$Z);$m1={$e1,$h1,$j1,$l1};$n1=q'/lib/instantiable.b';$o1=bless({$c,$d1,$T,$m1,$f,$n1},$G);$p1=q'/lib/slice::ctors';$q1={};$r1=q'shift->compile';$s1=bless({$f1,$r1},$Z);$t1=q'compile';$u1=q'local $@;
+$self;';$m1=bless({$g1,$l1},$c1);$n1={$f1,$i1,$k1,$m1};$o1=q'/lib/instantiable.b';$p1=bless({$c,$e1,$U,$n1,$f,$o1},$H);$q1=q'/lib/slice::ctors';$r1={};$s1=q'shift->compile';$t1=bless({$g1,$s1},$c1);$u1=q'compile';$v1=q'local $@;
 my $self = shift;
 $$self{fn} = ni::eval "sub{$$self{code}\\n}";
 die "ni:/b/fn_init: failed to compile $$self{code}: $@" if $@;
-$$self{fn};';$v1=bless({$f1,$u1},$Z);$w1=q'instantiate';$x1=q'my $class = shift;
+$$self{fn};';$w1=bless({$g1,$v1},$c1);$x1=q'instantiate';$y1=q'my $class = shift;
 my $code  = pop;
 +{code        => $code,
-  annotations => [@_]};';$y1=bless({$f1,$x1},$Z);$z1={$t1,$v1,$w1,$y1};$A1=q'/lib/fn_init.b';$B1=bless({$c,$q1,$Q,$s1,$S,$R,$T,$z1,$f,$A1},$G);$C1=q'/lib/slice::ctors';$D1={};$E1=q'serialize';$F1=q'annotations';$G1=[];$H1=q'local $_;
+  annotations => [@_]};';$z1=bless({$g1,$y1},$c1);$A1={$u1,$w1,$x1,$z1};$B1=q'/lib/fn_init.b';$C1=bless({$c,$r1,$R,$t1,$T,$S,$U,$A1,$f,$B1},$H);$D1=q'/lib/slice::ctors';$E1={};$F1=q'serialize';$G1=q'annotations';$H1=[];$I1=q'local $_;
 my ($self, $quote) = @_;
 $quote->quote_class(ref $self);
 
@@ -82,14 +83,14 @@ s/^$spaces// for @lines;
 my %state = %$self;
 delete $state{fn};
 $state{code} = join "\\n", @lines;
-$quote->quote_blessed(\\%state, ref $self);';$I1=bless({$F1,$G1,$f1,$H1},$Z);$J1={$E1,$I1};$K1=q'/lib/fn_serialize.b';$L1=bless({$c,$D1,$Q,$R,$S,$R,$T,$J1,$f,$K1},$G);$M1=q'/lib/slice::ctors';$N1=[$o1,$B1,$L1];$O1=bless({$c,$c1,$f,$Z,$g,$N1},$m);$P1=q'/lib/fn.c::ctors';$Q1=q'ni \'ni:\' . ref shift';$R1=bless({$f1,$Q1},$Z);$S1={$U,$R1};$T1=q'/lib/instance.b';$U1=bless({$c,$P,$Q,$R,$S,$R,$T,$S1,$f,$T1},$G);$V1=q'/lib/slice::ctors';$W1=[$U1];$X1=bless({$c,$O,$f,$N,$g,$W1},$r);$Y1=q'/object.c::ctors';$Z1=[$X1];$c2=bless({$c,$L,$f,$I,$g,$Z1},$j);$d2=q'/lib/behavior.c::ctors';$e2={};$f2=q'my $s = shift; ni->def($s->name, $s)';$g2=bless({$f1,$f2},$Z);$h2=q'$_[0]->namespace . ":" . $_[0]->{name}';$i2=bless({$f1,$h2},$Z);$j2={$f,$i2};$k2=q'/lib/named.b';$l2=bless({$c,$e2,$Q,$g2,$S,$R,$T,$j2,$f,$k2},$G);$m2=q'/lib/doc';$n2=q'/lib/slice::ctors';$o2=q'local $_;
+$quote->quote_blessed(\\%state, ref $self);';$J1=bless({$G1,$H1,$g1,$I1},$c1);$K1={$F1,$J1};$L1=q'/lib/fn_serialize.b';$M1=bless({$c,$E1,$R,$S,$T,$S,$U,$K1,$f,$L1},$H);$N1=q'/lib/slice::ctors';$O1=[$p1,$C1,$M1];$P1=bless({$c,$d1,$f,$c1,$g,$O1},$m);$Q1=q'/lib/fn.c::ctors';$R1=q'ni \'ni:\' . ref shift';$S1=bless({$g1,$R1},$c1);$T1={$V,$S1};$U1=q'/lib/instance.b';$V1=bless({$c,$Q,$R,$S,$T,$S,$U,$T1,$f,$U1},$H);$W1=q'/lib/slice::ctors';$X1=[$V1];$Y1=bless({$c,$P,$f,$O,$g,$X1},$r);$Z1=q'/object.c::ctors';$c2=[$Y1];$d2=bless({$c,$M,$f,$J,$g,$c2},$j);$e2=q'/lib/behavior.c::ctors';$f2={};$g2=q'my $s = shift; ni->def($s->name, $s)';$h2=bless({$g1,$g2},$c1);$i2=q'$_[0]->namespace . ":" . $_[0]->{name}';$j2=bless({$g1,$i2},$c1);$k2={$f,$j2};$l2=q'/lib/named.b';$m2=bless({$c,$f2,$R,$h2,$T,$S,$U,$k2,$f,$l2},$H);$n2=q'/lib/doc';$o2=q'/lib/slice::ctors';$p2=q'local $_;
 my ($self, $p) = @_;
 $p = $p->package if ref $p;
 return if $$self{applied_to}{$p};
 for (keys %{$$self{methods}}) {
   die "$self: overlapping method $p\\::$_" if defined *{"$p\\::$_"}{CODE};
 }
-$self->apply_unsafe($p);';$p2=bless({$f1,$o2},$Z);$q2=q'local $_;
+$self->apply_unsafe($p);';$q2=bless({$g1,$p2},$c1);$r2=q'local $_;
 my ($self, $p) = @_;
 return if $$self{applied_to}{$p};
 $$self{applied_to}{$p} = 1;
@@ -97,14 +98,14 @@ push @{"$p\\::ctors"}, $$self{ctor} if $$self{ctor};
 push @{"$p\\::dtors"}, $$self{dtor} if $$self{dtor};
 *{"$p\\::(("} = sub {} if grep /^\\(/, keys %{$$self{methods}};
 *{"$p\\::$_"} = \\&{$$self{methods}{$_}} for keys %{$$self{methods}};
-$self;';$r2=bless({$f1,$q2},$Z);$s2=q'/lib/slice::apply';$t2=q'/lib/slice::apply_unsafe';$u2={};$v2=q'apply';$w2=q'apply_unsafe';$x2={$v2,$p2,$w2,$r2};$y2=q'/lib/slice.b';$z2=bless({$c,$u2,$T,$x2,$f,$y2},$G);$A2=q'/lib/slice::ctors';$B2={};$C2=q'my $class = shift;
+$self;';$s2=bless({$g1,$r2},$c1);$t2=q'/lib/slice::apply';$u2=q'/lib/slice::apply_unsafe';$v2={};$w2=q'apply';$x2=q'apply_unsafe';$y2={$w2,$q2,$x2,$s2};$z2=q'/lib/slice.b';$A2=bless({$c,$v2,$U,$y2,$f,$z2},$H);$B2=q'/lib/slice::ctors';$C2={};$D2=q'my $class = shift;
 my $name  = shift;
 my %args  = @_;
 +{ctor       => delete($args{ctor}),
   dtor       => delete($args{dtor}),
   applied_to => delete($args{applied_to}),
   name       => $name,
-  methods    => \\%args};';$D2=bless({$f1,$C2},$Z);$E2={$w1,$D2};$F2=q'/lib/slice_init.b';$G2=bless({$c,$B2,$T,$E2,$f,$F2},$G);$H2=q'/lib/slice::ctors';$I2={};$J2=[];$K2=q'local $_;
+  methods    => \\%args};';$E2=bless({$g1,$D2},$c1);$F2={$x1,$E2};$G2=q'/lib/slice_init.b';$H2=bless({$c,$C2,$U,$F2,$f,$G2},$H);$I2=q'/lib/slice::ctors';$J2={};$K2=[];$L2=q'local $_;
 my ($self, $quote) = @_;
 my $name = $self->name;
 $quote->quote_class(ref $self);
@@ -124,43 +125,43 @@ my $g = $quote->allocate_gensym($self,
   $quote->quote_blessed({%$self, applied_to => {}}, ref $self));
 $quote->side_effect("$g\\->apply_unsafe(" . $quote->quote($_) . ");")
   for sort keys %{$$self{applied_to}};
-$g;';$L2=bless({$F1,$J2,$f1,$K2},$Z);$M2={$E1,$L2};$N2=q'/lib/slice_serialize.b';$O2=bless({$c,$I2,$Q,$R,$S,$R,$T,$M2,$f,$N2},$G);$P2=q'/lib/slice::ctors';$Q2=[$c2,$l2,$z2,$G2,$O2];$R2=bless({$c,$H,$f,$G,$g,$Q2},$p);$S2=q'/lib/slice.c::ctors';$T2={};$U2=q'doc';$V2=[];$W2=q'my $self = shift;
+$g;';$M2=bless({$G1,$K2,$g1,$L2},$c1);$N2={$F1,$M2};$O2=q'/lib/slice_serialize.b';$P2=bless({$c,$J2,$R,$S,$T,$S,$U,$N2,$f,$O2},$H);$Q2=q'/lib/slice::ctors';$R2=[$d2,$m2,$A2,$H2,$P2];$S2=bless({$c,$I,$f,$H,$g,$R2},$p);$T2=q'/lib/slice.c::ctors';$U2={};$V2=q'doc';$W2=[];$X2=q'my $self = shift;
 my $doc  = pop;
 ni(\'ni:/lib/doc\')->new(@_, $self, $doc);
-$self;';$X2=bless({$F1,$V2,$f1,$W2},$Z);$Y2={$U2,$X2};$Z2=q'/lib/documentable.b';$c3=bless({$c,$T2,$Q,$R,$S,$R,$T,$Y2,$f,$Z2},$G);$d3=q'/lib/slice::ctors';$e3=[undef,$c3];$f3=bless({$c,$w,$f,$r,$g,$e3},$A);$g3=q'/metaclass::ctors';$h3=[$f3];$i3=bless({$c,$i,$f,$h,$g,$h3},$A);$j3=q'/metaclass::ctors';$k3={$M,1,$h,1,$j,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$d,1,$r,1,$s,1,$t,1,$u,1,$v,1};$l3={$q,1};$m3=[$B];$n3=bless({$c,$l3,$f,$q,$g,$m3},$A);$o3=q'/metaclass::ctors';$p3={$K,1};$q3={};$r3=q'local $_;
+$self;';$Y2=bless({$G1,$W2,$g1,$X2},$c1);$Z2={$V2,$Y2};$c3=q'/lib/documentable.b';$d3=bless({$c,$U2,$R,$S,$T,$S,$U,$Z2,$f,$c3},$H);$e3=q'/lib/slice::ctors';$f3=[undef,$d3];$g3=bless({$c,$x,$f,$r,$g,$f3},$B);$h3=q'/metaclass::ctors';$i3=[$g3];$j3=bless({$c,$i,$f,$h,$g,$i3},$B);$k3=q'/metaclass::ctors';$l3={$N,1,$h,1,$j,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$d,1,$r,1,$s,1,$t,1,$u,1,$v,1,$w,1};$m3={$q,1};$n3=[$C];$o3=bless({$c,$m3,$f,$q,$g,$n3},$B);$p3=q'/metaclass::ctors';$q3={$L,1};$r3={};$s3=q'local $_;
 my ($self, $p) = @_;
 $_->apply($p) for @{$$self{slices}};
-$self;';$s3=bless({$f1,$r3},$Z);$t3={$v2,$s3};$u3=q'/lib/tag.b';$v3=bless({$c,$q3,$Q,$R,$S,$R,$T,$t3,$f,$u3},$G);$w3=q'/lib/slice::ctors';$x3={};$y3=q'local $_;
+$self;';$t3=bless({$g1,$s3},$c1);$u3={$w2,$t3};$v3=q'/lib/tag.b';$w3=bless({$c,$r3,$R,$S,$T,$S,$U,$u3,$f,$v3},$H);$x3=q'/lib/slice::ctors';$y3={};$z3=q'local $_;
 my $class = shift;
 my $name  = shift;
 +{name   => $name,
-  slices => [map $class->resolve($_), @_]};';$z3=bless({$f1,$y3},$Z);$A3={$w1,$z3};$B3=q'/lib/tag_init.b';$C3=bless({$c,$x3,$Q,$R,$S,$R,$T,$A3,$f,$B3},$G);$D3=q'/lib/slice::ctors';$E3=[$c2,$l2,$v3,$C3];$F3=bless({$c,$p3,$f,$K,$g,$E3},$q);$G3=q'/lib/tag.c::ctors';$H3=q'/lib/perlbranch.b';$I3={};$J3=q'add';$K3=q'local $_;
+  slices => [map $class->resolve($_), @_]};';$A3=bless({$g1,$z3},$c1);$B3={$x1,$A3};$C3=q'/lib/tag_init.b';$D3=bless({$c,$y3,$R,$S,$T,$S,$U,$B3,$f,$C3},$H);$E3=q'/lib/slice::ctors';$F3=[$d2,$m2,$w3,$D3];$G3=bless({$c,$q3,$f,$L,$g,$F3},$q);$H3=q'/lib/tag.c::ctors';$I3=q'/lib/perlbranch.b';$J3={};$K3=q'add';$L3=q'local $_;
 my $self = shift;
 my @s = map $self->resolve($_), @_;
 push @{$$self{slices}}, @s;
 for my $p (sort keys %{$$self{applied_to}}) {$_->apply($p) for @s}
-$self;';$L3=bless({$f1,$K3},$Z);$M3=q'local $_;
+$self;';$M3=bless({$g1,$L3},$c1);$N3=q'local $_;
 my ($self, $p) = @_;
 $p = $p->package if ref $p;
 $$self{applied_to}{$p} = 1;
 $_->apply($p) for @{$$self{slices}};
-$self;';$N3=bless({$f1,$M3},$Z);$O3={$J3,$L3,$v2,$N3};$P3=q'/lib/branch.b';$Q3=bless({$c,$I3,$Q,$R,$S,$R,$T,$O3,$f,$P3},$G);$R3=q'/lib/slice::ctors';$S3={};$T3=q'namespace';$U3=q'\'ni\'';$V3=bless({$f1,$U3},$Z);$W3={$T3,$V3};$X3=q'/lib/named_in_ni.b';$Y3=bless({$c,$S3,$Q,$R,$S,$R,$T,$W3,$f,$X3},$G);$Z3=q'/lib/slice::ctors';$c4={};$d4=q'package';$e4=q'shift->{name}';$f4=bless({$f1,$e4},$Z);$g4={$d4,$f4};$h4=q'/lib/namespaced.b';$i4=bless({$c,$c4,$Q,$R,$S,$R,$T,$g4,$f,$h4},$G);$j4=q'/lib/slice::ctors';$k4={};$l4=q'resolve';$m4=q'ref $_[1] ? $_[1] : ni"ni:$_[1]"';$n4=bless({$f1,$m4},$Z);$o4={$l4,$n4};$p4=q'/lib/resolver.b';$q4=bless({$c,$k4,$Q,$R,$S,$R,$T,$o4,$f,$p4},$G);$r4=q'/lib/slice::ctors';$s4=[$Q3,$o1,$l2,$Y3,$i4,$q4];$t4=bless({$f,$H3,$g,$s4},$K);$u4=q'/lib/tag::ctors';$v4={};$w4=q'my $s = shift; $s->apply($s->package)';$x4=bless({$f1,$w4},$Z);$y4=q'local $_;
+$self;';$O3=bless({$g1,$N3},$c1);$P3={$K3,$M3,$w2,$O3};$Q3=q'/lib/branch.b';$R3=bless({$c,$J3,$R,$S,$T,$S,$U,$P3,$f,$Q3},$H);$S3=q'/lib/slice::ctors';$T3={};$U3=q'namespace';$V3=q'\'ni\'';$W3=bless({$g1,$V3},$c1);$X3={$U3,$W3};$Y3=q'/lib/named_in_ni.b';$Z3=bless({$c,$T3,$R,$S,$T,$S,$U,$X3,$f,$Y3},$H);$c4=q'/lib/slice::ctors';$d4={};$e4=q'package';$f4=q'shift->{name}';$g4=bless({$g1,$f4},$c1);$h4={$e4,$g4};$i4=q'/lib/namespaced.b';$j4=bless({$c,$d4,$R,$S,$T,$S,$U,$h4,$f,$i4},$H);$k4=q'/lib/slice::ctors';$l4={};$m4=q'resolve';$n4=q'ref $_[1] ? $_[1] : ni"ni:$_[1]"';$o4=bless({$g1,$n4},$c1);$p4={$m4,$o4};$q4=q'/lib/resolver.b';$r4=bless({$c,$l4,$R,$S,$T,$S,$U,$p4,$f,$q4},$H);$s4=q'/lib/slice::ctors';$t4=[$R3,$p1,$m2,$Z3,$j4,$r4];$u4=bless({$f,$I3,$g,$t4},$L);$v4=q'/lib/tag::ctors';$w4={};$x4=q'my $s = shift; $s->apply($s->package)';$y4=bless({$g1,$x4},$c1);$z4=q'local $_;
 my ($class, $name, @slices) = @_;
 +{name   => $name,
-  slices => [map $class->resolve($_), @slices]};';$z4=bless({$f1,$y4},$Z);$A4={$w1,$z4};$B4=q'/lib/class_init.b';$C4=bless({$c,$v4,$Q,$x4,$S,$R,$T,$A4,$f,$B4},$G);$D4=q'/lib/slice::ctors';$E4={$k,1};$F4=[$B];$G4=bless({$c,$E4,$f,$k,$g,$F4},$A);$H4=q'/metaclass::ctors';$I4={$J,1};$J4={};$K4=q'local $_;
+  slices => [map $class->resolve($_), @slices]};';$A4=bless({$g1,$z4},$c1);$B4={$x1,$A4};$C4=q'/lib/class_init.b';$D4=bless({$c,$w4,$R,$y4,$T,$S,$U,$B4,$f,$C4},$H);$E4=q'/lib/slice::ctors';$F4={$k,1};$G4=[$C];$H4=bless({$c,$F4,$f,$k,$g,$G4},$B);$I4=q'/metaclass::ctors';$J4={$K,1};$K4={};$L4=q'local $_;
 my $class = shift;
 my $name  = shift;
 +{name       => $name,
   applied_to => {},
-  slices     => [map $class->resolve($_), @_]};';$L4=bless({$f1,$K4},$Z);$M4={$w1,$L4};$N4=q'/lib/branch_init.b';$O4=bless({$c,$J4,$Q,$R,$S,$R,$T,$M4,$f,$N4},$G);$P4=q'/lib/slice::ctors';$Q4=[$c2,$l2,$Q3,$O4,undef];$R4=bless({$c,$I4,$f,$J,$g,$Q4},$k);$S4=q'/lib/branch.c::ctors';$T4={$M,1,$h,1,$j,1,$J,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$A,1,$d,1,$r,1,$s,1,$t,1,$u,1,$v,1};$U4=q'/lib/definition.b';$V4={};$W4=q'def';$X4=q'shift->add(ni(\'ni:/lib/slice\')->new(@_))';$Y4=bless({$f1,$X4},$Z);$Z4={$W4,$Y4};$c5=q'/lib/classdef.b';$d5=bless({$c,$V4,$Q,$R,$S,$R,$T,$Z4,$f,$c5},$G);$e5=q'/lib/slice::ctors';$f5={};$g5=q'ro';$h5=q'my ($self, $slice, @rs) = @_;
+  slices     => [map $class->resolve($_), @_]};';$M4=bless({$g1,$L4},$c1);$N4={$x1,$M4};$O4=q'/lib/branch_init.b';$P4=bless({$c,$K4,$R,$S,$T,$S,$U,$N4,$f,$O4},$H);$Q4=q'/lib/slice::ctors';$R4=[$d2,$m2,$R3,$P4,undef];$S4=bless({$c,$J4,$f,$K,$g,$R4},$k);$T4=q'/lib/branch.c::ctors';$U4={$N,1,$h,1,$j,1,$K,1,$k,1,$l,1,$m,1,$n,1,$o,1,$p,1,$q,1,$B,1,$d,1,$r,1,$s,1,$t,1,$u,1,$v,1,$w,1};$V4=q'/lib/definition.b';$W4={};$X4=q'def';$Y4=q'shift->add(ni(\'ni:/lib/slice\')->new(@_))';$Z4=bless({$g1,$Y4},$c1);$c5={$X4,$Z4};$d5=q'/lib/classdef.b';$e5=bless({$c,$W4,$R,$S,$T,$S,$U,$c5,$f,$d5},$H);$f5=q'/lib/slice::ctors';$g5={};$h5=q'ro';$i5=q'my ($self, $slice, @rs) = @_;
 $self->add(ni(\'ni:/lib/slice\')->new(
   $slice,
-  map +($_ => fn qq{shift->{\'$_\'}}), @rs));';$i5=bless({$f1,$h5},$Z);$j5=q'rw';$k5=q'my ($self, $slice, @as) = @_;
+  map +($_ => fn qq{shift->{\'$_\'}}), @rs));';$j5=bless({$g1,$i5},$c1);$k5=q'rw';$l5=q'my ($self, $slice, @as) = @_;
 $self->add(ni(\'ni:/lib/slice\')->new(
   $slice,
-  map +($_ => fn qq{\\@_ == 2 ? \\$_[0]->{\'$_\'} = \\$_[1] : shift->{\'$_\'}}), @as));';$l5=bless({$f1,$k5},$Z);$m5={$g5,$i5,$j5,$l5};$n5=q'/lib/accessor.b';$o5=bless({$c,$f5,$Q,$R,$S,$R,$T,$m5,$f,$n5},$G);$p5=q'/lib/slice::ctors';$q5=[$d5,$o5];$r5=bless({$c,$T4,$f,$U4,$g,$q5},$J);$s5=q'/lib/branch::ctors';$t5={};$u5=q'child';$v5=q'my ($self, $name, @slices) = @_;
+  map +($_ => fn qq{\\@_ == 2 ? \\$_[0]->{\'$_\'} = \\$_[1] : shift->{\'$_\'}}), @as));';$m5=bless({$g1,$l5},$c1);$n5={$h5,$j5,$k5,$m5};$o5=q'/lib/accessor.b';$p5=bless({$c,$g5,$R,$S,$T,$S,$U,$n5,$f,$o5},$H);$q5=q'/lib/slice::ctors';$r5=[$e5,$p5];$s5=bless({$c,$U4,$f,$V4,$g,$r5},$K);$t5=q'/lib/branch::ctors';$u5={};$v5=q'child';$w5=q'my ($self, $name, @slices) = @_;
 ni("ni:/metaclass")->new("$name.c", $self->class)
-->new($name, @slices);';$w5=bless({$f1,$v5},$Z);$x5={$u5,$w5};$y5=q'/lib/subclass.b';$z5=bless({$c,$t5,$Q,$R,$S,$R,$T,$x5,$f,$y5},$G);$A5=q'/lib/slice::ctors';$B5=[$t4,$C4,$X1,$r5,$z5];$C5=bless({$c,$k3,$f,$M,$g,$B5},$h);$D5=q'/class.c::ctors';$E5=[$C5];$F5=bless({$c,$e,$f,$d,$g,$E5},$A);$G5=q'/metaclass::ctors';$H5={$A,1};$I5=[$t4,$C4,$X1,$r5];$J5=bless({$c,$H5,$f,$A,$g,$I5},$d);$K5=q'/metaclass.c::ctors';$L5={$o,1};$M5=[$f3];$N5=bless({$c,$L5,$f,$o,$g,$M5},$A);$O5=q'/metaclass::ctors';$P5=q'/lib/ni';$Q5={$P5,1};$R5={};$S5=q'is_mutable';$T5=[];$U5=q'$0 ne "-" && -w $0';$V5=bless({$F1,$T5,$f1,$U5},$Z);$W5=q'modify';$X5=[];$Y5=q'my ($self, $fn) = @_;
+->new($name, @slices);';$x5=bless({$g1,$w5},$c1);$y5={$v5,$x5};$z5=q'/lib/subclass.b';$A5=bless({$c,$u5,$R,$S,$T,$S,$U,$y5,$f,$z5},$H);$B5=q'/lib/slice::ctors';$C5=[$u4,$D4,$Y1,$s5,$A5];$D5=bless({$c,$l3,$f,$N,$g,$C5},$h);$E5=q'/class.c::ctors';$F5=[$D5];$G5=bless({$c,$e,$f,$d,$g,$F5},$B);$H5=q'/metaclass::ctors';$I5={$B,1};$J5=[$u4,$D4,$Y1,$s5];$K5=bless({$c,$I5,$f,$B,$g,$J5},$d);$L5=q'/metaclass.c::ctors';$M5={$o,1};$N5=[$g3];$O5=bless({$c,$M5,$f,$o,$g,$N5},$B);$P5=q'/metaclass::ctors';$Q5=q'/lib/ni';$R5={$Q5,1};$S5={};$T5=q'is_mutable';$U5=[];$V5=q'$0 ne "-" && -w $0';$W5=bless({$G1,$U5,$g1,$V5},$c1);$X5=q'modify';$Y5=[];$Z5=q'my ($self, $fn) = @_;
 # TODO: replace all of this with a generalized "atomic-update" function
 # against UNIX files.
 die "ni: cannot modify immutable instance" unless $self->is_mutable;
@@ -174,11 +175,11 @@ open my $w, \'>\', $r or die "ni: failed to create staging file: $!";
 chmod $mode, $r or die "ni: failed to chmod $r to $mode: $!";
 &$fn($w);
 close $w;
-rename $r, $0 or die "ni: failed to rename: $!";';$Z5=bless({$F1,$X5,$f1,$Y5},$Z);$c6={$S5,$V5,$W5,$Z5};$d6=q'/lib/ni_self.b';$e6=bless({$c,$R5,$Q,$R,$S,$R,$T,$c6,$f,$d6},$G);$f6=q'/lib/slice::ctors';$g6={};$h6=q'exists';$i6=[];$j6=q'exists $_[0]->{named}{$_[1]}';$k6=bless({$F1,$i6,$f1,$j6},$Z);$l6=q'quoted';$m6=[];$n6=q'my $self = shift;
+rename $r, $0 or die "ni: failed to rename: $!";';$c6=bless({$G1,$Y5,$g1,$Z5},$c1);$d6={$T5,$W5,$X5,$c6};$e6=q'/lib/ni_self.b';$f6=bless({$c,$S5,$R,$S,$T,$S,$U,$d6,$f,$e6},$H);$g6=q'/lib/slice::ctors';$h6={};$i6=q'exists';$j6=[];$k6=q'exists $_[0]->{named}{$_[1]}';$l6=bless({$G1,$j6,$g1,$k6},$c1);$m6=q'quoted';$n6=[];$o6=q'my $self = shift;
 my $q = ni(\'ni:/lib/image\')->new(@_);
 my $gs = $q->quote($self);
 $q->side_effect("\\$ni::self=$gs;");
-$q;';$o6=bless({$F1,$m6,$f1,$n6},$Z);$p6={$h6,$k6,$l6,$o6};$q6=q'/lib/ni_image.b';$r6=bless({$c,$g6,$Q,$R,$S,$R,$T,$p6,$f,$q6},$G);$s6=q'/lib/slice::ctors';$t6={};$u6=q'--internal/+=';$v6=[];$w6=q'my $self = shift;
+$q;';$p6=bless({$G1,$n6,$g1,$o6},$c1);$q6={$i6,$l6,$m6,$p6};$r6=q'/lib/ni_image.b';$s6=bless({$c,$h6,$R,$S,$T,$S,$U,$q6,$f,$r6},$H);$t6=q'/lib/slice::ctors';$u6={};$v6=q'--internal/+=';$w6=[];$x6=q'my $self = shift;
 for (@_) {
   my $r = do $_;
   die "ni: failed to parse $_: $@" if $@;
@@ -187,20 +188,26 @@ for (@_) {
 }
 my $q = $self->quoted;
 $self->modify(sub {$q->write(shift)});
-0;';$x6=bless({$F1,$v6,$f1,$w6},$Z);$y6=q'--internal/eval';$z6=[];$A6=q'my $self = shift;
+0;';$y6=bless({$G1,$w6,$g1,$x6},$c1);$z6=q'--internal/eval';$A6=[];$B6=q'my $self = shift;
 for (@_) {
   my $r = ni::eval($_);
   print $@ ? "ERROR $@\\n" : "$r\\n";
 }
-0;';$B6=bless({$F1,$z6,$f1,$A6},$Z);$C6=q'--internal/image';$D6=[];$E6=q'shift->quoted->write(\\*STDOUT);
-0;';$F6=bless({$F1,$D6,$f1,$E6},$Z);$G6=q'run';$H6=[];$I6=q'my $self = shift;
+0;';$C6=bless({$G1,$A6,$g1,$B6},$c1);$D6=q'--internal/image';$E6=[];$F6=q'shift->quoted->write(\\*STDOUT);
+0;';$G6=bless({$G1,$E6,$g1,$F6},$c1);$H6=q'run';$I6=[];$J6=q'my $self = shift;
 shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
-exit $self->default(@_);';$J6=bless({$F1,$H6,$f1,$I6},$Z);$K6={$u6,$x6,$y6,$B6,$C6,$F6,$G6,$J6};$L6=q'/lib/ni_main.b';$M6=bless({$c,$t6,$Q,$R,$S,$R,$T,$K6,$f,$L6},$G);$N6=q'/lib/slice::ctors';$O6=[$e6,$r6,$M6];$P6=bless({$c,$Q5,$f,$P5,$g,$O6},$o);$Q6=q'/lib/ni.c::ctors';$R6=q'named';$S6=q'ni.doc:/class';$T6={$l,1};$U6=[$f3];$V6=bless({$c,$T6,$f,$l,$g,$U6},$A);$W6=q'/metaclass::ctors';$X6={$m2,1};$Y6={};$Z6=[];$c7=q'my $class = shift;
+exit $self->default(@_);';$K6=bless({$G1,$I6,$g1,$J6},$c1);$L6={$v6,$y6,$z6,$C6,$D6,$G6,$H6,$K6};$M6=q'/lib/ni_main.b';$N6=bless({$c,$u6,$R,$S,$T,$S,$U,$L6,$f,$M6},$H);$O6=q'/lib/slice::ctors';$P6={};$Q6=[];$R6=q'my $self = shift;
+return $$self{named}{$_[0]} if exists $$self{named}{$_[0]};
+return $$self{resolvers}{$1}->($_[0]) if
+  $_[0] =~ /^([^:]+):/ and exists $$self{resolvers}{$1};
+die "ni:/self failed to resolve $_[0]";';$S6=bless({$G1,$Q6,$g1,$R6},$c1);$T6=q'resolver_for';$U6=[];$V6=q'my $self = shift;
+${$$self{resolvers}}{$_[0]} = $_[1];
+$self;';$W6=bless({$G1,$U6,$g1,$V6},$c1);$X6={$m4,$S6,$T6,$W6};$Y6=q'/lib/ni_resolver.b';$Z6=bless({$c,$P6,$R,$S,$T,$S,$U,$X6,$f,$Y6},$H);$c7=q'/lib/slice::ctors';$d7=[$f6,$s6,$N6,$Z6];$e7=bless({$c,$R5,$f,$Q5,$g,$d7},$o);$f7=q'/lib/ni.c::ctors';$g7=q'named';$h7=q'ni.doc:/class';$i7={$l,1};$j7=[$g3];$k7=bless({$c,$i7,$f,$l,$g,$j7},$B);$l7=q'/metaclass::ctors';$m7={$n2,1};$n7={};$o7=[];$p7=q'my $class = shift;
 my $name  = shift;
 my $doc   = pop;
 +{name    => $name,
   doc     => $doc,
-  apropos => [map ref($_) ? $_->name : $_, @_]};';$d7=bless({$F1,$Z6,$f1,$c7},$Z);$e7={$w1,$d7};$f7=q'/lib/doc_init.b';$g7=bless({$c,$Y6,$Q,$R,$S,$R,$T,$e7,$f,$f7},$G);$h7=q'/lib/slice::ctors';$i7={};$j7=[];$k7=q'\'ni.doc\'';$l7=bless({$F1,$j7,$f1,$k7},$Z);$m7={$T3,$l7};$n7=q'/lib/doc_namespace.b';$o7=bless({$c,$i7,$Q,$R,$S,$R,$T,$m7,$f,$n7},$G);$p7=q'/lib/slice::ctors';$q7=[$l2,$g7,$o7];$r7=bless({$c,$X6,$f,$m2,$g,$q7},$l);$s7=q'/lib/doc.c::ctors';$t7=q'apropos';$u7=q'ni:/class';$v7=[$u7];$w7=q'# Classes and metaclasses
+  apropos => [map ref($_) ? $_->name : $_, @_]};';$q7=bless({$G1,$o7,$g1,$p7},$c1);$r7={$x1,$q7};$s7=q'/lib/doc_init.b';$t7=bless({$c,$n7,$R,$S,$T,$S,$U,$r7,$f,$s7},$H);$u7=q'/lib/slice::ctors';$v7={};$w7=[];$x7=q'\'ni.doc\'';$y7=bless({$G1,$w7,$g1,$x7},$c1);$z7={$U3,$y7};$A7=q'/lib/doc_namespace.b';$B7=bless({$c,$v7,$R,$S,$T,$S,$U,$z7,$f,$A7},$H);$C7=q'/lib/slice::ctors';$D7=[$m2,$t7,$B7];$E7=bless({$c,$m7,$f,$n2,$g,$D7},$l);$F7=q'/lib/doc.c::ctors';$G7=q'apropos';$H7=q'ni:/class';$I7=[$H7];$J7=q'# Classes and metaclasses
 This documentation assumes that you understand how Smalltalk-80 metaclasses
 work (Ruby eigenclasses might do it, but they\'re fairly different). The
 [wikipedia article on metaclasses](https://en.wikipedia.org/wiki/Metaclass) has
@@ -269,7 +276,7 @@ In the table below I use the following notation:
                                + /lib/namespaced.b
                                + /lib/resolver.b
 ```
-';$x7=bless({$t7,$v7,$U2,$w7,$f,$M},$m2);$y7=q'/lib/doc::ctors';$z7=q'ni:/class.c';$A7=q'ni:/lib/accessor.b';$B7=q'ni:/lib/behavior';$C7=q'ni:/lib/behavior.c';$D7=q'ni:/lib/branch';$E7=q'ni:/lib/branch.b';$F7=q'ni:/lib/branch.c';$G7=q'ni:/lib/branch_init.b';$H7=q'ni:/lib/class_init.b';$I7=q'ni:/lib/classdef.b';$J7=q'ni:/lib/definition.b';$K7=q'ni:/lib/doc';$L7=q'ni:/lib/doc.c';$M7=q'ni:/lib/doc_init.b';$N7=q'ni:/lib/doc_namespace.b';$O7=q'ni:/lib/documentable.b';$P7=q'ni:/lib/fn';$Q7=q'ni:/lib/fn.c';$R7=q'ni:/lib/fn_init.b';$S7=q'ni:/lib/fn_serialize.b';$T7=q'ni:/lib/image';$U7={$n,1};$V7=[$f3];$W7=bless({$c,$U7,$f,$n,$g,$V7},$A);$X7=q'/metaclass::ctors';$Y7=q'/lib/image';$Z7={$Y7,1};$c8={};$d8=[];$e8=q'my $class = shift;
+';$K7=bless({$G7,$I7,$V2,$J7,$f,$N},$n2);$L7=q'/lib/doc::ctors';$M7=q'ni:/class.c';$N7=q'ni:/lib/accessor.b';$O7=q'ni:/lib/behavior';$P7=q'ni:/lib/behavior.c';$Q7=q'ni:/lib/branch';$R7=q'ni:/lib/branch.b';$S7=q'ni:/lib/branch.c';$T7=q'ni:/lib/branch_init.b';$U7=q'ni:/lib/class_init.b';$V7=q'ni:/lib/classdef.b';$W7=q'ni:/lib/definition.b';$X7=q'ni:/lib/doc';$Y7=q'ni:/lib/doc.c';$Z7=q'ni:/lib/doc_init.b';$c8=q'ni:/lib/doc_namespace.b';$d8=q'ni:/lib/documentable.b';$e8=q'ni:/lib/fn';$f8=q'ni:/lib/fn.c';$g8=q'ni:/lib/fn_init.b';$h8=q'ni:/lib/fn_serialize.b';$i8=q'ni:/lib/image';$j8={$n,1};$k8=[$g3];$l8=bless({$c,$j8,$f,$n,$g,$k8},$B);$m8=q'/metaclass::ctors';$n8=q'/lib/image';$o8={$n8,1};$p8={};$q8=[];$r8=q'my $class = shift;
 my %args  = (
   include_shebang => 1,
   include_license => 1,
@@ -295,18 +302,18 @@ my %args  = (
   side_effects => [],
   finalizers   => [],
   visited      => {},
-  ordering     => []};';$f8=bless({$F1,$d8,$f1,$e8},$Z);$g8={$w1,$f8};$h8=q'/lib/image_init.b';$i8=bless({$c,$c8,$Q,$R,$S,$R,$T,$g8,$f,$h8},$G);$j8=q'/lib/slice::ctors';$k8={};$l8=q'address';$m8=[];$n8=q'return \'undef\' unless defined $_[1];
+  ordering     => []};';$s8=bless({$G1,$q8,$g1,$r8},$c1);$t8={$x1,$s8};$u8=q'/lib/image_init.b';$v8=bless({$c,$p8,$R,$S,$T,$S,$U,$t8,$f,$u8},$H);$w8=q'/lib/slice::ctors';$x8={};$y8=q'address';$z8=[];$A8=q'return \'undef\' unless defined $_[1];
 return "id:$_[1]" if !ref $_[1] && length $_[1] < 16;
-"addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \\$_[1]);';$o8=bless({$F1,$m8,$f1,$n8},$Z);$p8=q'allocate_gensym';$q8=[];$r8=q'my $self = shift;
+"addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \\$_[1]);';$B8=bless({$G1,$z8,$g1,$A8},$c1);$C8=q'allocate_gensym';$D8=[];$E8=q'my $self = shift;
 my $a = $self->address(shift);
 return $$self{visited}{$a} if $_[0] =~ /^\\$\\w+$/;
 my $g = $$self{visited}{$a} = $self->gensym;
 $$self{definitions}{$g} = $$self{local_vars} ? "my$g=$_[0];" : "$g=$_[0];";
 push @{$$self{ordering}}, $g;
-$g;';$s8=bless({$F1,$q8,$f1,$r8},$Z);$t8=q'boot_side_effect';$u8=[];$v8=q'unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]';$w8=bless({$F1,$u8,$f1,$v8},$Z);$x8=q'circular_links';$y8=[];$z8=q'local $_;
+$g;';$F8=bless({$G1,$D8,$g1,$E8},$c1);$G8=q'boot_side_effect';$H8=[];$I8=q'unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]';$J8=bless({$G1,$H8,$g1,$I8},$c1);$K8=q'circular_links';$L8=[];$M8=q'local $_;
 my $self = shift;
 map "\\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
-    @{$$self{circular}};';$A8=bless({$F1,$y8,$f1,$z8},$Z);$B8=q'finalizer';$C8=[];$D8=q'push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]';$E8=bless({$F1,$C8,$f1,$D8},$Z);$F8=q'gensym';$G8=[];$H8=q'my $n = shift->{gensym_n}++;
+    @{$$self{circular}};';$N8=bless({$G1,$L8,$g1,$M8},$c1);$O8=q'finalizer';$P8=[];$Q8=q'push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]';$R8=bless({$G1,$P8,$g1,$Q8},$c1);$S8=q'gensym';$T8=[];$U8=q'my $n = shift->{gensym_n}++;
 my $s = \'$\' .
   substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
          $n % 50, 1;
@@ -316,8 +323,8 @@ while ($n) {
                $n % 63, 1;
   $n = int $n / 63;
 }
-$s;';$I8=bless({$F1,$G8,$f1,$H8},$Z);$J8=q'is_circular';$K8=[];$L8=q'my $self = shift;
-ref $$self{visited}{$self->address($_[0])};';$M8=bless({$F1,$K8,$f1,$L8},$Z);$N8=q'quote';$O8=[];$P8=q'my $self = shift;
+$s;';$V8=bless({$G1,$T8,$g1,$U8},$c1);$W8=q'is_circular';$X8=[];$Y8=q'my $self = shift;
+ref $$self{visited}{$self->address($_[0])};';$Z8=bless({$G1,$X8,$g1,$Y8},$c1);$c9=q'quote';$d9=[];$e9=q'my $self = shift;
 return $self->quote_scalar($_[0])
   if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
 my $a = $self->address($_[0]);
@@ -325,19 +332,19 @@ $$self{objects}{$a} = \\$_[0];
 my $v = $$self{visited}{$a};
 return ref $v ? \'undef\' : $v if defined $v;
 $$self{visited}{$a} = \\\'undef\';
-$self->allocate_gensym($_[0], $self->quote_value($_[0]));';$Q8=bless({$F1,$O8,$f1,$P8},$Z);$R8=q'quote_array';$S8=[];$T8=q'local $_;
+$self->allocate_gensym($_[0], $self->quote_value($_[0]));';$f9=bless({$G1,$d9,$g1,$e9},$c1);$g9=q'quote_array';$h9=[];$i9=q'local $_;
 my ($self, $v) = @_;
 my $a = $self->address($v);
 $self->is_circular($$v[$_])
   && push @{$$self{circular}}, [$a, "[$_]", $self->address($$v[$_])]
 for 0..$#{$v};
-\'[\' . join(\',\', map $self->quote($_), @$v) . \']\';';$U8=bless({$F1,$S8,$f1,$T8},$Z);$V8=q'quote_blessed';$W8=[];$X8=q'my ($self, $x, $r) = @_;
+\'[\' . join(\',\', map $self->quote($_), @$v) . \']\';';$j9=bless({$G1,$h9,$g1,$i9},$c1);$k9=q'quote_blessed';$l9=[];$m9=q'my ($self, $x, $r) = @_;
 $r ||= ref $x;
 $self->quote_class($r);
 my $t = Scalar::Util::reftype $x;
 my $quoted = $t eq \'HASH\' ? $self->quote_hash($x) : $self->quote_array($x);
-"bless($quoted," . $self->quote($r) . ")";';$Y8=bless({$F1,$W8,$f1,$X8},$Z);$Z8=q'quote_class';$c9=[];$d9=q'my ($self, $class) = @_;
-$self->quote(ni"ni:$class") if $$self{include_classes} && ni->exists("ni:$class");';$e9=bless({$F1,$c9,$f1,$d9},$Z);$f9=q'quote_hash';$g9=[];$h9=q'local $_;
+"bless($quoted," . $self->quote($r) . ")";';$n9=bless({$G1,$l9,$g1,$m9},$c1);$o9=q'quote_class';$p9=[];$q9=q'my ($self, $class) = @_;
+$self->quote(ni"ni:$class") if $$self{include_classes} && ni->exists("ni:$class");';$r9=bless({$G1,$p9,$g1,$q9},$c1);$s9=q'quote_hash';$t9=[];$u9=q'local $_;
 my ($self, $v) = @_;
 my $a = $self->address($v);
 my @ks = sort keys %$v;
@@ -348,65 +355,68 @@ for my $k (@ks) {
   if $self->is_circular($$v{$k});
   push @qs, $self->quote($k) . "," . $self->quote($$v{$k});
 }
-\'{\' . join(",", @qs) . \'}\';';$i9=bless({$F1,$g9,$f1,$h9},$Z);$j9=q'quote_object';$k9=[];$l9=q'my $self = shift;
+\'{\' . join(",", @qs) . \'}\';';$v9=bless({$G1,$t9,$g1,$u9},$c1);$w9=q'quote_object';$x9=[];$y9=q'my $self = shift;
 my $q = $self->allocate_gensym($_[0],
   $_[0]->can(\'serialize\') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
 $self->finalizer("&\\$_($q)for\\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
-$q;';$m9=bless({$F1,$k9,$f1,$l9},$Z);$n9=q'quote_scalar';$o9=[];$p9=q'my $v = $_[1];
+$q;';$z9=bless({$G1,$x9,$g1,$y9},$c1);$A9=q'quote_scalar';$B9=[];$C9=q'my $v = $_[1];
 return \'undef\' unless defined $v;
 return $v if Scalar::Util::looks_like_number $v;
 $v =~ s/([\\\\\'])/\\\\$1/g;
-"q\'$v\'";';$q9=bless({$F1,$o9,$f1,$p9},$Z);$r9=q'quote_value';$s9=[];$t9=q'my $self = shift;
+"q\'$v\'";';$D9=bless({$G1,$B9,$g1,$C9},$c1);$E9=q'quote_value';$F9=[];$G9=q'my $self = shift;
 return $self->quote_scalar($_[0]) unless ref $_[0];
 return $self->quote_array($_[0])  if \'ARRAY\' eq ref $_[0];
 return $self->quote_hash($_[0])   if \'HASH\'  eq ref $_[0];
 die "cannot serialize $_[0]"      if \'CODE\'  eq ref $_[0];
-$self->quote_object($_[0]);';$u9=bless({$F1,$s9,$f1,$t9},$Z);$v9=q'reconstruction';$w9=[];$x9=q'my $self = shift;
+$self->quote_object($_[0]);';$H9=bless({$G1,$F9,$g1,$G9},$c1);$I9=q'reconstruction';$J9=[];$K9=q'my $self = shift;
 (@{$$self{definitions}}{@{$$self{ordering}}},
  $self->circular_links,
  @{$$self{side_effects}},
- @{$$self{finalizers}});';$y9=bless({$F1,$w9,$f1,$x9},$Z);$z9=q'side_effect';$A9=[];$B9=q'push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]';$C9=bless({$F1,$A9,$f1,$B9},$Z);$D9=q'write';$E9=[];$F9=q'local $_;
+ @{$$self{finalizers}});';$L9=bless({$G1,$J9,$g1,$K9},$c1);$M9=q'side_effect';$N9=[];$O9=q'push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]';$P9=bless({$G1,$N9,$g1,$O9},$c1);$Q9=q'write';$R9=[];$S9=q'local $_;
 my ($self, $fh) = @_;
 $fh->print($_) for
   ($$self{include_shebang} ? ("#!/usr/bin/env perl\\n") : ()),
   ($$self{include_license} ? ("chomp(\\$ni::license=<<\'_\');\\n", $ni::license, "\\n_\\n") : ()),
   ($$self{include_boot}    ? ("BEGIN{eval(\\$ni::boot=<<\'_\')}\\n", $ni::boot, "\\n_\\n") : ()),
   ($$self{use_newlines}    ? map("$_\\n", $self->reconstruction) : $self->reconstruction),
-  ($$self{include_run}     ? ("ni->run(\\@ARGV);", "\\n__DATA__\\n") : ());';$G9=bless({$F1,$E9,$f1,$F9},$Z);$H9={$l8,$o8,$p8,$s8,$t8,$w8,$x8,$A8,$B8,$E8,$F8,$I8,$J8,$M8,$N8,$Q8,$R8,$U8,$V8,$Y8,$Z8,$e9,$f9,$i9,$j9,$m9,$n9,$q9,$r9,$u9,$v9,$y9,$z9,$C9,$D9,$G9};$I9=q'/lib/image_quoting.b';$J9=bless({$c,$k8,$Q,$R,$S,$R,$T,$H9,$f,$I9},$G);$K9=q'/lib/slice::ctors';$L9=[$i8,$J9];$M9=bless({$c,$Z7,$f,$Y7,$g,$L9},$n);$N9=q'/lib/image.c::ctors';$O9=q'ni:/lib/image.c';$P9=q'ni:/lib/image_init.b';$Q9=q'ni:/lib/image_quoting.b';$R9=q'ni:/lib/instance.b';$S9=q'ni:/lib/instantiable.b';$T9=q'ni:/lib/named.b';$U9=q'ni:/lib/named_in_ni.b';$V9=q'ni:/lib/namespaced.b';$W9=q'ni:/lib/ni';$X9=q'ni:/lib/ni.c';$Y9=q'ni:/lib/ni_image.b';$Z9=q'ni:/lib/ni_main.b';$ca=q'ni:/lib/ni_self.b';$da=q'ni:/lib/perlbranch.b';$ea=q'ni:/lib/resolver.b';$fa=q'ni:/lib/slice';$ga=q'ni:/lib/slice.b';$ha=q'ni:/lib/slice.c';$ia=q'ni:/lib/slice_init.b';$ja=q'ni:/lib/slice_serialize.b';$ka=q'ni:/lib/subclass.b';$la=q'ni:/lib/tag';$ma=q'ni:/lib/tag.b';$na=q'ni:/lib/tag.c';$oa=q'ni:/lib/tag_init.b';$pa=q'ni:/metaclass';$qa=q'ni:/metaclass.c';$ra=q'ni:/object';$sa=q'ni:/object.c';$ta=q'ni:/unix/cat';$ua={$s,1};$va=[$f3];$wa=bless({$c,$ua,$f,$s,$g,$va},$A);$xa=q'/metaclass::ctors';$ya=q'/unix/cat';$za={$ya,1};$Aa={};$Ba=[];$Ca=q'shift; [@_]';$Da=bless({$F1,$Ba,$f1,$Ca},$Z);$Ea={$w1,$Da};$Fa=q'/unix/cat_init.b';$Ga=bless({$c,$Aa,$Q,$R,$S,$R,$T,$Ea,$f,$Fa},$G);$Ha=q'/lib/slice::ctors';$Ia={};$Ja=q'read';$Ka=[];$La=q'my $self = shift;
+  ($$self{include_run}     ? ("ni->run(\\@ARGV);", "\\n__DATA__\\n") : ());';$T9=bless({$G1,$R9,$g1,$S9},$c1);$U9={$y8,$B8,$C8,$F8,$G8,$J8,$K8,$N8,$O8,$R8,$S8,$V8,$W8,$Z8,$c9,$f9,$g9,$j9,$k9,$n9,$o9,$r9,$s9,$v9,$w9,$z9,$A9,$D9,$E9,$H9,$I9,$L9,$M9,$P9,$Q9,$T9};$V9=q'/lib/image_quoting.b';$W9=bless({$c,$x8,$R,$S,$T,$S,$U,$U9,$f,$V9},$H);$X9=q'/lib/slice::ctors';$Y9=[$v8,$W9];$Z9=bless({$c,$o8,$f,$n8,$g,$Y9},$n);$ca=q'/lib/image.c::ctors';$da=q'ni:/lib/image.c';$ea=q'ni:/lib/image_init.b';$fa=q'ni:/lib/image_quoting.b';$ga=q'ni:/lib/instance.b';$ha=q'ni:/lib/instantiable.b';$ia=q'ni:/lib/named.b';$ja=q'ni:/lib/named_in_ni.b';$ka=q'ni:/lib/namespaced.b';$la=q'ni:/lib/ni';$ma=q'ni:/lib/ni.c';$na=q'ni:/lib/ni_image.b';$oa=q'ni:/lib/ni_main.b';$pa=q'ni:/lib/ni_resolver.b';$qa=q'ni:/lib/ni_self.b';$ra=q'ni:/lib/perlbranch.b';$sa=q'ni:/lib/resolver.b';$ta=q'ni:/lib/slice';$ua=q'ni:/lib/slice.b';$va=q'ni:/lib/slice.c';$wa=q'ni:/lib/slice_init.b';$xa=q'ni:/lib/slice_serialize.b';$ya=q'ni:/lib/subclass.b';$za=q'ni:/lib/tag';$Aa=q'ni:/lib/tag.b';$Ba=q'ni:/lib/tag.c';$Ca=q'ni:/lib/tag_init.b';$Da=q'ni:/metaclass';$Ea=q'ni:/metaclass.c';$Fa=q'ni:/object';$Ga=q'ni:/object.c';$Ha=q'ni:/unix/cat';$Ia={$s,1};$Ja={$s,1,$u,1,$v,1,$w,1};$Ka=[$g3];$La=bless({$c,$Ja,$f,$v,$g,$Ka},$B);$Ma=q'/metaclass::ctors';$Na=[$La];$Oa=bless({$c,$Ia,$f,$s,$g,$Na},$B);$Pa=q'/metaclass::ctors';$Qa=q'/unix/cat';$Ra={$Qa,1};$Sa={};$Ta=[];$Ua=q'shift; [@_]';$Va=bless({$G1,$Ta,$g1,$Ua},$c1);$Wa={$x1,$Va};$Xa=q'/unix/cat_init.b';$Ya=bless({$c,$Sa,$R,$S,$T,$S,$U,$Wa,$f,$Xa},$H);$Za=q'/lib/slice::ctors';$cb={};$db=q'read';$eb=[];$fb=q'my $self = shift;
 my $n;
 shift @$self until !@$self or $n = $$self[0]->read(@_);
-return undef;';$Ma=bless({$F1,$Ka,$f1,$La},$Z);$Na={$Ja,$Ma};$Oa=q'/unix/cat_read.b';$Pa=bless({$c,$Ia,$Q,$R,$S,$R,$T,$Na,$f,$Oa},$G);$Qa=q'/lib/slice::ctors';$Ra=[$Ga,$Pa];$Sa=bless({$c,$za,$f,$ya,$g,$Ra},$s);$Ta=q'/unix/cat.c::ctors';$Ua=q'ni:/unix/cat.c';$Va=q'ni:/unix/cat_init.b';$Wa=q'ni:/unix/cat_read.b';$Xa=q'ni:/unix/fd.b';$Ya=q'/unix/fifo';$Za=q'/unix/file';$cb={$Ya,1,$Za,1};$db=q'/unix/fd.b';$eb={};$fb=[];$gb=q'no warnings \'io\';
+return undef;';$gb=bless({$G1,$eb,$g1,$fb},$c1);$hb={$db,$gb};$ib=q'/unix/cat_read.b';$jb=bless({$c,$cb,$R,$S,$T,$S,$U,$hb,$f,$ib},$H);$kb=q'/lib/slice::ctors';$lb=[$Ya,$jb];$mb=bless({$c,$Ra,$f,$Qa,$g,$lb},$s);$nb=q'/unix/cat.c::ctors';$ob=q'ni:/unix/cat.c';$pb=q'ni:/unix/cat_init.b';$qb=q'ni:/unix/cat_read.b';$rb=q'ni:/unix/fd.b';$sb=q'/unix/fifo';$tb=q'/unix/file';$ub={$sb,1,$tb,1};$vb=q'/unix/fd.b';$wb={};$xb=[];$yb=q'no warnings \'io\';
 use Errno qw/EINTR/;
 my $fh = shift->read_fh;
 my $n;
 do {
   return $n if defined($n = read $fh, $_[0], $_[1], $_[2] || 0);
 } while $!{EINTR};
-return undef;';$hb=bless({$F1,$fb,$f1,$gb},$Z);$ib=[];$jb=q'my $fh = shift->write_fh;
+return undef;';$zb=bless({$G1,$xb,$g1,$yb},$c1);$Ab=[];$Bb=q'my $fh = shift->write_fh;
 my $n;
 do {
   return $n if defined($n = syswrite $fh, $_[0]);
 } while $!{EINTR};
-return undef;';$kb=bless({$F1,$ib,$f1,$jb},$Z);$lb={$Ja,$hb,$D9,$kb};$mb=q'/unix/fd_safeio.b';$nb=bless({$c,$eb,$Q,$R,$S,$R,$T,$lb,$f,$mb},$G);$ob=q'/lib/slice::ctors';$pb=[$nb];$qb=bless({$c,$cb,$f,$db,$g,$pb},$J);$rb=q'/lib/branch::ctors';$sb=q'ni:/unix/fd_safeio.b';$tb=q'ni:/unix/fifo';$ub={$t,1};$vb=[$f3];$wb=bless({$c,$ub,$f,$t,$g,$vb},$A);$xb=q'/metaclass::ctors';$yb={$Ya,1};$zb={};$Ab=[];$Bb=q'my ($class) = @_;
+return undef;';$Cb=bless({$G1,$Ab,$g1,$Bb},$c1);$Db={$db,$zb,$Q9,$Cb};$Eb=q'/unix/fd_safeio.b';$Fb=bless({$c,$wb,$R,$S,$T,$S,$U,$Db,$f,$Eb},$H);$Gb=q'/lib/slice::ctors';$Hb=[$Fb];$Ib=bless({$c,$ub,$f,$vb,$g,$Hb},$K);$Jb=q'/lib/branch::ctors';$Kb=q'ni:/unix/fd_safeio.b';$Lb=q'ni:/unix/fifo';$Mb={$t,1};$Nb=[$g3];$Ob=bless({$c,$Mb,$f,$t,$g,$Nb},$B);$Pb=q'/metaclass::ctors';$Qb={$sb,1};$Rb={};$Sb=[];$Tb=q'my ($class) = @_;
 pipe my ($r, $w) or die "ni:/unix/fifo failed: $!";
-+{read_fh => $r, write_fh => $w};';$Cb=bless({$F1,$Ab,$f1,$Bb},$Z);$Db={$w1,$Cb};$Eb=q'/unix/fifo_init.b';$Fb=bless({$c,$zb,$Q,$R,$S,$R,$T,$Db,$f,$Eb},$G);$Gb=q'/lib/slice::ctors';$Hb={$Ya,1,$Za,1};$Ib=q'/unix/io.b';$Jb={};$Kb=q'into';$Lb=[];$Mb=q'local $_;
++{read_fh => $r, write_fh => $w};';$Ub=bless({$G1,$Sb,$g1,$Tb},$c1);$Vb={$x1,$Ub};$Wb=q'/unix/fifo_init.b';$Xb=bless({$c,$Rb,$R,$S,$T,$S,$U,$Vb,$f,$Wb},$H);$Yb=q'/lib/slice::ctors';$Zb={};$cc=q'read_fh';$dc=[];$ec=q'shift->{read_fh}';$fc=bless({$G1,$dc,$g1,$ec},$c1);$gc=q'write_fh';$hc=[];$ic=q'shift->{write_fh}';$jc=bless({$G1,$hc,$g1,$ic},$c1);$kc={$cc,$fc,$gc,$jc};$lc=q'/unix/file_io.b';$mc=bless({$c,$Zb,$R,$S,$T,$S,$U,$kc,$f,$lc},$H);$nc=q'/lib/slice::ctors';$oc=[$Xb,$Ib,$mc];$pc=bless({$c,$Qb,$f,$sb,$g,$oc},$t);$qc=q'/unix/fifo.c::ctors';$rc=q'ni:/unix/fifo.c';$sc=q'ni:/unix/fifo_init.b';$tc=q'ni:/unix/file';$uc={$u,1};$vc=[$La];$wc=bless({$c,$uc,$f,$u,$g,$vc},$B);$xc=q'/metaclass::ctors';$yc={$tb,1};$zc={};$Ac=[];$Bc=q'shift->{\'name\'}';$Cc=bless({$G1,$Ac,$g1,$Bc},$c1);$Dc={$f,$Cc};$Ec=q'/unix/file_readers.b';$Fc=bless({$c,$zc,$R,$S,$T,$S,$U,$Dc,$f,$Ec},$H);$Gc=q'/lib/slice::ctors';$Hc={};$Ic=[];$Jc=q'my ($class, $name) = @_;
++{name => $name, fh => undef};';$Kc=bless({$G1,$Ic,$g1,$Jc},$c1);$Lc={$x1,$Kc};$Mc=q'/unix/file_init.b';$Nc=bless({$c,$Hc,$R,$S,$T,$S,$U,$Lc,$f,$Mc},$H);$Oc=q'/lib/slice::ctors';$Pc={};$Qc=[];$Rc=q'my $self = shift;
+return $self->{fh} if Scalar::Util::openhandle $self->{fh};
+open my $fh, \'<\', $self->{name}
+  or die "ni:/unix/file $self->{name} failed to read: $!";
+$self->{fh} = $fh;';$Sc=bless({$G1,$Qc,$g1,$Rc},$c1);$Tc=[];$Uc=q'my $self = shift;
+return $self->{fh} if Scalar::Util::openhandle $self->{fh};
+open my $fh, \'>\', $self->{name}
+  or die "ni:/unix/file $self->{name} failed to write: $!";
+$self->{fh} = $fh;';$Vc=bless({$G1,$Tc,$g1,$Uc},$c1);$Wc={$cc,$Sc,$gc,$Vc};$Xc=bless({$c,$Pc,$R,$S,$T,$S,$U,$Wc,$f,$lc},$H);$Yc=q'/lib/slice::ctors';$Zc=[$Fc,$Nc,$Ib,$Xc];$cd=bless({$c,$yc,$f,$tb,$g,$Zc},$u);$dd=q'/unix/file.c::ctors';$ed=q'ni:/unix/file.c';$fd=q'ni:/unix/file_init.b';$gd=q'ni:/unix/file_io.b';$hd=q'ni:/unix/file_readers.b';$id=q'ni:/unix/io';$jd=q'/unix/io';$kd={$jd,1};$ld={};$md=q'into';$nd=[];$od=q'local $_;
 my ($self, $dest, $each) = @_;
 my $block_size = $self->read_size;
 while (defined($self->read($_, $block_size))) {
   &$each($_) if defined $each;
   $dest->write($_);
-}';$Nb=bless({$F1,$Lb,$f1,$Mb},$Z);$Ob={$Kb,$Nb};$Pb=q'/unix/io_stream.b';$Qb=bless({$c,$Jb,$Q,$R,$S,$R,$T,$Ob,$f,$Pb},$G);$Rb=q'/lib/slice::ctors';$Sb={};$Tb=q'(+';$Ub=[];$Vb=q'ni(\'ni:/unix/cat\')->new(@_)';$Wb=bless({$F1,$Ub,$f1,$Vb},$Z);$Xb={$Tb,$Wb};$Yb=q'/unix/io_constructors.b';$Zb=bless({$c,$Sb,$Q,$R,$S,$R,$T,$Xb,$f,$Yb},$G);$cc=q'/lib/slice::ctors';$dc={};$ec=q'(<>';$fc=[];$gc=q'my $fh = shift->read_fh; <$fh>';$hc=bless({$F1,$fc,$f1,$gc},$Z);$ic=q'(@{}';$jc=[];$kc=q'my $fh = shift->read_fh; [<$fh>]';$lc=bless({$F1,$jc,$f1,$kc},$Z);$mc={$ec,$hc,$ic,$lc};$nc=q'/unix/io_readers.b';$oc=bless({$c,$dc,$Q,$R,$S,$R,$T,$mc,$f,$nc},$G);$pc=q'/lib/slice::ctors';$qc=[$Qb,$Zb,$oc];$rc=bless({$c,$Hb,$f,$Ib,$g,$qc},$J);$sc=q'/lib/branch::ctors';$tc={};$uc=q'read_fh';$vc=[];$wc=q'shift->{read_fh}';$xc=bless({$F1,$vc,$f1,$wc},$Z);$yc=q'write_fh';$zc=[];$Ac=q'shift->{write_fh}';$Bc=bless({$F1,$zc,$f1,$Ac},$Z);$Cc={$uc,$xc,$yc,$Bc};$Dc=q'/unix/file_io.b';$Ec=bless({$c,$tc,$Q,$R,$S,$R,$T,$Cc,$f,$Dc},$G);$Fc=q'/lib/slice::ctors';$Gc=[$Fb,$rc,$qb,$Ec];$Hc=bless({$c,$yb,$f,$Ya,$g,$Gc},$t);$Ic=q'/unix/fifo.c::ctors';$Jc=q'ni:/unix/fifo.c';$Kc=q'ni:/unix/fifo_init.b';$Lc=q'ni:/unix/file';$Mc={$u,1};$Nc=[$f3];$Oc=bless({$c,$Mc,$f,$u,$g,$Nc},$A);$Pc=q'/metaclass::ctors';$Qc={$Za,1};$Rc={};$Sc=[];$Tc=q'shift->{\'name\'}';$Uc=bless({$F1,$Sc,$f1,$Tc},$Z);$Vc={$f,$Uc};$Wc=q'/unix/file_readers.b';$Xc=bless({$c,$Rc,$Q,$R,$S,$R,$T,$Vc,$f,$Wc},$G);$Yc=q'/lib/slice::ctors';$Zc={};$cd=[];$dd=q'my ($class, $name) = @_;
-+{name => $name, fh => undef};';$ed=bless({$F1,$cd,$f1,$dd},$Z);$fd={$w1,$ed};$gd=q'/unix/file_init.b';$hd=bless({$c,$Zc,$Q,$R,$S,$R,$T,$fd,$f,$gd},$G);$id=q'/lib/slice::ctors';$jd={};$kd=[];$ld=q'my $self = shift;
-return $self->{fh} if Scalar::Util::openhandle $self->{fh};
-open my $fh, \'<\', $self->{name}
-  or die "ni:/unix/file $self->{name} failed to read: $!";
-$self->{fh} = $fh;';$md=bless({$F1,$kd,$f1,$ld},$Z);$nd=[];$od=q'my $self = shift;
-return $self->{fh} if Scalar::Util::openhandle $self->{fh};
-open my $fh, \'>\', $self->{name}
-  or die "ni:/unix/file $self->{name} failed to write: $!";
-$self->{fh} = $fh;';$pd=bless({$F1,$nd,$f1,$od},$Z);$qd={$uc,$md,$yc,$pd};$rd=bless({$c,$jd,$Q,$R,$S,$R,$T,$qd,$f,$Dc},$G);$sd=q'/lib/slice::ctors';$td=[$Xc,$hd,$rc,$qb,$rd];$ud=bless({$c,$Qc,$f,$Za,$g,$td},$u);$vd=q'/unix/file.c::ctors';$wd=q'ni:/unix/file.c';$xd=q'ni:/unix/file_init.b';$yd=q'ni:/unix/file_io.b';$zd=q'ni:/unix/file_readers.b';$Ad=q'ni:/unix/io.b';$Bd=q'ni:/unix/io_constructors.b';$Cd=q'ni:/unix/io_readers.b';$Dd=q'ni:/unix/io_stream.b';$Ed=q'ni:/unix/pid';$Fd={$v,1};$Gd=[$f3];$Hd=bless({$c,$Fd,$f,$v,$g,$Gd},$A);$Id=q'/metaclass::ctors';$Jd=q'/unix/pid';$Kd={$Jd,1};$Ld={};$Md=q'pid';$Nd=[];$Od=q'shift->{\'pid\'}';$Pd=bless({$F1,$Nd,$f1,$Od},$Z);$Qd=q'stderr';$Rd=[];$Sd=q'shift->{\'stderr\'}';$Td=bless({$F1,$Rd,$f1,$Sd},$Z);$Ud=q'stdin';$Vd=[];$Wd=q'shift->{\'stdin\'}';$Xd=bless({$F1,$Vd,$f1,$Wd},$Z);$Yd=q'stdout';$Zd=[];$ce=q'shift->{\'stdout\'}';$de=bless({$F1,$Zd,$f1,$ce},$Z);$ee={$Md,$Pd,$Qd,$Td,$Ud,$Xd,$Yd,$de};$fe=q'/unix/pid_readers.b';$ge=bless({$c,$Ld,$Q,$R,$S,$R,$T,$ee,$f,$fe},$G);$he=q'/lib/slice::ctors';$ie={};$je=[];$ke=q'my ($class, $pid, $i, $o, $e) = @_;
+}';$pd=bless({$G1,$nd,$g1,$od},$c1);$qd={$md,$pd};$rd=q'/unix/io_stream.b';$sd=bless({$c,$ld,$R,$S,$T,$S,$U,$qd,$f,$rd},$H);$td=q'/lib/slice::ctors';$ud={};$vd=q'(+';$wd=[];$xd=q'ni(\'ni:/unix/cat\')->new(@_)';$yd=bless({$G1,$wd,$g1,$xd},$c1);$zd={$vd,$yd};$Ad=q'/unix/io_constructors.b';$Bd=bless({$c,$ud,$R,$S,$T,$S,$U,$zd,$f,$Ad},$H);$Cd=q'/lib/slice::ctors';$Dd={};$Ed=q'(<>';$Fd=[];$Gd=q'my $fh = shift->read_fh;
+# TODO: buffered line reading with a pushback queue';$Hd=bless({$G1,$Fd,$g1,$Gd},$c1);$Id=q'(@{}';$Jd=[];$Kd=q'my $self = shift; [<$self>]';$Ld=bless({$G1,$Jd,$g1,$Kd},$c1);$Md={$Ed,$Hd,$Id,$Ld};$Nd=q'/unix/io_readers.b';$Od=bless({$c,$Dd,$R,$S,$T,$S,$U,$Md,$f,$Nd},$H);$Pd=q'/lib/slice::ctors';$Qd=[$sd,$Bd,$Od];$Rd=bless({$c,$kd,$f,$jd,$g,$Qd},$v);$Sd=q'/unix/io.c::ctors';$Td=q'ni:/unix/io.c';$Ud=q'ni:/unix/io_constructors.b';$Vd=q'ni:/unix/io_readers.b';$Wd=q'ni:/unix/io_stream.b';$Xd=q'ni:/unix/pid';$Yd={$w,1};$Zd=[$La];$ce=bless({$c,$Yd,$f,$w,$g,$Zd},$B);$de=q'/metaclass::ctors';$ee=q'/unix/pid';$fe={$ee,1};$ge={};$he=q'pid';$ie=[];$je=q'shift->{\'pid\'}';$ke=bless({$G1,$ie,$g1,$je},$c1);$le=q'stderr';$me=[];$ne=q'shift->{\'stderr\'}';$oe=bless({$G1,$me,$g1,$ne},$c1);$pe=q'stdin';$qe=[];$re=q'shift->{\'stdin\'}';$se=bless({$G1,$qe,$g1,$re},$c1);$te=q'stdout';$ue=[];$ve=q'shift->{\'stdout\'}';$we=bless({$G1,$ue,$g1,$ve},$c1);$xe={$he,$ke,$le,$oe,$pe,$se,$te,$we};$ye=q'/unix/pid_readers.b';$ze=bless({$c,$ge,$R,$S,$T,$S,$U,$xe,$f,$ye},$H);$Ae=q'/lib/slice::ctors';$Be={};$Ce=[];$De=q'my ($class, $pid, $i, $o, $e) = @_;
 +{pid    => $pid,
   stdin  => $i,
   stdout => $o,
-  stderr => $e};';$le=bless({$F1,$je,$f1,$ke},$Z);$me={$w1,$le};$ne=q'/unix/pid_init.b';$oe=bless({$c,$ie,$Q,$R,$S,$R,$T,$me,$f,$ne},$G);$pe=q'/lib/slice::ctors';$qe={};$re=[];$se=q'shift->{stdout}';$te=bless({$F1,$re,$f1,$se},$Z);$ue=[];$ve=q'shift->{stdin}';$we=bless({$F1,$ue,$f1,$ve},$Z);$xe={$uc,$te,$yc,$we};$ye=q'/unix/pid_io.b';$ze=bless({$c,$qe,$Q,$R,$S,$R,$T,$xe,$f,$ye},$G);$Ae=q'/lib/slice::ctors';$Be=[$ge,$oe,$ze];$Ce=bless({$c,$Kd,$f,$Jd,$g,$Be},$v);$De=q'/unix/pid.c::ctors';$Ee=q'ni:/unix/pid.c';$Fe=q'ni:/unix/pid_init.b';$Ge=q'ni:/unix/pid_io.b';$He=q'ni:/unix/pid_readers.b';$Ie={$S6,$x7,$u7,$C5,$z7,$i3,$A7,$o5,$B7,$c2,$C7,$B,$D7,$R4,$E7,$Q3,$F7,$G4,$G7,$O4,$H7,$C4,$I7,$d5,$J7,$r5,$K7,$r7,$L7,$V6,$M7,$g7,$N7,$o7,$O7,$c3,$P7,$O1,$Q7,$X,$R7,$B1,$S7,$L1,$T7,$M9,$O9,$W7,$P9,$i8,$Q9,$J9,$R9,$U1,$S9,$o1,$T9,$l2,$U9,$Y3,$V9,$i4,$W9,$P6,$X9,$N5,$Y9,$r6,$Z9,$M6,$ca,$e6,$da,$t4,$ea,$q4,$fa,$R2,$ga,$z2,$ha,$E,$ia,$G2,$ja,$O2,$ka,$z5,$la,$F3,$ma,$v3,$na,$n3,$oa,$C3,$pa,$J5,$qa,$F5,$ra,$X1,$sa,$f3,$ta,$Sa,$Ua,$wa,$Va,$Ga,$Wa,$Pa,$Xa,$qb,$sb,$nb,$tb,$Hc,$Jc,$wb,$Kc,$Fb,$Lc,$ud,$wd,$Oc,$xd,$hd,$yd,$rd,$zd,$Xc,$Ad,$rc,$Bd,$Zb,$Cd,$oc,$Dd,$Qb,$Ed,$Ce,$Ee,$Hd,$Fe,$oe,$Ge,$ze,$He,$ge};$Je=bless({$R6,$Ie},$P5);$Ke=q'/lib/ni::ctors';$$e3[0]=$C5;$$z[0]=$f3;$$W[0]=$f3;$$Q4[4]=$r5;*$t2=\&$r2;*$s2=\&$p2;$o1->apply_unsafe($M);$o1->apply_unsafe($h);$o1->apply_unsafe($j);$o1->apply_unsafe($J);$o1->apply_unsafe($k);$o1->apply_unsafe($l);$o1->apply_unsafe($Z);$o1->apply_unsafe($m);$o1->apply_unsafe($n);$o1->apply_unsafe($o);$o1->apply_unsafe($G);$o1->apply_unsafe($p);$o1->apply_unsafe($K);$o1->apply_unsafe($q);$o1->apply_unsafe($A);$o1->apply_unsafe($d);$o1->apply_unsafe($r);$o1->apply_unsafe($s);$o1->apply_unsafe($t);$o1->apply_unsafe($u);$o1->apply_unsafe($v);$B1->apply_unsafe($Z);$L1->apply_unsafe($Z);$U1->apply_unsafe($M);$U1->apply_unsafe($h);$U1->apply_unsafe($I);$U1->apply_unsafe($j);$U1->apply_unsafe($J);$U1->apply_unsafe($k);$U1->apply_unsafe($l);$U1->apply_unsafe($m);$U1->apply_unsafe($n);$U1->apply_unsafe($o);$U1->apply_unsafe($G);$U1->apply_unsafe($p);$U1->apply_unsafe($K);$U1->apply_unsafe($q);$U1->apply_unsafe($A);$U1->apply_unsafe($d);$U1->apply_unsafe($N);$U1->apply_unsafe($r);$U1->apply_unsafe($s);$U1->apply_unsafe($t);$U1->apply_unsafe($u);$U1->apply_unsafe($v);$l2->apply_unsafe($M);$l2->apply_unsafe($h);$l2->apply_unsafe($j);$l2->apply_unsafe($J);$l2->apply_unsafe($k);$l2->apply_unsafe($m2);$l2->apply_unsafe($l);$l2->apply_unsafe($m);$l2->apply_unsafe($n);$l2->apply_unsafe($o);$l2->apply_unsafe($G);$l2->apply_unsafe($p);$l2->apply_unsafe($K);$l2->apply_unsafe($q);$l2->apply_unsafe($A);$l2->apply_unsafe($d);$l2->apply_unsafe($r);$l2->apply_unsafe($s);$l2->apply_unsafe($t);$l2->apply_unsafe($u);$l2->apply_unsafe($v);$z2->apply_unsafe($G);$G2->apply_unsafe($G);$O2->apply_unsafe($G);$c3->apply_unsafe($h);$c3->apply_unsafe($j);$c3->apply_unsafe($k);$c3->apply_unsafe($l);$c3->apply_unsafe($m);$c3->apply_unsafe($n);$c3->apply_unsafe($o);$c3->apply_unsafe($p);$c3->apply_unsafe($q);$c3->apply_unsafe($r);$c3->apply_unsafe($s);$c3->apply_unsafe($t);$c3->apply_unsafe($u);$c3->apply_unsafe($v);$v3->apply_unsafe($K);$C3->apply_unsafe($K);$Q3->apply_unsafe($M);$Q3->apply_unsafe($h);$Q3->apply_unsafe($j);$Q3->apply_unsafe($J);$Q3->apply_unsafe($k);$Q3->apply_unsafe($l);$Q3->apply_unsafe($m);$Q3->apply_unsafe($n);$Q3->apply_unsafe($o);$Q3->apply_unsafe($p);$Q3->apply_unsafe($q);$Q3->apply_unsafe($A);$Q3->apply_unsafe($d);$Q3->apply_unsafe($r);$Q3->apply_unsafe($s);$Q3->apply_unsafe($t);$Q3->apply_unsafe($u);$Q3->apply_unsafe($v);$Y3->apply_unsafe($M);$Y3->apply_unsafe($h);$Y3->apply_unsafe($j);$Y3->apply_unsafe($J);$Y3->apply_unsafe($k);$Y3->apply_unsafe($l);$Y3->apply_unsafe($m);$Y3->apply_unsafe($n);$Y3->apply_unsafe($o);$Y3->apply_unsafe($G);$Y3->apply_unsafe($p);$Y3->apply_unsafe($K);$Y3->apply_unsafe($q);$Y3->apply_unsafe($A);$Y3->apply_unsafe($d);$Y3->apply_unsafe($r);$Y3->apply_unsafe($s);$Y3->apply_unsafe($t);$Y3->apply_unsafe($u);$Y3->apply_unsafe($v);$i4->apply_unsafe($M);$i4->apply_unsafe($h);$i4->apply_unsafe($j);$i4->apply_unsafe($J);$i4->apply_unsafe($k);$i4->apply_unsafe($l);$i4->apply_unsafe($m);$i4->apply_unsafe($n);$i4->apply_unsafe($o);$i4->apply_unsafe($G);$i4->apply_unsafe($p);$i4->apply_unsafe($K);$i4->apply_unsafe($q);$i4->apply_unsafe($A);$i4->apply_unsafe($d);$i4->apply_unsafe($r);$i4->apply_unsafe($s);$i4->apply_unsafe($t);$i4->apply_unsafe($u);$i4->apply_unsafe($v);$q4->apply_unsafe($M);$q4->apply_unsafe($h);$q4->apply_unsafe($j);$q4->apply_unsafe($J);$q4->apply_unsafe($k);$q4->apply_unsafe($l);$q4->apply_unsafe($m);$q4->apply_unsafe($n);$q4->apply_unsafe($o);$q4->apply_unsafe($p);$q4->apply_unsafe($K);$q4->apply_unsafe($q);$q4->apply_unsafe($A);$q4->apply_unsafe($d);$q4->apply_unsafe($r);$q4->apply_unsafe($s);$q4->apply_unsafe($t);$q4->apply_unsafe($u);$q4->apply_unsafe($v);$C4->apply_unsafe($M);$C4->apply_unsafe($h);$C4->apply_unsafe($j);$C4->apply_unsafe($k);$C4->apply_unsafe($l);$C4->apply_unsafe($m);$C4->apply_unsafe($n);$C4->apply_unsafe($o);$C4->apply_unsafe($p);$C4->apply_unsafe($q);$C4->apply_unsafe($A);$C4->apply_unsafe($d);$C4->apply_unsafe($r);$C4->apply_unsafe($s);$C4->apply_unsafe($t);$C4->apply_unsafe($u);$C4->apply_unsafe($v);$O4->apply_unsafe($J);$d5->apply_unsafe($M);$d5->apply_unsafe($h);$d5->apply_unsafe($j);$d5->apply_unsafe($J);$d5->apply_unsafe($k);$d5->apply_unsafe($l);$d5->apply_unsafe($m);$d5->apply_unsafe($n);$d5->apply_unsafe($o);$d5->apply_unsafe($p);$d5->apply_unsafe($q);$d5->apply_unsafe($A);$d5->apply_unsafe($d);$d5->apply_unsafe($r);$d5->apply_unsafe($s);$d5->apply_unsafe($t);$d5->apply_unsafe($u);$d5->apply_unsafe($v);$o5->apply_unsafe($M);$o5->apply_unsafe($h);$o5->apply_unsafe($j);$o5->apply_unsafe($J);$o5->apply_unsafe($k);$o5->apply_unsafe($l);$o5->apply_unsafe($m);$o5->apply_unsafe($n);$o5->apply_unsafe($o);$o5->apply_unsafe($p);$o5->apply_unsafe($q);$o5->apply_unsafe($A);$o5->apply_unsafe($d);$o5->apply_unsafe($r);$o5->apply_unsafe($s);$o5->apply_unsafe($t);$o5->apply_unsafe($u);$o5->apply_unsafe($v);$z5->apply_unsafe($M);$z5->apply_unsafe($h);$z5->apply_unsafe($j);$z5->apply_unsafe($k);$z5->apply_unsafe($l);$z5->apply_unsafe($m);$z5->apply_unsafe($n);$z5->apply_unsafe($o);$z5->apply_unsafe($p);$z5->apply_unsafe($q);$z5->apply_unsafe($d);$z5->apply_unsafe($r);$z5->apply_unsafe($s);$z5->apply_unsafe($t);$z5->apply_unsafe($u);$z5->apply_unsafe($v);$e6->apply_unsafe($P5);$r6->apply_unsafe($P5);$M6->apply_unsafe($P5);$g7->apply_unsafe($m2);$o7->apply_unsafe($m2);$i8->apply_unsafe($Y7);$J9->apply_unsafe($Y7);$Ga->apply_unsafe($ya);$Pa->apply_unsafe($ya);$nb->apply_unsafe($Ya);$nb->apply_unsafe($Za);$Fb->apply_unsafe($Ya);$Qb->apply_unsafe($Ya);$Qb->apply_unsafe($Za);$Zb->apply_unsafe($Ya);$Zb->apply_unsafe($Za);$oc->apply_unsafe($Ya);$oc->apply_unsafe($Za);$Ec->apply_unsafe($Ya);$Xc->apply_unsafe($Za);$hd->apply_unsafe($Za);$rd->apply_unsafe($Za);$ge->apply_unsafe($Jd);$oe->apply_unsafe($Jd);$ze->apply_unsafe($Jd);$ni::self=$Je;&$_($B)for@$C;&$_($E)for@$F;&$_($X)for@$Y;&$_($h1)for@$i1;&$_($l1)for@$i1;&$_($o1)for@$p1;&$_($s1)for@$i1;&$_($v1)for@$i1;&$_($y1)for@$i1;&$_($B1)for@$C1;&$_($I1)for@$i1;&$_($L1)for@$M1;&$_($O1)for@$P1;&$_($R1)for@$i1;&$_($U1)for@$V1;&$_($X1)for@$Y1;&$_($c2)for@$d2;&$_($g2)for@$i1;&$_($i2)for@$i1;&$_($l2)for@$n2;&$_($p2)for@$i1;&$_($r2)for@$i1;&$_($z2)for@$A2;&$_($D2)for@$i1;&$_($G2)for@$H2;&$_($L2)for@$i1;&$_($O2)for@$P2;&$_($R2)for@$S2;&$_($X2)for@$i1;&$_($c3)for@$d3;&$_($f3)for@$g3;&$_($i3)for@$j3;&$_($n3)for@$o3;&$_($s3)for@$i1;&$_($v3)for@$w3;&$_($z3)for@$i1;&$_($C3)for@$D3;&$_($F3)for@$G3;&$_($L3)for@$i1;&$_($N3)for@$i1;&$_($Q3)for@$R3;&$_($V3)for@$i1;&$_($Y3)for@$Z3;&$_($f4)for@$i1;&$_($i4)for@$j4;&$_($n4)for@$i1;&$_($q4)for@$r4;&$_($t4)for@$u4;&$_($x4)for@$i1;&$_($z4)for@$i1;&$_($C4)for@$D4;&$_($G4)for@$H4;&$_($L4)for@$i1;&$_($O4)for@$P4;&$_($R4)for@$S4;&$_($Y4)for@$i1;&$_($d5)for@$e5;&$_($i5)for@$i1;&$_($l5)for@$i1;&$_($o5)for@$p5;&$_($r5)for@$s5;&$_($w5)for@$i1;&$_($z5)for@$A5;&$_($C5)for@$D5;&$_($F5)for@$G5;&$_($J5)for@$K5;&$_($N5)for@$O5;&$_($V5)for@$i1;&$_($Z5)for@$i1;&$_($e6)for@$f6;&$_($k6)for@$i1;&$_($o6)for@$i1;&$_($r6)for@$s6;&$_($x6)for@$i1;&$_($B6)for@$i1;&$_($F6)for@$i1;&$_($J6)for@$i1;&$_($M6)for@$N6;&$_($P6)for@$Q6;&$_($V6)for@$W6;&$_($d7)for@$i1;&$_($g7)for@$h7;&$_($l7)for@$i1;&$_($o7)for@$p7;&$_($r7)for@$s7;&$_($x7)for@$y7;&$_($W7)for@$X7;&$_($f8)for@$i1;&$_($i8)for@$j8;&$_($o8)for@$i1;&$_($s8)for@$i1;&$_($w8)for@$i1;&$_($A8)for@$i1;&$_($E8)for@$i1;&$_($I8)for@$i1;&$_($M8)for@$i1;&$_($Q8)for@$i1;&$_($U8)for@$i1;&$_($Y8)for@$i1;&$_($e9)for@$i1;&$_($i9)for@$i1;&$_($m9)for@$i1;&$_($q9)for@$i1;&$_($u9)for@$i1;&$_($y9)for@$i1;&$_($C9)for@$i1;&$_($G9)for@$i1;&$_($J9)for@$K9;&$_($M9)for@$N9;&$_($wa)for@$xa;&$_($Da)for@$i1;&$_($Ga)for@$Ha;&$_($Ma)for@$i1;&$_($Pa)for@$Qa;&$_($Sa)for@$Ta;&$_($hb)for@$i1;&$_($kb)for@$i1;&$_($nb)for@$ob;&$_($qb)for@$rb;&$_($wb)for@$xb;&$_($Cb)for@$i1;&$_($Fb)for@$Gb;&$_($Nb)for@$i1;&$_($Qb)for@$Rb;&$_($Wb)for@$i1;&$_($Zb)for@$cc;&$_($hc)for@$i1;&$_($lc)for@$i1;&$_($oc)for@$pc;&$_($rc)for@$sc;&$_($xc)for@$i1;&$_($Bc)for@$i1;&$_($Ec)for@$Fc;&$_($Hc)for@$Ic;&$_($Oc)for@$Pc;&$_($Uc)for@$i1;&$_($Xc)for@$Yc;&$_($ed)for@$i1;&$_($hd)for@$id;&$_($md)for@$i1;&$_($pd)for@$i1;&$_($rd)for@$sd;&$_($ud)for@$vd;&$_($Hd)for@$Id;&$_($Pd)for@$i1;&$_($Td)for@$i1;&$_($Xd)for@$i1;&$_($de)for@$i1;&$_($ge)for@$he;&$_($le)for@$i1;&$_($oe)for@$pe;&$_($te)for@$i1;&$_($we)for@$i1;&$_($ze)for@$Ae;&$_($Ce)for@$De;&$_($Je)for@$Ke;ni->run(@ARGV);
+  stderr => $e};';$Ee=bless({$G1,$Ce,$g1,$De},$c1);$Fe={$x1,$Ee};$Ge=q'/unix/pid_init.b';$He=bless({$c,$Be,$R,$S,$T,$S,$U,$Fe,$f,$Ge},$H);$Ie=q'/lib/slice::ctors';$Je={};$Ke=[];$Le=q'shift->{stdout}';$Me=bless({$G1,$Ke,$g1,$Le},$c1);$Ne=[];$Oe=q'shift->{stdin}';$Pe=bless({$G1,$Ne,$g1,$Oe},$c1);$Qe={$cc,$Me,$gc,$Pe};$Re=q'/unix/pid_io.b';$Se=bless({$c,$Je,$R,$S,$T,$S,$U,$Qe,$f,$Re},$H);$Te=q'/lib/slice::ctors';$Ue=[$ze,$He,$Se];$Ve=bless({$c,$fe,$f,$ee,$g,$Ue},$w);$We=q'/unix/pid.c::ctors';$Xe=q'ni:/unix/pid.c';$Ye=q'ni:/unix/pid_init.b';$Ze=q'ni:/unix/pid_io.b';$cf=q'ni:/unix/pid_readers.b';$df={$h7,$K7,$H7,$D5,$M7,$j3,$N7,$p5,$O7,$d2,$P7,$C,$Q7,$S4,$R7,$R3,$S7,$H4,$T7,$P4,$U7,$D4,$V7,$e5,$W7,$s5,$X7,$E7,$Y7,$k7,$Z7,$t7,$c8,$B7,$d8,$d3,$e8,$P1,$f8,$Y,$g8,$C1,$h8,$M1,$i8,$Z9,$da,$l8,$ea,$v8,$fa,$W9,$ga,$V1,$ha,$p1,$ia,$m2,$ja,$Z3,$ka,$j4,$la,$e7,$ma,$O5,$na,$s6,$oa,$N6,$pa,$Z6,$qa,$f6,$ra,$u4,$sa,$r4,$ta,$S2,$ua,$A2,$va,$F,$wa,$H2,$xa,$P2,$ya,$A5,$za,$G3,$Aa,$w3,$Ba,$o3,$Ca,$D3,$Da,$K5,$Ea,$G5,$Fa,$Y1,$Ga,$g3,$Ha,$mb,$ob,$Oa,$pb,$Ya,$qb,$jb,$rb,$Ib,$Kb,$Fb,$Lb,$pc,$rc,$Ob,$sc,$Xb,$tc,$cd,$ed,$wc,$fd,$Nc,$gd,$Xc,$hd,$Fc,$id,$Rd,$Td,$La,$Ud,$Bd,$Vd,$Od,$Wd,$sd,$Xd,$Ve,$Xe,$ce,$Ye,$He,$Ze,$Se,$cf,$ze};$ef=q'resolvers';$ff=q'file';$gf=[];$hf=q'my $f = shift;
+$f =~ s/^file:(?:\\/\\/)?//;
+ni(\'ni:/unix/file\')->new($f);';$if=bless({$G1,$gf,$g1,$hf},$c1);$jf={$ff,$if};$kf=bless({$g7,$df,$ef,$jf},$Q5);$lf=q'/lib/ni::ctors';$$f3[0]=$D5;$$A[0]=$g3;$$X[0]=$g3;$$R4[4]=$s5;*$u2=\&$s2;*$t2=\&$q2;$p1->apply_unsafe($N);$p1->apply_unsafe($h);$p1->apply_unsafe($j);$p1->apply_unsafe($K);$p1->apply_unsafe($k);$p1->apply_unsafe($l);$p1->apply_unsafe($c1);$p1->apply_unsafe($m);$p1->apply_unsafe($n);$p1->apply_unsafe($o);$p1->apply_unsafe($H);$p1->apply_unsafe($p);$p1->apply_unsafe($L);$p1->apply_unsafe($q);$p1->apply_unsafe($B);$p1->apply_unsafe($d);$p1->apply_unsafe($r);$p1->apply_unsafe($s);$p1->apply_unsafe($t);$p1->apply_unsafe($u);$p1->apply_unsafe($v);$p1->apply_unsafe($w);$C1->apply_unsafe($c1);$M1->apply_unsafe($c1);$V1->apply_unsafe($N);$V1->apply_unsafe($h);$V1->apply_unsafe($J);$V1->apply_unsafe($j);$V1->apply_unsafe($K);$V1->apply_unsafe($k);$V1->apply_unsafe($l);$V1->apply_unsafe($m);$V1->apply_unsafe($n);$V1->apply_unsafe($o);$V1->apply_unsafe($H);$V1->apply_unsafe($p);$V1->apply_unsafe($L);$V1->apply_unsafe($q);$V1->apply_unsafe($B);$V1->apply_unsafe($d);$V1->apply_unsafe($O);$V1->apply_unsafe($r);$V1->apply_unsafe($s);$V1->apply_unsafe($t);$V1->apply_unsafe($u);$V1->apply_unsafe($v);$V1->apply_unsafe($w);$m2->apply_unsafe($N);$m2->apply_unsafe($h);$m2->apply_unsafe($j);$m2->apply_unsafe($K);$m2->apply_unsafe($k);$m2->apply_unsafe($n2);$m2->apply_unsafe($l);$m2->apply_unsafe($m);$m2->apply_unsafe($n);$m2->apply_unsafe($o);$m2->apply_unsafe($H);$m2->apply_unsafe($p);$m2->apply_unsafe($L);$m2->apply_unsafe($q);$m2->apply_unsafe($B);$m2->apply_unsafe($d);$m2->apply_unsafe($r);$m2->apply_unsafe($s);$m2->apply_unsafe($t);$m2->apply_unsafe($u);$m2->apply_unsafe($v);$m2->apply_unsafe($w);$A2->apply_unsafe($H);$H2->apply_unsafe($H);$P2->apply_unsafe($H);$d3->apply_unsafe($h);$d3->apply_unsafe($j);$d3->apply_unsafe($k);$d3->apply_unsafe($l);$d3->apply_unsafe($m);$d3->apply_unsafe($n);$d3->apply_unsafe($o);$d3->apply_unsafe($p);$d3->apply_unsafe($q);$d3->apply_unsafe($r);$d3->apply_unsafe($s);$d3->apply_unsafe($t);$d3->apply_unsafe($u);$d3->apply_unsafe($v);$d3->apply_unsafe($w);$w3->apply_unsafe($L);$D3->apply_unsafe($L);$R3->apply_unsafe($N);$R3->apply_unsafe($h);$R3->apply_unsafe($j);$R3->apply_unsafe($K);$R3->apply_unsafe($k);$R3->apply_unsafe($l);$R3->apply_unsafe($m);$R3->apply_unsafe($n);$R3->apply_unsafe($o);$R3->apply_unsafe($p);$R3->apply_unsafe($q);$R3->apply_unsafe($B);$R3->apply_unsafe($d);$R3->apply_unsafe($r);$R3->apply_unsafe($s);$R3->apply_unsafe($t);$R3->apply_unsafe($u);$R3->apply_unsafe($v);$R3->apply_unsafe($w);$Z3->apply_unsafe($N);$Z3->apply_unsafe($h);$Z3->apply_unsafe($j);$Z3->apply_unsafe($K);$Z3->apply_unsafe($k);$Z3->apply_unsafe($l);$Z3->apply_unsafe($m);$Z3->apply_unsafe($n);$Z3->apply_unsafe($o);$Z3->apply_unsafe($H);$Z3->apply_unsafe($p);$Z3->apply_unsafe($L);$Z3->apply_unsafe($q);$Z3->apply_unsafe($B);$Z3->apply_unsafe($d);$Z3->apply_unsafe($r);$Z3->apply_unsafe($s);$Z3->apply_unsafe($t);$Z3->apply_unsafe($u);$Z3->apply_unsafe($v);$Z3->apply_unsafe($w);$j4->apply_unsafe($N);$j4->apply_unsafe($h);$j4->apply_unsafe($j);$j4->apply_unsafe($K);$j4->apply_unsafe($k);$j4->apply_unsafe($l);$j4->apply_unsafe($m);$j4->apply_unsafe($n);$j4->apply_unsafe($o);$j4->apply_unsafe($H);$j4->apply_unsafe($p);$j4->apply_unsafe($L);$j4->apply_unsafe($q);$j4->apply_unsafe($B);$j4->apply_unsafe($d);$j4->apply_unsafe($r);$j4->apply_unsafe($s);$j4->apply_unsafe($t);$j4->apply_unsafe($u);$j4->apply_unsafe($v);$j4->apply_unsafe($w);$r4->apply_unsafe($N);$r4->apply_unsafe($h);$r4->apply_unsafe($j);$r4->apply_unsafe($K);$r4->apply_unsafe($k);$r4->apply_unsafe($l);$r4->apply_unsafe($m);$r4->apply_unsafe($n);$r4->apply_unsafe($o);$r4->apply_unsafe($p);$r4->apply_unsafe($L);$r4->apply_unsafe($q);$r4->apply_unsafe($B);$r4->apply_unsafe($d);$r4->apply_unsafe($r);$r4->apply_unsafe($s);$r4->apply_unsafe($t);$r4->apply_unsafe($u);$r4->apply_unsafe($v);$r4->apply_unsafe($w);$D4->apply_unsafe($N);$D4->apply_unsafe($h);$D4->apply_unsafe($j);$D4->apply_unsafe($k);$D4->apply_unsafe($l);$D4->apply_unsafe($m);$D4->apply_unsafe($n);$D4->apply_unsafe($o);$D4->apply_unsafe($p);$D4->apply_unsafe($q);$D4->apply_unsafe($B);$D4->apply_unsafe($d);$D4->apply_unsafe($r);$D4->apply_unsafe($s);$D4->apply_unsafe($t);$D4->apply_unsafe($u);$D4->apply_unsafe($v);$D4->apply_unsafe($w);$P4->apply_unsafe($K);$e5->apply_unsafe($N);$e5->apply_unsafe($h);$e5->apply_unsafe($j);$e5->apply_unsafe($K);$e5->apply_unsafe($k);$e5->apply_unsafe($l);$e5->apply_unsafe($m);$e5->apply_unsafe($n);$e5->apply_unsafe($o);$e5->apply_unsafe($p);$e5->apply_unsafe($q);$e5->apply_unsafe($B);$e5->apply_unsafe($d);$e5->apply_unsafe($r);$e5->apply_unsafe($s);$e5->apply_unsafe($t);$e5->apply_unsafe($u);$e5->apply_unsafe($v);$e5->apply_unsafe($w);$p5->apply_unsafe($N);$p5->apply_unsafe($h);$p5->apply_unsafe($j);$p5->apply_unsafe($K);$p5->apply_unsafe($k);$p5->apply_unsafe($l);$p5->apply_unsafe($m);$p5->apply_unsafe($n);$p5->apply_unsafe($o);$p5->apply_unsafe($p);$p5->apply_unsafe($q);$p5->apply_unsafe($B);$p5->apply_unsafe($d);$p5->apply_unsafe($r);$p5->apply_unsafe($s);$p5->apply_unsafe($t);$p5->apply_unsafe($u);$p5->apply_unsafe($v);$p5->apply_unsafe($w);$A5->apply_unsafe($N);$A5->apply_unsafe($h);$A5->apply_unsafe($j);$A5->apply_unsafe($k);$A5->apply_unsafe($l);$A5->apply_unsafe($m);$A5->apply_unsafe($n);$A5->apply_unsafe($o);$A5->apply_unsafe($p);$A5->apply_unsafe($q);$A5->apply_unsafe($d);$A5->apply_unsafe($r);$A5->apply_unsafe($s);$A5->apply_unsafe($t);$A5->apply_unsafe($u);$A5->apply_unsafe($v);$A5->apply_unsafe($w);$f6->apply_unsafe($Q5);$s6->apply_unsafe($Q5);$N6->apply_unsafe($Q5);$Z6->apply_unsafe($Q5);$t7->apply_unsafe($n2);$B7->apply_unsafe($n2);$v8->apply_unsafe($n8);$W9->apply_unsafe($n8);$Ya->apply_unsafe($Qa);$jb->apply_unsafe($Qa);$Fb->apply_unsafe($sb);$Fb->apply_unsafe($tb);$Xb->apply_unsafe($sb);$mc->apply_unsafe($sb);$Fc->apply_unsafe($tb);$Nc->apply_unsafe($tb);$Xc->apply_unsafe($tb);$sd->apply_unsafe($jd);$Bd->apply_unsafe($jd);$Od->apply_unsafe($jd);$ze->apply_unsafe($ee);$He->apply_unsafe($ee);$Se->apply_unsafe($ee);$ni::self=$kf;&$_($C)for@$D;&$_($F)for@$G;&$_($Y)for@$Z;&$_($i1)for@$j1;&$_($m1)for@$j1;&$_($p1)for@$q1;&$_($t1)for@$j1;&$_($w1)for@$j1;&$_($z1)for@$j1;&$_($C1)for@$D1;&$_($J1)for@$j1;&$_($M1)for@$N1;&$_($P1)for@$Q1;&$_($S1)for@$j1;&$_($V1)for@$W1;&$_($Y1)for@$Z1;&$_($d2)for@$e2;&$_($h2)for@$j1;&$_($j2)for@$j1;&$_($m2)for@$o2;&$_($q2)for@$j1;&$_($s2)for@$j1;&$_($A2)for@$B2;&$_($E2)for@$j1;&$_($H2)for@$I2;&$_($M2)for@$j1;&$_($P2)for@$Q2;&$_($S2)for@$T2;&$_($Y2)for@$j1;&$_($d3)for@$e3;&$_($g3)for@$h3;&$_($j3)for@$k3;&$_($o3)for@$p3;&$_($t3)for@$j1;&$_($w3)for@$x3;&$_($A3)for@$j1;&$_($D3)for@$E3;&$_($G3)for@$H3;&$_($M3)for@$j1;&$_($O3)for@$j1;&$_($R3)for@$S3;&$_($W3)for@$j1;&$_($Z3)for@$c4;&$_($g4)for@$j1;&$_($j4)for@$k4;&$_($o4)for@$j1;&$_($r4)for@$s4;&$_($u4)for@$v4;&$_($y4)for@$j1;&$_($A4)for@$j1;&$_($D4)for@$E4;&$_($H4)for@$I4;&$_($M4)for@$j1;&$_($P4)for@$Q4;&$_($S4)for@$T4;&$_($Z4)for@$j1;&$_($e5)for@$f5;&$_($j5)for@$j1;&$_($m5)for@$j1;&$_($p5)for@$q5;&$_($s5)for@$t5;&$_($x5)for@$j1;&$_($A5)for@$B5;&$_($D5)for@$E5;&$_($G5)for@$H5;&$_($K5)for@$L5;&$_($O5)for@$P5;&$_($W5)for@$j1;&$_($c6)for@$j1;&$_($f6)for@$g6;&$_($l6)for@$j1;&$_($p6)for@$j1;&$_($s6)for@$t6;&$_($y6)for@$j1;&$_($C6)for@$j1;&$_($G6)for@$j1;&$_($K6)for@$j1;&$_($N6)for@$O6;&$_($S6)for@$j1;&$_($W6)for@$j1;&$_($Z6)for@$c7;&$_($e7)for@$f7;&$_($k7)for@$l7;&$_($q7)for@$j1;&$_($t7)for@$u7;&$_($y7)for@$j1;&$_($B7)for@$C7;&$_($E7)for@$F7;&$_($K7)for@$L7;&$_($l8)for@$m8;&$_($s8)for@$j1;&$_($v8)for@$w8;&$_($B8)for@$j1;&$_($F8)for@$j1;&$_($J8)for@$j1;&$_($N8)for@$j1;&$_($R8)for@$j1;&$_($V8)for@$j1;&$_($Z8)for@$j1;&$_($f9)for@$j1;&$_($j9)for@$j1;&$_($n9)for@$j1;&$_($r9)for@$j1;&$_($v9)for@$j1;&$_($z9)for@$j1;&$_($D9)for@$j1;&$_($H9)for@$j1;&$_($L9)for@$j1;&$_($P9)for@$j1;&$_($T9)for@$j1;&$_($W9)for@$X9;&$_($Z9)for@$ca;&$_($La)for@$Ma;&$_($Oa)for@$Pa;&$_($Va)for@$j1;&$_($Ya)for@$Za;&$_($gb)for@$j1;&$_($jb)for@$kb;&$_($mb)for@$nb;&$_($zb)for@$j1;&$_($Cb)for@$j1;&$_($Fb)for@$Gb;&$_($Ib)for@$Jb;&$_($Ob)for@$Pb;&$_($Ub)for@$j1;&$_($Xb)for@$Yb;&$_($fc)for@$j1;&$_($jc)for@$j1;&$_($mc)for@$nc;&$_($pc)for@$qc;&$_($wc)for@$xc;&$_($Cc)for@$j1;&$_($Fc)for@$Gc;&$_($Kc)for@$j1;&$_($Nc)for@$Oc;&$_($Sc)for@$j1;&$_($Vc)for@$j1;&$_($Xc)for@$Yc;&$_($cd)for@$dd;&$_($pd)for@$j1;&$_($sd)for@$td;&$_($yd)for@$j1;&$_($Bd)for@$Cd;&$_($Hd)for@$j1;&$_($Ld)for@$j1;&$_($Od)for@$Pd;&$_($Rd)for@$Sd;&$_($ce)for@$de;&$_($ke)for@$j1;&$_($oe)for@$j1;&$_($se)for@$j1;&$_($we)for@$j1;&$_($ze)for@$Ae;&$_($Ee)for@$j1;&$_($He)for@$Ie;&$_($Me)for@$j1;&$_($Pe)for@$j1;&$_($Se)for@$Te;&$_($Ve)for@$We;&$_($if)for@$j1;&$_($kf)for@$lf;ni->run(@ARGV);
 __DATA__

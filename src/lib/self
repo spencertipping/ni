@@ -62,3 +62,24 @@ ni('ni:/object')->child('/lib/ni')
       shift->quoted->write(\*STDOUT);
       0;
     });
+
+ni('ni:/lib/slice')->new('/lib/ni_resolver.b',
+  resolver_for => fn q{
+    my $self = shift;
+    ${$$self{resolvers}}{$_[0]} = $_[1];
+    $self;
+  },
+  resolve => fn q{
+    my $self = shift;
+    return $$self{named}{$_[0]} if exists $$self{named}{$_[0]};
+    return $$self{resolvers}{$1}->($_[0]) if
+      $_[0] =~ /^([^:]+):/ and exists $$self{resolvers}{$1};
+    die "ni:/self failed to resolve $_[0]";
+  });
+
+{
+  my $ni = ni('ni:/lib/ni');
+  my $r  = ni('ni:/lib/ni_resolver.b');
+  delete ${'/lib/ni::'}{resolve};
+  $ni->add($r);
+}

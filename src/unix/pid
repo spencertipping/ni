@@ -1,4 +1,4 @@
-ni('ni:/object')->child('/unix/pid')
+ni('ni:/unix/io')->child('/unix/pid')
   ->ro('/unix/pid_readers.b', qw/pid stdin stdout stderr/)
   ->def('/unix/pid_init.b',
     instantiate => fn q{

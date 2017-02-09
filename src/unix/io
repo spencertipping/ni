@@ -1,4 +1,4 @@
-ni('ni:/lib/branch')->new('/unix/io.b')
+ni('ni:/object')->child('/unix/io')
   ->def('/unix/io_stream.b',
     into => fn q{
       local $_;
@@ -14,5 +14,8 @@ ni('ni:/lib/branch')->new('/unix/io.b')
     '(+' => fn q{ni('ni:/unix/cat')->new(@_)})
 
   ->def('/unix/io_readers.b',
-    '(<>'  => fn q{my $fh = shift->read_fh; <$fh>},
-    '(@{}' => fn q{my $fh = shift->read_fh; [<$fh>]});
+    '(@{}' => fn q{my $self = shift; [<$self>]},
+    '(<>' => fn q{
+      my $fh = shift->read_fh;
+      # TODO: buffered line reading with a pushback queue
+    });

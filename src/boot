@@ -31,8 +31,9 @@ no strict 'refs';
 use Scalar::Util;
 chomp $ni::boot;
 $ni::self = bless {named => {}}, '/lib/ni';
-sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->{named}{$_[0]} || die "ni: failed to resolve $_[0]" : $ni::self}
+sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->resolve($_[0]) : $ni::self}
 sub ni::eval {eval shift}
+*{'/lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
 *{'/lib/ni::def'} = sub {
   my ($self, %kvs) = @_;
   $$self{named}{$_} = $kvs{$_} for keys %kvs;

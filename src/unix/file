@@ -1,4 +1,4 @@
-ni('ni:/object')->child('/unix/file')
+ni('ni:/unix/io')->child('/unix/file')
   ->ro('/unix/file_readers.b', 'name')
   ->def('/unix/file_init.b',
     instantiate => fn q{
@@ -6,9 +6,7 @@ ni('ni:/object')->child('/unix/file')
       +{name => $name, fh => undef};
     })
 
-  ->add('/unix/io.b')
   ->add('/unix/fd.b')
-
   ->def('/unix/file_io.b',
     read_fh => fn q{
       my $self = shift;
@@ -24,3 +22,9 @@ ni('ni:/object')->child('/unix/file')
         or die "ni:/unix/file $self->{name} failed to write: $!";
       $self->{fh} = $fh;
     });
+
+ni->resolver_for(file => fn q{
+  my $f = shift;
+  $f =~ s/^file:(?:\/\/)?//;
+  ni('ni:/unix/file')->new($f);
+});

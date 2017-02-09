@@ -17,8 +17,8 @@ install_stuff() {
     src/doc/internal/class \
     src/unix/io \
     src/unix/fd \
-    src/unix/cat \
     src/unix/file \
+    src/unix/cat \
     src/unix/pid \
     src/unix/fifo
 }
