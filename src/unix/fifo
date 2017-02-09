@@ -6,4 +6,7 @@ ni('ni:/object')->child('/unix/fifo')
       pipe my ($r, $w) or die "ni:/unix/fifo failed: $!";
       +{read_fh => $r, write_fh => $w};
     })
-  ->add('/unix/has_fd.b');
+  ->add('/unix/has_fd.b')
+  ->def('/unix/fifo_direction.b',
+    read_side  => fn q{my $self = shift; close $$self{write_fh}; $self},
+    write_side => fn q{my $self = shift; close $$self{read_fh};  $self});
