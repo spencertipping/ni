@@ -10,6 +10,9 @@ ni('ni:/lib/branch')->new('/unix/io.b')
       }
     })
 
+  ->def('/unix/io_constructors.b',
+    '(+' => fn q{ni('ni:/unix/cat')->new(@_)})
+
   ->def('/unix/io_readers.b',
     '(<>'  => fn q{my $fh = shift->read_fh; <$fh>},
     '(@{}' => fn q{my $fh = shift->read_fh; [<$fh>]});

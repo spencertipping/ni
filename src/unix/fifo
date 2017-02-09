@@ -1,0 +1,13 @@
+ni('ni:/object')->child('/unix/fifo')
+  ->def('/unix/fifo_init.b',
+    instantiate => fn q{
+      my ($class) = @_;
+      pipe my ($r, $w) or die "ni:/unix/fifo failed: $!";
+      +{read_fh => $r, write_fh => $w};
+    })
+
+  ->add('/unix/io.b')
+  ->add('/unix/fd.b')
+  ->def('/unix/file_io.b',
+    read_fh => fn q{shift->{read_fh}},
+    write_fh => fn q{shift->{write_fh}});
