@@ -1,9 +1,9 @@
 ni('ni:/unix/io')->child('/unix/cat')
-  ->def('/unix/cat_init.b', instantiate => fn q{shift; [@_]})
+  ->def('/unix/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
   ->def('/unix/cat_read.b',
     read => fn q{
-      my $self = shift;
+      my $fs = shift->{fs};
       my $n;
-      shift @$self until !@$self or $n = $$self[0]->read(@_);
-      return undef;
+      shift @$fs until !@$fs or $n = $$fs[0]->read(@_);
+      return $n;
     });

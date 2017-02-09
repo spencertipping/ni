@@ -6,7 +6,7 @@ ni('ni:/unix/io')->child('/unix/file')
       +{name => $name, fh => undef};
     })
 
-  ->add('/unix/fd.b')
+  ->add('/unix/has_fd.b')
   ->def('/unix/file_io.b',
     read_fh => fn q{
       my $self = shift;

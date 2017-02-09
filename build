@@ -16,6 +16,7 @@ install_stuff() {
     src/lib/doc \
     src/doc/internal/class \
     src/unix/io \
+    src/unix/has_fd \
     src/unix/fd \
     src/unix/file \
     src/unix/cat \
