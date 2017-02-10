@@ -6,7 +6,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
   ->def('/lib/doc_define.b',
     AUTOLOAD => fn q{
       my $self = shift;
-      my $method = ${ref($self) . "::AUTOLOAD"};
+      my $method = ${__PACKAGE__ . "::AUTOLOAD"};
       push @{$$self{doc}}, [$method, @_];
       $self;
     })
@@ -14,7 +14,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
   ->def('/lib/doc_test.b',
     tests => fn q{
       my $self = shift;
-      my @flattened = map +($$_[0], @{$$_[1]}), @{$$self{doc}};
+      my @flattened = map @$_, @{$$self{doc}};
       my @tests;
       return () unless @flattened;
       for (0..$#flattened - 1) {
@@ -25,7 +25,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
     eg => fn q{
       my $self = shift;
-      push @{$$self{doc}}, [eg => [$_]] for @_;
+      push @{$$self{doc}}, [eg => $_] for @_;
       $self;
     });
 
@@ -70,6 +70,6 @@ ni('ni:/lib/doc')->doc
                         eg => $failing_test,
                         q[So there.]);
       my @tests = $doc->tests;
-      @tests == 2 && $tests[0] == $passing_test
-                  && $tests[1] == $failing_test;
+      @tests == 2 && $tests[0] eq $passing_test
+                  && $tests[1] eq $failing_test;
     });

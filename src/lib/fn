@@ -9,10 +9,18 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     local $@;
     my $self = shift;
     $$self{fn} = ni::eval "sub{$$self{code}\n}";
-    die "ni:/b/fn_init: failed to compile $$self{code}: $@" if $@;
+    die "ni:/lib/fn: failed to compile $$self{code}: $@" if $@;
     $$self{fn};
   },
   ctor => fn q{shift->compile});
 
 delete @{'/lib/fn::'}{qw/new compile/};
 ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
+
+ni('ni:/lib/fn')
+  ->ro('/lib/fn_ro.b', qw/code annotations fn/)
+  ->def('/lib/fn_ops.b',
+    '(""' => fn q{shift->{code}},
+    '(eq' => fn q{
+      ref($_[0]) eq ref($_[1])
+        and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1])});
