@@ -1,20 +1,75 @@
 ni('ni:/object')->child('/lib/doc', '/lib/named.b')
   ->def('/lib/doc_init.b',
-    instantiate => fn q{
-      my $class = shift;
-      my $name  = shift;
-      my $doc   = pop;
-      +{name    => $name,
-        doc     => $doc,
-        apropos => [map ref($_) ? $_->name : $_, @_]};
+    instantiate => fn q{shift; +{name => shift, doc => []}})
+
+  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'})
+  ->def('/lib/doc_define.b',
+    AUTOLOAD => fn q{
+      my $self = shift;
+      my $method = ${ref($self) . "::AUTOLOAD"};
+      push @{$$self{doc}}, [$method, @_];
+      $self;
     })
 
-  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'});
+  ->def('/lib/doc_test.b',
+    tests => fn q{
+      my $self = shift;
+      my @flattened = map +($$_[0], @{$$_[1]}), @{$$self{doc}};
+      my @tests;
+      return () unless @flattened;
+      for (0..$#flattened - 1) {
+        push @tests, $flattened[$_ + 1] if $flattened[$_] eq 'eg';
+      }
+      @tests;
+    },
+
+    eg => fn q{
+      my $self = shift;
+      push @{$$self{doc}}, [eg => [$_]] for @_;
+      $self;
+    });
 
 ni('ni:/object.c')->def('/lib/documentable.b',
   doc => fn q{
     my $self = shift;
-    my $doc  = pop;
-    ni('ni:/lib/doc')->new(@_, $self, $doc);
-    $self;
+    (my $name = $self->name) =~ s/^[^:]*://;
+    return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
+    ni('ni:/lib/doc')->new($name);
   });
+
+ni('ni:/lib/doc')->doc
+  ->synopsis(q'
+    ni("ni:/some/class")->doc
+      ->name(...)
+      ->synopsis(...)
+      ->description(...)
+      ->eg(...)
+      ...')
+  ->description(
+    q[Associate documentation with the specified class. Documentation is stored
+      separately and in the "ni.doc" namespace; this way you can serialize
+      instances of the class and the class's code without bringing along all of
+      its documentation and unit tests.],
+    q[Documentation objects are internally represented as arrays of quoted
+      method calls; for example:],
+    perl => q[
+      # state is []
+      $doc->foo("bar bif baz");
+      # state is now [["foo", ["bar bif baz"]]]
+    ],
+    q[This documentation can later be compiled into things like manpages,
+      markdown, or HTML by target-specific conversion functions.],
+    q[Documentation also stores unit tests, which are specified using "eg";
+      e.g.:],
+    eg => fn q{
+      my $doc = ni("ni:/lib/doc")->new("foo");
+      my $passing_test = fn q{return 1};
+      my $failing_test = fn q{return 0};
+      $doc->eg($passing_test)
+          ->description(q[Foo objects are contrived examples.],
+                        eg => $failing_test,
+                        q[So there.]);
+      my @tests = $doc->tests;
+      @tests == 2 && $tests[0] == $passing_test
+                  && $tests[1] == $failing_test;
+    });
