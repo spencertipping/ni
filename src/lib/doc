@@ -40,7 +40,6 @@ ni('ni:/object.c')->def('/lib/documentable.b',
 ni('ni:/lib/doc')->doc
   ->synopsis(q'
     ni("ni:/some/class")->doc
-      ->name(...)
       ->synopsis(...)
       ->description(...)
       ->eg(...)
@@ -52,8 +51,9 @@ ni('ni:/lib/doc')->doc
       its documentation and unit tests.],
     q[Documentation objects are internally represented as arrays of quoted
       method calls; for example:],
-    perl => q[
-      # state is []
+    eg => fn q[
+      my $doc = ni("ni:/lib/doc")->new("foo");
+      # TODO: make this into a test, but first we need a testing DSL
       $doc->foo("bar bif baz");
       # state is now [["foo", ["bar bif baz"]]]
     ],
@@ -61,7 +61,7 @@ ni('ni:/lib/doc')->doc
       markdown, or HTML by target-specific conversion functions.],
     q[Documentation also stores unit tests, which are specified using "eg";
       e.g.:],
-    eg => fn q{
+    eg => fn q[
       my $doc = ni("ni:/lib/doc")->new("foo");
       my $passing_test = fn q{return 1};
       my $failing_test = fn q{return 0};
@@ -72,4 +72,43 @@ ni('ni:/lib/doc')->doc
       my @tests = $doc->tests;
       @tests == 2 && $tests[0] eq $passing_test
                   && $tests[1] eq $failing_test;
-    });
+    ]);
+
+ni('ni:/class')->doc
+  ->synopsis(q[
+    ni('ni:/object')->child('/message')
+      ->add('/behaviorname.b')          # add existing behavior
+      ->def('/message_init.b',          # define new behavior
+        instantiate => fn q{            # called from ->new()
+          my ($class, $message) = @_;
+          +{message => $message};       # return object to be blessed
+        })
+      ->def('/behaviorname.b',          # define another behavior
+        method1 => fn q{
+          my $self = shift;
+          print "message for you sir! '" . $$self{message} . "'\n";
+        });
+    ni('ni:/child')->new('hello world!')->method1;
+  ])
+
+  ->description(
+    q[ni:/class is at the core of ni's object-oriented system, along with core
+      classes like ni:/object and ni:/metaclass. There are two layers of
+      abstraction involved here: Perl packages are modified by behaviors, and
+      classes encode the higher-level declarative features you'd expect from a
+      language like Ruby or Smalltalk. This documentation covers both layers.])
+
+  ->behaviors(
+    q[ni's objects are blessed Perl references, and behaviors are objects
+      that modify Perl packages in specific ways. The simplest is
+      ni:/lib/slice, which represents a set of methods you can add to a
+      package. TODO...])
+
+  ->classes(
+    q[ni implements a Smalltalk 80-style metaclass system with a couple of
+      differences. First, ni's classes are slice unions and as such don't
+      support colliding methods; and second, they support multiple inheritance.
+      These two points are related: method overriding isn't in the picture,
+      which makes multiple inheritance straightforward to implement.],
+
+    q[TODO...]);

@@ -71,3 +71,12 @@ ni('ni:/class')->def('/lib/subclass.b',
     ni("ni:/metaclass")->new("$name.c", $self->class)
     ->new($name, $self, @slices);
   });
+
+# Common behaviors
+ni('ni:/lib/definition.b')
+  ->def('/lib/name_as_string.b', '(""' => fn q{shift->name})
+  ->def('/lib/ref_eq.b',
+    '(eq' => fn q{
+      ref($_[0]) eq ref($_[1])
+        and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
+    });

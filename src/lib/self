@@ -63,7 +63,9 @@ ni('ni:/object')->child('/lib/ni')
       my @tests = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
       my $fails = 0;
       print STDERR scalar(@tests) . " test(s)\n";
+      my %names = %{ni->{named}};
       for my $t (@tests) {
+        %{ni->{named}} = %names;
         &$t or $fails += print STDERR "FAIL: $t->{code}\n";
       }
       my $passed = @tests - $fails;
