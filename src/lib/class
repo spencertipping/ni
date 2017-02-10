@@ -8,25 +8,30 @@
       slices => [map $class->resolve($_), @slices]};
   });
 
-for (qw/ class metaclass class.c metaclass.c /) {
+for (qw/ class metaclass class.c metaclass.c module.c /) {
   ni('ni:/lib/perlbranch.b')->apply("/$_");
+  ni('ni:/lib/instantiable.b')->apply("/$_");
   ni('ni:/lib/class_init.b')->apply("/$_");
 }
 
-'/metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/class_init.b');
+'/metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/instantiable.b', '/lib/class_init.b');
 
 ni('ni:/metaclass')->new('/metaclass.c');
 ni('ni:/metaclass')->new('/object.c');
-ni('ni:/metaclass')->new('/class.c', '/object.c');
+ni('ni:/metaclass')->new('/module.c', '/object.c', '/lib/instantiable.b');
+ni('ni:/module.c')->new('/module', '/lib/perlbranch.b', '/lib/class_init.b');
 
-ni('ni:/class.c')->new('/class', '/lib/perlbranch.b', '/lib/class_init.b');
+ni('ni:/metaclass')->new('/class.c', '/module.c');
+ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b');
 ni('ni:/metaclass.c')->add('/class');
 
 ni('ni:/object.c')->add('/class');
 ni('ni:/object.c')->new('/object', '/lib/instance.b');
 
-ni('ni:/class')->add('/object');
-ni('ni:/metaclass')->add('/object');
+ni('ni:/module')->add('/object');
+
+ni('ni:/class')->add('/module');
+ni('ni:/metaclass')->add('/module');
 
 # /lib/{slice,tag,branch}
 ni('ni:/metaclass')->new('/lib/behavior.c', '/object.c');
@@ -43,8 +48,7 @@ ni("ni:/lib/$_.c")->new("/lib/$_",
 ni('ni:/lib/branch')->new('/lib/definition.b');
 ni('ni:/lib/branch')->add('/lib/definition.b');
 
-ni('ni:/class')->add('/lib/definition.b');
-ni('ni:/metaclass')->add('/lib/definition.b');
+ni('ni:/module')->add('/lib/definition.b');
 
 ni('ni:/lib/definition.b')->add(
   ni('ni:/lib/slice')->new('/lib/classdef.b',
@@ -80,3 +84,7 @@ ni('ni:/lib/definition.b')
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
+
+# Static function support
+ni('ni:/module')->new('/lib/ni_static')->apply('ni');
+ni('ni:/module')->new('/lib/global_static')->apply('main');

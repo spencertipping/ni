@@ -148,7 +148,6 @@ ni('ni:/lib/resolver.b')->apply('/lib/tag');
 
 '/lib/tag'->new('/lib/perlbranch.b',
   '/lib/branch.b',
-  '/lib/instantiable.b',
   '/lib/named.b',
   '/lib/named_in_ni.b',
   '/lib/namespaced.b',

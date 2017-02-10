@@ -6,4 +6,20 @@ ni('ni:/unix/io')->child('/unix/cat')
       my $n;
       shift @$fs until !@$fs or $n = $$fs[0]->read(@_);
       return $n;
-    });
+    })
+  ->doc
+  ->synopsis(q[
+    my $combined = ni('ni:/unix/cat')->new($io1, $io2, ...);
+    my $combined = $io1 + $io2 + $io3;
+    $combined->into($destination_io);
+  ])
+  ->description(
+    q[Concatenates multiple IO objects into a single read-only data source.
+      This is a mutable object that consumes its inputs and then loses its
+      references to them as quickly as possible, allowing their resources to be
+      freed. Once fully consumed, the cat object holds no references.])
+  ->eg(fn q{
+    my $io1 = ni("str:foo");
+    my $io2 = ni("str:bar");
+    ($io1 + $io2)->read($_, 128) == 8 && $_ eq "foo\nbar\n";
+  });

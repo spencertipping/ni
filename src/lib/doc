@@ -50,7 +50,7 @@ ni('ni:/lib/doc')->doc
       instances of the class and the class's code without bringing along all of
       its documentation and unit tests.],
     q[Documentation objects are internally represented as arrays of quoted
-      method calls; for example:],
+      method calls:],
     eg => fn q[
       my $doc = ni("ni:/lib/doc")->new("foo");
       # TODO: make this into a test, but first we need a testing DSL
@@ -58,9 +58,8 @@ ni('ni:/lib/doc')->doc
       # state is now [["foo", ["bar bif baz"]]]
     ],
     q[This documentation can later be compiled into things like manpages,
-      markdown, or HTML by target-specific conversion functions.],
-    q[Documentation also stores unit tests, which are specified using "eg";
-      e.g.:],
+      markdown, or HTML by target-specific conversion functions. Documentation
+      also stores unit tests, which are specified using "eg":],
     eg => fn q[
       my $doc = ni("ni:/lib/doc")->new("foo");
       my $passing_test = fn q{return 1};

@@ -78,8 +78,6 @@ ni('ni:/object')->child('/lib/ni')
       0;
     });
 
-ni('ni:/class')->new('/lib/ni_static')->apply('ni');
-
 ni('ni:/lib/slice')->new('/lib/ni_resolver.b',
   resolver_for => fn q{
     my $self = shift;

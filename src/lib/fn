@@ -2,13 +2,16 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
   instantiate => fn q{
     my $class = shift;
     my $code  = pop;
+    my $proto = @_ && $_[-1] =~ /^\(/ ? pop : '';
     +{code        => $code,
+      proto       => $proto,
       annotations => [@_]};
   },
   compile => fn q{
     local $@;
     my $self = shift;
-    $$self{fn} = ni::eval "sub{$$self{code}\n}";
+    $$self{proto} ||= '';
+    $$self{fn} = ni::eval "sub $$self{proto} {$$self{code}\n}";
     die "ni:/lib/fn: failed to compile $$self{code}: $@" if $@;
     $$self{fn};
   },
@@ -24,3 +27,9 @@ ni('ni:/lib/fn')
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1])});
+
+delete ${'main::'}{fn};
+
+ni('ni:/lib/global_static')->def('/lib/static_fn.b',
+  fn => ni('ni:/lib/fn')->new('($)', q{ni('ni:/lib/fn')->new(@_)}),
+  fp => ni('ni:/lib/fn')->new('($$)', q{ni('ni:/lib/fn')->new(@_)}));

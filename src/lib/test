@@ -1,0 +1,62 @@
+ni('ni:/object')->child('/lib/test_value')
+  ->def('/lib/test_value_init.b', instantiate => fn q{\$_[1]})
+  ->def('/lib/test_value_eq.b',
+    diff => fn q{
+      my ($self, $rhs) = @_;
+      my $lhs = $$self;
+      my $rl = ref $lhs;
+      my $rr = ref $rhs;
+      return {type_difference => [$rl, $rr]} unless $rl eq $rr;
+      if (Scalar::Util::reftype $rl eq 'HASH') {
+        my @left_only  = grep !exists $$rhs{$_}, keys %$lhs;
+        my @right_only = grep !exists $$lhs{$_}, keys %$rhs;
+        return {hash_key_mismatch => 1,
+                object_type       => $rl,
+                left_only         => \@left_only,
+                right_only        => \@right_only}
+          if @left_only || @right_only;
+        my %diff;
+        $diff{$_} = ref($self)->new($$lhs{$_})->diff($$rhs{$_})
+          for keys %$lhs;
+        delete @diff{grep !defined($diff{$_}), keys %diff};
+        return {hash_value_mismatch => 1,
+                object_type         => $rl,
+                diffs               => \%diff} if keys %diff;
+        return undef;
+      } elsif (Scalar::Util::reftype $rl eq 'ARRAY') {
+        my $n_diff = @$lhs - @$rhs;
+        return {array_length_mismatch => $n_diff} if $n_diff;
+        my %diff;
+        $diff{$_} = ref($self)->new($$lhs[$_])->diff($$rhs[$_])
+          for 0..$#{$lhs};
+        delete @diff{grep !defined($diff{$_}), keys %diff};
+        return {array_value_mismatch => 1,
+                object_type          => $rl,
+                diffs                => \%diff} if keys %diff;
+        return undef;
+      } elsif (Scalar::Util::reftype $rl eq 'SCALAR') {
+        return ref($self)->new($$lhs)->diff($$rhs);
+      } elsif (!$rl) {
+        return {scalar_difference => [$lhs, $rhs]} unless $lhs eq $rhs;
+        return undef;
+      }
+    },
+
+    '(==' => fn q{
+      my ($self, $rhs) = @_;
+      my $diff = $self->diff($rhs);
+      die "== fail: " . ref($self)->new($diff) if defined $diff;
+      1;
+    })
+
+  ->def('/lib/test_value_str.b',
+    '(""' => fn q{
+      my $self = shift;
+      my $v    = $$self;
+      if (ref $v eq 'HASH') {
+        
+      }
+    });
+
+ni('ni:/lib/global_static')->def('/lib/global_static_test.b',
+  ie => fp('($)', q{ni('ni:/lib/test_value')->new(shift)}));
