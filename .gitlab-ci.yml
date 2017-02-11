@@ -1,3 +1,5 @@
+image: spencertipping/ubuntu-docker
+
 before_script:
   - ./test --build
 
