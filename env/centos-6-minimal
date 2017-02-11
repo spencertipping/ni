@@ -1,5 +1,4 @@
 FROM centos:6
 RUN yum install -y perl
 VOLUME /data
-WORKDIR /data
 CMD /bin/sh

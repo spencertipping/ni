@@ -9,5 +9,4 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

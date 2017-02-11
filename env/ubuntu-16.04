@@ -8,5 +8,4 @@ RUN apt-get install -y docker.io
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

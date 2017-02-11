@@ -3,5 +3,4 @@ FROM debian:wheezy
 ENV SKIP_DOCKER=yes
 
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

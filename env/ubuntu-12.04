@@ -17,5 +17,4 @@ ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

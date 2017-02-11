@@ -1,4 +1,3 @@
 FROM ubuntu:16.10
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

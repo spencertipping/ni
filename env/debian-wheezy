@@ -11,5 +11,4 @@ ADD dev/test-data/etc-passwd /etc/passwd
 ENV SKIP_DOCKER=yes
 
 VOLUME /data
-WORKDIR /data
 CMD /bin/bash

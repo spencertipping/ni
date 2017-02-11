@@ -4,5 +4,4 @@ RUN yum install -y perl
 ENV SKIP_DOCKER=yes
 
 VOLUME /data
-WORKDIR /data
 CMD /bin/sh
