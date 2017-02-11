@@ -30,34 +30,35 @@ no warnings qw/redefine void/;
 no strict 'refs';
 use Scalar::Util;
 chomp $ni::boot;
-$ni::self = bless {named => {}}, '/lib/ni';
+$ni::self = bless {named => {}}, 'lib/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->resolve($_[0]) : $ni::self}
 sub ni::eval {eval shift}
-*{'/lib/ni::def'} = sub {
+*{'lib/ni::def'} = sub {
   my ($self, %kvs) = @_;
   $$self{named}{$_} = $kvs{$_} for keys %kvs;
 };
-*{'/lib/fn::(bool'} = sub {1};
-*{'/lib/fn::(('}    = sub {};
-*{'/lib/fn::(&{}'}  = sub {$_[0]->{fn} ||= $_[0]->compile};
-*{'/lib/fn::compile'} = sub {
+*{'lib/fn::OVERLOAD'} = {};
+*{'lib/fn::(bool'} = sub {1};
+*{'lib/fn::()'}    = sub {};
+*{'lib/fn::(&{}'}  = sub {$_[0]->{fn} ||= $_[0]->compile};
+*{'lib/fn::compile'} = sub {
   my $self = shift;
   $$self{fn} = ni::eval "sub{$$self{code}\n}";
-  die "ni:/lib/fn failed to compile $$self{code}: $@\n" if $@;
+  die "ni:lib/fn failed to compile $$self{code}: $@\n" if $@;
   $$self{fn};
 };
 sub fn($);
 _
 die "$@ evaluating ni boot code" if $@;
 
-*{'/lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
-*{'/lib/fn::new'} = sub {
+*{'lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
+*{'lib/fn::new'} = sub {
   my $self = bless {code => $_[1]}, $_[0];
   $self->compile;
   $self;
 };
 
-sub fn($) {'/lib/fn'->new(shift)}
+sub fn($) {'lib/fn'->new(shift)}
 
 # This method call is present here only the first time around; ni rewrites
 # itself to make this call at the end of its image, outside of END{} blocks (so

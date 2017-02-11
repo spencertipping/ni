@@ -1,5 +1,5 @@
-# /class and /metaclass
-'/lib/slice'->new('/lib/class_init.b',
+# class and metaclass
+'lib/slice'->new('lib/class_init.b',
   ctor => fn q{my $s = shift; $s->apply($s->package)},
   instantiate => fn q{
     local $_;
@@ -9,94 +9,94 @@
   });
 
 for (qw/ class metaclass class.c metaclass.c module.c /) {
-  ni('ni:/lib/perlbranch.b')->apply("/$_");
-  ni('ni:/lib/instantiable.b')->apply("/$_");
-  ni('ni:/lib/class_init.b')->apply("/$_");
+  ni('ni:lib/perlbranch.b')->apply($_);
+  ni('ni:lib/instantiable.b')->apply($_);
+  ni('ni:lib/class_init.b')->apply($_);
 }
 
-'/metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/instantiable.b', '/lib/class_init.b');
+'metaclass.c'->new('metaclass', 'lib/perlbranch.b', 'lib/instantiable.b', 'lib/class_init.b');
 
-ni('ni:/metaclass')->new('/metaclass.c');
-ni('ni:/metaclass')->new('/object.c');
-ni('ni:/metaclass')->new('/module.c', '/object.c', '/lib/instantiable.b');
-ni('ni:/module.c')->new('/module', '/lib/perlbranch.b', '/lib/class_init.b');
+ni('ni:metaclass')->new('metaclass.c');
+ni('ni:metaclass')->new('object.c');
+ni('ni:metaclass')->new('module.c', 'object.c', 'lib/instantiable.b');
+ni('ni:module.c')->new('module', 'lib/perlbranch.b', 'lib/class_init.b');
 
-ni('ni:/metaclass')->new('/class.c', '/module.c');
-ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b', '/lib/class_init.b');
-ni('ni:/metaclass.c')->add('/class');
+ni('ni:metaclass')->new('class.c', 'module.c');
+ni('ni:class.c')->new('class', 'module', 'lib/instantiable.b', 'lib/class_init.b');
+ni('ni:metaclass.c')->add('class');
 
-ni('ni:/object.c')->add('/class');
-ni('ni:/object.c')->new('/object', '/lib/instance.b');
+ni('ni:object.c')->add('class');
+ni('ni:object.c')->new('object', 'lib/instance.b');
 
-ni('ni:/module')->add('/object');
+ni('ni:module')->add('object');
 
-ni('ni:/class')->add('/module');
-ni('ni:/metaclass')->add('/module');
+ni('ni:class')->add('module');
+ni('ni:metaclass')->add('module');
 
-# /lib/{slice,tag,branch}
-ni('ni:/metaclass')->new('/lib/behavior.c', '/object.c');
-ni('ni:/metaclass')->new('/lib/slice.c',    '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/tag.c',      '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/branch.c',   '/lib/behavior.c');
+# lib/{slice,tag,branch}
+ni('ni:metaclass')->new('lib/behavior.c', 'object.c');
+ni('ni:metaclass')->new('lib/slice.c',    'lib/behavior.c');
+ni('ni:metaclass')->new('lib/tag.c',      'lib/behavior.c');
+ni('ni:metaclass')->new('lib/branch.c',   'lib/behavior.c');
 
-ni('ni:/lib/behavior.c')->new('/lib/behavior', '/object');
-ni("ni:/lib/$_.c")->new("/lib/$_",
-  '/lib/behavior', '/lib/named.b',
-  "/lib/$_.b", "/lib/$_\_init.b") for qw/slice branch tag/;
+ni('ni:lib/behavior.c')->new('lib/behavior', 'object');
+ni("ni:lib/$_.c")->new("lib/$_",
+  'lib/behavior', 'lib/named.b',
+  "lib/$_.b", "lib/$_\_init.b") for qw/slice branch tag/;
 
-ni('ni:/module')->add('/lib/behavior');
-ni('ni:/module.c')->add('/lib/behavior.c');
+ni('ni:module')->add('lib/behavior');
+ni('ni:module.c')->add('lib/behavior.c');
 
 # Definition
-ni('ni:/lib/branch')->new('/lib/definition.b');
-ni('ni:/lib/branch')->add('/lib/definition.b');
+ni('ni:lib/branch')->new('lib/definition.b');
+ni('ni:lib/branch')->add('lib/definition.b');
 
-ni('ni:/module')->add('/lib/definition.b');
+ni('ni:module')->add('lib/definition.b');
 
-ni('ni:/lib/definition.b')->add(
-  ni('ni:/lib/slice')->new('/lib/definition_def.b',
-    def => fn q{shift->add(ni('ni:/lib/slice')->new(@_))}));
+ni('ni:lib/definition.b')->add(
+  ni('ni:lib/slice')->new('lib/definition_def.b',
+    def => fn q{shift->add(ni('ni:lib/slice')->new(@_))}));
 
-ni('ni:/lib/definition.b')->def('/lib/accessor.b',
+ni('ni:lib/definition.b')->def('lib/accessor.b',
   ro => fn q{
     my ($self, $slice, @rs) = @_;
-    $self->add(ni('ni:/lib/slice')->new(
+    $self->add(ni('ni:lib/slice')->new(
       $slice,
       map +($_ => fn qq{shift->{'$_'}}), @rs));
   },
   rw => fn q{
     my ($self, $slice, @as) = @_;
-    $self->add(ni('ni:/lib/slice')->new(
+    $self->add(ni('ni:lib/slice')->new(
       $slice,
       map +($_ => fn qq{\@_ == 2 ? \$_[0]->{'$_'} = \$_[1] : shift->{'$_'}}), @as));
   });
 
 # Subclassing
-ni('ni:/class')->def('/lib/subclass.b',
+ni('ni:class')->def('lib/subclass.b',
   child => fn q{
     my ($self, $name, @slices) = @_;
-    ni("ni:/metaclass")->new("$name.c", $self->class)
+    ni("ni:metaclass")->new("$name.c", $self->class)
     ->new($name, $self, @slices);
   });
 
 # Common behaviors
-ni('ni:/lib/definition.b')
-  ->def('/lib/name_as_string.b', '(""' => fn q{shift->name})
-  ->def('/lib/ref_eq.b',
+ni('ni:lib/definition.b')
+  ->def('lib/name_as_string.b', '(""' => fn q{shift->name})
+  ->def('lib/ref_eq.b',
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
 
 # Data slices
-ni('ni:/lib/behavior')->child('/lib/dataslice')
-  ->def('/lib/dataslice_init.b',
+ni('ni:lib/behavior')->child('lib/dataslice')
+  ->def('lib/dataslice_init.b',
     instantiate => fn q{
       my $class = shift;
       my $name = shift;
       +{name => $name, data => {@_}};
     })
-  ->def('/lib/dataslice_apply.b',
+  ->def('lib/dataslice_apply.b',
     apply => fn q{
       local $_;
       my ($self, $p) = @_;
@@ -107,9 +107,9 @@ ni('ni:/lib/behavior')->child('/lib/dataslice')
       $self;
     });
 
-ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
-  defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
+ni('ni:lib/definition.b')->def('lib/definition_defdata.b',
+  defdata => fn q{shift->add(ni('ni:lib/dataslice')->new(@_))});
 
 # Static function support
-ni('ni:/module')->new('ni');
-ni('ni:/module')->new('main');
+ni('ni:module')->new('ni');
+ni('ni:module')->new('main');

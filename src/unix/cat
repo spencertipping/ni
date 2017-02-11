@@ -1,6 +1,6 @@
-ni('ni:/unix/io')->child('/unix/cat')
-  ->def('/unix/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
-  ->def('/unix/cat_read.b',
+ni('ni:unix/io')->child('unix/cat')
+  ->def('unix/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
+  ->def('unix/cat_read.b',
     read => fn q{
       my $fs = shift->{fs};
       my $n;
@@ -9,7 +9,7 @@ ni('ni:/unix/io')->child('/unix/cat')
     })
   ->doc
   ->synopsis(q[
-    my $combined = ni('ni:/unix/cat')->new($io1, $io2, ...);
+    my $combined = ni('ni:unix/cat')->new($io1, $io2, ...);
     my $combined = $io1 + $io2 + $io3;
     $combined->into($destination_io);
   ])
@@ -20,7 +20,7 @@ ni('ni:/unix/io')->child('/unix/cat')
       freed. Once fully consumed, the cat object holds no references.])
   ->eg(fn q{
     my $cat = ni("str:foo") + ni("str:bar");
-    my $dest = ni('ni:/unix/str')->new(my $data = "");
+    my $dest = ni('ni:unix/str')->new(my $data = "");
     $cat->into($dest);
     now ${$dest->data} == "foo\nbar\n";
   });

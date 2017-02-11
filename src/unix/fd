@@ -1,42 +1,42 @@
-ni('ni:/unix/io')->child('/unix/fd')
-  ->ro('/unix/fd_readers.b', 'fd')
-  ->def('/unix/fd_init.b',
+ni('ni:unix/io')->child('unix/fd')
+  ->ro('unix/fd_readers.b', 'fd')
+  ->def('unix/fd_init.b',
     instantiate => fn q{
       my ($class, $fd) = @_;
       +{fd => $fd, fh => undef};
     })
 
-  ->def('/unix/fd_shell.b',
+  ->def('unix/fd_shell.b',
     move_to => fn q{
       use POSIX qw/dup2/;
       my ($self, $new) = @_;
       return $self if $new == $$self{fd};
       close $$self{fh} if Scalar::Util::openhandle $$self{fh};
-      dup2 $$self{fd}, $new or die "ni:/unix/fd: dup2($$self{fd}, $new): $!";
+      dup2 $$self{fd}, $new or die "ni:unix/fd: dup2($$self{fd}, $new): $!";
       POSIX::close $$self{fd};
       $$self{fd} = $new;
       $self;
     })
 
-  ->add('/unix/has_fd.b')
-  ->def('/unix/fd_io.b',
+  ->add('unix/has_fd.b')
+  ->def('unix/fd_io.b',
     read_fh => fn q{
       my $self = shift;
       return $self->{fh} if Scalar::Util::openhandle $self->{fh};
       open my $fh, '<&=', $self->{fd}
-        or die "ni:/unix/fd $self->{fd} failed to read: $!";
+        or die "ni:unix/fd $self->{fd} failed to read: $!";
       $self->{fh} = $fh;
     },
     write_fh => fn q{
       my $self = shift;
       return $self->{fh} if Scalar::Util::openhandle $self->{fh};
       open my $fh, '>&=', $self->{fd}
-        or die "ni:/unix/file $self->{fd} failed to write: $!";
+        or die "ni:unix/file $self->{fd} failed to write: $!";
       $self->{fh} = $fh;
     });
 
 ni->resolver_for(fd => fn q{
   my $f = shift;
   $f =~ s/^fd:(?:\/\/)?//;
-  ni('ni:/unix/fd')->new($f);
+  ni('ni:unix/fd')->new($f);
 });

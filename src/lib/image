@@ -2,8 +2,8 @@
 # Extend the serialization protocol by making a "running context" that is aware
 # of sessions and can be used to implement RMI.
 
-ni('ni:/object')->child('/lib/image')
-  ->def('/lib/image_init.b',
+ni('ni:object')->child('lib/image')
+  ->def('lib/image_init.b',
     instantiate => fn q{
       my $class = shift;
       my %args  = (
@@ -34,7 +34,7 @@ ni('ni:/object')->child('/lib/image')
         ordering     => []};
     })
 
-  ->def('/lib/image_quoting.b',
+  ->def('lib/image_quoting.b',
     gensym => fn q{
       my $n = shift->{gensym_n}++;
       my $s = '$' .
@@ -177,7 +177,7 @@ ni('ni:/object')->child('/lib/image')
       $q;
     });
 
-ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
+ni('ni:lib/fn')->def('lib/fn_serialize.b',
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
@@ -187,7 +187,7 @@ ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
     my @lines = split /\n/, $code;
     my $spaces = length $code;
     for (@lines) {
-      $spaces = length $1 if /^(\h*)\S/ && length $1 < $spaces;
+      $spaces = length $1 if /^([ \t]*)\S/ && length $1 < $spaces;
     }
     $spaces = ' ' x $spaces;
     s/^$spaces// for @lines;
@@ -198,14 +198,14 @@ ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
     $quote->quote_blessed(\%state, ref $self);
   });
 
-ni('ni:/lib/slice')->def('/lib/slice_serialize.b',
+ni('ni:lib/slice')->def('lib/slice_serialize.b',
   serialize => fn q{
     local $_;
     my ($self, $quote) = @_;
     my $name = $self->name;
     $quote->quote_class(ref $self);
 
-    if (defined $name and $name eq 'ni:/lib/slice.b') {
+    if (defined $name and $name eq 'ni:lib/slice.b') {
       my %methods;
       my @ks = sort keys %{$$self{methods}};
       @methods{@ks} = map $quote->quote($_), @{$$self{methods}}{@ks};

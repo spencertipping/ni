@@ -1,10 +1,10 @@
-ni('ni:/unix/io')->child('/unix/pipeline')
-  ->ro('/unix/pipeline_ro.b', qw/stdin stdout/)
-  ->def('/unix/pipeline_init.b',
+ni('ni:unix/io')->child('unix/pipeline')
+  ->ro('unix/pipeline_ro.b', qw/stdin stdout/)
+  ->def('unix/pipeline_init.b',
     instantiate => fn q{
       my $class  = shift;
-      my $stdin  = ni('ni:/unix/fifo')->new;
-      my $stdout = ni('ni:/unix/fifo')->new;
+      my $stdin  = ni('ni:unix/fifo')->new;
+      my $stdout = ni('ni:unix/fifo')->new;
       # TODO: stderr and multiplexing, which probably happens here
 
       my @rs = ($stdin, @_);
@@ -19,7 +19,7 @@ ni('ni:/unix/io')->child('/unix/pipeline')
         ws => \@ws, wv => $wv};
     })
 
-  ->def('/unix/pipeline_async.b',
+  ->def('unix/pipeline_async.b',
     async_step => fn q{
       local $_;
       my $self = shift;
@@ -37,7 +37,7 @@ ni('ni:/unix/io')->child('/unix/pipeline')
       $self;
     })
 
-  ->add('/unix/has_fd.b')
-  ->def('/unix/pipeline_io.b',
+  ->add('unix/has_fd.b')
+  ->def('unix/pipeline_io.b',
     read_fh => fn q{shift->{stdout}->read_fh},
     write_fh => fn q{shift->{stdin}->write_fh});

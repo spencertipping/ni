@@ -1,12 +1,12 @@
-ni('ni:/unix/io')->child('/unix/fifo')
-  ->ro('/unix/fifo_io.b', qw/read_fh write_fh/)
-  ->def('/unix/fifo_init.b',
+ni('ni:unix/io')->child('unix/fifo')
+  ->ro('unix/fifo_io.b', qw/read_fh write_fh/)
+  ->def('unix/fifo_init.b',
     instantiate => fn q{
       my ($class) = @_;
-      pipe my ($r, $w) or die "ni:/unix/fifo failed: $!";
+      pipe my ($r, $w) or die "ni:unix/fifo failed: $!";
       +{read_fh => $r, write_fh => $w};
     })
-  ->add('/unix/has_fd.b')
-  ->def('/unix/fifo_direction.b',
+  ->add('unix/has_fd.b')
+  ->def('unix/fifo_direction.b',
     read_side  => fn q{my $self = shift; close $$self{write_fh}; $self},
     write_side => fn q{my $self = shift; close $$self{read_fh};  $self});

@@ -1,6 +1,6 @@
-ni('ni:/unix/io')->child('/unix/pid')
-  ->ro('/unix/pid_readers.b', qw/pid stdin stdout stderr/)
-  ->def('/unix/pid_init.b',
+ni('ni:unix/io')->child('unix/pid')
+  ->ro('unix/pid_readers.b', qw/pid stdin stdout stderr/)
+  ->def('unix/pid_init.b',
     instantiate => fn q{
       my ($class, $pid, $i, $o, $e) = @_;
       +{pid    => $pid,
@@ -9,35 +9,35 @@ ni('ni:/unix/io')->child('/unix/pid')
         stderr => $e};
     })
 
-  ->def('/unix/pid_wait.b',
+  ->def('unix/pid_wait.b',
     # TODO
     )
 
-  ->add('/unix/has_fd.b')
-  ->def('/unix/pid_io.b',
+  ->add('unix/has_fd.b')
+  ->def('unix/pid_io.b',
     read_fh  => fn q{shift->{stdout}->read_fh},
     write_fh => fn q{shift->{stdin}->write_fh});
 
-ni('ni:/lib/ni')->def('/lib/ni_pid_ctors',
+ni('ni:lib/ni')->def('/lib/ni_pid_ctors',
   fork_exec => fn q{
     my ($class, @argv) = @_;
     $class->fork(sub {
       my ($stdin, $stdout, $stderr) = @_;
-      my $fd0 = ni('ni:/unix/fd')->new(fileno $stdin->read_side->read_fh)->move_to(0);
-      my $fd1 = ni('ni:/unix/fd')->new(fileno $stdout->write_side->write_fh)->move_to(1);
-      my $fd2 = ni('ni:/unix/fd')->new(fileno $stderr->write_side->write_fh)->move_to(2);
-      exec @argv or die "ni:/unix/pid.c: failed to exec @argv: $!";
+      my $fd0 = ni('ni:unix/fd')->new(fileno $stdin->read_side->read_fh)->move_to(0);
+      my $fd1 = ni('ni:unix/fd')->new(fileno $stdout->write_side->write_fh)->move_to(1);
+      my $fd2 = ni('ni:unix/fd')->new(fileno $stderr->write_side->write_fh)->move_to(2);
+      exec @argv or die "ni:unix/pid.c: failed to exec @argv: $!";
     });
   },
   fork => fn q{
     my ($class, $fn) = @_;
-    my $stdin  = ni('ni:/unix/fifo')->new;
-    my $stdout = ni('ni:/unix/fifo')->new;
-    my $stderr = ni('ni:/unix/fifo')->new;
+    my $stdin  = ni('ni:unix/fifo')->new;
+    my $stdout = ni('ni:unix/fifo')->new;
+    my $stderr = ni('ni:unix/fifo')->new;
     my $pid    = fork;
-    die "ni:/unix/pid.c: failed to fork: $!" unless defined $pid;
+    die "ni:unix/pid.c: failed to fork: $!" unless defined $pid;
 
-    return ni('ni:/unix/pid')->new($pid,
+    return ni('ni:unix/pid')->new($pid,
       $stdin->write_side,
       $stdout->read_side,
       $stderr->read_side) if $pid;

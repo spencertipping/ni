@@ -1,9 +1,9 @@
-ni('ni:/object')->child('/lib/doc', '/lib/named.b')
-  ->def('/lib/doc_init.b',
+ni('ni:object')->child('lib/doc', 'lib/named.b')
+  ->def('lib/doc_init.b',
     instantiate => fn q{shift; +{name => shift, doc => []}})
 
-  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'})
-  ->def('/lib/doc_define.b',
+  ->def('lib/doc_namespace.b', namespace => fn q{'ni.doc'})
+  ->def('lib/doc_define.b',
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
@@ -11,14 +11,15 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
       $self;
     })
 
-  ->def('/lib/doc_test.b',
+  ->def('lib/doc_test.b',
     tests => fn q{
       my $self = shift;
       my @flattened = map @$_, @{$$self{doc}};
       my @tests;
       return () unless @flattened;
       for (0..$#flattened - 1) {
-        push @tests, $flattened[$_ + 1] if $flattened[$_] eq 'eg';
+        push @tests, $flattened[$_ + 1]
+          if !ref $flattened[$_] && $flattened[$_] eq 'eg';
       }
       @tests;
     },
@@ -29,85 +30,10 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
       $self;
     });
 
-ni('ni:/lib/behavior')->def('/lib/documentable.b',
+ni('ni:lib/behavior')->def('lib/documentable.b',
   doc => fn q{
     my $self = shift;
     (my $name = $self->name) =~ s/^[^:]*://;
     return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
-    ni('ni:/lib/doc')->new($name);
+    ni('ni:lib/doc')->new($name);
   });
-
-ni('ni:/lib/doc')->doc
-  ->synopsis(q'
-    ni("ni:/some/class")->doc
-      ->synopsis(...)
-      ->description(...)
-      ->eg(...)
-      ...')
-  ->description(
-    q[Associate documentation with the specified class. Documentation is stored
-      separately and in the "ni.doc" namespace; this way you can serialize
-      instances of the class and the class's code without bringing along all of
-      its documentation and unit tests.],
-    q[Documentation objects are internally represented as arrays of quoted
-      method calls:],
-    eg => fn q[
-      my $doc = ni("ni:/lib/doc")->new("foo");
-      now $doc->{doc} == [];
-      $doc->foo("bar bif baz");
-      now $doc->{doc} == [["foo", "bar bif baz"]];
-    ],
-    q[This documentation can later be compiled into things like manpages,
-      markdown, or HTML by target-specific conversion functions. Documentation
-      also stores unit tests, which are specified using "eg":],
-    eg => fn q[
-      my $doc = ni("ni:/lib/doc")->new("foo");
-      my $passing_test = fn q{return 1};
-      my $failing_test = fn q{return 0};
-      $doc->eg($passing_test)
-          ->description(q[Foo objects are contrived examples.],
-                        eg => $failing_test,
-                        q[So there.]);
-      my @tests = $doc->tests;
-      @tests == 2 && $tests[0] eq $passing_test
-                  && $tests[1] eq $failing_test;
-    ]);
-
-ni('ni:/class')->doc
-  ->synopsis(q[
-    ni('ni:/object')->child('/message')
-      ->add('/behaviorname.b')          # add existing behavior
-      ->def('/message_init.b',          # define new behavior
-        instantiate => fn q{            # called from ->new()
-          my ($class, $message) = @_;
-          +{message => $message};       # return object to be blessed
-        })
-      ->def('/behaviorname.b',          # define another behavior
-        method1 => fn q{
-          my $self = shift;
-          print "message for you sir! '" . $$self{message} . "'\n";
-        });
-    ni('ni:/child')->new('hello world!')->method1;
-  ])
-
-  ->description(
-    q[ni:/class is at the core of ni's object-oriented system, along with core
-      classes like ni:/object and ni:/metaclass. There are two layers of
-      abstraction involved here: Perl packages are modified by behaviors, and
-      classes encode the higher-level declarative features you'd expect from a
-      language like Ruby or Smalltalk. This documentation covers both layers.])
-
-  ->behaviors(
-    q[ni's objects are blessed Perl references, and behaviors are objects
-      that modify Perl packages in specific ways. The simplest is
-      ni:/lib/slice, which represents a set of methods you can add to a
-      package. TODO...])
-
-  ->classes(
-    q[ni implements a Smalltalk 80-style metaclass system with a couple of
-      differences. First, ni's classes are slice unions and as such don't
-      support colliding methods; and second, they support multiple inheritance.
-      These two points are related: method overriding isn't in the picture,
-      which makes multiple inheritance straightforward to implement.],
-
-    q[TODO...]);

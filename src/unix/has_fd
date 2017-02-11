@@ -1,5 +1,5 @@
-ni('ni:/lib/branch')->new('/unix/has_fd.b')
-  ->def('/unix/fd_safeio.b',
+ni('ni:lib/branch')->new('unix/has_fd.b')
+  ->def('unix/fd_safeio.b',
     read => fn q{
       no warnings 'io';
       use Errno qw/EINTR/;

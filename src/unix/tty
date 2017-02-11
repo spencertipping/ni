@@ -1,6 +1,6 @@
-ni('ni:/unix/io')->child('/unix/tty')
-  ->def('/unix/tty_init.b',
+ni('ni:unix/io')->child('unix/tty')
+  ->def('unix/tty_init.b',
     instantiate => fn q{my $class = shift; +{fh => shift}})
-  ->def('/unix/tty_stty.b',
+  ->def('unix/tty_stty.b',
     # TODO
     );

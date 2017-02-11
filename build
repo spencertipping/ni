@@ -17,7 +17,8 @@ boot_image() {
 install_stuff() {
   perl ni0 --internal/+= \
     src/lib/util \
-    src/doc/internal/class \
+    src/doc/internal/doc \
+    src/doc/internal/class2 \
     src/unix/io \
     src/unix/has_fd \
     src/unix/fd \
@@ -31,6 +32,7 @@ install_stuff() {
 
 boot_build() {
   boot_image > ni0
+  cp ni0 ni.boot
   echo "initially $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
   echo "       >> $(wc -c < ni0) bytes"

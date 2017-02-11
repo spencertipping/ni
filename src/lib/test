@@ -1,6 +1,6 @@
-ni('ni:/object')->child('/lib/test_value')
-  ->def('/lib/test_value_init.b', instantiate => fn q{\$_[1]})
-  ->def('/lib/test_value_eq.b',
+ni('ni:object')->child('lib/test_value')
+  ->def('lib/test_value_init.b', instantiate => fn q{\$_[1]})
+  ->def('lib/test_value_eq.b',
     diff => fn q{
       my ($self, $rhs) = @_;
       my $class = $self->class;
@@ -24,7 +24,6 @@ ni('ni:/object')->child('/lib/test_value')
         return {hash_value_mismatch => 1,
                 object_type         => $rl,
                 diffs               => \%diff} if keys %diff;
-        return undef;
       } elsif ($realtype eq 'ARRAY') {
         my $n_diff = @$lhs - @$rhs;
         return {array_length_mismatch => $n_diff} if $n_diff;
@@ -35,13 +34,12 @@ ni('ni:/object')->child('/lib/test_value')
         return {array_value_mismatch => 1,
                 object_type          => $rl,
                 diffs                => \%diff} if keys %diff;
-        return undef;
       } elsif ($realtype eq 'SCALAR') {
         return $class->new($$lhs)->diff($$rhs);
       } elsif (!$rl) {
         return {scalar_difference => [$lhs, $rhs]} unless $lhs eq $rhs;
-        return undef;
       }
+      return undef;
     },
 
     '(==' => fn q{
@@ -51,8 +49,8 @@ ni('ni:/object')->child('/lib/test_value')
       1;
     })
 
-  ->def('/lib/test_value_str.b',
+  ->def('lib/test_value_str.b',
     '(""' => fn q{ni::json_encode ${$_[0]}});
 
-ni('ni:main')->def('/lib/global_static_test.b',
-  now => fp('($)', q{ni('ni:/lib/test_value')->new(shift)}));
+ni('ni:main')->def('lib/global_static_test.b',
+  now => fp('($)', q{ni('ni:lib/test_value')->new(shift)}));

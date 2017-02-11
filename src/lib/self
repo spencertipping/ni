@@ -1,5 +1,5 @@
-ni('ni:/object')->child('/lib/ni')
-  ->def('/lib/ni_self.b',
+ni('ni:object')->child('lib/ni')
+  ->def('lib/ni_self.b',
     is_mutable => fn q{$0 ne "-" && -w $0},
     modify => fn q{
       my ($self, $fn) = @_;
@@ -19,17 +19,17 @@ ni('ni:/object')->child('/lib/ni')
       rename $r, $0 or die "ni: failed to rename: $!";
     })
 
-  ->def('/lib/ni_image.b',
+  ->def('lib/ni_image.b',
     exists => fn q{exists $_[0]->{named}{$_[1]}},
     quoted => fn q{
       my $self = shift;
-      my $q = ni('ni:/lib/image')->new(@_);
+      my $q = ni('ni:lib/image')->new(@_);
       my $gs = $q->quote($self);
       $q->side_effect("\$ni::self=$gs;");
       $q;
     })
 
-  ->def('/lib/ni_main.b',
+  ->def('lib/ni_main.b',
     run => fn q{
       my $self = shift;
       shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
@@ -85,7 +85,7 @@ ni('ni:/object')->child('/lib/ni')
       0;
     });
 
-ni('ni:/lib/slice')->new('/lib/ni_resolver.b',
+ni('ni:lib/slice')->new('lib/ni_resolver.b',
   resolver_for => fn q{
     my $self = shift;
     ${$$self{resolvers}}{$_[0]} = $_[1];
@@ -96,12 +96,12 @@ ni('ni:/lib/slice')->new('/lib/ni_resolver.b',
     return $$self{named}{$_[0]} if exists $$self{named}{$_[0]};
     return $$self{resolvers}{$1}->($_[0]) if
       $_[0] =~ /^([^:]+):/ and exists $$self{resolvers}{$1};
-    die "ni:/self failed to resolve $_[0]";
+    die "ni:self failed to resolve $_[0]";
   });
 
 {
-  my $ni = ni('ni:/lib/ni');
-  my $r  = ni('ni:/lib/ni_resolver.b');
-  delete ${'/lib/ni::'}{resolve};
+  my $ni = ni('ni:lib/ni');
+  my $r  = ni('ni:lib/ni_resolver.b');
+  delete ${'lib/ni::'}{resolve};
   $ni->add($r);
 }

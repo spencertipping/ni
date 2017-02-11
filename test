@@ -30,10 +30,13 @@ docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 
 build_docker_images() {
   for e; do
-    echo
-    echo "BUILDING $e"
-    echo
-    docker build -f env/$e -t ni/env-$e .
+    image_id=$(docker images -q ni/env-$e)
+    if [[ -z "$image_id" ]]; then
+      echo
+      echo "BUILDING $e"
+      echo
+      docker build -f env/$e -t ni/env-$e .
+    fi
   done
 }
 
