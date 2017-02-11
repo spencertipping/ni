@@ -66,7 +66,14 @@ ni('ni:/object')->child('/lib/ni')
       my %names = %{ni->{named}};
       for my $t (@tests) {
         %{ni->{named}} = %names;
-        &$t or $fails += print STDERR "FAIL: $t->{code}\n";
+        my $r = eval {&$t};
+        if ($@) {
+          ++$fails;
+          print STDERR "FAIL: $@ in $t\n";
+        } elsif (!$r) {
+          ++$fails;
+          print STDERR "FAIL: $r\n";
+        }
       }
       my $passed = @tests - $fails;
       print STDERR "$passed test(s) passed\n";

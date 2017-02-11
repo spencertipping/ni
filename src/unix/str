@@ -1,4 +1,5 @@
 ni('ni:/unix/io')->child('/unix/str')
+  ->ro('/unix/str_ro.b', qw/data start end/)
   ->def('/unix/str_init.b',
     instantiate => fn q{
       my $class = shift;
@@ -13,7 +14,7 @@ ni('ni:/unix/io')->child('/unix/str')
     read => fn q{
       my $self = shift;
       return 0 if $$self{start} >= $$self{end};
-      my $l = ni::min $self->remaining, $_[1];
+      my $l = @_ >= 2 ? ni::min($self->remaining, $_[1]) : $self->remaining;
       if (@_ == 3) {
         substr($_[0], $_[2] || 0, $l, substr(${$$self{data}}, $$self{start}, $l));
       } else {
@@ -25,7 +26,7 @@ ni('ni:/unix/io')->child('/unix/str')
     write => fn q{
       my $self = shift;
       ${$$self{data}} .= $_[0];
-      $$self{start} += $_[0];
+      $$self{start} += length $_[0];
       $$self{end} = length ${$$self{data}};
       length $_[0];
     });

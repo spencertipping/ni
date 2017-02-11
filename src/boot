@@ -26,7 +26,7 @@ _
 BEGIN{eval($ni::boot = <<'_');}
 use strict;
 use warnings;
-no warnings 'redefine';
+no warnings qw/redefine void/;
 no strict 'refs';
 use Scalar::Util;
 chomp $ni::boot;

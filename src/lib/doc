@@ -6,7 +6,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
   ->def('/lib/doc_define.b',
     AUTOLOAD => fn q{
       my $self = shift;
-      my $method = ${__PACKAGE__ . "::AUTOLOAD"};
+      (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
       push @{$$self{doc}}, [$method, @_];
       $self;
     })
@@ -53,9 +53,9 @@ ni('ni:/lib/doc')->doc
       method calls:],
     eg => fn q[
       my $doc = ni("ni:/lib/doc")->new("foo");
-      # TODO: make this into a test, but first we need a testing DSL
+      now $doc->{doc} == [];
       $doc->foo("bar bif baz");
-      # state is now [["foo", ["bar bif baz"]]]
+      now $doc->{doc} == [["foo", "bar bif baz"]];
     ],
     q[This documentation can later be compiled into things like manpages,
       markdown, or HTML by target-specific conversion functions. Documentation

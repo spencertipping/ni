@@ -3,6 +3,7 @@ ni('ni:/object')->child('/lib/test_value')
   ->def('/lib/test_value_eq.b',
     diff => fn q{
       my ($self, $rhs) = @_;
+      my $class = $self->class;
       my $lhs = $$self;
       my $rl = ref $lhs;
       my $rr = ref $rhs;
@@ -17,7 +18,7 @@ ni('ni:/object')->child('/lib/test_value')
                 right_only        => \@right_only}
           if @left_only || @right_only;
         my %diff;
-        $diff{$_} = ref($self)->new($$lhs{$_})->diff($$rhs{$_})
+        $diff{$_} = $class->new($$lhs{$_})->diff($$rhs{$_})
           for keys %$lhs;
         delete @diff{grep !defined($diff{$_}), keys %diff};
         return {hash_value_mismatch => 1,
@@ -28,7 +29,7 @@ ni('ni:/object')->child('/lib/test_value')
         my $n_diff = @$lhs - @$rhs;
         return {array_length_mismatch => $n_diff} if $n_diff;
         my %diff;
-        $diff{$_} = ref($self)->new($$lhs[$_])->diff($$rhs[$_])
+        $diff{$_} = $class->new($$lhs[$_])->diff($$rhs[$_])
           for 0..$#{$lhs};
         delete @diff{grep !defined($diff{$_}), keys %diff};
         return {array_value_mismatch => 1,
@@ -36,7 +37,7 @@ ni('ni:/object')->child('/lib/test_value')
                 diffs                => \%diff} if keys %diff;
         return undef;
       } elsif ($realtype eq 'SCALAR') {
-        return ref($self)->new($$lhs)->diff($$rhs);
+        return $class->new($$lhs)->diff($$rhs);
       } elsif (!$rl) {
         return {scalar_difference => [$lhs, $rhs]} unless $lhs eq $rhs;
         return undef;
@@ -46,7 +47,7 @@ ni('ni:/object')->child('/lib/test_value')
     '(==' => fn q{
       my ($self, $rhs) = @_;
       my $diff = $self->diff($rhs);
-      die "== fail: " . ref($self)->new($diff) if defined $diff;
+      die $self->class->new($diff) if defined $diff;
       1;
     })
 
@@ -54,4 +55,4 @@ ni('ni:/object')->child('/lib/test_value')
     '(""' => fn q{ni::json_encode ${$_[0]}});
 
 ni('ni:main')->def('/lib/global_static_test.b',
-  ie => fp('($)', q{ni('ni:/lib/test_value')->new(shift)}));
+  now => fp('($)', q{ni('ni:/lib/test_value')->new(shift)}));

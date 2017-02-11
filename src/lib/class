@@ -22,7 +22,7 @@ ni('ni:/metaclass')->new('/module.c', '/object.c', '/lib/instantiable.b');
 ni('ni:/module.c')->new('/module', '/lib/perlbranch.b', '/lib/class_init.b');
 
 ni('ni:/metaclass')->new('/class.c', '/module.c');
-ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b');
+ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b', '/lib/class_init.b');
 ni('ni:/metaclass.c')->add('/class');
 
 ni('ni:/object.c')->add('/class');

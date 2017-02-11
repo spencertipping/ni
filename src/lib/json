@@ -55,10 +55,10 @@ ni('ni:ni')
     json_encode => fp('($)', q{
       local $_;
       my ($v) = @_;
-      return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
-      return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
+      return "[" . join(',', map ni::json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+      return "{" . join(',', map ni::json_escape($_) . ":" . ni::json_encode($$v{$_}),
                                  sort keys %$v) . "}" if 'HASH' eq ref $v;
       Scalar::Util::looks_like_number $v
         ? $v
-        : defined $v ? json_escape $v : 'null';
+        : defined $v ? ni::json_escape($v) : 'null';
     }));

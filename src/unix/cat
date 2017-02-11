@@ -20,5 +20,7 @@ ni('ni:/unix/io')->child('/unix/cat')
       freed. Once fully consumed, the cat object holds no references.])
   ->eg(fn q{
     my $cat = ni("str:foo") + ni("str:bar");
-    ie $cat->read($_, 128) == 8 && $_ eq "foo\nbar\n";
+    my $dest = ni('ni:/unix/str')->new(my $data = "");
+    $cat->into($dest);
+    now ${$dest->data} == "foo\nbar\n";
   });
