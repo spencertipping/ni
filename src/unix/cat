@@ -7,6 +7,7 @@ ni('ni:unix/io')->child('unix/cat')
       shift @$fs until !@$fs or $n = $$fs[0]->read(@_);
       return $n;
     })
+
   ->doc
   ->synopsis(q[
     my $combined = ni('ni:unix/cat')->new($io1, $io2, ...);
@@ -20,7 +21,6 @@ ni('ni:unix/io')->child('unix/cat')
       freed. Once fully consumed, the cat object holds no references.])
   ->eg(fn q{
     my $cat = ni("str:foo") + ni("str:bar");
-    my $dest = ni('ni:unix/str')->new(my $data = "");
-    $cat->into($dest);
-    now ${$dest->data} == "foo\nbar\n";
+    $cat->into(ni('ni:unix/str')->new(my $data = ""));
+    now $data == "foo\nbar\n";
   });

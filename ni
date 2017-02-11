@@ -865,9 +865,8 @@ $Xa=q'Concatenates multiple IO objects into a single read-only data source.
 $Ya=[$pa,$Xa];
 $Za=[];
 $cb=q'my $cat = ni("str:foo") + ni("str:bar");
-my $dest = ni(\'ni:unix/str\')->new(my $data = "");
-$cat->into($dest);
-now ${$dest->data} == "foo\\nbar\\n";';
+$cat->into(ni(\'ni:unix/str\')->new(my $data = ""));
+now $data == "foo\\nbar\\n";';
 $db=bless({$V1,$Za,$E1,$cb,$G1,$H1},$e1);
 $eb=[$X9,$db];
 $fb=[$Wa,$Ya,$eb];

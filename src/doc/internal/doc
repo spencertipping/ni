@@ -5,22 +5,27 @@ ni('ni:lib/doc')->doc
       ->description(...)
       ->eg(...)
       ...')
+
   ->description(
     q[Associate documentation with the specified class. Documentation is stored
       separately and in the "ni.doc" namespace; this way you can serialize
       instances of the class and the class's code without bringing along all of
       its documentation and unit tests.],
+
     q[Documentation objects are internally represented as arrays of quoted
       method calls:],
+
     eg => fn q[
       my $doc = ni("ni:lib/doc")->new("foo");
       now $doc->{doc} == [];
       $doc->foo("bar bif baz");
       now $doc->{doc} == [["foo", "bar bif baz"]];
     ],
+
     q[This documentation can later be compiled into things like manpages,
       markdown, or HTML by target-specific conversion functions. Documentation
       also stores unit tests, which are specified using "eg":],
+
     eg => fn q[
       my $doc = ni("ni:lib/doc")->new("foo");
       my $passing_test = fn q{return 1};
