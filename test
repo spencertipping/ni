@@ -106,6 +106,6 @@ case $c in
   echo "(./test --docker to run in all environments)"
   echo
   build_ni_stuff
-  ./ni --internal/test
+  ./ni --internal/test || exit $?
   ;;
 esac
