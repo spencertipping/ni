@@ -6,7 +6,7 @@ human-facing RMI protocol. No clue whether this will work.
 $ ni /mnt/t9/data/enwiki.lz4 S24p'/([A-Z][\w ,;-]+?\.)\W/g' S4r/the/ \
      guz4:sentences S48p'++$w{+lc} for /\w+/g;
                          END{print "$_\t$w{$_}\n" for keys %w}; ()' \
-     gp'r a, sum b_ rea' x Oz:common-words fA,sAr+1 :total-words
+     gp'r a, sum b_ rea' x Oz:common-words fA,sAr+1:total-words
 466484391
 $ ni ::t total-words common-words ,sA Wn p'r a, b / t' rxE2
 100     0.464460068075461
@@ -43,10 +43,26 @@ $ ni ::t total-words common-words ,sA Wn p'r a, b / t' rxE2
 
 We get almost half the total word usage in just the 100 most common, so let's
 start with that. Now the goal is to build context around these words, in
-particular by removing all other words so we have sentence templates.
+particular by removing all other words so we have sentence templates. Let's
+take the first few thousand variant positions, each of which will become a
+column in a word matrix.
 
 ```sh
 $ ni ::cw[common-words fBrE2] \
      sentences S24p'^{%cw = aa_ cw} r map $cw{$_} || "_", split /\W+/' \
-     gcOz\>layouts
+     gcOz:layouts p'r scalar(@xs = /_/g), $_' ,sA rE4rp'a < 10000' z:10kv \
+     fC.p'^{$i = 0} r join(" ", F_), join ",", map $i++, /_/g' z:indexed
+$ ni ::ix indexed ::cw common-words sentences \
+     S24p'^{%ix = ab_ ix; %cw = aa_ cw}
+          my @w  = split /\W+/;
+          my @ns = split /,/, $ix{join " ", map $cw{$_} || "_", @w} || return ();
+          my $i  = 0;
+          $cw{$w[$_]} || r $w[$_], $ns[$i++] for 0..$#w' \
+     gcfBCAz:sparse OCfCABC,sA z:sparse-ordered fB.,zA Oz:grouped rp'a < 1e5' \
+     Xz:dense S24[Wn p'r a, l2norm FR 1'] OBz:rownorms
+
+$ ni ::rows[rownorms e'wc -l'] ::colsums[sparse fBC Op'sum b_ rea'] \
+     dense S24p'^{@cn = a_ colsums} r map $F[$_] - $cn[$_]/rows, 0..FM' \
+     z:densenormed N'u, s, v = linalg.svd(x, full_matrices=False)
+                     x = dot(diag(s), u)' z:svd
 ```
