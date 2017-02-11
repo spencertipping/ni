@@ -65,7 +65,7 @@ gitlab_yaml() {
     echo "ni-$e:"
     echo "  image: spencertipping/ni-env-$e"
     echo "  script:"
-    echo "    - ./test"
+    echo "    - ./ni --internal/test"
   done
 }
 
