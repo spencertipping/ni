@@ -825,21 +825,21 @@ ni('ni:object')->child('lib/ni')
       my $self = shift;
       my @tests = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
       my $fails = 0;
-      print STDERR scalar(@tests) . " test(s)\n";
+      print scalar(@tests) . " test(s)\n";
       my %names = %{ni->{named}};
       for my $t (@tests) {
         %{ni->{named}} = %names;
         my $r = eval {&$t};
         if ($@) {
           ++$fails;
-          print STDERR "FAIL: $@ in $t\n";
+          print "FAIL: $@ in $t\n";
         } elsif (!$r) {
           ++$fails;
-          print STDERR "FAIL: $r\n";
+          print "FAIL: $r\n";
         }
       }
       my $passed = @tests - $fails;
-      print STDERR "$passed test(s) passed\n";
+      print "$passed test(s) passed\n";
       !!$fails;
     },
 

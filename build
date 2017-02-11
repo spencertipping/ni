@@ -18,7 +18,7 @@ install_stuff() {
   perl ni0 --internal/+= \
     src/lib/util \
     src/doc/internal/doc \
-    src/doc/internal/class2 \
+    src/doc/internal/class \
     src/unix/io \
     src/unix/has_fd \
     src/unix/fd \

@@ -4,3 +4,5 @@
 - sigchld handler + exit waiting
 - port parsers
 - stty + editor
+- OO abstraction around all print statements; should provide structured
+  output/progress

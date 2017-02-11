@@ -200,21 +200,21 @@ for (@_) {
 0;';$C8=bless({$V1,$A8,$E1,$B8,$G1,$H1},$e1);$D8=q'--internal/test';$E8=[];$F8=q'my $self = shift;
 my @tests = map ni($_)->tests, grep /^ni\\.doc:/, keys %{$$self{named}};
 my $fails = 0;
-print STDERR scalar(@tests) . " test(s)\\n";
+print scalar(@tests) . " test(s)\\n";
 my %names = %{ni->{named}};
 for my $t (@tests) {
   %{ni->{named}} = %names;
   my $r = eval {&$t};
   if ($@) {
     ++$fails;
-    print STDERR "FAIL: $@ in $t\\n";
+    print "FAIL: $@ in $t\\n";
   } elsif (!$r) {
     ++$fails;
-    print STDERR "FAIL: $r\\n";
+    print "FAIL: $r\\n";
   }
 }
 my $passed = @tests - $fails;
-print STDERR "$passed test(s) passed\\n";
+print "$passed test(s) passed\\n";
 !!$fails;';$G8=bless({$V1,$E8,$E1,$F8,$G1,$H1},$e1);$H8=q'run';$I8=[];$J8=q'my $self = shift;
 shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
 exit $self->default(@_);';$K8=bless({$V1,$I8,$E1,$J8,$G1,$H1},$e1);$L8={$r8,$u8,$v8,$y8,$z8,$C8,$D8,$G8,$H8,$K8};$M8=q'lib/ni_main.b';$N8=bless({$c,$q8,$u1,$v1,$w1,$v1,$x1,$L8,$f,$M8},$R);$O8=q'lib/slice::ctors';$P8={};$Q8=[];$R8=q'my $self = shift;

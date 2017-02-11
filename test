@@ -29,25 +29,29 @@ docker_magic="--security-opt=seccomp=unconfined"
 docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 
 build_docker_images() {
+  echo
+  echo "BUILDING IMAGES"
   for e; do
     image_id=$(docker images -q ni/env-$e)
     if [[ -z "$image_id" ]]; then
       echo
       echo "BUILDING $e"
-      echo
       docker build -f env/$e -t ni/env-$e .
+    else
+      echo "  using prebuilt $e"
     fi
   done
+  echo
 }
 
 run_docker_tests() {
   for env; do
     echo
-    echo "TESTING $env"
-    echo
+    echo "TESTING $env (stderr > test.log)"
     docker run $docker_opts --name ni-test $(image $env) \
       /usr/bin/ni --internal/test
-  done
+  done 2>test.log
+  echo
 }
 
 c=$1
