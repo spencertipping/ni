@@ -48,6 +48,6 @@ start with that. Now the goal is to build context around these words.
 
 ```sh
 $ ni ::cw[common-words fBrE2] \
-     sentences S24[p'split /\W+/' p'r pl 2' rp'^{%w = aa_ cw} $w{+b}'] \
-     gcz\>bigrams
+     sentences S24[p'split /\W+/' p'r pl 3' rp'^{%w = aa_ cw} $w{+b}'] \
+     gcOz\>3grams
 ```

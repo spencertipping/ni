@@ -1,5 +1,3 @@
-### Fix exit code handling
-
 ### Join operator
 This doesn't exist yet. nfu had one but it was awful; this one should support
 arbitrary-column joins and not rearrange any columns in the result.
@@ -24,24 +22,6 @@ could still speed things up considerably.
 ### Do we want to implement our own sorting function?
 There's some possibility it would be faster, and it preemptively avoids issues
 around `LC_ALL`.
-
-### Monitors should handle various distribution cases (no clue how)
-For example, suppose we have a scale-by-single-row or scale-by-key operator
-later on. We might want to know the details of how each of those is working.
-This makes me think that fixed space allocation is a non-starter; we might want
-some kind of expand/collapse interface, or we might want aggregation by axis.
-
-I think this requires us to write a pager (or at least defer its instantiation)
-because `less` captures terminal input immediately.
-
-#### Monitor calculations should be based on first-data moment
-If a prior step introduces buffering latency, we shouldn't count this against
-the throughput of everything downstream.
-
-### Better abstraction around procfhs
-We need more detailed process tracking, and ideally some more structured
-interface to pipelines. Streams should be objects since we aren't
-creating/destroying them inside any loops.
 
 ### Autoscaling
 Like `S`, but auto-configure buffer sizes and #children to maximize
