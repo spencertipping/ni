@@ -5,8 +5,8 @@ before_script:
 
 ni-alpine:
   script:
-    - ./test -q alpine
+    - ./test -d alpine
 
 ni-ubuntu-16.04:
   script:
-    - ./test -q ubuntu-16.04
+    - ./test -d ubuntu-16.04
