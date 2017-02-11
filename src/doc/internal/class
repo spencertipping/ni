@@ -2,7 +2,7 @@ ni('ni:class')->doc
   ->synopsis(q[
     ni('ni:object')->child('message')
       ->add('behaviorname.b')           # add existing behavior
-      ->def('message_init.b',           # define new behavior
+      ->def('message_init.b',           # define new slice behavior
         instantiate => fn q{            # called from ->new()
           my ($class, $message) = @_;
           +{message => $message};       # return object to be blessed
@@ -26,7 +26,16 @@ ni('ni:class')->doc
     q[ni's objects are blessed Perl references, and behaviors are objects
       that modify Perl packages in specific ways. The simplest is
       ni:lib/slice, which represents a set of methods you can add to a
-      package. TODO...])
+      package.],
+
+    eg => fn q{
+      my $fn = fn q{"hi"};
+      my $slice = ni('ni:lib/slice')->new('myslice', f => $fn);
+      $slice->apply('foo');
+      now foo->f == 'hi';
+    },
+
+    q[TODO...])
 
   ->classes(
     q[ni implements a Smalltalk 80-style metaclass system with a couple of

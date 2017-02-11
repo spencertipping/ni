@@ -814,7 +814,7 @@ ni('ni:object')->child('lib/ni')
         die "ni: failed to execute $_: $!" unless defined $r;
         die "ni: failed to run $_: $!" unless $r;
       }
-      my $q = $self->quoted;
+      my $q = $self->quoted(use_newlines => 1);
       $self->modify(sub {$q->write(shift)});
       0;
     },
@@ -842,7 +842,7 @@ ni('ni:object')->child('lib/ni')
     },
 
     '--internal/image' => fn q{
-      shift->quoted->write(\*STDOUT);
+      shift->quoted(use_newlines => 1)->write(\*STDOUT);
       0;
     });
 

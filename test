@@ -13,12 +13,9 @@ envs=( alpine
        ubuntu-16.04-p3
        ubuntu-16.10 )
 
-if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
-  test_set=$2
-  shift 2
-fi
+rm test.log
 
-build_ni_stuff() { ./build; }
+build_ni_stuff() { ./build >>test.log; }
 
 image() { docker build -q -f env/$1 -t ni/env-$1 .; }
 
@@ -50,13 +47,27 @@ run_docker_tests() {
     echo "TESTING $env (stderr > test.log)"
     docker run $docker_opts --name ni-test $(image $env) \
       /usr/bin/ni --internal/test
-  done 2>test.log
+  done 2>>test.log
   echo
+}
+
+docker_test_flow() {
+  build_docker_images $@
+  build_ni_stuff
+  run_docker_tests $@
 }
 
 c=$1
 shift
 case $c in
+-d|--docker)
+  if (( $# )); then
+    docker_test_flow $@
+  else
+    docker_test_flow ${envs[@]}
+  fi
+  ;;
+
 -b|--build)
   build_docker_images ${envs[@]}
   ;;
@@ -67,15 +78,12 @@ case $c in
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
--q|--quick)
-  build_docker_images $@
-  build_ni_stuff
-  run_docker_tests $@
-  ;;
-
 *)
-  build_docker_images ${envs[@]}
+  echo
+  echo "RUNNING quick test"
+  echo "(./test --docker to run in all environments)"
+  echo
   build_ni_stuff
-  run_docker_tests ${envs[@]}
+  ./ni --internal/test
   ;;
 esac
