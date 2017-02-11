@@ -1,9 +1,12 @@
-before_script: ./test --build
+before_script:
+  - ./test --build
 
 ni-alpine-loaded:
   image: ni/env-alpine
-  script: ./test
+  script:
+    - ./test
 
 ni-ubuntu-16.04:
   image: ubuntu:16.04
-  script: ./test
+  script:
+    - ./test
