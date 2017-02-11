@@ -28,9 +28,11 @@ docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 build_docker_images() {
   echo
   echo "BUILDING IMAGES"
+  mode=$1
+  shift
   for e; do
     image_id=$(docker images -q ni/env-$e)
-    if [[ -z "$image_id" ]]; then
+    if [[ -z "$image_id" ]] || [[ $mode == --force ]]; then
       echo
       echo "BUILDING $e"
       docker build -f env/$e -t ni/env-$e .
@@ -52,7 +54,7 @@ run_docker_tests() {
 }
 
 docker_test_flow() {
-  build_docker_images $@
+  build_docker_images --cached $@
   build_ni_stuff
   run_docker_tests $@
 }
@@ -81,11 +83,11 @@ case $c in
   ;;
 
 -b|--build)
-  build_docker_images ${envs[@]}
+  build_docker_images --force ${envs[@]}
   ;;
 
 -p|--push)
-  build_docker_images ${envs[@]}
+  build_docker_images --force ${envs[@]}
   for e in ${envs[@]}; do
     docker tag ni/env-$e $USER/ni-env-$e
     docker push $USER/ni-env-$e
