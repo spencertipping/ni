@@ -6,3 +6,6 @@
 - stty + editor
 - OO abstraction around all print statements; should provide structured
   output/progress
+
+- measurements for operators in terms of real-world units: come up with a way
+  to express performance characteristics in pipeline terms
