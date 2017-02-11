@@ -3,28 +3,56 @@ ni-alpine:
   image: spencertipping/ni-env-alpine
   script:
     - ./test
+ni-alpine-minimal:
+  image: spencertipping/ni-env-alpine-minimal
+  script:
+    - ./test
 ni-centos-5:
   image: spencertipping/ni-env-centos-5
+  script:
+    - ./test
+ni-centos-5-minimal:
+  image: spencertipping/ni-env-centos-5-minimal
   script:
     - ./test
 ni-centos-6:
   image: spencertipping/ni-env-centos-6
   script:
     - ./test
+ni-centos-6-minimal:
+  image: spencertipping/ni-env-centos-6-minimal
+  script:
+    - ./test
 ni-debian-wheezy:
   image: spencertipping/ni-env-debian-wheezy
+  script:
+    - ./test
+ni-debian-wheezy-minimal:
+  image: spencertipping/ni-env-debian-wheezy-minimal
   script:
     - ./test
 ni-ubuntu-12.04:
   image: spencertipping/ni-env-ubuntu-12.04
   script:
     - ./test
+ni-ubuntu-12.04-minimal:
+  image: spencertipping/ni-env-ubuntu-12.04-minimal
+  script:
+    - ./test
 ni-ubuntu-14.04:
   image: spencertipping/ni-env-ubuntu-14.04
   script:
     - ./test
+ni-ubuntu-14.04-minimal:
+  image: spencertipping/ni-env-ubuntu-14.04-minimal
+  script:
+    - ./test
 ni-ubuntu-16.04:
   image: spencertipping/ni-env-ubuntu-16.04
+  script:
+    - ./test
+ni-ubuntu-16.04-minimal:
+  image: spencertipping/ni-env-ubuntu-16.04-minimal
   script:
     - ./test
 ni-ubuntu-16.04-p3:
@@ -33,5 +61,9 @@ ni-ubuntu-16.04-p3:
     - ./test
 ni-ubuntu-16.10:
   image: spencertipping/ni-env-ubuntu-16.10
+  script:
+    - ./test
+ni-ubuntu-16.10-minimal:
+  image: spencertipping/ni-env-ubuntu-16.10-minimal
   script:
     - ./test

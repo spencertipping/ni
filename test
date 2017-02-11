@@ -3,15 +3,15 @@ cd $(dirname $0)
 
 # TODO: with the new testing setup, we should just drop hadoop/spark images
 # into this list and have ni feature-test to run when applicable.
-envs=( alpine
-       centos-5
-       centos-6
-       debian-wheezy
-       ubuntu-12.04
-       ubuntu-14.04
-       ubuntu-16.04
+envs=( alpine        alpine-minimal
+       centos-5      centos-5-minimal
+       centos-6      centos-6-minimal
+       debian-wheezy debian-wheezy-minimal
+       ubuntu-12.04  ubuntu-12.04-minimal
+       ubuntu-14.04  ubuntu-14.04-minimal
+       ubuntu-16.04  ubuntu-16.04-minimal
        ubuntu-16.04-p3
-       ubuntu-16.10 )
+       ubuntu-16.10  ubuntu-16.10-minimal )
 
 rm -f test.log
 

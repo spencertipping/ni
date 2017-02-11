@@ -1,0 +1,4 @@
+FROM ubuntu:16.04
+VOLUME /data
+WORKDIR /data
+CMD /bin/bash
