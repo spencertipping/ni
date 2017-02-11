@@ -3,3 +3,5 @@ dev/tests.sh
 dev/docker
 /gen
 test.log
+ni.boot
+ni.boot.compiled
