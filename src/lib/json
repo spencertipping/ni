@@ -1,0 +1,64 @@
+{
+  my %json_unescapes = (
+    "\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
+    t => "\t");
+  my %json_escapes = map +($json_unescapes{$_} => $_), keys %json_unescapes;
+  ni('ni:ni')
+    ->defdata('/lib/json_data.b',
+      json_unescapes => \%json_unescapes,
+      json_escapes   => \%json_escapes);
+}
+
+ni('ni:ni')
+  ->def('/lib/json.b',
+    json_unescape_one =>
+      fp('($)', q{$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1}),
+
+    json_unescape => fp('($)', q{
+      my $x = substr $_[0], 1, -1;
+      $x =~ s/\\\\(["\\\\\/bfnrt]|u[0-9a-fA-F]{4})/ni::json_unescape_one($1)/eg;
+      $x;
+    }),
+
+    json_decode => fp('($)', q#
+      local $_;
+      my @v = [];
+      for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\\\]+|\\\\.)*"|[-+eE\d.]+/g) {
+        if (/^[[{]$/) {
+          push @v, [];
+        } elsif (/^\]$/) {
+          die "json_decode $_[0]: too many closing brackets" if @v < 2;
+          push @{$v[-2]}, $v[-1];
+          pop @v;
+        } elsif (/^\}$/) {
+          die "json_decode $_[0]: too many closing brackets" if @v < 2;
+          push @{$v[-2]}, {@{$v[-1]}};
+          pop @v;
+        } else {
+          push @{$v[-1]}, /^"/      ? json_unescape $_
+                        : /^true$/  ? 1
+                        : /^false$/ ? 0
+                        : /^null$/  ? undef
+                        :             0 + $_;
+        }
+      }
+      my $r = pop @v;
+      die "json_decode $_[0]: not enough closing brackets" if @v;
+      wantarray ? @$r : $$r[0];
+    #),
+
+    json_escape => fp('($)', q{
+      (my $x = $_[0]) =~ s/([\b\f\n\r\t"\\\\])/"\\\\" . $ni::json_escapes{$1}/eg;
+      "\"$x\"";
+    }),
+
+    json_encode => fp('($)', q{
+      local $_;
+      my ($v) = @_;
+      return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+      return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
+                                 sort keys %$v) . "}" if 'HASH' eq ref $v;
+      Scalar::Util::looks_like_number $v
+        ? $v
+        : defined $v ? json_escape $v : 'null';
+    }));

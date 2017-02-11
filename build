@@ -8,6 +8,8 @@ boot_image() {
       src/lib/class \
       src/lib/doc \
       src/lib/fn \
+      src/lib/json \
+      src/lib/test \
       src/lib/image \
       src/lib/self
 }

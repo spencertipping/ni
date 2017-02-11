@@ -51,7 +51,7 @@ ni('ni:/lib/branch')->add('/lib/definition.b');
 ni('ni:/module')->add('/lib/definition.b');
 
 ni('ni:/lib/definition.b')->add(
-  ni('ni:/lib/slice')->new('/lib/classdef.b',
+  ni('ni:/lib/slice')->new('/lib/definition_def.b',
     def => fn q{shift->add(ni('ni:/lib/slice')->new(@_))}));
 
 ni('ni:/lib/definition.b')->def('/lib/accessor.b',
@@ -85,6 +85,28 @@ ni('ni:/lib/definition.b')
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
 
+# Data slices
+ni('ni:/lib/behavior')->child('/lib/dataslice')
+  ->def('/lib/dataslice_init.b',
+    instantiate => fn q{
+      my $class = shift;
+      my $name = shift;
+      +{name => $name, data => {@_}};
+    })
+  ->def('/lib/dataslice_apply.b',
+    apply => fn q{
+      local $_;
+      my ($self, $p) = @_;
+      $p = $p->package if ref $p;
+      return if $$self{applied_to}{$p};
+      $$self{applied_to}{$p} = 1;
+      *{"$p\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
+      $self;
+    });
+
+ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
+  defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
+
 # Static function support
-ni('ni:/module')->new('/lib/ni_static')->apply('ni');
-ni('ni:/module')->new('/lib/global_static')->apply('main');
+ni('ni:/module')->new('ni');
+ni('ni:/module')->new('main');

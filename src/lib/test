@@ -6,8 +6,9 @@ ni('ni:/object')->child('/lib/test_value')
       my $lhs = $$self;
       my $rl = ref $lhs;
       my $rr = ref $rhs;
+      my $realtype = Scalar::Util::reftype($lhs) || "";
       return {type_difference => [$rl, $rr]} unless $rl eq $rr;
-      if (Scalar::Util::reftype $rl eq 'HASH') {
+      if ($realtype eq 'HASH') {
         my @left_only  = grep !exists $$rhs{$_}, keys %$lhs;
         my @right_only = grep !exists $$lhs{$_}, keys %$rhs;
         return {hash_key_mismatch => 1,
@@ -23,7 +24,7 @@ ni('ni:/object')->child('/lib/test_value')
                 object_type         => $rl,
                 diffs               => \%diff} if keys %diff;
         return undef;
-      } elsif (Scalar::Util::reftype $rl eq 'ARRAY') {
+      } elsif ($realtype eq 'ARRAY') {
         my $n_diff = @$lhs - @$rhs;
         return {array_length_mismatch => $n_diff} if $n_diff;
         my %diff;
@@ -34,7 +35,7 @@ ni('ni:/object')->child('/lib/test_value')
                 object_type          => $rl,
                 diffs                => \%diff} if keys %diff;
         return undef;
-      } elsif (Scalar::Util::reftype $rl eq 'SCALAR') {
+      } elsif ($realtype eq 'SCALAR') {
         return ref($self)->new($$lhs)->diff($$rhs);
       } elsif (!$rl) {
         return {scalar_difference => [$lhs, $rhs]} unless $lhs eq $rhs;
@@ -50,13 +51,7 @@ ni('ni:/object')->child('/lib/test_value')
     })
 
   ->def('/lib/test_value_str.b',
-    '(""' => fn q{
-      my $self = shift;
-      my $v    = $$self;
-      if (ref $v eq 'HASH') {
-        
-      }
-    });
+    '(""' => fn q{ni::json_encode ${$_[0]}});
 
-ni('ni:/lib/global_static')->def('/lib/global_static_test.b',
+ni('ni:main')->def('/lib/global_static_test.b',
   ie => fp('($)', q{ni('ni:/lib/test_value')->new(shift)}));

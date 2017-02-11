@@ -30,6 +30,6 @@ ni('ni:/lib/fn')
 
 delete ${'main::'}{fn};
 
-ni('ni:/lib/global_static')->def('/lib/static_fn.b',
+ni('ni:main')->def('/lib/static_fn.b',
   fn => ni('ni:/lib/fn')->new('($)', q{ni('ni:/lib/fn')->new(@_)}),
   fp => ni('ni:/lib/fn')->new('($$)', q{ni('ni:/lib/fn')->new(@_)}));

@@ -19,7 +19,6 @@ ni('ni:/unix/io')->child('/unix/cat')
       references to them as quickly as possible, allowing their resources to be
       freed. Once fully consumed, the cat object holds no references.])
   ->eg(fn q{
-    my $io1 = ni("str:foo");
-    my $io2 = ni("str:bar");
-    ($io1 + $io2)->read($_, 128) == 8 && $_ eq "foo\nbar\n";
+    my $cat = ni("str:foo") + ni("str:bar");
+    ie $cat->read($_, 128) == 8 && $_ eq "foo\nbar\n";
   });
