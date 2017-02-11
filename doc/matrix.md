@@ -74,8 +74,8 @@ Inverting that operation, converting a column to a row with a specified number o
 
 ```bash
 $ ni i[a b] i[c d] pF_ Z2
-a   b
-c   d
+a	b
+c	d
 ```
  
 
