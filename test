@@ -13,7 +13,7 @@ envs=( alpine
        ubuntu-16.04-p3
        ubuntu-16.10 )
 
-rm test.log
+rm -f test.log
 
 build_ni_stuff() { ./build >>test.log; }
 
