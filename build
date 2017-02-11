@@ -36,14 +36,13 @@ boot_build() {
   echo "initially $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
   echo "       >> $(wc -c < ni0) bytes"
+  cp ni0 ni.boot.compiled
 
   $1
 
   echo "       >> $(wc -c < ni0) bytes"
   perl ni0 --internal/image > ni && cp ni ni0 || exit $?
   echo "       >> $(wc -c < ni0) bytes"
-  perl ni0 --internal/image > ni || exit $?
-  echo "       >> $(wc -c < ni) bytes"
 
   if [[ "$(<ni0)" != "$(<ni)" ]]; then
     echo 'ni is unstable under replication; diff in ni.diff'
@@ -62,19 +61,17 @@ time_n() {
   min=none
   shift
 
-  k=$((n / 10))
   date +%s%N > /dev/null
-  seq 4 | xargs -n1 -I{} "$@" > /dev/null
-  for i in `seq 10`; do
+  for i in `seq $n`; do
     start_nanos=$(date +%s%N)
-    seq $k | xargs -n1 -I{} "$@" > /dev/null
+    "$@" > /dev/null
     end_nanos=$(date +%s%N)
 
     if [[ $min == none ]] || (( (end_nanos - start_nanos) < min )); then
       min=$((end_nanos - start_nanos))
     fi
   done
-  echo "$(( (end_nanos - start_nanos) / (k * 1000) ))μs"
+  echo "$(( min / 1000 ))μs"
 }
 
 case $1 in
@@ -83,14 +80,12 @@ boot)
   ;;
 
 bench)
-  boot_build :
-  boot_image > ni0
-  echo "original: $(time_n 200 perl ni0 --internal/eval 1) overhead"
-  echo "compiled: $(time_n 200 perl ni  --internal/eval 1) overhead"
-
-  rm ni0
   boot_build install_stuff
-  echo "full: $(time_n 200 perl ni --internal/eval 1) overhead"
+  echo "nop:      $(time_n 100 echo) overhead"
+  echo "perl:     $(time_n 100 perl -e 1) overhead"
+  echo "original: $(time_n 100 perl ni.boot --internal/eval 1) overhead"
+  echo "compiled: $(time_n 100 perl ni.boot.compiled --internal/eval 1) overhead"
+  echo "full:     $(time_n 100 perl ni --internal/eval 1) overhead"
   ;;
 
 *)

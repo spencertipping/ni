@@ -62,7 +62,7 @@ case $c in
   ;;
 
 -r|--repl)
-  echo "NOTE: to run tests, cd /tmp && bash /data/dev/tests.sh"
+  echo "NOTE: to run tests, cd /tmp && ni --internal/test"
   build_ni_stuff
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;

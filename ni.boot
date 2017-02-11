@@ -97,10 +97,8 @@ ni->def('ni:lib/slice.b' =>
     }
   }, 'lib/slice');
 
-{
-  my $apply_unsafe = ni('ni:lib/slice.b')->{methods}->{apply_unsafe};
-  (\&$apply_unsafe)->(ni('ni:lib/slice.b'), 'lib/slice');
-}
+ni('ni:lib/slice.b')->{methods}->{apply_unsafe}
+  ->(ni('ni:lib/slice.b'), 'lib/slice');
 
 ni->def('ni:lib/slice_init.b' =>
   bless {
