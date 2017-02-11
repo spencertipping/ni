@@ -3,12 +3,10 @@ image: spencertipping/ubuntu-docker
 before_script:
   - ./test --build
 
-ni-alpine-loaded:
-  image: ni/env-alpine
+ni-alpine:
   script:
-    - ./test
+    - ./test -q alpine
 
 ni-ubuntu-16.04:
-  image: ubuntu:16.04
   script:
-    - ./test
+    - ./test -q ubuntu-16.04
