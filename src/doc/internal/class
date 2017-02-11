@@ -32,7 +32,7 @@ ni('ni:class')->doc
       my $fn = fn q{"hi"};
       my $slice = ni('ni:lib/slice')->new('myslice', f => $fn);
       $slice->apply('foo');
-      now foo->f == 'hi';
+      now foo->f == 'hi there';
     },
 
     q[TODO...])
