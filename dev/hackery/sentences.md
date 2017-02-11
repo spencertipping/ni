@@ -4,10 +4,9 @@ human-facing RMI protocol. No clue whether this will work.
 
 ```sh
 $ ni /mnt/t9/data/enwiki.lz4 S24p'/([A-Z][\w ,;-]+?\.)\W/g' S4r/the/ \
-     z4\>sentences
-$ ni sentences S48p'++$w{+lc} for /\w+/g;
-                    END{print "$_\t$w{$_}\n" for keys %w}; ()' \
-     gp'r a, sum b_ rea' x Oz\>common-words
+     guz4:sentences S48p'++$w{+lc} for /\w+/g;
+                         END{print "$_\t$w{$_}\n" for keys %w}; ()' \
+     gp'r a, sum b_ rea' x Oz:common-words ,sAr+1 :total-words
 $ ni common-words ,sAr+1
 529912512
 $ ni common-words ,sA Wn p'r a, b / 529912512' rxE2

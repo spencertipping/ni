@@ -14,6 +14,7 @@ envs=( alpine        alpine-minimal
        ubuntu-16.10  ubuntu-16.10-minimal )
 
 rm -f test.log
+gitlab_yaml > .gitlab-ci.yml
 
 build_ni_stuff() { ./build >>test.log; }
 
@@ -68,8 +69,6 @@ gitlab_yaml() {
     echo "    - ./ni --internal/test"
   done
 }
-
-gitlab_yaml > .gitlab-ci.yml
 
 c=$1
 shift
