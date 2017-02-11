@@ -29,7 +29,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
       $self;
     });
 
-ni('ni:/object.c')->def('/lib/documentable.b',
+ni('ni:/lib/behavior')->def('/lib/documentable.b',
   doc => fn q{
     my $self = shift;
     (my $name = $self->name) =~ s/^[^:]*://;

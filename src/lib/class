@@ -44,6 +44,9 @@ ni("ni:/lib/$_.c")->new("/lib/$_",
   '/lib/behavior', '/lib/named.b',
   "/lib/$_.b", "/lib/$_\_init.b") for qw/slice branch tag/;
 
+ni('ni:/module')->add('/lib/behavior');
+ni('ni:/module.c')->add('/lib/behavior.c');
+
 # Definition
 ni('ni:/lib/branch')->new('/lib/definition.b');
 ni('ni:/lib/branch')->add('/lib/definition.b');

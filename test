@@ -1,6 +1,8 @@
 #!/bin/bash
 cd $(dirname $0)
 
+# TODO: with the new testing setup, we should just drop hadoop/spark images
+# into this list and have ni feature-test to run when applicable.
 envs=( alpine
        centos-5
        centos-6
@@ -16,16 +18,8 @@ if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   shift 2
 fi
 
-build_ni_stuff() {
-  ./build
-  {
-    echo cd /tmp
-    echo export NI_NO_MONITOR=yes
-    ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
-  } > dev/tests.sh
-}
+build_ni_stuff() { ./build; }
 
-tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
 image() { docker build -q -f env/$1 -t ni/env-$1 .; }
 
 default_image=ubuntu-16.04
@@ -34,22 +28,30 @@ docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
 docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 
-c=$1
-shift
-case $c in
--b|--build)
-  for e in ${envs[@]}; do
+build_docker_images() {
+  for e; do
     echo
     echo "BUILDING $e"
     echo
     docker build -f env/$e -t ni/env-$e .
   done
-  ;;
+}
 
--q|--quick)
-  echo "NOTE: standard error is redirected into test.log"
-  build_ni_stuff
-  tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash 2>test.log
+run_docker_tests() {
+  for env; do
+    echo
+    echo "TESTING $env"
+    echo
+    docker run $docker_opts --name ni-test $(image $env) \
+      /usr/bin/ni --internal/test
+  done
+}
+
+c=$1
+shift
+case $c in
+-b|--build)
+  build_docker_images ${envs[@]}
   ;;
 
 -r|--repl)
@@ -58,23 +60,15 @@ case $c in
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
--c|--cancel)
-  touch .test-cancel
-  docker rm -f ni-test ni-test-hadoop
+-q|--quick)
+  build_docker_images $@
+  build_ni_stuff
+  run_docker_tests $@
   ;;
 
 *)
-  echo "NOTE: standard error is redirected into test.log"
+  build_docker_images ${envs[@]}
   build_ni_stuff
-  for e in ${envs[@]}; do
-    if [[ -e .test-cancel ]]; then
-      rm .test-cancel
-      exit 1
-    fi
-    echo
-    echo "TESTING $e"
-    echo
-    tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
-    echo
-  done 2>test.log
+  run_docker_tests ${envs[@]}
+  ;;
 esac
