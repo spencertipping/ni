@@ -57,6 +57,18 @@ docker_test_flow() {
   run_docker_tests $@
 }
 
+gitlab_yaml() {
+  echo 'image: spencertipping/ubuntu-docker'
+  for e in ${envs[@]}; do
+    echo "ni-$e:"
+    echo "  image: spencertipping/ni-env-$e"
+    echo "  script:"
+    echo "    - ./test"
+  done
+}
+
+gitlab_yaml > .gitlab-ci.yml
+
 c=$1
 shift
 case $c in
@@ -70,6 +82,14 @@ case $c in
 
 -b|--build)
   build_docker_images ${envs[@]}
+  ;;
+
+-p|--push)
+  build_docker_images ${envs[@]}
+  for e in ${envs[@]}; do
+    docker tag ni/env-$e $USER/ni-env-$e
+    docker push $USER/ni-env-$e
+  done
   ;;
 
 -r|--repl)

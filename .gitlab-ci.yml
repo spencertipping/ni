@@ -1,12 +1,37 @@
 image: spencertipping/ubuntu-docker
-
-before_script:
-  - ./test --build
-
 ni-alpine:
+  image: spencertipping/ni-env-alpine
   script:
-    - ./test -d alpine
-
+    - ./test
+ni-centos-5:
+  image: spencertipping/ni-env-centos-5
+  script:
+    - ./test
+ni-centos-6:
+  image: spencertipping/ni-env-centos-6
+  script:
+    - ./test
+ni-debian-wheezy:
+  image: spencertipping/ni-env-debian-wheezy
+  script:
+    - ./test
+ni-ubuntu-12.04:
+  image: spencertipping/ni-env-ubuntu-12.04
+  script:
+    - ./test
+ni-ubuntu-14.04:
+  image: spencertipping/ni-env-ubuntu-14.04
+  script:
+    - ./test
 ni-ubuntu-16.04:
+  image: spencertipping/ni-env-ubuntu-16.04
   script:
-    - ./test -d ubuntu-16.04
+    - ./test
+ni-ubuntu-16.04-p3:
+  image: spencertipping/ni-env-ubuntu-16.04-p3
+  script:
+    - ./test
+ni-ubuntu-16.10:
+  image: spencertipping/ni-env-ubuntu-16.10
+  script:
+    - ./test
