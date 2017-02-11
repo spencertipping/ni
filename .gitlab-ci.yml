@@ -1,6 +1,4 @@
-before_script:
-  - apt-get update -qq && apt-get install -y -qq perl
-
-ni:
+ni-ubuntu-16.04:
+  image: ubuntu:16.04
   script:
     - ./test
