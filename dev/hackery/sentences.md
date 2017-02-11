@@ -47,5 +47,7 @@ We get almost half the total word usage in just the 100 most common, so let's
 start with that. Now the goal is to build context around these words.
 
 ```sh
-$
+$ ni ::cw[common-words fBrE2] \
+     sentences S24[p'split /\W+/' p'r pl 2' rp'^{%w = aa_ cw} $w{+b}'] \
+     gcz\>bigrams
 ```
