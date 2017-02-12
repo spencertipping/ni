@@ -7,7 +7,7 @@ ni('ni:unix/io')->child('unix/fd')
     })
 
   ->def('unix/fd_shell.b',
-    move_to => fn q{
+    be => fn q{
       use POSIX qw/dup2/;
       my ($self, $new) = @_;
       return $self if $new == $$self{fd};
