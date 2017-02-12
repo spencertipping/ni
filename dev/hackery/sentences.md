@@ -64,5 +64,5 @@ $ ni ::ix indexed ::cw common-words sentences \
 $ ni ::rows[rownorms e'wc -l'] ::colsums[sparse fBC Op'sum b_ rea'] \
      dense S24p'^{@cn = a_ colsums} r map $F[$_] - $cn[$_]/rows, 0..FM' \
      z\>densenormed \<rE4N'u, s, v = linalg.svd(x, full_matrices=False)
-                           x = dot(diag(s), u)' z:svd
+                           x = dot(diag(s), v)' z:svd
 ```

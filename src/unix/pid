@@ -1,5 +1,5 @@
 ni('ni:unix/io')->child('unix/pid')
-  ->ro('unix/pid_readers.b', qw/pid stdin stdout stderr/)
+  ->ro('unix/pid_readers.b', qw/pid stdin stdout stderr status/)
   ->def('unix/pid_init.b',
     instantiate => fn q{
       my ($class, $pid, $i, $o, $e) = @_;
@@ -12,10 +12,14 @@ ni('ni:unix/io')->child('unix/pid')
     dtor => fn q{shift->await})
 
   ->def('unix/pid_wait.b',
+    running => fn q{not defined $_[0]->{status} and kill 0, $_[0]->{pid}},
+
     await => fn q{
       my $self = shift;
       return $$self{status} if defined $$self{status};
-      $$self{status} = $? if waitpid $$self{pid}, 0;
+      defined(waitpid $$self{pid}, 0)
+        ? $$self{status} = $?
+        : die "unix/pid_wait.b: waitpid: $!";
     })
 
   ->add('unix/has_fd.b')

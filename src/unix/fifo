@@ -9,13 +9,13 @@ ni('ni:unix/io')->child('unix/fifo')
 
   ->add('unix/has_fd.b')
   ->def('unix/fifo_direction.b',
-    read_side  => fn q{
+    r => fn q{
       my $self = shift;
       close $$self{write_fh};
       ni("ni:unix/fd")->new(fileno $$self{read_fh});
     },
 
-    write_side => fn q{
+    w => fn q{
       my $self = shift;
       close $$self{read_fh};
       ni("ni:unix/fd")->new(fileno $$self{write_fh});
