@@ -44,7 +44,7 @@ sub ni::eval {eval shift}
 *{'lib/fn::compile'} = sub {
   my $self = shift;
   $$self{fn} = ni::eval "sub{$$self{code}\n}";
-  die "ni:lib/fn failed to compile $$self{code}: $@\n" if $@;
+  die "ni:/lib/fn failed to compile $$self{code}: $@\n" if $@;
   $$self{fn};
 };
 sub fn($);

@@ -1,4 +1,4 @@
-ni('ni:lib/slice')->new('lib/fn_init.b',
+ni('ni:/lib/slice')->new('/lib/fn_init.b',
   instantiate => fn q{
     my $class = shift;
     my $code  = pop;
@@ -12,17 +12,17 @@ ni('ni:lib/slice')->new('lib/fn_init.b',
     my $self = shift;
     $$self{proto} ||= '';
     $$self{fn} = ni::eval "sub $$self{proto} {$$self{code}\n}";
-    die "ni:lib/fn: failed to compile $$self{code}: $@" if $@;
+    die "ni:/lib/fn: failed to compile $$self{code}: $@" if $@;
     $$self{fn};
   },
   ctor => fn q{shift->compile});
 
 delete @{'lib/fn::'}{qw/new compile/};
-ni('ni:object')->child('lib/fn', 'lib/instantiable.b', 'lib/fn_init.b');
+ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
 
-ni('ni:lib/fn')
-  ->ro('lib/fn_ro.b', qw/code annotations fn/)
-  ->def('lib/fn_ops.b',
+ni('ni:/lib/fn')
+  ->ro('/lib/fn_ro.b', qw/code annotations fn/)
+  ->def('/lib/fn_ops.b',
     '(""' => fn q{shift->{code}},
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
@@ -30,6 +30,6 @@ ni('ni:lib/fn')
 
 delete ${main::}{fn};
 
-ni('ni:main')->def('lib/static_fn.b',
-  fn => ni('ni:lib/fn')->new('($)',  q{ni('ni:lib/fn')->new(@_)}),
-  fp => ni('ni:lib/fn')->new('($$)', q{ni('ni:lib/fn')->new(@_)}));
+ni('ni:main')->def('/lib/static_fn.b',
+  fn => ni('ni:/lib/fn')->new('($)',  q{ni('ni:/lib/fn')->new(@_)}),
+  fp => ni('ni:/lib/fn')->new('($$)', q{ni('ni:/lib/fn')->new(@_)}));

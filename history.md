@@ -4,3 +4,6 @@ Prior to this change, ni used package names like `/object` and `/lib/fn`. I
 would have preferred that (since they're visually distinct from normal perl
 classes), but Perl 5.14 and prior don't support method calls on packages
 beginning with `/`. This caused test failures on centos 5-6 and ubuntu 12.04.
+
+- **2017.0212:** Changed this to just impact packages; now ni named objects
+  begin with `/` as before, but the OO-related behaviors convert this.

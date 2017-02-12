@@ -1,5 +1,5 @@
-ni('ni:object')->child('unix/io')
-  ->def('unix/io_stream.b',
+ni('ni:/object')->child('/unix/io')
+  ->def('/unix/io_stream.b',
     into => fn q{
       local $_;
       my ($self, $dest, $each) = @_;
@@ -10,10 +10,16 @@ ni('ni:object')->child('unix/io')
       }
     })
 
-  ->def('unix/io_constructors.b',
-    '(+' => fn q{ni('ni:unix/cat')->new(@_[0, 1])})
+  ->def('/unix/io_constructors.b',
+    '(+' => fn q{ni('ni:/unix/cat')->new(@_[0, 1])})
 
-  ->def('unix/io_readers.b',
+  ->def('/unix/io_memory.b',
+    read_all => fn q{
+      shift->into(ni("ni:/unix/str")->new(my $data = ""));
+      $data;
+    })
+
+  ->def('/unix/io_readers.b',
     '(@{}' => fn q{my $self = shift; [<$self>]},
     '(<>' => fn q{
       my $fh = shift->read_fh;

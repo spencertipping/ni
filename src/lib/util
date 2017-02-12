@@ -1,4 +1,4 @@
-ni('ni:ni')->def('lib/ni_static_util.b',
+ni('ni:ni')->def('/lib/ni_static_util.b',
   sgr  => fn q{(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x},
   sr   => fn q{(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x},
   swap => fn q{@_[0, 1] = @_[1, 0]},

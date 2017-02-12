@@ -1,6 +1,6 @@
-ni('ni:lib/doc')->doc
+ni('ni:/lib/doc')->doc
   ->synopsis(q'
-    ni("ni:some/class")->doc
+    ni("ni:/some/class")->doc
       ->synopsis(...)
       ->description(...)
       ->eg(...)
@@ -16,7 +16,7 @@ ni('ni:lib/doc')->doc
       method calls:],
 
     eg => fn q[
-      my $doc = ni("ni:lib/doc")->new("foo");
+      my $doc = ni("ni:/lib/doc")->new("foo");
       now $doc->{doc} == [];
       $doc->foo("bar bif baz");
       now $doc->{doc} == [["foo", "bar bif baz"]];
@@ -27,7 +27,7 @@ ni('ni:lib/doc')->doc
       also stores unit tests, which are specified using "eg":],
 
     eg => fn q[
-      my $doc = ni("ni:lib/doc")->new("foo");
+      my $doc = ni("ni:/lib/doc")->new("foo");
       my $passing_test = fn q{return 1};
       my $failing_test = fn q{return 0};
       $doc->eg($passing_test)

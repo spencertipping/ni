@@ -1,9 +1,9 @@
-ni('ni:object')->child('lib/doc', 'lib/named.b')
-  ->def('lib/doc_init.b',
+ni('ni:/object')->child('/lib/doc', '/lib/named.b')
+  ->def('/lib/doc_init.b',
     instantiate => fn q{shift; +{name => shift, doc => []}})
 
-  ->def('lib/doc_namespace.b', namespace => fn q{'ni.doc'})
-  ->def('lib/doc_define.b',
+  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'})
+  ->def('/lib/doc_define.b',
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
@@ -11,7 +11,7 @@ ni('ni:object')->child('lib/doc', 'lib/named.b')
       $self;
     })
 
-  ->def('lib/doc_test.b',
+  ->def('/lib/doc_test.b',
     tests => fn q{
       my $self = shift;
       my @flattened = map @$_, @{$$self{doc}};
@@ -30,10 +30,10 @@ ni('ni:object')->child('lib/doc', 'lib/named.b')
       $self;
     });
 
-ni('ni:lib/behavior')->def('lib/documentable.b',
+ni('ni:/lib/behavior')->def('/lib/documentable.b',
   doc => fn q{
     my $self = shift;
     (my $name = $self->name) =~ s/^[^:]*://;
     return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
-    ni('ni:lib/doc')->new($name);
+    ni('ni:/lib/doc')->new($name);
   });

@@ -1,6 +1,6 @@
-ni('ni:unix/io')->child('unix/str')
-  ->ro('unix/str_ro.b', qw/data start end/)
-  ->def('unix/str_init.b',
+ni('ni:/unix/io')->child('/unix/str')
+  ->ro('/unix/str_ro.b', qw/data start end/)
+  ->def('/unix/str_init.b',
     instantiate => fn q{
       my $class = shift;
       +{data  => \$_[0],
@@ -8,7 +8,7 @@ ni('ni:unix/io')->child('unix/str')
         end   => $_[2] || length $_[0]};
     })
 
-  ->def('unix/str_io.b',
+  ->def('/unix/str_io.b',
     remaining => fn q{my $self = shift; $$self{end} - $$self{start}},
 
     read => fn q{
@@ -33,5 +33,5 @@ ni('ni:unix/io')->child('unix/str')
 
 ni->resolver_for(str => fn q{
   my $s = shift;
-  ni('ni:unix/str')->new(substr($s, 4) . "\n");
+  ni('ni:/unix/str')->new(substr($s, 4) . "\n");
 });

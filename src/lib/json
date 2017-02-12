@@ -4,13 +4,13 @@
     t => "\t");
   my %json_escapes = map +($json_unescapes{$_} => $_), keys %json_unescapes;
   ni('ni:ni')
-    ->defdata('lib/json_data.b',
+    ->defdata('/lib/json_data.b',
       json_unescapes => \%json_unescapes,
       json_escapes   => \%json_escapes);
 }
 
 ni('ni:ni')
-  ->def('lib/json.b',
+  ->def('/lib/json.b',
     json_unescape_one =>
       fp('($)', q{$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1}),
 
