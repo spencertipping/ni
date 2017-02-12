@@ -13,9 +13,6 @@ envs=( alpine        alpine-minimal
        ubuntu-16.04-p3
        ubuntu-16.10  ubuntu-16.10-minimal )
 
-rm -f test.log
-gitlab_yaml > .gitlab-ci.yml
-
 build_ni_stuff() { ./build >>test.log; }
 
 image() { docker build -q -f env/$1 -t ni/env-$1 .; }
@@ -69,6 +66,9 @@ gitlab_yaml() {
     echo "    - ./ni --internal/test"
   done
 }
+
+rm -f test.log
+gitlab_yaml > .gitlab-ci.yml
 
 c=$1
 shift
