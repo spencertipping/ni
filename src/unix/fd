@@ -3,7 +3,8 @@ ni('ni:/unix/io')->child('/unix/fd')
   ->def('/unix/fd_init.b',
     instantiate => fn q{
       my ($class, $fd) = @_;
-      +{fd => $fd, fh => undef};
+      +{fd => ref $fd ? fileno $fd : $fd,
+        fh => ref $fd ? $fd        : undef};
     })
 
   ->def('/unix/fd_shell.b',

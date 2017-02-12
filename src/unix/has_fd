@@ -1,8 +1,8 @@
 ni('ni:/lib/branch')->new('/unix/has_fd.b')
   ->def('/unix/fd_stdio.b',
-    be_stdin  => fn q{ni("ni:unix/fd")->new(fileno shift->read_fh)->move_to(0)},
-    be_stdout => fn q{ni("ni:unix/fd")->new(fileno shift->write_fh)->move_to(1)},
-    be_stderr => fn q{ni("ni:unix/fd")->new(fileno shift->write_fh)->move_to(2)})
+    be_stdin  => fn q{ni("ni:/unix/fd")->new(fileno shift->read_fh)->be(0)},
+    be_stdout => fn q{ni("ni:/unix/fd")->new(fileno shift->write_fh)->be(1)},
+    be_stderr => fn q{ni("ni:/unix/fd")->new(fileno shift->write_fh)->be(2)})
 
   ->def('/unix/fd_safeio.b',
     read => fn q{

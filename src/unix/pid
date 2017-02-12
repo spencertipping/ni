@@ -19,7 +19,7 @@ ni('ni:/unix/io')->child('/unix/pid')
       return $$self{status} if defined $$self{status};
       defined(waitpid $$self{pid}, 0)
         ? $$self{status} = $?
-        : die "unix/pid_wait.b: waitpid: $!";
+        : die "/unix/pid_wait.b: waitpid: $!";
     })
 
   ->add('/unix/has_fd.b')
@@ -32,20 +32,20 @@ ni('ni:ni')->def('/lib/ni_fork.b',
   fork_with => fn q{
     my $fn     = pop;
     my %pipes  = @_;
-    my $stdin  = $pipes{stdin}  || ni('ni:unix/fifo')->new;
-    my $stdout = $pipes{stdout} || ni('ni:unix/fifo')->new;
-    my $stderr = $pipes{stderr} || ni('ni:unix/fifo')->new;
+    my $stdin  = $pipes{stdin}  || ni('ni:/unix/fifo')->new;
+    my $stdout = $pipes{stdout} || ni('ni:/unix/fifo')->new;
+    my $stderr = $pipes{stderr} || ni('ni:/unix/fifo')->new;
     my $pid    = fork;
     die "/lib/ni_fork.b: failed to fork: $!" unless defined $pid;
 
     return ni('ni:/unix/pid')->new($pid,
-      exists $pipes{stdin}  ? undef : $stdin->write_side,
-      exists $pipes{stdout} ? undef : $stdout->read_side,
-      exists $pipes{stderr} ? undef : $stderr->read_side) if $pid;
+      exists $pipes{stdin}  ? undef : $stdin->w,
+      exists $pipes{stdout} ? undef : $stdout->r,
+      exists $pipes{stderr} ? undef : $stderr->r) if $pid;
 
-    exists $pipes{stdin}  ? $stdin->be_stdin   : $stdin->read_side->be_stdin;
-    exists $pipes{stdout} ? $stdout->be_stdout : $stdout->write_side->be_stdout;
-    exists $pipes{stderr} ? $stderr->be_stderr : $stderr->write_side->be_stderr;
+    exists $pipes{stdin}  ? $stdin->be_stdin   : $stdin->r->be_stdin;
+    exists $pipes{stdout} ? $stdout->be_stdout : $stdout->w->be_stdout;
+    exists $pipes{stderr} ? $stderr->be_stderr : $stderr->w->be_stderr;
     exit &$fn($stdin, $stdout, $stderr);
   });
 

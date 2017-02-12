@@ -1,4 +1,5 @@
 ni('ni:/object')->child('/unix/io')
+  ->def('/unix/io_ops.b', '(bool' => fn q{1})
   ->def('/unix/io_stream.b',
     into => fn q{
       local $_;
