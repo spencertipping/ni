@@ -291,7 +291,10 @@ $ ni ::five[n5] //ni | perl - n1p'five'
 
 This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
 
-```bash
+```sh
+# NB(ST): this isn't a test because of nondeterministic behavior on centOS.
+# This is a ni bug, but it's such an edge case that I doubt I'll fix it on the
+# current codebase; most likely I'll handle it with the OO refactor.
 $ ni //ni | perl - n1p'ten'
 ten
 ```

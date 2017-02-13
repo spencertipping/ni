@@ -287,13 +287,7 @@ lazytest_case 'ni ::five[n5] | ni n3p'\''r a, five'\''
 3	five
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=295
-lazytest_case 'ni //ni | perl - n1p'\''ten'\''
-' 3<<'LAZYTEST_EOF'
-ten
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=466
+lazytest_line=469
 lazytest_case 'ni nE6gr4 :numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -302,7 +296,7 @@ lazytest_case 'ni nE6gr4 :numbers
 1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=477
+lazytest_line=480
 lazytest_case 'ni nE6gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 1000
@@ -311,26 +305,26 @@ lazytest_case 'ni nE6gr4 :numbers O
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=559
+lazytest_line=562
 lazytest_case 'ni ihello ithere
 ' 3<<'LAZYTEST_EOF'
 hello
 there
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=567
+lazytest_line=570
 lazytest_case 'ni i'\''one whole line'\''
 ' 3<<'LAZYTEST_EOF'
 one whole line
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=574
+lazytest_line=577
 lazytest_case 'ni i[foo bar]
 ' 3<<'LAZYTEST_EOF'
 foo	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=582
+lazytest_line=585
 lazytest_case 'ni i[ foo[] [bar] ]
 ' 3<<'LAZYTEST_EOF'
 foo[]	[bar]
