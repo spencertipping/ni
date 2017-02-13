@@ -17,7 +17,7 @@ generate_gitlab_ci() {
   for e in ${envs[@]}; do
     for m in ${markdowns[@]}; do
       echo "${e}_$m:"
-      echo "  image: ni/env-$e"
+      echo "  image: spencertipping/ni-env-$e"
       echo "  script:"
       echo "    - ./test --ci $m"
     done
