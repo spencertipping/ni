@@ -84,10 +84,7 @@ case $c in
   bash /tmp/tests.sh || exit 1
   ;;
 
---nop)
-  ;;
-
-*)
+--full)
   echo "NOTE: standard error is redirected into test.log"
   build_ni_stuff
   for e in ${envs[@]}; do
@@ -101,4 +98,9 @@ case $c in
     tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
     echo
   done 2>test.log
+  ;;
+
+*)
+  build_ni_stuff
+  ;;
 esac
