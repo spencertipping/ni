@@ -943,22 +943,6 @@ lazytest_case 'wc -l < a-million-things
 ' 3<<'LAZYTEST_EOF'
 1000000
 LAZYTEST_EOF
-lazytest_file='doc/warnings.md'
-lazytest_line=66
-lazytest_case 'ni n1000000 =\>a-million-things Bn r5
-' 3<<'LAZYTEST_EOF'
-1
-2
-3
-4
-5
-LAZYTEST_EOF
-lazytest_file='doc/warnings.md'
-lazytest_line=72
-lazytest_case 'wc -l < a-million-things
-' 3<<'LAZYTEST_EOF'
-1000000
-LAZYTEST_EOF
 lazytest_file='doc/script.md'
 lazytest_line=11
 lazytest_case 'mkdir echo-script

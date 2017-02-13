@@ -53,6 +53,8 @@ export NI_NO_HOME=yes           # IMPORTANT
 
 ./ni --dev/doc-check
 
+./test --update
+
 for t in $(ni --doc); do
   ./ni $t $(./ni $t) > reference/${t#--doc/}.md
 done

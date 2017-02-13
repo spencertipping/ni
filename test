@@ -29,13 +29,17 @@ if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   shift 2
 fi
 
-build_ni_stuff() {
-  ./build
+build_tests() {
   {
     echo cd /tmp
     echo export NI_NO_MONITOR=yes
     ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
   } > dev/tests.sh
+}
+
+build_ni_stuff() {
+  ./build
+  build_tests
 }
 
 tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
@@ -100,7 +104,7 @@ case $c in
   done 2>test.log
   ;;
 
-*)
-  build_ni_stuff
+--update|*)
+  build_tests
   ;;
 esac
