@@ -151,8 +151,8 @@ ni('ni:/object')->child('/lib/image')
       my $v = $_[1];
       return 'undef' unless defined $v;
       return $v if Scalar::Util::looks_like_number $v;
-      $v =~ s/([\\\\'])/\\\\$1/g;
-      "q'$v'";
+      $v =~ s/([\\\\#])/\\\\$1/g;
+      "q#$v#";
     },
 
     quote_blessed => fn q{

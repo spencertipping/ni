@@ -1,12 +1,10 @@
 ni('ni:/unix/io')->child('/unix/pid')
-  ->ro('/unix/pid_readers.b', qw/pid stdin stdout stderr status/)
+  ->ro('/unix/pid_readers.b', qw/pid status/)
   ->def('/unix/pid_init.b',
     instantiate => fn q{
-      my ($class, $pid, $i, $o, $e) = @_;
+      my ($class, $pid, %exposed_fds) = @_;
       +{pid    => $pid,
-        stdin  => $i,
-        stdout => $o,
-        stderr => $e,
+        fds    => \%exposed_fds,
         status => undef};
     },
     dtor => fn q{shift->await})
@@ -22,57 +20,35 @@ ni('ni:/unix/io')->child('/unix/pid')
         : die "/unix/pid_wait.b: waitpid: $!";
     })
 
-  ->add('/unix/has_fd.b')
+  ->has_fd
   ->def('/unix/pid_io.b',
-    read_fh  => fn q{shift->{stdout}->read_fh},
-    write_fh => fn q{shift->{stdin}->write_fh});
+    read_fh  => fn q{shift->fd(1)->read_fh},
+    write_fh => fn q{shift->fd(0)->write_fh})
 
-ni('ni:ni')->def('/lib/ni_fork.b',
-  fork      => fp('(&)', q{ni::fork_with(shift)}),
-  fork_with => fn q{
-    my $fn     = pop;
-    my %pipes  = @_;
-    my $stdin  = $pipes{stdin}  || ni('ni:/unix/fifo')->new;
-    my $stdout = $pipes{stdout} || ni('ni:/unix/fifo')->new;
-    my $stderr = $pipes{stderr} || ni('ni:/unix/fifo')->new;
-    my $pid    = fork;
-    die "/lib/ni_fork.b: failed to fork: $!" unless defined $pid;
-
-    return ni('ni:/unix/pid')->new($pid,
-      exists $pipes{stdin}  ? undef : $stdin->w,
-      exists $pipes{stdout} ? undef : $stdout->r,
-      exists $pipes{stderr} ? undef : $stderr->r) if $pid;
-
-    exists $pipes{stdin}  ? $stdin->be_stdin   : $stdin->r->be_stdin;
-    exists $pipes{stdout} ? $stdout->be_stdout : $stdout->w->be_stdout;
-    exists $pipes{stderr} ? $stderr->be_stderr : $stderr->w->be_stderr;
-    exit &$fn($stdin, $stdout, $stderr);
-  });
-
-ni('ni:ni')->def('/lib/ni_fork_exec.b',
-  fork_exec => fn q{
-    my @argv = @_;
-    ni::fork {exec @argv or die "ni:/unix/pid.c: failed to exec @argv: $!"};
-  });
+  ->def('/unix/pid_accessors.b',
+    fd     => fn q{$_[0]->{fds}{$_[1]}},
+    stdin  => fn q{shift->fd(0)},
+    stdout => fn q{shift->fd(1)},
+    stderr => fn q{shift->fd(2)});
 
 ni->resolver_for(
-  sh => fn q{ni::fork_exec '/bin/sh', '-c', substr shift, 3});
+  sh => fn q{
+    ni('ni:/unix/exec')->new('/bin/sh', '-c', substr shift, 3)->fork;
+  });
 
 ni('ni:/unix/pid')->doc
-  ->synopsis(q'
-    my $pid = ni::fork {something};
-    my $pid = ni::fork_with(stdin => $mypipe, ..., sub {something});
-    my $pid = ni::fork_exec("ls", "-l")')
-
   ->eg(fn q{
-    my $pid = ni("sh:seq 4");
+    my $pid = ni('sh:seq 4');
     my $data = $pid->read_all;
     now [$pid->await, $data] == [0, "1\n2\n3\n4\n"];
   })
 
   ->eg(fn q{
-    my $pid = ni("sh:seq 10");
-    my $filter = ni::fork_with stdin => $pid->stdout, sub {exec 'egrep', '[13579]$'};
-    my $data = $filter->read_all;
-    now [$pid->await, $filter->await, $data] == [0, 0, "1\n3\n5\n7\n9\n"];
+    my $seq = ni('sh:seq 10');
+    my $grep = ni('ni:/unix/exec')->new('egrep', '[13579]$')
+      ->fds(0 => $seq->stdout)
+      ->fork;
+    now $grep->read_all == "1\n3\n5\n7\n9\n";
+    now $seq->await == 0;
+    now $grep->await == 0;
   });

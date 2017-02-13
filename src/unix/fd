@@ -19,7 +19,7 @@ ni('ni:/unix/io')->child('/unix/fd')
       $self;
     })
 
-  ->add('/unix/has_fd.b')
+  ->has_fd
   ->def('/unix/fd_io.b',
     read_fh => fn q{
       my $self = shift;

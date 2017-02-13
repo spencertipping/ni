@@ -25,6 +25,7 @@ install_stuff() {
     src/unix/file \
     src/unix/cat \
     src/unix/str \
+    src/unix/exec \
     src/unix/pid \
     src/unix/fifo \
     src/unix/pipeline

@@ -1,0 +1,113 @@
+ni('ni:/object')->child('/unix/exec')
+  ->ro('/unix/exec_ro.b', qw/argv/)
+  ->def('/unix/exec_init.b',
+    instantiate => fn q{
+      my ($class, @argv) = @_;
+      +{argv  => \@argv,
+        env   => {%ENV},
+        fds   => {},
+        pipes => {}};
+    })
+
+  ->def('/unix/exec_io_setup.b',
+    fds => fn q{
+      my ($self, %fds) = @_;
+      return $$self{fds} unless keys %fds;
+      @{$$self{fds}}{keys %fds} = values %fds;
+      $self;
+    },
+
+    pipes => fn q{
+      local $^F = 1024;
+      my ($self, @fds) = @_;
+      return $$self{pipes} unless @fds;
+      for (@fds) {
+        die "ni:/unix/exec: must append 'r' or 'w' to extended fds"
+          if $_ > 2 && !/^(\d+)[rw]$/;
+        $$self{pipes}{$_} ||= $$self{fds}{$_} = ni("ni:/unix/fifo")->new;
+      }
+      $self;
+    },
+
+    setup_stdio => fn q{
+      my $self = shift;
+      $self->pipes(grep !exists $$self{fds}{$_}, 0..2);
+      $self;
+    })
+
+  ->def('/unix/exec_io_accessors.b',
+    fd => fn q{
+      my ($self, $fd) = @_;
+      return $$self{pipes}{$fd} if exists $$self{pipes}{$fd};
+      $self->pipes($fd)->fd($fd);
+    },
+
+    stdin  => fn q{shift->fd(0)},
+    stdout => fn q{shift->fd(1)},
+    stderr => fn q{shift->fd(2)})
+
+  ->def('/unix/exec_env.b',
+    env => fn q{
+      my ($self, %env) = @_;
+      return $$self{env} unless keys %env;
+      @{$$self{env}}{keys %env} = values %env;
+      $self;
+    })
+
+  ->def('/unix/exec_fork.b',
+    move_fds => fn q{
+      my $self = shift;
+      $$self{fds}{$_}->be($_) for keys %{$$self{fds}};
+      $self;
+    },
+
+    exec => fn q{
+      no warnings 'numeric';
+      my $self = shift->setup_stdio;
+      local %ENV = %{$$self{env}};
+      $self->move_fds;
+      for (keys %{$$self{pipes}}) {
+        my $p = $$self{pipes}{$_};
+        ($_ < 2 ? !$_ : /r$/) ? $p->r : $p->w;
+      }
+      my @argv = (@{$$self{argv}}, @_);
+      { exec @argv };
+      print STDERR "ni:/unix/exec: exec @argv failed: $!";
+      exit 1;
+    },
+
+    fork => fn q{
+      no warnings 'numeric';
+      my $self = shift->setup_stdio;
+      my $pid = fork;
+      die "ni:/unix/exec: fork failed: $!" unless defined $pid;
+      return $self->exec(@_) unless $pid;
+      for (keys %{$$self{pipes}}) {
+        my $p = $$self{pipes}{$_};
+        ($_ < 2 ? $_ : /r$/) ? $p->w : $p->r;
+      }
+      ni('ni:/unix/pid')->new($pid, %{$$self{pipes}});
+    })
+
+  ->doc
+  ->synopsis(q'
+    my $pid = ni("ni:/unix/exec")->new("ls", "-l")
+      ->fds(1 => ni"file:foo")
+      ->env(ENV_VAR => "value", ENV2 => "val2")
+      ->fork;
+    $? = $pid->await or die "ls -l failed: $?";')
+
+  ->description(
+    q[An object that represents a fork+exec operation that hasn't yet happened.
+      It allows you to incrementally specify the context of the process,
+      including environment variables and file descriptor mappings. It is also
+      an IO object and will set up FIFO connections to stdin/out if you use it
+      this way.])
+
+  ->eg(fn q{
+    my $e   = ni('ni:/unix/exec')->new('sh', '-c', 'echo hi');
+    my $out = $e->stdout;
+    my $pid = $e->fork;
+    now $out->read_all == "hi\n";
+    now $pid->await == 0;
+  });

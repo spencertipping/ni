@@ -15,7 +15,7 @@ ni('ni:ni')
       fp('($)', q{$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1}),
 
     json_unescape => fp('($)', q{
-      my $x = substr $_[0], 1, -1;
+      my $x = substr shift, 1, -1;
       $x =~ s/\\\\(["\\\\\/bfnrt]|u[0-9a-fA-F]{4})/ni::json_unescape_one($1)/eg;
       $x;
     }),
@@ -48,7 +48,7 @@ ni('ni:ni')
     #),
 
     json_escape => fp('($)', q{
-      (my $x = $_[0]) =~ s/([\b\f\n\r\t"\\\\])/"\\\\" . $ni::json_escapes{$1}/eg;
+      (my $x = shift) =~ s/([\b\f\n\r\t"\\\\])/"\\\\" . ($ni::json_escapes{$1} || "")/eg;
       "\"$x\"";
     }),
 

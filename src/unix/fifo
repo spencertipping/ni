@@ -7,16 +7,25 @@ ni('ni:/unix/io')->child('/unix/fifo')
       +{read_fh => $r, write_fh => $w};
     })
 
-  ->add('/unix/has_fd.b')
+  ->def('/unix/fifo_stdio.b',
+    be => fn q{
+      my ($self, $fd) = @_;
+      (!$fd || $fd > 2 && $fd =~ s/[rw]$// && $1 eq 'r'
+        ? $self->r
+        : $self->w)->be($fd);
+      $self;
+    })
+
+  ->has_fd
   ->def('/unix/fifo_direction.b',
     r => fn q{
       my $self = shift;
       close $$self{write_fh};
-      ni("ni:/unix/fd")->new(fileno $$self{read_fh});
+      $self->read_fd;
     },
 
     w => fn q{
       my $self = shift;
       close $$self{read_fh};
-      ni("ni:/unix/fd")->new(fileno $$self{write_fh});
+      $self->write_fd;
     });

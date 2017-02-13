@@ -69,10 +69,10 @@ ni('ni:/object')->child('/lib/ni')
         my $r = eval {&$t};
         if ($@) {
           ++$fails;
-          print "FAIL: $@ in $t\n";
+          print "FAIL\n$@ in\n$t\n\n";
         } elsif (!$r) {
           ++$fails;
-          print "FAIL: $r\n";
+          print "FAIL\n$r\n";
         }
       }
       my $passed = @tests - $fails;
