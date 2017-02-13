@@ -16,7 +16,7 @@ markdowns=( $(ls doc | sed 's/.md$//' ) )
 generate_gitlab_ci() {
   for e in ${envs[@]}; do
     echo "$e:"
-    echo "  image: spencertipping/ni-env-$e"
+    echo "  image: spencertipping/ni-env-dev-$e"
     echo "  script:"
     echo "    - ./test --ci"
   done
@@ -39,7 +39,7 @@ build_ni_stuff() {
 }
 
 tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
-image() { docker build -q -f env/$1 -t ni/env-$1 .; }
+image() { docker build -q -f env/$1 -t spencertipping/ni-env-dev-$1 .; }
 
 default_image=ubuntu-16.04
 
@@ -55,7 +55,8 @@ case $c in
     echo
     echo "BUILDING $e"
     echo
-    docker build -f env/$e -t ni/env-$e .
+    docker build -f env/$e -t spencertipping/ni-env-dev-$e .
+    docker push spencertipping/ni-env-dev-$e
   done
   ;;
 
@@ -80,7 +81,7 @@ case $c in
   cp dev/tests.sh /tmp/
   cp ni /usr/bin/
   export SKIP_DOCKER=yes                # FIXME when possible
-  bash /tmp/tests.sh
+  bash /tmp/tests.sh || exit 1
   ;;
 
 --nop)
