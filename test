@@ -77,12 +77,7 @@ case $c in
   ;;
 
 --ci)
-  {
-    echo cd /tmp
-    echo export NI_NO_MONITOR=yes
-    echo export SKIP_DOCKER=yes         # FIXME if possible
-    ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
-  } > /tmp/tests.sh
+  cp dev/tests.sh /tmp/
   cp ni /usr/bin/
   bash /tmp/tests.sh
   ;;
