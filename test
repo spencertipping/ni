@@ -82,9 +82,9 @@ case $c in
     echo export NI_NO_MONITOR=yes
     echo export SKIP_DOCKER=yes         # FIXME if possible
     ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
-  } > dev/tests.sh
+  } > /tmp/tests.sh
   cp ni /usr/bin/
-  bash dev/tests.sh
+  bash /tmp/tests.sh
   ;;
 
 --nop)
