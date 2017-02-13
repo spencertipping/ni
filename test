@@ -79,6 +79,7 @@ case $c in
 --ci)
   cp dev/tests.sh /tmp/
   cp ni /usr/bin/
+  export SKIP_DOCKER=yes                # FIXME when possible
   bash /tmp/tests.sh
   ;;
 
