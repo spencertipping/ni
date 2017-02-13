@@ -24,20 +24,16 @@ ni('ni:/unix/io')->child('/unix/fd')
     read_fh => fn q{
       my $self = shift;
       return $self->{fh} if Scalar::Util::openhandle $self->{fh};
-      open my $fh, '<&=', $self->{fd}
-        or die "ni:/unix/fd $self->{fd} failed to read: $!";
+      open my $fh, '<&=', $$self{fd}
+        or die "ni:/unix/fd $$self{fd} failed to read: $!";
       $self->{fh} = $fh;
     },
     write_fh => fn q{
       my $self = shift;
       return $self->{fh} if Scalar::Util::openhandle $self->{fh};
-      open my $fh, '>&=', $self->{fd}
-        or die "ni:/unix/file $self->{fd} failed to write: $!";
+      open my $fh, '>&=', $$self{fd}
+        or die "ni:/unix/file $$self{fd} failed to write: $!";
       $self->{fh} = $fh;
     });
 
-ni->resolver_for(fd => fn q{
-  my $f = shift;
-  $f =~ s/^fd:(?:\/\/)?//;
-  ni('ni:/unix/fd')->new($f);
-});
+ni->resolver_for(fd => fn q{ni('ni:/unix/fd')->new(0 + substr shift, 3)});

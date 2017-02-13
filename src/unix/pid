@@ -38,6 +38,10 @@ ni->resolver_for(
 
 ni('ni:/unix/pid')->doc
   ->eg(fn q{
+    now [ni('sh:true')->await, ni('sh:false')->await] == [0, 1 << 8];
+  })
+
+  ->eg(fn q{
     my $pid = ni('sh:seq 4');
     my $data = $pid->read_all;
     now [$pid->await, $data] == [0, "1\n2\n3\n4\n"];

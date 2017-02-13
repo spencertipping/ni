@@ -6,8 +6,8 @@ ni('ni:/object')->child('/unix/io')
       my ($self, $dest, $each) = @_;
       my $block_size = $self->can('read_size') ? $self->read_size : 8192;
       while ($self->read($_, $block_size)) {
-        &$each($_) if defined $each;
         $dest->write($_);
+        &$each($_) && return if defined $each;
       }
     })
 
@@ -16,13 +16,6 @@ ni('ni:/object')->child('/unix/io')
 
   ->def('/unix/io_memory.b',
     read_all => fn q{
-      shift->into(ni("ni:/unix/str")->new(my $data = ""));
+      shift->into(ni('ni:/unix/str')->new(my $data = ''));
       $data;
-    })
-
-  ->def('/unix/io_readers.b',
-    '(@{}' => fn q{my $self = shift; [<$self>]},
-    '(<>' => fn q{
-      my $fh = shift->read_fh;
-      # TODO: buffered line reading with a pushback queue
     });
