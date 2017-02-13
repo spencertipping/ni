@@ -11,6 +11,21 @@ envs=( alpine
        ubuntu-16.04-p3
        ubuntu-16.10 )
 
+markdowns=( $(ls doc | sed 's/.md$//' ) )
+
+generate_gitlab_ci() {
+  for e in ${envs[@]}; do
+    for m in ${markdowns[@]}; do
+      echo "${e}_$m:"
+      echo "  image: ni/env-$e"
+      echo "  script:"
+      echo "    - ./test --ci $m"
+    done
+  done
+}
+
+generate_gitlab_ci > .gitlab-ci.yml
+
 if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   test_set=$2
   shift 2
@@ -61,6 +76,15 @@ case $c in
 -c|--cancel)
   touch .test-cancel
   docker rm -f ni-test ni-test-hadoop
+  ;;
+
+--ci)
+  export SKIP_DOCKER=yes                # for now; CI limitation
+  cp ni /usr/bin/
+  ./lazytest doc/$1.md | bash
+  ;;
+
+--nop)
   ;;
 
 *)
