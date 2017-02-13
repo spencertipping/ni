@@ -15,12 +15,10 @@ markdowns=( $(ls doc | sed 's/.md$//' ) )
 
 generate_gitlab_ci() {
   for e in ${envs[@]}; do
-    for m in ${markdowns[@]}; do
-      echo "${e}_$m:"
-      echo "  image: spencertipping/ni-env-$e"
-      echo "  script:"
-      echo "    - ./test --ci $m"
-    done
+    echo "$e:"
+    echo "  image: spencertipping/ni-env-$e"
+    echo "  script:"
+    echo "    - ./test --ci"
   done
 }
 
@@ -81,7 +79,7 @@ case $c in
 --ci)
   export SKIP_DOCKER=yes                # for now; CI limitation
   cp ni /usr/bin/
-  ./lazytest doc/$1.md | bash
+  bash dev/tests.sh
   ;;
 
 --nop)
