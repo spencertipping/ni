@@ -17,6 +17,15 @@ ni('ni:/object')->child('/lib/ni')
       &$fn($w);
       close $w;
       rename $r, $0 or die "ni: failed to rename: $!";
+    },
+
+    extend => fn q{
+      my ($self, $f) = @_;
+      my $r = do $f;
+      die "ni: failed to parse $f: $@" if $@;
+      die "ni: failed to execute $f: $!" unless defined $r;
+      die "ni: failed to run $f: $!" unless $r;
+      $self;
     })
 
   ->def('/lib/ni_image.b',
@@ -47,12 +56,7 @@ ni('ni:/object')->child('/lib/ni')
 
     '--internal/+=' => fn q{
       my $self = shift;
-      for (@_) {
-        my $r = do $_;
-        die "ni: failed to parse $_: $@" if $@;
-        die "ni: failed to execute $_: $!" unless defined $r;
-        die "ni: failed to run $_: $!" unless $r;
-      }
+      $self->extend($_) for @_;
       my $q = $self->quoted(use_newlines => 1);
       $self->modify(sub {$q->write(shift)});
       0;
@@ -75,9 +79,8 @@ ni('ni:/object')->child('/lib/ni')
           print "FAIL\n$r\n";
         }
       }
-      my $passed = @tests - $fails;
-      print "$passed test(s) passed\n";
-      print "$fails  test(s) failed\n";
+      printf "% 4d test(s) passed\n", @tests - $fails;
+      printf "% 4d test(s) failed\n", $fails;
       !!$fails;
     },
 

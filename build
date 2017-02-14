@@ -19,16 +19,7 @@ install_stuff() {
     src/lib/util \
     src/doc/internal/doc \
     src/doc/internal/class \
-    src/unix/io \
-    src/unix/has_fd \
-    src/unix/fd \
-    src/unix/file \
-    src/unix/cat \
-    src/unix/str \
-    src/unix/exec \
-    src/unix/pid \
-    src/unix/fifo \
-    src/unix/pipeline
+    src/unix.pl
 }
 
 boot_build() {
