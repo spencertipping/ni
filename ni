@@ -4499,7 +4499,7 @@ sub wf {
   my $f = shift;
   mkdir_p dirname $f;
   open my $fh, "> $f" or die "wf $f: $!";
-  print $fh $_ for @_;
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
   $f;
 }
