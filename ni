@@ -1091,6 +1091,7 @@ for my $t (@tests) {
 }
 my $passed = @tests - $fails;
 print "$passed test(s) passed\\n";
+print "$fails  test(s) failed\\n";
 !!$fails;#;
 $Ud=bless({$o,$Sd,$q,$Td,$s,$t},$u);
 $Vd=q#run#;
