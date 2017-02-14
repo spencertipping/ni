@@ -1012,11 +1012,12 @@ $jd=q#/lib/ni#;
 $kd={};
 $ld=q#extend#;
 $md=[];
-$nd=q#my ($self, $f) = @_;
-my $r = do $f;
-die "ni: failed to parse $f: $@" if $@;
-die "ni: failed to execute $f: $!" unless defined $r;
-die "ni: failed to run $f: $!" unless $r;
+$nd=q#my $self = shift;
+for (@_) {
+  my $r = do $_;
+  die "ni: failed to parse $_: $@" if $@;
+  die "ni: failed to execute $_: $!" unless defined $r;
+}
 $self;#;
 $od=bless({$o,$md,$q,$nd,$s,$t},$u);
 $pd=q#is_mutable#;
