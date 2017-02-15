@@ -126,11 +126,18 @@ $(caterwaul(':all')(function ($) {
                              cy                    = lh >>> 1,
                              axes                  = data_state.frame.axes /!axis_map,
                              m                     = v /!camera.m,
-                             outline_one(x, y, z)  = oc.strokeRect(cx + scale*x/z - 2, cy - scale*y/z - 2, 5, 5) -when [z > 0],
-                             outline(i)            = outline_one(p[0], p[1], p[2]) -where [p = m.transform([axes[0] ? axes[0].p(i) : 0,
-                                                                                                            axes[1] ? axes[1].p(i) : 0,
-                                                                                                            axes[2] ? axes[2].p(i) : 0, 1]) /!camera.norm],
-                             outline_points(c, is) = oc.strokeStyle /eq.c -then- is *!outline /seq],    // TODO: optimize
+
+                             outline_points = function (c, is) {
+                               oc.strokeStyle = c;
+                               var t = +new Date;
+                               for (var i = 0; i < is.length && +new Date - t < 20; ++i) {
+                                 var pi = is[i];
+                                 var p  = m.transform([axes[0] ? axes[0].p(pi) : 0,
+                                                       axes[1] ? axes[1].p(pi) : 0,
+                                                       axes[2] ? axes[2].p(pi) : 0, 1] /!camera.norm);
+                                 if (p[2] > 0) oc.strokeRect(cx + scale*p[0]/p[2] - 2, cy - scale*p[1]/p[2] - 2, 5, 5);
+                               }
+                             }],
 
         axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
