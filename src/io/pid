@@ -3,7 +3,6 @@ ni('ni:/io/object')->child('/io/pid')
   ->def('/io/pid_init.b',
     instantiate => fn q{
       my ($class, $pid, $argv, $env, %external_fds) = @_;
-      print STDERR "instantiating @$argv\n";
       +{pid          => $pid,
         argv         => $argv,
         env          => $env,

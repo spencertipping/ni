@@ -6,14 +6,11 @@ ni('ni:/object')->child('/io/object')
       my ($self, $dest, $each) = @_;
       my $n;
       my $block_size = $self->can('read_size') ? $self->read_size : 32768;
-      print STDERR "reading...\n";
       while (($n = $self->read($_, $block_size)) > 0) {
-        print STDERR "got $n bytes\n";
         $dest->write($_);
         &$each($_, $n) && return if defined $each;
-        print STDERR "going around again\n";
       }
-      print STDERR "done with into\n";
+      $self;
     })
 
   ->def('/io/object_checks.b',

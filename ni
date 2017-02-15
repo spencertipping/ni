@@ -535,14 +535,11 @@ $p7=q#local $_;
 my ($self, $dest, $each) = @_;
 my $n;
 my $block_size = $self->can('read_size') ? $self->read_size : 32768;
-print STDERR "reading...\\n";
 while (($n = $self->read($_, $block_size)) > 0) {
-  print STDERR "got $n bytes\\n";
   $dest->write($_);
   &$each($_, $n) && return if defined $each;
-  print STDERR "going around again\\n";
 }
-print STDERR "done with into\\n";#;
+$self;#;
 $q7=bless({$o,$o7,$q,$p7,$s,$t},$u);
 $r7={$n7,$q7};
 $s7=q#/io/object_stream.b#;
@@ -748,7 +745,7 @@ $va=q#exec#;
 $wa=[];
 $xa=q#my $self = shift->setup_stdio->move_fds;
 my @argv = (@{$$self{argv}}, @_);
-\#delete $$self{external_fds};
+$_->close for values %{$$self{external_fds}};
 local %ENV = %{$$self{env}};
 { exec @argv };
 $self->stderr("exec failed", $!);
@@ -759,7 +756,8 @@ $Aa=[];
 $Ba=q#my $self = shift->setup_stdio;
 my $pid  = $self->io_check_defined(*CORE::fork);
 exit $self->exec(@_) unless $pid;
-\#delete $$self{internal_fds};
+$_->close for values %{$$self{internal_fds}};
+delete $$self{internal_fds};
 ni('ni:/io/pid')->new(
   $pid,
   [@{$$self{argv}}, @_],
@@ -1051,7 +1049,6 @@ $gf=q#shift->await#;
 $hf=bless({$o,$ff,$q,$gf,$s,$t},$u);
 $if=[];
 $jf=q#my ($class, $pid, $argv, $env, %external_fds) = @_;
-print STDERR "instantiating @$argv\\n";
 +{pid          => $pid,
   argv         => $argv,
   env          => $env,

@@ -92,7 +92,7 @@ ni('ni:/io/object')->child('/io/exec')
     exec => fn q{
       my $self = shift->setup_stdio->move_fds;
       my @argv = (@{$$self{argv}}, @_);
-      delete $$self{external_fds};
+      $_->close for values %{$$self{external_fds}};
       local %ENV = %{$$self{env}};
       { exec @argv };
       $self->stderr("exec failed", $!);
@@ -103,6 +103,7 @@ ni('ni:/io/object')->child('/io/exec')
       my $self = shift->setup_stdio;
       my $pid  = $self->io_check_defined(*CORE::fork);
       exit $self->exec(@_) unless $pid;
+      $_->close for values %{$$self{internal_fds}};
       delete $$self{internal_fds};
       ni('ni:/io/pid')->new(
         $pid,
