@@ -1,42 +1,38 @@
-ni('ni:/unix/io')->child('/unix/pid')
-  ->ro('/unix/pid_readers.b', qw/pid status/)
-  ->def('/unix/pid_init.b',
+ni('ni:/io/object')->child('/io/pid')
+  ->ro('/io/pid_readers.b', qw/pid status/)
+  ->def('/io/pid_init.b',
     instantiate => fn q{
-      my ($class, $pid, %exposed_fds) = @_;
-      +{pid    => $pid,
-        fds    => \%exposed_fds,
-        status => undef};
+      my ($class, $pid, %external_fds) = @_;
+      +{pid          => $pid,
+        external_fds => \%external_fds,
+        status       => undef};
     },
     dtor => fn q{shift->await})
 
-  ->def('/unix/pid_wait.b',
+  ->def('/io/pid_wait.b',
     running => fn q{not defined $_[0]->{status} and kill 0, $_[0]->{pid}},
 
     await => fn q{
       my $self = shift;
       return $$self{status} if defined $$self{status};
-      defined(waitpid $$self{pid}, 0)
-        ? $$self{status} = $?
-        : die "/unix/pid_wait.b: waitpid: $!";
+      $self->io_check_defined(\&waitpid, $$self{pid}, 0);
+      $$self{status} = $?;
     })
 
-  ->has_fd
-  ->def('/unix/pid_io.b',
-    read_fh  => fn q{shift->fd(1)->read_fh},
-    write_fh => fn q{shift->fd(0)->write_fh})
+  ->def('/io/pid_io.b',
+    read  => fn q{shift->stdout->read(@_)},
+    write => fn q{shift->stdin->write(@_)})
 
-  ->def('/unix/pid_accessors.b',
-    fd     => fn q{$_[0]->{fds}{$_[1]}},
+  ->def('/io/pid_accessors.b',
+    fd     => fn q{$_[0]->{external_fds}{$_[1]}},
     stdin  => fn q{shift->fd(0)},
     stdout => fn q{shift->fd(1)},
     stderr => fn q{shift->fd(2)});
 
 ni->resolver_for(
-  sh => fn q{
-    ni('ni:/unix/exec')->new('/bin/sh', '-c', substr shift, 3)->fork;
-  });
+  sh => fn q{ni('ni:/io/exec')->new('/bin/sh', '-c', substr shift, 3)->fork});
 
-ni('ni:/unix/pid')->doc
+ni('ni:/io/pid')->doc
   ->eg(fn q{
     now [ni('sh:true')->await, ni('sh:false')->await] == [0, 1 << 8];
   })
@@ -49,7 +45,7 @@ ni('ni:/unix/pid')->doc
 
   ->eg(fn q{
     my $seq = ni('sh:seq 10');
-    my $grep = ni('ni:/unix/exec')->new('egrep', '[13579]$')
+    my $grep = ni('ni:/io/exec')->new('egrep', '[13579]$')
       ->fds(0 => $seq->stdout)
       ->fork;
     now $grep->read_all == "1\n3\n5\n7\n9\n";

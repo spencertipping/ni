@@ -1,0 +1,34 @@
+ni('ni:/object')->child('/io/object')
+  ->def('/io/object_ops.b', '(bool' => fn q{1})
+  ->def('/io/object_stream.b',
+    into => fn q{
+      local $_;
+      my ($self, $dest, $each) = @_;
+      my $block_size = $self->can('read_size') ? $self->read_size : 32768;
+      while ($self->read($_, $block_size)) {
+        $dest->write($_);
+        &$each($_) && return if defined $each;
+      }
+    })
+
+  ->def('/io/object_checks.b',
+    io_check => fn q{
+      my $self  = shift;
+      my $check = shift;
+      my $fn    = shift;
+      my $r     = &$fn(@_);
+      $self->die($!) unless &$check($r);
+      $r;
+    },
+
+    io_check_defined => fn q{shift->io_check(\&defined, @_)},
+    io_check_true    => fn q{shift->io_check(sub {shift}, @_)})
+
+  ->def('/io/object_constructors.b',
+    '(+' => fn q{ni('ni:/io/cat')->new(@_[0, 1])})
+
+  ->def('/io/object_memory.b',
+    read_all => fn q{
+      shift->into(ni('ni:/io/str')->new(my $data = ''));
+      $data;
+    });

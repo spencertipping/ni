@@ -1,0 +1,75 @@
+ni('ni:/io/object')->child('/io/fd')
+  ->ro('/io/fd_readers.b', qw/fd/)
+  ->def('/io/fd_init.b',
+    instantiate => fn q{
+      my ($class, $fd) = @_;
+      +{fd  => ref $fd ? fileno $fd : $fd,
+        rfh => undef,
+        wfh => undef};
+    })
+
+  ->def('/io/fd_shell.b',
+    be => fn q{
+      my ($self, $new) = @_;
+      return $self if $new == $$self{fd};
+      close $$self{rfh} if $$self{rfh};
+      close $$self{wfh} if $$self{wfh};
+      $$self{rfh} = $$self{wfh} = undef;
+      $self->io_check_defined(\&POSIX::dup2, $$self{fd}, $new);
+      POSIX::close $$self{fd};
+      $$self{fd} = $new;
+      $self;
+    })
+
+  ->def('/io/fd_fcntl.b',
+    fcntl_flag => fn q{
+      my ($self, $flag, $value) = @_;
+      $self->errno_if_undef(\&open, $$self{rfh}, "<&=$$self{fd}")
+        unless $$self{rfh};
+      my $flags = $self->errno_if_false(
+        \&fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
+      if (@_) {
+        shift ? $flags |= $flag : $flags &= ~$flag;
+        $self->errno_if_false(\&fcntl, $$self{rfh}, Fcntl::F_SETFL, $flags);
+        $self;
+      } else {
+        !!($flags & $flag);
+      }
+    },
+
+    nonblock => fn q{shift->fcntl_flag(Fcntl::O_NONBLOCK, @_)},
+    cloexec  => fn q{shift->fcntl_flag(Fcntl::FD_CLOEXEC, @_)})
+
+  ->def('/io/fd_gc.b',
+    dtor => fn q{shift->close},
+    close => fn q{
+      my $self = shift;
+      return $self if $$self{closed};
+      close $$self{rfh} if $$self{rfh};
+      close $$self{wfh} if $$self{wfh};
+      POSIX::close $$self{fd};
+      $$self{fd} = $$self{rfh} = $$self{wfh} = undef;
+      $self;
+    })
+
+  ->def('/io/fd_perlio.b',
+    read => fn q{
+      my $self = shift;
+      open $$self{rfh}, "<&=$$self{fd}" or return undef unless $$self{rfh};
+      my $r;
+      do {
+        return $r if defined($r = sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0);
+      } while ($!{EINTR});
+      $r;
+    },
+    write => fn q{
+      my $self = shift;
+      open $$self{wfh}, ">&=$$self{fd}" or return undef unless $$self{wfh};
+      my $r;
+      do {
+        return $r if defined($r = syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0);
+      } while ($!{EINTR});
+      $r;
+    });
+
+ni->resolver_for(fd => fn q{ni('ni:/io/fd')->new(0 + substr shift, 3)});

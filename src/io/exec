@@ -1,0 +1,129 @@
+ni('ni:/io/object')->child('/io/exec')
+  ->ro('/io/exec_ro.b', qw/argv/)
+  ->def('/io/exec_init.b',
+    instantiate => fn q{
+      my ($class, @argv) = @_;
+      +{argv         => \@argv,
+        env          => {%ENV},
+        internal_fds => {},
+        external_fds => {}};
+    })
+
+  ->def('/io/exec_io_setup.b',
+    connect => fn q{
+      my ($self, %fds) = @_;
+      @{$$self{internal_fds}}{keys %fds} = values %fds;
+      $self;
+    },
+
+    out_pipe => fn q{
+      local $_;
+      my $self = shift;
+      for (@_) {
+        my ($r, $w) = POSIX::pipe;
+        $self->die($!) unless defined $r;
+        $$self{internal_fds}{$_} = ni('ni:/io/fd')->new($w)->cloexec(0);
+        $$self{external_fds}{$_} = ni('ni:/io/fd')->new($r)->cloexec(1);
+      }
+      $self;
+    },
+
+    in_pipe => fn q{
+      local $_;
+      my $self = shift;
+      for (@_) {
+        my ($r, $w) = POSIX::pipe;
+        $self->die($!) unless defined $r;
+        $$self{internal_fds}{$_} = ni('ni:/io/fd')->new($r)->cloexec(0);
+        $$self{external_fds}{$_} = ni('ni:/io/fd')->new($w)->cloexec(1);
+      }
+      $self;
+    },
+
+    setup_stdio => fn q{
+      my $self = shift;
+      $self->in_pipe(0) unless $$self{internal_fds}{0};
+      $self->out_pipe(1) unless $$self{external_fds}{1};
+      $self->out_pipe(2) unless $$self{external_fds}{2};
+      $self;
+    })
+
+  ->def('/io/exec_io_accessors.b',
+    binds_fd => fn q{
+      my ($self, $fd) = @_;
+      $$self{internal_fds}{$fd};
+    },
+
+    fd => fn q{
+      my ($self, $fd) = @_;
+      $$self{external_fds}{$fd};
+    },
+
+    stdin => fn q{
+      my $self = shift;
+      $self->binds_fd(0) ? $self->fd(0) : $self->in_pipe(0)->fd(0);
+    },
+
+    stdout => fn q{
+      my $self = shift;
+      $self->binds_fd(1) ? $self->fd(1) : $self->out_pipe(1)->fd(1);
+    },
+
+    stderr => fn q{
+      my $self = shift;
+      $self->binds_fd(2) ? $self->fd(2) : $self->out_pipe(2)->fd(2);
+    })
+
+  ->def('/io/exec_env.b',
+    env => fn q{
+      my ($self, %env) = @_;
+      return $$self{env} unless keys %env;
+      @{$$self{env}}{keys %env} = values %env;
+      $self;
+    })
+
+  ->def('/io/exec_fork.b',
+    move_fds => fn q{
+      my $self = shift;
+      $$self{internal_fds}{$_}->be($_) for keys %{$$self{fds}};
+      $self;
+    },
+
+    exec => fn q{
+      my $self = shift->setup_stdio->move_fds;
+      delete $$self{external_fds};
+      local %ENV = %{$$self{env}};
+      my @argv = (@{$$self{argv}}, @_);
+      { exec @argv };
+      $self->die_over_stderr("exec failed", $!);
+      exit 1;
+    },
+
+    fork => fn q{
+      my $self = shift->setup_stdio;
+      my $pid = $self->io_check_defined(\&fork);
+      return $self->exec(@_) unless $pid;
+      delete $$self{internal_pids};
+      ni('ni:/io/pid')->new($pid, %{$$self{external_fds}});
+    })
+
+  ->doc
+  ->synopsis(q'
+    my $pid = ni("ni:/io/exec")->new("ls", "-l")
+      ->fds(1 => ni"file:foo")
+      ->env(ENV_VAR => "value", ENV2 => "val2")
+      ->fork;
+    $? = $pid->await or die "ls -l failed: $?";')
+
+  ->description(
+    q[An object that represents a fork+exec operation that hasn't yet happened.
+      It allows you to incrementally specify the context of the process,
+      including environment variables and file descriptor mappings. It is also
+      an IO object and will set up pipes to stdin/out if you use it this way.])
+
+  ->eg(fn q{
+    my $e   = ni('ni:/io/exec')->new('sh', '-c', 'echo hi');
+    my $out = $e->stdout;
+    my $pid = $e->fork;
+    now [$out->read_all, $pid->await] == ["hi\n", 0];
+  });

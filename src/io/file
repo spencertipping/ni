@@ -1,0 +1,39 @@
+ni('ni:/io/object')->child('/io/file')
+  ->ro('/io/file_readers.b', qw/name/)
+  ->rw('/io/file_accessors.b', qw/mode/)
+  ->def('/io/file_init.b',
+    instantiate => fn q{
+      my ($class, $name, $mode) = @_;
+      +{name => $name,
+        mode => $mode || 0644,
+        r    => undef,
+        w    => undef};
+    })
+
+  ->def('/io/file_io.b',
+    r => fn q{
+      my $self = shift;
+      return $$self{r} if defined $$self{r};
+      $$self{r} = ni('ni:/io/fd')->new(
+        $self->io_check_defined(
+          \&POSIX::open, $$self{name}, POSIX::O_RDONLY));
+    },
+
+    w => fn q{
+      my $self = shift;
+      return $$self{w} if defined $$self{w};
+      $$self{w} = ni('ni:/io/fd')->new(
+        $self->io_check_defined(
+          \&POSIX::open, $$self{name},
+            POSIX::O_WRONLY | POSIX::O_TRUNC | POSIX::O_CREAT,
+            $$self{mode}));
+    },
+
+    read  => fn q{shift->r->read(@_)},
+    write => fn q{shift->w->write(@_)});
+
+ni->resolver_for(file => fn q{
+  my $f = shift;
+  $f =~ s/^file:(?:\/\/)?//;
+  ni('ni:/io/file')->new($f);
+});

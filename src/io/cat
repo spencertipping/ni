@@ -1,16 +1,19 @@
-ni('ni:/unix/io')->child('/unix/cat')
-  ->def('/unix/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
-  ->def('/unix/cat_read.b',
+ni('ni:/io/object')->child('/io/cat')
+  ->def('/io/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
+  ->def('/io/cat_read.b',
     read => fn q{
       my $fs = shift->{fs};
       my $n;
-      shift @$fs until !@$fs or $n = $$fs[0]->read(@_);
+      until (!@$fs or $n = $$fs[0]->read(@_)) {
+        return $n unless defined $n;
+        shift @$fs;
+      }
       return $n;
     })
 
   ->doc
   ->synopsis(q[
-    my $combined = ni('ni:/unix/cat')->new($io1, $io2, ...);
+    my $combined = ni('ni:/io/cat')->new($io1, $io2, ...);
     my $combined = $io1 + $io2 + $io3;
     $combined->into($destination_io);
   ])
