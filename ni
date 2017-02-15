@@ -29,6 +29,7 @@ use warnings;
 no warnings qw/redefine void/;
 no strict 'refs';
 use POSIX;
+use Fcntl;
 use Scalar::Util;
 chomp $ni::boot;
 $ni::self = bless {named => {}}, 'lib/ni';
