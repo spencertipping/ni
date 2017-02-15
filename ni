@@ -838,9 +838,10 @@ $Lb=q#my ($self, $flag, $value) = @_;
 $self->io_check_true(*CORE::open, $$self{rfh}, "<&=$$self{fd}")
   unless $$self{rfh};
 my $flags = $self->io_check_true(
-  \\&CORE::fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
+  *CORE::fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
 if (@_) {
-  shift ? $flags |= $flag : $flags &= ~$flag;
+  if (shift) {$flags |= $flag}
+  else       {$flags &= ~$flag}
   $self->io_check_true(*CORE::fcntl, $$self{rfh}, Fcntl::F_SETFL, $flags);
   $self;
 } else {
