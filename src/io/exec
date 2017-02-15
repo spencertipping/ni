@@ -101,7 +101,7 @@ ni('ni:/io/object')->child('/io/exec')
 
     fork => fn q{
       my $self = shift->setup_stdio;
-      my $pid  = $self->io_check_defined(*CORE::fork);
+      my $pid  = $self->io_check_defined(*main::fork);
       exit $self->exec(@_) unless $pid;
       $_->close for values %{$$self{internal_fds}};
       delete $$self{internal_fds};

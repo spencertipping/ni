@@ -17,7 +17,7 @@ ni('ni:/io/object')->child('/io/pid')
     await => fn q{
       my $self = shift;
       return $$self{status} if defined $$self{status};
-      $self->io_check_defined(*CORE::waitpid, $$self{pid}, 0);
+      $self->io_check_defined(*main::waitpid, $$self{pid}, 0);
       $$self{status} = $?;
     })
 

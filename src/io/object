@@ -1,3 +1,9 @@
+ni('ni:main')->def('/io/named_io_fns.b',
+  open2   => fn q{CORE::open $_[0], $_[1]},
+  fcntl   => fn q{CORE::fcntl $_[0], $_[1], $_[2]},
+  fork    => fn q{CORE::fork},
+  waitpid => fn q{CORE::waitpid $_[0], $_[1]});
+
 ni('ni:/object')->child('/io/object')
   ->def('/io/object_ops.b', '(bool' => fn q{1})
   ->def('/io/object_stream.b',
@@ -28,8 +34,6 @@ ni('ni:/object')->child('/io/object')
 
     io_check_defined => fn q{shift->io_check(sub {defined shift}, @_)},
     io_check_true    => fn q{shift->io_check(sub {shift}, @_)})
-
-  ->def('/io/object_workarounds.b', open => fn q{open $_[0], $_[1]})
 
   ->def('/io/object_constructors.b',
     '(+' => fn q{ni('ni:/io/cat')->new(@_[0, 1])})
