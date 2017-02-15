@@ -1,0 +1,15 @@
+ni('ni:/io/object')->child('/io/null')
+  ->def('/io/null_init.b',
+    instantiate => fn q{+{fd => undef}})
+
+  ->def('/io/null_io.b',
+    fd => fn q{
+      my $self = shift;
+      $$self{fd} ||= ni('ni:/io/fd')->new(
+        $self->io_check_defined(*POSIX::open, '/dev/null', POSIX::O_RDWR));
+    },
+
+    read  => fn q{shift->fd->read(@_)},
+    write => fn q{shift->fd->write(@_)});
+
+ni->resolver_for(null => fn q{ni('ni:/io/null')->new});

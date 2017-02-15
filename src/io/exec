@@ -42,9 +42,9 @@ ni('ni:/io/object')->child('/io/exec')
 
     setup_stdio => fn q{
       my $self = shift;
-      $self->in_pipe(0) unless $$self{internal_fds}{0};
-      $self->out_pipe(1) unless $$self{external_fds}{1};
-      $self->out_pipe(2) unless $$self{external_fds}{2};
+      $self->connect(0 => ni('null:')->fd->cloexec(0)) unless $self->binds_fd(0);
+      $self->out_pipe(1) unless $self->binds_fd(1);
+      $self->out_pipe(2) unless $self->binds_fd(2);
       $self;
     })
 
@@ -85,32 +85,36 @@ ni('ni:/io/object')->child('/io/exec')
   ->def('/io/exec_fork.b',
     move_fds => fn q{
       my $self = shift;
-      $$self{internal_fds}{$_}->be($_) for keys %{$$self{fds}};
+      $$self{internal_fds}{$_}->be($_) for keys %{$$self{internal_fds}};
       $self;
     },
 
     exec => fn q{
       my $self = shift->setup_stdio->move_fds;
+      my @argv = (@{$$self{argv}}, @_);
       delete $$self{external_fds};
       local %ENV = %{$$self{env}};
-      my @argv = (@{$$self{argv}}, @_);
       { exec @argv };
-      $self->die_over_stderr("exec failed", $!);
-      exit 1;
+      $self->stderr("exec failed", $!);
+      1;
     },
 
     fork => fn q{
       my $self = shift->setup_stdio;
-      my $pid = $self->io_check_defined(\&fork);
-      return $self->exec(@_) unless $pid;
-      delete $$self{internal_pids};
-      ni('ni:/io/pid')->new($pid, %{$$self{external_fds}});
+      my $pid  = $self->io_check_defined(*CORE::fork);
+      exit $self->exec(@_) unless $pid;
+      delete $$self{internal_fds};
+      ni('ni:/io/pid')->new(
+        $pid,
+        [@{$$self{argv}}, @_],
+        $$self{env},
+        %{$$self{external_fds}});
     })
 
   ->doc
   ->synopsis(q'
     my $pid = ni("ni:/io/exec")->new("ls", "-l")
-      ->fds(1 => ni"file:foo")
+      ->connect(1 => ni("file:foo")->w)
       ->env(ENV_VAR => "value", ENV2 => "val2")
       ->fork;
     $? = $pid->await or die "ls -l failed: $?";')
@@ -122,8 +126,9 @@ ni('ni:/io/object')->child('/io/exec')
       an IO object and will set up pipes to stdin/out if you use it this way.])
 
   ->eg(fn q{
-    my $e   = ni('ni:/io/exec')->new('sh', '-c', 'echo hi');
+    my $e   = ni('ni:/io/exec')->new('echo', 'hi');
     my $out = $e->stdout;
     my $pid = $e->fork;
-    now [$out->read_all, $pid->await] == ["hi\n", 0];
+    now $out->read_all == "hi\n";
+    now $pid->await == 0;
   });

@@ -2,8 +2,11 @@ ni('ni:/io/object')->child('/io/pid')
   ->ro('/io/pid_readers.b', qw/pid status/)
   ->def('/io/pid_init.b',
     instantiate => fn q{
-      my ($class, $pid, %external_fds) = @_;
+      my ($class, $pid, $argv, $env, %external_fds) = @_;
+      print STDERR "instantiating @$argv\n";
       +{pid          => $pid,
+        argv         => $argv,
+        env          => $env,
         external_fds => \%external_fds,
         status       => undef};
     },
@@ -15,7 +18,7 @@ ni('ni:/io/object')->child('/io/pid')
     await => fn q{
       my $self = shift;
       return $$self{status} if defined $$self{status};
-      $self->io_check_defined(\&waitpid, $$self{pid}, 0);
+      $self->io_check_defined(*CORE::waitpid, $$self{pid}, 0);
       $$self{status} = $?;
     })
 
@@ -46,7 +49,7 @@ ni('ni:/io/pid')->doc
   ->eg(fn q{
     my $seq = ni('sh:seq 10');
     my $grep = ni('ni:/io/exec')->new('egrep', '[13579]$')
-      ->fds(0 => $seq->stdout)
+      ->connect(0 => $seq->stdout)
       ->fork;
     now $grep->read_all == "1\n3\n5\n7\n9\n";
     now $seq->await == 0;

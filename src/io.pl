@@ -13,5 +13,6 @@ ni->extend("src/io/$_") for
       exec
       file
       fd
+      null
       pid
       str /;

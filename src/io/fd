@@ -12,10 +12,8 @@ ni('ni:/io/object')->child('/io/fd')
     be => fn q{
       my ($self, $new) = @_;
       return $self if $new == $$self{fd};
-      close $$self{rfh} if $$self{rfh};
-      close $$self{wfh} if $$self{wfh};
+      $self->io_check_defined(*POSIX::dup2, $$self{fd}, $new);
       $$self{rfh} = $$self{wfh} = undef;
-      $self->io_check_defined(\&POSIX::dup2, $$self{fd}, $new);
       POSIX::close $$self{fd};
       $$self{fd} = $new;
       $self;
@@ -24,13 +22,13 @@ ni('ni:/io/object')->child('/io/fd')
   ->def('/io/fd_fcntl.b',
     fcntl_flag => fn q{
       my ($self, $flag, $value) = @_;
-      $self->errno_if_undef(\&open, $$self{rfh}, "<&=$$self{fd}")
+      $self->io_check_true(*CORE::open, $$self{rfh}, "<&=$$self{fd}")
         unless $$self{rfh};
-      my $flags = $self->errno_if_false(
-        \&fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
+      my $flags = $self->io_check_true(
+        \&CORE::fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
       if (@_) {
         shift ? $flags |= $flag : $flags &= ~$flag;
-        $self->errno_if_false(\&fcntl, $$self{rfh}, Fcntl::F_SETFL, $flags);
+        $self->io_check_true(*CORE::fcntl, $$self{rfh}, Fcntl::F_SETFL, $flags);
         $self;
       } else {
         !!($flags & $flag);

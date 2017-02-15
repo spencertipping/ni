@@ -13,18 +13,16 @@ ni('ni:/io/object')->child('/io/file')
   ->def('/io/file_io.b',
     r => fn q{
       my $self = shift;
-      return $$self{r} if defined $$self{r};
-      $$self{r} = ni('ni:/io/fd')->new(
+      $$self{r} ||= ni('ni:/io/fd')->new(
         $self->io_check_defined(
-          \&POSIX::open, $$self{name}, POSIX::O_RDONLY));
+          *POSIX::open, $$self{name}, POSIX::O_RDONLY));
     },
 
     w => fn q{
       my $self = shift;
-      return $$self{w} if defined $$self{w};
-      $$self{w} = ni('ni:/io/fd')->new(
+      $$self{w} ||= ni('ni:/io/fd')->new(
         $self->io_check_defined(
-          \&POSIX::open, $$self{name},
+          *POSIX::open, $$self{name},
             POSIX::O_WRONLY | POSIX::O_TRUNC | POSIX::O_CREAT,
             $$self{mode}));
     },
