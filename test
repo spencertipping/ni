@@ -13,7 +13,7 @@ envs=( alpine        alpine-minimal
        ubuntu-16.04-p3
        ubuntu-16.10  ubuntu-16.10-minimal )
 
-build_ni_stuff() { ./build >>test.log; }
+build_ni_stuff() { ./build >/dev/null; }
 
 image() { docker build -q -f env/$1 -t ni/env-$1 .; }
 
