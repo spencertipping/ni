@@ -19,7 +19,8 @@ install_stuff() {
     src/lib/util \
     src/doc/internal/doc \
     src/doc/internal/class \
-    src/unix.pl
+    src/unix.pl \
+    src/fabric.pl
 }
 
 boot_build() {
