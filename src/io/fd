@@ -22,7 +22,7 @@ ni('ni:/io/object')->child('/io/fd')
   ->def('/io/fd_fcntl.b',
     fcntl_flag => fn q{
       my ($self, $flag, $value) = @_;
-      $self->io_check_true(*CORE::open, $$self{rfh}, "<&=$$self{fd}")
+      $self->io_check_true($self->can('open'), $$self{rfh}, "<&=$$self{fd}")
         unless $$self{rfh};
       my $flags = $self->io_check_true(
         *CORE::fcntl, $$self{rfh}, Fcntl::F_GETFL, 0);
