@@ -10,6 +10,7 @@ ni('ni:/lib/doc')->new('/io')
 ni->extend("src/io/$_") for
   qw/ object
       cat
+      exec
       file
       fd
       pid
