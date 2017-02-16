@@ -1459,13 +1459,13 @@ my %args  = (
   use_newlines    => 0,
   @_);
 
-+{include_shebang => $args{include_shebang},
-  include_license => $args{include_license},
-  include_boot    => $args{include_boot},
-  include_classes => $args{include_classes},
-  include_run     => $args{include_run},
-  local_vars      => $args{local_vars},
-  use_newlines    => $args{use_newlines},
++{%args{qw/ include_shebang
+            include_license
+            include_boot
+            include_classes
+            include_run
+            local_vars
+            use_newlines /},
 
   gensym_n     => 0,
   circular     => [],
