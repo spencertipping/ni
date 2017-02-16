@@ -9,7 +9,5 @@ RUN apt-get install -y docker.io
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 
-ENV SKIP_DOCKER=yes
-
 VOLUME /data
 CMD /bin/bash
