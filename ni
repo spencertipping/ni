@@ -4408,7 +4408,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-94 core/pl/util.pm.sdoc
+104 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4499,6 +4499,16 @@ sub wf {
   my $f = shift;
   mkdir_p dirname $f;
   open my $fh, "> $f" or die "wf $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
+}
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
   print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
   $f;

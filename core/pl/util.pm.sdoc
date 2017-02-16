@@ -92,3 +92,13 @@ sub wf {
   close $fh;
   $f;
 }
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
+}
