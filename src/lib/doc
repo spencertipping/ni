@@ -13,6 +13,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
   ->def('/lib/doc_test.b',
     tests => fn q{
+      # TODO: not even close to the right way to do this.
       my $self = shift;
       my @flattened = map @$_, @{$$self{doc}};
       my @tests;

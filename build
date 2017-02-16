@@ -1,18 +1,9 @@
 #!/bin/bash
 # Builds the core ni image from the files in src/.
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 boot_image() {
-  cat src/boot \
-      src/lib/behavior \
-      src/lib/class \
-      src/lib/doc \
-      src/lib/fn \
-      src/lib/json \
-      src/lib/test \
-      src/lib/quote \
-      src/lib/image \
-      src/lib/self
+  cat src/boot src/lib.pl
 }
 
 install_stuff() {

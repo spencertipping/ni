@@ -41,6 +41,7 @@ ni('ni:/object')->child('/lib/image')
        @{$$self{finalizers}});
     },
 
+    # TODO: replace this with an IO-idiomatic cat structure thing
     write => fn q{
       local $_;
       my ($self, $fh) = @_;
