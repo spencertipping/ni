@@ -10,6 +10,7 @@ boot_image() {
       src/lib/fn \
       src/lib/json \
       src/lib/test \
+      src/lib/quote \
       src/lib/image \
       src/lib/self
 }

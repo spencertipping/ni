@@ -127,75 +127,9 @@ ni('ni:/object')->child('/lib/image')
       $self;
     })
 
-  ->def('/lib/no_code_quoting.b',
-    quote_code => fn q{shift->die('cannot quote perl CODE refs', shift)})
-
-  ->def('/lib/quote_values.b',
-    quote_value => fn q{
-      my $self = shift;
-      return $self->quote_scalar($_[0])     unless ref $_[0];
-      return $self->quote_scalar_ref($_[0]) if 'SCALAR' eq ref $_[0];
-      return $self->quote_array($_[0])      if 'ARRAY'  eq ref $_[0];
-      return $self->quote_hash($_[0])       if 'HASH'   eq ref $_[0];
-      return $self->quote_code($_[0])       if 'CODE'   eq ref $_[0];
-      $self->quote_object($_[0]);
-    },
-
-    quote_hash => fn q{
-      local $_;
-      my ($self, $v) = @_;
-      my $a = $self->address($v);
-      my @ks = sort keys %$v;
-      my @qs;
-      for my $k (@ks) {
-        $self->circular_hashref($v, $k, $$v{$k})
-          if $self->is_circular($$v{$k});
-        push @qs, $self->quote($k) . "," . $self->quote($$v{$k});
-      }
-      '{' . join(",", @qs) . '}';
-    },
-
-    quote_array => fn q{
-      local $_;
-      my ($self, $v) = @_;
-      my $a = $self->address($v);
-      $self->is_circular($$v[$_]) && $self->circular_arrayref($v, $_, $$v[$_])
-        for 0..$#{$v};
-      '[' . join(',', map $self->quote($_), @$v) . ']';
-    },
-
-    quote_scalar_ref => fn q{'\\\\' . shift->quote(${$_[0]})},
-
-    quote_scalar => fn q{
-      my $v = $_[1];
-      return 'undef' unless defined $v;
-      return $v if Scalar::Util::looks_like_number $v;
-      $v =~ s/([\\\\#])/\\\\$1/g;
-      "q#$v#";
-    })
-
-  ->def('/lib/quote_objects.b',
-    quote_blessed => fn q{
-      my ($self, $x, $r) = @_;
-      $r ||= ref $x;
-      $self->quote_class($r);
-      my $t = Scalar::Util::reftype $x;
-      my $quoted = $t eq 'HASH' ? $self->quote_hash($x) : $self->quote_array($x);
-      "bless($quoted," . $self->quote($r) . ")";
-    },
-
-    quote_class => fn q{
-      my ($self, $class) = @_;
-      $self->quote(ni"ni:$class") if $$self{include_classes} && ni->exists("ni:$class");
-    },
-
-    quote_object => fn q{
-      my $self = shift;
-      my $q = $self->allocate_gensym($_[0],
-        $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
-      $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
-      $q;
-    });
+  ->add('/lib/no_code_quoting.b',
+        '/lib/quote_values.b',
+        '/lib/quote_objects.b');
 
 ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
   serialize => fn q{
