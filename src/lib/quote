@@ -4,7 +4,7 @@ ni('ni:/object')->child('/lib/quote_simple')
     is_circular => fn q{0},
     quote => fn q{shift->quote_value(shift)})
 
-  ->def('/lib/no_code_quoting.b',
+  ->def('/lib/quote_code_fail.b',
     quote_code => fn q{shift->die('cannot quote perl CODE refs', shift)})
 
   ->def('/lib/quote_values.b',
@@ -73,3 +73,27 @@ ni('ni:/object')->child('/lib/quote_simple')
       $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
       $q;
     });
+
+ni('ni:/lib/slice')->new('/lib/quote_circular_addressed.b',
+  is_circular => fn q{
+    my $self = shift;
+    ref $$self{visited}{$self->address(shift)};
+  },
+
+  circular_hashref => fn q{
+    my $self          = shift;
+    my $address       = $self->address(shift);
+    my $quoted_key    = $self->quote(shift);
+    my $value_address = $self->address(shift);
+    push @{$$self{circular}}, [$address, "{$quoted_key}", $value_address];
+    $self;
+  },
+
+  circular_arrayref => fn q{
+    my $self          = shift;
+    my $address       = $self->address(shift);
+    my $index         = shift;
+    my $value_address = $self->address(shift);
+    push @{$$self{circular}}, [$address, "[$index]", $value_address];
+    $self;
+  });

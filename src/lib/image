@@ -1,26 +1,7 @@
 ni('ni:/object')->child('/lib/image')
   ->def('/lib/image_init.b',
     instantiate => fn q{
-      my $class = shift;
-      my %args  = (
-        include_shebang => 1,
-        include_license => 1,
-        include_boot    => 1,
-        include_classes => 1,
-        include_run     => 1,
-        local_vars      => 0,
-        use_newlines    => 0,
-        @_);
-
-      +{include_shebang => $args{include_shebang},
-        include_license => $args{include_license},
-        include_boot    => $args{include_boot},
-        include_classes => $args{include_classes},
-        include_run     => $args{include_run},
-        local_vars      => $args{local_vars},
-        use_newlines    => $args{use_newlines},
-
-        gensym_n     => 0,
+      +{gensym_n     => 0,
         circular     => [],
         definitions  => {},
         objects      => {},
@@ -64,11 +45,11 @@ ni('ni:/object')->child('/lib/image')
       local $_;
       my ($self, $fh) = @_;
       $fh->print($_) for
-        ($$self{include_shebang} ? ("#!/usr/bin/env perl\n") : ()),
-        ($$self{include_license} ? ("chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n") : ()),
-        ($$self{include_boot}    ? ("BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n") : ()),
-        ($$self{use_newlines}    ? map("$_\n", $self->reconstruction) : $self->reconstruction),
-        ($$self{include_run}     ? ("ni->run(\@ARGV);", "\n__DATA__\n") : ());
+        "#!/usr/bin/env perl\n",
+        "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
+        "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
+        map("$_\n", $self->reconstruction),
+        "ni->run(\@ARGV);", "\n__DATA__\n";
     },
 
     address => fn q{
@@ -84,7 +65,7 @@ ni('ni:/object')->child('/lib/image')
       my $a = $self->address($_[0]);
       $$self{objects}{$a} = \$_[0];
       my $v = $$self{visited}{$a};
-      return ref $v ? 'undef' : $v if defined $v;
+      return ref $v ? '0' : $v if defined $v;
       $$self{visited}{$a} = \'undef';
       $self->allocate_gensym($_[0], $self->quote_value($_[0]));
     },
@@ -94,42 +75,20 @@ ni('ni:/object')->child('/lib/image')
       my $a = $self->address(shift);
       return $$self{visited}{$a} if $_[0] =~ /^\$\w+$/;
       my $g = $$self{visited}{$a} = $self->gensym;
-      $$self{definitions}{$g} = $$self{local_vars} ? "my$g=$_[0];" : "$g=$_[0];";
+      $$self{definitions}{$g} = "$g=$_[0];";
       push @{$$self{ordering}}, $g;
       $g;
-    },
-
-    is_circular => fn q{
-      my $self = shift;
-      ref $$self{visited}{$self->address($_[0])};
     },
 
     # TODO: replace this with more structured alternatives
     side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
-    finalizer        => fn q{push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]},
+    finalizer        => fn q{push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]})
 
-    circular_hashref => fn q{
-      my $self          = shift;
-      my $address       = $self->address(shift);
-      my $quoted_key    = $self->quote(shift);
-      my $value_address = $self->address(shift);
-      push @{$$self{circular}}, [$address, "{$quoted_key}", $value_address];
-      $self;
-    },
-
-    circular_arrayref => fn q{
-      my $self          = shift;
-      my $address       = $self->address(shift);
-      my $index         = shift;
-      my $value_address = $self->address(shift);
-      push @{$$self{circular}}, [$address, "[$index]", $value_address];
-      $self;
-    })
-
-  ->add('/lib/no_code_quoting.b',
+  ->add('/lib/quote_code_fail.b',
         '/lib/quote_values.b',
-        '/lib/quote_objects.b');
+        '/lib/quote_objects.b',
+        '/lib/quote_circular_addressed.b');
 
 ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
   serialize => fn q{
