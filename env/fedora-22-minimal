@@ -1,0 +1,4 @@
+FROM fedora:22
+RUN yum install -y perl
+VOLUME /data
+CMD /bin/sh

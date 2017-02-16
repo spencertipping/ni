@@ -23,12 +23,64 @@ ni-centos-6-minimal:
   image: spencertipping/ni-env-centos-6-minimal
   script:
     - ./ni --internal/test
+ni-centos-7:
+  image: spencertipping/ni-env-centos-7
+  script:
+    - ./ni --internal/test
+ni-centos-7-minimal:
+  image: spencertipping/ni-env-centos-7-minimal
+  script:
+    - ./ni --internal/test
 ni-debian-wheezy:
   image: spencertipping/ni-env-debian-wheezy
   script:
     - ./ni --internal/test
 ni-debian-wheezy-minimal:
   image: spencertipping/ni-env-debian-wheezy-minimal
+  script:
+    - ./ni --internal/test
+ni-debian-jessie:
+  image: spencertipping/ni-env-debian-jessie
+  script:
+    - ./ni --internal/test
+ni-debian-jessie-minimal:
+  image: spencertipping/ni-env-debian-jessie-minimal
+  script:
+    - ./ni --internal/test
+ni-debian-sid:
+  image: spencertipping/ni-env-debian-sid
+  script:
+    - ./ni --internal/test
+ni-debian-sid-minimal:
+  image: spencertipping/ni-env-debian-sid-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-20-minimal:
+  image: spencertipping/ni-env-fedora-20-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-21-minimal:
+  image: spencertipping/ni-env-fedora-21-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-22-minimal:
+  image: spencertipping/ni-env-fedora-22-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-23-minimal:
+  image: spencertipping/ni-env-fedora-23-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-24-minimal:
+  image: spencertipping/ni-env-fedora-24-minimal
+  script:
+    - ./ni --internal/test
+ni-fedora-25-minimal:
+  image: spencertipping/ni-env-fedora-25-minimal
+  script:
+    - ./ni --internal/test
+ni-gentoo-minimal:
+  image: spencertipping/ni-env-gentoo-minimal
   script:
     - ./ni --internal/test
 ni-ubuntu-12.04:

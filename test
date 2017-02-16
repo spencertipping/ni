@@ -6,7 +6,17 @@ cd $(dirname $0)
 envs=( alpine        alpine-minimal
        centos-5      centos-5-minimal
        centos-6      centos-6-minimal
+       centos-7      centos-7-minimal
        debian-wheezy debian-wheezy-minimal
+       debian-jessie debian-jessie-minimal
+       debian-sid    debian-sid-minimal
+                     fedora-20-minimal
+                     fedora-21-minimal
+                     fedora-22-minimal
+                     fedora-23-minimal
+                     fedora-24-minimal
+                     fedora-25-minimal
+                     gentoo-minimal
        ubuntu-12.04  ubuntu-12.04-minimal
        ubuntu-14.04  ubuntu-14.04-minimal
        ubuntu-16.04  ubuntu-16.04-minimal

@@ -1,0 +1,7 @@
+FROM gentoo/stage3-amd64
+
+RUN emerge --sync
+RUN emerge perl
+
+VOLUME /data
+CMD /bin/bash

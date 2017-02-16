@@ -1,0 +1,6 @@
+FROM debian:jessie
+
+ENV SKIP_DOCKER=yes
+
+VOLUME /data
+CMD /bin/bash
