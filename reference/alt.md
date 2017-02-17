@@ -123,6 +123,18 @@
 	  ) -> {row_fixed_scale_op @$_}
 	)
 
+# EXTENSIBLE LIST sortalt
+	alternatives for the /g row operator
+
+## OPTIONS
+	(
+	| (
+	    /_/
+	    <integer>
+	  ) -> {$$_[1]} -> {partial_sort_op               $_}
+	| <sortspec> -> {row_sort_op        sort_args @$_}
+	)
+
 # EXTENSIBLE LIST sqljoinalt
 	alternatives for sql/j join operator
 

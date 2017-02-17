@@ -97,7 +97,23 @@ defoperator row_sort => q{
     '--buffer-size='      . conf 'row/sort-buffer',
     '--parallel='         . conf 'row/sort-parallel'), @_};
 
-defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
+defoperator partial_sort => q{
+  my $sort_size = shift;
+  my @buff = ();
+  while (<STDIN>) {
+    push @buff, $_;
+    if (@buff == $sort_size) {
+      print join "", sort(@buff);
+      @buff = ();
+    }
+  }
+  print join "", sort(@buff) if @buff;
+};
+
+defshort '/g',
+  defalt 'sortalt', 'alternatives for the /g row operator',
+    pmap(q{partial_sort_op               $_}, pn 1, prx '_', integer),
+    pmap(q{row_sort_op        sort_args @$_}, sortspec);
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
@@ -121,3 +137,5 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+
+

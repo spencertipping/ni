@@ -574,6 +574,21 @@
 	  close $o;
 	  $o->await;
 
+# OPERATOR partial_sort
+
+## IMPLEMENTATION
+	
+	  my $sort_size = shift;
+	  my @buff = ();
+	  while (<STDIN>) {
+	    push @buff, $_;
+	    if (@buff == $sort_size) {
+	      print join "", sort(@buff);
+	      @buff = ();
+	    }
+	  }
+	  print join "", sort(@buff) if @buff;
+
 # OPERATOR perl_assert
 
 ## IMPLEMENTATION

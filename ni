@@ -3811,7 +3811,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-123 core/row/row.pl.sdoc
+140 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3911,7 +3911,23 @@ defoperator row_sort => q{
     '--buffer-size='      . conf 'row/sort-buffer',
     '--parallel='         . conf 'row/sort-parallel'), @_};
 
-defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
+defoperator partial_sort => q{
+  my $sort_size = shift;
+  my @buff = ();
+  while (<STDIN>) {
+    push @buff, $_;
+    if (@buff == $sort_size) {
+      print join "", sort(@buff);
+      @buff = ();
+    }
+  }
+  print join "", sort(@buff) if @buff;
+};
+
+defshort '/g',
+  defalt 'sortalt', 'alternatives for the /g row operator',
+    pmap(q{partial_sort_op               $_}, pn 1, prx '_', integer),
+    pmap(q{row_sort_op        sort_args @$_}, sortspec);
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
@@ -3935,6 +3951,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+
 190 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
@@ -8450,8 +8467,10 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-238 doc/matrix.md
+260 doc/matrix.md
 # Matrix operations
+
+##Sparse and Dense Matrix Operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
 dense), which work like this:
@@ -8509,6 +8528,26 @@ reducer:
 $ ni n010p'r 0, a%3, 1' X
 4	3	3
 ```
+
+##1-D Matrix Operations
+Data in row form can be flattened (lengthened?) into a column via `pF_`.
+
+```bash
+$ ni i[a b] i[c d] pF_
+a
+b
+c
+d
+```
+
+Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
+
+```bash
+$ ni i[a b] i[c d] pF_ Z2
+a   b
+c   d
+```
+ 
 
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code
@@ -8944,7 +8983,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-432 doc/perl.md
+440 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -9247,6 +9286,9 @@ remains equal. (Mnemonic is "stream while equal".)
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
 
+**NOTE**: There is _no comma_ between the reducer and the partition function.
+
+
 For example, to naively get a comma-delimited list of users by login shell:
 
 ```bash
@@ -9257,7 +9299,12 @@ $ ni /etc/passwd F::gGp'r g, se {"$_[0]," . a} \&g, ""'
 /bin/sync	,sync
 ```
 
-`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`.
+`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`; they are called as:
+
+```pl
+@final_state = sea {reducer} @init_state
+```
+
 
 ## Compound reducers
 If you want to do something like calculating the sum of one column, the average
