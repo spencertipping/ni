@@ -115,6 +115,7 @@ case $c in
   echo "(./test --docker to run in all environments)"
   echo
   build_ni_stuff
+  (( wc -c < ni )) || exit 1
   ./ni --internal/test || exit $?
   ;;
 esac
