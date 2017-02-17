@@ -1341,9 +1341,17 @@ $Gj=bless({$x2,$Aj,$l3,$m3,$n3,$m3,$o3,$Ej,$D,$Fj},$x3);
 $Hj={};
 $Ij=q#run#;
 $Jj=[];
-$Kj=q#local $_;
-my $self = shift;
-$self->write($_) while $self->read($_, 32768);
+$Kj=q#my $self = shift;
+my $buf;
+while ($self->read($buf, 32768)) {
+  my $n = $self->write($buf);
+  $self->die($!) unless defined $n;
+  while ($n < length $buf) {
+    my $n0 = $self->write(substr $buf, $n);
+    $self->die($!) unless defined $n0;
+    $n += $n0;
+  }
+}
 $self;#;
 $Lj=bless({$o,$Jj,$q,$Kj,$s,$t},$u);
 $Mj={$Ij,$Lj};

@@ -43,8 +43,16 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
 
   ->def('/io/transfer_sync_run.b',
     run => fn q{
-      local $_;
       my $self = shift;
-      $self->write($_) while $self->read($_, 32768);
+      my $buf;
+      while ($self->read($buf, 32768)) {
+        my $n = $self->write($buf);
+        $self->die($!) unless defined $n;
+        while ($n < length $buf) {
+          my $n0 = $self->write(substr $buf, $n);
+          $self->die($!) unless defined $n0;
+          $n += $n0;
+        }
+      }
       $self;
     });
