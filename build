@@ -11,6 +11,7 @@ install_stuff() {
     src/lib/util \
     src/doc/internal/doc \
     src/doc/internal/class \
+    src/semantic.pl \
     src/io.pl \
     src/fabric.pl
 }

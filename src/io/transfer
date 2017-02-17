@@ -1,4 +1,4 @@
-ni('ni:/object')->child('/io/transfer')
+ni('ni:/semantic/task')->child('/io/transfer')
   ->def('/io/transfer_io_interop.b',
     ctor => fn q{
       my $self = shift;
@@ -38,7 +38,8 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
     instantiate => fn q{
       my ($class, $source, $dest) = @_;
       +{source_io => $source,
-        dest_io   => $dest};
+        dest_io   => $dest,
+        complete  => 0};
     })
 
   ->def('/io/transfer_sync_run.b',
@@ -54,5 +55,6 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
           $n += $n0;
         }
       }
+      $$self{complete} = 1;
       $self;
     });
