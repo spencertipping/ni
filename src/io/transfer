@@ -56,3 +56,43 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
       }
       $self->success;
     });
+
+ni('ni:/io/transfer')->child('/io/transfer_async')
+  ->def('/io/transfer_async_init.b',
+    instantiate => fn q{
+      my ($class, $source, $dest) = @_;
+      $source->nonblock(1) if $source->can('nonblock');
+      $dest  ->nonblock(1) if $dest  ->can('nonblock');
+      +{source_io => $source,
+        dest_io   => $dest,
+        pending   => '',
+        id        => $class->new_id};
+    })
+
+  ->def('/io/transfer_async_lifecycle.b',
+    ctor => fn q{ni('ni:/io/transfer_async')->track(shift)},
+    dtor => fn q{ni('ni:/io/transfer_async')->untrack(shift->{id})})
+
+  ->def('/io/transfer_async_run.b',
+    run       => fn q{shift},
+    run_async => fn q{
+      my $self = shift;
+      my $n;
+      if (length $$self{pending}) {
+      write_branch:
+        $n = 0;
+        while ($n < length $$self{pending}) {
+          my $x = $self->write($n ? substr($$self{pending}, $n)
+                                  : $$self{pending});
+          last unless defined $x;
+          $n += $x;
+        }
+        $$self{pending} = substr $$self{pending}, $n;
+      }
+      unless (length $$self{pending}) {
+        goto write_branch if $n = $self->read($$self{pending}, 32768);
+        return $self if defined $n || $!{EAGAIN} || $!{EWOULDBLOCK};
+        $self->failure($!);
+      }
+      $self;
+    });
