@@ -50,7 +50,6 @@ ni('ni:/io/pid')->doc
     my $grep = ni('ni:/io/exec')->new('egrep', '[13579]$')
       ->connect(0 => $seq->stdout)
       ->fork;
-    now $grep->read_all == "1\n3\n5\n7\n9\n";
-    now $seq->await == 0;
-    now $grep->await == 0;
+    now [$grep->read_all, $seq->await, $grep->await]
+     == ["1\n3\n5\n7\n9\n", 0, 0];
   });

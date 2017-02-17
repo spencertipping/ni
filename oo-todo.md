@@ -6,5 +6,7 @@
 - OO abstraction around all print statements; should provide structured
   output/progress
 
+- transfer objects should use OO polymorphism to select behavior for errnos
+
 - measurements for operators in terms of real-world units: come up with a way
   to express performance characteristics in pipeline terms
