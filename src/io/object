@@ -6,18 +6,6 @@ ni('ni:main')->def('/io/named_io_fns.b',
 
 ni('ni:/object')->child('/io/object')
   ->def('/io/object_ops.b', '(bool' => fn q{1})
-  ->def('/io/object_stream.b',
-    into => fn q{
-      local $_;
-      my ($self, $dest, $each) = @_;
-      my $n;
-      my $block_size = $self->can('read_size') ? $self->read_size : 32768;
-      # TODO: fix this; we need to formalize error handling.
-      while (($n = $self->read($_, $block_size)) > 0) {
-        $dest->write($_);
-        &$each($_, $n) && return if defined $each;
-      }
-    })
 
   ->def('/io/object_checks.b',
     # TODO: migrate die() into /lib/ as a base behavior

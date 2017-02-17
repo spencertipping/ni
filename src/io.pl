@@ -16,4 +16,5 @@ ni->extend("src/io/$_") for
       fd
       null
       pid
-      str /;
+      str
+      transfer /;

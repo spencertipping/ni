@@ -1,0 +1,51 @@
+ni('ni:/object')->child('/io/transfer')
+  ->def('/io/transfer_io_interop.b',
+    ctor => fn q{
+      my $self = shift;
+      @$self{qw/read_bytes read_time write_bytes write_time/} = (0, 0, 0, 0);
+    },
+
+    read => fn q{
+      my $self = shift;
+      my $start_time = time;
+      my $n = $$self{source_io}->read(@_);
+      my $end_time = time;
+      $$self{read_bytes} += $n if defined $n;
+      $$self{read_time} += $end_time - $start_time;
+      $n;
+    },
+
+    write => fn q{
+      my $self = shift;
+      my $start_time = time;
+      my $n = $$self{dest_io}->write(@_);
+      my $end_time = time;
+      $$self{write_bytes} += $n if defined $n;
+      $$self{write_time} += $end_time - $start_time;
+      $n;
+    });
+
+ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
+  ctor => fn q{
+    my $self = shift;
+    print STDERR "defining transfer subclass " . Scalar::Util::refaddr($self) .
+    "\n";
+    ni('ni:/io/object')->def("/io/object_transfer_$1.b",
+      "into_$1" => fn qq{ni('ni:/io/transfer_$1')->new(\@_)->run})
+    if $self->name =~ /transfer_(\w+)$/;
+  });
+
+ni('ni:/io/transfer')->child('/io/transfer_sync')
+  ->def('/io/transfer_sync_init.b',
+    instantiate => fn q{
+      my ($class, $source, $dest) = @_;
+      +{source_io => $source,
+        dest_io   => $dest};
+    })
+
+  ->def('/io/transfer_sync_run.b',
+    run => fn q{
+      my $self = shift;
+      $self->write($_) while $self->read(32768);
+      $self;
+    });
