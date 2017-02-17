@@ -27,7 +27,7 @@ ni('ni:/io/object')->child('/fabric/mio')
     my $channel2 = $mio->channel;
     $channel1->write("8MB data" x 1000000);
     $channel2->write("short string");
-    $mio->into($socket_or_something);')
+    $mio->into_sync($socket_or_something);')
 
   ->description(
     q[Provides a multiplexed interface around a single possibly-bidirectional

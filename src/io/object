@@ -28,6 +28,6 @@ ni('ni:/object')->child('/io/object')
 
   ->def('/io/object_memory.b',
     read_all => fn q{
-      shift->into(ni('ni:/io/str')->new(my $data = ''));
+      shift->into_sync(ni('ni:/io/str')->new(my $data = ''));
       $data;
     });

@@ -55,7 +55,14 @@ ni('ni:/module')->add('/lib/definition.b');
 
 ni('ni:/lib/definition.b')->add(
   ni('ni:/lib/slice')->new('/lib/definition_def.b',
-    def => fn q{shift->add(ni('ni:/lib/slice')->new(@_))}));
+    def => fn q{
+      my $self = shift;
+      my $name = shift;
+      $self->add(ni->exists("ni:$name")
+        ? ni"ni:$name"
+        : ni('ni:/lib/slice')->new($name, @_));
+      $self;
+    }));
 
 ni('ni:/lib/definition.b')->def('/lib/accessor.b',
   ro => fn q{

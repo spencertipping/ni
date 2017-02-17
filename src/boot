@@ -53,6 +53,8 @@ sub fn($);
 _
 die "$@ evaluating ni boot code" if $@;
 
+*{'lib/ni::exists'} = sub {exists $_[0]->{named}{$_[1]}};
+
 *{'lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
 *{'lib/fn::new'} = sub {
   my $self = bless {code => $_[1]}, $_[0];

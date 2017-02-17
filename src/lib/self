@@ -29,16 +29,6 @@ ni('ni:/object')->child('/lib/ni')
       $self;
     })
 
-  ->def('/lib/ni_image.b',
-    exists => fn q{exists $_[0]->{named}{$_[1]}},
-    quoted => fn q{
-      my $self = shift;
-      my $q = ni('ni:/lib/image')->new(@_);
-      my $gs = $q->quote($self);
-      $q->side_effect("\$ni::self=$gs;");
-      $q;
-    })
-
   ->def('/lib/ni_main.b',
     run => fn q{
       my $self = shift;
@@ -104,9 +94,20 @@ ni('ni:/lib/slice')->new('/lib/ni_resolver.b',
     die "ni:self failed to resolve $_[0]";
   });
 
+ni('ni:/lib/slice')->new('/lib/ni_image.b',
+  exists => fn q{exists $_[0]->{named}{$_[1]}},
+  quoted => fn q{
+    my $self = shift;
+    my $q = ni('ni:/lib/image')->new(@_);
+    my $gs = $q->quote($self);
+    $q->side_effect("\$ni::self=$gs;");
+    $q;
+  });
+
 {
   my $ni = ni('ni:/lib/ni');
   my $r  = ni('ni:/lib/ni_resolver.b');
-  delete ${'lib/ni::'}{resolve};
-  $ni->add($r);
+  my $i  = ni('ni:/lib/ni_image.b');
+  delete @{'lib/ni::'}{qw/resolve exists/};
+  $ni->add($r, $i);
 }

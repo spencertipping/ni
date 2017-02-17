@@ -15,7 +15,7 @@ ni('ni:/io/object')->child('/io/cat')
   ->synopsis(q[
     my $combined = ni('ni:/io/cat')->new($io1, $io2, ...);
     my $combined = $io1 + $io2 + $io3;
-    $combined->into($destination_io);
+    $combined->into_sync($destination_io);
   ])
   ->description(
     q[Concatenates multiple IO objects into a single read-only data source.

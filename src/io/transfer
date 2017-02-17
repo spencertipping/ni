@@ -28,8 +28,6 @@ ni('ni:/object')->child('/io/transfer')
 ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
   ctor => fn q{
     my $self = shift;
-    print STDERR "defining transfer subclass " . Scalar::Util::refaddr($self) .
-    "\n";
     ni('ni:/io/object')->def("/io/object_transfer_$1.b",
       "into_$1" => fn qq{ni('ni:/io/transfer_$1')->new(\@_)->run})
     if $self->name =~ /transfer_(\w+)$/;
@@ -45,7 +43,8 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
 
   ->def('/io/transfer_sync_run.b',
     run => fn q{
+      local $_;
       my $self = shift;
-      $self->write($_) while $self->read(32768);
+      $self->write($_) while $self->read($_, 32768);
       $self;
     });
