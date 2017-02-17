@@ -10,6 +10,7 @@ ni('ni:/semantic/task')->child('/io/transfer')
       my $start_time = time;
       my $n = $$self{source_io}->read(@_);
       my $end_time = time;
+      $$self{start_time} ||= $start_time;
       $$self{read_bytes} += $n if defined $n;
       $$self{read_time} += $end_time - $start_time;
       $n;
@@ -23,6 +24,31 @@ ni('ni:/semantic/task')->child('/io/transfer')
       $$self{write_bytes} += $n if defined $n;
       $$self{write_time} += $end_time - $start_time;
       $n;
+    })
+
+  ->def('/io/transfer_io_measurement.b',
+    throughput => fn q{
+      my $self = shift;
+      my $end_time = $$self{end_time} || time;
+      my $dt       = $end_time - $$self{start_time} || 1;
+      $$self{write_bytes} / $dt;
+    },
+
+    read_limit_throughput => fn q{
+      my $self = shift;
+      $$self{read_bytes} / ($$self{read_time} || 1);
+    },
+
+    write_limit_throughput => fn q{
+      my $self = shift;
+      $$self{write_bytes} / ($$self{write_time} || 1);
+    },
+
+    pressure => fn q{
+      my $self = shift;
+      my $in_impedance  = log($$self{read_time}  || 1);
+      my $out_impedance = log($$self{write_time} || 1);
+      ($out_impedance - $in_impedance) / log 20;
     });
 
 ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
@@ -54,6 +80,7 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
           $n += $n0;
         }
       }
+      $$self{end_time} = time;
       $self->success;
     });
 
@@ -91,8 +118,13 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
       }
       unless (length $$self{pending}) {
         goto write_branch if $n = $self->read($$self{pending}, 32768);
-        return $self if defined $n || $!{EAGAIN} || $!{EWOULDBLOCK};
-        $self->failure($!);
+        return $self if $!{EAGAIN} || $!{EWOULDBLOCK};
+        if (defined $n) {
+          $$self{end_time} = time;
+          return $self->success;
+        } else {
+          $self->failure($!);
+        }
       }
       $self;
     });
