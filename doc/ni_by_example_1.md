@@ -311,7 +311,7 @@ Because you're typing directly into the `bash` shell, some characters may need t
 
 `$ ni n1000 r/^\(\\d\)\\1+$/`
 
-Use of escape characters in `ni` operators is acceptable style only if there is not a conciser way that is at least as readable, or a more readable way that is at least as concise. way to do the job. In this case, there is both. Making use of the Perl operator, introduced in the next section allows the above spell to be written more clearly and concisely written as `ni n1000 rp'/^(\d)\1+$/'`
+Use of escape characters in `ni` operators is acceptable style only if there is not a conciser way that is at least as readable, or a more readable way that is at least as concise. way to do the job. In this case, there is both. We can quote the regex inside of single quotes to make `r` filter on rows that match the `ni n1000 r'/^(\d)\1+$/'`
 
 The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  
 
