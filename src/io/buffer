@@ -1,0 +1,21 @@
+ni('ni:/io/object')->child('/io/buffer')
+  ->def('/io/buffer_init.b',
+    instantiate => fn q{
+      my ($class, $capacity) = @_;
+      $capacity ||= 65536;
+      +{capacity    => $capacity,
+        data        => "\0" x $capacity,
+        read_point  => 0,
+        write_point => 0};
+    })
+
+  ->def('/io/buffer_io.b',
+    read => fn q{
+    },
+    write => fn q{
+    })
+
+  ->doc
+  ->synopsis(q'
+    my $buf = ni("ni:/io/buffer")->new(1048576);
+    $buf->write("foo")')

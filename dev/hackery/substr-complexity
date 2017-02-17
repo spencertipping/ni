@@ -1,0 +1,14 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+our $data = "\0" x 65536;
+our $x    = 0;
+
+cmpthese(10000, {
+  map +("substr" . (1 << $_) => eval qq{sub {
+    \$x = 0;
+    for (1..100) {
+      \$x += length substr(\$data, 16384, 1 << $_);
+    }
+  }}), 12..16
+});

@@ -9,6 +9,7 @@ ni('ni:/lib/doc')->new('/io')
 
 ni->extend("src/io/$_") for
   qw/ object
+      buffer
       cat
       exec
       file

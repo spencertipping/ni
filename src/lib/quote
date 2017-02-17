@@ -74,6 +74,21 @@ ni('ni:/object')->child('/lib/quote_simple')
       $q;
     });
 
+ni('ni:/lib/slice')->new('/lib/gensym_generator_compact.b',
+  gensym => fn q{
+    my $n = shift->{gensym_n}++;
+    my $s = '$' .
+      substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+             $n % 50, 1;
+    $n = int $n / 50;
+    while ($n) {
+      $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+                   $n % 63, 1;
+      $n = int $n / 63;
+    }
+    $s;
+  });
+
 ni('ni:/lib/slice')->new('/lib/quote_circular_addressed.b',
   is_circular => fn q{
     my $self = shift;

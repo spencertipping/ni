@@ -12,20 +12,6 @@ ni('ni:/object')->child('/lib/image')
     })
 
   ->def('/lib/image_quoting.b',
-    gensym => fn q{
-      my $n = shift->{gensym_n}++;
-      my $s = '$' .
-        substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-               $n % 50, 1;
-      $n = int $n / 50;
-      while ($n) {
-        $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
-                     $n % 63, 1;
-        $n = int $n / 63;
-      }
-      $s;
-    },
-
     circular_links => fn q{
       local $_;
       my $self = shift;
@@ -89,7 +75,8 @@ ni('ni:/object')->child('/lib/image')
   ->add('/lib/quote_code_fail.b',
         '/lib/quote_values.b',
         '/lib/quote_objects.b',
-        '/lib/quote_circular_addressed.b');
+        '/lib/quote_circular_addressed.b',
+        '/lib/gensym_generator_compact.b');
 
 ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
   serialize => fn q{

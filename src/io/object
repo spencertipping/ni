@@ -12,11 +12,11 @@ ni('ni:/object')->child('/io/object')
       my ($self, $dest, $each) = @_;
       my $n;
       my $block_size = $self->can('read_size') ? $self->read_size : 32768;
+      # TODO: fix this; we need to formalize error handling.
       while (($n = $self->read($_, $block_size)) > 0) {
         $dest->write($_);
         &$each($_, $n) && return if defined $each;
       }
-      $self;
     })
 
   ->def('/io/object_checks.b',
