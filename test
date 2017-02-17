@@ -33,6 +33,15 @@ docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
 docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
 
+pull_docker_images() {
+  echo
+  echo "PULLING BASE IMAGES"
+  echo
+  for e; do
+    cat env/$e
+  done | grep 'FROM' | sed -r 's/^.*\s//' | sort | uniq | xargs -n1 docker pull
+}
+
 build_docker_images() {
   echo
   echo "BUILDING IMAGES"
@@ -92,6 +101,11 @@ case $c in
   ;;
 
 -b|--build)
+  build_docker_images --force ${envs[@]}
+  ;;
+
+--pull)
+  pull_docker_images ${envs[@]}
   build_docker_images --force ${envs[@]}
   ;;
 
