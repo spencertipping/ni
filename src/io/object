@@ -30,4 +30,8 @@ ni('ni:/object')->child('/io/object')
     read_all => fn q{
       shift->into_sync(ni('ni:/io/str')->new(my $data = ''));
       $data;
+    },
+    write_all => fn q{
+      my $self = shift;
+      ni('ni:/io/str')->new($_[0])->into_async($self);
     });

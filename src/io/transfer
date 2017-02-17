@@ -71,13 +71,14 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
     run => fn q{
       my $self = shift;
       my $buf;
-      while ($self->read($buf, 32768)) {
+      my $r;
+      while (($r = $self->read($buf, 32768)) || $!{EINTR}) {
         my $n = $self->write($buf);
-        $self->failure($!) unless defined $n;
-        while ($n < length $buf) {
-          my $n0 = $self->write(substr $buf, $n);
-          $self->failure($!) unless defined $n0;
-          $n += $n0;
+        $self->failure($!) unless $n || $!{EINTR};
+        while ($n < $r) {
+          my $n0 = $self->write($buf, $r - $n, $n);
+          $self->failure($!) unless $!{EINTR} || $n0;
+          $n += $n0 || 0;
         }
       }
       $$self{end_time} = time;
@@ -85,6 +86,7 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
     });
 
 ni('ni:/io/transfer')->child('/io/transfer_async')
+  ->ro('/io/transfer_async_ro.b', qw/ source_io dest_io id /)
   ->def('/io/transfer_async_init.b',
     instantiate => fn q{
       my ($class, $source, $dest) = @_;
@@ -93,6 +95,7 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
       +{source_io => $source,
         dest_io   => $dest,
         pending   => '',
+        outcome   => undef,
         id        => $class->new_id};
     })
 
@@ -105,6 +108,10 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
     run_async => fn q{
       my $self = shift;
       my $n;
+
+      # Step one: write everything in the pending queue, if possible. Invariant
+      # after this if() condition is that $$self{pending} is empty unless there
+      # was something preventing IO.
       if (length $$self{pending}) {
       write_branch:
         $n = 0;
@@ -116,9 +123,12 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
         }
         $$self{pending} = substr $$self{pending}, $n;
       }
+
+      # Step two: load more data into $$self{pending} and, if successful, go
+      # back to step one and write it.
       unless (length $$self{pending}) {
         goto write_branch if $n = $self->read($$self{pending}, 32768);
-        return $self if $!{EAGAIN} || $!{EWOULDBLOCK};
+        return $self if $!{EINTR} || $!{EAGAIN} || $!{EWOULDBLOCK};
         if (defined $n) {
           $$self{end_time} = time;
           return $self->success;
@@ -126,5 +136,19 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
           $self->failure($!);
         }
       }
+
       $self;
     });
+
+ni('ni:/io/transfer_async.c')->def('/io/transfer_async.c_tracker.b',
+  ctor => fn q{shift->{tracked_transfers} = {}},
+  track => fn q{
+    my ($self, $transfer) = @_;
+    Scalar::Util::weaken($$self{tracked_transfers}{$transfer->id} = $transfer);
+    $self;
+  },
+  untrack => fn q{
+    my ($self, $id) = @_;
+    delete $$self{tracked_transfers}{$id};
+    $self;
+  });

@@ -1,0 +1,77 @@
+ni('ni:/io/object')->child('/io/mio')
+  ->ro('/io/mio_ro.b', qw/ io packet_size /)
+  ->def('/io/mio_init.b',
+    instantiate => fn q{
+      my ($self, %args) = @_;
+      +{packet_size       => $args{packet_size} || 32768,
+        channel_capacity  => $args{channel_capacity} || 65536,
+        channel_id        => 0,
+        channels          => {}};
+    })
+
+  ->def('/io/mio_packet.b',
+    data_packet => fn q{
+      my $self       = shift;
+      my $channel_id = shift;
+      pack 'NN/a', $channel_id, $_[0];
+    },
+    eof_packet => fn q{
+      my ($self, $channel_id) = @_;
+      pack 'NN', $channel_id, 0;
+    })
+
+  ->def('/io/mio_io.b',
+    read => fn q{
+
+    },
+    write => fn q{
+
+    })
+
+  ->def('/io/mio_channel.b',
+    channels => fn q{sort {$a <=> $b} keys %{shift->{channels}}},
+    channel  => fn q{
+      my $self = shift;
+      my $id = @_ ? shift : ++$$self{channel_id};
+      return $$self{channels}{$id} if exists $$self{channels}{$id};
+      my $c = ni('ni:/io/mio_channel')->new($self, $id);
+      Scalar::Util::weaken($$self{channels}{$id} = $c);
+      $c;
+    })
+
+  ->doc
+  ->synopsis(q'
+    my $mio = ni("ni:/io/mio")->new;
+    my $c1 = $mio->channel;
+    my $c2 = $mio->channel;
+    my $t1 = $channel1->write_all("8MB data" x 1000000);
+    my $t2 = $channel2->write_all("short string");
+    $mio->into_sync($socket_or_something);')
+
+  ->description(
+    q[Provides a multiplexed interface around a single possibly-bidirectional
+      IO channel. The channel is assumed to be durable and order-preserving;
+      this multiplexing interface just interleaves multiple data streams to
+      make sure large transfers along one channel don't cause arbitrarily large
+      delays along other channels.],
+
+    q[In IO terms, channel objects behave like nonblocking sockets.],
+
+    q[
+      ]);
+
+ni('ni:/io/object')->child('/io/mio_channel')
+  ->ro('/io/mio_channel_ro.b', qw/ mio channel_id capacity /)
+  ->def('/io/mio_channel_init.b',
+    instantiate => fn q{
+      my ($self, $mio, $id, $capacity) = @_;
+      +{mio          => $mio,
+        channel_id   => $id,
+        capacity     => $capacity,
+        write_buffer => ni('ni:/io/buffer')->new($capacity >> 1),
+        read_buffer  => ni('ni:/io/buffer')->new($capacity >> 1)};
+    })
+
+  ->def('/io/mio_channel_io.b',
+    read  => fn q{shift->{read_buffer} ->read(@_)},
+    write => fn q{shift->{write_buffer}->write(@_)})

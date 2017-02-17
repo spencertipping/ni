@@ -3,6 +3,8 @@ ni('ni:/io/object')->child('/io/buffer')
     instantiate => fn q{
       my ($class, $capacity) = @_;
       $capacity ||= 65536;
+      $class->die("buffer capacity must be a power of two (got $capacity)")
+        if $capacity & $capacity - 1;
       +{capacity    => $capacity,
         data        => "\0" x $capacity,
         read_point  => 0,
@@ -10,12 +12,102 @@ ni('ni:/io/object')->child('/io/buffer')
     })
 
   ->def('/io/buffer_io.b',
-    read => fn q{
+    write_capacity => fn q{
+      my $self = shift;
+      $$self{capacity} - $$self{write_point} + $$self{read_point};
     },
+
+    read_capacity => fn q{
+      my $self = shift;
+      $$self{write_point} - $$self{read_point};
+    },
+
+    read => fn q{
+      my $self = shift;
+      my $rcap = $self->read_capacity;
+      $! = Errno::EWOULDBLOCK, return undef unless $rcap;
+
+      my $length = $_[1];
+      my $offset = $_[2] || 0;
+      $length = $rcap if $length > $rcap;
+
+      my $capacity   = $$self{capacity};
+      my $read_index = $$self{read_point} & $capacity - 1;
+      if ($read_index + $length > $capacity) {
+        my $read_size = $capacity - $read_index;
+        if ($offset) {
+          $_[0] ||= "\0" x $length;
+          substr $_[0], $offset, $read_size,
+                 substr $$self{data}, $read_index, $read_size;
+          substr $_[0], $offset + $read_size, $length - $read_size,
+                 substr $$self{data}, 0, $length - $read_size;
+        } else {
+          $_[0] = substr($$self{data}, $read_index, $read_size)
+                . substr($$self{data}, 0, $length - $read_size);
+        }
+        $$self{read_point} += $length;
+        return $length;
+      } else {
+        if ($offset) {
+          substr $_[0], $offset, $length,
+                 substr $$self{data}, $read_index, $length;
+        } else {
+          $_[0] = substr $$self{data}, $read_index, $length;
+        }
+        $$self{read_point} += $length;
+        return $length;
+      }
+    },
+
     write => fn q{
+      my $self = shift;
+      my $wcap = $self->write_capacity;
+      $! = Errno::EWOULDBLOCK, return undef unless $wcap;
+
+      my $length = @_ > 1 ? $_[1] : length $_[0];
+      my $offset = $_[2] || 0;
+      $length    = $wcap if $length > $wcap;
+
+      my $capacity    = $$self{capacity};
+      my $write_index = $$self{write_point} & $capacity - 1;
+      if ($write_index + $length > $capacity) {
+        # Two-part write
+        my $write_size = $capacity - $write_index;
+        substr $$self{data}, $write_index, $write_size,
+               substr $_[0], 0, $write_size;
+        substr $$self{data}, 0, $length - $write_size,
+               substr $_[0], $offset + $write_size, $length - $write_size;
+        $$self{write_point} += $length;
+        return $length;
+      } else {
+        # One-part write
+        substr $$self{data}, $write_index, $length,
+               length $_[0] == $length && !$offset
+                 ? $_[0]
+                 : substr $_[0], $offset, $length;
+        $$self{write_point} += $length;
+        return $length;
+      }
     })
 
   ->doc
   ->synopsis(q'
-    my $buf = ni("ni:/io/buffer")->new(1048576);
-    $buf->write("foo")')
+    my $buf = ni("ni:/io/buffer")->new(8192);
+    $buf->write("foo");
+    $buf->read($_, 256);        # reads "foo"')
+
+  ->description(
+    q[A bounded, memory-backed FIFO data queue. In IO terms, this object
+      behaves like a nonblocking socket and sets errno accordingly.])
+
+  ->eg(fn q{
+    my $buf = ni('ni:/io/buffer')->new(128);
+    now [$buf->read_capacity, $buf->write_capacity] == [0, 128];
+    now $buf->write("foobarbif") == 9;
+    now [$buf->read_capacity, $buf->write_capacity] == [9, 119];
+    now [$buf->read($_, 5), $_] == [5, "fooba"];
+
+    now $buf->write(" " x 125) == 124;
+    now $buf->read($_, 120) == 120;
+    now [$buf->read($_, 100), $_, $buf->read_capacity] == [8, " " x 8, 0];
+  });

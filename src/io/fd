@@ -43,7 +43,6 @@ ni('ni:/io/object')->child('/io/fd')
     dtor => fn q{shift->close},
     close => fn q{
       my $self = shift;
-      return $self if $$self{closed};
       close $$self{rfh} if $$self{rfh};
       close $$self{wfh} if $$self{wfh};
       POSIX::close $$self{fd};
@@ -55,20 +54,12 @@ ni('ni:/io/object')->child('/io/fd')
     read => fn q{
       my $self = shift;
       open $$self{rfh}, "<&=$$self{fd}" or return undef unless $$self{rfh};
-      my $r;
-      do {
-        return $r if defined($r = sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0);
-      } while ($!{EINTR});
-      $r;
+      sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0;
     },
     write => fn q{
       my $self = shift;
       open $$self{wfh}, ">&=$$self{fd}" or return undef unless $$self{wfh};
-      my $r;
-      do {
-        return $r if defined($r = syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0);
-      } while ($!{EINTR});
-      $r;
+      syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0;
     });
 
 ni->resolver_for(fd => fn q{ni('ni:/io/fd')->new(0 + substr shift, 3)});

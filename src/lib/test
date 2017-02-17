@@ -25,8 +25,8 @@ ni('ni:/object')->child('/lib/test_value')
                 object_type         => $rl,
                 diffs               => \%diff} if keys %diff;
       } elsif ($realtype eq 'ARRAY') {
-        my $n_diff = @$lhs - @$rhs;
-        return {array_length_mismatch => $n_diff} if $n_diff;
+        return {array_length_mismatch => [scalar(@$lhs), scalar(@$rhs)]}
+          unless @$lhs == @$rhs;
         my %diff;
         $diff{$_} = $class->new($$lhs[$_])->diff($$rhs[$_])
           for 0..$#{$lhs};

@@ -11,6 +11,14 @@ ni('ni:/io/object')->child('/io/file')
     })
 
   ->def('/io/file_io.b',
+    close => fn q{
+      my $self = shift;
+      $$self{r}->close if $$self{r};
+      $$self{w}->close if $$self{w};
+      $$self{r} = $$self{w} = undef;
+      $self;
+    },
+
     r => fn q{
       my $self = shift;
       $$self{r} ||= ni('ni:/io/fd')->new(
