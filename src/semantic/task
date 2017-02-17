@@ -1,1 +1,14 @@
-ni('ni:/object')->child('/semantic/task');
+ni('ni:/object')->child('/semantic/task')
+  ->ro('/semantic/task_ro.b', qw/outcome/)
+  ->def('/semantic/task_outcome.b',
+    failure => fn q{
+      my $self = shift;
+      $$self{outcome} = [0, @_];
+      $self->die($_[0]);
+    },
+
+    success => fn q{
+      my $self = shift;
+      $$self{outcome} = [1, @_];
+      $self;
+    });

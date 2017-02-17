@@ -38,8 +38,7 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
     instantiate => fn q{
       my ($class, $source, $dest) = @_;
       +{source_io => $source,
-        dest_io   => $dest,
-        complete  => 0};
+        dest_io   => $dest};
     })
 
   ->def('/io/transfer_sync_run.b',
@@ -48,13 +47,12 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
       my $buf;
       while ($self->read($buf, 32768)) {
         my $n = $self->write($buf);
-        $self->die($!) unless defined $n;
+        $self->failure($!) unless defined $n;
         while ($n < length $buf) {
           my $n0 = $self->write(substr $buf, $n);
-          $self->die($!) unless defined $n0;
+          $self->failure($!) unless defined $n0;
           $n += $n0;
         }
       }
-      $$self{complete} = 1;
-      $self;
+      $self->success;
     });
