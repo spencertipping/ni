@@ -73,7 +73,7 @@ gitlab_yaml() {
     echo "ni-$e:"
     echo "  image: spencertipping/ni-env-$e"
     echo "  script:"
-    echo "    - ./ni --internal/test"
+    echo "    - grep perl ni > /dev/null && ./ni --internal/test"
   done
 }
 
