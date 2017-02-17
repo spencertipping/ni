@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+cmpthese(2000, {
+  var_access => sub {
+    my $x = 0;
+    ++$x for 1..10000;
+  },
+  var_access_2 => sub {
+    my $x = 0;
+    ++$x, ++$x for 1..10000;
+  },
+  hash_access => sub {
+    my %h = (x => 0);
+    ++$h{x} for 1..10000;
+  }
+});

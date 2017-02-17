@@ -51,12 +51,24 @@ ni('ni:/semantic/task')->child('/io/transfer')
       ($out_impedance - $in_impedance) / log 20;
     });
 
+ni('ni:/io/object.c')->def('/io/object.c_transfer_def.b',
+  def_transfer_method => fn q{
+    my ($class, $transfer_class, $method_name) = @_;
+    my $transfer_name = $transfer_class->name;
+    $class->def("/io/object_transfer_$method_name.b",
+      "into_$method_name" => fn qq{ni('$transfer_name')->new(\@_)->run},
+      "connect_$method_name" => fn qq{
+        my (\$self, \$rhs) = \@_;
+        (\$self->into_$method_name(\$rhs),
+         \$rhs->into_$method_name(\$self));
+      });
+  });
+
 ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
   ctor => fn q{
     my $self = shift;
-    ni('ni:/io/object')->def("/io/object_transfer_$1.b",
-      "into_$1" => fn qq{ni('ni:/io/transfer_$1')->new(\@_)->run})
-    if $self->name =~ /transfer_(\w+)$/;
+    ni('ni:/io/object')->def_transfer_method($self, $1)
+      if $self->name =~ /transfer_(\w+)$/;
   });
 
 ni('ni:/io/transfer')->child('/io/transfer_sync')

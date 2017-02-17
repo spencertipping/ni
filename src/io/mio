@@ -3,28 +3,66 @@ ni('ni:/io/object')->child('/io/mio')
   ->def('/io/mio_init.b',
     instantiate => fn q{
       my ($self, %args) = @_;
-      +{packet_size       => $args{packet_size} || 32768,
-        channel_capacity  => $args{channel_capacity} || 65536,
-        channel_id        => 0,
-        channels          => {}};
+      +{channel_capacity => $args{channel_capacity} || 65536,
+        closed           => 0,
+        send_index       => 0,
+        read_buffers     => [],
+        write_buffers    => [],
+        channel_id       => 0,
+        channels         => []};
     })
 
-  ->def('/io/mio_packet.b',
-    data_packet => fn q{
-      my $self       = shift;
-      my $channel_id = shift;
-      pack 'NN/a', $channel_id, $_[0];
-    },
-    eof_packet => fn q{
-      my ($self, $channel_id) = @_;
-      pack 'NN', $channel_id, 0;
+  ->def('/io/mio_rr_scheduler.b',
+    next_sender => fn q{
+      my $self = shift;
+      my $rs   = $$self{read_buffers};
+      my $a    = $$self{send_index} + 1;
+      for (my $i = 0; $i < @$rs; ++$i) {
+        my $ai = ($a + $i) % @$rs;
+        return $$self{send_index} = $ai if $$rs[$ai]->read_capacity;
+      }
+      undef;
     })
 
   ->def('/io/mio_io.b',
-    read => fn q{
-
+    close => fn q{
+      my $self = shift;
+      $$self{closed} = 1;
+      $self;
     },
+
+    read => fn q{
+      my $self   = shift;
+      my $length = $_[1];
+      my $offset = $_[2] || 0;
+      my $total_read = 0;
+
+      while ($total_read + 8 < $length) {
+        my $next_id = $self->next_sender;
+        unless (defined $next_id) {
+          return 0 if $$self{closed};
+          $! = Errno::EWOULDBLOCK, return undef unless $total_read;
+        }
+
+        my $n = $$self{channels}[$next_id]->read(
+          $_[0],
+          $length - $total_read - 8,
+          $offset + $total_read + 8);
+        if ($n) {
+          substr $_[0], $offset + $total_read, 8, pack 'NN', $next_id, $n;
+          $total_read += $n + 8;
+        } elsif (!defined $n) {
+          return $total_read || undef;
+        }
+      }
+
+      return $total_read if $total_read;
+      $! = Errno::EWOULDBLOCK;
+      undef;
+    },
+
     write => fn q{
+      my $self = shift;
 
     })
 
@@ -36,17 +74,32 @@ ni('ni:/io/object')->child('/io/mio')
       return $$self{channels}{$id} if exists $$self{channels}{$id};
       my $c = ni('ni:/io/mio_channel')->new($self, $id);
       Scalar::Util::weaken($$self{channels}{$id} = $c);
+      $$self{read_buffers}{$id}  = $$c{read_buffer};
+      $$self{write_buffers}{$id} = $$c{write_buffer};
+      push @{$$self{send_rr}}, $id;
       $c;
+    },
+
+    unchannel => fn q{
+      my ($self, $id) = @_;
+      delete $$self{channels}{$id};
+      delete $$self{read_buffers}{$id}
+        unless $$self{read_buffers}{$id}->read_capacity;
+      delete $$self{write_buffers}{$id}
+        unless $$self{write_buffers}{$id}->write_capacity;
+      $$self{send_rr} = [map $_ ne $id, @{$$self{send_rr}}];
+      $self;
     })
 
   ->doc
   ->synopsis(q'
-    my $mio = ni("ni:/io/mio")->new;
-    my $c1 = $mio->channel;
-    my $c2 = $mio->channel;
+    my $sender   = ni("ni:/io/mio")->new;
+    my $receiver = ni("ni:/io/mio")->new;
+    my $c1 = $mio->channel(1);
+    my $c2 = $mio->channel(2);
     my $t1 = $channel1->write_all("8MB data" x 1000000);
     my $t2 = $channel2->write_all("short string");
-    $mio->into_sync($socket_or_something);')
+    my $t3 = $mio->into_async();')
 
   ->description(
     q[Provides a multiplexed interface around a single possibly-bidirectional
@@ -61,17 +114,23 @@ ni('ni:/io/object')->child('/io/mio')
       ]);
 
 ni('ni:/io/object')->child('/io/mio_channel')
-  ->ro('/io/mio_channel_ro.b', qw/ mio channel_id capacity /)
+  ->ro('/io/mio_channel_ro.b', qw/ mio id capacity /)
   ->def('/io/mio_channel_init.b',
     instantiate => fn q{
       my ($self, $mio, $id, $capacity) = @_;
       +{mio          => $mio,
-        channel_id   => $id,
+        id           => $id,
         capacity     => $capacity,
         write_buffer => ni('ni:/io/buffer')->new($capacity >> 1),
         read_buffer  => ni('ni:/io/buffer')->new($capacity >> 1)};
     })
 
+  ->def('/io/mio_channel_lifecycle.b',
+    dtor => fn q{
+      my $self = shift;
+      $$self{mio}->unchannel($$self{channel_id});
+    })
+
   ->def('/io/mio_channel_io.b',
     read  => fn q{shift->{read_buffer} ->read(@_)},
-    write => fn q{shift->{write_buffer}->write(@_)})
+    write => fn q{shift->{write_buffer}->write(@_)});
