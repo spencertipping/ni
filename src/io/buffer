@@ -110,4 +110,5 @@ ni('ni:/io/object')->child('/io/buffer')
     now $buf->write(" " x 125) == 124;
     now $buf->read($_, 120) == 120;
     now [$buf->read($_, 100), $_, $buf->read_capacity] == [8, " " x 8, 0];
+    now [$buf->read($_, 100), 0 + $!] == [undef, Errno::EWOULDBLOCK];
   });

@@ -6,11 +6,17 @@ ni('ni:/lib/doc')->new('/lib')
       about its introspection. This includes definitions for documentation,
       unit tests, classes, support for basic image generation, etc -- and when
       possible, it's written with some awareness of downstream use cases (for
-      instance, image serialization and RMI share logic).]);
+      instance, image serialization and RMI share logic).],
+
+    q[/lib is the place where things don't quite work yet, so the code here is
+      written differently from other modules.]);
 
 ni->extend("src/lib/$_") for
   qw/ fn
       json
       test
+      class_doc
+      doc_doc
       quote
-      image /;
+      image
+      util /;

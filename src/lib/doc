@@ -11,6 +11,10 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
       $self;
     })
 
+  ->def('/lib/doc_end.b',
+    referent => fn q{ni 'ni:' . shift->{name}},
+    end      => fn q{shift->referent})
+
   ->def('/lib/doc_test.b',
     tests => fn q{
       # TODO: not even close to the right way to do this.
