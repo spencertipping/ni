@@ -3,12 +3,17 @@ ni('ni:/io/object')->child('/io/cat')
   ->def('/io/cat_read.b',
     read => fn q{
       my $fs = shift->{fs};
+      my $length = $_[1];
+      my $offset = $_[2] || 0;
+      my $total_read = 0;
       my $n;
-      until (!@$fs or $n = $$fs[0]->read(@_)) {
-        return $n unless defined $n;
-        shift @$fs;
+      while (@$fs && $total_read < $length) {
+        $n = $$fs[0]->read($_[0], $length - $total_read, $offset + $total_read);
+        return $total_read || undef unless defined $n;
+        shift @$fs unless $n;
+        $total_read += $n;
       }
-      return $n;
+      $total_read;
     })
 
   ->doc
@@ -21,18 +26,9 @@ ni('ni:/io/object')->child('/io/cat')
     q[Concatenates multiple IO objects into a single read-only data source.
       This is a mutable object that consumes its inputs and then loses its
       references to them as quickly as possible, allowing their resources to be
-      freed. Once fully consumed, the cat object holds no references.],
-
-    q[/io/cat objects don't yet combine IOs even when it's possible, but they
-      probably should.])
+      freed. Once fully consumed, the cat object holds no references.])
 
   ->eg(fn q{
-    my $cat = ni('str:foo') + ni('str:bar');
-    now $cat->read_all == "foo\nbar\n";
-  })
-
-  ->eg(fn q{
-    # this doesn't work yet
     my $cat = ni('str:foo') + ni('str:bar');
     now [$cat->read($_, 16), $_] == [8, "foo\nbar\n"];
   });
