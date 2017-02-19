@@ -16,17 +16,17 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
     end      => fn q{shift->referent})
 
   ->def('/lib/doc_test.b',
+    linearized => fn q{map @$_, @{shift->{doc}}},
+
     tests => fn q{
-      # TODO: not even close to the right way to do this.
       my $self = shift;
-      my @flattened = map @$_, @{$$self{doc}};
-      my @tests;
+      my @flattened = $self->linearized;
       return () unless @flattened;
-      for (0..$#flattened - 1) {
-        push @tests, $flattened[$_ + 1]
-          if !ref $flattened[$_] && $flattened[$_] eq 'eg';
+      my @eg_indexes = grep $flattened[$_] eq 'eg', 0..$#flattened;
+      for (@eg_indexes) {
+        ++$_ until $_ > @flattened or ref $flattened[$_] eq 'lib/fn';
       }
-      @tests;
+      @flattened[@eg_indexes];
     },
 
     eg => fn q{
