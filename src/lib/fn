@@ -5,20 +5,42 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     my $proto = @_ && $_[-1] =~ /^\(/ ? pop : '';
     +{code        => $code,
       proto       => $proto,
+      eval_number => undef,
       annotations => [@_]};
   },
   compile => fn q{
     local $@;
     my $self = shift;
     $$self{proto} ||= '';
-    $$self{fn} = ni::eval "sub $$self{proto} {$$self{code}\n}";
-    die "ni:/lib/fn: failed to compile $$self{code}: $@" if $@;
+    $$self{fn} = $self->class->eval(
+      "sub $$self{proto} {$$self{code}\n}",
+      $self);
     $$self{fn};
   },
-  ctor => fn q{shift->compile});
+  ctor => fn q{shift->compile},
+  dtor => fn q{$_[0]->class->uneval($_[0])});
+
+ni('ni:/lib/slice')->new('/lib/fn.c_eval.b',
+  ctor => fn q{shift->{evals} = {}},
+  eval => fn q{
+    my ($self, $code, $fn) = shift;
+    my ($en) = eval('__FILE__') =~ /eval (\d+)/;
+    Scalar::Util::weaken($$self{++$en} = $fn);
+    $fn->eval_number($en);
+    my $r = ni::eval $code;
+    die "ni:/lib/fn: failed to compile $code: $@" if $@;
+    $r;
+  },
+  uneval => fn q{
+    my ($self, $fn) = @_;
+    delete $$self{evals}{$fn->eval_number};
+  });
 
 delete @{'lib/fn::'}{qw/new compile/};
-ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
+ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b')
+  ->rw('/lib/fn_rw.b', qw/eval_number/);
+
+ni('ni:/lib/fn.c')->add('/lib/fn.c_eval.b');
 
 ni('ni:/lib/fn')
   ->ro('/lib/fn_ro.b', qw/code annotations fn/)

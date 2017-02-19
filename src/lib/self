@@ -64,25 +64,25 @@ ni('ni:/object')->child('/lib/ni')
     },
 
     '--internal/test' => fn q{
-      my $self = shift;
-      my @tests = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
-      my $fails = 0;
-      print scalar(@tests) . " test(s)\n";
-      my %names = %{ni->{named}};
-      for my $t (@tests) {
-        %{ni->{named}} = %names;
-        my $r = eval {&$t};
-        if ($@) {
-          ++$fails;
-          print "FAIL\n$@ in\n$t\n\n";
-        } elsif (!$r) {
-          ++$fails;
-          print "FAIL\n$r\n";
-        }
+      my $self   = shift;
+      my $failed = 0;
+      my @tests  = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
+      for (@tests) {
+        $_->run;
+        print "$_\n";
       }
-      printf "% 4d test(s) passed\n", @tests - $fails;
-      printf "% 4d test(s) failed\n", $fails;
-      !!$fails;
+      for my $f (grep $_->failed, @tests) {
+        ++$failed;
+        print "\nTEST FAIL\n", $f->test, "\n";
+        print "\nERROR ", $f->error if $f->error;
+        print "\nASSERTIONS\n";
+        print "  $_\n" for @{$f->assertions};
+      }
+
+      print "\nSUMMARY\n";
+      printf "% 4d test(s) passed\n", @tests - $failed;
+      printf "% 4d test(s) failed\n", $failed;
+      !!$failed;
     },
 
     '--internal/image' => fn q{

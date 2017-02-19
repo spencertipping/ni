@@ -21,8 +21,8 @@ ni('ni:/io/object')->child('/io/file')
       create.],
 
     eg => fn q{
-      my $ni = ni('file:ni');
-      now [$ni->read($_, 19), $_] == [19, "#!/usr/bin/env perl"];
+      my $ni = ni('file:/dev/zero');
+      now [$ni->read($_, 8), $_] == [8, "\0" x 8];
     },
 
     q[File objects also provide some useful functions like atomic-updating.

@@ -129,6 +129,9 @@ case $c in
   echo "(./test --docker to run in all environments)"
   echo
   build_ni_stuff
-  ./ni --internal/test || exit $?
+  ni=$PWD/ni
+  cd "$(mktemp -d)"
+  echo "testing in $PWD"
+  $ni --internal/test || exit $?
   ;;
 esac

@@ -1,0 +1,47 @@
+ni('ni:/lib/slice')->doc
+  ->synopsis(q[
+    ni('ni:/lib/slice')->new('/lib/foo',
+      ctor => fn q{shift->say_hi},
+      say_hi => fn q{print "hi from " . shift->name . "\n"});
+    $some_class->add('/lib/foo');])
+
+  ->description(
+    q[A slice of methods encoding some aspect of an object's behavior. Slices
+      are combined using tags and branches, and the set of slices used to
+      construct a class must be disjoint except for constructors and
+      destructors.],
+
+    q[Slices are objects that provide an ->apply method, which installs their
+      methods + ctors + dtors into a Perl package.],
+
+    eg q{
+      my $slice = ni('ni:/lib/slice')->new('foo1', foo => fn q{"bar"});
+      $slice->apply('test::foo1');
+      now bless({}, 'test::foo1')->foo == 'bar';
+    },
+
+    q[Slices automatically do the equivalent of using Perl's "overload" module
+      if any methods begin with an open-paren.],
+
+    q[Classes automatically incorporate some special low-level slices that are
+      used by others; one of these is /lib/instantiable.b, which implements
+      ->new and ->DESTROY. These methods then call into the lists of
+      constructors and destructors implemented when slices are added to a
+      package.],
+
+    eg q{
+      my $instances = 0;
+      my $class = ni('ni:/object')->child('test/foo2')
+        ->def('test/foo2_init.b',
+          instantiate => fn {+{}},
+          ctor => sub {++$instances},
+          dtor => sub {--$instances});
+      now $instances == 0;
+      {
+        my $i1 = $class->new;
+        now $instances == 1;
+        my $i2 = $class->new;
+        now $instances == 2;
+      }
+      now $instances == 0;
+    });

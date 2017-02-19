@@ -28,7 +28,7 @@ ni('ni:/class')->doc
       ni:/lib/slice, which represents a set of methods you can add to a
       package.],
 
-    eg => fn q{
+    eg q{
       my $fn = fn q{"hi"};
       my $slice = ni('ni:/lib/slice')->new('myslice', f => $fn);
       $slice->apply('foo');

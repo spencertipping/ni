@@ -15,6 +15,7 @@ ni->extend("src/lib/$_") for
   qw/ fn
       json
       test
+      behavior_doc
       class_doc
       doc_doc
       quote

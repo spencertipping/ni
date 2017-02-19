@@ -20,18 +20,12 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
     tests => fn q{
       my $self = shift;
-      my @flattened = $self->linearized;
-      return () unless @flattened;
-      my @eg_indexes = grep $flattened[$_] eq 'eg', 0..$#flattened;
-      for (@eg_indexes) {
-        ++$_ until $_ > @flattened or ref $flattened[$_] eq 'lib/fn';
-      }
-      @flattened[@eg_indexes];
+      grep ref($_) eq 'lib/test_case', $self->linearized;
     },
 
     eg => fn q{
       my $self = shift;
-      push @{$$self{doc}}, [eg => $_] for @_;
+      push @{$$self{doc}}, [eg => eg($_)] for @_;
       $self;
     });
 
