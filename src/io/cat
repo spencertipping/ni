@@ -1,21 +1,4 @@
 ni('ni:/io/object')->child('/io/cat')
-  ->def('/io/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
-  ->def('/io/cat_read.b',
-    read => fn q{
-      my $fs = shift->{fs};
-      my $length = $_[1];
-      my $offset = $_[2] || 0;
-      my $total_read = 0;
-      my $n;
-      while (@$fs && $total_read < $length) {
-        $n = $$fs[0]->read($_[0], $length - $total_read, $offset + $total_read);
-        return $total_read || undef unless defined $n;
-        shift @$fs unless $n;
-        $total_read += $n;
-      }
-      $total_read;
-    })
-
   ->doc
   ->synopsis(q[
     my $combined = ni('ni:/io/cat')->new($io1, $io2, ...);
@@ -31,4 +14,22 @@ ni('ni:/io/object')->child('/io/cat')
   ->eg(fn q{
     my $cat = ni('str:foo') + ni('str:bar');
     now [$cat->read($_, 16), $_] == [8, "foo\nbar\n"];
-  });
+  })
+  ->end
+
+  ->def('/io/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
+  ->def('/io/cat_read.b',
+    read => fn q{
+      my $fs = shift->{fs};
+      my $length = $_[1];
+      my $offset = $_[2] || 0;
+      my $total_read = 0;
+      my $n;
+      while (@$fs && $total_read < $length) {
+        $n = $$fs[0]->read($_[0], $length - $total_read, $offset + $total_read);
+        return $total_read || undef unless defined $n;
+        shift @$fs unless $n;
+        $total_read += $n;
+      }
+      $total_read;
+    });

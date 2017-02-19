@@ -17,8 +17,7 @@ ni('ni:/io/object')->child('/io/exec')
     my $e   = ni('ni:/io/exec')->new('echo', 'hi');
     my $out = $e->stdout;
     my $pid = $e->fork;
-    now $out->read_all == "hi\n";
-    now $pid->await == 0;
+    now [$out->read_all, $pid->await] == ["hi\n", 0];
   })
   ->end
 

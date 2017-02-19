@@ -1,4 +1,29 @@
 ni('ni:/io/object')->child('/io/fd')
+  ->doc
+  ->synopsis(q[
+    open my $fh, ...;
+    my $fd = ni('ni:/io/fd')->new($fh); # from perl FH
+    my $fd = ni('ni:/io/fd')->new(0);   # from number
+    my $fd = ni('fd:0');                # same thing
+    $fd->nonblock(1)->read($_, 100);
+    $fd->be(10);                        # move FD number
+  ])
+
+  ->description(
+    q[Represents a file descriptor as a child of /io/object (so the usual IO
+      methods like into_async are available), and provides some convenience
+      functions for things like setting up FDs for child processes. FDs are
+      closed when destroyed.])
+
+  ->eg(fn q{
+    my ($r, $w) = POSIX::pipe;
+    {
+      my $fd = ni('ni:/io/fd')->new($r);
+    }
+    ni('ni:/io/fd')->new($w)->be($r);   # fails unless $r was GC-closed
+  })
+  ->end
+
   ->ro('/io/fd_readers.b', qw/fd/)
   ->def('/io/fd_init.b',
     instantiate => fn q{

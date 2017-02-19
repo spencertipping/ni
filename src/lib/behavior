@@ -61,8 +61,9 @@ ni->def('ni:/lib/instantiable.b' =>
     methods => {
       new => fn q{
         local $_;
-        my $class = ref $_[0] ? shift->package : shift;
-        my $self = bless $class->instantiate(@_), $class;
+        my $class   = shift;
+        my $package = ref $class ? $class->package : $class;
+        my $self = bless &{"$package\::instantiate"}($class, @_), $package;
         $_->($self) for @{ref($self) . "::ctors"};
         $self;
       },

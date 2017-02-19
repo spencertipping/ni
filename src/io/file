@@ -1,4 +1,48 @@
 ni('ni:/io/object')->child('/io/file')
+  ->doc
+  ->synopsis(q[
+    my $f = ni('ni:/io/file')->new('/etc/passwd');
+    my $f = ni('file:/etc/passwd');     # same as above
+    $f->into_sync(ni('fd:1'));          # cat to stdout
+  ])
+
+  ->warning(
+    q[Files overload the -X file test operators, but this feature wasn't
+      introduced until Perl 5.12 -- prior versions won't recognize this
+      overload. That means that using this overload in ni's base code will
+      reduce its portability and cause tests to fail.])
+
+  ->description(
+    q[Represents a file that may or may not exist, and stores/constructs file
+      descriptors for reading/writing. /io/files are one-shot objects: once
+      you've consumed them for reading or written to them, you should destroy
+      the object and start over (or close the file) if you want to operate on
+      the file further -- put differently, /io/file objects own the FDs they
+      create.],
+
+    eg => fn q{
+      my $ni = ni('file:ni');
+      now [$ni->read($_, 19), $_] == [19, "#!/usr/bin/env perl"];
+    },
+
+    q[File objects also provide some useful functions like atomic-updating.
+      This lets you write a stream slowly into a tempfile, then rename over the
+      original once the tempfile is closed. ni uses this to update itself to
+      avoid race conditions.],
+
+    eg => fn q{
+      ni('file:tmp1')->write_all("original contents");
+      {
+        my $updater = ni('file:tmp1')->atomic_update;
+        $updater->write_all('foo bar');
+        now ni('file:tmp1')->read_all == "original contents";
+      }
+      now ni('file:tmp1')->read_all == "foo bar";
+      ni('file:tmp1')->rm;
+    })
+
+  ->end
+
   ->ro('/io/file_readers.b', qw/name/)
   ->rw('/io/file_accessors.b', qw/mode/)
   ->def('/io/file_init.b',
@@ -8,6 +52,12 @@ ni('ni:/io/object')->child('/io/file')
         mode => $mode || 0644,
         r    => undef,
         w    => undef};
+    })
+
+  ->def('/io/file_fns.b',
+    '(-X' => fn q{
+      my ($self, $test) = @_;
+      &{"-$test"}($$self{name});
     })
 
   ->def('/io/file_io.b',

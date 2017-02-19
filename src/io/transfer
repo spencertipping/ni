@@ -153,7 +153,12 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
     });
 
 ni('ni:/io/transfer_async.c')->def('/io/transfer_async.c_tracker.b',
-  ctor => fn q{shift->{tracked_transfers} = {}},
+  ctor => fn q{
+    my $self = shift;
+    $$self{tracked_transfers} = {};
+    $$self{transfer_id}       = 0;
+  },
+  new_id => fn q{++shift->{transfer_id}},
   track => fn q{
     my ($self, $transfer) = @_;
     Scalar::Util::weaken($$self{tracked_transfers}{$transfer->id} = $transfer);
