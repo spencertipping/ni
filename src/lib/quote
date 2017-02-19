@@ -4,12 +4,13 @@ ni('ni:/object')->child('/lib/quote_simple')
     q[A stateless object that serializes values with direct quotation; that
       is, the serialization contains no variables. If your objects have
       circular or shared references, you should probably use
-      /lib/quote_circular or similar.])
-  ->eg(fn q{
-    my $q = ni('ni:/lib/quote_simple')->new;
-    now $q->quote([1,2,3]) == "[1,2,3]";
-    now $q->quote({foo => 1, bar => [1, 2]}) == "{q#bar#,[1,2],q#foo#,1}";
-  })
+      /lib/quote_circular or similar.],
+
+    eg q{
+      my $q = ni('ni:/lib/quote_simple')->new;
+      now $q->quote([1,2,3]) == "[1,2,3]";
+      now $q->quote({foo => 1, bar => [1, 2]}) == "{q#bar#,[1,2],q#foo#,1}";
+    })
   ->end
 
   ->def('/lib/quote_simple_init.b', instantiate => fn q{+{}})

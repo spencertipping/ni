@@ -49,7 +49,7 @@ ni->def('ni:/lib/slice_init.b' =>
           applied_to => delete($args{applied_to}),
           name       => $name,
           methods    => \%args};
-      },
+      }
     }
   }, 'lib/slice');
 
@@ -70,7 +70,7 @@ ni->def('ni:/lib/instantiable.b' =>
       DESTROY => fn q{
         local $_;
         my $self = shift;
-        $_->($self) for @{ref($self) . "::dtors"};
+        defined && $_->($self) for @{ref($self) . "::dtors"};
       }
     }
   }, 'lib/slice');
