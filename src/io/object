@@ -33,5 +33,5 @@ ni('ni:/object')->child('/io/object')
     },
     write_all => fn q{
       my $self = shift;
-      ni('ni:/io/str')->new($_[0])->into_async($self);
+      ni('ni:/io/str')->new($_[0])->into_sync($self);
     });

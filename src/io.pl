@@ -12,8 +12,8 @@ ni->extend("src/io/$_") for
       buffer
       cat
       exec
-      file
       fd
+      file
       mio
       null
       pid

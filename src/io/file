@@ -58,6 +58,30 @@ ni('ni:/io/object')->child('/io/file')
     '(-X' => fn q{
       my ($self, $test) = @_;
       &{"-$test"}($$self{name});
+    },
+
+    mv => fn q{
+      my ($self, $dest) = @_;
+      $dest = $dest->name if ref $dest;
+      $self->io_check_true(*POSIX::rename, $self->name, $dest);
+      $$self{name} = $dest;
+      $self;
+    },
+
+    rm => fn q{
+      my $self = shift;
+      $self->io_check_true(*POSIX::unlink, $self->name);
+      $self;
+    })
+
+  ->def('/io/file_update.b',
+    atomic_update => fn q{
+      my $self = shift;
+      my $suffix = 0;
+      ++$suffix while -e $self->name . ".$suffix";
+      ni('ni:/io/file_update_fd')->new(
+        $self,
+        $self->class->new($self->name . ".$suffix"));
     })
 
   ->def('/io/file_io.b',
@@ -87,6 +111,39 @@ ni('ni:/io/object')->child('/io/file')
 
     read  => fn q{shift->r->read(@_)},
     write => fn q{shift->w->write(@_)});
+
+ni('ni:/io/object')->child('/io/file_update_fd')
+  ->doc
+  ->description(q[A write fd that performs a file rename upon closing.])
+  ->end
+
+  ->add('/io/fd_readers.b',
+        '/io/fd_fcntl.b',
+        '/io/fd_perlio.b')
+
+  ->def('/io/file_update_fd_init.b',
+    instantiate => fn q{
+      my ($class, $file, $tempfile) = @_;
+      my $fd = $tempfile->w;
+      +{writer   => $fd,
+        fd       => $fd->fd,
+        wfh      => undef,
+        tempfile => $tempfile,
+        file     => $file};
+    })
+
+  ->def('/io/file_update_fd_gc.b',
+    dtor => fn q{
+      print STDERR "destroying file_update_fd\n";
+      shift->close;
+    },
+    close => fn q{
+      my $self = shift;
+      close $$self{wfh} if $$self{wfh};
+      $$self{writer}->close;
+      $$self{tempfile}->rename($$self{file}->name);
+      $self;
+    });
 
 ni->resolver_for(file => fn q{
   my $f = shift;
