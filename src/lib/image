@@ -3,7 +3,7 @@ ni('ni:/object')->child('/lib/image')
   ->synopsis(q'
     my $image = ni("ni:/lib/image")->new;
     my $gensym = $image->quote($value);
-    $image->into_sync($a_file);         # TODO')
+    $image->io->into_sync($a_file);')
   ->description(
     q[Generates Perl code that reconstructs the state of objects at the
       behavior/slice level. Since classes are self-describing, this results in
@@ -45,7 +45,7 @@ ni('ni:/object')->child('/lib/image')
         "#!/usr/bin/env perl\n",
         "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
         "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
-        map("$_\n", $self->reconstruction),
+        $self->reconstruction,
         "ni->run(\@ARGV);",
         "\n__DATA__\n");
     },

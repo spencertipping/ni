@@ -8,4 +8,5 @@ ni('ni:/lib/doc')->new('/fabric')
       instance, then we can see its resources.]);
 
 ni->extend("src/fabric/$_") for
-  qw/ rmi /;
+  qw/ future
+      rmi /;

@@ -1,0 +1,96 @@
+ni('ni:/object')->child('/fabric/future')
+  ->doc
+  ->description(
+    q[A value that doesn't yet exist, but is finalized once it does exist.],
+    eg q{
+      my $f1 = ni('ni:/fabric/future')->new;
+      my $f2 = $f1->map(fn q{$_[0] + 1});
+      now [$f1->v, $f2->v] == [undef, undef];
+      $f1->decide(5);
+      now [$f1->v, $f2->v] == [5, 6];
+    },
+
+    q[You can combine multiple futures in different ways depending on what
+      you're trying to do.],
+    eg q{
+      my $f1 = ni('ni:/fabric/future')->new;
+      my $f2 = ni('ni:/fabric/future')->new;
+      my $f3 = $f1->or($f2);
+      my $f4 = $f1->and($f2);
+      $f1->decide(1);
+      now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, undef, 1, undef];
+      $f2->decide(2);
+      now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, 2, 1, [1, 2]];
+    })
+  ->end
+
+  ->ro('/fabric/future_ro.b', qw/v outcome parents/)
+  ->def('/fabric/future_init.b',
+    instantiate => fn q{
+      my $class = shift;
+      +{v         => undef,
+        parents   => [@_],
+        listeners => [],
+        outcome   => undef};
+    })
+
+  ->def('/fabric/future_state.b',
+    decided => fn q{shift->{outcome}},
+    decide  => fn q{
+      local $_;
+      my ($self, $v) = @_;
+      die "ni:/fabric/future: cannot change a decided future"
+        if $$self{outcome};
+      $$self{outcome} = [1, $v];
+      $$self{v} = $v;
+      defined && &$_($v) for @{$$self{listeners}};
+      $$self{parents} = $$self{listeners} = undef;
+      $self;
+    },
+
+    listener => fn q{
+      my ($self, $l) = @_;
+      $$self{outcome}
+        ? &$l($$self{v})
+        : push @{$$self{listeners}}, $l;
+      $self;
+    })
+
+  ->def('/fabric/future_algebra.b',
+    map => fn q{
+      my ($self, $f) = @_;
+      my $child = $self->class->new($self);
+      $self->listener(sub {$child->decide(&$f(shift))});
+      $child;
+    },
+
+    flatmap => fn q{
+      my ($self, $f) = @_;
+      my $child = $self->class->new($self);
+      $self->listener(sub {&$f(shift)->listener(sub {$child->decide(shift)})});
+      $child;
+    },
+
+    or => fn q{
+      local $_;
+      my $self    = $_[0];
+      my $child   = $self->class->new(@_);
+      my $trigger = sub {$child->decide(shift) unless $child->decided};
+      $_->listener($trigger) for @_;
+      $child;
+    },
+
+    and => fn q{
+      my $self   = $_[0];
+      my $child  = $self->class->new(grep ref, @_);
+      my $n      = @{$child->parents};
+      my $l      = 0;
+      my @result = map ref($_) ? undef : $_, @_;
+      for my $i (0..$#_) {
+        $_[$i]->listener(sub {
+          $result[$i] = shift;
+          $child->decide(\@result) if ++$l == $n;
+        }) if ref $_[$i];
+      }
+      $child;
+    });
