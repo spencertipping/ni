@@ -13,20 +13,9 @@ ni('ni:/object')->child('/lib/ni')
     is_mutable => fn q{$0 ne '-' && -w $0},
     modify => fn q{
       my ($self, $fn) = @_;
-      # TODO: replace all of this with a generalized "atomic-update" function
-      # against UNIX files.
       die "ni: cannot modify immutable instance $0" unless $self->is_mutable;
       my (undef, undef, $mode) = stat $0;
-      my $temp = map chr 97 + rand(26), 1..16;
-      my @r = split /\//, $0;
-      $r[-1] =~ s/^/./;
-      $r[-1] =~ s/$/.$temp/;
-      my $r = join '/', @r;
-      open my $w, '>', $r or die "ni: failed to create staging file: $!";
-      chmod $mode, $r or die "ni: failed to chmod $r to $mode: $!";
-      &$fn($w);
-      close $w;
-      rename $r, $0 or die "ni: failed to rename: $!";
+      &$fn(ni('ni:/io/file')->new($0, $mode)->atomic_update);
     },
 
     extend => fn q{
@@ -59,7 +48,7 @@ ni('ni:/object')->child('/lib/ni')
       my $self = shift;
       $self->extend($_) for @_;
       my $q = $self->quoted(use_newlines => 1);
-      $self->modify(sub {$q->write(shift)});
+      $self->modify(sub {$q->r->into_sync(shift)});
       0;
     },
 
@@ -87,7 +76,7 @@ ni('ni:/object')->child('/lib/ni')
     },
 
     '--internal/image' => fn q{
-      shift->quoted(use_newlines => 1)->write(\*STDOUT);
+      shift->quoted(use_newlines => 1)->r->into_sync(ni"fd:1");
       0;
     });
 

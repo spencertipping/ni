@@ -2,6 +2,8 @@ ni('ni:main')->def('/io/named_io_fns.b',
   open2   => fn q{CORE::open $_[0], $_[1]},
   fcntl   => fn q{CORE::fcntl $_[0], $_[1], $_[2]},
   fork    => fn q{CORE::fork},
+  rename  => fn q{CORE::rename $_[0], $_[1]},
+  unlink  => fn q{CORE::unlink @_},
   waitpid => fn q{CORE::waitpid $_[0], $_[1]});
 
 ni('ni:/object')->child('/io/object')

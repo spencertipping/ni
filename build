@@ -3,14 +3,11 @@
 cd "$(dirname "$0")"
 
 boot_image() {
-  cat src/boot src/lib.pl
+  cat src/boot src/lib.pl src/semantic.pl src/io.pl
 }
 
 install_stuff() {
-  perl ni0 --internal/+= \
-    src/semantic.pl \
-    src/io.pl \
-    src/fabric.pl
+  perl ni0 --internal/+= src/fabric.pl
 }
 
 boot_build() {

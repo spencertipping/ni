@@ -39,15 +39,15 @@ ni('ni:/object')->child('/lib/image')
     },
 
     # TODO: replace this with an IO-idiomatic cat structure thing
-    write => fn q{
+    r => fn q{
       local $_;
-      my ($self, $fh) = @_;
-      $fh->print($_) for
+      my $self = shift;
+      ni('ni:/io/cat')->new(map ni('ni:/io/str')->new("" . $_),
         "#!/usr/bin/env perl\n",
         "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
         "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
         map("$_\n", $self->reconstruction),
-        "ni->run(\@ARGV);", "\n__DATA__\n";
+        "ni->run(\@ARGV);", "\n__DATA__\n");
     },
 
     address => fn q{

@@ -63,14 +63,14 @@ ni('ni:/io/object')->child('/io/file')
     mv => fn q{
       my ($self, $dest) = @_;
       $dest = $dest->name if ref $dest;
-      $self->io_check_true(*POSIX::rename, $self->name, $dest);
+      $self->io_check_true(*main::rename, $self->name, $dest);
       $$self{name} = $dest;
       $self;
     },
 
     rm => fn q{
       my $self = shift;
-      $self->io_check_true(*POSIX::unlink, $self->name);
+      $self->io_check_true(*main::unlink, $self->name);
       $self;
     })
 
@@ -81,7 +81,7 @@ ni('ni:/io/object')->child('/io/file')
       ++$suffix while -e $self->name . ".$suffix";
       ni('ni:/io/file_update_fd')->new(
         $self,
-        $self->class->new($self->name . ".$suffix"));
+        $self->class->new($self->name . ".$suffix", $self->mode));
     })
 
   ->def('/io/file_io.b',
