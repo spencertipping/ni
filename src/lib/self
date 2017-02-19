@@ -1,11 +1,21 @@
 ni('ni:/object')->child('/lib/ni')
+  ->doc
+  ->synopsis(q'my $value = ni->resolve($name);
+               my $value = ni($name);   # alias for ni->resolve($name)
+               my $self  = ni;')
+  ->description(
+    q[The class for the currently-running ni instance. This includes all
+      instance state, the table of named objects, and a bit of logic to update
+      ni in place, for instance when adding extensions.])
+  ->end
+
   ->def('/lib/ni_self.b',
-    is_mutable => fn q{$0 ne "-" && -w $0},
+    is_mutable => fn q{$0 ne '-' && -w $0},
     modify => fn q{
       my ($self, $fn) = @_;
       # TODO: replace all of this with a generalized "atomic-update" function
       # against UNIX files.
-      die "ni: cannot modify immutable instance" unless $self->is_mutable;
+      die "ni: cannot modify immutable instance $0" unless $self->is_mutable;
       my (undef, undef, $mode) = stat $0;
       my $temp = map chr 97 + rand(26), 1..16;
       my @r = split /\//, $0;

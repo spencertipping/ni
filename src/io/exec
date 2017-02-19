@@ -1,4 +1,27 @@
 ni('ni:/io/object')->child('/io/exec')
+  ->doc
+  ->synopsis(q'
+    my $pid = ni("ni:/io/exec")->new("ls", "-l")
+      ->connect(1 => ni("file:foo")->w)
+      ->env(ENV_VAR => "value", ENV2 => "val2")
+      ->fork;
+    $? = $pid->await or die "ls -l failed: $?";')
+
+  ->description(
+    q[An object that represents a fork+exec operation that hasn't yet happened.
+      It allows you to incrementally specify the context of the process,
+      including environment variables and file descriptor mappings. It is also
+      an IO object and will set up pipes to stdin/out if you use it this way.])
+
+  ->eg(fn q{
+    my $e   = ni('ni:/io/exec')->new('echo', 'hi');
+    my $out = $e->stdout;
+    my $pid = $e->fork;
+    now $out->read_all == "hi\n";
+    now $pid->await == 0;
+  })
+  ->end
+
   ->ro('/io/exec_ro.b', qw/argv/)
   ->def('/io/exec_init.b',
     instantiate => fn q{
@@ -110,26 +133,4 @@ ni('ni:/io/object')->child('/io/exec')
         [@{$$self{argv}}, @_],
         $$self{env},
         %{$$self{external_fds}});
-    })
-
-  ->doc
-  ->synopsis(q'
-    my $pid = ni("ni:/io/exec")->new("ls", "-l")
-      ->connect(1 => ni("file:foo")->w)
-      ->env(ENV_VAR => "value", ENV2 => "val2")
-      ->fork;
-    $? = $pid->await or die "ls -l failed: $?";')
-
-  ->description(
-    q[An object that represents a fork+exec operation that hasn't yet happened.
-      It allows you to incrementally specify the context of the process,
-      including environment variables and file descriptor mappings. It is also
-      an IO object and will set up pipes to stdin/out if you use it this way.])
-
-  ->eg(fn q{
-    my $e   = ni('ni:/io/exec')->new('echo', 'hi');
-    my $out = $e->stdout;
-    my $pid = $e->fork;
-    now $out->read_all == "hi\n";
-    now $pid->await == 0;
-  });
+    });

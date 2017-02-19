@@ -1,4 +1,23 @@
 ni('ni:/io/object')->child('/io/pid')
+  ->doc
+  ->eg(fn q{
+    now [ni('sh:true')->await, ni('sh:false')->await] == [0, 1 << 8];
+  })
+  ->eg(fn q{
+    my $pid = ni('sh:seq 4');
+    my $data = $pid->read_all;
+    now [$pid->await, $data] == [0, "1\n2\n3\n4\n"];
+  })
+  ->eg(fn q{
+    my $seq = ni('sh:seq 10');
+    my $grep = ni('ni:/io/exec')->new('egrep', '[13579]$')
+      ->connect(0 => $seq->stdout)
+      ->fork;
+    now [$grep->read_all, $seq->await, $grep->await]
+     == ["1\n3\n5\n7\n9\n", 0, 0];
+  })
+  ->end
+
   ->ro('/io/pid_readers.b', qw/pid status/)
   ->def('/io/pid_init.b',
     instantiate => fn q{
@@ -33,23 +52,3 @@ ni('ni:/io/object')->child('/io/pid')
 
 ni->resolver_for(
   sh => fn q{ni('ni:/io/exec')->new('/bin/sh', '-c', substr shift, 3)->fork});
-
-ni('ni:/io/pid')->doc
-  ->eg(fn q{
-    now [ni('sh:true')->await, ni('sh:false')->await] == [0, 1 << 8];
-  })
-
-  ->eg(fn q{
-    my $pid = ni('sh:seq 4');
-    my $data = $pid->read_all;
-    now [$pid->await, $data] == [0, "1\n2\n3\n4\n"];
-  })
-
-  ->eg(fn q{
-    my $seq = ni('sh:seq 10');
-    my $grep = ni('ni:/io/exec')->new('egrep', '[13579]$')
-      ->connect(0 => $seq->stdout)
-      ->fork;
-    now [$grep->read_all, $seq->await, $grep->await]
-     == ["1\n3\n5\n7\n9\n", 0, 0];
-  });

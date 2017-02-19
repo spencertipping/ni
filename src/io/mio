@@ -1,4 +1,25 @@
 ni('ni:/io/object')->child('/io/mio')
+  ->doc
+  ->synopsis(q'
+    my $sender   = ni("ni:/io/mio")->new;
+    my $receiver = ni("ni:/io/mio")->new;
+    my $c1 = $mio->channel(1);
+    my $c2 = $mio->channel(2);
+    my $t1 = $channel1->write_all("8MB data" x 1000000);
+    my $t2 = $channel2->write_all("short string");
+    my ($t3, $t4) = $sender->connect_async($receiver);')
+
+  ->description(
+    q[Bidirectionally converts a single IO stream to a multi-channel interface.
+      Internally, MIO objects encode channel data into packets of bounded size,
+      scheduling channel traffic round-robin. The receiving MIO object decodes
+      the multiplexed traffic into individual channels.],
+
+    q[
+
+      ])
+  ->end
+
   ->ro('/io/mio_ro.b', qw/ io packet_size /)
   ->def('/io/mio_init.b',
     instantiate => fn q{
@@ -66,7 +87,7 @@ ni('ni:/io/object')->child('/io/mio')
       my $self = shift;
       my $length = $#_ ? $_[1] : length $_[0];
       my $offset = $_[2] || 0;
-      
+      # TODO
     })
 
   ->def('/io/mio_channel.b',
@@ -95,6 +116,12 @@ ni('ni:/io/object')->child('/io/mio')
     });
 
 ni('ni:/io/object')->child('/io/mio_channel')
+  ->doc
+  ->description(
+    q[
+    ])
+  ->end
+
   ->ro('/io/mio_channel_ro.b', qw/ mio id capacity /)
   ->def('/io/mio_channel_init.b',
     instantiate => fn q{
@@ -115,22 +142,3 @@ ni('ni:/io/object')->child('/io/mio_channel')
     },
     read  => fn q{shift->{read_buffer} ->read(@_)},
     write => fn q{shift->{write_buffer}->write(@_)});
-
-ni('ni:/io/mio')->doc
-  ->synopsis(q'
-    my $sender   = ni("ni:/io/mio")->new;
-    my $receiver = ni("ni:/io/mio")->new;
-    my $c1 = $mio->channel(1);
-    my $c2 = $mio->channel(2);
-    my $t1 = $channel1->write_all("8MB data" x 1000000);
-    my $t2 = $channel2->write_all("short string");
-    my ($t3, $t4) = $sender->connect_async($receiver);')
-
-  ->description(
-    q[Bidirectionally converts a single IO stream to a multi-channel interface.
-      Internally, MIO objects encode channel data into packets of bounded size,
-      scheduling channel traffic round-robin. The receiving MIO object decodes
-      the multiplexed traffic into individual channels.],
-
-    q[
-      ]);

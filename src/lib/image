@@ -1,4 +1,15 @@
 ni('ni:/object')->child('/lib/image')
+  ->doc
+  ->synopsis(q'
+    my $image = ni("ni:/lib/image")->new;
+    my $gensym = $image->quote($value);
+    $image->into_sync($a_file);         # TODO')
+  ->description(
+    q[Generates Perl code that reconstructs the state of objects at the
+      behavior/slice level. Since classes are self-describing, this results in
+      a replica of the runtime object-oriented state.])
+  ->end
+
   ->def('/lib/image_init.b',
     instantiate => fn q{
       +{gensym_n     => 0,

@@ -1,4 +1,17 @@
 ni('ni:/object')->child('/lib/quote_simple')
+  ->doc
+  ->description(
+    q[A stateless object that serializes values with direct quotation; that
+      is, the serialization contains no variables. If your objects have
+      circular or shared references, you should probably use
+      /lib/quote_circular or similar.])
+  ->eg(fn q{
+    my $q = ni('ni:/lib/quote_simple')->new;
+    now $q->quote([1,2,3]) == "[1,2,3]";
+    now $q->quote({foo => 1, bar => [1, 2]}) == "{q#bar#,[1,2],q#foo#,1}";
+  })
+  ->end
+
   ->def('/lib/quote_simple_init.b', instantiate => fn q{+{}})
   ->def('/lib/quote_simple_quote.b',
     is_circular => fn q{0},
@@ -21,7 +34,6 @@ ni('ni:/object')->child('/lib/quote_simple')
     quote_hash => fn q{
       local $_;
       my ($self, $v) = @_;
-      my $a = $self->address($v);
       my @ks = sort keys %$v;
       my @qs;
       for my $k (@ks) {
@@ -35,7 +47,6 @@ ni('ni:/object')->child('/lib/quote_simple')
     quote_array => fn q{
       local $_;
       my ($self, $v) = @_;
-      my $a = $self->address($v);
       $self->is_circular($$v[$_]) && $self->circular_arrayref($v, $_, $$v[$_])
         for 0..$#{$v};
       '[' . join(',', map $self->quote($_), @$v) . ']';
@@ -70,7 +81,8 @@ ni('ni:/object')->child('/lib/quote_simple')
       my $self = shift;
       my $q = $self->allocate_gensym($_[0],
         $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
-      $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . "::ctors") . ";");
+      $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . '::ctors') . ';')
+        if @{ref($_[0]) . '::ctors'};
       $q;
     });
 

@@ -1,4 +1,7 @@
 ni('ni:/object')->child('/fabric/rmi')
+  ->doc
+  ->end
+
   ->def('/fabric/rmi_init.b',
     instantiate => fn q{
       my ($class, $io, $quote) = @_;
