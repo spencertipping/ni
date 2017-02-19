@@ -29,10 +29,10 @@ ni('ni:/lib/doc')->doc
     eg q{
       my $doc = ni("ni:/lib/doc")->new("foo");
       my $passing_test = q{return 1};
-      my $failing_test = eg q{return 0};
+      my $failing_test = q{return 0};
       $doc->eg($passing_test)
           ->description(q[Foo objects are contrived examples.],
-                        $failing_test,
+                        eg $failing_test,
                         q[So there.]);
-      now [$doc->tests] == [eg $passing_test, $failing_test];
+      now scalar($doc->tests) == 2;
     });

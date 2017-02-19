@@ -11,14 +11,14 @@ ni('ni:/io/object')->child('/io/exec')
     q[An object that represents a fork+exec operation that hasn't yet happened.
       It allows you to incrementally specify the context of the process,
       including environment variables and file descriptor mappings. It is also
-      an IO object and will set up pipes to stdin/out if you use it this way.])
+      an IO object and will set up pipes to stdin/out if you use it this way.],
 
-  ->eg(fn q{
-    my $e   = ni('ni:/io/exec')->new('echo', 'hi');
-    my $out = $e->stdout;
-    my $pid = $e->fork;
-    now [$out->read_all, $pid->await] == ["hi\n", 0];
-  })
+    eg q{
+      my $e   = ni('ni:/io/exec')->new('echo', 'hi');
+      my $out = $e->stdout;
+      my $pid = $e->fork;
+      now [$out->read_all, $pid->await] == ["hi\n", 0];
+    })
   ->end
 
   ->ro('/io/exec_ro.b', qw/argv/)

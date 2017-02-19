@@ -62,8 +62,8 @@ ni('ni:/object')->child('/lib/test_value')
       } elsif ($realtype eq 'SCALAR') {
         return $class->new($$lhs)->diff($$rhs);
       } elsif (!$rl) {
-        return {scalar_difference => [$lhs, $rhs]}
-          unless !defined($lhs) && !defined($rhs) || $lhs eq $rhs;
+        no warnings 'uninitialized';
+        return {scalar_difference => [$lhs, $rhs]} if $lhs ne $rhs;
       }
       return undef;
     },

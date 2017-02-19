@@ -13,15 +13,15 @@ ni('ni:/io/object')->child('/io/fd')
     q[Represents a file descriptor as a child of /io/object (so the usual IO
       methods like into_async are available), and provides some convenience
       functions for things like setting up FDs for child processes. FDs are
-      closed when destroyed.])
+      closed when destroyed.],
 
-  ->eg(fn q{
-    my ($r, $w) = POSIX::pipe;
-    {
-      my $fd = ni('ni:/io/fd')->new($r);
-    }
-    ni('ni:/io/fd')->new($w)->be($r);   # fails unless $r was GC-closed
-  })
+    eg q{
+      my ($r, $w) = POSIX::pipe;
+      {
+        my $fd = ni('ni:/io/fd')->new($r);
+      }
+      ni('ni:/io/fd')->new($w)->be($r);   # fails unless $r was GC-closed
+    })
   ->end
 
   ->ro('/io/fd_readers.b', qw/fd/)
@@ -70,7 +70,7 @@ ni('ni:/io/object')->child('/io/fd')
       my $self = shift;
       close $$self{rfh} if $$self{rfh};
       close $$self{wfh} if $$self{wfh};
-      POSIX::close $$self{fd};
+      POSIX::close $$self{fd} if defined $$self{fd};
       $$self{fd} = $$self{rfh} = $$self{wfh} = undef;
       $self;
     })

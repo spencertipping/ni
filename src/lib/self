@@ -74,7 +74,8 @@ ni('ni:/object')->child('/lib/ni')
       for my $f (grep $_->failed, @tests) {
         ++$failed;
         print "\nTEST FAIL\n", $f->test, "\n";
-        print "\nERROR ", $f->error if $f->error;
+        print "\nERROR ", ni('ni:/lib/fn')->resolve_evals($f->error)
+          if $f->error;
         print "\nASSERTIONS\n";
         print "  $_\n" for @{$f->assertions};
       }

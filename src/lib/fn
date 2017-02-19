@@ -12,40 +12,23 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     local $@;
     my $self = shift;
     $$self{proto} ||= '';
-    # FIXME: the problem is that on second-bootup, no base lib/ni::resolve
-    # implementation exists; that means we can't pull $self->class (and even if
-    # we could, it might not yet support ->eval, for instance if this is the
-    # apply_unsafe method).
-    $$self{fn} = $self->class->eval(
-      "sub $$self{proto} {$$self{code}\n}",
-      $self);
+    my $code = "sub $$self{proto} {$$self{code}\n}";
+    my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;
+    $$self{eval_number} = ++$en;
+    Scalar::Util::weaken(${'lib/fn::evals'}{$en} = $self);
+    $$self{fn} = ni::eval $code;
+    die "ni:/lib/fn failed to compile $code: $@" if $@;
     $$self{fn};
   },
   ctor => fn q{shift->compile},
   dtor => fn q{
     my $self = shift;
-    $self->class->uneval($$self{eval_number});
-  });
-
-ni('ni:/lib/slice')->new('/lib/fn.c_eval.b',
-  ctor => fn q{shift->{evals} = {}},
-  eval => fn q{
-    my ($self, $code, $fn) = @_;
-    my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;
-    Scalar::Util::weaken($$self{evals}{++$en} = $fn);
-    $$fn{eval_number} = $en;
-    my $r = ni::eval $code;
-    die "ni:/lib/fn: failed to compile $code: $@" if $@;
-    $r;
-  },
-  uneval => fn q{
-    my ($self, $en) = @_;
-    delete $$self{evals}{$en} if defined $en;
+    delete ${'lib/fn::evals'}{$$self{eval_number}}
+      if defined $$self{eval_number};
   });
 
 delete @{'lib/fn::'}{qw/new compile/};
-ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b')
-                ->class->add('/lib/fn.c_eval.b');
+ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
 
 delete ${main::}{fn};
 
@@ -61,3 +44,16 @@ ni('ni:/lib/fn')
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
+
+ni('ni:/lib/fn.c')->def('/lib/fn.c_resolve_eval.b',
+  ctor => fn q{
+    my $self = shift;
+    $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
+    $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
+  },
+  resolve_evals => fn q{
+    my ($self, $trace) = @_;
+    1 while $trace =~ s#\(eval (\d+)\)#
+      ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
+    $trace;
+  });

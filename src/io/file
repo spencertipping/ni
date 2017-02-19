@@ -20,7 +20,7 @@ ni('ni:/io/object')->child('/io/file')
       the file further -- put differently, /io/file objects own the FDs they
       create.],
 
-    eg => fn q{
+    eg q{
       my $ni = ni('file:/dev/zero');
       now [$ni->read($_, 8), $_] == [8, "\0" x 8];
     },
@@ -30,7 +30,7 @@ ni('ni:/io/object')->child('/io/file')
       original once the tempfile is closed. ni uses this to update itself to
       avoid race conditions.],
 
-    eg => fn q{
+    eg q{
       ni('file:tmp1')->write_all("original contents");
       {
         my $updater = ni('file:tmp1')->atomic_update;
@@ -133,15 +133,15 @@ ni('ni:/io/object')->child('/io/file_update_fd')
     })
 
   ->def('/io/file_update_fd_gc.b',
-    dtor => fn q{
-      print STDERR "destroying file_update_fd\n";
-      shift->close;
-    },
+    dtor => fn q{shift->close},
     close => fn q{
       my $self = shift;
       close $$self{wfh} if $$self{wfh};
-      $$self{writer}->close;
-      $$self{tempfile}->rename($$self{file}->name);
+      $$self{writer} = undef if $$self{writer};
+      if ($$self{tempfile}) {
+        $$self{tempfile}->mv($$self{file}->name);
+        $$self{tempfile} = undef;
+      }
       $self;
     });
 

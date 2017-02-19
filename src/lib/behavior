@@ -63,14 +63,9 @@ ni->def('ni:/lib/instantiable.b' =>
         local $_;
         my $class   = shift;
         my $package = ref $class ? $class->package : $class;
-        my $self = bless &{"$package\::instantiate"}($class, @_), $package;
+        my $self    = bless &{"$package\::instantiate"}($class, @_), $package;
         $_->($self) for @{ref($self) . "::ctors"};
         $self;
-      },
-      DESTROY => fn q{
-        local $_;
-        my $self = shift;
-        defined && $_->($self) for @{ref($self) . "::dtors"};
       }
     }
   }, 'lib/slice');
@@ -162,4 +157,10 @@ ni('ni:/lib/resolver.b')->apply('lib/tag');
 ni('ni:/lib/perlbranch.b')->apply('lib/branch');
 ni('ni:/lib/branch_init.b')->apply('lib/branch');
 
-'lib/slice'->new('/lib/instance.b', class => fn q{ni 'ni:/' . ref shift});
+'lib/slice'->new('/lib/instance.b',
+  DESTROY => fn q{
+    local $_;
+    my $self = shift;
+    defined($_) && $_->($self) for @{ref($self) . '::dtors'};
+  },
+  class => fn q{ni 'ni:/' . ref shift});

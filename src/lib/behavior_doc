@@ -33,7 +33,7 @@ ni('ni:/lib/slice')->doc
       my $instances = 0;
       my $class = ni('ni:/object')->child('test/foo2')
         ->def('test/foo2_init.b',
-          instantiate => fn {+{}},
+          instantiate => fn q{+{}},
           ctor => sub {++$instances},
           dtor => sub {--$instances});
       now $instances == 0;

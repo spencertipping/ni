@@ -7,20 +7,20 @@ ni('ni:/io/object')->child('/io/buffer')
 
   ->description(
     q[A bounded, memory-backed FIFO data queue. In IO terms, this object
-      behaves like a nonblocking socket and sets errno accordingly.])
+      behaves like a nonblocking socket and sets errno accordingly.],
 
-  ->eg(fn q{
-    my $buf = ni('ni:/io/buffer')->new(128);
-    now [$buf->read_capacity, $buf->write_capacity] == [0, 128];
-    now $buf->write("foobarbif") == 9;
-    now [$buf->read_capacity, $buf->write_capacity] == [9, 119];
-    now [$buf->read($_, 5), $_] == [5, "fooba"];
+    eg q{
+      my $buf = ni('ni:/io/buffer')->new(128);
+      now [$buf->read_capacity, $buf->write_capacity] == [0, 128];
+      now $buf->write("foobarbif") == 9;
+      now [$buf->read_capacity, $buf->write_capacity] == [9, 119];
+      now [$buf->read($_, 5), $_] == [5, "fooba"];
 
-    now $buf->write(" " x 125) == 124;
-    now $buf->read($_, 120) == 120;
-    now [$buf->read($_, 100), $_, $buf->read_capacity] == [8, " " x 8, 0];
-    now [$buf->read($_, 100), 0 + $!] == [undef, Errno::EWOULDBLOCK];
-  })
+      now $buf->write(" " x 125) == 124;
+      now $buf->read($_, 120) == 120;
+      now [$buf->read($_, 100), $_, $buf->read_capacity] == [8, " " x 8, 0];
+      now [$buf->read($_, 100), 0 + $!] == [undef, Errno::EWOULDBLOCK];
+    })
   ->end
 
   ->def('/io/buffer_init.b',
