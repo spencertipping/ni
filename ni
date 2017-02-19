@@ -2470,9 +2470,20 @@ $Rx=q#finalizer#;
 $Sx=[];
 $Tx=q#push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]#;
 $Ux=bless({$t,$Sx,$v,$Tx,$x,922,$y,$z},$A);
-$Vx=q#quote#;
-$Wx=[];
-$Xx=q#my $self = shift;
+$Vx=[];
+$Wx=q#local $_;
+my $self = shift;
+ni('ni:/io/str')->new(join '',
+  "\#!/usr/bin/env perl\\n",
+  "chomp(\\$ni::license=<<'_');\\n", $ni::license, "\\n_\\n",
+  "BEGIN{eval(\\$ni::boot=<<'_')}\\n", $ni::boot, "\\n_\\n",
+  map("$_\\n", $self->reconstruction),
+  "ni->run(\\@ARGV);",
+  "\\n__DATA__\\n");#;
+$Xx=bless({$t,$Vx,$v,$Wx,$x,924,$y,$z},$A);
+$Yx=q#quote#;
+$Zx=[];
+$cy=q#my $self = shift;
 return $self->quote_scalar($_[0])
   if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
 my $a = $self->address($_[0]);
@@ -2481,16 +2492,6 @@ my $v = $$self{visited}{$a};
 return ref $v ? '0' : $v if defined $v;
 $$self{visited}{$a} = \\'undef';
 $self->allocate_gensym($_[0], $self->quote_value($_[0]));#;
-$Yx=bless({$t,$Wx,$v,$Xx,$x,924,$y,$z},$A);
-$Zx=[];
-$cy=q#local $_;
-my $self = shift;
-ni('ni:/io/cat')->new(map ni('ni:/io/str')->new("" . $_),
-  "\#!/usr/bin/env perl\\n",
-  "chomp(\\$ni::license=<<'_');\\n", $ni::license, "\\n_\\n",
-  "BEGIN{eval(\\$ni::boot=<<'_')}\\n", $ni::boot, "\\n_\\n",
-  map("$_\\n", $self->reconstruction),
-  "ni->run(\\@ARGV);", "\\n__DATA__\\n");#;
 $dy=bless({$t,$Zx,$v,$cy,$x,926,$y,$z},$A);
 $ey=q#reconstruction#;
 $fy=[];
@@ -2504,7 +2505,7 @@ $iy=q#side_effect#;
 $jy=[];
 $ky=q#push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]#;
 $ly=bless({$t,$jy,$v,$ky,$x,930,$y,$z},$A);
-$my={$Bx,$Ex,$Fx,$Ix,$Jx,$Mx,$Nx,$Qx,$Rx,$Ux,$Vx,$Yx,$Ph,$dy,$ey,$hy,$iy,$ly};
+$my={$Bx,$Ex,$Fx,$Ix,$Jx,$Mx,$Nx,$Qx,$Rx,$Ux,$dj,$Xx,$Yx,$dy,$ey,$hy,$iy,$ly};
 $ny=q#/lib/image_quoting.b#;
 $oy=bless({$i5,$Ax,$f6,$q,$g6,$q,$h6,$my,$L,$ny},$q6);
 $py={};
@@ -2720,7 +2721,7 @@ $LA=q#--internal/+=#;
 $MA=q#my $self = shift;
 $self->extend($_) for @_;
 my $q = $self->quoted(use_newlines => 1);
-$self->modify(sub {$q->r->into_sync(shift)});
+$self->modify(sub {$q->io->into_sync(shift)});
 0;#;
 $NA=bless({$v,$MA,$x,972,$y,$z},$A);
 $OA=q#--internal/eval#;
@@ -2732,7 +2733,7 @@ for (@_) {
 0;#;
 $QA=bless({$v,$PA,$x,974,$y,$z},$A);
 $RA=q#--internal/image#;
-$SA=q#shift->quoted(use_newlines => 1)->r->into_sync(ni"fd:1");
+$SA=q#shift->quoted(use_newlines => 1)->io->into_sync(ni"fd:1");
 0;#;
 $TA=bless({$v,$SA,$x,976,$y,$z},$A);
 $UA=q#--internal/test#;
@@ -2878,7 +2879,7 @@ $dD=bless({$t,$cD,$v,0,$x,1016,$y,$z},$A);
 $eD=[];
 $fD=q#shift->quote_value(shift)#;
 $gD=bless({$t,$eD,$v,$fD,$x,1018,$y,$z},$A);
-$hD={$wz,$dD,$Vx,$gD};
+$hD={$wz,$dD,$Yx,$gD};
 $iD=q#/lib/quote_simple_quote.b#;
 $jD=bless({$i5,$ZC,$f6,$q,$g6,$q,$h6,$hD,$L,$iD},$q6);
 $kD=[$Y7,$YC,$jD,$wy,$Uy,$mz];
@@ -4582,7 +4583,7 @@ $ni::self=$dK;
 &$_($Mx)for@$C;
 &$_($Qx)for@$C;
 &$_($Ux)for@$C;
-&$_($Yx)for@$C;
+&$_($Xx)for@$C;
 &$_($dy)for@$C;
 &$_($hy)for@$C;
 &$_($ly)for@$C;

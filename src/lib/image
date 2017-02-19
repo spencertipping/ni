@@ -38,16 +38,16 @@ ni('ni:/object')->child('/lib/image')
        @{$$self{finalizers}});
     },
 
-    # TODO: replace this with an IO-idiomatic cat structure thing
-    r => fn q{
+    io => fn q{
       local $_;
       my $self = shift;
-      ni('ni:/io/cat')->new(map ni('ni:/io/str')->new("" . $_),
+      ni('ni:/io/str')->new(join '',
         "#!/usr/bin/env perl\n",
         "chomp(\$ni::license=<<'_');\n", $ni::license, "\n_\n",
         "BEGIN{eval(\$ni::boot=<<'_')}\n", $ni::boot, "\n_\n",
         map("$_\n", $self->reconstruction),
-        "ni->run(\@ARGV);", "\n__DATA__\n");
+        "ni->run(\@ARGV);",
+        "\n__DATA__\n");
     },
 
     address => fn q{
