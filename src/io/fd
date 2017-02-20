@@ -38,7 +38,7 @@ ni('ni:/io/object')->child('/io/fd')
       my ($self, $new) = @_;
       return $self if $new == $$self{fd};
       $self->io_check_defined(*POSIX::dup2, $$self{fd}, $new);
-      $$self{rfh} = $$self{wfh} = undef;
+      $self->close_perl_ios;
       POSIX::close $$self{fd};
       $$self{fd} = $new;
       $self;
@@ -68,23 +68,71 @@ ni('ni:/io/object')->child('/io/fd')
     dtor => fn q{shift->close},
     close => fn q{
       my $self = shift;
-      close $$self{rfh} if $$self{rfh};
-      close $$self{wfh} if $$self{wfh};
-      POSIX::close $$self{fd} if defined $$self{fd};
-      $$self{fd} = $$self{rfh} = $$self{wfh} = undef;
+      if (defined $$self{fd}) {
+        $self->close_perl_ios;
+        POSIX::close $$self{fd};
+        $$self{fd} = undef;
+      }
       $self;
     })
 
   ->def('/io/fd_perlio.b',
+    close_perl_ios => fn q{
+      my $self = shift;
+      close $$self{rfh} if $$self{rfh};
+      close $$self{wfh} if $$self{wfh};
+      ni('ni:/io/fd')->clear_fd($$self{fd});
+      $$self{rfh} = $$self{wfh} = undef;
+      $self;
+    },
+
     read => fn q{
       my $self = shift;
-      open $$self{rfh}, "<&=$$self{fd}" or return undef unless $$self{rfh};
+      unless ($$self{rfh}) {
+        open $$self{rfh}, "<&=$$self{fd}" or return undef;
+        ni('ni:/io/fd')->read_fd($$self{fd});
+      }
       sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0;
     },
     write => fn q{
       my $self = shift;
-      open $$self{wfh}, ">&=$$self{fd}" or return undef unless $$self{wfh};
+      unless ($$self{wfh}) {
+        open $$self{wfh}, ">&=$$self{fd}" or return undef;
+        ni('ni:/io/fd')->write_fd($$self{fd});
+      }
       syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0;
     });
 
 ni->resolver_for(fd => fn q{ni('ni:/io/fd')->new(0 + substr shift, 3)});
+
+ni('ni:/io/fd.c')->def('/io/fd.c_selector.b',
+  ctor => fn q{
+    my $self = shift;
+    $$self{read_fd_mask} = '';
+    $$self{write_fd_mask} = '';
+  },
+
+  clear_fd => fn q{
+    my ($self, $fd) = @_;
+    vec($$self{read_fd_mask}, $fd, 1) = 0;
+    vec($$self{write_fd_mask}, $fd, 1) = 0;
+  },
+
+  read_fd => fn q{
+    my ($self, $fd) = @_;
+    vec($$self{read_fd_mask}, $fd, 1) = 1;
+  },
+
+  write_fd => fn q{
+    my ($self, $fd) = @_;
+    vec($$self{write_fd_mask}, $fd, 1) = 1;
+  },
+
+  select => fn q{
+    my ($self, $timeout) = @_;
+    my $n = select my $rbits = $$self{read_fd_mask},
+                   my $wbits = $$self{write_fd_mask},
+                   my $ebits = $$self{read_fd_mask} | $$self{write_fd_mask},
+                   $timeout || 0;
+    wantarray ? ($n, $rbits, $wbits) : $n;
+  });
