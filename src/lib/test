@@ -28,43 +28,27 @@ ni('ni:/object')->child('/lib/test_value')
   ->def('/lib/test_value_eq.b',
     detailed_scalar_diff => fn q{
       local $_;
-      my ($self, $lhs, $rhs, $lpos, $rpos) = @_;
-      my ($prefix) = ($lhs ^ $rhs) =~ /^(\0*)/;
-
-      my $l = length $prefix;
-      return $self->detailed_scalar_diff(substr($lhs, $l), substr($rhs, $l),
-                                         $lpos + $l,       $rpos + $l)
-        if $l;
-
-      my $minlength = ni::min(length $lhs, length $rhs);
-      my ($suffix) = (  substr($lhs, length($lhs) - $minlength)
-                      ^ substr($rhs, length($rhs) - $minlength)) =~ /(\0*)$/;
-      return $self->detailed_scalar_diff(substr($lhs, 0, length($lhs) - $l),
-                                         substr($rhs, 0, length($rhs) - $l),
-                                         $lpos, $rpos)
-        if $l = length $suffix;
-
-      my $d = length($rhs) - length($lhs);
-      my $best_offset = 0;
-      my $best_match  = 0;
-      for (0..abs $d) {
-        my $diff = substr($d < 0 ? $lhs : $rhs, $_, $minlength)
-                 ^ ($d < 0 ? $rhs : $lhs);
-        my @matching = $diff =~ /\0\0\0\0\0\0\0\0+/g;
-        my $match = ni::sum(map length, @matching);
-        if ($match > $best_match) {
-          $best_offset = $_;
-          $best_match  = $match;
+      my ($self, $lhs, $rhs) = @_;
+      my $lpos = 0;
+      my $rpos = 0;
+      my @diff;
+      while ($lpos < length $lhs || $rpos < length $rhs) {
+        my $found = index $rhs, substr($lhs, $lpos, 16), $rpos;
+        if ($found == -1) {
+          if (@diff && $diff[-1]{delete}) {
+            $diff[-1]{delete} .= substr($lhs, $lpos, 16);
+          } else {
+            push @diff, {delete => substr($lhs, $lpos, 16)};
+          }
+          $lpos += 16;
+        } else {
+          push @diff, {insert => substr($rhs, $rpos, $found - $rpos)}
+            unless $found == $rpos;
+          $lpos += 16;
+          $rpos = $found + 16;
         }
       }
-
-      # TODO: rewrite this
-
-      return [] unless $lhs ne $rhs;
-      +{lpos  => $lpos,
-        rpos  => $rpos,
-        ltext => $lhs,
-        rtext => $rhs}
+      [@diff];
     },
 
     diff => fn q{
