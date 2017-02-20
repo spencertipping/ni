@@ -14,7 +14,6 @@ ni('ni:/lib/doc')->doc
 
     q[Documentation objects are internally represented as arrays of quoted
       method calls:],
-
     eg q{
       my $doc = ni("ni:/lib/doc")->new("foo");
       now $doc->{doc} == [];
@@ -25,7 +24,6 @@ ni('ni:/lib/doc')->doc
     q[This documentation can later be compiled into things like manpages,
       markdown, or HTML by target-specific conversion functions. Documentation
       also stores unit tests, which are specified using "eg":],
-
     eg q{
       my $doc = ni("ni:/lib/doc")->new("foo");
       my $passing_test = q{return 1};

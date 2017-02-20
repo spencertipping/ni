@@ -17,7 +17,7 @@ ni('ni:/lib/test_assertion')->child('/lib/test_assert_eq')
   ->def('/lib/test_assert_eq_result.b',
     '(""' => fn q{
       my $self = shift;
-      $self->failed ? "FAIL " . ni::json_encode $$self{diff}
+      $self->failed ? "FAIL " . ni::json_encode_pretty $$self{diff}
                     : "PASS";
     },
     result => fn q{shift},
@@ -26,6 +26,47 @@ ni('ni:/lib/test_assertion')->child('/lib/test_assert_eq')
 ni('ni:/object')->child('/lib/test_value')
   ->def('/lib/test_value_init.b', instantiate => fn q{\$_[1]})
   ->def('/lib/test_value_eq.b',
+    detailed_scalar_diff => fn q{
+      local $_;
+      my ($self, $lhs, $rhs, $lpos, $rpos) = @_;
+      my ($prefix) = ($lhs ^ $rhs) =~ /^(\0*)/;
+
+      my $l = length $prefix;
+      return $self->detailed_scalar_diff(substr($lhs, $l), substr($rhs, $l),
+                                         $lpos + $l,       $rpos + $l)
+        if $l;
+
+      my $minlength = ni::min(length $lhs, length $rhs);
+      my ($suffix) = (  substr($lhs, length($lhs) - $minlength)
+                      ^ substr($rhs, length($rhs) - $minlength)) =~ /(\0*)$/;
+      return $self->detailed_scalar_diff(substr($lhs, 0, length($lhs) - $l),
+                                         substr($rhs, 0, length($rhs) - $l),
+                                         $lpos, $rpos)
+        if $l = length $suffix;
+
+      my $d = length($rhs) - length($lhs);
+      my $best_offset = 0;
+      my $best_match  = 0;
+      for (0..abs $d) {
+        my $diff = substr($d < 0 ? $lhs : $rhs, $_, $minlength)
+                 ^ ($d < 0 ? $rhs : $lhs);
+        my @matching = $diff =~ /\0\0\0\0\0\0\0\0+/g;
+        my $match = ni::sum(map length, @matching);
+        if ($match > $best_match) {
+          $best_offset = $_;
+          $best_match  = $match;
+        }
+      }
+
+      # TODO: rewrite this
+
+      return [] unless $lhs ne $rhs;
+      +{lpos  => $lpos,
+        rpos  => $rpos,
+        ltext => $lhs,
+        rtext => $rhs}
+    },
+
     diff => fn q{
       my ($self, $rhs) = @_;
       my $class = $self->class;
@@ -63,7 +104,10 @@ ni('ni:/object')->child('/lib/test_value')
         return $class->new($$lhs)->diff($$rhs);
       } elsif (!$rl) {
         no warnings 'uninitialized';
-        return {scalar_difference => [$lhs, $rhs]} if $lhs ne $rhs;
+        return undef if $lhs eq $rhs;
+        return {scalar_difference => $self->detailed_scalar_diff($lhs, $rhs)}
+          if length($lhs) + length($rhs) > 80;
+        return {scalar_difference => [$lhs, $rhs]};
       }
       return undef;
     },

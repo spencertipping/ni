@@ -61,4 +61,22 @@ ni('ni:ni')
       Scalar::Util::looks_like_number $v
         ? $v
         : defined $v ? ni::json_escape($v) : 'null';
-    }));
+    }),
+
+    json_encode_pretty => fn q#
+      local $_;
+      my ($v, $indent) = @_;
+      $indent ||= 0;
+      my $spaces = ' ' x $indent;
+      return "$spaces\[\n"
+           . join(",\n", map ni::json_encode_pretty($_, $indent + 2), @$v)
+           . "$spaces]" if 'ARRAY' eq ref $v;
+
+      return "$spaces\{\n"
+           . join(",\n", map "$spaces  " . ni::json_escape($_) . ":\n"
+                                         . ni::json_encode_pretty($$v{$_}, $indent + 2),
+                             sort keys %$v)
+           . "$spaces\}" if 'HASH' eq ref $v;
+
+      $spaces . ni::json_encode($v);
+    #);

@@ -19,7 +19,17 @@ ni('ni:/object')->child('/lib/quote_simple')
     quote => fn q{shift->quote_value(shift)})
 
   ->def('/lib/quote_code_fail.b',
-    quote_code => fn q{shift->die('cannot quote perl CODE refs', shift)})
+    quote_code => fn q{
+      my ($self, $code) = @_;
+      my $message;
+      eval {
+        require B::Deparse;
+        $message = "can't quote perl native fn: "
+                 . B::Deparse->new->coderef2text($code);
+      };
+      die $message || "can't quote perl CODE refs (make B::Deparse available "
+                    . "for more info)";
+    })
 
   ->def('/lib/quote_values.b',
     quote_value => fn q{

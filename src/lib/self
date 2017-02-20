@@ -47,7 +47,7 @@ ni('ni:/object')->child('/lib/ni')
     '--internal/+=' => fn q{
       my $self = shift;
       $self->extend($_) for @_;
-      my $q = $self->quoted(use_newlines => 1);
+      my $q = $self->quoted;
       $self->modify(sub {$q->io->into_sync(shift)});
       0;
     },
@@ -57,8 +57,10 @@ ni('ni:/object')->child('/lib/ni')
       my $self   = shift;
       my $failed = 0;
       my @tests  = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
+      my %named  = %{$$ni::self{named}};
       for (@tests) {
         $_->run;
+        %{$$ni::self{named}} = %named;
         print '.';
       }
       print "\n";
@@ -78,7 +80,7 @@ ni('ni:/object')->child('/lib/ni')
     },
 
     '--internal/image' => fn q{
-      shift->quoted(use_newlines => 1)->io->into_sync(ni"fd:1");
+      shift->quoted->io->into_sync(ni"fd:1");
       0;
     });
 
