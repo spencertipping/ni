@@ -37,6 +37,6 @@ ni('ni:/object')->child('/fabric/perl_proxy')
   ->def('/fabric/perl_proxy_rmi.b',
     AUTOLOAD => fn q{
       my $self = shift;
-      my $method = ${__PACKAGE__ . 'AUTOLOAD'};
+      my $method = ${__PACKAGE__ . '::AUTOLOAD'};
       $$self{perl}->rmi($$self{name}, $method, @_);
     });
