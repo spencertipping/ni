@@ -1,9 +1,9 @@
-ni('ni:/object')->child('/fabric/future')
+ni('ni:/object')->child('/lib/future')
   ->doc
   ->description(
     q[A value that doesn't yet exist, but is finalized once it does exist.],
     eg q{
-      my $f1 = ni('ni:/fabric/future')->new;
+      my $f1 = ni('ni:/lib/future')->new;
       my $f2 = $f1->map(fn q{$_[0] + 1});
       now [$f1->v, $f2->v] == [undef, undef];
       $f1->decide(5);
@@ -13,8 +13,8 @@ ni('ni:/object')->child('/fabric/future')
     q[You can combine multiple futures in different ways depending on what
       you're trying to do.],
     eg q{
-      my $f1 = ni('ni:/fabric/future')->new;
-      my $f2 = ni('ni:/fabric/future')->new;
+      my $f1 = ni('ni:/lib/future')->new;
+      my $f2 = ni('ni:/lib/future')->new;
       my $f3 = $f1->or($f2);
       my $f4 = $f1->and($f2);
       $f1->decide(1);
@@ -24,8 +24,8 @@ ni('ni:/object')->child('/fabric/future')
     })
   ->end
 
-  ->ro('/fabric/future_ro.b', qw/v outcome parents/)
-  ->def('/fabric/future_init.b',
+  ->ro('/lib/future_ro.b', qw/v outcome parents/)
+  ->def('/lib/future_init.b',
     instantiate => fn q{
       my $class = shift;
       +{v         => undef,
@@ -34,12 +34,12 @@ ni('ni:/object')->child('/fabric/future')
         outcome   => undef};
     })
 
-  ->def('/fabric/future_state.b',
+  ->def('/lib/future_state.b',
     decided => fn q{shift->{outcome}},
     decide  => fn q{
       local $_;
       my ($self, $v) = @_;
-      die "ni:/fabric/future: cannot change a decided future"
+      die "ni:/lib/future: cannot change a decided future"
         if $$self{outcome};
       $$self{outcome} = [1, $v];
       $$self{v} = $v;
@@ -56,7 +56,7 @@ ni('ni:/object')->child('/fabric/future')
       $self;
     })
 
-  ->def('/fabric/future_algebra.b',
+  ->def('/lib/future_algebra.b',
     map => fn q{
       my ($self, $f) = @_;
       my $child = $self->class->new($self);

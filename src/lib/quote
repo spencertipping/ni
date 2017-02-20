@@ -75,15 +75,16 @@ ni('ni:/object')->child('/lib/quote_simple')
 
     quote_class => fn q{
       my ($self, $class) = @_;
-      $self->quote(ni"ni:$class") if $$self{include_classes} && ni->exists("ni:$class");
+      $self->quote(ni"ni:$class") if ni->exists("ni:$class");
     },
 
     quote_object => fn q{
+      local $_;
       my $self = shift;
       my $q = $self->allocate_gensym($_[0],
         $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
-      $self->finalizer("&\$_($q)for\@" . $self->quote(ref($_[0]) . '::ctors') . ';')
-        if @{ref($_[0]) . '::ctors'};
+      $self->finalizer('&' . $self->quote($_) . "($q);")
+        for @{ref($_[0]) . '::ctors'};
       $q;
     });
 
@@ -124,4 +125,40 @@ ni('ni:/lib/slice')->new('/lib/quote_circular_addressed.b',
     my $value_address = $self->address(shift);
     push @{$$self{circular}}, [$address, "[$index]", $value_address];
     $self;
+  });
+
+ni('ni:/lib/slice')->new('/lib/quote_gensym_identity.b',
+  circular_links => fn q{
+    local $_;
+    my $self = shift;
+    map "\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
+        @{$$self{circular}};
+  },
+
+  address => fn q{
+    return 'undef' unless defined $_[1];
+    return "id:$_[1]" if !ref $_[1] && length $_[1] < 256;
+    "addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
+  },
+
+  quote => fn q{
+    my $self = shift;
+    return $self->quote_scalar($_[0])
+      if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
+    my $a = $self->address($_[0]);
+    $$self{objects}{$a} = \$_[0];
+    my $v = $$self{visited}{$a};
+    return ref $v ? '0' : $v if defined $v;
+    $$self{visited}{$a} = \'undef';
+    $self->allocate_gensym($_[0], $self->quote_value($_[0]));
+  },
+
+  allocate_gensym => fn q{
+    my $self = shift;
+    my $a = $self->address(shift);
+    return $$self{visited}{$a} if $_[0] =~ /^\$\w+$/;
+    my $g = $$self{visited}{$a} = $self->gensym;
+    $$self{definitions}{$g} = "$g=$_[0];";
+    push @{$$self{ordering}}, $g;
+    $g;
   });

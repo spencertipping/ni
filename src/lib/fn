@@ -20,7 +20,6 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     die "ni:/lib/fn failed to compile $code: $@" if $@;
     $$self{fn};
   },
-  ctor => fn q{shift->compile},
   dtor => fn q{
     my $self = shift;
     delete ${'lib/fn::evals'}{$$self{eval_number}}

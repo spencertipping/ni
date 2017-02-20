@@ -23,13 +23,6 @@ ni('ni:/object')->child('/lib/image')
     })
 
   ->def('/lib/image_quoting.b',
-    circular_links => fn q{
-      local $_;
-      my $self = shift;
-      map "\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
-          @{$$self{circular}};
-    },
-
     reconstruction => fn q{
       my $self = shift;
       (@{$$self{definitions}}{@{$$self{ordering}}},
@@ -50,34 +43,6 @@ ni('ni:/object')->child('/lib/image')
         "\n__DATA__\n");
     },
 
-    address => fn q{
-      return 'undef' unless defined $_[1];
-      return "id:$_[1]" if !ref $_[1] && length $_[1] < 256;
-      "addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \$_[1]);
-    },
-
-    quote => fn q{
-      my $self = shift;
-      return $self->quote_scalar($_[0])
-        if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
-      my $a = $self->address($_[0]);
-      $$self{objects}{$a} = \$_[0];
-      my $v = $$self{visited}{$a};
-      return ref $v ? '0' : $v if defined $v;
-      $$self{visited}{$a} = \'undef';
-      $self->allocate_gensym($_[0], $self->quote_value($_[0]));
-    },
-
-    allocate_gensym => fn q{
-      my $self = shift;
-      my $a = $self->address(shift);
-      return $$self{visited}{$a} if $_[0] =~ /^\$\w+$/;
-      my $g = $$self{visited}{$a} = $self->gensym;
-      $$self{definitions}{$g} = "$g=$_[0];";
-      push @{$$self{ordering}}, $g;
-      $g;
-    },
-
     # TODO: replace this with more structured alternatives
     side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
@@ -87,6 +52,7 @@ ni('ni:/object')->child('/lib/image')
         '/lib/quote_values.b',
         '/lib/quote_objects.b',
         '/lib/quote_circular_addressed.b',
+        '/lib/quote_gensym_identity.b',
         '/lib/gensym_generator_compact.b');
 
 ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
@@ -105,7 +71,7 @@ ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
     s/^$spaces// for @lines;
 
     my %state = %$self;
-    delete $state{fn};
+    delete @state{qw/fn eval_number/};
     $state{code} = join "\n", @lines;
     $quote->quote_blessed(\%state, ref $self);
   });
@@ -130,7 +96,7 @@ ni('ni:/lib/slice')->def('/lib/slice_serialize.b',
 
     my $g = $quote->allocate_gensym($self,
       $quote->quote_blessed({%$self, applied_to => {}}, ref $self));
-    $quote->side_effect("$g\->apply_unsafe(" . $quote->quote($_) . ");")
+    $quote->side_effect("$g\->apply_(" . $quote->quote($_) . ");")
       for sort keys %{$$self{applied_to}};
     $g;
   });

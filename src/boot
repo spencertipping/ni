@@ -43,7 +43,10 @@ sub ni::eval {eval shift}
 *{'lib/fn::OVERLOAD'} = {};
 *{'lib/fn::(bool'} = sub {1};
 *{'lib/fn::()'}    = sub {};
-*{'lib/fn::(&{}'}  = sub {$_[0]->{fn} ||= $_[0]->compile};
+*{'lib/fn::(&{}'} = sub {
+  my $self = shift;
+  $$self{fn} ||= $self->compile;
+};
 *{'lib/fn::compile'} = sub {
   my $self = shift;
   my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;

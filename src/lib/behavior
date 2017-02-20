@@ -13,10 +13,10 @@ ni->def('ni:/lib/slice.b' =>
         for (keys %{$$self{methods}}) {
           die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
         }
-        $self->apply_unsafe($p);
+        $self->apply_($p);
       },
 
-      apply_unsafe => fn q{
+      apply_ => fn q{
         local $_;
         my ($self, $p) = @_;
         return if $$self{applied_to}{$p};
@@ -33,7 +33,7 @@ ni->def('ni:/lib/slice.b' =>
     }
   }, 'lib/slice');
 
-ni('ni:/lib/slice.b')->{methods}->{apply_unsafe}
+ni('ni:/lib/slice.b')->{methods}->{apply_}
   ->(ni('ni:/lib/slice.b'), 'lib/slice');
 
 ni->def('ni:/lib/slice_init.b' =>

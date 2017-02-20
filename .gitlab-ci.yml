@@ -2,120 +2,120 @@ image: spencertipping/ubuntu-docker
 ni-alpine:
   image: spencertipping/ni-env-alpine
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-alpine-minimal:
   image: spencertipping/ni-env-alpine-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-5:
   image: spencertipping/ni-env-centos-5
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-5-minimal:
   image: spencertipping/ni-env-centos-5-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-6:
   image: spencertipping/ni-env-centos-6
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-6-minimal:
   image: spencertipping/ni-env-centos-6-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-7:
   image: spencertipping/ni-env-centos-7
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-centos-7-minimal:
   image: spencertipping/ni-env-centos-7-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-wheezy:
   image: spencertipping/ni-env-debian-wheezy
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-wheezy-minimal:
   image: spencertipping/ni-env-debian-wheezy-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-jessie:
   image: spencertipping/ni-env-debian-jessie
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-jessie-minimal:
   image: spencertipping/ni-env-debian-jessie-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-sid:
   image: spencertipping/ni-env-debian-sid
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-debian-sid-minimal:
   image: spencertipping/ni-env-debian-sid-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-20-minimal:
   image: spencertipping/ni-env-fedora-20-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-21-minimal:
   image: spencertipping/ni-env-fedora-21-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-22-minimal:
   image: spencertipping/ni-env-fedora-22-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-23-minimal:
   image: spencertipping/ni-env-fedora-23-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-24-minimal:
   image: spencertipping/ni-env-fedora-24-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-fedora-25-minimal:
   image: spencertipping/ni-env-fedora-25-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-gentoo-minimal:
   image: spencertipping/ni-env-gentoo-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-12.04:
   image: spencertipping/ni-env-ubuntu-12.04
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-12.04-minimal:
   image: spencertipping/ni-env-ubuntu-12.04-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-14.04:
   image: spencertipping/ni-env-ubuntu-14.04
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-14.04-minimal:
   image: spencertipping/ni-env-ubuntu-14.04-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-16.04:
   image: spencertipping/ni-env-ubuntu-16.04
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-16.04-minimal:
   image: spencertipping/ni-env-ubuntu-16.04-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-16.04-p3:
   image: spencertipping/ni-env-ubuntu-16.04-p3
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-16.10:
   image: spencertipping/ni-env-ubuntu-16.10
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test
 ni-ubuntu-16.10-minimal:
   image: spencertipping/ni-env-ubuntu-16.10-minimal
   script:
-    - grep perl ni > /dev/null && ./ni --internal/test
+    - grep perl ni > /dev/null && ./build bench && ./ni --internal/test

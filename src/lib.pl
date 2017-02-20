@@ -20,4 +20,5 @@ ni->extend("src/lib/$_") for
       doc_doc
       quote
       image
-      util /;
+      util
+      future /;

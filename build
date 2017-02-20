@@ -44,7 +44,7 @@ time_n() {
   date +%s%N > /dev/null
   for i in `seq $n`; do
     start_nanos=$(date +%s%N)
-    "$@" > /dev/null
+    "$@" >& /dev/null
     end_nanos=$(date +%s%N)
 
     if [[ $min == none ]] || (( (end_nanos - start_nanos) < min )); then
@@ -64,8 +64,11 @@ bench)
   echo "nop:      $(time_n 100 echo) overhead"
   echo "perl:     $(time_n 100 perl -e 1) overhead"
   echo "original: $(time_n 100 perl ni.boot --internal/eval 1) overhead"
+  echo "   parse: $(time_n 100 perl -c ni.boot) overhead"
   echo "compiled: $(time_n 100 perl ni.boot.compiled --internal/eval 1) overhead"
+  echo "   parse: $(time_n 100 perl -c ni.boot.compiled) overhead"
   echo "full:     $(time_n 100 perl ni --internal/eval 1) overhead"
+  echo "   parse: $(time_n 100 perl -c ni) overhead"
   ;;
 
 *)
