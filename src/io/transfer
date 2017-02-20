@@ -82,9 +82,10 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
   ->def('/io/transfer_sync_run.b',
     run => fn q{
       my $self = shift;
+      my $bufsize = $$self{bufsize} || 32768;
       my $buf;
       my $r;
-      while (($r = $self->read($buf, 32768)) || $!{EINTR}) {
+      while (($r = $self->read($buf, $bufsize)) || $!{EINTR}) {
         my $n = $self->write($buf);
         $self->failure($!) unless $n || $!{EINTR};
         while ($n < $r) {
