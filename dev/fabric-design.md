@@ -18,3 +18,20 @@ access, then immediately return proxy objects.
 
 Probably should add errors/variadic behavior to futures so we can easily cover
 the full range of method behavior. Also need to forward `wantarray` in RMIs.
+
+## Security
+It's a problem to have insecure RMI links, but it's also a problem to expect an
+RMI peer not to send potentially malicious results. It's not the end of th
+world to have performance degrade into oblivion or run out of heap space, but
+arbitrary code execution can't be initiated by a peer.
+
+I think this means we need an asymmetric encoding for RMI channels: outgoing
+can be evaled, incoming needs to be JSON or another safe format.
+
+## Interface
+RMI is one method call deep, and happens when you work with a delegated object.
+We can address any named object in the remote, and the wall is around code
+within object methods. Results are future-converted. Calls are made from an
+event loop, which may become unresponsive if we do something expensive.
+Failsafe with `SIGALRM`? (Let's jump off that bridge when we get there. The RMI
+parent can always remote-kill it.)
