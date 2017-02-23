@@ -32,11 +32,10 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
 
     my $closure = $$self{closure};
     if ($closure) {
-      print STDERR ref($closure), "\n";
       my $closure_code = join ';',
-        map /^([@%])/ ? "my$_=$1{\${\$_[0]}{'$_'}}"
-                      : /^\$/     ? "my$_=\${\$_[0]}{'$_'}"
-                      :             "my\$$_=\${\$_[0]}{'$_'}",
+        map /^([@%])/ ? "my$_=$1\\{\${\$_[0]}{'$_'}\\}"
+          : /^\$/     ? "my$_=\${\$_[0]}{'$_'}"
+          :             "my\$$_=\${\$_[0]}{'$_'}",
         sort keys %$closure;
 
       my $code   = qq{sub {$closure_code; $fn_code}};

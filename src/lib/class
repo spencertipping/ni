@@ -118,7 +118,7 @@ ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
   defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
 
 # Constructor patterns
-ni('ni:/object.c')->def('/lib/definition_init_meta.b',
+ni('ni:/lib/definition.b')->def('/lib/definition_init_with_defaults.b',
   instantiate_with_defaults => fn q{
     my ($class, @slots) = @_;
     my $generator = pop @slots;
