@@ -35,7 +35,7 @@ ni('ni:/class')->doc
       now foo->f == 'hi';
     },
 
-    q[TODO...])
+    TODO(q[document this further]))
 
   ->classes(
     q[ni implements a Smalltalk 80-style metaclass system with a couple of
@@ -44,4 +44,4 @@ ni('ni:/class')->doc
       These two points are related: method overriding isn't in the picture,
       which makes multiple inheritance straightforward to implement.],
 
-    q[TODO...]);
+    TODO(q[document this further]));

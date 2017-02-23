@@ -1,4 +1,5 @@
-ni('ni:/lib/doc')->new('/io')
+ni('ni:/module')->new('/io')
+  ->doc
   ->description(
     q[An implementation of IO in terms of system-level FDs. We need this for a
       few reasons, three of them being that (1) old versions of Perl don't

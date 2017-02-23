@@ -1,4 +1,5 @@
-ni('ni:/lib/doc')->new('/semantic')
+ni('ni:/module')->new('/semantic')
+  ->doc
   ->description(
     q[Opportunities to assign real-world semantics to objects. This is a
       collection of behaviors that don't necessarily imply a Perl-level

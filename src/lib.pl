@@ -1,6 +1,7 @@
 do "src/lib/$_" or die "$@ $!" for qw/behavior class util doc self/;
 
-ni('ni:/lib/doc')->new('/lib')
+ni('ni:/module')->new('/lib')
+  ->doc
   ->description(
     q[Bootstrapping code for the core abstractions in ni, and almost everything
       about its introspection. This includes definitions for documentation,

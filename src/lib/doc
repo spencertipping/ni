@@ -1,9 +1,9 @@
 ni('ni:/object')->child('/lib/doc', '/lib/named.b')
-  ->def('/lib/doc_init.b',
+  ->def('init.b',
     instantiate => fn q{shift; +{name => shift, doc => []}})
 
-  ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'})
-  ->def('/lib/doc_define.b',
+  ->def('namespace.b', namespace => fn q{'ni.doc'})
+  ->def('define.b',
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
@@ -13,7 +13,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
     '(@{}' => fn q{[map @$_, @{shift->{doc}}]})
 
-  ->def('/lib/doc_end.b',
+  ->def('end.b',
     referent => fn q{ni 'ni:' . shift->{name}},
     end      => fn q{shift->referent});
 
@@ -25,7 +25,7 @@ ni('ni:/lib/behavior')->def('/lib/documentable.b',
     ni('ni:/lib/doc')->new($name);
   });
 
-ni('ni:/lib/doc.c')->def('/lib/doc.c_defannotation.b',
+ni('ni:/lib/doc.c')->def('defannotation.b',
   defannotation => fn q{
     my $class = shift;
     $class->def("$$class{name}_$_.b",
@@ -39,15 +39,15 @@ ni('ni:/lib/doc.c')->def('/lib/doc.c_defannotation.b',
   });
 
 ni('ni:/object')
-  ->child('/lib/object_metadata')
-    ->rw('/lib/object_metadata_rw.b', qw/referent/)
+  ->child('/lib/object_metadata')->rw('rw.b', qw/referent/)
   ->child('/lib/todo')
-    ->def('/lib/todo_init.b',
+    ->ro('ro.b', qw/todo/)
+    ->def('init.b',
       instantiate => fn q{
         my $class = shift;
         +{todo => [map ni::outdent($_), @_]};
       })
-    ->def('/lib/todo_str.b',
+    ->def('str.b',
       '(""' => fn q{
         my $self = shift;
         my $referent = $$self{referent} || '(anonymous)';
@@ -56,9 +56,15 @@ ni('ni:/object')
 
 ni('ni:/lib/doc')
   ->defannotation(qw/TODO eg/)
-  ->def('/lib/doc_process.b',
-    tests => fn q{grep ref($_) eq 'lib/test_case', @{$_[0]}},
-    todos => fn q{grep ref($_) eq 'lib/todo', @{$_[0]}});
+  ->def('process.b',
+    tests => fn q{
+      my $self = shift;
+      map $_->referent($self->referent), grep ref($_) eq 'lib/test_case', @$self;
+    },
+    todos => fn q{
+      my $self = shift;
+      map $_->referent($self->referent), grep ref($_) eq 'lib/todo', @$self;
+    });
 
 ni('ni:main')->def('/lib/todo_ctor.b',
   TODO => fn q{ni('ni:/lib/todo')->new(@_)});

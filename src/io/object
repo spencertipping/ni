@@ -7,10 +7,13 @@ ni('ni:main')->def('/io/named_io_fns.b',
   waitpid => fn q{CORE::waitpid $_[0], $_[1]});
 
 ni('ni:/object')->child('/io/object')
+  ->doc
+  ->TODO(q[migrate die() into /lib/ as a base behavior])
+  ->end
+
   ->def('ops.b', '(bool' => fn q{1})
 
   ->def('checks.b',
-    # TODO: migrate die() into /lib/ as a base behavior
     die => fn q{shift; die join " ", @_},
 
     io_check => fn q{

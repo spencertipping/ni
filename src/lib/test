@@ -1,5 +1,5 @@
 ni('ni:/object')->child('/lib/test_assertion')
-  ->def('/lib/test_assertion_commit.b',
+  ->def('commit.b',
     commit => fn q{
       my $self = shift;
       my $test = ni('ni:/lib/test_case')->running_test;
@@ -8,13 +8,14 @@ ni('ni:/object')->child('/lib/test_assertion')
     });
 
 ni('ni:/lib/test_assertion')->child('/lib/test_assert_eq')
-  ->def('/lib/test_assert_eq_init.b',
+  ->ro('ro.b', qw/diff/)
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $diff) = @_;
       +{diff => $diff};
     })
 
-  ->def('/lib/test_assert_eq_result.b',
+  ->def('result.b',
     '(""' => fn q{
       my $self = shift;
       $self->failed
@@ -25,8 +26,8 @@ ni('ni:/lib/test_assertion')->child('/lib/test_assert_eq')
     failed => fn q{defined shift->{diff}});
 
 ni('ni:/object')->child('/lib/test_value')
-  ->def('/lib/test_value_init.b', instantiate => fn q{\$_[1]})
-  ->def('/lib/test_value_eq.b',
+  ->def('init.b', instantiate => fn q{\$_[1]})
+  ->def('eq.b',
     detailed_scalar_diff => fn q{
       local $_;
       my ($self, $lhs, $rhs) = @_;
@@ -104,13 +105,13 @@ ni('ni:/object')->child('/lib/test_value')
         ->commit;
     })
 
-  ->def('/lib/test_value_str.b',
+  ->def('str.b',
     '(""' => fn q{ni::json_encode ${$_[0]}});
 
 ni('ni:/lib/object_metadata')->child('/lib/test_case')
-  ->ro('/lib/test_case_ro.b', qw/test assertions/)
-  ->rw('/lib/test_case_rw.b', qw/error/)
-  ->def('/lib/test_case_init.b',
+  ->ro('ro.b', qw/test assertions/)
+  ->rw('rw.b', qw/error/)
+  ->def('init.b',
     instantiate => fn q{
       my $class = shift;
       my $test  = fn shift;
@@ -120,7 +121,7 @@ ni('ni:/lib/object_metadata')->child('/lib/test_case')
         outcome    => undef};
     })
 
-  ->def('/lib/test_case_metrics.b',
+  ->def('metrics.b',
     '(""' => fn q{
       my $self = shift;
       join '', $self->failed  ? 'FAIL ' : 'PASS ',
@@ -130,7 +131,7 @@ ni('ni:/lib/object_metadata')->child('/lib/test_case')
 
     failed => fn q{!shift->{outcome}->[0]})
 
-  ->def('/lib/test_case_run.b',
+  ->def('run.b',
     done => fn q{
       my $self = shift;
       my @failed = grep $_->failed, @{$$self{assertions}};
@@ -146,13 +147,15 @@ ni('ni:/lib/object_metadata')->child('/lib/test_case')
     });
 
 ni('ni:/lib/test_case.c')
-  ->ro('/lib/test_case.c_test_ro.b', qw/running_test/)
-  ->def('/lib/test_case.c_test.b',
+  ->ro('test_ro.b', qw/running_test/)
+  ->def('test.b',
     ctor => fn q{shift->{running_test} = undef},
     with_test => fn q{
       my ($self, $test, $f) = @_;
       local $$self{running_test} = $test;
+      my %names = %{$ni::self->{named}};
       eval {&$f};
+      %{$ni::self->{named}} = %names;
       $test->error($@) if $@;
       $test->done;
     });

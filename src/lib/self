@@ -9,7 +9,7 @@ ni('ni:/object')->child('/lib/ni')
       ni in place, for instance when adding extensions.])
   ->end
 
-  ->def('/lib/ni_self.b',
+  ->def('self.b',
     is_mutable => fn q{$0 ne '-' && -w $0},
     modify => fn q{
       my ($self, $fn) = @_;
@@ -28,7 +28,39 @@ ni('ni:/object')->child('/lib/ni')
       $self;
     })
 
-  ->def('/lib/ni_main.b',
+  ->def('dev_introspection.b',
+    classes => fn q{
+      my $self = shift;
+      my $metaclass = $self->resolve('ni:/object.c');
+      map $self->resolve("ni:/$_"),
+          grep !$$metaclass{applied_to}->{$_},
+          sort keys %{$self->resolve('ni:/object')->{applied_to}};
+    },
+
+    metaclasses => fn q{
+      my $self = shift;
+      map $self->resolve("ni:/$_"),
+          sort keys %{$self->resolve('ni:/object.c')->{applied_to}};
+    },
+
+    docs => fn q{
+      my $self = shift;
+      map $self->resolve($_), grep /^ni\.doc:/, sort keys %{$$self{named}};
+    },
+
+    undocumented => fn q{
+      my $self = shift;
+      my %docs = map +($_->referent => 1), $self->docs;
+      grep !$docs{$_}, $self->classes;
+    },
+
+    untested => fn q{
+      my $self = shift;
+      my %tests = map +($_->referent => 1), map $_->tests, $self->docs;
+      grep !$tests{$_}, $self->classes;
+    })
+
+  ->def('main.b',
     run => fn q{
       my $self = shift;
       shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
@@ -52,21 +84,55 @@ ni('ni:/object')->child('/lib/ni')
       0;
     },
 
+    '--internal/dev-state' => fn q{
+      my $self = shift;
+      my @tests = map $_->tests, $self->docs;
+      $_->run for @tests;
+      my @failed = grep $_->failed, @tests;
+
+      print ni::json_encode_pretty({
+        image_size     => length($self->quoted->io->read_all),
+        named_entities => scalar(keys %{$$self{named}}),
+        classes        => scalar($self->classes),
+        metaclasses    => scalar($self->metaclasses),
+
+        undocumented => [map "$_", $self->undocumented],
+        untested     => [map "$_", $self->untested],
+
+        tests => {
+          total   => scalar(@tests),
+          passing => @tests - @failed,
+          failed  => [
+            map +{
+              referent => $_->referent->name,
+              assertions => [
+                map $_->failed ? +{diff => $_->diff} : +{passed => 1},
+                    @{$_->assertions}
+              ]
+            }, @failed
+          ]
+        },
+
+        todos => [map +{referent => $_->referent->name,
+                        text     => join "\n", @{$_->todo}},
+                  map $_->todos, $self->docs],
+      }), "\n";
+      0;
+    },
+
     '--internal/test' => fn q{
       local $| = 1;
       my $self   = shift;
       my $failed = 0;
-      my @docs   = grep /^ni\.doc:/, keys %{$$self{named}};
-      my @todos  = map ni($_)->todos, @docs;
+      my @docs   = $self->docs;
+      my @todos  = map $_->todos, @docs;
 
       print "\n" . scalar(@todos) . " TODO item(s)\n" if @todos;
       print "$_\n\n" for @todos;
 
-      my @tests  = map ni($_)->tests, @docs;
-      my %named  = %{$$ni::self{named}};
+      my @tests = map $_->tests, @docs;
       for (@tests) {
         $_->run;
-        %{$$ni::self{named}} = %named;
         print '.';
       }
       print "\n";

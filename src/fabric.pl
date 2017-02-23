@@ -1,4 +1,5 @@
-ni('ni:/lib/doc')->new('/fabric')
+ni('ni:/module')->new('/fabric')
+  ->doc
   ->description(
     q[Abstractions to bridge the gaps between separate machines and processes.
       This module is designed to make it appear as though all resources are
