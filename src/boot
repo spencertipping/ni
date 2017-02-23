@@ -56,7 +56,7 @@ sub ni::eval {eval shift}
   die "ni:/lib/fn failed to compile $$self{code}: $@\n" if $@;
   $$self{fn};
 };
-sub fn(;$);
+sub fn($);
 _
 die "$@ evaluating ni boot code" if $@;
 
@@ -69,7 +69,7 @@ die "$@ evaluating ni boot code" if $@;
   $self;
 };
 
-sub fn(;$) {'lib/fn'->new(shift)}
+sub fn($) {'lib/fn'->new(shift)}
 
 # This method call is present here only the first time around; ni rewrites
 # itself to make this call at the end of its image, outside of END{} blocks (so

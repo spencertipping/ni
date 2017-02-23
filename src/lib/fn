@@ -61,12 +61,9 @@ ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
 delete ${main::}{fn};
 
 ni('ni:main')->def('/lib/static_fn.b',
-  fn => ni('ni:/lib/fn')->new('(;$)', q{
-    @_ ? ni('ni:/lib/fn')->new(@_) : ni('ni:/lib/fn');
-  }),
-  fp => ni('ni:/lib/fn')->new('($$)', q{
-    ni('ni:/lib/fn')->new(@_);
-  }),
+  fc => fn q{ni('ni:/lib/fn')->new(pop)->closure(@_)},
+  fn => ni('ni:/lib/fn')->new('($)',  q{ni('ni:/lib/fn')->new(@_)}),
+  fp => ni('ni:/lib/fn')->new('($$)', q{ni('ni:/lib/fn')->new(@_)}),
   fk => ni('ni:/lib/fn')->new('($)', q{
     ni('ni:/lib/fn')->closure('@x' => [@_], q{wantarray ? @x : $x[0]});
   }));
@@ -80,24 +77,16 @@ ni('ni:/lib/fn')
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
 
-ni('ni:/lib/fn.c')
-  ->def('/lib/fn.c_closure.b',
-    closure => fn q{
-      my $class = shift;
-      my $body  = pop;
-      $class->new($body)->closure(@_);
-    })
+ni('ni:/lib/fn.c')->def('/lib/fn.c_resolve_eval.b',
+  ctor => fn q{
+    my $self = shift;
+    $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
+    $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
+  },
 
-  ->def('/lib/fn.c_resolve_eval.b',
-    ctor => fn q{
-      my $self = shift;
-      $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
-      $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
-    },
-
-    resolve_evals => fn q{
-      my ($self, $trace) = @_;
-      1 while $trace =~ s#\(eval (\d+)\)#
-        ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
-      $trace;
-    });
+  resolve_evals => fn q{
+    my ($self, $trace) = @_;
+    1 while $trace =~ s#\(eval (\d+)\)#
+      ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
+    $trace;
+  });

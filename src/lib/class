@@ -123,7 +123,7 @@ ni('ni:/lib/definition.b')->def('/lib/definition_init_with_defaults.b',
     my ($class, @slots) = @_;
     my $generator = pop @slots;
     $class->def("$$class{name}_init.b",
-      instantiate => fn->closure(
+      instantiate => fc(
         generator => $generator,
         '@slots'  => \@slots,
         q{
