@@ -212,195 +212,18 @@ about its introspection. This includes definitions for documentation,
 unit tests, classes, support for basic image generation, etc -- and when
 possible, it's written with some awareness of downstream use cases (for
 instance, image serialization and RMI share logic).#;$X8=q#/lib is the place where things don't quite work yet, so the code here is
-written differently from other modules.#;$Y8=[$i,$W8,$X8];$Z8=[$Y8];$c9=q#/lib#;$d9=bless({$e,$Z8,$Q,$c9},$S);$e9=q#ni.doc:/lib/doc#;$f9=q#
-ni("ni:/some/class")->doc
-  ->synopsis(...)
-  ->description(...)
-  ->eg(...)
-  ->TODO(...)
-  ...#;$g9=[$f,$f9];$h9=q#Associate documentation with the specified class. Documentation is stored
-separately and in the "ni.doc" namespace; this way you can serialize
-instances of the class and the class's code without bringing along all of
-its documentation and unit tests.#;$i9=q#Documentation objects are internally represented as arrays of quoted
-method calls:#;$j9=[];$k9=[];$l9=q#my $doc = ni("ni:/lib/doc")->new("foo");
-now $doc->{doc} == [];
-$doc->foo("bar bif baz");
-now $doc->{doc} == [["foo", "bar bif baz"]];#;$m9=bless({$t,$k9,$v,$q,$w,$l9,$y,$z},$A);$n9=bless({$n,$j9,$p,$q,$r,$q,$s,$m9},$C);$o9=q#This documentation can later be compiled into things like manpages,
-markdown, or HTML by target-specific conversion functions. Documentation
-also stores unit tests, which are specified using "eg":#;$p9=[];$q9=[];$r9=q#my $doc = ni("ni:/object")->child("/doctest_foo")->doc;
-my $passing_test = q{return 1};
-my $failing_test = q{return 0};
-$doc->eg($passing_test)
-    ->description(q[Foo objects are contrived examples.],
-                  eg $failing_test,
-                  q[So there.]);
-now scalar($doc->tests) == 2;#;$s9=bless({$t,$q9,$v,$q,$w,$r9,$y,$z},$A);$t9=bless({$n,$p9,$p,$q,$r,$q,$s,$s9},$C);$u9=[$i,$h9,$i9,$n9,$o9,$t9];$v9=[$g9,$u9];$w9=q#/lib/doc#;$x9=bless({$e,$v9,$Q,$w9},$S);$y9=q#ni.doc:/lib/future#;$z9=q#An expression that doesn't yet exist, but is finalized once it does
-exist.#;$A9=[];$B9=[];$C9=q#my $f1 = ni('ni:/lib/future')->new;
-my $f2 = $f1->map(fn q{$_[0] + 1});
-now [$f1->v, $f2->v] == [undef, undef];
-$f1->decide(5);
-now [$f1->v, $f2->v] == [5, 6];#;$D9=bless({$t,$B9,$v,$q,$w,$C9,$y,$z},$A);$E9=bless({$n,$A9,$p,$q,$r,$q,$s,$D9},$C);$F9=q#You can combine multiple futures in different ways depending on what
-you're trying to do.#;$G9=[];$H9=[];$I9=q#my $f1 = ni('ni:/lib/future')->new;
-my $f2 = ni('ni:/lib/future')->new;
-my $f3 = $f1->or($f2);
-my $f4 = $f1->and($f2);
-$f1->decide(1);
-now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, undef, 1, undef];
-$f2->decide(2);
-now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, 2, 1, [1], [2]];#;$J9=bless({$t,$H9,$v,$q,$w,$I9,$y,$z},$A);$K9=bless({$n,$G9,$p,$q,$r,$q,$s,$J9},$C);$L9=[$i,$z9,$E9,$F9,$K9];$M9=[$L9];$N9=q#/lib/future#;$O9=bless({$e,$M9,$Q,$N9},$S);$P9=q#ni.doc:/lib/image#;$Q9=q#
-my $image = ni("ni:/lib/image")->new;
-my $gensym = $image->quote($value);
-$image->io->into_sync($a_file);#;$R9=[$f,$Q9];$S9=q#Generates Perl code that reconstructs the state of objects at the
-behavior/slice level. Since classes are self-describing, this results in
-a replica of the runtime object-oriented state.#;$T9=[$i,$S9];$U9={$p2,1};$V9=q#/lib/image#;$W9={};$X9=[];$Y9=q#+{gensym_n     => 0,
-  circular     => [],
-  definitions  => {},
-  objects      => {},
-  side_effects => [],
-  finalizers   => [],
-  visited      => {},
-  ordering     => []};#;$Z9=bless({$t,$X9,$v,$q,$w,$Y9,$y,$z},$A);$ca={$L4,$Z9};$da=q#/lib/image_init.b#;$ea=bless({$r1,$W9,$W2,$q,$X2,$q,$Y2,$ca,$Q,$da},$x2);$fa={};$ga=q#boot_side_effect#;$ha=[];$ia=q#unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]#;$ja=bless({$t,$ha,$v,$q,$w,$ia,$y,$z},$A);$ka=q#finalizer#;$la=[];$ma=q#push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]#;$na=bless({$t,$la,$v,$q,$w,$ma,$y,$z},$A);$oa=q#io#;$pa=[];$qa=q#local $_;
-my $self = shift;
-ni('ni:/io/str')->new(join '',
-  "\#!/usr/bin/env perl\\n",
-  "chomp(\\$ni::license=<<'_');\\n", $ni::license, "\\n_\\n",
-  "BEGIN{eval(\\$ni::boot=<<'_')}\\n", $ni::boot, "\\n_\\n",
-  $self->reconstruction,
-  "ni->run(\\@ARGV);",
-  "\\n__DATA__\\n");#;$ra=bless({$t,$pa,$v,$q,$w,$qa,$y,$z},$A);$sa=q#reconstruction#;$ta=[];$ua=q#my $self = shift;
-(@{$$self{definitions}}{@{$$self{ordering}}},
- $self->circular_links,
- @{$$self{side_effects}},
- @{$$self{finalizers}});#;$va=bless({$t,$ta,$v,$q,$w,$ua,$y,$z},$A);$wa=q#side_effect#;$xa=[];$ya=q#push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]#;$za=bless({$t,$xa,$v,$q,$w,$ya,$y,$z},$A);$Aa={$ga,$ja,$ka,$na,$oa,$ra,$sa,$va,$wa,$za};$Ba=q#/lib/image_quoting.b#;$Ca=bless({$r1,$fa,$W2,$q,$X2,$q,$Y2,$Aa,$Q,$Ba},$x2);$Da={};$Ea=q#quote_code#;$Fa=[];$Ga=q#my ($self, $code) = @_;
-my $message;
-eval {
-  require B::Deparse;
-  $message = "can't quote perl native fn: "
-           . B::Deparse->new->coderef2text($code);
-};
-die $message || "can't quote perl CODE refs (make B::Deparse available "
-              . "for more info)";#;$Ha=bless({$t,$Fa,$v,$q,$w,$Ga,$y,$z},$A);$Ia={$Ea,$Ha};$Ja=q#/lib/quote_code_fail.b#;$Ka=bless({$r1,$Da,$W2,$q,$X2,$q,$Y2,$Ia,$Q,$Ja},$x2);$La={};$Ma=q#quote_array#;$Na=[];$Oa=q#local $_;
-my ($self, $v) = @_;
-$self->is_circular($$v[$_]) && $self->circular_arrayref($v, $_, $$v[$_])
-  for 0..$\#{$v};
-'[' . join(',', map $self->quote($_), @$v) . ']';#;$Pa=bless({$t,$Na,$v,$q,$w,$Oa,$y,$z},$A);$Qa=q#quote_hash#;$Ra=[];$Sa=q#local $_;
-my ($self, $v) = @_;
-my @ks = sort keys %$v;
-my @qs;
-for my $k (@ks) {
-  $self->circular_hashref($v, $k, $$v{$k})
-    if $self->is_circular($$v{$k});
-  push @qs, $self->quote($k) . "," . $self->quote($$v{$k});
-}
-'{' . join(",", @qs) . '}';#;$Ta=bless({$t,$Ra,$v,$q,$w,$Sa,$y,$z},$A);$Ua=q#quote_scalar#;$Va=[];$Wa=q#my $v = $_[1];
-return 'undef' unless defined $v;
-return $v if Scalar::Util::looks_like_number $v;
-$v =~ s/([\\\\\#])/\\\\$1/g;
-"q\#$v\#";#;$Xa=bless({$t,$Va,$v,$q,$w,$Wa,$y,$z},$A);$Ya=q#quote_scalar_ref#;$Za=[];$cb=q#'\\\\' . shift->quote(${$_[0]})#;$db=bless({$t,$Za,$v,$q,$w,$cb,$y,$z},$A);$eb=q#quote_value#;$fb=[];$gb=q#my $self = shift;
-return $self->quote_scalar($_[0])     unless ref $_[0];
-return $self->quote_scalar_ref($_[0]) if 'SCALAR' eq ref $_[0];
-return $self->quote_array($_[0])      if 'ARRAY'  eq ref $_[0];
-return $self->quote_hash($_[0])       if 'HASH'   eq ref $_[0];
-return $self->quote_code($_[0])       if 'CODE'   eq ref $_[0];
-$self->quote_object($_[0]);#;$hb=bless({$t,$fb,$v,$q,$w,$gb,$y,$z},$A);$ib={$Ma,$Pa,$Qa,$Ta,$Ua,$Xa,$Ya,$db,$eb,$hb};$jb=q#/lib/quote_values.b#;$kb=bless({$r1,$La,$W2,$q,$X2,$q,$Y2,$ib,$Q,$jb},$x2);$lb={};$mb=q#quote_blessed#;$nb=[];$ob=q#my ($self, $x, $r) = @_;
-$r ||= ref $x;
-$self->quote_class($r);
-my $t = Scalar::Util::reftype $x;
-my $quoted = $t eq 'HASH' ? $self->quote_hash($x) : $self->quote_array($x);
-"bless($quoted," . $self->quote($r) . ")";#;$pb=bless({$t,$nb,$v,$q,$w,$ob,$y,$z},$A);$qb=q#quote_class#;$rb=[];$sb=q#my ($self, $class) = @_;
-$self->quote(ni"ni:$class") if ni->exists("ni:$class");#;$tb=bless({$t,$rb,$v,$q,$w,$sb,$y,$z},$A);$ub=q#quote_object#;$vb=[];$wb=q#local $_;
-my $self = shift;
-my $q = $self->allocate_gensym($_[0],
-  $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
-$self->finalizer('&' . $self->quote($_) . "($q);")
-  for @{ref($_[0]) . '::ctors'};
-$q;#;$xb=bless({$t,$vb,$v,$q,$w,$wb,$y,$z},$A);$yb={$mb,$pb,$qb,$tb,$ub,$xb};$zb=q#/lib/quote_objects.b#;$Ab=bless({$r1,$lb,$W2,$q,$X2,$q,$Y2,$yb,$Q,$zb},$x2);$Bb={};$Cb=q#circular_arrayref#;$Db=[];$Eb=q#my $self          = shift;
-my $address       = $self->address(shift);
-my $index         = shift;
-my $value_address = $self->address(shift);
-push @{$$self{circular}}, [$address, "[$index]", $value_address];
-$self;#;$Fb=bless({$t,$Db,$v,$q,$w,$Eb,$y,$z},$A);$Gb=q#circular_hashref#;$Hb=[];$Ib=q#my $self          = shift;
-my $address       = $self->address(shift);
-my $quoted_key    = $self->quote(shift);
-my $value_address = $self->address(shift);
-push @{$$self{circular}}, [$address, "{$quoted_key}", $value_address];
-$self;#;$Jb=bless({$t,$Hb,$v,$q,$w,$Ib,$y,$z},$A);$Kb=q#is_circular#;$Lb=[];$Mb=q#my $self = shift;
-ref $$self{visited}{$self->address(shift)};#;$Nb=bless({$t,$Lb,$v,$q,$w,$Mb,$y,$z},$A);$Ob={$Cb,$Fb,$Gb,$Jb,$Kb,$Nb};$Pb=q#/lib/quote_circular_addressed.b#;$Qb=bless({$r1,$Bb,$W2,$q,$X2,$q,$Y2,$Ob,$Q,$Pb},$x2);$Rb={};$Sb=q#address#;$Tb=[];$Ub=q#return 'undef' unless defined $_[1];
-return "id:$_[1]" if !ref $_[1] && length $_[1] < 256;
-"addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \\$_[1]);#;$Vb=bless({$t,$Tb,$v,$q,$w,$Ub,$y,$z},$A);$Wb=q#allocate_gensym#;$Xb=[];$Yb=q#my $self = shift;
-my $a = $self->address(shift);
-return $$self{visited}{$a} if $_[0] =~ /^\\$\\w+$/;
-my $g = $$self{visited}{$a} = $self->gensym;
-$$self{definitions}{$g} = "$g=$_[0];";
-push @{$$self{ordering}}, $g;
-$g;#;$Zb=bless({$t,$Xb,$v,$q,$w,$Yb,$y,$z},$A);$cc=q#circular_links#;$dc=[];$ec=q#local $_;
-my $self = shift;
-map "\\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
-    @{$$self{circular}};#;$fc=bless({$t,$dc,$v,$q,$w,$ec,$y,$z},$A);$gc=q#quote#;$hc=[];$ic=q#my $self = shift;
-return $self->quote_scalar($_[0])
-  if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
-my $a = $self->address($_[0]);
-$$self{objects}{$a} = \\$_[0];
-my $v = $$self{visited}{$a};
-return ref $v ? '0' : $v if defined $v;
-$$self{visited}{$a} = \\'undef';
-$self->allocate_gensym($_[0], $self->quote_value($_[0]));#;$jc=bless({$t,$hc,$v,$q,$w,$ic,$y,$z},$A);$kc={$Sb,$Vb,$Wb,$Zb,$cc,$fc,$gc,$jc};$lc=q#/lib/quote_gensym_identity.b#;$mc=bless({$r1,$Rb,$W2,$q,$X2,$q,$Y2,$kc,$Q,$lc},$x2);$nc={};$oc=q#gensym#;$pc=[];$qc=q#my $n = shift->{gensym_n}++;
-my $s = '$' .
-  substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-         $n % 50, 1;
-$n = int $n / 50;
-while ($n) {
-  $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
-               $n % 63, 1;
-  $n = int $n / 63;
-}
-$s;#;$rc=bless({$t,$pc,$v,$q,$w,$qc,$y,$z},$A);$sc={$oc,$rc};$tc=q#/lib/gensym_generator_compact.b#;$uc=bless({$r1,$nc,$W2,$q,$X2,$q,$Y2,$sc,$Q,$tc},$x2);$vc=[$k3,$ea,$Ca,$Ka,$kb,$Ab,$Qb,$mc,$uc];$wc=bless({$r1,$U9,$Q,$V9,$v1,$vc},$q2);$xc=q#The interaction between these ->serialize methods and quotation/image
-classes is horrible and even worse, undocumented. Formalize the protocol
-for instances to request things like side effects or finalizers, and for
-god's sake clean up the side-effect/boot-side-effect crap.#;$yc=[$xc];$zc=bless({$q1,$wc,$E,$yc},$H);$Ac=[$p1,$zc];$Bc=[$R9,$T9,$Ac];$Cc=bless({$e,$Bc,$Q,$V9},$S);$Dc=q#ni.doc:/lib/ni#;$Ec=q#my $value = ni->resolve($name);
-my $value = ni($name);   \# alias for ni->resolve($name)
-my $self  = ni;#;$Fc=[$f,$Ec];$Gc=q#The class for the currently-running ni instance. This includes all
-instance state, the table of named objects, and a bit of logic to update
-ni in place, for instance when adding extensions.#;$Hc=[$i,$Gc];$Ic=[$Fc,$Hc];$Jc=q#/lib/ni#;$Kc=bless({$e,$Ic,$Q,$Jc},$S);$Lc=q#ni.doc:/lib/quote_simple#;$Mc=q#A stateless object that serializes values with direct quotation; that
-is, the serialization contains no variables. If your objects have
-circular or shared references, you should probably use
-/lib/quote_circular or similar.#;$Nc=[];$Oc=[];$Pc=q#my $q = ni('ni:/lib/quote_simple')->new;
-now $q->quote([1,2,3]) == "[1,2,3]";
-now $q->quote({foo => 1, bar => [1, 2]}) == "{q\#bar\#,[1,2],q\#foo\#,1}";#;$Qc=bless({$t,$Oc,$v,$q,$w,$Pc,$y,$z},$A);$Rc=bless({$n,$Nc,$p,$q,$r,$q,$s,$Qc},$C);$Sc=[$i,$Mc,$Rc];$Tc=[$Sc];$Uc=q#/lib/quote_simple#;$Vc=bless({$e,$Tc,$Q,$Uc},$S);$Wc=q#ni.doc:/lib/slice#;$Xc=q#
-ni('ni:/lib/slice')->new('/lib/foo',
-  ctor => fn q{shift->say_hi},
-  say_hi => fn q{print "hi from " . shift->name . "\\n"});
-$some_class->add('/lib/foo');#;$Yc=[$f,$Xc];$Zc={$x2,1};$cd=q#/lib/slice#;$dd={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$f2,1,$g2,1,$h2,1,$i2,1,$j2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$x2,1,$y2,1,$z2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$ed=q#/lib/behavior#;$fd={};$gd=q#my $self = shift;
+written differently from other modules.#;$Y8=[$i,$W8,$X8];$Z8=[$Y8];$c9=q#/lib#;$d9=bless({$e,$Z8,$Q,$c9},$S);$e9=q#ni.doc:/lib/dataslice#;$f9={$j2,1};$g9=q#/lib/dataslice#;$h9={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$f2,1,$g2,1,$h2,1,$i2,1,$j2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$x2,1,$y2,1,$z2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$i9=q#/lib/behavior#;$j9={};$k9=q#my $self = shift;
 (my $name = $self->name) =~ s/^[^:]*://;
 return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
-ni('ni:/lib/doc')->new($name);#;$hd=bless({$w,$gd,$y,$z},$A);$id={$e,$hd};$jd=q#/lib/documentable.b#;$kd=bless({$r1,$fd,$W2,$q,$X2,$q,$Y2,$id,$Q,$jd},$x2);$ld=[$k3,$kd];$md=bless({$r1,$dd,$Q,$ed,$v1,$ld},$g2);$nd={};$od=q#$_[0]->namespace . ":" . $_[0]->{name}#;$pd=bless({$w,$od,$y,$z},$A);$qd={$Q,$pd};$rd=q#/lib/named.b#;$sd=bless({$r1,$nd,$W2,$V,$X2,$q,$Y2,$qd,$Q,$rd},$x2);$td=q#local $_;
+ni('ni:/lib/doc')->new($name);#;$l9=bless({$w,$k9,$y,$z},$A);$m9={$e,$l9};$n9=q#/lib/documentable.b#;$o9=bless({$r1,$j9,$W2,$q,$X2,$q,$Y2,$m9,$Q,$n9},$x2);$p9=[$k3,$o9];$q9=bless({$r1,$h9,$Q,$i9,$v1,$p9},$g2);$r9={};$s9=q#$_[0]->namespace . ":" . $_[0]->{name}#;$t9=bless({$w,$s9,$y,$z},$A);$u9={$Q,$t9};$v9=q#/lib/named.b#;$w9=bless({$r1,$r9,$W2,$V,$X2,$q,$Y2,$u9,$Q,$v9},$x2);$x9={};$y9=q#apply#;$z9=q#shift->apply_(@_)#;$A9=bless({$w,$z9,$y,$z},$A);$B9=q#apply_#;$C9=q#local $_;
 my ($self, $p) = @_;
 $p = $p->package if ref $p;
-die "/lib/slice.b->apply('$p'): perl packages don't start with "
-  . "slashes (this fails on older versions of perl)" if $p =~ /^\\//;
-return if $$self{applied_to}{$p};
-for (keys %{$$self{methods}}) {
-  die "$self: overlapping method $p\\::$_" if defined *{"$p\\::$_"}{CODE};
-}
-$self->apply_($p);#;$ud=bless({$w,$td,$y,$z},$A);$vd=q#local $_;
-my ($self, $p) = @_;
 return if $$self{applied_to}{$p};
 $$self{applied_to}{$p} = 1;
-push @{"$p\\::ctors"}, $$self{ctor} if $$self{ctor};
-push @{"$p\\::dtors"}, $$self{dtor} if $$self{dtor};
-if (grep /^\\(/, keys %{$$self{methods}}) {
-  *{"$p\\::()"} = *{"$p\\::(("} = sub {};
-  *{"$p\\::OVERLOAD"} = {dummy => 1};
-}
-*{"$p\\::$_"} = \\&{$$self{methods}{$_}} for keys %{$$self{methods}};
-$self;#;$wd=bless({$w,$vd,$y,$z},$A);$xd=q#lib/slice::apply#;$yd=q#lib/slice::apply_#;$zd={};$Ad=q#apply#;$Bd=q#apply_#;$Cd={$Ad,$ud,$Bd,$wd};$Dd=q#/lib/slice.b#;$Ed=bless({$r1,$zd,$Y2,$Cd,$Q,$Dd},$x2);$Fd={};$Gd=q#my $class = shift;
-my $name  = shift;
-my %args  = @_;
-+{ctor       => delete($args{ctor}),
-  dtor       => delete($args{dtor}),
-  applied_to => delete($args{applied_to}),
-  name       => $name,
-  methods    => \\%args};#;$Hd=bless({$w,$Gd,$y,$z},$A);$Id={$L4,$Hd};$Jd=q#/lib/slice_init.b#;$Kd=bless({$r1,$Fd,$Y2,$Id,$Q,$Jd},$x2);$Ld={};$Md=q#serialize#;$Nd=[];$Od=q#local $_;
+*{"$p\\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
+$self;#;$D9=bless({$w,$C9,$y,$z},$A);$E9={$y9,$A9,$B9,$D9};$F9=q#/lib/dataslice.b#;$G9=bless({$r1,$x9,$W2,$q,$X2,$q,$Y2,$E9,$Q,$F9},$x2);$H9={};$I9=q#my $class = shift;
+my $name = shift;
++{name => $name, data => {@_}};#;$J9=bless({$w,$I9,$y,$z},$A);$K9={$L4,$J9};$L9=q#/lib/dataslice_init.b#;$M9=bless({$r1,$H9,$W2,$q,$X2,$q,$Y2,$K9,$Q,$L9},$x2);$N9={};$O9=q#namespace#;$P9=q#'ni'#;$Q9=bless({$w,$P9,$y,$z},$A);$R9={$O9,$Q9};$S9=q#/lib/named_in_ni.b#;$T9=bless({$r1,$N9,$W2,$q,$X2,$q,$Y2,$R9,$Q,$S9},$x2);$U9={};$V9=q#package#;$W9=q#(my $name = shift->{name}) =~ s/^\\///; $name#;$X9=bless({$w,$W9,$y,$z},$A);$Y9={$V9,$X9};$Z9=q#/lib/namespaced.b#;$ca=bless({$r1,$U9,$W2,$q,$X2,$q,$Y2,$Y9,$Q,$Z9},$x2);$da={};$ea=q#resolve#;$fa=q#ref $_[1] ? $_[1] : ni"ni:$_[1]"#;$ga=bless({$w,$fa,$y,$z},$A);$ha={$ea,$ga};$ia=q#/lib/resolver.b#;$ja=bless({$r1,$da,$W2,$q,$X2,$q,$Y2,$ha,$Q,$ia},$x2);$ka={};$la=q#serialize#;$ma=[];$na=q#local $_;
 my ($self, $quote) = @_;
 my $name = $self->name;
 $quote->quote_class(ref $self);
@@ -420,7 +243,192 @@ my $g = $quote->allocate_gensym($self,
   $quote->quote_blessed({%$self, applied_to => {}}, ref $self));
 $quote->side_effect("$g\\->apply_(" . $quote->quote($_) . ");")
   for sort keys %{$$self{applied_to}};
-$g;#;$Pd=bless({$t,$Nd,$v,$q,$w,$Od,$y,$z},$A);$Qd={$Md,$Pd};$Rd=q#/lib/slice_serialize.b#;$Sd=bless({$r1,$Ld,$W2,$q,$X2,$q,$Y2,$Qd,$Q,$Rd},$x2);$Td=[$md,$sd,$Ed,$Kd,$Sd];$Ud=bless({$r1,$Zc,$Q,$cd,$v1,$Td},$y2);$Vd=q#A bug that takes the cake:
+$g;#;$oa=bless({$t,$ma,$v,$q,$w,$na,$y,$z},$A);$pa={$la,$oa};$qa=q#/lib/slice_serialize.b#;$ra=bless({$r1,$ka,$W2,$q,$X2,$q,$Y2,$pa,$Q,$qa},$x2);$sa=[$q9,$w9,$G9,$M9,$T9,$ca,$ja,$ra];$ta=bless({$r1,$f9,$Q,$g9,$v1,$sa},$k2);$ua=q#Fix serialization for dataslices#;$va=[$ua];$wa=bless({$q1,$ta,$E,$va},$H);$xa=[$p1,$wa];$ya=[$xa];$za=bless({$e,$ya,$Q,$g9},$S);$Aa=q#ni.doc:/lib/doc#;$Ba=q#
+ni("ni:/some/class")->doc
+  ->synopsis(...)
+  ->description(...)
+  ->eg(...)
+  ->TODO(...)
+  ...#;$Ca=[$f,$Ba];$Da=q#Associate documentation with the specified class. Documentation is stored
+separately and in the "ni.doc" namespace; this way you can serialize
+instances of the class and the class's code without bringing along all of
+its documentation and unit tests.#;$Ea=q#Documentation objects are internally represented as arrays of quoted
+method calls:#;$Fa=[];$Ga=[];$Ha=q#my $doc = ni("ni:/lib/doc")->new("foo");
+now $doc->{doc} == [];
+$doc->foo("bar bif baz");
+now $doc->{doc} == [["foo", "bar bif baz"]];#;$Ia=bless({$t,$Ga,$v,$q,$w,$Ha,$y,$z},$A);$Ja=bless({$n,$Fa,$p,$q,$r,$q,$s,$Ia},$C);$Ka=q#This documentation can later be compiled into things like manpages,
+markdown, or HTML by target-specific conversion functions. Documentation
+also stores unit tests, which are specified using "eg":#;$La=[];$Ma=[];$Na=q#my $doc = ni("ni:/object")->child("/doctest_foo")->doc;
+my $passing_test = q{return 1};
+my $failing_test = q{return 0};
+$doc->eg($passing_test)
+    ->description(q[Foo objects are contrived examples.],
+                  eg $failing_test,
+                  q[So there.]);
+now scalar($doc->tests) == 2;#;$Oa=bless({$t,$Ma,$v,$q,$w,$Na,$y,$z},$A);$Pa=bless({$n,$La,$p,$q,$r,$q,$s,$Oa},$C);$Qa=[$i,$Da,$Ea,$Ja,$Ka,$Pa];$Ra=[$Ca,$Qa];$Sa=q#/lib/doc#;$Ta=bless({$e,$Ra,$Q,$Sa},$S);$Ua=q#ni.doc:/lib/future#;$Va=q#An expression that doesn't yet exist, but is finalized once it does
+exist.#;$Wa=[];$Xa=[];$Ya=q#my $f1 = ni('ni:/lib/future')->new;
+my $f2 = $f1->map(fn q{$_[0] + 1});
+now [$f1->v, $f2->v] == [undef, undef];
+$f1->decide(5);
+now [$f1->v, $f2->v] == [5, 6];#;$Za=bless({$t,$Xa,$v,$q,$w,$Ya,$y,$z},$A);$cb=bless({$n,$Wa,$p,$q,$r,$q,$s,$Za},$C);$db=q#You can combine multiple futures in different ways depending on what
+you're trying to do.#;$eb=[];$fb=[];$gb=q#my $f1 = ni('ni:/lib/future')->new;
+my $f2 = ni('ni:/lib/future')->new;
+my $f3 = $f1->or($f2);
+my $f4 = $f1->and($f2);
+$f1->decide(1);
+now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, undef, 1, undef];
+$f2->decide(2);
+now [$f1->v, $f2->v, $f3->v, $f4->v] == [1, 2, 1, [1], [2]];#;$hb=bless({$t,$fb,$v,$q,$w,$gb,$y,$z},$A);$ib=bless({$n,$eb,$p,$q,$r,$q,$s,$hb},$C);$jb=[$i,$Va,$cb,$db,$ib];$kb=[$jb];$lb=q#/lib/future#;$mb=bless({$e,$kb,$Q,$lb},$S);$nb=q#ni.doc:/lib/image#;$ob=q#
+my $image = ni("ni:/lib/image")->new;
+my $gensym = $image->quote($value);
+$image->io->into_sync($a_file);#;$pb=[$f,$ob];$qb=q#Generates Perl code that reconstructs the state of objects at the
+behavior/slice level. Since classes are self-describing, this results in
+a replica of the runtime object-oriented state.#;$rb=[$i,$qb];$sb={$p2,1};$tb=q#/lib/image#;$ub={};$vb=[];$wb=q#+{gensym_n     => 0,
+  circular     => [],
+  definitions  => {},
+  objects      => {},
+  side_effects => [],
+  finalizers   => [],
+  visited      => {},
+  ordering     => []};#;$xb=bless({$t,$vb,$v,$q,$w,$wb,$y,$z},$A);$yb={$L4,$xb};$zb=q#/lib/image_init.b#;$Ab=bless({$r1,$ub,$W2,$q,$X2,$q,$Y2,$yb,$Q,$zb},$x2);$Bb={};$Cb=q#boot_side_effect#;$Db=[];$Eb=q#unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]#;$Fb=bless({$t,$Db,$v,$q,$w,$Eb,$y,$z},$A);$Gb=q#finalizer#;$Hb=[];$Ib=q#push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]#;$Jb=bless({$t,$Hb,$v,$q,$w,$Ib,$y,$z},$A);$Kb=q#io#;$Lb=[];$Mb=q#local $_;
+my $self = shift;
+ni('ni:/io/str')->new(join '',
+  "\#!/usr/bin/env perl\\n",
+  "chomp(\\$ni::license=<<'_');\\n", $ni::license, "\\n_\\n",
+  "BEGIN{eval(\\$ni::boot=<<'_')}\\n", $ni::boot, "\\n_\\n",
+  $self->reconstruction,
+  "ni->run(\\@ARGV);",
+  "\\n__DATA__\\n");#;$Nb=bless({$t,$Lb,$v,$q,$w,$Mb,$y,$z},$A);$Ob=q#reconstruction#;$Pb=[];$Qb=q#my $self = shift;
+(@{$$self{definitions}}{@{$$self{ordering}}},
+ $self->circular_links,
+ @{$$self{side_effects}},
+ @{$$self{finalizers}});#;$Rb=bless({$t,$Pb,$v,$q,$w,$Qb,$y,$z},$A);$Sb=q#side_effect#;$Tb=[];$Ub=q#push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]#;$Vb=bless({$t,$Tb,$v,$q,$w,$Ub,$y,$z},$A);$Wb={$Cb,$Fb,$Gb,$Jb,$Kb,$Nb,$Ob,$Rb,$Sb,$Vb};$Xb=q#/lib/image_quoting.b#;$Yb=bless({$r1,$Bb,$W2,$q,$X2,$q,$Y2,$Wb,$Q,$Xb},$x2);$Zb={};$cc=q#quote_code#;$dc=[];$ec=q#my ($self, $code) = @_;
+my $message;
+eval {
+  require B::Deparse;
+  $message = "can't quote perl native fn: "
+           . B::Deparse->new->coderef2text($code);
+};
+die $message || "can't quote perl CODE refs (make B::Deparse available "
+              . "for more info)";#;$fc=bless({$t,$dc,$v,$q,$w,$ec,$y,$z},$A);$gc={$cc,$fc};$hc=q#/lib/quote_code_fail.b#;$ic=bless({$r1,$Zb,$W2,$q,$X2,$q,$Y2,$gc,$Q,$hc},$x2);$jc={};$kc=q#quote_array#;$lc=[];$mc=q#local $_;
+my ($self, $v) = @_;
+$self->is_circular($$v[$_]) && $self->circular_arrayref($v, $_, $$v[$_])
+  for 0..$\#{$v};
+'[' . join(',', map $self->quote($_), @$v) . ']';#;$nc=bless({$t,$lc,$v,$q,$w,$mc,$y,$z},$A);$oc=q#quote_hash#;$pc=[];$qc=q#local $_;
+my ($self, $v) = @_;
+my @ks = sort keys %$v;
+my @qs;
+for my $k (@ks) {
+  $self->circular_hashref($v, $k, $$v{$k})
+    if $self->is_circular($$v{$k});
+  push @qs, $self->quote($k) . "," . $self->quote($$v{$k});
+}
+'{' . join(",", @qs) . '}';#;$rc=bless({$t,$pc,$v,$q,$w,$qc,$y,$z},$A);$sc=q#quote_scalar#;$tc=[];$uc=q#my $v = $_[1];
+return 'undef' unless defined $v;
+return $v if Scalar::Util::looks_like_number $v;
+$v =~ s/([\\\\\#])/\\\\$1/g;
+"q\#$v\#";#;$vc=bless({$t,$tc,$v,$q,$w,$uc,$y,$z},$A);$wc=q#quote_scalar_ref#;$xc=[];$yc=q#'\\\\' . shift->quote(${$_[0]})#;$zc=bless({$t,$xc,$v,$q,$w,$yc,$y,$z},$A);$Ac=q#quote_value#;$Bc=[];$Cc=q#my $self = shift;
+return $self->quote_scalar($_[0])     unless ref $_[0];
+return $self->quote_scalar_ref($_[0]) if 'SCALAR' eq ref $_[0];
+return $self->quote_array($_[0])      if 'ARRAY'  eq ref $_[0];
+return $self->quote_hash($_[0])       if 'HASH'   eq ref $_[0];
+return $self->quote_code($_[0])       if 'CODE'   eq ref $_[0];
+$self->quote_object($_[0]);#;$Dc=bless({$t,$Bc,$v,$q,$w,$Cc,$y,$z},$A);$Ec={$kc,$nc,$oc,$rc,$sc,$vc,$wc,$zc,$Ac,$Dc};$Fc=q#/lib/quote_values.b#;$Gc=bless({$r1,$jc,$W2,$q,$X2,$q,$Y2,$Ec,$Q,$Fc},$x2);$Hc={};$Ic=q#quote_blessed#;$Jc=[];$Kc=q#my ($self, $x, $r) = @_;
+$r ||= ref $x;
+$self->quote_class($r);
+my $t = Scalar::Util::reftype $x;
+my $quoted = $t eq 'HASH' ? $self->quote_hash($x) : $self->quote_array($x);
+"bless($quoted," . $self->quote($r) . ")";#;$Lc=bless({$t,$Jc,$v,$q,$w,$Kc,$y,$z},$A);$Mc=q#quote_class#;$Nc=[];$Oc=q#my ($self, $class) = @_;
+$self->quote(ni"ni:$class") if ni->exists("ni:$class");#;$Pc=bless({$t,$Nc,$v,$q,$w,$Oc,$y,$z},$A);$Qc=q#quote_object#;$Rc=[];$Sc=q#local $_;
+my $self = shift;
+my $q = $self->allocate_gensym($_[0],
+  $_[0]->can('serialize') ? $_[0]->serialize($self) : $self->quote_blessed(@_));
+$self->finalizer('&' . $self->quote($_) . "($q);")
+  for @{ref($_[0]) . '::ctors'};
+$q;#;$Tc=bless({$t,$Rc,$v,$q,$w,$Sc,$y,$z},$A);$Uc={$Ic,$Lc,$Mc,$Pc,$Qc,$Tc};$Vc=q#/lib/quote_objects.b#;$Wc=bless({$r1,$Hc,$W2,$q,$X2,$q,$Y2,$Uc,$Q,$Vc},$x2);$Xc={};$Yc=q#circular_arrayref#;$Zc=[];$cd=q#my $self          = shift;
+my $address       = $self->address(shift);
+my $index         = shift;
+my $value_address = $self->address(shift);
+push @{$$self{circular}}, [$address, "[$index]", $value_address];
+$self;#;$dd=bless({$t,$Zc,$v,$q,$w,$cd,$y,$z},$A);$ed=q#circular_hashref#;$fd=[];$gd=q#my $self          = shift;
+my $address       = $self->address(shift);
+my $quoted_key    = $self->quote(shift);
+my $value_address = $self->address(shift);
+push @{$$self{circular}}, [$address, "{$quoted_key}", $value_address];
+$self;#;$hd=bless({$t,$fd,$v,$q,$w,$gd,$y,$z},$A);$id=q#is_circular#;$jd=[];$kd=q#my $self = shift;
+ref $$self{visited}{$self->address(shift)};#;$ld=bless({$t,$jd,$v,$q,$w,$kd,$y,$z},$A);$md={$Yc,$dd,$ed,$hd,$id,$ld};$nd=q#/lib/quote_circular_addressed.b#;$od=bless({$r1,$Xc,$W2,$q,$X2,$q,$Y2,$md,$Q,$nd},$x2);$pd={};$qd=q#address#;$rd=[];$sd=q#return 'undef' unless defined $_[1];
+return "id:$_[1]" if !ref $_[1] && length $_[1] < 256;
+"addr:" . Scalar::Util::refaddr(ref $_[1] ? $_[1] : \\$_[1]);#;$td=bless({$t,$rd,$v,$q,$w,$sd,$y,$z},$A);$ud=q#allocate_gensym#;$vd=[];$wd=q#my $self = shift;
+my $a = $self->address(shift);
+return $$self{visited}{$a} if $_[0] =~ /^\\$\\w+$/;
+my $g = $$self{visited}{$a} = $self->gensym;
+$$self{definitions}{$g} = "$g=$_[0];";
+push @{$$self{ordering}}, $g;
+$g;#;$xd=bless({$t,$vd,$v,$q,$w,$wd,$y,$z},$A);$yd=q#circular_links#;$zd=[];$Ad=q#local $_;
+my $self = shift;
+map "\\$$$self{visited}{$$_[0]}$$_[1]=$$self{visited}{$$_[2]};",
+    @{$$self{circular}};#;$Bd=bless({$t,$zd,$v,$q,$w,$Ad,$y,$z},$A);$Cd=q#quote#;$Dd=[];$Ed=q#my $self = shift;
+return $self->quote_scalar($_[0])
+  if !ref $_[0] && Scalar::Util::looks_like_number($_[0]);
+my $a = $self->address($_[0]);
+$$self{objects}{$a} = \\$_[0];
+my $v = $$self{visited}{$a};
+return ref $v ? '0' : $v if defined $v;
+$$self{visited}{$a} = \\'undef';
+$self->allocate_gensym($_[0], $self->quote_value($_[0]));#;$Fd=bless({$t,$Dd,$v,$q,$w,$Ed,$y,$z},$A);$Gd={$qd,$td,$ud,$xd,$yd,$Bd,$Cd,$Fd};$Hd=q#/lib/quote_gensym_identity.b#;$Id=bless({$r1,$pd,$W2,$q,$X2,$q,$Y2,$Gd,$Q,$Hd},$x2);$Jd={};$Kd=q#gensym#;$Ld=[];$Md=q#my $n = shift->{gensym_n}++;
+my $s = '$' .
+  substr "cdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+         $n % 50, 1;
+$n = int $n / 50;
+while ($n) {
+  $s .= substr "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_",
+               $n % 63, 1;
+  $n = int $n / 63;
+}
+$s;#;$Nd=bless({$t,$Ld,$v,$q,$w,$Md,$y,$z},$A);$Od={$Kd,$Nd};$Pd=q#/lib/gensym_generator_compact.b#;$Qd=bless({$r1,$Jd,$W2,$q,$X2,$q,$Y2,$Od,$Q,$Pd},$x2);$Rd=[$k3,$Ab,$Yb,$ic,$Gc,$Wc,$od,$Id,$Qd];$Sd=bless({$r1,$sb,$Q,$tb,$v1,$Rd},$q2);$Td=q#The interaction between these ->serialize methods and quotation/image
+classes is horrible and even worse, undocumented. Formalize the protocol
+for instances to request things like side effects or finalizers, and for
+god's sake clean up the side-effect/boot-side-effect crap.#;$Ud=[$Td];$Vd=bless({$q1,$Sd,$E,$Ud},$H);$Wd=[$p1,$Vd];$Xd=[$pb,$rb,$Wd];$Yd=bless({$e,$Xd,$Q,$tb},$S);$Zd=q#ni.doc:/lib/ni#;$ce=q#my $value = ni->resolve($name);
+my $value = ni($name);   \# alias for ni->resolve($name)
+my $self  = ni;#;$de=[$f,$ce];$ee=q#The class for the currently-running ni instance. This includes all
+instance state, the table of named objects, and a bit of logic to update
+ni in place, for instance when adding extensions.#;$fe=[$i,$ee];$ge=[$de,$fe];$he=q#/lib/ni#;$ie=bless({$e,$ge,$Q,$he},$S);$je=q#ni.doc:/lib/quote_simple#;$ke=q#A stateless object that serializes values with direct quotation; that
+is, the serialization contains no variables. If your objects have
+circular or shared references, you should probably use
+/lib/quote_circular or similar.#;$le=[];$me=[];$ne=q#my $q = ni('ni:/lib/quote_simple')->new;
+now $q->quote([1,2,3]) == "[1,2,3]";
+now $q->quote({foo => 1, bar => [1, 2]}) == "{q\#bar\#,[1,2],q\#foo\#,1}";#;$oe=bless({$t,$me,$v,$q,$w,$ne,$y,$z},$A);$pe=bless({$n,$le,$p,$q,$r,$q,$s,$oe},$C);$qe=[$i,$ke,$pe];$re=[$qe];$se=q#/lib/quote_simple#;$te=bless({$e,$re,$Q,$se},$S);$ue=q#ni.doc:/lib/slice#;$ve=q#
+ni('ni:/lib/slice')->new('/lib/foo',
+  ctor => fn q{shift->say_hi},
+  say_hi => fn q{print "hi from " . shift->name . "\\n"});
+$some_class->add('/lib/foo');#;$we=[$f,$ve];$xe={$x2,1};$ye=q#/lib/slice#;$ze=q#local $_;
+my ($self, $p) = @_;
+$p = $p->package if ref $p;
+die "/lib/slice.b->apply('$p'): perl packages don't start with "
+  . "slashes (this fails on older versions of perl)" if $p =~ /^\\//;
+return if $$self{applied_to}{$p};
+for (keys %{$$self{methods}}) {
+  die "$self: overlapping method $p\\::$_" if defined *{"$p\\::$_"}{CODE};
+}
+$self->apply_($p);#;$Ae=bless({$w,$ze,$y,$z},$A);$Be=q#local $_;
+my ($self, $p) = @_;
+return if $$self{applied_to}{$p};
+$$self{applied_to}{$p} = 1;
+push @{"$p\\::ctors"}, $$self{ctor} if $$self{ctor};
+push @{"$p\\::dtors"}, $$self{dtor} if $$self{dtor};
+if (grep /^\\(/, keys %{$$self{methods}}) {
+  *{"$p\\::()"} = *{"$p\\::(("} = sub {};
+  *{"$p\\::OVERLOAD"} = {dummy => 1};
+}
+*{"$p\\::$_"} = \\&{$$self{methods}{$_}} for keys %{$$self{methods}};
+$self;#;$Ce=bless({$w,$Be,$y,$z},$A);$De=q#lib/slice::apply#;$Ee=q#lib/slice::apply_#;$Fe={};$Ge={$y9,$Ae,$B9,$Ce};$He=q#/lib/slice.b#;$Ie=bless({$r1,$Fe,$Y2,$Ge,$Q,$He},$x2);$Je={};$Ke=q#my $class = shift;
+my $name  = shift;
+my %args  = @_;
++{ctor       => delete($args{ctor}),
+  dtor       => delete($args{dtor}),
+  applied_to => delete($args{applied_to}),
+  name       => $name,
+  methods    => \\%args};#;$Le=bless({$w,$Ke,$y,$z},$A);$Me={$L4,$Le};$Ne=q#/lib/slice_init.b#;$Oe=bless({$r1,$Je,$Y2,$Me,$Q,$Ne},$x2);$Pe=[$q9,$w9,$Ie,$Oe,$ra];$Qe=bless({$r1,$xe,$Q,$ye,$v1,$Pe},$y2);$Re=q#A bug that takes the cake:
 https://searchcode.com/file/109026149/lib/overload.t\#l-1486
 
 Ok, here's the problem. Rebuilt images of ni fail on old perls, but the
@@ -428,18 +436,18 @@ boot code works -- the reason is that bless() doesn't commute across
 overload magic installation on old perls; references themselves have an
 overload flag that's set when the reference is created, not when the
 underlying package is modified. So if we want overloading to work, we
-need to install overloaded methods before we bless things.#;$Wd=[$Vd];$Xd=bless({$q1,$Ud,$E,$Wd},$H);$Yd=[$p1,$Xd];$Zd=q#A slice of methods encoding some aspect of an object's behavior. Slices
+need to install overloaded methods before we bless things.#;$Se=[$Re];$Te=bless({$q1,$Qe,$E,$Se},$H);$Ue=[$p1,$Te];$Ve=q#A slice of methods encoding some aspect of an object's behavior. Slices
 are combined using tags and branches, and the set of slices used to
 construct a class must be disjoint except for constructors and
-destructors.#;$ce=q#Slices are objects that provide an ->apply method, which installs their
-methods + ctors + dtors into a Perl package.#;$de=[];$ee=[];$fe=q#my $slice = ni('ni:/lib/slice')->new('foo1', foo => fn q{"bar"});
+destructors.#;$We=q#Slices are objects that provide an ->apply method, which installs their
+methods + ctors + dtors into a Perl package.#;$Xe=[];$Ye=[];$Ze=q#my $slice = ni('ni:/lib/slice')->new('foo1', foo => fn q{"bar"});
 $slice->apply('test::foo1');
-now bless({}, 'test::foo1')->foo == 'bar';#;$ge=bless({$t,$ee,$v,$q,$w,$fe,$y,$z},$A);$he=bless({$n,$de,$p,$q,$r,$q,$s,$ge},$C);$ie=q#Slices automatically do the equivalent of using Perl's "overload" module
-if any methods begin with an open-paren.#;$je=q#Classes automatically incorporate some special low-level slices that are
+now bless({}, 'test::foo1')->foo == 'bar';#;$cf=bless({$t,$Ye,$v,$q,$w,$Ze,$y,$z},$A);$df=bless({$n,$Xe,$p,$q,$r,$q,$s,$cf},$C);$ef=q#Slices automatically do the equivalent of using Perl's "overload" module
+if any methods begin with an open-paren.#;$ff=q#Classes automatically incorporate some special low-level slices that are
 used by others; one of these is /lib/instantiable.b, which implements
 ->new and ->DESTROY. These methods then call into the lists of
 constructors and destructors implemented when slices are added to a
-package.#;$ke=[];$le=[];$me=q#my $instances = 0;
+package.#;$gf=[];$hf=[];$if=q#my $instances = 0;
 my $class = ni('ni:/object')->child('test/foo2')
   ->def('test/foo2_init.b',
     instantiate => fn q{+{}},
@@ -452,29 +460,29 @@ now $instances == 0;
   my $i2 = $class->new;
   now $instances == 2;
 }
-now $instances == 0;#;$ne=bless({$t,$le,$v,$q,$w,$me,$y,$z},$A);$oe=bless({$n,$ke,$p,$q,$r,$q,$s,$ne},$C);$pe=[$i,$Zd,$ce,$he,$ie,$je,$oe];$qe=[$Yc,$Yd,$pe];$re=bless({$e,$qe,$Q,$cd},$S);$se=q#ni.doc:/semantic#;$te=q#Opportunities to assign real-world semantics to objects. This is a
+now $instances == 0;#;$jf=bless({$t,$hf,$v,$q,$w,$if,$y,$z},$A);$kf=bless({$n,$gf,$p,$q,$r,$q,$s,$jf},$C);$lf=[$i,$Ve,$We,$df,$ef,$ff,$kf];$mf=[$we,$Ue,$lf];$nf=bless({$e,$mf,$Q,$ye},$S);$of=q#ni.doc:/semantic#;$pf=q#Opportunities to assign real-world semantics to objects. This is a
 collection of behaviors that don't necessarily imply a Perl-level
-protocol, but which may end up meaning something at some point.#;$ue=[$i,$te];$ve=[$ue];$we=q#/semantic#;$xe=bless({$e,$ve,$Q,$we},$S);$ye=q#ni:/class#;$ze={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$K2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$Ae={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$Be=q#/module#;$Ce=q#/lib/perlbranch.b#;$De={};$Ee=q#add#;$Fe=q#local $_;
+protocol, but which may end up meaning something at some point.#;$qf=[$i,$pf];$rf=[$qf];$sf=q#/semantic#;$tf=bless({$e,$rf,$Q,$sf},$S);$uf=q#ni:/class#;$vf={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$K2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$wf={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$xf=q#/module#;$yf=q#/lib/perlbranch.b#;$zf={};$Af=q#add#;$Bf=q#local $_;
 my $self = shift;
 my @s = map $self->resolve($_), @_;
 push @{$$self{slices}}, @s;
 for my $p (sort keys %{$$self{applied_to}}) {$_->apply($p) for @s}
-$self;#;$Ge=bless({$w,$Fe,$y,$z},$A);$He=q#local $_;
+$self;#;$Cf=bless({$w,$Bf,$y,$z},$A);$Df=q#local $_;
 my ($self, $p) = @_;
 $p = $p->package if ref $p;
 $$self{applied_to}{$p} = 1;
 $_->apply($p) for @{$$self{slices}};
-$self;#;$Ie=bless({$w,$He,$y,$z},$A);$Je={$Ee,$Ge,$Ad,$Ie};$Ke=q#/lib/branch.b#;$Le=bless({$r1,$De,$W2,$q,$X2,$q,$Y2,$Je,$Q,$Ke},$x2);$Me={};$Ne=q#namespace#;$Oe=q#'ni'#;$Pe=bless({$w,$Oe,$y,$z},$A);$Qe={$Ne,$Pe};$Re=q#/lib/named_in_ni.b#;$Se=bless({$r1,$Me,$W2,$q,$X2,$q,$Y2,$Qe,$Q,$Re},$x2);$Te={};$Ue=q#package#;$Ve=q#(my $name = shift->{name}) =~ s/^\\///; $name#;$We=bless({$w,$Ve,$y,$z},$A);$Xe={$Ue,$We};$Ye=q#/lib/namespaced.b#;$Ze=bless({$r1,$Te,$W2,$q,$X2,$q,$Y2,$Xe,$Q,$Ye},$x2);$cf={};$df=q#resolve#;$ef=q#ref $_[1] ? $_[1] : ni"ni:$_[1]"#;$ff=bless({$w,$ef,$y,$z},$A);$gf={$df,$ff};$hf=q#/lib/resolver.b#;$if=bless({$r1,$cf,$W2,$q,$X2,$q,$Y2,$gf,$Q,$hf},$x2);$jf=[$Le,$sd,$Se,$Ze,$if];$kf=bless({$Q,$Ce,$v1,$jf},$z2);$lf={};$mf=q#local $_;
+$self;#;$Ef=bless({$w,$Df,$y,$z},$A);$Ff={$Af,$Cf,$y9,$Ef};$Gf=q#/lib/branch.b#;$Hf=bless({$r1,$zf,$W2,$q,$X2,$q,$Y2,$Ff,$Q,$Gf},$x2);$If=[$Hf,$w9,$T9,$ca,$ja];$Jf=bless({$Q,$yf,$v1,$If},$z2);$Kf={};$Lf=q#local $_;
 my ($class, $name, @slices) = @_;
 +{name   => $name,
-  slices => [map $class->resolve($_), @slices]};#;$nf=bless({$w,$mf,$y,$z},$A);$of={$L4,$nf};$pf=q#/lib/class_init.b#;$qf=bless({$r1,$lf,$W2,$m3,$X2,$q,$Y2,$of,$Q,$pf},$x2);$rf={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$h2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$sf=q#/lib/definition.b#;$tf={};$uf=q#def#;$vf=q#my $self = shift;
+  slices => [map $class->resolve($_), @slices]};#;$Mf=bless({$w,$Lf,$y,$z},$A);$Nf={$L4,$Mf};$Of=q#/lib/class_init.b#;$Pf=bless({$r1,$Kf,$W2,$m3,$X2,$q,$Y2,$Nf,$Q,$Of},$x2);$Qf={$I1,1,$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$h2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$J2,1,$K2,1,$L2,1,$M2,1,$O2,1,$P2,1,$Q2,1,$S2,1};$Rf=q#/lib/definition.b#;$Sf={};$Tf=q#def#;$Uf=q#my $self = shift;
 my $name = shift;
 $name = "$$self{name}_$name" unless $name =~ /^\\//;
 $self->add(ni->exists("ni:$name")
   ? ni"ni:$name"
   : ni('ni:/lib/slice')->new($name, @_));
-$self;#;$wf=bless({$w,$vf,$y,$z},$A);$xf={$uf,$wf};$yf=q#/lib/definition_def.b#;$zf=bless({$r1,$tf,$W2,$q,$X2,$q,$Y2,$xf,$Q,$yf},$x2);$Af={};$Bf=q#ro#;$Cf=q#my ($self, $slice, @rs) = @_;
-$self->def($slice, map +($_ => fn qq{shift->{'$_'}}), @rs);#;$Df=bless({$w,$Cf,$y,$z},$A);$Ef=q#rw#;$Ff=q#my ($self, $slice, @as) = @_;
+$self;#;$Vf=bless({$w,$Uf,$y,$z},$A);$Wf={$Tf,$Vf};$Xf=q#/lib/definition_def.b#;$Yf=bless({$r1,$Sf,$W2,$q,$X2,$q,$Y2,$Wf,$Q,$Xf},$x2);$Zf={};$cg=q#ro#;$dg=q#my ($self, $slice, @rs) = @_;
+$self->def($slice, map +($_ => fn qq{shift->{'$_'}}), @rs);#;$eg=bless({$w,$dg,$y,$z},$A);$fg=q#rw#;$gg=q#my ($self, $slice, @as) = @_;
 $self->def($slice,
   map +($_ => fn qq{
     if (\\@_ == 2) {
@@ -483,8 +491,8 @@ $self->def($slice,
     } else {
       return shift->{'$_'};
     }
-  }), @as);#;$Gf=bless({$w,$Ff,$y,$z},$A);$Hf={$Bf,$Df,$Ef,$Gf};$If=q#/lib/accessor.b#;$Jf=bless({$r1,$Af,$W2,$q,$X2,$q,$Y2,$Hf,$Q,$If},$x2);$Kf={};$Lf=q#(""#;$Mf=q#shift->name#;$Nf=bless({$w,$Mf,$y,$z},$A);$Of={$Lf,$Nf};$Pf=q#/lib/name_as_string.b#;$Qf=bless({$r1,$Kf,$W2,$q,$X2,$q,$Y2,$Of,$Q,$Pf},$x2);$Rf={};$Sf=q#(eq#;$Tf=q#ref($_[0]) eq ref($_[1])
-  and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);#;$Uf=bless({$w,$Tf,$y,$z},$A);$Vf={$Sf,$Uf};$Wf=q#/lib/ref_eq.b#;$Xf=bless({$r1,$Rf,$W2,$q,$X2,$q,$Y2,$Vf,$Q,$Wf},$x2);$Yf={};$Zf=q#defdata#;$cg=q#shift->add(ni('ni:/lib/dataslice')->new(@_))#;$dg=bless({$w,$cg,$y,$z},$A);$eg={$Zf,$dg};$fg=q#/lib/definition_defdata.b#;$gg=bless({$r1,$Yf,$W2,$q,$X2,$q,$Y2,$eg,$Q,$fg},$x2);$hg={};$ig=q#instantiate_with_defaults#;$jg=q#my ($class, @slots) = @_;
+  }), @as);#;$hg=bless({$w,$gg,$y,$z},$A);$ig={$cg,$eg,$fg,$hg};$jg=q#/lib/accessor.b#;$kg=bless({$r1,$Zf,$W2,$q,$X2,$q,$Y2,$ig,$Q,$jg},$x2);$lg={};$mg=q#(""#;$ng=q#shift->name#;$og=bless({$w,$ng,$y,$z},$A);$pg={$mg,$og};$qg=q#/lib/name_as_string.b#;$rg=bless({$r1,$lg,$W2,$q,$X2,$q,$Y2,$pg,$Q,$qg},$x2);$sg={};$tg=q#(eq#;$ug=q#ref($_[0]) eq ref($_[1])
+  and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);#;$vg=bless({$w,$ug,$y,$z},$A);$wg={$tg,$vg};$xg=q#/lib/ref_eq.b#;$yg=bless({$r1,$sg,$W2,$q,$X2,$q,$Y2,$wg,$Q,$xg},$x2);$zg={};$Ag=q#defdata#;$Bg=q#shift->add(ni('ni:/lib/dataslice')->new(@_))#;$Cg=bless({$w,$Bg,$y,$z},$A);$Dg={$Ag,$Cg};$Eg=q#/lib/definition_defdata.b#;$Fg=bless({$r1,$zg,$W2,$q,$X2,$q,$Y2,$Dg,$Q,$Eg},$x2);$Gg={};$Hg=q#instantiate_with_defaults#;$Ig=q#my ($class, @slots) = @_;
 my $generator = pop @slots;
 $class->def("$$class{name}_init.b",
   instantiate => fc(
@@ -496,18 +504,18 @@ $class->def("$$class{name}_init.b",
       my %args     = @_;
       $defaults{$_} = $args{$_} for @slots;
       \\%defaults;
-    }));#;$kg=bless({$w,$jg,$y,$z},$A);$lg={$ig,$kg};$mg=q#/lib/definition_init_with_defaults.b#;$ng=bless({$r1,$hg,$W2,$q,$X2,$q,$Y2,$lg,$Q,$mg},$x2);$og=[$zf,$Jf,$Qf,$Xf,$gg,$ng];$pg=bless({$r1,$rf,$Q,$sf,$v1,$og},$h2);$qg=[$kf,$qf,$k3,$md,$pg];$rg=bless({$r1,$Ae,$Q,$Be,$v1,$qg},$M2);$sg={};$tg=q#new#;$ug=q#local $_;
+    }));#;$Jg=bless({$w,$Ig,$y,$z},$A);$Kg={$Hg,$Jg};$Lg=q#/lib/definition_init_with_defaults.b#;$Mg=bless({$r1,$Gg,$W2,$q,$X2,$q,$Y2,$Kg,$Q,$Lg},$x2);$Ng=[$Yf,$kg,$rg,$yg,$Fg,$Mg];$Og=bless({$r1,$Qf,$Q,$Rf,$v1,$Ng},$h2);$Pg=[$Jf,$Pf,$k3,$q9,$Og];$Qg=bless({$r1,$wf,$Q,$xf,$v1,$Pg},$M2);$Rg={};$Sg=q#new#;$Tg=q#local $_;
 my $class   = shift;
 my $package = ref $class ? $class->package : $class;
 my $self    = bless &{"$package\\::instantiate"}($class, @_), $package;
 $_->($self) for @{ref($self) . "::ctors"};
-$self;#;$vg=bless({$w,$ug,$y,$z},$A);$wg={$tg,$vg};$xg=q#/lib/instantiable.b#;$yg=bless({$r1,$sg,$Y2,$wg,$Q,$xg},$x2);$zg={};$Ag=q#child#;$Bg=q#my ($self, $name, @slices) = @_;
+$self;#;$Ug=bless({$w,$Tg,$y,$z},$A);$Vg={$Sg,$Ug};$Wg=q#/lib/instantiable.b#;$Xg=bless({$r1,$Rg,$Y2,$Vg,$Q,$Wg},$x2);$Yg={};$Zg=q#child#;$ch=q#my ($self, $name, @slices) = @_;
 ni("ni:/metaclass")->new("$name.c", $self->class)
-->new($name, $self, @slices);#;$Cg=bless({$w,$Bg,$y,$z},$A);$Dg={$Ag,$Cg};$Eg=q#/lib/subclass.b#;$Fg=bless({$r1,$zg,$W2,$q,$X2,$q,$Y2,$Dg,$Q,$Eg},$x2);$Gg=[$rg,$yg,$qf,$rg,$Fg];$Hg=bless({$r1,$ze,$Q,$R,$v1,$Gg},$J1);$Ig=q#ni:/class.c#;$Jg={$J1,1,$Q2,1};$Kg=q#/class.c#;$Lg={$J1,1,$M2,1,$Q2,1};$Mg=q#/module.c#;$Ng={$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$M2,1,$O2,1,$Q2,1,$S2,1};$Og=q#/object.c#;$Pg=[$Hg];$Qg=bless({$r1,$Ng,$Q,$Og,$v1,$Pg},$J2);$Rg={$J1,1,$g2,1,$i2,1,$k2,1,$y2,1,$A2,1,$M2,1,$Q2,1};$Sg=q#/lib/behavior.c#;$Tg=[$Qg];$Ug=bless({$r1,$Rg,$Q,$Sg,$v1,$Tg},$J2);$Vg=[$Qg,$yg,$Ug];$Wg=bless({$r1,$Lg,$Q,$Mg,$v1,$Vg},$J2);$Xg=[$Wg];$Yg=bless({$r1,$Jg,$Q,$Kg,$v1,$Xg},$J2);$Zg=q#ni:/fabric#;$ch=q#fabric#;$dh={$ch,1};$eh=[];$fh=bless({$r1,$dh,$Q,$d1,$v1,$eh},$L2);$gh=q#ni:/fabric/remote#;$hh={$K1,1};$ih={};$jh=[];$kh=q#my ($class, $rmi, $name) = @_;
+->new($name, $self, @slices);#;$dh=bless({$w,$ch,$y,$z},$A);$eh={$Zg,$dh};$fh=q#/lib/subclass.b#;$gh=bless({$r1,$Yg,$W2,$q,$X2,$q,$Y2,$eh,$Q,$fh},$x2);$hh=[$Qg,$Xg,$Pf,$Qg,$gh];$ih=bless({$r1,$vf,$Q,$R,$v1,$hh},$J1);$jh=q#ni:/class.c#;$kh={$J1,1,$Q2,1};$lh=q#/class.c#;$mh={$J1,1,$M2,1,$Q2,1};$nh=q#/module.c#;$oh={$J1,1,$L1,1,$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1,$Y1,1,$c2,1,$e2,1,$g2,1,$i2,1,$k2,1,$l2,1,$m2,1,$o2,1,$q2,1,$s2,1,$u2,1,$w2,1,$y2,1,$A2,1,$C2,1,$E2,1,$F2,1,$H2,1,$I2,1,$M2,1,$O2,1,$Q2,1,$S2,1};$ph=q#/object.c#;$qh=[$ih];$rh=bless({$r1,$oh,$Q,$ph,$v1,$qh},$J2);$sh={$J1,1,$g2,1,$i2,1,$k2,1,$y2,1,$A2,1,$M2,1,$Q2,1};$th=q#/lib/behavior.c#;$uh=[$rh];$vh=bless({$r1,$sh,$Q,$th,$v1,$uh},$J2);$wh=[$rh,$Xg,$vh];$xh=bless({$r1,$mh,$Q,$nh,$v1,$wh},$J2);$yh=[$xh];$zh=bless({$r1,$kh,$Q,$lh,$v1,$yh},$J2);$Ah=q#ni:/fabric#;$Bh=q#fabric#;$Ch={$Bh,1};$Dh=[];$Eh=bless({$r1,$Ch,$Q,$d1,$v1,$Dh},$L2);$Fh=q#ni:/fabric/remote#;$Gh={$K1,1};$Hh={};$Ih=[];$Jh=q#my ($class, $rmi, $name) = @_;
 +{rmi  => $rmi,
-  name => $name};#;$lh=bless({$t,$jh,$v,$q,$w,$kh,$y,$z},$A);$mh={$L4,$lh};$nh=q#/fabric/remote_init.b#;$oh=bless({$r1,$ih,$W2,$q,$X2,$q,$Y2,$mh,$Q,$nh},$x2);$ph={};$qh=q#AUTOLOAD#;$rh=[];$sh=q#my $self = shift;
+  name => $name};#;$Kh=bless({$t,$Ih,$v,$q,$w,$Jh,$y,$z},$A);$Lh={$L4,$Kh};$Mh=q#/fabric/remote_init.b#;$Nh=bless({$r1,$Hh,$W2,$q,$X2,$q,$Y2,$Lh,$Q,$Mh},$x2);$Oh={};$Ph=q#AUTOLOAD#;$Qh=[];$Rh=q#my $self = shift;
 my $method = ${__PACKAGE__ . '::AUTOLOAD'};
-$$self{rmi}->call($$self{name}, $method, @_);#;$th=bless({$t,$rh,$v,$q,$w,$sh,$y,$z},$A);$uh={$qh,$th};$vh=q#/fabric/remote_proxy.b#;$wh=bless({$r1,$ph,$W2,$q,$X2,$q,$Y2,$uh,$Q,$vh},$x2);$xh=[$k3,$oh,$wh];$yh=bless({$r1,$hh,$Q,$j1,$v1,$xh},$L1);$zh=q#ni:/fabric/remote.c#;$Ah={$L1,1};$Bh=q#/fabric/remote.c#;$Ch=[$Qg];$Dh=bless({$r1,$Ah,$Q,$Bh,$v1,$Ch},$J2);$Eh=q#ni:/fabric/remote_init.b#;$Fh=q#ni:/fabric/remote_proxy.b#;$Gh=q#ni:/fabric/rmi#;$Hh=q#ni:/fabric/rmi.c#;$Ih={$M1,1};$Jh=q#/fabric/rmi.c#;$Kh={$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1};$Lh=q#/io/object.c#;$Mh={};$Nh=q#def_transfer_method#;$Oh=[];$Ph=q#my ($class, $transfer_class, $method_name) = @_;
+$$self{rmi}->call($$self{name}, $method, @_);#;$Sh=bless({$t,$Qh,$v,$q,$w,$Rh,$y,$z},$A);$Th={$Ph,$Sh};$Uh=q#/fabric/remote_proxy.b#;$Vh=bless({$r1,$Oh,$W2,$q,$X2,$q,$Y2,$Th,$Q,$Uh},$x2);$Wh=[$k3,$Nh,$Vh];$Xh=bless({$r1,$Gh,$Q,$j1,$v1,$Wh},$L1);$Yh=q#ni:/fabric/remote.c#;$Zh={$L1,1};$ci=q#/fabric/remote.c#;$di=[$rh];$ei=bless({$r1,$Zh,$Q,$ci,$v1,$di},$J2);$fi=q#ni:/fabric/remote_init.b#;$gi=q#ni:/fabric/remote_proxy.b#;$hi=q#ni:/fabric/rmi#;$ii=q#ni:/fabric/rmi.c#;$ji={$M1,1};$ki=q#/fabric/rmi.c#;$li={$M1,1,$N1,1,$O1,1,$P1,1,$Q1,1,$R1,1,$S1,1,$T1,1,$U1,1,$V1,1,$W1,1};$mi=q#/io/object.c#;$ni={};$oi=q#def_transfer_method#;$pi=[];$qi=q#my ($class, $transfer_class, $method_name) = @_;
 my $transfer_name = $transfer_class->name;
 $class->def("/io/object_transfer_$method_name.b",
   "into_$method_name" => fn qq{ni('$transfer_name')->new(\\@_)->run},
@@ -515,14 +523,14 @@ $class->def("/io/object_transfer_$method_name.b",
     my (\\$self, \\$rhs) = \\@_;
     (\\$self->into_$method_name(\\$rhs),
      \\$rhs->into_$method_name(\\$self));
-  });#;$Qh=bless({$t,$Oh,$v,$q,$w,$Ph,$y,$z},$A);$Rh={$Nh,$Qh};$Sh=q#/io/object.c_transfer_def.b#;$Th=bless({$r1,$Mh,$W2,$q,$X2,$q,$Y2,$Rh,$Q,$Sh},$x2);$Uh=[$Qg,$Th];$Vh=bless({$r1,$Kh,$Q,$Lh,$v1,$Uh},$J2);$Wh=[$Vh];$Xh=bless({$r1,$Ih,$Q,$Jh,$v1,$Wh},$J2);$Yh=q#ni:/fabric/rmi_init.b#;$Zh=q#ni:/io#;$ci={$oa,1};$di=[];$ei=bless({$r1,$ci,$Q,$q5,$v1,$di},$L2);$fi=q#ni:/io/buffer#;$gi={$w1,1};$hi={};$ii=[];$ji=q#my ($class, $capacity) = @_;
+  });#;$ri=bless({$t,$pi,$v,$q,$w,$qi,$y,$z},$A);$si={$oi,$ri};$ti=q#/io/object.c_transfer_def.b#;$ui=bless({$r1,$ni,$W2,$q,$X2,$q,$Y2,$si,$Q,$ti},$x2);$vi=[$rh,$ui];$wi=bless({$r1,$li,$Q,$mi,$v1,$vi},$J2);$xi=[$wi];$yi=bless({$r1,$ji,$Q,$ki,$v1,$xi},$J2);$zi=q#ni:/fabric/rmi_init.b#;$Ai=q#ni:/io#;$Bi={$Kb,1};$Ci=[];$Di=bless({$r1,$Bi,$Q,$q5,$v1,$Ci},$L2);$Ei=q#ni:/io/buffer#;$Fi={$w1,1};$Gi={};$Hi=[];$Ii=q#my ($class, $capacity) = @_;
 $capacity ||= 65536;
 $class->die("buffer capacity must be a power of two (got $capacity)")
   if $capacity & $capacity - 1;
 +{capacity    => $capacity,
   data        => "\\0" x $capacity,
   read_point  => 0,
-  write_point => 0};#;$ki=bless({$t,$ii,$v,$q,$w,$ji,$y,$z},$A);$li={$L4,$ki};$mi=q#/io/buffer_init.b#;$ni=bless({$r1,$hi,$W2,$q,$X2,$q,$Y2,$li,$Q,$mi},$x2);$oi={};$pi=[];$qi=q#my $self = shift;
+  write_point => 0};#;$Ji=bless({$t,$Hi,$v,$q,$w,$Ii,$y,$z},$A);$Ki={$L4,$Ji};$Li=q#/io/buffer_init.b#;$Mi=bless({$r1,$Gi,$W2,$q,$X2,$q,$Y2,$Ki,$Q,$Li},$x2);$Ni={};$Oi=[];$Pi=q#my $self = shift;
 my $rcap = $self->read_capacity;
 $! = Errno::EWOULDBLOCK, return undef unless $rcap;
 
@@ -555,8 +563,8 @@ if ($read_index + $length > $capacity) {
   }
   $$self{read_point} += $length;
   return $length;
-}#;$ri=bless({$t,$pi,$v,$q,$w,$qi,$y,$z},$A);$si=q#read_capacity#;$ti=[];$ui=q#my $self = shift;
-$$self{write_point} - $$self{read_point};#;$vi=bless({$t,$ti,$v,$q,$w,$ui,$y,$z},$A);$wi=[];$xi=q#my $self = shift;
+}#;$Qi=bless({$t,$Oi,$v,$q,$w,$Pi,$y,$z},$A);$Ri=q#read_capacity#;$Si=[];$Ti=q#my $self = shift;
+$$self{write_point} - $$self{read_point};#;$Ui=bless({$t,$Si,$v,$q,$w,$Ti,$y,$z},$A);$Vi=[];$Wi=q#my $self = shift;
 my $wcap = $self->write_capacity;
 $! = Errno::EWOULDBLOCK, return undef unless $wcap;
 
@@ -583,8 +591,8 @@ if ($write_index + $length > $capacity) {
            : substr $_[0], $offset, $length;
   $$self{write_point} += $length;
   return $length;
-}#;$yi=bless({$t,$wi,$v,$q,$w,$xi,$y,$z},$A);$zi=q#write_capacity#;$Ai=[];$Bi=q#my $self = shift;
-$$self{capacity} - $$self{write_point} + $$self{read_point};#;$Ci=bless({$t,$Ai,$v,$q,$w,$Bi,$y,$z},$A);$Di={$T7,$ri,$si,$vi,$X7,$yi,$zi,$Ci};$Ei=q#/io/buffer_io.b#;$Fi=bless({$r1,$oi,$W2,$q,$X2,$q,$Y2,$Di,$Q,$Ei},$x2);$Gi=[$J4,$ni,$Fi];$Hi=bless({$r1,$gi,$Q,$D5,$v1,$Gi},$N1);$Ii=q#ni:/io/buffer.c#;$Ji={$N1,1};$Ki=q#/io/buffer.c#;$Li=[$Vh];$Mi=bless({$r1,$Ji,$Q,$Ki,$v1,$Li},$J2);$Ni=q#ni:/io/buffer_init.b#;$Oi=q#ni:/io/buffer_io.b#;$Pi=q#ni:/io/cat#;$Qi={$x1,1};$Ri={};$Si=[];$Ti=q#shift; +{fs => [@_]}#;$Ui=bless({$t,$Si,$v,$q,$w,$Ti,$y,$z},$A);$Vi={$L4,$Ui};$Wi=q#/io/cat_init.b#;$Xi=bless({$r1,$Ri,$W2,$q,$X2,$q,$Y2,$Vi,$Q,$Wi},$x2);$Yi={};$Zi=[];$cj=q#my $fs = shift->{fs};
+}#;$Xi=bless({$t,$Vi,$v,$q,$w,$Wi,$y,$z},$A);$Yi=q#write_capacity#;$Zi=[];$cj=q#my $self = shift;
+$$self{capacity} - $$self{write_point} + $$self{read_point};#;$dj=bless({$t,$Zi,$v,$q,$w,$cj,$y,$z},$A);$ej={$T7,$Qi,$Ri,$Ui,$X7,$Xi,$Yi,$dj};$fj=q#/io/buffer_io.b#;$gj=bless({$r1,$Ni,$W2,$q,$X2,$q,$Y2,$ej,$Q,$fj},$x2);$hj=[$J4,$Mi,$gj];$ij=bless({$r1,$Fi,$Q,$D5,$v1,$hj},$N1);$jj=q#ni:/io/buffer.c#;$kj={$N1,1};$lj=q#/io/buffer.c#;$mj=[$wi];$nj=bless({$r1,$kj,$Q,$lj,$v1,$mj},$J2);$oj=q#ni:/io/buffer_init.b#;$pj=q#ni:/io/buffer_io.b#;$qj=q#ni:/io/cat#;$rj={$x1,1};$sj={};$tj=[];$uj=q#shift; +{fs => [@_]}#;$vj=bless({$t,$tj,$v,$q,$w,$uj,$y,$z},$A);$wj={$L4,$vj};$xj=q#/io/cat_init.b#;$yj=bless({$r1,$sj,$W2,$q,$X2,$q,$Y2,$wj,$Q,$xj},$x2);$zj={};$Aj=[];$Bj=q#my $fs = shift->{fs};
 my $length = $_[1];
 my $offset = $_[2] || 0;
 my $total_read = 0;
@@ -595,13 +603,13 @@ while (@$fs && $total_read < $length) {
   shift @$fs unless $n;
   $total_read += $n;
 }
-$total_read;#;$dj=bless({$t,$Zi,$v,$q,$w,$cj,$y,$z},$A);$ej={$T7,$dj};$fj=q#/io/cat_read.b#;$gj=bless({$r1,$Yi,$W2,$q,$X2,$q,$Y2,$ej,$Q,$fj},$x2);$hj=[$J4,$Xi,$gj];$ij=bless({$r1,$Qi,$Q,$Q5,$v1,$hj},$O1);$jj=q#ni:/io/cat.c#;$kj={$O1,1};$lj=q#/io/cat.c#;$mj=[$Vh];$nj=bless({$r1,$kj,$Q,$lj,$v1,$mj},$J2);$oj=q#ni:/io/cat_init.b#;$pj=q#ni:/io/cat_read.b#;$qj=q#ni:/io/exec#;$rj={$y1,1};$sj={};$tj=q#argv#;$uj=[];$vj=q#shift->{'argv'}#;$wj=bless({$t,$uj,$v,$q,$w,$vj,$y,$z},$A);$xj={$tj,$wj};$yj=q#/io/exec_ro.b#;$zj=bless({$r1,$sj,$W2,$q,$X2,$q,$Y2,$xj,$Q,$yj},$x2);$Aj={};$Bj=[];$Cj=q#my ($class, @argv) = @_;
+$total_read;#;$Cj=bless({$t,$Aj,$v,$q,$w,$Bj,$y,$z},$A);$Dj={$T7,$Cj};$Ej=q#/io/cat_read.b#;$Fj=bless({$r1,$zj,$W2,$q,$X2,$q,$Y2,$Dj,$Q,$Ej},$x2);$Gj=[$J4,$yj,$Fj];$Hj=bless({$r1,$rj,$Q,$Q5,$v1,$Gj},$O1);$Ij=q#ni:/io/cat.c#;$Jj={$O1,1};$Kj=q#/io/cat.c#;$Lj=[$wi];$Mj=bless({$r1,$Jj,$Q,$Kj,$v1,$Lj},$J2);$Nj=q#ni:/io/cat_init.b#;$Oj=q#ni:/io/cat_read.b#;$Pj=q#ni:/io/exec#;$Qj={$y1,1};$Rj={};$Sj=q#argv#;$Tj=[];$Uj=q#shift->{'argv'}#;$Vj=bless({$t,$Tj,$v,$q,$w,$Uj,$y,$z},$A);$Wj={$Sj,$Vj};$Xj=q#/io/exec_ro.b#;$Yj=bless({$r1,$Rj,$W2,$q,$X2,$q,$Y2,$Wj,$Q,$Xj},$x2);$Zj={};$ck=[];$dk=q#my ($class, @argv) = @_;
 +{argv         => \\@argv,
   env          => {%ENV},
   internal_fds => {},
-  external_fds => {}};#;$Dj=bless({$t,$Bj,$v,$q,$w,$Cj,$y,$z},$A);$Ej={$L4,$Dj};$Fj=q#/io/exec_init.b#;$Gj=bless({$r1,$Aj,$W2,$q,$X2,$q,$Y2,$Ej,$Q,$Fj},$x2);$Hj={};$Ij=q#connect#;$Jj=[];$Kj=q#my ($self, %fds) = @_;
+  external_fds => {}};#;$ek=bless({$t,$ck,$v,$q,$w,$dk,$y,$z},$A);$fk={$L4,$ek};$gk=q#/io/exec_init.b#;$hk=bless({$r1,$Zj,$W2,$q,$X2,$q,$Y2,$fk,$Q,$gk},$x2);$ik={};$jk=q#connect#;$kk=[];$lk=q#my ($self, %fds) = @_;
 @{$$self{internal_fds}}{keys %fds} = values %fds;
-$self;#;$Lj=bless({$t,$Jj,$v,$q,$w,$Kj,$y,$z},$A);$Mj=q#in_pipe#;$Nj=[];$Oj=q#local $_;
+$self;#;$mk=bless({$t,$kk,$v,$q,$w,$lk,$y,$z},$A);$nk=q#in_pipe#;$ok=[];$pk=q#local $_;
 my $self = shift;
 for (@_) {
   my ($r, $w) = POSIX::pipe;
@@ -609,7 +617,7 @@ for (@_) {
   $$self{internal_fds}{$_} = ni('ni:/io/fd')->new($r)->cloexec(0);
   $$self{external_fds}{$_} = ni('ni:/io/fd')->new($w)->cloexec(1);
 }
-$self;#;$Pj=bless({$t,$Nj,$v,$q,$w,$Oj,$y,$z},$A);$Qj=q#out_pipe#;$Rj=[];$Sj=q#local $_;
+$self;#;$qk=bless({$t,$ok,$v,$q,$w,$pk,$y,$z},$A);$rk=q#out_pipe#;$sk=[];$tk=q#local $_;
 my $self = shift;
 for (@_) {
   my ($r, $w) = POSIX::pipe;
@@ -617,25 +625,25 @@ for (@_) {
   $$self{internal_fds}{$_} = ni('ni:/io/fd')->new($w)->cloexec(0);
   $$self{external_fds}{$_} = ni('ni:/io/fd')->new($r)->cloexec(1);
 }
-$self;#;$Tj=bless({$t,$Rj,$v,$q,$w,$Sj,$y,$z},$A);$Uj=q#setup_stdio#;$Vj=[];$Wj=q#my $self = shift;
+$self;#;$uk=bless({$t,$sk,$v,$q,$w,$tk,$y,$z},$A);$vk=q#setup_stdio#;$wk=[];$xk=q#my $self = shift;
 $self->connect(0 => ni('null:')->fd->cloexec(0)) unless $self->binds_fd(0);
 $self->out_pipe(1) unless $self->binds_fd(1);
 $self->out_pipe(2) unless $self->binds_fd(2);
-$self;#;$Xj=bless({$t,$Vj,$v,$q,$w,$Wj,$y,$z},$A);$Yj={$Ij,$Lj,$Mj,$Pj,$Qj,$Tj,$Uj,$Xj};$Zj=q#/io/exec_io_setup.b#;$ck=bless({$r1,$Hj,$W2,$q,$X2,$q,$Y2,$Yj,$Q,$Zj},$x2);$dk={};$ek=q#binds_fd#;$fk=[];$gk=q#my ($self, $fd) = @_;
-$$self{internal_fds}{$fd};#;$hk=bless({$t,$fk,$v,$q,$w,$gk,$y,$z},$A);$ik=[];$jk=q#my ($self, $fd) = @_;
-$$self{external_fds}{$fd};#;$kk=bless({$t,$ik,$v,$q,$w,$jk,$y,$z},$A);$lk=[];$mk=q#my $self = shift;
-$self->binds_fd(2) ? $self->fd(2) : $self->out_pipe(2)->fd(2);#;$nk=bless({$t,$lk,$v,$q,$w,$mk,$y,$z},$A);$ok=[];$pk=q#my $self = shift;
-$self->binds_fd(0) ? $self->fd(0) : $self->in_pipe(0)->fd(0);#;$qk=bless({$t,$ok,$v,$q,$w,$pk,$y,$z},$A);$rk=[];$sk=q#my $self = shift;
-$self->binds_fd(1) ? $self->fd(1) : $self->out_pipe(1)->fd(1);#;$tk=bless({$t,$rk,$v,$q,$w,$sk,$y,$z},$A);$uk={$ek,$hk,$h8,$kk,$l8,$nk,$p8,$qk,$t8,$tk};$vk=q#/io/exec_io_accessors.b#;$wk=bless({$r1,$dk,$W2,$q,$X2,$q,$Y2,$uk,$Q,$vk},$x2);$xk={};$yk=q#env#;$zk=[];$Ak=q#my ($self, %env) = @_;
+$self;#;$yk=bless({$t,$wk,$v,$q,$w,$xk,$y,$z},$A);$zk={$jk,$mk,$nk,$qk,$rk,$uk,$vk,$yk};$Ak=q#/io/exec_io_setup.b#;$Bk=bless({$r1,$ik,$W2,$q,$X2,$q,$Y2,$zk,$Q,$Ak},$x2);$Ck={};$Dk=q#binds_fd#;$Ek=[];$Fk=q#my ($self, $fd) = @_;
+$$self{internal_fds}{$fd};#;$Gk=bless({$t,$Ek,$v,$q,$w,$Fk,$y,$z},$A);$Hk=[];$Ik=q#my ($self, $fd) = @_;
+$$self{external_fds}{$fd};#;$Jk=bless({$t,$Hk,$v,$q,$w,$Ik,$y,$z},$A);$Kk=[];$Lk=q#my $self = shift;
+$self->binds_fd(2) ? $self->fd(2) : $self->out_pipe(2)->fd(2);#;$Mk=bless({$t,$Kk,$v,$q,$w,$Lk,$y,$z},$A);$Nk=[];$Ok=q#my $self = shift;
+$self->binds_fd(0) ? $self->fd(0) : $self->in_pipe(0)->fd(0);#;$Pk=bless({$t,$Nk,$v,$q,$w,$Ok,$y,$z},$A);$Qk=[];$Rk=q#my $self = shift;
+$self->binds_fd(1) ? $self->fd(1) : $self->out_pipe(1)->fd(1);#;$Sk=bless({$t,$Qk,$v,$q,$w,$Rk,$y,$z},$A);$Tk={$Dk,$Gk,$h8,$Jk,$l8,$Mk,$p8,$Pk,$t8,$Sk};$Uk=q#/io/exec_io_accessors.b#;$Vk=bless({$r1,$Ck,$W2,$q,$X2,$q,$Y2,$Tk,$Q,$Uk},$x2);$Wk={};$Xk=q#env#;$Yk=[];$Zk=q#my ($self, %env) = @_;
 return $$self{env} unless keys %env;
 @{$$self{env}}{keys %env} = values %env;
-$self;#;$Bk=bless({$t,$zk,$v,$q,$w,$Ak,$y,$z},$A);$Ck={$yk,$Bk};$Dk=q#/io/exec_env.b#;$Ek=bless({$r1,$xk,$W2,$q,$X2,$q,$Y2,$Ck,$Q,$Dk},$x2);$Fk={};$Gk=q#exec#;$Hk=[];$Ik=q#my $self = shift->setup_stdio->move_fds;
+$self;#;$cl=bless({$t,$Yk,$v,$q,$w,$Zk,$y,$z},$A);$dl={$Xk,$cl};$el=q#/io/exec_env.b#;$fl=bless({$r1,$Wk,$W2,$q,$X2,$q,$Y2,$dl,$Q,$el},$x2);$gl={};$hl=q#exec#;$il=[];$jl=q#my $self = shift->setup_stdio->move_fds;
 my @argv = (@{$$self{argv}}, @_);
 $_->close for values %{$$self{external_fds}};
 local %ENV = %{$$self{env}};
 { exec @argv };
 $self->stderr("exec failed", $!);
-1;#;$Jk=bless({$t,$Hk,$v,$q,$w,$Ik,$y,$z},$A);$Kk=q#fork#;$Lk=[];$Mk=q#my $self = shift->setup_stdio;
+1;#;$kl=bless({$t,$il,$v,$q,$w,$jl,$y,$z},$A);$ll=q#fork#;$ml=[];$nl=q#my $self = shift->setup_stdio;
 my $pid  = $self->io_check_defined(*main::fork);
 exit $self->exec(@_) unless $pid;
 $_->close for values %{$$self{internal_fds}};
@@ -644,18 +652,18 @@ ni('ni:/io/pid')->new(
   $pid,
   [@{$$self{argv}}, @_],
   $$self{env},
-  %{$$self{external_fds}});#;$Nk=bless({$t,$Lk,$v,$q,$w,$Mk,$y,$z},$A);$Ok=q#move_fds#;$Pk=[];$Qk=q#my $self = shift;
+  %{$$self{external_fds}});#;$ol=bless({$t,$ml,$v,$q,$w,$nl,$y,$z},$A);$pl=q#move_fds#;$ql=[];$rl=q#my $self = shift;
 $$self{internal_fds}{$_}->be($_) for keys %{$$self{internal_fds}};
-$self;#;$Rk=bless({$t,$Pk,$v,$q,$w,$Qk,$y,$z},$A);$Sk={$Gk,$Jk,$Kk,$Nk,$Ok,$Rk};$Tk=q#/io/exec_fork.b#;$Uk=bless({$r1,$Fk,$W2,$q,$X2,$q,$Y2,$Sk,$Q,$Tk},$x2);$Vk=[$J4,$zj,$Gj,$ck,$wk,$Ek,$Uk];$Wk=bless({$r1,$rj,$Q,$f6,$v1,$Vk},$P1);$Xk=q#ni:/io/exec.c#;$Yk={$P1,1};$Zk=q#/io/exec.c#;$cl=[$Vh];$dl=bless({$r1,$Yk,$Q,$Zk,$v1,$cl},$J2);$el=q#ni:/io/exec_env.b#;$fl=q#ni:/io/exec_fork.b#;$gl=q#ni:/io/exec_init.b#;$hl=q#ni:/io/exec_io_accessors.b#;$il=q#ni:/io/exec_io_setup.b#;$jl=q#ni:/io/exec_ro.b#;$kl=q#ni:/io/fd#;$ll={$z1,1};$ml=q#read_fd_mask#;$nl={};$ol=[];$pl=q#shift->{'fd'}#;$ql=bless({$t,$ol,$v,$q,$w,$pl,$y,$z},$A);$rl={$h8,$ql};$sl=q#/io/fd_readers.b#;$tl=bless({$r1,$nl,$W2,$q,$X2,$q,$Y2,$rl,$Q,$sl},$x2);$ul={};$vl=[];$wl=q#my ($class, $fd) = @_;
+$self;#;$sl=bless({$t,$ql,$v,$q,$w,$rl,$y,$z},$A);$tl={$hl,$kl,$ll,$ol,$pl,$sl};$ul=q#/io/exec_fork.b#;$vl=bless({$r1,$gl,$W2,$q,$X2,$q,$Y2,$tl,$Q,$ul},$x2);$wl=[$J4,$Yj,$hk,$Bk,$Vk,$fl,$vl];$xl=bless({$r1,$Qj,$Q,$f6,$v1,$wl},$P1);$yl=q#ni:/io/exec.c#;$zl={$P1,1};$Al=q#/io/exec.c#;$Bl=[$wi];$Cl=bless({$r1,$zl,$Q,$Al,$v1,$Bl},$J2);$Dl=q#ni:/io/exec_env.b#;$El=q#ni:/io/exec_fork.b#;$Fl=q#ni:/io/exec_init.b#;$Gl=q#ni:/io/exec_io_accessors.b#;$Hl=q#ni:/io/exec_io_setup.b#;$Il=q#ni:/io/exec_ro.b#;$Jl=q#ni:/io/fd#;$Kl={$z1,1};$Ll=q#read_fd_mask#;$Ml={};$Nl=[];$Ol=q#shift->{'fd'}#;$Pl=bless({$t,$Nl,$v,$q,$w,$Ol,$y,$z},$A);$Ql={$h8,$Pl};$Rl=q#/io/fd_readers.b#;$Sl=bless({$r1,$Ml,$W2,$q,$X2,$q,$Y2,$Ql,$Q,$Rl},$x2);$Tl={};$Ul=[];$Vl=q#my ($class, $fd) = @_;
 +{fd  => ref $fd ? fileno $fd : $fd,
   rfh => undef,
-  wfh => undef};#;$xl=bless({$t,$vl,$v,$q,$w,$wl,$y,$z},$A);$yl={$L4,$xl};$zl=q#/io/fd_init.b#;$Al=bless({$r1,$ul,$W2,$q,$X2,$q,$Y2,$yl,$Q,$zl},$x2);$Bl={};$Cl=q#be#;$Dl=[];$El=q#my ($self, $new) = @_;
+  wfh => undef};#;$Wl=bless({$t,$Ul,$v,$q,$w,$Vl,$y,$z},$A);$Xl={$L4,$Wl};$Yl=q#/io/fd_init.b#;$Zl=bless({$r1,$Tl,$W2,$q,$X2,$q,$Y2,$Xl,$Q,$Yl},$x2);$cm={};$dm=q#be#;$em=[];$fm=q#my ($self, $new) = @_;
 return $self if $new == $$self{fd};
 $self->io_check_defined(*POSIX::dup2, $$self{fd}, $new);
 $self->close_perl_ios;
 POSIX::close $$self{fd};
 $$self{fd} = $new;
-$self;#;$Fl=bless({$t,$Dl,$v,$q,$w,$El,$y,$z},$A);$Gl={$Cl,$Fl};$Hl=q#/io/fd_shell.b#;$Il=bless({$r1,$Bl,$W2,$q,$X2,$q,$Y2,$Gl,$Q,$Hl},$x2);$Jl={};$Kl=q#cloexec#;$Ll=[];$Ml=q#shift->fcntl_flag(Fcntl::FD_CLOEXEC, @_)#;$Nl=bless({$t,$Ll,$v,$q,$w,$Ml,$y,$z},$A);$Ol=q#fcntl_flag#;$Pl=[];$Ql=q#my ($self, $flag, $value) = @_;
+$self;#;$gm=bless({$t,$em,$v,$q,$w,$fm,$y,$z},$A);$hm={$dm,$gm};$im=q#/io/fd_shell.b#;$jm=bless({$r1,$cm,$W2,$q,$X2,$q,$Y2,$hm,$Q,$im},$x2);$km={};$lm=q#cloexec#;$mm=[];$nm=q#shift->fcntl_flag(Fcntl::FD_CLOEXEC, @_)#;$om=bless({$t,$mm,$v,$q,$w,$nm,$y,$z},$A);$pm=q#fcntl_flag#;$qm=[];$rm=q#my ($self, $flag, $value) = @_;
 $self->io_check_true(*main::open2, $$self{rfh}, "<&=$$self{fd}")
   unless $$self{rfh};
 my $flags = $self->io_check_true(
@@ -667,90 +675,90 @@ if (@_) {
   $self;
 } else {
   !!($flags & $flag);
-}#;$Rl=bless({$t,$Pl,$v,$q,$w,$Ql,$y,$z},$A);$Sl=q#nonblock#;$Tl=[];$Ul=q#shift->fcntl_flag(Fcntl::O_NONBLOCK, @_)#;$Vl=bless({$t,$Tl,$v,$q,$w,$Ul,$y,$z},$A);$Wl={$Kl,$Nl,$Ol,$Rl,$Sl,$Vl};$Xl=q#/io/fd_fcntl.b#;$Yl=bless({$r1,$Jl,$W2,$q,$X2,$q,$Y2,$Wl,$Q,$Xl},$x2);$Zl={};$cm=[];$dm=q#shift->close#;$em=bless({$t,$cm,$v,$q,$w,$dm,$y,$z},$A);$fm=q#close#;$gm=[];$hm=q#my $self = shift;
+}#;$sm=bless({$t,$qm,$v,$q,$w,$rm,$y,$z},$A);$tm=q#nonblock#;$um=[];$vm=q#shift->fcntl_flag(Fcntl::O_NONBLOCK, @_)#;$wm=bless({$t,$um,$v,$q,$w,$vm,$y,$z},$A);$xm={$lm,$om,$pm,$sm,$tm,$wm};$ym=q#/io/fd_fcntl.b#;$zm=bless({$r1,$km,$W2,$q,$X2,$q,$Y2,$xm,$Q,$ym},$x2);$Am={};$Bm=[];$Cm=q#shift->close#;$Dm=bless({$t,$Bm,$v,$q,$w,$Cm,$y,$z},$A);$Em=q#close#;$Fm=[];$Gm=q#my $self = shift;
 if (defined $$self{fd}) {
   $self->close_perl_ios;
   POSIX::close $$self{fd};
   $$self{fd} = undef;
 }
-$self;#;$im=bless({$t,$gm,$v,$q,$w,$hm,$y,$z},$A);$jm={$fm,$im};$km=q#/io/fd_gc.b#;$lm=bless({$r1,$Zl,$W2,$q,$X2,$em,$Y2,$jm,$Q,$km},$x2);$mm={};$nm=q#close_perl_ios#;$om=[];$pm=q#my $self = shift;
+$self;#;$Hm=bless({$t,$Fm,$v,$q,$w,$Gm,$y,$z},$A);$Im={$Em,$Hm};$Jm=q#/io/fd_gc.b#;$Km=bless({$r1,$Am,$W2,$q,$X2,$Dm,$Y2,$Im,$Q,$Jm},$x2);$Lm={};$Mm=q#close_perl_ios#;$Nm=[];$Om=q#my $self = shift;
 close $$self{rfh} if $$self{rfh};
 close $$self{wfh} if $$self{wfh};
 ni('ni:/io/fd')->clear_fd($$self{fd});
 $$self{rfh} = $$self{wfh} = undef;
-$self;#;$qm=bless({$t,$om,$v,$q,$w,$pm,$y,$z},$A);$rm=[];$sm=q#my $self = shift;
+$self;#;$Pm=bless({$t,$Nm,$v,$q,$w,$Om,$y,$z},$A);$Qm=[];$Rm=q#my $self = shift;
 unless ($$self{rfh}) {
   open $$self{rfh}, "<&=$$self{fd}" or return undef;
   ni('ni:/io/fd')->read_fd($$self{fd});
 }
-sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0;#;$tm=bless({$t,$rm,$v,$q,$w,$sm,$y,$z},$A);$um=[];$vm=q#my $self = shift;
+sysread $$self{rfh}, $_[0], $_[1], $_[2] || 0;#;$Sm=bless({$t,$Qm,$v,$q,$w,$Rm,$y,$z},$A);$Tm=[];$Um=q#my $self = shift;
 unless ($$self{wfh}) {
   open $$self{wfh}, ">&=$$self{fd}" or return undef;
   ni('ni:/io/fd')->write_fd($$self{fd});
 }
-syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0;#;$wm=bless({$t,$um,$v,$q,$w,$vm,$y,$z},$A);$xm={$nm,$qm,$T7,$tm,$X7,$wm};$ym=q#/io/fd_perlio.b#;$zm=bless({$r1,$mm,$W2,$q,$X2,$q,$Y2,$xm,$Q,$ym},$x2);$Am=[$J4,$tl,$Al,$Il,$Yl,$lm,$zm];$Bm=q#write_fd_mask#;$Cm=bless({$r1,$ll,$Q,$s6,$ml,$z,$v1,$Am,$Bm,$z},$Q1);$Dm=[];$Em=q#my $self = shift;
+syswrite $$self{wfh}, $_[0], $_[1] || length $_[0], $_[2] || 0;#;$Vm=bless({$t,$Tm,$v,$q,$w,$Um,$y,$z},$A);$Wm={$Mm,$Pm,$T7,$Sm,$X7,$Vm};$Xm=q#/io/fd_perlio.b#;$Ym=bless({$r1,$Lm,$W2,$q,$X2,$q,$Y2,$Wm,$Q,$Xm},$x2);$Zm=[$J4,$Sl,$Zl,$jm,$zm,$Km,$Ym];$cn=q#write_fd_mask#;$dn=bless({$r1,$Kl,$Q,$s6,$Ll,$z,$v1,$Zm,$cn,$z},$Q1);$en=[];$fn=q#my $self = shift;
 $$self{read_fd_mask} = '';
-$$self{write_fd_mask} = '';#;$Fm=bless({$t,$Dm,$v,$q,$w,$Em,$y,$z},$A);$Gm=q#ni:/io/fd.c#;$Hm={$Q1,1};$Im=q#/io/fd.c#;$Jm={};$Km=q#clear_fd#;$Lm=[];$Mm=q#my ($self, $fd) = @_;
+$$self{write_fd_mask} = '';#;$gn=bless({$t,$en,$v,$q,$w,$fn,$y,$z},$A);$hn=q#ni:/io/fd.c#;$in={$Q1,1};$jn=q#/io/fd.c#;$kn={};$ln=q#clear_fd#;$mn=[];$nn=q#my ($self, $fd) = @_;
 vec($$self{read_fd_mask}, $fd, 1) = 0;
-vec($$self{write_fd_mask}, $fd, 1) = 0;#;$Nm=bless({$t,$Lm,$v,$q,$w,$Mm,$y,$z},$A);$Om=q#read_fd#;$Pm=[];$Qm=q#my ($self, $fd) = @_;
-vec($$self{read_fd_mask}, $fd, 1) = 1;#;$Rm=bless({$t,$Pm,$v,$q,$w,$Qm,$y,$z},$A);$Sm=q#select#;$Tm=[];$Um=q#my ($self, $timeout) = @_;
+vec($$self{write_fd_mask}, $fd, 1) = 0;#;$on=bless({$t,$mn,$v,$q,$w,$nn,$y,$z},$A);$pn=q#read_fd#;$qn=[];$rn=q#my ($self, $fd) = @_;
+vec($$self{read_fd_mask}, $fd, 1) = 1;#;$sn=bless({$t,$qn,$v,$q,$w,$rn,$y,$z},$A);$tn=q#select#;$un=[];$vn=q#my ($self, $timeout) = @_;
 my $n = select my $rbits = $$self{read_fd_mask},
                my $wbits = $$self{write_fd_mask},
                my $ebits = $$self{read_fd_mask} | $$self{write_fd_mask},
                $timeout || 0;
-wantarray ? ($n, $rbits, $wbits) : $n;#;$Vm=bless({$t,$Tm,$v,$q,$w,$Um,$y,$z},$A);$Wm=q#write_fd#;$Xm=[];$Ym=q#my ($self, $fd) = @_;
-vec($$self{write_fd_mask}, $fd, 1) = 1;#;$Zm=bless({$t,$Xm,$v,$q,$w,$Ym,$y,$z},$A);$cn={$Km,$Nm,$Om,$Rm,$Sm,$Vm,$Wm,$Zm};$dn=q#/io/fd.c_selector.b#;$en=bless({$r1,$Jm,$W2,$Fm,$X2,$q,$Y2,$cn,$Q,$dn},$x2);$fn=[$Vh,$en];$gn=bless({$r1,$Hm,$Q,$Im,$v1,$fn},$J2);$hn=q#ni:/io/fd.c_selector.b#;$in=q#ni:/io/fd_fcntl.b#;$jn=q#ni:/io/fd_gc.b#;$kn=q#ni:/io/fd_init.b#;$ln=q#ni:/io/fd_perlio.b#;$mn=q#ni:/io/fd_readers.b#;$nn=q#ni:/io/fd_shell.b#;$on=q#ni:/io/file#;$pn={$A1,1};$qn={};$rn=[];$sn=q#shift->{'name'}#;$tn=bless({$t,$rn,$v,$q,$w,$sn,$y,$z},$A);$un={$Q,$tn};$vn=q#/io/file_readers.b#;$wn=bless({$r1,$qn,$W2,$q,$X2,$q,$Y2,$un,$Q,$vn},$x2);$xn={};$yn=q#mode#;$zn=[];$An=q#if (@_ == 2) {
+wantarray ? ($n, $rbits, $wbits) : $n;#;$wn=bless({$t,$un,$v,$q,$w,$vn,$y,$z},$A);$xn=q#write_fd#;$yn=[];$zn=q#my ($self, $fd) = @_;
+vec($$self{write_fd_mask}, $fd, 1) = 1;#;$An=bless({$t,$yn,$v,$q,$w,$zn,$y,$z},$A);$Bn={$ln,$on,$pn,$sn,$tn,$wn,$xn,$An};$Cn=q#/io/fd.c_selector.b#;$Dn=bless({$r1,$kn,$W2,$gn,$X2,$q,$Y2,$Bn,$Q,$Cn},$x2);$En=[$wi,$Dn];$Fn=bless({$r1,$in,$Q,$jn,$v1,$En},$J2);$Gn=q#ni:/io/fd.c_selector.b#;$Hn=q#ni:/io/fd_fcntl.b#;$In=q#ni:/io/fd_gc.b#;$Jn=q#ni:/io/fd_init.b#;$Kn=q#ni:/io/fd_perlio.b#;$Ln=q#ni:/io/fd_readers.b#;$Mn=q#ni:/io/fd_shell.b#;$Nn=q#ni:/io/file#;$On={$A1,1};$Pn={};$Qn=[];$Rn=q#shift->{'name'}#;$Sn=bless({$t,$Qn,$v,$q,$w,$Rn,$y,$z},$A);$Tn={$Q,$Sn};$Un=q#/io/file_readers.b#;$Vn=bless({$r1,$Pn,$W2,$q,$X2,$q,$Y2,$Tn,$Q,$Un},$x2);$Wn={};$Xn=q#mode#;$Yn=[];$Zn=q#if (@_ == 2) {
   $_[0]->{'mode'} = $_[1];
   return $_[0];
 } else {
   return shift->{'mode'};
-}#;$Bn=bless({$t,$zn,$v,$q,$w,$An,$y,$z},$A);$Cn={$yn,$Bn};$Dn=q#/io/file_accessors.b#;$En=bless({$r1,$xn,$W2,$q,$X2,$q,$Y2,$Cn,$Q,$Dn},$x2);$Fn={};$Gn=[];$Hn=q#my ($class, $name, $mode) = @_;
+}#;$co=bless({$t,$Yn,$v,$q,$w,$Zn,$y,$z},$A);$do={$Xn,$co};$eo=q#/io/file_accessors.b#;$fo=bless({$r1,$Wn,$W2,$q,$X2,$q,$Y2,$do,$Q,$eo},$x2);$go={};$ho=[];$io=q#my ($class, $name, $mode) = @_;
 +{name => $name,
   mode => $mode || 0644,
   r    => undef,
-  w    => undef};#;$In=bless({$t,$Gn,$v,$q,$w,$Hn,$y,$z},$A);$Jn={$L4,$In};$Kn=q#/io/file_init.b#;$Ln=bless({$r1,$Fn,$W2,$q,$X2,$q,$Y2,$Jn,$Q,$Kn},$x2);$Mn={};$Nn=q#(-X#;$On=[];$Pn=q#my ($self, $test) = @_;
-&{"-$test"}($$self{name});#;$Qn=bless({$t,$On,$v,$q,$w,$Pn,$y,$z},$A);$Rn=q#mv#;$Sn=[];$Tn=q#my ($self, $dest) = @_;
+  w    => undef};#;$jo=bless({$t,$ho,$v,$q,$w,$io,$y,$z},$A);$ko={$L4,$jo};$lo=q#/io/file_init.b#;$mo=bless({$r1,$go,$W2,$q,$X2,$q,$Y2,$ko,$Q,$lo},$x2);$no={};$oo=q#(-X#;$po=[];$qo=q#my ($self, $test) = @_;
+&{"-$test"}($$self{name});#;$ro=bless({$t,$po,$v,$q,$w,$qo,$y,$z},$A);$so=q#mv#;$to=[];$uo=q#my ($self, $dest) = @_;
 $dest = $dest->name if ref $dest;
 $self->io_check_true(*main::rename, $self->name, $dest);
 $$self{name} = $dest;
-$self;#;$Un=bless({$t,$Sn,$v,$q,$w,$Tn,$y,$z},$A);$Vn=q#rm#;$Wn=[];$Xn=q#my $self = shift;
+$self;#;$vo=bless({$t,$to,$v,$q,$w,$uo,$y,$z},$A);$wo=q#rm#;$xo=[];$yo=q#my $self = shift;
 $self->io_check_true(*main::unlink, $self->name);
-$self;#;$Yn=bless({$t,$Wn,$v,$q,$w,$Xn,$y,$z},$A);$Zn={$Nn,$Qn,$Rn,$Un,$Vn,$Yn};$co=q#/io/file_fns.b#;$do=bless({$r1,$Mn,$W2,$q,$X2,$q,$Y2,$Zn,$Q,$co},$x2);$eo={};$fo=q#atomic_update#;$go=[];$ho=q#my $self = shift;
+$self;#;$zo=bless({$t,$xo,$v,$q,$w,$yo,$y,$z},$A);$Ao={$oo,$ro,$so,$vo,$wo,$zo};$Bo=q#/io/file_fns.b#;$Co=bless({$r1,$no,$W2,$q,$X2,$q,$Y2,$Ao,$Q,$Bo},$x2);$Do={};$Eo=q#atomic_update#;$Fo=[];$Go=q#my $self = shift;
 my $suffix = 0;
 ++$suffix while -e $self->name . ".$suffix";
 ni('ni:/io/file_update_fd')->new(
   $self,
-  $self->class->new($self->name . ".$suffix", $self->mode));#;$io=bless({$t,$go,$v,$q,$w,$ho,$y,$z},$A);$jo={$fo,$io};$ko=q#/io/file_update.b#;$lo=bless({$r1,$eo,$W2,$q,$X2,$q,$Y2,$jo,$Q,$ko},$x2);$mo={};$no=[];$oo=q#my $self = shift;
+  $self->class->new($self->name . ".$suffix", $self->mode));#;$Ho=bless({$t,$Fo,$v,$q,$w,$Go,$y,$z},$A);$Io={$Eo,$Ho};$Jo=q#/io/file_update.b#;$Ko=bless({$r1,$Do,$W2,$q,$X2,$q,$Y2,$Io,$Q,$Jo},$x2);$Lo={};$Mo=[];$No=q#my $self = shift;
 $$self{r}->close if $$self{r};
 $$self{w}->close if $$self{w};
 $$self{r} = $$self{w} = undef;
-$self;#;$po=bless({$t,$no,$v,$q,$w,$oo,$y,$z},$A);$qo=q#r#;$ro=[];$so=q#my $self = shift;
+$self;#;$Oo=bless({$t,$Mo,$v,$q,$w,$No,$y,$z},$A);$Po=q#r#;$Qo=[];$Ro=q#my $self = shift;
 $$self{r} ||= ni('ni:/io/fd')->new(
   $self->io_check_defined(
-    *POSIX::open, $$self{name}, POSIX::O_RDONLY));#;$to=bless({$t,$ro,$v,$q,$w,$so,$y,$z},$A);$uo=[];$vo=q#shift->r->read(@_)#;$wo=bless({$t,$uo,$v,$q,$w,$vo,$y,$z},$A);$xo=q#w#;$yo=[];$zo=q#my $self = shift;
+    *POSIX::open, $$self{name}, POSIX::O_RDONLY));#;$So=bless({$t,$Qo,$v,$q,$w,$Ro,$y,$z},$A);$To=[];$Uo=q#shift->r->read(@_)#;$Vo=bless({$t,$To,$v,$q,$w,$Uo,$y,$z},$A);$Wo=q#w#;$Xo=[];$Yo=q#my $self = shift;
 $$self{w} ||= ni('ni:/io/fd')->new(
   $self->io_check_defined(
     *POSIX::open, $$self{name},
       POSIX::O_WRONLY | POSIX::O_TRUNC | POSIX::O_CREAT,
-      $$self{mode}));#;$Ao=bless({$t,$yo,$v,$q,$w,$zo,$y,$z},$A);$Bo=[];$Co=q#shift->w->write(@_)#;$Do=bless({$t,$Bo,$v,$q,$w,$Co,$y,$z},$A);$Eo={$fm,$po,$qo,$to,$T7,$wo,$xo,$Ao,$X7,$Do};$Fo=q#/io/file_io.b#;$Go=bless({$r1,$mo,$W2,$q,$X2,$q,$Y2,$Eo,$Q,$Fo},$x2);$Ho=[$J4,$wn,$En,$Ln,$do,$lo,$Go];$Io=bless({$r1,$pn,$Q,$O6,$v1,$Ho},$R1);$Jo=q#ni:/io/file.c#;$Ko={$R1,1};$Lo=q#/io/file.c#;$Mo=[$Vh];$No=bless({$r1,$Ko,$Q,$Lo,$v1,$Mo},$J2);$Oo=q#ni:/io/file_accessors.b#;$Po=q#ni:/io/file_fns.b#;$Qo=q#ni:/io/file_init.b#;$Ro=q#ni:/io/file_io.b#;$So=q#ni:/io/file_readers.b#;$To=q#ni:/io/file_update.b#;$Uo=q#ni:/io/file_update_fd#;$Vo={$B1,1};$Wo={};$Xo=[];$Yo=q#my ($class, $file, $tempfile) = @_;
+      $$self{mode}));#;$Zo=bless({$t,$Xo,$v,$q,$w,$Yo,$y,$z},$A);$cp=[];$dp=q#shift->w->write(@_)#;$ep=bless({$t,$cp,$v,$q,$w,$dp,$y,$z},$A);$fp={$Em,$Oo,$Po,$So,$T7,$Vo,$Wo,$Zo,$X7,$ep};$gp=q#/io/file_io.b#;$hp=bless({$r1,$Lo,$W2,$q,$X2,$q,$Y2,$fp,$Q,$gp},$x2);$ip=[$J4,$Vn,$fo,$mo,$Co,$Ko,$hp];$jp=bless({$r1,$On,$Q,$O6,$v1,$ip},$R1);$kp=q#ni:/io/file.c#;$lp={$R1,1};$mp=q#/io/file.c#;$np=[$wi];$op=bless({$r1,$lp,$Q,$mp,$v1,$np},$J2);$pp=q#ni:/io/file_accessors.b#;$qp=q#ni:/io/file_fns.b#;$rp=q#ni:/io/file_init.b#;$sp=q#ni:/io/file_io.b#;$tp=q#ni:/io/file_readers.b#;$up=q#ni:/io/file_update.b#;$vp=q#ni:/io/file_update_fd#;$wp={$B1,1};$xp={};$yp=[];$zp=q#my ($class, $file, $tempfile) = @_;
 my $fd = $tempfile->w;
 +{writer   => $fd,
   fd       => $fd->fd,
   wfh      => undef,
   tempfile => $tempfile,
-  file     => $file};#;$Zo=bless({$t,$Xo,$v,$q,$w,$Yo,$y,$z},$A);$cp={$L4,$Zo};$dp=q#/io/file_update_fd_fd_init.b#;$ep=bless({$r1,$Wo,$W2,$q,$X2,$q,$Y2,$cp,$Q,$dp},$x2);$fp={};$gp=[];$hp=bless({$t,$gp,$v,$q,$w,$dm,$y,$z},$A);$ip=[];$jp=q#my $self = shift;
+  file     => $file};#;$Ap=bless({$t,$yp,$v,$q,$w,$zp,$y,$z},$A);$Bp={$L4,$Ap};$Cp=q#/io/file_update_fd_fd_init.b#;$Dp=bless({$r1,$xp,$W2,$q,$X2,$q,$Y2,$Bp,$Q,$Cp},$x2);$Ep={};$Fp=[];$Gp=bless({$t,$Fp,$v,$q,$w,$Cm,$y,$z},$A);$Hp=[];$Ip=q#my $self = shift;
 close $$self{wfh} if $$self{wfh};
 $$self{writer} = undef if $$self{writer};
 if ($$self{tempfile}) {
   $$self{tempfile}->mv($$self{file}->name);
   $$self{tempfile} = undef;
 }
-$self;#;$kp=bless({$t,$ip,$v,$q,$w,$jp,$y,$z},$A);$lp={$fm,$kp};$mp=q#/io/file_update_fd_fd_gc.b#;$np=bless({$r1,$fp,$W2,$q,$X2,$hp,$Y2,$lp,$Q,$mp},$x2);$op=[$J4,$tl,$Yl,$zm,$ep,$np];$pp=bless({$r1,$Vo,$Q,$U6,$v1,$op},$S1);$qp=q#ni:/io/file_update_fd.c#;$rp={$S1,1};$sp=q#/io/file_update_fd.c#;$tp=[$Vh];$up=bless({$r1,$rp,$Q,$sp,$v1,$tp},$J2);$vp=q#ni:/io/file_update_fd_fd_gc.b#;$wp=q#ni:/io/file_update_fd_fd_init.b#;$xp=q#ni:/io/named_io_fns.b#;$yp={};$zp=q#fcntl#;$Ap=[];$Bp=q#CORE::fcntl $_[0], $_[1], $_[2]#;$Cp=bless({$t,$Ap,$v,$q,$w,$Bp,$y,$z},$A);$Dp=[];$Ep=q#CORE::fork#;$Fp=bless({$t,$Dp,$v,$q,$w,$Ep,$y,$z},$A);$Gp=q#open2#;$Hp=[];$Ip=q#CORE::open $_[0], $_[1]#;$Jp=bless({$t,$Hp,$v,$q,$w,$Ip,$y,$z},$A);$Kp=q#rename#;$Lp=[];$Mp=q#CORE::rename $_[0], $_[1]#;$Np=bless({$t,$Lp,$v,$q,$w,$Mp,$y,$z},$A);$Op=q#unlink#;$Pp=[];$Qp=q#CORE::unlink @_#;$Rp=bless({$t,$Pp,$v,$q,$w,$Qp,$y,$z},$A);$Sp=q#waitpid#;$Tp=[];$Up=q#CORE::waitpid $_[0], $_[1]#;$Vp=bless({$t,$Tp,$v,$q,$w,$Up,$y,$z},$A);$Wp={$zp,$Cp,$Kk,$Fp,$Gp,$Jp,$Kp,$Np,$Op,$Rp,$Sp,$Vp};$Xp=q#/io/named_io_fns.b#;$Yp=bless({$r1,$yp,$W2,$q,$X2,$q,$Y2,$Wp,$Q,$Xp},$x2);$Zp=q#main#;$cq=q#ni:/io/null#;$dq={$C1,1};$eq=q#/io/null#;$fq={};$gq=[];$hq=q#+{fd => undef}#;$iq=bless({$t,$gq,$v,$q,$w,$hq,$y,$z},$A);$jq={$L4,$iq};$kq=q#/io/null_init.b#;$lq=bless({$r1,$fq,$W2,$q,$X2,$q,$Y2,$jq,$Q,$kq},$x2);$mq={};$nq=[];$oq=q#my $self = shift;
+$self;#;$Jp=bless({$t,$Hp,$v,$q,$w,$Ip,$y,$z},$A);$Kp={$Em,$Jp};$Lp=q#/io/file_update_fd_fd_gc.b#;$Mp=bless({$r1,$Ep,$W2,$q,$X2,$Gp,$Y2,$Kp,$Q,$Lp},$x2);$Np=[$J4,$Sl,$zm,$Ym,$Dp,$Mp];$Op=bless({$r1,$wp,$Q,$U6,$v1,$Np},$S1);$Pp=q#ni:/io/file_update_fd.c#;$Qp={$S1,1};$Rp=q#/io/file_update_fd.c#;$Sp=[$wi];$Tp=bless({$r1,$Qp,$Q,$Rp,$v1,$Sp},$J2);$Up=q#ni:/io/file_update_fd_fd_gc.b#;$Vp=q#ni:/io/file_update_fd_fd_init.b#;$Wp=q#ni:/io/named_io_fns.b#;$Xp={};$Yp=q#fcntl#;$Zp=[];$cq=q#CORE::fcntl $_[0], $_[1], $_[2]#;$dq=bless({$t,$Zp,$v,$q,$w,$cq,$y,$z},$A);$eq=[];$fq=q#CORE::fork#;$gq=bless({$t,$eq,$v,$q,$w,$fq,$y,$z},$A);$hq=q#open2#;$iq=[];$jq=q#CORE::open $_[0], $_[1]#;$kq=bless({$t,$iq,$v,$q,$w,$jq,$y,$z},$A);$lq=q#rename#;$mq=[];$nq=q#CORE::rename $_[0], $_[1]#;$oq=bless({$t,$mq,$v,$q,$w,$nq,$y,$z},$A);$pq=q#unlink#;$qq=[];$rq=q#CORE::unlink @_#;$sq=bless({$t,$qq,$v,$q,$w,$rq,$y,$z},$A);$tq=q#waitpid#;$uq=[];$vq=q#CORE::waitpid $_[0], $_[1]#;$wq=bless({$t,$uq,$v,$q,$w,$vq,$y,$z},$A);$xq={$Yp,$dq,$ll,$gq,$hq,$kq,$lq,$oq,$pq,$sq,$tq,$wq};$yq=q#/io/named_io_fns.b#;$zq=bless({$r1,$Xp,$W2,$q,$X2,$q,$Y2,$xq,$Q,$yq},$x2);$Aq=q#main#;$Bq=q#ni:/io/null#;$Cq={$C1,1};$Dq=q#/io/null#;$Eq={};$Fq=[];$Gq=q#+{fd => undef}#;$Hq=bless({$t,$Fq,$v,$q,$w,$Gq,$y,$z},$A);$Iq={$L4,$Hq};$Jq=q#/io/null_init.b#;$Kq=bless({$r1,$Eq,$W2,$q,$X2,$q,$Y2,$Iq,$Q,$Jq},$x2);$Lq={};$Mq=[];$Nq=q#my $self = shift;
 $$self{fd} ||= ni('ni:/io/fd')->new(
-  $self->io_check_defined(*POSIX::open, '/dev/null', POSIX::O_RDWR));#;$pq=bless({$t,$nq,$v,$q,$w,$oq,$y,$z},$A);$qq=[];$rq=q#shift->fd->read(@_)#;$sq=bless({$t,$qq,$v,$q,$w,$rq,$y,$z},$A);$tq=[];$uq=q#shift->fd->write(@_)#;$vq=bless({$t,$tq,$v,$q,$w,$uq,$y,$z},$A);$wq={$h8,$pq,$T7,$sq,$X7,$vq};$xq=q#/io/null_io.b#;$yq=bless({$r1,$mq,$W2,$q,$X2,$q,$Y2,$wq,$Q,$xq},$x2);$zq=[$J4,$lq,$yq];$Aq=bless({$r1,$dq,$Q,$eq,$v1,$zq},$T1);$Bq=q#ni:/io/null.c#;$Cq={$T1,1};$Dq=q#/io/null.c#;$Eq=[$Vh];$Fq=bless({$r1,$Cq,$Q,$Dq,$v1,$Eq},$J2);$Gq=q#ni:/io/null_init.b#;$Hq=q#ni:/io/null_io.b#;$Iq=q#ni:/io/object#;$Jq=q#ni:/io/object.c#;$Kq=q#ni:/io/object.c_transfer_def.b#;$Lq=q#ni:/io/object_checks.b#;$Mq=q#ni:/io/object_constructors.b#;$Nq=q#ni:/io/object_memory.b#;$Oq=q#ni:/io/object_ops.b#;$Pq=q#ni:/io/object_transfer_async.b#;$Qq=q#ni:/io/object_transfer_sync.b#;$Rq=q#ni:/io/pid#;$Sq=q#ni:/io/pid.c#;$Tq={$V1,1};$Uq=q#/io/pid.c#;$Vq=[$Vh];$Wq=bless({$r1,$Tq,$Q,$Uq,$v1,$Vq},$J2);$Xq=q#ni:/io/pid_accessors.b#;$Yq=q#ni:/io/pid_init.b#;$Zq=q#ni:/io/pid_io.b#;$cr=q#ni:/io/pid_readers.b#;$dr=q#ni:/io/pid_wait.b#;$er=q#ni:/io/str#;$fr={$F1,1};$gr=q#/io/str#;$hr={};$ir=q#data#;$jr=[];$kr=q#shift->{'data'}#;$lr=bless({$t,$jr,$v,$q,$w,$kr,$y,$z},$A);$mr=q#end#;$nr=[];$or=q#shift->{'end'}#;$pr=bless({$t,$nr,$v,$q,$w,$or,$y,$z},$A);$qr=q#start#;$rr=[];$sr=q#shift->{'start'}#;$tr=bless({$t,$rr,$v,$q,$w,$sr,$y,$z},$A);$ur={$ir,$lr,$mr,$pr,$qr,$tr};$vr=q#/io/str_ro.b#;$wr=bless({$r1,$hr,$W2,$q,$X2,$q,$Y2,$ur,$Q,$vr},$x2);$xr={};$yr=[];$zr=q#my $class = shift;
+  $self->io_check_defined(*POSIX::open, '/dev/null', POSIX::O_RDWR));#;$Oq=bless({$t,$Mq,$v,$q,$w,$Nq,$y,$z},$A);$Pq=[];$Qq=q#shift->fd->read(@_)#;$Rq=bless({$t,$Pq,$v,$q,$w,$Qq,$y,$z},$A);$Sq=[];$Tq=q#shift->fd->write(@_)#;$Uq=bless({$t,$Sq,$v,$q,$w,$Tq,$y,$z},$A);$Vq={$h8,$Oq,$T7,$Rq,$X7,$Uq};$Wq=q#/io/null_io.b#;$Xq=bless({$r1,$Lq,$W2,$q,$X2,$q,$Y2,$Vq,$Q,$Wq},$x2);$Yq=[$J4,$Kq,$Xq];$Zq=bless({$r1,$Cq,$Q,$Dq,$v1,$Yq},$T1);$cr=q#ni:/io/null.c#;$dr={$T1,1};$er=q#/io/null.c#;$fr=[$wi];$gr=bless({$r1,$dr,$Q,$er,$v1,$fr},$J2);$hr=q#ni:/io/null_init.b#;$ir=q#ni:/io/null_io.b#;$jr=q#ni:/io/object#;$kr=q#ni:/io/object.c#;$lr=q#ni:/io/object.c_transfer_def.b#;$mr=q#ni:/io/object_checks.b#;$nr=q#ni:/io/object_constructors.b#;$or=q#ni:/io/object_memory.b#;$pr=q#ni:/io/object_ops.b#;$qr=q#ni:/io/object_transfer_async.b#;$rr=q#ni:/io/object_transfer_sync.b#;$sr=q#ni:/io/pid#;$tr=q#ni:/io/pid.c#;$ur={$V1,1};$vr=q#/io/pid.c#;$wr=[$wi];$xr=bless({$r1,$ur,$Q,$vr,$v1,$wr},$J2);$yr=q#ni:/io/pid_accessors.b#;$zr=q#ni:/io/pid_init.b#;$Ar=q#ni:/io/pid_io.b#;$Br=q#ni:/io/pid_readers.b#;$Cr=q#ni:/io/pid_wait.b#;$Dr=q#ni:/io/str#;$Er={$F1,1};$Fr=q#/io/str#;$Gr={};$Hr=q#data#;$Ir=[];$Jr=q#shift->{'data'}#;$Kr=bless({$t,$Ir,$v,$q,$w,$Jr,$y,$z},$A);$Lr=q#end#;$Mr=[];$Nr=q#shift->{'end'}#;$Or=bless({$t,$Mr,$v,$q,$w,$Nr,$y,$z},$A);$Pr=q#start#;$Qr=[];$Rr=q#shift->{'start'}#;$Sr=bless({$t,$Qr,$v,$q,$w,$Rr,$y,$z},$A);$Tr={$Hr,$Kr,$Lr,$Or,$Pr,$Sr};$Ur=q#/io/str_ro.b#;$Vr=bless({$r1,$Gr,$W2,$q,$X2,$q,$Y2,$Tr,$Q,$Ur},$x2);$Wr={};$Xr=[];$Yr=q#my $class = shift;
 +{data  => \\$_[0],
   start => $_[1] || 0,
-  end   => $_[2] || length $_[0]};#;$Ar=bless({$t,$yr,$v,$q,$w,$zr,$y,$z},$A);$Br={$L4,$Ar};$Cr=q#/io/str_init.b#;$Dr=bless({$r1,$xr,$W2,$q,$X2,$q,$Y2,$Br,$Q,$Cr},$x2);$Er={};$Fr=[];$Gr=q#my $self = shift;
+  end   => $_[2] || length $_[0]};#;$Zr=bless({$t,$Xr,$v,$q,$w,$Yr,$y,$z},$A);$cs={$L4,$Zr};$ds=q#/io/str_init.b#;$es=bless({$r1,$Wr,$W2,$q,$X2,$q,$Y2,$cs,$Q,$ds},$x2);$fs={};$gs=[];$hs=q#my $self = shift;
 my $l    = ni::min($$self{end} - $$self{start}, $_[1]);
 return 0 unless $l;
 if ($_[2]) {
@@ -759,46 +767,46 @@ if ($_[2]) {
   $_[0] = substr ${$$self{data}}, $$self{start}, $l;
 }
 $$self{start} += $l;
-$l;#;$Hr=bless({$t,$Fr,$v,$q,$w,$Gr,$y,$z},$A);$Ir=q#remaining#;$Jr=[];$Kr=q#my $self = shift; $$self{end} - $$self{start}#;$Lr=bless({$t,$Jr,$v,$q,$w,$Kr,$y,$z},$A);$Mr=[];$Nr=q#my $self = shift;
+$l;#;$is=bless({$t,$gs,$v,$q,$w,$hs,$y,$z},$A);$js=q#remaining#;$ks=[];$ls=q#my $self = shift; $$self{end} - $$self{start}#;$ms=bless({$t,$ks,$v,$q,$w,$ls,$y,$z},$A);$ns=[];$os=q#my $self = shift;
 ${$$self{data}} .= $_[0];
 $$self{start} += length $_[0];
 $$self{end} = length ${$$self{data}};
-length $_[0];#;$Or=bless({$t,$Mr,$v,$q,$w,$Nr,$y,$z},$A);$Pr={$T7,$Hr,$Ir,$Lr,$X7,$Or};$Qr=q#/io/str_io.b#;$Rr=bless({$r1,$Er,$W2,$q,$X2,$q,$Y2,$Pr,$Q,$Qr},$x2);$Sr=[$J4,$wr,$Dr,$Rr];$Tr=bless({$r1,$fr,$Q,$gr,$v1,$Sr},$W1);$Ur=q#ni:/io/str.c#;$Vr={$W1,1};$Wr=q#/io/str.c#;$Xr=[$Vh];$Yr=bless({$r1,$Vr,$Q,$Wr,$v1,$Xr},$J2);$Zr=q#ni:/io/str_init.b#;$cs=q#ni:/io/str_io.b#;$ds=q#ni:/io/str_ro.b#;$es=q#ni:/io/transfer#;$fs={$X1,1,$Z1,1,$d2,1};$gs=q#/io/transfer#;$hs={$X1,1,$Z1,1,$d2,1,$R2,1};$is=q#/semantic/task#;$js={};$ks=[];$ls=q#shift->{'outcome'}#;$ms=bless({$t,$ks,$v,$q,$w,$ls,$y,$z},$A);$ns={$r,$ms};$os=q#/semantic/task_ro.b#;$ps=bless({$r1,$js,$W2,$q,$X2,$q,$Y2,$ns,$Q,$os},$x2);$qs={};$rs=q#failure#;$ss=[];$ts=q#my $self = shift;
+length $_[0];#;$ps=bless({$t,$ns,$v,$q,$w,$os,$y,$z},$A);$qs={$T7,$is,$js,$ms,$X7,$ps};$rs=q#/io/str_io.b#;$ss=bless({$r1,$fs,$W2,$q,$X2,$q,$Y2,$qs,$Q,$rs},$x2);$ts=[$J4,$Vr,$es,$ss];$us=bless({$r1,$Er,$Q,$Fr,$v1,$ts},$W1);$vs=q#ni:/io/str.c#;$ws={$W1,1};$xs=q#/io/str.c#;$ys=[$wi];$zs=bless({$r1,$ws,$Q,$xs,$v1,$ys},$J2);$As=q#ni:/io/str_init.b#;$Bs=q#ni:/io/str_io.b#;$Cs=q#ni:/io/str_ro.b#;$Ds=q#ni:/io/transfer#;$Es={$X1,1,$Z1,1,$d2,1};$Fs=q#/io/transfer#;$Gs={$X1,1,$Z1,1,$d2,1,$R2,1};$Hs=q#/semantic/task#;$Is={};$Js=[];$Ks=q#shift->{'outcome'}#;$Ls=bless({$t,$Js,$v,$q,$w,$Ks,$y,$z},$A);$Ms={$r,$Ls};$Ns=q#/semantic/task_ro.b#;$Os=bless({$r1,$Is,$W2,$q,$X2,$q,$Y2,$Ms,$Q,$Ns},$x2);$Ps={};$Qs=q#failure#;$Rs=[];$Ss=q#my $self = shift;
 $$self{outcome} = [0, @_];
-$self->die($_[0]);#;$us=bless({$t,$ss,$v,$q,$w,$ts,$y,$z},$A);$vs=q#success#;$ws=[];$xs=q#my $self = shift;
+$self->die($_[0]);#;$Ts=bless({$t,$Rs,$v,$q,$w,$Ss,$y,$z},$A);$Us=q#success#;$Vs=[];$Ws=q#my $self = shift;
 $$self{outcome} = [1, @_];
-$self;#;$ys=bless({$t,$ws,$v,$q,$w,$xs,$y,$z},$A);$zs={$rs,$us,$vs,$ys};$As=q#/semantic/task_outcome.b#;$Bs=bless({$r1,$qs,$W2,$q,$X2,$q,$Y2,$zs,$Q,$As},$x2);$Cs=[$k3,$ps,$Bs];$Ds=bless({$r1,$hs,$Q,$is,$v1,$Cs},$S2);$Es={};$Fs=[];$Gs=q#my $self = shift;
-@$self{qw/read_bytes read_time write_bytes write_time/} = (0, 0, 0, 0);#;$Hs=bless({$t,$Fs,$v,$q,$w,$Gs,$y,$z},$A);$Is=[];$Js=q#my $self = shift;
+$self;#;$Xs=bless({$t,$Vs,$v,$q,$w,$Ws,$y,$z},$A);$Ys={$Qs,$Ts,$Us,$Xs};$Zs=q#/semantic/task_outcome.b#;$ct=bless({$r1,$Ps,$W2,$q,$X2,$q,$Y2,$Ys,$Q,$Zs},$x2);$dt=[$k3,$Os,$ct];$et=bless({$r1,$Gs,$Q,$Hs,$v1,$dt},$S2);$ft={};$gt=[];$ht=q#my $self = shift;
+@$self{qw/read_bytes read_time write_bytes write_time/} = (0, 0, 0, 0);#;$it=bless({$t,$gt,$v,$q,$w,$ht,$y,$z},$A);$jt=[];$kt=q#my $self = shift;
 my $start_time = time;
 my $n = $$self{source_io}->read(@_);
 my $end_time = time;
 $$self{start_time} ||= $start_time;
 $$self{read_bytes} += $n if defined $n;
 $$self{read_time} += $end_time - $start_time;
-$n;#;$Ks=bless({$t,$Is,$v,$q,$w,$Js,$y,$z},$A);$Ls=[];$Ms=q#my $self = shift;
+$n;#;$lt=bless({$t,$jt,$v,$q,$w,$kt,$y,$z},$A);$mt=[];$nt=q#my $self = shift;
 my $start_time = time;
 my $n = $$self{dest_io}->write(@_);
 my $end_time = time;
 $$self{write_bytes} += $n if defined $n;
 $$self{write_time} += $end_time - $start_time;
-$n;#;$Ns=bless({$t,$Ls,$v,$q,$w,$Ms,$y,$z},$A);$Os={$T7,$Ks,$X7,$Ns};$Ps=q#/io/transfer_io_interop.b#;$Qs=bless({$r1,$Es,$W2,$Hs,$X2,$q,$Y2,$Os,$Q,$Ps},$x2);$Rs={};$Ss=q#pressure#;$Ts=[];$Us=q#my $self = shift;
+$n;#;$ot=bless({$t,$mt,$v,$q,$w,$nt,$y,$z},$A);$pt={$T7,$lt,$X7,$ot};$qt=q#/io/transfer_io_interop.b#;$rt=bless({$r1,$ft,$W2,$it,$X2,$q,$Y2,$pt,$Q,$qt},$x2);$st={};$tt=q#pressure#;$ut=[];$vt=q#my $self = shift;
 my $in_impedance  = log($$self{read_time}  || 1);
 my $out_impedance = log($$self{write_time} || 1);
-($out_impedance - $in_impedance) / log 20;#;$Vs=bless({$t,$Ts,$v,$q,$w,$Us,$y,$z},$A);$Ws=q#read_limit_throughput#;$Xs=[];$Ys=q#my $self = shift;
-$$self{read_bytes} / ($$self{read_time} || 1);#;$Zs=bless({$t,$Xs,$v,$q,$w,$Ys,$y,$z},$A);$ct=q#throughput#;$dt=[];$et=q#my $self = shift;
+($out_impedance - $in_impedance) / log 20;#;$wt=bless({$t,$ut,$v,$q,$w,$vt,$y,$z},$A);$xt=q#read_limit_throughput#;$yt=[];$zt=q#my $self = shift;
+$$self{read_bytes} / ($$self{read_time} || 1);#;$At=bless({$t,$yt,$v,$q,$w,$zt,$y,$z},$A);$Bt=q#throughput#;$Ct=[];$Dt=q#my $self = shift;
 my $end_time = $$self{end_time} || time;
 my $dt       = $end_time - $$self{start_time} || 1;
-$$self{write_bytes} / $dt;#;$ft=bless({$t,$dt,$v,$q,$w,$et,$y,$z},$A);$gt=q#write_limit_throughput#;$ht=[];$it=q#my $self = shift;
-$$self{write_bytes} / ($$self{write_time} || 1);#;$jt=bless({$t,$ht,$v,$q,$w,$it,$y,$z},$A);$kt={$Ss,$Vs,$Ws,$Zs,$ct,$ft,$gt,$jt};$lt=q#/io/transfer_io_measurement.b#;$mt=bless({$r1,$Rs,$W2,$q,$X2,$q,$Y2,$kt,$Q,$lt},$x2);$nt=[$Ds,$Qs,$mt];$ot=bless({$r1,$fs,$Q,$gs,$v1,$nt},$Y1);$pt=[];$qt=q#my $self = shift;
+$$self{write_bytes} / $dt;#;$Et=bless({$t,$Ct,$v,$q,$w,$Dt,$y,$z},$A);$Ft=q#write_limit_throughput#;$Gt=[];$Ht=q#my $self = shift;
+$$self{write_bytes} / ($$self{write_time} || 1);#;$It=bless({$t,$Gt,$v,$q,$w,$Ht,$y,$z},$A);$Jt={$tt,$wt,$xt,$At,$Bt,$Et,$Ft,$It};$Kt=q#/io/transfer_io_measurement.b#;$Lt=bless({$r1,$st,$W2,$q,$X2,$q,$Y2,$Jt,$Q,$Kt},$x2);$Mt=[$et,$rt,$Lt];$Nt=bless({$r1,$Es,$Q,$Fs,$v1,$Mt},$Y1);$Ot=[];$Pt=q#my $self = shift;
 ni('ni:/io/object')->def_transfer_method($self, $1)
-  if $self->name =~ /transfer_(\\w+)$/;#;$rt=bless({$t,$pt,$v,$q,$w,$qt,$y,$z},$A);$st=q#ni:/io/transfer.c#;$tt={$Y1,1,$c2,1,$e2,1};$ut=q#/io/transfer.c#;$vt={$Y1,1,$c2,1,$e2,1,$S2,1};$wt=q#/semantic/task.c#;$xt=[$Qg];$yt=bless({$r1,$vt,$Q,$wt,$v1,$xt},$J2);$zt={};$At={};$Bt=q#/io/transfer.c_into.b#;$Ct=bless({$r1,$zt,$W2,$rt,$X2,$q,$Y2,$At,$Q,$Bt},$x2);$Dt=[$yt,$Ct];$Et=bless({$r1,$tt,$Q,$ut,$v1,$Dt},$J2);$Ft=q#ni:/io/transfer.c_into.b#;$Gt=q#ni:/io/transfer_async#;$Ht={$Z1,1};$It=q#/io/transfer_async#;$Jt={};$Kt=q#dest_io#;$Lt=[];$Mt=q#shift->{'dest_io'}#;$Nt=bless({$t,$Lt,$v,$q,$w,$Mt,$y,$z},$A);$Ot=q#id#;$Pt=[];$Qt=q#shift->{'id'}#;$Rt=bless({$t,$Pt,$v,$q,$w,$Qt,$y,$z},$A);$St=q#source_io#;$Tt=[];$Ut=q#shift->{'source_io'}#;$Vt=bless({$t,$Tt,$v,$q,$w,$Ut,$y,$z},$A);$Wt={$Kt,$Nt,$Ot,$Rt,$St,$Vt};$Xt=q#/io/transfer_async_ro.b#;$Yt=bless({$r1,$Jt,$W2,$q,$X2,$q,$Y2,$Wt,$Q,$Xt},$x2);$Zt={};$cu=[];$du=q#my ($class, $source, $dest) = @_;
+  if $self->name =~ /transfer_(\\w+)$/;#;$Qt=bless({$t,$Ot,$v,$q,$w,$Pt,$y,$z},$A);$Rt=q#ni:/io/transfer.c#;$St={$Y1,1,$c2,1,$e2,1};$Tt=q#/io/transfer.c#;$Ut={$Y1,1,$c2,1,$e2,1,$S2,1};$Vt=q#/semantic/task.c#;$Wt=[$rh];$Xt=bless({$r1,$Ut,$Q,$Vt,$v1,$Wt},$J2);$Yt={};$Zt={};$cu=q#/io/transfer.c_into.b#;$du=bless({$r1,$Yt,$W2,$Qt,$X2,$q,$Y2,$Zt,$Q,$cu},$x2);$eu=[$Xt,$du];$fu=bless({$r1,$St,$Q,$Tt,$v1,$eu},$J2);$gu=q#ni:/io/transfer.c_into.b#;$hu=q#ni:/io/transfer_async#;$iu={$Z1,1};$ju=q#/io/transfer_async#;$ku={};$lu=q#dest_io#;$mu=[];$nu=q#shift->{'dest_io'}#;$ou=bless({$t,$mu,$v,$q,$w,$nu,$y,$z},$A);$pu=q#id#;$qu=[];$ru=q#shift->{'id'}#;$su=bless({$t,$qu,$v,$q,$w,$ru,$y,$z},$A);$tu=q#source_io#;$uu=[];$vu=q#shift->{'source_io'}#;$wu=bless({$t,$uu,$v,$q,$w,$vu,$y,$z},$A);$xu={$lu,$ou,$pu,$su,$tu,$wu};$yu=q#/io/transfer_async_ro.b#;$zu=bless({$r1,$ku,$W2,$q,$X2,$q,$Y2,$xu,$Q,$yu},$x2);$Au={};$Bu=[];$Cu=q#my ($class, $source, $dest) = @_;
 $source->nonblock(1) if $source->can('nonblock');
 $dest  ->nonblock(1) if $dest  ->can('nonblock');
 +{source_io => $source,
   dest_io   => $dest,
   pending   => '',
   outcome   => undef,
-  id        => $class->new_id};#;$eu=bless({$t,$cu,$v,$q,$w,$du,$y,$z},$A);$fu={$L4,$eu};$gu=q#/io/transfer_async_init.b#;$hu=bless({$r1,$Zt,$W2,$q,$X2,$q,$Y2,$fu,$Q,$gu},$x2);$iu={};$ju=[];$ku=q#ni('ni:/io/transfer_async')->track(shift)#;$lu=bless({$t,$ju,$v,$q,$w,$ku,$y,$z},$A);$mu=[];$nu=q#ni('ni:/io/transfer_async')->untrack(shift->{id})#;$ou=bless({$t,$mu,$v,$q,$w,$nu,$y,$z},$A);$pu={};$qu=q#/io/transfer_async_lifecycle.b#;$ru=bless({$r1,$iu,$W2,$lu,$X2,$ou,$Y2,$pu,$Q,$qu},$x2);$su={};$tu=q#run#;$uu=[];$vu=q#shift#;$wu=bless({$t,$uu,$v,$q,$w,$vu,$y,$z},$A);$xu=q#run_async#;$yu=[];$zu=q#my $self = shift;
+  id        => $class->new_id};#;$Du=bless({$t,$Bu,$v,$q,$w,$Cu,$y,$z},$A);$Eu={$L4,$Du};$Fu=q#/io/transfer_async_init.b#;$Gu=bless({$r1,$Au,$W2,$q,$X2,$q,$Y2,$Eu,$Q,$Fu},$x2);$Hu={};$Iu=[];$Ju=q#ni('ni:/io/transfer_async')->track(shift)#;$Ku=bless({$t,$Iu,$v,$q,$w,$Ju,$y,$z},$A);$Lu=[];$Mu=q#ni('ni:/io/transfer_async')->untrack(shift->{id})#;$Nu=bless({$t,$Lu,$v,$q,$w,$Mu,$y,$z},$A);$Ou={};$Pu=q#/io/transfer_async_lifecycle.b#;$Qu=bless({$r1,$Hu,$W2,$Ku,$X2,$Nu,$Y2,$Ou,$Q,$Pu},$x2);$Ru={};$Su=q#run#;$Tu=[];$Uu=q#shift#;$Vu=bless({$t,$Tu,$v,$q,$w,$Uu,$y,$z},$A);$Wu=q#run_async#;$Xu=[];$Yu=q#my $self = shift;
 my $n;
 
 \# Step one: write everything in the pending queue, if possible. Invariant
@@ -829,15 +837,15 @@ unless (length $$self{pending}) {
   }
 }
 
-$self;#;$Au=bless({$t,$yu,$v,$q,$w,$zu,$y,$z},$A);$Bu={$tu,$wu,$xu,$Au};$Cu=q#/io/transfer_async_run.b#;$Du=bless({$r1,$su,$W2,$q,$X2,$q,$Y2,$Bu,$Q,$Cu},$x2);$Eu=[$ot,$Yt,$hu,$ru,$Du];$Fu=q#tracked_transfers#;$Gu={};$Hu=q#transfer_id#;$Iu=bless({$r1,$Ht,$Q,$It,$v1,$Eu,$Fu,$Gu,$Hu,0},$c2);$Ju=[];$Ku=q#my $self = shift;
+$self;#;$Zu=bless({$t,$Xu,$v,$q,$w,$Yu,$y,$z},$A);$cv={$Su,$Vu,$Wu,$Zu};$dv=q#/io/transfer_async_run.b#;$ev=bless({$r1,$Ru,$W2,$q,$X2,$q,$Y2,$cv,$Q,$dv},$x2);$fv=[$Nt,$zu,$Gu,$Qu,$ev];$gv=q#tracked_transfers#;$hv={};$iv=q#transfer_id#;$jv=bless({$r1,$iu,$Q,$ju,$v1,$fv,$gv,$hv,$iv,0},$c2);$kv=[];$lv=q#my $self = shift;
 $$self{tracked_transfers} = {};
-$$self{transfer_id}       = 0;#;$Lu=bless({$t,$Ju,$v,$q,$w,$Ku,$y,$z},$A);$Mu=q#ni:/io/transfer_async.c#;$Nu={$c2,1};$Ou=q#/io/transfer_async.c#;$Pu={};$Qu=q#new_id#;$Ru=[];$Su=q#++shift->{transfer_id}#;$Tu=bless({$t,$Ru,$v,$q,$w,$Su,$y,$z},$A);$Uu=q#track#;$Vu=[];$Wu=q#my ($self, $transfer) = @_;
+$$self{transfer_id}       = 0;#;$mv=bless({$t,$kv,$v,$q,$w,$lv,$y,$z},$A);$nv=q#ni:/io/transfer_async.c#;$ov={$c2,1};$pv=q#/io/transfer_async.c#;$qv={};$rv=q#new_id#;$sv=[];$tv=q#++shift->{transfer_id}#;$uv=bless({$t,$sv,$v,$q,$w,$tv,$y,$z},$A);$vv=q#track#;$wv=[];$xv=q#my ($self, $transfer) = @_;
 Scalar::Util::weaken($$self{tracked_transfers}{$transfer->id} = $transfer);
-$self;#;$Xu=bless({$t,$Vu,$v,$q,$w,$Wu,$y,$z},$A);$Yu=q#untrack#;$Zu=[];$cv=q#my ($self, $id) = @_;
+$self;#;$yv=bless({$t,$wv,$v,$q,$w,$xv,$y,$z},$A);$zv=q#untrack#;$Av=[];$Bv=q#my ($self, $id) = @_;
 delete $$self{tracked_transfers}{$id};
-$self;#;$dv=bless({$t,$Zu,$v,$q,$w,$cv,$y,$z},$A);$ev={$Qu,$Tu,$Uu,$Xu,$Yu,$dv};$fv=q#/io/transfer_async.c_tracker.b#;$gv=bless({$r1,$Pu,$W2,$Lu,$X2,$q,$Y2,$ev,$Q,$fv},$x2);$hv=[$Et,$gv];$iv=bless({$r1,$Nu,$Q,$Ou,$v1,$hv},$J2);$jv=q#ni:/io/transfer_async.c_tracker.b#;$kv=q#ni:/io/transfer_async_init.b#;$lv=q#ni:/io/transfer_async_lifecycle.b#;$mv=q#ni:/io/transfer_async_ro.b#;$nv=q#ni:/io/transfer_async_run.b#;$ov=q#ni:/io/transfer_io_interop.b#;$pv=q#ni:/io/transfer_io_measurement.b#;$qv=q#ni:/io/transfer_sync#;$rv={$d2,1};$sv=q#/io/transfer_sync#;$tv={};$uv=[];$vv=q#my ($class, $source, $dest) = @_;
+$self;#;$Cv=bless({$t,$Av,$v,$q,$w,$Bv,$y,$z},$A);$Dv={$rv,$uv,$vv,$yv,$zv,$Cv};$Ev=q#/io/transfer_async.c_tracker.b#;$Fv=bless({$r1,$qv,$W2,$mv,$X2,$q,$Y2,$Dv,$Q,$Ev},$x2);$Gv=[$fu,$Fv];$Hv=bless({$r1,$ov,$Q,$pv,$v1,$Gv},$J2);$Iv=q#ni:/io/transfer_async.c_tracker.b#;$Jv=q#ni:/io/transfer_async_init.b#;$Kv=q#ni:/io/transfer_async_lifecycle.b#;$Lv=q#ni:/io/transfer_async_ro.b#;$Mv=q#ni:/io/transfer_async_run.b#;$Nv=q#ni:/io/transfer_io_interop.b#;$Ov=q#ni:/io/transfer_io_measurement.b#;$Pv=q#ni:/io/transfer_sync#;$Qv={$d2,1};$Rv=q#/io/transfer_sync#;$Sv={};$Tv=[];$Uv=q#my ($class, $source, $dest) = @_;
 +{source_io => $source,
-  dest_io   => $dest};#;$wv=bless({$t,$uv,$v,$q,$w,$vv,$y,$z},$A);$xv={$L4,$wv};$yv=q#/io/transfer_sync_init.b#;$zv=bless({$r1,$tv,$W2,$q,$X2,$q,$Y2,$xv,$Q,$yv},$x2);$Av={};$Bv=[];$Cv=q#my $self = shift;
+  dest_io   => $dest};#;$Vv=bless({$t,$Tv,$v,$q,$w,$Uv,$y,$z},$A);$Wv={$L4,$Vv};$Xv=q#/io/transfer_sync_init.b#;$Yv=bless({$r1,$Sv,$W2,$q,$X2,$q,$Y2,$Wv,$Q,$Xv},$x2);$Zv={};$cw=[];$dw=q#my $self = shift;
 my $bufsize = $$self{bufsize} || 32768;
 my $buf;
 my $r;
@@ -851,31 +859,23 @@ while (($r = $self->read($buf, $bufsize)) || $!{EINTR}) {
   }
 }
 $$self{end_time} = time;
-$self->success;#;$Dv=bless({$t,$Bv,$v,$q,$w,$Cv,$y,$z},$A);$Ev={$tu,$Dv};$Fv=q#/io/transfer_sync_run.b#;$Gv=bless({$r1,$Av,$W2,$q,$X2,$q,$Y2,$Ev,$Q,$Fv},$x2);$Hv=[$ot,$zv,$Gv];$Iv=bless({$r1,$rv,$Q,$sv,$v1,$Hv},$e2);$Jv=q#ni:/io/transfer_sync.c#;$Kv={$e2,1};$Lv=q#/io/transfer_sync.c#;$Mv=[$Et];$Nv=bless({$r1,$Kv,$Q,$Lv,$v1,$Mv},$J2);$Ov=q#ni:/io/transfer_sync_init.b#;$Pv=q#ni:/io/transfer_sync_run.b#;$Qv=q#ni:/lib#;$Rv=q#lib#;$Sv={$Rv,1};$Tv=[];$Uv=bless({$r1,$Sv,$Q,$c9,$v1,$Tv},$L2);$Vv=q#ni:/lib/accessor.b#;$Wv=q#ni:/lib/behavior#;$Xv=q#ni:/lib/behavior.c#;$Yv=q#ni:/lib/branch#;$Zv={$h2,1};$cw=q#/lib/branch#;$dw={};$ew=q#local $_;
+$self->success;#;$ew=bless({$t,$cw,$v,$q,$w,$dw,$y,$z},$A);$fw={$Su,$ew};$gw=q#/io/transfer_sync_run.b#;$hw=bless({$r1,$Zv,$W2,$q,$X2,$q,$Y2,$fw,$Q,$gw},$x2);$iw=[$Nt,$Yv,$hw];$jw=bless({$r1,$Qv,$Q,$Rv,$v1,$iw},$e2);$kw=q#ni:/io/transfer_sync.c#;$lw={$e2,1};$mw=q#/io/transfer_sync.c#;$nw=[$fu];$ow=bless({$r1,$lw,$Q,$mw,$v1,$nw},$J2);$pw=q#ni:/io/transfer_sync_init.b#;$qw=q#ni:/io/transfer_sync_run.b#;$rw=q#ni:/lib#;$sw=q#lib#;$tw={$sw,1};$uw=[];$vw=bless({$r1,$tw,$Q,$c9,$v1,$uw},$L2);$ww=q#ni:/lib/accessor.b#;$xw=q#ni:/lib/behavior#;$yw=q#ni:/lib/behavior.c#;$zw=q#ni:/lib/branch#;$Aw={$h2,1};$Bw=q#/lib/branch#;$Cw={};$Dw=q#local $_;
 my $class = shift;
 my $name  = shift;
 +{name       => $name,
   applied_to => {},
-  slices     => [map $class->resolve($_), @_]};#;$fw=bless({$w,$ew,$y,$z},$A);$gw={$L4,$fw};$hw=q#/lib/branch_init.b#;$iw=bless({$r1,$dw,$W2,$q,$X2,$q,$Y2,$gw,$Q,$hw},$x2);$jw=[$md,$sd,$Le,$iw,$pg];$kw=bless({$r1,$Zv,$Q,$cw,$v1,$jw},$i2);$lw=q#ni:/lib/branch.b#;$mw=q#ni:/lib/branch.c#;$nw={$i2,1};$ow=q#/lib/branch.c#;$pw=[$Ug];$qw=bless({$r1,$nw,$Q,$ow,$v1,$pw},$J2);$rw=q#ni:/lib/branch_init.b#;$sw=q#ni:/lib/class_init.b#;$tw=q#ni:/lib/dataslice#;$uw={$j2,1};$vw=q#/lib/dataslice#;$ww={};$xw=q#shift->apply_(@_)#;$yw=bless({$w,$xw,$y,$z},$A);$zw=q#local $_;
-my ($self, $p) = @_;
-$p = $p->package if ref $p;
-return if $$self{applied_to}{$p};
-$$self{applied_to}{$p} = 1;
-*{"$p\\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
-$self;#;$Aw=bless({$w,$zw,$y,$z},$A);$Bw={$Ad,$yw,$Bd,$Aw};$Cw=q#/lib/dataslice.b#;$Dw=bless({$r1,$ww,$W2,$q,$X2,$q,$Y2,$Bw,$Q,$Cw},$x2);$Ew={};$Fw=q#my $class = shift;
-my $name = shift;
-+{name => $name, data => {@_}};#;$Gw=bless({$w,$Fw,$y,$z},$A);$Hw={$L4,$Gw};$Iw=q#/lib/dataslice_init.b#;$Jw=bless({$r1,$Ew,$W2,$q,$X2,$q,$Y2,$Hw,$Q,$Iw},$x2);$Kw=[$md,$sd,$Dw,$Jw,$Se,$Ze,$if,$Sd];$Lw=bless({$r1,$uw,$Q,$vw,$v1,$Kw},$k2);$Mw=q#ni:/lib/dataslice.b#;$Nw=q#ni:/lib/dataslice.c#;$Ow={$k2,1};$Pw=q#/lib/dataslice.c#;$Qw=[$Ug];$Rw=bless({$r1,$Ow,$Q,$Pw,$v1,$Qw},$J2);$Sw=q#ni:/lib/dataslice_init.b#;$Tw=q#ni:/lib/definition.b#;$Uw=q#ni:/lib/definition_def.b#;$Vw=q#ni:/lib/definition_defdata.b#;$Ww=q#ni:/lib/definition_init_with_defaults.b#;$Xw=q#ni:/lib/doc#;$Yw={$S,1};$Zw={};$cx=q#shift; +{name => shift, doc => []}#;$dx=bless({$w,$cx,$y,$z},$A);$ex={$L4,$dx};$fx=q#/lib/doc_init.b#;$gx=bless({$r1,$Zw,$W2,$q,$X2,$q,$Y2,$ex,$Q,$fx},$x2);$hx={};$ix=q#'ni.doc'#;$jx=bless({$w,$ix,$y,$z},$A);$kx={$Ne,$jx};$lx=q#/lib/doc_namespace.b#;$mx=bless({$r1,$hx,$W2,$q,$X2,$q,$Y2,$kx,$Q,$lx},$x2);$nx={};$ox=q#(@{}#;$px=q#[map @$_, @{shift->{doc}}]#;$qx=bless({$w,$px,$y,$z},$A);$rx=q#my $self = shift;
+  slices     => [map $class->resolve($_), @_]};#;$Ew=bless({$w,$Dw,$y,$z},$A);$Fw={$L4,$Ew};$Gw=q#/lib/branch_init.b#;$Hw=bless({$r1,$Cw,$W2,$q,$X2,$q,$Y2,$Fw,$Q,$Gw},$x2);$Iw=[$q9,$w9,$Hf,$Hw,$Og];$Jw=bless({$r1,$Aw,$Q,$Bw,$v1,$Iw},$i2);$Kw=q#ni:/lib/branch.b#;$Lw=q#ni:/lib/branch.c#;$Mw={$i2,1};$Nw=q#/lib/branch.c#;$Ow=[$vh];$Pw=bless({$r1,$Mw,$Q,$Nw,$v1,$Ow},$J2);$Qw=q#ni:/lib/branch_init.b#;$Rw=q#ni:/lib/class_init.b#;$Sw=q#ni:/lib/dataslice#;$Tw=q#ni:/lib/dataslice.b#;$Uw=q#ni:/lib/dataslice.c#;$Vw={$k2,1};$Ww=q#/lib/dataslice.c#;$Xw=[$vh];$Yw=bless({$r1,$Vw,$Q,$Ww,$v1,$Xw},$J2);$Zw=q#ni:/lib/dataslice_init.b#;$cx=q#ni:/lib/definition.b#;$dx=q#ni:/lib/definition_def.b#;$ex=q#ni:/lib/definition_defdata.b#;$fx=q#ni:/lib/definition_init_with_defaults.b#;$gx=q#ni:/lib/doc#;$hx={$S,1};$ix={};$jx=q#shift; +{name => shift, doc => []}#;$kx=bless({$w,$jx,$y,$z},$A);$lx={$L4,$kx};$mx=q#/lib/doc_init.b#;$nx=bless({$r1,$ix,$W2,$q,$X2,$q,$Y2,$lx,$Q,$mx},$x2);$ox={};$px=q#'ni.doc'#;$qx=bless({$w,$px,$y,$z},$A);$rx={$O9,$qx};$sx=q#/lib/doc_namespace.b#;$tx=bless({$r1,$ox,$W2,$q,$X2,$q,$Y2,$rx,$Q,$sx},$x2);$ux={};$vx=q#(@{}#;$wx=q#[map @$_, @{shift->{doc}}]#;$xx=bless({$w,$wx,$y,$z},$A);$yx=q#my $self = shift;
 (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
 push @{$$self{doc}}, [$method, map ni::outdent($_), @_];
-$self;#;$sx=bless({$w,$rx,$y,$z},$A);$tx={$ox,$qx,$qh,$sx};$ux=q#/lib/doc_define.b#;$vx=bless({$r1,$nx,$W2,$q,$X2,$q,$Y2,$tx,$Q,$ux},$x2);$wx={};$xx=q#shift->referent#;$yx=bless({$w,$xx,$y,$z},$A);$zx=q#ni 'ni:' . shift->{name}#;$Ax=bless({$w,$zx,$y,$z},$A);$Bx={$mr,$yx,$q1,$Ax};$Cx=q#/lib/doc_end.b#;$Dx=bless({$r1,$wx,$W2,$q,$X2,$q,$Y2,$Bx,$Q,$Cx},$x2);$Ex={};$Fx=q#my $self = shift;
+$self;#;$zx=bless({$w,$yx,$y,$z},$A);$Ax={$vx,$xx,$Ph,$zx};$Bx=q#/lib/doc_define.b#;$Cx=bless({$r1,$ux,$W2,$q,$X2,$q,$Y2,$Ax,$Q,$Bx},$x2);$Dx={};$Ex=q#shift->referent#;$Fx=bless({$w,$Ex,$y,$z},$A);$Gx=q#ni 'ni:' . shift->{name}#;$Hx=bless({$w,$Gx,$y,$z},$A);$Ix={$Lr,$Fx,$q1,$Hx};$Jx=q#/lib/doc_end.b#;$Kx=bless({$r1,$Dx,$W2,$q,$X2,$q,$Y2,$Ix,$Q,$Jx},$x2);$Lx={};$Mx=q#my $self = shift;
 push @{$$self{doc}},
      [TODO => TODO($_)->referent($self->referent)] for @_;
-$self;#;$Gx=bless({$w,$Fx,$y,$z},$A);$Hx={$p1,$Gx};$Ix=q#/lib/doc_TODO.b#;$Jx=bless({$r1,$Ex,$W2,$q,$X2,$q,$Y2,$Hx,$Q,$Ix},$x2);$Kx={};$Lx=q#my $self = shift;
+$self;#;$Nx=bless({$w,$Mx,$y,$z},$A);$Ox={$p1,$Nx};$Px=q#/lib/doc_TODO.b#;$Qx=bless({$r1,$Lx,$W2,$q,$X2,$q,$Y2,$Ox,$Q,$Px},$x2);$Rx={};$Sx=q#my $self = shift;
 push @{$$self{doc}},
      [eg => eg($_)->referent($self->referent)] for @_;
-$self;#;$Mx=bless({$w,$Lx,$y,$z},$A);$Nx={$g7,$Mx};$Ox=q#/lib/doc_eg.b#;$Px=bless({$r1,$Kx,$W2,$q,$X2,$q,$Y2,$Nx,$Q,$Ox},$x2);$Qx={};$Rx=q#tests#;$Sx=q#my $self = shift;
-map $_->referent($self->referent), grep ref($_) eq 'lib/test_case', @$self;#;$Tx=bless({$w,$Sx,$y,$z},$A);$Ux=q#todos#;$Vx=q#my $self = shift;
-map $_->referent($self->referent), grep ref($_) eq 'lib/todo', @$self;#;$Wx=bless({$w,$Vx,$y,$z},$A);$Xx={$Rx,$Tx,$Ux,$Wx};$Yx=q#/lib/doc_process.b#;$Zx=bless({$r1,$Qx,$W2,$q,$X2,$q,$Y2,$Xx,$Q,$Yx},$x2);$cy=[$k3,$sd,$gx,$mx,$vx,$Dx,$Jx,$Px,$Zx];$dy=bless({$r1,$Yw,$Q,$w9,$v1,$cy},$l2);$ey=q#ni:/lib/doc.c#;$fy={$l2,1};$gy=q#/lib/doc.c#;$hy={};$iy=q#defannotation#;$jy=q#my $class = shift;
+$self;#;$Tx=bless({$w,$Sx,$y,$z},$A);$Ux={$g7,$Tx};$Vx=q#/lib/doc_eg.b#;$Wx=bless({$r1,$Rx,$W2,$q,$X2,$q,$Y2,$Ux,$Q,$Vx},$x2);$Xx={};$Yx=q#tests#;$Zx=q#my $self = shift;
+map $_->referent($self->referent), grep ref($_) eq 'lib/test_case', @$self;#;$cy=bless({$w,$Zx,$y,$z},$A);$dy=q#todos#;$ey=q#my $self = shift;
+map $_->referent($self->referent), grep ref($_) eq 'lib/todo', @$self;#;$fy=bless({$w,$ey,$y,$z},$A);$gy={$Yx,$cy,$dy,$fy};$hy=q#/lib/doc_process.b#;$iy=bless({$r1,$Xx,$W2,$q,$X2,$q,$Y2,$gy,$Q,$hy},$x2);$jy=[$k3,$w9,$nx,$tx,$Cx,$Kx,$Qx,$Wx,$iy];$ky=bless({$r1,$hx,$Q,$Sa,$v1,$jy},$l2);$ly=q#ni:/lib/doc.c#;$my={$l2,1};$ny=q#/lib/doc.c#;$oy={};$py=q#defannotation#;$qy=q#my $class = shift;
 $class->def("$$class{name}_$_.b",
   $_ => fn qq{
     my \\$self = shift;
@@ -883,10 +883,10 @@ $class->def("$$class{name}_$_.b",
          [$_ => $_(\\$_)->referent(\\$self->referent)] for \\@_;
     \\$self;
   }) for @_;
-$class;#;$ky=bless({$w,$jy,$y,$z},$A);$ly={$iy,$ky};$my=q#/lib/doc.c_defannotation.b#;$ny=bless({$r1,$hy,$W2,$q,$X2,$q,$Y2,$ly,$Q,$my},$x2);$oy=[$Qg,$ny];$py=bless({$r1,$fy,$Q,$gy,$v1,$oy},$J2);$qy=q#ni:/lib/doc.c_defannotation.b#;$ry=q#ni:/lib/doc_TODO.b#;$sy=q#ni:/lib/doc_define.b#;$ty=q#ni:/lib/doc_eg.b#;$uy=q#ni:/lib/doc_end.b#;$vy=q#ni:/lib/doc_init.b#;$wy=q#ni:/lib/doc_namespace.b#;$xy=q#ni:/lib/doc_process.b#;$yy=q#ni:/lib/documentable.b#;$zy=q#ni:/lib/fn#;$Ay={$A,1};$By=q#/lib/fn#;$Cy=q#my $self = shift;
+$class;#;$ry=bless({$w,$qy,$y,$z},$A);$sy={$py,$ry};$ty=q#/lib/doc.c_defannotation.b#;$uy=bless({$r1,$oy,$W2,$q,$X2,$q,$Y2,$sy,$Q,$ty},$x2);$vy=[$rh,$uy];$wy=bless({$r1,$my,$Q,$ny,$v1,$vy},$J2);$xy=q#ni:/lib/doc.c_defannotation.b#;$yy=q#ni:/lib/doc_TODO.b#;$zy=q#ni:/lib/doc_define.b#;$Ay=q#ni:/lib/doc_eg.b#;$By=q#ni:/lib/doc_end.b#;$Cy=q#ni:/lib/doc_init.b#;$Dy=q#ni:/lib/doc_namespace.b#;$Ey=q#ni:/lib/doc_process.b#;$Fy=q#ni:/lib/documentable.b#;$Gy=q#ni:/lib/fn#;$Hy={$A,1};$Iy=q#/lib/fn#;$Jy=q#my $self = shift;
 return $$self{closure} unless @_;
 $$self{closure} = {@_};
-$self;#;$Dy=bless({$w,$Cy,$y,$z},$A);$Ey=q#\# NB: everything here needs to happen in a single method; otherwise JIT
+$self;#;$Ky=bless({$w,$Jy,$y,$z},$A);$Ly=q#\# NB: everything here needs to happen in a single method; otherwise JIT
 \# compilation will cause infinite recursion.
 local ($@, $_);
 my $self = shift;
@@ -914,16 +914,16 @@ if ($closure) {
   $$self{fn} = ni::eval $fn_code;
   die "ni:/lib/fn failed to compile $fn_code: $@" if $@;
   return $$self{fn};
-}#;$Fy=bless({$w,$Ey},$A);$Gy=q#my $class = shift;
+}#;$My=bless({$w,$Ly},$A);$Ny=q#my $class = shift;
 my $code  = pop;
 my $proto = @_ && $_[-1] =~ /^\\(/ ? pop : '';
 +{code        => $code,
   proto       => $proto,
   closure     => undef,
   eval_number => undef,
-  annotations => [@_]};#;$Hy=bless({$w,$Gy},$A);$Iy=q#lib/fn::closure#;$Jy=q#lib/fn::compile#;$Ky=q#lib/fn::instantiate#;$Ly={};$My=q#my $self = shift;
+  annotations => [@_]};#;$Oy=bless({$w,$Ny},$A);$Py=q#lib/fn::closure#;$Qy=q#lib/fn::compile#;$Ry=q#lib/fn::instantiate#;$Sy={};$Ty=q#my $self = shift;
 delete ${'lib/fn::evals'}{$$self{eval_number}}
-  if defined $$self{eval_number};#;$Ny=bless({$w,$My,$y,$z},$A);$Oy=q#compile#;$Py={$v,$Dy,$Oy,$Fy,$L4,$Hy};$Qy=q#/lib/fn_init.b#;$Ry=bless({$r1,$Ly,$W2,$q,$X2,$Ny,$Y2,$Py,$Q,$Qy},$x2);$Sy={};$Ty=[];$Uy=q#shift->{'annotations'}#;$Vy=bless({$t,$Ty,$v,$q,$w,$Uy,$y,$z},$A);$Wy=[];$Xy=q#shift->{'code'}#;$Yy=bless({$t,$Wy,$v,$q,$w,$Xy,$y,$z},$A);$Zy=q#eval_number#;$cz=[];$dz=q#shift->{'eval_number'}#;$ez=bless({$t,$cz,$v,$q,$w,$dz,$y,$z},$A);$fz=q#fn#;$gz=[];$hz=q#shift->{'fn'}#;$iz=bless({$t,$gz,$v,$q,$w,$hz,$y,$z},$A);$jz={$t,$Vy,$w,$Yy,$Zy,$ez,$fz,$iz};$kz=q#/lib/fn_ro.b#;$lz=bless({$r1,$Sy,$W2,$q,$X2,$q,$Y2,$jz,$Q,$kz},$x2);$mz={};$nz=[];$oz=q#my $self = shift; "fn {$$self{code}}"#;$pz=bless({$t,$nz,$v,$q,$w,$oz,$y,$z},$A);$qz=[];$rz=bless({$t,$qz,$v,$q,$w,$Tf,$y,$z},$A);$sz={$Lf,$pz,$Sf,$rz};$tz=q#/lib/fn_ops.b#;$uz=bless({$r1,$mz,$W2,$q,$X2,$q,$Y2,$sz,$Q,$tz},$x2);$vz={};$wz=[];$xz=q#local $_;
+  if defined $$self{eval_number};#;$Uy=bless({$w,$Ty,$y,$z},$A);$Vy=q#compile#;$Wy={$v,$Ky,$Vy,$My,$L4,$Oy};$Xy=q#/lib/fn_init.b#;$Yy=bless({$r1,$Sy,$W2,$q,$X2,$Uy,$Y2,$Wy,$Q,$Xy},$x2);$Zy={};$cz=[];$dz=q#shift->{'annotations'}#;$ez=bless({$t,$cz,$v,$q,$w,$dz,$y,$z},$A);$fz=[];$gz=q#shift->{'code'}#;$hz=bless({$t,$fz,$v,$q,$w,$gz,$y,$z},$A);$iz=q#eval_number#;$jz=[];$kz=q#shift->{'eval_number'}#;$lz=bless({$t,$jz,$v,$q,$w,$kz,$y,$z},$A);$mz=q#fn#;$nz=[];$oz=q#shift->{'fn'}#;$pz=bless({$t,$nz,$v,$q,$w,$oz,$y,$z},$A);$qz={$t,$ez,$w,$hz,$iz,$lz,$mz,$pz};$rz=q#/lib/fn_ro.b#;$sz=bless({$r1,$Zy,$W2,$q,$X2,$q,$Y2,$qz,$Q,$rz},$x2);$tz={};$uz=[];$vz=q#my $self = shift; "fn {$$self{code}}"#;$wz=bless({$t,$uz,$v,$q,$w,$vz,$y,$z},$A);$xz=[];$yz=bless({$t,$xz,$v,$q,$w,$ug,$y,$z},$A);$zz={$mg,$wz,$tg,$yz};$Az=q#/lib/fn_ops.b#;$Bz=bless({$r1,$tz,$W2,$q,$X2,$q,$Y2,$zz,$Q,$Az},$x2);$Cz={};$Dz=[];$Ez=q#local $_;
 my ($self, $quote) = @_;
 $quote->quote_class(ref $self);
 
@@ -939,16 +939,16 @@ s/^$spaces// for @lines;
 my %state = %$self;
 delete @state{qw/fn eval_number/};
 $state{code} = join "\\n", @lines;
-$quote->quote_blessed(\\%state, ref $self);#;$yz=bless({$t,$wz,$v,$q,$w,$xz,$y,$z},$A);$zz={$Md,$yz};$Az=q#/lib/fn_serialize.b#;$Bz=bless({$r1,$vz,$W2,$q,$X2,$q,$Y2,$zz,$Q,$Az},$x2);$Cz=[$k3,$yg,$Ry,$lz,$uz,$Bz];$Dz=bless({$r1,$Ay,$Q,$By,$v1,$Cz},$m2);$Ez=[];$Fz=q#my $self = shift;
+$quote->quote_blessed(\\%state, ref $self);#;$Fz=bless({$t,$Dz,$v,$q,$w,$Ez,$y,$z},$A);$Gz={$la,$Fz};$Hz=q#/lib/fn_serialize.b#;$Iz=bless({$r1,$Cz,$W2,$q,$X2,$q,$Y2,$Gz,$Q,$Hz},$x2);$Jz=[$k3,$Xg,$Yy,$sz,$Bz,$Iz];$Kz=bless({$r1,$Hy,$Q,$Iy,$v1,$Jz},$m2);$Lz=[];$Mz=q#my $self = shift;
 $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
-$SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};#;$Gz=bless({$t,$Ez,$v,$q,$w,$Fz,$y,$z},$A);$Hz=q#ni:/lib/fn.c#;$Iz={$m2,1};$Jz=q#/lib/fn.c#;$Kz={};$Lz=q#resolve_evals#;$Mz=[];$Nz=q#my ($self, $trace) = @_;
+$SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};#;$Nz=bless({$t,$Lz,$v,$q,$w,$Mz,$y,$z},$A);$Oz=q#ni:/lib/fn.c#;$Pz={$m2,1};$Qz=q#/lib/fn.c#;$Rz={};$Sz=q#resolve_evals#;$Tz=[];$Uz=q#my ($self, $trace) = @_;
 1 while $trace =~ s\#\\(eval (\\d+)\\)\#
   ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"\#eg;
-$trace;#;$Oz=bless({$t,$Mz,$v,$q,$w,$Nz,$y,$z},$A);$Pz={$Lz,$Oz};$Qz=q#/lib/fn.c_resolve_eval.b#;$Rz=bless({$r1,$Kz,$W2,$Gz,$X2,$q,$Y2,$Pz,$Q,$Qz},$x2);$Sz=[$Qg,$Rz];$Tz=bless({$r1,$Iz,$Q,$Jz,$v1,$Sz},$J2);$Uz=q#ni:/lib/fn.c_resolve_eval.b#;$Vz=q#ni:/lib/fn_init.b#;$Wz=q#ni:/lib/fn_ops.b#;$Xz=q#ni:/lib/fn_ro.b#;$Yz=q#ni:/lib/fn_serialize.b#;$Zz=q#ni:/lib/future#;$cA={$n2,1};$dA={};$eA=[];$fA=bless({$t,$eA,$v,$q,$w,$ls,$y,$z},$A);$gA=q#parents#;$hA=[];$iA=q#shift->{'parents'}#;$jA=bless({$t,$hA,$v,$q,$w,$iA,$y,$z},$A);$kA={$r,$fA,$gA,$jA};$lA=q#/lib/future_ro.b#;$mA=bless({$r1,$dA,$W2,$q,$X2,$q,$Y2,$kA,$Q,$lA},$x2);$nA={};$oA=[];$pA=q#my $class = shift;
+$trace;#;$Vz=bless({$t,$Tz,$v,$q,$w,$Uz,$y,$z},$A);$Wz={$Sz,$Vz};$Xz=q#/lib/fn.c_resolve_eval.b#;$Yz=bless({$r1,$Rz,$W2,$Nz,$X2,$q,$Y2,$Wz,$Q,$Xz},$x2);$Zz=[$rh,$Yz];$cA=bless({$r1,$Pz,$Q,$Qz,$v1,$Zz},$J2);$dA=q#ni:/lib/fn.c_resolve_eval.b#;$eA=q#ni:/lib/fn_init.b#;$fA=q#ni:/lib/fn_ops.b#;$gA=q#ni:/lib/fn_ro.b#;$hA=q#ni:/lib/fn_serialize.b#;$iA=q#ni:/lib/future#;$jA={$n2,1};$kA={};$lA=[];$mA=bless({$t,$lA,$v,$q,$w,$Ks,$y,$z},$A);$nA=q#parents#;$oA=[];$pA=q#shift->{'parents'}#;$qA=bless({$t,$oA,$v,$q,$w,$pA,$y,$z},$A);$rA={$r,$mA,$nA,$qA};$sA=q#/lib/future_ro.b#;$tA=bless({$r1,$kA,$W2,$q,$X2,$q,$Y2,$rA,$Q,$sA},$x2);$uA={};$vA=[];$wA=q#my $class = shift;
 +{v         => undef,
   parents   => [@_],
   listeners => [],
-  outcome   => undef};#;$qA=bless({$t,$oA,$v,$q,$w,$pA,$y,$z},$A);$rA={$L4,$qA};$sA=q#/lib/future_init.b#;$tA=bless({$r1,$nA,$W2,$q,$X2,$q,$Y2,$rA,$Q,$sA},$x2);$uA={};$vA=q#decide#;$wA=[];$xA=q#local $_;
+  outcome   => undef};#;$xA=bless({$t,$vA,$v,$q,$w,$wA,$y,$z},$A);$yA={$L4,$xA};$zA=q#/lib/future_init.b#;$AA=bless({$r1,$uA,$W2,$q,$X2,$q,$Y2,$yA,$Q,$zA},$x2);$BA={};$CA=q#decide#;$DA=[];$EA=q#local $_;
 my $self = shift;
 die "ni:/lib/future: cannot change a decided future"
   if $$self{outcome};
@@ -956,13 +956,13 @@ $$self{outcome} = [1, @_];
 $$self{v} = [@_];
 defined && &$_(@_) for @{$$self{listeners}};
 $$self{parents} = $$self{listeners} = undef;
-$self;#;$yA=bless({$t,$wA,$v,$q,$w,$xA,$y,$z},$A);$zA=q#decided#;$AA=[];$BA=q#shift->{outcome}#;$CA=bless({$t,$AA,$v,$q,$w,$BA,$y,$z},$A);$DA=q#listener#;$EA=[];$FA=q#my ($self, $l) = @_;
+$self;#;$FA=bless({$t,$DA,$v,$q,$w,$EA,$y,$z},$A);$GA=q#decided#;$HA=[];$IA=q#shift->{outcome}#;$JA=bless({$t,$HA,$v,$q,$w,$IA,$y,$z},$A);$KA=q#listener#;$LA=[];$MA=q#my ($self, $l) = @_;
 $$self{outcome}
   ? &$l(@{$$self{v}})
   : push @{$$self{listeners}}, $l;
-$self;#;$GA=bless({$t,$EA,$v,$q,$w,$FA,$y,$z},$A);$HA=q#v#;$IA=[];$JA=q#my $v = shift->{v};
+$self;#;$NA=bless({$t,$LA,$v,$q,$w,$MA,$y,$z},$A);$OA=q#v#;$PA=[];$QA=q#my $v = shift->{v};
 return undef unless $v;
-@$v;#;$KA=bless({$t,$IA,$v,$q,$w,$JA,$y,$z},$A);$LA={$vA,$yA,$zA,$CA,$DA,$GA,$HA,$KA};$MA=q#/lib/future_state.b#;$NA=bless({$r1,$uA,$W2,$q,$X2,$q,$Y2,$LA,$Q,$MA},$x2);$OA={};$PA=q#and#;$QA=[];$RA=q#my $self   = $_[0];
+@$v;#;$RA=bless({$t,$PA,$v,$q,$w,$QA,$y,$z},$A);$SA={$CA,$FA,$GA,$JA,$KA,$NA,$OA,$RA};$TA=q#/lib/future_state.b#;$UA=bless({$r1,$BA,$W2,$q,$X2,$q,$Y2,$SA,$Q,$TA},$x2);$VA={};$WA=q#and#;$XA=[];$YA=q#my $self   = $_[0];
 my $child  = $self->class->new(grep ref, @_);
 my $n      = @{$child->parents};
 my $l      = 0;
@@ -973,18 +973,18 @@ for my $i (0..$\#_) {
     $child->decide(@result) if ++$l == $n;
   }) if ref $_[$i];
 }
-$child;#;$SA=bless({$t,$QA,$v,$q,$w,$RA,$y,$z},$A);$TA=q#flatmap#;$UA=[];$VA=q#my ($self, $f) = @_;
+$child;#;$ZA=bless({$t,$XA,$v,$q,$w,$YA,$y,$z},$A);$cB=q#flatmap#;$dB=[];$eB=q#my ($self, $f) = @_;
 my $child = $self->class->new($self);
 $self->listener(sub {&$f(@_)->listener(sub {$child->decide(@_)})});
-$child;#;$WA=bless({$t,$UA,$v,$q,$w,$VA,$y,$z},$A);$XA=q#map#;$YA=[];$ZA=q#my ($self, $f) = @_;
+$child;#;$fB=bless({$t,$dB,$v,$q,$w,$eB,$y,$z},$A);$gB=q#map#;$hB=[];$iB=q#my ($self, $f) = @_;
 my $child = $self->class->new($self);
 $self->listener(sub {$child->decide(&$f(@_))});
-$child;#;$cB=bless({$t,$YA,$v,$q,$w,$ZA,$y,$z},$A);$dB=q#or#;$eB=[];$fB=q#local $_;
+$child;#;$jB=bless({$t,$hB,$v,$q,$w,$iB,$y,$z},$A);$kB=q#or#;$lB=[];$mB=q#local $_;
 my $self    = $_[0];
 my $child   = $self->class->new(@_);
 my $trigger = sub {$child->decide(@_) unless $child->decided};
 $_->listener($trigger) for @_;
-$child;#;$gB=bless({$t,$eB,$v,$q,$w,$fB,$y,$z},$A);$hB={$PA,$SA,$TA,$WA,$XA,$cB,$dB,$gB};$iB=q#/lib/future_algebra.b#;$jB=bless({$r1,$OA,$W2,$q,$X2,$q,$Y2,$hB,$Q,$iB},$x2);$kB=[$k3,$mA,$tA,$NA,$jB];$lB=bless({$r1,$cA,$Q,$N9,$v1,$kB},$o2);$mB=q#ni:/lib/future.c#;$nB={$o2,1};$oB=q#/lib/future.c#;$pB=[$Qg];$qB=bless({$r1,$nB,$Q,$oB,$v1,$pB},$J2);$rB=q#ni:/lib/future_algebra.b#;$sB=q#ni:/lib/future_init.b#;$tB=q#ni:/lib/future_ro.b#;$uB=q#ni:/lib/future_state.b#;$vB=q#ni:/lib/gensym_generator_compact.b#;$wB=q#ni:/lib/global_static_test.b#;$xB={};$yB=[];$zB=q#ni('ni:/lib/test_case')->new(shift)#;$AB=q#($)#;$BB=bless({$t,$yB,$v,$q,$w,$zB,$y,$AB},$A);$CB=q#now#;$DB=[];$EB=q#ni('ni:/lib/test_value')->new(shift)#;$FB=bless({$t,$DB,$v,$q,$w,$EB,$y,$AB},$A);$GB={$g7,$BB,$CB,$FB};$HB=q#/lib/global_static_test.b#;$IB=bless({$r1,$xB,$W2,$q,$X2,$q,$Y2,$GB,$Q,$HB},$x2);$JB=q#ni:/lib/image#;$KB=q#ni:/lib/image.c#;$LB={$q2,1};$MB=q#/lib/image.c#;$NB=[$Qg];$OB=bless({$r1,$LB,$Q,$MB,$v1,$NB},$J2);$PB=q#ni:/lib/image_init.b#;$QB=q#ni:/lib/image_quoting.b#;$RB=q#ni:/lib/instance.b#;$SB=q#ni:/lib/instantiable.b#;$TB=q#ni:/lib/json.b#;$UB={};$VB=q#json_decode#;$WB=[];$XB=q#local $_;
+$child;#;$nB=bless({$t,$lB,$v,$q,$w,$mB,$y,$z},$A);$oB={$WA,$ZA,$cB,$fB,$gB,$jB,$kB,$nB};$pB=q#/lib/future_algebra.b#;$qB=bless({$r1,$VA,$W2,$q,$X2,$q,$Y2,$oB,$Q,$pB},$x2);$rB=[$k3,$tA,$AA,$UA,$qB];$sB=bless({$r1,$jA,$Q,$lb,$v1,$rB},$o2);$tB=q#ni:/lib/future.c#;$uB={$o2,1};$vB=q#/lib/future.c#;$wB=[$rh];$xB=bless({$r1,$uB,$Q,$vB,$v1,$wB},$J2);$yB=q#ni:/lib/future_algebra.b#;$zB=q#ni:/lib/future_init.b#;$AB=q#ni:/lib/future_ro.b#;$BB=q#ni:/lib/future_state.b#;$CB=q#ni:/lib/gensym_generator_compact.b#;$DB=q#ni:/lib/global_static_test.b#;$EB={};$FB=[];$GB=q#ni('ni:/lib/test_case')->new(shift)#;$HB=q#($)#;$IB=bless({$t,$FB,$v,$q,$w,$GB,$y,$HB},$A);$JB=q#now#;$KB=[];$LB=q#ni('ni:/lib/test_value')->new(shift)#;$MB=bless({$t,$KB,$v,$q,$w,$LB,$y,$HB},$A);$NB={$g7,$IB,$JB,$MB};$OB=q#/lib/global_static_test.b#;$PB=bless({$r1,$EB,$W2,$q,$X2,$q,$Y2,$NB,$Q,$OB},$x2);$QB=q#ni:/lib/image#;$RB=q#ni:/lib/image.c#;$SB={$q2,1};$TB=q#/lib/image.c#;$UB=[$rh];$VB=bless({$r1,$SB,$Q,$TB,$v1,$UB},$J2);$WB=q#ni:/lib/image_init.b#;$XB=q#ni:/lib/image_quoting.b#;$YB=q#ni:/lib/instance.b#;$ZB=q#ni:/lib/instantiable.b#;$cC=q#ni:/lib/json.b#;$dC={};$eC=q#json_decode#;$fC=[];$gC=q#local $_;
 my @v = [];
 for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\\\]+|\\\\.)*"|[-+eE\\d.]+/g) {
   if (/^[[{]$/) {
@@ -1007,14 +1007,14 @@ for ($_[0] =~ /[][{}]|true|false|null|"(?:[^"\\\\]+|\\\\.)*"|[-+eE\\d.]+/g) {
 }
 my $r = pop @v;
 die "json_decode $_[0]: not enough closing brackets" if @v;
-wantarray ? @$r : $$r[0];#;$YB=bless({$t,$WB,$v,$q,$w,$XB,$y,$AB},$A);$ZB=q#json_encode#;$cC=[];$dC=q#local $_;
+wantarray ? @$r : $$r[0];#;$hC=bless({$t,$fC,$v,$q,$w,$gC,$y,$HB},$A);$iC=q#json_encode#;$jC=[];$kC=q#local $_;
 my ($v) = @_;
 return "[" . join(',', map ni::json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
 return "{" . join(',', map ni::json_escape($_) . ":" . ni::json_encode($$v{$_}),
                            sort keys %$v) . "}" if 'HASH' eq ref $v;
 Scalar::Util::looks_like_number $v
   ? $v
-  : defined $v ? ni::json_escape($v) : 'null';#;$eC=bless({$t,$cC,$v,$q,$w,$dC,$y,$AB},$A);$fC=q#json_encode_pretty#;$gC=[];$hC=q#local $_;
+  : defined $v ? ni::json_escape($v) : 'null';#;$lC=bless({$t,$jC,$v,$q,$w,$kC,$y,$HB},$A);$mC=q#json_encode_pretty#;$nC=[];$oC=q#local $_;
 my ($v, $indent) = @_;
 $indent ||= 0;
 my $spaces = ' ' x $indent;
@@ -1028,37 +1028,37 @@ return "\\{\\n$spaces  "
                             sort keys %$v)
      . "\\n$spaces\\}" if 'HASH' eq ref $v;
 
-ni::json_encode($v);#;$iC=bless({$t,$gC,$v,$q,$w,$hC,$y,$z},$A);$jC=q#json_escape#;$kC=[];$lC=q#(my $x = shift) =~ s/([\\b\\f\\n\\r\\t"\\\\])/'\\\\' . $ni::json_escapes{$1}/eg;
-"\\"$x\\"";#;$mC=bless({$t,$kC,$v,$q,$w,$lC,$y,$AB},$A);$nC=q#json_unescape#;$oC=[];$pC=q#my $x = substr shift, 1, -1;
+ni::json_encode($v);#;$pC=bless({$t,$nC,$v,$q,$w,$oC,$y,$z},$A);$qC=q#json_escape#;$rC=[];$sC=q#(my $x = shift) =~ s/([\\b\\f\\n\\r\\t"\\\\])/'\\\\' . $ni::json_escapes{$1}/eg;
+"\\"$x\\"";#;$tC=bless({$t,$rC,$v,$q,$w,$sC,$y,$HB},$A);$uC=q#json_unescape#;$vC=[];$wC=q#my $x = substr shift, 1, -1;
 $x =~ s/\\\\(["\\\\\\/bfnrt]|u[0-9a-fA-F]{4})/ni::json_unescape_one($1)/eg;
-$x;#;$qC=bless({$t,$oC,$v,$q,$w,$pC,$y,$AB},$A);$rC=q#json_unescape_one#;$sC=[];$tC=q#$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1#;$uC=bless({$t,$sC,$v,$q,$w,$tC,$y,$AB},$A);$vC={$VB,$YB,$ZB,$eC,$fC,$iC,$jC,$mC,$nC,$qC,$rC,$uC};$wC=q#/lib/json.b#;$xC=bless({$r1,$UB,$W2,$q,$X2,$q,$Y2,$vC,$Q,$wC},$x2);$yC=q#ni#;$zC=q#ni:/lib/json_data.b#;$AC={};$BC=q#json_escapes#;$CC=q##;$DC=q#b#;$EC=q#	#;$FC=q#t#;$GC=q#
-#;$HC=q#n#;$IC=q##;$JC=q#f#;$KC=q##;$LC=q#"#;$MC=q#/#;$NC=q#\\#;$OC={$CC,$DC,$EC,$FC,$GC,$HC,$IC,$JC,$KC,$qo,$LC,$LC,$MC,$MC,$NC,$NC};$PC=q#json_unescapes#;$QC={$LC,$LC,$MC,$MC,$NC,$NC,$DC,$CC,$JC,$IC,$HC,$GC,$qo,$KC,$FC,$EC};$RC={$BC,$OC,$PC,$QC};$SC=q#/lib/json_data.b#;$TC=bless({$r1,$AC,$ir,$RC,$Q,$SC},$j2);$UC=q#ni:/lib/name_as_string.b#;$VC=q#ni:/lib/named.b#;$WC=q#ni:/lib/named_in_ni.b#;$XC=q#ni:/lib/namespaced.b#;$YC=q#ni:/lib/ni#;$ZC={$r2,1};$cD={};$dD=q#extend#;$eD=q#my $self = shift;
+$x;#;$xC=bless({$t,$vC,$v,$q,$w,$wC,$y,$HB},$A);$yC=q#json_unescape_one#;$zC=[];$AC=q#$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1#;$BC=bless({$t,$zC,$v,$q,$w,$AC,$y,$HB},$A);$CC={$eC,$hC,$iC,$lC,$mC,$pC,$qC,$tC,$uC,$xC,$yC,$BC};$DC=q#/lib/json.b#;$EC=bless({$r1,$dC,$W2,$q,$X2,$q,$Y2,$CC,$Q,$DC},$x2);$FC=q#ni#;$GC=q#ni:/lib/json_data.b#;$HC={};$IC=q#json_escapes#;$JC=q##;$KC=q#b#;$LC=q#	#;$MC=q#t#;$NC=q#
+#;$OC=q#n#;$PC=q##;$QC=q#f#;$RC=q##;$SC=q#"#;$TC=q#/#;$UC=q#\\#;$VC={$JC,$KC,$LC,$MC,$NC,$OC,$PC,$QC,$RC,$Po,$SC,$SC,$TC,$TC,$UC,$UC};$WC=q#json_unescapes#;$XC={$SC,$SC,$TC,$TC,$UC,$UC,$KC,$JC,$QC,$PC,$OC,$NC,$Po,$RC,$MC,$LC};$YC={$IC,$VC,$WC,$XC};$ZC=q#/lib/json_data.b#;$cD=bless({$r1,$HC,$Hr,$YC,$Q,$ZC},$j2);$dD=q#ni:/lib/name_as_string.b#;$eD=q#ni:/lib/named.b#;$fD=q#ni:/lib/named_in_ni.b#;$gD=q#ni:/lib/namespaced.b#;$hD=q#ni:/lib/ni#;$iD={$r2,1};$jD={};$kD=q#extend#;$lD=q#my $self = shift;
 for (@_) {
   my $r = do $_;
   die "ni: failed to parse $_: $@" if $@;
   die "ni: failed to execute $_: $!" unless defined $r;
 }
-$self;#;$fD=bless({$w,$eD,$y,$z},$A);$gD=q#is_mutable#;$hD=q#$0 ne '-' && -w $0#;$iD=bless({$w,$hD,$y,$z},$A);$jD=q#modify#;$kD=q#my ($self, $fn) = @_;
+$self;#;$mD=bless({$w,$lD,$y,$z},$A);$nD=q#is_mutable#;$oD=q#$0 ne '-' && -w $0#;$pD=bless({$w,$oD,$y,$z},$A);$qD=q#modify#;$rD=q#my ($self, $fn) = @_;
 die "ni: cannot modify immutable instance $0" unless $self->is_mutable;
 my (undef, undef, $mode) = stat $0;
-&$fn(ni('ni:/io/file')->new($0, $mode)->atomic_update);#;$lD=bless({$w,$kD,$y,$z},$A);$mD={$dD,$fD,$gD,$iD,$jD,$lD};$nD=q#/lib/ni_self.b#;$oD=bless({$r1,$cD,$W2,$q,$X2,$q,$Y2,$mD,$Q,$nD},$x2);$pD={};$qD=q#my $self = shift;
+&$fn(ni('ni:/io/file')->new($0, $mode)->atomic_update);#;$sD=bless({$w,$rD,$y,$z},$A);$tD={$kD,$mD,$nD,$pD,$qD,$sD};$uD=q#/lib/ni_self.b#;$vD=bless({$r1,$jD,$W2,$q,$X2,$q,$Y2,$tD,$Q,$uD},$x2);$wD={};$xD=q#my $self = shift;
 my $metaclass = $self->resolve('ni:/object.c');
 map $self->resolve("ni:/$_"),
     grep $self->exists("ni:/$_"),
     grep !$$metaclass{applied_to}->{$_},
-    sort keys %{$self->resolve('ni:/object')->{applied_to}};#;$rD=bless({$w,$qD,$y,$z},$A);$sD=q#docs#;$tD=q#my $self = shift;
-map $self->resolve($_), grep /^ni\\.doc:/, sort keys %{$$self{named}};#;$uD=bless({$w,$tD,$y,$z},$A);$vD=q#metaclasses#;$wD=q#my $self = shift;
+    sort keys %{$self->resolve('ni:/object')->{applied_to}};#;$yD=bless({$w,$xD,$y,$z},$A);$zD=q#docs#;$AD=q#my $self = shift;
+map $self->resolve($_), grep /^ni\\.doc:/, sort keys %{$$self{named}};#;$BD=bless({$w,$AD,$y,$z},$A);$CD=q#metaclasses#;$DD=q#my $self = shift;
 map $self->resolve("ni:/$_"),
     grep $self->exists("ni:/$_"),
-    sort keys %{$self->resolve('ni:/object.c')->{applied_to}};#;$xD=bless({$w,$wD,$y,$z},$A);$yD=q#undocumented#;$zD=q#my $self = shift;
+    sort keys %{$self->resolve('ni:/object.c')->{applied_to}};#;$ED=bless({$w,$DD,$y,$z},$A);$FD=q#undocumented#;$GD=q#my $self = shift;
 my %docs = map +($_->referent => 1), $self->docs;
-grep !$docs{$_}, $self->classes;#;$AD=bless({$w,$zD,$y,$z},$A);$BD=q#untested#;$CD=q#my $self = shift;
+grep !$docs{$_}, $self->classes;#;$HD=bless({$w,$GD,$y,$z},$A);$ID=q#untested#;$JD=q#my $self = shift;
 my %tests = map +($_->referent => 1), map $_->tests, $self->docs;
-grep !$tests{$_}, $self->classes;#;$DD=bless({$w,$CD,$y,$z},$A);$ED={$K,$rD,$sD,$uD,$vD,$xD,$yD,$AD,$BD,$DD};$FD=q#/lib/ni_dev_introspection.b#;$GD=bless({$r1,$pD,$W2,$q,$X2,$q,$Y2,$ED,$Q,$FD},$x2);$HD={};$ID=q#--internal/+=#;$JD=q#my $self = shift;
+grep !$tests{$_}, $self->classes;#;$KD=bless({$w,$JD,$y,$z},$A);$LD={$K,$yD,$zD,$BD,$CD,$ED,$FD,$HD,$ID,$KD};$MD=q#/lib/ni_dev_introspection.b#;$ND=bless({$r1,$wD,$W2,$q,$X2,$q,$Y2,$LD,$Q,$MD},$x2);$OD={};$PD=q#--internal/+=#;$QD=q#my $self = shift;
 $self->extend($_) for @_;
 my $q = $self->quoted;
 $self->modify(sub {$q->io->into_sync(shift)});
-0;#;$KD=bless({$w,$JD,$y,$z},$A);$LD=q#--internal/dev-state#;$MD=q#my $self = shift;
+0;#;$RD=bless({$w,$QD,$y,$z},$A);$SD=q#--internal/dev-state#;$TD=q#my $self = shift;
 my @tests = map $_->tests, $self->docs;
 $_->run for @tests;
 my @failed = grep $_->failed, @tests;
@@ -1090,13 +1090,13 @@ print ni::json_encode_pretty({
                   text     => join "\\n", @{$_->todo}},
             map $_->todos, $self->docs],
 }), "\\n";
-0;#;$ND=bless({$w,$MD,$y,$z},$A);$OD=q#--internal/eval#;$PD=q#my $self = shift;
+0;#;$UD=bless({$w,$TD,$y,$z},$A);$VD=q#--internal/eval#;$WD=q#my $self = shift;
 for (@_) {
   my $r = ni::eval($_);
   print $@ ? "ERROR $@\\n" : "$r\\n";
 }
-0;#;$QD=bless({$w,$PD,$y,$z},$A);$RD=q#--internal/image#;$SD=q#shift->quoted->io->into_sync(ni"fd:1");
-0;#;$TD=bless({$w,$SD,$y,$z},$A);$UD=q#--internal/test#;$VD=q#local $| = 1;
+0;#;$XD=bless({$w,$WD,$y,$z},$A);$YD=q#--internal/image#;$ZD=q#shift->quoted->io->into_sync(ni"fd:1");
+0;#;$cE=bless({$w,$ZD,$y,$z},$A);$dE=q#--internal/test#;$eE=q#local $| = 1;
 my $self   = shift;
 my $failed = 0;
 my @docs   = $self->docs;
@@ -1120,20 +1120,20 @@ for my $f (grep $_->failed, @tests) {
 print "\\nSUMMARY\\n";
 printf "% 4d test(s) passed\\n", @tests - $failed;
 printf "% 4d test(s) failed\\n", $failed;
-!!$failed;#;$WD=bless({$w,$VD,$y,$z},$A);$XD=q#my $self = shift;
+!!$failed;#;$fE=bless({$w,$eE,$y,$z},$A);$gE=q#my $self = shift;
 shift, exit $self->$1(@_) if $_[0] =~ /^(--.*)$/ && $self->can($1);
-exit $self->default(@_);#;$YD=bless({$w,$XD,$y,$z},$A);$ZD={$ID,$KD,$LD,$ND,$OD,$QD,$RD,$TD,$UD,$WD,$tu,$YD};$cE=q#/lib/ni_main.b#;$dE=bless({$r1,$HD,$W2,$q,$X2,$q,$Y2,$ZD,$Q,$cE},$x2);$eE={};$fE=q#my $self = shift;
+exit $self->default(@_);#;$hE=bless({$w,$gE,$y,$z},$A);$iE={$PD,$RD,$SD,$UD,$VD,$XD,$YD,$cE,$dE,$fE,$Su,$hE};$jE=q#/lib/ni_main.b#;$kE=bless({$r1,$OD,$W2,$q,$X2,$q,$Y2,$iE,$Q,$jE},$x2);$lE={};$mE=q#my $self = shift;
 return $$self{named}{$_[0]} if exists $$self{named}{$_[0]};
 return $$self{resolvers}{$1}->($_[0]) if
   $_[0] =~ /^([^:]+):/ and exists $$self{resolvers}{$1};
-die "ni:self failed to resolve $_[0]";#;$gE=bless({$w,$fE,$y,$z},$A);$hE=q#resolver_for#;$iE=q#my $self = shift;
+die "ni:self failed to resolve $_[0]";#;$nE=bless({$w,$mE,$y,$z},$A);$oE=q#resolver_for#;$pE=q#my $self = shift;
 ${$$self{resolvers}}{$_[0]} = $_[1];
-$self;#;$jE=bless({$w,$iE,$y,$z},$A);$kE={$df,$gE,$hE,$jE};$lE=q#/lib/ni_resolver.b#;$mE=bless({$r1,$eE,$W2,$q,$X2,$q,$Y2,$kE,$Q,$lE},$x2);$nE={};$oE=q#exists#;$pE=q#exists $_[0]->{named}{$_[1]}#;$qE=bless({$w,$pE,$y,$z},$A);$rE=q#quoted#;$sE=q#my $self = shift;
+$self;#;$qE=bless({$w,$pE,$y,$z},$A);$rE={$ea,$nE,$oE,$qE};$sE=q#/lib/ni_resolver.b#;$tE=bless({$r1,$lE,$W2,$q,$X2,$q,$Y2,$rE,$Q,$sE},$x2);$uE={};$vE=q#exists#;$wE=q#exists $_[0]->{named}{$_[1]}#;$xE=bless({$w,$wE,$y,$z},$A);$yE=q#quoted#;$zE=q#my $self = shift;
 my $q = ni('ni:/lib/image')->new(@_);
 my $gs = $q->quote($self);
 $q->side_effect("\\$ni::self=$gs;");
-$q;#;$tE=bless({$w,$sE,$y,$z},$A);$uE={$oE,$qE,$rE,$tE};$vE=q#/lib/ni_image.b#;$wE=bless({$r1,$nE,$W2,$q,$X2,$q,$Y2,$uE,$Q,$vE},$x2);$xE=[$k3,$oD,$GD,$dE,$mE,$wE];$yE=bless({$r1,$ZC,$Q,$Jc,$v1,$xE},$s2);$zE=q#ni:/lib/ni.c#;$AE={$s2,1};$BE=q#/lib/ni.c#;$CE=[$Qg];$DE=bless({$r1,$AE,$Q,$BE,$v1,$CE},$J2);$EE=q#ni:/lib/ni_dev_introspection.b#;$FE=q#ni:/lib/ni_image.b#;$GE=q#ni:/lib/ni_main.b#;$HE=q#ni:/lib/ni_resolver.b#;$IE=q#ni:/lib/ni_self.b#;$JE=q#ni:/lib/ni_static_util.b#;$KE={};$LE=q#abbrev#;$ME=q#length($_[0]) < $_[1] ? $_[0] : substr($_[0], 0, $_[1] - 3) . '...'#;$NE=bless({$w,$ME,$y,$z},$A);$OE=q#dor#;$PE=q#defined $_[0] ? $_[0] : $_[1]#;$QE=bless({$w,$PE,$y,$z},$A);$RE=q#indent#;$SE=q#my ($s, $indent) = (@_, 2);
-join "\\n", map ' ' x $indent . $_, split /\\n/, $s;#;$TE=bless({$w,$SE,$y,$z},$A);$UE=q#max#;$VE=q#local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m#;$WE=bless({$w,$VE,$y,$z},$A);$XE=q#maxstr#;$YE=q#local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m#;$ZE=bless({$w,$YE,$y,$z},$A);$cF=q#mean#;$dF=q#sum(@_) / (@_ || 1)#;$eF=bless({$w,$dF,$y,$z},$A);$fF=q#min#;$gF=q#local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m#;$hF=bless({$w,$gF,$y,$z},$A);$iF=q#minstr#;$jF=q#local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m#;$kF=bless({$w,$jF,$y,$z},$A);$lF=q#outdent#;$mF=q#my $x = shift;
+$q;#;$AE=bless({$w,$zE,$y,$z},$A);$BE={$vE,$xE,$yE,$AE};$CE=q#/lib/ni_image.b#;$DE=bless({$r1,$uE,$W2,$q,$X2,$q,$Y2,$BE,$Q,$CE},$x2);$EE=[$k3,$vD,$ND,$kE,$tE,$DE];$FE=bless({$r1,$iD,$Q,$he,$v1,$EE},$s2);$GE=q#ni:/lib/ni.c#;$HE={$s2,1};$IE=q#/lib/ni.c#;$JE=[$rh];$KE=bless({$r1,$HE,$Q,$IE,$v1,$JE},$J2);$LE=q#ni:/lib/ni_dev_introspection.b#;$ME=q#ni:/lib/ni_image.b#;$NE=q#ni:/lib/ni_main.b#;$OE=q#ni:/lib/ni_resolver.b#;$PE=q#ni:/lib/ni_self.b#;$QE=q#ni:/lib/ni_static_util.b#;$RE={};$SE=q#abbrev#;$TE=q#length($_[0]) < $_[1] ? $_[0] : substr($_[0], 0, $_[1] - 3) . '...'#;$UE=bless({$w,$TE,$y,$z},$A);$VE=q#dor#;$WE=q#defined $_[0] ? $_[0] : $_[1]#;$XE=bless({$w,$WE,$y,$z},$A);$YE=q#indent#;$ZE=q#my ($s, $indent) = (@_, 2);
+join "\\n", map ' ' x $indent . $_, split /\\n/, $s;#;$cF=bless({$w,$ZE,$y,$z},$A);$dF=q#max#;$eF=q#local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m#;$fF=bless({$w,$eF,$y,$z},$A);$gF=q#maxstr#;$hF=q#local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m#;$iF=bless({$w,$hF,$y,$z},$A);$jF=q#mean#;$kF=q#sum(@_) / (@_ || 1)#;$lF=bless({$w,$kF,$y,$z},$A);$mF=q#min#;$nF=q#local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m#;$oF=bless({$w,$nF,$y,$z},$A);$pF=q#minstr#;$qF=q#local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m#;$rF=bless({$w,$qF,$y,$z},$A);$sF=q#outdent#;$tF=q#my $x = shift;
 return $x if ref $x;
 $x =~ s/^[ \\t]*|\\s*$//g;
 my @lines = split /\\n/, $x;
@@ -1145,54 +1145,54 @@ for (@lines[2..$\#lines]) {
 }
 my $spaces = ' ' x $indent;
 s/^$spaces// for @lines;
-join "\\n", @lines;#;$nF=bless({$w,$mF,$y,$z},$A);$oF=q#sgr#;$pF=q#(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x#;$qF=bless({$w,$pF,$y,$z},$A);$rF=q#sr#;$sF=q#(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x#;$tF=bless({$w,$sF,$y,$z},$A);$uF=q#sum#;$vF=q#local $_; my $x = 0; $x += $_ for @_; $x#;$wF=bless({$w,$vF,$y,$z},$A);$xF=q#swap#;$yF=q#@_[0, 1] = @_[1, 0]#;$zF=bless({$w,$yF,$y,$z},$A);$AF={$LE,$NE,$OE,$QE,$RE,$TE,$UE,$WE,$XE,$ZE,$cF,$eF,$fF,$hF,$iF,$kF,$lF,$nF,$oF,$qF,$rF,$tF,$uF,$wF,$xF,$zF};$BF=q#/lib/ni_static_util.b#;$CF=bless({$r1,$KE,$W2,$q,$X2,$q,$Y2,$AF,$Q,$BF},$x2);$DF=q#ni:/lib/object_metadata#;$EF={$t2,1,$C,1,$H,1};$FF=q#/lib/object_metadata#;$GF={};$HF=q#if (@_ == 2) {
+join "\\n", @lines;#;$uF=bless({$w,$tF,$y,$z},$A);$vF=q#sgr#;$wF=q#(my $x = $_[0]) =~ s/$_[1]/$_[2]/g; $x#;$xF=bless({$w,$wF,$y,$z},$A);$yF=q#sr#;$zF=q#(my $x = $_[0]) =~ s/$_[1]/$_[2]/;  $x#;$AF=bless({$w,$zF,$y,$z},$A);$BF=q#sum#;$CF=q#local $_; my $x = 0; $x += $_ for @_; $x#;$DF=bless({$w,$CF,$y,$z},$A);$EF=q#swap#;$FF=q#@_[0, 1] = @_[1, 0]#;$GF=bless({$w,$FF,$y,$z},$A);$HF={$SE,$UE,$VE,$XE,$YE,$cF,$dF,$fF,$gF,$iF,$jF,$lF,$mF,$oF,$pF,$rF,$sF,$uF,$vF,$xF,$yF,$AF,$BF,$DF,$EF,$GF};$IF=q#/lib/ni_static_util.b#;$JF=bless({$r1,$RE,$W2,$q,$X2,$q,$Y2,$HF,$Q,$IF},$x2);$KF=q#ni:/lib/object_metadata#;$LF={$t2,1,$C,1,$H,1};$MF=q#/lib/object_metadata#;$NF={};$OF=q#if (@_ == 2) {
   $_[0]->{'referent'} = $_[1];
   return $_[0];
 } else {
   return shift->{'referent'};
-}#;$IF=bless({$w,$HF,$y,$z},$A);$JF={$q1,$IF};$KF=q#/lib/object_metadata_rw.b#;$LF=bless({$r1,$GF,$W2,$q,$X2,$q,$Y2,$JF,$Q,$KF},$x2);$MF=[$k3,$LF];$NF=bless({$r1,$EF,$Q,$FF,$v1,$MF},$u2);$OF=q#ni:/lib/object_metadata.c#;$PF={$u2,1,$F2,1,$I2,1};$QF=q#/lib/object_metadata.c#;$RF=[$Qg];$SF=bless({$r1,$PF,$Q,$QF,$v1,$RF},$J2);$TF=q#ni:/lib/object_metadata_rw.b#;$UF=q#ni:/lib/perlbranch.b#;$VF=q#ni:/lib/quote_circular_addressed.b#;$WF=q#ni:/lib/quote_code_fail.b#;$XF=q#ni:/lib/quote_gensym_identity.b#;$YF=q#ni:/lib/quote_objects.b#;$ZF=q#ni:/lib/quote_simple#;$cG={$v2,1};$dG={};$eG=[];$fG=q#+{}#;$gG=bless({$t,$eG,$v,$q,$w,$fG,$y,$z},$A);$hG={$L4,$gG};$iG=q#/lib/quote_simple_init.b#;$jG=bless({$r1,$dG,$W2,$q,$X2,$q,$Y2,$hG,$Q,$iG},$x2);$kG={};$lG=[];$mG=bless({$t,$lG,$v,$q,$w,0,$y,$z},$A);$nG=[];$oG=q#shift->quote_value(shift)#;$pG=bless({$t,$nG,$v,$q,$w,$oG,$y,$z},$A);$qG={$Kb,$mG,$gc,$pG};$rG=q#/lib/quote_simple_quote.b#;$sG=bless({$r1,$kG,$W2,$q,$X2,$q,$Y2,$qG,$Q,$rG},$x2);$tG=[$k3,$jG,$sG,$Ka,$kb,$Ab];$uG=bless({$r1,$cG,$Q,$Uc,$v1,$tG},$w2);$vG=q#ni:/lib/quote_simple.c#;$wG={$w2,1};$xG=q#/lib/quote_simple.c#;$yG=[$Qg];$zG=bless({$r1,$wG,$Q,$xG,$v1,$yG},$J2);$AG=q#ni:/lib/quote_simple_init.b#;$BG=q#ni:/lib/quote_simple_quote.b#;$CG=q#ni:/lib/quote_values.b#;$DG=q#ni:/lib/ref_eq.b#;$EG=q#ni:/lib/resolver.b#;$FG=q#ni:/lib/slice#;$GG=q#ni:/lib/slice.b#;$HG=q#ni:/lib/slice.c#;$IG={$y2,1};$JG=q#/lib/slice.c#;$KG=[$Ug];$LG=bless({$r1,$IG,$Q,$JG,$v1,$KG},$J2);$MG=q#ni:/lib/slice_init.b#;$NG=q#ni:/lib/slice_serialize.b#;$OG=q#ni:/lib/static_fn.b#;$PG={};$QG=q#fc#;$RG=[];$SG=q#ni('ni:/lib/fn')->new(pop)->closure(@_)#;$TG=bless({$t,$RG,$v,$q,$w,$SG,$y,$z},$A);$UG=q#fk#;$VG=[];$WG=q#ni('ni:/lib/fn')->closure('@x' => [@_], q{wantarray ? @x : $x[0]});#;$XG=bless({$t,$VG,$v,$q,$w,$WG,$y,$AB},$A);$YG=[];$ZG=q#ni('ni:/lib/fn')->new(@_)#;$cH=bless({$t,$YG,$v,$q,$w,$ZG,$y,$AB},$A);$dH=q#fp#;$eH=[];$fH=q#($$)#;$gH=bless({$t,$eH,$v,$q,$w,$ZG,$y,$fH},$A);$hH={$QG,$TG,$UG,$XG,$fz,$cH,$dH,$gH};$iH=q#/lib/static_fn.b#;$jH=bless({$r1,$PG,$W2,$q,$X2,$q,$Y2,$hH,$Q,$iH},$x2);$kH=q#ni:/lib/subclass.b#;$lH=q#ni:/lib/tag#;$mH={$z2,1};$nH=q#/lib/tag#;$oH={};$pH=q#local $_;
+}#;$PF=bless({$w,$OF,$y,$z},$A);$QF={$q1,$PF};$RF=q#/lib/object_metadata_rw.b#;$SF=bless({$r1,$NF,$W2,$q,$X2,$q,$Y2,$QF,$Q,$RF},$x2);$TF=[$k3,$SF];$UF=bless({$r1,$LF,$Q,$MF,$v1,$TF},$u2);$VF=q#ni:/lib/object_metadata.c#;$WF={$u2,1,$F2,1,$I2,1};$XF=q#/lib/object_metadata.c#;$YF=[$rh];$ZF=bless({$r1,$WF,$Q,$XF,$v1,$YF},$J2);$cG=q#ni:/lib/object_metadata_rw.b#;$dG=q#ni:/lib/perlbranch.b#;$eG=q#ni:/lib/quote_circular_addressed.b#;$fG=q#ni:/lib/quote_code_fail.b#;$gG=q#ni:/lib/quote_gensym_identity.b#;$hG=q#ni:/lib/quote_objects.b#;$iG=q#ni:/lib/quote_simple#;$jG={$v2,1};$kG={};$lG=[];$mG=q#+{}#;$nG=bless({$t,$lG,$v,$q,$w,$mG,$y,$z},$A);$oG={$L4,$nG};$pG=q#/lib/quote_simple_init.b#;$qG=bless({$r1,$kG,$W2,$q,$X2,$q,$Y2,$oG,$Q,$pG},$x2);$rG={};$sG=[];$tG=bless({$t,$sG,$v,$q,$w,0,$y,$z},$A);$uG=[];$vG=q#shift->quote_value(shift)#;$wG=bless({$t,$uG,$v,$q,$w,$vG,$y,$z},$A);$xG={$id,$tG,$Cd,$wG};$yG=q#/lib/quote_simple_quote.b#;$zG=bless({$r1,$rG,$W2,$q,$X2,$q,$Y2,$xG,$Q,$yG},$x2);$AG=[$k3,$qG,$zG,$ic,$Gc,$Wc];$BG=bless({$r1,$jG,$Q,$se,$v1,$AG},$w2);$CG=q#ni:/lib/quote_simple.c#;$DG={$w2,1};$EG=q#/lib/quote_simple.c#;$FG=[$rh];$GG=bless({$r1,$DG,$Q,$EG,$v1,$FG},$J2);$HG=q#ni:/lib/quote_simple_init.b#;$IG=q#ni:/lib/quote_simple_quote.b#;$JG=q#ni:/lib/quote_values.b#;$KG=q#ni:/lib/ref_eq.b#;$LG=q#ni:/lib/resolver.b#;$MG=q#ni:/lib/slice#;$NG=q#ni:/lib/slice.b#;$OG=q#ni:/lib/slice.c#;$PG={$y2,1};$QG=q#/lib/slice.c#;$RG=[$vh];$SG=bless({$r1,$PG,$Q,$QG,$v1,$RG},$J2);$TG=q#ni:/lib/slice_init.b#;$UG=q#ni:/lib/slice_serialize.b#;$VG=q#ni:/lib/static_fn.b#;$WG={};$XG=q#fc#;$YG=[];$ZG=q#ni('ni:/lib/fn')->new(pop)->closure(@_)#;$cH=bless({$t,$YG,$v,$q,$w,$ZG,$y,$z},$A);$dH=q#fk#;$eH=[];$fH=q#ni('ni:/lib/fn')->closure('@x' => [@_], q{wantarray ? @x : $x[0]});#;$gH=bless({$t,$eH,$v,$q,$w,$fH,$y,$HB},$A);$hH=[];$iH=q#ni('ni:/lib/fn')->new(@_)#;$jH=bless({$t,$hH,$v,$q,$w,$iH,$y,$HB},$A);$kH=q#fp#;$lH=[];$mH=q#($$)#;$nH=bless({$t,$lH,$v,$q,$w,$iH,$y,$mH},$A);$oH={$XG,$cH,$dH,$gH,$mz,$jH,$kH,$nH};$pH=q#/lib/static_fn.b#;$qH=bless({$r1,$WG,$W2,$q,$X2,$q,$Y2,$oH,$Q,$pH},$x2);$rH=q#ni:/lib/subclass.b#;$sH=q#ni:/lib/tag#;$tH={$z2,1};$uH=q#/lib/tag#;$vH={};$wH=q#local $_;
 my ($self, $p) = @_;
 $_->apply($p) for @{$$self{slices}};
-$self;#;$qH=bless({$w,$pH,$y,$z},$A);$rH={$Ad,$qH};$sH=q#/lib/tag.b#;$tH=bless({$r1,$oH,$W2,$q,$X2,$q,$Y2,$rH,$Q,$sH},$x2);$uH={};$vH=q#local $_;
+$self;#;$xH=bless({$w,$wH,$y,$z},$A);$yH={$y9,$xH};$zH=q#/lib/tag.b#;$AH=bless({$r1,$vH,$W2,$q,$X2,$q,$Y2,$yH,$Q,$zH},$x2);$BH={};$CH=q#local $_;
 my $class = shift;
 my $name  = shift;
 +{name   => $name,
-  slices => [map $class->resolve($_), @_]};#;$wH=bless({$w,$vH,$y,$z},$A);$xH={$L4,$wH};$yH=q#/lib/tag_init.b#;$zH=bless({$r1,$uH,$W2,$q,$X2,$q,$Y2,$xH,$Q,$yH},$x2);$AH=[$md,$sd,$tH,$zH];$BH=bless({$r1,$mH,$Q,$nH,$v1,$AH},$A2);$CH=q#ni:/lib/tag.b#;$DH=q#ni:/lib/tag.c#;$EH={$A2,1};$FH=q#/lib/tag.c#;$GH=[$Ug];$HH=bless({$r1,$EH,$Q,$FH,$v1,$GH},$J2);$IH=q#ni:/lib/tag_init.b#;$JH=q#ni:/lib/test_assert_eq#;$KH={$B2,1};$LH=q#/lib/test_assert_eq#;$MH={$B2,1,$D2,1};$NH=q#/lib/test_assertion#;$OH={};$PH=q#commit#;$QH=[];$RH=q#my $self = shift;
+  slices => [map $class->resolve($_), @_]};#;$DH=bless({$w,$CH,$y,$z},$A);$EH={$L4,$DH};$FH=q#/lib/tag_init.b#;$GH=bless({$r1,$BH,$W2,$q,$X2,$q,$Y2,$EH,$Q,$FH},$x2);$HH=[$q9,$w9,$AH,$GH];$IH=bless({$r1,$tH,$Q,$uH,$v1,$HH},$A2);$JH=q#ni:/lib/tag.b#;$KH=q#ni:/lib/tag.c#;$LH={$A2,1};$MH=q#/lib/tag.c#;$NH=[$vh];$OH=bless({$r1,$LH,$Q,$MH,$v1,$NH},$J2);$PH=q#ni:/lib/tag_init.b#;$QH=q#ni:/lib/test_assert_eq#;$RH={$B2,1};$SH=q#/lib/test_assert_eq#;$TH={$B2,1,$D2,1};$UH=q#/lib/test_assertion#;$VH={};$WH=q#commit#;$XH=[];$YH=q#my $self = shift;
 my $test = ni('ni:/lib/test_case')->running_test;
 push @{$test->assertions}, $self->result;
-$self;#;$SH=bless({$t,$QH,$v,$q,$w,$RH,$y,$z},$A);$TH={$PH,$SH};$UH=q#/lib/test_assertion_commit.b#;$VH=bless({$r1,$OH,$W2,$q,$X2,$q,$Y2,$TH,$Q,$UH},$x2);$WH=[$k3,$VH];$XH=bless({$r1,$MH,$Q,$NH,$v1,$WH},$E2);$YH={};$ZH=q#diff#;$cI=[];$dI=q#shift->{'diff'}#;$eI=bless({$t,$cI,$v,$q,$w,$dI,$y,$z},$A);$fI={$ZH,$eI};$gI=q#/lib/test_assert_eq_ro.b#;$hI=bless({$r1,$YH,$W2,$q,$X2,$q,$Y2,$fI,$Q,$gI},$x2);$iI={};$jI=[];$kI=q#my ($class, $diff) = @_;
-+{diff => $diff};#;$lI=bless({$t,$jI,$v,$q,$w,$kI,$y,$z},$A);$mI={$L4,$lI};$nI=q#/lib/test_assert_eq_init.b#;$oI=bless({$r1,$iI,$W2,$q,$X2,$q,$Y2,$mI,$Q,$nI},$x2);$pI={};$qI=[];$rI=q#my $self = shift;
+$self;#;$ZH=bless({$t,$XH,$v,$q,$w,$YH,$y,$z},$A);$cI={$WH,$ZH};$dI=q#/lib/test_assertion_commit.b#;$eI=bless({$r1,$VH,$W2,$q,$X2,$q,$Y2,$cI,$Q,$dI},$x2);$fI=[$k3,$eI];$gI=bless({$r1,$TH,$Q,$UH,$v1,$fI},$E2);$hI={};$iI=q#diff#;$jI=[];$kI=q#shift->{'diff'}#;$lI=bless({$t,$jI,$v,$q,$w,$kI,$y,$z},$A);$mI={$iI,$lI};$nI=q#/lib/test_assert_eq_ro.b#;$oI=bless({$r1,$hI,$W2,$q,$X2,$q,$Y2,$mI,$Q,$nI},$x2);$pI={};$qI=[];$rI=q#my ($class, $diff) = @_;
++{diff => $diff};#;$sI=bless({$t,$qI,$v,$q,$w,$rI,$y,$z},$A);$tI={$L4,$sI};$uI=q#/lib/test_assert_eq_init.b#;$vI=bless({$r1,$pI,$W2,$q,$X2,$q,$Y2,$tI,$Q,$uI},$x2);$wI={};$xI=[];$yI=q#my $self = shift;
 $self->failed
   ? "FAIL\\n" . ni::indent(ni::json_encode_pretty($$self{diff}), 2)
-  : "PASS";#;$sI=bless({$t,$qI,$v,$q,$w,$rI,$y,$z},$A);$tI=q#failed#;$uI=[];$vI=q#defined shift->{diff}#;$wI=bless({$t,$uI,$v,$q,$w,$vI,$y,$z},$A);$xI=q#result#;$yI=[];$zI=bless({$t,$yI,$v,$q,$w,$vu,$y,$z},$A);$AI={$Lf,$sI,$tI,$wI,$xI,$zI};$BI=q#/lib/test_assert_eq_result.b#;$CI=bless({$r1,$pI,$W2,$q,$X2,$q,$Y2,$AI,$Q,$BI},$x2);$DI=[$XH,$hI,$oI,$CI];$EI=bless({$r1,$KH,$Q,$LH,$v1,$DI},$C2);$FI=q#ni:/lib/test_assert_eq.c#;$GI={$C2,1};$HI=q#/lib/test_assert_eq.c#;$II={$C2,1,$E2,1};$JI=q#/lib/test_assertion.c#;$KI=[$Qg];$LI=bless({$r1,$II,$Q,$JI,$v1,$KI},$J2);$MI=[$LI];$NI=bless({$r1,$GI,$Q,$HI,$v1,$MI},$J2);$OI=q#ni:/lib/test_assert_eq_init.b#;$PI=q#ni:/lib/test_assert_eq_result.b#;$QI=q#ni:/lib/test_assert_eq_ro.b#;$RI=q#ni:/lib/test_assertion#;$SI=q#ni:/lib/test_assertion.c#;$TI=q#ni:/lib/test_assertion_commit.b#;$UI=q#ni:/lib/test_case#;$VI={$C,1};$WI=q#/lib/test_case#;$XI=q#running_test#;$YI={};$ZI=[];$cJ=q#shift->{'assertions'}#;$dJ=bless({$t,$ZI,$v,$q,$w,$cJ,$y,$z},$A);$eJ=[];$fJ=q#shift->{'test'}#;$gJ=bless({$t,$eJ,$v,$q,$w,$fJ,$y,$z},$A);$hJ={$n,$dJ,$s,$gJ};$iJ=q#/lib/test_case_ro.b#;$jJ=bless({$r1,$YI,$W2,$q,$X2,$q,$Y2,$hJ,$Q,$iJ},$x2);$kJ={};$lJ=[];$mJ=q#if (@_ == 2) {
+  : "PASS";#;$zI=bless({$t,$xI,$v,$q,$w,$yI,$y,$z},$A);$AI=q#failed#;$BI=[];$CI=q#defined shift->{diff}#;$DI=bless({$t,$BI,$v,$q,$w,$CI,$y,$z},$A);$EI=q#result#;$FI=[];$GI=bless({$t,$FI,$v,$q,$w,$Uu,$y,$z},$A);$HI={$mg,$zI,$AI,$DI,$EI,$GI};$II=q#/lib/test_assert_eq_result.b#;$JI=bless({$r1,$wI,$W2,$q,$X2,$q,$Y2,$HI,$Q,$II},$x2);$KI=[$gI,$oI,$vI,$JI];$LI=bless({$r1,$RH,$Q,$SH,$v1,$KI},$C2);$MI=q#ni:/lib/test_assert_eq.c#;$NI={$C2,1};$OI=q#/lib/test_assert_eq.c#;$PI={$C2,1,$E2,1};$QI=q#/lib/test_assertion.c#;$RI=[$rh];$SI=bless({$r1,$PI,$Q,$QI,$v1,$RI},$J2);$TI=[$SI];$UI=bless({$r1,$NI,$Q,$OI,$v1,$TI},$J2);$VI=q#ni:/lib/test_assert_eq_init.b#;$WI=q#ni:/lib/test_assert_eq_result.b#;$XI=q#ni:/lib/test_assert_eq_ro.b#;$YI=q#ni:/lib/test_assertion#;$ZI=q#ni:/lib/test_assertion.c#;$cJ=q#ni:/lib/test_assertion_commit.b#;$dJ=q#ni:/lib/test_case#;$eJ={$C,1};$fJ=q#/lib/test_case#;$gJ=q#running_test#;$hJ={};$iJ=[];$jJ=q#shift->{'assertions'}#;$kJ=bless({$t,$iJ,$v,$q,$w,$jJ,$y,$z},$A);$lJ=[];$mJ=q#shift->{'test'}#;$nJ=bless({$t,$lJ,$v,$q,$w,$mJ,$y,$z},$A);$oJ={$n,$kJ,$s,$nJ};$pJ=q#/lib/test_case_ro.b#;$qJ=bless({$r1,$hJ,$W2,$q,$X2,$q,$Y2,$oJ,$Q,$pJ},$x2);$rJ={};$sJ=[];$tJ=q#if (@_ == 2) {
   $_[0]->{'error'} = $_[1];
   return $_[0];
 } else {
   return shift->{'error'};
-}#;$nJ=bless({$t,$lJ,$v,$q,$w,$mJ,$y,$z},$A);$oJ={$p,$nJ};$pJ=q#/lib/test_case_rw.b#;$qJ=bless({$r1,$kJ,$W2,$q,$X2,$q,$Y2,$oJ,$Q,$pJ},$x2);$rJ={};$sJ=[];$tJ=q#my $class = shift;
+}#;$uJ=bless({$t,$sJ,$v,$q,$w,$tJ,$y,$z},$A);$vJ={$p,$uJ};$wJ=q#/lib/test_case_rw.b#;$xJ=bless({$r1,$rJ,$W2,$q,$X2,$q,$Y2,$vJ,$Q,$wJ},$x2);$yJ={};$zJ=[];$AJ=q#my $class = shift;
 my $test  = fn shift;
 +{test       => $test,
   assertions => [],
   error      => undef,
-  outcome    => undef};#;$uJ=bless({$t,$sJ,$v,$q,$w,$tJ,$y,$z},$A);$vJ={$L4,$uJ};$wJ=q#/lib/test_case_init.b#;$xJ=bless({$r1,$rJ,$W2,$q,$X2,$q,$Y2,$vJ,$Q,$wJ},$x2);$yJ={};$zJ=[];$AJ=q#my $self = shift;
+  outcome    => undef};#;$BJ=bless({$t,$zJ,$v,$q,$w,$AJ,$y,$z},$A);$CJ={$L4,$BJ};$DJ=q#/lib/test_case_init.b#;$EJ=bless({$r1,$yJ,$W2,$q,$X2,$q,$Y2,$CJ,$Q,$DJ},$x2);$FJ={};$GJ=[];$HJ=q#my $self = shift;
 join '', $self->failed  ? 'FAIL ' : 'PASS ',
          $self->error   ? 'E'     : ':',
-         map $_->failed ? 'X'     : '.', @{$$self{assertions}};#;$BJ=bless({$t,$zJ,$v,$q,$w,$AJ,$y,$z},$A);$CJ=[];$DJ=q#!shift->{outcome}->[0]#;$EJ=bless({$t,$CJ,$v,$q,$w,$DJ,$y,$z},$A);$FJ={$Lf,$BJ,$tI,$EJ};$GJ=q#/lib/test_case_metrics.b#;$HJ=bless({$r1,$yJ,$W2,$q,$X2,$q,$Y2,$FJ,$Q,$GJ},$x2);$IJ={};$JJ=q#done#;$KJ=[];$LJ=q#my $self = shift;
+         map $_->failed ? 'X'     : '.', @{$$self{assertions}};#;$IJ=bless({$t,$GJ,$v,$q,$w,$HJ,$y,$z},$A);$JJ=[];$KJ=q#!shift->{outcome}->[0]#;$LJ=bless({$t,$JJ,$v,$q,$w,$KJ,$y,$z},$A);$MJ={$mg,$IJ,$AI,$LJ};$NJ=q#/lib/test_case_metrics.b#;$OJ=bless({$r1,$FJ,$W2,$q,$X2,$q,$Y2,$MJ,$Q,$NJ},$x2);$PJ={};$QJ=q#done#;$RJ=[];$SJ=q#my $self = shift;
 my @failed = grep $_->failed, @{$$self{assertions}};
 my $any_failed = @failed || defined $$self{error};
-$$self{outcome} = [!$any_failed, $$self{error}, @failed];#;$MJ=bless({$t,$KJ,$v,$q,$w,$LJ,$y,$z},$A);$NJ=[];$OJ=q#local $_;
+$$self{outcome} = [!$any_failed, $$self{error}, @failed];#;$TJ=bless({$t,$RJ,$v,$q,$w,$SJ,$y,$z},$A);$UJ=[];$VJ=q#local $_;
 my $self = shift;
 $self->class->with_test($self, \\&{$$self{test}});
-$self;#;$PJ=bless({$t,$NJ,$v,$q,$w,$OJ,$y,$z},$A);$QJ={$JJ,$MJ,$tu,$PJ};$RJ=q#/lib/test_case_run.b#;$SJ=bless({$r1,$IJ,$W2,$q,$X2,$q,$Y2,$QJ,$Q,$RJ},$x2);$TJ=[$NF,$jJ,$qJ,$xJ,$HJ,$SJ];$UJ=bless({$r1,$VI,$Q,$WI,$XI,$q,$v1,$TJ},$F2);$VJ=[];$WJ=q#shift->{running_test} = undef#;$XJ=bless({$t,$VJ,$v,$q,$w,$WJ,$y,$z},$A);$YJ=q#ni:/lib/test_case.c#;$ZJ={$F2,1};$cK=q#/lib/test_case.c#;$dK={};$eK=[];$fK=q#shift->{'running_test'}#;$gK=bless({$t,$eK,$v,$q,$w,$fK,$y,$z},$A);$hK={$XI,$gK};$iK=q#/lib/test_case.c_test_ro.b#;$jK=bless({$r1,$dK,$W2,$q,$X2,$q,$Y2,$hK,$Q,$iK},$x2);$kK={};$lK=q#with_test#;$mK=[];$nK=q#my ($self, $test, $f) = @_;
+$self;#;$WJ=bless({$t,$UJ,$v,$q,$w,$VJ,$y,$z},$A);$XJ={$QJ,$TJ,$Su,$WJ};$YJ=q#/lib/test_case_run.b#;$ZJ=bless({$r1,$PJ,$W2,$q,$X2,$q,$Y2,$XJ,$Q,$YJ},$x2);$cK=[$UF,$qJ,$xJ,$EJ,$OJ,$ZJ];$dK=bless({$r1,$eJ,$Q,$fJ,$gJ,$q,$v1,$cK},$F2);$eK=[];$fK=q#shift->{running_test} = undef#;$gK=bless({$t,$eK,$v,$q,$w,$fK,$y,$z},$A);$hK=q#ni:/lib/test_case.c#;$iK={$F2,1};$jK=q#/lib/test_case.c#;$kK={};$lK=[];$mK=q#shift->{'running_test'}#;$nK=bless({$t,$lK,$v,$q,$w,$mK,$y,$z},$A);$oK={$gJ,$nK};$pK=q#/lib/test_case.c_test_ro.b#;$qK=bless({$r1,$kK,$W2,$q,$X2,$q,$Y2,$oK,$Q,$pK},$x2);$rK={};$sK=q#with_test#;$tK=[];$uK=q#my ($self, $test, $f) = @_;
 local $$self{running_test} = $test;
 my %names = %{$ni::self->{named}};
 eval {&$f};
 %{$ni::self->{named}} = %names;
 $test->error($@) if $@;
-$test->done;#;$oK=bless({$t,$mK,$v,$q,$w,$nK,$y,$z},$A);$pK={$lK,$oK};$qK=q#/lib/test_case.c_test.b#;$rK=bless({$r1,$kK,$W2,$XJ,$X2,$q,$Y2,$pK,$Q,$qK},$x2);$sK=[$SF,$jK,$rK];$tK=bless({$r1,$ZJ,$Q,$cK,$v1,$sK},$J2);$uK=q#ni:/lib/test_case.c_test.b#;$vK=q#ni:/lib/test_case.c_test_ro.b#;$wK=q#ni:/lib/test_case_init.b#;$xK=q#ni:/lib/test_case_metrics.b#;$yK=q#ni:/lib/test_case_ro.b#;$zK=q#ni:/lib/test_case_run.b#;$AK=q#ni:/lib/test_case_rw.b#;$BK=q#ni:/lib/test_value#;$CK={$G2,1};$DK=q#/lib/test_value#;$EK={};$FK=[];$GK=q#\\$_[1]#;$HK=bless({$t,$FK,$v,$q,$w,$GK,$y,$z},$A);$IK={$L4,$HK};$JK=q#/lib/test_value_init.b#;$KK=bless({$r1,$EK,$W2,$q,$X2,$q,$Y2,$IK,$Q,$JK},$x2);$LK={};$MK=q#(==#;$NK=[];$OK=q#my ($self, $rhs) = @_;
+$test->done;#;$vK=bless({$t,$tK,$v,$q,$w,$uK,$y,$z},$A);$wK={$sK,$vK};$xK=q#/lib/test_case.c_test.b#;$yK=bless({$r1,$rK,$W2,$gK,$X2,$q,$Y2,$wK,$Q,$xK},$x2);$zK=[$ZF,$qK,$yK];$AK=bless({$r1,$iK,$Q,$jK,$v1,$zK},$J2);$BK=q#ni:/lib/test_case.c_test.b#;$CK=q#ni:/lib/test_case.c_test_ro.b#;$DK=q#ni:/lib/test_case_init.b#;$EK=q#ni:/lib/test_case_metrics.b#;$FK=q#ni:/lib/test_case_ro.b#;$GK=q#ni:/lib/test_case_run.b#;$HK=q#ni:/lib/test_case_rw.b#;$IK=q#ni:/lib/test_value#;$JK={$G2,1};$KK=q#/lib/test_value#;$LK={};$MK=[];$NK=q#\\$_[1]#;$OK=bless({$t,$MK,$v,$q,$w,$NK,$y,$z},$A);$PK={$L4,$OK};$QK=q#/lib/test_value_init.b#;$RK=bless({$r1,$LK,$W2,$q,$X2,$q,$Y2,$PK,$Q,$QK},$x2);$SK={};$TK=q#(==#;$UK=[];$VK=q#my ($self, $rhs) = @_;
 ni('ni:/lib/test_assert_eq')
   ->new($self->diff($rhs))
-  ->commit;#;$PK=bless({$t,$NK,$v,$q,$w,$OK,$y,$z},$A);$QK=q#detailed_scalar_diff#;$RK=[];$SK=q#local $_;
+  ->commit;#;$WK=bless({$t,$UK,$v,$q,$w,$VK,$y,$z},$A);$XK=q#detailed_scalar_diff#;$YK=[];$ZK=q#local $_;
 my ($self, $lhs, $rhs) = @_;
 my $lpos = 0;
 my $rpos = 0;
@@ -1213,7 +1213,7 @@ while ($lpos < length $lhs || $rpos < length $rhs) {
     $rpos = $found + 16;
   }
 }
-[@diff];#;$TK=bless({$t,$RK,$v,$q,$w,$SK,$y,$z},$A);$UK=[];$VK=q#my ($self, $rhs) = @_;
+[@diff];#;$cL=bless({$t,$YK,$v,$q,$w,$ZK,$y,$z},$A);$dL=[];$eL=q#my ($self, $rhs) = @_;
 my $class = $self->class;
 my $lhs = $$self;
 my $rl = ref $lhs;
@@ -1254,11 +1254,11 @@ if ($realtype eq 'HASH') {
     if length($lhs) + length($rhs) > 80;
   return {scalar_difference => [$lhs, $rhs]};
 }
-return undef;#;$WK=bless({$t,$UK,$v,$q,$w,$VK,$y,$z},$A);$XK={$MK,$PK,$QK,$TK,$ZH,$WK};$YK=q#/lib/test_value_eq.b#;$ZK=bless({$r1,$LK,$W2,$q,$X2,$q,$Y2,$XK,$Q,$YK},$x2);$cL={};$dL=[];$eL=q#ni::json_encode ${$_[0]}#;$fL=bless({$t,$dL,$v,$q,$w,$eL,$y,$z},$A);$gL={$Lf,$fL};$hL=q#/lib/test_value_str.b#;$iL=bless({$r1,$cL,$W2,$q,$X2,$q,$Y2,$gL,$Q,$hL},$x2);$jL=[$k3,$KK,$ZK,$iL];$kL=bless({$r1,$CK,$Q,$DK,$v1,$jL},$H2);$lL=q#ni:/lib/test_value.c#;$mL={$H2,1};$nL=q#/lib/test_value.c#;$oL=[$Qg];$pL=bless({$r1,$mL,$Q,$nL,$v1,$oL},$J2);$qL=q#ni:/lib/test_value_eq.b#;$rL=q#ni:/lib/test_value_init.b#;$sL=q#ni:/lib/test_value_str.b#;$tL=q#ni:/lib/todo#;$uL={$H,1};$vL=q#/lib/todo#;$wL={};$xL=q#shift->{'todo'}#;$yL=bless({$w,$xL,$y,$z},$A);$zL={$E,$yL};$AL=q#/lib/todo_ro.b#;$BL=bless({$r1,$wL,$W2,$q,$X2,$q,$Y2,$zL,$Q,$AL},$x2);$CL={};$DL=q#my $class = shift;
-+{todo => [map ni::outdent($_), @_]};#;$EL=bless({$w,$DL,$y,$z},$A);$FL={$L4,$EL};$GL=q#/lib/todo_init.b#;$HL=bless({$r1,$CL,$W2,$q,$X2,$q,$Y2,$FL,$Q,$GL},$x2);$IL={};$JL=q#my $self = shift;
+return undef;#;$fL=bless({$t,$dL,$v,$q,$w,$eL,$y,$z},$A);$gL={$TK,$WK,$XK,$cL,$iI,$fL};$hL=q#/lib/test_value_eq.b#;$iL=bless({$r1,$SK,$W2,$q,$X2,$q,$Y2,$gL,$Q,$hL},$x2);$jL={};$kL=[];$lL=q#ni::json_encode ${$_[0]}#;$mL=bless({$t,$kL,$v,$q,$w,$lL,$y,$z},$A);$nL={$mg,$mL};$oL=q#/lib/test_value_str.b#;$pL=bless({$r1,$jL,$W2,$q,$X2,$q,$Y2,$nL,$Q,$oL},$x2);$qL=[$k3,$RK,$iL,$pL];$rL=bless({$r1,$JK,$Q,$KK,$v1,$qL},$H2);$sL=q#ni:/lib/test_value.c#;$tL={$H2,1};$uL=q#/lib/test_value.c#;$vL=[$rh];$wL=bless({$r1,$tL,$Q,$uL,$v1,$vL},$J2);$xL=q#ni:/lib/test_value_eq.b#;$yL=q#ni:/lib/test_value_init.b#;$zL=q#ni:/lib/test_value_str.b#;$AL=q#ni:/lib/todo#;$BL={$H,1};$CL=q#/lib/todo#;$DL={};$EL=q#shift->{'todo'}#;$FL=bless({$w,$EL,$y,$z},$A);$GL={$E,$FL};$HL=q#/lib/todo_ro.b#;$IL=bless({$r1,$DL,$W2,$q,$X2,$q,$Y2,$GL,$Q,$HL},$x2);$JL={};$KL=q#my $class = shift;
++{todo => [map ni::outdent($_), @_]};#;$LL=bless({$w,$KL,$y,$z},$A);$ML={$L4,$LL};$NL=q#/lib/todo_init.b#;$OL=bless({$r1,$JL,$W2,$q,$X2,$q,$Y2,$ML,$Q,$NL},$x2);$PL={};$QL=q#my $self = shift;
 my $referent = $$self{referent} || '(anonymous)';
-"TODO $referent\\n" . ni::indent(join("\\n- ", @{$$self{todo}}), 2);#;$KL=bless({$w,$JL,$y,$z},$A);$LL={$Lf,$KL};$ML=q#/lib/todo_str.b#;$NL=bless({$r1,$IL,$W2,$q,$X2,$q,$Y2,$LL,$Q,$ML},$x2);$OL=[$NF,$BL,$HL,$NL];$PL=bless({$r1,$uL,$Q,$vL,$v1,$OL},$I2);$QL=q#ni:/lib/todo.c#;$RL={$I2,1};$SL=q#/lib/todo.c#;$TL=[$SF];$UL=bless({$r1,$RL,$Q,$SL,$v1,$TL},$J2);$VL=q#ni:/lib/todo_ctor.b#;$WL={};$XL=q#ni('ni:/lib/todo')->new(@_)#;$YL=bless({$w,$XL,$y,$z},$A);$ZL={$p1,$YL};$cM=q#/lib/todo_ctor.b#;$dM=bless({$r1,$WL,$W2,$q,$X2,$q,$Y2,$ZL,$Q,$cM},$x2);$eM=q#ni:/lib/todo_init.b#;$fM=q#ni:/lib/todo_ro.b#;$gM=q#ni:/lib/todo_str.b#;$hM=q#ni:/metaclass#;$iM={$J2,1};$jM=q#/metaclass#;$kM=[$kf,$yg,$qf,$rg];$lM=bless({$r1,$iM,$Q,$jM,$v1,$kM},$K2);$mM=q#ni:/metaclass.c#;$nM={$K2,1};$oM=q#/metaclass.c#;$pM=[$Hg];$qM=bless({$r1,$nM,$Q,$oM,$v1,$pM},$J2);$rM=q#ni:/module#;$sM=q#ni:/module.c#;$tM=q#ni:/object#;$uM=q#ni:/object.c#;$vM=q#ni:/semantic#;$wM=q#semantic#;$xM={$wM,1};$yM=[];$zM=bless({$r1,$xM,$Q,$we,$v1,$yM},$L2);$AM=q#ni:/semantic/dimension#;$BM={$P2,1};$CM=q#/semantic/dimension#;$DM=[$Hg];$EM=bless({$r1,$BM,$Q,$CM,$v1,$DM},$Q2);$FM=q#ni:/semantic/dimension.c#;$GM={$Q2,1};$HM=q#/semantic/dimension.c#;$IM=[$Yg];$JM=bless({$r1,$GM,$Q,$HM,$v1,$IM},$J2);$KM=q#ni:/semantic/task#;$LM=q#ni:/semantic/task.c#;$MM=q#ni:/semantic/task_outcome.b#;$NM=q#ni:/semantic/task_ro.b#;$OM=q#ni:main#;$PM={$Zp,1};$QM=[$dM,$jH,$IB,$Yp];$RM=bless({$r1,$PM,$Q,$Zp,$v1,$QM},$L2);$SM=q#ni:ni#;$TM={$yC,1};$UM=[$CF,$TC,$xC];$VM=bless({$r1,$TM,$Q,$yC,$v1,$UM},$L2);$WM={$d,$T,$W,$e1,$f1,$k1,$l1,$l5,$m5,$r5,$s5,$E5,$F5,$R5,$S5,$g6,$h6,$t6,$u6,$P6,$Q6,$V6,$W6,$e7,$f7,$U8,$V8,$d9,$e9,$x9,$y9,$O9,$P9,$Cc,$Dc,$Kc,$Lc,$Vc,$Wc,$re,$se,$xe,$ye,$Hg,$Ig,$Yg,$Zg,$fh,$gh,$yh,$zh,$Dh,$Eh,$oh,$Fh,$wh,$Gh,$f5,$Hh,$Xh,$Yh,$d5,$Zh,$ei,$fi,$Hi,$Ii,$Mi,$Ni,$ni,$Oi,$Fi,$Pi,$ij,$jj,$nj,$oj,$Xi,$pj,$gj,$qj,$Wk,$Xk,$dl,$el,$Ek,$fl,$Uk,$gl,$Gj,$hl,$wk,$il,$ck,$jl,$zj,$kl,$Cm,$Gm,$gn,$hn,$en,$in,$Yl,$jn,$lm,$kn,$Al,$ln,$zm,$mn,$tl,$nn,$Il,$on,$Io,$Jo,$No,$Oo,$En,$Po,$do,$Qo,$Ln,$Ro,$Go,$So,$wn,$To,$lo,$Uo,$pp,$qp,$up,$vp,$np,$wp,$ep,$xp,$Yp,$cq,$Aq,$Bq,$Fq,$Gq,$lq,$Hq,$yq,$Iq,$J4,$Jq,$Vh,$Kq,$Th,$Lq,$N3,$Mq,$V3,$Nq,$j4,$Oq,$t3,$Pq,$H4,$Qq,$v4,$Rq,$B8,$Sq,$Wq,$Xq,$z8,$Yq,$F7,$Zq,$f8,$cr,$v7,$dr,$R7,$er,$Tr,$Ur,$Yr,$Zr,$Dr,$cs,$Rr,$ds,$wr,$es,$ot,$st,$Et,$Ft,$Ct,$Gt,$Iu,$Mu,$iv,$jv,$gv,$kv,$hu,$lv,$ru,$mv,$Yt,$nv,$Du,$ov,$Qs,$pv,$mt,$qv,$Iv,$Jv,$Nv,$Ov,$zv,$Pv,$Gv,$Qv,$Uv,$Vv,$Jf,$Wv,$md,$Xv,$Ug,$Yv,$kw,$lw,$Le,$mw,$qw,$rw,$iw,$sw,$qf,$tw,$Lw,$Mw,$Dw,$Nw,$Rw,$Sw,$Jw,$Tw,$pg,$Uw,$zf,$Vw,$gg,$Ww,$ng,$Xw,$dy,$ey,$py,$qy,$ny,$ry,$Jx,$sy,$vx,$ty,$Px,$uy,$Dx,$vy,$gx,$wy,$mx,$xy,$Zx,$yy,$kd,$zy,$Dz,$Hz,$Tz,$Uz,$Rz,$Vz,$Ry,$Wz,$uz,$Xz,$lz,$Yz,$Bz,$Zz,$lB,$mB,$qB,$rB,$jB,$sB,$tA,$tB,$mA,$uB,$NA,$vB,$uc,$wB,$IB,$JB,$wc,$KB,$OB,$PB,$ea,$QB,$Ca,$RB,$i3,$SB,$yg,$TB,$xC,$zC,$TC,$UC,$Qf,$VC,$sd,$WC,$Se,$XC,$Ze,$YC,$yE,$zE,$DE,$EE,$GD,$FE,$wE,$GE,$dE,$HE,$mE,$IE,$oD,$JE,$CF,$DF,$NF,$OF,$SF,$TF,$LF,$UF,$kf,$VF,$Qb,$WF,$Ka,$XF,$mc,$YF,$Ab,$ZF,$uG,$vG,$zG,$AG,$jG,$BG,$sG,$CG,$kb,$DG,$Xf,$EG,$if,$FG,$Ud,$GG,$Ed,$HG,$LG,$MG,$Kd,$NG,$Sd,$OG,$jH,$kH,$Fg,$lH,$BH,$CH,$tH,$DH,$HH,$IH,$zH,$JH,$EI,$FI,$NI,$OI,$oI,$PI,$CI,$QI,$hI,$RI,$XH,$SI,$LI,$TI,$VH,$UI,$UJ,$YJ,$tK,$uK,$rK,$vK,$jK,$wK,$xJ,$xK,$HJ,$yK,$jJ,$zK,$SJ,$AK,$qJ,$BK,$kL,$lL,$pL,$qL,$ZK,$rL,$KK,$sL,$iL,$tL,$PL,$QL,$UL,$VL,$dM,$eM,$HL,$fM,$BL,$gM,$NL,$hM,$lM,$mM,$qM,$rM,$rg,$sM,$Wg,$tM,$k3,$uM,$Qg,$vM,$zM,$AM,$EM,$FM,$JM,$KM,$Ds,$LM,$yt,$MM,$Bs,$NM,$ps,$OM,$RM,$SM,$VM};$XM=q#resolvers#;$YM=[];$ZM=q#ni('ni:/io/fd')->new(0 + substr shift, 3)#;$cN=bless({$t,$YM,$v,$q,$w,$ZM,$y,$z},$A);$dN=q#file#;$eN=[];$fN=q#my $f = shift;
+"TODO $referent\\n" . ni::indent(join("\\n- ", @{$$self{todo}}), 2);#;$RL=bless({$w,$QL,$y,$z},$A);$SL={$mg,$RL};$TL=q#/lib/todo_str.b#;$UL=bless({$r1,$PL,$W2,$q,$X2,$q,$Y2,$SL,$Q,$TL},$x2);$VL=[$UF,$IL,$OL,$UL];$WL=bless({$r1,$BL,$Q,$CL,$v1,$VL},$I2);$XL=q#ni:/lib/todo.c#;$YL={$I2,1};$ZL=q#/lib/todo.c#;$cM=[$ZF];$dM=bless({$r1,$YL,$Q,$ZL,$v1,$cM},$J2);$eM=q#ni:/lib/todo_ctor.b#;$fM={};$gM=q#ni('ni:/lib/todo')->new(@_)#;$hM=bless({$w,$gM,$y,$z},$A);$iM={$p1,$hM};$jM=q#/lib/todo_ctor.b#;$kM=bless({$r1,$fM,$W2,$q,$X2,$q,$Y2,$iM,$Q,$jM},$x2);$lM=q#ni:/lib/todo_init.b#;$mM=q#ni:/lib/todo_ro.b#;$nM=q#ni:/lib/todo_str.b#;$oM=q#ni:/metaclass#;$pM={$J2,1};$qM=q#/metaclass#;$rM=[$Jf,$Xg,$Pf,$Qg];$sM=bless({$r1,$pM,$Q,$qM,$v1,$rM},$K2);$tM=q#ni:/metaclass.c#;$uM={$K2,1};$vM=q#/metaclass.c#;$wM=[$ih];$xM=bless({$r1,$uM,$Q,$vM,$v1,$wM},$J2);$yM=q#ni:/module#;$zM=q#ni:/module.c#;$AM=q#ni:/object#;$BM=q#ni:/object.c#;$CM=q#ni:/semantic#;$DM=q#semantic#;$EM={$DM,1};$FM=[];$GM=bless({$r1,$EM,$Q,$sf,$v1,$FM},$L2);$HM=q#ni:/semantic/dimension#;$IM={$P2,1};$JM=q#/semantic/dimension#;$KM=[$ih];$LM=bless({$r1,$IM,$Q,$JM,$v1,$KM},$Q2);$MM=q#ni:/semantic/dimension.c#;$NM={$Q2,1};$OM=q#/semantic/dimension.c#;$PM=[$zh];$QM=bless({$r1,$NM,$Q,$OM,$v1,$PM},$J2);$RM=q#ni:/semantic/task#;$SM=q#ni:/semantic/task.c#;$TM=q#ni:/semantic/task_outcome.b#;$UM=q#ni:/semantic/task_ro.b#;$VM=q#ni:main#;$WM={$Aq,1};$XM=[$kM,$qH,$PB,$zq];$YM=bless({$r1,$WM,$Q,$Aq,$v1,$XM},$L2);$ZM=q#ni:ni#;$cN={$FC,1};$dN=[$JF,$cD,$EC];$eN=bless({$r1,$cN,$Q,$FC,$v1,$dN},$L2);$fN={$d,$T,$W,$e1,$f1,$k1,$l1,$l5,$m5,$r5,$s5,$E5,$F5,$R5,$S5,$g6,$h6,$t6,$u6,$P6,$Q6,$V6,$W6,$e7,$f7,$U8,$V8,$d9,$e9,$za,$Aa,$Ta,$Ua,$mb,$nb,$Yd,$Zd,$ie,$je,$te,$ue,$nf,$of,$tf,$uf,$ih,$jh,$zh,$Ah,$Eh,$Fh,$Xh,$Yh,$ei,$fi,$Nh,$gi,$Vh,$hi,$f5,$ii,$yi,$zi,$d5,$Ai,$Di,$Ei,$ij,$jj,$nj,$oj,$Mi,$pj,$gj,$qj,$Hj,$Ij,$Mj,$Nj,$yj,$Oj,$Fj,$Pj,$xl,$yl,$Cl,$Dl,$fl,$El,$vl,$Fl,$hk,$Gl,$Vk,$Hl,$Bk,$Il,$Yj,$Jl,$dn,$hn,$Fn,$Gn,$Dn,$Hn,$zm,$In,$Km,$Jn,$Zl,$Kn,$Ym,$Ln,$Sl,$Mn,$jm,$Nn,$jp,$kp,$op,$pp,$fo,$qp,$Co,$rp,$mo,$sp,$hp,$tp,$Vn,$up,$Ko,$vp,$Op,$Pp,$Tp,$Up,$Mp,$Vp,$Dp,$Wp,$zq,$Bq,$Zq,$cr,$gr,$hr,$Kq,$ir,$Xq,$jr,$J4,$kr,$wi,$lr,$ui,$mr,$N3,$nr,$V3,$or,$j4,$pr,$t3,$qr,$H4,$rr,$v4,$sr,$B8,$tr,$xr,$yr,$z8,$zr,$F7,$Ar,$f8,$Br,$v7,$Cr,$R7,$Dr,$us,$vs,$zs,$As,$es,$Bs,$ss,$Cs,$Vr,$Ds,$Nt,$Rt,$fu,$gu,$du,$hu,$jv,$nv,$Hv,$Iv,$Fv,$Jv,$Gu,$Kv,$Qu,$Lv,$zu,$Mv,$ev,$Nv,$rt,$Ov,$Lt,$Pv,$jw,$kw,$ow,$pw,$Yv,$qw,$hw,$rw,$vw,$ww,$kg,$xw,$q9,$yw,$vh,$zw,$Jw,$Kw,$Hf,$Lw,$Pw,$Qw,$Hw,$Rw,$Pf,$Sw,$ta,$Tw,$G9,$Uw,$Yw,$Zw,$M9,$cx,$Og,$dx,$Yf,$ex,$Fg,$fx,$Mg,$gx,$ky,$ly,$wy,$xy,$uy,$yy,$Qx,$zy,$Cx,$Ay,$Wx,$By,$Kx,$Cy,$nx,$Dy,$tx,$Ey,$iy,$Fy,$o9,$Gy,$Kz,$Oz,$cA,$dA,$Yz,$eA,$Yy,$fA,$Bz,$gA,$sz,$hA,$Iz,$iA,$sB,$tB,$xB,$yB,$qB,$zB,$AA,$AB,$tA,$BB,$UA,$CB,$Qd,$DB,$PB,$QB,$Sd,$RB,$VB,$WB,$Ab,$XB,$Yb,$YB,$i3,$ZB,$Xg,$cC,$EC,$GC,$cD,$dD,$rg,$eD,$w9,$fD,$T9,$gD,$ca,$hD,$FE,$GE,$KE,$LE,$ND,$ME,$DE,$NE,$kE,$OE,$tE,$PE,$vD,$QE,$JF,$KF,$UF,$VF,$ZF,$cG,$SF,$dG,$Jf,$eG,$od,$fG,$ic,$gG,$Id,$hG,$Wc,$iG,$BG,$CG,$GG,$HG,$qG,$IG,$zG,$JG,$Gc,$KG,$yg,$LG,$ja,$MG,$Qe,$NG,$Ie,$OG,$SG,$TG,$Oe,$UG,$ra,$VG,$qH,$rH,$gh,$sH,$IH,$JH,$AH,$KH,$OH,$PH,$GH,$QH,$LI,$MI,$UI,$VI,$vI,$WI,$JI,$XI,$oI,$YI,$gI,$ZI,$SI,$cJ,$eI,$dJ,$dK,$hK,$AK,$BK,$yK,$CK,$qK,$DK,$EJ,$EK,$OJ,$FK,$qJ,$GK,$ZJ,$HK,$xJ,$IK,$rL,$sL,$wL,$xL,$iL,$yL,$RK,$zL,$pL,$AL,$WL,$XL,$dM,$eM,$kM,$lM,$OL,$mM,$IL,$nM,$UL,$oM,$sM,$tM,$xM,$yM,$Qg,$zM,$xh,$AM,$k3,$BM,$rh,$CM,$GM,$HM,$LM,$MM,$QM,$RM,$et,$SM,$Xt,$TM,$ct,$UM,$Os,$VM,$YM,$ZM,$eN};$gN=q#resolvers#;$hN=[];$iN=q#ni('ni:/io/fd')->new(0 + substr shift, 3)#;$jN=bless({$t,$hN,$v,$q,$w,$iN,$y,$z},$A);$kN=q#file#;$lN=[];$mN=q#my $f = shift;
 $f =~ s/^file:(?:\\/\\/)?//;
-ni('ni:/io/file')->new($f);#;$gN=bless({$t,$eN,$v,$q,$w,$fN,$y,$z},$A);$hN=q#null#;$iN=[];$jN=q#ni('ni:/io/null')->new#;$kN=bless({$t,$iN,$v,$q,$w,$jN,$y,$z},$A);$lN=q#sh#;$mN=[];$nN=q#ni('ni:/io/exec')->new('/bin/sh', '-c', substr shift, 3)->fork#;$oN=bless({$t,$mN,$v,$q,$w,$nN,$y,$z},$A);$pN=q#str#;$qN=[];$rN=q#my $s = shift;
-ni('ni:/io/str')->new(substr($s, 4) . "\\n");#;$sN=bless({$t,$qN,$v,$q,$w,$rN,$y,$z},$A);$tN={$h8,$cN,$dN,$gN,$hN,$kN,$lN,$oN,$pN,$sN};$uN=bless({$c,$WM,$XM,$tN},$r2);*$Ky=\&$Hy;*$Jy=\&$Fy;*$Iy=\&$Dy;*$yd=\&$wd;*$xd=\&$ud;$i3->apply_($I1);$i3->apply_($J1);$i3->apply_($K1);$i3->apply_($L1);$i3->apply_($s1);$i3->apply_($M1);$i3->apply_($w1);$i3->apply_($N1);$i3->apply_($x1);$i3->apply_($O1);$i3->apply_($y1);$i3->apply_($P1);$i3->apply_($z1);$i3->apply_($Q1);$i3->apply_($A1);$i3->apply_($R1);$i3->apply_($B1);$i3->apply_($S1);$i3->apply_($C1);$i3->apply_($T1);$i3->apply_($D1);$i3->apply_($U1);$i3->apply_($E1);$i3->apply_($V1);$i3->apply_($F1);$i3->apply_($W1);$i3->apply_($X1);$i3->apply_($Y1);$i3->apply_($Z1);$i3->apply_($c2);$i3->apply_($d2);$i3->apply_($e2);$i3->apply_($f2);$i3->apply_($g2);$i3->apply_($h2);$i3->apply_($i2);$i3->apply_($j2);$i3->apply_($k2);$i3->apply_($S);$i3->apply_($l2);$i3->apply_($A);$i3->apply_($m2);$i3->apply_($n2);$i3->apply_($o2);$i3->apply_($p2);$i3->apply_($q2);$i3->apply_($r2);$i3->apply_($s2);$i3->apply_($t2);$i3->apply_($u2);$i3->apply_($v2);$i3->apply_($w2);$i3->apply_($x2);$i3->apply_($y2);$i3->apply_($z2);$i3->apply_($A2);$i3->apply_($B2);$i3->apply_($C2);$i3->apply_($D2);$i3->apply_($E2);$i3->apply_($C);$i3->apply_($F2);$i3->apply_($G2);$i3->apply_($H2);$i3->apply_($H);$i3->apply_($I2);$i3->apply_($J2);$i3->apply_($K2);$i3->apply_($L2);$i3->apply_($M2);$i3->apply_($N2);$i3->apply_($O2);$i3->apply_($P2);$i3->apply_($Q2);$i3->apply_($R2);$i3->apply_($S2);$t3->apply_($s1);$t3->apply_($w1);$t3->apply_($x1);$t3->apply_($y1);$t3->apply_($z1);$t3->apply_($A1);$t3->apply_($B1);$t3->apply_($C1);$t3->apply_($D1);$t3->apply_($E1);$t3->apply_($F1);$N3->apply_($s1);$N3->apply_($w1);$N3->apply_($x1);$N3->apply_($y1);$N3->apply_($z1);$N3->apply_($A1);$N3->apply_($B1);$N3->apply_($C1);$N3->apply_($D1);$N3->apply_($E1);$N3->apply_($F1);$V3->apply_($s1);$V3->apply_($w1);$V3->apply_($x1);$V3->apply_($y1);$V3->apply_($z1);$V3->apply_($A1);$V3->apply_($B1);$V3->apply_($C1);$V3->apply_($D1);$V3->apply_($E1);$V3->apply_($F1);$j4->apply_($s1);$j4->apply_($w1);$j4->apply_($x1);$j4->apply_($y1);$j4->apply_($z1);$j4->apply_($A1);$j4->apply_($B1);$j4->apply_($C1);$j4->apply_($D1);$j4->apply_($E1);$j4->apply_($F1);$v4->apply_($s1);$v4->apply_($w1);$v4->apply_($x1);$v4->apply_($y1);$v4->apply_($z1);$v4->apply_($A1);$v4->apply_($B1);$v4->apply_($C1);$v4->apply_($D1);$v4->apply_($E1);$v4->apply_($F1);$H4->apply_($s1);$H4->apply_($w1);$H4->apply_($x1);$H4->apply_($y1);$H4->apply_($z1);$H4->apply_($A1);$H4->apply_($B1);$H4->apply_($C1);$H4->apply_($D1);$H4->apply_($E1);$H4->apply_($F1);$d5->apply_($s1);$v7->apply_($E1);$F7->apply_($E1);$R7->apply_($E1);$f8->apply_($E1);$z8->apply_($E1);$ea->apply_($p2);$Ca->apply_($p2);$Ka->apply_($p2);$Ka->apply_($v2);$kb->apply_($p2);$kb->apply_($v2);$Ab->apply_($p2);$Ab->apply_($v2);$Qb->apply_($p2);$mc->apply_($p2);$uc->apply_($p2);$kd->apply_($I1);$kd->apply_($J1);$kd->apply_($L1);$kd->apply_($M1);$kd->apply_($N1);$kd->apply_($O1);$kd->apply_($P1);$kd->apply_($Q1);$kd->apply_($R1);$kd->apply_($S1);$kd->apply_($T1);$kd->apply_($U1);$kd->apply_($V1);$kd->apply_($W1);$kd->apply_($Y1);$kd->apply_($c2);$kd->apply_($e2);$kd->apply_($f2);$kd->apply_($g2);$kd->apply_($h2);$kd->apply_($i2);$kd->apply_($j2);$kd->apply_($k2);$kd->apply_($l2);$kd->apply_($m2);$kd->apply_($o2);$kd->apply_($q2);$kd->apply_($s2);$kd->apply_($u2);$kd->apply_($w2);$kd->apply_($x2);$kd->apply_($y2);$kd->apply_($z2);$kd->apply_($A2);$kd->apply_($C2);$kd->apply_($E2);$kd->apply_($F2);$kd->apply_($H2);$kd->apply_($I2);$kd->apply_($J2);$kd->apply_($K2);$kd->apply_($L2);$kd->apply_($M2);$kd->apply_($O2);$kd->apply_($P2);$kd->apply_($Q2);$kd->apply_($S2);$sd->apply_($I1);$sd->apply_($J1);$sd->apply_($L1);$sd->apply_($M1);$sd->apply_($N1);$sd->apply_($O1);$sd->apply_($P1);$sd->apply_($Q1);$sd->apply_($R1);$sd->apply_($S1);$sd->apply_($T1);$sd->apply_($U1);$sd->apply_($V1);$sd->apply_($W1);$sd->apply_($Y1);$sd->apply_($c2);$sd->apply_($e2);$sd->apply_($g2);$sd->apply_($h2);$sd->apply_($i2);$sd->apply_($j2);$sd->apply_($k2);$sd->apply_($S);$sd->apply_($l2);$sd->apply_($m2);$sd->apply_($o2);$sd->apply_($q2);$sd->apply_($s2);$sd->apply_($u2);$sd->apply_($w2);$sd->apply_($x2);$sd->apply_($y2);$sd->apply_($z2);$sd->apply_($A2);$sd->apply_($C2);$sd->apply_($E2);$sd->apply_($F2);$sd->apply_($H2);$sd->apply_($I2);$sd->apply_($J2);$sd->apply_($K2);$sd->apply_($L2);$sd->apply_($M2);$sd->apply_($O2);$sd->apply_($P2);$sd->apply_($Q2);$sd->apply_($S2);$Ed->apply_($x2);$Kd->apply_($x2);$Sd->apply_($j2);$Sd->apply_($x2);$Le->apply_($I1);$Le->apply_($J1);$Le->apply_($L1);$Le->apply_($M1);$Le->apply_($N1);$Le->apply_($O1);$Le->apply_($P1);$Le->apply_($Q1);$Le->apply_($R1);$Le->apply_($S1);$Le->apply_($T1);$Le->apply_($U1);$Le->apply_($V1);$Le->apply_($W1);$Le->apply_($Y1);$Le->apply_($c2);$Le->apply_($e2);$Le->apply_($g2);$Le->apply_($h2);$Le->apply_($i2);$Le->apply_($k2);$Le->apply_($l2);$Le->apply_($m2);$Le->apply_($o2);$Le->apply_($q2);$Le->apply_($s2);$Le->apply_($u2);$Le->apply_($w2);$Le->apply_($y2);$Le->apply_($A2);$Le->apply_($C2);$Le->apply_($E2);$Le->apply_($F2);$Le->apply_($H2);$Le->apply_($I2);$Le->apply_($J2);$Le->apply_($K2);$Le->apply_($L2);$Le->apply_($M2);$Le->apply_($O2);$Le->apply_($P2);$Le->apply_($Q2);$Le->apply_($S2);$Se->apply_($I1);$Se->apply_($J1);$Se->apply_($L1);$Se->apply_($M1);$Se->apply_($N1);$Se->apply_($O1);$Se->apply_($P1);$Se->apply_($Q1);$Se->apply_($R1);$Se->apply_($S1);$Se->apply_($T1);$Se->apply_($U1);$Se->apply_($V1);$Se->apply_($W1);$Se->apply_($Y1);$Se->apply_($c2);$Se->apply_($e2);$Se->apply_($g2);$Se->apply_($h2);$Se->apply_($i2);$Se->apply_($j2);$Se->apply_($k2);$Se->apply_($l2);$Se->apply_($m2);$Se->apply_($o2);$Se->apply_($q2);$Se->apply_($s2);$Se->apply_($u2);$Se->apply_($w2);$Se->apply_($x2);$Se->apply_($y2);$Se->apply_($z2);$Se->apply_($A2);$Se->apply_($C2);$Se->apply_($E2);$Se->apply_($F2);$Se->apply_($H2);$Se->apply_($I2);$Se->apply_($J2);$Se->apply_($K2);$Se->apply_($L2);$Se->apply_($M2);$Se->apply_($O2);$Se->apply_($P2);$Se->apply_($Q2);$Se->apply_($S2);$Ze->apply_($I1);$Ze->apply_($J1);$Ze->apply_($L1);$Ze->apply_($M1);$Ze->apply_($N1);$Ze->apply_($O1);$Ze->apply_($P1);$Ze->apply_($Q1);$Ze->apply_($R1);$Ze->apply_($S1);$Ze->apply_($T1);$Ze->apply_($U1);$Ze->apply_($V1);$Ze->apply_($W1);$Ze->apply_($Y1);$Ze->apply_($c2);$Ze->apply_($e2);$Ze->apply_($g2);$Ze->apply_($h2);$Ze->apply_($i2);$Ze->apply_($j2);$Ze->apply_($k2);$Ze->apply_($l2);$Ze->apply_($m2);$Ze->apply_($o2);$Ze->apply_($q2);$Ze->apply_($s2);$Ze->apply_($u2);$Ze->apply_($w2);$Ze->apply_($x2);$Ze->apply_($y2);$Ze->apply_($z2);$Ze->apply_($A2);$Ze->apply_($C2);$Ze->apply_($E2);$Ze->apply_($F2);$Ze->apply_($H2);$Ze->apply_($I2);$Ze->apply_($J2);$Ze->apply_($K2);$Ze->apply_($L2);$Ze->apply_($M2);$Ze->apply_($O2);$Ze->apply_($P2);$Ze->apply_($Q2);$Ze->apply_($S2);$if->apply_($I1);$if->apply_($J1);$if->apply_($L1);$if->apply_($M1);$if->apply_($N1);$if->apply_($O1);$if->apply_($P1);$if->apply_($Q1);$if->apply_($R1);$if->apply_($S1);$if->apply_($T1);$if->apply_($U1);$if->apply_($V1);$if->apply_($W1);$if->apply_($Y1);$if->apply_($c2);$if->apply_($e2);$if->apply_($g2);$if->apply_($h2);$if->apply_($i2);$if->apply_($j2);$if->apply_($k2);$if->apply_($l2);$if->apply_($m2);$if->apply_($o2);$if->apply_($q2);$if->apply_($s2);$if->apply_($u2);$if->apply_($w2);$if->apply_($y2);$if->apply_($z2);$if->apply_($A2);$if->apply_($C2);$if->apply_($E2);$if->apply_($F2);$if->apply_($H2);$if->apply_($I2);$if->apply_($J2);$if->apply_($K2);$if->apply_($L2);$if->apply_($M2);$if->apply_($O2);$if->apply_($P2);$if->apply_($Q2);$if->apply_($S2);$qf->apply_($I1);$qf->apply_($J1);$qf->apply_($L1);$qf->apply_($M1);$qf->apply_($N1);$qf->apply_($O1);$qf->apply_($P1);$qf->apply_($Q1);$qf->apply_($R1);$qf->apply_($S1);$qf->apply_($T1);$qf->apply_($U1);$qf->apply_($V1);$qf->apply_($W1);$qf->apply_($Y1);$qf->apply_($c2);$qf->apply_($e2);$qf->apply_($g2);$qf->apply_($i2);$qf->apply_($k2);$qf->apply_($l2);$qf->apply_($m2);$qf->apply_($o2);$qf->apply_($q2);$qf->apply_($s2);$qf->apply_($u2);$qf->apply_($w2);$qf->apply_($y2);$qf->apply_($A2);$qf->apply_($C2);$qf->apply_($E2);$qf->apply_($F2);$qf->apply_($H2);$qf->apply_($I2);$qf->apply_($J2);$qf->apply_($K2);$qf->apply_($L2);$qf->apply_($M2);$qf->apply_($O2);$qf->apply_($P2);$qf->apply_($Q2);$qf->apply_($S2);$zf->apply_($I1);$zf->apply_($J1);$zf->apply_($L1);$zf->apply_($M1);$zf->apply_($N1);$zf->apply_($O1);$zf->apply_($P1);$zf->apply_($Q1);$zf->apply_($R1);$zf->apply_($S1);$zf->apply_($T1);$zf->apply_($U1);$zf->apply_($V1);$zf->apply_($W1);$zf->apply_($Y1);$zf->apply_($c2);$zf->apply_($e2);$zf->apply_($g2);$zf->apply_($h2);$zf->apply_($i2);$zf->apply_($k2);$zf->apply_($l2);$zf->apply_($m2);$zf->apply_($o2);$zf->apply_($q2);$zf->apply_($s2);$zf->apply_($u2);$zf->apply_($w2);$zf->apply_($y2);$zf->apply_($A2);$zf->apply_($C2);$zf->apply_($E2);$zf->apply_($F2);$zf->apply_($H2);$zf->apply_($I2);$zf->apply_($J2);$zf->apply_($K2);$zf->apply_($L2);$zf->apply_($M2);$zf->apply_($O2);$zf->apply_($P2);$zf->apply_($Q2);$zf->apply_($S2);$Jf->apply_($I1);$Jf->apply_($J1);$Jf->apply_($L1);$Jf->apply_($M1);$Jf->apply_($N1);$Jf->apply_($O1);$Jf->apply_($P1);$Jf->apply_($Q1);$Jf->apply_($R1);$Jf->apply_($S1);$Jf->apply_($T1);$Jf->apply_($U1);$Jf->apply_($V1);$Jf->apply_($W1);$Jf->apply_($Y1);$Jf->apply_($c2);$Jf->apply_($e2);$Jf->apply_($g2);$Jf->apply_($h2);$Jf->apply_($i2);$Jf->apply_($k2);$Jf->apply_($l2);$Jf->apply_($m2);$Jf->apply_($o2);$Jf->apply_($q2);$Jf->apply_($s2);$Jf->apply_($u2);$Jf->apply_($w2);$Jf->apply_($y2);$Jf->apply_($A2);$Jf->apply_($C2);$Jf->apply_($E2);$Jf->apply_($F2);$Jf->apply_($H2);$Jf->apply_($I2);$Jf->apply_($J2);$Jf->apply_($K2);$Jf->apply_($L2);$Jf->apply_($M2);$Jf->apply_($O2);$Jf->apply_($P2);$Jf->apply_($Q2);$Jf->apply_($S2);$Qf->apply_($I1);$Qf->apply_($J1);$Qf->apply_($L1);$Qf->apply_($M1);$Qf->apply_($N1);$Qf->apply_($O1);$Qf->apply_($P1);$Qf->apply_($Q1);$Qf->apply_($R1);$Qf->apply_($S1);$Qf->apply_($T1);$Qf->apply_($U1);$Qf->apply_($V1);$Qf->apply_($W1);$Qf->apply_($Y1);$Qf->apply_($c2);$Qf->apply_($e2);$Qf->apply_($g2);$Qf->apply_($h2);$Qf->apply_($i2);$Qf->apply_($k2);$Qf->apply_($l2);$Qf->apply_($m2);$Qf->apply_($o2);$Qf->apply_($q2);$Qf->apply_($s2);$Qf->apply_($u2);$Qf->apply_($w2);$Qf->apply_($y2);$Qf->apply_($A2);$Qf->apply_($C2);$Qf->apply_($E2);$Qf->apply_($F2);$Qf->apply_($H2);$Qf->apply_($I2);$Qf->apply_($J2);$Qf->apply_($K2);$Qf->apply_($L2);$Qf->apply_($M2);$Qf->apply_($O2);$Qf->apply_($P2);$Qf->apply_($Q2);$Qf->apply_($S2);$Xf->apply_($I1);$Xf->apply_($J1);$Xf->apply_($L1);$Xf->apply_($M1);$Xf->apply_($N1);$Xf->apply_($O1);$Xf->apply_($P1);$Xf->apply_($Q1);$Xf->apply_($R1);$Xf->apply_($S1);$Xf->apply_($T1);$Xf->apply_($U1);$Xf->apply_($V1);$Xf->apply_($W1);$Xf->apply_($Y1);$Xf->apply_($c2);$Xf->apply_($e2);$Xf->apply_($g2);$Xf->apply_($h2);$Xf->apply_($i2);$Xf->apply_($k2);$Xf->apply_($l2);$Xf->apply_($m2);$Xf->apply_($o2);$Xf->apply_($q2);$Xf->apply_($s2);$Xf->apply_($u2);$Xf->apply_($w2);$Xf->apply_($y2);$Xf->apply_($A2);$Xf->apply_($C2);$Xf->apply_($E2);$Xf->apply_($F2);$Xf->apply_($H2);$Xf->apply_($I2);$Xf->apply_($J2);$Xf->apply_($K2);$Xf->apply_($L2);$Xf->apply_($M2);$Xf->apply_($O2);$Xf->apply_($P2);$Xf->apply_($Q2);$Xf->apply_($S2);$gg->apply_($I1);$gg->apply_($J1);$gg->apply_($L1);$gg->apply_($M1);$gg->apply_($N1);$gg->apply_($O1);$gg->apply_($P1);$gg->apply_($Q1);$gg->apply_($R1);$gg->apply_($S1);$gg->apply_($T1);$gg->apply_($U1);$gg->apply_($V1);$gg->apply_($W1);$gg->apply_($Y1);$gg->apply_($c2);$gg->apply_($e2);$gg->apply_($g2);$gg->apply_($h2);$gg->apply_($i2);$gg->apply_($k2);$gg->apply_($l2);$gg->apply_($m2);$gg->apply_($o2);$gg->apply_($q2);$gg->apply_($s2);$gg->apply_($u2);$gg->apply_($w2);$gg->apply_($y2);$gg->apply_($A2);$gg->apply_($C2);$gg->apply_($E2);$gg->apply_($F2);$gg->apply_($H2);$gg->apply_($I2);$gg->apply_($J2);$gg->apply_($K2);$gg->apply_($L2);$gg->apply_($M2);$gg->apply_($O2);$gg->apply_($P2);$gg->apply_($Q2);$gg->apply_($S2);$ng->apply_($I1);$ng->apply_($J1);$ng->apply_($L1);$ng->apply_($M1);$ng->apply_($N1);$ng->apply_($O1);$ng->apply_($P1);$ng->apply_($Q1);$ng->apply_($R1);$ng->apply_($S1);$ng->apply_($T1);$ng->apply_($U1);$ng->apply_($V1);$ng->apply_($W1);$ng->apply_($Y1);$ng->apply_($c2);$ng->apply_($e2);$ng->apply_($g2);$ng->apply_($h2);$ng->apply_($i2);$ng->apply_($k2);$ng->apply_($l2);$ng->apply_($m2);$ng->apply_($o2);$ng->apply_($q2);$ng->apply_($s2);$ng->apply_($u2);$ng->apply_($w2);$ng->apply_($y2);$ng->apply_($A2);$ng->apply_($C2);$ng->apply_($E2);$ng->apply_($F2);$ng->apply_($H2);$ng->apply_($I2);$ng->apply_($J2);$ng->apply_($K2);$ng->apply_($L2);$ng->apply_($M2);$ng->apply_($O2);$ng->apply_($P2);$ng->apply_($Q2);$ng->apply_($S2);$yg->apply_($I1);$yg->apply_($J1);$yg->apply_($L1);$yg->apply_($M1);$yg->apply_($N1);$yg->apply_($O1);$yg->apply_($P1);$yg->apply_($Q1);$yg->apply_($R1);$yg->apply_($S1);$yg->apply_($T1);$yg->apply_($U1);$yg->apply_($V1);$yg->apply_($W1);$yg->apply_($Y1);$yg->apply_($c2);$yg->apply_($e2);$yg->apply_($g2);$yg->apply_($i2);$yg->apply_($k2);$yg->apply_($l2);$yg->apply_($A);$yg->apply_($m2);$yg->apply_($o2);$yg->apply_($q2);$yg->apply_($s2);$yg->apply_($u2);$yg->apply_($w2);$yg->apply_($x2);$yg->apply_($y2);$yg->apply_($z2);$yg->apply_($A2);$yg->apply_($C2);$yg->apply_($E2);$yg->apply_($F2);$yg->apply_($H2);$yg->apply_($I2);$yg->apply_($J2);$yg->apply_($K2);$yg->apply_($M2);$yg->apply_($O2);$yg->apply_($P2);$yg->apply_($Q2);$yg->apply_($S2);$Fg->apply_($I1);$Fg->apply_($J1);$Fg->apply_($L1);$Fg->apply_($M1);$Fg->apply_($N1);$Fg->apply_($O1);$Fg->apply_($P1);$Fg->apply_($Q1);$Fg->apply_($R1);$Fg->apply_($S1);$Fg->apply_($T1);$Fg->apply_($U1);$Fg->apply_($V1);$Fg->apply_($W1);$Fg->apply_($Y1);$Fg->apply_($c2);$Fg->apply_($e2);$Fg->apply_($g2);$Fg->apply_($i2);$Fg->apply_($k2);$Fg->apply_($l2);$Fg->apply_($m2);$Fg->apply_($o2);$Fg->apply_($q2);$Fg->apply_($s2);$Fg->apply_($u2);$Fg->apply_($w2);$Fg->apply_($y2);$Fg->apply_($A2);$Fg->apply_($C2);$Fg->apply_($E2);$Fg->apply_($F2);$Fg->apply_($H2);$Fg->apply_($I2);$Fg->apply_($K2);$Fg->apply_($M2);$Fg->apply_($O2);$Fg->apply_($P2);$Fg->apply_($Q2);$Fg->apply_($S2);$oh->apply_($K1);$wh->apply_($K1);$Th->apply_($M1);$Th->apply_($N1);$Th->apply_($O1);$Th->apply_($P1);$Th->apply_($Q1);$Th->apply_($R1);$Th->apply_($S1);$Th->apply_($T1);$Th->apply_($U1);$Th->apply_($V1);$Th->apply_($W1);$ni->apply_($w1);$Fi->apply_($w1);$Xi->apply_($x1);$gj->apply_($x1);$zj->apply_($y1);$Gj->apply_($y1);$ck->apply_($y1);$wk->apply_($y1);$Ek->apply_($y1);$Uk->apply_($y1);$tl->apply_($z1);$tl->apply_($B1);$Al->apply_($z1);$Il->apply_($z1);$Yl->apply_($z1);$Yl->apply_($B1);$lm->apply_($z1);$zm->apply_($z1);$zm->apply_($B1);$en->apply_($Q1);$wn->apply_($A1);$En->apply_($A1);$Ln->apply_($A1);$do->apply_($A1);$lo->apply_($A1);$Go->apply_($A1);$ep->apply_($B1);$np->apply_($B1);$Yp->apply_($Zp);$lq->apply_($C1);$yq->apply_($C1);$wr->apply_($F1);$Dr->apply_($F1);$Rr->apply_($F1);$ps->apply_($X1);$ps->apply_($Z1);$ps->apply_($d2);$ps->apply_($R2);$Bs->apply_($X1);$Bs->apply_($Z1);$Bs->apply_($d2);$Bs->apply_($R2);$Qs->apply_($X1);$Qs->apply_($Z1);$Qs->apply_($d2);$mt->apply_($X1);$mt->apply_($Z1);$mt->apply_($d2);$Ct->apply_($Y1);$Ct->apply_($c2);$Ct->apply_($e2);$Yt->apply_($Z1);$hu->apply_($Z1);$ru->apply_($Z1);$Du->apply_($Z1);$gv->apply_($c2);$zv->apply_($d2);$Gv->apply_($d2);$iw->apply_($h2);$Dw->apply_($j2);$Jw->apply_($j2);$gx->apply_($S);$mx->apply_($S);$vx->apply_($S);$Dx->apply_($S);$Jx->apply_($S);$Px->apply_($S);$Zx->apply_($S);$ny->apply_($l2);$Ry->apply_($A);$lz->apply_($A);$uz->apply_($A);$Bz->apply_($A);$Rz->apply_($m2);$mA->apply_($n2);$tA->apply_($n2);$NA->apply_($n2);$jB->apply_($n2);$IB->apply_($Zp);$xC->apply_($yC);$TC->apply_($yC);$oD->apply_($r2);$GD->apply_($r2);$dE->apply_($r2);$mE->apply_($r2);$wE->apply_($r2);$CF->apply_($yC);$LF->apply_($t2);$LF->apply_($C);$LF->apply_($H);$jG->apply_($v2);$sG->apply_($v2);$jH->apply_($Zp);$tH->apply_($z2);$zH->apply_($z2);$VH->apply_($B2);$VH->apply_($D2);$hI->apply_($B2);$oI->apply_($B2);$CI->apply_($B2);$jJ->apply_($C);$qJ->apply_($C);$xJ->apply_($C);$HJ->apply_($C);$SJ->apply_($C);$jK->apply_($F2);$rK->apply_($F2);$KK->apply_($G2);$ZK->apply_($G2);$iL->apply_($G2);$BL->apply_($H);$HL->apply_($H);$NL->apply_($H);$dM->apply_($Zp);$ni::self=$uN;&$V($T);&$V($e1);&$V($k1);&$V($i3);&$V($k3);&$m3($k3);&$V($t3);&$V($N3);&$V($V3);&$V($j4);&$V($v4);&$V($H4);&$V($J4);&$m3($J4);&$V($d5);&$V($f5);&$m3($f5);&$V($l5);&$V($r5);&$V($E5);&$V($R5);&$V($g6);&$V($t6);&$V($P6);&$V($V6);&$V($e7);&$V($v7);&$V($F7);&$V($R7);&$V($f8);&$V($z8);&$V($B8);&$m3($B8);&$V($U8);&$V($d9);&$V($x9);&$V($O9);&$V($ea);&$V($Ca);&$V($Ka);&$V($kb);&$V($Ab);&$V($Qb);&$V($mc);&$V($uc);&$V($wc);&$m3($wc);&$V($Cc);&$V($Kc);&$V($Vc);&$V($kd);&$V($md);&$m3($md);&$V($sd);&$V($Ed);&$V($Kd);&$V($Sd);&$V($Ud);&$m3($Ud);&$V($re);&$V($xe);&$V($Le);&$V($Se);&$V($Ze);&$V($if);&$V($kf);&$V($qf);&$V($zf);&$V($Jf);&$V($Qf);&$V($Xf);&$V($gg);&$V($ng);&$V($pg);&$V($rg);&$m3($rg);&$V($yg);&$V($Fg);&$V($Hg);&$m3($Hg);&$V($Qg);&$m3($Qg);&$V($Ug);&$m3($Ug);&$V($Wg);&$m3($Wg);&$V($Yg);&$m3($Yg);&$V($fh);&$m3($fh);&$V($oh);&$V($wh);&$V($yh);&$m3($yh);&$V($Dh);&$m3($Dh);&$V($Th);&$V($Vh);&$m3($Vh);&$V($Xh);&$m3($Xh);&$V($ei);&$m3($ei);&$V($ni);&$V($Fi);&$V($Hi);&$m3($Hi);&$V($Mi);&$m3($Mi);&$V($Xi);&$V($gj);&$V($ij);&$m3($ij);&$V($nj);&$m3($nj);&$V($zj);&$V($Gj);&$V($ck);&$V($wk);&$V($Ek);&$V($Uk);&$V($Wk);&$m3($Wk);&$V($dl);&$m3($dl);&$V($tl);&$V($Al);&$V($Il);&$V($Yl);&$V($lm);&$V($zm);&$V($Cm);&$m3($Cm);&$Fm($Cm);&$V($en);&$V($gn);&$m3($gn);&$V($wn);&$V($En);&$V($Ln);&$V($do);&$V($lo);&$V($Go);&$V($Io);&$m3($Io);&$V($No);&$m3($No);&$V($ep);&$V($np);&$V($pp);&$m3($pp);&$V($up);&$m3($up);&$V($Yp);&$V($lq);&$V($yq);&$V($Aq);&$m3($Aq);&$V($Fq);&$m3($Fq);&$V($Wq);&$m3($Wq);&$V($wr);&$V($Dr);&$V($Rr);&$V($Tr);&$m3($Tr);&$V($Yr);&$m3($Yr);&$V($ps);&$V($Bs);&$V($Ds);&$m3($Ds);&$V($Qs);&$V($mt);&$V($ot);&$m3($ot);&$rt($ot);&$V($yt);&$m3($yt);&$V($Ct);&$V($Et);&$m3($Et);&$V($Yt);&$V($hu);&$V($ru);&$V($Du);&$V($Iu);&$m3($Iu);&$rt($Iu);&$Lu($Iu);&$V($gv);&$V($iv);&$m3($iv);&$V($zv);&$V($Gv);&$V($Iv);&$m3($Iv);&$rt($Iv);&$V($Nv);&$m3($Nv);&$V($Uv);&$m3($Uv);&$V($iw);&$V($kw);&$m3($kw);&$V($qw);&$m3($qw);&$V($Dw);&$V($Jw);&$V($Lw);&$m3($Lw);&$V($Rw);&$m3($Rw);&$V($gx);&$V($mx);&$V($vx);&$V($Dx);&$V($Jx);&$V($Px);&$V($Zx);&$V($dy);&$m3($dy);&$V($ny);&$V($py);&$m3($py);&$V($Ry);&$V($lz);&$V($uz);&$V($Bz);&$V($Dz);&$m3($Dz);&$Gz($Dz);&$V($Rz);&$V($Tz);&$m3($Tz);&$V($mA);&$V($tA);&$V($NA);&$V($jB);&$V($lB);&$m3($lB);&$V($qB);&$m3($qB);&$V($IB);&$V($OB);&$m3($OB);&$V($xC);&$V($TC);&$V($oD);&$V($GD);&$V($dE);&$V($mE);&$V($wE);&$V($yE);&$m3($yE);&$V($DE);&$m3($DE);&$V($CF);&$V($LF);&$V($NF);&$m3($NF);&$V($SF);&$m3($SF);&$V($jG);&$V($sG);&$V($uG);&$m3($uG);&$V($zG);&$m3($zG);&$V($LG);&$m3($LG);&$V($jH);&$V($tH);&$V($zH);&$V($BH);&$m3($BH);&$V($HH);&$m3($HH);&$V($VH);&$V($XH);&$m3($XH);&$V($hI);&$V($oI);&$V($CI);&$V($EI);&$m3($EI);&$V($LI);&$m3($LI);&$V($NI);&$m3($NI);&$V($jJ);&$V($qJ);&$V($xJ);&$V($HJ);&$V($SJ);&$V($UJ);&$m3($UJ);&$XJ($UJ);&$V($jK);&$V($rK);&$V($tK);&$m3($tK);&$V($KK);&$V($ZK);&$V($iL);&$V($kL);&$m3($kL);&$V($pL);&$m3($pL);&$V($BL);&$V($HL);&$V($NL);&$V($PL);&$m3($PL);&$V($UL);&$m3($UL);&$V($dM);&$V($lM);&$m3($lM);&$V($qM);&$m3($qM);&$V($zM);&$m3($zM);&$V($EM);&$m3($EM);&$V($JM);&$m3($JM);&$V($RM);&$m3($RM);&$V($VM);&$m3($VM);ni->run(@ARGV);
+ni('ni:/io/file')->new($f);#;$nN=bless({$t,$lN,$v,$q,$w,$mN,$y,$z},$A);$oN=q#null#;$pN=[];$qN=q#ni('ni:/io/null')->new#;$rN=bless({$t,$pN,$v,$q,$w,$qN,$y,$z},$A);$sN=q#sh#;$tN=[];$uN=q#ni('ni:/io/exec')->new('/bin/sh', '-c', substr shift, 3)->fork#;$vN=bless({$t,$tN,$v,$q,$w,$uN,$y,$z},$A);$wN=q#str#;$xN=[];$yN=q#my $s = shift;
+ni('ni:/io/str')->new(substr($s, 4) . "\\n");#;$zN=bless({$t,$xN,$v,$q,$w,$yN,$y,$z},$A);$AN={$h8,$jN,$kN,$nN,$oN,$rN,$sN,$vN,$wN,$zN};$BN=bless({$c,$fN,$gN,$AN},$r2);*$Ry=\&$Oy;*$Qy=\&$My;*$Py=\&$Ky;*$Ee=\&$Ce;*$De=\&$Ae;$i3->apply_($I1);$i3->apply_($J1);$i3->apply_($K1);$i3->apply_($L1);$i3->apply_($s1);$i3->apply_($M1);$i3->apply_($w1);$i3->apply_($N1);$i3->apply_($x1);$i3->apply_($O1);$i3->apply_($y1);$i3->apply_($P1);$i3->apply_($z1);$i3->apply_($Q1);$i3->apply_($A1);$i3->apply_($R1);$i3->apply_($B1);$i3->apply_($S1);$i3->apply_($C1);$i3->apply_($T1);$i3->apply_($D1);$i3->apply_($U1);$i3->apply_($E1);$i3->apply_($V1);$i3->apply_($F1);$i3->apply_($W1);$i3->apply_($X1);$i3->apply_($Y1);$i3->apply_($Z1);$i3->apply_($c2);$i3->apply_($d2);$i3->apply_($e2);$i3->apply_($f2);$i3->apply_($g2);$i3->apply_($h2);$i3->apply_($i2);$i3->apply_($j2);$i3->apply_($k2);$i3->apply_($S);$i3->apply_($l2);$i3->apply_($A);$i3->apply_($m2);$i3->apply_($n2);$i3->apply_($o2);$i3->apply_($p2);$i3->apply_($q2);$i3->apply_($r2);$i3->apply_($s2);$i3->apply_($t2);$i3->apply_($u2);$i3->apply_($v2);$i3->apply_($w2);$i3->apply_($x2);$i3->apply_($y2);$i3->apply_($z2);$i3->apply_($A2);$i3->apply_($B2);$i3->apply_($C2);$i3->apply_($D2);$i3->apply_($E2);$i3->apply_($C);$i3->apply_($F2);$i3->apply_($G2);$i3->apply_($H2);$i3->apply_($H);$i3->apply_($I2);$i3->apply_($J2);$i3->apply_($K2);$i3->apply_($L2);$i3->apply_($M2);$i3->apply_($N2);$i3->apply_($O2);$i3->apply_($P2);$i3->apply_($Q2);$i3->apply_($R2);$i3->apply_($S2);$t3->apply_($s1);$t3->apply_($w1);$t3->apply_($x1);$t3->apply_($y1);$t3->apply_($z1);$t3->apply_($A1);$t3->apply_($B1);$t3->apply_($C1);$t3->apply_($D1);$t3->apply_($E1);$t3->apply_($F1);$N3->apply_($s1);$N3->apply_($w1);$N3->apply_($x1);$N3->apply_($y1);$N3->apply_($z1);$N3->apply_($A1);$N3->apply_($B1);$N3->apply_($C1);$N3->apply_($D1);$N3->apply_($E1);$N3->apply_($F1);$V3->apply_($s1);$V3->apply_($w1);$V3->apply_($x1);$V3->apply_($y1);$V3->apply_($z1);$V3->apply_($A1);$V3->apply_($B1);$V3->apply_($C1);$V3->apply_($D1);$V3->apply_($E1);$V3->apply_($F1);$j4->apply_($s1);$j4->apply_($w1);$j4->apply_($x1);$j4->apply_($y1);$j4->apply_($z1);$j4->apply_($A1);$j4->apply_($B1);$j4->apply_($C1);$j4->apply_($D1);$j4->apply_($E1);$j4->apply_($F1);$v4->apply_($s1);$v4->apply_($w1);$v4->apply_($x1);$v4->apply_($y1);$v4->apply_($z1);$v4->apply_($A1);$v4->apply_($B1);$v4->apply_($C1);$v4->apply_($D1);$v4->apply_($E1);$v4->apply_($F1);$H4->apply_($s1);$H4->apply_($w1);$H4->apply_($x1);$H4->apply_($y1);$H4->apply_($z1);$H4->apply_($A1);$H4->apply_($B1);$H4->apply_($C1);$H4->apply_($D1);$H4->apply_($E1);$H4->apply_($F1);$d5->apply_($s1);$v7->apply_($E1);$F7->apply_($E1);$R7->apply_($E1);$f8->apply_($E1);$z8->apply_($E1);$o9->apply_($I1);$o9->apply_($J1);$o9->apply_($L1);$o9->apply_($M1);$o9->apply_($N1);$o9->apply_($O1);$o9->apply_($P1);$o9->apply_($Q1);$o9->apply_($R1);$o9->apply_($S1);$o9->apply_($T1);$o9->apply_($U1);$o9->apply_($V1);$o9->apply_($W1);$o9->apply_($Y1);$o9->apply_($c2);$o9->apply_($e2);$o9->apply_($f2);$o9->apply_($g2);$o9->apply_($h2);$o9->apply_($i2);$o9->apply_($j2);$o9->apply_($k2);$o9->apply_($l2);$o9->apply_($m2);$o9->apply_($o2);$o9->apply_($q2);$o9->apply_($s2);$o9->apply_($u2);$o9->apply_($w2);$o9->apply_($x2);$o9->apply_($y2);$o9->apply_($z2);$o9->apply_($A2);$o9->apply_($C2);$o9->apply_($E2);$o9->apply_($F2);$o9->apply_($H2);$o9->apply_($I2);$o9->apply_($J2);$o9->apply_($K2);$o9->apply_($L2);$o9->apply_($M2);$o9->apply_($O2);$o9->apply_($P2);$o9->apply_($Q2);$o9->apply_($S2);$w9->apply_($I1);$w9->apply_($J1);$w9->apply_($L1);$w9->apply_($M1);$w9->apply_($N1);$w9->apply_($O1);$w9->apply_($P1);$w9->apply_($Q1);$w9->apply_($R1);$w9->apply_($S1);$w9->apply_($T1);$w9->apply_($U1);$w9->apply_($V1);$w9->apply_($W1);$w9->apply_($Y1);$w9->apply_($c2);$w9->apply_($e2);$w9->apply_($g2);$w9->apply_($h2);$w9->apply_($i2);$w9->apply_($j2);$w9->apply_($k2);$w9->apply_($S);$w9->apply_($l2);$w9->apply_($m2);$w9->apply_($o2);$w9->apply_($q2);$w9->apply_($s2);$w9->apply_($u2);$w9->apply_($w2);$w9->apply_($x2);$w9->apply_($y2);$w9->apply_($z2);$w9->apply_($A2);$w9->apply_($C2);$w9->apply_($E2);$w9->apply_($F2);$w9->apply_($H2);$w9->apply_($I2);$w9->apply_($J2);$w9->apply_($K2);$w9->apply_($L2);$w9->apply_($M2);$w9->apply_($O2);$w9->apply_($P2);$w9->apply_($Q2);$w9->apply_($S2);$G9->apply_($j2);$M9->apply_($j2);$T9->apply_($I1);$T9->apply_($J1);$T9->apply_($L1);$T9->apply_($M1);$T9->apply_($N1);$T9->apply_($O1);$T9->apply_($P1);$T9->apply_($Q1);$T9->apply_($R1);$T9->apply_($S1);$T9->apply_($T1);$T9->apply_($U1);$T9->apply_($V1);$T9->apply_($W1);$T9->apply_($Y1);$T9->apply_($c2);$T9->apply_($e2);$T9->apply_($g2);$T9->apply_($h2);$T9->apply_($i2);$T9->apply_($j2);$T9->apply_($k2);$T9->apply_($l2);$T9->apply_($m2);$T9->apply_($o2);$T9->apply_($q2);$T9->apply_($s2);$T9->apply_($u2);$T9->apply_($w2);$T9->apply_($x2);$T9->apply_($y2);$T9->apply_($z2);$T9->apply_($A2);$T9->apply_($C2);$T9->apply_($E2);$T9->apply_($F2);$T9->apply_($H2);$T9->apply_($I2);$T9->apply_($J2);$T9->apply_($K2);$T9->apply_($L2);$T9->apply_($M2);$T9->apply_($O2);$T9->apply_($P2);$T9->apply_($Q2);$T9->apply_($S2);$ca->apply_($I1);$ca->apply_($J1);$ca->apply_($L1);$ca->apply_($M1);$ca->apply_($N1);$ca->apply_($O1);$ca->apply_($P1);$ca->apply_($Q1);$ca->apply_($R1);$ca->apply_($S1);$ca->apply_($T1);$ca->apply_($U1);$ca->apply_($V1);$ca->apply_($W1);$ca->apply_($Y1);$ca->apply_($c2);$ca->apply_($e2);$ca->apply_($g2);$ca->apply_($h2);$ca->apply_($i2);$ca->apply_($j2);$ca->apply_($k2);$ca->apply_($l2);$ca->apply_($m2);$ca->apply_($o2);$ca->apply_($q2);$ca->apply_($s2);$ca->apply_($u2);$ca->apply_($w2);$ca->apply_($x2);$ca->apply_($y2);$ca->apply_($z2);$ca->apply_($A2);$ca->apply_($C2);$ca->apply_($E2);$ca->apply_($F2);$ca->apply_($H2);$ca->apply_($I2);$ca->apply_($J2);$ca->apply_($K2);$ca->apply_($L2);$ca->apply_($M2);$ca->apply_($O2);$ca->apply_($P2);$ca->apply_($Q2);$ca->apply_($S2);$ja->apply_($I1);$ja->apply_($J1);$ja->apply_($L1);$ja->apply_($M1);$ja->apply_($N1);$ja->apply_($O1);$ja->apply_($P1);$ja->apply_($Q1);$ja->apply_($R1);$ja->apply_($S1);$ja->apply_($T1);$ja->apply_($U1);$ja->apply_($V1);$ja->apply_($W1);$ja->apply_($Y1);$ja->apply_($c2);$ja->apply_($e2);$ja->apply_($g2);$ja->apply_($h2);$ja->apply_($i2);$ja->apply_($j2);$ja->apply_($k2);$ja->apply_($l2);$ja->apply_($m2);$ja->apply_($o2);$ja->apply_($q2);$ja->apply_($s2);$ja->apply_($u2);$ja->apply_($w2);$ja->apply_($y2);$ja->apply_($z2);$ja->apply_($A2);$ja->apply_($C2);$ja->apply_($E2);$ja->apply_($F2);$ja->apply_($H2);$ja->apply_($I2);$ja->apply_($J2);$ja->apply_($K2);$ja->apply_($L2);$ja->apply_($M2);$ja->apply_($O2);$ja->apply_($P2);$ja->apply_($Q2);$ja->apply_($S2);$ra->apply_($j2);$ra->apply_($x2);$Ab->apply_($p2);$Yb->apply_($p2);$ic->apply_($p2);$ic->apply_($v2);$Gc->apply_($p2);$Gc->apply_($v2);$Wc->apply_($p2);$Wc->apply_($v2);$od->apply_($p2);$Id->apply_($p2);$Qd->apply_($p2);$Ie->apply_($x2);$Oe->apply_($x2);$Hf->apply_($I1);$Hf->apply_($J1);$Hf->apply_($L1);$Hf->apply_($M1);$Hf->apply_($N1);$Hf->apply_($O1);$Hf->apply_($P1);$Hf->apply_($Q1);$Hf->apply_($R1);$Hf->apply_($S1);$Hf->apply_($T1);$Hf->apply_($U1);$Hf->apply_($V1);$Hf->apply_($W1);$Hf->apply_($Y1);$Hf->apply_($c2);$Hf->apply_($e2);$Hf->apply_($g2);$Hf->apply_($h2);$Hf->apply_($i2);$Hf->apply_($k2);$Hf->apply_($l2);$Hf->apply_($m2);$Hf->apply_($o2);$Hf->apply_($q2);$Hf->apply_($s2);$Hf->apply_($u2);$Hf->apply_($w2);$Hf->apply_($y2);$Hf->apply_($A2);$Hf->apply_($C2);$Hf->apply_($E2);$Hf->apply_($F2);$Hf->apply_($H2);$Hf->apply_($I2);$Hf->apply_($J2);$Hf->apply_($K2);$Hf->apply_($L2);$Hf->apply_($M2);$Hf->apply_($O2);$Hf->apply_($P2);$Hf->apply_($Q2);$Hf->apply_($S2);$Pf->apply_($I1);$Pf->apply_($J1);$Pf->apply_($L1);$Pf->apply_($M1);$Pf->apply_($N1);$Pf->apply_($O1);$Pf->apply_($P1);$Pf->apply_($Q1);$Pf->apply_($R1);$Pf->apply_($S1);$Pf->apply_($T1);$Pf->apply_($U1);$Pf->apply_($V1);$Pf->apply_($W1);$Pf->apply_($Y1);$Pf->apply_($c2);$Pf->apply_($e2);$Pf->apply_($g2);$Pf->apply_($i2);$Pf->apply_($k2);$Pf->apply_($l2);$Pf->apply_($m2);$Pf->apply_($o2);$Pf->apply_($q2);$Pf->apply_($s2);$Pf->apply_($u2);$Pf->apply_($w2);$Pf->apply_($y2);$Pf->apply_($A2);$Pf->apply_($C2);$Pf->apply_($E2);$Pf->apply_($F2);$Pf->apply_($H2);$Pf->apply_($I2);$Pf->apply_($J2);$Pf->apply_($K2);$Pf->apply_($L2);$Pf->apply_($M2);$Pf->apply_($O2);$Pf->apply_($P2);$Pf->apply_($Q2);$Pf->apply_($S2);$Yf->apply_($I1);$Yf->apply_($J1);$Yf->apply_($L1);$Yf->apply_($M1);$Yf->apply_($N1);$Yf->apply_($O1);$Yf->apply_($P1);$Yf->apply_($Q1);$Yf->apply_($R1);$Yf->apply_($S1);$Yf->apply_($T1);$Yf->apply_($U1);$Yf->apply_($V1);$Yf->apply_($W1);$Yf->apply_($Y1);$Yf->apply_($c2);$Yf->apply_($e2);$Yf->apply_($g2);$Yf->apply_($h2);$Yf->apply_($i2);$Yf->apply_($k2);$Yf->apply_($l2);$Yf->apply_($m2);$Yf->apply_($o2);$Yf->apply_($q2);$Yf->apply_($s2);$Yf->apply_($u2);$Yf->apply_($w2);$Yf->apply_($y2);$Yf->apply_($A2);$Yf->apply_($C2);$Yf->apply_($E2);$Yf->apply_($F2);$Yf->apply_($H2);$Yf->apply_($I2);$Yf->apply_($J2);$Yf->apply_($K2);$Yf->apply_($L2);$Yf->apply_($M2);$Yf->apply_($O2);$Yf->apply_($P2);$Yf->apply_($Q2);$Yf->apply_($S2);$kg->apply_($I1);$kg->apply_($J1);$kg->apply_($L1);$kg->apply_($M1);$kg->apply_($N1);$kg->apply_($O1);$kg->apply_($P1);$kg->apply_($Q1);$kg->apply_($R1);$kg->apply_($S1);$kg->apply_($T1);$kg->apply_($U1);$kg->apply_($V1);$kg->apply_($W1);$kg->apply_($Y1);$kg->apply_($c2);$kg->apply_($e2);$kg->apply_($g2);$kg->apply_($h2);$kg->apply_($i2);$kg->apply_($k2);$kg->apply_($l2);$kg->apply_($m2);$kg->apply_($o2);$kg->apply_($q2);$kg->apply_($s2);$kg->apply_($u2);$kg->apply_($w2);$kg->apply_($y2);$kg->apply_($A2);$kg->apply_($C2);$kg->apply_($E2);$kg->apply_($F2);$kg->apply_($H2);$kg->apply_($I2);$kg->apply_($J2);$kg->apply_($K2);$kg->apply_($L2);$kg->apply_($M2);$kg->apply_($O2);$kg->apply_($P2);$kg->apply_($Q2);$kg->apply_($S2);$rg->apply_($I1);$rg->apply_($J1);$rg->apply_($L1);$rg->apply_($M1);$rg->apply_($N1);$rg->apply_($O1);$rg->apply_($P1);$rg->apply_($Q1);$rg->apply_($R1);$rg->apply_($S1);$rg->apply_($T1);$rg->apply_($U1);$rg->apply_($V1);$rg->apply_($W1);$rg->apply_($Y1);$rg->apply_($c2);$rg->apply_($e2);$rg->apply_($g2);$rg->apply_($h2);$rg->apply_($i2);$rg->apply_($k2);$rg->apply_($l2);$rg->apply_($m2);$rg->apply_($o2);$rg->apply_($q2);$rg->apply_($s2);$rg->apply_($u2);$rg->apply_($w2);$rg->apply_($y2);$rg->apply_($A2);$rg->apply_($C2);$rg->apply_($E2);$rg->apply_($F2);$rg->apply_($H2);$rg->apply_($I2);$rg->apply_($J2);$rg->apply_($K2);$rg->apply_($L2);$rg->apply_($M2);$rg->apply_($O2);$rg->apply_($P2);$rg->apply_($Q2);$rg->apply_($S2);$yg->apply_($I1);$yg->apply_($J1);$yg->apply_($L1);$yg->apply_($M1);$yg->apply_($N1);$yg->apply_($O1);$yg->apply_($P1);$yg->apply_($Q1);$yg->apply_($R1);$yg->apply_($S1);$yg->apply_($T1);$yg->apply_($U1);$yg->apply_($V1);$yg->apply_($W1);$yg->apply_($Y1);$yg->apply_($c2);$yg->apply_($e2);$yg->apply_($g2);$yg->apply_($h2);$yg->apply_($i2);$yg->apply_($k2);$yg->apply_($l2);$yg->apply_($m2);$yg->apply_($o2);$yg->apply_($q2);$yg->apply_($s2);$yg->apply_($u2);$yg->apply_($w2);$yg->apply_($y2);$yg->apply_($A2);$yg->apply_($C2);$yg->apply_($E2);$yg->apply_($F2);$yg->apply_($H2);$yg->apply_($I2);$yg->apply_($J2);$yg->apply_($K2);$yg->apply_($L2);$yg->apply_($M2);$yg->apply_($O2);$yg->apply_($P2);$yg->apply_($Q2);$yg->apply_($S2);$Fg->apply_($I1);$Fg->apply_($J1);$Fg->apply_($L1);$Fg->apply_($M1);$Fg->apply_($N1);$Fg->apply_($O1);$Fg->apply_($P1);$Fg->apply_($Q1);$Fg->apply_($R1);$Fg->apply_($S1);$Fg->apply_($T1);$Fg->apply_($U1);$Fg->apply_($V1);$Fg->apply_($W1);$Fg->apply_($Y1);$Fg->apply_($c2);$Fg->apply_($e2);$Fg->apply_($g2);$Fg->apply_($h2);$Fg->apply_($i2);$Fg->apply_($k2);$Fg->apply_($l2);$Fg->apply_($m2);$Fg->apply_($o2);$Fg->apply_($q2);$Fg->apply_($s2);$Fg->apply_($u2);$Fg->apply_($w2);$Fg->apply_($y2);$Fg->apply_($A2);$Fg->apply_($C2);$Fg->apply_($E2);$Fg->apply_($F2);$Fg->apply_($H2);$Fg->apply_($I2);$Fg->apply_($J2);$Fg->apply_($K2);$Fg->apply_($L2);$Fg->apply_($M2);$Fg->apply_($O2);$Fg->apply_($P2);$Fg->apply_($Q2);$Fg->apply_($S2);$Mg->apply_($I1);$Mg->apply_($J1);$Mg->apply_($L1);$Mg->apply_($M1);$Mg->apply_($N1);$Mg->apply_($O1);$Mg->apply_($P1);$Mg->apply_($Q1);$Mg->apply_($R1);$Mg->apply_($S1);$Mg->apply_($T1);$Mg->apply_($U1);$Mg->apply_($V1);$Mg->apply_($W1);$Mg->apply_($Y1);$Mg->apply_($c2);$Mg->apply_($e2);$Mg->apply_($g2);$Mg->apply_($h2);$Mg->apply_($i2);$Mg->apply_($k2);$Mg->apply_($l2);$Mg->apply_($m2);$Mg->apply_($o2);$Mg->apply_($q2);$Mg->apply_($s2);$Mg->apply_($u2);$Mg->apply_($w2);$Mg->apply_($y2);$Mg->apply_($A2);$Mg->apply_($C2);$Mg->apply_($E2);$Mg->apply_($F2);$Mg->apply_($H2);$Mg->apply_($I2);$Mg->apply_($J2);$Mg->apply_($K2);$Mg->apply_($L2);$Mg->apply_($M2);$Mg->apply_($O2);$Mg->apply_($P2);$Mg->apply_($Q2);$Mg->apply_($S2);$Xg->apply_($I1);$Xg->apply_($J1);$Xg->apply_($L1);$Xg->apply_($M1);$Xg->apply_($N1);$Xg->apply_($O1);$Xg->apply_($P1);$Xg->apply_($Q1);$Xg->apply_($R1);$Xg->apply_($S1);$Xg->apply_($T1);$Xg->apply_($U1);$Xg->apply_($V1);$Xg->apply_($W1);$Xg->apply_($Y1);$Xg->apply_($c2);$Xg->apply_($e2);$Xg->apply_($g2);$Xg->apply_($i2);$Xg->apply_($k2);$Xg->apply_($l2);$Xg->apply_($A);$Xg->apply_($m2);$Xg->apply_($o2);$Xg->apply_($q2);$Xg->apply_($s2);$Xg->apply_($u2);$Xg->apply_($w2);$Xg->apply_($x2);$Xg->apply_($y2);$Xg->apply_($z2);$Xg->apply_($A2);$Xg->apply_($C2);$Xg->apply_($E2);$Xg->apply_($F2);$Xg->apply_($H2);$Xg->apply_($I2);$Xg->apply_($J2);$Xg->apply_($K2);$Xg->apply_($M2);$Xg->apply_($O2);$Xg->apply_($P2);$Xg->apply_($Q2);$Xg->apply_($S2);$gh->apply_($I1);$gh->apply_($J1);$gh->apply_($L1);$gh->apply_($M1);$gh->apply_($N1);$gh->apply_($O1);$gh->apply_($P1);$gh->apply_($Q1);$gh->apply_($R1);$gh->apply_($S1);$gh->apply_($T1);$gh->apply_($U1);$gh->apply_($V1);$gh->apply_($W1);$gh->apply_($Y1);$gh->apply_($c2);$gh->apply_($e2);$gh->apply_($g2);$gh->apply_($i2);$gh->apply_($k2);$gh->apply_($l2);$gh->apply_($m2);$gh->apply_($o2);$gh->apply_($q2);$gh->apply_($s2);$gh->apply_($u2);$gh->apply_($w2);$gh->apply_($y2);$gh->apply_($A2);$gh->apply_($C2);$gh->apply_($E2);$gh->apply_($F2);$gh->apply_($H2);$gh->apply_($I2);$gh->apply_($K2);$gh->apply_($M2);$gh->apply_($O2);$gh->apply_($P2);$gh->apply_($Q2);$gh->apply_($S2);$Nh->apply_($K1);$Vh->apply_($K1);$ui->apply_($M1);$ui->apply_($N1);$ui->apply_($O1);$ui->apply_($P1);$ui->apply_($Q1);$ui->apply_($R1);$ui->apply_($S1);$ui->apply_($T1);$ui->apply_($U1);$ui->apply_($V1);$ui->apply_($W1);$Mi->apply_($w1);$gj->apply_($w1);$yj->apply_($x1);$Fj->apply_($x1);$Yj->apply_($y1);$hk->apply_($y1);$Bk->apply_($y1);$Vk->apply_($y1);$fl->apply_($y1);$vl->apply_($y1);$Sl->apply_($z1);$Sl->apply_($B1);$Zl->apply_($z1);$jm->apply_($z1);$zm->apply_($z1);$zm->apply_($B1);$Km->apply_($z1);$Ym->apply_($z1);$Ym->apply_($B1);$Dn->apply_($Q1);$Vn->apply_($A1);$fo->apply_($A1);$mo->apply_($A1);$Co->apply_($A1);$Ko->apply_($A1);$hp->apply_($A1);$Dp->apply_($B1);$Mp->apply_($B1);$zq->apply_($Aq);$Kq->apply_($C1);$Xq->apply_($C1);$Vr->apply_($F1);$es->apply_($F1);$ss->apply_($F1);$Os->apply_($X1);$Os->apply_($Z1);$Os->apply_($d2);$Os->apply_($R2);$ct->apply_($X1);$ct->apply_($Z1);$ct->apply_($d2);$ct->apply_($R2);$rt->apply_($X1);$rt->apply_($Z1);$rt->apply_($d2);$Lt->apply_($X1);$Lt->apply_($Z1);$Lt->apply_($d2);$du->apply_($Y1);$du->apply_($c2);$du->apply_($e2);$zu->apply_($Z1);$Gu->apply_($Z1);$Qu->apply_($Z1);$ev->apply_($Z1);$Fv->apply_($c2);$Yv->apply_($d2);$hw->apply_($d2);$Hw->apply_($h2);$nx->apply_($S);$tx->apply_($S);$Cx->apply_($S);$Kx->apply_($S);$Qx->apply_($S);$Wx->apply_($S);$iy->apply_($S);$uy->apply_($l2);$Yy->apply_($A);$sz->apply_($A);$Bz->apply_($A);$Iz->apply_($A);$Yz->apply_($m2);$tA->apply_($n2);$AA->apply_($n2);$UA->apply_($n2);$qB->apply_($n2);$PB->apply_($Aq);$EC->apply_($FC);$cD->apply_($FC);$vD->apply_($r2);$ND->apply_($r2);$kE->apply_($r2);$tE->apply_($r2);$DE->apply_($r2);$JF->apply_($FC);$SF->apply_($t2);$SF->apply_($C);$SF->apply_($H);$qG->apply_($v2);$zG->apply_($v2);$qH->apply_($Aq);$AH->apply_($z2);$GH->apply_($z2);$eI->apply_($B2);$eI->apply_($D2);$oI->apply_($B2);$vI->apply_($B2);$JI->apply_($B2);$qJ->apply_($C);$xJ->apply_($C);$EJ->apply_($C);$OJ->apply_($C);$ZJ->apply_($C);$qK->apply_($F2);$yK->apply_($F2);$RK->apply_($G2);$iL->apply_($G2);$pL->apply_($G2);$IL->apply_($H);$OL->apply_($H);$UL->apply_($H);$kM->apply_($Aq);$ni::self=$BN;&$V($T);&$V($e1);&$V($k1);&$V($i3);&$V($k3);&$m3($k3);&$V($t3);&$V($N3);&$V($V3);&$V($j4);&$V($v4);&$V($H4);&$V($J4);&$m3($J4);&$V($d5);&$V($f5);&$m3($f5);&$V($l5);&$V($r5);&$V($E5);&$V($R5);&$V($g6);&$V($t6);&$V($P6);&$V($V6);&$V($e7);&$V($v7);&$V($F7);&$V($R7);&$V($f8);&$V($z8);&$V($B8);&$m3($B8);&$V($U8);&$V($d9);&$V($o9);&$V($q9);&$m3($q9);&$V($w9);&$V($G9);&$V($M9);&$V($T9);&$V($ca);&$V($ja);&$V($ra);&$V($ta);&$m3($ta);&$V($za);&$V($Ta);&$V($mb);&$V($Ab);&$V($Yb);&$V($ic);&$V($Gc);&$V($Wc);&$V($od);&$V($Id);&$V($Qd);&$V($Sd);&$m3($Sd);&$V($Yd);&$V($ie);&$V($te);&$V($Ie);&$V($Oe);&$V($Qe);&$m3($Qe);&$V($nf);&$V($tf);&$V($Hf);&$V($Jf);&$V($Pf);&$V($Yf);&$V($kg);&$V($rg);&$V($yg);&$V($Fg);&$V($Mg);&$V($Og);&$V($Qg);&$m3($Qg);&$V($Xg);&$V($gh);&$V($ih);&$m3($ih);&$V($rh);&$m3($rh);&$V($vh);&$m3($vh);&$V($xh);&$m3($xh);&$V($zh);&$m3($zh);&$V($Eh);&$m3($Eh);&$V($Nh);&$V($Vh);&$V($Xh);&$m3($Xh);&$V($ei);&$m3($ei);&$V($ui);&$V($wi);&$m3($wi);&$V($yi);&$m3($yi);&$V($Di);&$m3($Di);&$V($Mi);&$V($gj);&$V($ij);&$m3($ij);&$V($nj);&$m3($nj);&$V($yj);&$V($Fj);&$V($Hj);&$m3($Hj);&$V($Mj);&$m3($Mj);&$V($Yj);&$V($hk);&$V($Bk);&$V($Vk);&$V($fl);&$V($vl);&$V($xl);&$m3($xl);&$V($Cl);&$m3($Cl);&$V($Sl);&$V($Zl);&$V($jm);&$V($zm);&$V($Km);&$V($Ym);&$V($dn);&$m3($dn);&$gn($dn);&$V($Dn);&$V($Fn);&$m3($Fn);&$V($Vn);&$V($fo);&$V($mo);&$V($Co);&$V($Ko);&$V($hp);&$V($jp);&$m3($jp);&$V($op);&$m3($op);&$V($Dp);&$V($Mp);&$V($Op);&$m3($Op);&$V($Tp);&$m3($Tp);&$V($zq);&$V($Kq);&$V($Xq);&$V($Zq);&$m3($Zq);&$V($gr);&$m3($gr);&$V($xr);&$m3($xr);&$V($Vr);&$V($es);&$V($ss);&$V($us);&$m3($us);&$V($zs);&$m3($zs);&$V($Os);&$V($ct);&$V($et);&$m3($et);&$V($rt);&$V($Lt);&$V($Nt);&$m3($Nt);&$Qt($Nt);&$V($Xt);&$m3($Xt);&$V($du);&$V($fu);&$m3($fu);&$V($zu);&$V($Gu);&$V($Qu);&$V($ev);&$V($jv);&$m3($jv);&$Qt($jv);&$mv($jv);&$V($Fv);&$V($Hv);&$m3($Hv);&$V($Yv);&$V($hw);&$V($jw);&$m3($jw);&$Qt($jw);&$V($ow);&$m3($ow);&$V($vw);&$m3($vw);&$V($Hw);&$V($Jw);&$m3($Jw);&$V($Pw);&$m3($Pw);&$V($Yw);&$m3($Yw);&$V($nx);&$V($tx);&$V($Cx);&$V($Kx);&$V($Qx);&$V($Wx);&$V($iy);&$V($ky);&$m3($ky);&$V($uy);&$V($wy);&$m3($wy);&$V($Yy);&$V($sz);&$V($Bz);&$V($Iz);&$V($Kz);&$m3($Kz);&$Nz($Kz);&$V($Yz);&$V($cA);&$m3($cA);&$V($tA);&$V($AA);&$V($UA);&$V($qB);&$V($sB);&$m3($sB);&$V($xB);&$m3($xB);&$V($PB);&$V($VB);&$m3($VB);&$V($EC);&$V($cD);&$V($vD);&$V($ND);&$V($kE);&$V($tE);&$V($DE);&$V($FE);&$m3($FE);&$V($KE);&$m3($KE);&$V($JF);&$V($SF);&$V($UF);&$m3($UF);&$V($ZF);&$m3($ZF);&$V($qG);&$V($zG);&$V($BG);&$m3($BG);&$V($GG);&$m3($GG);&$V($SG);&$m3($SG);&$V($qH);&$V($AH);&$V($GH);&$V($IH);&$m3($IH);&$V($OH);&$m3($OH);&$V($eI);&$V($gI);&$m3($gI);&$V($oI);&$V($vI);&$V($JI);&$V($LI);&$m3($LI);&$V($SI);&$m3($SI);&$V($UI);&$m3($UI);&$V($qJ);&$V($xJ);&$V($EJ);&$V($OJ);&$V($ZJ);&$V($dK);&$m3($dK);&$gK($dK);&$V($qK);&$V($yK);&$V($AK);&$m3($AK);&$V($RK);&$V($iL);&$V($pL);&$V($rL);&$m3($rL);&$V($wL);&$m3($wL);&$V($IL);&$V($OL);&$V($UL);&$V($WL);&$m3($WL);&$V($dM);&$m3($dM);&$V($kM);&$V($sM);&$m3($sM);&$V($xM);&$m3($xM);&$V($GM);&$m3($GM);&$V($LM);&$m3($LM);&$V($QM);&$m3($QM);&$V($YM);&$m3($YM);&$V($eN);&$m3($eN);ni->run(@ARGV);
 __DATA__

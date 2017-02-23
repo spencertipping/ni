@@ -1,8 +1,8 @@
 {
   "classes": 39,
-  "image_size": 132283,
+  "image_size": 132468,
   "metaclasses": 37,
-  "named_entities": 243,
+  "named_entities": 244,
   "tests": {
     "failed": null,
     "passing": 17,
@@ -26,6 +26,10 @@
       "text": "migrate die() into /lib/ as a base behavior"
     },
     {
+      "referent": "ni:/lib/dataslice",
+      "text": "Fix serialization for dataslices"
+    },
+    {
       "referent": "ni:/lib/image",
       "text": "The interaction between these ->serialize methods and quotation/image\nclasses is horrible and even worse, undocumented. Formalize the protocol\nfor instances to request things like side effects or finalizers, and for\ngod's sake clean up the side-effect/boot-side-effect crap."
     },
@@ -42,7 +46,6 @@
     "ni:/io/transfer_sync",
     "ni:/lib/behavior",
     "ni:/lib/branch",
-    "ni:/lib/dataslice",
     "ni:/lib/fn",
     "ni:/lib/object_metadata",
     "ni:/lib/tag",

@@ -50,7 +50,6 @@ ni('ni:/object')->child('/lib/image')
         "\n__DATA__\n");
     },
 
-    # TODO: replace this with more structured alternatives
     side_effect      => fn q{push    @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     boot_side_effect => fn q{unshift @{${$_[0]}{side_effects}}, $_[1]; $_[0]},
     finalizer        => fn q{push    @{${$_[0]}{finalizers}},   $_[1]; $_[0]})
@@ -108,4 +107,6 @@ ni('ni:/lib/slice')->def('/lib/slice_serialize.b',
     $g;
   });
 
-ni('ni:/lib/dataslice')->add('/lib/slice_serialize.b');
+ni('ni:/lib/dataslice')->add('/lib/slice_serialize.b')
+  ->doc
+  ->TODO(q[Fix serialization for dataslices]);
