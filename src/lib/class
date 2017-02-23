@@ -58,6 +58,7 @@ ni('ni:/lib/definition.b')->add(
     def => fn q{
       my $self = shift;
       my $name = shift;
+      $name = "$$self{name}_$name" unless $name =~ /^\//;
       $self->add(ni->exists("ni:$name")
         ? ni"ni:$name"
         : ni('ni:/lib/slice')->new($name, @_));
@@ -75,7 +76,14 @@ ni('ni:/lib/definition.b')->def('/lib/accessor.b',
     my ($self, $slice, @as) = @_;
     $self->add(ni('ni:/lib/slice')->new(
       $slice,
-      map +($_ => fn qq{\@_ == 2 ? \$_[0]->{'$_'} = \$_[1] : shift->{'$_'}}), @as));
+      map +($_ => fn qq{
+        if (\@_ == 2) {
+          \$_[0]->{'$_'} = \$_[1];
+          return \$_[0];
+        } else {
+          return shift->{'$_'};
+        }
+      }), @as));
   });
 
 # Subclassing

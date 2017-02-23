@@ -70,13 +70,13 @@ ni('ni:ni')
       my $spaces = ' ' x $indent;
       return "$spaces\[\n"
            . join(",\n", map ni::json_encode_pretty($_, $indent + 2), @$v)
-           . "$spaces]" if 'ARRAY' eq ref $v;
+           . "\n$spaces]" if 'ARRAY' eq ref $v;
 
       return "$spaces\{\n"
            . join(",\n", map "$spaces  " . ni::json_escape($_) . ":\n"
                                          . ni::json_encode_pretty($$v{$_}, $indent + 2),
                              sort keys %$v)
-           . "$spaces\}" if 'HASH' eq ref $v;
+           . "\n$spaces\}" if 'HASH' eq ref $v;
 
       $spaces . ni::json_encode($v);
     #);

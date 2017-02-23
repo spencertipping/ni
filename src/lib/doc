@@ -4,45 +4,18 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
   ->def('/lib/doc_namespace.b', namespace => fn q{'ni.doc'})
   ->def('/lib/doc_define.b',
-    fix_indentation => fn q{
-      my ($self, $x) = @_;
-      return $x if ref $x;
-      my @lines = split /\n/, $x;
-      return $x unless @lines > 1;
-      my $indent = $lines[1] =~ /^(\s*)/ && length $1;
-      for (@lines[2..$#lines]) {
-        my $li = /^(\s*)/ && length $1;
-        $indent = length $1 if length $1 < $indent;
-      }
-      my $spaces = ' ' x $indent;
-      s/^$spaces// for @lines;
-      join "\n", @lines;
-    },
-
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
-      push @{$$self{doc}}, [$method, map $self->fix_indentation($_), @_];
+      push @{$$self{doc}}, [$method, map ni::outdent($_), @_];
       $self;
-    })
+    },
+
+    '(@{}' => fn q{[map @$_, @{shift->{doc}}]})
 
   ->def('/lib/doc_end.b',
     referent => fn q{ni 'ni:' . shift->{name}},
-    end      => fn q{shift->referent})
-
-  ->def('/lib/doc_test.b',
-    linearized => fn q{map @$_, @{shift->{doc}}},
-
-    tests => fn q{
-      my $self = shift;
-      grep ref($_) eq 'lib/test_case', $self->linearized;
-    },
-
-    eg => fn q{
-      my $self = shift;
-      push @{$$self{doc}}, [eg => eg($_)] for @_;
-      $self;
-    });
+    end      => fn q{shift->referent});
 
 ni('ni:/lib/behavior')->def('/lib/documentable.b',
   doc => fn q{
@@ -51,3 +24,41 @@ ni('ni:/lib/behavior')->def('/lib/documentable.b',
     return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
     ni('ni:/lib/doc')->new($name);
   });
+
+ni('ni:/lib/doc.c')->def('/lib/doc.c_defannotation.b',
+  defannotation => fn q{
+    my $class = shift;
+    $class->def("$$class{name}_$_.b",
+      $_ => fn qq{
+        my \$self = shift;
+        push \@{\$\$self{doc}},
+             [$_ => $_(\$_)->referent(\$self->referent)] for \@_;
+        \$self;
+      }) for @_;
+    $class;
+  });
+
+ni('ni:/object')
+  ->child('/lib/object_metadata')
+    ->rw('/lib/object_metadata_rw.b', qw/referent/)
+  ->child('/lib/todo')
+    ->def('/lib/todo_init.b',
+      instantiate => fn q{
+        my $class = shift;
+        +{todo => [map ni::outdent($_), @_]};
+      })
+    ->def('/lib/todo_str.b',
+      '(""' => fn q{
+        my $self = shift;
+        my $referent = $$self{referent} || '(anonymous)';
+        "TODO $referent\n" . ni::indent(join("\n- ", @{$$self{todo}}), 2);
+      });
+
+ni('ni:/lib/doc')
+  ->defannotation(qw/TODO eg/)
+  ->def('/lib/doc_process.b',
+    tests => fn q{grep ref($_) eq 'lib/test_case', @{$_[0]}},
+    todos => fn q{grep ref($_) eq 'lib/todo', @{$_[0]}});
+
+ni('ni:main')->def('/lib/todo_ctor.b',
+  TODO => fn q{ni('ni:/lib/todo')->new(@_)});

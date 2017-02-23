@@ -13,8 +13,8 @@ ni('ni:/object')->child('/lib/quote_simple')
     })
   ->end
 
-  ->def('/lib/quote_simple_init.b', instantiate => fn q{+{}})
-  ->def('/lib/quote_simple_quote.b',
+  ->def('init.b', instantiate => fn q{+{}})
+  ->def('quote.b',
     is_circular => fn q{0},
     quote => fn q{shift->quote_value(shift)})
 

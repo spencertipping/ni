@@ -69,8 +69,8 @@ ni('ni:main')->def('/lib/static_fn.b',
   }));
 
 ni('ni:/lib/fn')
-  ->ro('/lib/fn_ro.b', qw/code annotations fn eval_number/)
-  ->def('/lib/fn_ops.b',
+  ->ro('ro.b', qw/code annotations fn eval_number/)
+  ->def('ops.b',
     '(""' => fn q{my $self = shift; "fn {$$self{code}}"},
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])

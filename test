@@ -133,5 +133,6 @@ case $c in
   cd "$(mktemp -d)"
   echo "testing in $PWD"
   $ni --internal/test || exit $?
+  rm -r "$PWD"
   ;;
 esac

@@ -25,7 +25,7 @@ ni('ni:/lib/doc')->doc
       markdown, or HTML by target-specific conversion functions. Documentation
       also stores unit tests, which are specified using "eg":],
     eg q{
-      my $doc = ni("ni:/lib/doc")->new("foo");
+      my $doc = ni("ni:/object")->child("doctest_foo")->doc;
       my $passing_test = q{return 1};
       my $failing_test = q{return 0};
       $doc->eg($passing_test)

@@ -1,4 +1,4 @@
-do "src/lib/$_" or die "$@ $!" for qw/behavior class doc self/;
+do "src/lib/$_" or die "$@ $!" for qw/behavior class util doc self/;
 
 ni('ni:/lib/doc')->new('/lib')
   ->description(
@@ -20,5 +20,4 @@ ni->extend("src/lib/$_") for
       doc_doc
       quote
       image
-      util
       future /;

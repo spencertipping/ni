@@ -56,7 +56,13 @@ ni('ni:/object')->child('/lib/ni')
       local $| = 1;
       my $self   = shift;
       my $failed = 0;
-      my @tests  = map ni($_)->tests, grep /^ni\.doc:/, keys %{$$self{named}};
+      my @docs   = grep /^ni\.doc:/, keys %{$$self{named}};
+      my @todos  = map ni($_)->todos, @docs;
+
+      print "\n" . scalar(@todos) . " TODO item(s)\n" if @todos;
+      print "$_\n\n" for @todos;
+
+      my @tests  = map ni($_)->tests, @docs;
       my %named  = %{$$ni::self{named}};
       for (@tests) {
         $_->run;
