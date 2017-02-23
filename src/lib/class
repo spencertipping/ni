@@ -117,6 +117,24 @@ ni('ni:/lib/behavior')->child('/lib/dataslice')
 ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
   defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
 
+# Constructor patterns
+ni('ni:/object.c')->def('/lib/definition_init_meta.b',
+  instantiate_with_defaults => fn q{
+    my ($class, @slots) = @_;
+    my $generator = pop @slots;
+    $class->def("$$class{name}_init.b",
+      instantiate => fn->closure(
+        generator => $generator,
+        '@slots'  => \@slots,
+        q{
+          my %defaults = &$generator(@_);
+          my $class    = shift;
+          my %args     = @_;
+          $defaults{$_} = $args{$_} for @slots;
+          \%defaults;
+        }));
+  });
+
 # Static function support
 ni('ni:/module')->new('ni');
 ni('ni:/module')->new('main');

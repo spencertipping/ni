@@ -5,21 +5,51 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     my $proto = @_ && $_[-1] =~ /^\(/ ? pop : '';
     +{code        => $code,
       proto       => $proto,
+      closure     => undef,
       eval_number => undef,
       annotations => [@_]};
   },
+
+  closure => fn q{
+    my $self = shift;
+    return $$self{closure} unless @_;
+    $$self{closure} = {@_};
+    $self;
+  },
+
   compile => fn q{
-    local $@;
+    # NB: everything here needs to happen in a single method; otherwise JIT
+    # compilation will cause infinite recursion.
+    local ($@, $_);
     my $self = shift;
     $$self{proto} ||= '';
-    my $code = "sub $$self{proto} {$$self{code}\n}";
+
     my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;
     $$self{eval_number} = ++$en;
     Scalar::Util::weaken(${'lib/fn::evals'}{$en} = $self);
-    $$self{fn} = ni::eval $code;
-    die "ni:/lib/fn failed to compile $code: $@" if $@;
-    $$self{fn};
+
+    my $fn_code = qq{sub $$self{proto} {$$self{code}\n}};
+
+    my $closure = $$self{closure};
+    if ($closure) {
+      print STDERR ref($closure), "\n";
+      my $closure_code = join ';',
+        map /^([@%])/ ? "my$_=$1{\${\$_[0]}{'$_'}}"
+                      : /^\$/     ? "my$_=\${\$_[0]}{'$_'}"
+                      :             "my\$$_=\${\$_[0]}{'$_'}",
+        sort keys %$closure;
+
+      my $code   = qq{sub {$closure_code; $fn_code}};
+      my $fn_gen = ni::eval $code;
+      die "ni:/lib/fn failed to compile $code: $@" if $@;
+      return $$self{fn} = &$fn_gen($closure);
+    } else {
+      $$self{fn} = ni::eval $fn_code;
+      die "ni:/lib/fn failed to compile $fn_code: $@" if $@;
+      return $$self{fn};
+    }
   },
+
   dtor => fn q{
     my $self = shift;
     delete ${'lib/fn::evals'}{$$self{eval_number}}
@@ -32,8 +62,15 @@ ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
 delete ${main::}{fn};
 
 ni('ni:main')->def('/lib/static_fn.b',
-  fn => ni('ni:/lib/fn')->new('($)',  q{ni('ni:/lib/fn')->new(@_)}),
-  fp => ni('ni:/lib/fn')->new('($$)', q{ni('ni:/lib/fn')->new(@_)}));
+  fn => ni('ni:/lib/fn')->new('(;$)', q{
+    @_ ? ni('ni:/lib/fn')->new(@_) : ni('ni:/lib/fn');
+  }),
+  fp => ni('ni:/lib/fn')->new('($$)', q{
+    ni('ni:/lib/fn')->new(@_);
+  }),
+  fk => ni('ni:/lib/fn')->new('($)', q{
+    ni('ni:/lib/fn')->closure('@x' => [@_], q{wantarray ? @x : $x[0]});
+  }));
 
 ni('ni:/lib/fn')
   ->ro('/lib/fn_ro.b', qw/code annotations fn eval_number/)
@@ -44,15 +81,24 @@ ni('ni:/lib/fn')
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
 
-ni('ni:/lib/fn.c')->def('/lib/fn.c_resolve_eval.b',
-  ctor => fn q{
-    my $self = shift;
-    $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
-    $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
-  },
-  resolve_evals => fn q{
-    my ($self, $trace) = @_;
-    1 while $trace =~ s#\(eval (\d+)\)#
-      ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
-    $trace;
-  });
+ni('ni:/lib/fn.c')
+  ->def('/lib/fn.c_closure.b',
+    closure => fn q{
+      my $class = shift;
+      my $body  = pop;
+      $class->new($body)->closure(@_);
+    })
+
+  ->def('/lib/fn.c_resolve_eval.b',
+    ctor => fn q{
+      my $self = shift;
+      $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
+      $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
+    },
+
+    resolve_evals => fn q{
+      my ($self, $trace) = @_;
+      1 while $trace =~ s#\(eval (\d+)\)#
+        ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
+      $trace;
+    });

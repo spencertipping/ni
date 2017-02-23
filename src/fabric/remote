@@ -1,0 +1,20 @@
+ni('ni:/object')->child('/fabric/remote')
+  ->doc
+  ->description(
+    q[A local proxy for a remote object. All method calls are converted to RMI
+      wrappers and return futures of results.])
+  ->end
+
+  ->def('/fabric/remote_init.b',
+    instantiate => fn q{
+      my ($class, $rmi, $name) = @_;
+      +{rmi  => $rmi,
+        name => $name};
+    })
+
+  ->def('/fabric/remote_proxy.b',
+    AUTOLOAD => fn q{
+      my $self = shift;
+      my $method = ${__PACKAGE__ . '::AUTOLOAD'};
+      $$self{rmi}->call($$self{name}, $method, @_);
+    });

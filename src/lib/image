@@ -55,6 +55,12 @@ ni('ni:/object')->child('/lib/image')
         '/lib/quote_gensym_identity.b',
         '/lib/gensym_generator_compact.b');
 
+# TODO
+# The interaction between these ->serialize methods and quotation/image classes
+# is horrible and even worse, undocumented. Formalize the protocol for
+# instances to request things like side effects or finalizers, and for god's
+# sake clean up the side-effect/boot-side-effect crap.
+
 ni('ni:/lib/fn')->def('/lib/fn_serialize.b',
   serialize => fn q{
     local $_;
