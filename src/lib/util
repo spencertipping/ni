@@ -22,12 +22,13 @@ ni('ni:ni')->def('/lib/ni_static_util.b',
   outdent => fn q{
     my $x = shift;
     return $x if ref $x;
+    $x =~ s/^[ \t]*|\s*$//g;
     my @lines = split /\n/, $x;
     return $x unless @lines > 1;
-    my $indent = $lines[1] =~ /^(\s*)/ && length $1;
+    my $indent = $lines[1] =~ /^(\s*)\S/ ? length $1 : undef;
     for (@lines[2..$#lines]) {
-      my $li = /^(\s*)/ && length $1;
-      $indent = length $1 if length $1 < $indent;
+      my $li = /^(\s*)\S/ ? length $1 : next;
+      $indent = length $1 if !defined($indent) || length $1 < $indent;
     }
     my $spaces = ' ' x $indent;
     s/^$spaces// for @lines;

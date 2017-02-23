@@ -1,0 +1,93 @@
+{
+  "classes": 39,
+  "image_size": 132021,
+  "metaclasses": 37,
+  "named_entities": 242,
+  "tests": {
+    "failed": [
+      
+    ],
+    "passing": 17,
+    "total": 17
+  },
+  "todos": [
+    {
+      "referent": "ni:/class",
+      "text": "document this further"
+    },
+    {
+      "referent": "ni:/class",
+      "text": "document this further"
+    },
+    {
+      "referent": "ni:/fabric/rmi",
+      "text": "The codec stuff is awful. Nothing about a codec is so global that it\should apply to all method calls; maybe a class has a per-method\codec disposition, or maybe we infer the best one by serialization\performance. Either way, global codecs don't make sense here."
+    },
+    {
+      "referent": "ni:/io/object",
+      "text": "migrate die() into /lib/ as a base behavior"
+    },
+    {
+      "referent": "ni:/lib/image",
+      "text": "The interaction between these ->serialize methods and quotation/image\classes is horrible and even worse, undocumented. Formalize the protocol\for instances to request things like side effects or finalizers, and for\god's sake clean up the side-effect/boot-side-effect crap."
+    },
+    {
+      "referent": "ni:/lib/slice",
+      "text": "A bug that takes the cake:\https://searchcode.com/file/109026149/lib/overload.t#l-1486\\Ok, here's the problem. Rebuilt images of ni fail on old perls, but the\boot code works -- the reason is that bless() doesn't commute across\overload magic installation on old perls; references themselves have an\overload flag that's set when the reference is created, not when the\underlying package is modified. So if we want overloading to work, we\need to install overloaded methods before we bless things."
+    }
+  ],
+  "undocumented": [
+    "ni:/io/null",
+    "ni:/io/str",
+    "ni:/io/transfer",
+    "ni:/io/transfer_async",
+    "ni:/io/transfer_sync",
+    "ni:/lib/behavior",
+    "ni:/lib/branch",
+    "ni:/lib/dataslice",
+    "ni:/lib/fn",
+    "ni:/lib/object_metadata",
+    "ni:/lib/tag",
+    "ni:/lib/test_assert_eq",
+    "ni:/lib/test_assertion",
+    "ni:/lib/test_case",
+    "ni:/lib/test_value",
+    "ni:/lib/todo",
+    "ni:/metaclass",
+    "ni:/metaclass.c",
+    "ni:/module",
+    "ni:/object",
+    "ni:/semantic/dimension",
+    "ni:/semantic/task"
+  ],
+  "untested": [
+    "ni:/fabric/remote",
+    "ni:/fabric/rmi",
+    "ni:/io/file_update_fd",
+    "ni:/io/null",
+    "ni:/io/object",
+    "ni:/io/str",
+    "ni:/io/transfer",
+    "ni:/io/transfer_async",
+    "ni:/io/transfer_sync",
+    "ni:/lib/behavior",
+    "ni:/lib/branch",
+    "ni:/lib/dataslice",
+    "ni:/lib/fn",
+    "ni:/lib/image",
+    "ni:/lib/ni",
+    "ni:/lib/object_metadata",
+    "ni:/lib/tag",
+    "ni:/lib/test_assert_eq",
+    "ni:/lib/test_assertion",
+    "ni:/lib/test_case",
+    "ni:/lib/test_value",
+    "ni:/lib/todo",
+    "ni:/metaclass",
+    "ni:/metaclass.c",
+    "ni:/module",
+    "ni:/object",
+    "ni:/semantic/dimension",
+    "ni:/semantic/task"
+  ]
+}

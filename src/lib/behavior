@@ -25,7 +25,7 @@ ni->def('ni:/lib/slice.b' =>
         push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};
         if (grep /^\(/, keys %{$$self{methods}}) {
           *{"$p\::()"} = *{"$p\::(("} = sub {};
-          *{"$p\::OVERLOAD"} = {};
+          *{"$p\::OVERLOAD"} = {dummy => 1};
         }
         *{"$p\::$_"} = \&{$$self{methods}{$_}} for keys %{$$self{methods}};
         $self;

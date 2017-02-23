@@ -5,6 +5,17 @@ ni('ni:/lib/slice')->doc
       say_hi => fn q{print "hi from " . shift->name . "\n"});
     $some_class->add('/lib/foo');])
 
+  ->TODO(
+    q[A bug that takes the cake:
+      https://searchcode.com/file/109026149/lib/overload.t#l-1486
+
+      Ok, here's the problem. Rebuilt images of ni fail on old perls, but the
+      boot code works -- the reason is that bless() doesn't commute across
+      overload magic installation on old perls; references themselves have an
+      overload flag that's set when the reference is created, not when the
+      underlying package is modified. So if we want overloading to work, we
+      need to install overloaded methods before we bless things.])
+
   ->description(
     q[A slice of methods encoding some aspect of an object's behavior. Slices
       are combined using tags and branches, and the set of slices used to

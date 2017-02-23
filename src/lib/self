@@ -33,6 +33,7 @@ ni('ni:/object')->child('/lib/ni')
       my $self = shift;
       my $metaclass = $self->resolve('ni:/object.c');
       map $self->resolve("ni:/$_"),
+          grep $self->exists("ni:/$_"),
           grep !$$metaclass{applied_to}->{$_},
           sort keys %{$self->resolve('ni:/object')->{applied_to}};
     },
@@ -40,6 +41,7 @@ ni('ni:/object')->child('/lib/ni')
     metaclasses => fn q{
       my $self = shift;
       map $self->resolve("ni:/$_"),
+          grep $self->exists("ni:/$_"),
           sort keys %{$self->resolve('ni:/object.c')->{applied_to}};
     },
 
@@ -128,14 +130,11 @@ ni('ni:/object')->child('/lib/ni')
       my @todos  = map $_->todos, @docs;
 
       print "\n" . scalar(@todos) . " TODO item(s)\n" if @todos;
-      print "$_\n\n" for @todos;
+      print "\n$_\n" for @todos;
 
       my @tests = map $_->tests, @docs;
-      for (@tests) {
-        $_->run;
-        print '.';
-      }
-      print "\n";
+      $_->run for @tests;
+
       for my $f (grep $_->failed, @tests) {
         ++$failed;
         print "\nTEST FAIL\n", $f->test, "\n";
