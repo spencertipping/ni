@@ -1,5 +1,5 @@
 ni('ni:/semantic/task')->child('/io/transfer')
-  ->def('/io/transfer_io_interop.b',
+  ->def('io_interop.b',
     ctor => fn q{
       my $self = shift;
       @$self{qw/read_bytes read_time write_bytes write_time/} = (0, 0, 0, 0);
@@ -26,7 +26,7 @@ ni('ni:/semantic/task')->child('/io/transfer')
       $n;
     })
 
-  ->def('/io/transfer_io_measurement.b',
+  ->def('io_measurement.b',
     throughput => fn q{
       my $self = shift;
       my $end_time = $$self{end_time} || time;
@@ -72,14 +72,14 @@ ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
   });
 
 ni('ni:/io/transfer')->child('/io/transfer_sync')
-  ->def('/io/transfer_sync_init.b',
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $source, $dest) = @_;
       +{source_io => $source,
         dest_io   => $dest};
     })
 
-  ->def('/io/transfer_sync_run.b',
+  ->def('run.b',
     run => fn q{
       my $self = shift;
       my $bufsize = $$self{bufsize} || 32768;
@@ -99,8 +99,8 @@ ni('ni:/io/transfer')->child('/io/transfer_sync')
     });
 
 ni('ni:/io/transfer')->child('/io/transfer_async')
-  ->ro('/io/transfer_async_ro.b', qw/ source_io dest_io id /)
-  ->def('/io/transfer_async_init.b',
+  ->ro('ro.b', qw/ source_io dest_io id /)
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $source, $dest) = @_;
       $source->nonblock(1) if $source->can('nonblock');
@@ -112,11 +112,11 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
         id        => $class->new_id};
     })
 
-  ->def('/io/transfer_async_lifecycle.b',
+  ->def('lifecycle.b',
     ctor => fn q{ni('ni:/io/transfer_async')->track(shift)},
     dtor => fn q{ni('ni:/io/transfer_async')->untrack(shift->{id})})
 
-  ->def('/io/transfer_async_run.b',
+  ->def('run.b',
     run       => fn q{shift},
     run_async => fn q{
       my $self = shift;
@@ -153,7 +153,7 @@ ni('ni:/io/transfer')->child('/io/transfer_async')
       $self;
     });
 
-ni('ni:/io/transfer_async.c')->def('/io/transfer_async.c_tracker.b',
+ni('ni:/io/transfer_async.c')->def('tracker.b',
   ctor => fn q{
     my $self = shift;
     $$self{tracked_transfers} = {};

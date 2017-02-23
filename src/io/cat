@@ -17,8 +17,8 @@ ni('ni:/io/object')->child('/io/cat')
     })
   ->end
 
-  ->def('/io/cat_init.b', instantiate => fn q{shift; +{fs => [@_]}})
-  ->def('/io/cat_read.b',
+  ->def('init.b', instantiate => fn q{shift; +{fs => [@_]}})
+  ->def('read.b',
     read => fn q{
       my $fs = shift->{fs};
       my $length = $_[1];

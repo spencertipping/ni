@@ -5,14 +5,14 @@ ni('ni:/object')->child('/fabric/remote')
       wrappers and return futures of results.])
   ->end
 
-  ->def('/fabric/remote_init.b',
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $rmi, $name) = @_;
       +{rmi  => $rmi,
         name => $name};
     })
 
-  ->def('/fabric/remote_proxy.b',
+  ->def('proxy.b',
     AUTOLOAD => fn q{
       my $self = shift;
       my $method = ${__PACKAGE__ . '::AUTOLOAD'};

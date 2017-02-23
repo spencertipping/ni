@@ -21,8 +21,8 @@ ni('ni:/io/object')->child('/io/exec')
     })
   ->end
 
-  ->ro('/io/exec_ro.b', qw/argv/)
-  ->def('/io/exec_init.b',
+  ->ro('ro.b', qw/argv/)
+  ->def('init.b',
     instantiate => fn q{
       my ($class, @argv) = @_;
       +{argv         => \@argv,
@@ -31,7 +31,7 @@ ni('ni:/io/object')->child('/io/exec')
         external_fds => {}};
     })
 
-  ->def('/io/exec_io_setup.b',
+  ->def('io_setup.b',
     connect => fn q{
       my ($self, %fds) = @_;
       @{$$self{internal_fds}}{keys %fds} = values %fds;
@@ -70,7 +70,7 @@ ni('ni:/io/object')->child('/io/exec')
       $self;
     })
 
-  ->def('/io/exec_io_accessors.b',
+  ->def('io_accessors.b',
     binds_fd => fn q{
       my ($self, $fd) = @_;
       $$self{internal_fds}{$fd};
@@ -96,7 +96,7 @@ ni('ni:/io/object')->child('/io/exec')
       $self->binds_fd(2) ? $self->fd(2) : $self->out_pipe(2)->fd(2);
     })
 
-  ->def('/io/exec_env.b',
+  ->def('env.b',
     env => fn q{
       my ($self, %env) = @_;
       return $$self{env} unless keys %env;
@@ -104,7 +104,7 @@ ni('ni:/io/object')->child('/io/exec')
       $self;
     })
 
-  ->def('/io/exec_fork.b',
+  ->def('fork.b',
     move_fds => fn q{
       my $self = shift;
       $$self{internal_fds}{$_}->be($_) for keys %{$$self{internal_fds}};

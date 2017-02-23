@@ -43,9 +43,9 @@ ni('ni:/io/object')->child('/io/file')
 
   ->end
 
-  ->ro('/io/file_readers.b', qw/name/)
-  ->rw('/io/file_accessors.b', qw/mode/)
-  ->def('/io/file_init.b',
+  ->ro('readers.b', qw/name/)
+  ->rw('accessors.b', qw/mode/)
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $name, $mode) = @_;
       +{name => $name,
@@ -54,7 +54,7 @@ ni('ni:/io/object')->child('/io/file')
         w    => undef};
     })
 
-  ->def('/io/file_fns.b',
+  ->def('fns.b',
     '(-X' => fn q{
       my ($self, $test) = @_;
       &{"-$test"}($$self{name});
@@ -74,7 +74,7 @@ ni('ni:/io/object')->child('/io/file')
       $self;
     })
 
-  ->def('/io/file_update.b',
+  ->def('update.b',
     atomic_update => fn q{
       my $self = shift;
       my $suffix = 0;
@@ -84,7 +84,7 @@ ni('ni:/io/object')->child('/io/file')
         $self->class->new($self->name . ".$suffix", $self->mode));
     })
 
-  ->def('/io/file_io.b',
+  ->def('io.b',
     close => fn q{
       my $self = shift;
       $$self{r}->close if $$self{r};
@@ -121,7 +121,7 @@ ni('ni:/io/object')->child('/io/file_update_fd')
         '/io/fd_fcntl.b',
         '/io/fd_perlio.b')
 
-  ->def('/io/file_update_fd_init.b',
+  ->def('fd_init.b',
     instantiate => fn q{
       my ($class, $file, $tempfile) = @_;
       my $fd = $tempfile->w;
@@ -132,7 +132,7 @@ ni('ni:/io/object')->child('/io/file_update_fd')
         file     => $file};
     })
 
-  ->def('/io/file_update_fd_gc.b',
+  ->def('fd_gc.b',
     dtor => fn q{shift->close},
     close => fn q{
       my $self = shift;

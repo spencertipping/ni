@@ -1,8 +1,8 @@
 ni('ni:/io/object')->child('/io/null')
-  ->def('/io/null_init.b',
+  ->def('init.b',
     instantiate => fn q{+{fd => undef}})
 
-  ->def('/io/null_io.b',
+  ->def('io.b',
     fd => fn q{
       my $self = shift;
       $$self{fd} ||= ni('ni:/io/fd')->new(

@@ -1,6 +1,6 @@
 ni('ni:/io/object')->child('/io/str')
-  ->ro('/io/str_ro.b', qw/data start end/)
-  ->def('/io/str_init.b',
+  ->ro('ro.b', qw/data start end/)
+  ->def('init.b',
     instantiate => fn q{
       my $class = shift;
       +{data  => \$_[0],
@@ -8,7 +8,7 @@ ni('ni:/io/object')->child('/io/str')
         end   => $_[2] || length $_[0]};
     })
 
-  ->def('/io/str_io.b',
+  ->def('io.b',
     remaining => fn q{my $self = shift; $$self{end} - $$self{start}},
 
     read => fn q{

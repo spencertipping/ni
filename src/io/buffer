@@ -23,7 +23,7 @@ ni('ni:/io/object')->child('/io/buffer')
     })
   ->end
 
-  ->def('/io/buffer_init.b',
+  ->def('init.b',
     instantiate => fn q{
       my ($class, $capacity) = @_;
       $capacity ||= 65536;
@@ -35,7 +35,7 @@ ni('ni:/io/object')->child('/io/buffer')
         write_point => 0};
     })
 
-  ->def('/io/buffer_io.b',
+  ->def('io.b',
     write_capacity => fn q{
       my $self = shift;
       $$self{capacity} - $$self{write_point} + $$self{read_point};

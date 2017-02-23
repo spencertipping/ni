@@ -7,9 +7,9 @@ ni('ni:main')->def('/io/named_io_fns.b',
   waitpid => fn q{CORE::waitpid $_[0], $_[1]});
 
 ni('ni:/object')->child('/io/object')
-  ->def('/io/object_ops.b', '(bool' => fn q{1})
+  ->def('ops.b', '(bool' => fn q{1})
 
-  ->def('/io/object_checks.b',
+  ->def('checks.b',
     # TODO: migrate die() into /lib/ as a base behavior
     die => fn q{shift; die join " ", @_},
 
@@ -25,10 +25,10 @@ ni('ni:/object')->child('/io/object')
     io_check_defined => fn q{shift->io_check(sub {defined shift}, @_)},
     io_check_true    => fn q{shift->io_check(sub {shift}, @_)})
 
-  ->def('/io/object_constructors.b',
+  ->def('constructors.b',
     '(+' => fn q{ni('ni:/io/cat')->new(@_[0, 1])})
 
-  ->def('/io/object_memory.b',
+  ->def('memory.b',
     read_all => fn q{
       shift->into_sync(ni('ni:/io/str')->new(my $data = ''));
       $data;
