@@ -1114,7 +1114,7 @@ $$self{applied_to}{$p} = 1;
 push @{"$p\\::ctors"}, $$self{ctor} if $$self{ctor};
 push @{"$p\\::dtors"}, $$self{dtor} if $$self{dtor};
 if (grep /^\\(/, keys %{$$self{methods}}) {
-  *{"$p\\::()"} = sub {};
+  *{"$p\\::()"} = *{"$p\\::(("} = sub {};
   *{"$p\\::OVERLOAD"} = {};
 }
 *{"$p\\::$_"} = \\&{$$self{methods}{$_}} for keys %{$$self{methods}};
