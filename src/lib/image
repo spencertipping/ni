@@ -107,3 +107,5 @@ ni('ni:/lib/slice')->def('/lib/slice_serialize.b',
       for sort keys %{$$self{applied_to}};
     $g;
   });
+
+ni('ni:/lib/dataslice')->add('/lib/slice_serialize.b');

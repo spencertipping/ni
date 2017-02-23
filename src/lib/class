@@ -33,16 +33,22 @@ ni('ni:/module')->add('/object');
 ni('ni:/class')->add('/module');
 ni('ni:/metaclass')->add('/module');
 
-# /lib/{slice,tag,branch}
-ni('ni:/metaclass')->new('/lib/behavior.c', '/object.c');
-ni('ni:/metaclass')->new('/lib/slice.c',    '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/tag.c',      '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/branch.c',   '/lib/behavior.c');
+# /lib/{slice,dataslice,tag,branch}
+ni('ni:/metaclass')->new('/lib/behavior.c',  '/object.c');
+ni('ni:/metaclass')->new('/lib/slice.c',     '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/dataslice.c', '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/tag.c',       '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/branch.c',    '/lib/behavior.c');
 
 ni('ni:/lib/behavior.c')->new('/lib/behavior', '/object');
 ni("ni:/lib/$_.c")->new("/lib/$_",
   '/lib/behavior', '/lib/named.b',
-  "/lib/$_.b", "/lib/$_\_init.b") for qw/slice branch tag/;
+  "/lib/$_.b", "/lib/$_\_init.b") for qw/dataslice slice branch tag/;
+
+ni('ni:/lib/dataslice')->add(
+  '/lib/named_in_ni.b',
+  '/lib/namespaced.b',
+  '/lib/resolver.b');
 
 ni('ni:/module')->add('/lib/behavior');
 ni('ni:/module.c')->add('/lib/behavior.c');
@@ -98,25 +104,6 @@ ni('ni:/lib/definition.b')
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
-    });
-
-# Data slices
-ni('ni:/lib/behavior')->child('/lib/dataslice')
-  ->def('/lib/dataslice_init.b',
-    instantiate => fn q{
-      my $class = shift;
-      my $name = shift;
-      +{name => $name, data => {@_}};
-    })
-  ->def('/lib/dataslice_apply.b',
-    apply => fn q{
-      local $_;
-      my ($self, $p) = @_;
-      $p = $p->package if ref $p;
-      return if $$self{applied_to}{$p};
-      $$self{applied_to}{$p} = 1;
-      *{"$p\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
-      $self;
     });
 
 ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',

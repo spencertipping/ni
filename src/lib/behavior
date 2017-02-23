@@ -164,3 +164,23 @@ ni('ni:/lib/branch_init.b')->apply('lib/branch');
     defined($_) && $_->($self) for @{ref($self) . '::dtors'};
   },
   class => fn q{ni 'ni:/' . ref shift});
+
+# /lib/dataslice.b
+'lib/slice'->new('/lib/dataslice_init.b',
+  instantiate => fn q{
+    my $class = shift;
+    my $name = shift;
+    +{name => $name, data => {@_}};
+  });
+
+'lib/slice'->new('/lib/dataslice.b',
+  apply  => fn q{shift->apply_(@_)},
+  apply_ => fn q{
+    local $_;
+    my ($self, $p) = @_;
+    $p = $p->package if ref $p;
+    return if $$self{applied_to}{$p};
+    $$self{applied_to}{$p} = 1;
+    *{"$p\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
+    $self;
+  });

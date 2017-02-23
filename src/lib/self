@@ -104,7 +104,7 @@ ni('ni:/object')->child('/lib/ni')
         tests => {
           total   => scalar(@tests),
           passing => @tests - @failed,
-          failed  => [
+          failed  => (@failed ? [
             map +{
               referent => $_->referent->name,
               assertions => [
@@ -112,7 +112,7 @@ ni('ni:/object')->child('/lib/ni')
                     @{$_->assertions}
               ]
             }, @failed
-          ]
+          ] : undef)
         },
 
         todos => [map +{referent => $_->referent->name,
