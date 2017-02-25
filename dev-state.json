@@ -1,8 +1,8 @@
 {
-  "classes": 39,
-  "image_size": 132468,
-  "metaclasses": 37,
-  "named_entities": 244,
+  "classes": 37,
+  "image_size": 129078,
+  "metaclasses": 35,
+  "named_entities": 235,
   "tests": {
     "failed": null,
     "passing": 17,
@@ -16,10 +16,6 @@
     {
       "referent": "ni:/class",
       "text": "document this further"
-    },
-    {
-      "referent": "ni:/fabric/rmi",
-      "text": "The codec stuff is awful. Nothing about a codec is so global that it\nshould apply to all method calls; maybe a class has a per-method\ncodec disposition, or maybe we infer the best one by serialization\nperformance. Either way, global codecs don't make sense here."
     },
     {
       "referent": "ni:/io/object",
@@ -62,8 +58,6 @@
     "ni:/semantic/task"
   ],
   "untested": [
-    "ni:/fabric/remote",
-    "ni:/fabric/rmi",
     "ni:/io/file_update_fd",
     "ni:/io/null",
     "ni:/io/object",
