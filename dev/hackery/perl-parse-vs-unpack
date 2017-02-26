@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+use Time::HiRes qw/time/;
+
+my $perl_ns   = join ',', 1..100;
+my $packed_ns = pack 'N/N', 1..100;
+
+cmpthese 100000, {
+  parse => sub {@xs = eval $perl_ns},
+  unpack => sub {@xs = unpack 'N/N', $packed_ns}
+};
