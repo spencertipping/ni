@@ -28,3 +28,4 @@ A few new invariants, still tentative:
 2. State-of-visibility, and by extension perl packages, are modified through
    commit objects; commits can be reverted. This results in a fully-journaled
    runtime state.
+3. Commits are the only objects that are evaluated.
