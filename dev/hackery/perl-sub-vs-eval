@@ -1,0 +1,20 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $packed = pack '(V/a)*', 'compile', q'sub {my $x = 10; eval $x}';
+
+cmpthese 200000, {
+  sub_first => sub {
+    eval qq{
+      *{'lib/fn::compile'} = sub {my \$x = 10; eval \$x};
+      %named = ('/lib/fn' => bless [q#$packed#], 'lib/fn');
+    };
+  },
+
+  eval => sub {
+    eval qq{
+      %named = ('/lib/fn' => bless [q#$packed#], 'lib/fn');
+      *{'lib/fn::compile'} = eval \$named{'/lib/fn'}->[1];
+    };
+  }
+};
