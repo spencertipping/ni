@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+# The goal is to construct this object:
+#
+# [
+#   {
+#     foo => [1, 2, 3],
+#     bar => "bif1"
+#   },
+#   {
+#     foo => [2, 2, 3],
+#     bar => "bif2"
+#   },
+#   ... (8 more)
+# ]
+
+my $quoted = join ',', map qq#{foo=>[$_,2,3],bar=>q'bif$_'}#, 1..10;
+my $packedvals = pack '(N/a)*', qw/foo bar/, map "bif$_", 1..10;
+my $plhs1 = pack 'N*', map 20, 1..10;
+my $prhs1 = pack 'N*', map 22 + $_, 1..10;
+
+cmpthese 400000, {
+  unquoted => eval "sub {\$a = $quoted}",
+  quoted   => sub {$a = eval $quoted},
+  eval_one => sub {$a = eval '1'},
+
+  packed => sub {
+    my @v = map(+{}, 1..10), map([], 1..10), unpack '(N/a)*', $packedvals;
+    # Problem here: there's no way to do vectorized assignment on multiple
+    # references; i.e. we can't vector-assign ten "foo" slots into ten
+    # different hashes as far as I know.
+  }
+};
