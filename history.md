@@ -35,4 +35,5 @@ A few new invariants, still tentative:
   install the virtual method for function objects.
     - Along these lines, is it worth doubly serializing and just emitting the
       subs directly into the image? This could be a lot faster than evaling
-      them into existence.
+      them into existence. (**Update:** not faster at all; it's marginally
+      slower in fact.)
