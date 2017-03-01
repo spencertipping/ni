@@ -16,12 +16,13 @@ use Benchmark qw/:all/;
 # ]
 
 my $quoted = join ',', map qq#{foo=>[$_,2,3],bar=>q'bif$_'}#, 1..10;
-my $flat   = pack '(N/a)*',
-             map pack('N/N N/a', 3, $_, 2, 3, "bif$_"), 1..10;
+my $flat_be = pack '(N/a)*', map pack('N/N N/a', 3, $_, 2, 3, "bif$_"), 1..10;
+my $flat_le = pack '(V/a)*', map pack('V/V V/a', 3, $_, 2, 3, "bif$_"), 1..10;
 
-cmpthese 100000, {
-  unquoted => eval "sub {\$a = $quoted}",
-  quoted   => sub {$a = eval $quoted},
-  eval_one => sub {$a = eval '1'},
-  packed   => sub {$a = [map bless([$_], 'foo'), unpack '(N/a)*', $flat]}
+cmpthese 200000, {
+  unquoted  => eval "sub {\$a = $quoted}",
+  quoted    => sub {$a = eval $quoted},
+  eval_one  => sub {$a = eval '1'},
+  packed_be => sub {$a = [map bless([$_], 'foo'), unpack '(N/a)*', $flat_be]},
+  packed_le => sub {$a = [map bless([$_], 'foo'), unpack '(V/a)*', $flat_le]},
 };
