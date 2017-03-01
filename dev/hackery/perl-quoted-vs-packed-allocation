@@ -16,19 +16,12 @@ use Benchmark qw/:all/;
 # ]
 
 my $quoted = join ',', map qq#{foo=>[$_,2,3],bar=>q'bif$_'}#, 1..10;
-my $packedvals = pack '(N/a)*', qw/foo bar/, map "bif$_", 1..10;
-my $plhs1 = pack 'N*', map 20, 1..10;
-my $prhs1 = pack 'N*', map 22 + $_, 1..10;
+my $flat   = pack '(N/a)*',
+             map pack('N/N N/a', 3, $_, 2, 3, "bif$_"), 1..10;
 
 cmpthese 400000, {
   unquoted => eval "sub {\$a = $quoted}",
   quoted   => sub {$a = eval $quoted},
   eval_one => sub {$a = eval '1'},
-
-  packed => sub {
-    my @v = map(+{}, 1..10), map([], 1..10), unpack '(N/a)*', $packedvals;
-    # Problem here: there's no way to do vectorized assignment on multiple
-    # references; i.e. we can't vector-assign ten "foo" slots into ten
-    # different hashes as far as I know.
-  }
+  packed   => sub {$a = [map bless(\(my $x = $_), 'foo'), unpack '(N/a)*', $flat]}
 };
