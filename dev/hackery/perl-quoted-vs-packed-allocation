@@ -19,9 +19,9 @@ my $quoted = join ',', map qq#{foo=>[$_,2,3],bar=>q'bif$_'}#, 1..10;
 my $flat   = pack '(N/a)*',
              map pack('N/N N/a', 3, $_, 2, 3, "bif$_"), 1..10;
 
-cmpthese 400000, {
+cmpthese 100000, {
   unquoted => eval "sub {\$a = $quoted}",
   quoted   => sub {$a = eval $quoted},
   eval_one => sub {$a = eval '1'},
-  packed   => sub {$a = [map bless(\(my $x = $_), 'foo'), unpack '(N/a)*', $flat]}
+  packed   => sub {$a = [map bless([$_], 'foo'), unpack '(N/a)*', $flat]}
 };
