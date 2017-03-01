@@ -29,3 +29,10 @@ A few new invariants, still tentative:
    commit objects; commits can be reverted. This results in a fully-journaled
    runtime state.
 3. Commits are the only objects that are evaluated.
+
+- **137:** Considering flat object storage, in which case commit-like behavior
+  would be a virtual method that performs the eval. The root commit would
+  install the virtual method for function objects.
+    - Along these lines, is it worth doubly serializing and just emitting the
+      subs directly into the image? This could be a lot faster than evaling
+      them into existence.
