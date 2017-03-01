@@ -6,7 +6,11 @@ my $perl_ns   = join ',', 1..1000;
 (my $packed_ns = pack 'N/N', 1..1000) =~ s/#/\\#/g;
 my $perl_packed_ns = "unpack 'N/N', q#$packed_ns#";
 
+(my $packed_uu_ns = pack 'u', pack 'N/N', 1..1000) =~ s/#/\\#/g;
+my $perl_packed_uu_ns = "unpack 'N/N', unpack 'u', q#$packed_uu_ns#";
+
 cmpthese 10000, {
   parse => sub {@xs = eval $perl_ns},
-  unpack => sub {@xs = eval $perl_packed_ns}
+  unpack => sub {@xs = eval $perl_packed_ns},
+  unpack_uu => sub {@xs = eval $perl_packed_uu_ns}
 };
