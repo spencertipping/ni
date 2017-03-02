@@ -26,6 +26,7 @@ _
 BEGIN{eval($ni::boot = <<'_');}
 use strict;
 use warnings;
+use Digest::MD5;
 no warnings qw/redefine void/;
 no strict 'refs';
 use Errno;

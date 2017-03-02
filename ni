@@ -26,6 +26,7 @@ _
 BEGIN{eval($ni::boot=<<'_')}
 use strict;
 use warnings;
+use Digest::MD5;
 no warnings qw/redefine void/;
 no strict 'refs';
 use Errno;
@@ -860,8 +861,10 @@ $self;#;$rw=bless({$w,$qw,$y,$z},$A);$sw={$R2,$rw};$tw=q#/lib/doc_TODO.b#;$uw=bl
 push @{$$self{doc}},
      [eg => eg($_)->referent($self->referent)] for @_;
 $self;#;$xw=bless({$w,$ww,$y,$z},$A);$yw={$p6,$xw};$zw=q#/lib/doc_eg.b#;$Aw=bless({$T2,$vw,$u4,$q,$v4,$q,$w4,$yw,$Q,$zw},$T3);$Bw={};$Cw=q#tests#;$Dw=q#my $self = shift;
-map $_->referent($self->referent), grep ref($_) eq 'lib/test_case', @$self;#;$Ew=bless({$w,$Dw,$y,$z},$A);$Fw=q#todos#;$Gw=q#my $self = shift;
-map $_->referent($self->referent), grep ref($_) eq 'lib/todo', @$self;#;$Hw=bless({$w,$Gw,$y,$z},$A);$Iw={$Cw,$Ew,$Fw,$Hw};$Jw=q#/lib/doc_process.b#;$Kw=bless({$T2,$Bw,$u4,$q,$v4,$q,$w4,$Iw,$Q,$Jw},$T3);$Lw=[$G4,$G8,$Ov,$Uv,$gw,$ow,$uw,$Aw,$Kw];$Mw=bless({$T2,$Iv,$Q,$ea,$i3,$Lw},$H3);$Nw=q#ni:/lib/doc.c#;$Ow={$H3,1};$Pw=q#/lib/doc.c#;$Qw={};$Rw=q#defannotation#;$Sw=q#my $class = shift;
+map $_->referent($self->referent), grep ref($_) eq 'lib/test_case',
+    map @$_, @{$$self{doc}};#;$Ew=bless({$w,$Dw,$y,$z},$A);$Fw=q#todos#;$Gw=q#my $self = shift;
+map $_->referent($self->referent), grep ref($_) eq 'lib/todo',
+    map @$_, @{$$self{doc}};#;$Hw=bless({$w,$Gw,$y,$z},$A);$Iw={$Cw,$Ew,$Fw,$Hw};$Jw=q#/lib/doc_process.b#;$Kw=bless({$T2,$Bw,$u4,$q,$v4,$q,$w4,$Iw,$Q,$Jw},$T3);$Lw=[$G4,$G8,$Ov,$Uv,$gw,$ow,$uw,$Aw,$Kw];$Mw=bless({$T2,$Iv,$Q,$ea,$i3,$Lw},$H3);$Nw=q#ni:/lib/doc.c#;$Ow={$H3,1};$Pw=q#/lib/doc.c#;$Qw={};$Rw=q#defannotation#;$Sw=q#my $class = shift;
 $class->def("$$class{name}_$_.b",
   $_ => fn qq{
     my \\$self = shift;
