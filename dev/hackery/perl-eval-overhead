@@ -1,0 +1,12 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $a1 = '*A1::foo = sub {1};';
+my $a2 = '*A2::foo = sub {2};';
+
+my $joined = "$a1$a2";
+
+cmpthese 100000, {
+  joined   => sub {eval $joined},
+  separate => sub {eval $a1; eval $a2},
+};
