@@ -22,6 +22,13 @@ sub pobj::x {
   $self;
 }
 
+sub pobj::xopt {
+  my $self = shift;
+  return unpack 'f', $$self unless @_;
+  $$self = pack 'f', shift;
+  $self;
+}
+
 sub dobj::x {
   my $self = shift;
   return $$self unless @_;
@@ -31,6 +38,11 @@ sub dobj::x {
 
 my $hobj = bless {x => 1.0}, 'hobj';
 my $aobj = bless [1.0], 'aobj';
+
+my $hobj_heavy = bless {x => 1.0, 1..1000}, 'hobj';
+my $aobj_heavy = bless [1.0, 1..1000], 'aobj';
+my $packed_heavy = pack 'f*', 1.0, 1..1000;
+my $pobj_heavy = bless \$packed_heavy, 'pobj';
 
 my $packed = pack 'f', 1.0;
 my $pobj = bless \$packed, 'pobj';
@@ -47,10 +59,28 @@ cmpthese 4000000, {
   dobj_create => sub {my $p = 1.0; bless \$p, 'dobj'},
 };
 
+cmpthese 10000000, {
+  hobj_direct => sub {$total += $$hobj{x}},
+  aobj_direct => sub {$total += $$aobj[0]},
+  pobj_direct => sub {$total += unpack '@0f', $$pobj},
+  pobj_opt_direct => sub {$total += unpack 'f', $$pobj},
+  dobj_direct => sub {$total += $$dobj},
+
+  hobj_heavy_direct => sub {$total += $$hobj_heavy{x}},
+  aobj_heavy_direct => sub {$total += $$aobj_heavy[0]},
+  pobj_heavy_direct => sub {$total += unpack '@0f', $$pobj_heavy},
+};
+
 cmpthese 4000000, {
   hobj_get => sub {$total += $hobj->x},
   aobj_get => sub {$total += $aobj->x},
   pobj_get => sub {$total += $pobj->x},
+
+  hobj_heavy_get => sub {$total += $hobj_heavy->x},
+  aobj_heavy_get => sub {$total += $aobj_heavy->x},
+  pobj_heavy_get => sub {$total += $pobj_heavy->x},
+
+  pobj_opt_get => sub {$total += $pobj->xopt},
   dobj_get => sub {$total += $dobj->x},
 };
 
@@ -58,6 +88,12 @@ cmpthese 4000000, {
   hobj_set => sub {$hobj->x(1.0)},
   aobj_set => sub {$aobj->x(1.0)},
   pobj_set => sub {$pobj->x(1.0)},
+
+  hobj_heavy_set => sub {$hobj_heavy->x(1.0)},
+  aobj_heavy_set => sub {$aobj_heavy->x(1.0)},
+  pobj_heavy_set => sub {$pobj_heavy->x(1.0)},
+
+  pobj_opt_set => sub {$pobj->xopt(1.0)},
   dobj_set => sub {$dobj->x(1.0)},
 };
 
@@ -65,5 +101,6 @@ cmpthese 2000000, {
   hobj_both => sub {$total += $hobj->x(1.0)->x},
   aobj_both => sub {$total += $aobj->x(1.0)->x},
   pobj_both => sub {$total += $pobj->x(1.0)->x},
+  pobj_opt_both => sub {$total += $pobj->xopt(1.0)->xopt},
   dobj_both => sub {$total += $dobj->x(1.0)->x},
 };
