@@ -3,7 +3,7 @@ use Benchmark qw/:all/;
 
 { package A0; sub foo {1} }
 for (1..100) {
-  eval "{ package A$_; our \@ISA = qw/A" . ($_ - 1) . "/ }";
+  eval "{ package A$_; our \@ISA = qw/A" . ($_ - 1) . " A" . ($_ - 2) . "/ }";
   die $@ if $@;
 }
 
