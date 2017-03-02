@@ -1,0 +1,17 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $short = pack 'N*', 1..10;
+my $long  = pack 'N*', 1..10000;
+
+cmpthese 10000000, {
+  short_first     => sub {unpack 'N', $short},
+  short_last_seek => sub {unpack '@36N', $short},
+  short_last_x    => sub {unpack 'x36N', $short},
+
+  long_first      => sub {unpack 'N', $long},
+  long_p10_seek   => sub {unpack '@36N', $long},
+  long_p10_x      => sub {unpack 'x36N', $long},
+  long_last_seek  => sub {unpack '@39996N', $long},
+  long_last_x     => sub {unpack 'x39996N', $long},
+};

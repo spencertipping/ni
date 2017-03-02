@@ -1,0 +1,38 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $short = 'x' x 100;
+my $long  = 'x' x 10000;
+
+my $spaces_10  = ' ' x 10;
+my $spaces_100 = ' ' x 100;
+
+cmpthese 10000000, {
+  just_substr_0_lvalue => sub { substr($short, 0, 0) = '' },
+  just_substr_1_lvalue => sub { substr($short, 0, 1) = ' ' },
+  just_substr_0_assign => sub { substr($short, 0, 0, '') },
+  just_substr_1_assign => sub { substr($short, 0, 1, ' ') },
+  modify_all_short => sub { $short ^= $spaces_100 },
+};
+
+cmpthese 2500000, {
+  modify_m10_short => sub { substr($short, 45, 10) ^= $spaces_10 },
+  assign_f10_short => sub { substr($short,  0, 10) = substr($short, 0, 10) ^ $spaces_10 },
+  assign_l10_short => sub { substr($short, 90, 10) = substr($short, 90, 10) ^ $spaces_10 },
+  assign_m10_short => sub { substr($short, 45, 10) = substr($short, 45, 10) ^ $spaces_10 },
+
+  modify_sub_short => sub { substr($short, 0, 100) ^= $spaces_100 },
+  assign_sub_short => sub { substr($short, 0, 100) = substr($short, 0, 100) ^ $spaces_100 },
+};
+
+cmpthese 1000000, {
+  modify_f10_short => sub { substr($short,  0, 10) ^= $spaces_10 },
+  modify_l10_short => sub { substr($short, 90, 10) ^= $spaces_10 },
+  modify_f10_long => sub { substr($long,    0, 10) ^= $spaces_10 },
+  modify_l10_long => sub { substr($long, 9990, 10) ^= $spaces_10 },
+  modify_m10_long => sub { substr($long, 4995, 10) ^= $spaces_10 },
+
+  modify_f100_long => sub { substr($long,    0, 100) ^= $spaces_100 },
+  modify_l100_long => sub { substr($long, 9900, 100) ^= $spaces_100 },
+  modify_m100_long => sub { substr($long, 4950, 100) ^= $spaces_100 },
+};

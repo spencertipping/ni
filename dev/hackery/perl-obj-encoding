@@ -1,0 +1,69 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+sub hobj::x {
+  my $self = shift;
+  return $$self{x} unless @_;
+  $$self{x} = shift;
+  $self;
+}
+
+sub aobj::x {
+  my $self = shift;
+  return $$self[0] unless @_;
+  $$self[0] = shift;
+  $self;
+}
+
+sub pobj::x {
+  my $self = shift;
+  return unpack '@0f', $$self unless @_;
+  substr($$self, 0, 8) = pack 'f', shift;
+  $self;
+}
+
+sub dobj::x {
+  my $self = shift;
+  return $$self unless @_;
+  $$self = shift;
+  $self;
+}
+
+my $hobj = bless {x => 1.0}, 'hobj';
+my $aobj = bless [1.0], 'aobj';
+
+my $packed = pack 'f', 1.0;
+my $pobj = bless \$packed, 'pobj';
+
+my $direct = 1.0;
+my $dobj = bless \$direct, 'dobj';
+
+my $total = 1.0;
+
+cmpthese 4000000, {
+  hobj_create => sub {bless {x => 1.0}, 'hobj'},
+  aobj_create => sub {bless [1.0], 'aobj'},
+  pobj_create => sub {my $p = pack 'f', 1.0; bless \$p, 'pobj'},
+  dobj_create => sub {my $p = 1.0; bless \$p, 'dobj'},
+};
+
+cmpthese 4000000, {
+  hobj_get => sub {$total += $hobj->x},
+  aobj_get => sub {$total += $aobj->x},
+  pobj_get => sub {$total += $pobj->x},
+  dobj_get => sub {$total += $dobj->x},
+};
+
+cmpthese 4000000, {
+  hobj_set => sub {$hobj->x(1.0)},
+  aobj_set => sub {$aobj->x(1.0)},
+  pobj_set => sub {$pobj->x(1.0)},
+  dobj_set => sub {$dobj->x(1.0)},
+};
+
+cmpthese 2000000, {
+  hobj_both => sub {$total += $hobj->x(1.0)->x},
+  aobj_both => sub {$total += $aobj->x(1.0)->x},
+  pobj_both => sub {$total += $pobj->x(1.0)->x},
+  dobj_both => sub {$total += $dobj->x(1.0)->x},
+};

@@ -15,3 +15,9 @@ world.
 This is actually quite useful, because an unapplied commit can still be
 reasoned about. We can consider alternatives and apply the commit to the world
 when we have one that is likely to work.
+
+## Commits as changes to perl state
+Perl performance is invariant wrt the length of an inheritance chain, so
+commits can create perl packages whose inheritance reflects commit
+dependencies. They can also destroy packages as they are garbage-collected,
+though some perl versions will leak memory if we rely on this.
