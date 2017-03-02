@@ -1,0 +1,25 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+{ package A0; sub foo {1} }
+for (1..100) {
+  eval "{ package A$_; our \@ISA = qw/A" . ($_ - 1) . "/ }";
+  die $@ if $@;
+}
+
+my $a0_instance = bless {}, 'A0';
+my $a100_instance = bless {}, 'A100';
+
+cmpthese 100000, {
+  direct  => sub {A0::foo($a0_instance) for 1..100},
+  shallow => sub {$a0_instance->foo for 1..100},
+  deep    => sub {$a100_instance->foo for 1..100},
+  switch  => sub {
+    for (1..50) {
+      *A50::foo = sub {2};
+      $a100_instance->foo;
+      delete ${"A50::"}{foo};
+      $a100_instance->foo;
+    }
+  },
+};
