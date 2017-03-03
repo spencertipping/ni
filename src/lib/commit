@@ -1,6 +1,3 @@
-use strict;
-use warnings;
-no warnings qw/redefine void/;
 no strict qw/refs/;
 
 sub ni::eval {eval shift}
@@ -21,6 +18,9 @@ sub id        {unpack 'H32', ${$_[0]}}
 sub binary_id {unpack 'a16', ${$_[0]}}
 sub code      {unpack 'x16 n/(n/x) N/a', ${$_[0]}}
 sub parents   {unpack 'x16 n/(n/a)',     ${$_[0]}}
+sub package   {'ni::' . shift->id}
+
+sub child {ref($_[0])->new(shift->binary_id, @_)}
 
 sub eval {
   my $self = shift;
@@ -42,6 +42,39 @@ ni::eval qq{# line 0 "ni::commit"
             $commit_code};
 die $@ if $@;
 
-my $id = ($ni::commit = ni::commit->new($commit_code))->id;
-delete @ni::commit::{keys %ni::commit::}, $ni::{'commit::'};
-@ni::commit::ISA = "ni::$id";
+my $commit = ni::commit->new($commit_code);
+my $p = $commit->package;
+delete @ni::commit::{keys %ni::commit::};
+@{'ni::/lib/commit::ISA'} = $p;
+bless $commit, 'ni::/lib/commit';
+
+# No need for this function in the final image; it's just some DSL to pack
+# code more efficiently.
+sub fn($) {
+  (my $code = shift) =~ s/^\s*\n|\s*$//g;
+  my @lines = split /\n/, $code;
+  my $spaces = length $code;
+  for (@lines) {
+    $spaces = length $1 if /^([ \t]*)\S/ && length $1 < $spaces;
+  }
+  $spaces = ' ' x $spaces;
+  s/^$spaces// for @lines;
+  join "\n", @lines;
+}
+
+my $image_id = $commit->child(<<'_')->id;
+sub def {
+  my $self = shift;
+  my %defs = @_;
+  @{$$self{named}}{keys %defs} = values %defs;
+  $self;
+}
+
+sub resolve {
+  my ($self, $name) = @_;
+  die "ni: cannot resolve $name" unless exists $$self{named}->{$name};
+  $$self{named}->{$name};
+}
+_
+
+@{'ni::/lib/image::ISA'} = "ni::$image_id";

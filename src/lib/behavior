@@ -2,75 +2,67 @@
 ni->def('ni:/lib/slice.b' =>
   bless {
     name => '/lib/slice.b',
+    header => undef,
+    commit => undef,
     methods => {
-      apply => fn q{
-        local $_;
-        my ($self, $p) = @_;
-        $p = $p->package if ref $p;
-        die "/lib/slice.b->apply('$p'): perl packages don't start with "
-          . "slashes (this fails on older versions of perl)" if $p =~ /^\//;
-        return if $$self{applied_to}{$p};
-        for (keys %{$$self{methods}}) {
-          die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
-        }
-        $self->apply_($p);
+      ctor => fn q{shift->commit},
+      commit => fn q{
+        my $self = shift;
+        $$self{commit} ||= 'ni::/lib/commit'->new(
+          join "\n", "# line 1 \"$$self{name}\"",
+                     ($$self{header} ? ($$self{header}) : ()),
+                     map "# line 1 \"$$self{name}\::$_\"\n"
+                       . "sub $_ {${$$self{methods}}{$_}\n}",
+                     sort keys %{$$self{methods}});
       },
-
-      apply_ => fn q{
-        local $_;
-        my ($self, $p) = @_;
-        return if $$self{applied_to}{$p};
-        $$self{applied_to}{$p} = 1;
-        push @{"$p\::ctors"}, $$self{ctor} if $$self{ctor};
-        push @{"$p\::dtors"}, $$self{dtor} if $$self{dtor};
-        if (grep /^\(/, keys %{$$self{methods}}) {
-          *{"$p\::()"} = *{"$p\::(("} = sub {};
-          *{"$p\::OVERLOAD"} = {dummy => 1};
-        }
-        *{"$p\::$_"} = \&{$$self{methods}{$_}} for keys %{$$self{methods}};
-        $self;
-      }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
-ni('ni:/lib/slice.b')->{methods}->{apply_}
-  ->(ni('ni:/lib/slice.b'), 'lib/slice');
+my $slice_commit = eval("sub {" . ni('ni:/lib/slice.b')->{methods}->{commit}
+                                . "\n}")->(ni('ni:/lib/slice.b'));
+@{'ni::/lib/slice::ISA'} = $slice_commit->package;
 
 ni->def('ni:/lib/slice_init.b' =>
   bless {
     name => '/lib/slice_init.b',
+    header => undef,
+    commit => undef,
     methods => {
       instantiate => fn q{
         my $class = shift;
         my $name  = shift;
         my %args  = @_;
-        +{ctor       => delete($args{ctor}),
-          dtor       => delete($args{dtor}),
-          applied_to => delete($args{applied_to}),
-          name       => $name,
-          methods    => \%args};
+        +{header  => delete($args{header}) || '',
+          name    => $name,
+          methods => \%args};
       }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
-ni('ni:/lib/slice_init.b')->apply('lib/slice');
+ni('ni:/lib/slice_init.b')->commit;
 
 ni->def('ni:/lib/instantiable.b' =>
   bless {
     name => '/lib/instantiable.b',
+    header => undef,
+    commit => undef,
     methods => {
       new => fn q{
         local $_;
         my $class   = shift;
         my $package = ref $class ? $class->package : $class;
+
+        # TODO: this needs to be virtual
         my $self    = bless &{"$package\::instantiate"}($class, @_), $package;
+
+        # TODO: traverse superclasses
         &$_($self) for @{ref($self) . "::ctors"};
         $self;
       }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
-ni('ni:/lib/instantiable.b')->apply('lib/slice');
+ni('ni:/lib/instantiable.b')->commit;
 
 ni->def(
   'ni:/lib/named_in_ni.b' =>
