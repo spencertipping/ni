@@ -5,15 +5,18 @@ sub ni::eval {eval shift}
 my $commit_code = <<'_';
 require Digest::MD5;
 
+sub by_id {${"ni::$_[1]\::commit"}}
+
 sub new {
   my $class   = shift;
   my $code    = pop;
-  my @parents = @_;
+  my @parents = map ref($_) ? $_->binary_id : $_, @_;
   my $packed  = pack('n/(n/a)', @parents) . pack 'N/a', $code;
   $packed     = Digest::MD5::md5($packed) . $packed;
   bless(\$packed, $class)->eval;
 }
 
+sub commit    {shift}
 sub id        {unpack 'H32', ${$_[0]}}
 sub binary_id {unpack 'a16', ${$_[0]}}
 sub code      {unpack 'x16 n/(n/x) N/a', ${$_[0]}}
@@ -23,9 +26,10 @@ sub package   {'ni::' . shift->id}
 sub child {ref($_[0])->new(shift->binary_id, @_)}
 
 sub eval {
+  local $_;
   my $self = shift;
   my $id = $self->id;
-  exists $ni::{unpack('H*') . '::'}
+  ${'ni::' . unpack('H*') . '::commit'}
     or die "ni::commit $id: parent " . unpack('H*')
          . " has not yet been applied (i.e. does not exist)"
   for $self->parents;
@@ -33,6 +37,7 @@ sub eval {
                       "package ni::$id;",
                       $self->code;
   die $@ if $@;
+  ${"ni::$id\::commit"} = $self;
   $self;
 }
 _
@@ -63,6 +68,7 @@ sub fn($) {
 }
 
 my $image_id = $commit->child(<<'_')->id;
+# line 1 "ni::/lib/image"
 sub def {
   my $self = shift;
   my %defs = @_;
@@ -72,7 +78,7 @@ sub def {
 
 sub resolve {
   my ($self, $name) = @_;
-  die "ni: cannot resolve $name" unless exists $$self{named}->{$name};
+  die "ni: cannot resolve '$name'" unless exists $$self{named}->{$name};
   $$self{named}->{$name};
 }
 _

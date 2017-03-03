@@ -20,7 +20,7 @@ ni->def('ni:/lib/slice.b' =>
 
 my $slice_commit = eval("sub {" . ni('ni:/lib/slice.b')->{methods}->{commit}
                                 . "\n}")->(ni('ni:/lib/slice.b'));
-@{'ni::/lib/slice::ISA'} = $slice_commit->package;
+push @{'ni::/lib/slice::ISA'}, $slice_commit->package;
 
 ni->def('ni:/lib/slice_init.b' =>
   bless {
@@ -39,7 +39,7 @@ ni->def('ni:/lib/slice_init.b' =>
     }
   }, 'ni::/lib/slice');
 
-ni('ni:/lib/slice_init.b')->commit;
+push @{'ni::/lib/slice::ISA'}, ni('ni:/lib/slice_init.b')->commit->package;
 
 ni->def('ni:/lib/instantiable.b' =>
   bless {
@@ -47,53 +47,74 @@ ni->def('ni:/lib/instantiable.b' =>
     header => undef,
     commit => undef,
     methods => {
-      new => fn q{
+      ancestors => fn q{
+        my $package  = ref shift;
+        my %supers   = ($package => $package);
+        my @frontier = $package;
+        @supers{@frontier} = @frontier
+          while @frontier = grep !$supers{$_}, map @{"$_\::ISA"}, @frontier;
+        sort keys %supers;
+      },
+
+      invoke_ctors => fn q{
         local $_;
+        my $self = shift;
+        defined *{"$_\::ctor"}{CODE} && &{"$_\::ctor"}($self)
+          for $self->ancestors;
+        $self;
+      },
+
+      new => fn q{
         my $class   = shift;
         my $package = ref $class ? $class->package : $class;
-
-        # TODO: this needs to be virtual
-        my $self    = bless &{"$package\::instantiate"}($class, @_), $package;
-
-        # TODO: traverse superclasses
-        &$_($self) for @{ref($self) . "::ctors"};
-        $self;
+        my $ctor    = $package->can('instantiate');
+        bless(&$ctor($class, @_), $package)->invoke_ctors;
       }
     }
   }, 'ni::/lib/slice');
 
-ni('ni:/lib/instantiable.b')->commit;
+push @{'ni::/lib/slice::ISA'}, ni('ni:/lib/instantiable.b')->commit->package;
 
 ni->def(
   'ni:/lib/named_in_ni.b' =>
-    'lib/slice'->new('/lib/named_in_ni.b',
+    'ni::/lib/slice'->new('/lib/named_in_ni.b',
       namespace => fn q{'ni'}),
   'ni:/lib/named.b' =>
-    'lib/slice'->new('/lib/named.b',
-      ctor => fn q{my $s = shift; ni->def($s->name, $s)},
+    'ni::/lib/slice'->new('/lib/named.b',
+      ctor => fn q{my $s = shift; ::ni->def($s->name, $s)},
       name => fn q{$_[0]->namespace . ":" . $_[0]->{name}}));
 
-ni('ni:/lib/named.b')->apply('lib/slice');
-ni('ni:/lib/named_in_ni.b')->apply('lib/slice');
+push @{'ni::/lib/slice::ISA'}, ni('ni:/lib/named_in_ni.b')->commit->package;
+push @{'ni::/lib/slice::ISA'}, ni('ni:/lib/named.b')->commit->package;
 
-'lib/slice'->new('/lib/namespaced.b',
-  package => fn q{(my $name = shift->{name}) =~ s/^\///; $name});
+'ni::/lib/slice'->new('/lib/namespaced_by_commit.b',
+  package => fn q{shift->commit->package});
 
-ni('ni:/lib/namespaced.b')->apply('lib/slice');
+push @{'ni::/lib/slice::ISA'},
+  ni('ni:/lib/namespaced_by_commit.b')->commit->package;
+
+'ni::/lib/slice'->new('/lib/namespaced_by_symbol.b',
+  package => fn q{'ni::' . shift->{name}});
 
 # /lib/tag.b
-'lib/slice'->new('/lib/resolver.b',
-  resolve => fn q{ref $_[1] ? $_[1] : ni"ni:$_[1]"});
+'ni::/lib/slice'->new('/lib/resolver.b',
+  resolve => fn q{ref $_[1] ? $_[1] : ::ni"ni:$_[1]"});
 
-'lib/slice'->new('/lib/tag.b',
-  apply => fn q{
+'ni::/lib/slice'->new('/lib/tag.b',
+  ctor => fn q{shift->commit},
+  commit => fn q{
     local $_;
-    my ($self, $p) = @_;
-    $self->resolve($_)->apply($p) for @{$$self{slices}};
-    $self;
+    my $self = shift;
+    return $$self{commit} if $$self{commit};
+    my @parents = map $self->resolve($_)->commit, @{$$self{slices}};
+    my $parent_packages = join ' ', map $_->package, @parents;
+    my $package = $self->package;
+    $$self{commit} = 'ni::/lib/commit'->new(@parents,
+      ::fn qq{our \@ISA = qw($parent_packages);
+              \@{'$$self{name}\::ISA'} = __PACKAGE__});
   });
 
-'lib/slice'->new('/lib/tag_init.b',
+'ni::/lib/slice'->new('/lib/tag_init.b',
   instantiate => fn q{
     local $_;
     my $class = shift;
@@ -101,78 +122,39 @@ ni('ni:/lib/namespaced.b')->apply('lib/slice');
     +{name => $name, slices => [@_]};
   });
 
-ni('ni:/lib/tag.b')->apply('lib/tag');
-ni('ni:/lib/tag_init.b')->apply('lib/tag');
-ni('ni:/lib/named.b')->apply('lib/tag');
-ni('ni:/lib/named_in_ni.b')->apply('lib/tag');
-ni('ni:/lib/namespaced.b')->apply('lib/tag');
-ni('ni:/lib/instantiable.b')->apply('lib/tag');
-ni('ni:/lib/resolver.b')->apply('lib/tag');
+push @{'ni::/lib/tag::ISA'},
+  map ni("ni:/lib/$_.b")->commit->package,
+      qw/tag tag_init named named_in_ni namespaced_by_symbol instantiable
+         resolver/;
 
 # /lib/branch.b
-'lib/slice'->new('/lib/branch.b',
+'ni::/lib/slice'->new('/lib/branch.b',
   apply => fn q{
-    local $_;
     my ($self, $p) = @_;
-    $p = $p->package if ref $p;
-    $$self{applied_to}{$p} = 1;
-    $self->resolve($_)->apply($p) for @{$$self{slices}};
-    $self;
+    my $package = $self->package;
+    $self->add('ni::/lib/commit'->new(::fn qq{push \@{'$p\::ISA'}, '$package'}));
   },
+
   add => fn q{
-    local $_;
     my $self = shift;
     push @{$$self{slices}}, @_;
-    for my $p (sort keys %{$$self{applied_to}}) {
-      $self->resolve($_)->apply($p) for @_;
-    }
+    $$self{commit} = undef;
+    $self->commit;
     $self;
   });
 
-'lib/slice'->new('/lib/branch_init.b',
-  instantiate => fn q{
-    local $_;
-    my $class = shift;
-    my $name  = shift;
-    +{name       => $name,
-      applied_to => {},
-      slices     => [@_]};
-  });
+push @{'ni::/lib/branch::ISA'},
+  @{'ni::/lib/tag::ISA'},
+  ni('ni:/lib/branch.b')->package;
 
-'lib/tag'->new('/lib/perlbranch.b',
-  '/lib/branch.b',
-  '/lib/named.b',
-  '/lib/named_in_ni.b',
-  '/lib/namespaced.b',
-  '/lib/resolver.b');
-
-ni('ni:/lib/perlbranch.b')->apply('lib/branch');
-ni('ni:/lib/branch_init.b')->apply('lib/branch');
-
-'lib/slice'->new('/lib/instance.b',
+'ni::/lib/slice'->new('/lib/instance.b',
   DESTROY => fn q{
     local $_;
     my $self = shift;
-    defined($_) && $_->($self) for @{ref($self) . '::dtors'};
+    defined *{"$_\::dtor"}{CODE} && &{"$_\::dtor"}($self)
+      for $self->ancestors;
   },
-  class => fn q{ni 'ni:/' . ref shift});
-
-# /lib/dataslice.b
-'lib/slice'->new('/lib/dataslice_init.b',
-  instantiate => fn q{
-    my $class = shift;
-    my $name = shift;
-    +{name => $name, data => {@_}};
-  });
-
-'lib/slice'->new('/lib/dataslice.b',
-  apply  => fn q{shift->apply_(@_)},
-  apply_ => fn q{
-    local $_;
-    my ($self, $p) = @_;
-    $p = $p->package if ref $p;
-    return if $$self{applied_to}{$p};
-    $$self{applied_to}{$p} = 1;
-    *{"$p\::$_"} = $$self{data}{$_} for keys %{$$self{data}};
-    $self;
+  class => fn q{
+    (my $package = ref shift) =~ s/^ni::/ni:/;
+    ::ni$package;
   });

@@ -1,18 +1,26 @@
 # /class and /metaclass
-'lib/slice'->new('/lib/class_init.b',
+'ni::/lib/slice'->new('/lib/class_init.b',
   ctor => fn q{my $s = shift; $s->apply($s->package)},
   instantiate => fn q{
     local $_;
     my ($class, $name, @slices) = @_;
     +{name   => $name,
       slices => [map $class->resolve($_), @slices]};
-  });
+  }); 
 
-for (qw/ class metaclass class.c metaclass.c module.c /) {
-  ni('ni:/lib/perlbranch.b')->apply($_);
-  ni('ni:/lib/instantiable.b')->apply($_);
-  ni('ni:/lib/class_init.b')->apply($_);
-}
+'ni::/lib/branch'->new('/lib/class_base.b',
+  '/lib/named.b',
+  '/lib/named_in_ni.b',
+  '/lib/tag.b',
+  '/lib/namespaced_by_symbol.b',
+  '/lib/instantiable.b',
+  '/lib/resolver.b',
+  '/lib/branch.b',
+  '/lib/instantiable.b',
+  '/lib/class_init.b');
+
+ni('ni:/lib/class_base.b')->apply("ni::/$_")
+  for qw/class metaclass class.c metaclass.c module.c/;
 
 'metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/instantiable.b', '/lib/class_init.b');
 
