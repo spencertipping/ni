@@ -108,12 +108,11 @@ push @{'ni::/lib/slice::ISA'},
     local $_;
     my $self = shift;
     return $$self{commit} if $$self{commit};
-    my @parents = map $self->resolve($_)->commit, @{$$self{slices}};
-    my $parent_packages = join ' ', map $_->package, @parents;
+    my @parents = map $_->commit, @{$$self{slices}};
+    my $parent_packages = join ' ', map $_->package, @{$$self{slices}};
     my $package = $self->package;
     $$self{commit} = 'ni::/lib/commit'->new(@parents,
-      ::fn qq{our \@ISA = qw($parent_packages);
-              \@{'$package\::ISA'} = __PACKAGE__});
+      qq{our \@ISA = qw($parent_packages);\@{'$package\::ISA'} = __PACKAGE__});
   });
 
 'ni::/lib/slice'->new('/lib/tag_init.b',
@@ -134,7 +133,7 @@ push @{'ni::/lib/tag::ISA'},
   apply => fn q{
     my ($self, $p) = @_;
     my $package = $self->package;
-    $self->add('ni::/lib/commit'->new(::fn qq{push \@{'$p\::ISA'}, '$package'}));
+    $self->add('ni::/lib/commit'->new(qq{push \@{'$p\::ISA'}, '$package'}));
   },
 
   add => fn q{
