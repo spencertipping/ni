@@ -13,12 +13,10 @@ ni('ni:/module')->new('/lib')
       written differently from other modules.]);
 
 ni->extend("src/lib/$_") for
-  qw/ fn
-      json
+  # json
+  qw/ 
       test
       behavior_doc
       class_doc
       doc_doc
-      quote
-      image
       future /;

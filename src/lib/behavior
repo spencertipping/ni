@@ -9,13 +9,13 @@ ni->def('ni:/lib/slice.b' =>
       commit => fn q{
         my $self = shift;
         $$self{commit} ||= 'ni::/lib/commit'->new(
-          join "\n", "# line 1 \"$$self{name}\"",
-                     ($$self{header} ? ($$self{header},';') : ()),
-                     map "# line 0 \"$$self{name}\::$_\"\n"
-                       . /^\w+$/
-                         ? "sub $_ {\n${$$self{methods}}{$_}\n}"
-                         : "*{'$_'} = sub {\n${$$self{methods}}{$_}\n};",
-                     sort keys %{$$self{methods}});
+          join "\n",
+            'my $commit_package = __PACKAGE__;',
+            "# line 1 \"$$self{name}\"",
+            ($$self{header} ? ($$self{header},';') : ()),
+            map "# line 0 \"$$self{name}\::$_\"\n"
+              . "{package ni;*{\$commit_package . '\::$_'}=sub{\n${$$self{methods}}{$_}\n}}",
+            sort keys %{$$self{methods}});
       },
     }
   }, 'ni::/lib/slice');

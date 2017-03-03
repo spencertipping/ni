@@ -25,8 +25,8 @@ ni('ni:/object')->child('/lib/future')
     })
   ->end
 
-  ->ro('/lib/future_ro.b', qw/outcome parents/)
-  ->def('/lib/future_init.b',
+  ->ro('ro.b', qw/outcome parents/)
+  ->def('init.b',
     instantiate => fn q{
       my $class = shift;
       +{v         => undef,
@@ -35,7 +35,7 @@ ni('ni:/object')->child('/lib/future')
         outcome   => undef};
     })
 
-  ->def('/lib/future_state.b',
+  ->def('state.b',
     v => fn q{
       my $v = shift->{v};
       return undef unless $v;
@@ -63,7 +63,7 @@ ni('ni:/object')->child('/lib/future')
       $self;
     })
 
-  ->def('/lib/future_algebra.b',
+  ->def('algebra.b',
     map => fn q{
       my ($self, $f) = @_;
       my $child = $self->class->new($self);

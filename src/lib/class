@@ -111,7 +111,7 @@ ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
 ni('ni:/class')->def('/lib/subclass.b',
   child => fn q{
     my ($self, $name, @slices) = @_;
-    ::ni('ni:/metaclass')->new('$name.c', $self->class)
+    ::ni('ni:/metaclass')->new("$name.c", $self->class)
     ->new($name, $self, @slices);
   });
 
