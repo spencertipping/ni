@@ -71,7 +71,14 @@ ni('ni:/lib/definition.b')->add(
       $self;
     }));
 
-ni('ni:/lib/definition.b')->def('/lib/accessor.b',
+# Encoding variants
+ni('ni:/lib/branch')->new('/lib/hash_encoding.b');
+ni('ni:/lib/branch')->new('/lib/array_encoding.b');
+ni('ni:/lib/branch')->new('/lib/packed_encoding.b');
+
+ni('ni:/lib/definition.b')->add('/lib/hash_encoding.b');
+
+ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
   ro => fn q{
     my ($self, $slice, @rs) = @_;
     $self->def($slice, map +($_ => fn qq{shift->{'$_'}}), @rs);
@@ -82,9 +89,9 @@ ni('ni:/lib/definition.b')->def('/lib/accessor.b',
       map +($_ => fn qq{
         if (\@_ == 2) {
           \$_[0]->{'$_'} = \$_[1];
-          return \$_[0];
+          \$_[0];
         } else {
-          return shift->{'$_'};
+          shift->{'$_'};
         }
       }), @as);
   });
@@ -110,7 +117,7 @@ ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
   defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
 
 # Constructor patterns
-ni('ni:/lib/definition.b')->def('/lib/definition_init_with_defaults.b',
+ni('ni:/lib/hash_encoding.b')->def('/lib/hash_encoding_init_with_defaults.b',
   instantiate_with_defaults => fn q{
     my ($class, @slots) = @_;
     my $generator = pop @slots;
