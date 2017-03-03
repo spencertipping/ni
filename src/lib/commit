@@ -29,7 +29,7 @@ sub eval {
   local $_;
   my $self = shift;
   my $id = $self->id;
-  ${'ni::' . unpack('H*') . '::commit'}
+  ref($self)->by_id(unpack('H*'))
     or die "ni::commit $id: parent " . unpack('H*')
          . " has not yet been applied (i.e. does not exist)"
   for $self->parents;
@@ -37,6 +37,7 @@ sub eval {
                       "package ni::$id;",
                       $self->code;
   die $@ if $@;
+  print STDERR "\n\nCOMMIT\npackage ni::$id;\n" . $self->code . "\n";
   ${"ni::$id\::commit"} = $self;
   $self;
 }

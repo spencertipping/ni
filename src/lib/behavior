@@ -111,7 +111,7 @@ push @{'ni::/lib/slice::ISA'},
     my $package = $self->package;
     $$self{commit} = 'ni::/lib/commit'->new(@parents,
       ::fn qq{our \@ISA = qw($parent_packages);
-              \@{'$$self{name}\::ISA'} = __PACKAGE__});
+              \@{'$package\::ISA'} = __PACKAGE__});
   });
 
 'ni::/lib/slice'->new('/lib/tag_init.b',
@@ -144,7 +144,7 @@ push @{'ni::/lib/tag::ISA'},
   });
 
 push @{'ni::/lib/branch::ISA'},
-  @{'ni::/lib/tag::ISA'},
+  'ni::/lib/tag',
   ni('ni:/lib/branch.b')->package;
 
 'ni::/lib/slice'->new('/lib/instance.b',

@@ -8,7 +8,7 @@
       slices => [map $class->resolve($_), @slices]};
   }); 
 
-'ni::/lib/branch'->new('/lib/class_base.b',
+'ni::/lib/tag'->new('/lib/class_base.b',
   '/lib/named.b',
   '/lib/named_in_ni.b',
   '/lib/tag.b',
@@ -16,18 +16,17 @@
   '/lib/instantiable.b',
   '/lib/resolver.b',
   '/lib/branch.b',
-  '/lib/instantiable.b',
   '/lib/class_init.b');
 
 ni('ni:/lib/class_base.b')->apply("ni::/$_")
   for qw/class metaclass class.c metaclass.c module.c/;
 
-'metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/instantiable.b', '/lib/class_init.b');
+'ni::/metaclass.c'->new('/metaclass', '/lib/class_base.b');
 
 ni('ni:/metaclass')->new('/metaclass.c');
 ni('ni:/metaclass')->new('/object.c');
-ni('ni:/metaclass')->new('/module.c', '/object.c', '/lib/instantiable.b');
-ni('ni:/module.c')->new('/module', '/lib/perlbranch.b', '/lib/class_init.b');
+ni('ni:/metaclass')->new('/module.c', '/object.c');
+ni('ni:/module.c')->new('/module', '/lib/class_init.b');
 
 ni('ni:/metaclass')->new('/class.c', '/module.c');
 ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b', '/lib/class_init.b');
