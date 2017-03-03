@@ -90,12 +90,12 @@ ni('ni:/lib/branch')->new('/lib/packed_encoding.b');
 ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
   ro => fn q{
     my ($self, $slice, @rs) = @_;
-    $self->def($slice, map +($_ => fn qq{shift->{'$_'}}), @rs);
+    $self->def($slice, map +($_ => qq{shift->{'$_'}}), @rs);
   },
   rw => fn q{
     my ($self, $slice, @as) = @_;
     $self->def($slice,
-      map +($_ => fn qq{
+      map +($_ => qq{
         if (\@_ == 2) {
           \$_[0]->{'$_'} = \$_[1];
           \$_[0];
@@ -109,15 +109,16 @@ ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
 ni('ni:/class')->def('/lib/subclass.b',
   child => fn q{
     my ($self, $name, @slices) = @_;
-    ni("ni:/metaclass")->new("$name.c", $self->class)
+    ::ni("ni:/metaclass")->new("$name.c", $self->class)
     ->new($name, $self, @slices);
   });
 
 # Common behaviors
 ni('ni:/lib/definition.b')
-  ->def('/lib/name_as_string.b', '(""' => fn q{shift->name})
+  ->def('/lib/name_as_string.b', header => q{use overload qw/"" name/})
   ->def('/lib/ref_eq.b',
-    '(eq' => fn q{
+    header => fn q{use overload qw/eq equals/},
+    equals => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });

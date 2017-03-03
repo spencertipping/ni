@@ -4,6 +4,7 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
 
   ->def('namespace.b', namespace => fn q{'ni.doc'})
   ->def('define.b',
+    header => q{use overload qw/@{} flat/},
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
@@ -11,10 +12,10 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
       $self;
     },
 
-    '(@{}' => fn q{[map @$_, @{shift->{doc}}]})
+    flat => fn q{[map @$_, @{shift->{doc}}]})
 
   ->def('end.b',
-    referent => fn q{ni 'ni:' . shift->{name}},
+    referent => fn q{::ni 'ni:' . shift->{name}},
     end      => fn q{shift->referent});
 
 ni('ni:/lib/behavior')->def('/lib/documentable.b',
@@ -29,7 +30,7 @@ ni('ni:/lib/doc.c')->def('defannotation.b',
   defannotation => fn q{
     my $class = shift;
     $class->def("$$class{name}_$_.b",
-      $_ => fn qq{
+      $_ => qq{
         my \$self = shift;
         push \@{\$\$self{doc}},
              [$_ => $_(\$_)->referent(\$self->referent)] for \@_;

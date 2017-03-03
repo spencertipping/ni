@@ -77,6 +77,11 @@ sub def {
   $self;
 }
 
+sub exists {
+  my ($self, $k) = @_;
+  exists $$self{named}->{$k};
+}
+
 sub resolve {
   my ($self, $name) = @_;
   die "ni: cannot resolve '$name'" unless exists $$self{named}->{$name};
