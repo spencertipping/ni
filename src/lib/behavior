@@ -11,8 +11,8 @@ ni->def('ni:/lib/slice.b' =>
         $$self{commit} ||= 'ni::/lib/commit'->new(
           join "\n", "# line 1 \"$$self{name}\"",
                      ($$self{header} ? ($$self{header}) : ()),
-                     map "# line 1 \"$$self{name}\::$_\"\n"
-                       . "sub $_ {${$$self{methods}}{$_}\n}",
+                     map "# line 0 \"$$self{name}\::$_\"\n"
+                       . "sub $_ {\n${$$self{methods}}{$_}\n}",
                      sort keys %{$$self{methods}});
       },
     }
@@ -68,6 +68,8 @@ ni->def('ni:/lib/instantiable.b' =>
         my $class   = shift;
         my $package = ref $class ? $class->package : $class;
         my $ctor    = $package->can('instantiate');
+        die "no ::instantiate method defined for $package"
+          unless defined $ctor;
         bless(&$ctor($class, @_), $package)->invoke_ctors;
       }
     }
@@ -119,7 +121,7 @@ push @{'ni::/lib/slice::ISA'},
     local $_;
     my $class = shift;
     my $name  = shift;
-    +{name => $name, slices => [@_]};
+    +{name => $name, slices => [map $class->resolve($_), @_]};
   });
 
 push @{'ni::/lib/tag::ISA'},
@@ -136,8 +138,9 @@ push @{'ni::/lib/tag::ISA'},
   },
 
   add => fn q{
+    local $_;
     my $self = shift;
-    push @{$$self{slices}}, @_;
+    push @{$$self{slices}}, map $self->resolve($_), @_;
     $$self{commit} = undef;
     $self->commit;
     $self;

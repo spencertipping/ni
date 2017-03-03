@@ -37,7 +37,6 @@ sub eval {
                       "package ni::$id;",
                       $self->code;
   die $@ if $@;
-  print STDERR "\n\nCOMMIT\npackage ni::$id;\n" . $self->code . "\n";
   ${"ni::$id\::commit"} = $self;
   $self;
 }
