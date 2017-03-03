@@ -35,6 +35,7 @@ ni('ni:/class')->add('/module');
 ni('ni:/metaclass')->add('/module');
 
 # /lib/{slice,tag,branch}
+# TODO: fix this; something is horribly wrong here
 ni('ni:/metaclass')->new('/lib/behavior.c',  '/object.c');
 ni('ni:/metaclass')->new('/lib/slice.c',     '/lib/behavior.c');
 ni('ni:/metaclass')->new('/lib/tag.c',       '/lib/behavior.c');
