@@ -2,13 +2,8 @@
 # Builds the core ni image from the files in src/.
 cd "$(dirname "$0")"
 
-boot_image() {
-  cat src/lib.pl src/semantic.pl src/io.pl
-}
-
-install_stuff() {
-  perl ni0 --internal/+= src/fabric.pl
-}
+boot_image() { cat src/boot; }
+install_stuff() { perl ni0 --internal/+= src/fabric.pl; }
 
 boot_build() {
   boot_image > ni0
