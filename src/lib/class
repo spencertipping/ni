@@ -20,7 +20,7 @@ ni('ni:/lib/class_base.b')->apply("ni::/$_")
 ni('ni:/metaclass')->new('/metaclass.c', '/lib/class_base.b');
 ni('ni:/metaclass')->new('/object.c', '/lib/class_base.b');
 ni('ni:/metaclass')->new('/module.c', '/object.c');
-ni('ni:/module.c')->new('/module', '/lib/tag_init.b');
+ni('ni:/module.c')->new('/module', '/lib/class_base.b');
 
 ni('ni:/metaclass')->new('/class.c', '/module.c');
 ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b');
@@ -46,7 +46,14 @@ ni("ni:/lib/$_.c")->new("/lib/$_",
   '/lib/module_base.b',
   '/lib/instantiable.b',
   "/lib/$_.b",
-  "/lib/tag_init.b") for qw/slice branch tag/;
+  "/lib/tag_init.b") for qw/branch tag/;
+
+ni("ni:/lib/slice.c")->new("/lib/slice",
+  '/lib/behavior',
+  '/lib/module_base.b',
+  '/lib/instantiable.b',
+  "/lib/slice.b",
+  "/lib/slice_init.b");
 
 ni('ni:/module')->add('/lib/behavior');
 ni('ni:/module.c')->add('/lib/behavior.c');
@@ -130,5 +137,4 @@ ni('ni:/lib/hash_encoding.b')->def('/lib/hash_encoding_init_with_defaults.b',
   });
 
 # Static function support
-ni('ni:/module')->new('ni');
-ni('ni:/module')->new('main');
+ni('ni:/module')->new('');
