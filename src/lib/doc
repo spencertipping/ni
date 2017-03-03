@@ -5,25 +5,26 @@ ni('ni:/object')->child('/lib/doc', '/lib/named.b')
   ->def('namespace.b', namespace => fn q{'ni.doc'})
   ->def('define.b',
     header => q{use overload qw/@{} flat/},
+
     AUTOLOAD => fn q{
       my $self = shift;
       (my $method = ${__PACKAGE__ . "::AUTOLOAD"}) =~ s/^.*:://;
-      push @{$$self{doc}}, [$method, map ni::outdent($_), @_];
+      push @{$$self{doc}}, [$method, @_];
       $self;
     },
 
     flat => fn q{[map @$_, @{shift->{doc}}]})
 
   ->def('end.b',
-    referent => fn q{::ni 'ni:' . shift->{name}},
+    referent => fn q{::ni('ni:' . shift->{name})},
     end      => fn q{shift->referent});
 
 ni('ni:/lib/behavior')->def('/lib/documentable.b',
   doc => fn q{
     my $self = shift;
     (my $name = $self->name) =~ s/^[^:]*://;
-    return ni("ni.doc:$name") if ni->can('exists') && ni->exists("ni.doc:$name");
-    ni('ni:/lib/doc')->new($name);
+    return ::ni("ni.doc:$name") if ::ni->exists("ni.doc:$name");
+    ::ni('ni:/lib/doc')->new($name);
   });
 
 ni('ni:/lib/doc.c')->def('defannotation.b',
@@ -46,13 +47,14 @@ ni('ni:/object')
     ->def('init.b',
       instantiate => fn q{
         my $class = shift;
-        +{todo => [map ni::outdent($_), @_]};
+        +{todo => [@_]};
       })
     ->def('str.b',
-      '(""' => fn q{
+      header => q{use overload qw/"" str/},
+      str => fn q{
         my $self = shift;
         my $referent = $$self{referent} || '(anonymous)';
-        "TODO $referent\n" . ni::indent(join("\n- ", @{$$self{todo}}), 2);
+        "TODO $referent\n" . join "\n- ", @{$$self{todo}};
       });
 
 ni('ni:/lib/doc')

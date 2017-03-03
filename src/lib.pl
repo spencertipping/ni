@@ -1,4 +1,4 @@
-require "src/lib/$_" for qw/commit behavior class util doc self/;
+require "src/lib/$_" for qw/commit behavior class doc self/;
 
 ni('ni:/module')->new('/lib')
   ->doc

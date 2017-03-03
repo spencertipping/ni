@@ -12,7 +12,9 @@ ni->def('ni:/lib/slice.b' =>
           join "\n", "# line 1 \"$$self{name}\"",
                      ($$self{header} ? ($$self{header},';') : ()),
                      map "# line 0 \"$$self{name}\::$_\"\n"
-                       . "sub $_ {\n${$$self{methods}}{$_}\n}",
+                       . /^\w+$/
+                         ? "sub $_ {\n${$$self{methods}}{$_}\n}"
+                         : "*{'$_'} = sub {\n${$$self{methods}}{$_}\n};",
                      sort keys %{$$self{methods}});
       },
     }
@@ -150,7 +152,6 @@ push @{'ni::/lib/branch::ISA'},
   ni('ni:/lib/branch.b')->package;
 
 'ni::/lib/slice'->new('/lib/instance.b',
-  ni => fn q{shift; goto \&::ni},
   DESTROY => fn q{
     local $_;
     my $self = shift;
@@ -159,5 +160,5 @@ push @{'ni::/lib/branch::ISA'},
   },
   class => fn q{
     (my $package = ref shift) =~ s/^ni::/ni:/;
-    ni($package);
+    ::ni($package);
   });
