@@ -1,4 +1,4 @@
-do "src/lib/$_" or die "$@ $!" for qw/behavior class util doc self/;
+do "src/lib/$_" or die "$@ $!" for qw/commit behavior class util doc self/;
 
 ni('ni:/module')->new('/lib')
   ->doc

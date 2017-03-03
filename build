@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 boot_image() {
-  cat src/boot src/lib.pl src/semantic.pl src/io.pl
+  cat src/lib.pl src/semantic.pl src/io.pl
 }
 
 install_stuff() {

@@ -1,0 +1,85 @@
+use strict;
+use warnings;
+no warnings qw/redefine void/;
+no strict qw/refs/;
+
+sub ni::eval {eval shift}
+
+my $commit_code = <<'_';
+use strict;
+use warnings;
+no strict 'refs';
+
+require Digest::MD5;
+
+sub new {
+  my $class   = shift;
+  my $code    = pop;
+  my @parents = @_;
+  my $packed  = pack('n/(n/a)', @parents) . pack 'N/a', $code;
+  $packed     = Digest::MD5::md5($packed) . $packed;
+  bless \$packed, $class;
+}
+
+sub id        {unpack 'H32', ${$_[0]}}
+sub binary_id {unpack 'a16', ${$_[0]}}
+sub code      {unpack 'x16 n/(n/x) N/a', ${$_[0]}}
+sub parents   {unpack 'x16 n/(n/a)',     ${$_[0]}}
+
+sub eval {
+  my $self = shift;
+  my $id = $self->id;
+  exists $ni::{unpack('H*') . '::'}
+    or die "ni::commit $id: parent " . unpack('H*')
+         . " has not yet been applied (i.e. does not exist)"
+  for $self->parents;
+  ni::eval join "\n", qq{# line 0 "ni::$id"},
+                      "package ni::$id;",
+                      $self->code;
+  die $@ if $@;
+  $self;
+}
+_
+
+ni::eval qq{# line 0 "ni::commit"
+            package ni::commit;
+            $commit_code};
+die $@ if $@;
+
+my $commit_commit = ni::commit->new($commit_code)->eval;
+bless $commit_commit, 'ni::' . $commit_commit->id;              # BOOM
+delete @ni::commit::{keys %ni::commit::};
+
+my $image_commit = ('ni::' . $commit_commit->id)->new(
+  $commit_commit->binary_id,
+  <<'_')->eval;
+sub new {
+  bless {
+    commits => {},
+    named   => {},
+  }, shift;
+}
+
+sub tag {
+  my ($self, $tag, $commit) = @_;
+  if (defined $commit) {
+    $$self{commits}{$commit->binary_id} = $commit;
+    $$self{named}{$tag} = $commit->binary_id;
+    $self;
+  } else {
+    $$self{commits}{$$self{named}{$tag}};
+  }
+}
+
+sub apply {
+  my ($self, $commit) = @_;
+  $self->apply($$self{commits}{$_}) for $commit->parents;
+  $commit->eval;
+  $$self{commits}{$commit->binary_id} = $commit;
+  $self;
+}
+_
+
+$ni::self = ('ni::' . $image_commit->id)->new
+  ->tag('ni::commit', $commit_commit)
+  ->tag('ni::image',  $image_commit);
