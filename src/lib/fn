@@ -6,15 +6,7 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     +{code        => $code,
       proto       => $proto,
       closure     => undef,
-      eval_number => undef,
       annotations => [@_]};
-  },
-
-  closure => fn q{
-    my $self = shift;
-    return $$self{closure} unless @_;
-    $$self{closure} = {@_};
-    $self;
   },
 
   compile => fn q{
@@ -23,10 +15,6 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
     local ($@, $_);
     my $self = shift;
     $$self{proto} ||= '';
-
-    my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;
-    $$self{eval_number} = ++$en;
-    Scalar::Util::weaken(${'lib/fn::evals'}{$en} = $self);
 
     my $fn_code = qq{sub $$self{proto} {$$self{code}\n}};
 
@@ -47,16 +35,14 @@ ni('ni:/lib/slice')->new('/lib/fn_init.b',
       die "ni:/lib/fn failed to compile $fn_code: $@" if $@;
       return $$self{fn};
     }
-  },
-
-  dtor => fn q{
-    my $self = shift;
-    delete ${'lib/fn::evals'}{$$self{eval_number}}
-      if defined $$self{eval_number};
   });
 
 delete @{'lib/fn::'}{qw/new compile/};
-ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b');
+ni('ni:/object')->child('/lib/fn', '/lib/instantiable.b', '/lib/fn_init.b')
+  ->doc
+  ->description(
+    TODO q{Give functions a way to name themselves so we can do #line
+           reporting});
 
 delete ${main::}{fn};
 
@@ -69,24 +55,11 @@ ni('ni:main')->def('/lib/static_fn.b',
   }));
 
 ni('ni:/lib/fn')
-  ->ro('ro.b', qw/code annotations fn eval_number/)
+  ->ro('ro.b', qw/code annotations fn/)
+  ->rw('rw.b', qw/closure/)
   ->def('ops.b',
     '(""' => fn q{my $self = shift; "fn {$$self{code}}"},
     '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
-
-ni('ni:/lib/fn.c')->def('/lib/fn.c_resolve_eval.b',
-  ctor => fn q{
-    my $self = shift;
-    $SIG{__WARN__} = sub {warn $self->resolve_evals(shift), @_};
-    $SIG{__DIE__}  = sub {die  $self->resolve_evals(shift), @_};
-  },
-
-  resolve_evals => fn q{
-    my ($self, $trace) = @_;
-    1 while $trace =~ s#\(eval (\d+)\)#
-      ${'lib/fn::evals'}{$1}{code} || "(anonymous eval $1)"#eg;
-    $trace;
-  });

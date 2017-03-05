@@ -7,8 +7,6 @@ ni->def('ni:/lib/slice.b' =>
         local $_;
         my ($self, $p) = @_;
         $p = $p->package if ref $p;
-        die "/lib/slice.b->apply('$p'): perl packages don't start with "
-          . "slashes (this fails on older versions of perl)" if $p =~ /^\//;
         return if $$self{applied_to}{$p};
         for (keys %{$$self{methods}}) {
           die "$self: overlapping method $p\::$_" if defined *{"$p\::$_"}{CODE};
@@ -31,10 +29,10 @@ ni->def('ni:/lib/slice.b' =>
         $self;
       }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
 ni('ni:/lib/slice.b')->{methods}->{apply_}
-  ->(ni('ni:/lib/slice.b'), 'lib/slice');
+  ->(ni('ni:/lib/slice.b'), 'ni::/lib/slice');
 
 ni->def('ni:/lib/slice_init.b' =>
   bless {
@@ -51,9 +49,9 @@ ni->def('ni:/lib/slice_init.b' =>
           methods    => \%args};
       }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
-ni('ni:/lib/slice_init.b')->apply('lib/slice');
+ni('ni:/lib/slice_init.b')->apply('ni::/lib/slice');
 
 ni->def('ni:/lib/instantiable.b' =>
   bless {
@@ -68,32 +66,32 @@ ni->def('ni:/lib/instantiable.b' =>
         $self;
       }
     }
-  }, 'lib/slice');
+  }, 'ni::/lib/slice');
 
-ni('ni:/lib/instantiable.b')->apply('lib/slice');
+ni('ni:/lib/instantiable.b')->apply('ni::/lib/slice');
 
 ni->def(
   'ni:/lib/named_in_ni.b' =>
-    'lib/slice'->new('/lib/named_in_ni.b',
+    'ni::/lib/slice'->new('/lib/named_in_ni.b',
       namespace => fn q{'ni'}),
   'ni:/lib/named.b' =>
-    'lib/slice'->new('/lib/named.b',
+    'ni::/lib/slice'->new('/lib/named.b',
       ctor => fn q{my $s = shift; ni->def($s->name, $s)},
       name => fn q{$_[0]->namespace . ":" . $_[0]->{name}}));
 
-ni('ni:/lib/named.b')->apply('lib/slice');
-ni('ni:/lib/named_in_ni.b')->apply('lib/slice');
+ni('ni:/lib/named.b')->apply('ni::/lib/slice');
+ni('ni:/lib/named_in_ni.b')->apply('ni::/lib/slice');
 
-'lib/slice'->new('/lib/namespaced.b',
-  package => fn q{(my $name = shift->{name}) =~ s/^\///; $name});
+'ni::/lib/slice'->new('/lib/namespaced.b',
+  package => fn q{'ni::' . shift->{name}});
 
-ni('ni:/lib/namespaced.b')->apply('lib/slice');
+ni('ni:/lib/namespaced.b')->apply('ni::/lib/slice');
 
 # /lib/tag.b
-'lib/slice'->new('/lib/resolver.b',
+'ni::/lib/slice'->new('/lib/resolver.b',
   resolve => fn q{ref $_[1] ? $_[1] : ni"ni:$_[1]"});
 
-'lib/slice'->new('/lib/tag.b',
+'ni::/lib/slice'->new('/lib/tag.b',
   apply => fn q{
     local $_;
     my ($self, $p) = @_;
@@ -101,7 +99,7 @@ ni('ni:/lib/namespaced.b')->apply('lib/slice');
     $self;
   });
 
-'lib/slice'->new('/lib/tag_init.b',
+'ni::/lib/slice'->new('/lib/tag_init.b',
   instantiate => fn q{
     local $_;
     my $class = shift;
@@ -110,16 +108,16 @@ ni('ni:/lib/namespaced.b')->apply('lib/slice');
       slices => [map $class->resolve($_), @_]};
   });
 
-ni('ni:/lib/tag.b')->apply('lib/tag');
-ni('ni:/lib/tag_init.b')->apply('lib/tag');
-ni('ni:/lib/named.b')->apply('lib/tag');
-ni('ni:/lib/named_in_ni.b')->apply('lib/tag');
-ni('ni:/lib/namespaced.b')->apply('lib/tag');
-ni('ni:/lib/instantiable.b')->apply('lib/tag');
-ni('ni:/lib/resolver.b')->apply('lib/tag');
+ni('ni:/lib/tag.b')->apply('ni::/lib/tag');
+ni('ni:/lib/tag_init.b')->apply('ni::/lib/tag');
+ni('ni:/lib/named.b')->apply('ni::/lib/tag');
+ni('ni:/lib/named_in_ni.b')->apply('ni::/lib/tag');
+ni('ni:/lib/namespaced.b')->apply('ni::/lib/tag');
+ni('ni:/lib/instantiable.b')->apply('ni::/lib/tag');
+ni('ni:/lib/resolver.b')->apply('ni::/lib/tag');
 
 # /lib/branch.b
-'lib/slice'->new('/lib/branch.b',
+'ni::/lib/slice'->new('/lib/branch.b',
   apply => fn q{
     local $_;
     my ($self, $p) = @_;
@@ -137,7 +135,7 @@ ni('ni:/lib/resolver.b')->apply('lib/tag');
     $self;
   });
 
-'lib/slice'->new('/lib/branch_init.b',
+'ni::/lib/slice'->new('/lib/branch_init.b',
   instantiate => fn q{
     local $_;
     my $class = shift;
@@ -147,33 +145,33 @@ ni('ni:/lib/resolver.b')->apply('lib/tag');
       slices     => [map $class->resolve($_), @_]};
   });
 
-'lib/tag'->new('/lib/perlbranch.b',
+'ni::/lib/tag'->new('/lib/perlbranch.b',
   '/lib/branch.b',
   '/lib/named.b',
   '/lib/named_in_ni.b',
   '/lib/namespaced.b',
   '/lib/resolver.b');
 
-ni('ni:/lib/perlbranch.b')->apply('lib/branch');
-ni('ni:/lib/branch_init.b')->apply('lib/branch');
+ni('ni:/lib/perlbranch.b')->apply('ni::/lib/branch');
+ni('ni:/lib/branch_init.b')->apply('ni::/lib/branch');
 
-'lib/slice'->new('/lib/instance.b',
+'ni::/lib/slice'->new('/lib/instance.b',
   DESTROY => fn q{
     local $_;
     my $self = shift;
     defined($_) && $_->($self) for @{ref($self) . '::dtors'};
   },
-  class => fn q{ni 'ni:/' . ref shift});
+  class => fn q{(my $r = ref shift) =~ s/^ni::/ni:/; ni$r});
 
 # /lib/dataslice.b
-'lib/slice'->new('/lib/dataslice_init.b',
+'ni::/lib/slice'->new('/lib/dataslice_init.b',
   instantiate => fn q{
     my $class = shift;
     my $name = shift;
     +{name => $name, data => {@_}};
   });
 
-'lib/slice'->new('/lib/dataslice.b',
+'ni::/lib/slice'->new('/lib/dataslice.b',
   apply  => fn q{shift->apply_(@_)},
   apply_ => fn q{
     local $_;

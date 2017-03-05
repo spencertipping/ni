@@ -34,21 +34,21 @@ use Fcntl;
 use POSIX;
 use Scalar::Util;
 chomp $ni::boot;
-$ni::self = bless {named => {}}, 'lib/ni';
+$ni::self = bless {named => {}}, 'ni::lib/ni';
 sub ni(;$) {@_ ? ref($_[0]) ? $_[0] : $ni::self->resolve($_[0]) : $ni::self}
 sub ni::eval {eval shift}
-*{'lib/ni::def'} = sub {
+*{'ni::lib/ni::def'} = sub {
   my ($self, %kvs) = @_;
   $$self{named}{$_} = $kvs{$_} for keys %kvs;
 };
-*{'lib/fn::OVERLOAD'} = {};
-*{'lib/fn::(bool'} = sub {1};
-*{'lib/fn::()'}    = sub {};
-*{'lib/fn::(&{}'} = sub {
+*{'ni::lib/fn::OVERLOAD'} = {};
+*{'ni::lib/fn::(bool'} = sub {1};
+*{'ni::lib/fn::()'}    = sub {};
+*{'ni::lib/fn::(&{}'} = sub {
   my $self = shift;
   $$self{fn} ||= $self->compile;
 };
-*{'lib/fn::compile'} = sub {
+*{'ni::lib/fn::compile'} = sub {
   my $self = shift;
   my ($en) = ni::eval('__FILE__') =~ /eval (\d+)/;
   $$self{eval_number} = ++$en;
@@ -61,16 +61,16 @@ sub fn($);
 _
 die "$@ evaluating ni boot code" if $@;
 
-*{'lib/ni::exists'} = sub {exists $_[0]->{named}{$_[1]}};
+*{'ni::lib/ni::exists'} = sub {exists $_[0]->{named}{$_[1]}};
 
-*{'lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
-*{'lib/fn::new'} = sub {
+*{'ni::lib/ni::resolve'} = sub {shift->{named}{$_[0]} || die "ni: failed to resolve $_[0]"};
+*{'ni::lib/fn::new'} = sub {
   my $self = bless {code => $_[1]}, $_[0];
   $self->compile;
   $self;
 };
 
-sub fn($) {'lib/fn'->new(shift)}
+sub fn($) {'ni::lib/fn'->new(shift)}
 
 # This method call is present here only the first time around; ni rewrites
 # itself to make this call at the end of its image, outside of END{} blocks (so

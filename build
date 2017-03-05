@@ -14,21 +14,21 @@ boot_build() {
   boot_image > ni0
   cp ni0 ni.boot
   echo "initially $(wc -c < ni0) bytes"
-  perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+  perl ni0 --internal/image > ni && cp ni ni0 || return $?
   echo "       >> $(wc -c < ni0) bytes"
   cp ni0 ni.boot.compiled
 
   $1
 
   echo "       >> $(wc -c < ni0) bytes"
-  perl ni0 --internal/image > ni && cp ni ni0 || exit $?
+  perl ni0 --internal/image > ni && cp ni ni0 || return $?
   echo "       >> $(wc -c < ni0) bytes"
 
   if [[ "$(<ni0)" != "$(<ni)" ]]; then
     echo 'ni is unstable under replication; diff in ni.diff' >&2
     [[ -n "$(<ni0)" ]] && [[ -n "$(<ni)" ]] \
       && diff -C 3 ni0 ni > ni.diff
-    exit 1
+    return 1
   else
     rm ni0
   fi
@@ -72,7 +72,9 @@ bench)
   ;;
 
 *)
-  boot_build install_stuff
+  failed=0
+  boot_build install_stuff || failed=$?
   ./ni --internal/dev-state > dev-state.json
+  exit $failed
   ;;
 esac
