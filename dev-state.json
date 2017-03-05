@@ -1,8 +1,8 @@
 {
   "classes": 37,
-  "image_size": 129690,
+  "image_size": 129137,
   "metaclasses": 35,
-  "named_entities": 238,
+  "named_entities": 235,
   "tests": {
     "failed": null,
     "passing": 17,

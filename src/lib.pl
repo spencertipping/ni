@@ -1,4 +1,4 @@
-require "src/lib/$_" for qw/commit behavior class doc self/;
+do "src/lib/$_" or die "$@ $!" for qw/behavior class util doc self/;
 
 ni('ni:/module')->new('/lib')
   ->doc
@@ -13,10 +13,12 @@ ni('ni:/module')->new('/lib')
       written differently from other modules.]);
 
 ni->extend("src/lib/$_") for
-  # json
-  qw/ 
+  qw/ fn
+      json
       test
       behavior_doc
       class_doc
       doc_doc
+      quote
+      image
       future /;

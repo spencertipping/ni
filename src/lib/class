@@ -1,29 +1,28 @@
 # /class and /metaclass
-'ni::/lib/branch'->new('/lib/module_base.b',
-  '/lib/named.b',
-  '/lib/named_in_ni.b',
-  '/lib/namespaced_by_symbol.b',
-  '/lib/resolver.b');
+'lib/slice'->new('/lib/class_init.b',
+  ctor => fn q{my $s = shift; $s->apply($s->package)},
+  instantiate => fn q{
+    local $_;
+    my ($class, $name, @slices) = @_;
+    +{name   => $name,
+      slices => [map $class->resolve($_), @slices]};
+  });
 
-'ni::/lib/branch'->new('/lib/class_base.b',
-  '/lib/branch.b',
-  '/lib/tag.b',
-  '/lib/module_base.b',
-  '/lib/instantiable.b',
-  '/lib/tag_init.b');
+for (qw/ class metaclass class.c metaclass.c module.c /) {
+  ni('ni:/lib/perlbranch.b')->apply($_);
+  ni('ni:/lib/instantiable.b')->apply($_);
+  ni('ni:/lib/class_init.b')->apply($_);
+}
 
-ni('ni:/lib/class_base.b')->apply("ni::/$_")
-  for qw/class metaclass class.c metaclass.c module.c/;
+'metaclass.c'->new('/metaclass', '/lib/perlbranch.b', '/lib/instantiable.b', '/lib/class_init.b');
 
-'ni::/metaclass.c'->new('/metaclass', '/lib/class_base.b');
-
-ni('ni:/metaclass')->new('/metaclass.c', '/lib/class_base.b');
-ni('ni:/metaclass')->new('/object.c', '/lib/class_base.b');
-ni('ni:/metaclass')->new('/module.c', '/object.c');
-ni('ni:/module.c')->new('/module', '/lib/class_base.b');
+ni('ni:/metaclass')->new('/metaclass.c');
+ni('ni:/metaclass')->new('/object.c');
+ni('ni:/metaclass')->new('/module.c', '/object.c', '/lib/instantiable.b');
+ni('ni:/module.c')->new('/module', '/lib/perlbranch.b', '/lib/class_init.b');
 
 ni('ni:/metaclass')->new('/class.c', '/module.c');
-ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b');
+ni('ni:/class.c')->new('/class', '/module', '/lib/instantiable.b', '/lib/class_init.b');
 ni('ni:/metaclass.c')->add('/class');
 
 ni('ni:/object.c')->add('/class');
@@ -34,32 +33,22 @@ ni('ni:/module')->add('/object');
 ni('ni:/class')->add('/module');
 ni('ni:/metaclass')->add('/module');
 
-# /lib/{slice,tag,branch}
-ni('ni:/metaclass')->new('/lib/behavior.c', '/object.c');
-ni('ni:/metaclass')->new('/lib/slice.c',    '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/tag.c',      '/lib/behavior.c');
-ni('ni:/metaclass')->new('/lib/branch.c',   '/lib/tag.c');
+# /lib/{slice,dataslice,tag,branch}
+ni('ni:/metaclass')->new('/lib/behavior.c',  '/object.c');
+ni('ni:/metaclass')->new('/lib/slice.c',     '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/dataslice.c', '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/tag.c',       '/lib/behavior.c');
+ni('ni:/metaclass')->new('/lib/branch.c',    '/lib/behavior.c');
 
 ni('ni:/lib/behavior.c')->new('/lib/behavior', '/object');
-ni('ni:/lib/tag.c')->new('/lib/tag',
-  '/lib/behavior',
-  '/lib/module_base.b',
-  '/lib/instantiable.b',
-  '/lib/tag_init.b',
-  '/lib/tag.b');
+ni("ni:/lib/$_.c")->new("/lib/$_",
+  '/lib/behavior', '/lib/named.b',
+  "/lib/$_.b", "/lib/$_\_init.b") for qw/dataslice slice branch tag/;
 
-ni('ni:/lib/branch.c')->new('/lib/branch',
-  '/lib/tag',
-  '/lib/branch.b');
-
-ni('ni:/lib/slice.c')->new('/lib/slice',
-  '/lib/behavior',
-  '/lib/named.b',
+ni('ni:/lib/dataslice')->add(
   '/lib/named_in_ni.b',
-  '/lib/namespaced_by_commit.b',
-  '/lib/instantiable.b',
-  '/lib/slice.b',
-  '/lib/slice_init.b');
+  '/lib/namespaced.b',
+  '/lib/resolver.b');
 
 ni('ni:/module')->add('/lib/behavior');
 ni('ni:/module.c')->add('/lib/behavior.c');
@@ -76,33 +65,26 @@ ni('ni:/lib/definition.b')->add(
       my $self = shift;
       my $name = shift;
       $name = "$$self{name}_$name" unless $name =~ /^\//;
-      $self->add(::ni->exists("ni:$name")
-        ? ::ni"ni:$name"
-        : ::ni('ni:/lib/slice')->new($name, @_));
+      $self->add(ni->exists("ni:$name")
+        ? ni"ni:$name"
+        : ni('ni:/lib/slice')->new($name, @_));
       $self;
     }));
 
-# Encoding variants
-ni('ni:/lib/branch')->new('/lib/hash_encoding.b');
-ni('ni:/lib/branch')->new('/lib/array_encoding.b');
-ni('ni:/lib/branch')->new('/lib/packed_encoding.b');
-
-ni('ni:/object')->add('/lib/hash_encoding.b');
-
-ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
+ni('ni:/lib/definition.b')->def('/lib/accessor.b',
   ro => fn q{
     my ($self, $slice, @rs) = @_;
-    $self->def($slice, map +($_ => qq{shift->{'$_'}}), @rs);
+    $self->def($slice, map +($_ => fn qq{shift->{'$_'}}), @rs);
   },
   rw => fn q{
     my ($self, $slice, @as) = @_;
     $self->def($slice,
-      map +($_ => qq{
+      map +($_ => fn qq{
         if (\@_ == 2) {
           \$_[0]->{'$_'} = \$_[1];
-          \$_[0];
+          return \$_[0];
         } else {
-          shift->{'$_'};
+          return shift->{'$_'};
         }
       }), @as);
   });
@@ -111,16 +93,40 @@ ni('ni:/lib/hash_encoding.b')->def('/lib/hash_accessor.b',
 ni('ni:/class')->def('/lib/subclass.b',
   child => fn q{
     my ($self, $name, @slices) = @_;
-    ::ni('ni:/metaclass')->new("$name.c", $self->class)
+    ni("ni:/metaclass")->new("$name.c", $self->class)
     ->new($name, $self, @slices);
   });
 
 # Common behaviors
 ni('ni:/lib/definition.b')
-  ->def('/lib/name_as_string.b', header => q{use overload qw/"" name/})
+  ->def('/lib/name_as_string.b', '(""' => fn q{shift->name})
   ->def('/lib/ref_eq.b',
-    header => fn q{use overload qw/eq equals/},
-    equals => fn q{
+    '(eq' => fn q{
       ref($_[0]) eq ref($_[1])
         and Scalar::Util::refaddr($_[0]) == Scalar::Util::refaddr($_[1]);
     });
+
+ni('ni:/lib/definition.b')->def('/lib/definition_defdata.b',
+  defdata => fn q{shift->add(ni('ni:/lib/dataslice')->new(@_))});
+
+# Constructor patterns
+ni('ni:/lib/definition.b')->def('/lib/definition_init_with_defaults.b',
+  instantiate_with_defaults => fn q{
+    my ($class, @slots) = @_;
+    my $generator = pop @slots;
+    $class->def("$$class{name}_init.b",
+      instantiate => fc(
+        generator => $generator,
+        '@slots'  => \@slots,
+        q{
+          my %defaults = &$generator(@_);
+          my $class    = shift;
+          my %args     = @_;
+          $defaults{$_} = $args{$_} for @slots;
+          \%defaults;
+        }));
+  });
+
+# Static function support
+ni('ni:/module')->new('ni');
+ni('ni:/module')->new('main');
