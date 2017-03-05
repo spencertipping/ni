@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $perl_object   = q'{q#name#,q#foobar#,q#code#,q#my $x = 10; $x#}';
+my $perl_objarray = '[' . join(',', map $perl_object, 1..100) . ']';
+
+my $pack_object   = pack 'N/(N/a)', %{eval $perl_object};
+my $pack_objarray = pack 'N/(N/a)', map $pack_object, 1..100;
+
+cmpthese 1000000, {
+  eval_one   => sub {eval $perl_object},
+  unpack_one => sub {+{unpack 'N/(N/a)', $pack_object}},
+};
+
+cmpthese 10000, {
+  eval_100   => sub {eval $perl_objarray},
+  unpack_100 => sub {[map +{unpack 'N/(N/a)'}, unpack 'N/(N/a)', $pack_objarray]},
+};
