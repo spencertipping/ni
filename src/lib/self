@@ -32,16 +32,18 @@ ni('ni:/object')->child('/lib/ni')
     classes => fn q{
       my $self = shift;
       my $metaclass = $self->resolve('ni:/object.c');
-      map $self->resolve("ni:/$_"),
-          grep $self->exists("ni:/$_"),
+      map $self->resolve($_),
+          grep $self->exists($_),
+          map "ni:" . substr($_, 4),
           grep !$$metaclass{applied_to}->{$_},
           sort keys %{$self->resolve('ni:/object')->{applied_to}};
     },
 
     metaclasses => fn q{
       my $self = shift;
-      map $self->resolve("ni:/$_"),
-          grep $self->exists("ni:/$_"),
+      map $self->resolve($_),
+          grep $self->exists($_),
+          map "ni:" . substr($_, 4),
           sort keys %{$self->resolve('ni:/object.c')->{applied_to}};
     },
 
@@ -183,6 +185,6 @@ ni('ni:/lib/slice')->new('/lib/ni_image.b',
   my $ni = ni('ni:/lib/ni');
   my $r  = ni('ni:/lib/ni_resolver.b');
   my $i  = ni('ni:/lib/ni_image.b');
-  delete @{'lib/ni::'}{qw/resolve exists/};
+  delete @{'ni::/lib/ni::'}{qw/resolve exists/};
   $ni->add($r, $i);
 }

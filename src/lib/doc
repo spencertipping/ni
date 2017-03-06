@@ -59,12 +59,14 @@ ni('ni:/lib/doc')
   ->def('process.b',
     tests => fn q{
       my $self = shift;
-      map $_->referent($self->referent), grep ref($_) eq 'lib/test_case',
+      my $test_case_class = ni('ni:/lib/test_case')->package;
+      map $_->referent($self->referent), grep ref($_) eq $test_case_class,
           map @$_, @{$$self{doc}};
     },
     todos => fn q{
       my $self = shift;
-      map $_->referent($self->referent), grep ref($_) eq 'lib/todo',
+      my $todo_class = ni('ni:/lib/todo')->package;
+      map $_->referent($self->referent), grep ref($_) eq $todo_class,
           map @$_, @{$$self{doc}};
     });
 

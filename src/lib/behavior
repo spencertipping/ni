@@ -83,7 +83,10 @@ ni('ni:/lib/named.b')->apply('ni::/lib/slice');
 ni('ni:/lib/named_in_ni.b')->apply('ni::/lib/slice');
 
 'ni::/lib/slice'->new('/lib/namespaced.b',
-  package => fn q{'ni::' . shift->{name}});
+  package => fn q{
+    my $name = shift->{name};
+    $name =~ /^\// ? "ni::$name" : $name;
+  });
 
 ni('ni:/lib/namespaced.b')->apply('ni::/lib/slice');
 

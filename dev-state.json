@@ -1,0 +1,91 @@
+{
+  "classes": 37,
+  "image_size": 128992,
+  "metaclasses": 35,
+  "named_entities": 236,
+  "tests": {
+    "failed": null,
+    "passing": 17,
+    "total": 17
+  },
+  "todos": [
+    {
+      "referent": "ni:/class",
+      "text": "document this further"
+    },
+    {
+      "referent": "ni:/class",
+      "text": "document this further"
+    },
+    {
+      "referent": "ni:/io/object",
+      "text": "migrate die() into /lib/ as a base behavior"
+    },
+    {
+      "referent": "ni:/lib/dataslice",
+      "text": "Fix serialization for dataslices"
+    },
+    {
+      "referent": "ni:/lib/fn",
+      "text": "Give functions a way to name themselves so we can do #line\nreporting"
+    },
+    {
+      "referent": "ni:/lib/image",
+      "text": "The interaction between these ->serialize methods and quotation/image\nclasses is horrible and even worse, undocumented. Formalize the protocol\nfor instances to request things like side effects or finalizers, and for\ngod's sake clean up the side-effect/boot-side-effect crap."
+    },
+    {
+      "referent": "ni:/lib/slice",
+      "text": "A bug that takes the cake:\nhttps://searchcode.com/file/109026149/lib/overload.t#l-1486\n\nOk, here's the problem. Rebuilt images of ni fail on old perls, but the\nboot code works -- the reason is that bless() doesn't commute across\noverload magic installation on old perls; references themselves have an\noverload flag that's set when the reference is created, not when the\nunderlying package is modified. So if we want overloading to work, we\nneed to install overloaded methods before we bless things."
+    }
+  ],
+  "undocumented": [
+    "ni:/io/null",
+    "ni:/io/str",
+    "ni:/io/transfer",
+    "ni:/io/transfer_async",
+    "ni:/io/transfer_sync",
+    "ni:/lib/behavior",
+    "ni:/lib/branch",
+    "ni:/lib/object_metadata",
+    "ni:/lib/tag",
+    "ni:/lib/test_assert_eq",
+    "ni:/lib/test_assertion",
+    "ni:/lib/test_case",
+    "ni:/lib/test_value",
+    "ni:/lib/todo",
+    "ni:/metaclass",
+    "ni:/metaclass.c",
+    "ni:/module",
+    "ni:/object",
+    "ni:/semantic/dimension",
+    "ni:/semantic/task"
+  ],
+  "untested": [
+    "ni:/io/file_update_fd",
+    "ni:/io/null",
+    "ni:/io/object",
+    "ni:/io/str",
+    "ni:/io/transfer",
+    "ni:/io/transfer_async",
+    "ni:/io/transfer_sync",
+    "ni:/lib/behavior",
+    "ni:/lib/branch",
+    "ni:/lib/dataslice",
+    "ni:/lib/fn",
+    "ni:/lib/image",
+    "ni:/lib/ni",
+    "ni:/lib/object_metadata",
+    "ni:/lib/tag",
+    "ni:/lib/test_assert_eq",
+    "ni:/lib/test_assertion",
+    "ni:/lib/test_case",
+    "ni:/lib/test_value",
+    "ni:/lib/todo",
+    "ni:/metaclass",
+    "ni:/metaclass.c",
+    "ni:/module",
+    "ni:/object",
+    "ni:/semantic/dimension",
+    "ni:/semantic/task"
+  ]
+}
