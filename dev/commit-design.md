@@ -33,6 +33,11 @@ commits to journal the changes we make. Things we know about commits:
    loading.
 4. They can be serialized, which is a big can of worms.
 
+**Revision:** (4) is impossible. Commits cannot be individually serialized
+because object identity is contextual. We can journal modifications to Perl
+state, but that journal inherits the context that generated our serialization.
+Commits are not independent objects.
+
 ### Reckless promises like serializing commits
 (4) is a big deal because commit serialization isn't easy: how do we serialize
 functions with closure state or something? If one commit refers to data
@@ -53,7 +58,34 @@ monolithic, but we can't use it to distribute identity resolution because perl
 uses unpredictable memory addresses for things (which means the resulting
 commits would be equally unstable, despite ni being in the same state).
 
-#### Objects own references; identity doesn't matter
+Is it possible for objects to obtain stable canonical IDs? Nope, proven below.
+
+##### Commits and structural identity
+The idea behind a commit ID is that it stably encodes a ni runtime state: if
+you run through the same process to get to a given state, then the commit ID
+should be predictable. This means we can't use things like memory addresses to
+get there, or at least if we do we have to normalize them by (some process that
+is more involved than I'm inclined to implement).
+
+So ... if we want to be able to look at an object and form a stable commit
+around it, we'll need to know who else refers to anything about that object,
+etc. In other words, we're taking an unbounded snapshot of the runtime and
+there isn't a good way to wall off any aspect of state.
+
+**Proof:** Deanonymized objects, even within an object graph, have no stable
+identifiers.
+
+> We can construct two arrays `@a` and `@b` such that `@a = (\@b)` and `@b =
+> (\@a)`. The two arrays can't be differentiated from one another structurally,
+> but someone could be referring to either one -- in other words, an
+> unobservable aspect of their identity is significant. Any IDs we assign them
+> absent the external reference information will appear unstable from the outer
+> reference frame. Therefore, no stable deanonymization exists for
+> partially-serialized images.
+
+Put differently, _object identity is contextual._
+
+#### Objects own references; identity doesn't matter (NOPE)
 This might actually work. If objects never share references with each other,
 then we don't need to care about identity; each object can generate a commit
 that reproduces its state _structurally_. There's a lot to recommend this
@@ -61,3 +93,8 @@ separation of concern, though it's unclear whether we can fail early if someone
 writes code that doesn't work this way (and some classes might hold anonymous
 references to other instances, like for futures -- which arguably can't be
 serialized anyway so maybe it doesn't matter).
+
+This is actually a more onerous approach than I'm willing to entertain.
+Behaviors hold references to other behaviors, for example, and slices know
+which packages they've been applied to (all mutably). As ni evolves it's highly
+likely that we'll want shared anonymous state between objects.
