@@ -21,12 +21,17 @@ the full range of method behavior. Also need to forward `wantarray` in RMIs.
 
 ## Security
 It's a problem to have insecure RMI links, but it's also a problem to expect an
-RMI peer not to send potentially malicious results. It's not the end of th
+RMI peer not to send potentially malicious results. It's not the end of the
 world to have performance degrade into oblivion or run out of heap space, but
 arbitrary code execution can't be initiated by a peer.
 
 I think this means we need an asymmetric encoding for RMI channels: outgoing
 can be evaled, incoming needs to be JSON or another safe format.
+
+**737 update:** Outgoing is an arbitrary commit, incoming is a structural
+message that indicates how to resolve the future. This addresses security
+issues, particularly if we have a null-committer that we use on the incoming
+deserializer.
 
 ## Interface
 RMI is one method call deep, and happens when you work with a delegated object.

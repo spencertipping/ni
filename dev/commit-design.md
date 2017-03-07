@@ -111,3 +111,19 @@ A slice can be applied to multiple perl packages, which probably means that if
 we reconstruct it it will do the equivalent of producing multiple perl-package
 commits. This probably indicates that slices serialize into multi-commit
 bundles: one to create the slice, others to install it into each package.
+
+Maybe the simplest strategy is to make the rule that objects side-effect by
+journaling rather than by acting. Then we end up with the expedient property
+that all modifications to the perl runtime are quoted, which in turn means that
+_interfacing with local and remote perl interpreters is equivalent._
+
+##### Constructors can create named objects, but don't return commits
+This is relevant in an RMI context. Who owns the commit that is created when a
+class comes into existence? Arguably the class itself does; that's how it would
+be serialized.
+
+Ok hang on; commits aren't quite as well-defined as I want them to be. A commit
+is a way to modify the perl interpreter state, or more specifically to define
+things. There's no commit for object instantiation; that's considered to be an
+internal state modification for an image. Images and their associated instances
+are opaque; modifications they make to the perl runtime are not.
