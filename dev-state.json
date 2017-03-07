@@ -1,8 +1,8 @@
 {
   "classes": 37,
-  "image_size": 128992,
+  "image_size": 130274,
   "metaclasses": 35,
-  "named_entities": 236,
+  "named_entities": 237,
   "tests": {
     "failed": null,
     "passing": 17,
@@ -26,6 +26,10 @@
       "text": "Fix serialization for dataslices"
     },
     {
+      "referent": "ni:/lib/doc",
+      "text": "Use a better preprocessor; ni::outdent fixes indentation, but we also\nwant to unwrap lines unless they're split at paragraphs (like\nmarkdown)."
+    },
+    {
       "referent": "ni:/lib/fn",
       "text": "Give functions a way to name themselves so we can do #line\nreporting"
     },
@@ -34,8 +38,24 @@
       "text": "The interaction between these ->serialize methods and quotation/image\nclasses is horrible and even worse, undocumented. Formalize the protocol\nfor instances to request things like side effects or finalizers, and for\ngod's sake clean up the side-effect/boot-side-effect crap."
     },
     {
+      "referent": "ni:/lib/image",
+      "text": "Use a packed format with BER length encoding (which is portable), and\nserialize the apply-journals for behaviors."
+    },
+    {
       "referent": "ni:/lib/slice",
       "text": "A bug that takes the cake:\nhttps://searchcode.com/file/109026149/lib/overload.t#l-1486\n\nOk, here's the problem. Rebuilt images of ni fail on old perls, but the\nboot code works -- the reason is that bless() doesn't commute across\noverload magic installation on old perls; references themselves have an\noverload flag that's set when the reference is created, not when the\nunderlying package is modified. So if we want overloading to work, we\nneed to install overloaded methods before we bless things."
+    },
+    {
+      "referent": "ni:/lib/slice",
+      "text": "Anything on the Perl definition-side of things needs to be version\ncontrolled. The case we need to handle here is running unit tests inside\na remote; at the end, we should be able to restore the remote state\ncleanly (or branch it, or something). We don't want unit test results to\nhang around and corrupt the image we then propagate from there."
+    },
+    {
+      "referent": "ni:ni",
+      "text": "Migrate JSON into its own module, e.g. ni::json::. Clearly it deserves\nsome amount of encapsulation, since all of its member functions already\nhave the same prefix."
+    },
+    {
+      "referent": "ni:ni",
+      "text": "Test a \"DangerJson\" module that does s/// to transform JSON into a valid\nPerl expression, then uses eval()"
     }
   ],
   "undocumented": [

@@ -16,6 +16,13 @@ ni('ni:/lib/slice')->doc
       underlying package is modified. So if we want overloading to work, we
       need to install overloaded methods before we bless things.])
 
+  ->TODO(
+    q[Anything on the Perl definition-side of things needs to be version
+      controlled. The case we need to handle here is running unit tests inside
+      a remote; at the end, we should be able to restore the remote state
+      cleanly (or branch it, or something). We don't want unit test results to
+      hang around and corrupt the image we then propagate from there.])
+
   ->description(
     q[A slice of methods encoding some aspect of an object's behavior. Slices
       are combined using tags and branches, and the set of slices used to

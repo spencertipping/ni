@@ -15,6 +15,10 @@ ni('ni:/object')->child('/lib/image')
       for instances to request things like side effects or finalizers, and for
       god's sake clean up the side-effect/boot-side-effect crap.])
 
+  ->TODO(
+    q[Use a packed format with BER length encoding (which is portable), and
+      serialize the apply-journals for behaviors.])
+
   ->end
 
   ->def('/lib/image_init.b',

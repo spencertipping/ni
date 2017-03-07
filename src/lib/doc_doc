@@ -7,6 +7,11 @@ ni('ni:/lib/doc')->doc
       ->TODO(...)
       ...')
 
+  ->TODO(
+    q[Use a better preprocessor; ni::outdent fixes indentation, but we also
+      want to unwrap lines unless they're split at paragraphs (like
+      markdown).])
+
   ->description(
     q[Associate documentation with the specified class. Documentation is stored
       separately and in the "ni.doc" namespace; this way you can serialize

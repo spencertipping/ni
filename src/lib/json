@@ -10,6 +10,16 @@
 }
 
 ni('ni:ni')
+  ->doc
+  ->TODO(
+    q[Migrate JSON into its own module, e.g. ni::json::. Clearly it deserves
+      some amount of encapsulation, since all of its member functions already
+      have the same prefix.])
+  ->TODO(
+    q[Test a "DangerJson" module that does s/// to transform JSON into a valid
+      Perl expression, then uses eval()])
+  ->end
+
   ->def('/lib/json.b',
     json_unescape_one =>
       fp('($)', q{$ni::json_unescapes{$_[0]} || chr hex substr $_[0], 1}),
