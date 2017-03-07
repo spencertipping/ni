@@ -85,7 +85,7 @@ identifiers.
 
 Put differently, _object identity is contextual._
 
-#### Objects own references; identity doesn't matter (NOPE)
+#### Objects own references; identity doesn't matter
 This might actually work. If objects never share references with each other,
 then we don't need to care about identity; each object can generate a commit
 that reproduces its state _structurally_. There's a lot to recommend this
@@ -97,4 +97,17 @@ serialized anyway so maybe it doesn't matter).
 This is actually a more onerous approach than I'm willing to entertain.
 Behaviors hold references to other behaviors, for example, and slices know
 which packages they've been applied to (all mutably). As ni evolves it's highly
-likely that we'll want shared anonymous state between objects.
+likely that we'll want shared anonymous state between objects. [is it?]
+
+Ok, this gets back to metaclass-oriented serialization. Objects can produce a
+packed commit that encodes their state and dependencies -- then objects can
+remain anonymous because the context establishing their identity can be assumed
+to be quantifiable -- or at least bounded. If they depend on other objects,
+these dependencies appear as named references in the commit. If there's
+anonymous state, it's owned by a single object.
+
+##### Objects aren't always commits; e.g. slices
+A slice can be applied to multiple perl packages, which probably means that if
+we reconstruct it it will do the equivalent of producing multiple perl-package
+commits. This probably indicates that slices serialize into multi-commit
+bundles: one to create the slice, others to install it into each package.
