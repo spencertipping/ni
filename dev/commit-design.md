@@ -123,7 +123,17 @@ class comes into existence? Arguably the class itself does; that's how it would
 be serialized.
 
 Ok hang on; commits aren't quite as well-defined as I want them to be. A commit
-is a way to modify the perl interpreter state, or more specifically to define
-things. There's no commit for object instantiation; that's considered to be an
-internal state modification for an image. Images and their associated instances
-are opaque; modifications they make to the perl runtime are not.
+is a way to modify the perl interpreter state, or more specifically to create
+symbol table entries. There's no commit for object instantiation; that's
+considered to be an internal state modification for an image. Images and their
+associated instances are opaque; modifications they make to the perl runtime
+are not.
+
+**Q:** Do we really need something as sophisticated as commits? When, beyond
+unit testing, do we have a situation where we want some kind of
+partially-realized definition set? Why not just have slices un-apply themselves
+when they're garbage collected? Or how about `fork`ing the process before doing
+destructive stuff like unit testing?
+
+Until there's a compelling use case, I'm going to shelve the idea that we need
+this kind of state management.
