@@ -72,6 +72,38 @@ To generate a large but finite number of integers, you can use scientific notati
 Without an argument, `ni n` and ni `n0` give an infinite stream of consecutive integers starting from 1 and 0, respectively.
 
 
+###`i`: Literal text 
+`i` operator is the way to put literal text into the command line:
+
+```bash
+$ ni ihello ithere
+hello
+there
+```
+
+You can use single quotes with `i` to include spaces within strings.
+
+```bash
+$ ni i'one whole line'
+one whole line
+```
+
+If you want your text to be tab-delimited, you can put your text inside brackets.
+
+```bash
+$ ni i[foo bar]
+foo	bar
+```
+
+And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
+
+
+```bash
+$ ni i[ foo[] [bar] ]
+foo[]	[bar]
+```
+
+
 ###`e'...'`: Evaluate `bash` script
 
 `ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
