@@ -1,4 +1,3 @@
-image: spencertipping/ubuntu-docker
 ni-alpine:
   image: spencertipping/ni-env-alpine
   script:

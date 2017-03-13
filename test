@@ -61,13 +61,19 @@ build_docker_images() {
 }
 
 run_docker_tests() {
+  any_failed=0
   for env; do
     echo
     echo "TESTING $env (stderr > test.log)"
-    docker run $docker_opts --name ni-test $(image $env) \
-      /usr/bin/ni --internal/test
+    echo "TESTING $env" >&2
+    if ! docker run $docker_opts --name ni-test $(image $env) \
+           /data/ni --internal/test; then
+      echo -e "\033[1;31mFAIL\033[0;0m"
+      any_failed=1
+    fi
   done 2>>test.log
   echo
+  return $any_failed
 }
 
 docker_test_flow() {
@@ -77,7 +83,7 @@ docker_test_flow() {
 }
 
 gitlab_yaml() {
-  echo 'image: spencertipping/ubuntu-docker'
+  #echo 'image: spencertipping/ubuntu-docker'
   for e in ${envs[@]}; do
     echo "ni-$e:"
     echo "  image: spencertipping/ni-env-$e"

@@ -33,6 +33,13 @@ message that indicates how to resolve the future. This addresses security
 issues, particularly if we have a null-committer that we use on the incoming
 deserializer.
 
+**837 update:** Commits no longer exist. I'm tempted to say something like
+outgoing is arbitrary code, incoming is an arbitrary safe-to-eval value -- but
+maybe it's more useful to establish multiple connections to the remote, each
+with its own properties. This means the remote can initiate communication
+without making a trusted method call (e.g. for some type of event listener that
+isn't well-represented by a future object).
+
 ## Interface
 RMI is one method call deep, and happens when you work with a delegated object.
 We can address any named object in the remote, and the wall is around code
