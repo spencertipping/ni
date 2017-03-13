@@ -37,3 +37,14 @@ A few new invariants, still tentative:
       subs directly into the image? This could be a lot faster than evaling
       them into existence. (**Update:** not faster at all; it's marginally
       slower in fact.)
+
+### d37: Revert r27
+Too much machinery involved with commits, and not enough domain-specific
+benefit. It's probably a technically-correct change, but it introduces too much
+design overhead. Images should be serialized more carefully than they are now,
+which means using a packed format and having the image generator be decisive
+about which abstractions it's aware of (slices, perl packages, and fns, most
+likely).
+
+Fabric and image generation are different, though we can share aspects of
+serialization/packing for full and incremental images.
