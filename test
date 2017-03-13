@@ -71,7 +71,7 @@ run_docker_tests() {
       echo -e "\033[1;31mFAIL\033[0;0m"
       any_failed=1
     fi
-  done 2>>test.log
+  done 2>test.log
   echo
   return $any_failed
 }
@@ -83,7 +83,6 @@ docker_test_flow() {
 }
 
 gitlab_yaml() {
-  #echo 'image: spencertipping/ubuntu-docker'
   for e in ${envs[@]}; do
     echo "ni-$e:"
     echo "  image: spencertipping/ni-env-$e"
@@ -92,7 +91,6 @@ gitlab_yaml() {
   done
 }
 
-rm -f test.log
 gitlab_yaml > .gitlab-ci.yml
 
 c=$1
