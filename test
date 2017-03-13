@@ -65,7 +65,7 @@ run_docker_tests() {
   for env; do
     echo
     echo "TESTING $env (stderr > test.log)"
-    echo "TESTING $env" >&2
+    { echo; echo "TESTING $env"; } >&2
     if ! docker run $docker_opts --name ni-test $(image $env) \
            /data/ni --internal/test; then
       echo -e "\033[1;31mFAIL\033[0;0m"
