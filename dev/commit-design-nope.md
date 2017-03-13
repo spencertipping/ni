@@ -1,4 +1,6 @@
 # Commit design log
+**NOTE:** This whole idea is deprecated/abandoned.
+
 ## Replayability
 If the implication is that commits give us a way to encode and reproduce global
 state, we need to think carefully about where the limits are. Does this include

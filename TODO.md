@@ -27,14 +27,6 @@ around `LC_ALL`.
 Like `S`, but auto-configure buffer sizes and #children to maximize
 throughput+latency. Use OO and RMI to customize on the fly.
 
-### Generalized/optimized destructuring
-Should apply to JSON, XML, headed CSV/TSV, SQL-as-text, possibly other formats
-too. Also should optimize for the consistent-schema case and predict field
-positions. Support assertions (?)
-
-### Autocompleted filepaths
-e.g. `//m9drc24` for `/mnt/t9/data/reddit-comments-2015.lz4`
-
 ### JSPlot
 #### Enable WebGL rendering for browsers that support it
 Also think about using WebGL for realtime query/compute.

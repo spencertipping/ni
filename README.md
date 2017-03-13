@@ -1,18 +1,15 @@
-# ni: APL for unstructured streaming data
+# ni: bash+Smalltalk+APL+Forth for data science
 ![ni!](http://spencertipping.com/ni-chroma-rendering.png)
 
 ## Installation
 ```sh
-$ git clone git://github.com/spencertipping/ni && cd ni
-$ ./ni --help                   # start here
-$ ./ni --js                     # ...or here if you like to live on the edge
+$ git clone git://github.com/spencertipping/ni && ln -s $PWD/ni/ni ~/bin/
 ```
 
-### ni works on every machine
-...in the last decade, except Windows. Its only dependency is Perl 5.8 or
-later, which is installed basically everywhere (and in any context involving
-remote jobs, like hadoop, SSH, docker, etc, ni automatically installs itself so
-you don't have to do any configuration).
+ni works on every machine in the last decade, except Windows. Its only
+dependency is Perl 5.8 or later, which is installed basically everywhere (and
+in any context involving remote jobs, like hadoop, SSH, docker, etc, ni
+automatically installs itself so you don't have to do any configuration).
 
 ## Docs
 - [Ni by Example](doc/ni_by_example_1.md): a tutorial that won't say "ni" to you
@@ -58,4 +55,7 @@ SOFTWARE.
 
 ## For ni developers
 ### How to test your changes
-**TODO**
+```sh
+$ ./test --docker               # tests ni in a bunch of environments
+$ less test.log                 # see what went wrong, if anything
+```
