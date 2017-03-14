@@ -47,3 +47,37 @@ within object methods. Results are future-converted. Calls are made from an
 event loop, which may become unresponsive if we do something expensive.
 Failsafe with `SIGALRM`? (Let's jump off that bridge when we get there. The RMI
 parent can always remote-kill it.)
+
+## Persistence of remote objects
+Remote objects must manage their own deallocation because their owning process
+may become unavailable at any point. This involves a few things:
+
+1. A remote object needs to be aware of its referring set, whether it consists
+   of child processes or a parent hub that expects to be able to interact with
+   it.
+2. Upon reconnection to a remote, a parent hub needs to specify the set of
+   objects whose existence it's aware of; the proxy will then inform any
+   unmentioned live objects that they've lost a parent reference. (Implying
+   that remote objects are enumerable.)
+
+**Q:** Why would a remote object simply continue to exist, absent a local
+reason to do so? A few reasons: it could be monitoring something, for example,
+or it could be a service that replies to connections. So an object should
+specify the conditions under which it continues to exist: "I'm reachable and
+still doing work," for instance. This goes for local objects also.
+
+Pings+TTL is a reason for an object to exist.
+
+## RMI and unreliable connections
+The RMI protocol needs to acknowledge message receipt separately from reply,
+and it needs to use message sequencing like TCP to prevent duplication.
+Specifically, the sender sends message `n` and awaits an ack for `n` (holding
+the message for replay until the ack is received). Two situations from here:
+
+1. Sender receives the ack and discards the message.
+2. Connection is dropped. In this case the sender waits for the connection to
+   come back and repeats the message unless its TTL is exceeded.
+
+The receiver tracks acks so it can ignore a duplicate message, which will
+happen if the connection dies between message receipt and sender receiving the
+ack.
