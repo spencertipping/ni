@@ -1025,13 +1025,18 @@
 	  my @row = ();
 	  while(<STDIN>) {
 	    chomp;
-	    push @row, $_;
-	    if(@row == $n_cols) {
-	      print(join("\t", @row) . "\n"); 
-	      @row = ();
+	    push @row, split /\t/, $_;
+	    while(@row >= $n_cols) {
+	      my @emit_vals = splice(@row, 0, $n_cols);
+	      print(join("\t", @emit_vals). "\n"); 
+	      }
 	    }
-	  }
-	  if (@row > 0) {print(join("\t", @row) . "\n");}
+	  if (@row > 0) {
+	    while(@row > 0) {
+	      my @emit_vals = splice(@row, 0, $n_cols);
+	      print(join("\t", @emit_vals). "\n");
+	    }
+	  } 
 
 # OPERATOR uniq
 

@@ -5622,7 +5622,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-148 core/matrix/matrix.pl.sdoc
+153 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -5689,13 +5689,18 @@ defoperator unflatten => q{
   my @row = ();
   while(<STDIN>) {
     chomp;
-    push @row, $_;
-    if(@row == $n_cols) {
-      print(join("\t", @row) . "\n"); 
-      @row = ();
+    push @row, split /\t/, $_;
+    while(@row >= $n_cols) {
+      my @emit_vals = splice(@row, 0, $n_cols);
+      print(join("\t", @emit_vals). "\n"); 
+      }
     }
-  }
-  if (@row > 0) {print(join("\t", @row) . "\n");}
+  if (@row > 0) {
+    while(@row > 0) {
+      my @emit_vals = splice(@row, 0, $n_cols);
+      print(join("\t", @emit_vals). "\n");
+    }
+  } 
 };
 
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
