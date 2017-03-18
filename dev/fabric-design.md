@@ -113,4 +113,13 @@ can emit runtime state into the exec image in that case.
 
 What's the line between "state that needs to be updated" and "local mutable
 stuff", formally speaking? Metaclasses superficially seem to blur the
-distinction.
+distinction -- but I suspect they'll ultimately simplify it. Is state
+propagated eagerly or lazily?
+
+There's an organizational advantage to having commits, and commits are
+obviously an addressible collection whose members can be requested remotely.
+
+## Open questions
+1. Commits or fast-propagation?
+2. Any special-casing around intermittent connections?
+3. Are all remotes the same type of object? Are some partial images?
