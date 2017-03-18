@@ -81,3 +81,20 @@ the message for replay until the ack is received). Two situations from here:
 The receiver tracks acks so it can ignore a duplicate message, which will
 happen if the connection dies between message receipt and sender receiving the
 ack.
+
+## Multi-level routing and QoS
+We need a spanning-tree mechanism to figure out how to route packets between
+hosts. Ideally the hub isn't driving all RMI (a hard requirement). Materially,
+this means we'll have an indirect messaging path: `A -> (B <-> C)` as a nested
+request. `B` and `C` are, in `A`'s reference frame, self-managing objects.
+
+## Replication
+ni state is factored into persistent (named) and transient (unnamed, or in a
+transient namespace). Replicas contain a complete and dynamically updated
+snapshot of persistent state: any modifications to the hub image are
+automatically propagated inline with RMIs.
+
+...alternatively, maybe objects themselves are referred to remotely: can
+class instances apply to perl namespaces across an RMI connection? Not unless
+we've got packets-as-commits going on. **Replica maintenance is a reason for
+commits to exist:** issue the series of commits that would produce this state.
