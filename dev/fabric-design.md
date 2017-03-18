@@ -98,3 +98,19 @@ automatically propagated inline with RMIs.
 class instances apply to perl namespaces across an RMI connection? Not unless
 we've got packets-as-commits going on. **Replica maintenance is a reason for
 commits to exist:** issue the series of commits that would produce this state.
+
+Two situations we need to handle:
+
+1. A persistent remote, and the hub has been updated with new logic in general.
+2. A transient remote, and the hub has been updated with new logic for that
+   remote.
+
+Not clear that these are any different from each other. The question is how we
+maintain the state beyond protocol-level reliability. A potential problem, of
+course, is that commits aren't garbage-collected. Maybe it's a destructive
+update process and it's ok to have to re-exec after some point. Presumably we
+can emit runtime state into the exec image in that case.
+
+What's the line between "state that needs to be updated" and "local mutable
+stuff", formally speaking? Metaclasses superficially seem to blur the
+distinction.
