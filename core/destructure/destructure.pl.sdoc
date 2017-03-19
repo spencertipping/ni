@@ -22,7 +22,7 @@ sub json_extractor($) {
     if grep !/^:\w+$/, @pieces;
 
   my $matchers = join "\n",
-                 map '/^/g; push \@result, ' . json_si_gen->(k => qr/\Q$_\E/) . ';',
+                 map '/^/g; push @result, ' . json_si_gen->(k => qr/\Q$_\E/) . ';',
                  map sr($_, qr/^:/, ''), @pieces;
   qq{
     my \@result;
