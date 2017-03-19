@@ -3527,7 +3527,7 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl.sdoc
-37 core/destructure/destructure.pl.sdoc
+45 core/destructure/destructure.pl.sdoc
 Targeted extraction.
 Most data extraction workflows don't use every key of a rich data object like
 JSON or XML. ni allows you to avoid the overhead of fully decoding these
@@ -3551,17 +3551,25 @@ sub json_extractor($) {
   die "ni: json_extractor is not really written yet"
     if grep !/^:\w+$/, @pieces;
 
-  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+  my $matchers = join "\n",
+                 map '/^/g; push \@result, ' . json_si_gen->(k => qr/\Q$_\E/) . ';',
                  map sr($_, qr/^:/, ''), @pieces;
-  join ',', @compiled;
+  qq{
+    my \@result;
+    $matchers;
+    print join("\\t", \@result) . "\\n";
+  };
 }
 
 defoperator destructure => q{
-  ni::eval gen(q{no warnings 'uninitialized';
-                 eval {binmode STDOUT, ":encoding(utf-8)"};
-                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-                 while (<STDIN>) {print join("\t", %e), "\n"}})
-            ->(e => json_extractor $_[0]);
+  ni::eval gen(q{
+    no warnings 'uninitialized';
+    eval {binmode STDOUT, ":encoding(utf-8)"};
+    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+    while (<STDIN>) {
+      %e;
+    }
+  })->(e => json_extractor $_[0]);
 };
 
 defshort '/D', pmap q{destructure_op $_}, generic_code;
