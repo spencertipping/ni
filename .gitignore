@@ -1,5 +1,4 @@
 .*.swp
-dev/tests.sh
 dev/docker
 /gen
 test.log

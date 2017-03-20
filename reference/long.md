@@ -21,6 +21,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -53,6 +57,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?

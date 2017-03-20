@@ -26,7 +26,7 @@
 	
 	  my ($cs, $base) = @_;
 	  my $eb = log $base;
-	  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+	  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 
 # OPERATOR cell_log
 
@@ -162,11 +162,14 @@
 
 ## IMPLEMENTATION
 	
-	  ni::eval gen(q{no warnings 'uninitialized';
-	                 eval {binmode STDOUT, ":encoding(utf-8)"};
-	                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-	                 while (<STDIN>) {print join("\t", %e), "\n"}})
-	            ->(e => json_extractor $_[0]);
+	  ni::eval gen(q{
+	    no warnings 'uninitialized';
+	    eval {binmode STDOUT, ":encoding(utf-8)"};
+	    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+	    while (<STDIN>) {
+	      %e;
+	    }
+	  })->(e => json_extractor $_[0]);
 
 # OPERATOR dev_backdoor
 
@@ -268,6 +271,11 @@
 	  sforward \*STDIN, swfile $file;
 	  print "$file\n";
 
+# OPERATOR hadoop_make_nukeable
+
+## IMPLEMENTATION
+	print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>
+
 # OPERATOR hadoop_streaming
 
 ## IMPLEMENTATION
@@ -311,6 +319,7 @@
 	    };
 	    close $hadoop_fh;
 	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
 	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
 	    print "$result_path/part-*\n";
 	  }
@@ -542,8 +551,9 @@
 	
 	  my ($col, $f) = @_;
 	  $col ||= 0;
-	  my ($i, $o) = sioproc {exec 'python', '-c',
-	                           numpy_gen->(body => indent $f, 2)};
+	  my ($i, $o) = sioproc {
+	    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+	      or die "ni: failed to execute python: $!"};
 	  my @q;
 	  my ($rows, $cols);
 	  while (defined($_ = @q ? shift @q : <STDIN>)) {
@@ -572,6 +582,25 @@
 	  close $i;
 	  close $o;
 	  $o->await;
+
+# OPERATOR op_fn
+
+## IMPLEMENTATION
+	
+	  my ($bindings, $ops) = @_;
+	  while (<STDIN>) {
+	    chomp;
+	    my @vars = split /\t/;
+	    my %replacements;
+	    @replacements{@$bindings} = @vars;
+	    my $rewritten = rewrite_atoms_in $ops, sub {
+	      my $a = shift;
+	      $a =~ s/\Q$_\E/$replacements{$_}/g for @$bindings;
+	      $a;
+	    };
+	    close(my $fh = siproc {exec_ni @$rewritten});
+	    $fh->await;
+	  }
 
 # OPERATOR perl_assert
 
@@ -918,7 +947,7 @@
 # OPERATOR split_chr
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "y/$_[0]/\t/"
+	exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\t#" : "y/$_[0]/\t/"
 
 # OPERATOR split_proper_csv
 
@@ -933,7 +962,7 @@
 # OPERATOR split_regex
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "s/$_[0]/\$1\t/g"
+	my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\t/g"
 
 # OPERATOR sql_preview
 
@@ -1000,6 +1029,22 @@
 
 ## IMPLEMENTATION
 	exec 'tail', $_[0], join "", @_[1..$#_]
+
+# OPERATOR unflatten
+
+## IMPLEMENTATION
+	
+	  my ($n_cols) = @_;
+	  my @row = ();
+	  while(<STDIN>) {
+	    chomp;
+	    push @row, $_;
+	    if(@row == $n_cols) {
+	      print(join("\t", @row) . "\n"); 
+	      @row = ();
+	    }
+	  }
+	  if (@row > 0) {print(join("\t", @row) . "\n");}
 
 # OPERATOR uniq
 

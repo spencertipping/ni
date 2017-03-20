@@ -28,6 +28,7 @@
 
 ## OPTIONS
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -84,6 +85,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -116,6 +121,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?
@@ -157,6 +166,7 @@
 	| '/' <regex> -> {split_regex_op $_}
 	| ':' /./ -> {split_chr_op   $_}
 	| 'C' '' -> {split_chr_op   ','}
+	| 'D' '' -> {split_chr_op   '\/'}
 	| 'P' '' -> {split_chr_op   '|'}
 	| 'S' '' -> {split_regex_op '\s+'}
 	| 'V' '' -> {split_proper_csv_op}

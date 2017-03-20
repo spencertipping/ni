@@ -1,4 +1,6 @@
 # Matrix operations
+
+##Sparse and Dense Matrix Operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
 dense), which work like this:
@@ -56,6 +58,26 @@ reducer:
 $ ni n010p'r 0, a%3, 1' X
 4	3	3
 ```
+
+##1-D Matrix Operations
+Data in row form can be flattened (lengthened?) into a column via `pF_`.
+
+```bash
+$ ni i[a b] i[c d] pF_
+a
+b
+c
+d
+```
+
+Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
+
+```bash
+$ ni i[a b] i[c d] pF_ Z2
+a	b
+c	d
+```
+ 
 
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code

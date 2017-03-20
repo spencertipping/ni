@@ -42,8 +42,10 @@ lazytest_case() {
 lazytest_end() {
   if ((lazytest_fail)); then
     echo -e "\r\033[J\033[1;31m$lazytest_n tests, $lazytest_fail failed\033[0;0m"
+    exit 1
   else
     echo -e "\r\033[J\033[1;32m$lazytest_n tests run, all passed\033[0;0m"
+    exit 0
   fi
 }
 cat <<'LAZYTEST_EOF'

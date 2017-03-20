@@ -40,6 +40,46 @@ When `ni` runs hadoop streaming jobs, it sends **itself and all data** to the jo
 ###Hadoop Job killed by SIGPIPE
 Hadoop jobs must buffer all of their input, so you cannot use a bare `r1000` within a mapper, combiner, or reducer within `HS`. Instead, use `Bnr1000`, which will buffer excess input to null.
 
+###Too many partfiles
+The YARN resource manager will refuse to accept jobs that use too many (for example, >100K) partfiles as input; if you have too many partfiles, then you can use the `HS` syntax to run multiple identical jobs over time.
+
+##Hadoop Streaming Job is Slow
+Likely it's that you have a slow step 
+
+###Reading the Hadoop Logs
+The montior for Hadoop jobs includes the unix timestamp; this will be in the `stderr` logs. 
+
+###Many killed tasks "Container preempted by scheduler"
+
+In this case, the tasks that you are running are taking too long. The "ideal" mapreduce task takes something in the range of minutes to run. Once you've gone up to over an hour, you're beyond the pale of what you *should* be doing. Split your data up into a larger number of partfiles using `^{mapreduce.jobs.reduces=<lots>} HS:_:`, or use the upcoming hadoop repartition operator.
+
+##Hadoop Streaming Erroneous Output
+
+###Modifying the sort column
+
+`ni ihdfst:///<path> HS[p'r a =~/^(.{8})/, FR 1' ] [p'@ls = sort {f_($b) <=> f_($a)} rea; $n = min($#ls, 10); @ls[0..$n-1]' ] :`sl
+
+The code above is designed to get the top values based on column `f` of some data. However, when this code is run, it was found that a bunch of the data idiosyncratically disappeared, and that some of the output had more than  find that is a case of the classic bug optimizing too early
+ 
+
+
+##`ni` is installed but my machine can't find it
+
+Quick rundown of the obvious causes:
+
+1. `ni` isn't installed; head over to your `ni` directory and execute `./build`
+1. `ni` isn't linked; from the `ni` directory execute `ln -s $PWD/ni ~/bin/ni` to install it for your user or `ln -s $PWD/ni /usr/bin/ni` for all users.
+1. The folder where you linked `ni` isn't in your `$PATH`. Check your `.bash_profile`.
+
+Now onto non-obvious causes:
+
+###Running in `bin/sh`, with Ruby backticks, as a Python subprocess, etc.
+
+For most purposes bash and sh will behave the same way for `ni` -- the main exceptions are things like `{x..y}` (a bash-ism) and some environment-variable expansion forms. In particular, `bin/sh` may not like some of your environment variables, especially those that use `~` for the home directory. 
+
+A quick way to check for the above is to run `which ni`, which should use `bin/sh` rather than `bin/bash`. If nothing shows up, but you are still able to run `ni` from `bash`, you probably need to change `~/bin` in your `$PATH` to `$HOME/bin` so `bin/sh` can see it.
+
+If you do run into a bash-specific case, you can create your command as a string `cmd` and run it (in Ruby) with `bash -c "#{cmd}"`.
 
 ##Erroneous Output
 The other important type of error to debug are ones that run completely but give the wrong output. Here are some commmon pitfalls you might run into.
@@ -62,7 +102,7 @@ Note that when using a HDFS paths for Hadoop Streaming jobs, you __must*__  quot
 *Okay, it might work if you don't quote the path, but it'll take [forever](optimization.md).
 
 ###Perl 
-If something's going wrong in a Perl context, but it looks right, try being more explicit (for example, using `b()` rather than `b` to reference the second field)
+If something's going wrong in a Perl context, but it looks right, try being more explicit (for example, using `b()` rather than `b` to reference the second field).
 
 ##I can get it to work, but... 
 
@@ -81,8 +121,7 @@ One of the goals of `ni` is keystroke-efficiency; if you have a general-enough o
 * `f` and `F`
   * `f` selects columns, and will always be followed by a number of capitalized alphabetical characters
   * `F` is used to split a single column of raw text into columns.
-* `a`, `a()`, and `a_` (within `p'...'`)
+* `a`, `a()`, and `a_`
   * `a` and `a()` are identical operators, returning **the first element of a tab-separated row**. `a` is more common, and works everywhere except when the context is unclear (and `a` alone would be interpreted as a string). In this case, use `a()`.
   * `a_` is an operator on arrays of lines of the stream, returning the first element of each line **as an array**. These arrays can be operated on by buffered readahead reducers.
-
 

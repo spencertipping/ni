@@ -31,17 +31,15 @@ However, this isn't quite the whole story.
 
 ###`::closure_name[...]`: Create a data closure
 
-`$ ni ::five[n5] n3p'r a, five'`
-
-```
-1       12345
-2       12345
-3       12345
-(END)
+```bash
+$ ni ::five[n5] n3p'r a, five'
+1	12345
+2	12345
+3	12345
 ```
 Any `ni` operations executable on the machine from whose context `ni` is being executed can be turned into a data closure. This caveat will become more important when we start using `ni` to execute on machines other than the ones we develop on.  The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
 
-```
+```bash
 $ ni --explain ::five[n5] n3p'r a, five'
 ["memory_data_closure","five",[["n",1,6]]]
 ["n",1,4]
@@ -51,13 +49,11 @@ $ ni --explain ::five[n5] n3p'r a, five'
 
 Data closures provide a counterexample to the basics of `ni` evaluation written above. 
 
-`$ ni ::five[n5] | ni n3p'r a, five'`
-
-```
-1       five
-2       five
-3       five
-(END)
+```bash
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
 ```
 
 The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
@@ -65,13 +61,11 @@ The reason that the example including pipes gives different results than the exa
 ###Perl Bareword Interpretation
 The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
 
-`$ ni ::five[n5] | ni n3p'r a, five'`
-
-```
-1       five
-2       five
-3       five
-(END)
+```bash
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
 ```
 
 The Perl interpreter will convert missing barewords (i.e. things that do not start with a Perl sigil [`$, @, %`, etc.]) as a string. This trick is useful for writing strings without spaces within Perl environments; most of them do not need to be quoted. It is good `ni` style to avoid using quotes when they are unnecessary.
@@ -122,7 +116,7 @@ Here's what you need to know:
   * `(quote 5)` yields `5`
   * `(quote (list 1 2 3))` yields `(list 1 2 3)`--note that the list function was not evaluated.
 * `lambda` defines an anonymous function with any number of named parameters.
-  * `(lambda (u v) (u + v))` yields a closure. There's a lot of ink spilled on what a closure is and does. For the purpose of this tutorial, you can think of a closure as a a function that has not been supplied its arguments.
+  * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
 
 ###A simple quine in Scheme
@@ -153,7 +147,6 @@ What we need now is the appropriate piece of data to feed to the code. We know o
  (quote
   (lambda (x)
    (list x (list (quote quote) x)))))
-   
 => ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
 ```
 
@@ -217,7 +210,7 @@ The key here is that because the code is inside a single-quoted heredoc, it can 
 
 When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
 
-Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above
+Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above into `quine.pl`:
 
 ```
 $  cat quine.pl | perl | perl | perl
@@ -288,32 +281,22 @@ $ ni ::my_closure[n10] //ni | wc -c
 If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
 
 ```
-$ ni ::ten[n10] //ni | perl - n1p'ten'
-```
-
-```
+$ ni ::five[n5] //ni | perl - n1p'five'
 1
 2
 3
 4
 5
-6
-7
-8
-9
-10
-(END)
 ```
 
 This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
 
-```
+```sh
+# NB(ST): this isn't a test because of nondeterministic behavior on centOS.
+# This is a ni bug, but it's such an edge case that I doubt I'll fix it on the
+# current codebase; most likely I'll handle it with the OO refactor.
 $ ni //ni | perl - n1p'ten'
-```
-
-```
 ten
-(END)
 ```
 
 One final note; by the ordering of the data, it may appear that the fact that `ni` is self-modifying and the fact that it is a quine are separate; or that the self-modifying power of `ni` makes it a quine. In fact, the opposite is true; it is because `ni` is a quine that allows it to be self-modifying.
@@ -420,7 +403,6 @@ The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` 
 > You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
 
 
-
 ###How `ni` Interacts with Hadoop Streaming MapReduce
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
@@ -444,10 +426,13 @@ It has a trivial map step, no combiner, and a trivial reducer; it looks like not
 
 If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
 
+###Initializing `HS` Jobs
+`HS` takes data in several formats. You can stream 
 
-###Developing Hadoop Streaming Jobs
 
-In fact, `HS` is actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
+##Developing Hadoop Streaming Jobs
+
+Because Hadoop is such an important part of `ni`'s power, we're devoting a section not just to the operator, but to the principles of development using `HS`. `HS` is, in fact actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
 
 outputs the name of the directory where the output has been placed.
 
@@ -464,6 +449,8 @@ This identity allows you to iterate fast, completely within `less` and the comma
   
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
+###`HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming
+
 
 ###`:checkpoint_name[...]`: Checkpoints
 
@@ -478,19 +465,19 @@ Checkpoints and files share many commonalities. The key difference between a che
 
 An example of checkpoint use is the following:
 
-```
-$ ni :numbers[n1000000gr4]
+```bash
+$ ni nE6gr4 :numbers
 1
 10
 100
 1000
-``` 
+```
 
 This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
 
 
-```
-$ ni :numbers[n1000000gr4]O
+```bash
+$ ni nE6gr4 :numbers O
 1000
 100
 10
@@ -500,7 +487,7 @@ $ ni :numbers[n1000000gr4]O
 Compare this to the same code writing to a file:
 
 ```
-$ ni n1000000gr4 =\>numbers
+$ ni nE6gr4 =\>numbers
 1000
 100
 10
@@ -510,7 +497,7 @@ $ ni n1000000gr4 =\>numbers
 Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
 
 ```
-$ ni n1000000gr4 =\>numbers O
+$ ni nE6gr4 =\>numbers O
 1000
 100
 10
@@ -518,6 +505,11 @@ $ ni n1000000gr4 =\>numbers O
 ```
 
 One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
+
+
+###Developing Hadoop Streaming pipelines with checkpoints
+
+As of now, `ni` auto-generates the names for the Hadoop directories, and these can be hard to remember off the top of your head.
 
 ###A Final Note on Hadoop Streaming Jobs
 There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
@@ -555,6 +547,7 @@ $ ni ihdfst://<abspath> HS...
 ```
 
 This will pass the directory path directly to the Hadoop Streaming job. If you do not use path, as in:
+
 ```
 $ ni hdfst://<abspath> HS...
 ```
@@ -565,35 +558,32 @@ When the input path is not quoted, `ni` will read all of the data out of HDFS to
 ###`i`: Literal text 
 To introduce how to use how to use HDFS with `HS` we need to introduce another more fundamental `ni` operator, for reasons that will be clear later. `i` operator is the way to put literal text into the command line:
 
-```
+```bash
 $ ni ihello ithere
 hello
 there
-(END)
 ```
 
 You can use single quotes with `i` to include spaces within strings.
 
-```
-$ni i'one whole line'
+```bash
+$ ni i'one whole line'
 one whole line
-(END)
 ```
 
 If you want your text to be tab-delimited, you can put your text inside brackets.
 
-```
+```bash
 $ ni i[foo bar]
-foo     bar
-(END)
-``` 
+foo	bar
+```
 
 And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
 
-```
-$ni i[ foo[] [bar] ]
-foo[]   [bar]
-(END)
+
+```bash
+$ ni i[ foo[] [bar] ]
+foo[]	[bar]
 ```
 
 

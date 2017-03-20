@@ -59,35 +59,58 @@ defoperator sparse_to_dense => q{
   }
 };
 
+defoperator unflatten => q{
+  my ($n_cols) = @_;
+  my @row = ();
+  while(<STDIN>) {
+    chomp;
+    push @row, $_;
+    if(@row == $n_cols) {
+      print(join("\t", @row) . "\n"); 
+      @row = ();
+    }
+  }
+  if (@row > 0) {print(join("\t", @row) . "\n");}
+};
+
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
+defshort '/Z', pmap q{unflatten_op 0 + $_}, integer;
 
 NumPy interop.
 Partitioned by the first row value and sent in as dense matrices.
 
 use constant numpy_gen => gen pydent q{
   from numpy import *
-  from sys   import stdin, stdout
+  from sys   import stdin, stdout, stderr
+  try:
+    stdin = stdin.buffer
+    stdout = stdout.buffer
+  except:
+    pass
   while True:
     try:
-      dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+      dimensions = fromstring(stdin.read(8), dtype=">u4", count=2)
     except:
-      dimensions = ()
-    if len(dimensions) == 0: exit()
-    x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
+      exit()
+    x = fromstring(stdin.read(8*dimensions[0]*dimensions[1]),
+                   dtype="d",
+                   count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
   %body
     if type(x) != ndarray: x = array(x)
     if len(x.shape) != 2: x = reshape(x, (-1, 1))
-    array(x.shape).astype(dtype(">u4")).tofile(stdout)
-    x.astype(dtype("d")).tofile(stdout)
+    stdout.write(array(x.shape).astype(">u4").tostring())
+    stdout.write(x.astype("d").tostring())
     stdout.flush()};
 
 defoperator numpy_dense => q{
   my ($col, $f) = @_;
   $col ||= 0;
-  my ($i, $o) = sioproc {exec 'python', '-c',
-                           numpy_gen->(body => indent $f, 2)};
+  my ($i, $o) = sioproc {
+    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+      or die "ni: failed to execute python: $!"};
+
   my @q;
   my ($rows, $cols);
   while (defined($_ = @q ? shift @q : <STDIN>)) {

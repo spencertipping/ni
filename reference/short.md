@@ -340,6 +340,7 @@
 	| '/' <regex> -> {split_regex_op $_}
 	| ':' /./ -> {split_chr_op   $_}
 	| 'C' '' -> {split_chr_op   ','}
+	| 'D' '' -> {split_chr_op   '\/'}
 	| 'P' '' -> {split_chr_op   '|'}
 	| 'S' '' -> {split_regex_op '\s+'}
 	| 'V' '' -> {split_proper_csv_op}
@@ -362,6 +363,7 @@
 
 ## SYNTAX
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -456,6 +458,11 @@
 ## SYNTAX
 	<colspec1>? -> {dense_to_sparse_op $_}
 
+# SHORT OPERATOR /Z
+
+## SYNTAX
+	<integer> -> {unflatten_op 0 + $_}
+
 # SHORT OPERATOR /^
 
 ## SYNTAX
@@ -494,6 +501,16 @@
 	| <colspec> -> {cols_op @$_}
 	)
 
+# SHORT OPERATOR /f[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <fn_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {op_fn_op @$_}
+
 # SHORT OPERATOR /g
 
 ## SYNTAX
@@ -518,6 +535,16 @@
 ## SYNTAX
 	<lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                 body   => $_)}
+
+# SHORT OPERATOR /l[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <let_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {op_let_op @$_}
 
 # SHORT OPERATOR /m
 

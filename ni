@@ -2553,14 +2553,14 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? ["gzip -dc"]
-              : /^BZh[1-9\0]/           ? ["pbzip2 -dc", "bzip2 -dc"]
-              : /^\x89\x4c\x5a\x4f/     ? ["lzop -dc"]
-              : /^\x04\x22\x4d\x18/     ? ["lz4 -dc"]
-              : /^\xfd\x37\x7a\x58\x5a/ ? ["xz -dc"] : undef;
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc || cat"
+              : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
 
   if (defined $decoder) {
-    my $o = siproc {sh $_ for @$decoder};
+    my $o = siproc {exec $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
     close $o;
@@ -2677,7 +2677,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-229 core/stream/ops.pl.sdoc
+240 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2686,12 +2686,23 @@ c
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
   defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
+
+  defparser 'super_brackets', '', q{
+    my ($self, @xs) = @_;
+    return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+    my $superness = $1;
+    my @r;
+    push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+    $1 eq $superness ? (\@r, @xs) : ();
+  };
 }
 BEGIN {
-  defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
+  defparseralias shell_command => palt pmap(q{shell_quote @$_}, super_brackets),
+                                       pmap(q{shell_quote @$_}, multiword_ws),
                                        pmap(q{shell_quote @$_}, multiword),
                                        prx '[^][]+';
-  defparseralias id_text => palt pmap(q{join "\t", @$_}, multiword_ws),
+  defparseralias id_text => palt pmap(q{join "\t", @$_}, super_brackets),
+                                 pmap(q{join "\t", @$_}, multiword_ws),
                                  pmap(q{join "\t", @$_}, multiword),
                                  prx '[^][]+';
 }
@@ -3288,8 +3299,9 @@ defresource 'file',
   exists => q{-e $_[1]},
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
-1 core/fn/lib
+2 core/fn/lib
 fn.pl.sdoc
+op-rewrite.pl.sdoc
 90 core/fn/fn.pl.sdoc
 Operator->operator functions.
 This provides a mechanism for ni to implement aliases and other shorthands.
@@ -3381,6 +3393,58 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
+51 core/fn/op-rewrite.pl.sdoc
+Operator-level text substitution.
+WARNING: This is a hack, but possibly a useful one.
+
+sub rewrite_atoms_in {
+  my ($op, $fn) = @_;
+  return $fn->($op) unless ref $op;
+  return [map rewrite_atoms_in($_, $fn), @$op] if ref $op eq 'ARRAY';
+  return {map rewrite_atoms_in($_, $fn), %$op} if ref $op eq 'HASH';
+  die "rewrite_atoms_in: not sure how to rewrite $op of type " . ref($op);
+}
+
+defmetaoperator op_let => q{
+  my ($args, $left, $right) = @_;
+  my ($bindings, $ops) = @$args;
+  my @keys = map $$_[0], @$bindings;
+  my %replacements = map @$_, @$bindings;
+  my $rewritten = rewrite_atoms_in $ops, sub {
+    my $a = shift;
+    $a =~ s/\Q$_\E/$replacements{$_}/g for @keys;
+    $a;
+  };
+  ($left, [@$rewritten, @$right]);
+};
+
+defoperator op_fn => q{
+  my ($bindings, $ops) = @_;
+  while (<STDIN>) {
+    chomp;
+    my @vars = split /\t/;
+    my %replacements;
+    @replacements{@$bindings} = @vars;
+    my $rewritten = rewrite_atoms_in $ops, sub {
+      my $a = shift;
+      $a =~ s/\Q$_\E/$replacements{$_}/g for @$bindings;
+      $a;
+    };
+    close(my $fh = siproc {exec_ni @$rewritten});
+    $fh->await;
+  }
+};
+
+c
+BEGIN {defparseralias fn_bindings => pn 0, prep(prc qr/[^:=]+/), prc qr/:/}
+BEGIN {defparseralias let_binding => pn [0, 2], prx qr/[^:=]+/, pstr '=', prc '[\s\S]+'}
+BEGIN {defparseralias let_bindings => pn 0, prep(let_binding), prc qr/:/}
+
+defshort '/l[' => pmap q{op_let_op @$_},
+                  pn [1, 2], popt pempty, let_bindings, '/series', pstr ']';
+
+defshort '/f[' => pmap q{op_fn_op @$_},
+                  pn [1, 2], popt pempty, fn_bindings, '/series', pstr ']';
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
@@ -3463,7 +3527,7 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl.sdoc
-37 core/destructure/destructure.pl.sdoc
+45 core/destructure/destructure.pl.sdoc
 Targeted extraction.
 Most data extraction workflows don't use every key of a rich data object like
 JSON or XML. ni allows you to avoid the overhead of fully decoding these
@@ -3487,17 +3551,25 @@ sub json_extractor($) {
   die "ni: json_extractor is not really written yet"
     if grep !/^:\w+$/, @pieces;
 
-  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+  my $matchers = join "\n",
+                 map '/^/g; push @result, ' . json_si_gen->(k => qr/\Q$_\E/) . ';',
                  map sr($_, qr/^:/, ''), @pieces;
-  join ',', @compiled;
+  qq{
+    my \@result;
+    $matchers;
+    print join("\\t", \@result) . "\\n";
+  };
 }
 
 defoperator destructure => q{
-  ni::eval gen(q{no warnings 'uninitialized';
-                 eval {binmode STDOUT, ":encoding(utf-8)"};
-                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-                 while (<STDIN>) {print join("\t", %e), "\n"}})
-            ->(e => json_extractor $_[0]);
+  ni::eval gen(q{
+    no warnings 'uninitialized';
+    eval {binmode STDOUT, ":encoding(utf-8)"};
+    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+    while (<STDIN>) {
+      %e;
+    }
+  })->(e => json_extractor $_[0]);
 };
 
 defshort '/D', pmap q{destructure_op $_}, generic_code;
@@ -3619,7 +3691,7 @@ defoperator script => q{
 };
 1 core/col/lib
 col.pl.sdoc
-185 core/col/col.pl.sdoc
+187 core/col/col.pl.sdoc
 Column manipulation operators.
 In root context, ni interprets columns as being tab-delimited.
 
@@ -3674,6 +3746,7 @@ Adapters for input formats that don't have tab delimiters. Common ones are,
 with their split-spec mnemonics:
 
 | commas:       C
+  slashes:      D
   "proper CSV": V
   pipes:        P
   whitespace:   S
@@ -3682,8 +3755,8 @@ with their split-spec mnemonics:
 You can also field-split on arbitrary regexes, or extend the splitalt dsp to
 add custom split operators.
 
-defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
-defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
+defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#" : "y/$_[0]/\\t/"};
+defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
 # TODO: collapse multiline fields
@@ -3698,6 +3771,7 @@ defoperator split_proper_csv => q{
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
     'C' => pmap(q{split_chr_op   ','},               pnone),
+    'D' => pmap(q{split_chr_op   '\/'},              pnone),
     'V' => pmap(q{split_proper_csv_op},              pnone),
     'P' => pmap(q{split_chr_op   '|'},               pnone),
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
@@ -4273,7 +4347,7 @@ defoperator cell_log => q{
 defoperator cell_exp => q{
   my ($cs, $base) = @_;
   my $eb = log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = $eb * exp \$xs[\$_]"}, $cs;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
 };
 
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
@@ -4342,7 +4416,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-92 core/pl/util.pm.sdoc
+109 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4429,11 +4503,28 @@ sub dirname($)  {(dirbase $_[0])[0]}
 sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
-  mkdir_p dirname $_[0];
-  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
-  print $fh $_[1];
+  local $_;
+  my $f = shift;
+  my $fh;
+  if ($f =~ /^\|/) {
+    open $fh, $f or die "wf $f: $!";
+  } else {
+    mkdir_p dirname $f;
+    open $fh, "> $f" or die "wf $f: $!";
+  }
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
-  $_[0];
+  $f;
+}
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
 }
 39 core/pl/math.pm.sdoc
 Math utility functions.
@@ -4548,7 +4639,7 @@ space:
 sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
-BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
+BEGIN {ceval sprintf 'sub se%s(&$@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
                      $_, $_ for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
@@ -5603,7 +5694,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-125 core/matrix/matrix.pl.sdoc
+148 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -5665,35 +5756,58 @@ defoperator sparse_to_dense => q{
   }
 };
 
+defoperator unflatten => q{
+  my ($n_cols) = @_;
+  my @row = ();
+  while(<STDIN>) {
+    chomp;
+    push @row, $_;
+    if(@row == $n_cols) {
+      print(join("\t", @row) . "\n"); 
+      @row = ();
+    }
+  }
+  if (@row > 0) {print(join("\t", @row) . "\n");}
+};
+
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
+defshort '/Z', pmap q{unflatten_op 0 + $_}, integer;
 
 NumPy interop.
 Partitioned by the first row value and sent in as dense matrices.
 
 use constant numpy_gen => gen pydent q{
   from numpy import *
-  from sys   import stdin, stdout
+  from sys   import stdin, stdout, stderr
+  try:
+    stdin = stdin.buffer
+    stdout = stdout.buffer
+  except:
+    pass
   while True:
     try:
-      dimensions = fromfile(stdin, dtype=dtype(">u4"), count=2)
+      dimensions = fromstring(stdin.read(8), dtype=">u4", count=2)
     except:
-      dimensions = ()
-    if len(dimensions) == 0: exit()
-    x = fromfile(stdin, dtype=dtype("d"), count=dimensions[0]*dimensions[1]) \
+      exit()
+    x = fromstring(stdin.read(8*dimensions[0]*dimensions[1]),
+                   dtype="d",
+                   count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
   %body
     if type(x) != ndarray: x = array(x)
     if len(x.shape) != 2: x = reshape(x, (-1, 1))
-    array(x.shape).astype(dtype(">u4")).tofile(stdout)
-    x.astype(dtype("d")).tofile(stdout)
+    stdout.write(array(x.shape).astype(">u4").tostring())
+    stdout.write(x.astype("d").tostring())
     stdout.flush()};
 
 defoperator numpy_dense => q{
   my ($col, $f) = @_;
   $col ||= 0;
-  my ($i, $o) = sioproc {exec 'python', '-c',
-                           numpy_gen->(body => indent $f, 2)};
+  my ($i, $o) = sioproc {
+    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+      or die "ni: failed to execute python: $!"};
+
   my @q;
   my ($rows, $cols);
   while (defined($_ = @q ? shift @q : <STDIN>)) {
@@ -6516,7 +6630,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-143 core/jsplot/interface.waul.sdoc
+150 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -6645,11 +6759,18 @@ $(caterwaul(':all')(function ($) {
                              cy                    = lh >>> 1,
                              axes                  = data_state.frame.axes /!axis_map,
                              m                     = v /!camera.m,
-                             outline_one(x, y, z)  = oc.strokeRect(cx + scale*x/z - 2, cy - scale*y/z - 2, 5, 5) -when [z > 0],
-                             outline(i)            = outline_one(p[0], p[1], p[2]) -where [p = m.transform([axes[0] ? axes[0].p(i) : 0,
-                                                                                                            axes[1] ? axes[1].p(i) : 0,
-                                                                                                            axes[2] ? axes[2].p(i) : 0, 1]) /!camera.norm],
-                             outline_points(c, is) = oc.strokeStyle /eq.c -then- is *!outline /seq],    // TODO: optimize
+
+                             outline_points = function (c, is) {
+                               oc.strokeStyle = c;
+                               var t = +new Date;
+                               for (var i = 0; i < is.length && +new Date - t < 20; ++i) {
+                                 var pi = is[i];
+                                 var p  = m.transform([axes[0] ? axes[0].p(pi) : 0,
+                                                       axes[1] ? axes[1].p(pi) : 0,
+                                                       axes[2] ? axes[2].p(pi) : 0, 1] /!camera.norm);
+                                 if (p[2] > 0) oc.strokeRect(cx + scale*p[0]/p[2] - 2, cy - scale*p[1]/p[2] - 2, 5, 5);
+                               }
+                             }],
 
         axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
@@ -6951,7 +7072,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-176 core/hadoop/hadoop.pl.sdoc
+190 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -6982,6 +7103,13 @@ defresource 'hdfst',
                     my $path = shell_quote $_[1];
                     sh qq{$hadoop_name fs -text $path 2>/dev/null || $hadoop_name fs -text $path"/part*" 2>/dev/null}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
+defresource 'hdfsrm',
+  read => q{soproc {my $o = resource_read "hdfst://$_[1]";
+                    sforward $o, \*STDOUT;
+                    $o->await;
+                    resource_nuke "hdfst://$_[1]"} @_},
+  nuke => q{resource_nuke "hdfst://$_[1]"};
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -7016,7 +7144,7 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfst?:\/\//) {
+  if (/^\w+:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
     s/^hdfst:/hdfs:/gm;
     (0, map [split /\t/], grep length, split /\n/);
@@ -7094,6 +7222,8 @@ defoperator hadoop_streaming => q{
     close $hadoop_fh;
     die "ni: hadoop streaming failed" if $hadoop_fh->await;
 
+    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+
     (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
     print "$result_path/part-*\n";
   }
@@ -7105,6 +7235,9 @@ defoperator hadoop_streaming => q{
   resource_nuke $reducer  if defined $reducer;
 };
 
+defoperator hadoop_make_nukeable =>
+  q{print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>};
+
 c
 BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                                       pmap(q{[]},    prc ':'),
@@ -7114,6 +7247,8 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
+
+defhadoopalt '#' => pmap q{hadoop_make_nukeable_op}, pnone;
 
 defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
                           my @cr =
@@ -8425,8 +8560,10 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-238 doc/matrix.md
+260 doc/matrix.md
 # Matrix operations
+
+##Sparse and Dense Matrix Operations
 ni provides a handful of operations that make it easy to work with sparse and
 dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to
 dense), which work like this:
@@ -8484,6 +8621,26 @@ reducer:
 $ ni n010p'r 0, a%3, 1' X
 4	3	3
 ```
+
+##1-D Matrix Operations
+Data in row form can be flattened (lengthened?) into a column via `pF_`.
+
+```bash
+$ ni i[a b] i[c d] pF_
+a
+b
+c
+d
+```
+
+Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
+
+```bash
+$ ni i[a b] i[c d] pF_ Z2
+a	b
+c	d
+```
+ 
 
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code
@@ -10489,7 +10646,7 @@ The view angle can be panned, rotated, and zoomed:
 - **mouse drag:** pan
 - **shift + drag:** 3D rotate
 - **ctrl + drag, alt + drag, mousewheel:** zoom
-77 doc/warnings.md
+79 doc/warnings.md
 # Things to look out for
 ![img](http://spencertipping.com/ni.png)
 
@@ -10554,7 +10711,9 @@ $ wc -l < a-million-things
 If you weren't planning to sort your data, though, a better alternative is to
 use `B`, the buffering operator, with a null buffer:
 
-```bash
+```sh
+# UPDATE: this no longer works reliably; it depends on which signal is used to
+# kill the pipeline. This will be fixed when I merge r/oo into develop.
 $ ni n1000000 =\>a-million-things Bn r5
 1
 2

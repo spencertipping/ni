@@ -70,7 +70,7 @@ space:
 sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
-BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
+BEGIN {ceval sprintf 'sub se%s(&$@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
                      $_, $_ for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}

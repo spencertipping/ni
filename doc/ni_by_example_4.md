@@ -36,13 +36,17 @@ $ni e'seq 10 | grep 1'
 
 turns into 
 ```
-exec("/bin/sh", "-c", "stuff")
+exec("/bin/sh", "-c", "seq 10 | grep 1/")
 ```
 
 This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
 
 ###`ni` and Ruby
-Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). One thing to be aware of is that Ruby backticks will execute using `/bin/sh` and not `/bin/bash`, so to execute your `ni` spells from Ruby, you will want to create them as strings, and execute them with `bash -c "#{cmd}"`
+Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). 
+
+Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. There are a few caveats for running in `bin/sh`, which are covered in the [debugging docs](debugging.md).
+   
+
 
 ##`nfu` HDFS Joins
 
@@ -105,31 +109,29 @@ to apply to only part of the stream.
 
 Examples:
 
-```
+```bash
 $ ni n3 ^[n05 fAA]
-0       0
-1       1
-2       2
-3       3
-4       4
+0	0
+1	1
+2	2
+3	3
+4	4
 1
 2
 3
-(END)
 ```
 
 
-```
+```bash
 $ ni n3 +[n05 fAA]
 1
 2
 3
-0       0
-1       1
-2       2
-3       3
-4       4
-(END)
+0	0
+1	1
+2	2
+3	3
+4	4
 ```
 
 `+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
@@ -146,9 +148,9 @@ first stream and the start of the second.
 
 ###`%`: Interleave Streams
 
-The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni n1E5fAA %[n100]` will put the second stream somewhere in the middle.
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni nE5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
 
-You can also call `%#` with a number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1 `
+You can also call `%#` with a positive number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1.` You can also call `%-#`, and the streams will be interleaved with a ratio: `first stream : second stream :: 1:#.`
 
 Interleaving streams with a numeric argument will cut off the output stream when either stream is exhausted.
 
@@ -156,19 +158,20 @@ Interleaving streams with a numeric argument will cut off the output stream when
 ###`=`: Duplicate Stream and Discard
 This operation is most useful for writing a file in-stream, perhaps with some modifications.
 
+```bash
+$ ni n10 =[r5 \>short] r3fAA
+1	1
+2	2
+3	3
 ```
-$ ni n1E7 =[r5 \>short] r3fAA
-1       1
-2       2
-3       3
-(END)
+
+```bash
 $ ni short
 1
 2
 3
 4
 5
-(END)
 ```
 
 One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
@@ -187,12 +190,11 @@ These operations are used to add columns vertically to to a stream, either by me
 
 `w` adds a column to the end of a stream, up to the minimum length of either stream.
 
-```
+```bash
 $ ni //license w[n3p'a*a']
-ni: https://github.com/spencertipping/ni        1
-Copyright (c) 2016 Spencer Tipping | MIT license        4
-        9
-(END)
+ni: https://github.com/spencertipping/ni	1
+Copyright (c) 2016 Spencer Tipping | MIT license	4
+	9
 ```
 
   
@@ -200,14 +202,13 @@ Copyright (c) 2016 Spencer Tipping | MIT license        4
 
 `W` operates like `w`, except its output column is prepended. 
 
-```
-$ ni e'echo {a..e}' p'split / /' Wn
-1       a
-2       b
-3       c
-4       d
-5       e
-(END)
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn
+1	a
+2	b
+3	c
+4	d
+5	e
 ```
   
 
@@ -215,26 +216,24 @@ $ ni e'echo {a..e}' p'split / /' Wn
 
 We can upper-case the letters in the previous example via:
 
-```
-$ ni e'echo {a..e}' p'split / /' Wn p'r a, uc(b)'
-1       A
-2       B
-3       C
-4       D
-5       E
-(END)
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn p'r a, uc(b)'
+1	A
+2	B
+3	C
+4	D
+5	E
 ```
 
 However `ni` also offers a shorter syntax using the `v` operator.
 
-```
-$ ni e'echo {a..e}' p'split / /' Wn vBpuc
-1       A
-2       B
-3       C
-4       D
-5       E
-(END)
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn vBpuc
+1	A
+2	B
+3	C
+4	D
+5	E
 ```
 
 **Important Note**: As of 2017-01-22, this operator is too slow to use in production.
@@ -244,84 +243,83 @@ Also note that the Perl upper-case operator is written as `puc`, without quotes,
   
 ###`j` - streaming join
 
+**Important note**: [Spencer](https://github.com/spencertipping) considers `j` to be broken. This section is liable to change.
+
 Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
 
 Example:
 
 ```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn j[letters]
-a       5       1       a
-b       4       2       b
-c       3       3       c
-d       2       4       d
-e       1       5       e
-(END)
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
+a	5	1	a
+b	4	2	b
+c	3	3	c
+d	2	4	d
+e	1	5	e
 ```
 
 This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
 
-```
-$ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA
-a       5
-b       4
-c       3
-d       2
-e       1
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA
+a	5
+b	4
+c	3
+d	2
+e	1
 ```
 
 This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters]
-a       5
-b       4
-c       3
-d       2
-e       1
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters]
+a	5
+b	4
+c	3
+d	2
+e	1
 a
 b
 c
 d
 e
-(END)
 ```
 
 We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn
-a       5       1
-b       4       2
-c       3       3
-d       2       4
-e       1       5
-a       6
-b       7
-c       8
-d       9
-e       10
-(END)
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn
+a	5	1
+b	4	2
+c	3	3
+d	2	4
+e	1	5
+a	6
+b	7
+c	8
+d	9
+e	10
 ```
 
 We append another column of numbers; note that `w` adds new columns to every row, but does not make sure that the rows are the same length, so the 
 
 
-```
-$ ni :letters[e'echo {a..e}' p'split / /'] gA- wn gA +[letters] wn gABn
-a       5       1
-a       6
-b       4       2
-b       7
-c       3       3
-c       8
-d       2       4
-d       9
-e       1       5
-e       10
-(END)
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn
+a	5	1
+a	6
+b	4	2
+b	7
+c	3	3
+c	8
+d	2	4
+d	9
+e	1	5
+e	10
 ```
 
 We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
+
 
 
 ###`Y` - dense-to-sparse transformation
@@ -332,29 +330,37 @@ We sort the data (necessary to perform the join) first ascending lexicographical
 * The value of the input stream at the row and column specified by the first two columns.
 
 
-```
+```bash
 $ ni //license FW Y r10
-0       0       ni
-0       1       https
-0       2       github
-0       3       com
-0       4       spencertipping
-0       5       ni
-1       0       Copyright
-1       1       c
-1       2       2016
-1       3       Spencer
-(END)
+0	0	ni
+0	1	https
+0	2	github
+0	3	com
+0	4	spencertipping
+0	5	ni
+1	0	Copyright
+1	1	c
+1	2	2016
+1	3	Spencer
 ```
 
 ### `X` - sparse-to-dense transformation
 `X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
-```
+```bash
 $ ni //license FW Y r10 X
-ni      https   github  com     spencertipping  ni
-Copyright       c       2016    Spencer
-(END)
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer
+```
+
+###`Z<n_cols>` - unflatten
+`Z` takes data in the form of a single column and returns the same data reshaped into rows with the specified number of columns. Any overhanging data is pushed onto an incomplete row.
+
+```bash
+$ ni 1p'"a".."l"' Z4
+a	b	c	d
+e	f	g	h
+i	j	k	l
 ```
 
 ##Cell Operations
@@ -371,15 +377,35 @@ Likely the most important of these functions is the deterministic hashing functi
 
 Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
 
+Let's check that invariant:
+
+```
+$ ni n4E7 ,hA Cubuntu[o] uc
+39814375
+```
+
+That means we had about 200,000 hash collisions in 40 million IDs, a rate of about .5%, which is good enough for my back-of-the envelope calculations.
+
 
 
 ###Cell Math Operations
-* `,e`: Natural exponential e<sup>x</sup>
-* `,l`: Natural log (`ln x`)
+* `,e<b>`: exponent b<sup>x</sup> -- deafults to e<sup>x</sup>
+* `,l<b>`: logarithm (log<sub>b</sub>x) -- defaults to natural log
 * `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
 * `,q<amt>`: Round to the nearest integer multiple of `<amt>`
 
-These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color
+These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color.
+
+```sh
+# TODO: @bilow I had to disable this test because of floating-point error
+$ ni n5 fAAAAAA ,eB ,eC2 ,lD ,lE3 ,eF ,lF
+1	2.71828182845905	2	0	0	1
+2	7.38905609893065	4	0.693147180559945	0.630929753571457	2
+3	20.0855369231877	7.99999999999999	1.09861228866811	1	3
+4	54.5981500331442	16	1.38629436111989	1.26185950714291	4
+5	148.413159102577	31.9999999999999	1.6094379124341	1.46497352071793	5
+```
+
 
 ###Column Math Operations
 * `,a`: Running average
@@ -388,9 +414,9 @@ These operations are mostly self-explanatory; jitter is often used for `ni --js`
 
 You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
 
-```
-$ ni n1E4 fAA ,aA ,sB r~1
-5000.5  50005000
+```bash
+$ ni nE4 fAAA ,aA ,sB, ,dC r~1
+5000.5	50005000	1
 ```
 
 
@@ -424,32 +450,28 @@ If `$precision > 0`, the geohash is specified with `$precison` base-32 character
 
 Examples:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe(a, b, 7)'
 9q5cc25
-(END)
 ```
 
-```
-ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
+```bash
+$ ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
 10407488581
-(END)
 ```
 
 The default is to encode with 12 base-32 characters, i.e. a gh12, or 60 bits of precision.
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe(a, b)'
 9q5cc25twby7
-(END)
 ```
 
-The parentheses are also often unnecessary:
+The parentheses are also often unnecessary, because of the prototypin:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 9q5cc25tw
-(END)
 ```
 
 
@@ -464,16 +486,14 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 
 Examples:
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'r ghd ghe a, b'
-34.058565851301 -118.416526280344
-(END)
+34.058565851301	-118.416526280344
 ```
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
-34.0584754943848        -118.416652679443
-(END)
+34.0584754943848	-118.416652679443
 ```
     
 ### `tpe`: time parts to epoch
@@ -481,18 +501,16 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 and assumes that the pieces are year, month, day, hour, minute, and second, 
 in that order. 
 
-```
+```bash
 $ ni 1p'tpe(2017, 1, 22, 8, 5, 13)'
-1485079513
-(END)
+1485072313
 ```
 
 You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
 
-```
+```bash
 $ ni 1p'tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'
-1485079513
-(END)
+1485072313
 ```
 
 **IMPORTANT NOTE**: `tpe` does not work correctly on Mac as of 2017-01-23,
@@ -505,9 +523,9 @@ This will result in your code giving the local time rather than GMT; use
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
-```
-$ ni 1p'tep tpe 2017, 1, 22, 8, 5, 13'
-2017    1       22      8       5      13
+```bash
+$ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
+2017	1	22	8	5	13
 ```
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
@@ -518,10 +536,9 @@ A specific format string can also be provided, in which case `tep` is called as 
 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
-```
+```bash
 $ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
-2017    1       22      2       41      13
-(END)
+2017	1	22	2	41	13
 ```
 
 This correction cuts the globe into 4-minute strips by degree of longitude.
@@ -553,22 +570,19 @@ Regexes should be designed to fail quickly, so reduce the number of possible eva
 ####String Slicing with Regex
 I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
 
-```
+```bash
 $ ni iabcdefgh p'/^(.*).{4}$/'  #[:-4] in Python
 abcd
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'/^.{3}(.*)$/' #[3:] in Python
 defgh
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'/^.*(.{2})$/' #[-2:] in Python
 gh
-(END)
 ```
 
 ####Using Capture Groups
@@ -579,71 +593,71 @@ This will get capture groups and store them in `@v`. Using parentheses around `$
 
 For example:
 
-```
+```bash
 $ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
-a       b
-(END)
+a	b
 ```
 
-```
+```bash
 $ ni iabcdefgh p'my ($w) = /^(.)/; r $w'
 a
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
-a       b
-(END)
+a	b
 ```
 
 
-####Substitution `s///`, Translation `tr///` and `y///`
+####Substitution `s///`, Transliteration `tr///` and `y///`
 
 These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
 
-```
+```bash
 $ ni iabcdefgh p'tr/a-z/A-Z/'
 8
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p's/abc/ABC/'
 1
-(END)
 ```
 
 The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
 This also will give somewhat-surprising behavior to code like:
 
-```
+```bash
 $ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
 8
 ```
 
 Instead, these operators work as side-effects.
 
-```
+```bash
 $ ni iabcdefgh p'tr/a-z/A-Z/; $_'
 ABCDEFGH
-(END)
 ```
 
-```
+```bash
 $ ni iabcdefgh p's/abc/ABC/; $_'
 ABCdefgh
-(END)
+```
+
+However, as you might expect from Perl, there is a syntax that allows `s` to return the value; however, this will not work on Perls before 5.12 or 5.14.
+
+
+```sh
+$ ni iabcdefgh p's/abc/ABC/r'
+ABCdefgh
 ```
 
 ###`map`
 
 `map` takes two arguments, a block of code and a perl array, and returns an array.
 
-```
+```bash
 $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r @v'
-aa      bb      cc      dd      ee      ff      gg      hh
-(END)
+aa	bb	cc	dd	ee	ff	gg	hh
 ```
 
 This code is complicated if you haven't been exposed to the syntax before, so let's break it down.
@@ -651,26 +665,24 @@ This code is complicated if you haven't been exposed to the syntax before, so le
 The block that `map` is using is easy to spot--it's some code wrapped in curly braces, so that's `{$_ x 2}`. Because a `map` block will operate on one argument at a time, we refer to that argument as `$_` (unlike subroutine syntax, which takes its arguments in the array `@_`). The `$_` within the block is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
 
 
-```
+```bash
 $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
 abcdefgh
-(END)
 ```
 
-Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and said 
+Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
 
-```
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r $_'
-aa      bb      cc      dd      ee      ff      gg      hh
-(END)
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r @v'
+aa	bb	cc	dd	ee	ff	gg	hh
 ```
 
-Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't _nice_.  
+Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
 
 ###`for`
 `for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
 
-```
+```bash
 $ ni iabcdefgh p'r $_ x 2 for split //'
 aa
 bb
@@ -680,7 +692,6 @@ ee
 ff
 gg
 hh
-(END)
 ```
 
 This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
@@ -712,23 +723,21 @@ You can get the first 17 tab-delimited columns using the Ruby `a` through `q` op
 
 To fix the example above, you need to run:
 
-```
+```bash
 $ ni n4m'r a, ai + 1'
-1   2
-2   3
-3   4
-4   5
-(END)
+1	2
+2	3
+3	4
+4	5
 ```
 
 ###`m'fields'`: Array of fields.
 Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
-```
-$  ni //license FWr2m'r fields[0..3]'
-ni      https   github  com
-Copyright       c       2016    Spencer
-(END)
+```bash
+$ ni //license FWr2m'r fields[0..3]'
+ni	https	github	com
+Copyright	c	2016	Spencer
 ```
 
 ###`m'r ...'`: Print row
@@ -742,8 +751,9 @@ Lisp is in the same boat as Ruby, as a language that `ni` supports. Lisp operate
 
 So, if Ruby has gems, why even support Lisp? Here's why:
 
-```
-ni n4fAA l"(r (sr ('+ a) ('* b)))"
+```bash
+$ ni n4fAA l"(r (sr ('+ a) ('* b)))"
+10	24
 ```
 
 Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.

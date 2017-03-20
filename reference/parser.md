@@ -30,6 +30,10 @@
 	      /.*/
 	      <empty>?
 	    ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	  | ''hdfsrm://' (
+	      /.*/
+	      <empty>?
+	    ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	  | ''hdfst://' (
 	      /.*/
 	      <empty>?
@@ -62,6 +66,10 @@
 	      /.*/
 	      <empty>?
 	    ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	  | 'hdfsrm://' (
+	      /.*/
+	      <empty>?
+	    ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	  | 'hdfst://' (
 	      /.*/
 	      <empty>?
@@ -256,6 +264,7 @@
 	  | '/' <regex> -> {split_regex_op $_}
 	  | ':' /./ -> {split_chr_op   $_}
 	  | 'C' '' -> {split_chr_op   ','}
+	  | 'D' '' -> {split_chr_op   '\/'}
 	  | 'P' '' -> {split_chr_op   '|'}
 	  | 'S' '' -> {split_regex_op '\s+'}
 	  | 'V' '' -> {split_proper_csv_op}
@@ -270,6 +279,7 @@
 	  | <gnuplot/suffix>
 	  ) -> {stream_to_gnuplot_op $_}
 	| 'H' (
+	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
 	      (
 	        <hadoop_streaming_lambda>
@@ -331,6 +341,7 @@
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'X' <colspec1>? -> {sparse_to_dense_op $_}
 	| 'Y' <colspec1>? -> {dense_to_sparse_op $_}
+	| 'Z' <integer> -> {unflatten_op 0 + $_}
 	| '^' </qfn> -> {prepend_op   @$_}
 	| '^{' (
 	    <config_option_map>
@@ -344,6 +355,12 @@
 	| 'f' (
 	  | <colspec> -> {cols_op @$_}
 	  )
+	| 'f[' (
+	    <empty>?
+	    <fn_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
@@ -352,6 +369,12 @@
 	  ) -> {join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]}
 	| 'l' <lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                   body   => $_)}
+	| 'l[' (
+	    <empty>?
+	    <let_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {op_let_op @$_}
 	| 'm' (
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
@@ -798,6 +821,7 @@
 
 ## DEFINITION
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -853,6 +877,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -885,6 +913,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?
@@ -924,6 +956,7 @@
 	| '/' <regex> -> {split_regex_op $_}
 	| ':' /./ -> {split_chr_op   $_}
 	| 'C' '' -> {split_chr_op   ','}
+	| 'D' '' -> {split_chr_op   '\/'}
 	| 'P' '' -> {split_chr_op   '|'}
 	| 'S' '' -> {split_regex_op '\s+'}
 	| 'V' '' -> {split_proper_csv_op}
@@ -955,6 +988,20 @@
 
 ## DEFINITION
 	/-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?/ such that {length} -> {0 + $_}
+
+# PARSER fn_bindings
+
+## DEFINITION
+	(
+	  (
+	    /(?^:[^:=]+)/
+	    <empty>?
+	  ) -> {$$_[0]}*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
 
 # PARSER fn_expander
 
@@ -1061,6 +1108,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {join "\t", @$_}
 	| <multiword_ws> -> {join "\t", @$_}
 	| <multiword> -> {join "\t", @$_}
 	| /[^][]+/
@@ -1090,6 +1138,29 @@
 	| /,/ -> {0.9}
 	| <number>?
 	) -> {$_ || 1}
+
+# PARSER let_binding
+
+## DEFINITION
+	(
+	  /(?^:[^:=]+)/
+	  '='
+	  (
+	    /[\s\S]+/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {[@$_[0,2]]}
+
+# PARSER let_bindings
+
+## DEFINITION
+	(
+	  <let_binding>*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
 
 # PARSER lispcode
 
@@ -1443,6 +1514,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {shell_quote @$_}
 	| <multiword_ws> -> {shell_quote @$_}
 	| <multiword> -> {shell_quote @$_}
 	| /[^][]+/
@@ -1564,3 +1636,17 @@
 
 ## DEFINITION
 	/[^][/,]+/
+
+# PARSER super_brackets
+
+## DEFINITION
+	<core parser {
+	  
+	      my ($self, @xs) = @_;
+	      return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+	      my $superness = $1;
+	      my @r;
+	      push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+	      $1 eq $superness ? (\@r, @xs) : ();
+	    
+	}>
