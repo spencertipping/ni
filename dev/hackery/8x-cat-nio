@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
-use POSIX qw/dup2/;
+use POSIX qw/dup2 nice/;
 
 our @pids;
 our @stdins;
@@ -25,6 +25,7 @@ sub child {
     close $stdout_w;
     push @pids, $pid;
   } else {
+    nice 5;
     close $_ for @stdins, @stdouts;
     close STDIN;
     close STDOUT;
