@@ -1,0 +1,5 @@
+#!/bin/bash
+time perl -e '
+  my $data = " " x 1048576;
+  syswrite STDOUT, $data for 1..1048576;
+' | pv | cat | cat | cat | cat | cat | cat | cat > /dev/null

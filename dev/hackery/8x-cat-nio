@@ -1,0 +1,73 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use POSIX qw/dup2/;
+
+our @pids;
+our @stdins;
+our @stdouts;
+
+sub child {
+  pipe my $stdin_r,  my $stdin_w;
+  pipe my $stdout_r, my $stdout_w;
+
+  push @stdins,  $stdin_w;
+  push @stdouts, $stdout_r;
+
+  printf STDERR "child-facing FDs are %d and %d\n",
+    fileno($stdin_w),
+    fileno($stdout_r);
+
+  my $pid = fork;
+  die "fork: $!" unless defined $pid;
+  if ($pid) {
+    close $stdin_r;
+    close $stdout_w;
+    push @pids, $pid;
+  } else {
+    close $_ for @stdins, @stdouts;
+    close STDIN;
+    close STDOUT;
+    dup2 fileno($stdin_r), 0 or die "dup2: $!";
+    close $stdin_r;
+    dup2 fileno($stdout_w), 1 or die "dup2: $!";
+    close $stdout_w;
+    exec @_ or die "exec @_: $!";
+    exit 1;
+  }
+}
+
+child 'perl', '-e', '
+  my $data = " " x 1048576;
+  syswrite STDOUT, $data for 1..1048576;
+';
+
+child 'pv';
+child 'cat' for 2..8;
+
+my $rbits = '';
+my $wbits = '';
+vec($rbits, fileno($_), 1) = 1 for @stdouts;
+vec($wbits, fileno($_), 1) = 1 for @stdins;
+
+my $buf = "\0" x 65536;
+
+my ($r, $w);
+my @ns = 0..$#stdouts-1;
+
+my $last_stdout = $stdouts[-1];
+my $n;
+
+while ($n = select $r=$rbits, $w=$wbits, undef, 1) {
+  sysread $last_stdout, $buf, 65536 if vec $r, fileno($last_stdout), 1;
+  for (@ns) {
+    next unless vec($r, fileno($stdouts[$_]), 1)
+             && vec($w, fileno($stdins[$_ + 1]), 1);
+    sysread $stdouts[$_], $buf, 65536;
+    syswrite $stdins[$_ + 1], $buf;
+  }
+}
+
+print STDERR "loop done; waiting for children\n";
+
+waitpid $_, 0 for @pids;
