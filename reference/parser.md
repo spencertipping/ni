@@ -362,6 +362,10 @@
 	    ']'
 	  ) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
+	| 'gg' (
+	    <colspec1>
+	    <sortspec>
+	  ) -> {row_grouped_sort_op @$_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
 	    <colspec>?

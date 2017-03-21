@@ -516,6 +516,14 @@
 ## SYNTAX
 	<sortspec> -> {row_sort_op        sort_args @$_}
 
+# SHORT OPERATOR /gg
+
+## SYNTAX
+	(
+	  <colspec1>
+	  <sortspec>
+	) -> {row_grouped_sort_op @$_}
+
 # SHORT OPERATOR /i
 	Identity: append literal text
 

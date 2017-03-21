@@ -218,6 +218,35 @@ $ ni data oB g r4               # 'g' is a sorting operator
 11	-0.999990206550703	2.39789527279837
 ```
 
+### Grouped sort
+The `gg` operator sorts key-grouped bundles of rows; this is a piecewise sort.
+For example, to sort words within lengths:
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB
+3	bar
+3	baz
+3	bif
+3	foo
+4	bake
+4	quux
+4	uber
+```
+
+The first column specifies the grouping key, and subsequent columns are
+interpreted as for the `g` operator.
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
+3	foo
+3	bif
+3	baz
+3	bar
+4	uber
+4	quux
+4	bake
+```
+
 ## Counting
 ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).

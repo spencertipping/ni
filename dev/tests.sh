@@ -3436,11 +3436,35 @@ lazytest_case 'ni data oB g r4               # '\''g'\'' is a sorting operator
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=226
+lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB
+' 3<<'LAZYTEST_EOF'
+3	bar
+3	baz
+3	bif
+3	foo
+4	bake
+4	quux
+4	uber
+LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=240
+lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
+' 3<<'LAZYTEST_EOF'
+3	foo
+3	bif
+3	baz
+3	bar
+4	uber
+4	quux
+4	bake
+LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=255
 lazytest_case 'ni //license FWpF_ > word-list
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=227
+lazytest_line=256
 lazytest_case 'ni word-list cr10             # unsorted count
 ' 3<<'LAZYTEST_EOF'
 1	ni
@@ -3455,7 +3479,7 @@ lazytest_case 'ni word-list cr10             # unsorted count
 1	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=238
+lazytest_line=267
 lazytest_case 'ni word-list gcr10            # sort first to group words
 ' 3<<'LAZYTEST_EOF'
 1	2016
@@ -3470,7 +3494,7 @@ lazytest_case 'ni word-list gcr10            # sort first to group words
 1	BE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=249
+lazytest_line=278
 lazytest_case 'ni word-list gcOr10           # by descending count
 ' 3<<'LAZYTEST_EOF'
 7	to
@@ -3485,12 +3509,12 @@ lazytest_case 'ni word-list gcOr10           # by descending count
 3	SOFTWARE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=267
+lazytest_line=296
 lazytest_case 'ni word-list p'\''r a, length a'\'' > word-lengths
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=268
+lazytest_line=297
 lazytest_case 'ni word-list gj[word-lengths g] r10
 ' 3<<'LAZYTEST_EOF'
 2016	2016	4

@@ -3883,7 +3883,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-123 core/row/row.pl.sdoc
+155 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3986,6 +3986,38 @@ defoperator row_sort => q{
 defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+
+defoperator row_grouped_sort => q{
+  my ($key_col, $sort_cols) = @_;
+  my $key_expr = $key_col
+    ? qq{(split /\\t/)[$key_col]}
+    : qq{/^([^\\t\\n]*)/};
+
+  my $sort_expr = join ' || ',
+    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
+                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+
+  ni::eval gen(q{
+    my $k;
+    my @group;
+    push @group, $_ = <STDIN>;
+    ($k) = %key_expr;
+    while (<STDIN>) {
+      my ($rk) = %key_expr;
+      if ($rk ne $k) {
+        print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+        @group = $_;
+        $k = $rk;
+      } else {
+        push @group, $_;
+      }
+    }
+    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+  })->(key_expr => $key_expr, sort_expr => $sort_expr);
+};
+
+defshort '/gg', pmap q{row_grouped_sort_op @$_}, pseq colspec1, sortspec;
 
 Counting.
 Sorted and unsorted streaming counts.
@@ -4416,7 +4448,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-109 core/pl/util.pm.sdoc
+112 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4428,6 +4460,9 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 0..$#_ - 1}
+sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
 
 sub argmax(&@) {
   local $_;
@@ -9538,7 +9573,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-283 doc/row.md
+312 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -9757,6 +9792,35 @@ $ ni data oB g r4               # 'g' is a sorting operator
 10	-0.54402111088937	2.30258509299405
 100	-0.506365641109759	4.60517018598809
 11	-0.999990206550703	2.39789527279837
+```
+
+### Grouped sort
+The `gg` operator sorts key-grouped bundles of rows; this is a piecewise sort.
+For example, to sort words within lengths:
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB
+3	bar
+3	baz
+3	bif
+3	foo
+4	bake
+4	quux
+4	uber
+```
+
+The first column specifies the grouping key, and subsequent columns are
+interpreted as for the `g` operator.
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
+3	foo
+3	bif
+3	baz
+3	bar
+4	uber
+4	quux
+4	bake
 ```
 
 ## Counting

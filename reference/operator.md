@@ -851,6 +851,36 @@
 	  $_->await for @wo;
 	  $stdout_reader->await;
 
+# OPERATOR row_grouped_sort
+
+## IMPLEMENTATION
+	
+	  my ($key_col, $sort_cols) = @_;
+	  my $key_expr = $key_col
+	    ? qq{(split /\t/)[$key_col]}
+	    : qq{/^([^\t\n]*)/};
+	  my $sort_expr = join ' || ',
+	    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+	         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
+	                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+	  ni::eval gen(q{
+	    my $k;
+	    my @group;
+	    push @group, $_ = <STDIN>;
+	    ($k) = %key_expr;
+	    while (<STDIN>) {
+	      my ($rk) = %key_expr;
+	      if ($rk ne $k) {
+	        print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+	        @group = $_;
+	        $k = $rk;
+	      } else {
+	        push @group, $_;
+	      }
+	    }
+	    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+	  })->(key_expr => $key_expr, sort_expr => $sort_expr);
+
 # OPERATOR row_match
 
 ## IMPLEMENTATION
