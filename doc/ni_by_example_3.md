@@ -328,10 +328,11 @@ $ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
 4	1000
 ```
 
-`ni` offers a shorthand for reducing over a particular column:
+`ni` offers a shorthand for reducing over a particular column and everything to
+its left:
 
 ```bash
-$ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
+$ ni n1000p'r length a, a' p'r b, sea {$_[0] + a} 0'
 1	45
 2	4905
 3	494550
@@ -401,13 +402,16 @@ $ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
 3
 ```
 
-`reb` is the more commonly used shorthand for `re {b}`.
+`reb` isn't the same; instead, it reads while columns `a` and `b` are fixed:
 
 ```bash
 $ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
-3
-3
-3
+1
+2
+1
+2
+1
+2
 ```
 
 There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.

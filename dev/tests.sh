@@ -1355,8 +1355,8 @@ lazytest_case 'ni n1000p'\''r a, length a'\'' p'\''r b, se {$_[0] + a} \&b, 0'\'
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=334
-lazytest_case 'ni n1000p'\''r a, length a'\'' p'\''r b, seb {$_[0] + a} 0'\''
+lazytest_line=335
+lazytest_case 'ni n1000p'\''r length a, a'\'' p'\''r b, sea {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 1	45
 2	4905
@@ -1364,7 +1364,7 @@ lazytest_case 'ni n1000p'\''r a, length a'\'' p'\''r b, seb {$_[0] + a} 0'\''
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=347
+lazytest_line=348
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[3], a)}
                                            0, 0, a, a;
@@ -1373,13 +1373,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=357
+lazytest_line=358
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=375
+lazytest_line=376
 lazytest_case 'ni 1p'\''cart [1, 2], ["a", "b", "c"]'\''
 ' 3<<'LAZYTEST_EOF'
 1	a
@@ -1390,7 +1390,7 @@ lazytest_case 'ni 1p'\''cart [1, 2], ["a", "b", "c"]'\''
 2	c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=398
+lazytest_line=399
 lazytest_case 'ni 1p'\''cart [1, 2], ["a", "b", "c"]'\'' p'\''sum a_ re {b}'\''
 ' 3<<'LAZYTEST_EOF'
 3
@@ -1398,15 +1398,18 @@ lazytest_case 'ni 1p'\''cart [1, 2], ["a", "b", "c"]'\'' p'\''sum a_ re {b}'\''
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=407
+lazytest_line=408
 lazytest_case 'ni 1p'\''cart [1, 2], ["a", "b", "c"]'\'' p'\''sum a_ reb'\''
 ' 3<<'LAZYTEST_EOF'
-3
-3
-3
+1
+2
+1
+2
+1
+2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=441
+lazytest_line=445
 lazytest_case 'ni n3p'\''r map a*$_, 1..3'\'' N'\''x = x + 1'\''
 ' 3<<'LAZYTEST_EOF'
 2	3	4
@@ -1414,7 +1417,7 @@ lazytest_case 'ni n3p'\''r map a*$_, 1..3'\'' N'\''x = x + 1'\''
 4	7	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=448
+lazytest_line=452
 lazytest_case 'ni n5p'\''r map a . $_, 1..3'\'' N'\''x = x.T'\''
 ' 3<<'LAZYTEST_EOF'
 11	21	31	41	51
@@ -1422,7 +1425,7 @@ lazytest_case 'ni n5p'\''r map a . $_, 1..3'\'' N'\''x = x.T'\''
 13	23	33	43	53
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=464
+lazytest_line=468
 lazytest_case 'ni i[1 0] i[1 1] N'\''x = dot(x, x.T)'\''
 ' 3<<'LAZYTEST_EOF'
 1	1
