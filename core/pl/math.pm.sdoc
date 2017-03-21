@@ -12,7 +12,7 @@ sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_}
 
-sub log2 {LOG2R * log $_[0]}
+sub log2($) {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
 
@@ -27,6 +27,13 @@ sub drad($) {$_[0] / 360 * tau}
 
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
+
+sub entropy {
+  local $_;
+  my $t = 0;
+  $t += $_ * ($_ > 0 ? -log2 $_ : 0) for @_;
+  $t;
+}
 
 if (eval {require Math::Trig}) {
   sub haversine {
