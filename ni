@@ -4601,7 +4601,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-80 core/pl/stream.pm.sdoc
+88 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4631,6 +4631,14 @@ sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
+
+sub cols(@) {
+  local $_;
+  for my $i (0..min map $#{$_}, @_) {
+    r map $_[$_][$i], 0..$#_;
+  }
+  ();
+}
 
 Hash constructors.
 Pairs of letters you can use to index one column against another. For example,

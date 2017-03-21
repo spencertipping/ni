@@ -28,6 +28,14 @@ BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
+sub cols(@) {
+  local $_;
+  for my $i (0..min map $#{$_}, @_) {
+    r map $_[$_][$i], 0..$#_;
+  }
+  ();
+}
+
 Hash constructors.
 Pairs of letters you can use to index one column against another. For example,
 `%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
