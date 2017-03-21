@@ -1,0 +1,6 @@
+#!/bin/bash
+time ni 1p'
+  my $data = " " x 1048576;
+  syswrite STDOUT, $data for 1..1048576;
+' ecat ecat ecat ecat ecat ecat ecat ecat \
+  ecat ecat ecat ecat ecat ecat ecat ecat zn
