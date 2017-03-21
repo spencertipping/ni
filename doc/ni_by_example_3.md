@@ -332,7 +332,7 @@ $ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
 its left:
 
 ```bash
-$ ni n1000p'r length a, a' p'r b, sea {$_[0] + a} 0'
+$ ni n1000p'r length a, a' p'r a, sea {$_[0] + b} 0'
 1	45
 2	4905
 3	494550
