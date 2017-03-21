@@ -4601,7 +4601,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-76 core/pl/stream.pm.sdoc
+80 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4662,20 +4662,24 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
+sub rea() {re {a}}
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+                     $_, ord($_) - 97 for 'b'..'l'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
 space:
 
-| se<column>: streaming reduce while column is equal
+| se<column>: streaming reduce while everything up to column is equal
   sr: streaming reduce all data
 
 sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
-BEGIN {ceval sprintf 'sub se%s(&$@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
-                     $_, $_ for 'a'..'l'}
+BEGIN {ceval sprintf 'sub se%s(&$@) {
+                        my ($f, @xs) = @_;
+                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                      }', $_, ord($_) - 97 for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 68 core/pl/reducers.pm.sdoc
