@@ -4561,7 +4561,7 @@ sub af {
   close $fh;
   $f;
 }
-46 core/pl/math.pm.sdoc
+47 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
 
@@ -4594,8 +4594,9 @@ sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 
 sub entropy {
   local $_;
+  my $sum = sum @_;
   my $t = 0;
-  $t += $_ * ($_ > 0 ? -log2 $_ : 0) for @_;
+  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
   $t;
 }
 
