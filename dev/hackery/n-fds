@@ -1,0 +1,11 @@
+#!/usr/bin/env perl
+use List::Util qw/max/;
+use POSIX;
+
+my ($r, $w, @fds);
+while (($r, $w) = POSIX::pipe) {
+  push @fds, $r, $w;
+  printf "max fd = %d\n", max @fds;
+}
+
+printf "error = $!\n";
