@@ -5953,8 +5953,8 @@ defgnuplot_code_prefixalt '%d' => pk 'plot "-" with dots ';
 defgnuplot_code_prefixalt '%i' => pk 'plot "-" with impulses ';
 defgnuplot_code_prefixalt '%v' => pk 'plot "-" with impulses ';
 
-defgnuplot_code_prefixalt '%t' => pmap q{"title '$_'"}, pc generic_code;
-defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   pc generic_code;
+defgnuplot_code_prefixalt '%t' => pmap q{"title '$_'"}, generic_code;
+defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 
 FFMPEG movie assembly.
 You can use the companion operator `GF` to take a stream of jpeg images from a

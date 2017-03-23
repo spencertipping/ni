@@ -829,14 +829,8 @@
 	| '%d' <'', evaluate as plot "-" with dots >
 	| '%i' <'', evaluate as plot "-" with impulses >
 	| '%l' <'', evaluate as plot "-" with lines >
-	| '%t' (
-	    <generic_code>
-	    <empty>?
-	  ) -> {$$_[0]} -> {"title '$_'"}
-	| '%u' (
-	    <generic_code>
-	    <empty>?
-	  ) -> {$$_[0]} -> {"using $_"}
+	| '%t' <generic_code> -> {"title '$_'"}
+	| '%u' <generic_code> -> {"using $_"}
 	| '%v' <'', evaluate as plot "-" with impulses >
 	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
 	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
