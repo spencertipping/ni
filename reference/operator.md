@@ -1052,8 +1052,20 @@
 
 ## IMPLEMENTATION
 	
-	  my ($args) = @_;
-	  exec 'gnuplot', '-persist', '-e', join '', @$args;
+	  my ($col, $command) = @_;
+	  exec 'gnuplot', '-e', $command unless defined $col;
+	  my ($k, $fh);
+	  while (<STDIN>) {
+	    chomp;
+	    my @fs = split /\t/, $_, $col + 2;
+	    my $rk = join "\t", @fs[0..$col];
+	    if (!defined $k or $k ne $rk) {
+	      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
+	        or die "ni: failed to run gnuplot on $command: $!";
+	      $k = $rk;
+	    }
+	    print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
+	  }
 
 # OPERATOR tail
 

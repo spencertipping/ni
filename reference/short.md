@@ -355,9 +355,14 @@
 
 ## SYNTAX
 	(
-	| <gnuplot/lambda>
-	| <gnuplot/suffix>
-	) -> {stream_to_gnuplot_op $_}
+	  <gnuplot_colspec>
+	  <gnuplot_code>
+	) -> {stream_to_gnuplot_op @$_}
+
+# SHORT OPERATOR /GF
+
+## SYNTAX
+	<shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
 
 # SHORT OPERATOR /H
 
@@ -754,11 +759,6 @@
 
 ## SYNTAX
 	<cellspec_fixed> -> {intify_compact_op $_}
-
-# SHORT OPERATOR gnuplot/d
-
-## SYNTAX
-	<'', evaluate as plot "-" with dots>
 
 # SHORT OPERATOR pyspark/*
 

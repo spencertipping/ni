@@ -275,9 +275,10 @@
 	    ) -> {$$_[1]}
 	  )
 	| 'G' (
-	  | <gnuplot/lambda>
-	  | <gnuplot/suffix>
-	  ) -> {stream_to_gnuplot_op $_}
+	    <gnuplot_colspec>
+	    <gnuplot_code>
+	  ) -> {stream_to_gnuplot_op @$_}
+	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
 	| 'H' (
 	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
@@ -821,6 +822,30 @@
 	| 'n' '' -> {buffer_null_op}
 	)
 
+# PARSER dsp/gnuplot_code_prefixalt
+
+## DEFINITION
+	(
+	| '%d' <'', evaluate as plot "-" with dots >
+	| '%i' <'', evaluate as plot "-" with impulses >
+	| '%l' <'', evaluate as plot "-" with lines >
+	| '%t' (
+	    <generic_code>
+	    <empty>?
+	  ) -> {$$_[0]} -> {"title '$_'"}
+	| '%u' (
+	    <generic_code>
+	    <empty>?
+	  ) -> {$$_[0]} -> {"using $_"}
+	| '%v' <'', evaluate as plot "-" with impulses >
+	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
+	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
+	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
+	| 'QP' <'', evaluate as set terminal qt persist;>
+	| 'WP' <'', evaluate as set terminal wx persist;>
+	| 'XP' <'', evaluate as set terminal x11 persist;>
+	)
+
 # PARSER dsp/hadoopalt
 
 ## DEFINITION
@@ -1039,59 +1064,30 @@
 	               : ($code, '', @xs)
 	}>
 
-# PARSER gnuplot/lambda
-	A bracketed lambda function in context 'gnuplot'
+# PARSER gnuplot_code
 
 ## DEFINITION
 	(
-	  (
-	    '['
-	    <empty>?
-	  ) -> {$$_[0]}
-	  <gnuplot/series>
-	  ']'
-	) -> {$$_[1]}
+	  <dsp/gnuplot_code_prefixalt>*
+	  <generic_code>?
+	) -> {join "", map ref($_) ? @$_ : $_, @$_}
 
-# PARSER gnuplot/op
-	A single operator in the context 'gnuplot'
+# PARSER gnuplot_colspec
 
 ## DEFINITION
 	(
-	| <gnuplot/short>
+	| <colspec1>
+	| ':' -> {undef}
 	)
 
-# PARSER gnuplot/qfn
-	Operators that are interpreted as a lambda, whether bracketed or written as a suffix
+# PARSER gnuplot_terminal_size
 
 ## DEFINITION
 	(
-	| <gnuplot/lambda>
-	| <gnuplot/suffix>
-	)
-
-# PARSER gnuplot/series
-	A string of operators, possibly including whitespace
-
-## DEFINITION
-	(
-	  <empty>?
-	  <gnuplot/op>
-	  <empty>?
-	) -> {$$_[1]}*
-
-# PARSER gnuplot/short
-	Dispatch table for short options in context 'gnuplot'
-
-## DEFINITION
-	(
-	| 'd' <'', evaluate as plot "-" with dots>
-	)
-
-# PARSER gnuplot/suffix
-	A string of operators unbroken by whitespace
-
-## DEFINITION
-	<gnuplot/op>*
+	  <integer>
+	  ','
+	  <integer>
+	) -> {[@$_[0,2]]}? -> {defined $_ ? "size " . join 'x', @$_ : ""}
 
 # PARSER hadoop_streaming_lambda
 
