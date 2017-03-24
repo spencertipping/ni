@@ -1079,9 +1079,9 @@
 ## DEFINITION
 	(
 	  <integer>
-	  ','
+	  /[x,]/
 	  <integer>
-	) -> {[@$_[0,2]]}? -> {defined $_ ? "size " . join 'x', @$_ : ""}
+	) -> {[@$_[0,2]]}? -> {defined $_ ? "size " . join ',', @$_ : ""}
 
 # PARSER hadoop_streaming_lambda
 

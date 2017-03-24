@@ -34,8 +34,8 @@ setting up JPEG export, etc.
 
 c
 BEGIN {defparseralias gnuplot_terminal_size =>
-         pmap q{defined $_ ? "size " . join 'x', @$_ : ""},
-         popt pn [0, 2], integer, pstr(','), integer}
+         pmap q{defined $_ ? "size " . join ',', @$_ : ""},
+         popt pn [0, 2], integer, prx('[x,]'), integer}
 
 defgnuplot_code_prefixalt J  => pmap q{"set terminal jpeg $_;"}, gnuplot_terminal_size;
 defgnuplot_code_prefixalt PC => pmap q{"set terminal pngcairo $_;"}, gnuplot_terminal_size;
