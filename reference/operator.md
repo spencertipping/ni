@@ -711,16 +711,12 @@
 
 ## IMPLEMENTATION
 	
-	  no warnings 'uninitialized';
 	  my ($floor, @cs) = @_;
-	  my $limit = $floor + 1;
-	  my $line;
-	  while (defined($line = <STDIN>)) {
-	    chomp $line;
-	    next unless length $line;
-	    my @fs = split /\t/, $line, $limit;
-	    print $line . "\n" if @cs == grep length $fs[$_], @cs;
-	  }
+	  my @pieces = ('') x $floor;
+	  $pieces[$_] = '[^\t\n]+';
+	  my $r = join '\t', @pieces;
+	  $r = qr/^$r/;
+	  /$r/ and print while <STDIN>;
 
 # OPERATOR row_every
 

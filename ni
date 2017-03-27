@@ -3883,7 +3883,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-155 core/row/row.pl.sdoc
+151 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3903,16 +3903,12 @@ defoperator row_sample => q{
 };
 
 defoperator row_cols_defined => q{
-  no warnings 'uninitialized';
   my ($floor, @cs) = @_;
-  my $limit = $floor + 1;
-  my $line;
-  while (defined($line = <STDIN>)) {
-    chomp $line;
-    next unless length $line;
-    my @fs = split /\t/, $line, $limit;
-    print $line . "\n" if @cs == grep length $fs[$_], @cs;
-  }
+  my @pieces = ('') x $floor;
+  $pieces[$_] = '[^\t\n]+';
+  my $r = join '\t', @pieces;
+  $r = qr/^$r/;
+  /$r/ and print while <STDIN>;
 };
 
 defshort '/r',
