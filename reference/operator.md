@@ -712,8 +712,8 @@
 ## IMPLEMENTATION
 	
 	  my ($floor, @cs) = @_;
-	  my @pieces = ('') x $floor;
-	  $pieces[$_] = '[^\t\n]+';
+	  my @pieces = ('[^\t\n]*') x $floor;
+	  $pieces[$_] = '[^\t\n]+' for @cs;
 	  my $r = join '\t', @pieces;
 	  $r = qr/^$r/;
 	  /$r/ and print while <STDIN>;
