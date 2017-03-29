@@ -4915,7 +4915,7 @@ Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
 (in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
 It may be off by a few hours but is generally unbiased.
 
-sub timezone_seconds($$) {
+sub timezone_seconds {
   my ($lat, $lng) = @_;
   240 * int($lng + 7);
 }
