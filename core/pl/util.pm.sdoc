@@ -90,3 +90,8 @@ sub wf {
   close $fh;
   $_[0];
 }
+
+sub testpath {
+  $_ =~ s/-\*/-0000\*/;
+  $_;
+}

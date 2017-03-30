@@ -4361,7 +4361,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-92 core/pl/util.pm.sdoc
+97 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4454,6 +4454,11 @@ sub wf {
   close $fh;
   $_[0];
 }
+
+sub testpath {
+  $_ =~ s/-\*/-0000\*/;
+  $_;
+}
 39 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
@@ -4494,7 +4499,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-76 core/pl/stream.pm.sdoc
+77 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4556,6 +4561,7 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
+sub rn($) {my $max_val = shift; my @r = ($_); push @r, $_ while defined rl && (@r < $max_val); push @q, $_ if defined $_; @r} 
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
