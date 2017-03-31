@@ -362,7 +362,13 @@
 	    </series>
 	    ']'
 	  ) -> {[@$_[1,2]]} -> {op_fn_op @$_}
-	| 'g' <sortspec> -> {row_sort_op        sort_args @$_}
+	| 'g' (
+	  | (
+	      /_/
+	      <integer>
+	    ) -> {$$_[1]} -> {partial_sort_op               $_}
+	  | <sortspec> -> {row_sort_op        sort_args @$_}
+	  )
 	| 'gg' (
 	    <colspec1>
 	    <sortspec>
@@ -569,6 +575,17 @@
 	    <integer>
 	    </qfn>
 	  ) -> {row_fixed_scale_op @$_}
+	)
+
+# PARSER alt/sortalt
+
+## DEFINITION
+	(
+	| (
+	    /_/
+	    <integer>
+	  ) -> {$$_[1]} -> {partial_sort_op               $_}
+	| <sortspec> -> {row_sort_op        sort_args @$_}
 	)
 
 # PARSER alt/sqljoinalt

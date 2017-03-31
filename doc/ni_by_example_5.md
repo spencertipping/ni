@@ -1,5 +1,25 @@
 #Future Chapter 5 Below
 
+##Data Development with `ni` and Hadoop
+
+If you screw up your partitioning, you're ruined. 
+
+JSON => Raw TSV => Cleaned TSV => Filtered TSV => Joined TSV => Statistics
+
+If there's a potential problem with a column, you cannot use it as the first column in a reduce. If you do, Hadoop is very unforgiving; you'll end up having to bail on a particular slice of your data, or restart from the last nearly-equally-partitioned step.
+
+Let's say you have data with 3 columns: `user_id`, `geohash`, `timestamp`. 
+
+It's likely that both some of the users and some of the geohashes are spurious.  This will cause us difficulty down the line, for example when we want to join data to each record using geohash as the joining key.
+
+
+###Tools for Data Development
+
+1. A good markdown editor; I like Laverna, and it should work on basically all platforms.
+2. Infinite patience
+3. A reasonable test set.
+
+
 ##Plotting with `ni --js`
 Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
 

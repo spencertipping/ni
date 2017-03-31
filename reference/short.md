@@ -519,7 +519,13 @@
 # SHORT OPERATOR /g
 
 ## SYNTAX
-	<sortspec> -> {row_sort_op        sort_args @$_}
+	(
+	| (
+	    /_/
+	    <integer>
+	  ) -> {$$_[1]} -> {partial_sort_op               $_}
+	| <sortspec> -> {row_sort_op        sort_args @$_}
+	)
 
 # SHORT OPERATOR /gg
 

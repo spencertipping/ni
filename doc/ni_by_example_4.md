@@ -419,12 +419,32 @@ $ ni nE4 fAAA ,aA ,sB, ,dC r~1
 5000.5	50005000	1
 ```
 
+##`ni`-specific Perl Functions
+This section collects a number of utility functions that are used within a Perl mapper, but are specific to `ni`.
 
-##Geographic and Time Perl Functions
+### I/O Functions
+
+#### `wf`: write to file
+
+* `wf $filename, @lines`: write `@lines` to a file called `$filename`
+
+```
+$ ni i[e 1] i[e 2] i[f 1] p'wf a, b_ rea'
+e
+f
+$ ni a
+e   1
+e   2
+$ ni b
+f   1
+```
+
+
+### Geographic and Time Perl Functions
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these operators work only inside a Perl mapper context (`p'...'`).
  
 
-###`ghe`: geohash encoding
+#### `ghe`: geohash encoding
 Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
 
 The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
@@ -474,9 +494,7 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 9q5cc25tw
 ```
 
-
-
-###`ghd`: geohash decoding
+#### `ghd`: geohash decoding
 
 `ni` provides two prototypes for geohash decoding:
 
@@ -496,7 +514,7 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 34.0584754943848	-118.416652679443
 ```
     
-### `tpe`: time parts to epoch
+#### `tpe`: time parts to epoch
 `tpe(@time_pieces)`: Returns the epoch time in GMT (see important note below)
 and assumes that the pieces are year, month, day, hour, minute, and second, 
 in that order. 
@@ -519,7 +537,7 @@ This will result in your code giving the local time rather than GMT; use
 `Cubuntu[...]` for the expected behavior.
 
 
-### `tep`: time epoch to parts
+#### `tep`: time epoch to parts
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
@@ -530,7 +548,7 @@ $ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
-### `timezone_seconds`: approximately convert epoch to local time
+#### `timezone_seconds`: approximately convert epoch to local time
 
 `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
@@ -544,21 +562,41 @@ $ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = tim
 This correction cuts the globe into 4-minute strips by degree of longitude.
 It is meant for approximation of local time, not the actual time.
 
-##More Perl for `ni`
+
+
+## More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.
 
-###Useful function list
+### Useful subroutines
 
 You've probably come across most of these already, but I'd feel remiss if I didn't put these down somewhere.
+
+
+####String subroutines
 
 * `lc`: lowercase
 * `uc`: uppercase
 * `substr`: slice a string using a function (you can also slice with a regex)
 * `split`: split a string into a list
 * `join`: join a list into a string
-* `**`: exponent
+
+
+####Hash subroutines
+
 * `keys %h`: get keys from hash
 * `values %h`: get values from hash
+
+
+####Math subroutines
+
+* `**`: exponent
+
+###Useful variables
+
+####`%ENV`: Hash of Environment Variables
+
+This is way easier to access than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`. Also, it's good to note here that you can more than likely get away with referencing the variable you want using a bareword (unquoted string) rather than a quoted string.
+
 
 ### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.

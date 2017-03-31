@@ -3883,7 +3883,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-151 core/row/row.pl.sdoc
+168 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3979,7 +3979,23 @@ defoperator row_sort => q{
     '--buffer-size='      . conf 'row/sort-buffer',
     '--parallel='         . conf 'row/sort-parallel'), @_};
 
-defshort '/g', pmap q{row_sort_op        sort_args @$_}, sortspec;
+defoperator partial_sort => q{
+  my $sort_size = shift;
+  my @buff = ();
+  while (<STDIN>) {
+    push @buff, $_;
+    if (@buff == $sort_size) {
+      print sort(@buff);
+      @buff = ();
+    }
+  }
+  print sort(@buff) if @buff;
+};
+
+defshort '/g',
+  defalt 'sortalt', 'alternatives for the /g row operator',
+    pmap(q{partial_sort_op               $_}, pn 1, prx '_', integer),
+    pmap(q{row_sort_op        sort_args @$_}, sortspec);
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
@@ -4035,6 +4051,7 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+
 190 core/row/scale.pl.sdoc
 Row-based process scaling.
 Allows you to bypass process bottlenecks by distributing rows across multiple
@@ -4444,7 +4461,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-112 core/pl/util.pm.sdoc
+117 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4556,6 +4573,11 @@ sub af {
   print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
   $f;
+}
+
+sub testpath {
+  $_ =~ s/-\*/-0000\*/;
+  $_;
 }
 47 core/pl/math.pm.sdoc
 Math utility functions.
@@ -4763,7 +4785,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-107 core/pl/geohash.pm.sdoc
+118 core/pl/geohash.pm.sdoc
 Fast, portable geohash encoder.
 A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
 Perl builds.
@@ -4870,6 +4892,17 @@ if (1 << 32) {
 *ghe = \&geohash_encode;
 *ghd = \&geohash_decode;
 
+*gh_box = sub {
+  local $_;
+  my $gh = shift;
+  my $northwest_corner = substr($gh . "z" x 12, 0, 12);
+  my $southeast_corner = substr($gh . "0" x 12, 0, 12);
+  my ($north, $west) = ghd($northwest_corner);
+  my ($south, $east) = ghd($southeast_corner);
+  ($north, $south, $east, $west);
+  };
+
+*ghb = \&gh_box;
 }
 59 core/pl/time.pm.sdoc
 Time conversion functions.
@@ -5745,7 +5778,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl.sdoc
-148 core/matrix/matrix.pl.sdoc
+153 core/matrix/matrix.pl.sdoc
 Matrix conversions.
 Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 dense inverts that. You can specify where the matrix data begins using a column
@@ -5812,13 +5845,18 @@ defoperator unflatten => q{
   my @row = ();
   while(<STDIN>) {
     chomp;
-    push @row, $_;
-    if(@row == $n_cols) {
-      print(join("\t", @row) . "\n"); 
-      @row = ();
+    push @row, split /\t/, $_;
+    while(@row >= $n_cols) {
+      my @emit_vals = splice(@row, 0, $n_cols);
+      print(join("\t", @emit_vals). "\n"); 
+      }
     }
-  }
-  if (@row > 0) {print(join("\t", @row) . "\n");}
+  if (@row > 0) {
+    while(@row > 0) {
+      my @emit_vals = splice(@row, 0, $n_cols);
+      print(join("\t", @emit_vals). "\n");
+    }
+  } 
 };
 
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
@@ -9177,7 +9215,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-432 doc/perl.md
+440 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -9480,6 +9518,9 @@ remains equal. (Mnemonic is "stream while equal".)
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
 
+**NOTE**: There is _no comma_ between the reducer and the partition function.
+
+
 For example, to naively get a comma-delimited list of users by login shell:
 
 ```bash
@@ -9490,7 +9531,12 @@ $ ni /etc/passwd F::gGp'r g, se {"$_[0]," . a} \&g, ""'
 /bin/sync	,sync
 ```
 
-`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`.
+`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`; they are called as:
+
+```pl
+@final_state = sea {reducer} @init_state
+```
+
 
 ## Compound reducers
 If you want to do something like calculating the sum of one column, the average

@@ -25,5 +25,10 @@ Importantly
 That means, when you're doing your development, you should be maintaining test cases in the appropriate file. That way correctness of new operators can be verified easily. I'm going to go do that for my last pull request right now.
 
 
-Before you submit a pull
+
+##`defoperator`
+
+Well,
+
+##`pmap`
 

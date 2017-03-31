@@ -110,3 +110,8 @@ sub af {
   close $fh;
   $f;
 }
+
+sub testpath {
+  $_ =~ s/-\*/-0000\*/;
+  $_;
+}
