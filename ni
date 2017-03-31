@@ -3917,11 +3917,11 @@ defoperator partial_sort => q{
   while (<STDIN>) {
     push @buff, $_;
     if (@buff == $sort_size) {
-      print join "", sort(@buff);
+      print sort(@buff);
       @buff = ();
     }
   }
-  print join "", sort(@buff) if @buff;
+  print sort(@buff) if @buff;
 };
 
 defshort '/g',
@@ -4499,7 +4499,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-77 core/pl/stream.pm.sdoc
+76 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4561,7 +4561,6 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
-sub rn($) {my $max_val = shift; my @r = ($_); push @r, $_ while defined rl && (@r < $max_val); push @q, $_ if defined $_; @r} 
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant

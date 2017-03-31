@@ -583,11 +583,11 @@
 	  while (<STDIN>) {
 	    push @buff, $_;
 	    if (@buff == $sort_size) {
-	      print join "", sort(@buff);
+	      print sort(@buff);
 	      @buff = ();
 	    }
 	  }
-	  print join "", sort(@buff) if @buff;
+	  print sort(@buff) if @buff;
 
 # OPERATOR perl_assert
 
