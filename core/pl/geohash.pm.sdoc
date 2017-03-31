@@ -104,4 +104,15 @@ if (1 << 32) {
 *ghe = \&geohash_encode;
 *ghd = \&geohash_decode;
 
+*gh_box = sub {
+  local $_;
+  my $gh = shift;
+  my $northwest_corner = substr($gh . "z" x 12, 0, 12);
+  my $southeast_corner = substr($gh . "0" x 12, 0, 12);
+  my ($north, $west) = ghd($northwest_corner);
+  my ($south, $east) = ghd($southeast_corner);
+  ($north, $south, $east, $west);
+  };
+
+*ghb = \&gh_box;
 }
