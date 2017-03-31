@@ -2553,14 +2553,14 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? ["gzip -dc"]
-              : /^BZh[1-9\0]/           ? ["pbzip2 -dc", "bzip2 -dc"]
-              : /^\x89\x4c\x5a\x4f/     ? ["lzop -dc"]
-              : /^\x04\x22\x4d\x18/     ? ["lz4 -dc"]
-              : /^\xfd\x37\x7a\x58\x5a/ ? ["xz -dc"] : undef;
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc || cat"
+              : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
 
   if (defined $decoder) {
-    my $o = siproc {sh $_ for @$decoder};
+    my $o = siproc {exec $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
     close $o;
@@ -2677,7 +2677,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-229 core/stream/ops.pl.sdoc
+240 core/stream/ops.pl.sdoc
 Streaming data sources.
 Common ways to read data, most notably from files and directories. Also
 included are numeric generators, shell commands, etc.
@@ -2686,12 +2686,23 @@ c
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
   defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
+
+  defparser 'super_brackets', '', q{
+    my ($self, @xs) = @_;
+    return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+    my $superness = $1;
+    my @r;
+    push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+    $1 eq $superness ? (\@r, @xs) : ();
+  };
 }
 BEGIN {
-  defparseralias shell_command => palt pmap(q{shell_quote @$_}, multiword_ws),
+  defparseralias shell_command => palt pmap(q{shell_quote @$_}, super_brackets),
+                                       pmap(q{shell_quote @$_}, multiword_ws),
                                        pmap(q{shell_quote @$_}, multiword),
                                        prx '[^][]+';
-  defparseralias id_text => palt pmap(q{join "\t", @$_}, multiword_ws),
+  defparseralias id_text => palt pmap(q{join "\t", @$_}, super_brackets),
+                                 pmap(q{join "\t", @$_}, multiword_ws),
                                  pmap(q{join "\t", @$_}, multiword),
                                  prx '[^][]+';
 }
@@ -3288,8 +3299,9 @@ defresource 'file',
   exists => q{-e $_[1]},
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
-1 core/fn/lib
+2 core/fn/lib
 fn.pl.sdoc
+op-rewrite.pl.sdoc
 90 core/fn/fn.pl.sdoc
 Operator->operator functions.
 This provides a mechanism for ni to implement aliases and other shorthands.
@@ -3381,6 +3393,58 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
+51 core/fn/op-rewrite.pl.sdoc
+Operator-level text substitution.
+WARNING: This is a hack, but possibly a useful one.
+
+sub rewrite_atoms_in {
+  my ($op, $fn) = @_;
+  return $fn->($op) unless ref $op;
+  return [map rewrite_atoms_in($_, $fn), @$op] if ref $op eq 'ARRAY';
+  return {map rewrite_atoms_in($_, $fn), %$op} if ref $op eq 'HASH';
+  die "rewrite_atoms_in: not sure how to rewrite $op of type " . ref($op);
+}
+
+defmetaoperator op_let => q{
+  my ($args, $left, $right) = @_;
+  my ($bindings, $ops) = @$args;
+  my @keys = map $$_[0], @$bindings;
+  my %replacements = map @$_, @$bindings;
+  my $rewritten = rewrite_atoms_in $ops, sub {
+    my $a = shift;
+    $a =~ s/\Q$_\E/$replacements{$_}/g for @keys;
+    $a;
+  };
+  ($left, [@$rewritten, @$right]);
+};
+
+defoperator op_fn => q{
+  my ($bindings, $ops) = @_;
+  while (<STDIN>) {
+    chomp;
+    my @vars = split /\t/;
+    my %replacements;
+    @replacements{@$bindings} = @vars;
+    my $rewritten = rewrite_atoms_in $ops, sub {
+      my $a = shift;
+      $a =~ s/\Q$_\E/$replacements{$_}/g for @$bindings;
+      $a;
+    };
+    close(my $fh = siproc {exec_ni @$rewritten});
+    $fh->await;
+  }
+};
+
+c
+BEGIN {defparseralias fn_bindings => pn 0, prep(prc qr/[^:=]+/), prc qr/:/}
+BEGIN {defparseralias let_binding => pn [0, 2], prx qr/[^:=]+/, pstr '=', prc '[\s\S]+'}
+BEGIN {defparseralias let_bindings => pn 0, prep(let_binding), prc qr/:/}
+
+defshort '/l[' => pmap q{op_let_op @$_},
+                  pn [1, 2], popt pempty, let_bindings, '/series', pstr ']';
+
+defshort '/f[' => pmap q{op_fn_op @$_},
+                  pn [1, 2], popt pempty, fn_bindings, '/series', pstr ']';
 2 core/closure/lib
 closure.pl.sdoc
 file.pl.sdoc
@@ -3463,7 +3527,7 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl.sdoc
-37 core/destructure/destructure.pl.sdoc
+45 core/destructure/destructure.pl.sdoc
 Targeted extraction.
 Most data extraction workflows don't use every key of a rich data object like
 JSON or XML. ni allows you to avoid the overhead of fully decoding these
@@ -3487,17 +3551,25 @@ sub json_extractor($) {
   die "ni: json_extractor is not really written yet"
     if grep !/^:\w+$/, @pieces;
 
-  my @compiled = map json_si_gen->(k => qr/\Q$_\E/),
+  my $matchers = join "\n",
+                 map '/^/g; push @result, ' . json_si_gen->(k => qr/\Q$_\E/) . ';',
                  map sr($_, qr/^:/, ''), @pieces;
-  join ',', @compiled;
+  qq{
+    my \@result;
+    $matchers;
+    print join("\\t", \@result) . "\\n";
+  };
 }
 
 defoperator destructure => q{
-  ni::eval gen(q{no warnings 'uninitialized';
-                 eval {binmode STDOUT, ":encoding(utf-8)"};
-                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-                 while (<STDIN>) {print join("\t", %e), "\n"}})
-            ->(e => json_extractor $_[0]);
+  ni::eval gen(q{
+    no warnings 'uninitialized';
+    eval {binmode STDOUT, ":encoding(utf-8)"};
+    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+    while (<STDIN>) {
+      %e;
+    }
+  })->(e => json_extractor $_[0]);
 };
 
 defshort '/D', pmap q{destructure_op $_}, generic_code;
@@ -3683,8 +3755,8 @@ with their split-spec mnemonics:
 You can also field-split on arbitrary regexes, or extend the splitalt dsp to
 add custom split operators.
 
-defoperator split_chr   => q{exec 'perl', '-lnpe', "y/$_[0]/\\t/"};
-defoperator split_regex => q{exec 'perl', '-lnpe', "s/$_[0]/\$1\\t/g"};
+defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#" : "y/$_[0]/\\t/"};
+defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
 # TODO: collapse multiline fields
@@ -3699,7 +3771,7 @@ defoperator split_proper_csv => q{
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
     'C' => pmap(q{split_chr_op   ','},               pnone),
-    'D' => pmap(q{split_chr_op   '\/'},               pnone),
+    'D' => pmap(q{split_chr_op   '\/'},              pnone),
     'V' => pmap(q{split_proper_csv_op},              pnone),
     'P' => pmap(q{split_chr_op   '|'},               pnone),
     'S' => pmap(q{split_regex_op '\s+'},             pnone),
@@ -3811,7 +3883,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl.sdoc
 scale.pl.sdoc
 join.pl.sdoc
-140 core/row/row.pl.sdoc
+168 core/row/row.pl.sdoc
 Row-level operations.
 These reorder/drop/create entire rows without really looking at fields.
 
@@ -3831,16 +3903,12 @@ defoperator row_sample => q{
 };
 
 defoperator row_cols_defined => q{
-  no warnings 'uninitialized';
   my ($floor, @cs) = @_;
-  my $limit = $floor + 1;
-  my $line;
-  while (defined($line = <STDIN>)) {
-    chomp $line;
-    next unless length $line;
-    my @fs = split /\t/, $line, $limit;
-    print $line . "\n" if @cs == grep length $fs[$_], @cs;
-  }
+  my @pieces = ('[^\t\n]*') x $floor;
+  $pieces[$_] = '[^\t\n]+' for @cs;
+  my $r = join '\t', @pieces;
+  $r = qr/^$r/;
+  /$r/ and print while <STDIN>;
 };
 
 defshort '/r',
@@ -3930,6 +3998,38 @@ defshort '/g',
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+
+defoperator row_grouped_sort => q{
+  my ($key_col, $sort_cols) = @_;
+  my $key_expr = $key_col
+    ? qq{(split /\\t/)[$key_col]}
+    : qq{/^([^\\t\\n]*)/};
+
+  my $sort_expr = join ' || ',
+    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
+                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+
+  ni::eval gen(q{
+    my $k;
+    my @group;
+    push @group, $_ = <STDIN>;
+    ($k) = %key_expr;
+    while (<STDIN>) {
+      my ($rk) = %key_expr;
+      if ($rk ne $k) {
+        print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+        @group = $_;
+        $k = $rk;
+      } else {
+        push @group, $_;
+      }
+    }
+    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+  })->(key_expr => $key_expr, sort_expr => $sort_expr);
+};
+
+defshort '/gg', pmap q{row_grouped_sort_op @$_}, pseq colspec1, sortspec;
 
 Counting.
 Sorted and unsorted streaming counts.
@@ -4361,7 +4461,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-97 core/pl/util.pm.sdoc
+117 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4373,6 +4473,9 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 0..$#_ - 1}
+sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
 
 sub argmax(&@) {
   local $_;
@@ -4448,18 +4551,35 @@ sub dirname($)  {(dirbase $_[0])[0]}
 sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
-  mkdir_p dirname $_[0];
-  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
-  print $fh $_[1];
+  local $_;
+  my $f = shift;
+  my $fh;
+  if ($f =~ /^\|/) {
+    open $fh, $f or die "wf $f: $!";
+  } else {
+    mkdir_p dirname $f;
+    open $fh, "> $f" or die "wf $f: $!";
+  }
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
-  $_[0];
+  $f;
+}
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
 }
 
 sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
 }
-39 core/pl/math.pm.sdoc
+47 core/pl/math.pm.sdoc
 Math utility functions.
 Mostly geometric and statistical stuff.
 
@@ -4474,7 +4594,7 @@ sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_}
 
-sub log2 {LOG2R * log $_[0]}
+sub log2($) {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
 
@@ -4490,6 +4610,14 @@ sub drad($) {$_[0] / 360 * tau}
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 
+sub entropy {
+  local $_;
+  my $sum = sum @_;
+  my $t = 0;
+  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
+  $t;
+}
+
 if (eval {require Math::Trig}) {
   sub haversine {
     local $_;
@@ -4499,7 +4627,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-76 core/pl/stream.pm.sdoc
+88 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4529,6 +4657,14 @@ sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d]}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
+
+sub cols(@) {
+  local $_;
+  for my $i (0..min map $#{$_}, @_) {
+    r map $_[$_][$i], 0..$#_;
+  }
+  ();
+}
 
 Hash constructors.
 Pairs of letters you can use to index one column against another. For example,
@@ -4560,20 +4696,24 @@ The other is to use the faceting functions defined in facet.pm.
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
-BEGIN {ceval sprintf 'sub re%s() {re {%s}}', $_, $_ for 'a'..'l'}
+sub rea() {re {a}}
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+                     $_, ord($_) - 97 for 'b'..'l'}
 
 Streaming aggregations.
 These functions are like the ones above, but designed to work in constant
 space:
 
-| se<column>: streaming reduce while column is equal
+| se<column>: streaming reduce while everything up to column is equal
   sr: streaming reduce all data
 
 sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
              push @q, $_ if defined; @xs}
-BEGIN {ceval sprintf 'sub se%s(&@) {my ($f, @xs) = @_; se {&$f(@_)} \&%s, @xs}',
-                     $_, $_ for 'a'..'l'}
+BEGIN {ceval sprintf 'sub se%s(&$@) {
+                        my ($f, @xs) = @_;
+                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                      }', $_, ord($_) - 97 for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 68 core/pl/reducers.pm.sdoc
@@ -4808,7 +4948,7 @@ Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
 (in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
 It may be off by a few hours but is generally unbiased.
 
-sub timezone_seconds($$) {
+sub timezone_seconds {
   my ($lat, $lng) = @_;
   240 * int($lng + 7);
 }
@@ -5794,20 +5934,70 @@ defoperator numpy_dense => q{
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl.sdoc
-13 core/gnuplot/gnuplot.pl.sdoc
+63 core/gnuplot/gnuplot.pl.sdoc
 Gnuplot interop.
 An operator that sends output to a gnuplot process.
 
-defcontext 'gnuplot', q{GNUPlot command context};
-defshort 'gnuplot/d', pk 'plot "-" with dots';
+c
+BEGIN {defdsp gnuplot_code_prefixalt => 'prefixes for gnuplot code';
+       defparseralias gnuplot_colspec => palt colspec1, pmap q{undef}, pstr ':'}
+BEGIN {defparseralias gnuplot_code =>
+         pmap q{join "", map ref($_) ? @$_ : $_, @$_},
+              pseq prep('dsp/gnuplot_code_prefixalt'),
+                   popt generic_code}
 
 defoperator stream_to_gnuplot => q{
-  my ($args) = @_;
-  exec 'gnuplot', '-persist', '-e', join '', @$args;
+  my ($col, $command) = @_;
+  exec 'gnuplot', '-e', $command unless defined $col;
+  my ($k, $fh);
+  while (<STDIN>) {
+    chomp;
+    my @fs = split /\t/, $_, $col + 2;
+    my $rk = join "\t", @fs[0..$col];
+    if (!defined $k or $k ne $rk) {
+      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
+        or die "ni: failed to run gnuplot on $command: $!";
+      $k = $rk;
+    }
+    print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
+  }
 };
 
-# TODO
-defshort '/G', pmap q{stream_to_gnuplot_op $_}, parser 'gnuplot/qfn';
+defshort '/G', pmap q{stream_to_gnuplot_op @$_},
+               pseq gnuplot_colspec, gnuplot_code;
+
+Some convenient shorthands for gnuplot -- things like interactive plotting,
+setting up JPEG export, etc.
+
+c
+BEGIN {defparseralias gnuplot_terminal_size =>
+         pmap q{defined $_ ? "size " . join ',', @$_ : ""},
+         popt pn [0, 2], integer, prx('[x,]'), integer}
+
+defgnuplot_code_prefixalt J  => pmap q{"set terminal jpeg $_;"}, gnuplot_terminal_size;
+defgnuplot_code_prefixalt PC => pmap q{"set terminal pngcairo $_;"}, gnuplot_terminal_size;
+defgnuplot_code_prefixalt P  => pmap q{"set terminal png $_;"}, gnuplot_terminal_size;
+
+defgnuplot_code_prefixalt XP => pk "set terminal x11 persist;";
+defgnuplot_code_prefixalt QP => pk "set terminal qt persist;";
+defgnuplot_code_prefixalt WP => pk "set terminal wx persist;";
+
+defgnuplot_code_prefixalt '%l' => pk 'plot "-" with lines ';
+defgnuplot_code_prefixalt '%d' => pk 'plot "-" with dots ';
+defgnuplot_code_prefixalt '%i' => pk 'plot "-" with impulses ';
+defgnuplot_code_prefixalt '%v' => pk 'plot "-" with impulses ';
+
+defgnuplot_code_prefixalt '%t' => pmap q{"title '$_'"}, generic_code;
+defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
+
+FFMPEG movie assembly.
+You can use the companion operator `GF` to take a stream of jpeg images from a
+partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
+for ffmpeg to follow `-f image2pipe -vcodec mjpeg -i -`.
+
+defshort '/GF',
+  pmap q{sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"},
+  shell_command;
 2 core/http/lib
 ws.pm.sdoc
 http.pl.sdoc
@@ -6579,7 +6769,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-143 core/jsplot/interface.waul.sdoc
+150 core/jsplot/interface.waul.sdoc
 Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -6708,11 +6898,18 @@ $(caterwaul(':all')(function ($) {
                              cy                    = lh >>> 1,
                              axes                  = data_state.frame.axes /!axis_map,
                              m                     = v /!camera.m,
-                             outline_one(x, y, z)  = oc.strokeRect(cx + scale*x/z - 2, cy - scale*y/z - 2, 5, 5) -when [z > 0],
-                             outline(i)            = outline_one(p[0], p[1], p[2]) -where [p = m.transform([axes[0] ? axes[0].p(i) : 0,
-                                                                                                            axes[1] ? axes[1].p(i) : 0,
-                                                                                                            axes[2] ? axes[2].p(i) : 0, 1]) /!camera.norm],
-                             outline_points(c, is) = oc.strokeStyle /eq.c -then- is *!outline /seq],    // TODO: optimize
+
+                             outline_points = function (c, is) {
+                               oc.strokeStyle = c;
+                               var t = +new Date;
+                               for (var i = 0; i < is.length && +new Date - t < 20; ++i) {
+                                 var pi = is[i];
+                                 var p  = m.transform([axes[0] ? axes[0].p(pi) : 0,
+                                                       axes[1] ? axes[1].p(pi) : 0,
+                                                       axes[2] ? axes[2].p(pi) : 0, 1] /!camera.norm);
+                                 if (p[2] > 0) oc.strokeRect(cx + scale*p[0]/p[2] - 2, cy - scale*p[1]/p[2] - 2, 5, 5);
+                               }
+                             }],
 
         axis_map(as)       = w.val().v.axes *[as[x]] -seq,
         renderer           = render(),
@@ -7014,7 +7211,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-176 core/hadoop/hadoop.pl.sdoc
+190 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7045,6 +7242,13 @@ defresource 'hdfst',
                     my $path = shell_quote $_[1];
                     sh qq{$hadoop_name fs -text $path 2>/dev/null || $hadoop_name fs -text $path"/part*" 2>/dev/null}} @_},
   nuke => q{sh conf('hadoop/name') . ' fs -rm -r ' . shell_quote($_[1]) . " 1>&2"};
+
+defresource 'hdfsrm',
+  read => q{soproc {my $o = resource_read "hdfst://$_[1]";
+                    sforward $o, \*STDOUT;
+                    $o->await;
+                    resource_nuke "hdfst://$_[1]"} @_},
+  nuke => q{resource_nuke "hdfst://$_[1]"};
 
 Streaming.
 We need to be able to find the Streaming jar, which is slightly nontrivial. The
@@ -7079,7 +7283,7 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfst?:\/\//) {
+  if (/^\w+:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
     s/^hdfst:/hdfs:/gm;
     (0, map [split /\t/], grep length, split /\n/);
@@ -7157,6 +7361,8 @@ defoperator hadoop_streaming => q{
     close $hadoop_fh;
     die "ni: hadoop streaming failed" if $hadoop_fh->await;
 
+    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+
     (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
     print "$result_path/part-*\n";
   }
@@ -7168,6 +7374,9 @@ defoperator hadoop_streaming => q{
   resource_nuke $reducer  if defined $reducer;
 };
 
+defoperator hadoop_make_nukeable =>
+  q{print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>};
+
 c
 BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                                       pmap(q{[]},    prc ':'),
@@ -7177,6 +7386,8 @@ defhadoopalt S => pmap q{hadoop_streaming_op @$_},
                   pseq pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
+
+defhadoopalt '#' => pmap q{hadoop_make_nukeable_op}, pnone;
 
 defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
                           my @cr =
@@ -8565,8 +8776,8 @@ Inverting that operation, converting a column to a row with a specified number o
 
 ```bash
 $ ni i[a b] i[c d] pF_ Z2
-a   b
-c   d
+a	b
+c	d
 ```
  
 
@@ -9474,7 +9685,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-283 doc/row.md
+312 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -9693,6 +9904,35 @@ $ ni data oB g r4               # 'g' is a sorting operator
 10	-0.54402111088937	2.30258509299405
 100	-0.506365641109759	4.60517018598809
 11	-0.999990206550703	2.39789527279837
+```
+
+### Grouped sort
+The `gg` operator sorts key-grouped bundles of rows; this is a piecewise sort.
+For example, to sort words within lengths:
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB
+3	bar
+3	baz
+3	bif
+3	foo
+4	bake
+4	quux
+4	uber
+```
+
+The first column specifies the grouping key, and subsequent columns are
+interpreted as for the `g` operator.
+
+```bash
+$ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
+3	foo
+3	bif
+3	baz
+3	bar
+4	uber
+4	quux
+4	bake
 ```
 
 ## Counting
@@ -10582,7 +10822,7 @@ The view angle can be panned, rotated, and zoomed:
 - **mouse drag:** pan
 - **shift + drag:** 3D rotate
 - **ctrl + drag, alt + drag, mousewheel:** zoom
-77 doc/warnings.md
+79 doc/warnings.md
 # Things to look out for
 ![img](http://spencertipping.com/ni.png)
 
@@ -10647,7 +10887,9 @@ $ wc -l < a-million-things
 If you weren't planning to sort your data, though, a better alternative is to
 use `B`, the buffering operator, with a null buffer:
 
-```bash
+```sh
+# UPDATE: this no longer works reliably; it depends on which signal is used to
+# kill the pipeline. This will be fixed when I merge r/oo into develop.
 $ ni n1000000 =\>a-million-things Bn r5
 1
 2

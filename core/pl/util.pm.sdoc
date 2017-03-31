@@ -10,6 +10,9 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
+sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 0..$#_ - 1}
+sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
+
 sub argmax(&@) {
   local $_;
   my ($f, $m, @xs, $fx) = @_;
@@ -84,11 +87,28 @@ sub dirname($)  {(dirbase $_[0])[0]}
 sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
-  mkdir_p dirname $_[0];
-  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
-  print $fh $_[1];
+  local $_;
+  my $f = shift;
+  my $fh;
+  if ($f =~ /^\|/) {
+    open $fh, $f or die "wf $f: $!";
+  } else {
+    mkdir_p dirname $f;
+    open $fh, "> $f" or die "wf $f: $!";
+  }
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
   close $fh;
-  $_[0];
+  $f;
+}
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
 }
 
 sub testpath {

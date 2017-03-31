@@ -30,6 +30,10 @@
 	      /.*/
 	      <empty>?
 	    ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	  | ''hdfsrm://' (
+	      /.*/
+	      <empty>?
+	    ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	  | ''hdfst://' (
 	      /.*/
 	      <empty>?
@@ -62,6 +66,10 @@
 	      /.*/
 	      <empty>?
 	    ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	  | 'hdfsrm://' (
+	      /.*/
+	      <empty>?
+	    ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	  | 'hdfst://' (
 	      /.*/
 	      <empty>?
@@ -267,10 +275,12 @@
 	    ) -> {$$_[1]}
 	  )
 	| 'G' (
-	  | <gnuplot/lambda>
-	  | <gnuplot/suffix>
-	  ) -> {stream_to_gnuplot_op $_}
+	    <gnuplot_colspec>
+	    <gnuplot_code>
+	  ) -> {stream_to_gnuplot_op @$_}
+	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
 	| 'H' (
+	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
 	      (
 	        <hadoop_streaming_lambda>
@@ -346,6 +356,12 @@
 	| 'f' (
 	  | <colspec> -> {cols_op @$_}
 	  )
+	| 'f[' (
+	    <empty>?
+	    <fn_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 	| 'g' (
 	  | (
 	      /_/
@@ -353,6 +369,10 @@
 	    ) -> {$$_[1]} -> {partial_sort_op               $_}
 	  | <sortspec> -> {row_sort_op        sort_args @$_}
 	  )
+	| 'gg' (
+	    <colspec1>
+	    <sortspec>
+	  ) -> {row_grouped_sort_op @$_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
 	    <colspec>?
@@ -360,6 +380,12 @@
 	  ) -> {join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]}
 	| 'l' <lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                   body   => $_)}
+	| 'l[' (
+	    <empty>?
+	    <let_bindings>
+	    </series>
+	    ']'
+	  ) -> {[@$_[1,2]]} -> {op_let_op @$_}
 	| 'm' (
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
@@ -813,10 +839,29 @@
 	| 'n' '' -> {buffer_null_op}
 	)
 
+# PARSER dsp/gnuplot_code_prefixalt
+
+## DEFINITION
+	(
+	| '%d' <'', evaluate as plot "-" with dots >
+	| '%i' <'', evaluate as plot "-" with impulses >
+	| '%l' <'', evaluate as plot "-" with lines >
+	| '%t' <generic_code> -> {"title '$_'"}
+	| '%u' <generic_code> -> {"using $_"}
+	| '%v' <'', evaluate as plot "-" with impulses >
+	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
+	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
+	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
+	| 'QP' <'', evaluate as set terminal qt persist;>
+	| 'WP' <'', evaluate as set terminal wx persist;>
+	| 'XP' <'', evaluate as set terminal x11 persist;>
+	)
+
 # PARSER dsp/hadoopalt
 
 ## DEFINITION
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -872,6 +917,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -904,6 +953,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?
@@ -976,6 +1029,20 @@
 ## DEFINITION
 	/-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?/ such that {length} -> {0 + $_}
 
+# PARSER fn_bindings
+
+## DEFINITION
+	(
+	  (
+	    /(?^:[^:=]+)/
+	    <empty>?
+	  ) -> {$$_[0]}*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
+
 # PARSER fn_expander
 
 ## DEFINITION
@@ -1008,59 +1075,30 @@
 	               : ($code, '', @xs)
 	}>
 
-# PARSER gnuplot/lambda
-	A bracketed lambda function in context 'gnuplot'
+# PARSER gnuplot_code
 
 ## DEFINITION
 	(
-	  (
-	    '['
-	    <empty>?
-	  ) -> {$$_[0]}
-	  <gnuplot/series>
-	  ']'
-	) -> {$$_[1]}
+	  <dsp/gnuplot_code_prefixalt>*
+	  <generic_code>?
+	) -> {join "", map ref($_) ? @$_ : $_, @$_}
 
-# PARSER gnuplot/op
-	A single operator in the context 'gnuplot'
+# PARSER gnuplot_colspec
 
 ## DEFINITION
 	(
-	| <gnuplot/short>
+	| <colspec1>
+	| ':' -> {undef}
 	)
 
-# PARSER gnuplot/qfn
-	Operators that are interpreted as a lambda, whether bracketed or written as a suffix
+# PARSER gnuplot_terminal_size
 
 ## DEFINITION
 	(
-	| <gnuplot/lambda>
-	| <gnuplot/suffix>
-	)
-
-# PARSER gnuplot/series
-	A string of operators, possibly including whitespace
-
-## DEFINITION
-	(
-	  <empty>?
-	  <gnuplot/op>
-	  <empty>?
-	) -> {$$_[1]}*
-
-# PARSER gnuplot/short
-	Dispatch table for short options in context 'gnuplot'
-
-## DEFINITION
-	(
-	| 'd' <'', evaluate as plot "-" with dots>
-	)
-
-# PARSER gnuplot/suffix
-	A string of operators unbroken by whitespace
-
-## DEFINITION
-	<gnuplot/op>*
+	  <integer>
+	  /[x,]/
+	  <integer>
+	) -> {[@$_[0,2]]}? -> {defined $_ ? "size " . join ',', @$_ : ""}
 
 # PARSER hadoop_streaming_lambda
 
@@ -1081,6 +1119,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {join "\t", @$_}
 	| <multiword_ws> -> {join "\t", @$_}
 	| <multiword> -> {join "\t", @$_}
 	| /[^][]+/
@@ -1110,6 +1149,29 @@
 	| /,/ -> {0.9}
 	| <number>?
 	) -> {$_ || 1}
+
+# PARSER let_binding
+
+## DEFINITION
+	(
+	  /(?^:[^:=]+)/
+	  '='
+	  (
+	    /[\s\S]+/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {[@$_[0,2]]}
+
+# PARSER let_bindings
+
+## DEFINITION
+	(
+	  <let_binding>*
+	  (
+	    /(?^::)/
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {$$_[0]}
 
 # PARSER lispcode
 
@@ -1463,6 +1525,7 @@
 
 ## DEFINITION
 	(
+	| <super_brackets> -> {shell_quote @$_}
 	| <multiword_ws> -> {shell_quote @$_}
 	| <multiword> -> {shell_quote @$_}
 	| /[^][]+/
@@ -1584,3 +1647,17 @@
 
 ## DEFINITION
 	/[^][/,]+/
+
+# PARSER super_brackets
+
+## DEFINITION
+	<core parser {
+	  
+	      my ($self, @xs) = @_;
+	      return () unless $xs[0] =~ s/^(\^[^[]*)\[//;
+	      my $superness = $1;
+	      my @r;
+	      push @r, shift @xs while @xs && $xs[0] !~ s/^(\Q$superness\E)\]//;
+	      $1 eq $superness ? (\@r, @xs) : ();
+	    
+	}>

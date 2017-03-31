@@ -23,11 +23,31 @@
 	| 'n' '' -> {buffer_null_op}
 	)
 
+# EXTENSIBLE DISPATCH TABLE gnuplot_code_prefixalt
+	prefixes for gnuplot code
+
+## OPTIONS
+	(
+	| '%d' <'', evaluate as plot "-" with dots >
+	| '%i' <'', evaluate as plot "-" with impulses >
+	| '%l' <'', evaluate as plot "-" with lines >
+	| '%t' <generic_code> -> {"title '$_'"}
+	| '%u' <generic_code> -> {"using $_"}
+	| '%v' <'', evaluate as plot "-" with impulses >
+	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
+	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
+	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
+	| 'QP' <'', evaluate as set terminal qt persist;>
+	| 'WP' <'', evaluate as set terminal wx persist;>
+	| 'XP' <'', evaluate as set terminal x11 persist;>
+	)
+
 # EXTENSIBLE DISPATCH TABLE hadoopalt
 	hadoop job dispatch table
 
 ## OPTIONS
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -84,6 +104,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' (
 	    /.*/
 	    <empty>?
@@ -116,6 +140,10 @@
 	    /.*/
 	    <empty>?
 	  ) -> {$$_[0]} -> {resource_append_op "hdfs://$_"}
+	| 'hdfsrm://' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' (
 	    /.*/
 	    <empty>?

@@ -162,11 +162,14 @@
 
 ## IMPLEMENTATION
 	
-	  ni::eval gen(q{no warnings 'uninitialized';
-	                 eval {binmode STDOUT, ":encoding(utf-8)"};
-	                 print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
-	                 while (<STDIN>) {print join("\t", %e), "\n"}})
-	            ->(e => json_extractor $_[0]);
+	  ni::eval gen(q{
+	    no warnings 'uninitialized';
+	    eval {binmode STDOUT, ":encoding(utf-8)"};
+	    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
+	    while (<STDIN>) {
+	      %e;
+	    }
+	  })->(e => json_extractor $_[0]);
 
 # OPERATOR dev_backdoor
 
@@ -268,6 +271,11 @@
 	  sforward \*STDIN, swfile $file;
 	  print "$file\n";
 
+# OPERATOR hadoop_make_nukeable
+
+## IMPLEMENTATION
+	print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>
+
 # OPERATOR hadoop_streaming
 
 ## IMPLEMENTATION
@@ -311,6 +319,7 @@
 	    };
 	    close $hadoop_fh;
 	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
 	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
 	    print "$result_path/part-*\n";
 	  }
@@ -574,6 +583,25 @@
 	  close $o;
 	  $o->await;
 
+# OPERATOR op_fn
+
+## IMPLEMENTATION
+	
+	  my ($bindings, $ops) = @_;
+	  while (<STDIN>) {
+	    chomp;
+	    my @vars = split /\t/;
+	    my %replacements;
+	    @replacements{@$bindings} = @vars;
+	    my $rewritten = rewrite_atoms_in $ops, sub {
+	      my $a = shift;
+	      $a =~ s/\Q$_\E/$replacements{$_}/g for @$bindings;
+	      $a;
+	    };
+	    close(my $fh = siproc {exec_ni @$rewritten});
+	    $fh->await;
+	  }
+
 # OPERATOR partial_sort
 
 ## IMPLEMENTATION
@@ -698,16 +726,12 @@
 
 ## IMPLEMENTATION
 	
-	  no warnings 'uninitialized';
 	  my ($floor, @cs) = @_;
-	  my $limit = $floor + 1;
-	  my $line;
-	  while (defined($line = <STDIN>)) {
-	    chomp $line;
-	    next unless length $line;
-	    my @fs = split /\t/, $line, $limit;
-	    print $line . "\n" if @cs == grep length $fs[$_], @cs;
-	  }
+	  my @pieces = ('[^\t\n]*') x $floor;
+	  $pieces[$_] = '[^\t\n]+' for @cs;
+	  my $r = join '\t', @pieces;
+	  $r = qr/^$r/;
+	  /$r/ and print while <STDIN>;
 
 # OPERATOR row_every
 
@@ -838,6 +862,36 @@
 	  $_->await for @wo;
 	  $stdout_reader->await;
 
+# OPERATOR row_grouped_sort
+
+## IMPLEMENTATION
+	
+	  my ($key_col, $sort_cols) = @_;
+	  my $key_expr = $key_col
+	    ? qq{(split /\t/)[$key_col]}
+	    : qq{/^([^\t\n]*)/};
+	  my $sort_expr = join ' || ',
+	    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+	         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
+	                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+	  ni::eval gen(q{
+	    my $k;
+	    my @group;
+	    push @group, $_ = <STDIN>;
+	    ($k) = %key_expr;
+	    while (<STDIN>) {
+	      my ($rk) = %key_expr;
+	      if ($rk ne $k) {
+	        print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+	        @group = $_;
+	        $k = $rk;
+	      } else {
+	        push @group, $_;
+	      }
+	    }
+	    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+	  })->(key_expr => $key_expr, sort_expr => $sort_expr);
+
 # OPERATOR row_match
 
 ## IMPLEMENTATION
@@ -934,7 +988,7 @@
 # OPERATOR split_chr
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "y/$_[0]/\t/"
+	exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\t#" : "y/$_[0]/\t/"
 
 # OPERATOR split_proper_csv
 
@@ -949,7 +1003,7 @@
 # OPERATOR split_regex
 
 ## IMPLEMENTATION
-	exec 'perl', '-lnpe', "s/$_[0]/\$1\t/g"
+	my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\t/g"
 
 # OPERATOR sql_preview
 
@@ -1009,8 +1063,20 @@
 
 ## IMPLEMENTATION
 	
-	  my ($args) = @_;
-	  exec 'gnuplot', '-persist', '-e', join '', @$args;
+	  my ($col, $command) = @_;
+	  exec 'gnuplot', '-e', $command unless defined $col;
+	  my ($k, $fh);
+	  while (<STDIN>) {
+	    chomp;
+	    my @fs = split /\t/, $_, $col + 2;
+	    my $rk = join "\t", @fs[0..$col];
+	    if (!defined $k or $k ne $rk) {
+	      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
+	        or die "ni: failed to run gnuplot on $command: $!";
+	      $k = $rk;
+	    }
+	    print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
+	  }
 
 # OPERATOR tail
 

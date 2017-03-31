@@ -47,6 +47,21 @@
 	  add_closure_key $name, $data;
 	  ();
 
+# META OPERATOR op_let
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my ($bindings, $ops) = @$args;
+	  my @keys = map $$_[0], @$bindings;
+	  my %replacements = map @$_, @$bindings;
+	  my $rewritten = rewrite_atoms_in $ops, sub {
+	    my $a = shift;
+	    $a =~ s/\Q$_\E/$replacements{$_}/g for @keys;
+	    $a;
+	  };
+	  ($left, [@$rewritten, @$right]);
+
 # META OPERATOR stderr_monitor_transform
 
 ## IMPLEMENTATION

@@ -355,14 +355,20 @@
 
 ## SYNTAX
 	(
-	| <gnuplot/lambda>
-	| <gnuplot/suffix>
-	) -> {stream_to_gnuplot_op $_}
+	  <gnuplot_colspec>
+	  <gnuplot_code>
+	) -> {stream_to_gnuplot_op @$_}
+
+# SHORT OPERATOR /GF
+
+## SYNTAX
+	<shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
 
 # SHORT OPERATOR /H
 
 ## SYNTAX
 	(
+	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
 	    (
 	      <hadoop_streaming_lambda>
@@ -500,6 +506,16 @@
 	| <colspec> -> {cols_op @$_}
 	)
 
+# SHORT OPERATOR /f[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <fn_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {op_fn_op @$_}
+
 # SHORT OPERATOR /g
 
 ## SYNTAX
@@ -510,6 +526,14 @@
 	  ) -> {$$_[1]} -> {partial_sort_op               $_}
 	| <sortspec> -> {row_sort_op        sort_args @$_}
 	)
+
+# SHORT OPERATOR /gg
+
+## SYNTAX
+	(
+	  <colspec1>
+	  <sortspec>
+	) -> {row_grouped_sort_op @$_}
 
 # SHORT OPERATOR /i
 	Identity: append literal text
@@ -530,6 +554,16 @@
 ## SYNTAX
 	<lispcode> -> {lisp_code_op lisp_mapgen->(prefix => lisp_prefix,
 	                                                 body   => $_)}
+
+# SHORT OPERATOR /l[
+
+## SYNTAX
+	(
+	  <empty>?
+	  <let_bindings>
+	  </series>
+	  ']'
+	) -> {[@$_[1,2]]} -> {op_let_op @$_}
 
 # SHORT OPERATOR /m
 
@@ -731,11 +765,6 @@
 
 ## SYNTAX
 	<cellspec_fixed> -> {intify_compact_op $_}
-
-# SHORT OPERATOR gnuplot/d
-
-## SYNTAX
-	<'', evaluate as plot "-" with dots>
 
 # SHORT OPERATOR pyspark/*
 

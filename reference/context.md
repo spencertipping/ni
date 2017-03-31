@@ -17,14 +17,6 @@
 	cell/s
 	cell/z
 
-# CONTEXT gnuplot
-	GNUPlot command context
-
-## LONG OPERATORS (ni --doc/long X)
-
-## SHORT OPERATORS (ni --doc/short X)
-	gnuplot/d
-
 # CONTEXT pyspark
 	PySpark compilation context
 

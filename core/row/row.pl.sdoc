@@ -17,16 +17,12 @@ defoperator row_sample => q{
 };
 
 defoperator row_cols_defined => q{
-  no warnings 'uninitialized';
   my ($floor, @cs) = @_;
-  my $limit = $floor + 1;
-  my $line;
-  while (defined($line = <STDIN>)) {
-    chomp $line;
-    next unless length $line;
-    my @fs = split /\t/, $line, $limit;
-    print $line . "\n" if @cs == grep length $fs[$_], @cs;
-  }
+  my @pieces = ('[^\t\n]*') x $floor;
+  $pieces[$_] = '[^\t\n]+' for @cs;
+  my $r = join '\t', @pieces;
+  $r = qr/^$r/;
+  /$r/ and print while <STDIN>;
 };
 
 defshort '/r',
@@ -116,6 +112,38 @@ defshort '/g',
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+
+defoperator row_grouped_sort => q{
+  my ($key_col, $sort_cols) = @_;
+  my $key_expr = $key_col
+    ? qq{(split /\\t/)[$key_col]}
+    : qq{/^([^\\t\\n]*)/};
+
+  my $sort_expr = join ' || ',
+    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
+                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+
+  ni::eval gen(q{
+    my $k;
+    my @group;
+    push @group, $_ = <STDIN>;
+    ($k) = %key_expr;
+    while (<STDIN>) {
+      my ($rk) = %key_expr;
+      if ($rk ne $k) {
+        print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+        @group = $_;
+        $k = $rk;
+      } else {
+        push @group, $_;
+      }
+    }
+    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
+  })->(key_expr => $key_expr, sort_expr => $sort_expr);
+};
+
+defshort '/gg', pmap q{row_grouped_sort_op @$_}, pseq colspec1, sortspec;
 
 Counting.
 Sorted and unsorted streaming counts.

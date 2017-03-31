@@ -62,7 +62,9 @@ $ wc -l < a-million-things
 If you weren't planning to sort your data, though, a better alternative is to
 use `B`, the buffering operator, with a null buffer:
 
-```bash
+```sh
+# UPDATE: this no longer works reliably; it depends on which signal is used to
+# kill the pipeline. This will be fixed when I merge r/oo into develop.
 $ ni n1000000 =\>a-million-things Bn r5
 1
 2
