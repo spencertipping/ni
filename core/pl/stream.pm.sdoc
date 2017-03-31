@@ -17,7 +17,7 @@ conjunction with the line-reading functions `rw`, `ru`, and `re`.
 our @q;
 our @F;
 
-sub rl(;$) {return map rl(), 1..$_[0] if @_;
+sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
             chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
 sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
