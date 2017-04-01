@@ -11,7 +11,14 @@ ni supports a number of point-to-point connection strategies:
 
 1. The SSH tunnel used to start an instance (secure vlan)
 2. UDP connections (insecure vlan)
-3. Arbitrary ni streams, e.g. reading a file (insecure vlan)
+3. Arbitrary ni streams, e.g. TCP, reading a file (insecure vlan)
+
+ni instances are identified in a globally unique way, so we don't need anything
+like ARP. Instead, the equivalent functionality is provided by the graph sync
+protocol, ni's analogue of STP.
+
+### Security + invariants
+**TODO:** figure out trust domains
 
 ## Routed packet traffic (L3)
 
