@@ -36,14 +36,35 @@ later gain by configuration).
 Packets are hashed + encrypted at the frame level:
 
 ```
-[frame size] + [vlan ID] + [IV] + encrypted([packet data] + [MD5 of packet data])
+[frame size] + [vlan ID] + [IV]
+  + vlan-psk-encrypted([L3 packet data] + [SHA-256 of L3 packet data])
 ```
 
-**NB:** I'm using MD5 here because it's provided in older versions of Perl, and
-I don't think we need a particularly secure hash function; if this is wrong,
-I'll change it to SHA-256.
+L2 security is provided by a JIT-compiled C binary that receives symmetric keys
+using a private block of shared memory, or some initial FD transfers. We don't
+want to bake the keys in (1) for security, and (2) because there's no guarantee
+that any member of the vlan will have a C compiler -- so we might have to
+compile elsewhere and transfer the binary.
 
 ## Routed packet traffic (L3)
+L3 packets are designed a lot like IPv6, but they have different metadata
+associated with them. We need to store the following header data:
 
+- Source address
+- Destination address
+- Packet type (like the "protocol" field of IP)
+- Accumulated expected global cost (drop cost)
+- Hop count
+- TTL (don't forward if blocked for longer than this amount of time)
 
-## Streams (L4)
+### Routing
+Each node chooses how to get incoming packets closer to their destination, and
+in general nodes shouldn't assume much about any high-level routing strategy.
+Nodes are theoretically at liberty to use stochastic or locally-optimal
+algorithms, or to forward packets randomly. In practice nodes will minimize
+expected global cost, which is informed by higher-level graph metadata.
+
+Hop count and TTL prevent packets from accumulating arbitrarily high amounts of
+forwarding value/priority by being forwarded excessively.
+
+## Data and control messages (L4)
