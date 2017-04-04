@@ -46,7 +46,64 @@ want to bake the keys in (1) for security, and (2) because there's no guarantee
 that any member of the vlan will have a C compiler -- so we might have to
 compile elsewhere and transfer the binary.
 
-## Routed packet traffic (L3)
+### Binary formats
+There are two data formats, one in plaintext and one that encrypts its traffic.
+Every L2 link is set up to transmit only one of these two packet types,
+depending on whether it's a secure link (SSH) or an insecure one (TCP or UDP).
+Any packet with unexpected magic is dropped.
+
+#### Plaintext format
+This format assumes that data will be transmitted securely and without errors.
+
+```
+magic:      16 bits             # "n2"
+frame_size: 16 bits, BE         # size of the whole frame in bytes
+data:       <variable>
+```
+
+#### Encrypted format
+This format hashes the data to detect errors. Any hash mismatch causes the
+incoming packet to be silently dropped.
+
+```
+magic:      16 bits             # "n@"
+frame_size: 16 bits, BE         # size of the whole frame in bytes
+vlan_id:    16 bits, BE         # index of vlan decryption key to use
+iv:        128 bits
+encrypted: <variable>           # aes256(data + sha256(data), iv, keys[vlan_id])
+```
+
+#### Format of the `data` field
+```
+packet_type: 8 bits
+packet_data: <variable>
+```
+
+`packet_type` is one of the following:
+
+- `0x01`: Link test ping (not data)
+- `0x02`: Link test pong (not data)
+- `0x03`: L3 packet
+
+#### Link test packets
+These are important, and ni uses them to monitor link reliability + latency.
+During an active connection, ni will intermittently ping to make sure the link
+hasn't silently failed. ni also uses test packets to detect cases where packets
+are being fragmented, which causes their data to be destroyed.
+
+A link test ping will contain an arbitrary amount of data that must be echoed
+back using a link test pong. For example, here's a ping/pong cycle between two
+ends of a plaintext L2 link:
+
+```
+A -> B: 6e 32 00 06 01 ff
+B -> A: 6e 32 00 06 02 ff
+```
+
+The nodes can track timing themselves, or encode that data into the ping
+request/reply.
+
+## Routed data (L3)
 L3 packets are designed a lot like IPv6, but they have different metadata
 associated with them. We need to store the following header data:
 
@@ -65,6 +122,32 @@ algorithms, or to forward packets randomly. In practice nodes will minimize
 expected global cost, which is informed by higher-level graph metadata.
 
 Hop count and TTL prevent packets from accumulating arbitrarily high amounts of
-forwarding value/priority by being forwarded excessively.
+forwarding value/priority by being forwarded excessively (not that this should
+happen in the first place, but pathological routing situations might arise due
+to race conditions while a graph update is being propagated).
+
+### Binary format
+```
+source_address: 128 bits
+dest_address:   128 bits
+protocol:         8 bits
+priority:         8 bits        # unsigned; higher = route first
+hop_count:       16 bits, BE    # unsigned; hops left before being dropped
+delay_gradient:  32 bits, BE    # signed; nanointents/second
+drop_cost:       32 bits, BE    # unsigned; in nanointents
+data:         <variable>
+```
+
+`protocol` is one of the following:
+
+- `0x04`: reliable finite message protocol
+
+### Intent
+See [intent-design.md](intent-design.md) for details.
 
 ## Data and control messages (L4)
+ni communicates primarily using _messages_, not _streams_. This means that
+TCP/IP is overkill; what we really need is a protocol that provides TCP's
+durability for finite-length messages. The SYN/ACK handshake is unnecessary.
+
+
