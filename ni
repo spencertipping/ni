@@ -4627,7 +4627,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-88 core/pl/stream.pm.sdoc
+93 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4674,6 +4674,11 @@ c
 BEGIN {for my $x ('a'..'l') {
          ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
                        $x, $_, $x, $_ for 'a'..'l'}}
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+         ceval sprintf 'sub %s%sS {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %r}',
+                       $x, $y, $x, $y }}}
 
 Seeking functions.
 It's possible to read downwards (i.e. future lines), which returns an array and
