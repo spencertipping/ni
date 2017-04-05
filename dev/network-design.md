@@ -50,13 +50,11 @@ compile elsewhere and transfer the binary.
 There are two data formats, one in plaintext and one that encrypts its traffic.
 Every L2 link is set up to transmit only one of these two packet types,
 depending on whether it's a secure link (SSH) or an insecure one (TCP or UDP).
-Any packet with unexpected magic is dropped.
 
 #### Plaintext format
 This format assumes that data will be transmitted securely and without errors.
 
 ```
-magic:      16 bits             # "n2"
 frame_size: 16 bits, BE         # size of the whole frame in bytes
 data:       <variable>
 ```
@@ -66,7 +64,6 @@ This format hashes the data to detect errors. Any hash mismatch causes the
 incoming packet to be silently dropped.
 
 ```
-magic:      16 bits             # "n@"
 frame_size: 16 bits, BE         # size of the whole frame in bytes
 vlan_id:    16 bits, BE         # index of vlan decryption key to use
 iv:        128 bits
@@ -93,11 +90,11 @@ are being fragmented, which causes their data to be destroyed.
 
 A link test ping will contain an arbitrary amount of data that must be echoed
 back using a link test pong. For example, here's a ping/pong cycle between two
-ends of a plaintext L2 link:
+ends of a plaintext L2 link, in this case using the single-byte test data `ff`:
 
 ```
-A -> B: 6e 32 00 06 01 ff
-B -> A: 6e 32 00 06 02 ff
+A -> B: 00 04 01 ff
+B -> A: 00 04 02 ff
 ```
 
 The nodes can track timing themselves, or encode that data into the ping
@@ -130,22 +127,19 @@ to race conditions while a graph update is being propagated).
 ```
 source_address: 128 bits
 dest_address:   128 bits
-protocol:         8 bits
-priority:         8 bits        # unsigned; higher = route first
-hop_count:       16 bits, BE    # unsigned; hops left before being dropped
-delay_gradient:  32 bits, BE    # signed; nanointents/second
-drop_cost:       32 bits, BE    # unsigned; in nanointents
+win:             32 bits, UBE   # microwin for this packet
+dwin_dt:         32 bits, UBE   # microwin per second (nanowin/ms)
+rcost:           32 bits, UBE   # replacement cost in microwin
 data:         <variable>
 ```
 
-`protocol` is one of the following:
+### Intent and drop cost
+The drop cost is the amount of intent consumed to forward the packet to its
+current location. Nodes should minimize the drop cost of packets they drop.
 
-- `0x04`: reliable finite message protocol
-
-### Intent
 See [intent-design.md](intent-design.md) for details.
 
-## Data and control messages (L4)
+## Reliable finite-message transport (L4)
 ni communicates primarily using _messages_, not _streams_. This means that
 TCP/IP is overkill; what we really need is a protocol that provides TCP's
 durability for finite-length messages. The SYN/ACK handshake is unnecessary.
