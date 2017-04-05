@@ -232,6 +232,31 @@ Hash constructors are useful for filtering large datasets without having to invo
 * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
 * `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
+### `p'%h = <key_col><val_col>S @lines`: Accumulator hash constructor
+
+This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+x	5
+y	13
+```
+
+### `p'kbv_asc %h` and `p'kbv_dsc %h'`: Sort hash keys by value
+
+This is syntactict sugar for perl's sort function applied to keys of a hash.
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+y	x	z
+```
+
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+z	x	y
+```
+
 
 ##Streaming Reduce
 So far, you have seen many ways to reshape, process, and filter individual rows, but only one way to summarize multiple rows, the count operator `c`. In this section, we will cover `ni`'s highly flexible, constant-space reduce methods in Perl.
