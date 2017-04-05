@@ -4461,7 +4461,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-117 core/pl/util.pm.sdoc
+120 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4476,6 +4476,9 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
 sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 0..$#_ - 1}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
+
+sub kbv_dsc { my %h = @_; sort { $h{$b} <=> $h{$a} } keys %h }
+sub kbv_asc { my %h = @_; sort { $h{$a} <=> $h{$b} } keys %h }
 
 sub argmax(&@) {
   local $_;
