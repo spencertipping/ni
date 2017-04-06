@@ -574,11 +574,16 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 
 ####String subroutines
 
-* `lc`: lowercase
-* `uc`: uppercase
-* `substr`: slice a string using a function (you can also slice with a regex)
-* `split`: split a string into a list
-* `join`: join a list into a string
+* `lc($s)`: lowercase `$s`
+* `uc($s)`: uppercase `$s`
+* `split(/regex/, $s)`: split a `$s` into a list based on `/regex/`
+* `join($sep, @lst)`: join a list into a string, separated by the string `$sep`
+* `substr($s, $offset, $length)`: The behavior of `substr` is a little tricky if you have a Python background:
+  * If `$offset` is positive, then the start position of the substring will be that position in the string, starting from an index of zero;
+  * If `$offset` is negative, then the start position of the substring will be `$offset` charaters from the end of the string.
+  * If `$length` is positive, the output substring will take (up to) `$length` characters.
+  * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
+ 
 
 
 ####Hash subroutines
