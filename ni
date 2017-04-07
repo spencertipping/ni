@@ -4630,7 +4630,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-93 core/pl/stream.pm.sdoc
+100 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4658,7 +4658,7 @@ sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d], map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d]}',
+       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 
 sub cols(@) {
@@ -4681,6 +4681,13 @@ BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
          ceval sprintf 'sub %s%sS {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
                                     $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %r}',
+                       $x, $y, $x, $y }}}
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+         ceval sprintf 'sub %s%sSNN {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr;
+                                    my %r_output; @filtered_keys = grep {$_ ne ""} keys %r;
+                                    @r_output{@filtered_keys} = @r{@filtered_keys}}',
                        $x, $y, $x, $y }}}
 
 Seeking functions.
