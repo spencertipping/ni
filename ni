@@ -4687,7 +4687,7 @@ BEGIN {for my $x ('a'..'l') {
          ceval sprintf 'sub %s%sSNN {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
                                     $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr;
                                     my %r_output; @filtered_keys = grep {$_ ne ""} keys %r;
-                                    @r_output{@filtered_keys} = @r{@filtered_keys}}',
+                                    @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
 Seeking functions.
