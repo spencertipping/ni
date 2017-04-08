@@ -59,8 +59,8 @@ sub cart {
   my @ns = map scalar(@$_), @_;
   map {
     my ($i, $xs) = ($_ - 1, []);
-    for (0..$#ns) {
-      push @$xs, ${$_[$_]}[$i % $ns[$_]];
+    for (reverse 0..$#ns) {
+      unshift @$xs, ${$_[$_]}[$i % $ns[$_]];
       $i /= $ns[$_];
     }
     $xs;
