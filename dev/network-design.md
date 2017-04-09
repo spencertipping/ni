@@ -147,33 +147,5 @@ See [intent-design.md](intent-design.md) for details.
 ## Reliable finite-message transport (L4)
 ni communicates primarily using _messages_, not _streams_. This means that
 TCP/IP is overkill; what we really need is a protocol that provides TCP's
-durability for finite-length messages. The SYN/ACK handshake is unnecessary.
-
-L4 messages are one-way, but they can refer to each other. There are three
-types of packets:
-
-- `piece(message_id, total_pieces, piece_id, data)`: send part of a message
-- `ack(message_id, received_pieces_bits)`: indicate which parts of a message
-  have been received
-- `check(message_id)`: request an ack
-
-The sender exists in one of two states:
-
-1. Unconfirmed: the message needs to be stored so we can retransmit, and we're
-   listening for `ack`s for the message.
-2. Confirmed: the message can be deallocated, and any `ack` for the message can
-   be ignored.
-
-The receiver has three states with respect to a given `message_id`:
-
-1. Ok to receive `message_id`: the message is not a retransmitted duplicate of
-   something we've seen before.
-2. Currently receiving `message_id`: send `ack` when (1) we haven't heard
-   anything in a while, or (2) we've fully received `message_id`.
-3. We're done receiving `message_id`: reply with a complete `ack` for all
-   further packets for it.
-
-### Message IDs
-**TODO:** How to leverage receiver-side monotonicity to simplify
-already-received detection? (Otherwise we're storing a set of things.) Time
-windowing seems clumsy.
+durability for finite-length messages. The SYN/ACK handshake is unnecessary
+(**TODO:** prove this; it seems increasingly tenuous).
