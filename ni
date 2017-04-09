@@ -4804,7 +4804,7 @@ Just like for `se` functions, we define shorthands such as `rca ...` = `rc
 
 c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-118 core/pl/geohash.pm.sdoc
+140 core/pl/geohash.pm.sdoc
 Fast, portable geohash encoder.
 A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
 Perl builds.
@@ -4922,6 +4922,28 @@ if (1 << 32) {
   };
 
 *ghb = \&gh_box;
+}
+
+sub to_radians {
+  3.1415926535897943284626 * $_[0]/180.0;
+}
+
+sub lat_lon_dist {
+  my $earth_radius = 3959; #miles, uugh
+  my ($lat1, $lon1, $lat2, $lon2) = @_;
+  my $phi1 = to_radians $lat1;
+  my $phi2 = to_radians $lat2;
+  my $d_phi = $phi1 - $phi2;
+  my $d_lambda = to_radians ($lon1 - $lon2);
+  my $a = sin($d_phi/2)**2 + cos($phi1)*cos($phi2)*(sin($d_lambda/2)**2);
+  my $c = 2 * atan2(sqrt($a), sqrt(1-$a));
+  $earth_radius * $c;
+}
+
+sub gh_dist {
+  my @lat_lons;
+  push @lat_lons, ghd($_[0]), ghd($_[1]);
+  lat_lon_dist @lat_lons;
 }
 59 core/pl/time.pm.sdoc
 Time conversion functions.
