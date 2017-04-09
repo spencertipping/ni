@@ -29,4 +29,13 @@ time for risk-adjusted disk usage (via compression) to minimize expected fail.
 
 ## Strategy calculation
 ni's strategy calculation is treated as a process subject to the same win/fail
-calculation as commands you run.
+calculation as commands you run: if the fail gradient against time is too
+steep, ni will use a simple local strategy calculation -- but if it's a
+long-running thing and the dominant gradient is nontemporal (e.g. "don't
+require human intervention"), ni might use networked machines to search the
+solution space for some amount of time, possibly in parallel with executing an
+obvious solution.
+
+ni never forgets things. Each solution is used to refine an internal ML-based
+predictor of "the chosen solution"; this will cause ni to converge to fast and
+good solutions to frequently-asked questions.
