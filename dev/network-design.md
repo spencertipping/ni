@@ -111,6 +111,10 @@ associated with them. We need to store the following header data:
 - Hop count
 - TTL (don't forward if blocked for longer than this amount of time)
 
+TTL is represented jointly by the quantities `Δf/Δt` and packet-specific win.
+If `Δf/(Δt * delay) > win - transmit_fail`, then the packet is dropped because
+it has become a net loss.
+
 ### Routing
 Each node chooses how to get incoming packets closer to their destination, and
 in general nodes shouldn't assume much about any high-level routing strategy.
@@ -170,12 +174,6 @@ The receiver has three states with respect to a given `message_id`:
    further packets for it.
 
 ### Message IDs
-Message IDs are namespaced to receivers, which means they must be constructed
-in a specific way to avoid collisions:
-
-```
-message_id = 96 bits of md5(sender instance ID + message data)
-           + 32 bits of UNIX timestamp
-```
-
-**TODO:** clock discrepancies
+**TODO:** How to leverage receiver-side monotonicity to simplify
+already-received detection? (Otherwise we're storing a set of things.) Time
+windowing seems clumsy.
