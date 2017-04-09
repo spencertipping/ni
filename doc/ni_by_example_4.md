@@ -651,7 +651,7 @@ For plotting, it is useful to get the latitude and longitude coordinates of  the
 
 ```bash
 $ ni 1p'r ghb "95qc"'
-18.6328123323619	18.45703125	-125.5078125	-125.156250335276
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
 ```
 
 #### `gh_dist`: distance between geohash centroids

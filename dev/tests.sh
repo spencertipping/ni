@@ -2136,7 +2136,7 @@ lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=653
 lazytest_case 'ni 1p'\''r ghb "95qc"'\''
 ' 3<<'LAZYTEST_EOF'
-18.6328123323619	18.45703125	-125.5078125	-125.156250335276
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=661
