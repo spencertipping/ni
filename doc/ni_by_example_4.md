@@ -647,11 +647,23 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 
 #### `ghb`: geohash bounding box
 
-For plotting, it is useful to get the latitude and longitude coordinates of 
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, westernmost point, easternmost point.
+
+```bash
+$ ni 1p'ghb "95qc"'
+18.6328123323619
+18.45703125
+-125.5078125
+-125.156250335276
+```
 
 
 #### `gh_dist`: distance between geohash centroids
 
+It is also useful to compute the distance between the center points of geohashes;
+
+#### `lat_lon_dist`: distance between points on the globe
+This subroutine implements the haversine distance formula, assuming the 
 
 
 

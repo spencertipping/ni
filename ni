@@ -4914,10 +4914,10 @@ if (1 << 32) {
 *gh_box = sub {
   local $_;
   my $gh = shift;
-  my $northwest_corner = substr($gh . "z" x 12, 0, 12);
-  my $southeast_corner = substr($gh . "0" x 12, 0, 12);
-  my ($north, $west) = ghd($northwest_corner);
-  my ($south, $east) = ghd($southeast_corner);
+  my $northeast_corner = substr($gh . "z" x 12, 0, 12);
+  my $southwest_corner = substr($gh . "0" x 12, 0, 12);
+  my ($north, $east) = ghd($northeast_corner);
+  my ($south, $west) = ghd($southwest_corner);
   ($north, $south, $east, $west);
   };
 
