@@ -645,6 +645,15 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 34.0584754943848	-118.416652679443
 ```
 
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of 
+
+
+#### `gh_dist`: distance between geohash centroids
+
+
+
 
 
 ###Time Perl Functions
