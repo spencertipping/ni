@@ -127,15 +127,16 @@ to race conditions while a graph update is being propagated).
 ```
 source_address: 128 bits
 dest_address:   128 bits
-win:             32 bits, UBE   # microwin for this packet
-dwin_dt:         32 bits, UBE   # microwin per second (nanowin/ms)
-rcost:           32 bits, UBE   # replacement cost in microwin
+win:             32 bits, single float  # w
+df_dt:           32 bits, single float  # f/s
+dcost:           32 bits, single float  # f incurred by dropping the packet
 data:         <variable>
 ```
 
 ### Intent and drop cost
-The drop cost is the amount of intent consumed to forward the packet to its
-current location. Nodes should minimize the drop cost of packets they drop.
+Drop cost is measured in the amount of fail incurred if the packet has to be
+retransmitted to its current location. A node is performing optimally if it
+minimizes the total drop cost of the packets it drops.
 
 See [intent-design.md](intent-design.md) for details.
 
@@ -144,4 +145,37 @@ ni communicates primarily using _messages_, not _streams_. This means that
 TCP/IP is overkill; what we really need is a protocol that provides TCP's
 durability for finite-length messages. The SYN/ACK handshake is unnecessary.
 
+L4 messages are one-way, but they can refer to each other. There are three
+types of packets:
 
+- `piece(message_id, total_pieces, piece_id, data)`: send part of a message
+- `ack(message_id, received_pieces_bits)`: indicate which parts of a message
+  have been received
+- `check(message_id)`: request an ack
+
+The sender exists in one of two states:
+
+1. Unconfirmed: the message needs to be stored so we can retransmit, and we're
+   listening for `ack`s for the message.
+2. Confirmed: the message can be deallocated, and any `ack` for the message can
+   be ignored.
+
+The receiver has three states with respect to a given `message_id`:
+
+1. Ok to receive `message_id`: the message is not a retransmitted duplicate of
+   something we've seen before.
+2. Currently receiving `message_id`: send `ack` when (1) we haven't heard
+   anything in a while, or (2) we've fully received `message_id`.
+3. We're done receiving `message_id`: reply with a complete `ack` for all
+   further packets for it.
+
+### Message IDs
+Message IDs are namespaced to receivers, which means they must be constructed
+in a specific way to avoid collisions:
+
+```
+message_id = 96 bits of md5(sender instance ID + message data)
+           + 32 bits of UNIX timestamp
+```
+
+**TODO:** clock discrepancies
