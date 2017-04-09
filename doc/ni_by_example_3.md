@@ -155,8 +155,109 @@ $ ni n15 r-5 p'/^(\d)\d*$/'
 
 Clearly this regex is operating on each line (the lines input were the integers 6 through 15). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
 
-In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`. Python-style string slicing (which uses square brackets) is not one available in vanilla Perl 5, where the `substr` method (or regexes) are more commonly used.
+In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`.
 
+
+###`for`
+Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java:
+
+```bash
+$ ni iabcdefgh p'my $string= a; for (my $i=0; $i < length $string; $i++) {r substr($string, $i, 1) x 2;}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+In the above code, `substr($string, $i, 1)` is used to get 1 character from `$string` at position `$i`.  Perl also has a for syntax allowing you to define a variable name. 
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+It is not necessary to define a variable name; if you do not, it will be assigned to the default variable `$_` within the block of the loop.
+
+```bash
+$ ni iabcdefgh p'for (split //) {r $_ x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+Finally, there is an even more parsimonious postfix syntax.
+
+
+```bash
+$ ni iabcdefgh p'r $_ x 2 for split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
+
+The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
+
+###`map`
+`map` is in many ways similar to `for`; in exchange for some flexibility that `for` loops offer, `map` statements often have better performance through vectorization, and they are often more intuitive to read. `map` takes two arguments, a block of code and a perl array, and returns an array.
+
+```bash
+$ ni iabcdefgh p'map {$_ x 2} split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+The element of the array that the `map` block takes as an argument is referred to as `$_`; like a `for` loop, this `$_` variable is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
+
+
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
+abcdefgh
+```
+
+Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
+
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; @v'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+Another facet of the map syntax is that there is _no comma_ between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
 
 
 ##Buffered Readahead and Multiline Selection

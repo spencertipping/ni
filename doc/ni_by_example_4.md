@@ -737,7 +737,6 @@ You've probably come across most of these already, but I'd feel remiss if I didn
 
 This is way easier to access than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`. Also, it's good to note here that you can more than likely get away with referencing the variable you want using a bareword (unquoted string) rather than a quoted string.
 
-
 ### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
 
@@ -829,50 +828,7 @@ $ ni iabcdefgh p's/abc/ABC/r'
 ABCdefgh
 ```
 
-###`map`
 
-`map` takes two arguments, a block of code and a perl array, and returns an array.
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r @v'
-aa	bb	cc	dd	ee	ff	gg	hh
-```
-
-This code is complicated if you haven't been exposed to the syntax before, so let's break it down.
-
-The block that `map` is using is easy to spot--it's some code wrapped in curly braces, so that's `{$_ x 2}`. Because a `map` block will operate on one argument at a time, we refer to that argument as `$_` (unlike subroutine syntax, which takes its arguments in the array `@_`). The `$_` within the block is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
-
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
-abcdefgh
-```
-
-Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r @v'
-aa	bb	cc	dd	ee	ff	gg	hh
-```
-
-Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
-
-###`for`
-`for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
-
-```bash
-$ ni iabcdefgh p'r $_ x 2 for split //'
-aa
-bb
-cc
-dd
-ee
-ff
-gg
-hh
-```
-
-This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
 
 ###`use strict` and the `::` prefix within `p'...'`
 
