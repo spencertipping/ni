@@ -2134,105 +2134,120 @@ lazytest_case 'ni i[34.058566 -118.416526] p'\''r ghd ghe(a, b, -41), 41'\''
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=653
-lazytest_case 'ni 1p'\''ghb "95qc"'\''
+lazytest_case 'ni 1p'\''r ghb "95qc"'\''
 ' 3<<'LAZYTEST_EOF'
-18.6328123323619
-18.45703125
--125.5078125
--125.156250335276
+18.6328123323619	18.45703125	-125.5078125	-125.156250335276
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=679
+lazytest_line=661
+lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv", km'\''
+' 3<<'LAZYTEST_EOF'
+1.99516661267524
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_4.md'
+lazytest_line=668
+lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv"'\''
+' 3<<'LAZYTEST_EOF'
+1.23981551084308
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_4.md'
+lazytest_line=677
+lazytest_case 'ni 1p'\''lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762, "km"'\''
+' 3<<'LAZYTEST_EOF'
+10426.7380460312
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_4.md'
+lazytest_line=690
 lazytest_case 'ni 1p'\''tpe(2017, 1, 22, 8, 5, 13)'\''
 ' 3<<'LAZYTEST_EOF'
 1485072313
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=686
+lazytest_line=697
 lazytest_case 'ni 1p'\''tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'\''
 ' 3<<'LAZYTEST_EOF'
 1485072313
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=701
+lazytest_line=712
 lazytest_case 'ni 1p'\''r tep tpe 2017, 1, 22, 8, 5, 13'\''
 ' 3<<'LAZYTEST_EOF'
 2017	1	22	8	5	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=714
+lazytest_line=725
 lazytest_case 'ni i[34.058566 -118.416526] p'\''my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'\''
 ' 3<<'LAZYTEST_EOF'
 2017	1	22	2	41	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=772
+lazytest_line=783
 lazytest_case 'ni iabcdefgh p'\''/^(.*).{4}$/'\''  #[:-4] in Python
 ' 3<<'LAZYTEST_EOF'
 abcd
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=777
+lazytest_line=788
 lazytest_case 'ni iabcdefgh p'\''/^.{3}(.*)$/'\'' #[3:] in Python
 ' 3<<'LAZYTEST_EOF'
 defgh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=782
+lazytest_line=793
 lazytest_case 'ni iabcdefgh p'\''/^.*(.{2})$/'\'' #[-2:] in Python
 ' 3<<'LAZYTEST_EOF'
 gh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=795
+lazytest_line=806
 lazytest_case 'ni iabcdefgh p'\''my @v = /^(.)(.)/; r @v'\''
 ' 3<<'LAZYTEST_EOF'
 a	b
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=800
+lazytest_line=811
 lazytest_case 'ni iabcdefgh p'\''my ($w) = /^(.)/; r $w'\''
 ' 3<<'LAZYTEST_EOF'
 a
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=805
+lazytest_line=816
 lazytest_case 'ni iabcdefgh p'\''my ($x, $y) = /^(.)(.)/; r $x, $y'\''
 ' 3<<'LAZYTEST_EOF'
 a	b
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=815
+lazytest_line=826
 lazytest_case 'ni iabcdefgh p'\''tr/a-z/A-Z/'\''
 ' 3<<'LAZYTEST_EOF'
 8
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=820
+lazytest_line=831
 lazytest_case 'ni iabcdefgh p'\''s/abc/ABC/'\''
 ' 3<<'LAZYTEST_EOF'
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=828
+lazytest_line=839
 lazytest_case 'ni iabcdefgh p'\''$v = tr/a-z/A-Z/; $v'\''
 ' 3<<'LAZYTEST_EOF'
 8
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=835
+lazytest_line=846
 lazytest_case 'ni iabcdefgh p'\''tr/a-z/A-Z/; $_'\''
 ' 3<<'LAZYTEST_EOF'
 ABCDEFGH
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=840
+lazytest_line=851
 lazytest_case 'ni iabcdefgh p'\''s/abc/ABC/; $_'\''
 ' 3<<'LAZYTEST_EOF'
 ABCdefgh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=882
+lazytest_line=893
 lazytest_case 'ni n4m'\''r a, ai + 1'\''
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -2241,14 +2256,14 @@ lazytest_case 'ni n4m'\''r a, ai + 1'\''
 4	5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=893
+lazytest_line=904
 lazytest_case 'ni //license FWr2m'\''r fields[0..3]'\''
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com
 Copyright	c	2016	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=910
+lazytest_line=921
 lazytest_case 'ni n4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 ' 3<<'LAZYTEST_EOF'
 10	24

@@ -4938,7 +4938,7 @@ sub earth_radius_in_units {
 }
 
 sub lat_lon_dist {
-  my $units = length(@_) == 4 ? "mi" : shift;
+  my $units = @_ == 4 ? "mi" : pop;
   my ($lat1, $lon1, $lat2, $lon2) = @_;
   my $earth_radius = earth_radius_in_units $units;
   my $phi1 = to_radians $lat1;
@@ -4947,12 +4947,12 @@ sub lat_lon_dist {
   my $d_lambda = to_radians ($lon1 - $lon2);
   my $a = sin($d_phi/2)**2 + cos($phi1)*cos($phi2)*(sin($d_lambda/2)**2);
   my $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-  $earth_radius * $c;
+  $earth_radius * $c
 }
 
 sub gh_dist {
   my @lat_lons;
-  push @lat_lons, ($_[2] || "mi"), ghd($_[0]), ghd($_[1]);
+  push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "mi");
   lat_lon_dist @lat_lons;
 }
 59 core/pl/time.pm.sdoc

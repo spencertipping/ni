@@ -647,25 +647,36 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 
 #### `ghb`: geohash bounding box
 
-For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, westernmost point, easternmost point.
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
 
 ```bash
-$ ni 1p'ghb "95qc"'
-18.6328123323619
-18.45703125
--125.5078125
--125.156250335276
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.5078125	-125.156250335276
+```
+
+#### `gh_dist`: distance between geohash centroids
+It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv", km'
+1.99516661267524
+```
+
+When the units are not specified, `gh_dist` gives its answers in miles, which can be specified explicitly as "mi". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+1.23981551084308
 ```
 
 
-#### `gh_dist`: distance between geohash centroids
-
-It is also useful to compute the distance between the center points of geohashes;
-
 #### `lat_lon_dist`: distance between points on the globe
-This subroutine implements the haversine distance formula, assuming the 
+This subroutine implements the haversine distance formula. Like `gh_dist`, it also takes units ("mi", "km", "ft", "m"), and will return the distance in miles if no other information is given.
 
-
+```bash
+$ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762, "km"'
+10426.7380460312
+```
 
 
 ###Time Perl Functions
