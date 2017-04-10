@@ -52,7 +52,8 @@ Every L2 link is set up to transmit only one of these two packet types,
 depending on whether it's a secure link (SSH) or an insecure one (TCP or UDP).
 
 #### Plaintext format
-This format assumes that data will be transmitted securely and without errors.
+This format assumes that data will be transmitted securely and without errors;
+it introduces 2 bytes of overhead.
 
 ```
 frame_size: 16 bits, BE         # size of the whole frame in bytes
@@ -61,14 +62,17 @@ data:       <variable>
 
 #### Encrypted format
 This format hashes the data to detect errors. Any hash mismatch causes the
-incoming packet to be silently dropped.
+incoming packet to be silently dropped; it introduces 36 bytes of overhead.
 
 ```
 frame_size: 16 bits, BE         # size of the whole frame in bytes
 vlan_id:    16 bits, BE         # index of vlan decryption key to use
 iv:        128 bits
-encrypted: <variable>           # aes256(data + sha256(data), iv, keys[vlan_id])
+encrypted: <variable>           # aes128(data + md5(data), iv, keys[vlan_id])
 ```
+
+**NB:** This protocol is vulnerable to replay attacks, but L4 messages are
+robust to (possibly-malicious) duplicated packets.
 
 #### Format of the `data` field
 ```
@@ -128,13 +132,19 @@ happen in the first place, but pathological routing situations might arise due
 to race conditions while a graph update is being propagated).
 
 ### Binary format
+**NB:** Technically `float` would be useful within packets, but [this
+bug](https://stackoverflow.com/questions/18969702/perl-strange-behaviour-on-unpack-of-floating-value#19404928)
+makes it impossible to use portably.
+
+L3 encoding introduces 20 bytes of overhead.
+
 ```
-source_address: 128 bits
-dest_address:   128 bits
-win:             32 bits, single float  # w
-df_dt:           32 bits, single float  # f/s
-dcost:           32 bits, single float  # f incurred by dropping the packet
-data:         <variable>
+source_address: 32 bits
+dest_address:   32 bits
+win:            32 bits, UBE  # μw
+df_dt:          32 bits, UBE  # μf/s
+dcost:          32 bits, UBE  # μf incurred by dropping the packet
+data:        <variable>
 ```
 
 ### Intent and drop cost
@@ -147,5 +157,43 @@ See [intent-design.md](intent-design.md) for details.
 ## Reliable finite-message transport (L4)
 ni communicates primarily using _messages_, not _streams_. This means that
 TCP/IP is overkill; what we really need is a protocol that provides TCP's
-durability for finite-length messages. The SYN/ACK handshake is unnecessary
-(**TODO:** prove this; it seems increasingly tenuous).
+durability for finite-length messages. The SYN/ACK handshake is unnecessary, as
+are most security features like SYN cookies, since although remotes can be
+byzantine it's acceptable for them to initiate DoS attacks or otherwise degrade
+performance.
+
+### Sender states
+- Incomplete: we haven't received a `state()` that indicates all pieces have
+  been received.
+- Complete: we've received a finalizing `state()` packet and know that the
+  message is delivered. The message can be deallocated.
+
+**TODO:** state checking and packet recovery
+
+### Receiver states
+The receiver maintains a window of message IDs mentioned by a given sender,
+which ultimately fall into the same states that the sender has:
+
+- Incomplete: we need more pieces to complete the message (or we don't know
+  anything about the message).
+- Complete: we've received everything we need and can ignore further mentions
+  of the message.
+
+**TODO:** state checking/packet recovery
+
+### Packet types
+- `piece(n, i, x)`: send piece `i` as data `x`
+- `abort()`: notify receiver that sender is canceling the message
+- `check()`: request `state` reply
+- `state(n, bits)`: indicate which pieces of a message have been received
+
+### Message IDs
+Each packet contains a 64-bit message ID namespaced to the sender/receiver
+pair, and monotonic. The format of the message ID is:
+
+```
+[32 bits: time() >> 2] [32 bits: message_count]
+```
+
+The message count is reset each time `time() >> 2` changes; this gives ni
+enough namespacing throughput to generate 750Gbps of packet overhead traffic.
