@@ -658,23 +658,23 @@ $ ni 1p'r ghb "95qc"'
 It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv", km'
-1.99516661267524
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+1.23981551084308
 ```
 
-When the units are not specified, `gh_dist` gives its answers in miles, which can be specified explicitly as "mi". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
+When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
 
 ```bash
 $ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
-1.23981551084308
+1.99516661267524
 ```
 
 
 #### `lat_lon_dist`: distance between points on the globe
-This subroutine implements the haversine distance formula. Like `gh_dist`, it also takes units ("mi", "km", "ft", "m"), and will return the distance in miles if no other information is given.
+This subroutine implements the haversine distance formula. Like `gh_dist`, it also takes units ("mi", "km", "ft", "m"), and will return the distance in kilometers if no other information is given.
 
 ```bash
-$ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762, "km"'
+$ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
 10426.7380460312
 ```
 
