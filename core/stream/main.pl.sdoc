@@ -36,7 +36,7 @@ $ni::main_operator = sub {
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec conf 'pager' or
-                        exec 'less' or exec 'more' or sio};
+                        exec 'less', '-u' or exec 'more' or sio};
     sforward \*STDIN, $pager_fh;
     close $pager_fh;
     $pager_fh->await;
