@@ -136,15 +136,15 @@ to race conditions while a graph update is being propagated).
 bug](https://stackoverflow.com/questions/18969702/perl-strange-behaviour-on-unpack-of-floating-value#19404928)
 makes it impossible to use portably.
 
-L3 encoding introduces 20 bytes of overhead.
+L3 encoding introduces 44 bytes of overhead.
 
 ```
-source_address: 32 bits
-dest_address:   32 bits
-win:            32 bits, UBE  # μw
-df_dt:          32 bits, UBE  # μf/s
-dcost:          32 bits, UBE  # μf incurred by dropping the packet
-data:        <variable>
+source_address: 128 bits
+dest_address:   128 bits
+win:             32 bits, UBE  # μw
+df_dt:           32 bits, UBE  # μf/s
+dcost:           32 bits, UBE  # μf incurred by dropping the packet
+data:         <variable>
 ```
 
 ### Intent and drop cost
@@ -162,38 +162,6 @@ are most security features like SYN cookies, since although remotes can be
 byzantine it's acceptable for them to initiate DoS attacks or otherwise degrade
 performance.
 
-### Sender states
-- Incomplete: we haven't received a `state()` that indicates all pieces have
-  been received.
-- Complete: we've received a finalizing `state()` packet and know that the
-  message is delivered. The message can be deallocated.
-
-**TODO:** state checking and packet recovery
-
-### Receiver states
-The receiver maintains a window of message IDs mentioned by a given sender,
-which ultimately fall into the same states that the sender has:
-
-- Incomplete: we need more pieces to complete the message (or we don't know
-  anything about the message).
-- Complete: we've received everything we need and can ignore further mentions
-  of the message.
-
-**TODO:** state checking/packet recovery
-
-### Packet types
-- `piece(n, i, x)`: send piece `i` as data `x`
-- `abort()`: notify receiver that sender is canceling the message
-- `check()`: request `state` reply
-- `state(n, bits)`: indicate which pieces of a message have been received
-
-### Message IDs
-Each packet contains a 64-bit message ID namespaced to the sender/receiver
-pair, and monotonic. The format of the message ID is:
-
-```
-[32 bits: time() >> 2] [32 bits: message_count]
-```
-
-The message count is reset each time `time() >> 2` changes; this gives ni
-enough namespacing throughput to generate 750Gbps of packet overhead traffic.
+**TODO:** Streams-as-multi-messages could be useful here, particularly if L4 is
+aware of temporary graph cuts and can recover upon reconnect. This would be
+similar to a highly-durable TCP stream over VPN.
