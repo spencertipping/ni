@@ -618,19 +618,19 @@ lazytest_case 'ni 1p'\''r ghb "95qc"'\''
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=661
-lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv", km'\''
+lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv", mi'\''
 ' 3<<'LAZYTEST_EOF'
-1.99516661267524
+1.23981551084308
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=668
 lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv"'\''
 ' 3<<'LAZYTEST_EOF'
-1.23981551084308
+1.99516661267524
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=677
-lazytest_case 'ni 1p'\''lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762, "km"'\''
+lazytest_case 'ni 1p'\''lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'\''
 ' 3<<'LAZYTEST_EOF'
 10426.7380460312
 LAZYTEST_EOF

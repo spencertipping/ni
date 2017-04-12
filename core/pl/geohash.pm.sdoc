@@ -122,16 +122,16 @@ sub to_radians {
 }
 
 sub earth_radius_in_units {
-  if ($_[0] eq "mi") {
-    3959} elsif ($_[0] eq "km") {
-    6371} elsif ($_[0] eq "m") {
+  if ($_[0] eq "km") {
+    6371} elsif ($_[0] eq "mi") {
+    3959} elsif ($_[0] eq "m") {
     6371E3} elsif ($_[0] eq "ft") {
     20903520 }  #3959 * 5280
      else { -1 }
 }
 
 sub lat_lon_dist {
-  my $units = @_ == 4 ? "mi" : pop;
+  my $units = @_ == 4 ? "km" : pop;
   my ($lat1, $lon1, $lat2, $lon2) = @_;
   my $earth_radius = earth_radius_in_units $units;
   my $phi1 = to_radians $lat1;
@@ -145,6 +145,6 @@ sub lat_lon_dist {
 
 sub gh_dist {
   my @lat_lons;
-  push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "mi");
+  push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
