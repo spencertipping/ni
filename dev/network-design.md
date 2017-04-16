@@ -13,6 +13,9 @@ provision instances and linkages to converge to that state. So ni doesn't have
 any particular obligation to discover existing linkages, beyond verifying that
 they work at all.
 
+**TODO:** Rewrite most or all of this: networking can be much more top-down
+polymorphic than is described here.
+
 ## Point-to-point links (L2)
 ni transmits level-2 frames over three types of channels:
 
@@ -116,8 +119,8 @@ associated with them. We need to store the following header data:
 - TTL (don't forward if blocked for longer than this amount of time)
 
 TTL is represented jointly by the quantities `Δf/Δt` and packet-specific win.
-If `Δf/(Δt * delay) > win - transmit_fail`, then the packet is dropped because
-it has become a net loss.
+If `delay * Δf/Δt > win - transmit_fail`, then the packet is dropped because it
+has become a net loss.
 
 ### Routing
 Each node chooses how to get incoming packets closer to their destination, and
@@ -154,14 +157,14 @@ minimizes the total drop cost of the packets it drops.
 
 See [intent-design.md](intent-design.md) for details.
 
-## Reliable finite-message transport (L4)
-ni communicates primarily using _messages_, not _streams_. This means that
-TCP/IP is overkill; what we really need is a protocol that provides TCP's
-durability for finite-length messages. The SYN/ACK handshake is unnecessary, as
-are most security features like SYN cookies, since although remotes can be
-byzantine it's acceptable for them to initiate DoS attacks or otherwise degrade
-performance.
+## Reliable message transport (L4)
+Sends a finite message reliably to a recipient reliably. This protocol manages
+packet splitting, replacing dropped packets, and confirming that a message was
+received. This is a unidirectional protocol: there isn't a special provision
+made for replying to a message or maintaining a message stream (i.e. it's much
+lower-level than TCP).
 
-**TODO:** Streams-as-multi-messages could be useful here, particularly if L4 is
-aware of temporary graph cuts and can recover upon reconnect. This would be
-similar to a highly-durable TCP stream over VPN.
+Messages are encoded similarly to [Torrent
+files](https://en.wikipedia.org/wiki/Torrent_file): each message is split into
+packet-sized pieces (usually between 512B and 32KB) and each piece is
+MD5-hashed. 
