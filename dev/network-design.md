@@ -16,6 +16,12 @@ they work at all.
 **TODO:** Rewrite most or all of this: networking can be much more top-down
 polymorphic than is described here.
 
+## Pending rewrite
+- No need for a wire protocol: we can have short-message unreliable RMI at the
+  OO level, then point-to-point links.
+- No need for end-to-end protocol stacking: semi-autonomous nodes can locally
+  optimize if everyone is aware of the protocol (which they would be).
+
 ## Point-to-point links (L2)
 ni transmits level-2 frames over three types of channels:
 
