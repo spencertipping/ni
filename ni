@@ -10945,10 +10945,10 @@ buffered:
 ```bash
 $ ni n1000000 :a-million-things-2 r5
 1
-10
-100
-1000
-10000
+2
+3
+4
+5
 $ wc -l < a-million-things-2
 1000000
 ```
