@@ -59,21 +59,16 @@ $ wc -l < a-million-things
 1000000
 ```
 
-If you weren't planning to sort your data, though, a better alternative is to
-use `B`, the buffering operator, with a null buffer:
+More idiomatic, though, is to convert `=\>` to a checkpoint, which is fully
+buffered:
 
-```sh
-# UPDATE: this no longer works reliably; it depends on which signal is used to
-# kill the pipeline. This will be fixed when I merge r/oo into develop.
-$ ni n1000000 =\>a-million-things Bn r5
+```bash
+$ ni n1000000 :a-million-things-2 r5
 1
-2
-3
-4
-5
-$ wc -l < a-million-things
+10
+100
+1000
+10000
+$ wc -l < a-million-things-2
 1000000
 ```
-
-The null buffer has no storage overhead; it just forwards data as it arrives
-and ignores broken pipes.

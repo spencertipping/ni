@@ -3575,20 +3575,24 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl.sdoc
-22 core/checkpoint/checkpoint.pl.sdoc
+26 core/checkpoint/checkpoint.pl.sdoc
 Checkpoint files.
 You can break a long pipeline into a series of smaller files using
 checkpointing, whose operator is `:`. The idea is to cache intermediate
 results. A checkpoint specifies a file.
 
+Checkpoints are fully buffered before emitting output.
+
 sub checkpoint_create($$) {
-  stee sni(@{$_[1]}), swfile "$_[0].part", siproc {sdecode};
+  sforward sni(@{$_[1]}), swfile "$_[0].part";
   rename "$_[0].part", $_[0];
 }
 
 defoperator checkpoint => q{
   my ($file, $generator) = @_;
-  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
+  sio;
+  checkpoint_create $file, $generator unless -r $file;
+  scat $file;
 };
 
 defmetaoperator inline_checkpoint => q{
@@ -10873,7 +10877,7 @@ The view angle can be panned, rotated, and zoomed:
 - **mouse drag:** pan
 - **shift + drag:** 3D rotate
 - **ctrl + drag, alt + drag, mousewheel:** zoom
-79 doc/warnings.md
+74 doc/warnings.md
 # Things to look out for
 ![img](http://spencertipping.com/ni.png)
 
@@ -10935,22 +10939,17 @@ $ wc -l < a-million-things
 1000000
 ```
 
-If you weren't planning to sort your data, though, a better alternative is to
-use `B`, the buffering operator, with a null buffer:
+More idiomatic, though, is to convert `=\>` to a checkpoint, which is fully
+buffered:
 
-```sh
-# UPDATE: this no longer works reliably; it depends on which signal is used to
-# kill the pipeline. This will be fixed when I merge r/oo into develop.
-$ ni n1000000 =\>a-million-things Bn r5
+```bash
+$ ni n1000000 :a-million-things-2 r5
 1
-2
-3
-4
-5
-$ wc -l < a-million-things
+10
+100
+1000
+10000
+$ wc -l < a-million-things-2
 1000000
 ```
-
-The null buffer has no storage overhead; it just forwards data as it arrives
-and ignores broken pipes.
 __END__

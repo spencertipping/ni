@@ -41,7 +41,9 @@
 ## IMPLEMENTATION
 	
 	  my ($file, $generator) = @_;
-	  sio; -r $file ? scat $file : checkpoint_create $file, $generator;
+	  sio;
+	  checkpoint_create $file, $generator unless -r $file;
+	  scat $file;
 
 # OPERATOR col_average
 
