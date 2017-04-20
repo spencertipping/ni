@@ -1,8 +1,8 @@
 {
-  "classes": 37,
-  "image_size": 130274,
-  "metaclasses": 35,
-  "named_entities": 237,
+  "classes": 38,
+  "image_size": 131382,
+  "metaclasses": 36,
+  "named_entities": 240,
   "tests": {
     "failed": null,
     "passing": 17,
@@ -81,6 +81,7 @@
     "ni:/semantic/task"
   ],
   "untested": [
+    "ni:/fabric/native",
     "ni:/io/file_update_fd",
     "ni:/io/null",
     "ni:/io/object",

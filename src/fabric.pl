@@ -21,4 +21,4 @@ ni('ni:/module')->new('/fabric')
       dependencies are indirected through a name table.]);
 
 ni->extend("src/fabric/$_") for
-  qw/ /;
+  qw/ native /;

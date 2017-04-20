@@ -836,51 +836,48 @@ void chacha20_decrypt(chacha20_ctx *ctx, const uint8_t *in, uint8_t *out, size_t
   chacha20_encrypt(ctx, in, out, length);
 }
 
+#define ENCRYPT_PACKET 0
+#define DECRYPT_PACKET 1
+
+typedef struct
+{
+  uint8_t type;
+  uint8_t size_high;
+  uint8_t size_low;
+} command_header;
+
+void encrypt_packet(uint8_t *buf, ssize_t n)
+{
+  
+}
+
+/*
+ * NB: this is the wrong way to do it; generalize to native RMI so we can use C
+ * as a JIT target from perl
+ */
 int main(int argc, char **argv)
 {
-  if (poly1305_power_on_self_test())
-    fprintf(stderr, "poly1305 POST pass\n");
-  else
+  command_header h;
+  ssize_t n;
+  uint8_t buffer[65536];
+
+
+  if (!poly1305_power_on_self_test())
   {
-    fprintf(stderr, "poly1305 failed POST\n");
-    exit(1);
+    fprintf(stderr, "native encryption backend: poly1305 failed self-test\n");
+    return 2;
   }
 
-  if (argc == 2 && !strcmp(argv[1], "--test"))
+  while (fread(&h, sizeof(h), 1, stdin))
   {
-    char buf[8192];
-    char enc[8192];
-    char mac1[16];
-    char mac2[16];
-    char key[32];
-    char nonce[8];
-    chacha20_ctx cc;
-
-    memset(key, 0, sizeof(key));
-    memset(nonce, 0, sizeof(nonce));
-
-    ssize_t n;
-    while ((n = fread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
+    n = size_high << 8 | size_low;
+    if (!fread(buffer, n, 1, stdin))
     {
-      chacha20_setup(&cc, key, sizeof(key), nonce);
-      poly1305_auth(mac1, buf, n, key);
-      printf("P[%ld: %s]\n", n, buf);
-      chacha20_encrypt(&cc, buf, enc, n);
-      printf("E[%ld: ", n);
-      for (int i = 0; i < n; ++i) printf("%02X", enc[i] & 0xff);
-      printf("]\n");
-
-      chacha20_setup(&cc, key, sizeof(key), nonce);
-      chacha20_decrypt(&cc, enc, buf, n);
-      printf("D[%ld: %s]\n", n, buf);
-      poly1305_auth(mac2, buf, n, key);
-      if (poly1305_verify(mac1, mac2))
-        printf("verified\n");
-      else
-        printf("verification FAILED\n");
+      fprintf(stderr, "native crypto: partial input packet\n");
+      return 1;
     }
+
   }
 
-  /* Incoming FDs 3 and 4 represent the UDP socket and UNIX dgram socket,
-   * respectively. */
+  return 0;
 }
