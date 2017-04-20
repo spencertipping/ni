@@ -850,6 +850,8 @@ int main(int argc, char **argv)
   {
     char buf[8192];
     char enc[8192];
+    char mac1[16];
+    char mac2[16];
     char key[32];
     char nonce[8];
     chacha20_ctx cc;
@@ -861,6 +863,7 @@ int main(int argc, char **argv)
     while ((n = fread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
     {
       chacha20_setup(&cc, key, sizeof(key), nonce);
+      poly1305_auth(mac1, buf, n, key);
       printf("P[%ld: %s]\n", n, buf);
       chacha20_encrypt(&cc, buf, enc, n);
       printf("E[%ld: ", n);
@@ -870,6 +873,11 @@ int main(int argc, char **argv)
       chacha20_setup(&cc, key, sizeof(key), nonce);
       chacha20_decrypt(&cc, enc, buf, n);
       printf("D[%ld: %s]\n", n, buf);
+      poly1305_auth(mac2, buf, n, key);
+      if (poly1305_verify(mac1, mac2))
+        printf("verified\n");
+      else
+        printf("verification FAILED\n");
     }
   }
 
