@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -835,9 +836,43 @@ void chacha20_decrypt(chacha20_ctx *ctx, const uint8_t *in, uint8_t *out, size_t
   chacha20_encrypt(ctx, in, out, length);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+  if (poly1305_power_on_self_test())
+    fprintf(stderr, "poly1305 POST pass\n");
+  else
+  {
+    fprintf(stderr, "poly1305 failed POST\n");
+    exit(1);
+  }
+
+  if (argc == 2 && !strcmp(argv[1], "--test"))
+  {
+    char buf[8192];
+    char enc[8192];
+    char key[32];
+    char nonce[8];
+    chacha20_ctx cc;
+
+    memset(key, 0, sizeof(key));
+    memset(nonce, 0, sizeof(nonce));
+
+    ssize_t n;
+    while ((n = fread(buf, sizeof(char), sizeof(buf), stdin)) > 0)
+    {
+      chacha20_setup(&cc, key, sizeof(key), nonce);
+      printf("P[%ld: %s]\n", n, buf);
+      chacha20_encrypt(&cc, buf, enc, n);
+      printf("E[%ld: ", n);
+      for (int i = 0; i < n; ++i) printf("%02X", enc[i] & 0xff);
+      printf("]\n");
+
+      chacha20_setup(&cc, key, sizeof(key), nonce);
+      chacha20_decrypt(&cc, enc, buf, n);
+      printf("D[%ld: %s]\n", n, buf);
+    }
+  }
+
   /* Incoming FDs 3 and 4 represent the UDP socket and UNIX dgram socket,
    * respectively. */
-  
 }
