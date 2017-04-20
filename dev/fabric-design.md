@@ -12,7 +12,17 @@ recipient's pre-shared key.
    all instances are aware of trust domains.
 4. Connection unreliability should be invisible to running workflows (i.e. it
    should look like a slow/paused link, not generate SIGPIPE).
-5. Classes can change while an instance is running.
+5. Classes can change while a ni instance is running.
 6. The mechanism used to provision a ni instance is as secure as the remote
    it's running on (e.g. SSH). This assumption is required in order to use
-   PSKs, and it's a reasonable thing to assume.
+   PSKs, and it's a reasonable design requirement.
+
+Q: Is it worth using the fabric as a substrate to run jobs, but leave the jobs
+   themselves generalized? So fabric is strictly a connectivity layer.
+
+Handoff is "fabric node" that is itself a member of the network; it manages
+state, sends/receives messages. Some messages are handled as RMI. Probably
+atomic messages + IO, fabric nodes encapsulate all required retry logic.
+
+Q: How to handle mixed-security connections? (secure provisioning connection
+   like SSH, insecure data stuff). We need end-to-end encryption anyway.
