@@ -26,3 +26,13 @@ atomic messages + IO, fabric nodes encapsulate all required retry logic.
 
 Q: How to handle mixed-security connections? (secure provisioning connection
    like SSH, insecure data stuff). We need end-to-end encryption anyway.
+
+Two security tiers:
+
+1. "You know my VLAN key, so you can ask me to forward traffic for you"
+   (link-level)
+2. "You know my RMI key, so you can interact with objects I own"
+   (connection-level)
+
+Two base networking levels: link-layer (L2) and network-layer (L3). Connections
+managed by the fabric driver. No source routing.
