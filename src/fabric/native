@@ -3,13 +3,15 @@ ni('ni:/object')->child('/fabric/native')
   ->synopsis(q[
     my $n = ni('ni:/fabric/native')
       ->new
-      ->defmethod('identity', ['long'], ['long'], q{
+      ->def('identity', ['long'], ['long'], q{
         /* todo this is awful */
       })
-      ->defmethod('f', 
-    print "f(10) = " . $n->f(10) . "\n";
-    ])
+      ->def('f', ...)
+      ->start;
+    print "f(10) = " . $n->f(10) . "\n";])
+
   ->description(
     q[Compiles a binary that interfaces with Perl to support calls to the
-      specified methods. Communication happens over a socket pair.])
+      specified methods. Communication happens over a socket pair, and is done
+      using packed values.])
   ->end;
