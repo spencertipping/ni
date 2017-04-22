@@ -1,0 +1,26 @@
+#!/usr/bin/env perl
+use Benchmark qw/:all/;
+
+my $data = 'x' x 10000;
+
+cmpthese 20000, {
+  pull_substr_10 => sub {
+    my $x = 0;
+    $x += length substr($data, $_, 10) for 1..1000;
+  },
+
+  pull_substr_100 => sub {
+    my $x = 0;
+    $x += length substr($data, $_, 100) for 1..1000;
+  },
+
+  pull_substr_1000 => sub {
+    my $x = 0;
+    $x += length substr($data, $_, 1000) for 1..1000;
+  },
+
+  pull_substr_5000 => sub {
+    my $x = 0;
+    $x += length substr($data, $_, 5000) for 1..1000;
+  },
+};

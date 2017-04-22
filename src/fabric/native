@@ -3,6 +3,7 @@ ni('ni:/object')->child('/fabric/native')
   ->synopsis(q[
     my $n = ni('ni:/fabric/native')
       ->new
+      ->lib(q[C code...])
       ->def('identity', ['long'], ['long'], q{
         /* todo this is awful */
       })
