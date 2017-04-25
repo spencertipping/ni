@@ -75,3 +75,49 @@ clear that this is particularly simple or worthwhile.
 Another argument against Q2: packet loss is used for flow control. We don't
 necessarily want meta-updates to compete directly with other L4 traffic -- i.e.
 we'd want independent prioritization using QoS or similar.
+
+How about transient branches? Just because connection state != instance state
+doesn't mean we can't use commits to advance streams. Transience also implies
+sender-locality: the branch isn't mentioned in global state announcements.
+
+This has some nice advantages, including the usual stream polymorphism we get
+from normal branch processing. Streams could be represented as code, or as data
+that gets consed into something (or as data that gets streamed into some kind
+of reduction). Remote update is just a code stream that doesn't have a defined
+ending; though this notion conflicts with Q1, since there isn't an obvious way
+to implement merges on top of multiple L4 streams -- at least, not at the
+protocol layer.
+
+A simple answer would be to manage remote branches independently and forget
+about merged signature stuff.
+
+Something's wrong with the branch model: suppose there's a merge-point in the
+history. Then we've got shared commits, but multiple branch points. So state is
+a DAG. But we don't merge things, which means commits would need to have joint
+dependencies -- leaving the commit order unspecified. Is that technically
+correct?
+
+Sure, it could be. It's also potentially useful: streams are singly-linked
+dependent structures -- so a commit can be applied once all of its dependencies
+are present.
+
+One possible issue: how do we allow retroactive branching without storing all
+historical commit IDs? Might need to mark commits as being linear so the remote
+is at liberty to discard them. That's a nice abstraction, actually: commits
+have _reference dispositions_ that hint about future references. Some are
+fully transient, some linear, and some branched -- perhaps with an expiration
+time. (And maybe future commits can update the reference disposition of past
+ones, which might be a more productive model to use.)
+
+...so if we have a stream, EOF would be a commit whose reference disposition
+was transient. Intermediate commits to the stream would have reference
+dispositions that indicated "ping if no update within X time." ACKs carry
+stream state; then the sender can reference future packets wrt confirmed
+receipt: "it's commit X plus three" -- so the recipient can bit-vector SACK
+against a partial stream.
+
+Commits also make it easy to use things like files as transport-layer devices.
+We could tell a remote, "read a bunch of commits from this thing; here's the
+anchor point, ignore other stuff" and the DAG connector would selectively cons
+or ignore. That would just be wire-format to/from a file or other arbitrary
+stream.
