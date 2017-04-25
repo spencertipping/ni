@@ -64,6 +64,10 @@ ni('ni:/io/object.c')->def('/io/object.c_transfer_def.b',
       });
   });
 
+# TODO: this is terrible.
+# Just use a "deftransfer" toplevel function that produces lower-level code
+# snippets. The state space of classes/metaclasses isn't complicated enough to
+# justify having heavy metaclasses instead of abstraction erasure.
 ni('ni:/io/transfer.c')->def('/io/transfer.c_into.b',
   ctor => fn q{
     my $self = shift;
