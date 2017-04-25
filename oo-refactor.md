@@ -111,13 +111,16 @@ ones, which might be a more productive model to use.)
 
 ...so if we have a stream, EOF would be a commit whose reference disposition
 was transient. Intermediate commits to the stream would have reference
-dispositions that indicated "ping if no update within X time." ACKs carry
-stream state; then the sender can reference future packets wrt confirmed
-receipt: "it's commit X plus three" -- so the recipient can bit-vector SACK
-against a partial stream.
+dispositions that indicated "ACK if no update within X time." ACKs carry stream
+state; then the sender can reference future packets wrt confirmed receipt:
+"it's commit X plus three" -- so the recipient can bit-vector SACK against a
+partial stream.
 
 Commits also make it easy to use things like files as transport-layer devices.
 We could tell a remote, "read a bunch of commits from this thing; here's the
 anchor point, ignore other stuff" and the DAG connector would selectively cons
 or ignore. That would just be wire-format to/from a file or other arbitrary
 stream.
+
+Security: commit IDs are hash(content + deps + instance key); instances reject
+commits with invalid IDs. "Instance key" is polymorphic etc etc.
