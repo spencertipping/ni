@@ -420,11 +420,162 @@ $ ni nE4 fAAA ,aA ,sB, ,dC r~1
 ```
 
 
-##Geographic and Time Perl Functions
+##Streaming Reduce
+In earlier drafts of `ni` by example, streaming reduce had a much greater role; however, with time I've found that most operations that are done with streaming reduce are more simply performed using buffered readahead; moreover, buffered readahead.  Streaming reduce is still useful and very much worth knowing as an alternative, highly flexible, constant-space set of reduce methods in Perl.
+
+Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort and reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
+
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
+
+### `sr`: Reduce over entire stream
+
+Let's look at a simple example, summing the integers from 1 to 100,000: 
+
+```bash
+$ ni n1E5p'sr {$_[0] + a} 0'
+5000050000
+```
+
+Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
+ 
+ ```
+@final_state = sr {reducer} @init_state
+```
+
+To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
+
+```bash
+$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55	3628800	12345678910
+```
+A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
+
+
+### `se`: Reduce while equal
+`sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
+
+Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
+
+What we'd like to do is, each time a number streams in, to check if it  number of digits is equal to the number of digits for the previous number we saw in the stream. If it does, we'll add it to a running total, otherwise, we emit the running total to the output stream and start a new running total.
+
+In `ni`-speak, the reduce-while-equal operator looks like this:
+
+```
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
+
+**NOTE**: The comma after `partition_fn` is important.
+
+```bash
+$ ni n1000p'se {$_[0] + a} sub {length}, 0'
+45
+4905
+494550
+1000
+```
+
+That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
+
+```bash
+$ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
+
+If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
+
+```bash
+$ ni n1000p'sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
+
+
+###`sea` through `seq`: Reduce with partition function `a()...q()`
+
+It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
+
+```bash
+$ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+`ni` offers a shorthand for reducing over a particular column and everything to
+its left:
+
+```bash
+$ ni n1000p'r length a, a' p'r a, sea {$_[0] + b} 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+
+### `rc`: Compound reduce
+
+Consider the following reduction operation, which computes the sum, mean, min and max.
+
+```bash
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[3], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
+```
+
+For common operations like these, `ni` offers a shorthand:
+
+```bash
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+5050	50.5	1	100
+```
+
+
+##`ni`-specific Perl Functions
+This section collects a number of utility functions that are used within a Perl mapper, but are specific to `ni`.
+
+### I/O Functions
+
+#### `wf`: write to file
+
+* `wf $filename, @lines`: write `@lines` to a file called `$filename`
+
+```
+$ ni i[e 1] i[e 2] i[f 1] p'wf a, b_ rea'
+e
+f
+$ ni a
+e   1
+e   2
+$ ni b
+f   1
+```
+
+#### `af`: append to file
+
+```
+```
+
+
+### Geographic Perl Functions
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these operators work only inside a Perl mapper context (`p'...'`).
  
 
-###`ghe`: geohash encoding
+#### `ghe`: geohash encoding
 Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
 
 The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
@@ -474,9 +625,7 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
 9q5cc25tw
 ```
 
-
-
-###`ghd`: geohash decoding
+#### `ghd`: geohash decoding
 
 `ni` provides two prototypes for geohash decoding:
 
@@ -495,8 +644,44 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe a, b'
 $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 34.0584754943848	-118.416652679443
 ```
+
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
+
+```bash
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
+```
+
+#### `gh_dist`: distance between geohash centroids
+It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+1.23981551084308
+```
+
+When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+1.99516661267524
+```
+
+
+#### `lat_lon_dist`: distance between points on the globe
+This subroutine implements the haversine distance formula. Like `gh_dist`, it also takes units ("mi", "km", "ft", "m"), and will return the distance in kilometers if no other information is given.
+
+```bash
+$ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
+10426.7380460312
+```
+
+
+###Time Perl Functions
     
-### `tpe`: time parts to epoch
+#### `tpe`: time parts to epoch
 `tpe(@time_pieces)`: Returns the epoch time in GMT (see important note below)
 and assumes that the pieces are year, month, day, hour, minute, and second, 
 in that order. 
@@ -519,7 +704,7 @@ This will result in your code giving the local time rather than GMT; use
 `Cubuntu[...]` for the expected behavior.
 
 
-### `tep`: time epoch to parts
+#### `tep`: time epoch to parts
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
 
@@ -530,7 +715,7 @@ $ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
-### `timezone_seconds`: approximately convert epoch to local time
+#### `timezone_seconds`: approximately convert epoch to local time
 
 `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
@@ -544,21 +729,45 @@ $ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = tim
 This correction cuts the globe into 4-minute strips by degree of longitude.
 It is meant for approximation of local time, not the actual time.
 
-##More Perl for `ni`
+
+
+## More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.
 
-###Useful function list
+### Useful subroutines
 
 You've probably come across most of these already, but I'd feel remiss if I didn't put these down somewhere.
 
-* `lc`: lowercase
-* `uc`: uppercase
-* `substr`: slice a string using a function (you can also slice with a regex)
-* `split`: split a string into a list
-* `join`: join a list into a string
-* `**`: exponent
+
+####String subroutines
+
+* `lc($s)`: lowercase `$s`
+* `uc($s)`: uppercase `$s`
+* `split(/regex/, $s)`: split a `$s` into a list based on `/regex/`
+* `join($sep, @lst)`: join a list into a string, separated by the string `$sep`
+* `substr($s, $offset, $length)`: The behavior of `substr` is a little tricky if you have a Python background:
+  * If `$offset` is positive, then the start position of the substring will be that position in the string, starting from an index of zero;
+  * If `$offset` is negative, then the start position of the substring will be `$offset` charaters from the end of the string.
+  * If `$length` is positive, the output substring will take (up to) `$length` characters.
+  * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
+ 
+
+
+####Hash subroutines
+
 * `keys %h`: get keys from hash
 * `values %h`: get values from hash
+
+
+####Math subroutines
+
+* `**`: exponent
+
+###Useful variables
+
+####`%ENV`: Hash of Environment Variables
+
+This is way easier to access than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`. Also, it's good to note here that you can more than likely get away with referencing the variable you want using a bareword (unquoted string) rather than a quoted string.
 
 ### Regular Expressions
 If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
@@ -651,50 +860,7 @@ $ ni iabcdefgh p's/abc/ABC/r'
 ABCdefgh
 ```
 
-###`map`
 
-`map` takes two arguments, a block of code and a perl array, and returns an array.
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r @v'
-aa	bb	cc	dd	ee	ff	gg	hh
-```
-
-This code is complicated if you haven't been exposed to the syntax before, so let's break it down.
-
-The block that `map` is using is easy to spot--it's some code wrapped in curly braces, so that's `{$_ x 2}`. Because a `map` block will operate on one argument at a time, we refer to that argument as `$_` (unlike subroutine syntax, which takes its arguments in the array `@_`). The `$_` within the block is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
-
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
-abcdefgh
-```
-
-Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
-
-```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; r @v'
-aa	bb	cc	dd	ee	ff	gg	hh
-```
-
-Another facet of the map syntax is that there is no comma between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
-
-###`for`
-`for` is similar to map, however, it has no return value, thus it is usually used with `r` to pop values out.
-
-```bash
-$ ni iabcdefgh p'r $_ x 2 for split //'
-aa
-bb
-cc
-dd
-ee
-ff
-gg
-hh
-```
-
-This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
 
 ###`use strict` and the `::` prefix within `p'...'`
 

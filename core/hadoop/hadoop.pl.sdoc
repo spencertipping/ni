@@ -69,7 +69,7 @@ sub hdfs_input_path {
   local $_;
   my $n;
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
-  if (/^hdfs\w*:\/\//) {
+  if (/^\w+:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
     s/^hdfst:/hdfs:/gm;
     (0, map [split /\t/], grep length, split /\n/);

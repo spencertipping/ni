@@ -259,16 +259,16 @@ its prior behavior:
 ```bash
 $ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
 1	1	a
-2	1	a
-1	2	a
-2	2	a
-1	3	a
-2	3	a
 1	1	b
-2	1	b
+1	2	a
 1	2	b
-2	2	b
+1	3	a
 1	3	b
+2	1	a
+2	1	b
+2	2	a
+2	2	b
+2	3	a
 2	3	b
 ```
 
@@ -300,6 +300,9 @@ remains equal. (Mnemonic is "stream while equal".)
 @final_state = se {reducer} \&partition_fn, @init_state
 ```
 
+**NOTE**: There is _no comma_ between the reducer and the partition function.
+
+
 For example, to naively get a comma-delimited list of users by login shell:
 
 ```bash
@@ -310,7 +313,12 @@ $ ni /etc/passwd F::gGp'r g, se {"$_[0]," . a} \&g, ""'
 /bin/sync	,sync
 ```
 
-`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`.
+`se` has shorthands for the first 17 columns: `sea`, `seb`, ..., `seq`; they are called as:
+
+```pl
+@final_state = sea {reducer} @init_state
+```
+
 
 ## Compound reducers
 If you want to do something like calculating the sum of one column, the average

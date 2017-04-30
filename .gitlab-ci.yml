@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ni-alpine:
   image: spencertipping/ni-env-alpine
   script:
@@ -118,3 +119,41 @@ ni-ubuntu-16.10-minimal:
   image: spencertipping/ni-env-ubuntu-16.10-minimal
   script:
     - grep perl ni > /dev/null && ./ni --internal/test
+=======
+alpine:
+  image: spencertipping/ni-env-dev-alpine
+  script:
+    - ./test --ci
+centos-5:
+  image: spencertipping/ni-env-dev-centos-5
+  script:
+    - ./test --ci
+centos-6:
+  image: spencertipping/ni-env-dev-centos-6
+  script:
+    - ./test --ci
+debian-wheezy:
+  image: spencertipping/ni-env-dev-debian-wheezy
+  script:
+    - ./test --ci
+ubuntu-12.04:
+  image: spencertipping/ni-env-dev-ubuntu-12.04
+  script:
+    - ./test --ci
+ubuntu-14.04:
+  image: spencertipping/ni-env-dev-ubuntu-14.04
+  script:
+    - ./test --ci
+ubuntu-16.04:
+  image: spencertipping/ni-env-dev-ubuntu-16.04
+  script:
+    - ./test --ci
+ubuntu-16.04-p3:
+  image: spencertipping/ni-env-dev-ubuntu-16.04-p3
+  script:
+    - ./test --ci
+ubuntu-16.10:
+  image: spencertipping/ni-env-dev-ubuntu-16.10
+  script:
+    - ./test --ci
+>>>>>>> bb4e63496a340a14e613acb546cd1fba2734d5ee

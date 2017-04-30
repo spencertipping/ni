@@ -25,7 +25,39 @@ envs=( alpine        alpine-minimal
 
 build_ni_stuff() { ./build >/dev/null; }
 
-image() { docker build -q -f env/$1 -t ni/env-$1 .; }
+markdowns=( $(ls doc | sed 's/.md$//' ) )
+
+generate_gitlab_ci() {
+  for e in ${envs[@]}; do
+    echo "$e:"
+    echo "  image: spencertipping/ni-env-dev-$e"
+    echo "  script:"
+    echo "    - ./test --ci"
+  done
+}
+
+generate_gitlab_ci > .gitlab-ci.yml
+
+if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
+  test_set=$2
+  shift 2
+fi
+
+build_tests() {
+  {
+    echo cd /tmp
+    echo export NI_NO_MONITOR=yes
+    ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
+  } > dev/tests.sh
+}
+
+build_ni_stuff() {
+  ./build
+  build_tests
+}
+
+tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
+image() { docker build -q -f env/$1 -t spencertipping/ni-env-dev-$1 .; }
 
 default_image=ubuntu-16.04
 

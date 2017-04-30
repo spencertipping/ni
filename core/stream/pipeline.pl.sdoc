@@ -174,14 +174,14 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? ["gzip -dc"]
-              : /^BZh[1-9\0]/           ? ["pbzip2 -dc", "bzip2 -dc"]
-              : /^\x89\x4c\x5a\x4f/     ? ["lzop -dc"]
-              : /^\x04\x22\x4d\x18/     ? ["lz4 -dc"]
-              : /^\xfd\x37\x7a\x58\x5a/ ? ["xz -dc"] : undef;
+  my $decoder = /^\x1f\x8b/             ? "gzip -dc || cat"
+              : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
+              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
+              : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
 
   if (defined $decoder) {
-    my $o = siproc {sh $_ for @$decoder};
+    my $o = siproc {exec $decoder};
     safewrite $o, $_;
     sforward \*STDIN, $o;
     close $o;

@@ -102,12 +102,15 @@ and stateless; to the extent that it depends on objects, these
 dependencies are indirected through a name table.#;$c1=[$i,$X,$Y,$Z];$d1=[$c1];$e1=q#/fabric#;$f1=bless({$e,$d1,$Q,$e1},$S);$g1=q#ni.doc:/fabric/native#;$h1=q#
 my $n = ni('ni:/fabric/native')
   ->new
-  ->defmethod('identity', ['long'], ['long'], q{
+  ->lib(q[C code...])
+  ->def('identity', ['long'], ['long'], q{
     /* todo this is awful */
   })
-  ->defmethod('f', 
+  ->def('f', ...)
+  ->start;
 print "f(10) = " . $n->f(10) . "\\n";#;$i1=[$f,$h1];$j1=q#Compiles a binary that interfaces with Perl to support calls to the
-specified methods. Communication happens over a socket pair.#;$k1=[$i,$j1];$l1=[$i1,$k1];$m1=q#/fabric/native#;$n1=bless({$e,$l1,$Q,$m1},$S);$o1=q#ni.doc:/io#;$p1=q#An implementation of IO in terms of system-level FDs. We need this for a
+specified methods. Communication happens over a socket pair, and is done
+using packed values.#;$k1=[$i,$j1];$l1=[$i1,$k1];$m1=q#/fabric/native#;$n1=bless({$e,$l1,$Q,$m1},$S);$o1=q#ni.doc:/io#;$p1=q#An implementation of IO in terms of system-level FDs. We need this for a
 few reasons, three of them being that (1) old versions of Perl don't
 correctly handle interrupted system calls, (2) we want tighter control
 over which FDs are closed at what times, and (3) we want to be able to

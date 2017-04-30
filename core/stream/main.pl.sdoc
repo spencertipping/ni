@@ -3,7 +3,7 @@ use POSIX ();
 our $pager_fh;
 our $handling_pipe;
 
-defconfenv 'pager', NI_PAGER => 'less';
+defconfenv 'pager', NI_PAGER => 'less -u';
 
 sub child_status_ok($) {
   $_[0] == 0                    # ok exit status

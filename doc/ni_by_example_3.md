@@ -58,7 +58,6 @@ $ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
 ```
 
-
 ###Sigils
 
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
@@ -140,18 +139,8 @@ Note that in these examples, a new function will be defined for every line in th
 ###Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
 
-Consider the spell `ni n20p'/^(\d)\d*$/'`:
-
-
-It looks like the Perl snippet is using a regular expression to take the first digit of a number. What's not clear is which number it's using. Looking at the output:
-
 ```bash
-$ ni n20p'/^(\d)\d*$/'
-1
-2
-3
-4
-5
+$ ni n15 r-5 p'/^(\d)\d*$/'
 6
 7
 8
@@ -162,54 +151,181 @@ $ ni n20p'/^(\d)\d*$/'
 1
 1
 1
-1
-1
-1
-1
-2
 ```
 
-Clearly this regex is operating on each line (the lines input were the integers 1 through 20). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
+Clearly this regex is operating on each line (the lines input were the integers 6 through 15). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
 
-In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`. Python-style string slicing (which uses square brackets) is not one available in vanilla Perl 5, where the `substr` method (or regexes) are more commonly used.
+In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`.
 
 
-##Intermediate Perl Operations
-###`p'^{...} ...'`: BEGIN Block
-A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
-
-Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. Here is a contrived example based on the previous section:
+###`for`
+Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java:
 
 ```bash
-$ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
-1111
-2222
-3333
+$ ni iabcdefgh p'my $string= a; for (my $i=0; $i < length $string; $i++) {r substr($string, $i, 1) x 2;}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
 ```
 
-In this example, `*v` is being computed at runtime for each row. Using a begin block, however, `*v` will be computed just once, so this could be better written as:
+In the above code, `substr($string, $i, 1)` is used to get 1 character from `$string` at position `$i`.  Perl also has a for syntax allowing you to define a variable name. 
 
 ```bash
-$ ni n3p'^{*v = sub {$_[0] x 4}} &v(a)'
-1111
-2222
-3333
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
 ```
 
-However useful to exemplify the concept of a begin block, it turns out that all of the previous definitions are not practical. Outside of variable assignment, `sub` is a `BEGIN`-level construct, so the code is much more simply written as:
+It is not necessary to define a variable name; if you do not, it will be assigned to the default variable `$_` within the block of the loop.
 
 ```bash
-$ ni n3p'sub v {$_[0] x 4} &v(a)'
-1111
-2222
-3333
+$ ni iabcdefgh p'for (split //) {r $_ x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
 ```
+
+Finally, there is an even more parsimonious postfix syntax.
+
+
+```bash
+$ ni iabcdefgh p'r $_ x 2 for split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
+
+The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
+
+###`map`
+`map` is in many ways similar to `for`; in exchange for some flexibility that `for` loops offer, `map` statements often have better performance through vectorization, and they are often more intuitive to read. `map` takes two arguments, a block of code and a perl array, and returns an array.
+
+```bash
+$ ni iabcdefgh p'map {$_ x 2} split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+The element of the array that the `map` block takes as an argument is referred to as `$_`; like a `for` loop, this `$_` variable is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
+
+
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
+abcdefgh
+```
+
+Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
+
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; @v'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+Another facet of the map syntax is that there is _no comma_ between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
+
+
+##Buffered Readahead and Multiline Selection
+
+So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.  
+
+### `rl`, `rw`, `ru`, `re`: Buffered Readahead
+
+In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce (discussed in a later chapter); however, the syntax for  buffered readahead is often much simpler. Generating arrays of lines using readahead operations is a common motif in `ni` scripts:
+
+* `rl(n)`: read `n` lines
+  * `@lines = rl(n)`: `n` is optional, and if it is not given, only one line will be read.
+* `rw`: read while
+  * `@lines = rw {condition}`: read lines while a condition is met
+* `ru`: read until
+  * `@lines = ru {condition}`: read lines until a condition is met
+* `re`: read equal
+  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+
+
+```
+$ ni n10 p'r rl 3'
+1	2	3
+4	5	6
+7	8	9
+10
+```
+
+```bash
+$ ni n10p'r rw {a < 7}'
+1	2	3	4	5	6
+7
+8
+9
+10
+```
+
+```bash
+$ ni n10p'r ru {a % 4 == 0}'
+1	2	3
+4	5	6	7
+8	9	10
+```
+
+```bash
+$ ni n10p'r re {int(a**2/30)}'
+1	2	3	4	5
+6	7
+8	9
+10
+```
+
+
 
 
 ### `a_` through `l_`: Multiline Selection operations 
-You have seen one way to generate multiple lines through the production of data closures. In order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
+You have now seen two ways to generate arrays of lines: buffered readahead and data closures. In order to access data from a specific column of a line array, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
-For example:
+
+An important thing to keep in mind when using buffered readahead with multiline reducers is that you must save. For example:
+
+```bash
+$ ni i{a..d}{x..z} F// fB. p'@lines = re {a}; r a, b_ @lines'
+b	x	y	z
+c	x	y	z
+d	x	y	z
+	x	y	z
+```
 
 * `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 * `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
@@ -223,6 +339,100 @@ $ ni ::data[n5] 1p'a_ data'
 5
 ```
 
+### Reduction via buffered readahead
+
+
+```bash
+$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a}'
+6
+6
+```
+
+```bash
+$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
+12
+```
+
+
+###`a__` through `l__`: Select-to-end-of-line
+These are useful for collecting data with an unknown shape;
+
+```bash
+$ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
+1	x	2	y	s	t	3	yo
+```
+
+There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
+
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni 1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
+
+
+##Intermediate Perl Operations
+###`p'^{...} ...'`: BEGIN Block
+A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+
+Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. 
+
+```bash
+$ ni n5p'^{$x = 0} $x += a; r a, $x'
+1	1
+2	3
+3	6
+4	10
+5	15
+```
+
+Note that the value of `$x` is persisted between runs of the perl mapper code. Without the begin block, we would have:
+
+```bash
+$ ni n5p'$x = 0; $x += a; r a, $x'
+1	1
+2	2
+3	3
+4	4
+5	5
+```
+
+### `p'... END { }'`: END Block
+
+Similar to a BEGIN block, and END block is used to calculate totals from the data that has accumulated in persistent variables.
+
+```bash
+$ ni n5p'^{@x}; push @x, 2*a; undef; END{r join " and ", @x}'
+2 and 4 and 6 and 8 and 10
+```
+
+We accumulate all of the values in `x`, then join them together and return them all. The statement `undef` is added to make the perl mapper be quiet while it is accumulating values (otherwise, the return value of `push` is the length of the output array).
+
+
+
+###`cart`: Cartesian Product
+To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
+
+```bash
+$ ni 1p'cart [10, 20], [1, 2, 3]'
+10	1
+10	2
+10	3
+20	1
+20	2
+20	3
+```
+
+The output of `cart` will have the first column varying the least, the second column varying the second least, etc. so that the value of the last column will change for every row if its values are all distinct.
+
+
+
+Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
+
+```
+$ ni 1p'r cart [1], ["a", "b", "c"]'
+ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
+```
+
 
 ### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
 Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
@@ -232,190 +442,31 @@ Hash constructors are useful for filtering large datasets without having to invo
 * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
 * `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
+### `p'%h = <key_col><val_col>S @lines`: Accumulator hash constructor
 
-##Streaming Reduce
-So far, you have seen many ways to reshape, process, and filter individual rows, but only one way to summarize multiple rows, the count operator `c`. In this section, we will cover `ni`'s highly flexible, constant-space reduce methods in Perl.
+This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
 
-One of the reasons that Perl has been stressed in this tutorial is for streaming reduce; reduction can also be done from within `ni` using Python (introduced in the next section), however, this reduction is limited by a slightly awkward syntax, and the sometimes-unfeasible prospect of needing to hold the entire stream in memory.
-
-Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort and reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
-
-These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
-
-### `sr`: Reduce over entire stream
-
-Let's look at a simple example, summing the integers from 1 to 100,000: 
-
-```bash
-$ ni n1E5p'sr {$_[0] + a} 0'
-5000050000
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+x	5
+y	13
 ```
 
-Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
- 
- ```
-@final_state = sr {reducer} @init_state
-```
+### `p'kbv_asc %h` and `p'kbv_dsc %h'`: Sort hash keys by value
 
-To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
+This is syntactict sugar for perl's sort function applied to keys of a hash.
 
-```bash
-$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
-55	3628800	12345678910
-```
-A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
-
-
-### `se`: Reduce while equal
-`sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
-
-Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
-
-What we'd like to do is, each time a number streams in, to check if it  number of digits is equal to the number of digits for the previous number we saw in the stream. If it does, we'll add it to a running total, otherwise, we emit the running total to the output stream and start a new running total.
-
-In `ni`-speak, the reduce-while-equal operator looks like this:
-
-```
-@final_state = se {reducer} \&partition_fn, @init_state
-```
-
-`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
-
-**NOTE**: The comma after `partition_fn` is important.
-
-```bash
-$ ni n1000p'se {$_[0] + a} sub {length}, 0'
-45
-4905
-494550
-1000
-```
-
-That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
-
-```bash
-$ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
-1	45
-2	4905
-3	494550
-4	1000
-```
-
-One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
-
-If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
-
-```bash
-$ ni n1000p'sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'
-1	45
-2	4905
-3	494550
-4	1000
-```
-
-The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
-
-
-###`sea` through `seq`: Reduce with partition function `a()...q()`
-
-It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
-
-```bash
-$ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
-1	45
-2	4905
-3	494550
-4	1000
-```
-
-`ni` offers a shorthand for reducing over a particular column:
-
-```bash
-$ ni n1000p'r a, length a' p'r b, seb {$_[0] + a} 0'
-1	45
-2	4905
-3	494550
-4	1000
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+y	x	z
 ```
 
 
-### `rc`: Compound reduce
-
-Consider the following reduction operation, which computes the sum, mean, min and max.
-
-```bash
-$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
-                                            min($_[2], a), max($_[3], a)}
-                                           0, 0, a, a;
-            r $sum, $sum / $n, $min, $max'
-5050	50.5	1	100
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+z	x	y
 ```
 
-For common operations like these, `ni` offers a shorthand:
-
-```bash
-$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
-5050	50.5	1	100
-```
-
-##Buffered Readahead
-These operations are used to convert columnar data into rows, which can then be reduced over. In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce; however, the syntax is often more efficient
-
-* `rw`: read while
-  * `@lines = rw {condition}`: read lines while a condition is met
-* `ru`: read until
-  * `@lines = ru {condition}`: read lines until a condition is met
-* `re`: read equal
-  * `@lines = re {condition}`: read lines while the value of the condition is equal.
-
-###`cart`: Cartesian Product
-To generate examples for our buffered readahead, we'll use the builtin `ni` operation `cart`.
-
-```bash
-$ ni 1p'cart [1, 2], ["a", "b", "c"]'
-1	a
-2	a
-1	b
-2	b
-1	c
-2	c
-```
-
-Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
-
-```
-$ ni 1p'r cart [1], ["a", "b", "c"]'
-ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
-(END)
-```
-
-
-
-
-###Multiline Reducers
-
-```bash
-$ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ re {b}'
-3
-3
-3
-```
-
-`reb` is the more commonly used shorthand for `re {b}`.
-
-```bash
-$ ni 1p'cart [1, 2], ["a", "b", "c"]' p'sum a_ reb'
-3
-3
-3
-```
-
-There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
-
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni 1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
 
 
 ##Numpy Operations
@@ -528,7 +579,6 @@ Let's start with `$ ni test`
 ```
 dir_test/hi
 dir_test/there
-(END)
 ```
 
 `ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
@@ -540,7 +590,6 @@ yields:
 ```
 hello
 you
-(END)
 ```
 
 `ni` also works with the bash expansion operator `*`.
@@ -550,7 +599,6 @@ For example, `ni dir_test/*` yields:
 ```
 hello
 you
-(END)
 ```
 
 `ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
