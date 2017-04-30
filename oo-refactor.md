@@ -124,3 +124,14 @@ stream.
 
 Security: commit IDs are hash(content + deps + instance key); instances reject
 commits with invalid IDs. "Instance key" is polymorphic etc etc.
+
+## t47
+The authoring instance (the hub client) starts a daemon with a one-off RMI key,
+then sends commits to it to install itself. This mechanism can be used to
+reconnect to existing daemons and make sure everyone is running the same
+version. Metaprogramming belongs to the client.
+
+So remotes are simple: run a multi-branch commit listener and have some simple
+protocol for forwarding stuff and for executing stuff. C JIT support, insecure
+L2 linkages, and other stuff would be added by commits. Metaprogramming
+produces commits. Image bootstrapping always begins from a shared root commit.
