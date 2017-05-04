@@ -724,12 +724,38 @@ For example, let's say you have the Unix timestamp and want to know what time it
 ```bash
 $ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
 2017	1	22	2	41	13
-```
+``` 
 
 This correction cuts the globe into 4-minute strips by degree of longitude.
-It is meant for approximation of local time, not the actual time.
+It is meant for approximation of local time, not the actual time, which depends much more on politics and introduces many more factors to think about.
 
+#### `gh_localtime` and `gh60_localtime`: one-step approximate conversion to local time
 
+`gh_localtime` and `gh60_localtime` get local time from an input geohash input in base-32 (`gh_localtime`) or base-10 (`gh60_localtime`).
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b' p'my $epoch_time = 1485079513; my @local_time_parts = tep(gh_localtime($epoch_time, a)); r @local_time_parts'
+2017	1	22	2	41	13
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my @local_time_parts = tep(gh60_localtime($epoch_time, a)); r @local_time_parts'
+2017	1	22	2	41	13
+```
+
+#### `day_of_week` and `hour_of_day`: Fast, shorthand, non-POSIX functions
+
+These functions give the 3-letter abbreviation for day of week, and hour of day.
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; day_of_week(gh60_localtime($epoch_time, a)))'
+Sun
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hour_of_day(gh60_localtime($epoch_time, a)))'
+2
+```
 
 ## More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.

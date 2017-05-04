@@ -46,14 +46,14 @@ sub timezone_seconds {
   240 * int($lng + 7);
 }
 
-sub gh60_time {
-  my ($gh, $ts) = @_;
+sub gh60_localtime {
+  my ($ts, $gh) = @_;
   my ($lat, $lng) = ghd $gh, 60;
   $ts + timezone_seconds($lat, $lng);
 }
 
-sub gh_time {
-  my ($gh, $ts) = @_;
+sub gh_localtime {
+  my ($ts, $gh) = @_;
   my ($lat, $lng) = ghd $gh;
   $ts + timezone_seconds($lat, $lng);
 }
