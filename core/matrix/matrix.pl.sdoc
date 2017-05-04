@@ -140,6 +140,9 @@ defoperator numpy_dense => q{
     $_ = '';
     saferead $o, $_, $rows*$cols*8 - length(), length
       until length == $rows*$cols*8;
+
+    # TODO: optimize this. Right now it's horrifically slow and for no purpose
+    # (everything's getting read into memory either way).
     for my $r (0..$rows-1) {
       print join("\t", $col ? ($k) : (), unpack "F$cols", substr $_, $r*$cols*8), "\n";
     }

@@ -3716,10 +3716,10 @@ lazytest_line=66
 lazytest_case 'ni n1000000 :a-million-things-2 r5
 ' 3<<'LAZYTEST_EOF'
 1
-10
-100
-1000
-10000
+2
+3
+4
+5
 LAZYTEST_EOF
 lazytest_file='doc/warnings.md'
 lazytest_line=72
