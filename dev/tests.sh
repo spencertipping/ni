@@ -2179,14 +2179,6 @@ lazytest_line=725
 lazytest_case 'ni i[34.058566 -118.416526] p'\''my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'\''
 ' 3<<'LAZYTEST_EOF'
 2017	1	22	2	41	13
-
-This correction cuts the globe into 4-minute strips by degree of longitude.
-It is meant for approximation of local time, not the actual time, which depends much more on politics and introduces many more factors to think about.
-
-#### `gh_localtime` and `gh60_localtime`: one-step approximate conversion to local time
-
-`gh_localtime` and `gh60_localtime` get local time from an input geohash input in base-32 (`gh_localtime`) or base-10 (`gh60_localtime`).
-
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=737
@@ -2202,13 +2194,13 @@ lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' p'\''my $epoch
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=751
-lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' p'\''my $epoch_time = 1485079513; day_of_week(gh60_localtime($epoch_time, a)))'\''
+lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' p'\''my $epoch_time = 1485079513; day_of_week(gh60_localtime($epoch_time, a))'\''
 ' 3<<'LAZYTEST_EOF'
 Sun
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=756
-lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' p'\''my $epoch_time = 1485079513; hour_of_day(gh60_localtime($epoch_time, a)))'\''
+lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' p'\''my $epoch_time = 1485079513; hour_of_day(gh60_localtime($epoch_time, a))'\''
 ' 3<<'LAZYTEST_EOF'
 2
 LAZYTEST_EOF
