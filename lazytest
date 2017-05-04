@@ -71,7 +71,7 @@ while (<>) {
     next;
   }
 
-  next unless (/^\`\`\`bash/../^\`\`\`$/) && !/^\`\`\`/;
+  next unless (/^\`\`\`bash/../^\`\`\`\s*$/) && !/^\`\`\`/;
 
   if (s/^\$\s+//) {
     # We've got a shell command, so read it along with any heredocs we have.

@@ -33,7 +33,7 @@
 	| '%l' <'', evaluate as plot "-" with lines >
 	| '%t' <generic_code> -> {"title '$_'"}
 	| '%u' <generic_code> -> {"using $_"}
-	| '%v' <'', evaluate as plot "-" with impulses >
+	| '%v' <'', evaluate as plot "-" with vectors >
 	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
 	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
 	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
