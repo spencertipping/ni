@@ -311,8 +311,6 @@ $ ni n10p'r re {int(a**2/30)}'
 ```
 
 
-
-
 ### `a_` through `l_`: Multiline Selection operations 
 You have now seen two ways to generate arrays of lines: buffered readahead and data closures. In order to access data from a specific column of a line array, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
@@ -452,9 +450,18 @@ x	5
 y	13
 ```
 
+If you have ragged data, where a value may not exist for a particular column, a convience method `SNN` gives you the non-null values. See the next section for the convenience methods `kbv_dsc`.
+
+```bash 
+$ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] p'%h = dcSNN rea; @sorted_keys = kbv_dsc %h; r($_, $h{$_}) for @sorted_keys''
+foo	4	
+bar	1
+```
+
+
 ### `p'kbv_asc %h` and `p'kbv_dsc %h'`: Sort hash keys by value
 
-This is syntactict sugar for perl's sort function applied to keys of a hash.
+This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
