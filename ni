@@ -4959,7 +4959,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-86 core/pl/time.pm.sdoc
+104 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -4998,6 +4998,30 @@ sub time_pieces_epoch {
   POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000 - $mktime_error;
 }
 
+Day of Week and Hour of Day.
+These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
+
+our @days = ("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed");
+sub day_of_week {
+  my $ts = $_[0];
+  my $weekday = int(($ts % 604800)/86400);
+  @days[$weekday];
+}
+
+sub hour_of_day {
+  my $ts = $_[0];
+  int(($ts %86400)/3600);
+}
+
+Round to day/hour/quarter-hour/minute.
+
+c
+BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
+         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
+                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
+         ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
+                       $x, $dur, $dur}}
+
 Approximate timezone shifts by lat/lng.
 Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
 (in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
@@ -5030,22 +5054,16 @@ BEGIN {
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
+  *ghl = \&gh_localtime;
+  *gh6l = \&gh60_localtime;
+  *dow = \&day_of_week;
+  *hod = \&hour_of_day;
+  *ttd = \&truncate_to_day;
+  *tth = \&truncate_to_hour;
+  *tt15 = \&truncate_to_quarter_hour;
+  *ttm = \&truncate_to_minute;
 }
 
-Day of Week and Hour of Day
-These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
-
-our @days = ("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed");
-sub day_of_week {
-  my $ts = shift;
-  my $weekday = int(($ts % 604800)/86400);
-  @days[$weekday];
-}
-
-sub hour_of_day {
-  my $ts = shift;
-  int(($ts %86400)/3600);
-}
 154 core/pl/pl.pl.sdoc
 Perl parse element.
 A way to figure out where some Perl code ends, in most cases. This works
