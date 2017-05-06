@@ -680,6 +680,9 @@ $ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
 
 
 ###Time Perl Functions
+
+`tpe` and `tep` are the most flexible and powerful time functions in `ni`'s arsenal for converting between Unix timestamps and date. Other important functions here are used for localization by lat/long or geohash, and several syntactic sugars are provided for common mathematical and semntic time operations.
+
     
 #### `tpe`: time parts to epoch
 `tpe(@time_pieces)`: Returns the epoch time in GMT (see important note below)
@@ -698,12 +701,6 @@ $ ni 1p'tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'
 1485072313
 ```
 
-**IMPORTANT NOTE**: `tpe` does not work correctly on Mac as of 2017-01-23,
-due to an implementation issue with `POSIX::mktime`.
-This will result in your code giving the local time rather than GMT; use
-`Cubuntu[...]` for the expected behavior.
-
-
 #### `tep`: time epoch to parts
 
 `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
@@ -715,45 +712,58 @@ $ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
 
 A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
 
-#### `timezone_seconds`: approximately convert epoch to local time
+#### `tsec`: approximately convert epoch to local time
 
-`tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+`tep($raw_timestamp + tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = timezone_seconds(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
+$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = tsec(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
 This correction cuts the globe into 4-minute strips by degree of longitude.
 It is meant for approximation of local time, not the actual time, which depends much more on politics and introduces many more factors to think about.
 
-#### `gh_localtime` and `gh60_localtime`: one-step approximate conversion to local time
+#### `ghl` and `gh6l`: approximate conversion to local time from geohash/gh60 
 
-`gh_localtime` and `gh60_localtime` get local time from an input geohash input in base-32 (`gh_localtime`) or base-10 (`gh60_localtime`).
+`ghl` and `gh6l` get local time from an input geohash input in base-32 (`ghl`) or base-10 representation of a the geohash-60 in binary (`gh6l`).
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b' p'my $epoch_time = 1485079513; my @local_time_parts = tep(gh_localtime($epoch_time, a)); r @local_time_parts'
+$ ni i[34.058566 -118.416526] p'ghe a, b' p'my $epoch_time = 1485079513; my @local_time_parts = tep ghl($epoch_time, a); r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my @local_time_parts = tep(gh60_localtime($epoch_time, a)); r @local_time_parts'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my @local_time_parts = tep gh6l($epoch_time, a); r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
-#### `day_of_week` and `hour_of_day`: Fast, shorthand, non-POSIX functions
+#### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
+
+These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more pratical in performance-environments (`HS`, for example).
+
+```bash
+$ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r tep a' | cat
+2017	5	6	0	0	0
+2017	5	6	22	0	0
+2017	5	6	22	30	0
+2017	5	6	22	44	0
+2017	5	6	22	44	11
+```
+
+#### `dow` and `hod`: Day-of-Week and Hour-of-Day, shorthands
 
 These functions give the 3-letter abbreviation for day of week, and hour of day.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; day_of_week(gh60_localtime($epoch_time, a))'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a) '
 Sun
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hour_of_day(gh60_localtime($epoch_time, a))'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
 2
 ```
 
