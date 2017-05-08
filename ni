@@ -9256,7 +9256,7 @@ Operator | Status | Example      | Description
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
          |        |              |
-`1`      | M      | `1p'"hi"'    | `1` is an alias for `n1`
+`1`      | M      | `1p'"hi"'`   | `1` is an alias for `n1`
 `a`      |        |              |
 `b`      | T      | `bL40`       | Block-read and unpack binary data
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
