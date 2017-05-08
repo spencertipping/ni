@@ -25,6 +25,14 @@ Importantly
 That means, when you're doing your development, you should be maintaining test cases in the appropriate file. That way correctness of new operators can be verified easily. I'm going to go do that for my last pull request right now.
 
 
+## `sdoc` structure
+### Code Paragraphs
+`sdoc` has meaningful whitespace; 
+
+### Comments and `c`
+Comments start with a capital letter; to force the following lines to be interpreted as code, you prefix the paragraph with a line of just a `c`.
+
+
 
 ##`defoperator`
 
