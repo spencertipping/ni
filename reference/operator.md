@@ -300,7 +300,7 @@
 	      (my $combiner_file = $combiner || '') =~ s|.*/||;
 	      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 	      my @jobconf =
-	        grep $reducer ? 1 : !/reduce/,          # HACK
+	        grep $reducer || !/reduce/,             # HACK
 	        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 	      my $cmd = shell_quote
 	        conf 'hadoop/name',
