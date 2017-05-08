@@ -9226,7 +9226,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-99 doc/options.md
+97 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -9263,7 +9263,6 @@ Operator | Status | Example      | Description
 `//:`    | M      | `//:x`       | Append closure data
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
-         |        |              |
 `1`      | M      | `1p'"hi"'`   | `1` is an alias for `n1`
 `a`      |        |              |
 `b`      | T      | `bL40`       | Block-read and unpack binary data
@@ -9291,7 +9290,6 @@ Operator | Status | Example      | Description
 `x`      | T      | `xC`         | Exchange first fields with others
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
-         |        |              |
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
