@@ -5002,13 +5002,13 @@ Day of Week and Hour of Day.
 These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
 
 our @days = ("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed");
-sub day_of_week {
+sub day_of_week($) {
   my $ts = $_[0];
   my $weekday = int(($ts % 604800)/86400);
   @days[$weekday];
 }
 
-sub hour_of_day {
+sub hour_of_day($) {
   my $ts = $_[0];
   int(($ts %86400)/3600);
 }
@@ -5032,13 +5032,13 @@ sub timezone_seconds {
   240 * int($lng + 7);
 }
 
-sub gh60_localtime {
+sub gh60_localtime($$) {
   my ($ts, $gh) = @_;
   my ($lat, $lng) = ghd $gh, 60;
   $ts + timezone_seconds($lat, $lng);
 }
 
-sub gh_localtime {
+sub gh_localtime($$) {
   my ($ts, $gh) = @_;
   my ($lat, $lng) = ghd $gh;
   $ts + timezone_seconds($lat, $lng);

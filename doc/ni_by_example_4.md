@@ -760,7 +760,7 @@ These functions give the 3-letter abbreviation for day of week, and hour of day.
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a) '
 Sun
-```
+```; P
 
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
