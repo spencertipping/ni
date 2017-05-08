@@ -51,6 +51,13 @@ sub hour_of_day($) {
   int(($ts %86400)/3600);
 }
 
+sub hour_of_week($) {
+  my $ts = $_[0];
+  my $dow = day_of_week($ts);
+  my $hod = sprintf "%02d", hour_of_day($ts);
+  $dow . "_" . $hod;
+}
+
 Round to day/hour/quarter-hour/minute.
 
 c
@@ -96,6 +103,7 @@ BEGIN {
   *gh6l = \&gh60_localtime;
   *dow = \&day_of_week;
   *hod = \&hour_of_day;
+  *how = \&hour_of_week;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;

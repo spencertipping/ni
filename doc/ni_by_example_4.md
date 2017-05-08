@@ -753,18 +753,23 @@ $ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r te
 2017	5	6	22	44	11
 ```
 
-#### `dow` and `hod`: Day-of-Week and Hour-of-Day, shorthands
+#### `dow`, `hod`, `how`: Day-of-Week, Hour-of-Day, Hour-of-Week shorthands
 
-These functions give the 3-letter abbreviation for day of week, and hour of day.
+These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week.
 
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a) '
 Sun
-```; P
+```
 
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
 2
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
+Sun_02
 ```
 
 ## More Perl for `ni`

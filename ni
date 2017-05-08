@@ -4959,7 +4959,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-104 core/pl/time.pm.sdoc
+112 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -5013,6 +5013,13 @@ sub hour_of_day($) {
   int(($ts %86400)/3600);
 }
 
+sub hour_of_week($) {
+  my $ts = $_[0];
+  my $dow = day_of_week($ts);
+  my $hod = sprintf "%02d", hour_of_day($ts);
+  $dow . "_" . $hod;
+}
+
 Round to day/hour/quarter-hour/minute.
 
 c
@@ -5058,6 +5065,7 @@ BEGIN {
   *gh6l = \&gh60_localtime;
   *dow = \&day_of_week;
   *hod = \&hour_of_day;
+  *how = \&hour_of_week;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
