@@ -7322,7 +7322,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-190 core/hadoop/hadoop.pl.sdoc
+192 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7447,7 +7447,9 @@ defoperator hadoop_streaming => q{
       (my $combiner_file = $combiner || '') =~ s|.*/||;
       (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
-      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+      my @jobconf =
+        grep $reducer ? 1 : !/reduce/,          # HACK
+        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 
       my $cmd = shell_quote
         conf 'hadoop/name',
