@@ -314,7 +314,7 @@
 	        (defined $combiner
 	          ? (-file     => $combiner,
 	             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
-	          : (-combiner => 'NONE')),
+	          : ()),
 	        (defined $reducer
 	          ? (-file    => $reducer,
 	             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
