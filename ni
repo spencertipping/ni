@@ -5813,7 +5813,7 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 bytestream.pm.sdoc
 bytewriter.pm.sdoc
 binary.pl.sdoc
-31 core/binary/bytestream.pm.sdoc
+36 core/binary/bytestream.pm.sdoc
 Binary byte stream driver.
 Functions that read data in blocks. The lookahead is 8192 bytes by default, but
 you can peek further using the 'pb' function.
@@ -5844,6 +5844,11 @@ sub rp(@) {
   my $s  = pack $_[0], @xs;
   rb length $s;
   @xs;
+}
+
+sub wp(@) {
+  print pack @_;
+  ();
 }
 7 core/binary/bytewriter.pm.sdoc
 Byte writer.

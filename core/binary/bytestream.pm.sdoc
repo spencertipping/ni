@@ -29,3 +29,8 @@ sub rp(@) {
   rb length $s;
   @xs;
 }
+
+sub wp(@) {
+  print pack @_;
+  ();
+}
