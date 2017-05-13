@@ -6976,10 +6976,10 @@ $(caterwaul(':all')(function ($) {
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
-                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{kb}K'
+                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{kb /!Math.round}K'
                              /!update_status
                              /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join(''),
-                                     kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10]
+                                     kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq + 0.0) / 1024]
                       -when [data_state.frame.axes && data_state.frame.axes[0]]
                       -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it.join('\n').substr(0, 65536))
                              /then[data_state.preview_done = data_state.frame.preview_lines.length >= 1024]
