@@ -5813,7 +5813,7 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 bytestream.pm.sdoc
 bytewriter.pm.sdoc
 binary.pl.sdoc
-36 core/binary/bytestream.pm.sdoc
+33 core/binary/bytestream.pm.sdoc
 Binary byte stream driver.
 Functions that read data in blocks. The lookahead is 8192 bytes by default, but
 you can peek further using the 'pb' function.
@@ -5821,34 +5821,31 @@ you can peek further using the 'pb' function.
 our $stdin_ok = 1;
 our $offset = 0;
 
+our $bindata;
+
 sub bi() {$offset}
 
 sub pb($) {
-  $stdin_ok &&= sysread STDIN, $_, $_[0], length
-    if $stdin_ok && length() < $_[0];
-  substr $_, 0, $_[0];
+  $stdin_ok &&= sysread STDIN, $bindata, $_[0], length
+    if $stdin_ok && length($bindata) < $_[0];
+  substr $bindata, 0, $_[0];
 }
 
 sub available() {length pb 8192}
 
 sub rb($) {
-  pb $_[0] if length() < $_[0];
-  my $r = substr $_, 0, $_[0];
-  $_ = substr $_, $_[0];
+  pb $_[0] if length($bindata) < $_[0];
+  my $r = substr $bindata, 0, $_[0];
+  $bindata = substr $bindata, $_[0];
   $offset += $_[0];
   $r;
 }
 
 sub rp(@) {
-  my @xs = unpack $_[0], $_;
+  my @xs = unpack $_[0], $bindata;
   my $s  = pack $_[0], @xs;
   rb length $s;
   @xs;
-}
-
-sub wp(@) {
-  print pack @_;
-  ();
 }
 7 core/binary/bytewriter.pm.sdoc
 Byte writer.
