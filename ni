@@ -4465,7 +4465,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-120 core/pl/util.pm.sdoc
+123 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4473,6 +4473,9 @@ introduced in v5.7.3, so we can't rely on it being there.
 
 sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
+sub first  {$_[0]}
+sub last   {$_[$#_]}
+sub lorst  {$_[$#_]}
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
