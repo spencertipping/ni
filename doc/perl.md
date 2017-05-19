@@ -237,6 +237,7 @@ $ ni ::squares[n100p'100 - a' p'r a, a*a'] n5p'^{%sq = ab_ squares} $sq{a()}'
 ni predefines some stuff you may find useful:
 
 - `sum(@)`, `prod(@)`, `mean(@)`
+- `first(@)`, `last(@)`
 - `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
 - `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
 - `reduce {f} $init, @xs`
