@@ -4959,7 +4959,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-112 core/pl/time.pm.sdoc
+120 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -5001,7 +5001,7 @@ sub time_pieces_epoch {
 Day of Week and Hour of Day.
 These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
 
-our @days = ("Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed");
+our @days = qw(Thu Fri Sat Sun Mon Tue Wed);
 sub day_of_week($) {
   my $ts = $_[0];
   my $weekday = int(($ts % 604800)/86400);
@@ -5018,6 +5018,13 @@ sub hour_of_week($) {
   my $dow = day_of_week($ts);
   my $hod = sprintf "%02d", hour_of_day($ts);
   $dow . "_" . $hod;
+}
+
+sub year_month($) {
+  my @year_month = tep('Ym', $_[0]);
+  my $year = @year_month[0];
+  my $month = sprintf "%02d", @year_month[1];
+  $year . "_" . $month;
 }
 
 Round to day/hour/quarter-hour/minute.
@@ -5070,6 +5077,7 @@ BEGIN {
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
   *ttm = \&truncate_to_minute;
+  *ym = \&year_month;
 }
 
 154 core/pl/pl.pl.sdoc

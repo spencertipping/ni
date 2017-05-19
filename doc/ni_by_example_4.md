@@ -197,7 +197,6 @@ Copyright (c) 2016 Spencer Tipping | MIT license	4
 	9
 ```
 
-  
 ###`W`: Prepend column stream
 
 `W` operates like `w`, except its output column is prepended. 
@@ -753,9 +752,9 @@ $ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r te
 2017	5	6	22	44	11
 ```
 
-#### `dow`, `hod`, `how`: Day-of-Week, Hour-of-Day, Hour-of-Week shorthands
+#### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
 
-These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week.
+These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
 
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a) '
@@ -770,6 +769,11 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ho
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
 Sun_02
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
+2017_01
 ```
 
 ## More Perl for `ni`
