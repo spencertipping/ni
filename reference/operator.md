@@ -299,7 +299,9 @@
 	      (my $mapper_file   = $mapper)         =~ s|.*/||;
 	      (my $combiner_file = $combiner || '') =~ s|.*/||;
 	      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
-	      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+	      my @jobconf =
+	        grep $reducer || !/reduce/,             # HACK
+	        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 	      my $cmd = shell_quote
 	        conf 'hadoop/name',
 	        jar => $streaming_jar,
@@ -316,7 +318,7 @@
 	        (defined $reducer
 	          ? (-file    => $reducer,
 	             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-	          : ());
+	          : (-reducer => 'NONE'));
 	      sh "$cmd 1>&2";
 	    };
 	    close $hadoop_fh;

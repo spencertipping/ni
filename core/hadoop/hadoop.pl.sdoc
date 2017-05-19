@@ -122,7 +122,9 @@ defoperator hadoop_streaming => q{
       (my $combiner_file = $combiner || '') =~ s|.*/||;
       (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
-      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+      my @jobconf =
+        grep $reducer || !/reduce/,             # HACK
+        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 
       my $cmd = shell_quote
         conf 'hadoop/name',
@@ -140,7 +142,7 @@ defoperator hadoop_streaming => q{
         (defined $reducer
           ? (-file    => $reducer,
              -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-          : ());
+          : (-reducer => 'NONE'));
       sh "$cmd 1>&2";
     };
 

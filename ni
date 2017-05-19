@@ -5821,38 +5821,35 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 bytestream.pm.sdoc
 bytewriter.pm.sdoc
 binary.pl.sdoc
-31 core/binary/bytestream.pm.sdoc
+28 core/binary/bytestream.pm.sdoc
 Binary byte stream driver.
 Functions that read data in blocks. The lookahead is 8192 bytes by default, but
 you can peek further using the 'pb' function.
 
 our $stdin_ok = 1;
 our $offset = 0;
+our $binary = '';
 
 sub bi() {$offset}
 
 sub pb($) {
-  $stdin_ok &&= sysread STDIN, $_, $_[0], length
-    if $stdin_ok && length() < $_[0];
-  substr $_, 0, $_[0];
+  $stdin_ok &&= sysread STDIN, $binary, $_[0], length $binary
+    if $stdin_ok && length($binary) < $_[0];
+  substr $binary, 0, $_[0];
 }
 
 sub available() {length pb 8192}
 
+# TODO: optimize
 sub rb($) {
-  pb $_[0] if length() < $_[0];
-  my $r = substr $_, 0, $_[0];
-  $_ = substr $_, $_[0];
+  pb $_[0] if length($binary) < $_[0];
+  my $r = substr $binary, 0, $_[0];
+  $binary = substr $binary, $_[0];
   $offset += $_[0];
   $r;
 }
 
-sub rp(@) {
-  my @xs = unpack $_[0], $_;
-  my $s  = pack $_[0], @xs;
-  rb length $s;
-  @xs;
-}
+sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
 7 core/binary/bytewriter.pm.sdoc
 Byte writer.
 Convenience functions that make it easier to write binary data to standard out.
@@ -5885,7 +5882,7 @@ sub binary_perl_prefix() {join "\n", perl_prefix,
 sub defbinaryperlprefix($) {push @binary_perl_prefix_keys, $_[0]}
 
 sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
-                                            body   => $_[0])}
+                                            body   => perl_expand_begin $_[0])}
 
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
@@ -6979,10 +6976,10 @@ $(caterwaul(':all')(function ($) {
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
-                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{kb}K'
+                      -then- '#{ats} / #{data_state.frame.axes[0].n}[#{data_state.frame.capacity()}] / #{kb /!Math.round}K'
                              /!update_status
                              /where [ats = data_state.frame.axis_types *[x.substr(0, 1)] -seq -re- it.join(''),
-                                     kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq) >>> 10]
+                                     kb  = (data_state.bytes += ls /[0][x0 + x.length + 1] -seq + 0.0) / 1024]
                       -when [data_state.frame.axes && data_state.frame.axes[0]]
                       -then- preview.text(data_state.frame.preview_lines *[x /~join/ '\t'] -seq -re- it.join('\n').substr(0, 65536))
                              /then[data_state.preview_done = data_state.frame.preview_lines.length >= 1024]
@@ -7330,7 +7327,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl.sdoc
-190 core/hadoop/hadoop.pl.sdoc
+192 core/hadoop/hadoop.pl.sdoc
 Hadoop operator.
 The entry point for running various kinds of Hadoop jobs.
 
@@ -7455,7 +7452,9 @@ defoperator hadoop_streaming => q{
       (my $combiner_file = $combiner || '') =~ s|.*/||;
       (my $reducer_file  = $reducer  || '') =~ s|.*/||;
 
-      my @jobconf = grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+      my @jobconf =
+        grep $reducer || !/reduce/,             # HACK
+        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
 
       my $cmd = shell_quote
         conf 'hadoop/name',
@@ -7473,7 +7472,7 @@ defoperator hadoop_streaming => q{
         (defined $reducer
           ? (-file    => $reducer,
              -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-          : ());
+          : (-reducer => 'NONE'));
       sh "$cmd 1>&2";
     };
 
@@ -9234,7 +9233,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-99 doc/options.md
+97 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -9271,8 +9270,7 @@ Operator | Status | Example      | Description
 `//:`    | M      | `//:x`       | Append closure data
 `@`      | U      | `@foo[\>@a]` | Enter named-gensym context
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
-         |        |              |
-`1`      | M      | `1p'"hi"'    | `1` is an alias for `n1`
+`1`      | M      | `1p'"hi"'`   | `1` is an alias for `n1`
 `a`      |        |              |
 `b`      | T      | `bL40`       | Block-read and unpack binary data
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
@@ -9299,7 +9297,6 @@ Operator | Status | Example      | Description
 `x`      | T      | `xC`         | Exchange first fields with others
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
-         |        |              |
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
