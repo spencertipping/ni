@@ -9333,7 +9333,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-440 doc/perl.md
+441 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -9573,6 +9573,7 @@ $ ni ::squares[n100p'100 - a' p'r a, a*a'] n5p'^{%sq = ab_ squares} $sq{a()}'
 ni predefines some stuff you may find useful:
 
 - `sum(@)`, `prod(@)`, `mean(@)`
+- `first(@)`, `last(@)`
 - `max(@)`, `min(@)`, `maxstr(@)`, `minstr(@)`, `argmax(&@)`, `argmin(&@)`
 - `any(&@)`, `all(&@)`, `uniq(@)`, `%f = %{freqs(@)}`
 - `reduce {f} $init, @xs`
