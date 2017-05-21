@@ -6078,17 +6078,17 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # FFMPEG movie assembly.
 # You can use the companion operator `GF` to take a stream of jpeg images from a
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
-# for ffmpeg to follow `-f image2pipe -vcodec mjpeg -i -`.
+# for ffmpeg to follow `-f image2pipe -i -`.
 
 defshort '/GF',
-  pmap q{sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"},
+  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"},
   shell_command;
 1 core/image/lib
 image.pl
-87 core/image/image.pl
+73 core/image/image.pl
 # Image compositing and processing
-# Operators that loop over concatenated PNG or JPG images within a stream. This
-# is useful for compositing workflows in a streaming context, e.g. between a
+# Operators that loop over concatenated PNG images within a stream. This is
+# useful for compositing workflows in a streaming context, e.g. between a
 # gnuplot loop and ffmpeg.
 
 # Image traversal functions
@@ -6113,7 +6113,9 @@ image.pl
 # push bytes back into the data stream.
 #
 # So ... what do we do? We have `simage` maintain a "leftovers" buffer so we
-# can still do big-ish block reads and keep track of unconsumed data. (TODO)
+# can still do big-ish block reads and keep track of unconsumed data.
+#
+# TODO: for now only PNG is supported.
 
 sub simage_png {
   my ($into) = @_;
@@ -6130,37 +6132,18 @@ sub simage_png {
 }
 
 sub simage_jfif {
-  # TODO: rewrite this.
-  # FFDA is beginning-of-stream, but this data is entropy coded and has no
-  # length prefix. We need to look for FFD9 as a string-search, then capture
-  # leftovers for the next iteration. Probably worth some kind of binary stream
-  # abstraction.
-  my ($into) = @_;
-  safewrite $into, $_;
-
-  my ($t, $l) = ('', 0);
-  while (1) {
-    saferead_exactly \*STDIN, $t, 2;
-    safewrite $into, $t;
-    return 0 if $t eq "\xff\xd9";
-    die sprintf("ni simage: invalid JFIF chunk prefix: %s", unpack "H4", $t)
-      unless $t =~ /^\xff/;
-
-    $l = unpack 'n' if saferead_exactly \*STDIN, $_, 2;
-    printf STDERR "jfif chunk: %s [%d]\n", unpack("H4", $t), $l;
-    saferead_exactly \*STDIN, $_, $l - 2, 2;
-    safewrite $into, $_;
-  }
+  die "ni simage jfif: TODO: this is complicated and unimplemented at the moment";
 }
 
 sub simage_into {
   # Reads exactly one image from stdin, outputting to the specified ni lambda.
   # Returns the lambda's exit code on success, sets $! and returns undef on
   # failure. Dies if you're working with an unsupported type of image.
-  local $_;
   my ($lambda) = @_;
+  local $_;
+  my $n;
+  return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {exec_ni @$lambda};
-  return undef unless saferead_exactly \*STDIN, $_, 2;
   return simage_png $into  if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   die "ni simage: unsupported image type (unrecognized magic in $_)";
@@ -6170,7 +6153,10 @@ sub simage_into {
 # The simplest of these executes a pipeline separately for each of a series of
 # images.
 
-defoperator each_image => q{1 while defined simage_into $_};
+defoperator each_image => q{
+  my ($lambda) = @_;
+  1 while defined simage_into $lambda;
+};
 
 defshort '/I' => pmap q{each_image_op $_}, _qfn;
 2 core/http/lib

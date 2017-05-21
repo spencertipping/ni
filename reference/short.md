@@ -362,7 +362,7 @@
 # SHORT OPERATOR /GF
 
 ## SYNTAX
-	<shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
+	<shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 
 # SHORT OPERATOR /H
 

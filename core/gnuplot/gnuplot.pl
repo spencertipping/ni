@@ -54,8 +54,8 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # FFMPEG movie assembly.
 # You can use the companion operator `GF` to take a stream of jpeg images from a
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
-# for ffmpeg to follow `-f image2pipe -vcodec mjpeg -i -`.
+# for ffmpeg to follow `-f image2pipe -i -`.
 
 defshort '/GF',
-  pmap q{sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"},
+  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"},
   shell_command;

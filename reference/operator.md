@@ -237,7 +237,9 @@
 # OPERATOR each_image
 
 ## IMPLEMENTATION
-	1 while defined simage_into $_
+	
+	  my ($lambda) = @_;
+	  1 while defined simage_into $lambda;
 
 # OPERATOR echo
 	Append text verbatim

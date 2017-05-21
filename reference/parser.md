@@ -278,7 +278,7 @@
 	    <gnuplot_colspec>
 	    <gnuplot_code>
 	  ) -> {stream_to_gnuplot_op @$_}
-	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"}
+	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 	| 'H' (
 	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
