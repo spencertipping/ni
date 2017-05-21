@@ -408,6 +408,11 @@
 	  ) -> {hadoop_streaming_op @$_}
 	)
 
+# SHORT OPERATOR /I
+
+## SYNTAX
+	</qfn> -> {each_image_op $_}
+
 # SHORT OPERATOR /N
 
 ## SYNTAX

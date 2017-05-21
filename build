@@ -40,6 +40,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/binary \
   core/matrix \
   core/gnuplot \
+  core/image \
   \
   core/http \
   core/caterwaul \

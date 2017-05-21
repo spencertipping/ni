@@ -319,6 +319,7 @@
 	      ) -> {$$_[0]}
 	    ) -> {hadoop_streaming_op @$_}
 	  )
+	| 'I' </qfn> -> {each_image_op $_}
 	| 'N' (
 	    <colspec1>?
 	    <pycode>

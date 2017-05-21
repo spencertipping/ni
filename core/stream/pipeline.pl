@@ -47,6 +47,15 @@ sub safewrite($$) {
   return undef;
 }
 
+sub saferead_exactly($$$;$) {
+  my ($r, $n) = (0, 0);
+  while ($r < $_[2]) {
+    return undef unless $n = saferead $_[0], $_[1], $_[2] - $r, ($_[3] || 0) + $r;
+    $r += $n;
+  }
+  $r;
+}
+
 # Process construction.
 # A few functions, depending on what you want to do:
 

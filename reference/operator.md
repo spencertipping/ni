@@ -234,6 +234,11 @@
 	  my $fh = siproc {exec qw|docker run --rm -i|, $image, ni_quoted_exec_args};
 	  quote_ni_into $fh, @f;
 
+# OPERATOR each_image
+
+## IMPLEMENTATION
+	1 while defined simage_into $_
+
 # OPERATOR echo
 	Append text verbatim
 

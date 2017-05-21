@@ -69,7 +69,7 @@ Operator | Status | Example      | Description
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
 `H`      | T      | `HS:::`      | Send named files through hadoop
-`I`      |        |              |
+`I`      | I      | `I[...]`     | Process concatenated image files
 `J`      |        |              |
 `K`      |        |              |
 `L`      | U      | `L'(1+ a)'`  | (Reserved for Lisp driver)
