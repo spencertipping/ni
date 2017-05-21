@@ -3765,19 +3765,19 @@ b	1
 c	3
 LAZYTEST_EOF
 lazytest_file='bugs/2016.0918.replicated-garbage.md'
-lazytest_line=651
+lazytest_line=653
 lazytest_case 'ni //ni --dev/local-operate[ \
      p'\''/(^\d+ )(.*)/ ? map r($2, $_), rl $1 : ()'\'' ,zA r-1 r10]
 ' 3<<'LAZYTEST_EOF'
-0	Resource layout map.
-0	ni is assembled by following the instructions here. This script is also
-0	included in the ni image itself so it can rebuild accordingly.
+0	# Resource layout map.
+0	# ni is assembled by following the instructions here. This script is also
+0	# included in the ni image itself so it can rebuild accordingly.
 0	
 0	bootcode
-0	resource core/boot/ni.map.sdoc
+0	resource core/boot/ni.map
 0	
-0	resource core/boot/util.pl.sdoc
-0	resource core/boot/doc.pl.sdoc
-0	resource core/boot/dev.pl.sdoc
+0	resource core/boot/util.pl
+0	resource core/boot/doc.pl
+0	resource core/boot/dev.pl
 LAZYTEST_EOF
 lazytest_end
