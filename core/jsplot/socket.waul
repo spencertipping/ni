@@ -1,0 +1,12 @@
+// Web socket interface.
+// Manages downloads from the server, tracks state, invokes a callback for each batch of new data.
+
+caterwaul(':all')(function () {
+  ni_ws(cmd, cb) = cancel_existing() -then- ws_connect(cmd, cb),
+
+  where[existing_connection         = null,
+        cancel_existing()           = existing_connection /~send/ '' -rescue- null -then- existing_connection.close() -when.existing_connection,
+        ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
+        ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
+        message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
+                                                                  : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();

@@ -1,7 +1,7 @@
-util.pm.sdoc
-math.pm.sdoc
-stream.pm.sdoc
-reducers.pm.sdoc
-geohash.pm.sdoc
-time.pm.sdoc
-pl.pl.sdoc
+util.pm
+math.pm
+stream.pm
+reducers.pm
+geohash.pm
+time.pm
+pl.pl

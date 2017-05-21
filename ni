@@ -32,9 +32,6 @@ sub ni::boot_header
              "die \$@ if \$@",
              "__DATA__" }
 
-sub ni::unsdoc
-{ join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0] }
-
 sub ni::eval($;$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1] || "anon {$_[0]}");
   my @r = eval "package ni;$_[0]";
@@ -44,8 +41,7 @@ sub ni::eval($;$)
 sub ni::set
 { my $k = $_[0];
   chomp($ni::self{$k} = $_[1]);
-  ni::set(substr($k, 0, -5), ni::unsdoc $_[1]) if $k =~ /\.sdoc$/;
-  ni::eval $_[1], $k                           if $k =~ /\.pl$/ }
+  ni::eval $_[1], $k if $k =~ /\.pl$/ }
 
 ni::set $2, join '', map $_ = <DATA>, 1..$1
 while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
@@ -53,23 +49,23 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-50 core/boot/ni.map.sdoc
-Resource layout map.
-ni is assembled by following the instructions here. This script is also
-included in the ni image itself so it can rebuild accordingly.
+50 core/boot/ni.map
+# Resource layout map.
+# ni is assembled by following the instructions here. This script is also
+# included in the ni image itself so it can rebuild accordingly.
 
 bootcode
-resource core/boot/ni.map.sdoc
+resource core/boot/ni.map
 
-resource core/boot/util.pl.sdoc
-resource core/boot/doc.pl.sdoc
-resource core/boot/dev.pl.sdoc
-resource core/boot/parse.pl.sdoc
-resource core/boot/common.pl.sdoc
-resource core/boot/cli.pl.sdoc
-resource core/boot/op.pl.sdoc
-resource core/boot/self.pl.sdoc
-resource core/boot/main.pl.sdoc
+resource core/boot/util.pl
+resource core/boot/doc.pl
+resource core/boot/dev.pl
+resource core/boot/parse.pl
+resource core/boot/common.pl
+resource core/boot/cli.pl
+resource core/boot/op.pl
+resource core/boot/self.pl
+resource core/boot/main.pl
 lib core/gen
 lib core/json
 lib core/deps
@@ -104,10 +100,10 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-105 core/boot/util.pl.sdoc
-Utility functions.
-Generally useful stuff, some of which makes up for the old versions of Perl we
-need to support.
+105 core/boot/util.pl
+# Utility functions.
+# Generally useful stuff, some of which makes up for the old versions of Perl we
+# need to support.
 
 sub weval($) {my @r = eval "package ni;$_[0]"; print STDERR $@ if $@; @r}
 
@@ -152,18 +148,18 @@ sub indent($;$) {
   join "\n", map ' ' x $indent . $_, split /\n/, $s;
 }
 
-Module loading.
-ni can include .pm files in its resource stream, which contain Perl code but
-aren't evaluated by default. This function is used to eval them into the
-current runtime.
+# Module loading.
+# ni can include .pm files in its resource stream, which contain Perl code but
+# aren't evaluated by default. This function is used to eval them into the
+# current runtime.
 
 sub load($) {ni::eval $ni::self{$_[0]}, $_[0]}
 
-Shell quoting/unquoting.
-Useful for two cases. One is when you have a structured list and want a shell
-string that will send those arguments to a command; the other is when you have
-a single string and want to get the ARGV list a shell would pass to a command
-(modulo dollar substitution, which we don't do).
+# Shell quoting/unquoting.
+# Useful for two cases. One is when you have a structured list and want a shell
+# string that will send those arguments to a command; the other is when you have
+# a single string and want to get the ARGV list a shell would pass to a command
+# (modulo dollar substitution, which we don't do).
 
 sub shell_quote {
   local $_;
@@ -190,11 +186,11 @@ sub shell_unquote($) {
   map join('', map shell_unquote_one $_, @ps[$s[$_]+1 .. $s[$_+1]-1]), 0..$#s-1;
 }
 
-Quoted function support.
-Functions that store their code in string form. This is useful for two
-purposes: first, it enables you to recompile things, e.g. for dynamic inlining;
-and second, it makes functions self-documenting, particularly in the context of
-parser combinators.
+# Quoted function support.
+# Functions that store their code in string form. This is useful for two
+# purposes: first, it enables you to recompile things, e.g. for dynamic inlining;
+# and second, it makes functions self-documenting, particularly in the context of
+# parser combinators.
 
 {
 package ni::fn;
@@ -210,10 +206,10 @@ sub source($) {${$_[0]}{code}}
 }
 
 sub fn($) {ref($_[0]) ? $_[0] : ni::fn->new($_[0])}
-30 core/boot/doc.pl.sdoc
-Documentation generator.
-Produces documentation by inspecting data structures. For the most part this is
-delegated.
+30 core/boot/doc.pl
+# Documentation generator.
+# Produces documentation by inspecting data structures. For the most part this is
+# delegated.
 
 our %doc;
 our %doc_fns;
@@ -241,9 +237,9 @@ sub defdocumentable($$;$) {
   ni::eval "sub doc$name(\$\$) {\$ni::doc{'$name'}{\$_[0]} = \$_[1]}";
   ni::eval "sub ${name}_doc(\$) {documentation_for '$name', \$_[0]}";
 }
-42 core/boot/dev.pl.sdoc
-Development functions.
-Utilities helpful for debugging and developing ni.
+42 core/boot/dev.pl
+# Development functions.
+# Utilities helpful for debugging and developing ni.
 
 sub try_to_resolve_coderef($) {
   for my $f (keys %{ni::}) {
@@ -284,11 +280,11 @@ sub dev_trace($) {
     @r;
   };
 }
-231 core/boot/parse.pl.sdoc
-Parser combinators.
-List-structured combinators. These work like normal parser combinators, but are
-indirected through data structures to make them much easier to inspect. This
-allows ni to build an operator mapping table.
+227 core/boot/parse.pl
+# Parser combinators.
+# List-structured combinators. These work like normal parser combinators, but are
+# indirected through data structures to make them much easier to inspect. This
+# allows ni to build an operator mapping table.
 
 our %parsers;
 BEGIN {defdocumentable 'parser', \%parsers, q{
@@ -338,13 +334,13 @@ sub defparseralias($$) {
   eval "sub $code_name() {['$name']}" unless exists ${ni::}{$code_name};
 }
 
-Parse function.
-($result, @remaining) = parse($parser, @inputs). $parser can take one of three
-forms:
+# Parse function.
+# ($result, @remaining) = parse($parser, @inputs). $parser can take one of three
+# forms:
 
-| ['parser-name', @args]: $parsers{'parser-name'} is a function
-  ['parser-name']: $parsers{'parser-name'} could be a function or an array
-  'parser-name': $parsers{'parser-name'} is an array
+# | ['parser-name', @args]: $parsers{'parser-name'} is a function
+#   ['parser-name']: $parsers{'parser-name'} could be a function or an array
+#   'parser-name': $parsers{'parser-name'} is an array
 
 our $recursion_level = 0;
 sub parse;
@@ -358,10 +354,9 @@ sub parse {
   'ARRAY' eq ref $f ? parse $f, @_[1..$#_] : &$f([$p, @args], @_[1..$#_]);
 }
 
-Base parsers.
-Stuff for dealing with some base cases.
+# Base parsers.
+# Stuff for dealing with some base cases.
 
-c
 BEGIN {
   defparser 'pend',   '',  q{@_ > 1                        ? () : (0)};
   defparser 'pempty', '',  q{defined $_[1] && length $_[1] ? () : (0, @_[2..$#_])};
@@ -374,13 +369,12 @@ defparserebnf pempty => q{'<empty>'};
 defparserebnf pk     => q{"<'', evaluate as " . dev_inspect($_[0][1]) . ">"};
 defparserebnf pnone  => q{"''"};
 
-Basic combinators.
-Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
-a dispatch on specified prefixes. The 'r' suffix means that the parser
-combinator takes a reference to a collection; this allows you to modify the
-collection later on to add more alternatives.
+# Basic combinators.
+# Sequence, alternation, etc. 'alt' implies a sequence of alternatives; 'dsp' is
+# a dispatch on specified prefixes. The 'r' suffix means that the parser
+# combinator takes a reference to a collection; this allows you to modify the
+# collection later on to add more alternatives.
 
-c
 BEGIN {
   defparser 'paltr', '\@',
     q{my ($self, @xs, @ps, @r) = @_;
@@ -414,7 +408,6 @@ defparserebnf pdspr => fn q{
   "(\n" . join("\n", @docs) . "\n)";
 };
 
-c
 BEGIN {
   defparser 'pseq', '@',
     q{my ($self, @is, $x, @xs, @ys) = @_;
@@ -478,11 +471,10 @@ sub pn($@)
 
 sub pc($) {pn 0, $_[0], popt pempty}
 
-Regex parsing.
-Consumes the match, returning either the matched text or the first match group
-you specify. Always matches from the beginning of a string.
+# Regex parsing.
+# Consumes the match, returning either the matched text or the first match group
+# you specify. Always matches from the beginning of a string.
 
-c
 BEGIN {
   defparser 'prx', '$',
     q{my ($self, $x, @xs) = @_;
@@ -516,14 +508,13 @@ defparserebnf pnx => fn q{
   my ($self, $r) = @{$_[0]};
   "!/$r/";
 };
-88 core/boot/common.pl.sdoc
-Regex parsing.
-Sometimes we'll have an operator that takes a regex, which is subject to the
-CLI reader problem the same way code arguments are. Rather than try to infer
-brackets the same way, we just require that regexes are terminated with /
-(which should be ok because that's also how they typically start).
+84 core/boot/common.pl
+# Regex parsing.
+# Sometimes we'll have an operator that takes a regex, which is subject to the
+# CLI reader problem the same way code arguments are. Rather than try to infer
+# brackets the same way, we just require that regexes are terminated with /
+# (which should be ok because that's also how they typically start).
 
-c
 BEGIN {defparseralias regex => pmap q{s/\/$//; $_}, prx qr{^(?:[^\\/]+|\\.)*/}}
 
 docparser regex => q{Regular expression, delimited by slashes};
@@ -545,14 +536,13 @@ defparser 'generic_code', '',
              : ($code, '', @xs)};
 
 
-Basic CLI types.
-Some common argument formats for various commands, sometimes transformed for
-specific cases. These are documented somewhere in `doc/`.
+# Basic CLI types.
+# Some common argument formats for various commands, sometimes transformed for
+# specific cases. These are documented somewhere in `doc/`.
 
-A parsed column spec is an N-element array: [floor, cols...]. `floor` indicates
-the first column that would be selected by a `.` ("the rest").
+# A parsed column spec is an N-element array: [floor, cols...]. `floor` indicates
+# the first column that would be selected by a `.` ("the rest").
 
-c
 BEGIN {defparseralias neval => pmap q{eval}, prx '=([^]=]+)'}
 BEGIN {defparseralias integer => palt pmap(q{int},       neval),
                                       pmap(q{10 ** $_},  prx 'E(-?\d+)'),
@@ -565,7 +555,6 @@ BEGIN {defparseralias float => pmap q{0 + $_},
                                prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
-c
 BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
                                             pmap q{ord() - 65}, prx '[A-Z]';
        defparseralias colspec_rest  => pmap q{-1}, pstr '.'}
@@ -591,13 +580,12 @@ docparser colspec_range => q{A range of columns, e.g. A-Q or #10-#20};
 docparser colspec_fixed => q{A set of definite columns; disallows '.' ("the rest")};
 docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 
-Filenames, in general.
-Typically filenames won't include bracket characters, though they might include
-just about everything else. Two possibilities there: if we need special stuff,
-there's the `file://` prefix; otherwise we assume the non-bracket
-interpretation.
+# Filenames, in general.
+# Typically filenames won't include bracket characters, though they might include
+# just about everything else. Two possibilities there: if we need special stuff,
+# there's the `file://` prefix; otherwise we assume the non-bracket
+# interpretation.
 
-c
 BEGIN {defparseralias filename   => palt prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
@@ -605,13 +593,13 @@ BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
 
 docparser filename   => q{The name of an existing file};
 docparser nefilename => q{The name of a possibly-nonexisting file};
-131 core/boot/cli.pl.sdoc
-CLI grammar.
-ni's command line grammar uses some patterns on top of the parser combinator
-primitives defined in parse.pl.sdoc. Probably the most important one to know
-about is the long/short option dispatch, which looks like this:
+130 core/boot/cli.pl
+# CLI grammar.
+# ni's command line grammar uses some patterns on top of the parser combinator
+# primitives defined in parse.pl.sdoc. Probably the most important one to know
+# about is the long/short option dispatch, which looks like this:
 
-| option = alt @longs, dsp %shorts
+# | option = alt @longs, dsp %shorts
 
 our %contexts;
 our %shorts;
@@ -621,7 +609,6 @@ our %short_refs;
 our %dsps;
 our %alts;
 
-c
 BEGIN {
   defdocumentable context => \%contexts, q{
     my ($c, $doc) = @_;
@@ -708,9 +695,9 @@ sub cli(@) {
   $r;
 }
 
-Extensible parse elements.
-These patterns come up a lot, and it's worth being able to autogenerate their
-documentation.
+# Extensible parse elements.
+# These patterns come up a lot, and it's worth being able to autogenerate their
+# documentation.
 
 sub defalt($$@) {
   no strict 'refs';
@@ -737,18 +724,18 @@ sub defdsp($$%) {
   defparseralias "dsp/$name" => $r;
   $r;
 }
-81 core/boot/op.pl.sdoc
-Operator definition.
-Like ni's parser combinators, operators are indirected using names. This
-provides an intermediate representation that can be inspected and serialized.
+81 core/boot/op.pl
+# Operator definition.
+# Like ni's parser combinators, operators are indirected using names. This
+# provides an intermediate representation that can be inspected and serialized.
 
-Meta operators are applied before any pipeline forking happens, and are at
-liberty to modify anything to their left. (Or anything at all really, but it's
-counterintuitive for them to act rightwards.)
+# Meta operators are applied before any pipeline forking happens, and are at
+# liberty to modify anything to their left. (Or anything at all really, but it's
+# counterintuitive for them to act rightwards.)
 
-Note that only toplevel meta operators are evaluated pre-pipeline. Meta
-operators inside lambdas are applied when the lambdas are evaluated (this is a
-feature).
+# Note that only toplevel meta operators are evaluated pre-pipeline. Meta
+# operators inside lambdas are applied when the lambdas are evaluated (this is a
+# feature).
 
 our %operators;
 our %meta_operators;
@@ -800,9 +787,9 @@ sub apply_meta_operators(@) {
   @_;
 }
 
-Regular operators.
-Each of these is a filter process that is forked and piped against standard
-input. Operators act independently of one another.
+# Regular operators.
+# Each of these is a filter process that is forked and piped against standard
+# input. Operators act independently of one another.
 
 sub defoperator($$) {
   my ($name, $f) = @_;
@@ -819,20 +806,18 @@ sub operate {
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }
-63 core/boot/self.pl.sdoc
-Image functions.
-ni needs to be able to reconstruct itself from a map. These functions implement
-the map commands required to do this.
+61 core/boot/self.pl
+# Image functions.
+# ni needs to be able to reconstruct itself from a map. These functions implement
+# the map commands required to do this.
 
 our %self;
 
-our $ni_map_sdoc = 'core/boot/ni.map.sdoc';
-our $ni_map      = 'core/boot/ni.map';
+our $ni_map = 'core/boot/ni.map';
 
 sub self_append_resource($$) {
   my ($k, $v) = @_;
-  $self{$ni_map_sdoc} .= "\nresource $k";
-  $self{$ni_map}      .= "\nresource $k";
+  $self{$ni_map} .= "\nresource $k";
   $self{$k} = $v;
 }
 
@@ -869,7 +854,7 @@ sub modify_self() {
 sub extend_self($$) {
   my ($type, $lib) = @_;
   intern_lib $lib;
-  set $ni_map_sdoc, "$self{$ni_map_sdoc}\n$type $lib"
+  set $ni_map, "$self{$ni_map}\n$type $lib"
     unless grep /^(lib|ext)\s+$lib$/, split /\n/, $self{$ni_map};
 }
 
@@ -883,10 +868,10 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-165 core/boot/main.pl.sdoc
-CLI entry point.
-Some custom toplevel option handlers and the main function that ni uses to
-parse CLI options and execute the data pipeline.
+165 core/boot/main.pl
+# CLI entry point.
+# Some custom toplevel option handlers and the main function that ni uses to
+# parse CLI options and execute the data pipeline.
 
 our %cli_special;
 BEGIN {defdocumentable 'clispecial', \%cli_special}
@@ -896,8 +881,8 @@ sub defclispecial($$$) {
   docclispecial $_[0], $_[2];
 }
 
-Development options.
-Things useful for developing ni.
+# Development options.
+# Things useful for developing ni.
 
 defclispecial '--dev/eval', q{print ni::eval($_[0], "anon $_[0]"), "\n"}, <<'_';
 Development option: evaluate an expression within the `ni::` package, and print
@@ -935,8 +920,8 @@ Development option: find things (parsers, ops, etc) that have been defined but
 have no documentation associated with them.
 _
 
-Extensions.
-Options to extend and modify the ni image.
+# Extensions.
+# Options to extend and modify the ni image.
 
 defclispecial '--internal/lib', q{
   extend_self 'lib', $_ for @_;
@@ -963,7 +948,7 @@ Usage: ni --run 'perl code' normal-ni-options...
 Runs code before running normally.
 _
 
-Documentation.
+# Documentation.
 
 defclispecial '--explain', q{
   my ($r, @rest) = cli_parse @_;
@@ -1009,16 +994,16 @@ such thing, and from there you can run `ni --doc/parser X`, where `X` is the
 name of a parser. (`ni --doc/parser` will list all of them.)
 _
 
-Root CLI context.
-This is used by extensions that define long and short options.
+# Root CLI context.
+# This is used by extensions that define long and short options.
 
 defcontext '', q{toplevel CLI context};
 
-Main stuff.
-sub main() is called by the ni boot header on @ARGV. I've separated
-$main_operator so it can be extended to handle various cases; for instance, ni
-launches a pager when its output is connected to a terminal, etc. This is
-handled by core/stream.
+# Main stuff.
+# sub main() is called by the ni boot header on @ARGV. I've separated
+# $main_operator so it can be extended to handle various cases; for instance, ni
+# launches a pager when its output is connected to a terminal, etc. This is
+# handled by core/stream.
 
 our $main_operator = sub {die "ni: no main operator defined (your ni is broken)"};
 
@@ -1050,29 +1035,29 @@ sub main {
   exit 1;
 }
 1 core/gen/lib
-gen.pl.sdoc
-34 core/gen/gen.pl.sdoc
-Code generator.
-A general-purpose interface to do code-generation stuff. This is used when
-you've got a task that's mostly boilerplate of some kind, but you've got
-variable regions. For example, if you wanted to generalize JVM-hosted
-command-line filters:
+gen.pl
+34 core/gen/gen.pl
+# Code generator.
+# A general-purpose interface to do code-generation stuff. This is used when
+# you've got a task that's mostly boilerplate of some kind, but you've got
+# variable regions. For example, if you wanted to generalize JVM-hosted
+# command-line filters:
 
-| my $java_linefilter = gen q{
-    import java.io.*;
-    public class %classname {
-      public static void main(String[] args) {
-        BufferedReader stdin = <the ridiculous crap required to do this>;
-        String %line;
-        while ((%line = stdin.readLine()) != null) {
-          %body;
-        }
-      }
-    }
-  };
-  my $code = &$java_linefilter(classname => 'Foo',
-                               line      => 'line',
-                               body      => 'System.out.println(line);');
+# | my $java_linefilter = gen q{
+#     import java.io.*;
+#     public class %classname {
+#       public static void main(String[] args) {
+#         BufferedReader stdin = <the ridiculous crap required to do this>;
+#         String %line;
+#         while ((%line = stdin.readLine()) != null) {
+#           %body;
+#         }
+#       }
+#     }
+#   };
+#   my $code = &$java_linefilter(classname => 'Foo',
+#                                line      => 'line',
+#                                body      => 'System.out.println(line);');
 
 our $gensym_index = 0;
 sub gensym {join '_', '_gensym', ++$gensym_index, @_}
@@ -1087,15 +1072,15 @@ sub gen($) {
   };
 }
 1 core/json/lib
-json.pl.sdoc
-76 core/json/json.pl.sdoc
-JSON parser/generator.
-Perl has native JSON libraries available in CPAN, but we can't assume those are
-installed locally. The pure-perl library is unusably slow, and even it isn't
-always there. So I'm implementing an optimized pure-Perl library here to
-address this. Note that this library doesn't parse all valid JSON, but it does
-come close -- and I've never seen a real-world use case of JSON that it would
-fail to parse.
+json.pl
+76 core/json/json.pl
+# JSON parser/generator.
+# Perl has native JSON libraries available in CPAN, but we can't assume those are
+# installed locally. The pure-perl library is unusably slow, and even it isn't
+# always there. So I'm implementing an optimized pure-Perl library here to
+# address this. Note that this library doesn't parse all valid JSON, but it does
+# come close -- and I've never seen a real-world use case of JSON that it would
+# fail to parse.
 
 use Scalar::Util qw/looks_like_number/;
 
@@ -1110,9 +1095,9 @@ sub json_unescape($) {
   $x;
 }
 
-Fully decode a string of JSON. Unless you need to extract everything, this is
-probably the slowest option; targeted attribute extraction should be much
-faster.
+# Fully decode a string of JSON. Unless you need to extract everything, this is
+# probably the slowest option; targeted attribute extraction should be much
+# faster.
 
 sub json_decode($) {
   local $_;
@@ -1141,8 +1126,8 @@ sub json_decode($) {
   wantarray ? @$r : $$r[0];
 }
 
-Encode a string of JSON from a structured value. TODO: add the ability to
-generate true/false values.
+# Encode a string of JSON from a structured value. TODO: add the ability to
+# generate true/false values.
 
 our %json_escapes = map {;$json_unescapes{$_} => $_} keys %json_unescapes;
 
@@ -2200,11 +2185,11 @@ sub load {
 
 1;
 1 core/conf/lib
-conf.pl.sdoc
-58 core/conf/conf.pl.sdoc
-Configuration variables.
-These can be specified as environment vars or overridden locally for specific
-operations.
+conf.pl
+57 core/conf/conf.pl
+# Configuration variables.
+# These can be specified as environment vars or overridden locally for specific
+# operations.
 
 our %conf_variables;
 our %conf_defaults;
@@ -2250,7 +2235,6 @@ defoperator configure => q{
   &$ni::main_operator(@$f);
 };
 
-c
 BEGIN {defparseralias config_map_key   => prx '[^=]+';
        defparseralias config_map_value => prc '.*[^}]+|'}
 BEGIN {defparseralias config_map_kv    => pn [0, 2], config_map_key, pstr '=',
@@ -2261,14 +2245,14 @@ BEGIN {defparseralias config_option_map
 
 defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
 6 core/stream/lib
-fh.pl.sdoc
-procfh.pl.sdoc
-pipeline.pl.sdoc
-self.pl.sdoc
-ops.pl.sdoc
-main.pl.sdoc
-9 core/stream/fh.pl.sdoc
-Filehandle functions.
+fh.pl
+procfh.pl
+pipeline.pl
+self.pl
+ops.pl
+main.pl
+9 core/stream/fh.pl
+# Filehandle functions.
 
 use Fcntl qw/:DEFAULT/;
 
@@ -2277,19 +2261,19 @@ sub fh_nonblock($) {
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
-98 core/stream/procfh.pl.sdoc
-Process + filehandle combination.
-We can't use Perl's process-aware FHs because they block-wait for the process
-on close. There are some situations where we care about the exit code and
-others where we don't, and this class supports both cases.
+98 core/stream/procfh.pl
+# Process + filehandle combination.
+# We can't use Perl's process-aware FHs because they block-wait for the process
+# on close. There are some situations where we care about the exit code and
+# others where we don't, and this class supports both cases.
 
 package ni::procfh;
 
 use POSIX qw/:sys_wait_h/;
 
-Global child collector.
-Collect children regardless of whether anyone is listening for them. If we have
-an interested party, notify them.
+# Global child collector.
+# Collect children regardless of whether anyone is listening for them. If we have
+# an interested party, notify them.
 
 our %child_owners;
 
@@ -2302,17 +2286,17 @@ sub await_children {
 };
 $SIG{CHLD} = \&await_children;
 
-Signal forwarding.
-Propagate termination signals to children and run finalizers. This makes it so
-that non-writing pipelines like `ni n100000000gzn` still die out without
-waiting for the SIGPIPE.
+# Signal forwarding.
+# Propagate termination signals to children and run finalizers. This makes it so
+# that non-writing pipelines like `ni n100000000gzn` still die out without
+# waiting for the SIGPIPE.
 
 sub kill_children($) {kill $_[0], keys %child_owners}
 
-Proc-filehandle class.
-Overloading *{} makes it possible for this to act like a real filehandle in
-every sense: fileno() works, syswrite() works, etc. The constructor takes care
-of numeric fds by promoting them into Perl fh references.
+# Proc-filehandle class.
+# Overloading *{} makes it possible for this to act like a real filehandle in
+# every sense: fileno() works, syswrite() works, etc. The constructor takes care
+# of numeric fds by promoting them into Perl fh references.
 
 use overload qw/*{} fh "" str/;
 sub new($$$) {
@@ -2346,15 +2330,15 @@ sub str($)
   sprintf "<fd %d, pid %d, status %s>",
           fileno $$self{fh}, $$self{pid}, $$self{status} || 'none' }
 
-Child await.
-We have to stop the SIGCHLD handler while we wait for the child in question.
-Otherwise we run the risk of waitpid() blocking forever or catching the wrong
-process. This ends up being fine because this process can't create more
-children while waitpid() is waiting, so we might have some resource delays but
-we won't have a leak.
+# Child await.
+# We have to stop the SIGCHLD handler while we wait for the child in question.
+# Otherwise we run the risk of waitpid() blocking forever or catching the wrong
+# process. This ends up being fine because this process can't create more
+# children while waitpid() is waiting, so we might have some resource delays but
+# we won't have a leak.
 
-We also don't have to worry about multithreading: only one await() call can
-happen per process.
+# We also don't have to worry about multithreading: only one await() call can
+# happen per process.
 
 sub await($) {
   local ($?, $SIG{CHLD});
@@ -2376,14 +2360,14 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-216 core/stream/pipeline.pl.sdoc
-Pipeline construction.
-A way to build a shell pipeline in-process by consing a transformation onto
-this process's standard input. This will cause a fork to happen, and the forked
-PID is returned.
+216 core/stream/pipeline.pl
+# Pipeline construction.
+# A way to build a shell pipeline in-process by consing a transformation onto
+# this process's standard input. This will cause a fork to happen, and the forked
+# PID is returned.
 
-I define some system functions with a `c` prefix: these are checked system
-calls that will die with a helpful message if anything fails.
+# I define some system functions with a `c` prefix: these are checked system
+# calls that will die with a helpful message if anything fails.
 
 no warnings 'io';
 
@@ -2404,11 +2388,11 @@ sub nuke_stdin() {
   }
 }
 
-Safe reads/writes.
-This is required because older versions of Perl don't automatically retry
-interrupted reads/writes. We run the risk of interruption because we have a
-SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
-handle this case properly.
+# Safe reads/writes.
+# This is required because older versions of Perl don't automatically retry
+# interrupted reads/writes. We run the risk of interruption because we have a
+# SIGCHLD handler. nfu lost data on older versions of Perl because it failed to
+# handle this case properly.
 
 sub saferead($$$;$) {
   my $n;
@@ -2426,31 +2410,31 @@ sub safewrite($$) {
   return undef;
 }
 
-Process construction.
-A few functions, depending on what you want to do:
+# Process construction.
+# A few functions, depending on what you want to do:
 
-| siproc(&): fork into block, return pipe FH to block's STDIN.
-  soproc(&): fork into block, return pipe FH from block's STDOUT.
-  sicons(&): fork into block, connect its STDOUT to our STDIN.
-  socons(&): fork into block, connect our STDOUT to its STDIN.
+# | siproc(&): fork into block, return pipe FH to block's STDIN.
+#   soproc(&): fork into block, return pipe FH from block's STDOUT.
+#   sicons(&): fork into block, connect its STDOUT to our STDIN.
+#   socons(&): fork into block, connect our STDOUT to its STDIN.
 
-NOTE: forkopen does something strange and noteworthy. You'll notice that it's
-reopening STDIN and STDOUT from FDs, which seems redundant. This is required
-because Perl filehandles aren't the same as OS-level file descriptors, and ni
-deals with both in different ways.
+# NOTE: forkopen does something strange and noteworthy. You'll notice that it's
+# reopening STDIN and STDOUT from FDs, which seems redundant. This is required
+# because Perl filehandles aren't the same as OS-level file descriptors, and ni
+# deals with both in different ways.
 
-In particular, ni closes STDIN (the filehandle) if the input comes from a
-terminal, since presumably the user doesn't intend to type their input in
-manually. This needs to happen before any exec() from a forked filter process.
-But this creates a problem: if we later reactivate fd 0, which we do by moving
-file descriptors from a pipe. We have to do this at the fd level so exec()
-works correctly (since exec doesn't know anything about Perl filehandles, just
-fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
-operation, Perl's STDIN filehandle will think it's closed and return no data.
+# In particular, ni closes STDIN (the filehandle) if the input comes from a
+# terminal, since presumably the user doesn't intend to type their input in
+# manually. This needs to happen before any exec() from a forked filter process.
+# But this creates a problem: if we later reactivate fd 0, which we do by moving
+# file descriptors from a pipe. We have to do this at the fd level so exec()
+# works correctly (since exec doesn't know anything about Perl filehandles, just
+# fds). Anyway, despite the fact that fd 0 is newly activated by an sicons {}
+# operation, Perl's STDIN filehandle will think it's closed and return no data.
 
-So that's why we do these redundant open STDIN and STDOUT operations. At some
-point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
-moment that seems like more trouble than it's worth.
+# So that's why we do these redundant open STDIN and STDOUT operations. At some
+# point I might bypass Perl's IO layer altogether and use POSIX calls, but at the
+# moment that seems like more trouble than it's worth.
 
 sub forkopen {
   my ($fd, $f, @args) = @_;
@@ -2515,15 +2499,15 @@ sub socons(&@) {
   $fh;
 }
 
-Stream functions.
-These are called by pipelines to simplify things. For example, a common
-operation is to append the output of some data-producing command:
+# Stream functions.
+# These are called by pipelines to simplify things. For example, a common
+# operation is to append the output of some data-producing command:
 
-| $ ni . .              # lists current directory twice
+# | $ ni . .              # lists current directory twice
 
-If you do this, ni will create a pipeline that uses stream wrappers to
-concatenate the second `ls` output (despite the fact that technically it's a
-shell pipe).
+# If you do this, ni will create a pipeline that uses stream wrappers to
+# concatenate the second `ls` output (despite the fact that technically it's a
+# shell pipe).
 
 sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
 sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
@@ -2532,22 +2516,22 @@ sub sio()        {sforward \*STDIN, \*STDOUT}
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
 
-Compressed stream support.
-This provides a stdin filter you can use to read the contents of a compressed
-stream as though it weren't compressed. It's implemented as a filter process so
-we don't need to rely on file extensions.
+# Compressed stream support.
+# This provides a stdin filter you can use to read the contents of a compressed
+# stream as though it weren't compressed. It's implemented as a filter process so
+# we don't need to rely on file extensions.
 
-We detect the following file formats:
+# We detect the following file formats:
 
-| gzip:  1f 8b
-  bzip2: BZh[1-9]    (sometimes \0 instead of the digit)
-  lzo:   89 4c 5a 4f
-  lz4:   04 22 4d 18
-  xz:    fd 37 7a 58 5a
+# | gzip:  1f 8b
+#   bzip2: BZh[1-9]    (sometimes \0 instead of the digit)
+#   lzo:   89 4c 5a 4f
+#   lz4:   04 22 4d 18
+#   xz:    fd 37 7a 58 5a
 
-Decoding works by reading enough to decode the magic, then forwarding data
-into the appropriate decoding process (or doing nothing if we don't know what
-the data is).
+# Decoding works by reading enough to decode the magic, then forwarding data
+# into the appropriate decoding process (or doing nothing if we don't know what
+# the data is).
 
 sub sdecode(;$) {
   local $_;
@@ -2571,10 +2555,10 @@ sub sdecode(;$) {
   }
 }
 
-File/directory cat.
-cat exists to turn filesystem objects into text. Files are emitted and
-directories are turned into readable listings. Files are automatically
-decompressed and globs are automatically deglobbed.
+# File/directory cat.
+# cat exists to turn filesystem objects into text. Files are emitted and
+# directories are turned into readable listings. Files are automatically
+# decompressed and globs are automatically deglobbed.
 
 sub glob_expand($) {-e($_[0]) ? $_[0] : glob $_[0]}
 
@@ -2593,11 +2577,11 @@ sub scat {
     }
   }
 }
-83 core/stream/self.pl.sdoc
-Self invocation.
-You can run ni and read from the resulting file descriptor; this gives you a
-way to evaluate lambda expressions (this is how checkpoints work, for example).
-If you do this, ni's standard input will come from a continuation of __DATA__.
+83 core/stream/self.pl
+# Self invocation.
+# You can run ni and read from the resulting file descriptor; this gives you a
+# way to evaluate lambda expressions (this is how checkpoints work, for example).
+# If you do this, ni's standard input will come from a continuation of __DATA__.
 
 use Errno qw/EINTR/;
 
@@ -2677,12 +2661,11 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-240 core/stream/ops.pl.sdoc
-Streaming data sources.
-Common ways to read data, most notably from files and directories. Also
-included are numeric generators, shell commands, etc.
+238 core/stream/ops.pl
+# Streaming data sources.
+# Common ways to read data, most notably from files and directories. Also
+# included are numeric generators, shell commands, etc.
 
-c
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
   defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
@@ -2712,14 +2695,14 @@ defoperator sh   => q{my ($c) = @_; sh $c};
 
 defshort '/e', pmap q{sh_op $_}, shell_command;
 
-Cat meta-operator.
-We don't want 'cat' to be a regular operator because of how shell wildcards
-work. If you say something like `ni *`, it's going to get a bunch of filenames,
-each of which will fork out to another ni process. Most of these ni processes
-will just be copying stdin to stdout, a huge waste if there are a lot of files.
+# Cat meta-operator.
+# We don't want 'cat' to be a regular operator because of how shell wildcards
+# work. If you say something like `ni *`, it's going to get a bunch of filenames,
+# each of which will fork out to another ni process. Most of these ni processes
+# will just be copying stdin to stdout, a huge waste if there are a lot of files.
 
-We get around this by making `cat` a meta-operator that merges adjacent cat
-operations into a single `cat_multi`.
+# We get around this by making `cat` a meta-operator that merges adjacent cat
+# operations into a single `cat_multi`.
 
 defoperator cat_multi => q{sio; scat $_ for @_};
 
@@ -2751,10 +2734,10 @@ docoperator cat  => q{Append contents of a file or resource};
 docoperator echo => q{Append text verbatim};
 docoperator sh   => q{Filter stream through a shell command};
 
-Note that we generate numbers internally rather than shelling out to `seq`
-(which is ~20x faster than Perl for the purpose, incidentally). This is
-deliberate: certain versions of `seq` generate floating-point numbers after a
-point, which can cause unexpected results and loss of precision.
+# Note that we generate numbers internally rather than shelling out to `seq`
+# (which is ~20x faster than Perl for the purpose, incidentally). This is
+# deliberate: certain versions of `seq` generate floating-point numbers after a
+# point, which can cause unexpected results and loss of precision.
 
 defoperator n => q{
   my ($l, $u) = @_;
@@ -2780,8 +2763,8 @@ docshort '/1' => q{Alias for 'n1'};
 
 doclong '/fs' => q{Append things that appear to be files};
 
-Stream mixing/forking.
-Append, prepend, divert.
+# Stream mixing/forking.
+# Append, prepend, divert.
 
 defoperator append => q{my @xs = @_; sio; exec_ni @xs};
 docoperator append => q{Append another ni stream to this one};
@@ -2810,12 +2793,12 @@ defshort '/+', pmap q{append_op    @$_}, _qfn;
 defshort '/^', pmap q{prepend_op   @$_}, _qfn;
 defshort '/=', pmap q{divert_op    @$_}, _qfn;
 
-Interleaving.
-Append/prepend will block one of the two data sources until the other
-completes. Sometimes, though, you want to stream both at once. Interleaving
-makes that possible, and you can optionally specify the mixture ratio, which is
-the number of interleaved rows per input row. (Negative numbers are interpreted
-as reciprocals, so -2 means two stdin rows for every interleaved.)
+# Interleaving.
+# Append/prepend will block one of the two data sources until the other
+# completes. Sometimes, though, you want to stream both at once. Interleaving
+# makes that possible, and you can optionally specify the mixture ratio, which is
+# the number of interleaved rows per input row. (Negative numbers are interpreted
+# as reciprocals, so -2 means two stdin rows for every interleaved.)
 
 defoperator interleave => q{
   my ($ratio, $lambda) = @_;
@@ -2862,11 +2845,11 @@ defoperator interleave => q{
 
 defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
-Sinking.
-We can sink data into a file just as easily as we can read from it. This is
-done with the `>` operator, which is typically written as `\>`. The difference
-between this and the shell's > operator is that \> outputs the filename; this
-lets you invert the operation with the nullary \< operator.
+# Sinking.
+# We can sink data into a file just as easily as we can read from it. This is
+# done with the `>` operator, which is typically written as `\>`. The difference
+# between this and the shell's > operator is that \> outputs the filename; this
+# lets you invert the operation with the nullary \< operator.
 
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
@@ -2879,9 +2862,9 @@ defoperator file_write => q{
 defshort '/>', pmap q{file_write_op $_}, nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
 
-Resource stream encoding.
-This makes it possible to serialize a directory structure into a single stream.
-ni uses this format internally to store its k/v state.
+# Resource stream encoding.
+# This makes it possible to serialize a directory structure into a single stream.
+# ni uses this format internally to store its k/v state.
 
 defoperator encode_resource_stream => q{
   my @xs;
@@ -2895,15 +2878,14 @@ defoperator encode_resource_stream => q{
 
 defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
-Compression and decoding.
-Sometimes you want to emit compressed data, which you can do with the `Z`
-operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
-by adding a suffix. You can decode a stream in any of these formats using `ZD`
-(though in most cases ni will automatically decode compressed formats).
+# Compression and decoding.
+# Sometimes you want to emit compressed data, which you can do with the `Z`
+# operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
+# by adding a suffix. You can decode a stream in any of these formats using `ZD`
+# (though in most cases ni will automatically decode compressed formats).
 
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
-c
 BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
   defparseralias compressor_spec =>
@@ -2918,7 +2900,7 @@ defoperator decode => q{sdecode};
 defshort '/z',  compressor_spec;
 defshort '/zn', pk sink_null_op();
 defshort '/zd', pk decode_op();
-86 core/stream/main.pl.sdoc
+86 core/stream/main.pl
 use POSIX ();
 
 our $pager_fh;
@@ -2976,12 +2958,12 @@ $ni::main_operator = sub {
   $handling_pipe ? 0 : $exit_status;
 };
 
-Pagers and kill signals.
-`less` resets a number of terminal settings, including character buffering and
-no-echo. If we kill it directly with a signal, it will exit without restoring a
-shell-friendly terminal state, requiring the user to run `reset` to fix it. So
-in an interrupt context we try to give the pager a chance to exit gracefully by
-closing its input stream and having the user use `q` or similar.
+# Pagers and kill signals.
+# `less` resets a number of terminal settings, including character buffering and
+# no-echo. If we kill it directly with a signal, it will exit without restoring a
+# shell-friendly terminal state, requiring the user to run `reset` to fix it. So
+# in an interrupt context we try to give the pager a chance to exit gracefully by
+# closing its input stream and having the user use `q` or similar.
 
 $SIG{PIPE} = sub {
   $handling_pipe = 1;
@@ -3006,12 +2988,12 @@ $SIG{INT} = sub {
   exit 1;
 };
 2 core/meta/lib
-meta.pl.sdoc
-map.pl.sdoc
-76 core/meta/meta.pl.sdoc
-Image-related data sources.
-Long options to access ni's internal state. Also the ability to instantiate ni
-within a shell process.
+meta.pl
+map.pl
+76 core/meta/meta.pl
+# Image-related data sources.
+# Long options to access ni's internal state. Also the ability to instantiate ni
+# within a shell process.
 
 defoperator meta_image => q{sio; print image, "\n"};
 defoperator meta_keys  => q{sio; print "$_\n" for sort keys %ni::self};
@@ -3030,9 +3012,9 @@ defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
 defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;
 
-Documentation options.
-These are listed under the `//help` prefix. This isn't a toplevel option
-because it's more straightforward to model these as data sources.
+# Documentation options.
+# These are listed under the `//help` prefix. This isn't a toplevel option
+# because it's more straightforward to model these as data sources.
 
 sub meta_context_name($) {$_[0] || '<root>'}
 
@@ -3057,8 +3039,8 @@ defoperator meta_conf => q{
 
 defshort '///ni/conf', pmap q{meta_conf_op}, pnone;
 
-Inspection.
-This lets you get details about specific operators or parsing contexts.
+# Inspection.
+# This lets you get details about specific operators or parsing contexts.
 
 defoperator meta_op  => q{sio; print "sub {$ni::operators{$_[0]}}\n"};
 defoperator meta_ops => q{sio; print "$_\n" for sort keys %ni::operators};
@@ -3070,9 +3052,9 @@ defoperator meta_parsers => q{sio; print "$_\t" . json_encode(parser $_) . "\n" 
 defshort '///ni/parser/', pmap q{meta_parser_op $_}, prc '.+';
 defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
 
-The backdoor.
-Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
-code within this process, and behaves like a normal streaming operator.
+# The backdoor.
+# Motivated by `bugs/2016.0918-replicated-garbage`. Lets you eval arbitrary Perl
+# code within this process, and behaves like a normal streaming operator.
 
 defoperator dev_backdoor => q{ni::eval $_[0]};
 defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
@@ -3085,11 +3067,11 @@ defoperator dev_local_operate => q{
 };
 
 defshort '/--dev/local-operate', pmap q{dev_local_operate_op $_}, _qfn;
-24 core/meta/map.pl.sdoc
-Syntax mapping.
-We can inspect the parser dispatch tables within various contexts to get a
-character-level map of prefixes and to indicate which characters are available
-for additional operators.
+24 core/meta/map.pl
+# Syntax mapping.
+# We can inspect the parser dispatch tables within various contexts to get a
+# character-level map of prefixes and to indicate which characters are available
+# for additional operators.
 
 use constant qwerty_prefixes => 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@%=$+_,.:';
 use constant qwerty_effort =>   '02200011000021011000011212244222332222432332222334344444455544565565223';
@@ -3111,12 +3093,12 @@ defoperator meta_short_availability => q{
 
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
-monitor.pl.sdoc
-70 core/monitor/monitor.pl.sdoc
-Pipeline monitoring.
-nfu provided a simple throughput/data count for each pipeline stage. ni can do
-much more, for instance determining the cause of a bottleneck and previewing
-data.
+monitor.pl
+70 core/monitor/monitor.pl
+# Pipeline monitoring.
+# nfu provided a simple throughput/data count for each pipeline stage. ni can do
+# much more, for instance determining the cause of a bottleneck and previewing
+# data.
 
 sub unit_bytes($) {
   return $_[0] >> 10, "K" if $_[0] >> 10 <= 99999;
@@ -3184,25 +3166,24 @@ $ni::main_operator = sub {
   &$original_main_operator(@_, stderr_monitor_transform_op(0.1));
 };
 1 core/uri/lib
-uri.pl.sdoc
-113 core/uri/uri.pl.sdoc
-Resources identified by URI.
-A way for ni to interface with URIs. URIs are self-appending like files; to
-quote them you should use the `\'` prefix or the `i` operator:
+uri.pl
+111 core/uri/uri.pl
+# Resources identified by URI.
+# A way for ni to interface with URIs. URIs are self-appending like files; to
+# quote them you should use the `\'` prefix or the `i` operator:
 
-| ni http://google.com          # prints contents of google.com
-  ni \'http://google.com        # prints "http://google.com"
-  ni ihttp://google.com         # prints "http://google.com"
+# | ni http://google.com          # prints contents of google.com
+#   ni \'http://google.com        # prints "http://google.com"
+#   ni ihttp://google.com         # prints "http://google.com"
 
-If you've got a lot of resources, you can use `\'` with a lambda to quote all
-of them:
+# If you've got a lot of resources, you can use `\'` with a lambda to quote all
+# of them:
 
-| ni \'[ http://foo.com http://bar.com ]
+# | ni \'[ http://foo.com http://bar.com ]
 
 sub uri_scheme($) {my ($scheme) = $_[0] =~ /^([^:]+):/; $scheme}
 sub uri_path($)   {my $s = uri_scheme $_[0]; sr $_[0], qr|^\Q$s://\E|, ''}
 
-c
 BEGIN {
   no strict 'refs';
 
@@ -3223,7 +3204,6 @@ BEGIN {
 our %nuke_on_exit;
 sub nuke_on_exit($) {$nuke_on_exit{$_[0]} = $$}
 
-c
 END {$nuke_on_exit{$_} eq $$ and resource_nuke $_ for keys %nuke_on_exit}
 
 our %resource_read;
@@ -3260,8 +3240,8 @@ sub defresource($%) {
   $resource_nuke{$scheme}   = fn $opts{nuke}   if exists $opts{nuke};
 }
 
-Stream function extensions.
-Add resource support to srfile and swfile.
+# Stream function extensions.
+# Add resource support to srfile and swfile.
 
 my $original_srfile = \&srfile;
 my $original_swfile = \&swfile;
@@ -3287,8 +3267,8 @@ sub is_uri($) {$_[0] =~ /^[^:\/]+:\/\//}
   };
 }
 
-Filesystem resources.
-Things that behave like files: local files, HDFS, S3, sftp, etc.
+# Filesystem resources.
+# Things that behave like files: local files, HDFS, S3, sftp, etc.
 
 sub uri_temp_noise() {"ni." . getpwuid($<) . "." . noise_str 32}
 defconfenv 'tmpdir', TMPDIR => '/tmp';
@@ -3300,33 +3280,33 @@ defresource 'file',
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 2 core/fn/lib
-fn.pl.sdoc
-op-rewrite.pl.sdoc
-90 core/fn/fn.pl.sdoc
-Operator->operator functions.
-This provides a mechanism for ni to implement aliases and other shorthands.
-Internally we do this by defining a "rewrite parser" that modifies the unparsed
-elements in front of it. Rewriting is namespaced: if you define a lambda in the
-root context, it won't apply in other contexts.
+fn.pl
+op-rewrite.pl
+89 core/fn/fn.pl
+# Operator->operator functions.
+# This provides a mechanism for ni to implement aliases and other shorthands.
+# Internally we do this by defining a "rewrite parser" that modifies the unparsed
+# elements in front of it. Rewriting is namespaced: if you define a lambda in the
+# root context, it won't apply in other contexts.
 
-Here's an example of a lambda that looks for manpages matching the given
-filename pattern:
+# Here's an example of a lambda that looks for manpages matching the given
+# filename pattern:
 
-| defn ['/manpages', 'pattern'],
-       qw[e[find /usr/share/man -name $pattern*] \<];
+# | defn ['/manpages', 'pattern'],
+#        qw[e[find /usr/share/man -name $pattern*] \<];
 
-After this definition, ni will perform substitutions like the following:
+# After this definition, ni will perform substitutions like the following:
 
-| $ ni manpages ls
-  # ni e[find /usr/share/man -name ls*] \<
+# | $ ni manpages ls
+#   # ni e[find /usr/share/man -name ls*] \<
 
-Other types of definitions.
-A parameter like 'pattern' will just consume a single unparsed argument, but
-sometimes you want to apply parsing structure to things. You can do that by
-type-tagging the parameters:
+# Other types of definitions.
+# A parameter like 'pattern' will just consume a single unparsed argument, but
+# sometimes you want to apply parsing structure to things. You can do that by
+# type-tagging the parameters:
 
-| defexpander ['/manpages-matching', condition => plcode],
-              qw[e[find /usr/share/man -type f] rp$condition];
+# | defexpander ['/manpages-matching', condition => plcode],
+#               qw[e[find /usr/share/man -type f] rp$condition];
 
 sub evaluate_fn_expansion(\%@) {
   local $_;
@@ -3354,7 +3334,6 @@ sub evaluate_fn_expansion(\%@) {
   @result;
 }
 
-c
 BEGIN {
   defparser fn_expander => '$$$$',
     q{
@@ -3393,9 +3372,9 @@ sub defexpander($@) {
                           \%arg_positions,
                           \@expansion;
 }
-51 core/fn/op-rewrite.pl.sdoc
-Operator-level text substitution.
-WARNING: This is a hack, but possibly a useful one.
+50 core/fn/op-rewrite.pl
+# Operator-level text substitution.
+# WARNING: This is a hack, but possibly a useful one.
 
 sub rewrite_atoms_in {
   my ($op, $fn) = @_;
@@ -3435,7 +3414,6 @@ defoperator op_fn => q{
   }
 };
 
-c
 BEGIN {defparseralias fn_bindings => pn 0, prep(prc qr/[^:=]+/), prc qr/:/}
 BEGIN {defparseralias let_binding => pn [0, 2], prx qr/[^:=]+/, pstr '=', prc '[\s\S]+'}
 BEGIN {defparseralias let_bindings => pn 0, prep(let_binding), prc qr/:/}
@@ -3446,12 +3424,12 @@ defshort '/l[' => pmap q{op_let_op @$_},
 defshort '/f[' => pmap q{op_fn_op @$_},
                   pn [1, 2], popt pempty, fn_bindings, '/series', pstr ']';
 2 core/closure/lib
-closure.pl.sdoc
-file.pl.sdoc
-32 core/closure/closure.pl.sdoc
-Data closures.
-Data closures are a way to ship data along with a process, for example over
-hadoop or SSH. The idea is to make your data as portable as ni is.
+closure.pl
+file.pl
+31 core/closure/closure.pl
+# Data closures.
+# Data closures are a way to ship data along with a process, for example over
+# hadoop or SSH. The idea is to make your data as portable as ni is.
 
 sub add_closure_key($$) {
   # TODO: use a lib for all data closures
@@ -3475,26 +3453,25 @@ defmetaoperator memory_data_closure => q{
 
 defoperator memory_closure_append => q{sio; print closure_data $_[0]};
 
-c
 BEGIN {defparseralias closure_name => prx '[^][]+'}
 
 defshort '///:', pmap q{memory_closure_append_op $_}, pc closure_name;
 defshort '/::',  pmap q{memory_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
-43 core/closure/file.pl.sdoc
-File-backed data closures.
-Sometimes you have data that's too large to store in-memory in the ni image,
-but you still want it to be forwarded automatically. To handle this case, you
-can use a file-backed data closure: the data is streamed after ni's image state
-and is written directly to disk, never stored in memory. (All that's stored in
-memory is the name of the file.)
+43 core/closure/file.pl
+# File-backed data closures.
+# Sometimes you have data that's too large to store in-memory in the ni image,
+# but you still want it to be forwarded automatically. To handle this case, you
+# can use a file-backed data closure: the data is streamed after ni's image state
+# and is written directly to disk, never stored in memory. (All that's stored in
+# memory is the name of the file.)
 
-A point of subtlety about the way file closures are handled. I'm doing this
-through URIs because tempdirs might not be portable between machines: on a
-Linux machine all tempfiles might be in /tmp, but on Mac they might be
-somewhere else. So we make sure that the name of the tempfile is computed in
-the same place that it's written, minimizing the likelihood that we'll hit
-permission errors.
+# A point of subtlety about the way file closures are handled. I'm doing this
+# through URIs because tempdirs might not be portable between machines: on a
+# Linux machine all tempfiles might be in /tmp, but on Mac they might be
+# somewhere else. So we make sure that the name of the tempfile is computed in
+# the same place that it's written, minimizing the likelihood that we'll hit
+# permission errors.
 
 defresource 'file-closure',
   read  => q{resource_read closure_data $_[1]},
@@ -3526,14 +3503,14 @@ defshort '///@', pmap q{file_closure_append_op $_}, pc closure_name;
 defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
-destructure.pl.sdoc
-45 core/destructure/destructure.pl.sdoc
-Targeted extraction.
-Most data extraction workflows don't use every key of a rich data object like
-JSON or XML. ni allows you to avoid the overhead of fully decoding these
-objects by using targeted extraction, which compiles an optimized function to
-return just the values you need. Depending on what you're extracting, this can
-be up to 20-30x faster than doing a full decode.
+destructure.pl
+45 core/destructure/destructure.pl
+# Targeted extraction.
+# Most data extraction workflows don't use every key of a rich data object like
+# JSON or XML. ni allows you to avoid the overhead of fully decoding these
+# objects by using targeted extraction, which compiles an optimized function to
+# return just the values you need. Depending on what you're extracting, this can
+# be up to 20-30x faster than doing a full decode.
 
 
 
@@ -3574,14 +3551,14 @@ defoperator destructure => q{
 
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
-checkpoint.pl.sdoc
-26 core/checkpoint/checkpoint.pl.sdoc
-Checkpoint files.
-You can break a long pipeline into a series of smaller files using
-checkpointing, whose operator is `:`. The idea is to cache intermediate
-results. A checkpoint specifies a file.
+checkpoint.pl
+26 core/checkpoint/checkpoint.pl
+# Checkpoint files.
+# You can break a long pipeline into a series of smaller files using
+# checkpointing, whose operator is `:`. The idea is to cache intermediate
+# results. A checkpoint specifies a file.
 
-Checkpoints are fully buffered before emitting output.
+# Checkpoints are fully buffered before emitting output.
 
 sub checkpoint_create($$) {
   sforward sni(@{$_[1]}), swfile "$_[0].part";
@@ -3603,14 +3580,13 @@ defmetaoperator inline_checkpoint => q{
 
 defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;
 1 core/net/lib
-net.pl.sdoc
-33 core/net/net.pl.sdoc
-Networking stuff.
-SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
-not need to be installed on the remote system, nor does its filesystem need to
-be writable.
+net.pl
+32 core/net/net.pl
+# Networking stuff.
+# SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
+# not need to be installed on the remote system, nor does its filesystem need to
+# be writable.
 
-c
 BEGIN {defparseralias ssh_host => prx '[^][/,]+'}
 
 defoperator ssh => q{
@@ -3622,7 +3598,7 @@ defoperator ssh => q{
 defshort '/s', pmap q{ssh_op @$_},
   pseq palt(pc pmap(q{[$_]}, ssh_host), pc multiword), _qfn;
 
-Network resources.
+# Network resources.
 
 defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
@@ -3639,16 +3615,16 @@ defresource 's3cmd',
   write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
   # TODO
 1 core/buffer/lib
-buffer.pl.sdoc
-14 core/buffer/buffer.pl.sdoc
-Buffering operators.
-Buffering a stream causes it to be forced in its entirety. Buffering does not
-imply, however, that the stream will be consumed at any particular rate; some
-buffers may be size-limited, at which point writes will block until there's
-space available.
+buffer.pl
+14 core/buffer/buffer.pl
+# Buffering operators.
+# Buffering a stream causes it to be forced in its entirety. Buffering does not
+# imply, however, that the stream will be consumed at any particular rate; some
+# buffers may be size-limited, at which point writes will block until there's
+# space available.
 
-Null buffer.
-Forwards data 1:1, but ignores pipe signals on its output.
+# Null buffer.
+# Forwards data 1:1, but ignores pipe signals on its output.
 
 defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 
@@ -3656,12 +3632,12 @@ defshort '/B',
   defdsp 'bufferalt', 'dispatch table for /B buffer operator',
     n => pmap q{buffer_null_op}, pnone;
 1 core/script/lib
-script.pl.sdoc
-35 core/script/script.pl.sdoc
-Scripting support.
-This lets you define a library of scripts or other random utilities (possibly
-with dependent files) and gives you a way to invoke those scripts from a custom
-operator. See doc/script.md for details about how this works.
+script.pl
+35 core/script/script.pl
+# Scripting support.
+# This lets you define a library of scripts or other random utilities (possibly
+# with dependent files) and gives you a way to invoke those scripts from a custom
+# operator. See doc/script.md for details about how this works.
 
 sub export_lib_to_path {
   local $_;
@@ -3694,15 +3670,15 @@ defoperator script => q{
   rm_rf $tmpdir;
 };
 1 core/col/lib
-col.pl.sdoc
-187 core/col/col.pl.sdoc
-Column manipulation operators.
-In root context, ni interprets columns as being tab-delimited.
+col.pl
+187 core/col/col.pl
+# Column manipulation operators.
+# In root context, ni interprets columns as being tab-delimited.
 
-Column selection.
-Normally perl is fast at text manipulation, but on most UNIX systems
-`/usr/bin/cut` is at least an order of magnitude faster. We can use it if the
-column access order is strictly ascending and has no duplicates.
+# Column selection.
+# Normally perl is fast at text manipulation, but on most UNIX systems
+# `/usr/bin/cut` is at least an order of magnitude faster. We can use it if the
+# column access order is strictly ascending and has no duplicates.
 
 sub col_cut {
   my ($floor, $rest, @fs) = @_;
@@ -3727,9 +3703,9 @@ defshort '/f',
   defalt 'colalt', 'list of alternatives for /f field-select operator',
     pmap q{cols_op @$_}, colspec;
 
-Column swapping.
-This is such a common thing to do that it gets its own operator `x`. The idea
-is that you're swapping the specified column(s) into the first N position(s).
+# Column swapping.
+# This is such a common thing to do that it gets its own operator `x`. The idea
+# is that you're swapping the specified column(s) into the first N position(s).
 
 defoperator colswap => q{
   my ($floor, @cs) = @_;
@@ -3745,19 +3721,19 @@ defoperator colswap => q{
 
 defshort '/x', pmap q{ref $_ ? colswap_op @$_ : colswap_op 2, 1}, popt colspec;
 
-Column splitting.
-Adapters for input formats that don't have tab delimiters. Common ones are,
-with their split-spec mnemonics:
+# Column splitting.
+# Adapters for input formats that don't have tab delimiters. Common ones are,
+# with their split-spec mnemonics:
 
-| commas:       C
-  slashes:      D
-  "proper CSV": V
-  pipes:        P
-  whitespace:   S
-  non-words:    W
+# | commas:       C
+#   slashes:      D
+#   "proper CSV": V
+#   pipes:        P
+#   whitespace:   S
+#   non-words:    W
 
-You can also field-split on arbitrary regexes, or extend the splitalt dsp to
-add custom split operators.
+# You can also field-split on arbitrary regexes, or extend the splitalt dsp to
+# add custom split operators.
 
 defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#" : "y/$_[0]/\\t/"};
 defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
@@ -3784,8 +3760,8 @@ defshort '/F',
     ':' => pmap(q{split_chr_op   $_},                prx '.'),
     'm' => pn(1, pstr '/', pmap q{scan_regex_op $_}, regex);
 
-Juxtaposition.
-You can juxtapose two data sources horizontally by using `w` for `with`.
+# Juxtaposition.
+# You can juxtapose two data sources horizontally by using `w` for `with`.
 
 defoperator with_right => q{
   my $fh = sni @_;
@@ -3810,18 +3786,18 @@ defoperator with_left => q{
 defshort '/w', pmap q{with_right_op @$_}, _qfn;
 defshort '/W', pmap q{with_left_op  @$_}, _qfn;
 
-Vertical transformation.
-This is useful when you want to apply a streaming transformation to a specific
-set of columns. For example, if you have five columns and want to lowercase the
-middle one:
+# Vertical transformation.
+# This is useful when you want to apply a streaming transformation to a specific
+# set of columns. For example, if you have five columns and want to lowercase the
+# middle one:
 
-| ni vCplc              # lowercase column C
+# | ni vCplc              # lowercase column C
 
-WARNING: your process needs to output exactly one line per input. If the driver
-is forced to buffer too much memory it will hang waiting for the process to
-catch up.
+# WARNING: your process needs to output exactly one line per input. If the driver
+# is forced to buffer too much memory it will hang waiting for the process to
+# catch up.
 
-TODO: optimize this. Right now it's horrendously slow.
+# TODO: optimize this. Right now it's horrendously slow.
 
 defoperator vertical_apply => q{
   my ($colspec, $lambda) = @_;
@@ -3884,12 +3860,12 @@ defoperator vertical_apply => q{
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 3 core/row/lib
-row.pl.sdoc
-scale.pl.sdoc
-join.pl.sdoc
-168 core/row/row.pl.sdoc
-Row-level operations.
-These reorder/drop/create entire rows without really looking at fields.
+row.pl
+scale.pl
+join.pl
+167 core/row/row.pl
+# Row-level operations.
+# These reorder/drop/create entire rows without really looking at fields.
 
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
@@ -3925,24 +3901,23 @@ defshort '/r',
     pmap(q{head_op '-n', 0 + $_},        integer),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
 
-Sorting.
-ni has four sorting operators, each of which can take modifiers:
+# Sorting.
+# ni has four sorting operators, each of which can take modifiers:
 
-| g     group: sort by byte ordering
-  G     groupuniq: sort + uniq by byte ordering
-  o     order: sort numeric ascending
-  O     rorder: sort numeric descending
+# | g     group: sort by byte ordering
+#   G     groupuniq: sort + uniq by byte ordering
+#   o     order: sort numeric ascending
+#   O     rorder: sort numeric descending
 
-Modifiers follow the operator and dictate the column index and, optionally, the
-type of sort to perform on that column (though a lot of this is already
-specified by which sort operator you use). Columns are specified as A-Z, and
-modifiers, which are optional, are any of these:
+# Modifiers follow the operator and dictate the column index and, optionally, the
+# type of sort to perform on that column (though a lot of this is already
+# specified by which sort operator you use). Columns are specified as A-Z, and
+# modifiers, which are optional, are any of these:
 
-| g     general numeric sort (not available for all 'sort' versions)
-  n     numeric sort
-  -     reverse (I would use 'r', but it conflicts with the row operator)
+# | g     general numeric sort (not available for all 'sort' versions)
+#   n     numeric sort
+#   -     reverse (I would use 'r', but it conflicts with the row operator)
 
-c
 BEGIN {defparseralias sortspec => prep pseq colspec1, popt prx '[-gn]+'}
 
 sub sort_args {'-t', "\t",
@@ -3950,15 +3925,15 @@ sub sort_args {'-t', "\t",
                     (my $m = defined $$_[1] ? $$_[1] : '') =~ s/-/r/g;
                     ('-k', "$i$m,$i")} @_}
 
-Compatibility detection.
-GNU coreutils sort supports some useful options like `--buffer-size` and
-`--compress-program`. We should use these if they exist because they can make a
-huge difference when processing large datasets.
+# Compatibility detection.
+# GNU coreutils sort supports some useful options like `--buffer-size` and
+# `--compress-program`. We should use these if they exist because they can make a
+# huge difference when processing large datasets.
 
-Note that we localize compatibility detection down to the operator -- we don't
-do it system-wide or at parse time. The reason is that parameterized operators
-can be moved, potentially across machines; this really is the only way to do it
-reliably.
+# Note that we localize compatibility detection down to the operator -- we don't
+# do it system-wide or at parse time. The reason is that parameterized operators
+# can be moved, potentially across machines; this really is the only way to do it
+# reliably.
 
 sub sort_supports(@) {
   my $args = shell_quote @_;
@@ -4035,8 +4010,8 @@ defoperator row_grouped_sort => q{
 
 defshort '/gg', pmap q{row_grouped_sort_op @$_}, pseq colspec1, sortspec;
 
-Counting.
-Sorted and unsorted streaming counts.
+# Counting.
+# Sorted and unsorted streaming counts.
 
 defoperator count => q{
   my ($n, $last) = (0, undef);
@@ -4056,52 +4031,51 @@ defoperator uniq => q{exec 'uniq'};
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
 
-190 core/row/scale.pl.sdoc
-Row-based process scaling.
-Allows you to bypass process bottlenecks by distributing rows across multiple
-workers.
+189 core/row/scale.pl
+# Row-based process scaling.
+# Allows you to bypass process bottlenecks by distributing rows across multiple
+# workers.
 
-c
 BEGIN {defshort '/S', defalt 'scalealt', 'row scaling alternation list'}
 
-Fixed scaling.
-The simplest option: specify N workers and a lambda, and the lambda will be
-replicated that many times. Incoming data is broken into chunks of rows and
-written to any worker that's available.
+# Fixed scaling.
+# The simplest option: specify N workers and a lambda, and the lambda will be
+# replicated that many times. Incoming data is broken into chunks of rows and
+# written to any worker that's available.
 
-Implementation-wise here's how this works. We're distributing a single stream
-of data to potentially a lot of subprocesses, each of which might be quite
-fast. So we need to optimize this aggressively, which in this case consists of
-the following:
+# Implementation-wise here's how this works. We're distributing a single stream
+# of data to potentially a lot of subprocesses, each of which might be quite
+# fast. So we need to optimize this aggressively, which in this case consists of
+# the following:
 
-| 1. We maintain an input queue for each worker for reasons described below.
-  2. We minimize the overhead involved in line-splitting blocks, avoiding it
-     entirely for most of the input data.
-  3. We keep writes to workers small enough that they won't block.
+# | 1. We maintain an input queue for each worker for reasons described below.
+#   2. We minimize the overhead involved in line-splitting blocks, avoiding it
+#      entirely for most of the input data.
+#   3. We keep writes to workers small enough that they won't block.
 
-Visually, here's what we're doing:
+# Visually, here's what we're doing:
 
-| worker 1 <- [block 1] [block 2] [block 3] [block 4] [part of block 5]
-  worker 2 <- [rest of part 5] [block 6] [block 7] [block 8] [part of block 9]
-  worker 3 <- ...
+# | worker 1 <- [block 1] [block 2] [block 3] [block 4] [part of block 5]
+#   worker 2 <- [rest of part 5] [block 6] [block 7] [block 8] [part of block 9]
+#   worker 3 <- ...
 
-The key here is that we can avoid line-splitting for any two consecutive blocks
-we send to the same worker, so we want every queue-fill operation to consume a
-large number of blocks. This leads to a possibly counterintuitive heuristic: we
-deliberately let queues run low before refilling them.
+# The key here is that we can avoid line-splitting for any two consecutive blocks
+# we send to the same worker, so we want every queue-fill operation to consume a
+# large number of blocks. This leads to a possibly counterintuitive heuristic: we
+# deliberately let queues run low before refilling them.
 
-Reading from the workers' stdout is exactly the same: we enqueue a bunch of
-blocks and then line-merge once the queues are full enough.
+# Reading from the workers' stdout is exactly the same: we enqueue a bunch of
+# blocks and then line-merge once the queues are full enough.
 
-A note about blocking: the scale operator goes to some lengths to avoid
-blocking on the workers, but it's fine and expected for it to block on its own
-stdin and stdout. The only consideration there is that we try to interleave
-worker and stdin/stdout blocking; this increases the likelihood that we'll
-saturate source and/or sink processes.
+# A note about blocking: the scale operator goes to some lengths to avoid
+# blocking on the workers, but it's fine and expected for it to block on its own
+# stdin and stdout. The only consideration there is that we try to interleave
+# worker and stdin/stdout blocking; this increases the likelihood that we'll
+# saturate source and/or sink processes.
 
-TODO: refactor this to make the pieces available elsewhere. Should probably end
-up with various "combine streams vertically/horizontally/etc" library
-functions.
+# TODO: refactor this to make the pieces available elsewhere. Should probably end
+# up with various "combine streams vertically/horizontally/etc" library
+# functions.
 
 defoperator row_fixed_scale => q{
   use constant buf_size => 32768;
@@ -4247,10 +4221,10 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-32 core/row/join.pl.sdoc
-Streaming joins.
-The UNIX `join` command does this, but rearranges fields in the process. ni
-implements its own operators as a workaround.
+32 core/row/join.pl
+# Streaming joins.
+# The UNIX `join` command does this, but rearranges fields in the process. ni
+# implements its own operators as a workaround.
 
 defoperator join => q{
   my ($left_cols, $right_cols, $f) = @_;
@@ -4281,13 +4255,13 @@ defoperator join => q{
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
 2 core/cell/lib
-murmurhash.pl.sdoc
-cell.pl.sdoc
-28 core/cell/murmurhash.pl.sdoc
-Pure-Perl MurmurHash3_32 implementation.
-This is used by some intification operators and based on the Wikipedia
-implementation. It's limited to 32 bits because otherwise ni will fail on 32-bit
-machines.
+murmurhash.pl
+cell.pl
+28 core/cell/murmurhash.pl
+# Pure-Perl MurmurHash3_32 implementation.
+# This is used by some intification operators and based on the Wikipedia
+# implementation. It's limited to 32 bits because otherwise ni will fail on 32-bit
+# machines.
 
 use constant murmur_c1 => 0xcc9e2d51;
 use constant murmur_c2 => 0x1b873593;
@@ -4312,22 +4286,21 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-135 core/cell/cell.pl.sdoc
-Cell-level operators.
-Cell-specific transformations that are often much shorter than the equivalent
-Perl code. They're also optimized for performance.
+133 core/cell/cell.pl
+# Cell-level operators.
+# Cell-specific transformations that are often much shorter than the equivalent
+# Perl code. They're also optimized for performance.
 
 defcontext 'cell', q{cell operator context};
 defshort '/,', parser 'cell/qfn';
 
-c
 BEGIN {
   defparseralias cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
   defparseralias cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
 }
 
-Codegen.
-Most of these have exactly the same format and take a column spec.
+# Codegen.
+# Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
   my ($cs, %args) = @_;
@@ -4349,9 +4322,9 @@ sub cell_eval($@) {
   fn(cell_op_gen->(%$h))->(@args);
 }
 
-Intification.
-Strategies to turn each distinct entry into a number. Particularly useful in a
-plotting context.
+# Intification.
+# Strategies to turn each distinct entry into a number. Particularly useful in a
+# plotting context.
 
 defoperator intify_compact => q{
   cell_eval {args  => 'undef',
@@ -4375,10 +4348,9 @@ defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
 
-Numerical transformations.
-Trivial stuff that applies to each cell individually.
+# Numerical transformations.
+# Trivial stuff that applies to each cell individually.
 
-c
 BEGIN {
   defparseralias quant_spec  => pmap q{$_ || 1}, popt number;
   defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
@@ -4422,10 +4394,10 @@ defoperator quantize => q{
 
 defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
 
-Streaming numeric transformations.
-Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
-not cell operators, but in practice you tend to use them in the same context as
-things like log scaling.
+# Streaming numeric transformations.
+# Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
+# not cell operators, but in practice you tend to use them in the same context as
+# things like log scaling.
 
 defoperator col_sum => q{
   cell_eval {args  => 'undef',
@@ -4449,27 +4421,27 @@ defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 1 core/assert/lib
-assert.pl.sdoc
-6 core/assert/assert.pl.sdoc
-Assertions: die horribly unless something is true.
-Defines the `!` operator, which will deliberately nuke your entire process
-unless its condition is true.
+assert.pl
+6 core/assert/assert.pl
+# Assertions: die horribly unless something is true.
+# Defines the `!` operator, which will deliberately nuke your entire process
+# unless its condition is true.
 
 defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 7 core/pl/lib
-util.pm.sdoc
-math.pm.sdoc
-stream.pm.sdoc
-reducers.pm.sdoc
-geohash.pm.sdoc
-time.pm.sdoc
-pl.pl.sdoc
-122 core/pl/util.pm.sdoc
-Utility library functions.
-Mostly inherited from nfu. This is all loaded inline before any Perl mapper
-code. Note that List::Util, the usual solution to a lot of these problems, is
-introduced in v5.7.3, so we can't rely on it being there.
+util.pm
+math.pm
+stream.pm
+reducers.pm
+geohash.pm
+time.pm
+pl.pl
+122 core/pl/util.pm
+# Utility library functions.
+# Mostly inherited from nfu. This is all loaded inline before any Perl mapper
+# code. Note that List::Util, the usual solution to a lot of these problems, is
+# introduced in v5.7.3, so we can't rely on it being there.
 
 sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
@@ -4588,9 +4560,9 @@ sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
 }
-47 core/pl/math.pm.sdoc
-Math utility functions.
-Mostly geometric and statistical stuff.
+47 core/pl/math.pm
+# Math utility functions.
+# Mostly geometric and statistical stuff.
 
 use constant tau => 2 * 3.14159265358979323846264;
 use constant tau2 => tau/2;
@@ -4636,22 +4608,22 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-104 core/pl/stream.pm.sdoc
-Perl stream-related functions.
-Utilities to parse and emit streams of data. Handles the following use cases:
+103 core/pl/stream.pm
+# Perl stream-related functions.
+# Utilities to parse and emit streams of data. Handles the following use cases:
 
-| $ ni n:10p'a + a'             # emit single value
-  $ ni n:10p'a, a * a'          # emit multiple values vertically
-  $ ni n:10p'r a, a * a'        # emit multiple values horizontally
+# | $ ni n:10p'a + a'             # emit single value
+#   $ ni n:10p'a, a * a'          # emit multiple values vertically
+#   $ ni n:10p'r a, a * a'        # emit multiple values horizontally
 
-The 'pr' function can bypass split /\t/, which is useful in high-throughput
-situations. For example:
+# The 'pr' function can bypass split /\t/, which is useful in high-throughput
+# situations. For example:
 
-| $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
+# | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
 
-Lowercase letters followed by underscores are field-extractors that can take an
-array of lines and return an array of field values. These are useful in
-conjunction with the line-reading functions `rw`, `ru`, and `re`.
+# Lowercase letters followed by underscores are field-extractors that can take an
+# array of lines and return an array of field values. These are useful in
+# conjunction with the line-reading functions `rw`, `ru`, and `re`.
 
 our @q;
 our @F;
@@ -4679,11 +4651,10 @@ sub cols(@) {
   ();
 }
 
-Hash constructors.
-Pairs of letters you can use to index one column against another. For example,
-`%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
+# Hash constructors.
+# Pairs of letters you can use to index one column against another. For example,
+# `%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
 
-c
 BEGIN {for my $x ('a'..'l') {
          ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
                        $x, $_, $x, $_ for 'a'..'l'}}
@@ -4700,23 +4671,23 @@ BEGIN {for my $x ('a'..'l') {
                                     @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
-Seeking functions.
-It's possible to read downwards (i.e. future lines), which returns an array and
-sends the after-rejected line into the lookahead queue to be used by the next
-iteration. Mnemonics:
+# Seeking functions.
+# It's possible to read downwards (i.e. future lines), which returns an array and
+# sends the after-rejected line into the lookahead queue to be used by the next
+# iteration. Mnemonics:
 
-| rw: read while condition
-  ru: read until condition
-  re: read while equal
+# | rw: read while condition
+#   ru: read until condition
+#   re: read while equal
 
-These functions all read things into memory. If you want to stream stuff, you
-can do it in two ways. One is to use control flow with the 'rl' (read line)
-function:
+# These functions all read things into memory. If you want to stream stuff, you
+# can do it in two ways. One is to use control flow with the 'rl' (read line)
+# function:
 
-| do_stuff until rl =~ /<\//;           # iterate until closing XML tag
-  push @q, $_;                          # important: stash rejected line
+# | do_stuff until rl =~ /<\//;           # iterate until closing XML tag
+#   push @q, $_;                          # important: stash rejected line
 
-The other is to use the faceting functions defined in facet.pm.
+# The other is to use the faceting functions defined in facet.pm.
 
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
@@ -4725,12 +4696,12 @@ sub rea() {re {a}}
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
                      $_, ord($_) - 97 for 'b'..'l'}
 
-Streaming aggregations.
-These functions are like the ones above, but designed to work in constant
-space:
+# Streaming aggregations.
+# These functions are like the ones above, but designed to work in constant
+# space:
 
-| se<column>: streaming reduce while everything up to column is equal
-  sr: streaming reduce all data
+# | se<column>: streaming reduce while everything up to column is equal
+#   sr: streaming reduce all data
 
 sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              @xs = &$f(@xs), rl while defined and &$e eq $k;
@@ -4741,19 +4712,19 @@ BEGIN {ceval sprintf 'sub se%s(&$@) {
                       }', $_, ord($_) - 97 for 'a'..'l'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
-68 core/pl/reducers.pm.sdoc
-Compound reductions.
-Suppose you want to calculate, in parallel, the sum of one column and the mean
-of another. You can't use two separate `sr` calls since the first one will
-force the whole stream. Instead, you need a way to build a single compound
-function that maintains the two separate state elements. That's what `rc`
-(reduce compound) is all about.
+67 core/pl/reducers.pm
+# Compound reductions.
+# Suppose you want to calculate, in parallel, the sum of one column and the mean
+# of another. You can't use two separate `sr` calls since the first one will
+# force the whole stream. Instead, you need a way to build a single compound
+# function that maintains the two separate state elements. That's what `rc`
+# (reduce compound) is all about.
 
-In fast languages we could probably get away with some nice combinatory stuff
-here, but this is performance-critical and Perl isn't fast. So I'm making some
-epic use of codegen and `eval` to help Perl be all it can be. We end up
-compiling into a single function body for a `cr` call, which is then mapped
-through a finalizer to eliminate intermediate states.
+# In fast languages we could probably get away with some nice combinatory stuff
+# here, but this is performance-critical and Perl isn't fast. So I'm making some
+# epic use of codegen and `eval` to help Perl be all it can be. We end up
+# compiling into a single function body for a `cr` call, which is then mapped
+# through a finalizer to eliminate intermediate states.
 
 sub rsum($)  {+{reduce => gen "%1 + ($_[0])",
                 init   => [0],
@@ -4791,11 +4762,11 @@ sub compound_reducer(@) {
    end    => join(', ', map $_[$_]{end}->(@{$mapping[$_]}),    0..$#_));
 }
 
-Reduce compound function.
-Executes a compound reduction using the specified stream reducer function.
-Typical usage would be like this:
+# Reduce compound function.
+# Executes a compound reduction using the specified stream reducer function.
+# Typical usage would be like this:
 
-| ($sum, $mean) = rc \&sea, fsum A, fmean B;
+# | ($sum, $mean) = rc \&sea, fsum A, fmean B;
 
 sub rc {
   my ($f, @rs) = @_;
@@ -4805,17 +4776,15 @@ sub rc {
   &$end(&$f($reduce, @{$c{init}}));
 }
 
-Just like for `se` functions, we define shorthands such as `rca ...` = `rc
-\&sea, ...`.
+# Just like for `se` functions, we define shorthands such as `rca ...` = `rc
+# \&sea, ...`.
 
-c
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-150 core/pl/geohash.pm.sdoc
-Fast, portable geohash encoder.
-A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
-Perl builds.
+149 core/pl/geohash.pm
+# Fast, portable geohash encoder.
+# A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
+# Perl builds.
 
-c
 BEGIN {
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
@@ -4961,16 +4930,16 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-120 core/pl/time.pm.sdoc
-Time conversion functions.
-Dependency-free functions that do various time-conversion tasks for you in a
-standardized way. They include:
+118 core/pl/time.pm
+# Time conversion functions.
+# Dependency-free functions that do various time-conversion tasks for you in a
+# standardized way. They include:
 
-| @parts = tep($elements, $epoch): convert an epoch to specified pieces
-  $epoch = tpe($elements, @values): convert values to an epoch
+# | @parts = tep($elements, $epoch): convert an epoch to specified pieces
+#   $epoch = tpe($elements, @values): convert values to an epoch
 
-Everything always happens in UTC. If you want a different timezone, you'll need
-to shift your epochs by some multiple of 3600.
+# Everything always happens in UTC. If you want a different timezone, you'll need
+# to shift your epochs by some multiple of 3600.
 
 use POSIX ();
 
@@ -5000,8 +4969,8 @@ sub time_pieces_epoch {
   POSIX::mktime(@tvs[0..5]) + $tvs[9] / 1_000_000_000 - $mktime_error;
 }
 
-Day of Week and Hour of Day.
-These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
+# Day of Week and Hour of Day.
+# These methods are for converting timestamps in GMT; if you have data from another location on the globe (and you probably do), you'll need to use a timezone shift as described above.
 
 our @days = qw(Thu Fri Sat Sun Mon Tue Wed);
 sub day_of_week($) {
@@ -5029,19 +4998,18 @@ sub year_month($) {
   $year . "_" . $month;
 }
 
-Round to day/hour/quarter-hour/minute.
+# Round to day/hour/quarter-hour/minute.
 
-c
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
 
-Approximate timezone shifts by lat/lng.
-Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
-(in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
-It may be off by a few hours but is generally unbiased.
+# Approximate timezone shifts by lat/lng.
+# Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
+# (in seconds, which can be added to a GMT epoch) for a given latitude/longitude.
+# It may be off by a few hours but is generally unbiased.
 
 sub timezone_seconds {
   my ($lat, $lng) = @_;
@@ -5065,7 +5033,6 @@ sub gh_localtime($$) {
   $mktime_error = time_pieces_epoch(time_epoch_pieces $t) - $t;
 }
 
-c
 BEGIN {
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
@@ -5082,13 +5049,13 @@ BEGIN {
   *ym = \&year_month;
 }
 
-154 core/pl/pl.pl.sdoc
-Perl parse element.
-A way to figure out where some Perl code ends, in most cases. This works
-because appending closing brackets to valid Perl code will always make it
-invalid. The same property holds across most code-to-code functions. This is
-how ni figures out whether a closing bracket is a lambda-terminator or a part
-of some row mapping code.
+152 core/pl/pl.pl
+# Perl parse element.
+# A way to figure out where some Perl code ends, in most cases. This works
+# because appending closing brackets to valid Perl code will always make it
+# invalid. The same property holds across most code-to-code functions. This is
+# how ni figures out whether a closing bracket is a lambda-terminator or a part
+# of some row mapping code.
 
 use POSIX ();
 
@@ -5100,13 +5067,12 @@ sub syntax_check($$) {
   $fh->await;
 }
 
-We need to explicitly disable any BEGIN{} blocks to avoid executing side
-effects. We can guarantee that nothing will run (beyond `use` statements, which
-we assume are safe) by removing any occurrences of the string `BEGIN` and
-replacing them with something syntactically equivalent but less volatile -- in
-this case, `END`.
+# We need to explicitly disable any BEGIN{} blocks to avoid executing side
+# effects. We can guarantee that nothing will run (beyond `use` statements, which
+# we assume are safe) by removing any occurrences of the string `BEGIN` and
+# replacing them with something syntactically equivalent but less volatile -- in
+# this case, `END`.
 
-c
 BEGIN {
 defparser 'plcode', '$', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
@@ -5134,10 +5100,10 @@ EOF
 };
 }
 
-Perl wrapper.
-Defines the `p` operator, which can be modified in a few different ways to do
-different things. By default it functions as a one-in, many-out row
-transformer.
+# Perl wrapper.
+# Defines the `p` operator, which can be modified in a few different ways to do
+# different things. By default it functions as a one-in, many-out row
+# transformer.
 
 use constant perl_mapgen => gen q{
   package ni::pl;
@@ -5218,7 +5184,6 @@ defoperator perl_cell_transformer => q{
     each     => $gen->(cols => @cols ? join ',', @cols : '0..$#F'));
 };
 
-c
 BEGIN {
   defparseralias perl_mapper_code         => plcode \&perl_mapper;
   defparseralias perl_grepper_code        => plcode \&perl_grepper;
@@ -5239,7 +5204,7 @@ defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
 2 core/rb/lib
 prefix.rb
-rb.pl.sdoc
+rb.pl
 96 core/rb/prefix.rb
 # ni ruby driver prefix
 # This is loaded prior to the short codegen segment in rb.pl.sdoc.
@@ -5337,16 +5302,15 @@ def re &f
   v = f.call $l
   rw {|l| f.call(l) == v}
 end
-76 core/rb/rb.pl.sdoc
-Ruby code element.
-This works just like the Perl code parser but is slightly less involved because
-there's no `BEGIN/END` substitution. We also don't need to take a code
-transform because no amount of wrapping will change whether an expression can
-be parsed.
+75 core/rb/rb.pl
+# Ruby code element.
+# This works just like the Perl code parser but is slightly less involved because
+# there's no `BEGIN/END` substitution. We also don't need to take a code
+# transform because no amount of wrapping will change whether an expression can
+# be parsed.
 
 use POSIX ();
 
-c
 BEGIN {
 defparser 'rbcode', '', q{
   return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
@@ -5361,7 +5325,7 @@ EOF
 };
 }
 
-Ruby wrapper.
+# Ruby wrapper.
 
 use constant ruby_mapgen => gen q{
   %prefix
@@ -5416,7 +5380,7 @@ defshort '/m',
 defrowalt pmap q{ruby_grepper_op $_}, pn 1, pstr 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
-lisp.pl.sdoc
+lisp.pl
 166 core/lisp/prefix.lisp
 ;;;;;;;;
 ;; NB: don't delete the line of semicolons above; SBCL throws away the first few
@@ -5584,16 +5548,16 @@ lisp.pl.sdoc
                         ,@(loop for form in body collect
                                `(multiple-value-call #'output-rows ,form)
                         )))))))))
-56 core/lisp/lisp.pl.sdoc
-Lisp backend.
-A super simple SBCL operator. The first thing we want to do is to define the
-code template that we send to Lisp via stdin (using a heredoc). So ni ends up
-generating a pipeline element like this:
+53 core/lisp/lisp.pl
+# Lisp backend.
+# A super simple SBCL operator. The first thing we want to do is to define the
+# code template that we send to Lisp via stdin (using a heredoc). So ni ends up
+# generating a pipeline element like this:
 
-| ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
-        (prefix lisp code)
-        (line mapping code)
-        EOF
+# | ... | sbcl --noinform --script 3<&0 <<'EOF' | ...
+#         (prefix lisp code)
+#         (line mapping code)
+#         EOF
 
 use POSIX ();
 
@@ -5609,20 +5573,17 @@ use constant lisp_grepgen => gen q{
     %body)
 };
 
-Now we specify which files get loaded into the prefix. The ni build script
-preprocesses files with an sdoc extension (though you're not required to use
-it; normal files are passed straight through), and file paths become keys in
-the %self hash after having the src/ prefix replaced with core/.
+# Now we specify which files get loaded into the prefix. File paths become keys
+# in the %self hash.
 
 sub lisp_prefix() {join "\n", @ni::self{qw| core/lisp/prefix.lisp |}}
 
-Finally we define the toplevel operator. 'root' is the operator context, 'L' is
-the operator name, and pmap {...} mrc '...' is the parsing expression that
-consumes the operator's arguments (in this case a single argument of just some
-Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
-how shell commands are represented.)
+# Finally we define the toplevel operator. 'root' is the operator context, 'L' is
+# the operator name, and pmap {...} mrc '...' is the parsing expression that
+# consumes the operator's arguments (in this case a single argument of just some
+# Lisp code) and returns a shell command. (See src/sh.pl.sdoc for details about
+# how shell commands are represented.)
 
-c
 BEGIN {defparseralias lispcode => prc '.*[^]]+'}
 
 defoperator lisp_code => q{
@@ -5642,12 +5603,12 @@ defrowalt pmap q{lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
                                              body   => $_)},
           pn 1, pstr 'l', lispcode;
 1 core/sql/lib
-sql.pl.sdoc
-131 core/sql/sql.pl.sdoc
-SQL parsing context.
-Translates ni CLI grammar to a SELECT query. This is a little interesting
-because SQL has a weird structure to it; to help with this I've also got a
-'sqlgen' abstraction that figures out when we need to drop into a subquery.
+sql.pl
+129 core/sql/sql.pl
+# SQL parsing context.
+# Translates ni CLI grammar to a SELECT query. This is a little interesting
+# because SQL has a weird structure to it; to help with this I've also got a
+# 'sqlgen' abstraction that figures out when we need to drop into a subquery.
 
 sub sqlgen($) {bless {from => $_[0]}, 'ni::sqlgen'}
 
@@ -5707,16 +5668,15 @@ sub ni::sqlgen::union      {$_[0]->modify(setop => 1, union     => $_[1])}
 sub ni::sqlgen::intersect  {$_[0]->modify(setop => 1, intersect => $_[1])}
 sub ni::sqlgen::difference {$_[0]->modify(setop => 1, except    => $_[1])}
 
-SQL code parse element.
-Counts brackets outside quoted strings.
+# SQL code parse element.
+# Counts brackets outside quoted strings.
 
-c
 BEGIN {defparseralias sqlcode => generic_code}
 
-Code compilation.
-Parser elements can generate one of two things: [method, @args] or
-{%modifications}. Compiling code is just starting with a SQL context and
-left-reducing method calls.
+# Code compilation.
+# Parser elements can generate one of two things: [method, @args] or
+# {%modifications}. Compiling code is just starting with a SQL context and
+# left-reducing method calls.
 
 sub sql_compile {
   local $_;
@@ -5732,11 +5692,10 @@ sub sql_compile {
   $g->render;
 }
 
-SQL operator mapping.
-For the most part we model SQL operations the same way that we address Spark
-RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
+# SQL operator mapping.
+# For the most part we model SQL operations the same way that we address Spark
+# RDDs, though the mnemonics are a mix of ni and SQL abbreviations.
 
-c
 BEGIN {defcontext 'sql', q{SQL generator context}}
 BEGIN {defparseralias sql_table => pmap q{sqlgen $_}, prc '^[^][]*'}
 BEGIN {defparseralias sql_query => pmap q{sql_compile $$_[0], @{$$_[1]}},
@@ -5765,10 +5724,10 @@ defshort 'sql/+', pmap q{['union',      $_]}, sql_query;
 defshort 'sql/*', pmap q{['intersect',  $_]}, sql_query;
 defshort 'sql/-', pmap q{['difference', $_]}, sql_query;
 
-Global operator.
-SQL stuff is accessed using Q, which delegates to a sub-parser that handles
-configuration/connections. The dev/compile delegate is provided so you can see
-the SQL code being generated.
+# Global operator.
+# SQL stuff is accessed using Q, which delegates to a sub-parser that handles
+# configuration/connections. The dev/compile delegate is provided so you can see
+# the SQL code being generated.
 
 defoperator sql_preview => q{sio; print "$_[0]\n"};
 
@@ -5776,27 +5735,27 @@ defshort '/Q',
   defdsp 'sqlprofile', 'dispatch for SQL profiles',
     'dev/compile' => pmap q{sql_preview_op($_[0])}, sql_query;
 1 core/python/lib
-python.pl.sdoc
-41 core/python/python.pl.sdoc
-Python stuff.
-A context for processing stuff in Python, as well as various functions to
-handle the peculiarities of Python code.
+python.pl
+41 core/python/python.pl
+# Python stuff.
+# A context for processing stuff in Python, as well as various functions to
+# handle the peculiarities of Python code.
 
-Indentation fixing.
-This is useful in any context where code is artificially indented, e.g. when
-you've got a multiline quotation and the first line appears outdented because
-the quote opener has taken up space:
+# Indentation fixing.
+# This is useful in any context where code is artificially indented, e.g. when
+# you've got a multiline quotation and the first line appears outdented because
+# the quote opener has taken up space:
 
-| my $python_code = q{import numpy as np
-                      print np};
-  # -----------------| <- this indentation is misleading
+# | my $python_code = q{import numpy as np
+#                       print np};
+#   # -----------------| <- this indentation is misleading
 
-In this case, we want to have the second line indented at zero, not at the
-apparent indentation. The pydent function does this transformation for you, and
-correctly handles Python block constructs:
+# In this case, we want to have the second line indented at zero, not at the
+# apparent indentation. The pydent function does this transformation for you, and
+# correctly handles Python block constructs:
 
-| my $python_code = pydent q{if True:
-                               print "well that's good"};
+# | my $python_code = pydent q{if True:
+#                                print "well that's good"};
 
 sub pydent($) {
   my @lines   = split /\n/, $_[0];
@@ -5813,20 +5772,20 @@ sub pydent($) {
 
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 
-Python code parse element.
-Counts brackets, excluding those inside quoted strings. This is more efficient
-and less accurate than Ruby/Perl, but the upside is that errors are not
-particularly common.
+# Python code parse element.
+# Counts brackets, excluding those inside quoted strings. This is more efficient
+# and less accurate than Ruby/Perl, but the upside is that errors are not
+# particularly common.
 
 defparseralias pycode => pmap q{pydent $_}, generic_code;
 3 core/binary/lib
-bytestream.pm.sdoc
-bytewriter.pm.sdoc
-binary.pl.sdoc
-28 core/binary/bytestream.pm.sdoc
-Binary byte stream driver.
-Functions that read data in blocks. The lookahead is 8192 bytes by default, but
-you can peek further using the 'pb' function.
+bytestream.pm
+bytewriter.pm
+binary.pl
+28 core/binary/bytestream.pm
+# Binary byte stream driver.
+# Functions that read data in blocks. The lookahead is 8192 bytes by default, but
+# you can peek further using the 'pb' function.
 
 our $stdin_ok = 1;
 our $offset = 0;
@@ -5852,18 +5811,18 @@ sub rb($) {
 }
 
 sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
-7 core/binary/bytewriter.pm.sdoc
-Byte writer.
-Convenience functions that make it easier to write binary data to standard out.
-This library gets added to the perl prefix, so these functions are available in
-perl mappers.
+7 core/binary/bytewriter.pm
+# Byte writer.
+# Convenience functions that make it easier to write binary data to standard out.
+# This library gets added to the perl prefix, so these functions are available in
+# perl mappers.
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-30 core/binary/binary.pl.sdoc
-Binary import operator.
-An operator that reads data in terms of bytes rather than lines. This is done
-in a Perl context with functions that manage a queue of data in `$_`.
+30 core/binary/binary.pl
+# Binary import operator.
+# An operator that reads data in terms of bytes rather than lines. This is done
+# in a Perl context with functions that manage a queue of data in `$_`.
 
 use constant binary_perlgen => gen q{
   %prefix
@@ -5892,12 +5851,12 @@ defshort '/b',
   defdsp 'binaryalt', 'dispatch table for the /b binary operator',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
-matrix.pl.sdoc
-156 core/matrix/matrix.pl.sdoc
-Matrix conversions.
-Dense to sparse creates a (row, column, value) stream from your data. Sparse to
-dense inverts that. You can specify where the matrix data begins using a column
-identifier; this is useful when your matrices are prefixed with keys.
+matrix.pl
+156 core/matrix/matrix.pl
+# Matrix conversions.
+# Dense to sparse creates a (row, column, value) stream from your data. Sparse to
+# dense inverts that. You can specify where the matrix data begins using a column
+# identifier; this is useful when your matrices are prefixed with keys.
 
 sub matrix_cell_combine($$) {
   return $_[0] = $_[1] unless defined $_[0];
@@ -5978,8 +5937,8 @@ defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
 defshort '/Z', pmap q{unflatten_op 0 + $_}, integer;
 
-NumPy interop.
-Partitioned by the first row value and sent in as dense matrices.
+# NumPy interop.
+# Partitioned by the first row value and sent in as dense matrices.
 
 use constant numpy_gen => gen pydent q{
   from numpy import *
@@ -6051,12 +6010,11 @@ defoperator numpy_dense => q{
 
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
-gnuplot.pl.sdoc
-63 core/gnuplot/gnuplot.pl.sdoc
-Gnuplot interop.
-An operator that sends output to a gnuplot process.
+gnuplot.pl
+61 core/gnuplot/gnuplot.pl
+# Gnuplot interop.
+# An operator that sends output to a gnuplot process.
 
-c
 BEGIN {defdsp gnuplot_code_prefixalt => 'prefixes for gnuplot code';
        defparseralias gnuplot_colspec => palt colspec1, pmap q{undef}, pstr ':'}
 BEGIN {defparseralias gnuplot_code =>
@@ -6084,10 +6042,9 @@ defoperator stream_to_gnuplot => q{
 defshort '/G', pmap q{stream_to_gnuplot_op @$_},
                pseq gnuplot_colspec, gnuplot_code;
 
-Some convenient shorthands for gnuplot -- things like interactive plotting,
-setting up JPEG export, etc.
+# Some convenient shorthands for gnuplot -- things like interactive plotting,
+# setting up JPEG export, etc.
 
-c
 BEGIN {defparseralias gnuplot_terminal_size =>
          pmap q{defined $_ ? "size " . join ',', @$_ : ""},
          popt pn [0, 2], integer, prx('[x,]'), integer}
@@ -6108,22 +6065,21 @@ defgnuplot_code_prefixalt '%v' => pk 'plot "-" with vectors ';
 defgnuplot_code_prefixalt '%t' => pmap q{"title '$_'"}, generic_code;
 defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 
-FFMPEG movie assembly.
-You can use the companion operator `GF` to take a stream of jpeg images from a
-partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
-for ffmpeg to follow `-f image2pipe -vcodec mjpeg -i -`.
+# FFMPEG movie assembly.
+# You can use the companion operator `GF` to take a stream of jpeg images from a
+# partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
+# for ffmpeg to follow `-f image2pipe -vcodec mjpeg -i -`.
 
 defshort '/GF',
   pmap q{sh_op "ffmpeg -f image2pipe -vcodec mjpeg -i - $_"},
   shell_command;
 2 core/http/lib
-ws.pm.sdoc
-http.pl.sdoc
-42 core/http/ws.pm.sdoc
-WebSocket encoding functions.
-We just encode text messages; no binary or other protocols are defined yet.
+ws.pm
+http.pl
+41 core/http/ws.pm
+# WebSocket encoding functions.
+# We just encode text messages; no binary or other protocols are defined yet.
 
-c
 BEGIN {
   eval 'use Digest::SHA qw/sha1_base64/';
   load 'core/deps/sha1.pm',
@@ -6162,10 +6118,10 @@ sub ws_encode($) {
   my $e = encode 'utf8', $_[0];
   "\x81" . ws_length_encode(length $e) . $e;
 }
-65 core/http/http.pl.sdoc
-HTTP server.
-A very simple HTTP server that can be used to serve a stream's contents. This is used
-by other libraries to serve things like JSPlot.
+65 core/http/http.pl
+# HTTP server.
+# A very simple HTTP server that can be used to serve a stream's contents. This is used
+# by other libraries to serve things like JSPlot.
 
 use Socket;
 use Errno qw/EINTR/;
@@ -6213,8 +6169,8 @@ sub http($$) {
   }
 }
 
-Websocket operators.
-This is used to stream a data source to the browser. See `core/jsplot` for details.
+# Websocket operators.
+# This is used to stream a data source to the browser. See `core/jsplot` for details.
 
 defoperator http_websocket_encode => q{
   load 'core/http/ws.pm';
@@ -6474,18 +6430,18 @@ vector.js
 
 murmurhash3.js
 
-axis.waul.sdoc
-label.waul.sdoc
-dataframe.waul.sdoc
-matrix.waul.sdoc
-socket.waul.sdoc
-render.waul.sdoc
-camera.waul.sdoc
-interface.waul.sdoc
+axis.waul
+label.waul
+dataframe.waul
+matrix.waul
+socket.waul
+render.waul
+camera.waul
+interface.waul
 
 css
 html
-jsplot.pl.sdoc
+jsplot.pl
 4 core/jsplot/jquery.min.js
 /*! jQuery v1.11.1 | (c) 2005, 2014 jQuery Foundation, Inc. | jquery.org/license */
 !function(a,b){"object"==typeof module&&"object"==typeof module.exports?module.exports=a.document?b(a,!0):function(a){if(!a.document)throw new Error("jQuery requires a window with a document");return b(a)}:b(a)}("undefined"!=typeof window?window:this,function(a,b){var c=[],d=c.slice,e=c.concat,f=c.push,g=c.indexOf,h={},i=h.toString,j=h.hasOwnProperty,k={},l="1.11.1",m=function(a,b){return new m.fn.init(a,b)},n=/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g,o=/^-ms-/,p=/-([\da-z])/gi,q=function(a,b){return b.toUpperCase()};m.fn=m.prototype={jquery:l,constructor:m,selector:"",length:0,toArray:function(){return d.call(this)},get:function(a){return null!=a?0>a?this[a+this.length]:this[a]:d.call(this)},pushStack:function(a){var b=m.merge(this.constructor(),a);return b.prevObject=this,b.context=this.context,b},each:function(a,b){return m.each(this,a,b)},map:function(a){return this.pushStack(m.map(this,function(b,c){return a.call(b,c,b)}))},slice:function(){return this.pushStack(d.apply(this,arguments))},first:function(){return this.eq(0)},last:function(){return this.eq(-1)},eq:function(a){var b=this.length,c=+a+(0>a?b:0);return this.pushStack(c>=0&&b>c?[this[c]]:[])},end:function(){return this.prevObject||this.constructor(null)},push:f,sort:c.sort,splice:c.splice},m.extend=m.fn.extend=function(){var a,b,c,d,e,f,g=arguments[0]||{},h=1,i=arguments.length,j=!1;for("boolean"==typeof g&&(j=g,g=arguments[h]||{},h++),"object"==typeof g||m.isFunction(g)||(g={}),h===i&&(g=this,h--);i>h;h++)if(null!=(e=arguments[h]))for(d in e)a=g[d],c=e[d],g!==c&&(j&&c&&(m.isPlainObject(c)||(b=m.isArray(c)))?(b?(b=!1,f=a&&m.isArray(a)?a:[]):f=a&&m.isPlainObject(a)?a:{},g[d]=m.extend(j,f,c)):void 0!==c&&(g[d]=c));return g},m.extend({expando:"jQuery"+(l+Math.random()).replace(/\D/g,""),isReady:!0,error:function(a){throw new Error(a)},noop:function(){},isFunction:function(a){return"function"===m.type(a)},isArray:Array.isArray||function(a){return"array"===m.type(a)},isWindow:function(a){return null!=a&&a==a.window},isNumeric:function(a){return!m.isArray(a)&&a-parseFloat(a)>=0},isEmptyObject:function(a){var b;for(b in a)return!1;return!0},isPlainObject:function(a){var b;if(!a||"object"!==m.type(a)||a.nodeType||m.isWindow(a))return!1;try{if(a.constructor&&!j.call(a,"constructor")&&!j.call(a.constructor.prototype,"isPrototypeOf"))return!1}catch(c){return!1}if(k.ownLast)for(b in a)return j.call(a,b);for(b in a);return void 0===b||j.call(a,b)},type:function(a){return null==a?a+"":"object"==typeof a||"function"==typeof a?h[i.call(a)]||"object":typeof a},globalEval:function(b){b&&m.trim(b)&&(a.execScript||function(b){a.eval.call(a,b)})(b)},camelCase:function(a){return a.replace(o,"ms-").replace(p,q)},nodeName:function(a,b){return a.nodeName&&a.nodeName.toLowerCase()===b.toLowerCase()},each:function(a,b,c){var d,e=0,f=a.length,g=r(a);if(c){if(g){for(;f>e;e++)if(d=b.apply(a[e],c),d===!1)break}else for(e in a)if(d=b.apply(a[e],c),d===!1)break}else if(g){for(;f>e;e++)if(d=b.call(a[e],e,a[e]),d===!1)break}else for(e in a)if(d=b.call(a[e],e,a[e]),d===!1)break;return a},trim:function(a){return null==a?"":(a+"").replace(n,"")},makeArray:function(a,b){var c=b||[];return null!=a&&(r(Object(a))?m.merge(c,"string"==typeof a?[a]:a):f.call(c,a)),c},inArray:function(a,b,c){var d;if(b){if(g)return g.call(b,a,c);for(d=b.length,c=c?0>c?Math.max(0,d+c):c:0;d>c;c++)if(c in b&&b[c]===a)return c}return-1},merge:function(a,b){var c=+b.length,d=0,e=a.length;while(c>d)a[e++]=b[d++];if(c!==c)while(void 0!==b[d])a[e++]=b[d++];return a.length=e,a},grep:function(a,b,c){for(var d,e=[],f=0,g=a.length,h=!c;g>f;f++)d=!b(a[f],f),d!==h&&e.push(a[f]);return e},map:function(a,b,c){var d,f=0,g=a.length,h=r(a),i=[];if(h)for(;g>f;f++)d=b(a[f],f,c),null!=d&&i.push(d);else for(f in a)d=b(a[f],f,c),null!=d&&i.push(d);return e.apply([],i)},guid:1,proxy:function(a,b){var c,e,f;return"string"==typeof b&&(f=a[b],b=a,a=f),m.isFunction(a)?(c=d.call(arguments,2),e=function(){return a.apply(b||this,c.concat(d.call(arguments)))},e.guid=a.guid=a.guid||m.guid++,e):void 0},now:function(){return+new Date},support:k}),m.each("Boolean Number String Function Array Date RegExp Object Error".split(" "),function(a,b){h["[object "+b+"]"]=b.toLowerCase()});function r(a){var b=a.length,c=m.type(a);return"function"===c||m.isWindow(a)?!1:1===a.nodeType&&b?!0:"array"===c||0===b||"number"==typeof b&&b>0&&b-1 in a}var s=function(a){var b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u="sizzle"+-new Date,v=a.document,w=0,x=0,y=gb(),z=gb(),A=gb(),B=function(a,b){return a===b&&(l=!0),0},C="undefined",D=1<<31,E={}.hasOwnProperty,F=[],G=F.pop,H=F.push,I=F.push,J=F.slice,K=F.indexOf||function(a){for(var b=0,c=this.length;c>b;b++)if(this[b]===a)return b;return-1},L="checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",M="[\\x20\\t\\r\\n\\f]",N="(?:\\\\.|[\\w-]|[^\\x00-\\xa0])+",O=N.replace("w","w#"),P="\\["+M+"*("+N+")(?:"+M+"*([*^$|!~]?=)"+M+"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|("+O+"))|)"+M+"*\\]",Q=":("+N+")(?:\\((('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|((?:\\\\.|[^\\\\()[\\]]|"+P+")*)|.*)\\)|)",R=new RegExp("^"+M+"+|((?:^|[^\\\\])(?:\\\\.)*)"+M+"+$","g"),S=new RegExp("^"+M+"*,"+M+"*"),T=new RegExp("^"+M+"*([>+~]|"+M+")"+M+"*"),U=new RegExp("="+M+"*([^\\]'\"]*?)"+M+"*\\]","g"),V=new RegExp(Q),W=new RegExp("^"+O+"$"),X={ID:new RegExp("^#("+N+")"),CLASS:new RegExp("^\\.("+N+")"),TAG:new RegExp("^("+N.replace("w","w*")+")"),ATTR:new RegExp("^"+P),PSEUDO:new RegExp("^"+Q),CHILD:new RegExp("^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\("+M+"*(even|odd|(([+-]|)(\\d*)n|)"+M+"*(?:([+-]|)"+M+"*(\\d+)|))"+M+"*\\)|)","i"),bool:new RegExp("^(?:"+L+")$","i"),needsContext:new RegExp("^"+M+"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\("+M+"*((?:-\\d)?\\d*)"+M+"*\\)|)(?=[^-]|$)","i")},Y=/^(?:input|select|textarea|button)$/i,Z=/^h\d$/i,$=/^[^{]+\{\s*\[native \w/,_=/^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,ab=/[+~]/,bb=/'|\\/g,cb=new RegExp("\\\\([\\da-f]{1,6}"+M+"?|("+M+")|.)","ig"),db=function(a,b,c){var d="0x"+b-65536;return d!==d||c?b:0>d?String.fromCharCode(d+65536):String.fromCharCode(d>>10|55296,1023&d|56320)};try{I.apply(F=J.call(v.childNodes),v.childNodes),F[v.childNodes.length].nodeType}catch(eb){I={apply:F.length?function(a,b){H.apply(a,J.call(b))}:function(a,b){var c=a.length,d=0;while(a[c++]=b[d++]);a.length=c-1}}}function fb(a,b,d,e){var f,h,j,k,l,o,r,s,w,x;if((b?b.ownerDocument||b:v)!==n&&m(b),b=b||n,d=d||[],!a||"string"!=typeof a)return d;if(1!==(k=b.nodeType)&&9!==k)return[];if(p&&!e){if(f=_.exec(a))if(j=f[1]){if(9===k){if(h=b.getElementById(j),!h||!h.parentNode)return d;if(h.id===j)return d.push(h),d}else if(b.ownerDocument&&(h=b.ownerDocument.getElementById(j))&&t(b,h)&&h.id===j)return d.push(h),d}else{if(f[2])return I.apply(d,b.getElementsByTagName(a)),d;if((j=f[3])&&c.getElementsByClassName&&b.getElementsByClassName)return I.apply(d,b.getElementsByClassName(j)),d}if(c.qsa&&(!q||!q.test(a))){if(s=r=u,w=b,x=9===k&&a,1===k&&"object"!==b.nodeName.toLowerCase()){o=g(a),(r=b.getAttribute("id"))?s=r.replace(bb,"\\$&"):b.setAttribute("id",s),s="[id='"+s+"'] ",l=o.length;while(l--)o[l]=s+qb(o[l]);w=ab.test(a)&&ob(b.parentNode)||b,x=o.join(",")}if(x)try{return I.apply(d,w.querySelectorAll(x)),d}catch(y){}finally{r||b.removeAttribute("id")}}}return i(a.replace(R,"$1"),b,d,e)}function gb(){var a=[];function b(c,e){return a.push(c+" ")>d.cacheLength&&delete b[a.shift()],b[c+" "]=e}return b}function hb(a){return a[u]=!0,a}function ib(a){var b=n.createElement("div");try{return!!a(b)}catch(c){return!1}finally{b.parentNode&&b.parentNode.removeChild(b),b=null}}function jb(a,b){var c=a.split("|"),e=a.length;while(e--)d.attrHandle[c[e]]=b}function kb(a,b){var c=b&&a,d=c&&1===a.nodeType&&1===b.nodeType&&(~b.sourceIndex||D)-(~a.sourceIndex||D);if(d)return d;if(c)while(c=c.nextSibling)if(c===b)return-1;return a?1:-1}function lb(a){return function(b){var c=b.nodeName.toLowerCase();return"input"===c&&b.type===a}}function mb(a){return function(b){var c=b.nodeName.toLowerCase();return("input"===c||"button"===c)&&b.type===a}}function nb(a){return hb(function(b){return b=+b,hb(function(c,d){var e,f=a([],c.length,b),g=f.length;while(g--)c[e=f[g]]&&(c[e]=!(d[e]=c[e]))})})}function ob(a){return a&&typeof a.getElementsByTagName!==C&&a}c=fb.support={},f=fb.isXML=function(a){var b=a&&(a.ownerDocument||a).documentElement;return b?"HTML"!==b.nodeName:!1},m=fb.setDocument=function(a){var b,e=a?a.ownerDocument||a:v,g=e.defaultView;return e!==n&&9===e.nodeType&&e.documentElement?(n=e,o=e.documentElement,p=!f(e),g&&g!==g.top&&(g.addEventListener?g.addEventListener("unload",function(){m()},!1):g.attachEvent&&g.attachEvent("onunload",function(){m()})),c.attributes=ib(function(a){return a.className="i",!a.getAttribute("className")}),c.getElementsByTagName=ib(function(a){return a.appendChild(e.createComment("")),!a.getElementsByTagName("*").length}),c.getElementsByClassName=$.test(e.getElementsByClassName)&&ib(function(a){return a.innerHTML="<div class='a'></div><div class='a i'></div>",a.firstChild.className="i",2===a.getElementsByClassName("i").length}),c.getById=ib(function(a){return o.appendChild(a).id=u,!e.getElementsByName||!e.getElementsByName(u).length}),c.getById?(d.find.ID=function(a,b){if(typeof b.getElementById!==C&&p){var c=b.getElementById(a);return c&&c.parentNode?[c]:[]}},d.filter.ID=function(a){var b=a.replace(cb,db);return function(a){return a.getAttribute("id")===b}}):(delete d.find.ID,d.filter.ID=function(a){var b=a.replace(cb,db);return function(a){var c=typeof a.getAttributeNode!==C&&a.getAttributeNode("id");return c&&c.value===b}}),d.find.TAG=c.getElementsByTagName?function(a,b){return typeof b.getElementsByTagName!==C?b.getElementsByTagName(a):void 0}:function(a,b){var c,d=[],e=0,f=b.getElementsByTagName(a);if("*"===a){while(c=f[e++])1===c.nodeType&&d.push(c);return d}return f},d.find.CLASS=c.getElementsByClassName&&function(a,b){return typeof b.getElementsByClassName!==C&&p?b.getElementsByClassName(a):void 0},r=[],q=[],(c.qsa=$.test(e.querySelectorAll))&&(ib(function(a){a.innerHTML="<select msallowclip=''><option selected=''></option></select>",a.querySelectorAll("[msallowclip^='']").length&&q.push("[*^$]="+M+"*(?:''|\"\")"),a.querySelectorAll("[selected]").length||q.push("\\["+M+"*(?:value|"+L+")"),a.querySelectorAll(":checked").length||q.push(":checked")}),ib(function(a){var b=e.createElement("input");b.setAttribute("type","hidden"),a.appendChild(b).setAttribute("name","D"),a.querySelectorAll("[name=d]").length&&q.push("name"+M+"*[*^$|!~]?="),a.querySelectorAll(":enabled").length||q.push(":enabled",":disabled"),a.querySelectorAll("*,:x"),q.push(",.*:")})),(c.matchesSelector=$.test(s=o.matches||o.webkitMatchesSelector||o.mozMatchesSelector||o.oMatchesSelector||o.msMatchesSelector))&&ib(function(a){c.disconnectedMatch=s.call(a,"div"),s.call(a,"[s!='']:x"),r.push("!=",Q)}),q=q.length&&new RegExp(q.join("|")),r=r.length&&new RegExp(r.join("|")),b=$.test(o.compareDocumentPosition),t=b||$.test(o.contains)?function(a,b){var c=9===a.nodeType?a.documentElement:a,d=b&&b.parentNode;return a===d||!(!d||1!==d.nodeType||!(c.contains?c.contains(d):a.compareDocumentPosition&&16&a.compareDocumentPosition(d)))}:function(a,b){if(b)while(b=b.parentNode)if(b===a)return!0;return!1},B=b?function(a,b){if(a===b)return l=!0,0;var d=!a.compareDocumentPosition-!b.compareDocumentPosition;return d?d:(d=(a.ownerDocument||a)===(b.ownerDocument||b)?a.compareDocumentPosition(b):1,1&d||!c.sortDetached&&b.compareDocumentPosition(a)===d?a===e||a.ownerDocument===v&&t(v,a)?-1:b===e||b.ownerDocument===v&&t(v,b)?1:k?K.call(k,a)-K.call(k,b):0:4&d?-1:1)}:function(a,b){if(a===b)return l=!0,0;var c,d=0,f=a.parentNode,g=b.parentNode,h=[a],i=[b];if(!f||!g)return a===e?-1:b===e?1:f?-1:g?1:k?K.call(k,a)-K.call(k,b):0;if(f===g)return kb(a,b);c=a;while(c=c.parentNode)h.unshift(c);c=b;while(c=c.parentNode)i.unshift(c);while(h[d]===i[d])d++;return d?kb(h[d],i[d]):h[d]===v?-1:i[d]===v?1:0},e):n},fb.matches=function(a,b){return fb(a,null,null,b)},fb.matchesSelector=function(a,b){if((a.ownerDocument||a)!==n&&m(a),b=b.replace(U,"='$1']"),!(!c.matchesSelector||!p||r&&r.test(b)||q&&q.test(b)))try{var d=s.call(a,b);if(d||c.disconnectedMatch||a.document&&11!==a.document.nodeType)return d}catch(e){}return fb(b,n,null,[a]).length>0},fb.contains=function(a,b){return(a.ownerDocument||a)!==n&&m(a),t(a,b)},fb.attr=function(a,b){(a.ownerDocument||a)!==n&&m(a);var e=d.attrHandle[b.toLowerCase()],f=e&&E.call(d.attrHandle,b.toLowerCase())?e(a,b,!p):void 0;return void 0!==f?f:c.attributes||!p?a.getAttribute(b):(f=a.getAttributeNode(b))&&f.specified?f.value:null},fb.error=function(a){throw new Error("Syntax error, unrecognized expression: "+a)},fb.uniqueSort=function(a){var b,d=[],e=0,f=0;if(l=!c.detectDuplicates,k=!c.sortStable&&a.slice(0),a.sort(B),l){while(b=a[f++])b===a[f]&&(e=d.push(f));while(e--)a.splice(d[e],1)}return k=null,a},e=fb.getText=function(a){var b,c="",d=0,f=a.nodeType;if(f){if(1===f||9===f||11===f){if("string"==typeof a.textContent)return a.textContent;for(a=a.firstChild;a;a=a.nextSibling)c+=e(a)}else if(3===f||4===f)return a.nodeValue}else while(b=a[d++])c+=e(b);return c},d=fb.selectors={cacheLength:50,createPseudo:hb,match:X,attrHandle:{},find:{},relative:{">":{dir:"parentNode",first:!0}," ":{dir:"parentNode"},"+":{dir:"previousSibling",first:!0},"~":{dir:"previousSibling"}},preFilter:{ATTR:function(a){return a[1]=a[1].replace(cb,db),a[3]=(a[3]||a[4]||a[5]||"").replace(cb,db),"~="===a[2]&&(a[3]=" "+a[3]+" "),a.slice(0,4)},CHILD:function(a){return a[1]=a[1].toLowerCase(),"nth"===a[1].slice(0,3)?(a[3]||fb.error(a[0]),a[4]=+(a[4]?a[5]+(a[6]||1):2*("even"===a[3]||"odd"===a[3])),a[5]=+(a[7]+a[8]||"odd"===a[3])):a[3]&&fb.error(a[0]),a},PSEUDO:function(a){var b,c=!a[6]&&a[2];return X.CHILD.test(a[0])?null:(a[3]?a[2]=a[4]||a[5]||"":c&&V.test(c)&&(b=g(c,!0))&&(b=c.indexOf(")",c.length-b)-c.length)&&(a[0]=a[0].slice(0,b),a[2]=c.slice(0,b)),a.slice(0,3))}},filter:{TAG:function(a){var b=a.replace(cb,db).toLowerCase();return"*"===a?function(){return!0}:function(a){return a.nodeName&&a.nodeName.toLowerCase()===b}},CLASS:function(a){var b=y[a+" "];return b||(b=new RegExp("(^|"+M+")"+a+"("+M+"|$)"))&&y(a,function(a){return b.test("string"==typeof a.className&&a.className||typeof a.getAttribute!==C&&a.getAttribute("class")||"")})},ATTR:function(a,b,c){return function(d){var e=fb.attr(d,a);return null==e?"!="===b:b?(e+="","="===b?e===c:"!="===b?e!==c:"^="===b?c&&0===e.indexOf(c):"*="===b?c&&e.indexOf(c)>-1:"$="===b?c&&e.slice(-c.length)===c:"~="===b?(" "+e+" ").indexOf(c)>-1:"|="===b?e===c||e.slice(0,c.length+1)===c+"-":!1):!0}},CHILD:function(a,b,c,d,e){var f="nth"!==a.slice(0,3),g="last"!==a.slice(-4),h="of-type"===b;return 1===d&&0===e?function(a){return!!a.parentNode}:function(b,c,i){var j,k,l,m,n,o,p=f!==g?"nextSibling":"previousSibling",q=b.parentNode,r=h&&b.nodeName.toLowerCase(),s=!i&&!h;if(q){if(f){while(p){l=b;while(l=l[p])if(h?l.nodeName.toLowerCase()===r:1===l.nodeType)return!1;o=p="only"===a&&!o&&"nextSibling"}return!0}if(o=[g?q.firstChild:q.lastChild],g&&s){k=q[u]||(q[u]={}),j=k[a]||[],n=j[0]===w&&j[1],m=j[0]===w&&j[2],l=n&&q.childNodes[n];while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if(1===l.nodeType&&++m&&l===b){k[a]=[w,n,m];break}}else if(s&&(j=(b[u]||(b[u]={}))[a])&&j[0]===w)m=j[1];else while(l=++n&&l&&l[p]||(m=n=0)||o.pop())if((h?l.nodeName.toLowerCase()===r:1===l.nodeType)&&++m&&(s&&((l[u]||(l[u]={}))[a]=[w,m]),l===b))break;return m-=e,m===d||m%d===0&&m/d>=0}}},PSEUDO:function(a,b){var c,e=d.pseudos[a]||d.setFilters[a.toLowerCase()]||fb.error("unsupported pseudo: "+a);return e[u]?e(b):e.length>1?(c=[a,a,"",b],d.setFilters.hasOwnProperty(a.toLowerCase())?hb(function(a,c){var d,f=e(a,b),g=f.length;while(g--)d=K.call(a,f[g]),a[d]=!(c[d]=f[g])}):function(a){return e(a,0,c)}):e}},pseudos:{not:hb(function(a){var b=[],c=[],d=h(a.replace(R,"$1"));return d[u]?hb(function(a,b,c,e){var f,g=d(a,null,e,[]),h=a.length;while(h--)(f=g[h])&&(a[h]=!(b[h]=f))}):function(a,e,f){return b[0]=a,d(b,null,f,c),!c.pop()}}),has:hb(function(a){return function(b){return fb(a,b).length>0}}),contains:hb(function(a){return function(b){return(b.textContent||b.innerText||e(b)).indexOf(a)>-1}}),lang:hb(function(a){return W.test(a||"")||fb.error("unsupported lang: "+a),a=a.replace(cb,db).toLowerCase(),function(b){var c;do if(c=p?b.lang:b.getAttribute("xml:lang")||b.getAttribute("lang"))return c=c.toLowerCase(),c===a||0===c.indexOf(a+"-");while((b=b.parentNode)&&1===b.nodeType);return!1}}),target:function(b){var c=a.location&&a.location.hash;return c&&c.slice(1)===b.id},root:function(a){return a===o},focus:function(a){return a===n.activeElement&&(!n.hasFocus||n.hasFocus())&&!!(a.type||a.href||~a.tabIndex)},enabled:function(a){return a.disabled===!1},disabled:function(a){return a.disabled===!0},checked:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&!!a.checked||"option"===b&&!!a.selected},selected:function(a){return a.parentNode&&a.parentNode.selectedIndex,a.selected===!0},empty:function(a){for(a=a.firstChild;a;a=a.nextSibling)if(a.nodeType<6)return!1;return!0},parent:function(a){return!d.pseudos.empty(a)},header:function(a){return Z.test(a.nodeName)},input:function(a){return Y.test(a.nodeName)},button:function(a){var b=a.nodeName.toLowerCase();return"input"===b&&"button"===a.type||"button"===b},text:function(a){var b;return"input"===a.nodeName.toLowerCase()&&"text"===a.type&&(null==(b=a.getAttribute("type"))||"text"===b.toLowerCase())},first:nb(function(){return[0]}),last:nb(function(a,b){return[b-1]}),eq:nb(function(a,b,c){return[0>c?c+b:c]}),even:nb(function(a,b){for(var c=0;b>c;c+=2)a.push(c);return a}),odd:nb(function(a,b){for(var c=1;b>c;c+=2)a.push(c);return a}),lt:nb(function(a,b,c){for(var d=0>c?c+b:c;--d>=0;)a.push(d);return a}),gt:nb(function(a,b,c){for(var d=0>c?c+b:c;++d<b;)a.push(d);return a})}},d.pseudos.nth=d.pseudos.eq;for(b in{radio:!0,checkbox:!0,file:!0,password:!0,image:!0})d.pseudos[b]=lb(b);for(b in{submit:!0,reset:!0})d.pseudos[b]=mb(b);function pb(){}pb.prototype=d.filters=d.pseudos,d.setFilters=new pb,g=fb.tokenize=function(a,b){var c,e,f,g,h,i,j,k=z[a+" "];if(k)return b?0:k.slice(0);h=a,i=[],j=d.preFilter;while(h){(!c||(e=S.exec(h)))&&(e&&(h=h.slice(e[0].length)||h),i.push(f=[])),c=!1,(e=T.exec(h))&&(c=e.shift(),f.push({value:c,type:e[0].replace(R," ")}),h=h.slice(c.length));for(g in d.filter)!(e=X[g].exec(h))||j[g]&&!(e=j[g](e))||(c=e.shift(),f.push({value:c,type:g,matches:e}),h=h.slice(c.length));if(!c)break}return b?h.length:h?fb.error(a):z(a,i).slice(0)};function qb(a){for(var b=0,c=a.length,d="";c>b;b++)d+=a[b].value;return d}function rb(a,b,c){var d=b.dir,e=c&&"parentNode"===d,f=x++;return b.first?function(b,c,f){while(b=b[d])if(1===b.nodeType||e)return a(b,c,f)}:function(b,c,g){var h,i,j=[w,f];if(g){while(b=b[d])if((1===b.nodeType||e)&&a(b,c,g))return!0}else while(b=b[d])if(1===b.nodeType||e){if(i=b[u]||(b[u]={}),(h=i[d])&&h[0]===w&&h[1]===f)return j[2]=h[2];if(i[d]=j,j[2]=a(b,c,g))return!0}}}function sb(a){return a.length>1?function(b,c,d){var e=a.length;while(e--)if(!a[e](b,c,d))return!1;return!0}:a[0]}function tb(a,b,c){for(var d=0,e=b.length;e>d;d++)fb(a,b[d],c);return c}function ub(a,b,c,d,e){for(var f,g=[],h=0,i=a.length,j=null!=b;i>h;h++)(f=a[h])&&(!c||c(f,d,e))&&(g.push(f),j&&b.push(h));return g}function vb(a,b,c,d,e,f){return d&&!d[u]&&(d=vb(d)),e&&!e[u]&&(e=vb(e,f)),hb(function(f,g,h,i){var j,k,l,m=[],n=[],o=g.length,p=f||tb(b||"*",h.nodeType?[h]:h,[]),q=!a||!f&&b?p:ub(p,m,a,h,i),r=c?e||(f?a:o||d)?[]:g:q;if(c&&c(q,r,h,i),d){j=ub(r,n),d(j,[],h,i),k=j.length;while(k--)(l=j[k])&&(r[n[k]]=!(q[n[k]]=l))}if(f){if(e||a){if(e){j=[],k=r.length;while(k--)(l=r[k])&&j.push(q[k]=l);e(null,r=[],j,i)}k=r.length;while(k--)(l=r[k])&&(j=e?K.call(f,l):m[k])>-1&&(f[j]=!(g[j]=l))}}else r=ub(r===g?r.splice(o,r.length):r),e?e(null,g,r,i):I.apply(g,r)})}function wb(a){for(var b,c,e,f=a.length,g=d.relative[a[0].type],h=g||d.relative[" "],i=g?1:0,k=rb(function(a){return a===b},h,!0),l=rb(function(a){return K.call(b,a)>-1},h,!0),m=[function(a,c,d){return!g&&(d||c!==j)||((b=c).nodeType?k(a,c,d):l(a,c,d))}];f>i;i++)if(c=d.relative[a[i].type])m=[rb(sb(m),c)];else{if(c=d.filter[a[i].type].apply(null,a[i].matches),c[u]){for(e=++i;f>e;e++)if(d.relative[a[e].type])break;return vb(i>1&&sb(m),i>1&&qb(a.slice(0,i-1).concat({value:" "===a[i-2].type?"*":""})).replace(R,"$1"),c,e>i&&wb(a.slice(i,e)),f>e&&wb(a=a.slice(e)),f>e&&qb(a))}m.push(c)}return sb(m)}function xb(a,b){var c=b.length>0,e=a.length>0,f=function(f,g,h,i,k){var l,m,o,p=0,q="0",r=f&&[],s=[],t=j,u=f||e&&d.find.TAG("*",k),v=w+=null==t?1:Math.random()||.1,x=u.length;for(k&&(j=g!==n&&g);q!==x&&null!=(l=u[q]);q++){if(e&&l){m=0;while(o=a[m++])if(o(l,g,h)){i.push(l);break}k&&(w=v)}c&&((l=!o&&l)&&p--,f&&r.push(l))}if(p+=q,c&&q!==p){m=0;while(o=b[m++])o(r,s,g,h);if(f){if(p>0)while(q--)r[q]||s[q]||(s[q]=G.call(i));s=ub(s)}I.apply(i,s),k&&!f&&s.length>0&&p+b.length>1&&fb.uniqueSort(i)}return k&&(w=v,j=t),r};return c?hb(f):f}return h=fb.compile=function(a,b){var c,d=[],e=[],f=A[a+" "];if(!f){b||(b=g(a)),c=b.length;while(c--)f=wb(b[c]),f[u]?d.push(f):e.push(f);f=A(a,xb(e,d)),f.selector=a}return f},i=fb.select=function(a,b,e,f){var i,j,k,l,m,n="function"==typeof a&&a,o=!f&&g(a=n.selector||a);if(e=e||[],1===o.length){if(j=o[0]=o[0].slice(0),j.length>2&&"ID"===(k=j[0]).type&&c.getById&&9===b.nodeType&&p&&d.relative[j[1].type]){if(b=(d.find.ID(k.matches[0].replace(cb,db),b)||[])[0],!b)return e;n&&(b=b.parentNode),a=a.slice(j.shift().value.length)}i=X.needsContext.test(a)?0:j.length;while(i--){if(k=j[i],d.relative[l=k.type])break;if((m=d.find[l])&&(f=m(k.matches[0].replace(cb,db),ab.test(j[0].type)&&ob(b.parentNode)||b))){if(j.splice(i,1),a=f.length&&qb(j),!a)return I.apply(e,f),e;break}}}return(n||h(a,o))(f,b,!p,e,ab.test(a)&&ob(b.parentNode)||b),e},c.sortStable=u.split("").sort(B).join("")===u,c.detectDuplicates=!!l,m(),c.sortDetached=ib(function(a){return 1&a.compareDocumentPosition(n.createElement("div"))}),ib(function(a){return a.innerHTML="<a href='#'></a>","#"===a.firstChild.getAttribute("href")})||jb("type|href|height|width",function(a,b,c){return c?void 0:a.getAttribute(b,"type"===b.toLowerCase()?1:2)}),c.attributes&&ib(function(a){return a.innerHTML="<input/>",a.firstChild.setAttribute("value",""),""===a.firstChild.getAttribute("value")})||jb("value",function(a,b,c){return c||"input"!==a.nodeName.toLowerCase()?void 0:a.defaultValue}),ib(function(a){return null==a.getAttribute("disabled")})||jb(L,function(a,b,c){var d;return c?void 0:a[b]===!0?b.toLowerCase():(d=a.getAttributeNode(b))&&d.specified?d.value:null}),fb}(a);m.find=s,m.expr=s.selectors,m.expr[":"]=m.expr.pseudos,m.unique=s.uniqueSort,m.text=s.getText,m.isXMLDoc=s.isXML,m.contains=s.contains;var t=m.expr.match.needsContext,u=/^<(\w+)\s*\/?>(?:<\/\1>|)$/,v=/^.[^:#\[\.,]*$/;function w(a,b,c){if(m.isFunction(b))return m.grep(a,function(a,d){return!!b.call(a,d,a)!==c});if(b.nodeType)return m.grep(a,function(a){return a===b!==c});if("string"==typeof b){if(v.test(b))return m.filter(b,a,c);b=m.filter(b,a)}return m.grep(a,function(a){return m.inArray(a,b)>=0!==c})}m.filter=function(a,b,c){var d=b[0];return c&&(a=":not("+a+")"),1===b.length&&1===d.nodeType?m.find.matchesSelector(d,a)?[d]:[]:m.find.matches(a,m.grep(b,function(a){return 1===a.nodeType}))},m.fn.extend({find:function(a){var b,c=[],d=this,e=d.length;if("string"!=typeof a)return this.pushStack(m(a).filter(function(){for(b=0;e>b;b++)if(m.contains(d[b],this))return!0}));for(b=0;e>b;b++)m.find(a,d[b],c);return c=this.pushStack(e>1?m.unique(c):c),c.selector=this.selector?this.selector+" "+a:a,c},filter:function(a){return this.pushStack(w(this,a||[],!1))},not:function(a){return this.pushStack(w(this,a||[],!0))},is:function(a){return!!w(this,"string"==typeof a&&t.test(a)?m(a):a||[],!1).length}});var x,y=a.document,z=/^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]*))$/,A=m.fn.init=function(a,b){var c,d;if(!a)return this;if("string"==typeof a){if(c="<"===a.charAt(0)&&">"===a.charAt(a.length-1)&&a.length>=3?[null,a,null]:z.exec(a),!c||!c[1]&&b)return!b||b.jquery?(b||x).find(a):this.constructor(b).find(a);if(c[1]){if(b=b instanceof m?b[0]:b,m.merge(this,m.parseHTML(c[1],b&&b.nodeType?b.ownerDocument||b:y,!0)),u.test(c[1])&&m.isPlainObject(b))for(c in b)m.isFunction(this[c])?this[c](b[c]):this.attr(c,b[c]);return this}if(d=y.getElementById(c[2]),d&&d.parentNode){if(d.id!==c[2])return x.find(a);this.length=1,this[0]=d}return this.context=y,this.selector=a,this}return a.nodeType?(this.context=this[0]=a,this.length=1,this):m.isFunction(a)?"undefined"!=typeof x.ready?x.ready(a):a(m):(void 0!==a.selector&&(this.selector=a.selector,this.context=a.context),m.makeArray(a,this))};A.prototype=m.fn,x=m(y);var B=/^(?:parents|prev(?:Until|All))/,C={children:!0,contents:!0,next:!0,prev:!0};m.extend({dir:function(a,b,c){var d=[],e=a[b];while(e&&9!==e.nodeType&&(void 0===c||1!==e.nodeType||!m(e).is(c)))1===e.nodeType&&d.push(e),e=e[b];return d},sibling:function(a,b){for(var c=[];a;a=a.nextSibling)1===a.nodeType&&a!==b&&c.push(a);return c}}),m.fn.extend({has:function(a){var b,c=m(a,this),d=c.length;return this.filter(function(){for(b=0;d>b;b++)if(m.contains(this,c[b]))return!0})},closest:function(a,b){for(var c,d=0,e=this.length,f=[],g=t.test(a)||"string"!=typeof a?m(a,b||this.context):0;e>d;d++)for(c=this[d];c&&c!==b;c=c.parentNode)if(c.nodeType<11&&(g?g.index(c)>-1:1===c.nodeType&&m.find.matchesSelector(c,a))){f.push(c);break}return this.pushStack(f.length>1?m.unique(f):f)},index:function(a){return a?"string"==typeof a?m.inArray(this[0],m(a)):m.inArray(a.jquery?a[0]:a,this):this[0]&&this[0].parentNode?this.first().prevAll().length:-1},add:function(a,b){return this.pushStack(m.unique(m.merge(this.get(),m(a,b))))},addBack:function(a){return this.add(null==a?this.prevObject:this.prevObject.filter(a))}});function D(a,b){do a=a[b];while(a&&1!==a.nodeType);return a}m.each({parent:function(a){var b=a.parentNode;return b&&11!==b.nodeType?b:null},parents:function(a){return m.dir(a,"parentNode")},parentsUntil:function(a,b,c){return m.dir(a,"parentNode",c)},next:function(a){return D(a,"nextSibling")},prev:function(a){return D(a,"previousSibling")},nextAll:function(a){return m.dir(a,"nextSibling")},prevAll:function(a){return m.dir(a,"previousSibling")},nextUntil:function(a,b,c){return m.dir(a,"nextSibling",c)},prevUntil:function(a,b,c){return m.dir(a,"previousSibling",c)},siblings:function(a){return m.sibling((a.parentNode||{}).firstChild,a)},children:function(a){return m.sibling(a.firstChild)},contents:function(a){return m.nodeName(a,"iframe")?a.contentDocument||a.contentWindow.document:m.merge([],a.childNodes)}},function(a,b){m.fn[a]=function(c,d){var e=m.map(this,b,c);return"Until"!==a.slice(-5)&&(d=c),d&&"string"==typeof d&&(e=m.filter(d,e)),this.length>1&&(C[a]||(e=m.unique(e)),B.test(a)&&(e=e.reverse())),this.pushStack(e)}});var E=/\S+/g,F={};function G(a){var b=F[a]={};return m.each(a.match(E)||[],function(a,c){b[c]=!0}),b}m.Callbacks=function(a){a="string"==typeof a?F[a]||G(a):m.extend({},a);var b,c,d,e,f,g,h=[],i=!a.once&&[],j=function(l){for(c=a.memory&&l,d=!0,f=g||0,g=0,e=h.length,b=!0;h&&e>f;f++)if(h[f].apply(l[0],l[1])===!1&&a.stopOnFalse){c=!1;break}b=!1,h&&(i?i.length&&j(i.shift()):c?h=[]:k.disable())},k={add:function(){if(h){var d=h.length;!function f(b){m.each(b,function(b,c){var d=m.type(c);"function"===d?a.unique&&k.has(c)||h.push(c):c&&c.length&&"string"!==d&&f(c)})}(arguments),b?e=h.length:c&&(g=d,j(c))}return this},remove:function(){return h&&m.each(arguments,function(a,c){var d;while((d=m.inArray(c,h,d))>-1)h.splice(d,1),b&&(e>=d&&e--,f>=d&&f--)}),this},has:function(a){return a?m.inArray(a,h)>-1:!(!h||!h.length)},empty:function(){return h=[],e=0,this},disable:function(){return h=i=c=void 0,this},disabled:function(){return!h},lock:function(){return i=void 0,c||k.disable(),this},locked:function(){return!i},fireWith:function(a,c){return!h||d&&!i||(c=c||[],c=[a,c.slice?c.slice():c],b?i.push(c):j(c)),this},fire:function(){return k.fireWith(this,arguments),this},fired:function(){return!!d}};return k},m.extend({Deferred:function(a){var b=[["resolve","done",m.Callbacks("once memory"),"resolved"],["reject","fail",m.Callbacks("once memory"),"rejected"],["notify","progress",m.Callbacks("memory")]],c="pending",d={state:function(){return c},always:function(){return e.done(arguments).fail(arguments),this},then:function(){var a=arguments;return m.Deferred(function(c){m.each(b,function(b,f){var g=m.isFunction(a[b])&&a[b];e[f[1]](function(){var a=g&&g.apply(this,arguments);a&&m.isFunction(a.promise)?a.promise().done(c.resolve).fail(c.reject).progress(c.notify):c[f[0]+"With"](this===d?c.promise():this,g?[a]:arguments)})}),a=null}).promise()},promise:function(a){return null!=a?m.extend(a,d):d}},e={};return d.pipe=d.then,m.each(b,function(a,f){var g=f[2],h=f[3];d[f[1]]=g.add,h&&g.add(function(){c=h},b[1^a][2].disable,b[2][2].lock),e[f[0]]=function(){return e[f[0]+"With"](this===e?d:this,arguments),this},e[f[0]+"With"]=g.fireWith}),d.promise(e),a&&a.call(e,e),e},when:function(a){var b=0,c=d.call(arguments),e=c.length,f=1!==e||a&&m.isFunction(a.promise)?e:0,g=1===f?a:m.Deferred(),h=function(a,b,c){return function(e){b[a]=this,c[a]=arguments.length>1?d.call(arguments):e,c===i?g.notifyWith(b,c):--f||g.resolveWith(b,c)}},i,j,k;if(e>1)for(i=new Array(e),j=new Array(e),k=new Array(e);e>b;b++)c[b]&&m.isFunction(c[b].promise)?c[b].promise().done(h(b,k,c)).fail(g.reject).progress(h(b,j,i)):--f;return f||g.resolveWith(k,c),g.promise()}});var H;m.fn.ready=function(a){return m.ready.promise().done(a),this},m.extend({isReady:!1,readyWait:1,holdReady:function(a){a?m.readyWait++:m.ready(!0)},ready:function(a){if(a===!0?!--m.readyWait:!m.isReady){if(!y.body)return setTimeout(m.ready);m.isReady=!0,a!==!0&&--m.readyWait>0||(H.resolveWith(y,[m]),m.fn.triggerHandler&&(m(y).triggerHandler("ready"),m(y).off("ready")))}}});function I(){y.addEventListener?(y.removeEventListener("DOMContentLoaded",J,!1),a.removeEventListener("load",J,!1)):(y.detachEvent("onreadystatechange",J),a.detachEvent("onload",J))}function J(){(y.addEventListener||"load"===event.type||"complete"===y.readyState)&&(I(),m.ready())}m.ready.promise=function(b){if(!H)if(H=m.Deferred(),"complete"===y.readyState)setTimeout(m.ready);else if(y.addEventListener)y.addEventListener("DOMContentLoaded",J,!1),a.addEventListener("load",J,!1);else{y.attachEvent("onreadystatechange",J),a.attachEvent("onload",J);var c=!1;try{c=null==a.frameElement&&y.documentElement}catch(d){}c&&c.doScroll&&!function e(){if(!m.isReady){try{c.doScroll("left")}catch(a){return setTimeout(e,50)}I(),m.ready()}}()}return H.promise(b)};var K="undefined",L;for(L in m(k))break;k.ownLast="0"!==L,k.inlineBlockNeedsLayout=!1,m(function(){var a,b,c,d;c=y.getElementsByTagName("body")[0],c&&c.style&&(b=y.createElement("div"),d=y.createElement("div"),d.style.cssText="position:absolute;border:0;width:0;height:0;top:0;left:-9999px",c.appendChild(d).appendChild(b),typeof b.style.zoom!==K&&(b.style.cssText="display:inline;margin:0;border:0;padding:1px;width:1px;zoom:1",k.inlineBlockNeedsLayout=a=3===b.offsetWidth,a&&(c.style.zoom=1)),c.removeChild(d))}),function(){var a=y.createElement("div");if(null==k.deleteExpando){k.deleteExpando=!0;try{delete a.test}catch(b){k.deleteExpando=!1}}a=null}(),m.acceptData=function(a){var b=m.noData[(a.nodeName+" ").toLowerCase()],c=+a.nodeType||1;return 1!==c&&9!==c?!1:!b||b!==!0&&a.getAttribute("classid")===b};var M=/^(?:\{[\w\W]*\}|\[[\w\W]*\])$/,N=/([A-Z])/g;function O(a,b,c){if(void 0===c&&1===a.nodeType){var d="data-"+b.replace(N,"-$1").toLowerCase();if(c=a.getAttribute(d),"string"==typeof c){try{c="true"===c?!0:"false"===c?!1:"null"===c?null:+c+""===c?+c:M.test(c)?m.parseJSON(c):c}catch(e){}m.data(a,b,c)}else c=void 0}return c}function P(a){var b;for(b in a)if(("data"!==b||!m.isEmptyObject(a[b]))&&"toJSON"!==b)return!1;return!0}function Q(a,b,d,e){if(m.acceptData(a)){var f,g,h=m.expando,i=a.nodeType,j=i?m.cache:a,k=i?a[h]:a[h]&&h;
@@ -6570,19 +6526,19 @@ function murmurhash3_32(key, seed) {
 
 	return h1 >>> 0;
 }
-34 core/jsplot/axis.waul.sdoc
-A column vector of numeric data.
-Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
-evenly). Because multiple axes need to be coordinated, all random numbers used for sampling are parameters rather than generated here.
+34 core/jsplot/axis.waul
+// A column vector of numeric data.
+// Stores a single axis of the data we want to render. It has a fixed capacity and represents a uniform sample if it overflows (i.e. it kicks data points out
+// evenly). Because multiple axes need to be coordinated, all random numbers used for sampling are parameters rather than generated here.
 
-If you want focused nonuniform sampling, you can do it like this:
+// If you want focused nonuniform sampling, you can do it like this:
 
-| var r = Math.random();
-  r *= axis.focus(data_point, focus_center, focus_scale);
-  // same for other axes
-  axis.push(data_point, r);
+// | var r = Math.random();
+//   r *= axis.focus(data_point, focus_center, focus_scale);
+//   // same for other axes
+//   axis.push(data_point, r);
 
-Focusing biases the probability of accepting points so that data closer to the focal plane(s) is preferred.
+// Focusing biases the probability of accepting points so that data closer to the focal plane(s) is preferred.
 
 caterwaul(':all')(function () {
   axis(capacity) = this /-caterwaul.merge/ {data: new Float64Array(capacity), max: null, min: null, n: 0, c: capacity} -re- void 0,
@@ -6605,13 +6561,13 @@ caterwaul(':all')(function () {
 
                                  push(x, r)         = this.n++ < this.c ? this.set(this.n, +x) : this /+x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
-32 core/jsplot/label.waul.sdoc
-A column vector of labeled data.
-Stores a column of hashed labels for a field, along with a sample of unique string values for that field. The sample's purpose is to provide a catalog of
-human-readable labels, ideally covering a large fraction of the points in question. This means we want its bias to echo the points' bias.
+32 core/jsplot/label.waul
+// A column vector of labeled data.
+// Stores a column of hashed labels for a field, along with a sample of unique string values for that field. The sample's purpose is to provide a catalog of
+// human-readable labels, ideally covering a large fraction of the points in question. This means we want its bias to echo the points' bias.
 
-The way we achieve this is simple: the sample array is indexed by the low N bits of each entry's murmurhash. Collisions are eagerly replaced, and we monitor
-the total string length, changing the number of bits and collapsing to remain within the memory limits.
+// The way we achieve this is simple: the sample array is indexed by the low N bits of each entry's murmurhash. Collisions are eagerly replaced, and we monitor
+// the total string length, changing the number of bits and collapsing to remain within the memory limits.
 
 caterwaul(':all')(function () {
   label(capacity) = this /-caterwaul.merge/ {hashes: new Uint32Array(capacity), sample: new label_sample(capacity), n: 0, c: capacity} -re- void 0,
@@ -6638,9 +6594,9 @@ caterwaul(':all')(function () {
                                         collapse()   = this -se [this.s = n[1 << --this.bits] *[this.s[x] || this.s[x + 1 << this.bits]] -seq],
                                         expand()     = this -se [this.s = n[1 << ++this.bits] *[''] /seq -se-
                                                                           this.s *![it[murmurhash3_32(x, 0) & ~(-1 << this.bits)] = x] /seq]]]})();
-24 core/jsplot/dataframe.waul.sdoc
-Data frame: a collection of typed axes.
-Manages axis allocation, memory bounding, and input conversion. Also provides a layer of customization around coordinate mappings.
+24 core/jsplot/dataframe.waul
+// Data frame: a collection of typed axes.
+// Manages axis allocation, memory bounding, and input conversion. Also provides a layer of customization around coordinate mappings.
 
 caterwaul(':all')(function () {
   dataframe(memory_limit) = this /-caterwaul.merge/ {axes: null, axis_types: null, n: 0, preview_lines: [], memory_limit: memory_limit} -re- void 0,
@@ -6663,10 +6619,10 @@ caterwaul(':all')(function () {
                                                               is_numeric(x) = !isNaN(+x),
                                                               axis_type(i)  = self.preview_lines /[0][x0 + x[i] /!is_numeric] -seq,
                                                               axis_types    = n[n_axes] *[axis_type(x) > self.n/2 ? 'axis' : 'label'] -seq]]]})();
-34 core/jsplot/matrix.waul.sdoc
-Matrices.
-Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
-transformation.
+34 core/jsplot/matrix.waul
+// Matrices.
+// Not a complete library; just enough stuff to get 3D linear transformation and projection. This library also generates compiled functions for fast axis-specific
+// transformation.
 
 caterwaul(':all')(function () {
   matrix(x) = (x ? +x -seq : n[16] *[+((x>>2) == (x&3))] -seq) -se- it /-caterwaul.merge/ matrix_methods,
@@ -6698,9 +6654,9 @@ caterwaul(':all')(function () {
                                  transformer_form(d, a=this) = qse[given[x, y, z] in _a*x + _b*y + _c*z + _d]
                                                                /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
                                  transformer     (d, a=this) = this.transformer_form(d) /!caterwaul.compile]]})();
-12 core/jsplot/socket.waul.sdoc
-Web socket interface.
-Manages downloads from the server, tracks state, invokes a callback for each batch of new data.
+12 core/jsplot/socket.waul
+// Web socket interface.
+// Manages downloads from the server, tracks state, invokes a callback for each batch of new data.
 
 caterwaul(':all')(function () {
   ni_ws(cmd, cb) = cancel_existing() -then- ws_connect(cmd, cb),
@@ -6711,10 +6667,10 @@ caterwaul(':all')(function () {
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
                                                                   : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-117 core/jsplot/render.waul.sdoc
-Rendering support.
-Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
-details are all hidden inside a render request.
+117 core/jsplot/render.waul
+// Rendering support.
+// Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
+// details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
   render(state = null, last_render = 0, frames_requested = 0)
@@ -6725,42 +6681,42 @@ caterwaul(':all')(function () {
                                                              : ctx.getImageData(0, 0, w, h)}]
                                             -then- request_frame()
 
-Render function.
-This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
+// Render function.
+// This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
 
-Rendering happens "asynchronously" -- that is, it's a time-bounded, reentrant process. The outermost loop governing the whole rendering process is driven by
-requestAnimationFrame(), which calls into render_part(). render_part() runs for about 20ms, rendering 1/4096th "random" slices of the data until it runs out of
-time. The assumption here is that 1/4096th of the data takes under 20ms, which empirically has been true on my machine.
+// Rendering happens "asynchronously" -- that is, it's a time-bounded, reentrant process. The outermost loop governing the whole rendering process is driven by
+// requestAnimationFrame(), which calls into render_part(). render_part() runs for about 20ms, rendering 1/4096th "random" slices of the data until it runs out of
+// time. The assumption here is that 1/4096th of the data takes under 20ms, which empirically has been true on my machine.
 
-The renderer works by modifying RGBA values in an ImageData object, which is a little tricky because all of the drawing operations need to be translucent:
-conceptually we're rendering a volume rather than an opaque object. We also log-scale(-ish) the light output on the screen, so brightness(pixel) ~ log(volume
-depth). This is all done without storing any extra per-pixel state. Here's a full list of the shader properties we want:
+// The renderer works by modifying RGBA values in an ImageData object, which is a little tricky because all of the drawing operations need to be translucent:
+// conceptually we're rendering a volume rather than an opaque object. We also log-scale(-ish) the light output on the screen, so brightness(pixel) ~ log(volume
+// depth). This is all done without storing any extra per-pixel state. Here's a full list of the shader properties we want:
 
-| 1. Singly-shaded pixels should be visible: i.e. rendered at rgb >= 64 (except for obvious counter-cases like slice focusing or distant points).
-  2. Multiply-shaded pixels should converge to full luminosity _and preserve color_, with luminosity ~ log(total volume depth).
-  3. Pixels should eventually saturate to white, losing color resolution as they gain luminosity. This should approximately double the dynamic range.
-  4. The algorithm should be properly additive so that antialiasing works (we want 2x2 subpixel rendering).
-  5. A bunch of very dim points should converge to the right color average (i.e. we can't lose too much detail to 8-bit quantization).
-  6. The total onscreen brightness should remain about the same regardless of how many points are on the screen (otherwise zooming would dim the display).
+// | 1. Singly-shaded pixels should be visible: i.e. rendered at rgb >= 64 (except for obvious counter-cases like slice focusing or distant points).
+//   2. Multiply-shaded pixels should converge to full luminosity _and preserve color_, with luminosity ~ log(total volume depth).
+//   3. Pixels should eventually saturate to white, losing color resolution as they gain luminosity. This should approximately double the dynamic range.
+//   4. The algorithm should be properly additive so that antialiasing works (we want 2x2 subpixel rendering).
+//   5. A bunch of very dim points should converge to the right color average (i.e. we can't lose too much detail to 8-bit quantization).
+//   6. The total onscreen brightness should remain about the same regardless of how many points are on the screen (otherwise zooming would dim the display).
 
-So here's roughly how this all works. The RGB channels store full-value color all the time: this is a brightness-weighted average of the colors drawn into that
-pixel. Brightness is stored in the alpha channel and converges to 255 by an exponential series if all points are rendered at the same intensity.
+// So here's roughly how this all works. The RGB channels store full-value color all the time: this is a brightness-weighted average of the colors drawn into that
+// pixel. Brightness is stored in the alpha channel and converges to 255 by an exponential series if all points are rendered at the same intensity.
 
-Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
-constantly low.
+// Point intensity is randomized for every pixel shading operation. We do this to break through the quantization artifacts we'd get if the intensity were
+// constantly low.
 
   -where[slice_size      = 4096,
          slices          = n[slice_size] -seq -re- it.sort("Math.random() - 0.5".qf),
          request_frame() = render_part /!requestAnimationFrame -then- ++frames_requested -unless.frames_requested,
          render_part     = function () {
 
-Render state.
-Local variables for the axes and coordinate transformations, some misc stuff, and our luminosity adjustment and shade tracking. The luminosity adjustment is
-modified each iteration as we figure out how dense our shading is empirically; state.l0, the "target luminosity", is measured in full shades per screen pixel.
-Here's the calculation:
+// Render state.
+// Local variables for the axes and coordinate transformations, some misc stuff, and our luminosity adjustment and shade tracking. The luminosity adjustment is
+// modified each iteration as we figure out how dense our shading is empirically; state.l0, the "target luminosity", is measured in full shades per screen pixel.
+// Here's the calculation:
 
-| initial_l = target_shade_per_pixel * pixels / data_points;
-  next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
+// | initial_l = target_shade_per_pixel * pixels / data_points;
+//   next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
 
     --frames_requested;
     var ax = state.a[0], ay = state.a[1],                  xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
@@ -6829,9 +6785,9 @@ Here's the calculation:
     state.ctx.putImageData(state.id, 0, 0);
     last_render = +new Date;
   }]})();
-57 core/jsplot/camera.waul.sdoc
-Camera state, geometry, and UI.
-The camera contains an object matrix, a view matrix, and some render settings.
+57 core/jsplot/camera.waul
+// Camera state, geometry, and UI.
+// The camera contains an object matrix, a view matrix, and some render settings.
 
 caterwaul(':all')(function ($) {
   camera(v) = jquery[div.camera /modus('composite', {br: '.brightness .number', ot: '.object-translation', os: '.object-scale',
@@ -6887,8 +6843,8 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-150 core/jsplot/interface.waul.sdoc
-Page driver.
+150 core/jsplot/interface.waul
+// Page driver.
 
 $(caterwaul(':all')(function ($) {
   setup_event_handlers(),
@@ -7142,11 +7098,11 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-93 core/jsplot/jsplot.pl.sdoc
-JSPlot interop.
-JSPlot is served over HTTP as a portable web interface. It requests data via
-AJAX, and may request the same data multiple times to save browser memory. The
-JSPlot driver buffers the data to disk to make it repeatable.
+93 core/jsplot/jsplot.pl
+# JSPlot interop.
+# JSPlot is served over HTTP as a portable web interface. It requests data via
+# AJAX, and may request the same data multiple times to save browser memory. The
+# JSPlot driver buffers the data to disk to make it repeatable.
 
 use constant jsplot_gen => gen $ni::self{'core/jsplot/html'};
 
@@ -7169,8 +7125,8 @@ use constant jsplot_html =>
                                              core/jsplot/camera.waul
                                              core/jsplot/interface.waul |});
 
-Parsing.
-This entry point provides a realtime CLI parse for the UI.
+# Parsing.
+# This entry point provides a realtime CLI parse for the UI.
 
 sub jsplot_parse($$@) {
   my ($reply, $req, @ni_args) = @_;
@@ -7178,10 +7134,10 @@ sub jsplot_parse($$@) {
   http_reply $reply, 200, json_encode {ops => $ops, unparsed => [@rest]};
 }
 
-JSPlot data streaming.
-This is the websocket connection that ni uses to stream data to the client. Any
-data we receive from the client indicates that the client is canceling the
-websocket request, so we need to break the pipe and kill off subprocesses.
+# JSPlot data streaming.
+# This is the websocket connection that ni uses to stream data to the client. Any
+# data we receive from the client indicates that the client is canceling the
+# websocket request, so we need to break the pipe and kill off subprocesses.
 
 sub jsplot_log($@) {printf STDERR "ni js[$$]: $_[0]", @_[1..$#_]}
 
@@ -7237,14 +7193,14 @@ Runs a web interface that allows you to visualize data streams. See ni
 //help/visual for details.
 _
 1 core/docker/lib
-docker.pl.sdoc
-88 core/docker/docker.pl.sdoc
-Pipeline dockerization.
-Creates a transient container to execute a part of your pipeline. The image you
-specify needs to have Perl installed, but that's about it.
+docker.pl
+88 core/docker/docker.pl
+# Pipeline dockerization.
+# Creates a transient container to execute a part of your pipeline. The image you
+# specify needs to have Perl installed, but that's about it.
 
-Prebuilt image case.
-This is what happens by default, and looks like `ni Cubuntu[g]`.
+# Prebuilt image case.
+# This is what happens by default, and looks like `ni Cubuntu[g]`.
 
 use constant docker_image_name => prx '[^][]+';
 
@@ -7254,15 +7210,15 @@ defoperator docker_run_image => q{
   quote_ni_into $fh, @f;
 };
 
-On-demand images.
-These are untagged images built on the fly. NB: workaround here for old/buggy
-versions of the docker client; here's what's going on.
+# On-demand images.
+# These are untagged images built on the fly. NB: workaround here for old/buggy
+# versions of the docker client; here's what's going on.
 
-Normally you'd use `docker build -q` and get an image ID, but some older docker
-clients ignore the `-q` option and emit full verbose output (and, in
-unexpectedly barbaric fashion, they also emit this verbosity to standard out,
-not standard error). So we instead go through the silliness of tagging and then
-untagging the image.
+# Normally you'd use `docker build -q` and get an image ID, but some older docker
+# clients ignore the `-q` option and emit full verbose output (and, in
+# unexpectedly barbaric fashion, they also emit this verbosity to standard out,
+# not standard error). So we instead go through the silliness of tagging and then
+# untagging the image.
 
 defoperator docker_run_dynamic => q{
   my ($dockerfile, @f) = @_;
@@ -7313,9 +7269,9 @@ defshort '/C',
     pmap(q{docker_run_image_op $$_[0], @{$$_[1]}},
          pseq pc docker_image_name, _qfn);
 
-Execution within existing containers.
-Same idea as running a new Docker, but creates a process within an existing
-container.
+# Execution within existing containers.
+# Same idea as running a new Docker, but creates a process within an existing
+# container.
 
 use constant docker_container_name => docker_image_name;
 
@@ -7328,12 +7284,11 @@ defoperator docker_exec => q{
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
-hadoop.pl.sdoc
-192 core/hadoop/hadoop.pl.sdoc
-Hadoop operator.
-The entry point for running various kinds of Hadoop jobs.
+hadoop.pl
+190 core/hadoop/hadoop.pl
+# Hadoop operator.
+# The entry point for running various kinds of Hadoop jobs.
 
-c
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
@@ -7368,18 +7323,18 @@ defresource 'hdfsrm',
                     resource_nuke "hdfst://$_[1]"} @_},
   nuke => q{resource_nuke "hdfst://$_[1]"};
 
-Streaming.
-We need to be able to find the Streaming jar, which is slightly nontrivial. The
-hadoop docs suggest that $HADOOP_HOME has something to do with it, but I've
-seen installations that had no such environment variable and everything worked
-fine. Here's what we can do:
+# Streaming.
+# We need to be able to find the Streaming jar, which is slightly nontrivial. The
+# hadoop docs suggest that $HADOOP_HOME has something to do with it, but I've
+# seen installations that had no such environment variable and everything worked
+# fine. Here's what we can do:
 
-| 1. Use $NI_HADOOP_STREAMING_JAR if it's set
-  2. Use `locate hadoop-streaming*.jar` if we have `locate`
-  3. Use `find /usr /opt -name hadoop-streaming*.jar`, see if it's there
+# | 1. Use $NI_HADOOP_STREAMING_JAR if it's set
+#   2. Use `locate hadoop-streaming*.jar` if we have `locate`
+#   3. Use `find /usr /opt -name hadoop-streaming*.jar`, see if it's there
 
-If those don't work, then we are officially SOL and you'll have to set
-NI_HADOOP_STREAMING_JAR.
+# If those don't work, then we are officially SOL and you'll have to set
+# NI_HADOOP_STREAMING_JAR.
 
 sub hadoop_streaming_jar {
   local $SIG{CHLD} = 'DEFAULT';
@@ -7391,11 +7346,11 @@ sub hadoop_streaming_jar {
        . "(you can fix this by setting \$NI_HADOOP_STREAMING_JAR)";
 }
 
-Input type autodetection.
-Technically, hadoop operators take one or more HFDS input paths on stdin -- but
-of course ni isn't going to just give up if we appear to have something else.
-If we have something that obviously isn't an HDFS path, we upload that stream
-into a temporary HDFS location and run against that.
+# Input type autodetection.
+# Technically, hadoop operators take one or more HFDS input paths on stdin -- but
+# of course ni isn't going to just give up if we appear to have something else.
+# If we have something that obviously isn't an HDFS path, we upload that stream
+# into a temporary HDFS location and run against that.
 
 sub hdfs_input_path {
   local $_;
@@ -7497,7 +7452,6 @@ defoperator hadoop_streaming => q{
 defoperator hadoop_make_nukeable =>
   q{print sr $_, qr/^hdfst?/, 'hdfsrm' while <STDIN>};
 
-c
 BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                                       pmap(q{[]},    prc ':'),
                                                       _qfn}
@@ -7523,29 +7477,28 @@ defhadoopalt R =>
                       [hadoop_streaming_op [], undef, []]},
   pc number;
 2 core/pyspark/lib
-pyspark.pl.sdoc
-local.pl.sdoc
-55 core/pyspark/pyspark.pl.sdoc
-Pyspark interop.
-We need to define a context for CLI arguments so we can convert ni pipelines
-into pyspark code. This ends up being fairly straightforward because Spark
-provides so many high-level operators.
+pyspark.pl
+local.pl
+54 core/pyspark/pyspark.pl
+# Pyspark interop.
+# We need to define a context for CLI arguments so we can convert ni pipelines
+# into pyspark code. This ends up being fairly straightforward because Spark
+# provides so many high-level operators.
 
-There are two things going on here. First, we define the codegen for Spark
-jobs; this is fairly configuration-independent since the API is stable. Second,
-we define a configuration system that lets the user specify the Spark execution
-profile. This governs everything from `spark-submit` CLI options to
-SparkContext init.
+# There are two things going on here. First, we define the codegen for Spark
+# jobs; this is fairly configuration-independent since the API is stable. Second,
+# we define a configuration system that lets the user specify the Spark execution
+# profile. This governs everything from `spark-submit` CLI options to
+# SparkContext init.
 
-Pyspark operators.
-These exist in their own parsing context. Rather than compiling directly to
-Python code, we generate a series of gens, each of which refers to a '%v'
-quantity that signifies the value being transformed.
+# Pyspark operators.
+# These exist in their own parsing context. Rather than compiling directly to
+# Python code, we generate a series of gens, each of which refers to a '%v'
+# quantity that signifies the value being transformed.
 
 sub pyspark_compile {my $v = shift; $v = $_->(v => $v) for @_; $v}
 sub pyspark_create_lambda($) {$_[0]}
 
-c
 BEGIN {defcontext 'pyspark', q{PySpark compilation context}}
 BEGIN {
   defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
@@ -7571,19 +7524,19 @@ defshort 'pyspark/u', pk gen "%v.distinct()";
 defshort 'pyspark/+', pmap q{gen "%v.union($_)"},     pyspark_rdd;
 defshort 'pyspark/*', pmap q{gen "%v.intersect($_)"}, pyspark_rdd;
 
-Configuration management.
-A profile contains the code required to initialize the SparkContext and any
-other variables relevant to the process. Each is referenced by a single
-character and stored in the %spark_profiles table.
+# Configuration management.
+# A profile contains the code required to initialize the SparkContext and any
+# other variables relevant to the process. Each is referenced by a single
+# character and stored in the %spark_profiles table.
 
 defoperator pyspark_preview => q{sio; print "$_[0]\n"};
 
 defshort '/P',
   defdsp 'sparkprofile', 'dispatch for pyspark profiles',
     'dev/compile' => pmap q{pyspark_preview_op $_}, pyspark_rdd;
-36 core/pyspark/local.pl.sdoc
-Local PySpark profile.
-Provides a way to stream data into and out of a context.
+36 core/pyspark/local.pl
+# Local PySpark profile.
+# Provides a way to stream data into and out of a context.
 
 use constant pyspark_text_io_gen => gen pydent q{
   from pyspark import SparkConf, SparkContext

@@ -284,24 +284,30 @@
 	
 	  my ($map, $combine, $reduce) = @_;
 	  my ($nuke_inputs, @ipath) = hdfs_input_path;
+	
 	  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
 	  my ($combiner, @combine_cmd) = $combine
 	    ? hadoop_lambda_file 'combiner', $combine : ();
 	  my ($reducer, @reduce_cmd) = $reduce
 	    ? hadoop_lambda_file 'reducer', $reduce : ();
+	
 	  my $streaming_jar = hadoop_streaming_jar;
+	
 	  for my $ipaths (@ipath) {
 	    my $opath = resource_tmp "hdfs://";
 	    my $hadoop_fh = siproc {
 	      $mapper   =~ s|^file://||;
 	      $combiner =~ s|^file://|| if $combiner;
 	      $reducer  =~ s|^file://|| if $reducer;
+	
 	      (my $mapper_file   = $mapper)         =~ s|.*/||;
 	      (my $combiner_file = $combiner || '') =~ s|.*/||;
 	      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+	
 	      my @jobconf =
 	        grep $reducer || !/reduce/,             # HACK
 	        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+	
 	      my $cmd = shell_quote
 	        conf 'hadoop/name',
 	        jar => $streaming_jar,
@@ -321,13 +327,18 @@
 	          : (-reducer => 'NONE'));
 	      sh "$cmd 1>&2";
 	    };
+	
 	    close $hadoop_fh;
 	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	
 	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+	
 	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
 	    print "$result_path/part-*\n";
 	  }
+	
 	  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
+	
 	  resource_nuke $mapper;
 	  resource_nuke $combiner if defined $combiner;
 	  resource_nuke $reducer  if defined $reducer;
@@ -357,6 +368,7 @@
 	
 	  my ($ratio, $lambda) = @_;
 	  my $fh = soproc {close STDIN; exec_ni @$lambda};
+	
 	  if ($ratio) {
 	    $ratio = 1/-$ratio if $ratio < 0;
 	    my ($n1, $n2) = (0, 0);
@@ -390,6 +402,7 @@
 	      }
 	    }
 	  }
+	
 	  done:
 	  close $fh;
 	  $fh->await;
@@ -432,12 +445,14 @@
 	    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>,   $rlimit + 1)[@rcols]);
 	    $reof ||= !defined $rrow;
 	    $leof ||= !defined $lrow;
+	
 	    until ($lkey eq $rkey or $leof or $reof) {
 	      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>, $llimit + 1)[@lcols]),
 	        $reof ||= !defined $rrow until $reof or $rkey ge $lkey;
 	      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $rlimit + 1)[@rcols]),
 	        $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
 	    }
+	
 	    if ($lkey eq $rkey and !$leof && !$reof) {
 	      chomp $lrow;
 	      print "$lrow\t$rrow";
@@ -535,6 +550,7 @@
 	    my $s = $ni::short_refs{$c};
 	    my %multi;
 	    ++$multi{substr $_, 0, 1} for grep 1 < length, keys %$s;
+	
 	    print substr(meta_context_name $c, 0, 7) . "\t"
 	        . join('', map $multi{$_} ? '.' : $$s{$_} ? '|' : ' ',
 	                       split //, qwerty_prefixes)
@@ -558,6 +574,7 @@
 	  my ($i, $o) = sioproc {
 	    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
 	      or die "ni: failed to execute python: $!"};
+	
 	  my @q;
 	  my ($rows, $cols);
 	  while (defined($_ = @q ? shift @q : <STDIN>)) {
@@ -570,21 +587,26 @@
 	    ++$rows, push @m, [split /\t/, $col ? substr $_, length $1 : $_]
 	      while defined($_ = <STDIN>) and !$col || /^($kr\t)/;
 	    push @q, $_ if defined;
+	
 	    $cols = max map scalar(@$_), @m;
 	    safewrite $i, pack "NNF*", $rows, $cols,
 	      map $_ || 0,
 	      map {(@$_, (0) x ($cols - @$_))} @m;
+	
 	    saferead $o, $_, 8;
 	    ($rows, $cols) = unpack "NN", $_;
+	
 	    $_ = '';
 	    saferead $o, $_, $rows*$cols*8 - length(), length
 	      until length == $rows*$cols*8;
+	
 	    # TODO: optimize this. Right now it's horrifically slow and for no purpose
 	    # (everything's getting read into memory either way).
 	    for my $r (0..$rows-1) {
 	      print join("\t", $col ? ($k) : (), unpack "F$cols", substr $_, $r*$cols*8), "\n";
 	    }
 	  }
+	
 	  close $i;
 	  close $o;
 	  $o->await;
@@ -749,10 +771,14 @@
 ## IMPLEMENTATION
 	
 	  use constant buf_size => 32768;
+	
 	  sub new_ref() {\(my $x = '')}
+	
 	  my ($n, $f) = @_;
 	  $ENV{NI_NO_MONITOR} = 'yes';
+	
 	  my ($iqueue, $oqueue) = (64, 64);
+	
 	  my (@wi, @wo);
 	  my ($wb, $rb, $w, $r);
 	  my ($ib, $ob, $ibtmp, $obtmp);
@@ -767,8 +793,10 @@
 	    vec($wb, fileno $i, 1) = 1;
 	    vec($rb, fileno $o, 1) = 1;
 	  }
+	
 	  vec($ib, fileno STDIN,  1) = 1;
 	  vec($ob, fileno STDOUT, 1) = 1;
+	
 	  my $stdout_reader = siproc {
 	    my @bufs;
 	    my $buf_limit = $oqueue * $n;
@@ -776,16 +804,20 @@
 	    my @outqueue;
 	    my $b;
 	    my $stdout = \*STDOUT;
+	
 	    close $_ for @wi;
+	
 	    while ($n) {
 	      until (@outqueue < $oqueue * $n) {
 	        safewrite $stdout, ${$b = shift @outqueue};
 	        push @bufs, $b unless @bufs >= $buf_limit;
 	      }
+	
 	      select $r = $rb, undef, undef, undef;
 	      for my $i (0..$#wo) {
 	        next unless defined $wo[$i];
 	        next unless vec $r, fileno $wo[$i], 1;
+	
 	        while (@outqueue and select undef, $obtmp = $ob, undef, 0) {
 	          safewrite $stdout, ${$b = shift @outqueue};
 	          push @bufs, $b unless @bufs >= $buf_limit;
@@ -809,10 +841,13 @@
 	        }
 	      }
 	    }
+	
 	    safewrite $stdout, $$_ for @outqueue;
 	  };
+	
 	  close $stdout_reader;
 	  close $_ for @wo;
+	
 	  {
 	    my @bufs;
 	    my $buf_limit = $iqueue * $n;
@@ -821,10 +856,12 @@
 	    my $eof;
 	    my $b;
 	    my $stdin = \*STDIN;
+	
 	    until (!@queue && $eof) {
 	      select undef, $w = $wb, undef, undef;
 	      for my $i (0..$#wi) {
 	        next unless vec $w, fileno $wi[$i], 1;
+	
 	        my $si = $stdin[$i];
 	        if (@$si * 4 < $iqueue) {
 	          # Commit to refilling this stdin queue, which means we need to write
@@ -835,6 +872,7 @@
 	              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size;
 	              push @queue, $b;
 	            }
+	
 	            my $np;
 	            if (0 <= ($np = rindex $$b, "\n")) {
 	              push @$si, \(my $x = substr $$b, 0, $np + 1);
@@ -845,26 +883,31 @@
 	            }
 	          }
 	        }
+	
 	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
 	        or push @queue, $b
 	          while @queue < $iqueue * $n and !$eof
 	            and select $ibtmp = $ib, undef, undef, 0;
+	
 	        if (@$si) {
 	          safewrite $wi[$i], ${$b = shift @$si};
 	          push @bufs, $b unless @bufs >= $buf_limit;
 	        }
+	
 	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
 	        or push @queue, $b
 	          while @queue < $iqueue * $n and !$eof
 	            and select $ibtmp = $ib, undef, undef, 0;
 	      }
 	    }
+	
 	    # Run out the individual queues.
 	    for my $i (0..$#wi) {
 	      safewrite $wi[$i], $$_ for @{$stdin[$i]};
 	      close $wi[$i];
 	    }
 	  }
+	
 	  $_->await for @wo;
 	  $stdout_reader->await;
 
@@ -876,10 +919,12 @@
 	  my $key_expr = $key_col
 	    ? qq{(split /\t/)[$key_col]}
 	    : qq{/^([^\t\n]*)/};
+	
 	  my $sort_expr = join ' || ',
 	    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
 	         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
 	                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
+	
 	  ni::eval gen(q{
 	    my $k;
 	    my @group;
@@ -1039,8 +1084,10 @@
 	                   last unless $n;
 	    my $t2 = time; safewrite $stdout, $_;
 	    my $t3 = time;
+	
 	    $itime += $t2 - $t1;
 	    $otime += $t3 - $t2;
+	
 	    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
 	      $last_update = $t3;
 	      my $runtime = $t3 - $start_time || 1;
@@ -1053,7 +1100,9 @@
 	      } else {
 	        $preview = substr $monitor_name, 0, $width - 20;
 	      }
+	
 	      my $factor_log = log(($otime || 1) / ($itime || 1)) / log 2;
+	
 	      safewrite \*STDERR,
 	        sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
 	          $monitor_id + 1,
@@ -1123,9 +1172,11 @@
 	  my ($limit, @cols) = @$colspec;
 	  my ($i, $o) = sioproc {exec ni_quoted_exec_args};
 	  safewrite $i, ni_quoted_image 0, @$lambda;
+	
 	  vec(my $rbits = '', fileno $o, 1) = 1;
 	  vec(my $wbits = '', fileno $i, 1) = 1;
 	  fh_nonblock $i;
+	
 	  my $read_buf = '';
 	  my $write_buf = '';
 	  my @queued;
@@ -1136,6 +1187,7 @@
 	    $_ = '';
 	    chomp, push @queued, $_ while ($l += length) <= 1048576
 	                              and $stdin_ok &&= defined($_ = <STDIN>);
+	
 	    while (@queued && sum(map length, @awaiting_completion) < 1048576
 	                   && select undef, my $wout=$wbits, undef, 0) {
 	      my $n = 0;
@@ -1149,9 +1201,12 @@
 	      my $sn = safewrite $i, $s;
 	      $write_buf = substr $s, $sn;
 	    }
+	
 	    close $i if !@queued && !$stdin_ok;
+	
 	    $proc_ok &&= saferead $o, $read_buf, 8192, length $read_buf
 	      while $proc_ok && select my $rout=$rbits, undef, undef, 0;
+	
 	    my @lines = split /\n/, $read_buf . " ";
 	    $proc_ok ? $read_buf = substr pop(@lines), 0, -1 : pop @lines;
 	    for (@lines) {
@@ -1162,9 +1217,11 @@
 	      print join("\t", @fs, @cs[@fs..$#cs]), "\n";
 	    }
 	  }
+	
 	  die "ni: vertical apply's process ultimately lost "
 	    . scalar(@awaiting_completion) . " line(s)"
 	  if @awaiting_completion;
+	
 	  close $o;
 	  $o->await;
 

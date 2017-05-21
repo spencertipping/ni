@@ -87,9 +87,9 @@ track performance by commit.
 
 # Notes
 1. The rewriting process itself is implemented by functions in
-   [core/boot/self.pl.sdoc](../core/boot/self.pl.sdoc), called by
+   [core/boot/self.pl](../core/boot/self.pl), called by
    `$option_handlers{'internal/lib'}` in
-   [core/boot/main.pl.sdoc](../core/boot/main.pl.sdoc). The main function,
+   [core/boot/main.pl](../core/boot/main.pl). The main function,
    counterintuitively, is called by [core/boot/ni](../core/boot/ni), which is
    the header of the `./ni` script. (ni is a weird program in that it's
    self-modifying and can print its state without reading its source code.)

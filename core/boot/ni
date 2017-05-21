@@ -32,9 +32,6 @@ sub ni::boot_header
              "die \$@ if \$@",
              "__DATA__" }
 
-sub ni::unsdoc
-{ join '', grep !/^\s*[|A-Z]/ + s/^\s*c\n//, split /\n(\s*\n)+/, $_[0] }
-
 sub ni::eval($;$)
 { @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1] || "anon {$_[0]}");
   my @r = eval "package ni;$_[0]";
@@ -44,8 +41,7 @@ sub ni::eval($;$)
 sub ni::set
 { my $k = $_[0];
   chomp($ni::self{$k} = $_[1]);
-  ni::set(substr($k, 0, -5), ni::unsdoc $_[1]) if $k =~ /\.sdoc$/;
-  ni::eval $_[1], $k                           if $k =~ /\.pl$/ }
+  ni::eval $_[1], $k if $k =~ /\.pl$/ }
 
 ni::set $2, join '', map $_ = <DATA>, 1..$1
 while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;

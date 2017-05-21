@@ -1052,6 +1052,7 @@
 	        my (undef, $context, $formals, $positions, $expansion) = @$self;
 	        my ($parsed_formals, @rest) = parse pn(1, popt pempty, $formals), @xs;
 	        return () unless defined $parsed_formals;
+	  
 	        my %args;
 	        $args{$_} = $$parsed_formals[$$positions{$_}] for keys %$positions;
 	        parse parser "$context/op",
@@ -1329,15 +1330,18 @@
 	    my $x             = '';
 	    $x .= ']' while $status = syntax_check 'perl -c -', &$codegen($safecode)
 	                    and ($safecode =~ s/\]$//, $code =~ s/\]$//);
+	  
 	    die <<EOF if $status;
 	  ni: failed to get closing bracket count for perl code "$code$x", possibly
 	      because BEGIN-block metaprogramming is disabled when ni tries to figure
 	      this out. To avoid this, make sure the shell argument containing your code
 	      ends with something that isn't a closing bracket; e.g:
+	  
 	      p'[[some code]]'            # this may fail due to bracket inference
 	      p'[[some code]] '           # this works by bypassing it
 	      [p'[some code] ' ]          # this works for ni lambdas
 	  EOF
+	  
 	    ($code, $x, @xs);
 	}>
 

@@ -1,0 +1,16 @@
+# Resource layout map.
+# ni is assembled by following the instructions here. This script is also
+# included in the ni image itself so it can rebuild accordingly.
+
+bootcode
+resource core/boot/ni.map
+
+resource core/boot/util.pl
+resource core/boot/doc.pl
+resource core/boot/dev.pl
+resource core/boot/parse.pl
+resource core/boot/common.pl
+resource core/boot/cli.pl
+resource core/boot/op.pl
+resource core/boot/self.pl
+resource core/boot/main.pl

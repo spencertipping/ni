@@ -3,6 +3,7 @@ have no documentation associated with them.
 
 Development option: evaluate an expression within the `ni::` package, and print
 the result. For example:
+
 $ ni --dev/eval '3 + 4'
 7
 
@@ -11,6 +12,7 @@ command line. Mostly useful for debugging.
 
 Development option: trace the ni::parse function and evaluate the specified
 parser on the rest of the command line arguments. For example:
+
 $ ni --dev/parse-one 'parser "/qfn"' [gc]
 
 Usage: ni --doc
