@@ -6125,7 +6125,7 @@ sub simage_png {
 
   my ($l, $t) = (0, '');
   while ($t ne 'IEND') {
-    ($l, $t) = unpack 'Na4' if saferead_exactly \*STDIN, $_, 8;
+    ($l, $t) = unpack 'Na4', $_ if saferead_exactly \*STDIN, $_, 8;
     saferead_exactly \*STDIN, $_, $l + 4, 8;
     safewrite $into, $_;
   }
