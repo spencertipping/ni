@@ -1539,22 +1539,33 @@ lazytest_case 'ni ::five[n5] | ni n3p'\''r a, five'\''
 3	five
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=469
-lazytest_case 'ni nE6gr4 :numbers
+lazytest_line=525
+lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA
 ' 3<<'LAZYTEST_EOF'
-1
-10
-100
-1000
+aNi+=1oK?x	1
+aNi+=1oK?x	2
+bNi+=1oK?y	3
+cNi+=1oK?z	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=480
-lazytest_case 'ni nE6gr4 :numbers O
+lazytest_line=533
+lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA  p'\''r hrsplit a, sum b_ rea'\''
 ' 3<<'LAZYTEST_EOF'
-1000
-100
-10
-1
+a	x	3
+b	y	3
+c	z	4
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_2.md'
+lazytest_line=547
+lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
+' 3<<'LAZYTEST_EOF'
+Dt2clCTYSj64+6M8Nzhq4#
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_2.md'
+lazytest_line=554
+lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\'' p'\''b642h a'\''
+' 3<<'LAZYTEST_EOF'
+0edd9c9424d84a3eb8fba33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=33
@@ -2329,6 +2340,24 @@ lazytest_case 'ni n4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 ' 3<<'LAZYTEST_EOF'
 10	24
 LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_5.md'
+lazytest_line=29
+lazytest_case 'ni nE6gr4 :numbers
+' 3<<'LAZYTEST_EOF'
+1
+10
+100
+1000
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_5.md'
+lazytest_line=40
+lazytest_case 'ni nE6gr4 :numbers O
+' 3<<'LAZYTEST_EOF'
+1000
+100
+10
+1
+LAZYTEST_EOF
 lazytest_file='doc/perl.md'
 lazytest_line=13
 lazytest_case 'ni n5p'\''a * a'\''                 # square some numbers
@@ -2517,25 +2546,25 @@ lazytest_case 'ni ::squares[n100p'\''100 - a'\'' p'\''r a, a*a'\''] n5p'\''^{%sq
 25
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=248
+lazytest_line=249
 lazytest_case 'ni n100p'\''sum rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=250
+lazytest_line=251
 lazytest_case 'ni n10p'\''prod rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 3628800
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=252
+lazytest_line=253
 lazytest_case 'ni n100p'\''mean rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 50.5
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=260
+lazytest_line=261
 lazytest_case 'ni n1p'\''cart [1,2], [1,2,3], ["a","b"]'\''
 ' 3<<'LAZYTEST_EOF'
 1	1	a
@@ -2552,13 +2581,13 @@ lazytest_case 'ni n1p'\''cart [1,2], [1,2,3], ["a","b"]'\''
 2	3	b
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=291
+lazytest_line=292
 lazytest_case 'ni n10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=309
+lazytest_line=310
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -2567,7 +2596,7 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sync	,sync
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=330
+lazytest_line=331
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -2576,13 +2605,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=340
+lazytest_line=341
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=368
+lazytest_line=369
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
@@ -2612,7 +2641,7 @@ x	23
 y	12
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=416
+lazytest_line=417
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/gcx
 ' 3<<'LAZYTEST_EOF'
 a	39
