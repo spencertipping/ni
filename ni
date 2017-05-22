@@ -4606,7 +4606,7 @@ our @base64_ext_digits = split //, $base64_ext_digits;
 our %base64_ext_decode = map(($base64_ext_digits[$_], 1), 0..$#base64_ext_digits);
 our %base64_decode = map(($base64_digits[$_], ($_ % 64)), 0..$#base64_digits);
 
-sub hex2extbase64 ($) {
+sub hex2extbase64($) {
   my $hex_num = hex $_[0];
   my $n_hex_chars = length $_[0];
   if ($n_hex_chars == 3) {
@@ -4618,7 +4618,7 @@ sub hex2extbase64 ($) {
   }
 }
 
-sub hex2base64 ($) {
+sub hex2base64($) {
   my $clean_str = $_[0] =~ tr/\-//dr;
   my @hex_strs = unpack("(A3)*", $clean_str); 
   my $last_hex_str = pop @hex_strs;
@@ -4629,7 +4629,7 @@ sub hex2base64 ($) {
   $b64_str . $last_chars;
 }
 
-sub extbase642hex_test ($) {
+sub extbase642hex ($) {
   my $n_hex_digits = length($_[0]) + 1 - sum(map { $base64_ext_decode{$_} } (split //, $_[0]));
   my $fmt_str = "%0" . $n_hex_digits . "x";
   my $value;
@@ -4642,10 +4642,10 @@ sub extbase642hex_test ($) {
   sprintf $fmt_str, $value;
 }
 
-sub base642hex ($) {
+sub base642hex($) {
   my @b64_strs = unpack("(A2)*", $_[0]); 
   my $last_b64 = pop @b64_strs;
-  my $last_hex_str = extbase642hex_test  $last_b64;
+  my $last_hex_str = extbase642hex $last_b64;
   my @b64_nums = map { ($base64_decode{substr($_, 0, 1)} << 6) + $base64_decode{substr($_, 1, 1)}} @b64_strs;
   my @hex_strs = map {sprintf "%03x", $_} @b64_nums;
   my $output_str = join("", @hex_strs) .  $last_hex_str;
@@ -4705,7 +4705,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-104 core/pl/stream.pm.sdoc
+105 core/pl/stream.pm.sdoc
 Perl stream-related functions.
 Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4731,6 +4731,7 @@ sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
 sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
+sub FT($):lvalue {@F[0..$_[0]]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
@@ -5030,7 +5031,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-140 core/pl/time.pm.sdoc
+142 core/pl/time.pm.sdoc
 Time conversion functions.
 Dependency-free functions that do various time-conversion tasks for you in a
 standardized way. They include:
@@ -5107,12 +5108,14 @@ BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
 
+c
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub clip_to_%s($) {my $ts = $_[0]; int($ts/%d)}',
                        $x, $dur}}
 
+c
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 

@@ -739,19 +739,6 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my
 2017	1	22	2	41	13
 ```
 
-#### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
-
-These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more pratical in performance-environments (`HS`, for example).
-
-```bash
-$ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r tep a' | cat
-2017	5	6	0	0	0
-2017	5	6	22	0	0
-2017	5	6	22	30	0
-2017	5	6	22	44	0
-2017	5	6	22	44	11
-```
-
 #### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
 
 These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
@@ -775,6 +762,44 @@ Sun_02
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
 2017_01
 ```
+
+#### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
+
+These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more pratical in performance-environments (`HS`, for example).
+
+```bash
+$ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r tep a'
+2017	5	6	0	0	0
+2017	5	6	22	0	0
+2017	5	6	22	30	0
+2017	5	6	22	44	0
+2017	5	6	22	44	11
+```
+
+#### `ctd`, `cth`, `ct15`, `ctm`: clip to day, hour, quarter-hour, and minute
+
+This can be used to save time and space, especially when running Hadoop jobs that require carrying around timestamps.
+
+```bash
+$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a'
+17292	415030	1660122	24901844	1494110651
+```
+
+#### `itd`, `ith`, `it15`, `itm`: inflate to day, hour, quarter-hour, and minute
+
+Undoes the clipping operation; the result of clipping followed by inflation is equivalent to the truncation operation. Separating the two options in time saves space (at the expense of more computation).
+
+```bash
+$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a' p'r itd a, ith b, it15 c, itm d, e'
+1494028800	1494108000	1494109800	1494110640	1494110651
+```
+
+```bash
+$ ni i1494110651 p'r ttd(a), tth(a), tt15(a), ttm(a), a'
+1494028800	1494108000	1494109800	1494110640	1494110651
+```
+
+
 
 ## More Perl for `ni`
 There's a lot more Perl out there to be learned, here's another important salvo, including useful functions, some regex tricks, and the Perl `for` and `map` constructs.

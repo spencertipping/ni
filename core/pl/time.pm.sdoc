@@ -74,12 +74,14 @@ BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
 
+c
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub clip_to_%s($) {my $ts = $_[0]; int($ts/%d)}',
                        $x, $dur}}
 
+c
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
