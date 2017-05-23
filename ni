@@ -2361,7 +2361,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-225 core/stream/pipeline.pl
+234 core/stream/pipeline.pl
 # Pipeline construction.
 # A way to build a shell pipeline in-process by consing a transformation onto
 # this process's standard input. This will cause a fork to happen, and the forked
@@ -2403,10 +2403,10 @@ sub saferead($$$;$) {
   return undef;
 }
 
-sub safewrite($$) {
+sub safewrite($$;$$) {
   my $n;
   do {
-    return $n if defined($n = syswrite $_[0], $_[1]);
+    return $n if defined($n = syswrite $_[0], $_[1], $_[2] || length $_[1], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -2418,6 +2418,15 @@ sub saferead_exactly($$$;$) {
     $r += $n;
   }
   $r;
+}
+
+sub safewrite_exactly($$) {
+  my ($w, $n) = (0, 0);
+  while ($w < length $_[1]) {
+    return undef unless $n = safewrite $_[0], $_[1], length($_[1]) - $w, $w;
+    $w += $n;
+  }
+  $w;
 }
 
 # Process construction.
@@ -2519,8 +2528,8 @@ sub socons(&@) {
 # concatenate the second `ls` output (despite the fact that technically it's a
 # shell pipe).
 
-sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
-sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
+sub sforward($$) {local $_; safewrite_exactly $_[1], $_ while saferead $_[0], $_, 8192}
+sub stee($$$)    {local $_; safewrite_exactly($_[1], $_), safewrite_exactly($_[2], $_) while saferead $_[0], $_, 8192}
 sub sio()        {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
@@ -2555,12 +2564,12 @@ sub sdecode(;$) {
 
   if (defined $decoder) {
     my $o = siproc {exec $decoder};
-    safewrite $o, $_;
+    safewrite_exactly $o, $_;
     sforward \*STDIN, $o;
     close $o;
     $o->await;
   } else {
-    safewrite \*STDOUT, $_;
+    safewrite_exactly \*STDOUT, $_;
     sio;
   }
 }
@@ -3137,7 +3146,7 @@ defoperator stderr_monitor => q{
   while (1) {
     my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
                    last unless $n;
-    my $t2 = time; safewrite $stdout, $_;
+    my $t2 = time; safewrite_exactly $stdout, $_;
     my $t3 = time;
 
     $itime += $t2 - $t1;
@@ -6021,7 +6030,7 @@ defoperator numpy_dense => q{
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl
-61 core/gnuplot/gnuplot.pl
+62 core/gnuplot/gnuplot.pl
 # Gnuplot interop.
 # An operator that sends output to a gnuplot process.
 
@@ -6035,15 +6044,18 @@ BEGIN {defparseralias gnuplot_code =>
 defoperator stream_to_gnuplot => q{
   my ($col, $command) = @_;
   exec 'gnuplot', '-e', $command unless defined $col;
-  my ($k, $fh);
+  my ($k, $fh) = (undef, undef);
   while (<STDIN>) {
     chomp;
     my @fs = split /\t/, $_, $col + 2;
     my $rk = join "\t", @fs[0..$col];
     if (!defined $k or $k ne $rk) {
-      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
-        or die "ni: failed to run gnuplot on $command: $!";
-      $k = $rk;
+      if (defined $fh) {
+        close $fh;
+        $fh->await;
+      }
+      $fh = siproc {exec 'gnuplot', '-e', "KEY='$k';$command"};
+      $k  = $rk;
     }
     print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
   }
@@ -6080,12 +6092,10 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
 # for ffmpeg to follow `-f image2pipe -i -`.
 
-defshort '/GF',
-  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"},
-  shell_command;
+defshort '/GF', pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
 1 core/image/lib
 image.pl
-107 core/image/image.pl
+115 core/image/image.pl
 # Image compositing and processing
 # Operators that loop over concatenated PNG images within a stream. This is
 # useful for compositing workflows in a streaming context, e.g. between a
@@ -6119,15 +6129,14 @@ image.pl
 
 sub simage_png {
   my ($into) = @_;
-  safewrite $into, $_;
   return undef unless saferead_exactly \*STDIN, $_, 6;
-  safewrite $into, $_;
+  safewrite_exactly $into, $_;
 
   my ($l, $t) = (0, '');
   while ($t ne 'IEND') {
     ($l, $t) = unpack 'Na4', $_ if saferead_exactly \*STDIN, $_, 8;
     saferead_exactly \*STDIN, $_, $l + 4, 8;
-    safewrite $into, $_;
+    safewrite_exactly $into, $_;
   }
   close $into;
   $into->await;
@@ -6147,6 +6156,7 @@ sub simage_into(&) {
   my $n;
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {&$fn};
+  safewrite_exactly $into, $_;
   return simage_png $into  if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   die "ni simage: unsupported image type (unrecognized magic in $_)";
@@ -6173,6 +6183,12 @@ BEGIN {defparseralias image_command => palt pmap(q{''}, pstr ':'), shell_command
 
 defconfenv image_command => 'NI_IMAGE_COMMAND', 'convert';
 
+sub image_sync_sh($) {
+  my $fh = siproc {close STDIN; sh $_[0]} $_[0];
+  close $fh;
+  $fh->await;
+}
+
 defoperator composite_images => q{
   my ($init, $reducer, $emitter) = @_;
   my $ic = conf 'image_command';
@@ -6183,8 +6199,8 @@ defoperator composite_images => q{
   my $temp_q    = shell_quote $temp_image;
 
   if (defined simage_into {sh "$ic - $init $reduced_q"}) {
-    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await;
-    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
+    image_sync_sh "$ic $reduced_q $emitter png:-";
+    image_sync_sh "$ic $reduced_q $emitter png:-"
       while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
   }
 
@@ -6193,6 +6209,8 @@ defoperator composite_images => q{
 
 defshort '/IC' => pmap q{composite_images_op @$_},
                   pseq pc image_command, pc image_command, pc image_command;
+
+defshort '/IJ' => pmap q{each_image_op [sh_op "convert - jpg:-"]}, pnone;
 2 core/http/lib
 ws.pm
 http.pl

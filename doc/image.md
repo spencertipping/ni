@@ -63,3 +63,13 @@ each frame, then we emit some part of it. This might seem overly complicated,
 but it lets you do some cool stuff; for example, you could use `+append` and
 cropping to store a window of frames and have an emitter that collapsed them in
 arbitrary ways.
+
+## ffmpeg instability
+ffmpeg nondeterministically fails about 20% of the time when consuming PNG
+images on stdin. You can fix this by converting each image to JPG like this:
+
+```sh
+$ ni GA... Ie[convert - jpg:-] GF[...]
+```
+
+Because this is a common use case, `IJ` is a synonym for `Ie[convert - jpg:-]`.

@@ -436,6 +436,11 @@
 	  ) -> {$$_[0]}
 	) -> {composite_images_op @$_}
 
+# SHORT OPERATOR /IJ
+
+## SYNTAX
+	'' -> {each_image_op [sh_op "convert - jpg:-"]}
+
 # SHORT OPERATOR /N
 
 ## SYNTAX

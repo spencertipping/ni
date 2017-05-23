@@ -109,8 +109,8 @@
 	  my $temp_q    = shell_quote $temp_image;
 	
 	  if (defined simage_into {sh "$ic - $init $reduced_q"}) {
-	    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await;
-	    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
+	    image_sync_sh "$ic $reduced_q $emitter png:-";
+	    image_sync_sh "$ic $reduced_q $emitter png:-"
 	      while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
 	  }
 	
@@ -1109,7 +1109,7 @@
 	  while (1) {
 	    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
 	                   last unless $n;
-	    my $t2 = time; safewrite $stdout, $_;
+	    my $t2 = time; safewrite_exactly $stdout, $_;
 	    my $t3 = time;
 	
 	    $itime += $t2 - $t1;
@@ -1147,15 +1147,18 @@
 	
 	  my ($col, $command) = @_;
 	  exec 'gnuplot', '-e', $command unless defined $col;
-	  my ($k, $fh);
+	  my ($k, $fh) = (undef, undef);
 	  while (<STDIN>) {
 	    chomp;
 	    my @fs = split /\t/, $_, $col + 2;
 	    my $rk = join "\t", @fs[0..$col];
 	    if (!defined $k or $k ne $rk) {
-	      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
-	        or die "ni: failed to run gnuplot on $command: $!";
-	      $k = $rk;
+	      if (defined $fh) {
+	        close $fh;
+	        $fh->await;
+	      }
+	      $fh = siproc {exec 'gnuplot', '-e', "KEY='$k';$command"};
+	      $k  = $rk;
 	    }
 	    print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
 	  }

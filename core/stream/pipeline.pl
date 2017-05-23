@@ -39,10 +39,10 @@ sub saferead($$$;$) {
   return undef;
 }
 
-sub safewrite($$) {
+sub safewrite($$;$$) {
   my $n;
   do {
-    return $n if defined($n = syswrite $_[0], $_[1]);
+    return $n if defined($n = syswrite $_[0], $_[1], $_[2] || length $_[1], $_[3] || 0);
   } while $!{EINTR};
   return undef;
 }
@@ -54,6 +54,15 @@ sub saferead_exactly($$$;$) {
     $r += $n;
   }
   $r;
+}
+
+sub safewrite_exactly($$) {
+  my ($w, $n) = (0, 0);
+  while ($w < length $_[1]) {
+    return undef unless $n = safewrite $_[0], $_[1], length($_[1]) - $w, $w;
+    $w += $n;
+  }
+  $w;
 }
 
 # Process construction.
@@ -155,8 +164,8 @@ sub socons(&@) {
 # concatenate the second `ls` output (despite the fact that technically it's a
 # shell pipe).
 
-sub sforward($$) {local $_; safewrite $_[1], $_ while saferead $_[0], $_, 8192}
-sub stee($$$)    {local $_; safewrite($_[1], $_), safewrite($_[2], $_) while saferead $_[0], $_, 8192}
+sub sforward($$) {local $_; safewrite_exactly $_[1], $_ while saferead $_[0], $_, 8192}
+sub stee($$$)    {local $_; safewrite_exactly($_[1], $_), safewrite_exactly($_[2], $_) while saferead $_[0], $_, 8192}
 sub sio()        {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
@@ -191,12 +200,12 @@ sub sdecode(;$) {
 
   if (defined $decoder) {
     my $o = siproc {exec $decoder};
-    safewrite $o, $_;
+    safewrite_exactly $o, $_;
     sforward \*STDIN, $o;
     close $o;
     $o->await;
   } else {
-    safewrite \*STDOUT, $_;
+    safewrite_exactly \*STDOUT, $_;
     sio;
   }
 }

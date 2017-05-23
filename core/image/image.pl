@@ -31,15 +31,14 @@
 
 sub simage_png {
   my ($into) = @_;
-  safewrite $into, $_;
   return undef unless saferead_exactly \*STDIN, $_, 6;
-  safewrite $into, $_;
+  safewrite_exactly $into, $_;
 
   my ($l, $t) = (0, '');
   while ($t ne 'IEND') {
     ($l, $t) = unpack 'Na4', $_ if saferead_exactly \*STDIN, $_, 8;
     saferead_exactly \*STDIN, $_, $l + 4, 8;
-    safewrite $into, $_;
+    safewrite_exactly $into, $_;
   }
   close $into;
   $into->await;
@@ -59,6 +58,7 @@ sub simage_into(&) {
   my $n;
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {&$fn};
+  safewrite_exactly $into, $_;
   return simage_png $into  if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   die "ni simage: unsupported image type (unrecognized magic in $_)";
@@ -85,6 +85,12 @@ BEGIN {defparseralias image_command => palt pmap(q{''}, pstr ':'), shell_command
 
 defconfenv image_command => 'NI_IMAGE_COMMAND', 'convert';
 
+sub image_sync_sh($) {
+  my $fh = siproc {close STDIN; sh $_[0]} $_[0];
+  close $fh;
+  $fh->await;
+}
+
 defoperator composite_images => q{
   my ($init, $reducer, $emitter) = @_;
   my $ic = conf 'image_command';
@@ -95,8 +101,8 @@ defoperator composite_images => q{
   my $temp_q    = shell_quote $temp_image;
 
   if (defined simage_into {sh "$ic - $init $reduced_q"}) {
-    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await;
-    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
+    image_sync_sh "$ic $reduced_q $emitter png:-";
+    image_sync_sh "$ic $reduced_q $emitter png:-"
       while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
   }
 
@@ -105,3 +111,5 @@ defoperator composite_images => q{
 
 defshort '/IC' => pmap q{composite_images_op @$_},
                   pseq pc image_command, pc image_command, pc image_command;
+
+defshort '/IJ' => pmap q{each_image_op [sh_op "convert - jpg:-"]}, pnone;

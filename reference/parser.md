@@ -335,6 +335,7 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  ) -> {composite_images_op @$_}
+	| 'IJ' '' -> {each_image_op [sh_op "convert - jpg:-"]}
 	| 'N' (
 	    <colspec1>?
 	    <pycode>

@@ -11,15 +11,18 @@ BEGIN {defparseralias gnuplot_code =>
 defoperator stream_to_gnuplot => q{
   my ($col, $command) = @_;
   exec 'gnuplot', '-e', $command unless defined $col;
-  my ($k, $fh);
+  my ($k, $fh) = (undef, undef);
   while (<STDIN>) {
     chomp;
     my @fs = split /\t/, $_, $col + 2;
     my $rk = join "\t", @fs[0..$col];
     if (!defined $k or $k ne $rk) {
-      open $fh, "| " . shell_quote('gnuplot', '-e', "KEY='$k';$command")
-        or die "ni: failed to run gnuplot on $command: $!";
-      $k = $rk;
+      if (defined $fh) {
+        close $fh;
+        $fh->await;
+      }
+      $fh = siproc {exec 'gnuplot', '-e', "KEY='$k';$command"};
+      $k  = $rk;
     }
     print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
   }
@@ -56,6 +59,4 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
 # for ffmpeg to follow `-f image2pipe -i -`.
 
-defshort '/GF',
-  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"},
-  shell_command;
+defshort '/GF', pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;

@@ -30,7 +30,7 @@ defoperator stderr_monitor => q{
   while (1) {
     my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
                    last unless $n;
-    my $t2 = time; safewrite $stdout, $_;
+    my $t2 = time; safewrite_exactly $stdout, $_;
     my $t3 = time;
 
     $itime += $t2 - $t1;
