@@ -96,6 +96,25 @@
 	  exec 'perl', '-lne', cols_gen->(limit => $floor + 1,
 	                                  is    => join ',', @cols, "$floor..\$#_");
 
+# OPERATOR composite_images
+
+## IMPLEMENTATION
+	
+	  my ($init, $reducer, $emitter) = @_;
+	  my $ic = conf 'image_command';
+	  my $reduced_image = substr(resource_tmp 'file://', 7) . '.png';
+	  my $temp_image    = substr(resource_tmp 'file://', 7) . '.png';
+	
+	  my $reduced_q = shell_quote $reduced_image;
+	  my $temp_q    = shell_quote $temp_image;
+	
+	  if (defined simage_into {sh "$ic - $init $reduced_q"}) {
+	    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
+	      while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
+	  }
+	
+	  unlink $reduced_image;
+
 # OPERATOR conf_get
 
 ## IMPLEMENTATION
@@ -239,7 +258,7 @@
 ## IMPLEMENTATION
 	
 	  my ($lambda) = @_;
-	  1 while defined simage_into $lambda;
+	  1 while defined simage_into {exec_ni @$lambda};
 
 # OPERATOR echo
 	Append text verbatim

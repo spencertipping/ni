@@ -31,6 +31,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'hdfs/tmpdir'}
 
+# SHORT OPERATOR /$image_command
+
+## SYNTAX
+	'' -> {conf_get_op 'image_command'}
+
 # SHORT OPERATOR /$monitor
 
 ## SYNTAX
@@ -412,6 +417,24 @@
 
 ## SYNTAX
 	</qfn> -> {each_image_op $_}
+
+# SHORT OPERATOR /IC
+
+## SYNTAX
+	(
+	  (
+	    <image_command>
+	    <empty>?
+	  ) -> {$$_[0]}
+	  (
+	    <image_command>
+	    <empty>?
+	  ) -> {$$_[0]}
+	  (
+	    <image_command>
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {composite_images_op @$_}
 
 # SHORT OPERATOR /N
 

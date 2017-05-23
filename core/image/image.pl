@@ -41,21 +41,24 @@ sub simage_png {
     saferead_exactly \*STDIN, $_, $l + 4, 8;
     safewrite $into, $_;
   }
+  close $into;
+  $into->await;
 }
 
 sub simage_jfif {
   die "ni simage jfif: TODO: this is complicated and unimplemented at the moment";
 }
 
-sub simage_into {
-  # Reads exactly one image from stdin, outputting to the specified ni lambda.
-  # Returns the lambda's exit code on success, sets $! and returns undef on
-  # failure. Dies if you're working with an unsupported type of image.
-  my ($lambda) = @_;
+sub simage_into(&) {
+  # Reads exactly one image from stdin, outputting to the stdin of the
+  # specified forked function if an image can be read. Returns the fork's exit
+  # code on success, sets $! and returns undef on failure. Dies if you're
+  # working with an unsupported type of image.
+  my ($fn) = @_;
   local $_;
   my $n;
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
-  my $into = siproc {exec_ni @$lambda};
+  my $into = siproc {&$fn};
   return simage_png $into  if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   die "ni simage: unsupported image type (unrecognized magic in $_)";
@@ -67,7 +70,37 @@ sub simage_into {
 
 defoperator each_image => q{
   my ($lambda) = @_;
-  1 while defined simage_into $lambda;
+  1 while defined simage_into {exec_ni @$lambda};
 };
 
 defshort '/I' => pmap q{each_image_op $_}, _qfn;
+
+# Streaming compositing pipelines
+# ImageMagick's "convert" command lets you composite images and select regions.
+# This isn't an especially cheap strategy and it involves a lot of disk IO, but
+# it ends up being a very flexible way to implement a multi-frame compositing
+# setup.
+
+BEGIN {defparseralias image_command => palt pmap(q{''}, pstr ':'), shell_command}
+
+defconfenv image_command => 'NI_IMAGE_COMMAND', 'convert';
+
+defoperator composite_images => q{
+  my ($init, $reducer, $emitter) = @_;
+  my $ic = conf 'image_command';
+  my $reduced_image = substr(resource_tmp 'file://', 7) . '.png';
+  my $temp_image    = substr(resource_tmp 'file://', 7) . '.png';
+
+  my $reduced_q = shell_quote $reduced_image;
+  my $temp_q    = shell_quote $temp_image;
+
+  if (defined simage_into {sh "$ic - $init $reduced_q"}) {
+    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
+      while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
+  }
+
+  unlink $reduced_image;
+};
+
+defshort '/IC' => pmap q{composite_images_op @$_},
+                  pseq pc image_command, pc image_command, pc image_command;

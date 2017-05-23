@@ -127,6 +127,7 @@
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
 	| '$hdfs/tmpdir' '' -> {conf_get_op 'hdfs/tmpdir'}
+	| '$image_command' '' -> {conf_get_op 'image_command'}
 	| '$monitor' '' -> {conf_get_op 'monitor'}
 	| '$pager' '' -> {conf_get_op 'pager'}
 	| '$row/seed' '' -> {conf_get_op 'row/seed'}
@@ -320,6 +321,20 @@
 	    ) -> {hadoop_streaming_op @$_}
 	  )
 	| 'I' </qfn> -> {each_image_op $_}
+	| 'IC' (
+	    (
+	      <image_command>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <image_command>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <image_command>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {composite_images_op @$_}
 	| 'N' (
 	    <colspec1>?
 	    <pycode>
@@ -1125,6 +1140,14 @@
 	| <multiword_ws> -> {join "\t", @$_}
 	| <multiword> -> {join "\t", @$_}
 	| /[^][]+/
+	)
+
+# PARSER image_command
+
+## DEFINITION
+	(
+	| ':' -> {''}
+	| <shell_command>
 	)
 
 # PARSER integer
