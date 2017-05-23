@@ -6201,7 +6201,7 @@ defoperator composite_images => q{
   if (defined simage_into {sh "$ic - $init $reduced_q"}) {
     image_sync_sh "$ic $reduced_q $emitter png:-";
     image_sync_sh "$ic $reduced_q $emitter png:-"
-      while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
+      while defined simage_into {sh "$ic $reduced_q $reducer $temp_q; mv $temp_q $reduced_q"};
   }
 
   unlink $reduced_image;

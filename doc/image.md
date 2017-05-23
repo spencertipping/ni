@@ -39,7 +39,7 @@ arguments to `convert`, where `:` means "do nothing":
 
 ```sh
 $ ni nE3 p'r a, $_, sin($_ / 1000 * a) for 0..1000' \
-     GAP640x480%l IC: [-compose blend -define compose:args=50,50 -composite] : \
+     GAP640x480%l IC: [- -compose blend -define compose:args=50,50 -composite] : \
      GF[-y -qscale 5 composited.avi]
 ```
 
@@ -50,7 +50,7 @@ for the first image:
   pipe it into "convert - $init $tempfile"
   run "convert $tempfile $emit"
 for each subsequent image:
-  pipe it into "convert $tempfile - $reduce $tempfile"  # note below
+  pipe it into "convert $tempfile $reduce $tempfile"  # note below
   run "convert $tempfile $emit"
 ```
 
