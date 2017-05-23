@@ -95,6 +95,7 @@ defoperator composite_images => q{
   my $temp_q    = shell_quote $temp_image;
 
   if (defined simage_into {sh "$ic - $init $reduced_q"}) {
+    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await;
     (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
       while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
   }

@@ -6085,7 +6085,7 @@ defshort '/GF',
   shell_command;
 1 core/image/lib
 image.pl
-106 core/image/image.pl
+107 core/image/image.pl
 # Image compositing and processing
 # Operators that loop over concatenated PNG images within a stream. This is
 # useful for compositing workflows in a streaming context, e.g. between a
@@ -6183,6 +6183,7 @@ defoperator composite_images => q{
   my $temp_q    = shell_quote $temp_image;
 
   if (defined simage_into {sh "$ic - $init $reduced_q"}) {
+    (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await;
     (siproc {close STDIN; sh "$ic $reduced_q $emitter png:-"})->await
       while defined simage_into {sh "$ic $reduced_q - $reducer $temp_q; mv $temp_q $reduced_q"};
   }
