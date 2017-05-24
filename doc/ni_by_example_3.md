@@ -1,10 +1,10 @@
-#`ni` by Example, Chapter 3 (alpha release)
+# `ni` by Example, Chapter 3 (alpha release)
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
 In this chapter, our goal is to multiply your power by introducing reducers. We'll also discuss some more common I/O operations, give an overview of Perl fundamentals, and demonstrate `ni`'s connections to Python and numpy. 
 
-##Perl for `ni`
+## Perl for `ni`
 Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is known for the religious overtones in its construction--let `ni` author Spencer Tipping drop the scales from your eyes in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
 >Python, Ruby, and even Javascript were designed to be good languages -- and
@@ -25,7 +25,7 @@ Perl is uncompromisingly principled in ways that most other languages aren't.
 Perl isn't good; it's complicated, and if you don't know it yet, it will
 probably change your idea of what a good language should be.
 
-###Text is numbers
+### Text is numbers
 
 In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
 
@@ -58,7 +58,7 @@ $ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
 930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
 ```
 
-###Sigils
+### Sigils
 
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
 
@@ -89,7 +89,7 @@ print $x{foo};  # gets a scalar value from %x
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
-###Barewords are strings
+### Barewords are strings
 Consider the following `ni` spell:
 
 ```bash
@@ -102,7 +102,7 @@ $ ni n3p'r a, one'
 Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist,  Perl gives the programmer a great deal of freedom to be concise. The bareword (a Perl term for a variable not prefixed with a sigil) `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
 
 
-###Subroutines
+### Subroutines
 
 Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
 
@@ -136,7 +136,7 @@ hi 1
 
 Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
 
-###Default Variables
+### Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
 
 ```bash
@@ -158,7 +158,7 @@ Clearly this regex is operating on each line (the lines input were the integers 
 In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`.
 
 
-###`for`
+### `for`
 Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java:
 
 ```bash
@@ -220,7 +220,7 @@ This again uses complicated syntax. This time we have essentially a block of cod
 
 The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
 
-###`map`
+### `map`
 `map` is in many ways similar to `for`; in exchange for some flexibility that `for` loops offer, `map` statements often have better performance through vectorization, and they are often more intuitive to read. `map` takes two arguments, a block of code and a perl array, and returns an array.
 
 ```bash
@@ -257,10 +257,46 @@ gg
 hh
 ```
 
-Another facet of the map syntax is that there is _no comma_ between the block and the array. That's not a _nice_ syntax, but Perl isn't nice.  
+Another facet of the map syntax is that there is _no comma_ between the block and the array. That's not a _nice_ syntax, but Perl isn't nice. 
+
+### `grep`
+
+`grep` is a useful Unix command-line tool that is also useful for filtering Perl arrays. `grep` and `map` have similar syntax 
+
+```bash
+$ ni iabcdefgh p'my @v = grep /^[acgh]/, map {$_ x 2} split //, $_; @v'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+`grep` also takes a block of code, as in:
+
+```bash
+$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map {$_ x 2 } split //, $_; @v'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot.
 
 
-##Buffered Readahead and Multiline Selection
+### `perldoc`	
+This isn't so much a `ni` tool, but the perl docs are very good, and often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
+
+
+## Buffered Readahead and Multiline Selection
 
 So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.  
 
@@ -352,7 +388,7 @@ $ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
 ```
 
 
-###`a__` through `l__`: Select-to-end-of-line
+### `a__` through `l__`: Select-to-end-of-line
 These are useful for collecting data with an unknown shape;
 
 ```bash
@@ -407,7 +443,7 @@ We accumulate all of the values in `x`, then join them together and return them 
 
 
 
-###`cart`: Cartesian Product
+### `cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
 
 ```bash
@@ -476,7 +512,7 @@ z	x	y
 
 
 
-##Numpy Operations
+## Numpy Operations
 
 Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
 
@@ -526,7 +562,7 @@ $ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
 
 
 
-###How `N'x = ...'` works
+### How `N'x = ...'` works
 What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
 
 Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
@@ -546,15 +582,15 @@ Also, like other operators, `N'...'` requires at least a row for input. `ni N'x 
 This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
 
 
-##JSON I/O
+## JSON I/O
 
 We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
 
-###`D:<field1>,:<field2>...`: JSON Destructure
+### `D:<field1>,:<field2>...`: JSON Destructure
 
 `ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
 
-###`p'json_encode <hash or array reference>`: JSON Encode
+### `p'json_encode <hash or array reference>`: JSON Encode
 
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
@@ -565,12 +601,12 @@ ni //license FWpF_ p'r pl 3' \
                     word    => c}' =\>jsons \
      D:type,:word
 ```
-###Other JSON parsing methods
+### Other JSON parsing methods
 Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
 
 
-##Directory I/O
+## Directory I/O
 The contents of this section 
 
 Start by making some data:
@@ -616,22 +652,22 @@ $ ni --explain dir_test/*
 ["cat","dir_test/there"]
 ```
 
-##`ni` Philosophy and Style
+## `ni` Philosophy and Style
 
 If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
 
-###`ni` optimizes at-will programmer productivity
+### `ni` optimizes at-will programmer productivity
 Many data science projects start with a request that you have never seen before; in this case, it's often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
 
 `ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
 
-###Mastery counts
+### Mastery counts
 
 Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
 
 This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
 
-###Outsource hard jobs to more appropriate tools
+### Outsource hard jobs to more appropriate tools
 
 `ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
