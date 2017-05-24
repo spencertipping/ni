@@ -488,7 +488,7 @@ Some other ideas to keep in mind:
 
 1. You must take advantage of randomization to run performant MapReduce.
 1. Run as few separate jobs as possible.
-1. Your reduce tasks should aim take about the same amount of time.
+1. Run the largest number of mappers and reducers that your cluster will allow, while maintaining a map time of at least 1 minute.
 1. Your average reducer time should be under 5 minutes, if possible.
 1. Your slowest reducer should take no more than twice as much time as your average reducer.
 1. Be very careful of running a secondary sort in the reduce phase; often you're better off running a second job. 
@@ -551,11 +551,16 @@ Dt2clCTYSj64+6M8Nzhq4#
 Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
 
 ```bash
-$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a' p'b642h a'
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
 0edd9c9424d84a3eb8fba33c37386ae1
 ```
 
-If you really care about the dashes (you probably don't), they can be put back easily.
+If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
+0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
+```
 
 ## HDFS I/O
 
@@ -580,7 +585,7 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
 
-### Using HDFS paths in Hadoop Streaming Jobs:
+### Using HDFS paths in Hadoop Streaming Jobs
 
 If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (the literal text operator from Chapter 1)
 

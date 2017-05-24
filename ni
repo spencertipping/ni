@@ -4465,7 +4465,7 @@ reducers.pm.sdoc
 geohash.pm.sdoc
 time.pm.sdoc
 pl.pl.sdoc
-191 core/pl/util.pm.sdoc
+197 core/pl/util.pm.sdoc
 Utility library functions.
 Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4650,6 +4650,12 @@ sub base642hex($) {
   my @hex_strs = map {sprintf "%03x", $_} @b64_nums;
   my $output_str = join("", @hex_strs) .  $last_hex_str;
   $output_str
+}
+
+sub hyphenate_uuid($) {
+  join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
+            substr($_[0], 12, 4), substr($_[0], 16, 4),
+            substr($_[0], 20))
 }
 
 c

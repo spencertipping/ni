@@ -184,6 +184,22 @@ sub base642hex($) {
   $output_str
 }
 
+sub hyphenate_uuid($) {
+  join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
+            substr($_[0], 12, 4), substr($_[0], 16, 4),
+            substr($_[0], 20))
+}
+
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
+}
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
 c
 BEGIN {
   *h2b64 = \&hex2base64;
