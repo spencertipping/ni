@@ -151,8 +151,8 @@ sub hex2extbase64($) {
 }
 
 sub hex2base64($) {
-  my $clean_str = $_[0] =~ tr/\-//dr;
-  my @hex_strs = unpack("(A3)*", $clean_str); 
+  $_[0] =~ tr/\-//d;
+  my @hex_strs = unpack("(A3)*", $_[0]); 
   my $last_hex_str = pop @hex_strs;
   my @hex_nums = map {hex $_} @hex_strs;
   my @b64_strs = map { $base64_digits[$_ >> 6] . $base64_digits[$_ % 64] } @hex_nums;
