@@ -4456,7 +4456,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-207 core/pl/util.pm
+206 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4659,7 +4659,6 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-c
 BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;

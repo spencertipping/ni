@@ -200,7 +200,6 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-c
 BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;
