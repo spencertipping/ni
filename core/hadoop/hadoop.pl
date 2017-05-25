@@ -188,3 +188,15 @@ defhadoopalt R =>
   pmap q{configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
                       [hadoop_streaming_op [], undef, []]},
   pc number;
+
+#Hadoop quick configuration.
+#This will be useful for spinning up more customizable jobs once I
+#figure out exactly how configure_op works.
+
+our %hdp_conf = (
+"R", "mapreduce.job.reduces",
+"Rm", "mapreduce.reduce.memory.mb",
+"Mm", "mapreduce.map.memory.mb",
+"P", "mapreduce.job.priority.num",
+"Ss", "mapreduce.job.reduce.slowstart.completedmaps"
+)

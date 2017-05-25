@@ -121,3 +121,87 @@ sub testpath {
   $_;
 }
 
+our $HADOOP_RANDOM_SEPARATOR = "$&Ni+=1oK?";
+
+sub hrjoin {
+  join($HADOOP_RANDOM_SEPARATOR, @_)
+}
+
+sub hrsplit($) {
+  split /\Q$HADOOP_RANDOM_SEPARATOR/, $_[0]
+}
+
+our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
+our @base64_digits = split //, $base64_digits; 
+our $base64_ext_digits = substr($base64_digits, -16);
+our @base64_ext_digits = split //, $base64_ext_digits;
+our %base64_ext_decode = map(($base64_ext_digits[$_], 1), 0..$#base64_ext_digits);
+our %base64_decode = map(($base64_digits[$_], ($_ % 64)), 0..$#base64_digits);
+
+sub hex2extbase64($) {
+  my $hex_num = hex $_[0];
+  my $n_hex_chars = length $_[0];
+  if ($n_hex_chars == 3) {
+    $base64_digits[$hex_num >> 6] . $base64_digits[$hex_num % 64];
+  } elsif ($n_hex_chars == 2) {
+    $base64_digits[$hex_num >> 2] . $base64_ext_digits[$hex_num % 4];
+  } else {
+    $base64_ext_digits[$hex_num];
+  }
+}
+
+sub hex2base64($) {
+  my $clean_str = $_[0] =~ tr/\-//dr;
+  my @hex_strs = unpack("(A3)*", $clean_str); 
+  my $last_hex_str = pop @hex_strs;
+  my @hex_nums = map {hex $_} @hex_strs;
+  my @b64_strs = map { $base64_digits[$_ >> 6] . $base64_digits[$_ % 64] } @hex_nums;
+  my $b64_str = join("", @b64_strs);
+  my $last_chars = hex2extbase64 $last_hex_str;
+  $b64_str . $last_chars;
+}
+
+sub extbase642hex ($) {
+  my $n_hex_digits = length($_[0]) + 1 - sum(map { $base64_ext_decode{$_} } (split //, $_[0]));
+  my $fmt_str = "%0" . $n_hex_digits . "x";
+  my $value;
+  if ($n_hex_digits > 1) {
+    $shift_amt = $n_hex_digits == 2 ? 2 : 6;
+    $value = ($base64_decode{substr($_[0], 0, 1)} << $shift_amt) + $base64_decode{substr($_[0], 1, 1)}; 
+  } else {
+    $value = $base64_decode{$_[0]}; 
+  }
+  sprintf $fmt_str, $value;
+}
+
+sub base642hex($) {
+  my @b64_strs = unpack("(A2)*", $_[0]); 
+  my $last_b64 = pop @b64_strs;
+  my $last_hex_str = extbase642hex $last_b64;
+  my @b64_nums = map { ($base64_decode{substr($_, 0, 1)} << 6) + $base64_decode{substr($_, 1, 1)}} @b64_strs;
+  my @hex_strs = map {sprintf "%03x", $_} @b64_nums;
+  my $output_str = join("", @hex_strs) .  $last_hex_str;
+  $output_str
+}
+
+sub hyphenate_uuid($) {
+  join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
+            substr($_[0], 12, 4), substr($_[0], 16, 4),
+            substr($_[0], 20))
+}
+
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
+}
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
+c
+BEGIN {
+  *h2b64 = \&hex2base64;
+  *b642h = \&base642hex;
+}

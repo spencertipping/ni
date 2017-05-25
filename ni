@@ -4456,7 +4456,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-122 core/pl/util.pm
+207 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4579,6 +4579,91 @@ sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
 }
+
+our $HADOOP_RANDOM_SEPARATOR = "$&Ni+=1oK?";
+
+sub hrjoin {
+  join($HADOOP_RANDOM_SEPARATOR, @_)
+}
+
+sub hrsplit($) {
+  split /\Q$HADOOP_RANDOM_SEPARATOR/, $_[0]
+}
+
+our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
+our @base64_digits = split //, $base64_digits; 
+our $base64_ext_digits = substr($base64_digits, -16);
+our @base64_ext_digits = split //, $base64_ext_digits;
+our %base64_ext_decode = map(($base64_ext_digits[$_], 1), 0..$#base64_ext_digits);
+our %base64_decode = map(($base64_digits[$_], ($_ % 64)), 0..$#base64_digits);
+
+sub hex2extbase64($) {
+  my $hex_num = hex $_[0];
+  my $n_hex_chars = length $_[0];
+  if ($n_hex_chars == 3) {
+    $base64_digits[$hex_num >> 6] . $base64_digits[$hex_num % 64];
+  } elsif ($n_hex_chars == 2) {
+    $base64_digits[$hex_num >> 2] . $base64_ext_digits[$hex_num % 4];
+  } else {
+    $base64_ext_digits[$hex_num];
+  }
+}
+
+sub hex2base64($) {
+  my $clean_str = $_[0] =~ tr/\-//dr;
+  my @hex_strs = unpack("(A3)*", $clean_str); 
+  my $last_hex_str = pop @hex_strs;
+  my @hex_nums = map {hex $_} @hex_strs;
+  my @b64_strs = map { $base64_digits[$_ >> 6] . $base64_digits[$_ % 64] } @hex_nums;
+  my $b64_str = join("", @b64_strs);
+  my $last_chars = hex2extbase64 $last_hex_str;
+  $b64_str . $last_chars;
+}
+
+sub extbase642hex ($) {
+  my $n_hex_digits = length($_[0]) + 1 - sum(map { $base64_ext_decode{$_} } (split //, $_[0]));
+  my $fmt_str = "%0" . $n_hex_digits . "x";
+  my $value;
+  if ($n_hex_digits > 1) {
+    $shift_amt = $n_hex_digits == 2 ? 2 : 6;
+    $value = ($base64_decode{substr($_[0], 0, 1)} << $shift_amt) + $base64_decode{substr($_[0], 1, 1)}; 
+  } else {
+    $value = $base64_decode{$_[0]}; 
+  }
+  sprintf $fmt_str, $value;
+}
+
+sub base642hex($) {
+  my @b64_strs = unpack("(A2)*", $_[0]); 
+  my $last_b64 = pop @b64_strs;
+  my $last_hex_str = extbase642hex $last_b64;
+  my @b64_nums = map { ($base64_decode{substr($_, 0, 1)} << 6) + $base64_decode{substr($_, 1, 1)}} @b64_strs;
+  my @hex_strs = map {sprintf "%03x", $_} @b64_nums;
+  my $output_str = join("", @hex_strs) .  $last_hex_str;
+  $output_str
+}
+
+sub hyphenate_uuid($) {
+  join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
+            substr($_[0], 12, 4), substr($_[0], 16, 4),
+            substr($_[0], 20))
+}
+
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
+}
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
+c
+BEGIN {
+  *h2b64 = \&hex2base64;
+  *b642h = \&base642hex;
+}
 47 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
@@ -4627,7 +4712,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-103 core/pl/stream.pm
+104 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4653,6 +4738,7 @@ sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
 sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
+sub FT($):lvalue {@F[0..$_[0]]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
@@ -4949,7 +5035,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-118 core/pl/time.pm
+137 core/pl/time.pm
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5024,6 +5110,17 @@ BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
+BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
+         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
+                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
+         ceval sprintf 'sub clip_to_%s($) {my $ts = $_[0]; int($ts/%d)}',
+                       $x, $dur}}
+
+BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
+         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
+                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
+         ceval sprintf 'sub inflate_to_%s($) {my $ts = $_[0]; $ts * %d}',
+                       $x, $dur}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -5061,11 +5158,19 @@ BEGIN {
   *dow = \&day_of_week;
   *hod = \&hour_of_day;
   *how = \&hour_of_week;
+  *ym = \&year_month;
+  *itd = \&inflate_to_day;
+  *ith = \&inflate_to_hour;
+  *it15 = \&inflate_to_quarter_hour;
+  *itm = \&inflate_to_minute;
+  *ctd = \&clip_to_day;
+  *cth = \&clip_to_hour;
+  *ct15 = \&clip_to_quarter_hour;
+  *ctm = \&clip_to_minute;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
   *ttm = \&truncate_to_minute;
-  *ym = \&year_month;
 }
 
 152 core/pl/pl.pl
@@ -7423,7 +7528,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-190 core/hadoop/hadoop.pl
+202 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -7614,6 +7719,18 @@ defhadoopalt R =>
   pmap q{configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
                       [hadoop_streaming_op [], undef, []]},
   pc number;
+
+#Hadoop quick configuration.
+#This will be useful for spinning up more customizable jobs once I
+#figure out exactly how configure_op works.
+
+our %hdp_conf = (
+"R", "mapreduce.job.reduces",
+"Rm", "mapreduce.reduce.memory.mb",
+"Mm", "mapreduce.map.memory.mb",
+"P", "mapreduce.job.priority.num",
+"Ss", "mapreduce.job.reduce.slowstart.completedmaps"
+)
 2 core/pyspark/lib
 pyspark.pl
 local.pl

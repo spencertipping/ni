@@ -1,4 +1,4 @@
-#`ni` by Example, Chapter 2 (alpha release)
+# `ni` by Example, Chapter 2 (alpha release)
 
 Welcome to the second part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting; basic Perl operations; file I/O and comopression; and some basic principles of `ni` style. Before continuing, it's advisable to read over the first part of the horribly misnamed [cheatsheet](cheatsheet.md) to see some of the operations that were glossed over.
 
@@ -8,12 +8,12 @@ Other key concepts for this tutorial include streaming reduce operations, data c
 
 Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
 
-##`ni` is self-modifying
+## `ni` is self-modifying
 
 `ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
 
 
-###`ni` evaluation basics
+### `ni` evaluation basics
 Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
 ```
@@ -29,7 +29,7 @@ ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
 
 However, this isn't quite the whole story. 
 
-###`::closure_name[...]`: Create a data closure
+### `::closure_name[...]`: Create a data closure
 
 ```bash
 $ ni ::five[n5] n3p'r a, five'
@@ -58,7 +58,7 @@ $ ni ::five[n5] | ni n3p'r a, five'
 
 The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is identical to the first `ni` before the data closure was called into existence, so it cannot access the data closure built in the first `ni`.
 
-###Perl Bareword Interpretation
+### Perl Bareword Interpretation
 The piped example above bears a second look for the reason that it returns output rather than raising an error, even though the data closure `five` is not in its namespace.
 
 ```bash
@@ -72,7 +72,7 @@ The Perl interpreter will convert missing barewords (i.e. things that do not sta
 
 We now return to our regularly-scheduled programming.
 
-###Data Closure Evaluation and `ni` self-modification
+### Data Closure Evaluation and `ni` self-modification
 Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else, and in the order that they are written.
 
 That means that `$ ni ::five[n5] n3p'r a, five'` ie equivalent to `$ ni n3p'r a, five' ::five[n5]`, even though in the latter, it looks like it's referencing something that was computed later in the pipeline.
@@ -93,13 +93,13 @@ $ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
 We will see how `ni` actually does this in the following sections.
 
 
-##`ni` is a quine
+## `ni` is a quine
 
 A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
 
 We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
 
-###Scheme/Lisp mini-tutorial
+### Scheme/Lisp mini-tutorial
 If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
 
 Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
@@ -119,7 +119,7 @@ Here's what you need to know:
   * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
 
-###A simple quine in Scheme
+### A simple quine in Scheme
 Let's build a quine, starting with this piece:
 
 ```
@@ -154,7 +154,7 @@ Note that not all quines are structured this way (with code and data to interpre
 
 For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
 
-###A quine in Perl
+### A quine in Perl
 
 ```
 #!/usr/bin/perl
@@ -206,7 +206,7 @@ Most of the trickery is done using the heredoc syntax (which is a way of writing
 
 The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
 
-###Quines, so what?
+### Quines, so what?
 
 When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
 
@@ -224,7 +224,7 @@ We can keep connecting output pipes to input pipes and getting the same output. 
 
 
 
-###`//ni`: Print `ni`'s _current_ source
+### `//ni`: Print `ni`'s _current_ source
 As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
 
 
@@ -251,7 +251,7 @@ This provides us with a surprising power. We can now execute `ni` indirectly by 
 If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, you should envision the possibilities of offloading work from one machine to another that's better equipped to solve your target problem.
 
 
-##`ni` is a self-modifying quine
+## `ni` is a self-modifying quine
 
 In the section on `ni` being self-modifying, it was mentioned that `ni` execution follows a structure something like this:
 
@@ -301,18 +301,18 @@ ten
 
 One final note; by the ordering of the data, it may appear that the fact that `ni` is self-modifying and the fact that it is a quine are separate; or that the self-modifying power of `ni` makes it a quine. In fact, the opposite is true; it is because `ni` is a quine that allows it to be self-modifying.
 
-##SSH, Containers, and Horizontal Scaling
+## SSH, Containers, and Horizontal Scaling
 
 We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`. While horizontal scaling (running a process on multiple cores) has nothing to do with the indirect execution in containerized operations, it has functional and semantic similarity with these other operators in this section.
 
-###`C`: execute in a container
+### `C`: execute in a container
 
 Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
 
 Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
 
 
-###`s`: execute over `ssh`
+### `s`: execute over `ssh`
 
 You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
 
@@ -327,7 +327,7 @@ You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the
 
 Inside the brackets,  you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
 
-###`S`: Horizontal Scaling 
+### `S`: Horizontal Scaling 
 Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
 
 `$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
@@ -336,11 +336,11 @@ Running an operator with `S8` on a machine with only two cores is not going to g
 
 
   
-##Hadoop Streaming MapReduce
+## Hadoop Streaming MapReduce
 
 `ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides concise options to 
 
-###MapReduce Fundamentals
+### MapReduce Fundamentals
 
 MapReduce landed with a splash in 2004 with this [excellent paper](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) by Jeffrey Dean and Sanjay Ghemawat of Google and (with Hadoop) in many ways ushered in the era of "big data."
 
@@ -354,7 +354,7 @@ The MapReduce paradigm breaks down into three steps:
 
 In general, a mapper will read in large, often unstructured data, and output  more highly structured information, which will be combined into statements about the original data by the reduce operation.  Because both map and reduce occur across many processors, there is often high network overhead transferring data from mappers to reducers. A combiner is used to reduce the amount of data passed between mappers and reducers.
 
-###MapReduce Example: Word Count
+### MapReduce Example: Word Count
 
 The classic example of a MapReduce job is counting the words in a document.  Let's see how it fits with the MapReduce technique.
 
@@ -393,7 +393,7 @@ We could also write this job with a combiner, decreasing network overhead at the
 
 
 
-###Taking advantage of MapReduce with `ni`
+### Taking advantage of MapReduce with `ni`
 An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
 
 This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
@@ -403,13 +403,13 @@ The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` 
 > You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
 
 
-###How `ni` Interacts with Hadoop Streaming MapReduce
+### How `ni` Interacts with Hadoop Streaming MapReduce
 When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
 Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
 
 
-###`HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
+### `HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
 
 `HS` creates a hadoop streaming job with a given mapper, combiner, and reducer (specified as `ni` operators). Any `ni` snippet can be used for the mapper, combiner, and reducer. 
 
@@ -426,20 +426,15 @@ It has a trivial map step, no combiner, and a trivial reducer; it looks like not
 
 If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
 
-###Initializing `HS` Jobs
-`HS` takes data in several formats. You can stream 
 
 
-##Developing Hadoop Streaming Jobs
+## Developing Hadoop Streaming Jobs
 
 Because Hadoop is such an important part of `ni`'s power, we're devoting a section not just to the operator, but to the principles of development using `HS`. `HS` is, in fact actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
 
-outputs the name of the directory where the output has been placed.
+`ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored, or more accurately, it is a `ni` command to read all the data from the output directory of 
 
-`ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored.
-
-
-Since the output of the Hadoop Streaming job is a directory, the To read data from the output of a Hadoop Streaming job
+### Fundamental Theorem of MapReduce
 
 You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
 
@@ -449,75 +444,127 @@ This identity allows you to iterate fast, completely within `less` and the comma
   
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
-###`HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming
+###`HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming (... coming soon)
+
+I have this great idea to apply the fundamental theorem to `ni` jobs so the only thing you have to do is replace `HS` with `HDS` and you get a test-run of your job. It's been a little hard to cook up though.
+
+## Architecting Hadoop Streaming Pipelines
+
+Now that you have an idea of how to write a job that runs, it's important to think about how to write jobs that actually work. One of the most fun and frustrating things about Hadoop is that techniques that would solve a problem on a gigabyte of data and a single machine fail painfully when applied to a terabyte of data distributed over thousands of machines.
+
+There is a big difference between jobs that can run and jobs that actually work in MapReduce, and you need to be aware of Hadoop's architecture and configuration to take advantage of it.
+
+### MapReduce Pipelining Case Study
+
+You are given the transactions from every Starbucks in the world, in the form of five columns: `Transasction ID, Store ID, Item ID, Date, Price`. You're instructed to identify the highest revenue item by store, by day.
+
+On a gigabyte of data, this would be easy; you could use SQL or `pandas` to do something like:
+
+```
+day_store_item_df = raw_df.groupby(['Store ID', 'Date', 'Item ID'])['Price'].sum().reset_index().sort_values(['Price'], ascending=False).groupby(['Store ID', 'Date', 'ItemID']).first()
+```
+
+This idea doesn't translate over to MapReduce flawlessly. Let's take a look at one way to do this, using the store ID as the reduce key.
+
+If we were to do that, all of the data from every store will go to the same reducer, and we'll have data on each reducer that is sorted by store. For simplicity, let's assume each store gets its own reducer.
+
+We're first faced with the problem of one reducer having potentially a hundred times more data to process than another (if we use fewer stores than reducers, this problem persists in reduced form); this makes the job more prone to failure, as the longest-running reducers are also, in general, the most liable to fail or be pre-empted and killed by a scheduler.
+
+Compounding this problem is that we need to do a secondary sort of the data on each reducer, to order the data by date and by item id.  You might also try to get around this sort by using a hash; this may work when the number of dates and item ids is smaller than several million, but when working with several terabytes of data, this number might grow to billions (consider the effect of getting data by hour or minute, rather than by day), and the combinatorial effects must always be considered.
+
+A better approach is to first collect the data using a compound reduce key of `Store ID - Date - Item ID`. This will give us a good amount of randomization, approximately equal amounts of data per reducer, and a very easy and straightforward reduce step.
+
+We likely want to collect the data by store, but running another MapReduce job using only `Store ID` as the reduce key may still be a bad idea, since there will still need to be a secondary sort of size on the order of `# of items x # of Days`. Instead, we can re-shard using `Store ID - Date` as the reduce key, and sort or hash something on the order of `# of items`.
+
+At this point, we have the highest revenue item for each store and date; we may be able to stream the data out directly from HDFS, or run a trivial job to reshard the data by store.
+
+### Single Step Down Principle
+
+In each MapReduce pass, the whole dataset is swallowed, but it often can't be digested completely. When building a pipeline on a multi-terabyte dataset using MapReduce, I've found the following principle to be valuable: 
+
+> Take a smaller step on a larger dataset rather than running the same larger task on multiple smaller datasets.
+
+Some other ideas to keep in mind:
+
+1. You must take advantage of randomization to run performant MapReduce.
+1. Run as few separate jobs as possible.
+1. Run the largest number of mappers and reducers that your cluster will allow, while maintaining a map time of at least 1 minute.
+1. Your average reducer time should be under 5 minutes, if possible.
+1. Your slowest reducer should take no more than twice as much time as your average reducer.
+1. Be very careful of running a secondary sort in the reduce phase; often you're better off running a second job. 
+1. Compress your data to the greatest extent possible.
+
+### Hadoop Streaming MapReduce Limitations
+
+#### Number of Input Partfiles
+
+It is hard-coded in Hadoop to not accept more than 100,000 input files as input for a single job. The error that you get if you try to use more than  this is not particularly informative, so try to keep this in mind.
+
+#### Number of Mappers x Reducers
+
+Mappers communicate their data to reducers over wired connections; the number of these connections that must be made is equal to the number of mappers times the number of reducers.
+
+Because these connections are done over wire, they will fail with some frequency, and if the number of these failures gets too high, the entire `HS` job will fail.
+
+In general, keep the `(# of mappers) x (# of reducers) < 100 million` to avoid this issue.
+
+#### More Notes on Hadoop Streaming
+There are a number of Hadoop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
+
+### Hadoop Randomization and Optimization
+
+As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. An easy way to do this is to combine two columns of the data; when two columns are joined, that the hashed value of the combined data will be correlated to either of the initial values.
 
 
-###`:checkpoint_name[...]`: Checkpoints
+####`hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
 
-Developing and deploying to producion `ni` pipelines that involve multiple Hadoop streaming steps involves a risk of failure outside the programmer's control; when this happens, we don't want to have to run the entire job again. 
 
-Checkpoints allow you to save the results of difficult jobs while continuing to develop in `ni`.
-
-Checkpoints and files share many commonalities. The key difference between a checkpoint and a file are:
-
-1. A checkpoint will wait for an `EOF` before writing to the specified checkpoint name, so the data in a checkpoint file will consist of all the output of the operator it encloses. A file, on the other hand, will accept all output that is streamed in, with no guarantee that it is complete.
-2. If you run a `ni` pipeline with checkpoints, and there are files that correspond to the checkpoint names in the directory from which `ni` is being run, then `ni` will use the data in the checkpoints in place of running the job. This allows you to save the work of long and expensive jobs, and to run these jobs multiple times without worrying that bhe steps earlier in the pipeline that have succeeded will have to be re-run.
-
-An example of checkpoint use is the following:
+One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The pharse is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
 
 ```bash
-$ ni nE6gr4 :numbers
-1
-10
-100
-1000
+$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA
+aNi+=1oK?x	1
+aNi+=1oK?x	2
+bNi+=1oK?y	3
+cNi+=1oK?z	4
 ```
-
-This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
-
 
 ```bash
-$ ni nE6gr4 :numbers O
-1000
-100
-10
-1
+$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA  p'r hrsplit a, sum b_ rea'
+a	x	3
+b	y	3
+c	z	4
 ```
 
-Compare this to the same code writing to a file:
+When the data's form is a known quantity, it will be simpler and faster to join with a colon, underscore, or some other character.
 
-```
-$ ni nE6gr4 =\>numbers
-1000
-100
-10
-1
-```
 
-Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
+### Reversible Hexadecimal to Base-64 Encoding `h2b64` and `b642h`
 
-```
-$ ni nE6gr4 =\>numbers O
-1000
-100
-10
-1
+Hexadecimal is a very common form for storing ID data in a readable format. However, it is not highly compressed, as one hex character represents 4 bits of data while occupying an 8-bit printable character. We can save 1/3 of this data by converting it to base-64 which stores 6 bits of data in a larger alphabet of 8-bit printable characters. 
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a'
+Dt2clCTYSj64+6M8Nzhq4#
 ```
 
-One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
+Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
 
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
+0edd9c9424d84a3eb8fba33c37386ae1
+```
 
-###Developing Hadoop Streaming pipelines with checkpoints
+If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
 
-As of now, `ni` auto-generates the names for the Hadoop directories, and these can be hard to remember off the top of your head.
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
+0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
+```
 
-###A Final Note on Hadoop Streaming Jobs
-There are a number of Haddop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
+## HDFS I/O
 
-
-##HDFS I/O
-
-###`hdfst://<path>` and `hdfs://<path>`: HDFS I/O
+### `hdfst://<path>` and `hdfs://<path>`: HDFS I/O
 
 Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
 
@@ -538,7 +585,7 @@ Files are often stored in compressed form on HDFS, so `hdfst` is usually the ope
 Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
 
 
-###Using HDFS paths in Hadoop Streaming Jobs:
+### Using HDFS paths in Hadoop Streaming Jobs
 
 If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (the literal text operator from Chapter 1)
 
@@ -557,7 +604,7 @@ $ ni hdfst://<abspath> HS...
 `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
 
-###`^{...}`: `ni` configuration
+### `^{...}`: `ni` configuration
 
 You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
 
@@ -578,13 +625,13 @@ export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
 Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
 
 ```
-export NI_HDFS_TMPDIR=/user/bilow/tmp
+export NI_HDFS_TMPDIR=/user/$(whoami)/tmp
 ```
 
 
-##Conclusion
+## Conclusion
 
-The classic word count program for Hadoop can be written like this.
+The classic word count program for Hadoop can be written like this:
 
 >`$ ni //ni HS[FWpF_] _ [c]`
 
