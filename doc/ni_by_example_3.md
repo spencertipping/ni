@@ -220,6 +220,26 @@ This again uses complicated syntax. This time we have essentially a block of cod
 
 The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
 
+### `split`
+
+```bash
+$ ni iabcd iefgh p'split //'
+a
+b
+c
+d
+e
+f
+g
+h
+```
+
+
+### `join`
+The opposite of `split` is `join`
+
+
+
 ### `map`
 `map` is in many ways similar to `for`; in exchange for some flexibility that `for` loops offer, `map` statements often have better performance through vectorization, and they are often more intuitive to read. `map` takes two arguments, a block of code and a perl array, and returns an array.
 
@@ -257,20 +277,20 @@ gg
 hh
 ```
 
-Another facet of the map syntax is that there is _no comma_ between the block and the array. That's not a _nice_ syntax, but Perl isn't nice. 
+Another facet of the map syntax is that there is _no comma_ between the block and the array. 
+
+`map` has another syntax that can apply a regular expression to a list.
+
+
 
 ### `grep`
 
-`grep` is a useful Unix command-line tool that is also useful for filtering Perl arrays. `grep` and `map` have similar syntax 
+`grep` is a useful Unix command-line tool that is also useful for filtering Perl arrays. `grep` and `map` have similar syntax; grep can take an expression, for example:
 
 ```bash
 $ ni iabcdefgh p'my @v = grep /^[acgh]/, map {$_ x 2} split //, $_; @v'
 aa
-bb
 cc
-dd
-ee
-ff
 gg
 hh
 ```
@@ -279,17 +299,20 @@ hh
 
 ```bash
 $ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map {$_ x 2 } split //, $_; @v'
-aa
 bb
-cc
 dd
-ee
 ff
-gg
 hh
 ```
 
-Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot.
+Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice. 
+
+
+### Code Blocks and Scope
+
+#### Blocks `{ ... }`
+
+#### `my`, `our`, `local`
 
 
 ### `perldoc`	
