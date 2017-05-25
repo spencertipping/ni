@@ -7496,7 +7496,7 @@ sub hdfs_input_path {
   die "ni: hdfs_input_path: no data" unless $n = saferead \*STDIN, $_, 8192;
   if (/^\w+:\/\//) {
     $n = saferead \*STDIN, $_, 8192, length while $n;
-    s/^hdfst:/hdfs:/gm;
+    s/hdfst:\/\//hdfs:\/\//g;
     (0, map [split /\t/], grep length, split /\n/);
   } else {
     my $hdfs_tmp    = resource_tmp 'hdfs://';
