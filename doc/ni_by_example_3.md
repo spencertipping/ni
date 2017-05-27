@@ -125,17 +125,19 @@ Default variables show up all over the place in Perl; we will see them
 
 ## Statements, Blocks, and Scope
 
-### Statements
+### Statements and Blocks
 
-A statement is 
+- An expression is a series of variables, operators, and method calls that evaluates to a single value. 
+
+- A statement forms a complete unit of execution and is terminated with a semicolon `;`.
+
+- A group zero or more statements group together into a block with braces: `{...}`. 
 
 
-### Blocks `{ ... }`
-
-If you've written Ruby code, you'll already know this. A code block
+In Perl, a block has its own scope. Blocks can modify and use variables from a higher scope, or define variables in their own scope using the `my` keyword that are inaccessible from blocks outside.
 
 
-### `my`
+### `my`: Lexical scoping
 
 Perl is lexically scoped: The Perl keyword `my` restricts the scope of a variable to the current block. 
 
@@ -204,26 +206,25 @@ $ ni n5p'$x = 10; $x += a; r a, $x'
 In this Perl mapper, the value of the globally-scoped `$x` variable is being reset with each line to 10. 
 
 
-### Expressions
-
-An expression is like a 
-
-
 ### `perldoc`	
 This isn't so much a `ni` tool, but the perl docs are very good, and often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
 
 
 ### Regular Expressions
 
-Covering regular expressions in their entirety is outside the scope of this tutorial; you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial describes how 
+Covering regular expressions in their entirety is outside the scope of this tutorial; you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial covers the output values and side effects of these methods.
 
-instead, we will cover what Perl does.
+Instead, we will cover what Perl does.
 
-### Substitution
+### Substitution `s///`
 
 ### Transliteration `tr///` (also called  `y///`)
 
 The `tr` operator operates in-place, and 
+
+`tr` is the fast and recommended way to remove characters from your output strings.
+
+### Quoting into a regular expression
 
 
 ## Operations on Arrays
@@ -272,8 +273,6 @@ hh
 
 
 #### Inline Syntax
-
-
 
 Finally, there is an even more parsimonious postfix syntax.
 
@@ -524,12 +523,15 @@ In particular, these operations can be used in conjunction with Hadoop streaming
 
 ### Array Processors
 
-#### `any`, `all`
+#### `min`, `max`, `minstr`, `maxstr`
+
+#### `any`, `all`, `sum`, `prod`, `mean`
 
 #### `uniq`
 
-#### `argmax`
+#### `argmax`, `argmin`
 
+#### `freqs`
 
 ### `cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
@@ -556,7 +558,7 @@ ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 ```
 
 
-### `p'%h = <key_col><val_col>_ @lines`: Hash constructor
+### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
 Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
 
 * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
@@ -564,7 +566,7 @@ Hash constructors are useful for filtering large datasets without having to invo
 * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
 * `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
 
-### `p'%h = <key_col><val_col>S @lines`: Accumulator hash constructor
+### `p'%h = <key_col><val_col>S @lines'`: Accumulator hash constructor
 
 This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
 
@@ -583,7 +585,7 @@ bar	1
 ```
 
 
-### `p'kbv_asc %h` and `p'kbv_dsc %h'`: Sort hash keys by value
+### `p'kbv_asc %h'` and `p'kbv_dsc %h'`: Sort hash keys by value
 
 This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
