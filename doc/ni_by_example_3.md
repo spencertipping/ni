@@ -2,10 +2,13 @@
 
 Welcome to the third part of the tutorial. At this point, you've probably activated a certain amount of `ni` productivity by using Hadoop to broadcast your `ni` scripts across hundreds of cores and thousands of jobs.  You should also have a reasonable high-level understanding of how `ni` is a self-modifying quine, and how this allows it to execute across operating systems.
 
-In this chapter, our goal is to multiply your power by introducing reducers. We'll also discuss some more common I/O operations, give an overview of Perl fundamentals, and demonstrate `ni`'s connections to Python and numpy. 
+In this chapter, our goal is to multiply your power with two tools: reducers, and Perl. We'll also discuss some more common I/O operations and demonstrate `ni`'s connections to Python and numpy. 
 
 ## Perl for `ni`
-Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is known for the religious overtones in its construction--let `ni` author Spencer Tipping drop the scales from your eyes in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
+
+This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid any more than a brief mention of how to write a function in Perl.
+
+Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is also known for its religious overtones; here `ni` author Spencer Tipping drop the scales from your eyes about hte language in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
 >Python, Ruby, and even Javascript were designed to be good languages -- and
 just as importantly, to **feel** like good languages. Each embraces the
@@ -25,38 +28,11 @@ Perl is uncompromisingly principled in ways that most other languages aren't.
 Perl isn't good; it's complicated, and if you don't know it yet, it will
 probably change your idea of what a good language should be.
 
-### Text is numbers
 
-In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
 
-```bash
-$ ni 1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-15	555	5 golden rings
-```
+## Perl Syntax
 
-It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
-
-```bash
-$ ni 1p'my $v2="4.3" * "6.7"; r $v2'
-28.81
-```
-
-You can perform floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero when used in an arithmetic context.
-
-```bash
-$ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-0	hihihi	hi golden rings
-```
-
-```bash
-$ ni 1p'my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-9.42	3.14hi3.14hi3.14hi	3.14hi golden rings
-```
-
-```bash
-$ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
-930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
-```
+In truth, Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
 
 ### Sigils
 
@@ -76,65 +52,19 @@ The question here, and its relevance for `ni`, is not whether this language synt
 When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it. The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
 
 * `my $x` indicates that `$x` is a scalar, for example a string or a number
-* `my @x` indicates that `@x` is an array
+* `my @x` indicates that `@x` is a zero-indexed array
 * `my %x` indicates that `%x` is a hash
 
 What's even cooler is that, because the syntax for all of these is different, we can use all of these:
 
 ```
-print $x;       # gets the scalar value of $x
-print $x[3];    # gets a scalar value from @x
-print $x{foo};  # gets a scalar value from %x
+print $x;         # gets the scalar value of $x
+print $x[3];      # gets a scalar value from @x at position 3
+print $x{"foo"};  # gets a scalar value from %x associated with the value "foo"
 ```
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
 
-### Barewords are strings
-Consider the following `ni` spell:
-
-```bash
-$ ni n3p'r a, one'
-1	one
-2	one
-3	one
-```
-
-Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist,  Perl gives the programmer a great deal of freedom to be concise. The bareword (a Perl term for a variable not prefixed with a sigil) `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
-
-
-### Subroutines
-
-Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
-
-Perl subroutines store the variables with which they are called in a default variable named `@_`. Before continuing, take a moment to think about how one would refer the elements in `@_`.
-
-Subroutines are stored and referenced with the following syntax:
-
-```
-*x = sub {"hi"}
-$v = &x         # $v will be set to "hi"
-```
-
-
-Here's how you'd write a function that copies a stream of values 4 times in `ni`, using Perl.
-
-```bash
-$ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
-1111
-2222
-3333
-```
-
-To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within `@_`, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
-
-Subroutines can also be called without the preceding `&`, or created using the following syntax:
-
-```bash
-$ ni 1p'sub yo {"hi " . $_[0]} yo a'
-hi 1
-```
-
-Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
 
 ### Default Variables
 While nice languages make you take pains to indicate default values and variables, Perl is not at all nice in this regard.
@@ -155,11 +85,164 @@ $ ni n15 r-5 p'/^(\d)\d*$/'
 
 Clearly this regex is operating on each line (the lines input were the integers 6 through 15). The way this works is another piece of Perl's uncompromising commitment to coding efficiency; default variables.
 
-In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Note that it shares the same name as the variable `@_`, and the similar-looking `$_[...]` will reference one of the scalars in `@_`, and not one of the characters in `$_`.
+```bash
+$ ni n15 r-5 p'$_'
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+```
+
+This has returned to us the exact same value as `$ ni n15 r-5` would have, since `$_` stores the value of the input line.
+
+
+
+In fact, the code above is operating on the most important of the Perl default variables, `$_`, which stores the value of the input line. Let's look a little closer:
+
+
+```bash
+$ ni n15 r-5 p'$_ =~ /^(\d)\d*$/'
+6
+7
+8
+9
+1
+1
+1
+1
+1
+1
+```
+
+Default variables show up all over the place in Perl; we will see them 
+
+
+## Statements, Blocks, and Scope
+
+### Statements
+
+A statement is 
+
+
+### Blocks `{ ... }`
+
+If you've written Ruby code, you'll already know this. A code block
+
+
+### `my`
+
+Perl is lexically scoped: The Perl keyword `my` restricts the scope of a variable to the current block. 
+
+
+```bash
+$ ni n5 p'my $x = a; {my $x = 100;} ++$x'
+2
+3
+4
+5
+6
+```
+
+Let's take a look at this slightly different example, where we've dropped 
+
+```bash
+$ ni n5 p'my $y = a; {$x = 100;} ++$x'
+101
+101
+101
+101
+101
+```
+
+> In `ni` you should always use `my` in your perl mapper variables to avoid their accidental persistence.
+
+
+```bash
+$ ni n5 p'my $y = a; {my $x = 100;} defined $x ? "defined" : "not defined"'
+not defined
+not defined
+not defined
+not defined
+not defined
+```
+
+The major exception to the rule of always using `$my` for your Perl mapper variables is in a begin block, described below.
+
+### `p'^{...} ...'`: BEGIN Block
+
+
+A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+
+Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. 
+
+```bash
+$ ni n5p'^{$x = 10} $x += a; r a, $x'
+1	11
+2	13
+3	16
+4	20
+5	25
+```
+
+Note that the value of `$x` is persisted between runs of the perl mapper code. Without the begin block, we would have:
+
+```bash
+$ ni n5p'$x = 10; $x += a; r a, $x'
+1	11
+2	12
+3	13
+4	14
+5	15
+```
+
+In this Perl mapper, the value of the globally-scoped `$x` variable is being reset with each line to 10. 
+
+
+### Expressions
+
+An expression is like a 
+
+
+### `perldoc`	
+This isn't so much a `ni` tool, but the perl docs are very good, and often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
+
+
+### Regular Expressions
+
+Covering regular expressions in their entirety is outside the scope of this tutorial; you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial describes how 
+
+instead, we will cover what Perl does.
+
+### Substitution
+
+### Transliteration `tr///` (also called  `y///`)
+
+The `tr` operator operates in-place, and 
+
+
+## Operations on Arrays
+
+### `split`
+
+`split` is useful for generating arrays from a string based on regular expressions.
+
+```bash
+$ ni iabcd iefgh p'my @v = split /[cf]/; r @v'
+ab	d
+e	gh
+```
 
 
 ### `for`
 Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java:
+
+#### Block Prefix Syntax
 
 ```bash
 $ ni iabcdefgh p'my $string= a; for (my $i=0; $i < length $string; $i++) {r substr($string, $i, 1) x 2;}'
@@ -187,19 +270,10 @@ gg
 hh
 ```
 
-It is not necessary to define a variable name; if you do not, it will be assigned to the default variable `$_` within the block of the loop.
 
-```bash
-$ ni iabcdefgh p'for (split //) {r $_ x 2}'
-aa
-bb
-cc
-dd
-ee
-ff
-gg
-hh
-```
+#### Inline Syntax
+
+
 
 Finally, there is an even more parsimonious postfix syntax.
 
@@ -216,28 +290,46 @@ gg
 hh
 ```
 
-This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time.
+This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time. The author's personal preference is to use the postfix syntax, but to wrap the block in curly braces:
 
-The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
-
-### `split`
 
 ```bash
-$ ni iabcd iefgh p'split //'
-a
-b
-c
-d
-e
-f
-g
-h
+$ ni iabcdefgh p'{r($_ x 2)} for split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+#### `next` and `last`
+The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
 ```
 
 
-### `join`
-The opposite of `split` is `join`
 
+### `join`
+The opposite of `split` is `join`. It takes a string rather than an expression, and intersperses the string between the 
+
+```bash
+$ ni iabcd iefgh p'join "__", split //'
+a__b__c__d
+e__f__g__h
+```
 
 
 ### `map`
@@ -255,31 +347,23 @@ gg
 hh
 ```
 
-The element of the array that the `map` block takes as an argument is referred to as `$_`; like a `for` loop, this `$_` variable is **lexically scoped** to the block. Lexical scoping means that the use of `$_` in the block doesn't change its value outside the block. For example:
-
+`map` uses a **lexically scoped** default variable `$_`. Because `$_` within the block is lexically scoped to the block, the `$_` in the block doesn't change the value of `$_` outside the block. For example:
 
 ```bash
 $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
 abcdefgh
 ```
 
-Now that we've identified the block, we can identify the array more clearly. The array is `split //`. This looks like a function with no argument. However, when `split` is called with no argument, it will use `$_` by default.  We could have been more explicit and used:
+
+`map` can also take an expression rather than a block, for example:
 
 ```bash
-$ ni iabcdefgh p'my @v = map {$_ x 2} split //, $_; @v'
-aa
-bb
-cc
-dd
-ee
-ff
-gg
-hh
+ni iabcdefgh p'map /^[aeg]/, split //'
+1
+1
+1
 ```
 
-Another facet of the map syntax is that there is _no comma_ between the block and the array. 
-
-`map` has another syntax that can apply a regular expression to a list.
 
 
 
@@ -308,15 +392,25 @@ hh
 Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice. 
 
 
-### Code Blocks and Scope
+## Logical One-Liners
 
-#### Blocks `{ ... }`
+### Logical Operators
 
-#### `my`, `our`, `local`
+Logical operators come in two flavors, high-precedence and low-precedence. 
+
+#### Low Precedence: `and`, `or`, `not`
+
+#### High Precedence: `&&`, `||`, `!`
 
 
-### `perldoc`	
-This isn't so much a `ni` tool, but the perl docs are very good, and often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
+### `if`, `else`, `elsif`, `unless`
+
+#### Block Prefix Form
+
+#### Inline Form
+
+#### Ternary Operator `... ? ... : ...`
+
 
 
 ## Buffered Readahead and Multiline Selection
@@ -412,58 +506,29 @@ $ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
 
 
 ### `a__` through `l__`: Select-to-end-of-line
-These are useful for collecting data with an unknown shape;
+These are useful for collecting data with an unknown shape.
 
 ```bash
 $ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
 1	x	2	y	s	t	3	yo
 ```
 
-There are a lot of other options for you to work with--see [the Perl docs](perl.md) or the [cheatsheet](cheatsheet.md) for more details.
-
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni 1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `ni 1p'cart ["a", "b", "c"], [1, 2]' p'r {$_[0] . a} "", reb'` 
+In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
 
 
-##Intermediate Perl Operations
-###`p'^{...} ...'`: BEGIN Block
-A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
 
-Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. 
+## `ni` Perl Extensions
 
-```bash
-$ ni n5p'^{$x = 0} $x += a; r a, $x'
-1	1
-2	3
-3	6
-4	10
-5	15
-```
+`ni` is based on Perl 5.08; as a result, many of the modules you might be familiar with are generally not used, in favor of `ni`-specific perl extensions.
 
-Note that the value of `$x` is persisted between runs of the perl mapper code. Without the begin block, we would have:
 
-```bash
-$ ni n5p'$x = 0; $x += a; r a, $x'
-1	1
-2	2
-3	3
-4	4
-5	5
-```
+### Array Processors
 
-### `p'... END { }'`: END Block
+#### `any`, `all`
 
-Similar to a BEGIN block, and END block is used to calculate totals from the data that has accumulated in persistent variables.
+#### `uniq`
 
-```bash
-$ ni n5p'^{@x}; push @x, 2*a; undef; END{r join " and ", @x}'
-2 and 4 and 6 and 8 and 10
-```
-
-We accumulate all of the values in `x`, then join them together and return them all. The statement `undef` is added to make the perl mapper be quiet while it is accumulating values (otherwise, the return value of `push` is the length of the output array).
-
+#### `argmax`
 
 
 ### `cart`: Cartesian Product
@@ -533,6 +598,107 @@ $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_
 z	x	y
 ```
 
+## Common Tricks
+
+### Default Values
+
+There are no key errors in Perl.
+
+### Text is numbers
+
+In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
+
+```bash
+$ ni 1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+15	555	5 golden rings
+```
+
+It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
+
+```bash
+$ ni 1p'my $v2="4.3" * "6.7"; r $v2'
+28.81
+```
+
+You can perform floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero when used in an arithmetic context.
+
+```bash
+$ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+0	hihihi	hi golden rings
+```
+
+```bash
+$ ni 1p'my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+9.42	3.14hi3.14hi3.14hi	3.14hi golden rings
+```
+
+```bash
+$ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
+```
+
+
+### Barewords are strings
+
+In Perl, a "bareword" is an sequence of characters with no sigil prefix, for example:
+
+```bash
+$ ni n3p'r a, one'
+1	one
+2	one
+3	one
+```
+
+Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist--in this case, `one`--  Perl gives the programmer a great deal of freedom to be concise. `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
+
+This has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
+
+```bash
+$ ni 1p'my %h = ("foo" => 32); $h{foo}'
+32
+```
+
+However, the default behavior is for a hash to look up the value of the string the bareword represents.
+
+As a result, there's a conflict when using the output of a function with no arguments (for example, `a`):
+
+```
+$ ni ifoo p'my %h = ("foo" => 32); $h{a}'
+```
+
+Returns nothing; in fact it is looking for the value with the key `"a"`.
+
+```
+$ ni ifoo p'my %h = ("foo" => 32, "a" => "hello"); $h{a}'
+hello
+```
+
+In this case we prefix with a single `+` to indicate that the bareword in braces should be interpreted as a function.
+
+
+```bash
+$ ni ifoo p'my %h = ("foo" => 32); $h{+a}'
+32
+```
+
+
+
+
+### String Operators
+
+#### String Comparison: `eq`, `ge`, `gt`, `le`, `lt`
+
+#### `substr`
+
+#### Using regular expressions versus `substr` 
+
+
+### Bitwise Operators
+
+#### Bit Shifts `<<` and `>>`
+
+#### Bitwise `&` and `|`
+
 
 
 ## Numpy Operations
@@ -574,7 +740,6 @@ $ ni n1N'x = random.normal(size=(4,3))'
 -0.696189074356781      1.5246371050062 -2.33198542804912
 1.40260347893123        0.0910618083600519      0.851396708020142
 0.52419501996823        -0.546343207826548      -1.67995253555456
-(END)
 ```
 
 ```bash
