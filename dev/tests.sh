@@ -3523,6 +3523,11 @@ cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=29
+lazytest_case 'rm -f numbers                 # prevent ni from reusing any existing file
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_5.md'
+lazytest_line=30
 lazytest_case 'ni nE6gr4 :numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3531,7 +3536,7 @@ lazytest_case 'ni nE6gr4 :numbers
 1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=40
+lazytest_line=41
 lazytest_case 'ni nE6gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 1000
