@@ -369,6 +369,11 @@
 ## SYNTAX
 	<shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 
+# SHORT OPERATOR /GF^
+
+## SYNTAX
+	<shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
+
 # SHORT OPERATOR /H
 
 ## SYNTAX
