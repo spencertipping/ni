@@ -6214,7 +6214,7 @@ defshort '/GF^', pmap q{sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"},
                       shell_command;
 1 core/image/lib
 image.pl
-115 core/image/image.pl
+116 core/image/image.pl
 # Image compositing and processing
 # Operators that loop over concatenated PNG images within a stream. This is
 # useful for compositing workflows in a streaming context, e.g. between a
@@ -6287,7 +6287,8 @@ sub simage_into(&) {
 
 defoperator each_image => q{
   my ($lambda) = @_;
-  1 while defined simage_into {exec_ni @$lambda};
+  $ENV{KEY} = 0;
+  1 while ++$ENV{KEY} && defined simage_into {exec_ni @$lambda};
 };
 
 defshort '/I' => pmap q{each_image_op $_}, _qfn;

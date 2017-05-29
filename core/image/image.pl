@@ -70,7 +70,8 @@ sub simage_into(&) {
 
 defoperator each_image => q{
   my ($lambda) = @_;
-  1 while defined simage_into {exec_ni @$lambda};
+  $ENV{KEY} = 0;
+  1 while ++$ENV{KEY} && defined simage_into {exec_ni @$lambda};
 };
 
 defshort '/I' => pmap q{each_image_op $_}, _qfn;
