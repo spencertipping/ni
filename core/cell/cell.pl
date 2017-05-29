@@ -85,6 +85,17 @@ defoperator cell_exp => q{
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
 defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
 
+# Log-progression that preserves sign of the values. Everything is shifted
+# upwards by one in log-space, so signed_log(0) == log(1) == 0.
+defoperator cell_signed_log => q{
+  my ($cs, $base) = @_;
+  my $lb = 1 / log $base;
+  cell_eval {
+    args => 'undef',
+    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
+};
+
+defshort 'cell/L', pmap q{cell_signed_log_op @$_}, pseq cellspec_fixed, log_base;
 
 defoperator jitter_uniform => q{
   my ($cs, $mag, $bias) = @_;

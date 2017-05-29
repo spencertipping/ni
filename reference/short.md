@@ -730,6 +730,14 @@
 	  <integer>?
 	) -> {real_hash_op      @$_}
 
+# SHORT OPERATOR cell/L
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <log_base>
+	) -> {cell_signed_log_op @$_}
+
 # SHORT OPERATOR cell/a
 
 ## SYNTAX

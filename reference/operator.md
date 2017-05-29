@@ -36,6 +36,16 @@
 	  my $lb = 1 / log $base;
 	  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
 
+# OPERATOR cell_signed_log
+
+## IMPLEMENTATION
+	
+	  my ($cs, $base) = @_;
+	  my $lb = 1 / log $base;
+	  cell_eval {
+	    args => 'undef',
+	    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
+
 # OPERATOR checkpoint
 
 ## IMPLEMENTATION
