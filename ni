@@ -5944,7 +5944,7 @@ sub rb($) {
   $r;
 }
 
-sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
+sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
 7 core/binary/bytewriter.pm
 # Byte writer.
 # Convenience functions that make it easier to write binary data to standard out.
@@ -5953,7 +5953,7 @@ sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-30 core/binary/binary.pl
+49 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -5981,8 +5981,27 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
+defoperator binary_fixed => q{
+  my ($pack_template) = @_;
+  my $length = length pack $pack_template, unpack $pack_template, "\0" x 65536;
+  my $offset = 0;
+  die "ni: binary_fixed template consumes no data" unless $length;
+  my $buf = $length;
+  $buf <<= 1 until $buf >= 65536;
+  while (1) {
+    sysread STDIN, $_, $buf - length, length or return until length >= $length;
+    while ($offset < length) {
+      print join("\t", unpack $pack_template, substr $_, $offset, $length) . "\n";
+      $offset += $length;
+    }
+    $_ = substr $_, $offset;
+    $offset = 0;
+  }
+};
+
 defshort '/b',
   defdsp 'binaryalt', 'dispatch table for the /b binary operator',
+    f => pmap(q{binary_fixed_op $_}, generic_code),
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl
@@ -7868,7 +7887,7 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-60 doc/binary.md
+77 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data, you should use the `b`
@@ -7904,7 +7923,24 @@ read with perl":
 
 ```bash
 $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
-                 r rp "ss"' r10
+                 r rp"ss"' r10
+2052	2052
+4097	4097
+6126	6126
+8130	8130
+10103	10103
+12036	12036
+13921	13921
+15752	15752
+17521	17521
+19222	19222
+```
+
+A much faster approach is to use the `bf` operator to read fixed-length packed
+records:
+
+```bash
+$ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
 6126	6126

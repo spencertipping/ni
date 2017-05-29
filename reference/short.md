@@ -523,6 +523,7 @@
 
 ## SYNTAX
 	(
+	| 'f' <generic_code> -> {binary_fixed_op $_}
 	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 

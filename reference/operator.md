@@ -5,6 +5,26 @@
 ## IMPLEMENTATION
 	my @xs = @_; sio; exec_ni @xs
 
+# OPERATOR binary_fixed
+
+## IMPLEMENTATION
+	
+	  my ($pack_template) = @_;
+	  my $length = length pack $pack_template, unpack $pack_template, "\0" x 65536;
+	  my $offset = 0;
+	  die "ni: binary_fixed template consumes no data" unless $length;
+	  my $buf = $length;
+	  $buf <<= 1 until $buf >= 65536;
+	  while (1) {
+	    sysread STDIN, $_, $buf - length, length or return until length >= $length;
+	    while ($offset < length) {
+	      print join("\t", unpack $pack_template, substr $_, $offset, $length) . "\n";
+	      $offset += $length;
+	    }
+	    $_ = substr $_, $offset;
+	    $offset = 0;
+	  }
+
 # OPERATOR binary_perl
 
 ## IMPLEMENTATION

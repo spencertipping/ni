@@ -33,7 +33,24 @@ read with perl":
 
 ```bash
 $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
-                 r rp "ss"' r10
+                 r rp"ss"' r10
+2052	2052
+4097	4097
+6126	6126
+8130	8130
+10103	10103
+12036	12036
+13921	13921
+15752	15752
+17521	17521
+19222	19222
+```
+
+A much faster approach is to use the `bf` operator to read fixed-length packed
+records:
+
+```bash
+$ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
 6126	6126
