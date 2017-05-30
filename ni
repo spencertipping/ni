@@ -5953,7 +5953,7 @@ sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-49 core/binary/binary.pl
+50 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -5982,6 +5982,7 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
 defoperator binary_fixed => q{
+  use bytes;
   my ($pack_template) = @_;
   my @packed = unpack $pack_template, "\0" x 65536;
   my $length = length pack $pack_template, @packed;

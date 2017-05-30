@@ -26,6 +26,7 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
 defoperator binary_fixed => q{
+  use bytes;
   my ($pack_template) = @_;
   my @packed = unpack $pack_template, "\0" x 65536;
   my $length = length pack $pack_template, @packed;

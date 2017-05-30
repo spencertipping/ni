@@ -9,6 +9,7 @@
 
 ## IMPLEMENTATION
 	
+	  use bytes;
 	  my ($pack_template) = @_;
 	  my @packed = unpack $pack_template, "\0" x 65536;
 	  my $length = length pack $pack_template, @packed;
