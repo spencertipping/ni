@@ -50,7 +50,12 @@ A faster approach is to use the `bf` operator to read fixed-length packed
 records (internally it uses more efficient logic to manage the queue of
 incoming bytes):
 
-```bash
+**NOTE:** The following behaves nondeterministically on Alpine for reasons I
+don't understand. I assume it has something to do with libc differences, but
+you should assume `bf` doesn't work until I get this sorted out (the test below
+is disabled for now).
+
+```sh
 $ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097

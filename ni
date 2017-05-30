@@ -7887,7 +7887,7 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-78 doc/binary.md
+83 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
@@ -7940,7 +7940,12 @@ A faster approach is to use the `bf` operator to read fixed-length packed
 records (internally it uses more efficient logic to manage the queue of
 incoming bytes):
 
-```bash
+**NOTE:** The following behaves nondeterministically on Alpine for reasons I
+don't understand. I assume it has something to do with libc differences, but
+you should assume `bf` doesn't work until I get this sorted out (the test below
+is disabled for now).
+
+```sh
 $ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
