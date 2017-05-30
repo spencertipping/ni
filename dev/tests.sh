@@ -269,7 +269,7 @@ lazytest_case 'ni test.wav bp'\''rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip t
 19222	19222
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=53
+lazytest_line=54
 lazytest_case 'ni test.wav bf'\''ss'\'' r-15r10
 ' 3<<'LAZYTEST_EOF'
 2052	2052
@@ -284,7 +284,7 @@ lazytest_case 'ni test.wav bf'\''ss'\'' r-15r10
 19222	19222
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=70
+lazytest_line=71
 lazytest_case 'ni test.wav bp'\''bi?r rp "ss":rb 44'\'' fA N'\''x = fft.fft(x, axis=0).real'\'' \
      Wn rp'\''a <= 22050'\'' OB r5,qB.01
 ' 3<<'LAZYTEST_EOF'

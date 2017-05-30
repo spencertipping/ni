@@ -17,7 +17,7 @@
 	  my $buf = $length;
 	  $buf <<= 1 until $buf >= 65536;
 	  while (1) {
-	    sysread STDIN, $_, $buf - length, length or return until length >= $length;
+	    read STDIN, $_, $buf - length, length or return until length >= $length;
 	    my @vs = unpack "($pack_template)*", $_;
 	    for (my $n = 0; $n + @packed < @vs; $n += @packed) {
 	      print join("\t", @vs[$n..$n+$#packed]), "\n";

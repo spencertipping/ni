@@ -5990,7 +5990,7 @@ defoperator binary_fixed => q{
   my $buf = $length;
   $buf <<= 1 until $buf >= 65536;
   while (1) {
-    sysread STDIN, $_, $buf - length, length or return until length >= $length;
+    read STDIN, $_, $buf - length, length or return until length >= $length;
     my @vs = unpack "($pack_template)*", $_;
     for (my $n = 0; $n + @packed < @vs; $n += @packed) {
       print join("\t", @vs[$n..$n+$#packed]), "\n";
@@ -7887,10 +7887,10 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-77 doc/binary.md
+78 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
-nearest newline. If you want to parse binary data, you should use the `b`
+nearest newline. If you want to parse binary data you should use the `b`
 operator, which does block reads and provides a byte cursor.
 
 ## Generating binary data
@@ -7936,8 +7936,9 @@ $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
 19222	19222
 ```
 
-A much faster approach is to use the `bf` operator to read fixed-length packed
-records:
+A faster approach is to use the `bf` operator to read fixed-length packed
+records (internally it uses more efficient logic to manage the queue of
+incoming bytes):
 
 ```bash
 $ ni test.wav bf'ss' r-15r10
