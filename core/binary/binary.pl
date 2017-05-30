@@ -27,19 +27,19 @@ defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
 defoperator binary_fixed => q{
   my ($pack_template) = @_;
-  my $length = length pack $pack_template, unpack $pack_template, "\0" x 65536;
+  my @packed = unpack $pack_template, "\0" x 65536;
+  my $length = length pack $pack_template, @packed;
   my $offset = 0;
   die "ni: binary_fixed template consumes no data" unless $length;
   my $buf = $length;
   $buf <<= 1 until $buf >= 65536;
   while (1) {
     sysread STDIN, $_, $buf - length, length or return until length >= $length;
-    while ($offset < length) {
-      print join("\t", unpack $pack_template, substr $_, $offset, $length) . "\n";
-      $offset += $length;
+    my @vs = unpack "($pack_template)*", $_;
+    for (my $n = 0; $n + @packed < @vs; $n += @packed) {
+      print join("\t", @vs[$n..$n+$#packed]), "\n";
     }
-    $_ = substr $_, $offset;
-    $offset = 0;
+    $_ = length() % $length ? substr($_, $length * @vs / @packed) : '';
   }
 };
 

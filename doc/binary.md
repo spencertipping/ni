@@ -1,6 +1,6 @@
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
-nearest newline. If you want to parse binary data, you should use the `b`
+nearest newline. If you want to parse binary data you should use the `b`
 operator, which does block reads and provides a byte cursor.
 
 ## Generating binary data
@@ -46,8 +46,9 @@ $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
 19222	19222
 ```
 
-A much faster approach is to use the `bf` operator to read fixed-length packed
-records:
+A faster approach is to use the `bf` operator to read fixed-length packed
+records (internally it uses more efficient logic to manage the queue of
+incoming bytes):
 
 ```bash
 $ ni test.wav bf'ss' r-15r10
