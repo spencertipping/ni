@@ -123,6 +123,30 @@ $ ni n15 r-5 p'$_ =~ /^(\d)\d*$/'
 Default variables show up all over the place in Perl; we will see them 
 
 
+## Logical Operations
+
+Logical operators come in two flavors, high-precedence and low-precedence. The low-precedence operators 
+
+### Low Precedence: `and`, `or`, `not`
+
+
+### High Precedence: `&&`, `||`, `!`
+
+
+
+### `if`, `else`, `elsif`, `unless`
+
+#### Block Prefix Form
+
+This form is common to almost every programming language in one form or another;
+
+```
+
+#### Inline Form
+
+#### Ternary Operator `... ? ... : ...`
+
+
 ## Statements, Blocks, and Scope
 
 ### Statements and Blocks
@@ -212,22 +236,135 @@ This isn't so much a `ni` tool, but the perl docs are very good, and often bette
 
 ### Regular Expressions
 
-Covering regular expressions in their entirety is outside the scope of this tutorial; you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial covers the output values and side effects of these methods.
+Covering regular expressions in their entirety is outside the scope of this tutorial, but we'll cover a few pointers. The [Perl Regex Tutorial](https://perldoc.perl.org/perlretut.html) is excellent.
+
+### Regular Expressions
+If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
+
+#### Efficient Regex Design
+
+Regexes should be designed to fail quickly, so reduce the number of possible evaluation paths.  The use of anchor tags (`^$`) and avoiding `.` when possible is also a good idea. 
+
+####String Slicing with Regex
+I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
+
+```bash
+$ ni iabcdefgh p'/^(.*).{4}$/'  #[:-4] in Python
+abcd
+```
+
+```bash
+$ ni iabcdefgh p'/^.{3}(.*)$/' #[3:] in Python
+defgh
+```
+
+```bash
+$ ni iabcdefgh p'/^.*(.{2})$/' #[-2:] in Python
+gh
+```
+
+#### Using Capture Groups
+
+Capture groups are set off using parentheses; to get them explicitly,  syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
+
+This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to capture one or more groups.
+
+For example:
+
+```bash
+$ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
+a	b
+```
+
+```bash
+$ ni iabcdefgh p'my ($w) = /^(.)/; r $w'
+a
+```
+
+```bash
+$ ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
+a	b
+```
+
+
+#### Writing good Regular Expressions
+
+When writing a regular expression, you want them to fail as quickly as possible on strings that don't match.
+
+1. Use anchor tags (`^` and `$`) when possible.
+2. Try to limit the number of branching "or" paths in your regular expression.
+
+
+you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial covers the output values and side effects of these methods.
 
 Instead, we will cover what Perl does.
 
-### Substitution `s///`
+#### Regex Comparison `=~`
 
-### Transliteration `tr///` (also called  `y///`)
+Negative matches to a regex can be performed with `!~`.
 
-The `tr` operator operates in-place, and 
+#### Regex Barriers
 
-`tr` is the fast and recommended way to remove characters from your output strings.
+Usually regular expressions are set off using forward slashes, however, this means that forward slashes within a regex will have to be escaped. You can use 
 
-### Quoting into a regular expression
+#### Regex Interpolation
+
+$foo = 'house';
+    'housecat' =~ /$foo/;      # matches
+    'cathouse' =~ /cat$foo/;   # matches
+    'housecat' =~ /${foo}cat/; # matches
+
+
+#### Substitution `s///`, Transliteration `tr///` and `y///`
+
+These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
+
+```bash
+$ ni iabcdefgh p'tr/a-z/A-Z/'
+8
+```
+
+```bash
+$ ni iabcdefgh p's/abc/ABC/'
+1
+```
+
+The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
+This also will give somewhat-surprising behavior to code like:
+
+```bash
+$ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
+8
+```
+
+Instead, these operators work as side-effects.
+
+```bash
+$ ni iabcdefgh p'tr/a-z/A-Z/; $_'
+ABCDEFGH
+```
+
+```bash
+$ ni iabcdefgh p's/abc/ABC/; $_'
+ABCdefgh
+```
+
+However, as you might expect from Perl, there is a syntax that allows `s` to return the value; however, this will not work on Perls before 5.12 or 5.14.
+
+
+```sh
+$ ni iabcdefgh p's/abc/ABC/r'
+ABCdefgh
+```
 
 
 ## Operations on Arrays
+
+Perl arrays are prefixed with the `@` sigil, and their scalar values can be looked up by prefixing with a `$`, and 
+
+### Building Arrays
+
+Perl arrays can be built up by separating scalars and arrays with 
 
 ### `split`
 
@@ -241,7 +378,7 @@ e	gh
 
 
 ### `for`
-Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java:
+Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java. `for` takes an initialization
 
 #### Block Prefix Syntax
 
@@ -274,7 +411,7 @@ hh
 
 #### Inline Syntax
 
-Finally, there is an even more parsimonious postfix syntax.
+Finally, there is an even more parsimonious postfix syntax that is useful for 
 
 
 ```bash
@@ -308,9 +445,8 @@ hh
 The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
 
 ```bash
-$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2}'
+$ ni iabcdefgh p'for my $letter(split //, $_) {if($letter eq "b") {next;} r $letter x 2}'
 aa
-bb
 cc
 dd
 ee
@@ -319,6 +455,17 @@ gg
 hh
 ```
 
+`last` in Perl is similar to `break` in other programming languages.
+
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2; last if $letter ge "c"}'
+aa
+bb
+cc
+```
+
+Note that these 
 
 
 ### `join`
@@ -391,24 +538,6 @@ hh
 Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice. 
 
 
-## Logical One-Liners
-
-### Logical Operators
-
-Logical operators come in two flavors, high-precedence and low-precedence. 
-
-#### Low Precedence: `and`, `or`, `not`
-
-#### High Precedence: `&&`, `||`, `!`
-
-
-### `if`, `else`, `elsif`, `unless`
-
-#### Block Prefix Form
-
-#### Inline Form
-
-#### Ternary Operator `... ? ... : ...`
 
 
 
@@ -690,9 +819,33 @@ $ ni ifoo p'my %h = ("foo" => 32); $h{+a}'
 
 #### String Comparison: `eq`, `ge`, `gt`, `le`, `lt`
 
+Because strings are interpreted as numbers, if you use the numeric comparator operators, strings will be cast to numbers and compared.
+
+```bash
+ni 1p' "ab" == "cd" ? "equal" : "not equal"'
+equal
+```
+
+You need to use the specific string-comparison opeartors instead.
+
+```bash
+ni 1p' "ab" eq "cd" ? "equal" : "not equal"'
+not equal
+```
+
+
 #### `substr`
 
+`substr($s, $offset, $length)`: The behavior of `substr` is a little tricky if you have a Python background:
+
+  * If `$offset` is positive, then the start position of the substring will be that position in the string, starting from an index of zero;
+  * If `$offset` is negative, then the start position of the substring will be `$offset` charaters from the end of the string.
+  * If `$length` is positive, the output substring will take (up to) `$length` characters.
+  * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
+
 #### Using regular expressions versus `substr` 
+
+
 
 
 ### Bitwise Operators
@@ -701,75 +854,19 @@ $ ni ifoo p'my %h = ("foo" => 32); $h{+a}'
 
 #### Bitwise `&` and `|`
 
+### Hash subroutines
 
+* `keys %h` get keys from hash
+* `values %h`: get values from hash
 
-## Numpy Operations
+### Useful variables
 
-Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
+#### `%ENV`: Hash of Environment Variables
 
-Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
-
-However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory (though you can use partitioned matrix operations to get around this in some cases); 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
-
-It's great, you're gonna love it.
-
-### `N'x = ...'`: Numpy matrix operations
-
-The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
-
-The values streamed out of `N'...'` are the values of `x`, so all operations that you want to do to the stream must be saved back into `x`. Compared to the Perl syntax, this is inelegant, and if `ni`'s gotten into your soul yet, it should make you more than a little frustrated.
-
-However, the gains in power are quickly manifested:
-
-
-```bash
-$ ni n3p'r map a*$_, 1..3' N'x = x + 1'
-2	3	4
-3	5	7
-4	7	10
-```
-
-```bash
-$ ni n5p'r map a . $_, 1..3' N'x = x.T'
-11	21	31	41	51
-12	22	32	42	52
-13	23	33	43	53
-```
-
-```
-$ ni n1N'x = random.normal(size=(4,3))'
--0.144392928715457      0.823863130371182       -0.0884075304437077
--0.696189074356781      1.5246371050062 -2.33198542804912
-1.40260347893123        0.0910618083600519      0.851396708020142
-0.52419501996823        -0.546343207826548      -1.67995253555456
-```
-
-```bash
-$ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
-1	1
-1	2
-```
+This is way easier to access than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`. Also, it's good to note here that you can more than likely get away with referencing the variable you want using a bareword (unquoted string) rather than a quoted string.
 
 
 
-### How `N'x = ...'` works
-What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
-
-Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
-
-```
-ni ... N'import pandas as pd; 
-		 df = pd.DataFrame(x); ... ; 
-		 df.to_excel(...); 
-		 x = df.reset_index().values;' 
-		 ...
-```
-
-The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.  You can also use indented code within `N'...'`, and it will be processed correctly.
-
-Also, like other operators, `N'...'` requires at least a row for input. `ni N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will return nothing, but adding a dummy row `ni n1N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will.
-
-This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
 
 
 ## JSON I/O

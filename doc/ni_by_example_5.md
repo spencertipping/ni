@@ -1,6 +1,19 @@
 #Future Chapter 5 Below
 
 
+## Understanding the `ni` monitor
+
+At this point, you've probably executed a long-running enough `ni` job to see the `ni` monitor appear at the top of your screen. 
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+
+Some things to keep in mind when examining the output of the monitor: if you have access to more compute resources for slow steps, you can use them for that step alone, and this can be done in a very simple way via the `S` horizontal scaling operator.
+
+You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the [monitor docs](monitor.md) and in the [optimization docs](optimization.md).
+
+
 ## Even More Perl for Ni
 
 ### `push`, `pop`, `shift`, `unshift`
@@ -18,6 +31,15 @@ We accumulate all of the values in `x`, then join them together and return them 
 
 ### `our` and `local`
 
+
+
+### `use strict` and the `::` prefix within `p'...'`
+
+When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
+
+The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`. 
+
+It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
 
 
 ### Subroutines

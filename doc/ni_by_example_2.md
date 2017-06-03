@@ -629,6 +629,39 @@ export NI_HDFS_TMPDIR=/user/$(whoami)/tmp
 ```
 
 
+## `nfu` HDFS Joins
+
+I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to do large-scale joins is using `nfu`.
+
+To install:
+
+```
+$ git clone git://github.com/spencertipping/nfu
+$ cd nfu
+$ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
+```
+
+HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV). They will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
+
+```
+$ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
+$ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
+```
+
+You can appropriately process the checkopoint files to to get the correct paths, then use:
+
+```
+nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
+```
+
+`nfu` offers two types of joins, inner and left-outer, and two options for whether the inputs need to be sorted. 
+
+* `i`: Inner join with preceding sort
+* `j`: Inner join without sort
+* `I`: Left-outer join with preceding sort
+* `J`: Left-outer join without sort
+
+
 ## Conclusion
 
 The classic word count program for Hadoop can be written like this:
