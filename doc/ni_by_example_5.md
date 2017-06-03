@@ -16,6 +16,43 @@ You may also want to consider refactoring your job to make use of Hadoop Streami
 
 ## Even More Perl for Ni
 
+### Other syntaxes for `map`
+
+
+`map` can also take an expression rather than a block, but this syntax is tricky 
+
+```bash
+ni iabcdefgh p'@v = map /^[aeg]/, split //'
+1
+1
+1
+```
+
+However, Regular expres
+
+The following example is taken from [Perl Monks](http://www.perlmonks.org/?node_id=613280)
+
+You'd probably be even more surprised by the result of this:
+my @in = qw(aaa bbb ccc);
+my @out = map { s/.$/x/ } @in;
+print "@in\n=>\n@out\n";
+[download]
+which prints:
+aax bbx ccx
+=>
+1 1 1
+[download]
+Yeah, the original is modified. Basically: never modify $_ in a map, and remember that the "output" of s/// is the success count/code. To get what you want, you need to localize $_ and reuse it as the last expression evaluated in the block:
+my @in = qw(aaa bbb ccc);
+my @out = map { local $_ = $_; s/.$/x/; $_ } @in;
+print "@in\n=>\n@out\n";
+[download]
+which indeed shows:
+aaa bbb ccc
+=>
+aax bbx ccx
+
+
 ### `push`, `pop`, `shift`, `unshift`
 
 ### `p'... END { }'`: END Block
@@ -75,6 +112,132 @@ hi 1
 ```
 
 Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
+
+## Streaming Reduce
+In earlier drafts of `ni` by example, streaming reduce had a much greater role; however, with time I've found that most operations that are done with streaming reduce are more simply performed using buffered readahead; moreover, buffered readahead.  Streaming reduce is still useful and very much worth knowing as an alternative, highly flexible, constant-space set of reduce methods in Perl.
+
+Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort and reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
+
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
+
+### `sr`: Reduce over entire stream
+
+Let's look at a simple example, summing the integers from 1 to 100,000: 
+
+```bash
+$ ni n1E5p'sr {$_[0] + a} 0'
+5000050000
+```
+
+Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
+ 
+ ```
+@final_state = sr {reducer} @init_state
+```
+
+To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
+
+```bash
+$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55	3628800	12345678910
+```
+A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
+
+
+### `se`: Reduce while equal
+`sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
+
+Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
+
+What we'd like to do is, each time a number streams in, to check if it  number of digits is equal to the number of digits for the previous number we saw in the stream. If it does, we'll add it to a running total, otherwise, we emit the running total to the output stream and start a new running total.
+
+In `ni`-speak, the reduce-while-equal operator looks like this:
+
+```
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
+
+**NOTE**: The comma after `partition_fn` is important.
+
+```bash
+$ ni n1000p'se {$_[0] + a} sub {length}, 0'
+45
+4905
+494550
+1000
+```
+
+That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
+
+```bash
+$ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
+
+If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
+
+```bash
+$ ni n1000p'sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
+
+
+### `sea` through `seq`: Reduce with partition function `a()...q()`
+
+It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
+
+```bash
+$ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+`ni` offers a shorthand for reducing over a particular column and everything to
+its left:
+
+```bash
+$ ni n1000p'r length a, a' p'r a, sea {$_[0] + b} 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+
+### `rc`: Compound reduce
+
+Consider the following reduction operation, which computes the sum, mean, min and max.
+
+```bash
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[3], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
+```
+
+For common operations like these, `ni` offers a shorthand:
+
+```bash
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+5050	50.5	1	100
+```
+
+
 
 ##Data Development with `ni` and Hadoop
 

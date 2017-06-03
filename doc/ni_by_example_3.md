@@ -8,25 +8,9 @@ In this chapter, our goal is to multiply your power with two tools: reducers, an
 
 This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid any more than a brief mention of how to write a function in Perl.
 
-Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is also known for its religious overtones; here `ni` author Spencer Tipping drop the scales from your eyes about hte language in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
->Python, Ruby, and even Javascript were designed to be good languages -- and
-just as importantly, to **feel** like good languages. Each embraces the
-politically correct notion that values are objects by default, distances itself
-from UNIX-as-a-ground-truth, and has a short history that it's willing to
-revise or forget. These languages are convenient and inoffensive by principle
-because that was the currency that made them viable.
-<!--- --->
->Perl is different.
-<!--- --->
->In today's world it's a neo-noir character dropped into a Superman comic; but 
-that's only true because it changed our collective notion of what an accessible
-scripting language should look like. People
-often accuse Perl of having no design principles; it's "line noise,"
-pragmatic over consistent. This is superficially true, but at a deeper level
-Perl is uncompromisingly principled in ways that most other languages aren't.
-Perl isn't good; it's complicated, and if you don't know it yet, it will
-probably change your idea of what a good language should be.
+From the Perl Syntax docs:
+> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
 
 
 
@@ -123,28 +107,33 @@ $ ni n15 r-5 p'$_ =~ /^(\d)\d*$/'
 Default variables show up all over the place in Perl; we will see them 
 
 
-## Logical Operations
-
-Logical operators come in two flavors, high-precedence and low-precedence. The low-precedence operators 
-
-### Low Precedence: `and`, `or`, `not`
-
-
-### High Precedence: `&&`, `||`, `!`
+## Flow Control
 
 
 
-### `if`, `else`, `elsif`, `unless`
+### `if`, `else`, `elsif`
 
 #### Block Prefix Form
 
 This form is common to almost every programming language in one form or another;
 
+```bash
+$ni i37 p'if (a == 2) { r "input was 2" } elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } else { r "I dunno" }'
+I dunno
 ```
 
 #### Inline Form
 
+
+#### `unless`
+
+`unless EXPR` is equivalent to `if !EXPR`, and it has the 
+
+
+
 #### Ternary Operator `... ? ... : ...`
+
+The precedence operators 
 
 
 ## Statements, Blocks, and Scope
@@ -234,43 +223,47 @@ In this Perl mapper, the value of the globally-scoped `$x` variable is being res
 This isn't so much a `ni` tool, but the perl docs are very good, and often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
 
 
-### Regular Expressions
+### `%ENV`: Hash of Environment Variables
+
+Environment variables are much easier to access and modify in Perl compared than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`.
+
+## Regular Expressions
 
 Covering regular expressions in their entirety is outside the scope of this tutorial, but we'll cover a few pointers. The [Perl Regex Tutorial](https://perldoc.perl.org/perlretut.html) is excellent.
 
-### Regular Expressions
-If you need a regex tutorial, [this one](https://regexone.com) looks good to me. Regular expressions are a huge part of Perl, and there are a number of syntaxes for their use of which you should be aware.
 
-#### Efficient Regex Design
+#### Writing Good Regular Expressions
 
-Regexes should be designed to fail quickly, so reduce the number of possible evaluation paths.  The use of anchor tags (`^$`) and avoiding `.` when possible is also a good idea. 
+When writing a regular expression, you want them to fail as quickly as possible on strings that don't match.
 
-####String Slicing with Regex
-I don't like the of Perl's `substr` method because it's asymmetric. to recover most of what I like about from Python's string slicing syntax, I use regex.
+1. Use anchor tags (`^` and `$`) when possible.
+2. Try to limit the number of branching "or" paths in your regular expression.
 
-```bash
-$ ni iabcdefgh p'/^(.*).{4}$/'  #[:-4] in Python
-abcd
-```
 
-```bash
-$ ni iabcdefgh p'/^.{3}(.*)$/' #[3:] in Python
-defgh
-```
+#### Special Characters 
 
-```bash
-$ ni iabcdefgh p'/^.*(.{2})$/' #[-2:] in Python
-gh
-```
+\d matches a digit, not just [0-9] but also digits from non-Roman scripts
+\s matches a whitespace character, the set [\ \t\r\n\f] and others
+\w matches a word character (alphanumeric or _), not just [0-9a-zA-Z_] but also digits and characters from non-Roman scripts
+\D is a negated \d; it represents any other character than a digit, or [^\d]
+\S is a negated \s; it represents any non-whitespace character [^\s]
+\W is a negated \w; it represents any non-word character [^\w]
+The period '.' matches any character but "\n" (unless the modifier //s is in effect, as explained below).
+
+#### Regex Matching `=~`
+
+Negative matches to a regex can be performed with `!~`.
 
 #### Using Capture Groups
 
-Capture groups are set off using parentheses; to get them explicitly,  syntactic sugar for the more explicit `my @v = $_ =~ /regex/;`
+Capture groups are set off using parentheses; to get them explicitly:
 
-This will get capture groups and store them in `@v`. Using parentheses around `$v` tells perl to use it in a list context, which will allow you to capture one or more groups.
+```bash
+$ ni iabcdefgh p'my @v = a =~ /^(.)(.)/; r @v'
+a	b
+```
 
-For example:
-
+There is also a syntactic sugar using the default variable `$_`.
 ```bash
 $ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
 a	b
@@ -286,31 +279,20 @@ $ ni iabcdefgh p'my ($x, $y) = /^(.)(.)/; r $x, $y'
 a	b
 ```
 
-
-#### Writing good Regular Expressions
-
-When writing a regular expression, you want them to fail as quickly as possible on strings that don't match.
-
-1. Use anchor tags (`^` and `$`) when possible.
-2. Try to limit the number of branching "or" paths in your regular expression.
-
-
-you're expected to know what strings each of the regular expressions displayed below would match, while this tutorial covers the output values and side effects of these methods.
-
-Instead, we will cover what Perl does.
-
-#### Regex Comparison `=~`
-
-Negative matches to a regex can be performed with `!~`.
-
 #### Regex Barriers
 
-Usually regular expressions are set off using forward slashes, however, this means that forward slashes within a regex will have to be escaped. You can use 
+Usually regular expressions are set off using forward slashes, however, this means that forward slashes within a regex will have to be escaped. You can use `m` and another character when you need to match 
+
+
 
 #### Regex Interpolation
 
-$foo = 'house';
-    'housecat' =~ /$foo/;      # matches
+You can use 
+
+```
+$ ni 1p'$foo = "house";"housecat" =~ /$foo/
+```
+     # matches
     'cathouse' =~ /cat$foo/;   # matches
     'housecat' =~ /${foo}cat/; # matches
 
@@ -362,10 +344,6 @@ ABCdefgh
 
 Perl arrays are prefixed with the `@` sigil, and their scalar values can be looked up by prefixing with a `$`, and 
 
-### Building Arrays
-
-Perl arrays can be built up by separating scalars and arrays with 
-
 ### `split`
 
 `split` is useful for generating arrays from a string based on regular expressions.
@@ -411,7 +389,7 @@ hh
 
 #### Inline Syntax
 
-Finally, there is an even more parsimonious postfix syntax that is useful for 
+Finally, there is an even more parsimonious postfix syntax that is useful for short repetitive operations.
 
 
 ```bash
@@ -465,7 +443,7 @@ bb
 cc
 ```
 
-Note that these 
+Note the way that `last` and `next` combine with `if` and `unless` for readable syntax. 
 
 
 ### `join`
@@ -500,19 +478,6 @@ $ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
 abcdefgh
 ```
 
-
-`map` can also take an expression rather than a block, for example:
-
-```bash
-ni iabcdefgh p'map /^[aeg]/, split //'
-1
-1
-1
-```
-
-
-
-
 ### `grep`
 
 `grep` is a useful Unix command-line tool that is also useful for filtering Perl arrays. `grep` and `map` have similar syntax; grep can take an expression, for example:
@@ -528,7 +493,7 @@ hh
 `grep` also takes a block of code, as in:
 
 ```bash
-$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map {$_ x 2 } split //, $_; @v'
+$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map { $_ x 2 } split //, $_; @v'
 bb
 dd
 ff
@@ -538,202 +503,28 @@ hh
 Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice. 
 
 
+### Operations on mulitple arrays and scalars
+
+You can feed multiple lists and scalars into `grep`, `map`, and `for`, by setting them off with commas; there is no need to construct a new array containing all of the elements 
 
 
 
-## Buffered Readahead and Multiline Selection
-
-So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.  
-
-### `rl`, `rw`, `ru`, `re`: Buffered Readahead
-
-In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce (discussed in a later chapter); however, the syntax for  buffered readahead is often much simpler. Generating arrays of lines using readahead operations is a common motif in `ni` scripts:
-
-* `rl(n)`: read `n` lines
-  * `@lines = rl(n)`: `n` is optional, and if it is not given, only one line will be read.
-* `rw`: read while
-  * `@lines = rw {condition}`: read lines while a condition is met
-* `ru`: read until
-  * `@lines = ru {condition}`: read lines until a condition is met
-* `re`: read equal
-  * `@lines = re {condition}`: read lines while the value of the condition is equal.
-
-
-```
-$ ni n10 p'r rl 3'
-1	2	3
-4	5	6
-7	8	9
-10
-```
-
-```bash
-$ ni n10p'r rw {a < 7}'
-1	2	3	4	5	6
-7
-8
-9
-10
-```
-
-```bash
-$ ni n10p'r ru {a % 4 == 0}'
-1	2	3
-4	5	6	7
-8	9	10
-```
-
-```bash
-$ ni n10p'r re {int(a**2/30)}'
-1	2	3	4	5
-6	7
-8	9
-10
-```
-
-
-### `a_` through `l_`: Multiline Selection operations 
-You have now seen two ways to generate arrays of lines: buffered readahead and data closures. In order to access data from a specific column of a line array, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
-
-
-An important thing to keep in mind when using buffered readahead with multiline reducers is that you must save. For example:
-
-```bash
-$ ni i{a..d}{x..z} F// fB. p'@lines = re {a}; r a, b_ @lines'
-b	x	y	z
-c	x	y	z
-d	x	y	z
-	x	y	z
-```
-
-* `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
-* `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
-
-```bash
-$ ni ::data[n5] 1p'a_ data'
-1
-2
-3
-4
-5
-```
-
-### Reduction via buffered readahead
-
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a}'
-6
-6
-```
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
-12
-```
-
-
-### `a__` through `l__`: Select-to-end-of-line
-These are useful for collecting data with an unknown shape.
-
-```bash
-$ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
-1	x	2	y	s	t	3	yo
-```
-
-In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
-
-
-
-## `ni` Perl Extensions
-
-`ni` is based on Perl 5.08; as a result, many of the modules you might be familiar with are generally not used, in favor of `ni`-specific perl extensions.
-
-
-### Array Processors
-
-#### `min`, `max`, `minstr`, `maxstr`
-
-#### `any`, `all`, `sum`, `prod`, `mean`
-
-#### `uniq`
-
-#### `argmax`, `argmin`
-
-#### `freqs`
-
-### `cart`: Cartesian Product
-To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]'
-10	1
-10	2
-10	3
-20	1
-20	2
-20	3
-```
-
-The output of `cart` will have the first column varying the least, the second column varying the second least, etc. so that the value of the last column will change for every row if its values are all distinct.
-
-
-
-Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
-
-```
-$ ni 1p'r cart [1], ["a", "b", "c"]'
-ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
-```
-
-
-### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
-Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
-
-* Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
-* Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
-* Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-* `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
-
-### `p'%h = <key_col><val_col>S @lines'`: Accumulator hash constructor
-
-This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
-
-```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
-x	5
-y	13
-```
-
-If you have ragged data, where a value may not exist for a particular column, a convience method `SNN` gives you the non-null values. See the next section for the convenience methods `kbv_dsc`.
-
-```bash 
-$ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] p'%h = dcSNN rea; @sorted_keys = kbv_dsc %h; r($_, $h{$_}) for @sorted_keys''
-foo	4	
-bar	1
-```
-
-
-### `p'kbv_asc %h'` and `p'kbv_dsc %h'`: Sort hash keys by value
-
-This is syntactic sugar for Perl's sort function applied to keys of a hash.
-
-```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
-y	x	z
-```
-
-
-```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_asc(ab_ rl(3))'
-z	x	y
-```
 
 ## Common Tricks
 
 ### Default Values
 
-There are no key errors in Perl.
+There are no key errors in Perl; 
+
+```bash
+$ ni 1p'my $x; ++$x'
+1
+```
+
+### `defined` and `exists`
+
+
+
 
 ### Text is numbers
 
@@ -812,10 +603,47 @@ $ ni ifoo p'my %h = ("foo" => 32); $h{+a}'
 32
 ```
 
-
-
-
 ### String Operators
+
+Because text is numbers in Perl, some string operators must be defined specifically.
+
+#### String Concatenation
+String concatenation is done with `.` in Perl rather than `+` in other languages. Because text is numbers, using `+` will attempt to do addition on the numeric values of the strings. For example:
+
+```bash
+$ ni 1p'u + v'
+0
+```
+
+```bash
+$ ni 1p'u . v' 
+uv
+```
+
+
+#### String Interpolation
+
+In Perl, string interpolation occurs between double-quoted strings. 
+
+```bash
+$ ni 1p'my $x = "foo"; r "$x bar"'
+foo bar
+```
+
+```bash
+$ ni 1p'my $x = "foo"; r "$xbar"'
+```
+
+```bash
+$ ni 1p'my $x = "foo"; r "${x}bar"'
+foobar
+```
+
+Because `ni` is written in Perl, Perl mappers are set off with single quotes (otherwise  the parser would try to interpolate variable declarations). Moral of the story: 
+
+> DO NOT USE single-quoted strings in `ni`.
+
+
 
 #### String Comparison: `eq`, `ge`, `gt`, `le`, `lt`
 
@@ -842,142 +670,85 @@ not equal
   * If `$offset` is negative, then the start position of the substring will be `$offset` charaters from the end of the string.
   * If `$length` is positive, the output substring will take (up to) `$length` characters.
   * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
+  
+
 
 #### Using regular expressions versus `substr` 
 
+`substr` does exactly one thing, and it is quite fast at doing it. If you need a fixed-length substring, you'll likely have higher performance with `substr` compared to a regex; 
 
+
+### Logical Operations
+
+Logical operators come in two flavors, high-precedence and low-precedence. The low-precedence operators `and`, `or`, `not`, and their high-precedence C-like counterparts `&&`, `||`, `!`.
+
+In general, there is little difference between these operations, but tricky errors may arise. In general, it is safe and syntactically pleasing to use the low-precedence operators between statements, and to use the high-precedence operators between variables. 
+
+```
+open my $fh, '<', $filename || die "A horrible death!";
+open my $fh, '<', $filename or die "A horrible death!";
+```
 
 
 ### Bitwise Operators
 
+Bit shifting is useful because it is an incredibly fast operation. It works incredibly well
+
 #### Bit Shifts `<<` and `>>`
+
+Bit shifting to the right is the equivalent of dividing by a power of 2 
+
+```bash
+$ ni 1p'125 >> 3'
+15
+```
+
+```bash
+$ ni 1p'125 << 3'
+1000
+```
+
+Bit shifting has some more difficult 
 
 #### Bitwise `&` and `|`
 
+These operations can be useful for unwinding loops in programs; like bit shifts, they're very fast.
+
 ### Hash subroutines
 
-* `keys %h` get keys from hash
-* `values %h`: get values from hash
-
-### Useful variables
-
-#### `%ENV`: Hash of Environment Variables
-
-This is way easier to access than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`. Also, it's good to note here that you can more than likely get away with referencing the variable you want using a bareword (unquoted string) rather than a quoted string.
+* `keys %h`: Returns the list of keys from a hash
+* `values %h`: Returns the list of values from a hash
 
 
 
+## Conclusion
+
+Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is also known for its religious overtones; here `ni` author Spencer Tipping drop the scales from your eyes about hte language in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
 
-## JSON I/O
-
-We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
-
-### `D:<field1>,:<field2>...`: JSON Destructure
-
-`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
-
-### `p'json_encode <hash or array reference>`: JSON Encode
-
-The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
-  
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' =\>jsons \
-     D:type,:word
-```
-### Other JSON parsing methods
-Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
+>Python, Ruby, and even Javascript were designed to be good languages -- and
+just as importantly, to **feel** like good languages. Each embraces the
+politically correct notion that values are objects by default, distances itself
+from UNIX-as-a-ground-truth, and has a short history that it's willing to
+revise or forget. These languages are convenient and inoffensive by principle
+because that was the currency that made them viable.
+<!--- --->
+>Perl is different.
+<!--- --->
+>In today's world it's a neo-noir character dropped into a Superman comic; but 
+that's only true because it changed our collective notion of what an accessible
+scripting language should look like. People
+often accuse Perl of having no design principles; it's "line noise,"
+pragmatic over consistent. This is superficially true, but at a deeper level
+Perl is uncompromisingly principled in ways that most other languages aren't.
+Perl isn't good; it's complicated, and if you don't know it yet, it will
+probably change your idea of what a good language should be.
 
 
 
-## Directory I/O
-The contents of this section 
 
-Start by making some data:
 
-```
-$ rm -rf dir_test && mkdir dir_test
-$ echo "hello" > dir_test/hi
-$ echo "you" > dir_test/there
-```
 
-Let's start with `$ ni test`
-
-```
-dir_test/hi
-dir_test/there
-```
-
-`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
-
-`$ ni dir_test \<`
-
-yields:
-
-```
-hello
-you
-```
-
-`ni` also works with the bash expansion operator `*`.
-
-For example, `ni dir_test/*` yields:
-
-```
-hello
-you
-```
-
-`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
-
-```
-$ ni --explain dir_test/*
-["cat","dir_test/hi"]
-["cat","dir_test/there"]
-```
-
-## `ni` Philosophy and Style
-
-If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
-
-### `ni` optimizes at-will programmer productivity
-Many data science projects start with a request that you have never seen before; in this case, it's often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
-
-`ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
-
-### Mastery counts
-
-Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
-
-This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
-
-### Outsource hard jobs to more appropriate tools
-
-`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
-
-* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes uncompressed.
-
-Some jobs that are difficult for `ni`, and some ways to resolve them:
-
-* Sorting
-  * Challenge: Requires buffering of entire stream (possibly to disk, which is slow)
-  * Solution: Hadoop Streaming will do much of the heavy lifting for you in any sort, and will distribute the computation so it's easy.
-* Matrix Multiplication
-  * Challenge: Difficult to implement in a streaming context
-  * Solution: Numpy operations 
-* SQL Joins
-  * Challenge: SQL joins can take more than one line
-  * Solution:
-    * Small Data: There are several options here. You can use `N'...'` and do the join in numpy, you can use `N'...'` with `import pandas as pd` to do the join in pandas, or you can pipe data in and out of `join -t $'\t'`
-    * Large Data: HDFS Joins
-* Iterating a `ni` process over directories where the directory provides contextual information about its contents.
-  * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
-  * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
 
 
 
