@@ -1,40 +1,8 @@
+# `ni` by Example, Chapter 2 Part 2 (alpha release)
+
 
 ## `ni`-specific Perl Functions
 This section collects a number of utility functions that are used within a Perl mapper, but are specific to `ni`.
-
-### I/O Functions
-
-#### `wf`: write to file
-
-`wf $filename, @lines`: write `@lines` to a file called `$filename`
-
-```
-$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
-file1
-file2
-$ ni file1
-1
-2
-$ ni file2
-yo
-```
-
-#### `af`: append to file
-
-```
-$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
-file3
-file4
-file3
-$ ni file3
-1
-2
-hi
-$ ni file4
-yo
-```
-
-`af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
 
 ### Geographic Perl Functions
@@ -266,8 +234,6 @@ $ ni i1494110651 p'r ttd(a), tth(a), tt15(a), ttm(a), a'
 1494028800	1494108000	1494109800	1494110640	1494110651
 ```
 
-
-
 ## Buffered Readahead and Multiline Selection
 
 So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.  
@@ -373,23 +339,33 @@ In particular, these operations can be used in conjunction with Hadoop streaming
 
 
 
-## `ni` Perl Extensions
 
-`ni` is based on Perl 5.08; as a result, many of the modules you might be familiar with are generally not used, in favor of `ni`-specific perl extensions.
-
+## `ni`-specific Array Processors
 
 
-### Array Processors
 
-#### `min`, `max`, `minstr`, `maxstr`
+### `min`, `max`, `minstr`, `maxstr`
 
-#### `any`, `all`, `sum`, `prod`, `mean`
+Recall that text is numbers (and numbers are text) in Perl. Thus, there are two sets of methods for finding the minimum and maximum, depending on whether you want it in a numeric context (`min`, `max`) or in a string context (`minstr`, `maxstr`)
 
-#### `uniq`
+
+
+
+### `any`, `all`, `sum`, `prod`, `mean`
+
+These return the logical OR of all elements, the logical AND of all elements of an array, the sum of all elements (as numbers), the product of all elements (as numbers), and their mean.
+
+### `uniq`
+
+This returns all of the elements of an
 
 #### `argmax`, `argmin`
 
-#### `freqs`
+These elements
+
+### `freqs`
+
+This method has 
 
 ### `cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
@@ -415,6 +391,8 @@ $ ni 1p'r cart [1], ["a", "b", "c"]'
 ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 ```
 
+
+## Hash Constructors
 
 ### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
 Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
@@ -457,6 +435,41 @@ y	x	z
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_asc(ab_ rl(3))'
 z	x	y
 ```
+
+## I/O Perl Functions
+
+### `wf`: write to file
+
+`wf $filename, @lines`: write `@lines` to a file called `$filename`
+
+```
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
+file1
+file2
+$ ni file1
+1
+2
+$ ni file2
+yo
+```
+
+### `af`: append to file
+
+```
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
+file3
+file4
+file3
+$ ni file3
+1
+2
+hi
+$ ni file4
+yo
+```
+
+`af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
 
 
 
