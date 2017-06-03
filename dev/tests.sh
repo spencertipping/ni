@@ -2532,19 +2532,15 @@ lazytest_line=494
 lazytest_case 'ni n4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 ' 3<<'LAZYTEST_EOF'
 10	24
-ni iabcdefgh p'@v = map /^[aeg]/, split //'
-1
-1
-1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=63
+lazytest_line=55
 lazytest_case 'ni n5p'\''^{@x}; push @x, 2*a; undef; END{r join " and ", @x}'\''
 ' 3<<'LAZYTEST_EOF'
 2 and 4 and 6 and 8 and 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=99
+lazytest_line=91
 lazytest_case 'ni n3p'\''*v = sub {$_[0] x 4}; &v(a)'\''
 ' 3<<'LAZYTEST_EOF'
 1111
@@ -2552,25 +2548,25 @@ lazytest_case 'ni n3p'\''*v = sub {$_[0] x 4}; &v(a)'\''
 3333
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=110
+lazytest_line=102
 lazytest_case 'ni 1p'\''sub yo {"hi " . $_[0]} yo a'\''
 ' 3<<'LAZYTEST_EOF'
 hi 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=128
+lazytest_line=120
 lazytest_case 'ni n1E5p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 5000050000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=141
+lazytest_line=133
 lazytest_case 'ni n1E1p'\''r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'\''
 ' 3<<'LAZYTEST_EOF'
 55	3628800	12345678910
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=165
+lazytest_line=157
 lazytest_case 'ni n1000p'\''se {$_[0] + a} sub {length}, 0'\''
 ' 3<<'LAZYTEST_EOF'
 45
@@ -2579,7 +2575,7 @@ lazytest_case 'ni n1000p'\''se {$_[0] + a} sub {length}, 0'\''
 1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=175
+lazytest_line=167
 lazytest_case 'ni n1000p'\''r length a, se {$_[0] + a} sub {length}, 0'\''
 ' 3<<'LAZYTEST_EOF'
 1	45
@@ -2588,7 +2584,7 @@ lazytest_case 'ni n1000p'\''r length a, se {$_[0] + a} sub {length}, 0'\''
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=187
+lazytest_line=179
 lazytest_case 'ni n1000p'\''sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'\''
 ' 3<<'LAZYTEST_EOF'
 1	45
@@ -2597,7 +2593,7 @@ lazytest_case 'ni n1000p'\''sub len($) {length $_}; r len a, se {$_[0] + a} \&le
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=202
+lazytest_line=194
 lazytest_case 'ni n1000p'\''r a, length a'\'' p'\''r b, se {$_[0] + a} \&b, 0'\''
 ' 3<<'LAZYTEST_EOF'
 1	45
@@ -2606,7 +2602,7 @@ lazytest_case 'ni n1000p'\''r a, length a'\'' p'\''r b, se {$_[0] + a} \&b, 0'\'
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=213
+lazytest_line=205
 lazytest_case 'ni n1000p'\''r length a, a'\'' p'\''r a, sea {$_[0] + b} 0'\''
 ' 3<<'LAZYTEST_EOF'
 1	45
@@ -2615,7 +2611,7 @@ lazytest_case 'ni n1000p'\''r length a, a'\'' p'\''r a, sea {$_[0] + b} 0'\''
 4	1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=226
+lazytest_line=218
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[3], a)}
                                            0, 0, a, a;
@@ -2624,18 +2620,18 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=236
+lazytest_line=228
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=268
+lazytest_line=260
 lazytest_case 'rm -f numbers                 # prevent ni from reusing any existing file
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=269
+lazytest_line=261
 lazytest_case 'ni nE6gr4 :numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -2644,7 +2640,7 @@ lazytest_case 'ni nE6gr4 :numbers
 1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=280
+lazytest_line=272
 lazytest_case 'ni nE6gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 1000

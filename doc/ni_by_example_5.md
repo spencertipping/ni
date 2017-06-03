@@ -21,14 +21,6 @@ You may also want to consider refactoring your job to make use of Hadoop Streami
 
 `map` can also take an expression rather than a block, but this syntax is tricky 
 
-```
-ni iabcdefgh p'@v = map /^[aeg]/, split //'
-1
-1
-1
-```
-
-However, Regular expres
 
 The following example is taken from [Perl Monks](http://www.perlmonks.org/?node_id=613280)
 
