@@ -116,7 +116,7 @@ Recall that Perl has no specific boolean type. Recalling from Part 1, the number
 This form is common to almost every programming language in one form or another;
 
 ```bash
-$ni i37 p'if (a == 2) { r "input was 2" } elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } else { r "I dunno" }'
+$ ni i37 p'if (a == 2) { r "input was 2" } elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } else { r "I dunno" }'
 I dunno
 ```
 
@@ -434,20 +434,6 @@ gg
 hh
 ```
 
-This again uses complicated syntax. This time we have essentially a block of code *not wrapped in braces*. The array on which it operates is the same `split //` (syntactic sugar for `split //, $_`) from last time. The author's personal preference is to use the postfix syntax, but to wrap the block in curly braces:
-
-
-```bash
-$ ni iabcdefgh p'{r($_ x 2)} for split //'
-aa
-bb
-cc
-dd
-ee
-ff
-gg
-hh
-```
 
 #### `next` and `last`
 The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
@@ -698,12 +684,17 @@ $ ni 1p'my $x = "foo"; r "$x bar"'
 foo bar
 ```
 
-```bash
-$ ni 1p'my $x = "foo"; r "$xbar"'
-```
+If the interpolated variable could be confused, it can be wrapped in curly braces.
 
 ```bash
 $ ni 1p'my $x = "foo"; r "${x}bar"'
+foobar
+```
+
+You can also use the results of functions, however, these need to be prefixed with a backslash to tell Perl to evaluate the function.
+
+```bash
+$ ni ifoo p'r "${\a}bar"'
 foobar
 ```
 
@@ -718,14 +709,14 @@ Because `ni` is written in Perl, Perl mappers are set off with single quotes (ot
 Because strings are interpreted as numbers, if you use the numeric comparator operators, strings will be cast to numbers and compared.
 
 ```bash
-ni 1p' "ab" == "cd" ? "equal" : "not equal"'
+$ ni 1p' "ab" == "cd" ? "equal" : "not equal"'
 equal
 ```
 
 You need to use the specific string-comparison opeartors instead.
 
 ```bash
-ni 1p' "ab" eq "cd" ? "equal" : "not equal"'
+$ ni 1p' "ab" eq "cd" ? "equal" : "not equal"'
 not equal
 ```
 
@@ -794,7 +785,7 @@ You can write numbers in hexadecimal (base-16) in Perl without specifying a type
 
 ```bash
 $ ni 1p'r 0x3 + 0xa, 0x3 + 0xA'
-13
+13	13
 ```
 
 #### Bitwise `&` and `|`
