@@ -58,5 +58,9 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # You can use the companion operator `GF` to take a stream of jpeg images from a
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
 # for ffmpeg to follow `-f image2pipe -i -`.
+#
+# GF^ inverts GF, outputting PNG images from a video specified on stdin.
 
-defshort '/GF', pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF^', pmap q{sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"},
+                      shell_command;

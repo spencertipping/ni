@@ -369,6 +369,11 @@
 ## SYNTAX
 	<shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 
+# SHORT OPERATOR /GF^
+
+## SYNTAX
+	<shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
+
 # SHORT OPERATOR /H
 
 ## SYNTAX
@@ -518,6 +523,7 @@
 
 ## SYNTAX
 	(
+	| 'f' <generic_code> -> {binary_fixed_op $_}
 	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 
@@ -729,6 +735,14 @@
 	  <cellspec_fixed>
 	  <integer>?
 	) -> {real_hash_op      @$_}
+
+# SHORT OPERATOR cell/L
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <log_base>
+	) -> {cell_signed_log_op @$_}
 
 # SHORT OPERATOR cell/a
 

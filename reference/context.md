@@ -6,6 +6,7 @@
 
 ## SHORT OPERATORS (ni --doc/short X)
 	cell/H
+	cell/L
 	cell/a
 	cell/d
 	cell/e

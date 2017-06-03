@@ -5,6 +5,27 @@
 ## IMPLEMENTATION
 	my @xs = @_; sio; exec_ni @xs
 
+# OPERATOR binary_fixed
+
+## IMPLEMENTATION
+	
+	  use bytes;
+	  my ($pack_template) = @_;
+	  my @packed = unpack $pack_template, "\0" x 65536;
+	  my $length = length pack $pack_template, @packed;
+	  my $offset = 0;
+	  die "ni: binary_fixed template consumes no data" unless $length;
+	  my $buf = $length;
+	  $buf <<= 1 until $buf >= 65536;
+	  while (1) {
+	    read STDIN, $_, $buf - length, length or return until length >= $length;
+	    my @vs = unpack "($pack_template)*", $_;
+	    for (my $n = 0; $n + @packed < @vs; $n += @packed) {
+	      print join("\t", @vs[$n..$n+$#packed]), "\n";
+	    }
+	    $_ = length() % $length ? substr($_, $length * @vs / @packed) : '';
+	  }
+
 # OPERATOR binary_perl
 
 ## IMPLEMENTATION
@@ -35,6 +56,16 @@
 	  my ($cs, $base) = @_;
 	  my $lb = 1 / log $base;
 	  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
+
+# OPERATOR cell_signed_log
+
+## IMPLEMENTATION
+	
+	  my ($cs, $base) = @_;
+	  my $lb = 1 / log $base;
+	  cell_eval {
+	    args => 'undef',
+	    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
 
 # OPERATOR checkpoint
 
@@ -259,7 +290,8 @@
 ## IMPLEMENTATION
 	
 	  my ($lambda) = @_;
-	  1 while defined simage_into {exec_ni @$lambda};
+	  $ENV{KEY} = 0;
+	  1 while ++$ENV{KEY} && defined simage_into {exec_ni @$lambda};
 
 # OPERATOR echo
 	Append text verbatim

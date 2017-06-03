@@ -1,6 +1,6 @@
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
-nearest newline. If you want to parse binary data, you should use the `b`
+nearest newline. If you want to parse binary data you should use the `b`
 operator, which does block reads and provides a byte cursor.
 
 ## Generating binary data
@@ -33,7 +33,30 @@ read with perl":
 
 ```bash
 $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
-                 r rp "ss"' r10
+                 r rp"ss"' r10
+2052	2052
+4097	4097
+6126	6126
+8130	8130
+10103	10103
+12036	12036
+13921	13921
+15752	15752
+17521	17521
+19222	19222
+```
+
+A faster approach is to use the `bf` operator to read fixed-length packed
+records (internally it uses more efficient logic to manage the queue of
+incoming bytes):
+
+**NOTE:** The following behaves nondeterministically on Alpine for reasons I
+don't understand. I assume it has something to do with libc differences, but
+you should assume `bf` doesn't work until I get this sorted out (the test below
+is disabled for now).
+
+```sh
+$ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
 6126	6126

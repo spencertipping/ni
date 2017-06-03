@@ -265,6 +265,7 @@ Checkpoints and files share many commonalities. The key difference between a che
 An example of checkpoint use is the following:
 
 ```bash
+$ rm -f numbers                 # prevent ni from reusing any existing file
 $ ni nE6gr4 :numbers
 1
 10

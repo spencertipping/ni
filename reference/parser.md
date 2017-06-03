@@ -280,6 +280,7 @@
 	    <gnuplot_code>
 	  ) -> {stream_to_gnuplot_op @$_}
 	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
+	| 'GF^' <shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
 	| 'H' (
 	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
@@ -366,6 +367,7 @@
 	    </qfn>
 	  ) -> {configure_op @$_}
 	| 'b' (
+	  | 'f' <generic_code> -> {binary_fixed_op $_}
 	  | 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	  )
 	| 'c' '' -> {count_op}
@@ -681,6 +683,10 @@
 	    <cellspec_fixed>
 	    <integer>?
 	  ) -> {real_hash_op      @$_}
+	| 'L' (
+	    <cellspec_fixed>
+	    <log_base>
+	  ) -> {cell_signed_log_op @$_}
 	| 'a' <cellspec_fixed> -> {col_average_op $_}
 	| 'd' <cellspec_fixed> -> {col_delta_op   $_}
 	| 'e' (
@@ -846,6 +852,7 @@
 
 ## DEFINITION
 	(
+	| 'f' <generic_code> -> {binary_fixed_op $_}
 	| 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	)
 

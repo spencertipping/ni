@@ -4305,7 +4305,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-133 core/cell/cell.pl
+144 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -4393,6 +4393,17 @@ defoperator cell_exp => q{
 defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
 defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
 
+# Log-progression that preserves sign of the values. Everything is shifted
+# upwards by one in log-space, so signed_log(0) == log(1) == 0.
+defoperator cell_signed_log => q{
+  my ($cs, $base) = @_;
+  my $lb = 1 / log $base;
+  cell_eval {
+    args => 'undef',
+    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
+};
+
+defshort 'cell/L', pmap q{cell_signed_log_op @$_}, pseq cellspec_fixed, log_base;
 
 defoperator jitter_uniform => q{
   my ($cs, $mag, $bias) = @_;
@@ -5933,7 +5944,7 @@ sub rb($) {
   $r;
 }
 
-sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
+sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
 7 core/binary/bytewriter.pm
 # Byte writer.
 # Convenience functions that make it easier to write binary data to standard out.
@@ -5942,7 +5953,7 @@ sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $bindata}
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-30 core/binary/binary.pl
+50 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -5970,8 +5981,28 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
 
 defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
 
+defoperator binary_fixed => q{
+  use bytes;
+  my ($pack_template) = @_;
+  my @packed = unpack $pack_template, "\0" x 65536;
+  my $length = length pack $pack_template, @packed;
+  my $offset = 0;
+  die "ni: binary_fixed template consumes no data" unless $length;
+  my $buf = $length;
+  $buf <<= 1 until $buf >= 65536;
+  while (1) {
+    read STDIN, $_, $buf - length, length or return until length >= $length;
+    my @vs = unpack "($pack_template)*", $_;
+    for (my $n = 0; $n + @packed < @vs; $n += @packed) {
+      print join("\t", @vs[$n..$n+$#packed]), "\n";
+    }
+    $_ = length() % $length ? substr($_, $length * @vs / @packed) : '';
+  }
+};
+
 defshort '/b',
   defdsp 'binaryalt', 'dispatch table for the /b binary operator',
+    f => pmap(q{binary_fixed_op $_}, generic_code),
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl
@@ -6134,7 +6165,7 @@ defoperator numpy_dense => q{
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl
-62 core/gnuplot/gnuplot.pl
+66 core/gnuplot/gnuplot.pl
 # Gnuplot interop.
 # An operator that sends output to a gnuplot process.
 
@@ -6195,11 +6226,15 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # You can use the companion operator `GF` to take a stream of jpeg images from a
 # partitioned gnuplot process and assemble a movie. `GF` accepts shell arguments
 # for ffmpeg to follow `-f image2pipe -i -`.
+#
+# GF^ inverts GF, outputting PNG images from a video specified on stdin.
 
-defshort '/GF', pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF^', pmap q{sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"},
+                      shell_command;
 1 core/image/lib
 image.pl
-115 core/image/image.pl
+116 core/image/image.pl
 # Image compositing and processing
 # Operators that loop over concatenated PNG images within a stream. This is
 # useful for compositing workflows in a streaming context, e.g. between a
@@ -6272,7 +6307,8 @@ sub simage_into(&) {
 
 defoperator each_image => q{
   my ($lambda) = @_;
-  1 while defined simage_into {exec_ni @$lambda};
+  $ENV{KEY} = 0;
+  1 while ++$ENV{KEY} && defined simage_into {exec_ni @$lambda};
 };
 
 defshort '/I' => pmap q{each_image_op $_}, _qfn;
@@ -7852,10 +7888,10 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-60 doc/binary.md
+83 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
-nearest newline. If you want to parse binary data, you should use the `b`
+nearest newline. If you want to parse binary data you should use the `b`
 operator, which does block reads and provides a byte cursor.
 
 ## Generating binary data
@@ -7888,7 +7924,30 @@ read with perl":
 
 ```bash
 $ ni test.wav bp'rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
-                 r rp "ss"' r10
+                 r rp"ss"' r10
+2052	2052
+4097	4097
+6126	6126
+8130	8130
+10103	10103
+12036	12036
+13921	13921
+15752	15752
+17521	17521
+19222	19222
+```
+
+A faster approach is to use the `bf` operator to read fixed-length packed
+records (internally it uses more efficient logic to manage the queue of
+incoming bytes):
+
+**NOTE:** The following behaves nondeterministically on Alpine for reasons I
+don't understand. I assume it has something to do with libc differences, but
+you should assume `bf` doesn't work until I get this sorted out (the test below
+is disabled for now).
+
+```sh
+$ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
 6126	6126
