@@ -1,13 +1,15 @@
 # `ni` by Example, Chapter 2 Part 2 (alpha release)
 
+## Introduction
+
+In this section, we introduce `ni`-specific Perl extensions. 
+`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.
+
+The next set of operators work with multiple lines of input data; this allows reductions over multiple lines to take place. This section ends with a discussion of more I/O functions.
 
 ## `ni`-specific Perl Functions
-This section collects a number of utility functions that are used within a Perl mapper, but are specific to `ni`.
-
 
 ### Geographic Perl Functions
-`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.  All of these operators work only inside a Perl mapper context (`p'...'`).
- 
 
 #### `ghe`: geohash encoding
 Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
