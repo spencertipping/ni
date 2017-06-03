@@ -307,7 +307,7 @@ a	b
 
 Usually regular expressions are set off using forward slashes, however, this means that forward slashes within a regex will have to be escaped. You can use `m` and another character when you need to match forward slashes.
 
-```bash
+```sh
 $ ni i/usr/bin p'm#^/usr/(.*)$#'
 bin
 ```

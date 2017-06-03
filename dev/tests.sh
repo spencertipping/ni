@@ -1662,12 +1662,6 @@ lazytest_case 'ni iabcdefgh p'\''my ($x, $y) = /^(.)(.)/; r $x, $y'\''
 a	b
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2_1.md'
-lazytest_line=311
-lazytest_case 'ni i/usr/bin p'\''m#^/usr/(.*)$#'\''
-' 3<<'LAZYTEST_EOF'
-bin
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_2_1.md'
 lazytest_line=321
 lazytest_case 'ni iabcdefgh p'\''tr/a-z/A-Z/'\''
 ' 3<<'LAZYTEST_EOF'
