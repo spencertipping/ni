@@ -682,21 +682,23 @@ not equal
 
 Logical operators come in two flavors, high-precedence and low-precedence. The low-precedence operators `and`, `or`, `not`, and their high-precedence C-like counterparts `&&`, `||`, `!`.
 
-In general, there is little difference between these operations, but tricky errors may arise. In general, it is safe and syntactically pleasing to use the low-precedence operators between statements, and to use the high-precedence operators between variables. 
+In general, there is little difference between these operations, but tricky errors may arise. In general, it is safe and syntactically pleasing to use the low-precedence operators between statements, and to use the high-precedence operators with scalars and expressions.
 
 ```
-open my $fh, '<', $filename || die "A horrible death!";
-open my $fh, '<', $filename or die "A horrible death!";
+open my $fh, '<', $filename || die "A horrible death!"; ## Fails
+open my $fh, '<', $filename or die "A horrible death!"; ## Succeeds
 ```
+
 
 
 ### Bitwise Operators
 
-Bit shifting is useful because it is an incredibly fast operation. It works incredibly well
+Bit shifting is useful because it is an incredibly fast operation; it's very useful for building hash functions and reducing complexity or computational burden. 
+
 
 #### Bit Shifts `<<` and `>>`
 
-Bit shifting to the right is the equivalent of dividing by a power of 2 
+Bit shifting to the right is (in general) the equivalent of taking the integer part of dividing by the specified power of 2.
 
 ```bash
 $ ni 1p'125 >> 3'
@@ -704,15 +706,46 @@ $ ni 1p'125 >> 3'
 ```
 
 ```bash
+$ ni 1p'int(125/2**3)'
+15
+```
+
+Bit shifting to the left is equivalent to multiplying by the specified power of 2.
+
+
+```bash
 $ ni 1p'125 << 3'
 1000
 ```
 
-Bit shifting has some more difficult 
+The exception to this rule is when the number of bits to shift is larger than the size of the registers in the underlying hardware, but this 
+
+#### Hexadecimal Numbers
+
+You can write numbers in hexadecimal (base-16) in Perl without specifying a type:
+
+```bash
+$ ni 1p'r 0x3 + 0xa, 0x3 + 0xA'
+13
+```
 
 #### Bitwise `&` and `|`
 
-These operations can be useful for unwinding loops in programs; like bit shifts, they're very fast.
+These operations can be useful for unwinding loops in programs; like bit shifts, they're very fast and convenient for running on binary-like data.
+
+```bash
+$ ni 1p'r 0x3 & 0xa, 0x3 | 0xa'
+2	11
+```
+
+They also work on decimal numbers
+
+
+```bash
+$ ni 1p'r 3 & 10, 3 | 10'
+2	11
+```
+
 
 ### Hash subroutines
 
