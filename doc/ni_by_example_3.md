@@ -505,26 +505,56 @@ Note that the expression syntax requires a comma following the expression, where
 
 ### Operations on mulitple arrays and scalars
 
-You can feed multiple lists and scalars into `grep`, `map`, and `for`, by setting them off with commas; there is no need to construct a new array containing all of the elements 
+You can feed multiple lists and scalars into `grep`, `map`, and `for`, by setting them off with commas; there is no need to construct a new array containing all of the elements you want to operate over.
 
-
+```bash
+$ ni 1p'my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye"); map {$_ x 2} @x, $y, @z'
+11
+22
+yoyo
+goodgood
+byebye
+```
 
 
 ## Common Tricks
 
 ### Default Values
 
-There are no key errors in Perl; 
+There are no key errors or index errors in Perl. In the spirit of "Do What I Mean", you're allowed to leave variables undefined and initialize those values later.
 
 ```bash
 $ ni 1p'my $x; ++$x'
 1
 ```
 
+```bash
+$ ni 1p'my @x; $x[3] = "yo"; r @x'
+			yo
+```
+
+
+
 ### `defined` and `exists`
 
+Because there are no key errors, `exists` is used to check the presence of a hash element or array element.
 
+```bash
+$ ni 1p'my @x; $x[3] = "yo"; exists $x[0] ? "yes" : "no"'
+no
+```
 
+```bash
+$ ni 1p'my %h = {"u" => "ok"}; exists $h["me"] ? "yes" : "no"'
+no
+```
+
+The scalar analog of `exists` is `defined`, which checks if a scalar has been assigned a value.
+
+```bash
+$ ni 1p'my $x; defined $x ? "yes" : "no"'
+no
+```
 
 ### Text is numbers
 

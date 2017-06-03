@@ -239,7 +239,7 @@ $ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
 
 
 
-##Data Development with `ni` and Hadoop
+## Data Development with `ni` and Hadoop
 
 If you screw up your partitioning, you're ruined. 
 
@@ -312,14 +312,14 @@ One caveat with checkpoint files is that they are persisted, so these files must
 As of now, `ni` auto-generates the names for the Hadoop directories, and these can be hard to remember off the top of your head. If you want to 
 
 
-###Tools for Data Development
+### Tools for Data Development
 
 1. A good markdown editor; I like Laverna, and it should work on basically all platforms.
 2. Infinite patience
 3. A reasonable test set.
 
 
-##Plotting with `ni --js`
+## Plotting with `ni --js`
 Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
 
 **TODO**: Say something useful.
@@ -330,7 +330,7 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 
 **TODO: Understand this**
 
-##Partitioned Matrix Operations
+## Partitioned Matrix Operations
 
 Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
 
@@ -341,29 +341,37 @@ Operations on huge matrices are not entirely `ni`ic, since they may require spac
   * In the case that there are collisions for locations `X`, `X` will sum the values
   * For example: `ni n010p'r 0, a%3, 1' X`
 
-##Disk-Backed Data Closures
+## Disk-Backed Data Closures
 
 * `@:[disk_backed_data_closure]`
 
-##Binary Operations
+## Binary Operations
 In theory, this can save you a lot of space. But I haven't used this in practice.
 
-##Less Useful `ni`-specific Perl Extensions
+## Less Useful `ni`-specific Perl Extensions
 
 
-###Array Functions
+### Array Functions
   * `clip`
   * `within`
   
 
    
-##Writing Your Own `ni` Extensions
+## Writing Your Own `ni` Extensions
 **TODO** Understand how this works
 
-##Obscure Interops/Extensions
+## Obscure Interops/Extensions
 
 * [SQL](sql.md)
 * [PySpark](pyspark.md)
 * [Scripting](script.md)
 * [HTTP Operations](net.md)
 * [Defining `ni` functions](fn.md)
+
+## More `ni` modules
+
+* Image
+* Binary
+* Bytestream
+* gnuplot
+
