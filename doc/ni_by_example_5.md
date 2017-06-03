@@ -21,7 +21,7 @@ You may also want to consider refactoring your job to make use of Hadoop Streami
 
 `map` can also take an expression rather than a block, but this syntax is tricky 
 
-```bash
+```
 ni iabcdefgh p'@v = map /^[aeg]/, split //'
 1
 1
