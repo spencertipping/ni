@@ -1,22 +1,26 @@
-#`ni` by Example, Chapter 1 (alpha release)
+# `ni` by Example, Chapter 1 (alpha release)
 
 Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
 By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. `ni` suffers from having both a steep learning curve and an exponential power curve; learning the basics of the syntax is the hardest part, and knowing the basics won't make you much more productive (especially if you have a couple of years of Python under your belt and know another data processing language like `pandas`).
 
-The knowledge represented in this tutorial is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This is covered in depth in [Part 2](ni_by_example_2.md).  Stick with it, and you'll be rewarded (we promise).
+The knowledge represented in this tutorial is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This tutorial is structured in 5 parts:
+
+1. Intro to `ni`
+2. Perl for `ni`
+3. The real power of `ni`
+4. `ni` and Ruby, Perl, Python, Lisp & Bash
+5. `ni` odds and ends
 
 In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
-##What is `ni`?
+## What is `ni`?
 
 `ni` is write-anywhere, run-everywhere
 
 `ni` is a self-modifying quine.
 
 `ni` is everything-from-the-command-line.
-
-`ni` is what you need from Flink and Spark and Luigi 
 
 `ni` is concise.
 
@@ -31,19 +35,18 @@ In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsh
 ```
 git clone git@github.com:spencertipping/ni.git
 cd ni
-./build
 ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 ```
 
-##`ni` Development Environment
+## `ni` Development Environment
 
 It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one that is as vanilla as possible; if you're using some other CLI and have `bash` installed, `bash` at the command line will open a bash shell (using your `~/.bash_profile` settings)
 
 
-##Basic Streams
+## Basic Streams
 `ni` is at it score, a stream-processing language, and every operator we will introduce in this chapter will function on lines of a stream. In this section, we'll cover integer streams as well as how to create streams using bash scripts.
 
-###`n`: Integer Stream
+### `n`: Integer Stream
 `ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
 
 ```bash
@@ -72,7 +75,7 @@ To generate a large but finite number of integers, you can use scientific notati
 Without an argument, `ni n` and ni `n0` give an infinite stream of consecutive integers starting from 1 and 0, respectively.
 
 
-###`i`: Literal text 
+### `i`: Literal text 
 `i` operator is the way to put literal text into the command line:
 
 ```bash
@@ -104,7 +107,7 @@ foo[]	[bar]
 ```
 
 
-###`e'...'`: Evaluate `bash` script
+### `e'...'`: Evaluate `bash` script
 
 `ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
 
@@ -144,12 +147,12 @@ $ ni n100 e'grep -E "(.)\1"'
 
 If you find regular expression used above hard to understand, here's a [StackExchange post](http://unix.stackexchange.com/questions/70933/regular-expression-for-finding-double-characters-in-bash) that explains it.
 
-##File I/O
+## File I/O
 
 
 The directory you ran this command from, you should have a file called `ten.txt`.  If you open `ten.txt` in your text editor of choice, you should find the integers from 1 to 10, each printed on its own line.
 
-###`\>`: Output and Emit File Name
+### `\>`: Output and Emit File Name
 
 `ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
@@ -160,7 +163,7 @@ ten.txt
 
 Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
 
-###File Input
+### File Input
 
 If you don't have the `ten.txt` file in your current directory, run `$ ni n10 \>ten.txt`. Files are appended to the stream  
 
@@ -227,12 +230,12 @@ $ ni --explain n10 \>ten.txt
 Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
 
 
-##Stream Duplication and Compression
+## Stream Duplication and Compression
 In this section, we'll cover two useful operations
 
 We recognize the first and last operators instantly; the middle two operators are new.
 
-###`=[...]`: Divert Stream
+### `=[...]`: Divert Stream
 
 The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
 
@@ -276,7 +279,7 @@ For simple operations, the square brackets are unnecessary; we could have equiva
 
 This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
 
-###`z`: Compression
+### `z`: Compression
 
 Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell. `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). 
 
@@ -300,7 +303,7 @@ as we would expect.
 
 
 
-##Basic Row Operations, File Reading, and Output Redirection
+## Basic Row Operations, File Reading, and Output Redirection
 `$ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l`
 
 Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
@@ -324,7 +327,7 @@ $ ni --explain n10 =z\>ten.gz r3 \>tens.txt \<
 A wrinkle has been added into the `divert` statement, demonstrating the ability to do more complicated operation of compressing and writing to a file. The lack of whitespace here is critical, and this more concise command is preferred stylistically to the explicit and functionally equivalent `=[ z \>ten.gz ]`.
 
 
-###`r`: Take Rows
+### `r`: Take Rows
 
 `r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities. Eventually you will have all of these operations memorized, but for now, just try to remember that you have these options available to you.
 
@@ -350,20 +353,20 @@ The `r` operator is especially useful during development; for example, if you ar
 > With the exception of operators that require processing the entire stream (sorting, for example) all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.
 
 
-###`\<`: Read from File Names in Stream
+### `\<`: Read from File Names in Stream
 When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
 
 `\<` interprets its input stream as file names, and it will output the contents of these files in order. 
 
 Note that `ni` does not insert newlines between input from separate files. In general, this is a feature, as it allows zip files to be partitioned (for example, in HDFS). However, if you're reading from multiple raw text files, you may need to make sure that the file ends with a newline.
 
-###`|` and `>`: Piping and Redirecting Output
+### `|` and `>`: Piping and Redirecting Output
 
 Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
 
 
-##Perl Operations
-`ni` and Perl (5) go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
+## Perl Operations
+`ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
 
 In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
 
@@ -373,7 +376,7 @@ We'll start with the following `ni` spell.
 
 The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
 
-```
+```sh
 aba     iss     ed
 aba     sta     rdize
 abb     rev     iature
@@ -399,15 +402,15 @@ $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 
 We have reviewed every operator previously except the last. 
 
 
-###`p'...'`: Map Perl over rows
-When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run (or, it will run, but it's bad style, or it's hard to test, or it's okay for a small script, but it's too hard to read, or it's _dangerous_).
+### `p'...'`: Map Perl over lines
+When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run.
 
 Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
 
 `ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
 
 
-###`r()`: Emit row
+### `r()`: Emit row
 
 Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
 
@@ -441,7 +444,7 @@ Clearly, If the desired output of the Perl mapper is two or more columns per row
 
 When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
 
-###`1`: Dummy pulse
+### `1`: Dummy pulse
 Suppose that you have a Perl script that generates data, and you want to generate data from that script directly. You might be surprised that the following code generates no output:
 
 ```
@@ -463,7 +466,7 @@ $ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
 
 Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
 
-###Column Accessor Functions `a` and `a()`
+### Column Accessor Functions `a` and `a()`
 
 `ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
 
@@ -497,7 +500,7 @@ This brings us to an important point about `ni` processes in general:
 
 > `ni op1 op2` is equivalent to `ni op1 | ni op2`.
 
-###`rp'...'`: Take rows based on Perl
+### `rp'...'`: Take rows based on Perl
 
 We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
 
@@ -514,7 +517,7 @@ Examples:
 * `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
 
-##Basic Column Operations
+## Basic Column Operations
 
 
 ```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
@@ -541,7 +544,7 @@ $ ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3,
 ["row_cols_defined",1,0]
 ```
 
-###`f`: Column Selection
+### `f`: Column Selection
 Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
 
 `r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
@@ -554,7 +557,7 @@ Like `r`, there is a lot you can do with `f`:
 * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
 
 
-###`x`: Column Exchange
+### `x`: Column Exchange
 
 `x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
 
@@ -570,10 +573,10 @@ The spell for this exercise could equivalently be written:
 
 `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
 
-##Column Operation Shortand
+## Column Operation Shortand
 The operations in this section complete the set of column generation and access; none of them are particularly difficult to impelment in Perl, but they are common enough that `ni` has added shorthand for them.  The first set of operators, `F`, is used to create columns of data out of a stream of text columns. The second set `p'F_ ...', p'FM', and p'FR n'`, are used for general purpose access to columns in the stream.
 
-###`F`: Split text stream into columns
+### `F`: Split text stream into columns
 
 * `F:<char>`: split on character
   * Note: some characters need to be escaped (for example, forward-slash); use `F/regex/` below for more flexibility (at the cost of less concision).
@@ -586,7 +589,7 @@ The operations in this section complete the set of column generation and access;
 * `FW`: split on runs of non-word characters
 * `FP`: split on pipe symbols
 
-###`p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
+### `p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
 
 In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
 
@@ -604,7 +607,7 @@ It is often useful to take everything after a certain point in a line. This can 
 
 
 
-##Sort, Unique, and Count
+## Sort, Unique, and Count
 Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
 
 If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
@@ -641,13 +644,13 @@ Examples:
 
 As above, if you have more than one column, you currently **must** specify the columns you want sorted; the reason for this is a system-to-system instability with regard to how the unix `sort` interacts).
   
-###`c`: Count Sorted Rows
+### `c`: Count Sorted Rows
 `c` is `ni`'s version of `uniq -c`, which counts the number of identical  consecutive rows in a stream. The main difference is that `ni`'s `c` tab-delimits the output, while `uniq -c` space-delimits.
    
-###`u`: Unique Sorted Rows
+### `u`: Unique Sorted Rows
 `u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
   
-###`o` and `O`: Syntactic Sugar for Numeric Sorting
+### `o` and `O`: Syntactic Sugar for Numeric Sorting
 Often you will want numeric sorting in a more keystroke-efficient way than `gn<column>-`. The `o` (sort rows ascending, numerically) and `O` (sort rows  descending, numerically) operator has been provided for this purpose.
 
 The command from the `g` section can be rewritten as:
@@ -656,7 +659,7 @@ The command from the `g` section can be rewritten as:
 
 **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
 
-##Conclusion
+## Conclusion
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
 If you've only done this tutorial, you might be a little disappointed that your productivity as a programmer hasn't increased by much yet. Don't worry; when we start talking about Hadoop streaming operations in [Chapter 2](ni_by_example_2.md), you'll see your productivity grow by leaps and bounds. We'll see you in the next tutorial.
