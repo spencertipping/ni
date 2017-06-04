@@ -29,7 +29,7 @@ In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsh
 `ni` is two-fisted data science.
 
 
-##Installation
+## Installation
 `ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
 
 ```
@@ -211,7 +211,7 @@ $ ni n1.3E5
 because `ni` is reading from the file named `n10`.
 
 
-##`ni` Coding and Debugging
+## `ni` Coding and Debugging
 
 The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
 

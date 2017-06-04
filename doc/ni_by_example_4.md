@@ -444,7 +444,7 @@ This is not (yet) the cleanest or most beautiful syntax [and that matters!], but
 
 
 
-##`m'...'`: Ruby
+## `m'...'`: Ruby
 You have always had permission to use Ruby, but I've held off documenting it until you can do so responsibly. Why does Ruby require responsibility, whereas Python/numpy gets a pass (mostly)?
 
 1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, the Python environment can do things that `ni` alone cannot do. The Ruby operators are weak-tea versions of cutting-edge Perl operators.

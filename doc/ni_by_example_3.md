@@ -431,7 +431,7 @@ This identity allows you to iterate fast, completely within `less` and the comma
   
 **Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
 
-###`HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming (... coming soon)
+### `HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming (... coming soon)
 
 I have this great idea to apply the fundamental theorem to `ni` jobs so the only thing you have to do is replace `HS` with `HDS` and you get a test-run of your job. It's been a little hard to cook up though.
 
@@ -503,7 +503,7 @@ There are a number of Hadoop-specific issues that may make jobs that you can run
 As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. An easy way to do this is to combine two columns of the data; when two columns are joined, that the hashed value of the combined data will be correlated to either of the initial values.
 
 
-####`hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
+#### `hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
 
 
 One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The pharse is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
