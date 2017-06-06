@@ -9,17 +9,18 @@ our $binary = '';
 sub bi() {$offset}
 
 sub pb($) {
+  use bytes;
   $stdin_ok &&= sysread STDIN, $binary, $_[0], length $binary
-    if $stdin_ok && length($binary) < $_[0];
+    while $stdin_ok && length($binary) < $_[0];
   substr $binary, 0, $_[0];
 }
 
-sub available() {length pb 8192}
+sub available() {length pb 1}
 
 # TODO: optimize
 sub rb($) {
-  pb $_[0] if length($binary) < $_[0];
-  my $r = substr $binary, 0, $_[0];
+  use bytes;
+  my $r = pb $_[0];
   $binary = substr $binary, $_[0];
   $offset += $_[0];
   $r;
