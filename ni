@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-51 core/boot/ni.map
+52 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -90,6 +90,7 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
+lib core/bloom
 lib core/binary
 lib core/matrix
 lib core/gnuplot
@@ -5183,7 +5184,7 @@ BEGIN {
   *ttm = \&truncate_to_minute;
 }
 
-152 core/pl/pl.pl
+153 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5259,6 +5260,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/geohash.pm
                             core/pl/time.pm
                             core/cell/murmurhash.pl
+                            core/bloom/bloomfilter.pl
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
@@ -5912,6 +5914,75 @@ sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 # particularly common.
 
 defparseralias pycode => pmap q{pydent $_}, generic_code;
+2 core/bloom/lib
+bloomfilter.pl
+bloom.pl
+29 core/bloom/bloomfilter.pl
+# Bloom filter library.
+# A simple pure-Perl implementation of Bloom filters.
+
+# Swiped from https://hur.st/bloomfilter
+sub bloom_args($$) {
+  my ($n, $p) = @_;
+  my $m = int 1 + $n * -log($p) / log(2 ** log 2);
+  my $k = int 0.5 + log(2) * $m / $n;
+  ($m, $k);
+}
+
+sub bloom_new($$) {
+  my ($m, $k) = @_;
+  ($m, $k) = bloom_args($m, $k) if $k < 1;
+  pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
+}
+
+# Destructively adds an element to the filter and returns the filter.
+sub bloom_add($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ + 64, 1) = 1 for map murmurhash3($_[1], $_) % $m, 1..$k;
+  $_[0];
+}
+
+sub bloom_contains($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ + 64, 1) || return 0 for map murmurhash3($_[1], $_) % $m, 1..$k;
+  1;
+}
+35 core/bloom/bloom.pl
+# Bloom filter operators.
+# Operators to construct and query bloom filters. The bloom constructor is a
+# sub-operator of `z` (compress), and querying is done using `rb`.
+#
+# Notation is two digits: power of ten #elements, and power of ten
+# false-positive probability. So `zB74` means "create a filter designed to
+# store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
+
+BEGIN {
+  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
+  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
+}
+
+defoperator bloomify => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add $f, $_ while <STDIN>;
+  print $f;
+};
+
+defshort '/zB', pmap q{bloomify_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
+
+defoperator bloom_rows => q{
+  my ($col, $bloom_lambda) = @_;
+  my $bloom;
+  my $r = sni @$bloom_lambda;
+  1 while read $r, $bloom, 65536, length $bloom;
+  $r->await;
+  while (<STDIN>) {
+    chomp(my @cols = split /\t/, $_, $col + 2);
+    print if bloom_contains $bloom, $cols[$col];
+  }
+};
+
+defrowalt pmap q{bloom_rows_op @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
 3 core/binary/lib
 bytestream.pm
 bytewriter.pm
@@ -9540,7 +9611,7 @@ Operator | Status | Example      | Description
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
 `1`      | M      | `1p'"hi"'`   | `1` is an alias for `n1`
 `a`      |        |              |
-`b`      | T      | `bL40`       | Block-read and unpack binary data
+`b`      | T      | `bL40`       | Binary operators
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
 `d`      |        |              |
 `e`      | T      | `e[tac]`     | Exec shell command
@@ -9568,7 +9639,7 @@ Operator | Status | Example      | Description
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
-`D`      | PT     | `D.foo`      | Destructure structured text data (JSON/XML)
+`D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |

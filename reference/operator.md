@@ -31,6 +31,29 @@
 ## IMPLEMENTATION
 	stdin_to_perl binary_perl_mapper $_[0]
 
+# OPERATOR bloom_rows
+
+## IMPLEMENTATION
+	
+	  my ($col, $bloom_lambda) = @_;
+	  my $bloom;
+	  my $r = sni @$bloom_lambda;
+	  1 while read $r, $bloom, 65536, length $bloom;
+	  $r->await;
+	  while (<STDIN>) {
+	    chomp(my @cols = split /\t/, $_, $col + 2);
+	    print if bloom_contains $bloom, $cols[$col];
+	  }
+
+# OPERATOR bloomify
+
+## IMPLEMENTATION
+	
+	  my ($n, $p) = @_;
+	  my $f = bloom_new $n, $p;
+	  chomp, bloom_add $f, $_ while <STDIN>;
+	  print $f;
+
 # OPERATOR buffer_null
 
 ## IMPLEMENTATION

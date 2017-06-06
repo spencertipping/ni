@@ -640,6 +640,11 @@
 ## SYNTAX
 	(
 	| (
+	    'b'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op @$_}
+	| (
 	    'l'
 	    <lispcode>
 	  ) -> {$$_[1]} -> {lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
@@ -717,6 +722,14 @@
 
 ## SYNTAX
 	<compressor_spec>
+
+# SHORT OPERATOR /zB
+
+## SYNTAX
+	(
+	  <bloom_size_spec>
+	  <bloom_fp_spec>
+	) -> {bloomify_op @$_}
 
 # SHORT OPERATOR /zd
 

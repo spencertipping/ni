@@ -416,6 +416,11 @@
 	  )
 	| 'r' (
 	  | (
+	      'b'
+	      <colspec1>
+	      </qfn>
+	    ) -> {[@$_[1,2]]} -> {bloom_rows_op @$_}
+	  | (
 	      'l'
 	      <lispcode>
 	    ) -> {$$_[1]} -> {lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
@@ -469,6 +474,10 @@
 	| 'w' </qfn> -> {with_right_op @$_}
 	| 'x' <colspec>? -> {ref $_ ? colswap_op @$_ : colswap_op 2, 1}
 	| 'z' <compressor_spec>
+	| 'zB' (
+	    <bloom_size_spec>
+	    <bloom_fp_spec>
+	  ) -> {bloomify_op @$_}
 	| 'zd' <'', evaluate as [decode]>
 	| 'zn' <'', evaluate as [sink_null]>
 	)
@@ -545,6 +554,11 @@
 
 ## DEFINITION
 	(
+	| (
+	    'b'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op @$_}
 	| (
 	    'l'
 	    <lispcode>
@@ -633,6 +647,16 @@
 	| <integer> -> {['take',   $_]}
 	| <sqlcode> -> {['filter', $_]}
 	)
+
+# PARSER bloom_fp_spec
+
+## DEFINITION
+	/(?^:\d)/ -> {10 ** -$_}
+
+# PARSER bloom_size_spec
+
+## DEFINITION
+	/(?^:\d)/ -> {10 **  $_}
 
 # PARSER cell/lambda
 	A bracketed lambda function in context 'cell'

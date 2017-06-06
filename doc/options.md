@@ -36,7 +36,7 @@ Operator | Status | Example      | Description
 `\##`    | U      | `\>foo \##`  | Cat **and then obliterate** named resource(s)
 `1`      | M      | `1p'"hi"'`   | `1` is an alias for `n1`
 `a`      |        |              |
-`b`      | T      | `bL40`       | Block-read and unpack binary data
+`b`      | T      | `bL40`       | Binary operators
 `c`      | T      | `c`          | `uniq -c`, but emits proper TSV format
 `d`      |        |              |
 `e`      | T      | `e[tac]`     | Exec shell command
@@ -64,7 +64,7 @@ Operator | Status | Example      | Description
 `A`      |        |              |
 `B`      | T      | `Bn`         | Buffer a stream
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
-`D`      | PT     | `D.foo`      | Destructure structured text data (JSON/XML)
+`D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
 `G`      |        |              |
