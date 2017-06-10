@@ -20,6 +20,7 @@
   <input id='search-text'></input>
 </div>
 <div id='status'>
+  <div id='render-bar'><div id='render-bar-inner'></div></div>
   <label id='sizelabel'></label>
 </div>
 </body>

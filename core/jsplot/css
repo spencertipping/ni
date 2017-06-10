@@ -8,9 +8,11 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 
 *:focus, *:hover, .pinned, .active {opacity:1 !important}
 
-#status {position:absolute; right:2px; bottom:2px; width:300px; opacity:0.2; text-align:right; z-index:9}
+#status {position:absolute; right:2px; bottom:2px; width:400px; opacity:0.2; text-align:right; z-index:9}
+#render-bar {display:inline-block; width:40px; height:4px; border:solid 1px rgba(255,255,255,0.5)}
+#render-bar-inner {background:rgba(255,255,255,0.5); height:4px}
 
-#search {position:absolute; right:200px; bottom:0; width:400px; z-index:9}
+#search {position:absolute; right:400px; bottom:0; width:400px; z-index:9}
 #search input {width:400px; font-family:monospace; color:#eee; border:none; outline:none; background:transparent; border-top:solid 1px transparent}
 
 #search input:focus {border-top:solid 1px #f60}

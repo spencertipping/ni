@@ -7017,7 +7017,7 @@ caterwaul(':all')(function () {
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
                                                                   : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-117 core/jsplot/render.waul
+118 core/jsplot/render.waul
 // Rendering support.
 // Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 // details are all hidden inside a render request.
@@ -7025,7 +7025,7 @@ caterwaul(':all')(function () {
 caterwaul(':all')(function () {
   render(state = null, last_render = 0, frames_requested = 0)
         (axes, vm, l0, limit, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
-                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit,
+                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit, cb: cb,
                                                               id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
                                                                     ? state.id
                                                                     : ctx.getImageData(0, 0, w, h)}]
@@ -7073,13 +7073,14 @@ caterwaul(':all')(function () {
         az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
-        sr = state.saturation_rate;
+        sr = state.saturation_rate, ss = state.limit || slice_size;
 
-    if (state.i < (state.limit || slice_size)) request_frame();
-    if (state.i === 0)                         id.fill(0);
+    if (state.cb)      state.cb(state.i, ss);
+    if (state.i < ss)  request_frame();
+    if (state.i === 0) id.fill(0);
 
     var t = +new Date;
-    for (; state.i < (state.limit || slice_size) && +new Date - t < 30; ++state.i) {
+    for (; state.i < ss && +new Date - t < 30; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -7127,7 +7128,7 @@ caterwaul(':all')(function () {
         }
       }
 
-      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * slice_size);
+      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * ss);
     }
 
     state.l           = l;
@@ -7193,7 +7194,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-158 core/jsplot/interface.waul
+159 core/jsplot/interface.waul
 // Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -7222,7 +7223,7 @@ $(caterwaul(':all')(function ($) {
                           -then- explain /~css/ {top: tr.height() + 3, left: preview.width() + 12},
         handle_resizes()       = resize_canvases() -then- resize_other_stuff() -when- size_changed(),
 
-        update_status(t)       = status.text(t).activate(),
+        update_status(t)       = status.children('#sizelabel').text(t).activate(),
 
         object_mode            = false,
         toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode)
@@ -7337,22 +7338,23 @@ $(caterwaul(':all')(function ($) {
         axis_map(as)         = w.val().v.axes *[as[x]] -seq,
         renderer             = render(),
         full_render_tmout    = null,
-        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br * (4096 / preview_slices), preview_slices, v.sa, sc, screen.width(), screen.height())
+        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, preview_slices, v.sa, sc, screen.width(), screen.height())
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
                                        preview_slices = Math.min(4096, 128 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
                         -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
                         -where [v = w.val().v],
 
-        update_screen()      = full_render_tmout /!clearTimeout
-                       -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, 0, v.sa, sc, screen.width(), screen.height())
-                       -then-  update_overlay(v)
-                       -then-  data_state.last_render /eq[+new Date]
-                       -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
-                       -where [v = w.val().v]],
+        update_render_status(i, m) = $('#render-bar-inner') /~css/ {width: $('#render-bar').width() * i/m} -then- status.activate(),
+        update_screen()            = full_render_tmout /!clearTimeout
+                             -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, 0, v.sa, sc, screen.width(), screen.height(), update_render_status)
+                             -then-  update_overlay(v)
+                             -then-  data_state.last_render /eq[+new Date]
+                             -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
+                             -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
-76 core/jsplot/css
+78 core/jsplot/css
 body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monospace; overflow: hidden}
 
 #screen, #overlay {position:absolute}
@@ -7363,9 +7365,11 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 
 *:focus, *:hover, .pinned, .active {opacity:1 !important}
 
-#status {position:absolute; right:2px; bottom:2px; width:300px; opacity:0.2; text-align:right; z-index:9}
+#status {position:absolute; right:2px; bottom:2px; width:400px; opacity:0.2; text-align:right; z-index:9}
+#render-bar {display:inline-block; width:40px; height:4px; border:solid 1px rgba(255,255,255,0.5)}
+#render-bar-inner {background:rgba(255,255,255,0.5); height:4px}
 
-#search {position:absolute; right:200px; bottom:0; width:400px; z-index:9}
+#search {position:absolute; right:400px; bottom:0; width:400px; z-index:9}
 #search input {width:400px; font-family:monospace; color:#eee; border:none; outline:none; background:transparent; border-top:solid 1px transparent}
 
 #search input:focus {border-top:solid 1px #f60}
@@ -7429,7 +7433,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 #controls.object-mode.shift .vector.object-scale       {border-left:solid 8px #f60}
 #controls.object-mode.shift .vector.camera-rotation    {border-left:solid 8px #f60}
 #controls.object-mode.shift .distance                  {border-left:solid 8px rgba(96,96,96,0.5)}
-26 core/jsplot/html
+27 core/jsplot/html
 <!doctype html>
 <html>
 <head>
@@ -7452,6 +7456,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
   <input id='search-text'></input>
 </div>
 <div id='status'>
+  <div id='render-bar'><div id='render-bar-inner'></div></div>
   <label id='sizelabel'></label>
 </div>
 </body>

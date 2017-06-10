@@ -26,7 +26,7 @@ $(caterwaul(':all')(function ($) {
                           -then- explain /~css/ {top: tr.height() + 3, left: preview.width() + 12},
         handle_resizes()       = resize_canvases() -then- resize_other_stuff() -when- size_changed(),
 
-        update_status(t)       = status.text(t).activate(),
+        update_status(t)       = status.children('#sizelabel').text(t).activate(),
 
         object_mode            = false,
         toggle_object_mode()   = controls.toggleClass('object-mode', object_mode = !object_mode)
@@ -141,18 +141,19 @@ $(caterwaul(':all')(function ($) {
         axis_map(as)         = w.val().v.axes *[as[x]] -seq,
         renderer             = render(),
         full_render_tmout    = null,
-        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br * (4096 / preview_slices), preview_slices, v.sa, sc, screen.width(), screen.height())
+        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, preview_slices, v.sa, sc, screen.width(), screen.height())
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
                                        preview_slices = Math.min(4096, 128 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
                         -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
                         -where [v = w.val().v],
 
-        update_screen()      = full_render_tmout /!clearTimeout
-                       -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, 0, v.sa, sc, screen.width(), screen.height())
-                       -then-  update_overlay(v)
-                       -then-  data_state.last_render /eq[+new Date]
-                       -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
-                       -where [v = w.val().v]],
+        update_render_status(i, m) = $('#render-bar-inner') /~css/ {width: $('#render-bar').width() * i/m} -then- status.activate(),
+        update_screen()            = full_render_tmout /!clearTimeout
+                             -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, 0, v.sa, sc, screen.width(), screen.height(), update_render_status)
+                             -then-  update_overlay(v)
+                             -then-  data_state.last_render /eq[+new Date]
+                             -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
+                             -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));

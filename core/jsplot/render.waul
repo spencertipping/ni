@@ -5,7 +5,7 @@
 caterwaul(':all')(function () {
   render(state = null, last_render = 0, frames_requested = 0)
         (axes, vm, l0, limit, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
-                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit,
+                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit, cb: cb,
                                                               id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
                                                                     ? state.id
                                                                     : ctx.getImageData(0, 0, w, h)}]
@@ -53,13 +53,14 @@ caterwaul(':all')(function () {
         az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
-        sr = state.saturation_rate;
+        sr = state.saturation_rate, ss = state.limit || slice_size;
 
-    if (state.i < (state.limit || slice_size)) request_frame();
-    if (state.i === 0)                         id.fill(0);
+    if (state.cb)      state.cb(state.i, ss);
+    if (state.i < ss)  request_frame();
+    if (state.i === 0) id.fill(0);
 
     var t = +new Date;
-    for (; state.i < (state.limit || slice_size) && +new Date - t < 30; ++state.i) {
+    for (; state.i < ss && +new Date - t < 30; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -107,7 +108,7 @@ caterwaul(':all')(function () {
         }
       }
 
-      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * slice_size);
+      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * ss);
     }
 
     state.l           = l;
