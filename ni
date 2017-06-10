@@ -7024,12 +7024,12 @@ caterwaul(':all')(function () {
 
 caterwaul(':all')(function () {
   render(state = null, last_render = 0, frames_requested = 0)
-        (axes, vm, l0, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
-                                                       total_shade: 0, saturation_rate: sr /!Math.exp,
-                                                       id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
-                                                             ? state.id
-                                                             : ctx.getImageData(0, 0, w, h)}]
-                                            -then- request_frame()
+        (axes, vm, l0, limit, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
+                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit,
+                                                              id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                                    ? state.id
+                                                                    : ctx.getImageData(0, 0, w, h)}]
+                                                   -then- request_frame()
 
 // Render function.
 // This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
@@ -7075,11 +7075,11 @@ caterwaul(':all')(function () {
         l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
         sr = state.saturation_rate;
 
-    if (state.i < slice_size) request_frame();
-    if (state.i === 0)        id.fill(0);
+    if (state.i < (state.limit || slice_size)) request_frame();
+    if (state.i === 0)                         id.fill(0);
 
     var t = +new Date;
-    for (; state.i < slice_size && +new Date - t < 30; ++state.i) {
+    for (; state.i < (state.limit || slice_size) && +new Date - t < 30; ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -7193,7 +7193,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-150 core/jsplot/interface.waul
+158 core/jsplot/interface.waul
 // Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -7257,15 +7257,15 @@ $(caterwaul(':all')(function ($) {
                                       /~focus/ given.e [explain.show()]
                                        /~blur/ given.e [explain.hide()]
                           -then- overlay     /~mousedown/ given.e [mx = e.pageX, my = e.pageY, ms = e.shiftKey, true]
-                                            /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen()]
-                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen(),
+                                            /~mousewheel/ given.e [wheel(e.deltaX, e.deltaY, e.shiftKey), update_screen_fast()]
+                          -then- $(document) /~mousemove/ given.e [drag(x - mx, y - my, ms), mx = x, my = y, ms = e.shiftKey, update_screen_fast(),
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                                                /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false
-                                                                 : e.which === 16 ? controls /~addClass/ 'shift' : true]
+                                                                 : e.which === 16 ? controls /~addClass/    'shift' : true]
                                                  /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
                           -then- w /~resize/ handle_resizes
-                          -then- controls /~append/ camera().change(update_screen)
+                          -then- controls /~append/ camera().change(update_screen_fast)
                           -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
@@ -7317,12 +7317,11 @@ $(caterwaul(':all')(function ($) {
                                             })()],
 
         update_overlay(v)  = oc.clearRect(0, 0, lw, lh) -then- outline_points('#f60', selected_points)
-                     -where [scale                 = lw /-Math.min/ lh >>> 1,
-                             cx                    = lw >>> 1,
-                             cy                    = lh >>> 1,
-                             axes                  = data_state.frame.axes /!axis_map,
-                             m                     = v /!camera.m,
-
+                     -where [scale          = lw /-Math.min/ lh >>> 1,
+                             cx             = lw >>> 1,
+                             cy             = lh >>> 1,
+                             axes           = data_state.frame.axes /!axis_map,
+                             m              = v /!camera.m,
                              outline_points = function (c, is) {
                                oc.strokeStyle = c;
                                var t = +new Date;
@@ -7335,13 +7334,22 @@ $(caterwaul(':all')(function ($) {
                                }
                              }],
 
-        axis_map(as)       = w.val().v.axes *[as[x]] -seq,
-        renderer           = render(),
-        update_screen()    = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, v.sa, sc, screen.width(), screen.height())
-                     -then-  update_overlay(v)
-                     -then-  data_state.last_render /eq[+new Date]
-                     -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
-                     -where [v = w.val().v]],
+        axis_map(as)         = w.val().v.axes *[as[x]] -seq,
+        renderer             = render(),
+        full_render_tmout    = null,
+        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br * (4096 / preview_slices), preview_slices, v.sa, sc, screen.width(), screen.height())
+                               /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
+                                       preview_slices = Math.min(4096, 128 / preview_factor | 0)]
+                        -then- full_render_tmout /!clearTimeout
+                        -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
+                        -where [v = w.val().v],
+
+        update_screen()      = full_render_tmout /!clearTimeout
+                       -then-  renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, 0, v.sa, sc, screen.width(), screen.height())
+                       -then-  update_overlay(v)
+                       -then-  data_state.last_render /eq[+new Date]
+                       -when  [data_state.frame.axes && +new Date - data_state.last_render > 50]
+                       -where [v = w.val().v]],
 
   using[caterwaul.merge({}, caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]}));
 76 core/jsplot/css
