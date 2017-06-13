@@ -27,6 +27,6 @@ defresource 'sftp',
               soproc {exec 'ssh', $host, 'cat', $path}};
 
 defresource 's3cmd',
-  read   => q{soproc {exec 's3cmd', 'get', "s3://$_[1]", '-'} @_},
+  read   => q{soproc {exec 's3cmd', '-q', 'get', "s3://$_[1]", '-'} @_},
   write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
   # TODO
