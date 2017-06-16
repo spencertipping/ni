@@ -556,9 +556,9 @@
 
 ## IMPLEMENTATION
 	
-	  use MIME::Base64 qw/encode_base64/;
+	  eval {require MIME::Base64};
 	  my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
-	  my $url = "data:text/html;base64," . encode_base64(
+	  my $url = "data:text/html;base64," . MIME::Base64::encode_base64(
 	    mapomatic_compress(mapomatic_header)
 	      . $encoded_points
 	      . mapomatic_compress(mapomatic_footer)) . "\n\0";
