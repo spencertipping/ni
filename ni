@@ -4750,7 +4750,7 @@ sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]
 sub F_(@):lvalue {@_ ? @F[@_] : @F}
 sub FM()         {$#F}
 sub FR($):lvalue {@F[$_[0]..$#F]}
-sub FT($):lvalue {@F[0..$_[0]]}
+sub FT($):lvalue {@F[0..($_[0]-1)]}
 sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
