@@ -12,7 +12,7 @@ sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 
-sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 0..$#_ - 1}
+sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
 
 sub kbv_dsc { my %h = @_; sort { $h{$b} <=> $h{$a} } keys %h }
