@@ -67,13 +67,14 @@ Operator | Status | Example      | Description
 `D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
-`G`      |        |              |
+`G`      | T      | `GA...`      | Gnuplot prefix
 `H`      | T      | `HS:::`      | Send named files through hadoop
 `I`      | I      | `I[...]`     | Process concatenated image files
 `J`      |        |              |
 `K`      |        |              |
 `L`      | U      | `L'(1+ a)'`  | (Reserved for Lisp driver)
 `M`      | U      | `M'svd(x)'`  | Faceted Octave matrix interop
+`MM`     | I      | `MM`         | [Map-o-matic](https://github.com/spencertipping/mapomatic)
 `N`      | T      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | T      | `OD`         | Numeric sort descending
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
@@ -86,7 +87,7 @@ Operator | Status | Example      | Description
 `W`      | T      | `Wn100`      | "With": join a stream leftwards
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
-`Z`      |        |              |
+`Z`      | T      | `Z2`         | Fold/unfold stream to specified width
 
 
 ## Cell operators

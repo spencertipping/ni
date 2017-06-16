@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-52 core/boot/ni.map
+53 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -98,6 +98,7 @@ lib core/image
 lib core/http
 lib core/caterwaul
 lib core/jsplot
+lib core/mapomatic
 lib core/docker
 lib core/hadoop
 lib core/pyspark
@@ -7555,6 +7556,72 @@ Usage: ni --js [port=8090]
 Runs a web interface that allows you to visualize data streams. See ni
 //help/visual for details.
 _
+1 core/mapomatic/lib
+mapomatic.pl
+63 core/mapomatic/mapomatic.pl
+# Map-O-Matic
+# Generates a data: url that maps points on a page using Leaflet.
+
+sub mapomatic_compress {
+  local $_ = shift;
+  s/^\s+//mg; s/\v+//g; s/\s+/ /g;
+  $_;
+}
+
+use constant mapomatic_header => <<'EOF';
+<html>
+<head>
+  <link rel="stylesheet"href="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css"/>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+  <style>body {margin: 0}</style>
+</head>
+<body id='map'>
+  <script type='geodata'>
+EOF
+
+use constant mapomatic_footer => <<'EOF';
+  </script>
+  <script>
+  $(function () {
+    var rf = function () {
+      if ($('#map').height() !== $(window).height())
+        $('#map').height($(window).height());
+    };
+    $(window).resize(rf);
+    setTimeout(rf, 100);
+    var m = L.map('map');
+    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
+                {attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
+    var sy = 0, sx = 0;
+    var ls = $('script[type="geodata"]').text().replace(/^\s*|\s*$/g, '').split(/~/);
+    for (var i = 0, l = ls.length; i < l; ++i) {
+      var ps = ls[i].split(/\s+/);
+      var ll = [+ps[0], +ps[1]];
+      L.marker(ll).addTo(m).bindPopup(ps.slice(2).join(' '));
+      sy += ll[0];
+      sx += ll[1];
+    }
+    m.setView([sy / ls.length, sx / ls.length], 4);
+  });
+  </script>
+</body>
+</html>
+EOF
+
+defoperator mapomatic => q{
+  use MIME::Base64 qw/encode_base64/;
+  my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
+  my $url = "data:text/html;base64," . encode_base64(
+    mapomatic_compress(mapomatic_header)
+      . $encoded_points
+      . mapomatic_compress(mapomatic_footer)) . "\n\0";
+  exec "xdg-open", $url
+    or exec "open", $url
+    or die "ni: mapomatic failed to exec xdg-open or open: $!";
+};
+
+defshort '/MM',  pmap q{mapomatic_op}, pnone;
 1 core/docker/lib
 docker.pl
 88 core/docker/docker.pl
@@ -9586,7 +9653,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni //license shost1[shost2[gc]] r10
 ```
-97 doc/options.md
+98 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -9656,13 +9723,14 @@ Operator | Status | Example      | Description
 `D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
 `F`      | T      | `FC`         | Parse data into fields
-`G`      |        |              |
+`G`      | T      | `GA...`      | Gnuplot prefix
 `H`      | T      | `HS:::`      | Send named files through hadoop
 `I`      | I      | `I[...]`     | Process concatenated image files
 `J`      |        |              |
 `K`      |        |              |
 `L`      | U      | `L'(1+ a)'`  | (Reserved for Lisp driver)
 `M`      | U      | `M'svd(x)'`  | Faceted Octave matrix interop
+`MM`     | I      | `MM`         | [Map-o-matic](https://github.com/spencertipping/mapomatic)
 `N`      | T      | `N'svd(x)'`  | Faceted NumPy matrix interop
 `O`      | T      | `OD`         | Numeric sort descending
 `P`      | T      | `PLg`        | Evaluate Pyspark lambda context
@@ -9675,7 +9743,7 @@ Operator | Status | Example      | Description
 `W`      | T      | `Wn100`      | "With": join a stream leftwards
 `X`      | T      | `X`          | Sparse to dense matrix conversion
 `Y`      | T      | `Y`          | Dense to sparse matrix conversion
-`Z`      |        |              |
+`Z`      | T      | `Z2`         | Fold/unfold stream to specified width
 
 
 ## Cell operators

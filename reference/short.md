@@ -446,6 +446,11 @@
 ## SYNTAX
 	'' -> {each_image_op [sh_op "convert - jpg:-"]}
 
+# SHORT OPERATOR /MM
+
+## SYNTAX
+	'' -> {mapomatic_op}
+
 # SHORT OPERATOR /N
 
 ## SYNTAX
