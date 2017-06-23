@@ -1039,6 +1039,21 @@
 	    print sort {my @a = split /\t/, $a; my @b = split /\t/, $b; %sort_expr} @group;
 	  })->(key_expr => $key_expr, sort_expr => $sort_expr);
 
+# OPERATOR row_include_or_exclude_exact
+
+## IMPLEMENTATION
+	
+	  my ($include_mode, $col, $lambda) = @_;
+	  my %set;
+	  my $fh = sni @$lambda;
+	  chomp, ++$set{$_} while <$fh>;
+	  close $fh;
+	  $fh->await;
+	  while (<STDIN>) {
+	    my @fs = split /\t/, $_, $col + 2;
+	    print if !$include_mode == !$set{$fs[$col]};
+	  }
+
 # OPERATOR row_match
 
 ## IMPLEMENTATION

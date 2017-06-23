@@ -3884,7 +3884,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-167 core/row/row.pl
+182 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -3912,6 +3912,19 @@ defoperator row_cols_defined => q{
   /$r/ and print while <STDIN>;
 };
 
+defoperator row_include_or_exclude_exact => q{
+  my ($include_mode, $col, $lambda) = @_;
+  my %set;
+  my $fh = sni @$lambda;
+  chomp, ++$set{$_} while <$fh>;
+  close $fh;
+  $fh->await;
+  while (<STDIN>) {
+    my @fs = split /\t/, $_, $col + 2;
+    print if !$include_mode == !$set{$fs[$col]};
+  }
+};
+
 defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
     pmap(q{tail_op '-n', '',  $_},       pn 1, prx '[+~]', integer),
@@ -3920,7 +3933,9 @@ defshort '/r',
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
-    pmap(q{row_cols_defined_op @$_},     colspec_fixed);
+    pmap(q{row_cols_defined_op @$_},     colspec_fixed),
+    pmap(q{row_include_or_exclude_exact_op 1, @$_}, pn [1, 2], pstr 'i', colspec1, _qfn),
+    pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn);
 
 # Sorting.
 # ni has four sorting operators, each of which can take modifiers:
@@ -10223,7 +10238,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-312 doc/row.md
+336 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -10364,6 +10379,30 @@ $ ni n10rB | wc -l              # no field B here, so no output
 
 ```bash
 $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
+10
+```
+
+### Set membership
+You can also assert that a column's value is one of a set of things. If you
+want to do this for a very large set, you should consider using [bloom
+filters](bloom.md).
+
+```bash
+$ ni n100 riA[n4 p'a*2']        # intersect column A with values from n4 p'a*2'
+2
+4
+6
+8
+```
+
+An uppercase `I` does the opposite, rejecting specified values:
+
+```bash
+$ ni n10 rIAn5
+6
+7
+8
+9
 10
 ```
 

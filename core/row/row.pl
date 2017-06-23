@@ -25,6 +25,19 @@ defoperator row_cols_defined => q{
   /$r/ and print while <STDIN>;
 };
 
+defoperator row_include_or_exclude_exact => q{
+  my ($include_mode, $col, $lambda) = @_;
+  my %set;
+  my $fh = sni @$lambda;
+  chomp, ++$set{$_} while <$fh>;
+  close $fh;
+  $fh->await;
+  while (<STDIN>) {
+    my @fs = split /\t/, $_, $col + 2;
+    print if !$include_mode == !$set{$fs[$col]};
+  }
+};
+
 defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
     pmap(q{tail_op '-n', '',  $_},       pn 1, prx '[+~]', integer),
@@ -33,7 +46,9 @@ defshort '/r',
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
-    pmap(q{row_cols_defined_op @$_},     colspec_fixed);
+    pmap(q{row_cols_defined_op @$_},     colspec_fixed),
+    pmap(q{row_include_or_exclude_exact_op 1, @$_}, pn [1, 2], pstr 'i', colspec1, _qfn),
+    pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn);
 
 # Sorting.
 # ni has four sorting operators, each of which can take modifiers:

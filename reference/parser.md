@@ -453,6 +453,16 @@
 	  | /\.\d+/ -> {row_sample_op $_}
 	  | <integer> -> {head_op '-n', 0 + $_}
 	  | <colspec_fixed> -> {row_cols_defined_op @$_}
+	  | (
+	      'i'
+	      <colspec1>
+	      </qfn>
+	    ) -> {[@$_[1,2]]} -> {row_include_or_exclude_exact_op 1, @$_}
+	  | (
+	      'I'
+	      <colspec1>
+	      </qfn>
+	    ) -> {[@$_[1,2]]} -> {row_include_or_exclude_exact_op 0, @$_}
 	  )
 	| 's' (
 	    (
@@ -592,6 +602,16 @@
 	| /\.\d+/ -> {row_sample_op $_}
 	| <integer> -> {head_op '-n', 0 + $_}
 	| <colspec_fixed> -> {row_cols_defined_op @$_}
+	| (
+	    'i'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {row_include_or_exclude_exact_op 1, @$_}
+	| (
+	    'I'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {row_include_or_exclude_exact_op 0, @$_}
 	)
 
 # PARSER alt/rubyalt

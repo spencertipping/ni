@@ -141,6 +141,30 @@ $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
 10
 ```
 
+### Set membership
+You can also assert that a column's value is one of a set of things. If you
+want to do this for a very large set, you should consider using [bloom
+filters](bloom.md).
+
+```bash
+$ ni n100 riA[n4 p'a*2']        # intersect column A with values from n4 p'a*2'
+2
+4
+6
+8
+```
+
+An uppercase `I` does the opposite, rejecting specified values:
+
+```bash
+$ ni n10 rIAn5
+6
+7
+8
+9
+10
+```
+
 ## Sorting
 ni has four operators that shell out to the UNIX sort command. Two are
 alpha-sorts:
