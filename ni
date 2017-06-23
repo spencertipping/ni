@@ -3884,7 +3884,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-182 core/row/row.pl
+183 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -3920,8 +3920,9 @@ defoperator row_include_or_exclude_exact => q{
   close $fh;
   $fh->await;
   while (<STDIN>) {
+    chomp;
     my @fs = split /\t/, $_, $col + 2;
-    print if !$include_mode == !$set{$fs[$col]};
+    print "$_\n" if !$include_mode == !$set{$fs[$col]};
   }
 };
 
@@ -3933,9 +3934,9 @@ defshort '/r',
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
-    pmap(q{row_cols_defined_op @$_},     colspec_fixed),
     pmap(q{row_include_or_exclude_exact_op 1, @$_}, pn [1, 2], pstr 'i', colspec1, _qfn),
-    pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn);
+    pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn),
+    pmap(q{row_cols_defined_op @$_},     colspec_fixed);
 
 # Sorting.
 # ni has four sorting operators, each of which can take modifiers:

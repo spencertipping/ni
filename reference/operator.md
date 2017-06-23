@@ -1050,8 +1050,9 @@
 	  close $fh;
 	  $fh->await;
 	  while (<STDIN>) {
+	    chomp;
 	    my @fs = split /\t/, $_, $col + 2;
-	    print if !$include_mode == !$set{$fs[$col]};
+	    print "$_\n" if !$include_mode == !$set{$fs[$col]};
 	  }
 
 # OPERATOR row_match
