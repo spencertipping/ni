@@ -417,10 +417,15 @@
 	  )
 	| 'r' (
 	  | (
+	      'B'
+	      <colspec1>
+	      </qfn>
+	    ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
+	  | (
 	      'b'
 	      <colspec1>
 	      </qfn>
-	    ) -> {[@$_[1,2]]} -> {bloom_rows_op @$_}
+	    ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	  | (
 	      'l'
 	      <lispcode>
@@ -566,10 +571,15 @@
 ## DEFINITION
 	(
 	| (
+	    'B'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
+	| (
 	    'b'
 	    <colspec1>
 	    </qfn>
-	  ) -> {[@$_[1,2]]} -> {bloom_rows_op @$_}
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	| (
 	    'l'
 	    <lispcode>

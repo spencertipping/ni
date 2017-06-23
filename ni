@@ -5964,7 +5964,7 @@ sub bloom_contains($$) {
   vec($_[0], $_ + 64, 1) || return 0 for map murmurhash3($_[1], $_) % $m, 1..$k;
   1;
 }
-35 core/bloom/bloom.pl
+36 core/bloom/bloom.pl
 # Bloom filter operators.
 # Operators to construct and query bloom filters. The bloom constructor is a
 # sub-operator of `z` (compress), and querying is done using `rb`.
@@ -5988,18 +5988,19 @@ defoperator bloomify => q{
 defshort '/zB', pmap q{bloomify_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
 
 defoperator bloom_rows => q{
-  my ($col, $bloom_lambda) = @_;
+  my ($include_mode, $col, $bloom_lambda) = @_;
   my $bloom;
   my $r = sni @$bloom_lambda;
   1 while read $r, $bloom, 65536, length $bloom;
   $r->await;
   while (<STDIN>) {
     chomp(my @cols = split /\t/, $_, $col + 2);
-    print if bloom_contains $bloom, $cols[$col];
+    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
   }
 };
 
-defrowalt pmap q{bloom_rows_op @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr 'B', colspec1, _qfn;
 3 core/binary/lib
 bytestream.pm
 bytewriter.pm

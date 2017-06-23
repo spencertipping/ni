@@ -9,9 +9,9 @@ queries. This is visible in two ways -- first as a set of Perl functions:
   definitely does not contain `$x`.
 
 These functions are available inside all Perl contexts. The other, and more
-common, way that you'd use bloom filters is by a pair of operators `zB`
-(compress into bloom filter) and `rb` (rows which match bloom filter). The
-syntax is this:
+common, way that you'd use bloom filters is by a trio of operators `zB`
+(compress into bloom filter), `rb` (rows which match bloom filter), and `rB`
+(rows which don't match bloom filter). The syntax is this:
 
 ```
 $ ni rows.txt zB45 \>filter     # compress lines as elements
@@ -20,6 +20,9 @@ $ ni rows.txt zB45 \>filter     # compress lines as elements
 
 $ ni other-data.txt rbAfilter   # return rows of other-data.txt for which field
                                 # A occurs inside the bloom filter
+
+$ ni other-data.txt rBAfilter   # return rows of other-data.txt for which field
+                                # A does not occur inside the bloom filter
 ```
 
 Because the filter data is just a lambda, it's also possible to say something
@@ -30,6 +33,7 @@ $ ni nE4 rbA[i108 i571 i3491 zB45]
 108
 571
 3491
+$ ni nE4 rBA[nE4 rp'a != 61 && a != 108' zB45]
 ```
 
 You can also stuff a bloom filter into a data closure:

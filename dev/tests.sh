@@ -498,7 +498,7 @@ lazytest_case 'ni n4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 10	24
 LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
-lazytest_line=29
+lazytest_line=32
 lazytest_case 'ni nE4 rbA[i108 i571 i3491 zB45]
 ' 3<<'LAZYTEST_EOF'
 108
@@ -506,7 +506,12 @@ lazytest_case 'ni nE4 rbA[i108 i571 i3491 zB45]
 3491
 LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
-lazytest_line=38
+lazytest_line=36
+lazytest_case 'ni nE4 rBA[nE4 rp'\''a != 61 && a != 108'\'' zB45]
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/bloom.md'
+lazytest_line=42
 lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
 ' 3<<'LAZYTEST_EOF'
 108

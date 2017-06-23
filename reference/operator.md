@@ -35,14 +35,14 @@
 
 ## IMPLEMENTATION
 	
-	  my ($col, $bloom_lambda) = @_;
+	  my ($include_mode, $col, $bloom_lambda) = @_;
 	  my $bloom;
 	  my $r = sni @$bloom_lambda;
 	  1 while read $r, $bloom, 65536, length $bloom;
 	  $r->await;
 	  while (<STDIN>) {
 	    chomp(my @cols = split /\t/, $_, $col + 2);
-	    print if bloom_contains $bloom, $cols[$col];
+	    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
 	  }
 
 # OPERATOR bloomify
