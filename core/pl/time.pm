@@ -120,8 +120,8 @@ sub gh_localtime($$) {
 # local timezone.
 
 sub iso_8601_epoch {
-  my $iso_time = $_[0]
-  my ($date_part, $time_part) = split /T/, $iso_time
+  my $iso_time = $_[0];
+  my ($date_part, $time_part) = split /T/, $iso_time;
   my $y, $m, $d;
   if ($date_part !~ /^\d{4}-/) {
     ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
@@ -129,58 +129,50 @@ sub iso_8601_epoch {
     ($y, $m, $d) = split /-/, $date_part;
   }
 
-  return time_epoch_pieces($y, $m, $d) unless $time_part;
+  return time_pieces_epoch($y, $m, $d) unless $time_part;
 
-  my ($t_part, $tz_part) = split /[Z+-]/, $time_part;
-  
-  my $h, $min, $s;
-  if ($t_part !~ /^\d{2}:/) {
-     ($h, $min , $s) = /^(\d{2})(\d{2})([0-9.]{2,})/;
-  } else {
-     ($h, $min, $s) = split /:/, $t_part;
-  }
-  
-  my $raw_ts = time_epoch_pieces($y, $m, $d, $h, $min, $s);
+  my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)$/);
+  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
   return $raw_ts unless $tz_part;
   
   my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
 
   my $offset_amt = $offset_type eq "-" ? 1 : -1; 
   my $offset = $offset_amt * (3600 * $offset_hr + 60 * $offset_min); 
-  time_epoch_pieces($y, $m, $d, $h, $min, $s) + $offset;
+  $raw_ts + $offset;
 }
 
 # Converts an epoch timestamp to the corresponding 
 # time zone; gives local time when a second argument
 # corresponding to the local timezone is given.
 
-sub epoch_to_iso_8601($;$) {
-  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
-  my $epoch_offset;
-  my $tz_num, $tz_str;
-  if ($tz_raw =~ /^-?\d+\.?\d*$/) {
-    $epoch_offset = -$tz_raw*3600;
-    my $tz_hr = int($tz_num);
-    my $tz_min = abs int(($tz_num - $tz_hr)*60);
-    my $tz_sign = $tz_num < 0 ? "-" : "+";
-    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min);
-  } elsif ($tz_raw =~ /^[+-]\d{1,2}:?(\d{2})?$/) {
-    my $tz_sign = substr($tz_raw, 0, 1);
-    my ($tz_hr, $tz_min) = ($tz_raw =~ /^[+-](\d{1,2}):?(\d{2})?$/);
-    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min || 0);
-    my $offset_amt = 3600 * $tz_hr + 60 * $tz_min;
-    $epoch_offset = $tz_sign eq "-"? $offset_amt : -$offset_amt;
-  } elsif ($tz_raw eq "Z") {
-    $epoch_offset = 0;
-    $tz_str = $tz_raw;
-  } else {
-    ## badly formatted input
-  }
-  $epoch += $epoch_offset;
-  my ($y, $m, $d, $h, $min, $s) = time_pieces_epoch($epoch);
-  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
-  $isotime;
-}
+#sub epoch_to_iso_8601($;$) {
+#  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
+#  my $epoch_offset;
+#  my $tz_num, $tz_str;
+#  if ($tz_raw =~ /^-?\d+\.?\d*$/) {
+#    $epoch_offset = -$tz_raw*3600;
+#    my $tz_hr = int($tz_num);
+#    my $tz_min = abs int(($tz_num - $tz_hr)*60);
+#    my $tz_sign = $tz_num < 0 ? "-" : "+";
+#    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min);
+#  } elsif ($tz_raw =~ /^[+-]\d{1,2}:?(\d{2})?$/) {
+#    my $tz_sign = substr($tz_raw, 0, 1);
+#    my ($tz_hr, $tz_min) = ($tz_raw =~ /^[+-](\d{1,2}):?(\d{2})?$/);
+#    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min || 0);
+#    my $offset_amt = 3600 * $tz_hr + 60 * $tz_min;
+#    $epoch_offset = $tz_sign eq "-"? $offset_amt : -$offset_amt;
+#  } elsif ($tz_raw eq "Z") {
+#    $epoch_offset = 0;
+#    $tz_str = $tz_raw;
+#  } else {
+#    ## badly formatted input
+#  }
+#  $epoch += $epoch_offset;
+#  my ($y, $m, $d, $h, $min, $s) = time_pieces_epoch($epoch);
+#  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
+#  $isotime;
+#}
 
 
 BEGIN {
@@ -206,7 +198,6 @@ BEGIN {
   *tt15 = \&truncate_to_quarter_hour;
   *ttm = \&truncate_to_minute;
   *i2e = \&iso_8601_epoch;
-  *e2i = \&epoch_iso_8601;
 }
 
 
