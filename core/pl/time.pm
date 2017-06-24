@@ -111,6 +111,50 @@ sub gh_localtime($$) {
   $mktime_error = time_pieces_epoch(time_epoch_pieces $t) - $t;
 }
 
+
+# ISO 8601 is a standard format for time data; it looks like: 
+# 2017-06-24T07:58:59+00:00 or 2017-06-24T07:58:59Z
+# The added or subtracted amount at the end corresponds to the
+# local timezone.
+
+sub iso_8601_epoch {
+  my $iso_time = $_[0]
+  my ($date_part, $time_part) = split /T/, $iso_time
+  my $y, $m, $d;
+  if ($date_part !~ /^\d{4}-/) {
+    ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
+  } else {
+    ($y, $m, $d) = split /-/, $date_part;
+  }
+
+  my ($t_part, $tz_part) = split /[Z+-]/, $time_part;
+
+  my $h, $min, $s;
+ 
+  {
+  }
+  my $offset_amt = ($iso_time =~ /[-+]\d\d:\d\d/) ? (substr(a, -6, 1) eq "-" ? : 1 : -1) : 0;
+  my $offset = $offset_amt * (3600 * $parts[-2] + 60 * $parts[-1]); 
+  time_epoch_pieces(@parts[0..5]) + $offset;
+}
+
+# Converts an epoch timestamp to the corresponding 
+# time zone; gives local time when a second argument
+# corresponding to the local timezone is given.
+
+sub epoch_to_iso_8601($;$) {
+  my ($epoch, $tz) = $#_ == 2 ? @_ : (@_ , 0);
+  my $epoch_offset = 0
+  if ($tz =~ /^[-]\d*\.?\d*$/) {
+    my $tz_hr = int($tz);
+    my $tz_min = abs int(($tz - $tz_hr)*60);
+  } 
+
+  $epoch += $epoch_offset
+  
+}
+
+
 BEGIN {
   *tep  = \&time_epoch_pieces;
   *tpe  = \&time_pieces_epoch;
@@ -133,6 +177,8 @@ BEGIN {
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
   *ttm = \&truncate_to_minute;
+  *i2e = \&iso_8601_epoch;
+  *e2i = \&epoch_iso_8601;
 }
 
 
