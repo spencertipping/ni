@@ -509,9 +509,11 @@ lazytest_file='doc/bloom.md'
 lazytest_line=36
 lazytest_case 'ni nE4 rBA[nE4 rp'\''a != 61 && a != 108'\'' zB45]
 ' 3<<'LAZYTEST_EOF'
+61
+108
 LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
-lazytest_line=42
+lazytest_line=44
 lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
 ' 3<<'LAZYTEST_EOF'
 108

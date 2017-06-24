@@ -34,6 +34,8 @@ $ ni nE4 rbA[i108 i571 i3491 zB45]
 571
 3491
 $ ni nE4 rBA[nE4 rp'a != 61 && a != 108' zB45]
+61
+108
 ```
 
 You can also stuff a bloom filter into a data closure:
