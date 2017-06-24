@@ -191,7 +191,25 @@ $ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 i2017-06-24T15:23:47-
 1498328627
 ```
 
-`ni` can also format epoch timestamps in an ISO 8601-compatible form:
+`ni` can also format epoch timestamps in an ISO 8601-compatible form. To do this, input an epoch timestamp and either a floating number of hours, or a timezone format string, for example `"+10:00"`.
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"'
+2017-06-24T18:23:47Z
+2017-06-24T16:53:47-01:30
+2017-06-24T21:23:47+03:00
+2017-06-24T12:38:47-05:45
+```
+
+These all represent the same instant:
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"' p'i2e a'
+1498328627
+1498328627
+1498328627
+1498328627
+```
 
 
 #### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands

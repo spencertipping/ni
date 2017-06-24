@@ -146,33 +146,34 @@ sub iso_8601_epoch {
 # time zone; gives local time when a second argument
 # corresponding to the local timezone is given.
 
-#sub epoch_to_iso_8601($;$) {
-#  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
-#  my $epoch_offset;
-#  my $tz_num, $tz_str;
-#  if ($tz_raw =~ /^-?\d+\.?\d*$/) {
-#    $epoch_offset = -$tz_raw*3600;
-#    my $tz_hr = int($tz_num);
-#    my $tz_min = abs int(($tz_num - $tz_hr)*60);
-#    my $tz_sign = $tz_num < 0 ? "-" : "+";
-#    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min);
-#  } elsif ($tz_raw =~ /^[+-]\d{1,2}:?(\d{2})?$/) {
-#    my $tz_sign = substr($tz_raw, 0, 1);
-#    my ($tz_hr, $tz_min) = ($tz_raw =~ /^[+-](\d{1,2}):?(\d{2})?$/);
-#    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min || 0);
-#    my $offset_amt = 3600 * $tz_hr + 60 * $tz_min;
-#    $epoch_offset = $tz_sign eq "-"? $offset_amt : -$offset_amt;
-#  } elsif ($tz_raw eq "Z") {
-#    $epoch_offset = 0;
-#    $tz_str = $tz_raw;
-#  } else {
-#    ## badly formatted input
-#  }
-#  $epoch += $epoch_offset;
-#  my ($y, $m, $d, $h, $min, $s) = time_pieces_epoch($epoch);
-#  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
-#  $isotime;
-#}
+sub epoch_iso_8601($;$) {
+  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
+  my $epoch_offset;
+  my $tz_str;
+  if ($tz_raw =~ /^-?\d+\.?\d*$/) {
+    die("badly formatted ISO timezone: $tz_raw\n") if abs $tz_raw > 12;
+    $epoch_offset = $tz_raw*3600;
+    my $tz_hr = int($tz_raw);
+    my $tz_min = abs int(($tz_raw - $tz_hr)*60);
+    my $tz_sign = $tz_raw < 0 ? "-" : "+";
+    $tz_str = sprintf "%s%02d:%02d", $tz_sign, abs $tz_hr, $tz_min;
+  } elsif ($tz_raw =~ /^[+-]\d{1,2}:?(\d{2})?$/) {
+    my $tz_sign = substr($tz_raw, 0, 1);
+    my ($tz_hr, $tz_min) = ($tz_raw =~ /^[+-](\d{1,2}):?(\d{2})?$/);
+    $tz_str = sprintf "%s%02d:%02d", $tz_sign, $tz_hr, $tz_min || 0;
+    my $offset_amt = 3600 * $tz_hr + 60 * ($tz_min || 0);
+    $epoch_offset = $tz_sign eq "+"? $offset_amt : -$offset_amt;
+  } elsif ($tz_raw eq "Z") {
+    $epoch_offset = 0;
+    $tz_str = $tz_raw;
+  } else {
+    die("badly formatted ISO 8601 timestamp: $tz_raw");
+  }
+  $epoch += $epoch_offset;
+  my ($y, $m, $d, $h, $min, $s) = time_epoch_pieces($epoch);
+  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
+  $iso_time;
+}
 
 
 BEGIN {
@@ -198,6 +199,7 @@ BEGIN {
   *tt15 = \&truncate_to_quarter_hour;
   *ttm = \&truncate_to_minute;
   *i2e = \&iso_8601_epoch;
+  *e2i = \&epoch_iso_8601;
 }
 
 
