@@ -114,6 +114,8 @@ sub gh_localtime($$) {
 
 # ISO 8601 is a standard format for time data; it looks like: 
 # 2017-06-24T07:58:59+00:00 or 2017-06-24T07:58:59Z
+# There's also a form with no colons or dashes that's supported:
+# 20170624T075859Z
 # The added or subtracted amount at the end corresponds to the
 # local timezone.
 
@@ -127,15 +129,25 @@ sub iso_8601_epoch {
     ($y, $m, $d) = split /-/, $date_part;
   }
 
-  my ($t_part, $tz_part) = split /[Z+-]/, $time_part;
+  return time_epoch_pieces($y, $m, $d) unless $time_part;
 
+  my ($t_part, $tz_part) = split /[Z+-]/, $time_part;
+  
   my $h, $min, $s;
- 
-  {
+  if ($t_part !~ /^\d{2}:/) {
+     ($h, $min , $s) = /^(\d{2})(\d{2})([0-9.]{2,})/;
+  } else {
+     ($h, $min, $s) = split /:/, $t_part;
   }
-  my $offset_amt = ($iso_time =~ /[-+]\d\d:\d\d/) ? (substr(a, -6, 1) eq "-" ? : 1 : -1) : 0;
-  my $offset = $offset_amt * (3600 * $parts[-2] + 60 * $parts[-1]); 
-  time_epoch_pieces(@parts[0..5]) + $offset;
+  
+  my $raw_ts = time_epoch_pieces($y, $m, $d, $h, $min, $s);
+  return $raw_ts unless $tz_part;
+  
+  my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
+
+  my $offset_amt = $offset_type eq "-" ? 1 : -1; 
+  my $offset = $offset_amt * (3600 * $offset_hr + 60 * $offset_min); 
+  time_epoch_pieces($y, $m, $d, $h, $min, $s) + $offset;
 }
 
 # Converts an epoch timestamp to the corresponding 
@@ -143,15 +155,31 @@ sub iso_8601_epoch {
 # corresponding to the local timezone is given.
 
 sub epoch_to_iso_8601($;$) {
-  my ($epoch, $tz) = $#_ == 2 ? @_ : (@_ , 0);
-  my $epoch_offset = 0
-  if ($tz =~ /^[-]\d*\.?\d*$/) {
-    my $tz_hr = int($tz);
-    my $tz_min = abs int(($tz - $tz_hr)*60);
-  } 
-
-  $epoch += $epoch_offset
-  
+  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
+  my $epoch_offset;
+  my $tz_num, $tz_str;
+  if ($tz_raw =~ /^-?\d+\.?\d*$/) {
+    $epoch_offset = -$tz_raw*3600;
+    my $tz_hr = int($tz_num);
+    my $tz_min = abs int(($tz_num - $tz_hr)*60);
+    my $tz_sign = $tz_num < 0 ? "-" : "+";
+    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min);
+  } elsif ($tz_raw =~ /^[+-]\d{1,2}:?(\d{2})?$/) {
+    my $tz_sign = substr($tz_raw, 0, 1);
+    my ($tz_hr, $tz_min) = ($tz_raw =~ /^[+-](\d{1,2}):?(\d{2})?$/);
+    $tz_str = $tz_sign . sprintf("%02d:%02d", $tz_hr, $tz_min || 0);
+    my $offset_amt = 3600 * $tz_hr + 60 * $tz_min;
+    $epoch_offset = $tz_sign eq "-"? $offset_amt : -$offset_amt;
+  } elsif ($tz_raw eq "Z") {
+    $epoch_offset = 0;
+    $tz_str = $tz_raw;
+  } else {
+    ## badly formatted input
+  }
+  $epoch += $epoch_offset;
+  my ($y, $m, $d, $h, $min, $s) = time_pieces_epoch($epoch);
+  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
+  $isotime;
 }
 
 
