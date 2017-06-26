@@ -176,6 +176,42 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my
 2017	1	22	2	41	13
 ```
 
+
+#### `i2e` and `e2i`: ISO 8601 time <=> epoch time
+
+ISO 8601 is a standardized time format defined by the International Organization for Standards. More information on formats is available [here](https://en.wikipedia.org/wiki/ISO_8601). `ni` implements decoding for date-time-timezone formatted ISO data into Unix timestamps.
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 i20170624T152347-0300 i20170624T182347Z p'i2e a'
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+```
+
+`ni` can also format epoch timestamps in an ISO 8601-compatible form. To do this, input an epoch timestamp and either a floating number of hours, or a timezone format string, for example `"+10:00"`.
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"'
+2017-06-24T18:23:47Z
+2017-06-24T16:53:47-01:30
+2017-06-24T21:23:47+03:00
+2017-06-24T12:38:47-05:45
+```
+
+These all represent the same instant:
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"' p'i2e a'
+1498328627
+1498328627
+1498328627
+1498328627
+```
+
+
 #### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
 
 These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
