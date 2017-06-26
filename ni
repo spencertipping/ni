@@ -7575,7 +7575,7 @@ Runs a web interface that allows you to visualize data streams. See ni
 _
 1 core/mapomatic/lib
 mapomatic.pl
-63 core/mapomatic/mapomatic.pl
+60 core/mapomatic/mapomatic.pl
 # Map-O-Matic
 # Generates a data: url that maps points on a page using Leaflet.
 
@@ -7629,13 +7629,10 @@ EOF
 defoperator mapomatic => q{
   eval {require MIME::Base64};
   my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
-  my $url = "data:text/html;base64," . MIME::Base64::encode_base64(
+  print "data:text/html;base64," . MIME::Base64::encode_base64(
     mapomatic_compress(mapomatic_header)
       . $encoded_points
       . mapomatic_compress(mapomatic_footer)) . "\n\0";
-  exec "xdg-open", $url
-    or exec "open", $url
-    or die "ni: mapomatic failed to exec xdg-open or open: $!";
 };
 
 defshort '/MM',  pmap q{mapomatic_op}, pnone;
