@@ -249,7 +249,7 @@ Each line represents one step of the pipeline defined by the spell, and the expl
 
 
 
-## Basic Row Operations, File Reading, and Output Redirection
+## Basic Row Operations
 
 
 ### `r`: Take Rows
@@ -312,249 +312,6 @@ The `r` operator is especially useful during development; for example, if you ar
 > With the exception of operators that require processing the entire stream (sorting, for example) all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.
 
 
-
-## Perl Operations
-`ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
-
-In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
-
-We'll start with the following `ni` spell.
-
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
-
-The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
-
-```sh
-aba     iss     ed
-aba     sta     rdize
-abb     rev     iature
-abd     uct     ion
-abe     tme     nt
-abi     gai     l
-abj     udg     e
-abl     est     
-abo     lis     h
-abo     rti     vely
-```
-
-Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
-
-```bash
-$ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
-["cat","/usr/share/dict/words"]
-["row_every",40]
-["head","-n",10]
-["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
-```
-
-We have reviewed every operator previously except the last. 
-
-
-### `p'...'`: Map Perl over lines
-When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run.
-
-Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
-
-`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
-
-
-### `r()`: Emit row
-
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
-
-Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
-
-```
-ni /usr/share/dict/words rx40 r10 p'substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
-aba
-iss
-ed
-aba
-sta
-rdize
-abb
-rev
-iature
-abd
-uct
-...
-...
-...
-```
-
-Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
-
-The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
-
-Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
-
-Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
-
-When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
-
-### `1`: Dummy pulse
-Suppose that you have a Perl script that generates data, and you want to generate data from that script directly. You might be surprised that the following code generates no output:
-
-```
-$ ni p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
-```
-
-One of the complicated aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run.
-
-In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
-
-```bash
-$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
-1	2	3
-2	4	6
-3	6	9
-4	8	12
-5	10	15
-```
-
-Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
-
-### Column Accessor Functions `a` and `a()`
-
-`ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
-
-The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
-
-The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous.  In general this is the case;  the one important exception to this rule is hash lookup, which requires that the user call the function explicitly.
- 
-Note that these functions do not pollute your namespace, so you can write confusing and pointless `ni` spells like this:
-
-`ni 1p'my $a = 5; r a, $a'`
-
-If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
-
-Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
-
-`ni 1p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
-
-```
-Prototype mismatch: sub ni::pl::a () vs none at - line 411.
-Prototype mismatch: sub ni::pl::r (@) vs none at - line 411.
-H
-1
-Y
-1
-Y
-```
-
-Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
-
-This brings us to an important point about `ni` processes in general:
-
-> `ni op1 op2` is equivalent to `ni op1 | ni op2`.
-
-### `rp'...'`: Take rows based on Perl
-
-We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
-
-
-Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
-
-Examples:
-
-* `ni n03 rp'$_'` -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
-  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
-  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
-* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
-
-
-## Basic Column Operations
-
-
-```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
-ed      iss
-rdize   sta
-iature  rev
-ion     uct
-nt      tme
-l       gai
-e       udg
-h       lis
-vely    rti
-```
-
-Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.
-
-```bash
-$ ni --explain  /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
-["cat","/usr/share/dict/words"]
-["row_every",40]
-["head","-n",10]
-["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
-["cols",3,2,1]
-["row_cols_defined",1,0]
-```
-
-### `f`: Column Selection
-Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
-
-`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
-
-Like `r`, there is a lot you can do with `f`:
-
-* `$ ni <data> fAA` - select the first column and duplicate it
-* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
-* `$ ni <data> fB-E` - select columns 2-5
-* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
-
-
-### `x`: Column Exchange
-
-`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
-
-* `x` -- exchange the first two columns. 
-  * Equivalent to `fBA.`
-* `xC` -- exchange column 3 with column 1. 
-  * Equivalent to `fCBA.`
-* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
-  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
-  * Equivalent to `fBECDA.`
-
-The spell for this exercise could equivalently be written:
-
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
-
-## Column Operation Shortand
-The operations in this section complete the set of column generation and access; none of them are particularly difficult to impelment in Perl, but they are common enough that `ni` has added shorthand for them.  The first set of operators, `F`, is used to create columns of data out of a stream of text columns. The second set `p'F_ ...', p'FM', and p'FR n'`, are used for general purpose access to columns in the stream.
-
-### `F`: Split text stream into columns
-
-* `F:<char>`: split on character
-  * Note: some characters need to be escaped (for example, forward-slash); use `F/regex/` below for more flexibility (at the cost of less concision).
-* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
-* `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
-* `FC`: split on commas (doesn't handle special CSV cases)
-* `FD`: split on forward slashes
-* `FV`: parse CSV "correctly," up to newlines in fields
-* `FS`: split on runs of horizontal whitespace
-* `FW`: split on runs of non-word characters
-* `FP`: split on pipe symbols
-
-### `p'F_ ...'; p'FM'; p'FR n'`: Explicit field access
-
-In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
-
-However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n'`
-
-It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
-
-`p'F_ ...'` takes a range (or a single number) as an optional second argument. `p'F_` by itself returns all fields of the input stream.
-
-To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
-
-The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
-
-It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
-
-
-
 ## Sort, Unique, and Count
 Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
 
@@ -606,6 +363,76 @@ The command from the `g` section can be rewritten as:
 `$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt oA =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
 
 **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+
+
+## Basic Column Operations
+
+## Column Operation Shortand
+The operations in this section complete the set of column generation and access; none of them are particularly difficult to impelment in Perl, but they are common enough that `ni` has added shorthand for them.  The first set of operators, `F`, is used to create columns of data out of a stream of text columns. The second set `p'F_ ...', p'FM', and p'FR n'`, are used for general purpose access to columns in the stream.
+
+### `F`: Split text stream into columns
+
+* `F:<char>`: split on character
+  * Note: some characters need to be escaped (for example, forward-slash); use `F/regex/` below for more flexibility (at the cost of less concision).
+* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
+* `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
+* `FC`: split on commas (doesn't handle special CSV cases)
+* `FD`: split on forward slashes
+* `FV`: parse CSV "correctly," up to newlines in fields
+* `FS`: split on runs of horizontal whitespace
+* `FW`: split on runs of non-word characters
+* `FP`: split on pipe symbols
+
+
+```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
+ed      iss
+rdize   sta
+iature  rev
+ion     uct
+nt      tme
+l       gai
+e       udg
+h       lis
+vely    rti
+```
+
+Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.
+
+
+### `f`: Column Selection
+Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
+
+`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
+
+Like `r`, there is a lot you can do with `f`:
+
+* `$ ni <data> fAA` - select the first column and duplicate it
+* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
+* `$ ni <data> fB-E` - select columns 2-5
+* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+
+
+### `x`: Column Exchange
+
+`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
+
+* `x` -- exchange the first two columns. 
+  * Equivalent to `fBA.`
+* `xC` -- exchange column 3 with column 1. 
+  * Equivalent to `fCBA.`
+* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
+  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
+  * Equivalent to `fBECDA.`
+
+The spell for this exercise could equivalently be written:
+
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
+
+
+
+
+
 
 ## Conclusion
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.

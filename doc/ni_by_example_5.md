@@ -436,3 +436,39 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 * Bytestream
 * gnuplot
 
+
+## Perl Operations
+`ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
+
+In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
+
+We'll start with the following `ni` spell.
+
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
+
+The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
+
+```sh
+aba     iss     ed
+aba     sta     rdize
+abb     rev     iature
+abd     uct     ion
+abe     tme     nt
+abi     gai     l
+abj     udg     e
+abl     est     
+abo     lis     h
+abo     rti     vely
+```
+
+Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
+
+```bash
+$ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
+["cat","/usr/share/dict/words"]
+["row_every",40]
+["head","-n",10]
+["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
+```
+
+We have reviewed every operator previously except the last. 
