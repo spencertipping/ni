@@ -41,8 +41,6 @@ ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 
 `ni` is a stream-processing language. Most operations in `ni` are done over a single line, which enables `ni` to be fast and memory-efficient. 
 
-`ni` commands are composed of operators, examples include `n`, which generates a stream of integers; `g`, which sorts the stream; `z`, which compresses a stream, and `HS`, which executes a Hadoop Streaming MapReduce job. 
-
 ### `n`: Integer Stream
 `ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
 
@@ -116,11 +114,13 @@ $ ni n500 e'grep 22'
 
 ### Structure of `ni` commands
 
+`ni` commands are composed of operators. Examples introduced in the last section include `n`, which generates a stream of integers; `e`, which executes a bash command, and `i`, which puts literal text to the stream. `z`, which compresses a stream. Later, we'll introduce more complex operators like `HS`, whichexecutes a Hadoop Streaming MapReduce job. 
+
 In the last section, you saw a `ni` command linking two operators; `n500` was used to generate a stream of integers from 1 to 500, and the `e'grep 22'` was used to take the lines that had a `22` in them. If you're not used to working with streams, there's a slightly subtle point to notice.
 
 In general commands are written `ni <op_1> <op_2> ... <op_n>`. It is often helpful to think of each command by piping the output of one command to the input of the next `ni <op_1> | ni <op_2> | ... | ni <op_n>`.
 
-The more compressed syntax is favored, and very short commands are often compressed without spaces in between. A common example is sort (`g`) + unique (`u`); this is commonly written as `gu` in rather than the more explicit `g u`. Because `ni` commands are highly compressed and difficult to be read by people who are uninitiated, they are sometimes referred to as "spells."
+More compressed syntax is favored, and very short commands are often compressed without spaces in between. A common example is sort (`g`) + unique (`u`); this is commonly written as `gu` in rather than the more explicit `g u`. Because `ni` commands are highly compressed and difficult to be read by people who are uninitiated, they are sometimes referred to as "spells."
 
 ## Streaming I/O
 
@@ -132,18 +132,32 @@ The more compressed syntax is favored, and very short commands are often compres
 `ni` is a streaming tool, so you can redirect output using the standard redirect.
 
 ```sh
-$ ni n10 > ten.txt
+$ ni n5 > five.txt
 ```
 
 While this works fine, it is in general not used, in favor of the literal angle-bracket operator `\>` described in the next section.
 
+
+### File Input
+
+To add a file to the stream in `ni`, add the name of the file to the stream.
+
+```sh
+$ ni five.txt
+1
+2
+3
+4
+5
+```
+
+
 ### `\>`: Output and Emit File Name
 
-`ni ... \>ten.txt` outputs the stream to a file called `ten.txt` and emits the file name in a `less` pager.
 
 ```bash
-$ ni n10 \>ten.txt
-ten.txt
+$ ni n5 \>five.txt
+five.txt
 ```
 
 Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
@@ -153,47 +167,38 @@ Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is conc
 The reason that `\>` is favored over `>` is because `\<` inverts it by reading the data from filenames.
 
 ```bash
-$ ni n10 \>ten.txt \<
+$ ni n5 \>five.txt \<
 1
 2
 3
 4
 5
-6
-7
-8
-9
-10
 ```
 
+It's important to understand how this short spell works; first, a stream of 5 integers is generated; those integers sink to a file called `five.txt`, and the text string `five.txt` is put out to the stream. Finally, `\<` instructs `ni` to open the file named `five.txt` and put its contents on the stream.
 
-### File Input
+### Folder Input
 
-When running on multiple files (or the same file), the output is appended to the stream. For example:
+When a folder name is passed into `ni`, `ni` will put the file names onto the stream. For example, if you go into the `ni` top-level folder and run `ni` on the folder `doc`, containing `ni`'s documentation, you'll get:
 
+```sh
+$ ni doc r5
+doc/bloom.md
+doc/cell.md
+doc/cheatsheet.md
+doc/closure.md
+doc/col.md
 ```
-$ ni ten.txt ten.txt
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-1
-2
-3
-4
-5
-6
-7
-8
-9
-10
+
+This generates a stream of filenames; the data can be taken out of these files using `\<`
+
+```sh
+$ ni doc r5 \< r3
+# Bloom filters
+ni implements a minimalistic bloom filter library to do efficient membership
+queries. This is visible in two ways -- first as a set of Perl functions:
 ```
+
 
 ### `z`: Compression
 
@@ -203,10 +208,6 @@ $ ni ten.txt ten.txt
 $ ni n10 z \>ten.gz
 ten.gz
 ```
-
-
-
-The default compression with `z` is `gzip`, however there are options for bzip (`zb`), xzip (`zx`), lzo (`zo`), and lz4 (`z4`). You can also specify a numeric flag to gzip by using a number other than `4`, for example `z9` executes `gzip -9` on the stream.
 
 `ni` decompresses its input by default. 
 
@@ -244,6 +245,7 @@ $ ni n10 z \>ten.gz \<
 10
 ```
 
+The default compression with `z` is `gzip`, however there are options for bzip (`zb`), xzip (`zx`), lzo (`zo`), and lz4 (`z4`). You can also specify a numeric flag to gzip by using a number other than `4`, for example `z9` executes `gzip -9` on the stream.
 
 
 
@@ -494,9 +496,6 @@ feel	I	and	all
 
 
 Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cut` is much faster of the two, but it's only used when the output columns are in the same relative order as the input columns.
-
-**WARNING**: Once an `f` operation is completed, `ni` forgets about any previous ordering of the columns.
-
 
 
 ### `x`: Column Exchange
