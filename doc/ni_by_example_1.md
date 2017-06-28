@@ -1,18 +1,16 @@
 # `ni` by Example, Chapter 1 (alpha release)
 
-Welcome! This is a "rich" `ni` tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
+Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-By the end of this tutorial, you should have a good handle on the most common `ni` operations, and should be pretty facile with `ni` on your local machine. `ni` suffers from having both a steep learning curve and an exponential power curve; learning the basics of the syntax is the hardest part, and knowing the basics won't make you much more productive (especially if you have a couple of years of Python under your belt and know another data processing language like `pandas`).
-
-The knowledge represented in this tutorial is fundamental, but only scratches the surface of `ni`'s power, which is its virality. This tutorial is structured in 5 parts:
+`ni` suffers from having a steep learning curve, and while the knowledge represented in this tutorial is fundamental, it only hints at `ni`'s real power, which is its virality. This tutorial is structured in 5 parts:
 
 1. Intro to `ni`
 2. Perl for `ni`
 3. The real power of `ni`
 4. `ni` and Ruby, Perl, Python, Lisp & Bash
 5. `ni` odds and ends
+6. `ni` + Jupyter (TODO)
 
-In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsheet](cheatsheet.md). If you find this tutorial too slow, you can drink from the firehose there. Have fun!
 
 ## What is `ni`?
 
@@ -30,7 +28,7 @@ In general, this tutorial follows along with the horribly-misnamed `ni` [cheatsh
 
 
 ## Installation
-`ni` should work on any Unix-based OS. If you have Windows and want `ni`, go get Cygwin or VirtualBox or Docker or save yourself the trouble and give your hard drive a good wipe and a fresh Ubuntu install. 
+`ni` works on any Unix-based OS. You should use a bash prompt when calling `ni`.
 
 ```
 git clone git@github.com:spencertipping/ni.git
@@ -38,13 +36,12 @@ cd ni
 ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
 ```
 
-## `ni` Development Environment
 
-It's **highly** recommended to run `ni` from a `bash` prompt, and ideally one that is as vanilla as possible; if you're using some other CLI and have `bash` installed, `bash` at the command line will open a bash shell (using your `~/.bash_profile` settings)
+## Basic Stream Operators
 
+`ni` is a stream-processing language. Most operations in `ni` are done over a single line, which enables `ni` to be fast and memory-efficient. 
 
-## Basic Streams
-`ni` is at it score, a stream-processing language, and every operator we will introduce in this chapter will function on lines of a stream. In this section, we'll cover integer streams as well as how to create streams using bash scripts.
+`ni` commands are composed of operators, examples include `n`, which generates a stream of integers; `g`, which sorts the stream; `z`, which compresses a stream, and `HS`, which executes a Hadoop Streaming MapReduce job. 
 
 ### `n`: Integer Stream
 `ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
@@ -58,7 +55,7 @@ $ ni n5
 5
 ```
 
-If you're familiar with the Unix terminal pager utility `less`, this will look and feel familiar. If you're not, `q` will quit and return to the command line. 
+In general, `ni` will drop you into a `less` pager after a command finishes. You can change the default pager by setting the `NI_PAGER` environment variable.
 
 `ni n0` gives you consecutive integers starting from zero. For example:
 
@@ -69,50 +66,37 @@ $ ni n03
 2
 ```
 
-To generate a large but finite number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 3.2 x 10<sup>5</sup> consecutive integers, starting from 1.
-
-
-Without an argument, `ni n` and ni `n0` give an infinite stream of consecutive integers starting from 1 and 0, respectively.
+To generate a large  number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
 
 
 ### `i`: Literal text 
-`i` operator is the way to put literal text into the command line:
+The `i` operator puts literal text into the stream:
 
 ```bash
-$ ni ihello ithere
+$ ni ihello
 hello
-there
 ```
 
-You can use single quotes with `i` to include spaces within strings.
+You can use quotes with `i` to include spaces within strings.
 
 ```bash
-$ ni i'one whole line'
-one whole line
+$ ni i"hello there"
+hello there
 ```
 
-If you want your text to be tab-delimited, you can put your text inside brackets.
+`ni` is optimized to work with tab-delimited text. If you want your text to be tab-delimited, put your text inside square brackets.
 
 ```bash
-$ ni i[foo bar]
-foo	bar
+$ ni i[hello there new friend]
+hello	there	new	friend
 ```
-
-And if you need brackets in your text, you can put those brackets inside brackets (and add spaces around the beginning and ending brackets.)
-
-
-```bash
-$ ni i[ foo[] [bar] ]
-foo[]	[bar]
-```
-
 
 ### `e'...'`: Evaluate `bash` script
 
 `ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
 
 ```bash
-$ ni e'seq 500 | grep 22'
+$ ni n500 e'grep 22'
 22
 122
 220
@@ -129,28 +113,29 @@ $ ni e'seq 500 | grep 22'
 422
 ```
 
-You can also link bash operators with stream operators (and all of the rest of the operators we'll introduce), for example:
+
+### Structure of `ni` commands
+
+In the last section, you saw a `ni` command linking two operators; `n500` was used to generate a stream of integers from 1 to 500, and the `e'grep 22'` was used to take the lines that had a `22` in them. If you're not used to working with streams, there's a slightly subtle point to notice.
+
+In general commands are written `ni <op_1> <op_2> ... <op_n>`. It is often helpful to think of each command by piping the output of one command to the input of the next `ni <op_1> | ni <op_2> | ... | ni <op_n>`.
+
+The more compressed syntax is favored, and very short commands are often compressed without spaces in between. A common example is sort (`g`) + unique (`u`); this is commonly written as `gu` in rather than the more explicit `g u`. Because `ni` commands are highly compressed and difficult to be read by people who are uninitiated, they are sometimes referred to as "spells."
+
+## Streaming I/O
+
+`ni` provides very flexible file input and output. In particular, compressing streams in `ni` is very simple, and decompression is done by default.
+
+
+### `>`: `bash`-style file output
+
+`ni` is a streaming tool, so you can redirect output using the standard redirect.
 
 ```
-$ ni n100 e'grep -E "(.)\1"'
-11
-22
-33
-44
-55
-66
-77
-88
-99
-100
+$ ni n10 > ten.txt
 ```
 
-If you find regular expression used above hard to understand, here's a [StackExchange post](http://unix.stackexchange.com/questions/70933/regular-expression-for-finding-double-characters-in-bash) that explains it.
-
-## File I/O
-
-
-The directory you ran this command from, you should have a file called `ten.txt`.  If you open `ten.txt` in your text editor of choice, you should find the integers from 1 to 10, each printed on its own line.
+While this works fine, it is in general not used, in favor of the literal angle-bracket operator `\>` described in the next section.
 
 ### `\>`: Output and Emit File Name
 
@@ -163,11 +148,30 @@ ten.txt
 
 Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
 
-### File Input
+### `\<` Read from Filenames
 
-If you don't have the `ten.txt` file in your current directory, run `$ ni n10 \>ten.txt`. Files are appended to the stream  
+The reason that `\>` is favored over `>` is because `\<` inverts it by reading the data from filenames.
 
 ```bash
+$ ni n10 \>ten.txt \<
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
+
+
+### File Input
+
+When running on multiple files (or the same file), the output is appended to the stream. For example:
+
+```
 $ ni ten.txt ten.txt
 1
 2
@@ -191,102 +195,23 @@ $ ni ten.txt ten.txt
 10
 ```
 
-Entering the name of a file at the command line will cause `ni` to `cat` the contents of the file into the stream. If more than one file name is entered, they will be added to the stream in order. `ni` also automatically decompresses most common formats, including gzip, bzip, xzip, lzo, and lz4.
+### `z`: Compression
 
-**WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
+`ni` provides compression in a highly keystroke-efficient way;
 
-```bash
-$ ni n5 \>n1.3E5
-n1.3E5
 ```
-
-```bash
-$ ni n1.3E5
-1
-2
-3
-4
-5
-```
-because `ni` is reading from the file named `n10`.
-
-
-## `ni` Coding and Debugging
-
-The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
-
-In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
-
-As you advance through this tutorial, or start working with `ni` spells written by others, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
-
-For this, use `ni --explain ...`. Using the example from the file output section:
-
-```bash
-$ ni --explain n10 \>ten.txt
-["n",1,11]
-["file_write","ten.txt"]
-```
-
-Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
-
-
-## Stream Duplication and Compression
-In this section, we'll cover two useful operations
-
-We recognize the first and last operators instantly; the middle two operators are new.
-
-### `=[...]`: Divert Stream
-
-The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
-
-```bash
-$ ni n10 =[\>ten.txt] z\>ten.gz
+$ ni n10 z \>ten.gz
 ten.gz
 ```
 
-The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
 
-To examine the contents 
-
-Let's take a look at this with `--explain`:
-
-```bash
-$ ni --explain n10 =[\>ten.txt] z\>ten.gz
-["n",1,11]
-["divert",["file_write","ten.txt"]]
-["sh","gzip"]
-["file_write","ten.gz"]
-```
-
-
-Looking at the output of `ni --explain`:
-
-```
-...
-["divert",["file_write","ten.txt"]]
-...
-```
-
-We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
-
-`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
-
-One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
-
-For simple operations, the square brackets are unnecessary; we could have equivalently written:
-
-`ni n10 =\>ten.txt z\>ten.gz`
-
-This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
-
-### `z`: Compression
-
-Compression is fundamental to improving throughput in networked computation, and `ni` provides a keystroke-efficient interface. As `--explain` says, the compression used is `gzip`, and it is called through the shell. `z` takes a lot of different options, which you can read about in the [cheatsheet](cheatsheet.md). 
+The default compression with `z` is `gzip`, however there are options for bzip, xzip, lzo, and lz4.
 
 `ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ ni ten.gz` or `$ cat ten.gz | ni`.
 
+
 ```bash
-$ cat ten.gz | ni
+$ ni n10 z \>ten.gz \<
 1
 2
 3
@@ -299,44 +224,78 @@ $ cat ten.gz | ni
 10
 ```
 
-as we would expect.
+
+## `ni` Coding and Debugging
+
+The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
+
+In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
+
+As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
+
+
+### `--explain`: Print information on command
+
+For this, use `ni --explain ...`. Using the example from the file output section:
+
+```bash
+$ ni --explain n10 \>ten.txt \<
+["n",1,11]
+["file_write","ten.txt"]
+["file_read"]
+```
+
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
 
 
 
 ## Basic Row Operations, File Reading, and Output Redirection
-`$ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l`
-
-Running the spell, we are not dropped into a `less` environment; the output has been successfully piped to `wc -l`, and the lines of the stream have been successfully counted.
-
-```bash
-$ ni n10 =z\>ten.gz r3 \>three.txt \< | wc -l
-3
-```
-
-Because of the pipe, you cannot simply run `$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \< | wc -l`, which will pipe the output of `ni --explain` to `wc -l` and count the number of lines in the explanation. Dropping the part after the pipe yields:
-
-```bash
-$ ni --explain n10 =z\>ten.gz r3 \>tens.txt \<
-["n",1,11]
-["divert",["sh","gzip"],["file_write","ten.gz"]]
-["head","-n",3]
-["file_write","tens.txt"]
-["file_read"]
-```
-
-A wrinkle has been added into the `divert` statement, demonstrating the ability to do more complicated operation of compressing and writing to a file. The lack of whitespace here is critical, and this more concise command is preferred stylistically to the explicit and functionally equivalent `=[ z \>ten.gz ]`.
 
 
 ### `r`: Take Rows
 
+#### Numeric options for `r`
 `r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities. Eventually you will have all of these operations memorized, but for now, just try to remember that you have these options available to you.
 
-* `$ ni n10 r3` - take the first 3 rows of the stream
-* `$ ni n10 r-3` - take everything after the first 3 rows of the stream
-* `$ ni n10 r~3` - take the last 3 rows of the stream
-* `$ ni n10 rx3` - take every 3rd row in the stream
-* `$ ni n10 r.15` - sample 15% of the rows in the stream
-  * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the first row.
+```bash
+$ ni n10 r3
+1
+2
+3
+```
+
+```bash
+$ ni n10 r-3
+4
+5
+6
+7
+8
+9
+10
+```
+
+```bash
+$ ni n10 r~3
+8
+9
+10
+```
+
+```bash
+$ ni n10 rx3
+3
+6
+9
+```
+
+
+Adding a number between 0 and 1 will lead ot 
+```
+$ ni n10 r.15
+```
+
+#### `r`: regex options
 
 `r` also can take a regex: `$ ni <data> r/<regex>/` takes all rows where the regex has a match.
 
@@ -352,17 +311,6 @@ The `r` operator is especially useful during development; for example, if you ar
 
 > With the exception of operators that require processing the entire stream (sorting, for example) all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.
 
-
-### `\<`: Read from File Names in Stream
-When the `\>` file writing operator was introduced, you may have questioned what the purpose of emitting the filename was. The answer is the file reading operator `\<`.
-
-`\<` interprets its input stream as file names, and it will output the contents of these files in order. 
-
-Note that `ni` does not insert newlines between input from separate files. In general, this is a feature, as it allows zip files to be partitioned (for example, in HDFS). However, if you're reading from multiple raw text files, you may need to make sure that the file ends with a newline.
-
-### `|` and `>`: Piping and Redirecting Output
-
-Like other command-line utilities, `ni` respects pipes (`|`) and redirects (`>`). 
 
 
 ## Perl Operations

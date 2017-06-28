@@ -1,6 +1,25 @@
 #Future Chapter 5 Below
 
 
+## Warnings
+
+**WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
+
+```bash
+$ ni n5 \>n1.3E5
+n1.3E5
+```
+
+```bash
+$ ni n1.3E5
+1
+2
+3
+4
+5
+```
+because `ni` is reading from the file named `n10`.
+
 ## Understanding the `ni` monitor
 
 At this point, you've probably executed a long-running enough `ni` job to see the `ni` monitor appear at the top of your screen. 
@@ -315,6 +334,56 @@ As of now, `ni` auto-generates the names for the Hadoop directories, and these c
 Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
 
 **TODO**: Say something useful.
+
+
+## Stream Duplication and Compression
+In this section, we'll cover two useful operations
+
+We recognize the first and last operators instantly; the middle two operators are new.
+
+### `=[...]`: Divert Stream
+
+The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
+
+```bash
+$ ni n10 =[\>ten.txt] z\>ten.gz
+ten.gz
+```
+
+The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
+
+To examine the contents 
+
+Let's take a look at this with `--explain`:
+
+```bash
+$ ni --explain n10 =[\>ten.txt] z\>ten.gz
+["n",1,11]
+["divert",["file_write","ten.txt"]]
+["sh","gzip"]
+["file_write","ten.gz"]
+```
+
+
+Looking at the output of `ni --explain`:
+
+```
+...
+["divert",["file_write","ten.txt"]]
+...
+```
+
+We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
+
+`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
+
+One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
+
+For simple operations, the square brackets are unnecessary; we could have equivalently written:
+
+`ni n10 =\>ten.txt z\>ten.gz`
+
+This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
 
 
 ##Custom Compound Reduce
