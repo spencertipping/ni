@@ -248,14 +248,15 @@ $ ni --explain n10 \>ten.txt \<
 Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
 
 
+## Basic Row and Column Operations
 
-## Basic Row Operations
-
+`ni` works especially well on data formatted as tab-delimited rows of text; in this section we'll show how to 
 
 ### `r`: Take Rows
 
-#### Numeric options for `r`
-`r` is a powerful and flexible operation for filtering rows. Here's a short demonstration of its abilities. Eventually you will have all of these operations memorized, but for now, just try to remember that you have these options available to you.
+`r` is a powerful and flexible operation for filtering rows. 
+
+`rN` followed by a number takes the first N rows.
 
 ```bash
 $ ni n10 r3
@@ -264,6 +265,7 @@ $ ni n10 r3
 3
 ```
 
+`r-N` drops the first N rows.
 ```bash
 $ ni n10 r-3
 4
@@ -275,12 +277,16 @@ $ ni n10 r-3
 10
 ```
 
+`r~N` takes the last N rows.
+
 ```bash
 $ ni n10 r~3
 8
 9
 10
 ```
+
+The `rxN` option takes the last of every `N` rows.
 
 ```bash
 $ ni n10 rx3
@@ -290,26 +296,164 @@ $ ni n10 rx3
 ```
 
 
-Adding a number between 0 and 1 will lead ot 
+Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) pseudo-random sample of the stream data.
+
+```bash
+$ ni n20 r.15
+1
+9
+11
+12
+14
+15
 ```
-$ ni n10 r.15
+
+`r` also can take a regex: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
+
+```bash
+$ ni n500 r/22/
+22
+122
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+322
+422
+522
 ```
 
-#### `r`: regex options
+To use escaped characters in a regex, it's often helpful to wrap in quotes:
 
-`r` also can take a regex: `$ ni <data> r/<regex>/` takes all rows where the regex has a match.
-
-For example, you can take all of the numbers that end in 0, 1, or 5 with the following spell: `$ ni n20 r/[015]$/`
-
-Because you're typing directly into the `bash` shell, some characters may need to be escaped, for example in this expression which identifies numbers that are all repeating digits.
-
-`$ ni n1000 r/^\(\\d\)\\1+$/`
-
-Use of escape characters in `ni` operators is acceptable style only if there is not a conciser way that is at least as readable, or a more readable way that is at least as concise. way to do the job. In this case, there is both. We can quote the regex inside of single quotes to make `r` filter on rows that match the `ni n1000 r'/^(\d)\1+$/'`
+```bash
+$ ni n1000 r-500 r'/^(\d)\1+$/'
+555
+666
+777
+888
+999
+```
 
 The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  
 
-> With the exception of operators that require processing the entire stream (sorting, for example) all `ni` development can be I/O-bounded, and not processor-bounded, regardless of the resources required by the computation.
+### `F`: Split stream into columns
+
+Like `r`, `F` also has many options. The most important is `F/regex/`, which splits text into columns based on a regular expression.
+
+```bash
+$ ni n10105 r~10 F/0/
+1		96
+1		97
+1		98
+1		99
+1	1
+1	1	1
+1	1	2
+1	1	3
+1	1	4
+1	1	5
+```
+
+```bash
+$ ni n10105 r~10 F/00/
+1	96
+1	97
+1	98
+1	99
+101
+10101
+10102
+10103
+10104
+10105
+```
+
+The rest of the operations are syntactic sugar, but they're worth knowing.
+
+`F:<char>` splits data on a particular character.
+
+```bash
+$ ni n10105 r~10 F:0
+1		96
+1		97
+1		98
+1		99
+1	1
+1	1	1
+1	1	2
+1	1	3
+1	1	4
+1	1	5
+```
+
+`FD` splits on forward slashes:
+
+`FS` splits on runs of whitespace:
+
+`FC` splits on commas:
+
+```bash
+$ ni ibread,eggs,milk i'fruit gushers,index cards' FC
+bread	eggs	milk
+fruit gushers	index cards
+```
+
+
+
+The rest of the operations are 
+
+`FC` splits on commas
+
+* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
+* `FC`: split on commas (doesn't handle special CSV cases)
+* `FD`: split on forward slashes
+* `FV`: parse CSV "correctly," up to newlines in fields
+* `FS`: split on runs of horizontal whitespace
+* `FW`: split on runs of non-word characters
+* `FP`: split on pipe symbols
+
+
+
+
+### `f`: Column Selection
+Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
+
+`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
+
+Like `r`, there is a lot you can do with `f`:
+
+* `$ ni <data> fAA` - select the first column and duplicate it
+* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
+* `$ ni <data> fB-E` - select columns 2-5
+* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+
+
+### `x`: Column Exchange
+
+`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
+
+* `x` -- exchange the first two columns. 
+  * Equivalent to `fBA.`
+* `xC` -- exchange column 3 with column 1. 
+  * Equivalent to `fCBA.`
+* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
+  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
+  * Equivalent to `fBECDA.`
+
+The spell for this exercise could equivalently be written:
+
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
+
+
+## Basic Row Operations
+
+
 
 
 ## Sort, Unique, and Count
@@ -363,75 +507,6 @@ The command from the `g` section can be rewritten as:
 `$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt oA =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
 
 **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
-
-
-
-## Basic Column Operations
-
-## Column Operation Shortand
-The operations in this section complete the set of column generation and access; none of them are particularly difficult to impelment in Perl, but they are common enough that `ni` has added shorthand for them.  The first set of operators, `F`, is used to create columns of data out of a stream of text columns. The second set `p'F_ ...', p'FM', and p'FR n'`, are used for general purpose access to columns in the stream.
-
-### `F`: Split text stream into columns
-
-* `F:<char>`: split on character
-  * Note: some characters need to be escaped (for example, forward-slash); use `F/regex/` below for more flexibility (at the cost of less concision).
-* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
-* `Fm/regex/`: don't split; instead, look for matches of regex and use those as the field values.
-* `FC`: split on commas (doesn't handle special CSV cases)
-* `FD`: split on forward slashes
-* `FV`: parse CSV "correctly," up to newlines in fields
-* `FS`: split on runs of horizontal whitespace
-* `FW`: split on runs of non-word characters
-* `FP`: split on pipe symbols
-
-
-```$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fCBrA
-ed      iss
-rdize   sta
-iature  rev
-ion     uct
-nt      tme
-l       gai
-e       udg
-h       lis
-vely    rti
-```
-
-Looking at the output, we see that it has 9 rows, rather than 10, and that those rows are composed of the third column and the second column of the data from the previous example.  The row that has disappeared is one that had nothing in the third column.
-
-
-### `f`: Column Selection
-Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
-
-`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
-
-Like `r`, there is a lot you can do with `f`:
-
-* `$ ni <data> fAA` - select the first column and duplicate it
-* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
-* `$ ni <data> fB-E` - select columns 2-5
-* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
-
-
-### `x`: Column Exchange
-
-`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
-
-* `x` -- exchange the first two columns. 
-  * Equivalent to `fBA.`
-* `xC` -- exchange column 3 with column 1. 
-  * Equivalent to `fCBA.`
-* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
-  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
-  * Equivalent to `fBECDA.`
-
-The spell for this exercise could equivalently be written:
-
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
-
-
-
-
 
 
 ## Conclusion
