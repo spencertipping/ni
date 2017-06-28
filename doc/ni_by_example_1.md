@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 1 (alpha release)
+# `ni` by Example, Chapter 1 (beta release)
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
@@ -131,7 +131,7 @@ The more compressed syntax is favored, and very short commands are often compres
 
 `ni` is a streaming tool, so you can redirect output using the standard redirect.
 
-```
+```sh
 $ ni n10 > ten.txt
 ```
 
@@ -197,17 +197,37 @@ $ ni ten.txt ten.txt
 
 ### `z`: Compression
 
-`ni` provides compression in a highly keystroke-efficient way;
+`ni` provides compression in a highly keystroke-efficient way, using the `z` operator.
 
-```
+```bash
 $ ni n10 z \>ten.gz
 ten.gz
 ```
 
 
-The default compression with `z` is `gzip`, however there are options for bzip, xzip, lzo, and lz4.
 
-`ni` decompresses its input by default. We can take our output and look at it in `ni` very easily using `$ ni ten.gz` or `$ cat ten.gz | ni`.
+The default compression with `z` is `gzip`, however there are options for bzip (`zb`), xzip (`zx`), lzo (`zo`), and lz4 (`z4`). You can also specify a numeric flag to gzip by using a number other than `4`, for example `z9` executes `gzip -9` on the stream.
+
+`ni` decompresses its input by default. 
+
+```sh
+cat ten.gz
+2�SY3�2�2�2�2�2�2���24�뿊
+```
+
+```sh
+$ cat ten.gz | ni
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
 
 
 ```bash
@@ -225,38 +245,19 @@ $ ni n10 z \>ten.gz \<
 ```
 
 
-## `ni` Coding and Debugging
-
-The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
-
-In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
-
-As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
-
-
-### `--explain`: Print information on command
-
-For this, use `ni --explain ...`. Using the example from the file output section:
-
-```bash
-$ ni --explain n10 \>ten.txt \<
-["n",1,11]
-["file_write","ten.txt"]
-["file_read"]
-```
-
-Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
 
 
 ## Basic Row and Column Operations
 
-`ni` works especially well on data formatted as tab-delimited rows of text; in this section we'll show how to 
+`ni` works especially well on data formatted as tab-delimited rows of text; in this section we'll show how to filter, trim, and convert raw text into tab-delimited form.
 
-### `r`: Take Rows
+### `r`: Take rows
 
-`r` is a powerful and flexible operation for filtering rows. 
+`r` is a powerful and flexible operation for filtering rows; it encompasses the functionality of Unix operators `head` and `tail`, as well as a large number of filtering operations.
 
-`rN` followed by a number takes the first N rows.
+#### Numeric Options
+
+`rN` takes the first N rows.
 
 ```bash
 $ ni n10 r3
@@ -295,7 +296,6 @@ $ ni n10 rx3
 9
 ```
 
-
 Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) pseudo-random sample of the stream data.
 
 ```bash
@@ -308,7 +308,11 @@ $ ni n20 r.15
 15
 ```
 
-`r` also can take a regex: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
+These last examples show the value of `r` in development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to view smaller samples of large datasets.
+
+#### Logical Options
+
+`r` can also be thought of as "take rows where the predicate that follows evaluates to true." In this context, `r` can take a regex as an option: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
 
 ```bash
 $ ni n500 r/22/
@@ -326,7 +330,6 @@ $ ni n500 r/22/
 229
 322
 422
-522
 ```
 
 To use escaped characters in a regex, it's often helpful to wrap in quotes:
@@ -340,63 +343,54 @@ $ ni n1000 r-500 r'/^(\d)\1+$/'
 999
 ```
 
-The `r` operator is especially useful during development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to downsample and cap the amount of data read.  
+In `ni`, tab-delimited columns of data are referenced like a spreadsheet: the first column is `A`, the second is `B`, etc.
+
+We've seen how to generate tab-delimited columns using the `i` operator with brackets:
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here]
+one_column
+two     columns
+three   columns here
+```
+
+Because an empty column is falsey (it evaluates to false), we can filter it using `r`. 
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] rB
+two     columns
+three   columns here
+```
 
 ### `F`: Split stream into columns
 
 Like `r`, `F` also has many options. The most important is `F/regex/`, which splits text into columns based on a regular expression.
 
 ```bash
-$ ni n10105 r~10 F/0/
-1		96
-1		97
-1		98
-1		99
-1	1
-1	1	1
-1	1	2
-1	1	3
-1	1	4
-1	1	5
-```
-
-```bash
-$ ni n10105 r~10 F/00/
-1	96
-1	97
-1	98
-1	99
-101
-10101
-10102
-10103
-10104
-10105
+$ ni ibubbles ibaubles ibarbaras F/[aeiou]+/
+b       bbl     s
+b       bl      s
+b       rb      r       s
 ```
 
 The rest of the operations are syntactic sugar, but they're worth knowing.
 
-`F:<char>` splits data on a particular character.
-
-```bash
-$ ni n10105 r~10 F:0
-1		96
-1		97
-1		98
-1		99
-1	1
-1	1	1
-1	1	2
-1	1	3
-1	1	4
-1	1	5
-```
 
 `FD` splits on forward slashes:
 
+```bash
+$ ni i~/bin/dependency/nightmare.jar FD
+~	bin	dependency	nightmare.jar
+```
+
 `FS` splits on runs of whitespace:
 
-`FC` splits on commas:
+```bash
+$ ni i"here               is   an              example" FS
+here	is	an	example
+```
+
+`FC` splits on commas, but doesn't handle CSV:
 
 ```bash
 $ ni ibread,eggs,milk i'fruit gushers,index cards' FC
@@ -404,34 +398,105 @@ bread	eggs	milk
 fruit gushers	index cards
 ```
 
+`FV` splits CSV fields correctly (i.e. it doesn't split commas in quoted strings). However, `ni` splits lines of input on newline characters, so this can't handle newlines in quoted fields.
 
+```bash
+$ ni i"hello,there",one,two,three
+hello,there	one	two	three
+```
 
-The rest of the operations are 
+`FW` splits on non-word characters (i.e. equivalent to splitting on the regex  `/\W+/`)
 
-`FC` splits on commas
+```bash
+ni i'this@#$$gets&(*&^split' FW
+this	gets	split
+```
 
-* `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
-* `FC`: split on commas (doesn't handle special CSV cases)
-* `FD`: split on forward slashes
-* `FV`: parse CSV "correctly," up to newlines in fields
-* `FS`: split on runs of horizontal whitespace
-* `FW`: split on runs of non-word characters
-* `FP`: split on pipe symbols
+`FP` splits on pipe characters:
+```bash
+$ ni i'need|quotes|around|pipes|because|of|bash' FP
+need	quotes	around	pipes	because	of	bash
+```
 
+`F:<char>` splits data on a particular character:
 
+```bash
+$ ni ibubbles ibaubles ibarbaras F:a
+bubbles
+b	ubles
+b	rb	r	s
+```
 
 
 ### `f`: Column Selection
-Columns are indexed using letters, as in Excel. The `f` operator thus gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
+Columns are indexed using letters, as in Excel. The `f` operator gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
 
-`r` followed by a column name will filter out all columns that have an empty value for that column.  Note that `r` is contextual here; once we have rearranged the data with `fCB` so that what was the third column is now in the first position (i.e. column `A`), we interact with it under its new alias.  Adding whitespace to the command `fCBrA` to become `fCB rA` is acceptable `ni` style, as we have added clarity with only a small decease in concisensess. 
+Let's start by generating some text and converting it to columns using `F`.
 
-Like `r`, there is a lot you can do with `f`:
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS
+this	is	how	we	do	it
+it's	friday	night
+and	I	feel	all	right
+```
 
-* `$ ni <data> fAA` - select the first column and duplicate it
-* `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
-* `$ ni <data> fB-E` - select columns 2-5
-* `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+Like `r`, `f` has a lot of options. To select a column, use its corresponding letter. 
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fC
+how
+night
+feel
+```
+
+You can select multiple columns by providing multiple letters:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAB
+this	is
+it's	friday
+and	I
+```
+
+You can duplicate a column by using its corresponding letter multiple times:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAAC
+this    this    how
+it's    it's    night
+and     and     feel
+```
+
+To select all columns after a particular column, use `f<col>.`
+```bash
+ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAD.
+this	we	do	it
+it's
+and	all	right
+```
+
+To select all data between two columns, inclusive, use a dash:
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fB-E
+is	how	we	do
+friday	night
+I	feel	all	right
+```
+
+You can also use `f` to re-order selected columns:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fCBAD
+how	is	this	we
+night	friday	it's
+feel	I	and	all
+```
+
+
+Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cut` is much faster of the two, but it's only used when the output columns are in the same relative order as the input columns.
+
+**WARNING**: Once an `f` operation is completed, `ni` forgets about any previous ordering of the columns.
+
 
 
 ### `x`: Column Exchange
@@ -445,14 +510,6 @@ Like `r`, there is a lot you can do with `f`:
 * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
   * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
   * Equivalent to `fBECDA.`
-
-The spell for this exercise could equivalently be written:
-
-`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' fB.xrA`
-
-
-## Basic Row Operations
-
 
 
 
@@ -483,7 +540,6 @@ What's interesting here is that your Unix dictionary is probably only about 2.5 
 
 With a single column of data, as in the example, the simple command `g` will give you lexicographic sorting **in ASCII, in ascending order**. 
 
-**Feature test: Unicode**
 
 To do more complicated sorts, you can give `g` columns and modifiers. As with `f`, columns are indexed `A-Z`. `g` has two modifiers, `n` and `-`. `n` makes the sort numeric, and `-` makes the sort descending, rather tahn ascending.
 
@@ -507,6 +563,32 @@ The command from the `g` section can be rewritten as:
 `$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt oA =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
 
 **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+## `ni` Coding and Debugging
+
+The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
+
+In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
+
+As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
+
+
+### `--explain`: Print information on command
+
+For this, use `ni --explain ...`. Using the example from the file output section:
+
+```bash
+$ ni --explain n10 \>ten.txt \<
+["n",1,11]
+["file_write","ten.txt"]
+["file_read"]
+```
+
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
+
+### Staying in a command-line environment
+
+`ni` is a bottom-up, ad hoc language; `ni` spells can be developed efficiently from the command line, or from a command line-like environment, like a Jupyter notebook.
 
 
 ## Conclusion
