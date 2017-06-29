@@ -404,7 +404,7 @@ fruit gushers	index cards
 
 ```bash
 $ ni i'"hello,there",one,two,three' FV
-hello,there	one	two	three
+hello,there	one	two	three	
 ```
 
 `FW` splits on non-word characters (i.e. equivalent to splitting on the regex  `/\W+/`)
@@ -474,7 +474,7 @@ To select all columns after a particular column, use `f<col>.`
 ```bash
 $ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAD.
 this	we	do	it
-it's
+it's	
 and	all	right
 ```
 
@@ -491,7 +491,7 @@ You can also use `f` to re-order selected columns:
 ```bash
 $ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fCBAD
 how	is	this	we
-night	friday	it's
+night	friday	it's	
 feel	I	and	all
 ```
 
