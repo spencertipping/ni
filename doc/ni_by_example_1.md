@@ -498,70 +498,210 @@ feel	I	and	all
 Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cut` is much faster of the two, but it's only used when the output columns are in the same relative order as the input columns.
 
 
-### `x`: Column Exchange
+### `x`: Exchange columns
 
-`x` is a shorthand for certain operations that would otherwise be written using `f` with a greater number of keystrokes.
+`x` is a shorthand for certain column exchange operations. All of these operations can be written with `f`, usually with a higher number of keystrokes.
 
-* `x` -- exchange the first two columns. 
-  * Equivalent to `fBA.`
-* `xC` -- exchange column 3 with column 1. 
-  * Equivalent to `fCBA.`
-* `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
-  * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
-  * Equivalent to `fBECDA.`
+```bash
+$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS
+Ain't	nobody	dope	as	me
+I'm	dressed	so	fresh,	so	clean
+So	fresh	and	so	clean,	clean
+```
+
+`x` exchanges the first two columns (same as `fBA.`)
+
+```bash
+$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS x
+nobody	Ain't	dope	as	me
+dressed	I'm	so	fresh,	so	clean
+fresh	So	and	so	clean,	clean
+```
+
+`x` with a single column exchanges that column with column 1.
+
+```bash
+$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS xD
+as	nobody	dope	Ain't	me
+fresh,	dressed	so	I'm	so	clean
+so	fresh	and	So	clean,	clean
+```
+
+`x` with mulitple columns exchanges those into the first columns, in order.
+
+```bash
+$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS xEB
+me	nobody	dope	as	Ain't
+so	dressed	so	fresh,	I'm	clean
+clean,	fresh	and	so	So	clean
+```
 
 
 
 ## Sort, Unique, and Count
-Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
-
-If you're not convinced that anything could go slow in `ni`, let's try counting all of the letters in the dictionary 
-
-`$ ni /usr/share/dict/words F// pF_ gc \>letter_counts.txt`
-
-You'll probably see the `ni` monitor for the first time, showing the steps of the computation, and what steps are taking time.  The whole process takes about 90 seconds on my computer.
-
-```bash
-$ ni --explain /usr/share/dict/words F// pF_ gc \>letter_counts.txt
-["cat","/usr/share/dict/words"]
-["split_regex",""]
-["perl_mapper","F_"]
-["row_sort","-t","\t"]
-["count"]
-["file_write","letter_counts.txt"]
-```
-
-What's interesting here is that your Unix dictionary is probably only about 2.5 MB in size; the dictionary itself can be streamed into memory in a fraction of a second. Remembering that all `ni` development code such that it is I/O bounded; in this case, there is an I/O bounded step where the data must be written to disk in order to be sorted. One can avoid this bound by adding `r10` after the filename, however.
 
 
 ### `g`: General sorting
-`g` is the most general sorting operator; there are two other sorting operators within `ni`, but they are highly specific.
+With a single column of data, as in the example, the simple command `g` will give you lexicographic sorting in ascending order. 
 
-With a single column of data, as in the example, the simple command `g` will give you lexicographic sorting **in ASCII, in ascending order**. 
+```bash
+$ ni ib ia ic g
+a
+b
+c
+```
+
+To do more complicated sorts, you can give `g` columns (`A-Z`) and modifiers. For example, `-` after a column reverses the sort.
+
+```bash
+$ ni ib ia ic gA-
+c
+b
+a
+```
+
+`n` after a column does a numeric sort.
+
+```bash
+$ ni i10 i5 i0.3 gAn
+0.3
+5
+10
+```
+
+You can sort multiple columns in order:
 
 
-To do more complicated sorts, you can give `g` columns and modifiers. As with `f`, columns are indexed `A-Z`. `g` has two modifiers, `n` and `-`. `n` makes the sort numeric, and `-` makes the sort descending, rather tahn ascending.
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] gABn
+a	0
+a	1
+a	2
+b	3
+b	6
+c	4
+c	5
+``` 
 
-Examples: 
+The columns can be sorted in any order:
 
-`$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt gAn =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
+```bash
+$ ni i[b 0] i[b 4] i[a 2] i[a 1] i[c 4] i[c 0] i[a 0] gBnA
+a	0
+b	0
+c	0
+a	1
+a	2
+b	4
+c	4
+```
 
-As above, if you have more than one column, you currently **must** specify the columns you want sorted; the reason for this is a system-to-system instability with regard to how the unix `sort` interacts).
-  
-### `c`: Count Sorted Rows
-`c` is `ni`'s version of `uniq -c`, which counts the number of identical  consecutive rows in a stream. The main difference is that `ni`'s `c` tab-delimits the output, while `uniq -c` space-delimits.
-   
-### `u`: Unique Sorted Rows
-`u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
   
 ### `o` and `O`: Syntactic Sugar for Numeric Sorting
 Often you will want numeric sorting in a more keystroke-efficient way than `gn<column>-`. The `o` (sort rows ascending, numerically) and `O` (sort rows  descending, numerically) operator has been provided for this purpose.
 
-The command from the `g` section can be rewritten as:
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] oB
+a	0
+a	1
+a	2
+b	3
+c	4
+c	5
+b	6
+```
 
-`$ ni /usr/share/dict/words F// p'FR 0' gc =\>letter_counts.txt oA =\>ascending_letter_counts.txt gB- \>counts_by_letter_reversed.txt`
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] OB
+b	6
+c	5
+c	4
+b	3
+a	2
+a	1
+a	0
+```
 
-**Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. If you write a command like `$ ni ... gAoB`, there is no guarantee that it  will have a lexicographically sorted first column. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+### `u`: Unique Sorted Rows
+`u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgu
+a
+b
+c
+```
+  
+### `c`: Count Sorted Rows
+`c` is `ni`'s version of `uniq -c`, which counts the number of identical  consecutive rows in a stream. The main difference is that `ni`'s `c` tab-delimits the output, while `uniq -c` space-delimits.
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
+3	a
+2	b
+2	c
+```
+
+### `gg`: Grouped sort
+
+Sorts *cannot be chained together using g*. If you write a command like `$ ni ... gA gBn`, there is no guarantee that the output will have a sorted first column after the second sort. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+If you have data that is already partially sorted, for example, when working with the input of the reduce step of a MapReduce job, you may want to perform an additional sort of the already partially-sorted data without sorting the entire stream. 
+
+Let's simulate this by sorting one column of the data and sinking the result to a tempfile.
+
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \<
+b	ba	bake
+b	ba	bar
+b	ba	baz
+b	bi	bif
+q	qa	qat
+q	qu	quux
+u	ub	uber
+```
+
+If we want the data sorted as if we had done `gAB-`, we cannot simply do `gB-` to the data we have; this will blow away the sort on the first column.
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< gB-
+u	ub	uber
+q	qu	quux
+q	qa	qat
+b	bi	bif
+b	ba	bake
+b	ba	bar
+b	ba	baz
+```
+
+Instead we used the grouped sort `ggAB-`. 
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< ggAB-
+b	bi	bif
+b	ba	bake
+b	ba	bar
+b	ba	baz
+q	qu	quux
+q	qa	qat
+u	ub	uber
+``` 
+
+The first column indicates the key column (i.e. the sorted column we want to hold constant); the anything after the first column is treated like the arguments to the sorting operator, `g`.
+
+### Sorting strategies
+
+
+Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. 
+
+`$ ni nE7 F// fB gc \>first_numeral_counts.txt`
+
+Running this command you may see see the `ni` monitor for the first time, which showing the steps of the computation, and what steps are taking time.  The whole process takes about 2 minutes on my computer.
+
+Sorting workflows are important, and while performance is decent (`ni` is basically calling the Unix `sort` tool under the hood), general sorting is not yet yet a point of strength for `ni`. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
 
 ## `ni` Coding and Debugging
 
@@ -593,4 +733,4 @@ Each line represents one step of the pipeline defined by the spell, and the expl
 ## Conclusion
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
-If you've only done this tutorial, you might be a little disappointed that your productivity as a programmer hasn't increased by much yet. Don't worry; when we start talking about Hadoop streaming operations in [Chapter 2](ni_by_example_2.md), you'll see your productivity grow by leaps and bounds. We'll see you in the next tutorial.
+The next chapter covers all the Perl you need to be productive in `ni`. You need some, but not too much.
