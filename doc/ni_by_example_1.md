@@ -403,14 +403,14 @@ fruit gushers	index cards
 `FV` splits CSV fields correctly (i.e. it doesn't split commas in quoted strings). However, `ni` splits lines of input on newline characters, so this can't handle newlines in quoted fields.
 
 ```bash
-$ ni i"hello,there",one,two,three
+$ ni i'"hello,there",one,two,three' FV
 hello,there	one	two	three
 ```
 
 `FW` splits on non-word characters (i.e. equivalent to splitting on the regex  `/\W+/`)
 
 ```bash
-ni i'this@#$$gets&(*&^split' FW
+$ ni i'this@#$$gets&(*&^split' FW
 this	gets	split
 ```
 
@@ -470,8 +470,9 @@ and     and     feel
 ```
 
 To select all columns after a particular column, use `f<col>.`
+
 ```bash
-ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAD.
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAD.
 this	we	do	it
 it's
 and	all	right
