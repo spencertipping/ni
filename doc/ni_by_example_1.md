@@ -360,8 +360,8 @@ Because an empty column is falsey (it evaluates to false), we can filter it usin
 
 ```bash
 $ ni i[one_column] i[two columns] i[three columns here] rB
-two     columns
-three   columns here
+two	columns
+three	columns	here
 ```
 
 ### `F`: Split stream into columns
@@ -370,9 +370,9 @@ Like `r`, `F` also has many options. The most important is `F/regex/`, which spl
 
 ```bash
 $ ni ibubbles ibaubles ibarbaras F/[aeiou]+/
-b       bbl     s
-b       bl      s
-b       rb      r       s
+b	bbl	s
+b	bl	s
+b	rb	r	s
 ```
 
 The rest of the operations are syntactic sugar, but they're worth knowing.
@@ -464,9 +464,9 @@ You can duplicate a column by using its corresponding letter multiple times:
 
 ```bash
 $ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAAC
-this    this    how
-it's    it's    night
-and     and     feel
+this	this	how
+it's	it's	night
+and	and	feel
 ```
 
 To select all columns after a particular column, use `f<col>.`
