@@ -70,6 +70,7 @@ defoperator split_proper_csv => q{
   while (<STDIN>) {
     my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
     s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
+    pop @fields;
     print join("\t", @fields), "\n";
   }
 };

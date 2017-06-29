@@ -3692,7 +3692,7 @@ defoperator script => q{
 };
 1 core/col/lib
 col.pl
-187 core/col/col.pl
+188 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -3765,6 +3765,7 @@ defoperator split_proper_csv => q{
   while (<STDIN>) {
     my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
     s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
+    pop @fields;
     print join("\t", @fields), "\n";
   }
 };
