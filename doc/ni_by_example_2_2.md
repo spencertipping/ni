@@ -9,27 +9,6 @@ The next set of operators work with multiple lines of input data; this allows re
 
 ## Perl Operations
 
-### `1`: Dummy pulse
-Suppose that you have a Perl script that generates data, and you want to generate data from that script directly. You might be surprised that the following code generates no output:
-
-```
-$ ni p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
-```
-
-One of the complicated aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run.
-
-In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
-
-```bash
-$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
-1	2	3
-2	4	6
-3	6	9
-4	8	12
-5	10	15
-```
-
-Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
 
 ### Column Accessor Functions `a` and `a()`
 
