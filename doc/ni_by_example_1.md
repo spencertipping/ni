@@ -352,8 +352,8 @@ We've seen how to generate tab-delimited columns using the `i` operator with bra
 ```bash
 $ ni i[one_column] i[two columns] i[three columns here]
 one_column
-two     columns
-three   columns here
+two	columns
+three	columns	here
 ```
 
 Because an empty column is falsey (it evaluates to false), we can filter it using `r`. 
