@@ -1,6 +1,25 @@
 #Future Chapter 5 Below
 
 
+## Warnings
+
+**WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
+
+```bash
+$ ni n5 \>n1.3E5
+n1.3E5
+```
+
+```bash
+$ ni n1.3E5
+1
+2
+3
+4
+5
+```
+because `ni` is reading from the file named `n10`.
+
 ## Understanding the `ni` monitor
 
 At this point, you've probably executed a long-running enough `ni` job to see the `ni` monitor appear at the top of your screen. 
@@ -317,6 +336,56 @@ Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni
 **TODO**: Say something useful.
 
 
+## Stream Duplication and Compression
+In this section, we'll cover two useful operations
+
+We recognize the first and last operators instantly; the middle two operators are new.
+
+### `=[...]`: Divert Stream
+
+The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
+
+```bash
+$ ni n10 =[\>ten.txt] z\>ten.gz
+ten.gz
+```
+
+The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
+
+To examine the contents 
+
+Let's take a look at this with `--explain`:
+
+```bash
+$ ni --explain n10 =[\>ten.txt] z\>ten.gz
+["n",1,11]
+["divert",["file_write","ten.txt"]]
+["sh","gzip"]
+["file_write","ten.gz"]
+```
+
+
+Looking at the output of `ni --explain`:
+
+```
+...
+["divert",["file_write","ten.txt"]]
+...
+```
+
+We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
+
+`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
+
+One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
+
+For simple operations, the square brackets are unnecessary; we could have equivalently written:
+
+`ni n10 =\>ten.txt z\>ten.gz`
+
+This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
+
+
 ##Custom Compound Reduce
 #### `rfn`: Custom compound reduce
 
@@ -367,3 +436,39 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 * Bytestream
 * gnuplot
 
+
+## Perl Operations
+`ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
+
+In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
+
+We'll start with the following `ni` spell.
+
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
+
+The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
+
+```sh
+aba     iss     ed
+aba     sta     rdize
+abb     rev     iature
+abd     uct     ion
+abe     tme     nt
+abi     gai     l
+abj     udg     e
+abl     est     
+abo     lis     h
+abo     rti     vely
+```
+
+Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
+
+```bash
+$ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
+["cat","/usr/share/dict/words"]
+["row_every",40]
+["head","-n",10]
+["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
+```
+
+We have reviewed every operator previously except the last. 

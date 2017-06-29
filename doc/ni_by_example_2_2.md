@@ -7,6 +7,104 @@ In this section, we introduce `ni`-specific Perl extensions.
 
 The next set of operators work with multiple lines of input data; this allows reductions over multiple lines to take place. This section ends with a discussion of more I/O functions.
 
+## Perl Operations
+
+### `1`: Dummy pulse
+Suppose that you have a Perl script that generates data, and you want to generate data from that script directly. You might be surprised that the following code generates no output:
+
+```
+$ ni p'for(my $i = 1; $i <= 5; $i++) {r map $i * $_, 1..3}'
+```
+
+One of the complicated aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run.
+
+In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
+
+```bash
+$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
+1	2	3
+2	4	6
+3	6	9
+4	8	12
+5	10	15
+```
+
+Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
+
+### Column Accessor Functions `a` and `a()`
+
+`ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
+
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
+
+The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous.  In general this is the case;  the one important exception to this rule is hash lookup, which requires that the user call the function explicitly.
+ 
+Note that these functions do not pollute your namespace, so you can write confusing and pointless `ni` spells like this:
+
+`ni 1p'my $a = 5; r a, $a'`
+
+If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
+
+Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
+
+`ni 1p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
+
+```
+Prototype mismatch: sub ni::pl::a () vs none at - line 411.
+Prototype mismatch: sub ni::pl::r (@) vs none at - line 411.
+H
+1
+Y
+1
+Y
+```
+
+
+Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
+
+This brings us to an important point about `ni` processes in general:
+
+> `ni op1 op2` is equivalent to `ni op1 | ni op2`.
+
+
+### `F_, FM, FR n, FT n`: Explicit field access
+
+In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
+
+However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n', FT n`
+
+It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
+
+`p'F_ ...'` takes a range (or a single number) as an optional second argument. `p'F_` by itself returns all fields of the input stream.
+
+To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
+
+The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
+
+It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
+
+
+
+
+
+### `rp'...'`: Take rows based on Perl
+
+We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
+
+
+Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
+
+Examples:
+
+* `ni n03 rp'$_'` -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
+  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
+  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
+* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
+
+
+
 ## `ni`-specific Perl Functions
 
 ### Geographic Perl Functions
