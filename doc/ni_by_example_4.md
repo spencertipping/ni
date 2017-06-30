@@ -1,124 +1,274 @@
-# `ni` by Example Chapter 4 (alpha release)
-Welcome to Chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
+# `ni` by Example, Chapter 3 (alpha release)
 
-Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
+Welcome to the third part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
+
+The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
+
+Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
+
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
+
+## `ni` is self-modifying
+
+`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
 
 
-## Calling`ni` from other programming languages
-
-You've already been using `ni` within bash, so you've always been using `ni` from another langauge. In this section, we'll make the connections more explicit, and briefly discuss how to use `ni` from Ruby.
-
-### `ni` and bash
-
-[Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
-
-`e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
-
-When you run a script without quotes, bash will first scan for metacharacters. So the script
-
-```
-$ ni e[seq 10 | grep 1]
-```
-
-is run as 
+### `ni` evaluation basics
+Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
 
 ```
-~/bin/ni "e[seq" "10" | /bin/grep "1]"
-```
-
-because bash will execute the pipe first.
-
-The correct way to execute the script: 
-
-```
-$ni e'seq 10 | grep 1'
+ni <op1> <op2> <op3> ... <opN>
 ``` 
+is, for the most part, equivalent to 
 
-turns into 
 ```
-exec("/bin/sh", "-c", "seq 10 | grep 1/")
+ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
 ```
 
-This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
+`ni --explain` works by telling you what each `<op>` above is.
 
-### `ni` and Ruby
-Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). 
+However, this isn't quite the whole story. 
 
-Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. There are a few caveats for running in `bin/sh`, which are covered in the [debugging docs](debugging.md).
-
-
-
-## Stream Appending, Interleaving, Duplication, and Buffering
-You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
-
-### `+` and `^`: Append (Prepend) Stream
-
-
-Streams in `ni` can be concatenated, however, once concatenated,
-any operator on the stream will apply to the stream in its entirety.
-`+` and `^` are useful when you have a complicated operator you want
-to apply to only part of the stream.
-
-Examples:
+### `::closure_name[...]`: Create a data closure
 
 ```bash
-$ ni n3 ^[n05 fAA]
-0	0
-1	1
-2	2
-3	3
-4	4
-1
-2
-3
+$ ni ::five[n5] n3p'r a, five'
+1	12345
+2	12345
+3	12345
 ```
-
+Any `ni` operations executable on the machine from whose context `ni` is being executed can be turned into a data closure. This caveat will become more important when we start using `ni` to execute on machines other than the ones we develop on.  The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
 
 ```bash
-$ ni n3 +[n05 fAA]
-1
-2
-3
-0	0
-1	1
-2	2
-3	3
-4	4
+$ ni --explain ::five[n5] n3p'r a, five'
+["memory_data_closure","five",[["n",1,6]]]
+["n",1,4]
+["perl_mapper","r a, five"]
 ```
 
-`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
 
-```
-while ($data = read from stream 1) {print $data}
-while ($data = read from stream 2) {print $data}
-```
-The second stream waits to execute until an `EOF` is received from the first stream, so
-for even simple streams, you may see a noticeable pause between the end of the
-first stream and the start of the second.
-
-
-
-### `%`: Interleave Streams
-
-The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni nE5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
-
-You can also call `%#` with a positive number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1.` You can also call `%-#`, and the streams will be interleaved with a ratio: `first stream : second stream :: 1:#.`
-
-Interleaving streams with a numeric argument will cut off the output stream when either stream is exhausted.
-
-
-###  `=`: Duplicate Stream and Discard
-This operation is most useful for writing a file in-stream, perhaps with some modifications.
+Data closures provide a counterexample to the basics of `ni` evaluation written above. 
 
 ```bash
-$ ni n10 =[r5 \>short] r3fAA
-1	1
-2	2
-3	3
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
 ```
 
-```bash
-$ ni short
+The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is your system `ni`, which remains unmodified. The second `ni` therefore cannot access the data closure built in the first `ni`.
+
+
+### Data Closure Evaluation and `ni` self-modification
+Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else, and in the order that they are written.
+
+That means that `$ ni ::five[n5] n3p'r a, five'` ie equivalent to `$ ni n3p'r a, five' ::five[n5]`, even though in the latter, it looks like it's referencing something that was computed later in the pipeline.
+
+Data closures are (or will be shortly implemented such that they are) computed in order; that means you can use one data closure to compute another, so long as the one computed from is expressed in the stream before the one which uses it to do some computation.
+
+We can rewrite a `ni` pipeline a little more accuartely as the following:
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
+
+We will see how `ni` actually does this in the following sections.
+
+
+## `ni` is a quine
+
+A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
+
+We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
+
+### Scheme/Lisp mini-tutorial
+If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
+
+Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
+
+Here's what you need to know:
+
+* Function applcation in Scheme/Lisp starts with an open parenthesis.
+  * `(+ 1 2)` yields `3`. 
+  * `(* 5 6 7)` yields `210`
+* Scheme lists are written in parentheses and are delimited by spaces.
+* The function `list` returns a list of its arguments:
+  * `(list 1 3 5)` yields `(1 3 5)`
+* The function `quote` takes one argument and returns its literal value:
+  * `(quote 5)` yields `5`
+  * `(quote (list 1 2 3))` yields `(list 1 2 3)`--note that the list function was not evaluated.
+* `lambda` defines an anonymous function with any number of named parameters.
+  * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
+  * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
+
+### A simple quine in Scheme
+Let's build a quine, starting with this piece:
+
+```
+(lambda (x)
+   (list x (list (quote quote) x))
+```
+
+`lambda` creates an anonymous function which, on input x, returns a list with first element `x`. The second element of the list is also a list. The first element of the sublist is the result of  `(quote quote)`, and the second element is `x`. To make the operation of this function more concrete, head over to  and look at what happens when we do the following:
+
+```
+((lambda (x)
+    (list x (list (quote quote) x)))
+  1)
+=> (1 (quote 1))
+```
+So when we apply ths function to an argument, we get back the argument, followed by a list consisting of `quote` and the argument.
+
+Already that should feel like a step in the right direction; we have a function that takes a piece of data, reproduces that data and then a quoted representation of that data. In quines with this structure, this function is often referred to as "the code."
+
+What we need now is the appropriate piece of data to feed to the code. We know our data has to reproduce our code, so that means what we feed to our code must be a string representation of itself. We do this by applying `quote` to the text of the code.
+
+```
+((lambda (x)
+  (list x (list (quote quote) x)))
+ (quote
+  (lambda (x)
+   (list x (list (quote quote) x)))))
+=> ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
+```
+
+Note that not all quines are structured this way (with code and data to interpret the code), but these are the simplest types of quines to write and explain.
+
+For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
+
+### A quine in Perl
+
+```
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+This code uses heredoc syntax, which is a way of writing multi-line strings in bash, POSIX, and Perl (and other Perl-influenced languages like PHP and Ruby). Enrichment on heredocs is available[... here](http://www.tldp.org/LDP/abs/html/here-docs.html).
+
+Heredocs start with `<<` followed by a delimiter which is the instruction to the interpreter of where the string stops. In this case, the delimiter is the character `_`. Surrounding the delimiter with single quotes, as above, allows for string interpolation within heredocs; without these quotes around the delimiter, no string interpolation is allowed.
+
+Heredocs can be parsed in non-obvious ways, and the non-obvious parsing is used in this quine. The heredoc can be parsed starting on the line after the `<<` and the delimiter, and that is what is used here. Due to the parsing, the string `print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"` is stored into `$_`.
+
+
+If you found the previous paragraphs on heredocs inscrutable, don't worry too much because it's not so important; like the quine we saw in the previous section, this quine is composed of code:
+
+```
+#!/usr/bin/perl
+eval($_=<<'_');
+print 
+```
+and data:
+
+```
+"#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, Perl.
+
+
+Copying the lines and running: 
+
+```
+$ pbpaste > quine.pl
+$ cat quine.pl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+Most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with ). Heredocs are parsed in a non-obvious way. In this case, at a high level, the code works like this:
+
+1. `$_` becomes the code written as a heredoc, which is just the 3rd line. The heredoc parser knows to skip the end of the line.
+2. `eval $_` happens, causing that code to be executed
+3. inside `eval $_`, `print "#!... ${_}..."` happens -- notice the reference back to `$_`, which contains the code being evaled
+
+The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
+
+### Quines, so what?
+
+When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
+
+Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above into `quine.pl`:
+
+```
+$  cat quine.pl | perl | perl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output; it is a fixed point of the code under the evaluation/interpretation operator.
+
+
+
+### `//ni`: Print `ni`'s _current_ source
+As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
+
+
+`ni` is a quine. To get `ni` to print its source, run:
+
+`$ ni //ni`
+
+```
+#!/usr/bin/env perl
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
+Copyright (c) 2016 Spencer Tipping | MIT license
+....
+_
+....
+```
+
+Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string. Also, because `ni` is self-modifying, `//ni` cannot be said to print `ni`'s source per se; instead it prints `ni`'s source at the time that it is called.
+
+This provides us with a surprising power. We can now execute `ni` indirectly by piping `ni`'s source to `perl -`. The `-` instructs perl to read code from the command line.  More generally,
+
+> `$ ni ...` is equivalent to `ni //ni | perl - ...`
+
+If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, you should envision the possibilities of offloading work from one machine to another that's better equipped to solve your target problem.
+
+
+## `ni` is a self-modifying quine
+
+In the section on `ni` being self-modifying, it was mentioned that `ni` execution follows a structure something like this:
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
+
+is equivalent to
+
+```
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
+
+In fact, this `ni_prime` is a local modification of `ni`, which incorporates data closures. The details are outside the scope of how this occurs are outside the scope of this tutorial, but here's some evidence that this is going on.
+
+```
+$ ni //ni | wc -c
+  743514
+```
+
+```
+$ ni ::my_closure[n10] //ni | wc -c
+  743569
+```
+
+If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
+
+```
+$ ni ::five[n5] //ni | perl - n1p'five'
 1
 2
 3
@@ -126,387 +276,397 @@ $ ni short
 5
 ```
 
-One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
+This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
 
-If you need to do something like this, you may be better off writing two `ni` spells, or using a `ni` [script](script.md).
-
-
-### `B<op>`: Buffer operation
-
-Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
-
-## Intermediate Column Operations
-These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
-
-### `w`: Append column to stream
-
-`w` adds a column to the end of a stream, up to the minimum length of either stream.
-
-```bash
-$ ni //license w[n3p'a*a']
-ni: https://github.com/spencertipping/ni	1
-Copyright (c) 2016 Spencer Tipping | MIT license	4
-	9
+```sh
+# NB(ST): this isn't a test because of nondeterministic behavior on centOS.
+# This is a ni bug, but it's such an edge case that I doubt I'll fix it on the
+# current codebase; most likely I'll handle it with the OO refactor.
+$ ni //ni | perl - n1p'ten'
+ten
 ```
 
-### `W`: Prepend column stream
+One final note; by the ordering of the data, it may appear that the fact that `ni` is self-modifying and the fact that it is a quine are separate; or that the self-modifying power of `ni` makes it a quine. In fact, the opposite is true; it is because `ni` is a quine that allows it to be self-modifying.
 
-`W` operates like `w`, except its output column is prepended. 
+## SSH, Containers, and Horizontal Scaling
 
-```bash
-$ ni 1p'"a".."e"' p'split / /' Wn
-1	a
-2	b
-3	c
-4	d
-5	e
+We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`. While horizontal scaling (running a process on multiple cores) has nothing to do with the indirect execution in containerized operations, it has functional and semantic similarity with these other operators in this section.
+
+### `C`: execute in a container
+
+Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
+
+Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
+
+
+### `s`: execute over `ssh`
+
+You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
+
 ```
-  
-
-### `v`: Vertical operation on columns
-
-We can upper-case the letters in the previous example via:
-
-```bash
-$ ni 1p'"a".."e"' p'split / /' Wn p'r a, uc(b)'
-1	A
-2	B
-3	C
-4	D
-5	E
+host <alias>
+    HostName <host.name>
+    Port <port.number>
+    User <user.name>
 ```
 
-However `ni` also offers a shorter syntax using the `v` operator.
+You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the other `ni` docs is `dev`, for your primary work machien.
 
-```bash
-$ ni 1p'"a".."e"' p'split / /' Wn vBpuc
-1	A
-2	B
-3	C
-4	D
-5	E
-```
+Inside the brackets,  you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
 
-**Important Note**: As of 2017-01-22, this operator is too slow to use in production.
+### `S`: Horizontal Scaling 
+Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
 
-Also note that the Perl upper-case operator is written as `puc`, without quotes, as it's good `ni` style to do so.
+`$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
+
+Running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.  
+
 
   
-### `j` - streaming join
-
-**Important note**: [Spencer](https://github.com/spencertipping) considers `j` to be broken. This section is liable to change.
-
-Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
-
-Example:
-
-```
-$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
-a	5	1	a
-b	4	2	b
-c	3	3	c
-d	2	4	d
-e	1	5	e
-```
-
-This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
-
-```bash
-$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA
-a	5
-b	4
-c	3
-d	2
-e	1
-```
-
-This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
-
-```bash
-$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters]
-a	5
-b	4
-c	3
-d	2
-e	1
-a
-b
-c
-d
-e
-```
-
-We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
-
-```bash
-$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn
-a	5	1
-b	4	2
-c	3	3
-d	2	4
-e	1	5
-a	6
-b	7
-c	8
-d	9
-e	10
-```
-
-We append another column of numbers; note that `w` adds new columns to every row, but does not make sure that the rows are the same length, so the 
-
-
-```bash
-$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn
-a	5	1
-a	6
-b	4	2
-b	7
-c	3	3
-c	8
-d	2	4
-d	9
-e	1	5
-e	10
-```
-
-We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
-
-
+## Hadoop Streaming MapReduce
 
-### `Y` - dense-to-sparse transformation
-`Y` Explodes each row of the stream into several rows, each with three columns:
+`ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides concise options to 
 
-* The index of the row that the input data that came from
-* The index of the column that the input data came from
-* The value of the input stream at the row and column specified by the first two columns.
+### MapReduce Fundamentals
 
+MapReduce landed with a splash in 2004 with this [excellent paper](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) by Jeffrey Dean and Sanjay Ghemawat of Google and (with Hadoop) in many ways ushered in the era of "big data."
 
-```bash
-$ ni //license FW Y r10
-0	0	ni
-0	1	https
-0	2	github
-0	3	com
-0	4	spencertipping
-0	5	ni
-1	0	Copyright
-1	1	c
-1	2	2016
-1	3	Spencer
-```
+To understand how to best use `ni` with MapReduce, it's important to understand how it works.
 
-### `X` - sparse-to-dense transformation
-`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
+The MapReduce paradigm breaks down into three steps:
 
-```bash
-$ ni //license FW Y r10 X
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer
-```
+1. Map
+2. Combine (optional)
+3. Reduce
 
-### `Z<n_cols>` - unflatten
-`Z` takes data in the form of a single column and returns the same data reshaped into rows with the specified number of columns. Any overhanging data is pushed onto an incomplete row.
+In general, a mapper will read in large, often unstructured data, and output  more highly structured information, which will be combined into statements about the original data by the reduce operation.  Because both map and reduce occur across many processors, there is often high network overhead transferring data from mappers to reducers. A combiner is used to reduce the amount of data passed between mappers and reducers.
 
-```bash
-$ ni 1p'"a".."l"' Z4
-a	b	c	d
-e	f	g	h
-i	j	k	l
-```
+### MapReduce Example: Word Count
 
-## Cell Operations
+The classic example of a MapReduce job is counting the words in a document.  Let's see how it fits with the MapReduce technique.
 
-Cell operations are similar to column operations, in that they are keystroke-efficient ways to do transformations on a single column of the input data.
+If we were going to count the words in a document on a single machine, we might follow a process like the following:
 
+1. Read in a line of text
+2. Split the line into words
+3. Emit each word on its own line
+4. Sort the words alphabetically
+5. Count the sorted words.
 
-### Hashing Algorithms
-* `,h`: Murmurhash (deterministic 32-bit hash function)
-* `,H`: Murmurhash and map the result into the unit interval.
-* `,z`: Intify (hash and then convert hash values to integers starting with 1)
+Let's see how this would work in MapReduce.
 
-Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Hash each word (mod number of reducers) to determine which reducer to send each word to.
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted words
+  2. Count the sorted words.
 
-Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
 
-Let's check that invariant:
+We could also write this job with a combiner, decreasing network overhead at the cost of some slightly more complicated code.
 
-```
-$ ni n4E7 ,hA Cubuntu[o] uc
-39814375
-```
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Sort words and emit one word per line to the combiner
+* **Combiner**
+  1. Count sorted words and emit key-value pairs in the form of (word, count)
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted key-value pairs 
+  2. Sum up the counts, reducing over the individual words.
 
-That means we had about 200,000 hash collisions in 40 million IDs, a rate of about .5%, which is good enough for my back-of-the envelope calculations.
 
 
+### Taking advantage of MapReduce with `ni`
+An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
 
-### Cell Math Operations
-* `,e<b>`: exponent b<sup>x</sup> -- deafults to e<sup>x</sup>
-* `,l<b>`: logarithm (log<sub>b</sub>x) -- defaults to natural log
-* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
-* `,q<amt>`: Round to the nearest integer multiple of `<amt>`
+This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
 
-These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color.
+The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` is the following:
 
-```
-# Test disabled for floating point imprecision.
-$ ni n5 fAAAAAA ,eB ,eC2 ,lD ,lE3 ,eF ,lF
-1	2.71828182845905	2	0	0	1
-2	7.38905609893065	4	0.693147180559945	0.630929753571457	2
-3	20.0855369231877	7.99999999999999	1.09861228866811	1	3
-4	54.5981500331442	16	1.38629436111989	1.26185950714291	4
-5	148.413159102577	31.9999999999999	1.6094379124341	1.46497352071793	5
-```
+> You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
 
 
-### Column Math Operations
-* `,a`: Running average
-* `,d`: Difference between consecutive rows
-* `,s`: Running sum 
+### How `ni` Interacts with Hadoop Streaming MapReduce
+When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
 
-You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
+Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
 
-```bash
-$ ni nE4 fAAA ,aA ,sB, ,dC r~1
-5000.5	50005000	1
-```
 
+### `HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
 
+`HS` creates a hadoop streaming job with a given mapper, combiner, and reducer (specified as `ni` operators). Any `ni` snippet can be used for the mapper, combiner, and reducer. 
 
+Two shorthands for common Hadoop Streaming jobs exist:
 
+* `_` skips the mapper/reducer/combiner. 
+* `:` applies the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner.
 
-## Numpy Operations
+A useful Hadoop Streaming job that repartitions your data, for example, to be used in an HDFS join is the following:
 
-Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
+`$ ni ... HS:_:`
 
-Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
+It has a trivial map step, no combiner, and a trivial reducer; it looks like nothing is being done, but due to the shuffle in the MapReduce 
 
-However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory (though you can use partitioned matrix operations to get around this in some cases); 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
+If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
 
-It's great, you're gonna love it.
 
-### `N'x = ...'`: Numpy matrix operations
 
-The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
+## Developing Hadoop Streaming Jobs
 
-The values streamed out of `N'...'` are the values of `x`, so all operations that you want to do to the stream must be saved back into `x`. Compared to the Perl syntax, this is inelegant, and if `ni`'s gotten into your soul yet, it should make you more than a little frustrated.
+Because Hadoop is such an important part of `ni`'s power, we're devoting a section not just to the operator, but to the principles of development using `HS`. `HS` is, in fact actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
 
-However, the gains in power are quickly manifested:
+`ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored, or more accurately, it is a `ni` command to read all the data from the output directory of 
 
+### Fundamental Theorem of MapReduce
 
-```bash
-$ ni n3p'r map a*$_, 1..3' N'x = x + 1'
-2	3	4
-3	5	7
-4	7	10
-```
+You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
 
-```bash
-$ ni n5p'r map a . $_, 1..3' N'x = x.T'
-11	21	31	41	51
-12	22	32	42	52
-13	23	33	43	53
-```
+> `$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper gA combiner gA reducer`
 
-```
-$ ni n1N'x = random.normal(size=(4,3))'
--0.144392928715457      0.823863130371182       -0.0884075304437077
--0.696189074356781      1.5246371050062 -2.33198542804912
-1.40260347893123        0.0910618083600519      0.851396708020142
-0.52419501996823        -0.546343207826548      -1.67995253555456
-```
-
-```bash
-$ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
-1	1
-1	2
-```
-
-
-
-### How `N'x = ...'` works
-What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
-
-Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
-
-```
-ni ... N'import pandas as pd; 
-		 df = pd.DataFrame(x); ... ; 
-		 df.to_excel(...); 
-		 x = df.reset_index().values;' 
-		 ...
-```
-
-The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.  You can also use indented code within `N'...'`, and it will be processed correctly.
-
-Also, like other operators, `N'...'` requires at least a row for input. `ni N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will return nothing, but adding a dummy row `ni n1N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will.
-
-This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
-
-
-
-## `m'...'`: Ruby
-You have always had permission to use Ruby, but I've held off documenting it until you can do so responsibly. Why does Ruby require responsibility, whereas Python/numpy gets a pass (mostly)?
-
-1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, the Python environment can do things that `ni` alone cannot do. The Ruby operators are weak-tea versions of cutting-edge Perl operators.
-1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). Thus, most of your Ruby code should look something like: `ni ... m'require "lib1"; require "lib2"; <do stuff with those libraries>'`
-1. Because the primary use of Ruby is access to Ruby gems, your code becomes less portable. Here's a [good article](http://zachmoshe.com/2015/02/23/use-ruby-gems-with-hadoop-streaming.html) about using Ruby gems with Hadoop Streaming. It's really complicated!
-1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up. Concretely: `ni n4m'r a, a + 1'` will complain about conversion of Fixnum to String without a proper cast.
-
-### `m'a' ... m'q'`: Ruby Column Accessors
-
-You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
-
-* `f`: `to_f`
-* `i`: `to_i`
-* `s`: `to_s`
-
-To fix the example above, you need to run:
-
-```bash
-$ ni n4m'r a, ai + 1'
-1	2
-2	3
-3	4
-4	5
-```
-
-### `m'fields'`: Array of fields.
-Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
-
-```bash
-$ ni //license FWr2m'r fields[0..3]'
-ni	https	github	com
-Copyright	c	2016	Spencer
-```
-
-### `m'r ...'`: Print row
-Analogous to `p'r ...'`.
-
-
-
-## `l"..."`: Lisp
-
-Lisp is in the same boat as Ruby, as a language that `ni` supports. Lisp operates in a streaming context, which is much better learned (and in most cases executed) in Perl. Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
-
-So, if Ruby has gems, why even support Lisp? Here's why:
-
-```bash
-$ ni n4fAA l"(r (sr ('+ a) ('* b)))"
-10	24
-```
-
-Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
-
-### `l"a" ... l"q"`: Lisp Column Accessors
-
-Analogous to the Perl and Ruby column accessors.
-
-### `l"(r ...)"`: Print row
-
-Analogous to `p'r ...'`; prints its arguments.
-
-Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
+This identity allows you to iterate fast, completely within `less` and the command line.
   
+**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+
+### `HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming (... coming soon)
+
+I have this great idea to apply the fundamental theorem to `ni` jobs so the only thing you have to do is replace `HS` with `HDS` and you get a test-run of your job. It's been a little hard to cook up though.
+
+## Architecting Hadoop Streaming Pipelines
+
+Now that you have an idea of how to write a job that runs, it's important to think about how to write jobs that actually work. One of the most fun and frustrating things about Hadoop is that techniques that would solve a problem on a gigabyte of data and a single machine fail painfully when applied to a terabyte of data distributed over thousands of machines.
+
+There is a big difference between jobs that can run and jobs that actually work in MapReduce, and you need to be aware of Hadoop's architecture and configuration to take advantage of it.
+
+### MapReduce Pipelining Case Study
+
+You are given the transactions from every Starbucks in the world, in the form of five columns: `Transasction ID, Store ID, Item ID, Date, Price`. You're instructed to identify the highest revenue item by store, by day.
+
+On a gigabyte of data, this would be easy; you could use SQL or `pandas` to do something like:
+
+```
+day_store_item_df = raw_df.groupby(['Store ID', 'Date', 'Item ID'])['Price'].sum().reset_index().sort_values(['Price'], ascending=False).groupby(['Store ID', 'Date', 'ItemID']).first()
+```
+
+This idea doesn't translate over to MapReduce flawlessly. Let's take a look at one way to do this, using the store ID as the reduce key.
+
+If we were to do that, all of the data from every store will go to the same reducer, and we'll have data on each reducer that is sorted by store. For simplicity, let's assume each store gets its own reducer.
+
+We're first faced with the problem of one reducer having potentially a hundred times more data to process than another (if we use fewer stores than reducers, this problem persists in reduced form); this makes the job more prone to failure, as the longest-running reducers are also, in general, the most liable to fail or be pre-empted and killed by a scheduler.
+
+Compounding this problem is that we need to do a secondary sort of the data on each reducer, to order the data by date and by item id.  You might also try to get around this sort by using a hash; this may work when the number of dates and item ids is smaller than several million, but when working with several terabytes of data, this number might grow to billions (consider the effect of getting data by hour or minute, rather than by day), and the combinatorial effects must always be considered.
+
+A better approach is to first collect the data using a compound reduce key of `Store ID - Date - Item ID`. This will give us a good amount of randomization, approximately equal amounts of data per reducer, and a very easy and straightforward reduce step.
+
+We likely want to collect the data by store, but running another MapReduce job using only `Store ID` as the reduce key may still be a bad idea, since there will still need to be a secondary sort of size on the order of `# of items x # of Days`. Instead, we can re-shard using `Store ID - Date` as the reduce key, and sort or hash something on the order of `# of items`.
+
+At this point, we have the highest revenue item for each store and date; we may be able to stream the data out directly from HDFS, or run a trivial job to reshard the data by store.
+
+### Single Step Down Principle
+
+In each MapReduce pass, the whole dataset is swallowed, but it often can't be digested completely. When building a pipeline on a multi-terabyte dataset using MapReduce, I've found the following principle to be valuable: 
+
+> Take a smaller step on a larger dataset rather than running the same larger task on multiple smaller datasets.
+
+Some other ideas to keep in mind:
+
+1. You must take advantage of randomization to run performant MapReduce.
+1. Run as few separate jobs as possible.
+1. Run the largest number of mappers and reducers that your cluster will allow, while maintaining a map time of at least 1 minute.
+1. Your average reducer time should be under 5 minutes, if possible.
+1. Your slowest reducer should take no more than twice as much time as your average reducer.
+1. Be very careful of running a secondary sort in the reduce phase; often you're better off running a second job. 
+1. Compress your data to the greatest extent possible.
+
+### Hadoop Streaming MapReduce Limitations
+
+#### Number of Input Partfiles
+
+It is hard-coded in Hadoop to not accept more than 100,000 input files as input for a single job. The error that you get if you try to use more than  this is not particularly informative, so try to keep this in mind.
+
+#### Number of Mappers x Reducers
+
+Mappers communicate their data to reducers over wired connections; the number of these connections that must be made is equal to the number of mappers times the number of reducers.
+
+Because these connections are done over wire, they will fail with some frequency, and if the number of these failures gets too high, the entire `HS` job will fail.
+
+In general, keep the `(# of mappers) x (# of reducers) < 100 million` to avoid this issue.
+
+#### More Notes on Hadoop Streaming
+There are a number of Hadoop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
+
+### Hadoop Randomization and Optimization
+
+As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. An easy way to do this is to combine two columns of the data; when two columns are joined, that the hashed value of the combined data will be correlated to either of the initial values.
+
+
+#### `hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
+
+
+One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The pharse is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
+
+```bash
+$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA
+aNi+=1oK?x	1
+aNi+=1oK?x	2
+bNi+=1oK?y	3
+cNi+=1oK?z	4
+```
+
+```bash
+$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA  p'r hrsplit a, sum b_ rea'
+a	x	3
+b	y	3
+c	z	4
+```
+
+When the data's form is a known quantity, it will be simpler and faster to join with a colon, underscore, or some other character.
+
+
+### Reversible Hexadecimal to Base-64 Encoding `h2b64` and `b642h`
+
+Hexadecimal is a very common form for storing ID data in a readable format. However, it is not highly compressed, as one hex character represents 4 bits of data while occupying an 8-bit printable character. We can save 1/3 of this data by converting it to base-64 which stores 6 bits of data in a larger alphabet of 8-bit printable characters. 
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a'
+Dt2clCTYSj64+6M8Nzhq4#
+```
+
+Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
+0edd9c9424d84a3eb8fba33c37386ae1
+```
+
+If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
+0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
+```
+
+## HDFS I/O
+
+### `hdfst://<path>` and `hdfs://<path>`: HDFS I/O
+
+Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
+
+HDFS stores files in triplicate, and distributes copies of files across different nodes in a cluster. This helps prevent data loss in the event of hard drive failure, and allows for MapReduce jobs to use data-local processing, which decreases network overhead (which is often rate-limiting in Hadoop MapReduce jobs).
+
+There are two `ni` operators 
+
+`$ ni hdfs://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -cat <abspath> | ni ...`
+
+`$ ni hdfst://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -text <abspath> | ni ...`
+
+Files are often stored in compressed form on HDFS, so `hdfst` is usually the operator you want. 
+
+Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
+
+
+### Using HDFS paths in Hadoop Streaming Jobs
+
+If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (the literal text operator from Chapter 1)
+
+```
+$ ni ihdfst://<abspath> HS...
+```
+
+This will pass the directory path directly to the Hadoop Streaming job, which is the behavior you want (in general). 
+
+If you do not use path, as in:
+
+```
+$ ni hdfst://<abspath> HS...
+```
+
+`ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
+
+
+### `^{...}`: `ni` configuration
+
+You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
+
+
+```
+$ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+  hadoop/jobconf='mapred.map.tasks=10 \
+  mapred.reduce.tasks=4'} HS...
   
+```
+
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
+
+```
+export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
+```
+
+Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
+
+```
+export NI_HDFS_TMPDIR=/user/$(whoami)/tmp
+```
+
+
+## `nfu` HDFS Joins
+
+I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to do large-scale joins is using `nfu`.
+
+To install:
+
+```
+$ git clone git://github.com/spencertipping/nfu
+$ cd nfu
+$ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
+```
+
+HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV). They will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
+
+```
+$ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
+$ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
+```
+
+You can appropriately process the checkopoint files to to get the correct paths, then use:
+
+```
+nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
+```
+
+`nfu` offers two types of joins, inner and left-outer, and two options for whether the inputs need to be sorted. 
+
+* `i`: Inner join with preceding sort
+* `j`: Inner join without sort
+* `I`: Left-outer join with preceding sort
+* `J`: Left-outer join without sort
+
+
 ## Conclusion
-You've reached the end of chapter 4 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
+
+The classic word count program for Hadoop can be written like this:
+
+>`$ ni //ni HS[FWpF_] _ [c]`
+
+If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
+
+* [Python](http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/)
+* [Ruby](http://www.bigfastblog.com/map-reduce-with-ruby-using-hadoop)
+* [Java](https://hadoop.apache.org/docs/stable/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html)
+* [Go](http://go-wise.blogspot.com/2011/09/go-on-hadoop.html)
+* [Perl](http://www.perlmonks.org/?node_id=859535)
+
+It would it take me at least an hour to get through the tutorial in the language I know best (Python). Look at how convoluted the Java program is; can you imagine trying to explain what it actually means to someone who isn't already highly skilled in the language?
+
+What's more important is that all of the examples above are completely uninspired, joyless programs. Every single one of those programs makes make me hate programming.
+
+`ni` does the opposite. I wrote the `ni` spell in about 5 seconds, and I can explain how it works in about 30. Even at this early stage, I bet it didn't take more than a couple of minutes to figure out how to write the program either. It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.
+
+Congrats on finishing this chapter of the tutorial. In the first two chapters, you've been introduced tools for manipulating and expanding individual rows of data; in the next chapter we'll develop tools that condense and combine multiple rows of data into one. We'll also look at some specialized `ni` functions, and `ni` interoperability with Ruby, Lisp, and Python/numpy.

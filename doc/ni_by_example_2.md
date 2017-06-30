@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 2 Part 1 (alpha release)
+# `ni` by Example, Chapter 2 (beta release)
 
 Welcome to the second part of the tutorial. At this point, you know a little `ni` syntax, but you might not be able to do anything useful. In this chapter, our goal is to multiply your power to operate on a single machine by covering all of the Perl syntax you need to work effectively with `ni`.
 
@@ -6,33 +6,39 @@ Welcome to the second part of the tutorial. At this point, you know a little `ni
 
 This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid discussing how to write a Perl subroutine, which (while easy) is unnecessary for most workflows.
 
-From the Perl Syntax docs:
-> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
 
 ## `p'...'`: Perl mapper
-When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run.
 
-Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
+The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a perl mapper gives you acces to 
 
-`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with the line you're operating on assigned to a default variable that's ready to use.
+`ni` is backwards-compatible with Perl through Perl 5.08, however, if your system Perl is more recent, you can also use Perl libraries. In addition to the standard Perl libraries, you also have access to concise `ni` extensions to Perl. We describe a small number of 
 
 
-### `p'r()'`: Emit row
+### Column Accessor Functions `a` and `a()`
 
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
 
-Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
 
-Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
+The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous. 
 
-The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
 
-Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
+```bash
+$ ni i[first second third] i[foo bar baz] p'a()'
+first
+foo
+```
 
-Clearly, if the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
+```bash
+$ ni i[first second third] i[foo bar baz] p'c'
+third
+baz
+```
 
-When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
 
+
+
+### Return Value
+The return value
 
 
 ## `1`: Dummy pulse
@@ -57,10 +63,35 @@ $ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
 Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
 
 
+`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with the line you're operating on assigned to a default variable that's ready to use.
+
+
+### `p'r()'`: Emit row
+
+Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
+
+Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
+
+Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
+
+The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
+
+Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
+
+Clearly, if the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
+
+When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
+
+
+
 
 ## Perl Syntax
 
-In truth, Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
+Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
+
+From the Perl Syntax docs:
+> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
+
 
 ### Sigils
 
