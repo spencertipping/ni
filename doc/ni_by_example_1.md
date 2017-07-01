@@ -404,7 +404,7 @@ fruit gushers	index cards
 
 ```bash
 $ ni i'"hello,there",one,two,three' FV
-hello,there	one	two	three	
+hello,there	one	two	three
 ```
 
 `FW` splits on non-word characters (i.e. equivalent to splitting on the regex  `/\W+/`)

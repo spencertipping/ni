@@ -6,41 +6,22 @@ Welcome to the second part of the tutorial. At this point, you know a little `ni
 
 This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid discussing how to write a Perl subroutine, which (while easy) is unnecessary for most workflows.
 
-
 From the Perl Syntax docs:
 > Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
 
-## `p'...'`: Map Perl over lines
+## `p'...'`: Perl mapper
 When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run.
 
 Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
 
-`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with `$_` already set implicitly to the incoming line of the input stream.
+`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with the line you're operating on assigned to a default variable that's ready to use.
 
 
-### `r()`: Emit row
+### `p'r()'`: Emit row
 
 Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
 
 Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
-
-```
-ni /usr/share/dict/words rx40 r10 p'substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
-aba
-iss
-ed
-aba
-sta
-rdize
-abb
-rev
-iature
-abd
-uct
-...
-...
-...
-```
 
 Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
 
@@ -48,9 +29,33 @@ The `r()` operator, on the other hand, **returns the empty list**. It works by p
 
 Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
 
-Clearly, If the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
+Clearly, if the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
 
 When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
+
+
+
+## `1`: Dummy pulse
+
+One of the slighly tricky aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run. The following command, while syntactically correct, produces no output.
+
+```
+$ ni p'for my $i (1..5) {r map $i * $_, 1..3}'
+```
+
+In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
+
+```bash
+$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
+1	2	3
+2	4	6
+3	6	9
+4	8	12
+5	10	15
+```
+
+Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
+
 
 
 ## Perl Syntax
@@ -83,7 +88,7 @@ What's even cooler is that, because the syntax for all of these is different, we
 ```
 print $x;         # gets the scalar value of $x
 print $x[3];      # gets a scalar value from @x at position 3
-print $x{"foo"};  # gets a scalar value from %x associated with the value "foo"
+print $x{"foo"};  # gets a scalar value from %x associated with the key "foo"
 ```
 
 At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
