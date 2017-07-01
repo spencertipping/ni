@@ -4736,8 +4736,8 @@ sub entropy {
 if (eval {require Math::Trig}) {
   sub haversine {
     local $_;
-    my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
-    my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
+    my ($t1, $p1, $t2, $p2) = map drad $_, @_;
+    my ($dt, $dp) = ($t2 - $t1, $p2 - $p1);
     my $a = clip 0, 1, sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
