@@ -19,7 +19,7 @@ sub bloom_new($$) {
 
 sub multihash($$) {
   my @hs;
-  push @hs, unpack "L4", md5 $_[0] . scalar(@hs) until @hs >= $_[1];
+  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
   @hs[0..$_[1]-1];
 }
 
@@ -32,6 +32,6 @@ sub bloom_add($$) {
 
 sub bloom_contains($$) {
   my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) || return 0 for multihash $_[1], $k;
+  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
   1;
 }

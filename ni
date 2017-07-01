@@ -4324,7 +4324,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-145 core/cell/cell.pl
+153 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -4341,7 +4341,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
-  use Digest::MD5 qw/md5/;
+  use Digest::MD5 qw/md5 md5_hex/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -4383,9 +4383,17 @@ defoperator real_hash => q{
              each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 };
 
+defoperator md5 => q{
+  cell_eval {args  => 'undef',
+             begin => '',
+             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
+};
+
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
+
+defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
 
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.
@@ -6026,7 +6034,7 @@ sub bloom_new($$) {
 
 sub multihash($$) {
   my @hs;
-  push @hs, unpack "L4", md5 $_[0] . scalar(@hs) until @hs >= $_[1];
+  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
   @hs[0..$_[1]-1];
 }
 
@@ -6039,7 +6047,7 @@ sub bloom_add($$) {
 
 sub bloom_contains($$) {
   my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) || return 0 for multihash $_[1], $k;
+  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
   1;
 }
 36 core/bloom/bloom.pl

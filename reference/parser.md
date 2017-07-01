@@ -761,6 +761,7 @@
 	    <cellspec_fixed>
 	    <log_base>
 	  ) -> {cell_log_op @$_}
+	| 'm' <cellspec_fixed> -> {md5_op $_}
 	| 'p' (
 	    <colspec>
 	    <perl_cell_transform_code>

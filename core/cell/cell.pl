@@ -14,7 +14,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
-  use Digest::MD5 qw/md5/;
+  use Digest::MD5 qw/md5 md5_hex/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -56,9 +56,17 @@ defoperator real_hash => q{
              each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 };
 
+defoperator md5 => q{
+  cell_eval {args  => 'undef',
+             begin => '',
+             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
+};
+
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
+
+defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
 
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.

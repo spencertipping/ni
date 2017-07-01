@@ -563,6 +563,14 @@
 	      . $encoded_points
 	      . mapomatic_compress(mapomatic_footer)) . "\n\0";
 
+# OPERATOR md5
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => 'undef',
+	             begin => '',
+	             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
+
 # OPERATOR memory_closure_append
 
 ## IMPLEMENTATION

@@ -820,6 +820,11 @@
 	  <log_base>
 	) -> {cell_log_op @$_}
 
+# SHORT OPERATOR cell/m
+
+## SYNTAX
+	<cellspec_fixed> -> {md5_op $_}
+
 # SHORT OPERATOR cell/p
 
 ## SYNTAX
