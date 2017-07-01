@@ -4324,7 +4324,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-144 core/cell/cell.pl
+145 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -4341,6 +4341,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
+  use Digest::MD5 qw/md5/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -4373,13 +4374,13 @@ defoperator intify_compact => q{
 defoperator intify_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 };
 
 defoperator real_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 };
 
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
@@ -6003,9 +6004,11 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 2 core/bloom/lib
 bloomfilter.pl
 bloom.pl
-29 core/bloom/bloomfilter.pl
+37 core/bloom/bloomfilter.pl
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
+
+use Digest::MD5 qw/md5/;
 
 # Swiped from https://hur.st/bloomfilter
 sub bloom_args($$) {
@@ -6021,16 +6024,22 @@ sub bloom_new($$) {
   pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
 }
 
+sub multihash($$) {
+  my @hs;
+  push @hs, unpack "L4", md5 $_[0] . scalar(@hs) until @hs >= $_[1];
+  @hs[0..$_[1]-1];
+}
+
 # Destructively adds an element to the filter and returns the filter.
 sub bloom_add($$) {
   my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) = 1 for map murmurhash3($_[1], $_) % $m, 1..$k;
+  vec($_[0], $_ % $m + 64, 1) = 1 for multihash $_[1], $k;
   $_[0];
 }
 
 sub bloom_contains($$) {
   my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) || return 0 for map murmurhash3($_[1], $_) % $m, 1..$k;
+  vec($_[0], $_ + 64, 1) || return 0 for multihash $_[1], $k;
   1;
 }
 36 core/bloom/bloom.pl

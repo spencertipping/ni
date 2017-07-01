@@ -14,6 +14,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
+  use Digest::MD5 qw/md5/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -46,13 +47,13 @@ defoperator intify_compact => q{
 defoperator intify_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 };
 
 defoperator real_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 };
 
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;

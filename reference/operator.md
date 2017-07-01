@@ -503,7 +503,7 @@
 	
 	  cell_eval {args  => '$seed',
 	             begin => '$seed ||= 0',
-	             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+	             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 
 # OPERATOR jitter_uniform
 
@@ -821,7 +821,7 @@
 	
 	  cell_eval {args  => '$seed',
 	             begin => '$seed ||= 0',
-	             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+	             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 
 # OPERATOR resource_append
 
