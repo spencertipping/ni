@@ -4350,12 +4350,21 @@ lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
 4	bake
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=279
+lazytest_line=272
+lazytest_case 'ni n10p'\''r "a", a'\'' ggABn- r4
+' 3<<'LAZYTEST_EOF'
+a	10
+a	9
+a	8
+a	7
+LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=285
 lazytest_case 'ni //license FWpF_ > word-list
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=280
+lazytest_line=286
 lazytest_case 'ni word-list cr10             # unsorted count
 ' 3<<'LAZYTEST_EOF'
 1	ni
@@ -4370,7 +4379,7 @@ lazytest_case 'ni word-list cr10             # unsorted count
 1	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=291
+lazytest_line=297
 lazytest_case 'ni word-list gcr10            # sort first to group words
 ' 3<<'LAZYTEST_EOF'
 1	2016
@@ -4385,7 +4394,7 @@ lazytest_case 'ni word-list gcr10            # sort first to group words
 1	BE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=302
+lazytest_line=308
 lazytest_case 'ni word-list gcOr10           # by descending count
 ' 3<<'LAZYTEST_EOF'
 7	to
@@ -4400,12 +4409,12 @@ lazytest_case 'ni word-list gcOr10           # by descending count
 3	SOFTWARE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=320
+lazytest_line=326
 lazytest_case 'ni word-list p'\''r a, length a'\'' > word-lengths
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=321
+lazytest_line=327
 lazytest_case 'ni word-list gj[word-lengths g] r10
 ' 3<<'LAZYTEST_EOF'
 2016	2016	4

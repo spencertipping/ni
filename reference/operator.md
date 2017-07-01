@@ -1014,7 +1014,7 @@
 	    : qq{/^([^\t\n]*)/};
 	
 	  my $sort_expr = join ' || ',
-	    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+	    map {my $sort_op = $$_[1] =~ /[gn]/ ? '<=>' : 'cmp';
 	         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
 	                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
 	

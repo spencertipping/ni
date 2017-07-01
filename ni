@@ -4023,7 +4023,7 @@ defoperator row_grouped_sort => q{
     : qq{/^([^\\t\\n]*)/};
 
   my $sort_expr = join ' || ',
-    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+    map {my $sort_op = $$_[1] =~ /[gn]/ ? '<=>' : 'cmp';
          $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
                        : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
 
@@ -10306,7 +10306,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-336 doc/row.md
+342 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -10578,7 +10578,13 @@ $ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
 4	uber
 4	quux
 4	bake
+$ ni n10p'r "a", a' ggABn- r4
+a	10
+a	9
+a	8
+a	7
 ```
+
 
 ## Counting
 ni gives you the `c` operator to count runs of identical rows (just
