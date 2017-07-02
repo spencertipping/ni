@@ -7,148 +7,6 @@ Welcome to the second part of the tutorial. At this point, you know a little `ni
 This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid discussing how to write a Perl subroutine, which (while easy) is unnecessary for most workflows.
 
 
-## `p'...'`: Perl mapper
-
-The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a Perl mapper gives you access to the standard Perl libraries, as well as concise `ni` extensions to Perl. We describe the most critical `ni` extensions here, and `ni` is backwards-compatible with Perl through Perl 5.08.
-
-### Column Accessor Functions `a` and `a()`
-
-
-The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
-
-The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous. 
-
-
-```bash
-$ ni i[first second third] i[foo bar baz] p'a()'
-first
-foo
-```
-
-```bash
-$ ni i[first second third] i[foo bar baz] p'c'
-third
-baz
-```
-
-
-
-### `p'r(...)'`: Print row
-
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect. If we wanted to have a row of data we might try something like this:
-
-
-```bash
-$ ni i[first second third] i[foo bar baz] p'c, a'
-third
-first
-baz
-foo
-```
-
-To print a row of data to the stream, instead use the `r(...)` function.
-
-```bash
-$ ni i[first second third] i[foo bar baz] p'r(c, a)'
-third	first
-baz	foo
-```
-
-`r(...)` is also often written as `r`, followed by its arguments.
-
-```bash
-$ ni i[first second third] i[foo bar baz] p'r c, a'
-third	first
-baz	foo
-```
-
-A tricky distinction between streaming values with and without `r` is their return value; whereas `p'b'` _returns_ the value in the second column (and prints it to the stream), `p'r b'` _only_ prints the value in the second column; its return value is the empty list. The importance of this distinction will be made clear when we study the interaction between perl mappers and the take rows operator.
-
-### `F_, FM, FR n, FT n`: Explicit field access
-
-`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_` allows you to work with your data as an array; to generate the array, `ni` tab-splits your data, a
-
-
-```bash
-$ ni i[first second third fourth fifth sixth] p'r F_(1..3)'
-second	third	fourth
-```
-
-`FM` is the index of the last field of your data (i.e. the total number of fields minus one):
-
-```bash
-$ ni i[first second third fourth fifth sixth] i[only two_fields ]p'r FM'
-5
-1
-```
-
-`FM` allows you to write code that takes you to the end of a line
-
-```bash
-$ ni i[first second third fourth fifth sixth] p'r F_(3..FM)'
-fourth	fifth	sixth
-```
-
-However, since this operation is common `ni` provides syntactic sugar for `F_(n..FM)` as `FR n`. 
-
-```bash
-$ ni i[first second third fourth fifth sixth] p'r FR 3'
-fourth	fifth	sixth
-```
-
-A symmetric operation, which takes the first `n` columns is called `FT`
-
-```bash
-$ ni i[first second third fourth fifth sixth] p'r FT 3'
-first   second  third
-```
-
-A mnemonicto remember these is `FR = "Fields fRom"`, and `FT = "Fields To"`.
-
-
-### `rp'...'`: Take rows based on Perl
-
-We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
-
-
-
-Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
-
-
-* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
-  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
-  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
-* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
-
-### Return Value
-The return value of a perl mapper is the 
-
-The `r` operator 
-
-
-
-## `1`: Dummy pulse
-
-One of the slighly tricky aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run. The following command, while syntactically correct, produces no output.
-
-```
-$ ni p'for my $i (1..5) {r map $i * $_, 1..3}'
-```
-
-In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
-
-```bash
-$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
-1	2	3
-2	4	6
-3	6	9
-4	8	12
-5	10	15
-```
-
-
-
 ## Perl Syntax
 
 Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
@@ -162,7 +20,7 @@ From the Perl Syntax docs:
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
 
 
-```
+```sh
 $x = 5;
 @x = 1..10;
 %x = (foo => 1, bar => 2);
@@ -174,19 +32,21 @@ The question here, and its relevance for `ni`, is not whether this language synt
 
 When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it. The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
 
-* `my $x` indicates that `$x` is a scalar, for example a string or a number
-* `my @x` indicates that `@x` is a zero-indexed array
-* `my %x` indicates that `%x` is a hash
+* `my $x` indicates that `$x` is a scalar, for example a string or a number.
+* `my @x` indicates that `@x` is an array.
+* `my %x` indicates that `%x` is a hash.
 
-What's even cooler is that, because the syntax for all of these is different, we can use all of these:
+Because the syntax for all of these is different, we can use all of these
 
 ```
-print $x;         # gets the scalar value of $x
-print $x[3];      # gets a scalar value from @x at position 3
-print $x{"foo"};  # gets a scalar value from %x associated with the key "foo"
+print $x;         # get the scalar value of $x
+print $x[3];      # get the scalar from @x at index 3
+print $x{"foo"};  # get the scalar from %x associated with the key "foo"
 ```
 
-At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
+At first glance, this is very confusing; all of these values start with `$x`. The calling syntax, however, is different. You tell the Perl interpreter to get a scalar value by using the `$` sigil; Perl determines what to look for depending on the postfix indexing. 
+
+Using curly braces tells Perl to look in a hash, and square brackets tells Perl to look in an array, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky. With a little practice, this will be second nature.
 
 
 ### Default Variables
@@ -285,7 +145,7 @@ x = 5
 The ternary operator is used to select between options based on the truth value of a statement or variable.
 
 ```bash
-$ ni 1p'my $x = 5; $x == 5 ? "x = 5" : "x != 5"' | cat
+$ ni 1p'my $x = 5; $x == 5 ? "x = 5" : "x != 5"'
 x = 5
 ```
 
@@ -397,13 +257,13 @@ When writing a regular expression, you want them to fail as quickly as possible 
 
 The following is (very minimally) adapted from the `perldoc`:
 
-\d matches a digit, not just [0-9] but also digits from non-Roman scripts
-\s matches a whitespace character, the set [\ \t\r\n\f] and others
-\w matches a word character (alphanumeric or _), not just [0-9a-zA-Z_] but also digits and characters from non-Roman scripts
-\D is a negated \d; it represents any other character than a digit, or [^\d]
-\S is a negated \s; it represents any non-whitespace character [^\s]
-\W is a negated \w; it represents any non-word character [^\w]
-The period '.' matches any character but "\n" (unless the modifier //s is in effect, as explained below).
+* `\d` matches a digit, not just `[0-9]` but also digits from non-Roman scripts
+* `\s` matches a whitespace character, the set `[\ \t\r\n\f]` and others
+* `\w` matches a word character (alphanumeric or underscore), not just `[0-9a-zA-Z_]` but also digits and characters from non-Roman scripts
+* `\D` is a negated `\d`; it represents any other character than a digit, or `[^\d]`
+* `\S` is a negated `\s`; it represents any non-whitespace character `[^\s]`
+* `\W` is a negated `\w`; it represents any non-word character `[^\w]`
+* `.` matches any character except newlines
 
 #### Regex Matching `=~`
 
@@ -429,6 +289,7 @@ a	b
 ```
 
 There is also a syntactic sugar using the default variable `$_`.
+
 ```bash
 $ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
 a	b
