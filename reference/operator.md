@@ -62,6 +62,15 @@
 	  chomp, bloom_add $f, $_ while <STDIN>;
 	  print $f;
 
+# OPERATOR bloomify_hex
+
+## IMPLEMENTATION
+	
+	  my ($n, $p) = @_;
+	  my $f = bloom_new $n, $p;
+	  chomp, bloom_add $f, $_ while <STDIN>;
+	  print unpack("H*", $f), "\n";
+
 # OPERATOR bloomify_prehashed
 
 ## IMPLEMENTATION

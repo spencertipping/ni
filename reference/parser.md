@@ -494,6 +494,10 @@
 	    <bloom_size_spec>
 	    <bloom_fp_spec>
 	  ) -> {bloomify_op @$_}
+	| 'zBH' (
+	    <bloom_size_spec>
+	    <bloom_fp_spec>
+	  ) -> {bloomify_hex_op @$_}
 	| 'zBP' (
 	    <bloom_size_spec>
 	    <bloom_fp_spec>

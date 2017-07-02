@@ -751,6 +751,14 @@
 	  <bloom_fp_spec>
 	) -> {bloomify_op @$_}
 
+# SHORT OPERATOR /zBH
+
+## SYNTAX
+	(
+	  <bloom_size_spec>
+	  <bloom_fp_spec>
+	) -> {bloomify_hex_op @$_}
+
 # SHORT OPERATOR /zBP
 
 ## SYNTAX

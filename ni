@@ -4383,7 +4383,7 @@ sub bloom_count($) {
   my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
   $m * -log(1 - $bits/$m) / $k;
 }
-44 core/bloom/bloom.pl
+52 core/bloom/bloom.pl
 # Bloom filter operators.
 # Operators to construct and query bloom filters. The bloom constructor is a
 # sub-operator of `z` (compress), and querying is done using `rb`.
@@ -4404,6 +4404,13 @@ defoperator bloomify => q{
   print $f;
 };
 
+defoperator bloomify_hex => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add $f, $_ while <STDIN>;
+  print unpack("H*", $f), "\n";
+};
+
 defoperator bloomify_prehashed => q{
   my ($n, $p) = @_;
   my $f = bloom_new $n, $p;
@@ -4412,6 +4419,7 @@ defoperator bloomify_prehashed => q{
 };
 
 defshort '/zB',  pmap q{bloomify_op @$_},           pseq bloom_size_spec, bloom_fp_spec;
+defshort '/zBH', pmap q{bloomify_hex_op @$_},       pseq bloom_size_spec, bloom_fp_spec;
 defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
 
 defoperator bloom_rows => q{
