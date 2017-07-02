@@ -26,13 +26,13 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/buffer \
   core/script \
   \
+  core/assert \
   core/col \
   core/row \
+  core/pl \
   core/bloom \
   core/cell \
-  core/assert \
   \
-  core/pl \
   core/rb \
   core/lisp \
   core/sql \
