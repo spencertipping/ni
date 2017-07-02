@@ -10,8 +10,8 @@ centos-6:
   image: spencertipping/ni-env-dev-centos-6
   script:
     - ./test --ci
-debian-wheezy:
-  image: spencertipping/ni-env-dev-debian-wheezy
+debian-jessie:
+  image: spencertipping/ni-env-dev-debian-jessie
   script:
     - ./test --ci
 ubuntu-12.04:
