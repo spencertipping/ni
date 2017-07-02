@@ -456,7 +456,7 @@ The output of `cart` will have the first column varying the least, the second co
 
 Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
 
-```
+```sh
 $ ni 1p'r cart [1], ["a", "b", "c"]'
 ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 ```
@@ -512,7 +512,7 @@ z	x	y
 
 `wf $filename, @lines`: write `@lines` to a file called `$filename`
 
-```
+```sh
 $ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
 file1
 file2
@@ -525,7 +525,7 @@ yo
 
 ### `af`: append to file
 
-```
+```sh
 $ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
 file3
 file4

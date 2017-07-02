@@ -2646,7 +2646,35 @@ lazytest_case 'ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'\''r b__ rea'\''
 1	x	2	y	s	t	3	yo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=413
+lazytest_line=389
+lazytest_case 'ni i[1 2 3] p'\''r min F_; r max F_'\''
+' 3<<'LAZYTEST_EOF'
+1
+3
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=395
+lazytest_case 'ni i[c a b] p'\''r minstr F_; r maxstr F_'\''
+' 3<<'LAZYTEST_EOF'
+a
+c
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=422
+lazytest_case 'ni i[a c b c c a] p'\''my @uniqs = uniq F_; r sort @uniqs'\''
+' 3<<'LAZYTEST_EOF'
+a	b	c
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=435
+lazytest_case 'ni i[a c b c c a] p'\''my %h = %{freqs F_}; r($_, $h{$_}) for sort keys %h'\''
+' 3<<'LAZYTEST_EOF'
+a	2
+b	1
+c	3
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=445
 lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 ' 3<<'LAZYTEST_EOF'
 10	1
@@ -2657,14 +2685,14 @@ lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 20	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=449
+lazytest_line=480
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'\''r acS rea'\''
 ' 3<<'LAZYTEST_EOF'
 x	5
 y	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=457
+lazytest_line=488
 lazytest_case 'ni i[y m 4 foo] i[y p 8] i[y n 1 bar] p'\''%h = dcSNN rea; @sorted_keys = kbv_dsc %h; r($_, $h{$_}) for @sorted_keys'\'''\''
 foo	4	
 bar	1
@@ -2678,13 +2706,13 @@ This is syntactic sugar for Perl'\''s sort function applied to keys of a hash.
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=468
+lazytest_line=499
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'\''r acS rea'\'' p'\''r kbv_dsc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 y	x	z
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=474
+lazytest_line=505
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'\''r acS rea'\'' p'\''r kbv_asc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 z	x	y
