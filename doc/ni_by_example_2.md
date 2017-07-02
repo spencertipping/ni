@@ -9,10 +9,7 @@ This section written for an audience that has never worked with the language bef
 
 ## `p'...'`: Perl mapper
 
-The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a perl mapper gives you acces to 
-
-`ni` is backwards-compatible with Perl through Perl 5.08, however, if your system Perl is more recent, you can also use Perl libraries. In addition to the standard Perl libraries, you also have access to concise `ni` extensions to Perl. We describe a small number of 
-
+The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a Perl mapper gives you access to the standard Perl libraries, as well as concise `ni` extensions to Perl. We describe the most critical `ni` extensions here, and `ni` is backwards-compatible with Perl through Perl 5.08.
 
 ### Column Accessor Functions `a` and `a()`
 
@@ -36,9 +33,99 @@ baz
 
 
 
+### `p'r(...)'`: Print row
+
+Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect. If we wanted to have a row of data we might try something like this:
+
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'c, a'
+third
+first
+baz
+foo
+```
+
+To print a row of data to the stream, instead use the `r(...)` function.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r(c, a)'
+third	first
+baz	foo
+```
+
+`r(...)` is also often written as `r`, followed by its arguments.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r c, a'
+third	first
+baz	foo
+```
+
+A tricky distinction between streaming values with and without `r` is their return value; whereas `p'b'` _returns_ the value in the second column (and prints it to the stream), `p'r b'` _only_ prints the value in the second column; its return value is the empty list. The importance of this distinction will be made clear when we study the interaction between perl mappers and the take rows operator.
+
+### `F_, FM, FR n, FT n`: Explicit field access
+
+`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_` allows you to work with your data as an array; to generate the array, `ni` tab-splits your data, a
+
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(1..3)'
+second	third	fourth
+```
+
+`FM` is the index of the last field of your data (i.e. the total number of fields minus one):
+
+```bash
+$ ni i[first second third fourth fifth sixth] i[only two_fields ]p'r FM'
+5
+1
+```
+
+`FM` allows you to write code that takes you to the end of a line
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(3..FM)'
+fourth	fifth	sixth
+```
+
+However, since this operation is common `ni` provides syntactic sugar for `F_(n..FM)` as `FR n`. 
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FR 3'
+fourth	fifth	sixth
+```
+
+A symmetric operation, which takes the first `n` columns is called `FT`
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FT 3'
+first   second  third
+```
+
+A mnemonicto remember these is `FR = "Fields fRom"`, and `FT = "Fields To"`.
+
+
+### `rp'...'`: Take rows based on Perl
+
+We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
+
+
+
+Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
+
+
+* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
+* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
+  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
+  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
+* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
 
 ### Return Value
-The return value
+The return value of a perl mapper is the 
+
+The `r` operator 
+
 
 
 ## `1`: Dummy pulse
@@ -59,29 +146,6 @@ $ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
 4	8	12
 5	10	15
 ```
-
-Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
-
-
-`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with the line you're operating on assigned to a default variable that's ready to use.
-
-
-### `p'r()'`: Emit row
-
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
-
-Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
-
-Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
-
-The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
-
-Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
-
-Clearly, if the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
-
-When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
-
 
 
 

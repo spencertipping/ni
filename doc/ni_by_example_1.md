@@ -177,26 +177,49 @@ $ ni n5 \>five.txt \<
 
 It's important to understand how this short spell works; first, a stream of 5 integers is generated; those integers sink to a file called `five.txt`, and the text string `five.txt` is put out to the stream. Finally, `\<` instructs `ni` to open the file named `five.txt` and put its contents on the stream.
 
-### Folder Input
+### Directory I/O
+The contents of this section 
 
-When a folder name is passed into `ni`, `ni` will put the file names onto the stream. For example, if you go into the `ni` top-level folder and run `ni` on the folder `doc`, containing `ni`'s documentation, you'll get:
+Start by making some data:
 
 ```sh
-$ ni doc r5
-doc/bloom.md
-doc/cell.md
-doc/cheatsheet.md
-doc/closure.md
-doc/col.md
+$ rm -rf dir_test && mkdir dir_test
+$ echo "hello" > dir_test/file1
+$ echo "you" > dir_test/file2
+$ echo "genius" > dir_test/file3
 ```
 
-This generates a stream of filenames; the data can be taken out of these files using `\<`
+We can look at the contents of the directory with `ni`:
+
+```
+$ ni dir_test
+dir_test/file1
+dir_test/file2
+```
+
+`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
 
 ```sh
-$ ni doc r5 \< r3
-# Bloom filters
-ni implements a minimalistic bloom filter library to do efficient membership
-queries. This is visible in two ways -- first as a set of Perl functions:
+$ ni dir_test \<
+hello
+you
+genius
+```
+
+`ni` will use bash expansion as well:
+
+```sh
+$ ni dir_test/*
+hello
+you
+genius
+```
+
+
+```sh
+$ ni dir_test/file{1,3}
+hello
+genius
 ```
 
 
@@ -246,7 +269,6 @@ $ ni n10 z \>ten.gz \<
 ```
 
 The default compression with `z` is `gzip`, however there are options for bzip (`zb`), xzip (`zx`), lzo (`zo`), and lz4 (`z4`). You can also specify a numeric flag to gzip by using a number other than `4`, for example `z9` executes `gzip -9` on the stream.
-
 
 
 ## Basic Row and Column Operations
@@ -334,7 +356,7 @@ $ ni n500 r/22/
 422
 ```
 
-To use escaped characters in a regex, it's often helpful to wrap in quotes:
+To use escaped characters in a regex, it's often more efficient to wrap in quotes:
 
 ```bash
 $ ni n1000 r-500 r'/^(\d)\1+$/'

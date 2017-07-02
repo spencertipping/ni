@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 2 Part 2 (alpha release)
+# `ni` by Example, Chapter 3
 
 ## Introduction
 
@@ -6,82 +6,6 @@ In this section, we introduce `ni`-specific Perl extensions.
 `ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.
 
 The next set of operators work with multiple lines of input data; this allows reductions over multiple lines to take place. This section ends with a discussion of more I/O functions.
-
-## Perl Operations
-
-
-### Column Accessor Functions `a` and `a()`
-
-`ni` provides access to all of standard Perl 5, plus a number of functions that significantly increase the keystroke-efficiency and readability of `ni` spells.
-
-The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
-
-The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous.  In general this is the case;  the one important exception to this rule is hash lookup, which requires that the user call the function explicitly.
- 
-Note that these functions do not pollute your namespace, so you can write confusing and pointless `ni` spells like this:
-
-`ni 1p'my $a = 5; r a, $a'`
-
-If you can understand that, you're well on your way on mastering enough Perl to be proficient in `ni`.
-
-Taking that a step farther, you can overwrite these functions if you want to rough `ni` up a bit. `ni` is pretty resilient; if you're feeling anarchic, you can overwrite these builtin functions.
-
-`ni 1p'sub a { "YO" }; my $a=19; r $a, a, $a, a' p'sub r { "HI" }; r, a, b, c, d' p'r substr(a, 0, 1)'`
-
-```
-Prototype mismatch: sub ni::pl::a () vs none at - line 411.
-Prototype mismatch: sub ni::pl::r (@) vs none at - line 411.
-H
-1
-Y
-1
-Y
-```
-
-
-Observe that rewriting `a()` in the first perl mapper had no effect on the functioning of `a` anywhere else; the same with rewriting `r()` in the second perl mapper.
-
-This brings us to an important point about `ni` processes in general:
-
-> `ni op1 op2` is equivalent to `ni op1 | ni op2`.
-
-
-### `F_, FM, FR n, FT n`: Explicit field access
-
-In general, `ni` data will be long and narrow--that is, it will have millions to trillions of rows in the stream, but usually no more than a dozen relevant features per row.
-
-However, `ni` implements access to fields beyond the first 12 using the explicit field accessors `p'F_ ...', p'FM', p'FR n', FT n`
-
-It has not occurred in my experience that I have needed to maintain more than 12 relevant columns, and as a result I find the syntax a bit hard to remember, because I think of `A` as the first letter, rather than the zeroth, which is how `ni` thinks, internally.
-
-`p'F_ ...'` takes a range (or a single number) as an optional second argument. `p'F_` by itself returns all fields of the input stream.
-
-To print fields 11-15 of a data source, you would use `$ ni ... r F_ 10..14`.
-
-The index of the final nonempty field in a line is stored in `FM`. To get the last field of every line in our example, you could use the spell: `$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)' p'r FM, F_ FM'`
-
-It is often useful to take everything after a certain point in a line. This can be accomplished efficiently using the `FR n` operator. `FR n` is equivalent to `F_ n..FM`.
-
-
-
-
-
-### `rp'...'`: Take rows based on Perl
-
-We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the output of the Perl statement **is _truthy_ in Perl**.
-
-
-Other caveats: the number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
-
-Examples:
-
-* `ni n03 rp'$_'` -- rejects the first row, 0, which is falsey. It returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'a'` -- returns 1, 2 because the return value of the first row, 0, is falsey
-* `ni n03 rp'r a'` -- rejects every row, but has an output equal to the initial stream (0, 1, 2). How does this happen?
-  * The return value of `p'r a'` is the empty list, which is falsey; therefore, every row is rejected.
-  * However, `r a` prints `a` to the stream as a side effect (regardless of the preceding row operator `r`). Thus, the whole stream is reconstituted.
-* `ni n03 rp'r b'` -- prints 3 blank rows to the stream; the return value of `r()` is the empty list, so every row is rejected . `r()` side-effectually prints `b` for each row.
-
 
 
 ## `ni`-specific Perl Functions
@@ -315,7 +239,7 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ym
 
 #### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
 
-These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more pratical in performance-environments (`HS`, for example).
+These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more practical in performance-environments (`HS`, for example).
 
 ```bash
 $ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r tep a'
@@ -586,8 +510,6 @@ yo
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
 
-
-
 ## JSON I/O
 
 We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
@@ -610,53 +532,6 @@ ni //license FWpF_ p'r pl 3' \
 ### Other JSON parsing methods
 Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
-
-
-## Directory I/O
-The contents of this section 
-
-Start by making some data:
-
-```
-$ rm -rf dir_test && mkdir dir_test
-$ echo "hello" > dir_test/hi
-$ echo "you" > dir_test/there
-```
-
-Let's start with `$ ni test`
-
-```
-dir_test/hi
-dir_test/there
-```
-
-`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
-
-`$ ni dir_test \<`
-
-yields:
-
-```
-hello
-you
-```
-
-`ni` also works with the bash expansion operator `*`.
-
-For example, `ni dir_test/*` yields:
-
-```
-hello
-you
-```
-
-`ni` is able to go to the files directly becasue it is applies bash expansion first; bash expansion generates the file paths, which `ni` is then able to interpret.
-
-```
-$ ni --explain dir_test/*
-["cat","dir_test/hi"]
-["cat","dir_test/there"]
-```
 
 ## `ni` Philosophy and Style
 
