@@ -426,10 +426,6 @@
 	      <rbcode>
 	    ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	  | (
-	      'p'
-	      <perl_grepper_code>
-	    ) -> {$$_[1]} -> {perl_grepper_op $_}
-	  | (
 	      'B'
 	      <colspec1>
 	      </qfn>
@@ -439,6 +435,10 @@
 	      <colspec1>
 	      </qfn>
 	    ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
+	  | (
+	      'p'
+	      <perl_grepper_code>
+	    ) -> {$$_[1]} -> {perl_grepper_op $_}
 	  | (
 	      /[+~]/
 	      <integer>
@@ -494,6 +494,10 @@
 	    <bloom_size_spec>
 	    <bloom_fp_spec>
 	  ) -> {bloomify_op @$_}
+	| 'zBH' (
+	    <bloom_size_spec>
+	    <bloom_fp_spec>
+	  ) -> {bloomify_hex_op @$_}
 	| 'zBP' (
 	    <bloom_size_spec>
 	    <bloom_fp_spec>
@@ -584,10 +588,6 @@
 	    <rbcode>
 	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
-	    'p'
-	    <perl_grepper_code>
-	  ) -> {$$_[1]} -> {perl_grepper_op $_}
-	| (
 	    'B'
 	    <colspec1>
 	    </qfn>
@@ -597,6 +597,10 @@
 	    <colspec1>
 	    </qfn>
 	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
+	| (
+	    'p'
+	    <perl_grepper_code>
+	  ) -> {$$_[1]} -> {perl_grepper_op $_}
 	| (
 	    /[+~]/
 	    <integer>
@@ -771,10 +775,6 @@
 	    <log_base>
 	  ) -> {cell_log_op @$_}
 	| 'm' <cellspec_fixed> -> {md5_op $_}
-	| 'p' (
-	    <colspec>
-	    <perl_cell_transform_code>
-	  ) -> {perl_cell_transformer_op @$_}
 	| 'q' (
 	    <cellspec_fixed>
 	    <quant_spec>

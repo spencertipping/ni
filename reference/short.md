@@ -654,10 +654,6 @@
 	    <rbcode>
 	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
-	    'p'
-	    <perl_grepper_code>
-	  ) -> {$$_[1]} -> {perl_grepper_op $_}
-	| (
 	    'B'
 	    <colspec1>
 	    </qfn>
@@ -667,6 +663,10 @@
 	    <colspec1>
 	    </qfn>
 	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
+	| (
+	    'p'
+	    <perl_grepper_code>
+	  ) -> {$$_[1]} -> {perl_grepper_op $_}
 	| (
 	    /[+~]/
 	    <integer>
@@ -750,6 +750,14 @@
 	  <bloom_size_spec>
 	  <bloom_fp_spec>
 	) -> {bloomify_op @$_}
+
+# SHORT OPERATOR /zBH
+
+## SYNTAX
+	(
+	  <bloom_size_spec>
+	  <bloom_fp_spec>
+	) -> {bloomify_hex_op @$_}
 
 # SHORT OPERATOR /zBP
 

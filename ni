@@ -81,12 +81,12 @@ lib core/checkpoint
 lib core/net
 lib core/buffer
 lib core/script
+lib core/assert
 lib core/col
 lib core/row
+lib core/pl
 lib core/bloom
 lib core/cell
-lib core/assert
-lib core/pl
 lib core/rb
 lib core/lisp
 lib core/sql
@@ -3690,6 +3690,15 @@ defoperator script => q{
   $runner->await;
   rm_rf $tmpdir;
 };
+1 core/assert/lib
+assert.pl
+6 core/assert/assert.pl
+# Assertions: die horribly unless something is true.
+# Defines the `!` operator, which will deliberately nuke your entire process
+# unless its condition is true.
+
+defshort '/!',
+  defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
 188 core/col/col.pl
@@ -4292,346 +4301,6 @@ defoperator join => q{
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
-2 core/bloom/lib
-bloomfilter.pl
-bloom.pl
-87 core/bloom/bloomfilter.pl
-# Bloom filter library.
-# A simple pure-Perl implementation of Bloom filters.
-
-use Digest::MD5 qw/md5/;
-
-# Swiped from https://hur.st/bloomfilter
-sub bloom_args($$) {
-  my ($n, $p) = @_;
-  my $m = int 1 + $n * -log($p) / log(2 ** log 2);
-  my $k = int 0.5 + log(2) * $m / $n;
-  ($m, $k);
-}
-
-sub bloom_new($$) {
-  my ($m, $k) = @_;
-  ($m, $k) = bloom_args($m, $k) if $k < 1;
-  pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
-}
-
-sub multihash($$) {
-  my @hs;
-  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
-  @hs[0..$_[1]-1];
-}
-
-# Destructively adds an element to the filter and returns the filter.
-sub bloom_add($$) {
-  my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ % $m + 64, 1) = 1 for multihash $_[1], $k;
-  $_[0];
-}
-
-sub bloom_contains($$) {
-  my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
-  1;
-}
-
-# Prehashing variants
-# prehash($m, $k, $element) -> "prehash_string"
-# bloom_add_prehashed($filter, "prehash_string")
-sub bloom_prehash($$$) {
-  my ($m, $k) = @_;
-  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
-}
-
-sub bloom_add_prehashed($$) {
-  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
-  $_[0];
-}
-
-sub bloom_contains_prehashed($$) {
-  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
-  1;
-}
-
-# Set operations
-sub bloom_intersect {
-  local $_;
-  my ($n, $k, $filter) = unpack "NNa*", shift;
-  for (@_) {
-    my ($rn, $rk) = unpack "NN", $_;
-    die "cannot intersect two bloomfilters of differing parameters "
-      . "($n, $k) vs ($rn, $rk)"
-      unless $n == $rn && $k == $rk;
-    $filter &= unpack "x8 a*", $_;
-  }
-  pack("NN", $n, $k) . $filter;
-}
-
-sub bloom_union {
-  local $_;
-  my ($n, $k, $filter) = unpack "NNa*", shift;
-  for (@_) {
-    my ($rn, $rk) = unpack "NN", $_;
-    die "cannot union two bloomfilters of differing parameters "
-      . "($n, $k) vs ($rn, $rk)"
-      unless $n == $rn && $k == $rk;
-    $filter |= unpack "x8 a*", $_;
-  }
-  pack("NN", $n, $k) . $filter;
-}
-
-sub bloom_count($) {
-  my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
-  $m * -log(1 - $bits/$m) / $k;
-}
-44 core/bloom/bloom.pl
-# Bloom filter operators.
-# Operators to construct and query bloom filters. The bloom constructor is a
-# sub-operator of `z` (compress), and querying is done using `rb`.
-#
-# Notation is two digits: power of ten #elements, and power of ten
-# false-positive probability. So `zB74` means "create a filter designed to
-# store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
-
-BEGIN {
-  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
-  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
-}
-
-defoperator bloomify => q{
-  my ($n, $p) = @_;
-  my $f = bloom_new $n, $p;
-  chomp, bloom_add $f, $_ while <STDIN>;
-  print $f;
-};
-
-defoperator bloomify_prehashed => q{
-  my ($n, $p) = @_;
-  my $f = bloom_new $n, $p;
-  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
-  print $f;
-};
-
-defshort '/zB',  pmap q{bloomify_op @$_},           pseq bloom_size_spec, bloom_fp_spec;
-defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
-
-defoperator bloom_rows => q{
-  my ($include_mode, $col, $bloom_lambda) = @_;
-  my $bloom;
-  my $r = sni @$bloom_lambda;
-  1 while read $r, $bloom, 65536, length $bloom;
-  $r->await;
-  while (<STDIN>) {
-    chomp(my @cols = split /\t/, $_, $col + 2);
-    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
-  }
-};
-
-defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
-defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr 'B', colspec1, _qfn;
-2 core/cell/lib
-murmurhash.pl
-cell.pl
-28 core/cell/murmurhash.pl
-# Pure-Perl MurmurHash3_32 implementation.
-# This is used by some intification operators and based on the Wikipedia
-# implementation. It's limited to 32 bits because otherwise ni will fail on 32-bit
-# machines.
-
-use constant murmur_c1 => 0xcc9e2d51;
-use constant murmur_c2 => 0x1b873593;
-use constant murmur_n  => 0xe6546b64;
-
-sub murmurhash3($;$) {
-  use integer;
-  local $_;
-  my $h = $_[1] || 0;
-
-  for (unpack 'L*', $_[0]) {
-    $_ *= murmur_c1;
-    $h ^= ($_ << 15 | $_ >> 17 & 0x7fff) * murmur_c2 & 0xffffffff;
-    $h  = ($h << 13 | $h >> 19 & 0x1fff) * 5 + murmur_n;
-  }
-
-  my ($r) = unpack 'V', substr($_[0], ~3 & length $_[0]) . "\0\0\0\0";
-  $r *= murmur_c1;
-  $h ^= ($r << 15 | $r >> 17 & 0x7fff) * murmur_c2 & 0xffffffff ^ length $_[0];
-  $h &= 0xffffffff;
-  $h  = ($h ^ $h >> 16) * 0x85ebca6b & 0xffffffff;
-  $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
-  return $h ^ $h >> 16;
-}
-162 core/cell/cell.pl
-# Cell-level operators.
-# Cell-specific transformations that are often much shorter than the equivalent
-# Perl code. They're also optimized for performance.
-
-defcontext 'cell', q{cell operator context};
-defshort '/,', parser 'cell/qfn';
-
-BEGIN {
-  defparseralias cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
-  defparseralias cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
-}
-
-# Codegen.
-# Most of these have exactly the same format and take a column spec.
-
-use constant cell_op_gen => gen q{
-  use Digest::MD5 qw/md5 md5_hex/;
-  my ($cs, %args) = @_;
-  my ($floor, @cols) = @$cs;
-  my $limit = $floor + 1;
-  %begin;
-  while (<STDIN>) {
-    chomp;
-    my @xs = split /\t/, $_, $limit;
-    %each_line
-    %each for @cols;
-    print join("\t", @xs) . "\n";
-  }
-  %end
-};
-
-sub cell_eval($@) {
-  my ($h, @args) = @_;
-  fn(cell_op_gen->(%$h))->(@args);
-}
-
-# Intification.
-# Strategies to turn each distinct entry into a number. Particularly useful in a
-# plotting context.
-
-defoperator intify_compact => q{
-  cell_eval {args  => 'undef',
-             begin => 'my %ids; my $n = 0',
-             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n) - 1'}, @_;
-};
-
-defoperator intify_hash => q{
-  cell_eval {args  => '$seed',
-             begin => '$seed ||= 0',
-             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
-};
-
-defoperator real_hash => q{
-  cell_eval {args  => '$seed',
-             begin => '$seed ||= 0',
-             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
-};
-
-defoperator md5 => q{
-  cell_eval {args  => 'undef',
-             begin => '',
-             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
-};
-
-defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
-defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
-defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
-
-defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
-
-defoperator bloom_prehash => q{
-  cell_eval {args  => '$m, $k',
-             begin => '($m, $k) = bloom_args $m, $k',
-             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
-};
-
-defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
-  pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
-
-# Numerical transformations.
-# Trivial stuff that applies to each cell individually.
-
-BEGIN {
-  defparseralias quant_spec  => pmap q{$_ || 1}, popt number;
-  defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
-  defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
-  defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
-                                                        popt number;
-}
-
-defoperator cell_log => q{
-  my ($cs, $base) = @_;
-  my $lb = 1 / log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
-};
-
-defoperator cell_exp => q{
-  my ($cs, $base) = @_;
-  my $eb = log $base;
-  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
-};
-
-defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
-defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
-
-# Log-progression that preserves sign of the values. Everything is shifted
-# upwards by one in log-space, so signed_log(0) == log(1) == 0.
-defoperator cell_signed_log => q{
-  my ($cs, $base) = @_;
-  my $lb = 1 / log $base;
-  cell_eval {
-    args => 'undef',
-    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
-};
-
-defshort 'cell/L', pmap q{cell_signed_log_op @$_}, pseq cellspec_fixed, log_base;
-
-defoperator jitter_uniform => q{
-  my ($cs, $mag, $bias) = @_;
-  my $adjust = $bias - $mag / 2;
-  cell_eval {args => 'undef', each => "\$xs[\$_] += rand() * $mag + $adjust"}, $cs;
-};
-
-defshort 'cell/j', pmap q{jitter_uniform_op @$_},
-                   pseq cellspec_fixed, jitter_mag, jitter_bias;
-
-
-defoperator quantize => q{
-  my ($cs, $q) = @_;
-  my $iq = 1 / $q;
-  cell_eval {args => 'undef',
-             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
-};
-
-defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
-
-# Streaming numeric transformations.
-# Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
-# not cell operators, but in practice you tend to use them in the same context as
-# things like log scaling.
-
-defoperator col_sum => q{
-  cell_eval {args  => 'undef',
-             begin => 'my @ns = map 0, @cols',
-             each  => '$xs[$_] = $ns[$_] += $xs[$_]'}, @_;
-};
-
-defoperator col_delta => q{
-  cell_eval {args  => 'undef',
-             begin => 'my @ns = map 0, @cols',
-             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
-};
-
-defoperator col_average => q{
-  cell_eval {args  => 'undef',
-             begin => 'my @ns = map 0, @cols; $. = 0',
-             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
-};
-
-defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
-defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
-defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
-1 core/assert/lib
-assert.pl
-6 core/assert/assert.pl
-# Assertions: die horribly unless something is true.
-# Defines the `!` operator, which will deliberately nuke your entire process
-# unless its condition is true.
-
-defshort '/!',
-  defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 7 core/pl/lib
 util.pm
 math.pm
@@ -5578,6 +5247,345 @@ defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
+2 core/bloom/lib
+bloomfilter.pl
+bloom.pl
+87 core/bloom/bloomfilter.pl
+# Bloom filter library.
+# A simple pure-Perl implementation of Bloom filters.
+
+use Digest::MD5 qw/md5/;
+
+# Swiped from https://hur.st/bloomfilter
+sub bloom_args($$) {
+  my ($n, $p) = @_;
+  my $m = int 1 + $n * -log($p) / log(2 ** log 2);
+  my $k = int 0.5 + log(2) * $m / $n;
+  ($m, $k);
+}
+
+sub bloom_new($$) {
+  my ($m, $k) = @_;
+  ($m, $k) = bloom_args($m, $k) if $k < 1;
+  pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
+}
+
+sub multihash($$) {
+  my @hs;
+  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
+  @hs[0..$_[1]-1];
+}
+
+# Destructively adds an element to the filter and returns the filter.
+sub bloom_add($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ % $m + 64, 1) = 1 for multihash $_[1], $k;
+  $_[0];
+}
+
+sub bloom_contains($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
+  1;
+}
+
+# Prehashing variants
+# prehash($m, $k, $element) -> "prehash_string"
+# bloom_add_prehashed($filter, "prehash_string")
+sub bloom_prehash($$$) {
+  my ($m, $k) = @_;
+  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
+}
+
+sub bloom_add_prehashed($$) {
+  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
+  $_[0];
+}
+
+sub bloom_contains_prehashed($$) {
+  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
+  1;
+}
+
+# Set operations
+sub bloom_intersect {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot intersect two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter &= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
+}
+
+sub bloom_union {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot union two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter |= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
+}
+
+sub bloom_count($) {
+  my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  $m * -log(1 - $bits/$m) / $k;
+}
+52 core/bloom/bloom.pl
+# Bloom filter operators.
+# Operators to construct and query bloom filters. The bloom constructor is a
+# sub-operator of `z` (compress), and querying is done using `rb`.
+#
+# Notation is two digits: power of ten #elements, and power of ten
+# false-positive probability. So `zB74` means "create a filter designed to
+# store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
+
+BEGIN {
+  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
+  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
+}
+
+defoperator bloomify => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add $f, $_ while <STDIN>;
+  print $f;
+};
+
+defoperator bloomify_hex => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add $f, $_ while <STDIN>;
+  print unpack("H*", $f), "\n";
+};
+
+defoperator bloomify_prehashed => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
+  print $f;
+};
+
+defshort '/zB',  pmap q{bloomify_op @$_},           pseq bloom_size_spec, bloom_fp_spec;
+defshort '/zBH', pmap q{bloomify_hex_op @$_},       pseq bloom_size_spec, bloom_fp_spec;
+defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
+
+defoperator bloom_rows => q{
+  my ($include_mode, $col, $bloom_lambda) = @_;
+  my $bloom;
+  my $r = sni @$bloom_lambda;
+  1 while read $r, $bloom, 65536, length $bloom;
+  $r->await;
+  while (<STDIN>) {
+    chomp(my @cols = split /\t/, $_, $col + 2);
+    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
+  }
+};
+
+defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr 'B', colspec1, _qfn;
+2 core/cell/lib
+murmurhash.pl
+cell.pl
+28 core/cell/murmurhash.pl
+# Pure-Perl MurmurHash3_32 implementation.
+# This is used by some intification operators and based on the Wikipedia
+# implementation. It's limited to 32 bits because otherwise ni will fail on 32-bit
+# machines.
+
+use constant murmur_c1 => 0xcc9e2d51;
+use constant murmur_c2 => 0x1b873593;
+use constant murmur_n  => 0xe6546b64;
+
+sub murmurhash3($;$) {
+  use integer;
+  local $_;
+  my $h = $_[1] || 0;
+
+  for (unpack 'L*', $_[0]) {
+    $_ *= murmur_c1;
+    $h ^= ($_ << 15 | $_ >> 17 & 0x7fff) * murmur_c2 & 0xffffffff;
+    $h  = ($h << 13 | $h >> 19 & 0x1fff) * 5 + murmur_n;
+  }
+
+  my ($r) = unpack 'V', substr($_[0], ~3 & length $_[0]) . "\0\0\0\0";
+  $r *= murmur_c1;
+  $h ^= ($r << 15 | $r >> 17 & 0x7fff) * murmur_c2 & 0xffffffff ^ length $_[0];
+  $h &= 0xffffffff;
+  $h  = ($h ^ $h >> 16) * 0x85ebca6b & 0xffffffff;
+  $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
+  return $h ^ $h >> 16;
+}
+162 core/cell/cell.pl
+# Cell-level operators.
+# Cell-specific transformations that are often much shorter than the equivalent
+# Perl code. They're also optimized for performance.
+
+defcontext 'cell', q{cell operator context};
+defshort '/,', parser 'cell/qfn';
+
+BEGIN {
+  defparseralias cellspec       => pmap q{$_ || [1, 0]}, popt colspec;
+  defparseralias cellspec_fixed => pmap q{$_ || [1, 0]}, popt colspec_fixed;
+}
+
+# Codegen.
+# Most of these have exactly the same format and take a column spec.
+
+use constant cell_op_gen => gen q{
+  use Digest::MD5 qw/md5 md5_hex/;
+  my ($cs, %args) = @_;
+  my ($floor, @cols) = @$cs;
+  my $limit = $floor + 1;
+  %begin;
+  while (<STDIN>) {
+    chomp;
+    my @xs = split /\t/, $_, $limit;
+    %each_line
+    %each for @cols;
+    print join("\t", @xs) . "\n";
+  }
+  %end
+};
+
+sub cell_eval($@) {
+  my ($h, @args) = @_;
+  fn(cell_op_gen->(%$h))->(@args);
+}
+
+# Intification.
+# Strategies to turn each distinct entry into a number. Particularly useful in a
+# plotting context.
+
+defoperator intify_compact => q{
+  cell_eval {args  => 'undef',
+             begin => 'my %ids; my $n = 0',
+             each  => '$xs[$_] = ($ids{$xs[$_]} ||= ++$n) - 1'}, @_;
+};
+
+defoperator intify_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
+};
+
+defoperator real_hash => q{
+  cell_eval {args  => '$seed',
+             begin => '$seed ||= 0',
+             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
+};
+
+defoperator md5 => q{
+  cell_eval {args  => 'undef',
+             begin => '',
+             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
+};
+
+defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
+defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
+defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
+
+defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
+
+defoperator bloom_prehash => q{
+  cell_eval {args  => '$m, $k',
+             begin => '($m, $k) = bloom_args $m, $k',
+             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+};
+
+defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
+  pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
+
+# Numerical transformations.
+# Trivial stuff that applies to each cell individually.
+
+BEGIN {
+  defparseralias quant_spec  => pmap q{$_ || 1}, popt number;
+  defparseralias log_base    => pmap q{$_ || exp 1}, popt number;
+  defparseralias jitter_bias => pmap q{dor $_, 0}, popt number;
+  defparseralias jitter_mag  => pmap q{$_ || 1},   palt pmap(q{0.9}, prx ','),
+                                                        popt number;
+}
+
+defoperator cell_log => q{
+  my ($cs, $base) = @_;
+  my $lb = 1 / log $base;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = log(max 1e-16, \$xs[\$_]) * $lb"}, $cs;
+};
+
+defoperator cell_exp => q{
+  my ($cs, $base) = @_;
+  my $eb = log $base;
+  cell_eval {args => 'undef', each => "\$xs[\$_] = exp $eb * \$xs[\$_]"}, $cs;
+};
+
+defshort 'cell/l', pmap q{cell_log_op @$_}, pseq cellspec_fixed, log_base;
+defshort 'cell/e', pmap q{cell_exp_op @$_}, pseq cellspec_fixed, log_base;
+
+# Log-progression that preserves sign of the values. Everything is shifted
+# upwards by one in log-space, so signed_log(0) == log(1) == 0.
+defoperator cell_signed_log => q{
+  my ($cs, $base) = @_;
+  my $lb = 1 / log $base;
+  cell_eval {
+    args => 'undef',
+    each => "\$xs[\$_] = (\$xs[\$_] > 0 ? $lb : -$lb) * log(1 + abs \$xs[\$_])"}, $cs;
+};
+
+defshort 'cell/L', pmap q{cell_signed_log_op @$_}, pseq cellspec_fixed, log_base;
+
+defoperator jitter_uniform => q{
+  my ($cs, $mag, $bias) = @_;
+  my $adjust = $bias - $mag / 2;
+  cell_eval {args => 'undef', each => "\$xs[\$_] += rand() * $mag + $adjust"}, $cs;
+};
+
+defshort 'cell/j', pmap q{jitter_uniform_op @$_},
+                   pseq cellspec_fixed, jitter_mag, jitter_bias;
+
+
+defoperator quantize => q{
+  my ($cs, $q) = @_;
+  my $iq = 1 / $q;
+  cell_eval {args => 'undef',
+             each => "\$xs[\$_] = $q * int(0.5 + $iq * \$xs[\$_])"}, $cs;
+};
+
+defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
+
+# Streaming numeric transformations.
+# Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
+# not cell operators, but in practice you tend to use them in the same context as
+# things like log scaling.
+
+defoperator col_sum => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols',
+             each  => '$xs[$_] = $ns[$_] += $xs[$_]'}, @_;
+};
+
+defoperator col_delta => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols',
+             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
+};
+
+defoperator col_average => q{
+  cell_eval {args  => 'undef',
+             begin => 'my @ns = map 0, @cols; $. = 0',
+             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
+};
+
+defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
+defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
+defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 2 core/rb/lib
 prefix.rb
 rb.pl
