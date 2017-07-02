@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 3
+# `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
 
@@ -376,9 +376,6 @@ $ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
 In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
 
 
-
-
-
 ## `ni`-specific Array Processors
 
 
@@ -388,15 +385,43 @@ In particular, these operations can be used in conjunction with Hadoop streaming
 Recall that text is numbers (and numbers are text) in Perl. Thus, there are two sets of methods for finding the minimum and maximum, depending on whether you want it in a numeric context (`min`, `max`) or in a string context (`minstr`, `maxstr`)
 
 
+```bash
+$ ni i[1 2 3] p'r min F_; r max F_'
+1
+3
+```
+
+```bash
+$ ni i[c a b] p'r minstr F_; r maxstr F_'
+a
+c
+```
+
+Be careful using these functions with both numeric and string arguments in the same line:
+
+```sh
+$ ni i[1 2 3 a b c] p'r min F_; r max F_; r minstr F_; r maxstr F_'
+b
+3
+1
+c
+```
 
 
 ### `any`, `all`, `sum`, `prod`, `mean`
 
 These return the logical OR of all elements, the logical AND of all elements of an array, the sum of all elements (as numbers), the product of all elements (as numbers), and their mean.
 
+
+
 ### `uniq`
 
-This returns all of the elements of an
+This returns all of the elements of an array.
+
+```bash
+$ ni i[a c b c c a] p'my @uniqs = uniq F_; r sort @uniqs'
+a	b	c
+```
 
 #### `argmax`, `argmin`
 
@@ -404,7 +429,14 @@ These elements
 
 ### `freqs`
 
-This method has 
+`freqs` returns a reference to a hash that contains the count of each unique element in the input array.
+
+```bash
+$ ni i[a c b c c a] p'my %h = %{freqs F_}; r($_, $h{$_}) for sort keys %h'
+a	2
+b	1
+c	3
+```
 
 ### `cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
@@ -420,7 +452,6 @@ $ ni 1p'cart [10, 20], [1, 2, 3]'
 ```
 
 The output of `cart` will have the first column varying the least, the second column varying the second least, etc. so that the value of the last column will change for every row if its values are all distinct.
-
 
 
 Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
