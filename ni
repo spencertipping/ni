@@ -6012,7 +6012,7 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 2 core/bloom/lib
 bloomfilter.pl
 bloom.pl
-59 core/bloom/bloomfilter.pl
+69 core/bloom/bloomfilter.pl
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
 
@@ -6052,20 +6052,30 @@ sub bloom_contains($$) {
 }
 
 # Set operations
-sub bloom_intersect($$) {
-  die "cannot intersect two bloomfilters of differing parameters"
-    unless unpack("a8", $_[0]) == unpack("a8", $_[1]);
-  my ($prefix, $filter) = unpack "a8a*", $_[0];
-  $filter &= unpack "x8a*", $_[1];
-  $prefix . $filter;
+sub bloom_intersect {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot intersect two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter &= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
 }
 
-sub bloom_union($$) {
-  die "cannot union two bloomfilters of differing parameters"
-    unless unpack("a8", $_[0]) == unpack("a8", $_[1]);
-  my ($prefix, $filter) = unpack "a8a*", $_[0];
-  $filter |= unpack "x8a*", $_[1];
-  $prefix . $filter;
+sub bloom_union {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot union two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter |= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
 }
 
 sub bloom_count($) {
