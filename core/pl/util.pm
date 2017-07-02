@@ -72,7 +72,8 @@ sub cart {
 sub clip {
   local $_;
   my ($lower, $upper, @xs) = @_;
-  map min($upper, max $lower, $_), @xs;
+  wantarray ? map min($upper, max $lower, $_), @xs
+            : min $upper, max $lower, $xs[0];
 }
 
 sub within {

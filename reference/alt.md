@@ -71,16 +71,6 @@
 ## OPTIONS
 	(
 	| (
-	    'B'
-	    <colspec1>
-	    </qfn>
-	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
-	| (
-	    'b'
-	    <colspec1>
-	    </qfn>
-	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
-	| (
 	    'l'
 	    <lispcode>
 	  ) -> {$$_[1]} -> {lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
@@ -93,6 +83,16 @@
 	    'p'
 	    <perl_grepper_code>
 	  ) -> {$$_[1]} -> {perl_grepper_op $_}
+	| (
+	    'B'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
+	| (
+	    'b'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	| (
 	    /[+~]/
 	    <integer>

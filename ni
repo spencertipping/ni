@@ -83,6 +83,7 @@ lib core/buffer
 lib core/script
 lib core/col
 lib core/row
+lib core/bloom
 lib core/cell
 lib core/assert
 lib core/pl
@@ -90,7 +91,6 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
-lib core/bloom
 lib core/binary
 lib core/matrix
 lib core/gnuplot
@@ -4023,7 +4023,7 @@ defoperator row_grouped_sort => q{
     : qq{/^([^\\t\\n]*)/};
 
   my $sort_expr = join ' || ',
-    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+    map {my $sort_op = $$_[1] =~ /[gn]/ ? '<=>' : 'cmp';
          $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
                        : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
 
@@ -4292,6 +4292,142 @@ defoperator join => q{
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
+2 core/bloom/lib
+bloomfilter.pl
+bloom.pl
+87 core/bloom/bloomfilter.pl
+# Bloom filter library.
+# A simple pure-Perl implementation of Bloom filters.
+
+use Digest::MD5 qw/md5/;
+
+# Swiped from https://hur.st/bloomfilter
+sub bloom_args($$) {
+  my ($n, $p) = @_;
+  my $m = int 1 + $n * -log($p) / log(2 ** log 2);
+  my $k = int 0.5 + log(2) * $m / $n;
+  ($m, $k);
+}
+
+sub bloom_new($$) {
+  my ($m, $k) = @_;
+  ($m, $k) = bloom_args($m, $k) if $k < 1;
+  pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
+}
+
+sub multihash($$) {
+  my @hs;
+  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
+  @hs[0..$_[1]-1];
+}
+
+# Destructively adds an element to the filter and returns the filter.
+sub bloom_add($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ % $m + 64, 1) = 1 for multihash $_[1], $k;
+  $_[0];
+}
+
+sub bloom_contains($$) {
+  my ($m, $k) = unpack "NN", $_[0];
+  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
+  1;
+}
+
+# Prehashing variants
+# prehash($m, $k, $element) -> "prehash_string"
+# bloom_add_prehashed($filter, "prehash_string")
+sub bloom_prehash($$$) {
+  my ($m, $k) = @_;
+  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
+}
+
+sub bloom_add_prehashed($$) {
+  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
+  $_[0];
+}
+
+sub bloom_contains_prehashed($$) {
+  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
+  1;
+}
+
+# Set operations
+sub bloom_intersect {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot intersect two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter &= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
+}
+
+sub bloom_union {
+  local $_;
+  my ($n, $k, $filter) = unpack "NNa*", shift;
+  for (@_) {
+    my ($rn, $rk) = unpack "NN", $_;
+    die "cannot union two bloomfilters of differing parameters "
+      . "($n, $k) vs ($rn, $rk)"
+      unless $n == $rn && $k == $rk;
+    $filter |= unpack "x8 a*", $_;
+  }
+  pack("NN", $n, $k) . $filter;
+}
+
+sub bloom_count($) {
+  my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  $m * -log(1 - $bits/$m) / $k;
+}
+44 core/bloom/bloom.pl
+# Bloom filter operators.
+# Operators to construct and query bloom filters. The bloom constructor is a
+# sub-operator of `z` (compress), and querying is done using `rb`.
+#
+# Notation is two digits: power of ten #elements, and power of ten
+# false-positive probability. So `zB74` means "create a filter designed to
+# store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
+
+BEGIN {
+  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
+  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
+}
+
+defoperator bloomify => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add $f, $_ while <STDIN>;
+  print $f;
+};
+
+defoperator bloomify_prehashed => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
+  print $f;
+};
+
+defshort '/zB',  pmap q{bloomify_op @$_},           pseq bloom_size_spec, bloom_fp_spec;
+defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
+
+defoperator bloom_rows => q{
+  my ($include_mode, $col, $bloom_lambda) = @_;
+  my $bloom;
+  my $r = sni @$bloom_lambda;
+  1 while read $r, $bloom, 65536, length $bloom;
+  $r->await;
+  while (<STDIN>) {
+    chomp(my @cols = split /\t/, $_, $col + 2);
+    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
+  }
+};
+
+defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr 'B', colspec1, _qfn;
 2 core/cell/lib
 murmurhash.pl
 cell.pl
@@ -4324,7 +4460,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-144 core/cell/cell.pl
+162 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -4341,6 +4477,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
+  use Digest::MD5 qw/md5 md5_hex/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -4373,18 +4510,35 @@ defoperator intify_compact => q{
 defoperator intify_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 };
 
 defoperator real_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
+};
+
+defoperator md5 => q{
+  cell_eval {args  => 'undef',
+             begin => '',
+             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
 };
 
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
+
+defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
+
+defoperator bloom_prehash => q{
+  cell_eval {args  => '$m, $k',
+             begin => '($m, $k) = bloom_args $m, $k',
+             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+};
+
+defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
+  pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
 
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.
@@ -4486,7 +4640,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-206 core/pl/util.pm
+207 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4561,7 +4715,8 @@ sub cart {
 sub clip {
   local $_;
   my ($lower, $upper, @xs) = @_;
-  map min($upper, max $lower, $_), @xs;
+  wantarray ? map min($upper, max $lower, $_), @xs
+            : min $upper, max $lower, $xs[0];
 }
 
 sub within {
@@ -4735,9 +4890,9 @@ sub entropy {
 if (eval {require Math::Trig}) {
   sub haversine {
     local $_;
-    my ($th1, $ph1, $th2, $ph2) = map drad $_, @_;
-    my ($dt, $dp) = ($th2 - $th1, $ph2 - $ph1);
-    my $a = sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
+    my ($t1, $p1, $t2, $p2) = map drad $_, @_;
+    my ($dt, $dp) = ($t2 - $t1, $p2 - $p1);
+    my $a = clip 0, 1, sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
@@ -5999,76 +6154,6 @@ sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 # particularly common.
 
 defparseralias pycode => pmap q{pydent $_}, generic_code;
-2 core/bloom/lib
-bloomfilter.pl
-bloom.pl
-29 core/bloom/bloomfilter.pl
-# Bloom filter library.
-# A simple pure-Perl implementation of Bloom filters.
-
-# Swiped from https://hur.st/bloomfilter
-sub bloom_args($$) {
-  my ($n, $p) = @_;
-  my $m = int 1 + $n * -log($p) / log(2 ** log 2);
-  my $k = int 0.5 + log(2) * $m / $n;
-  ($m, $k);
-}
-
-sub bloom_new($$) {
-  my ($m, $k) = @_;
-  ($m, $k) = bloom_args($m, $k) if $k < 1;
-  pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
-}
-
-# Destructively adds an element to the filter and returns the filter.
-sub bloom_add($$) {
-  my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) = 1 for map murmurhash3($_[1], $_) % $m, 1..$k;
-  $_[0];
-}
-
-sub bloom_contains($$) {
-  my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ + 64, 1) || return 0 for map murmurhash3($_[1], $_) % $m, 1..$k;
-  1;
-}
-36 core/bloom/bloom.pl
-# Bloom filter operators.
-# Operators to construct and query bloom filters. The bloom constructor is a
-# sub-operator of `z` (compress), and querying is done using `rb`.
-#
-# Notation is two digits: power of ten #elements, and power of ten
-# false-positive probability. So `zB74` means "create a filter designed to
-# store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
-
-BEGIN {
-  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
-  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
-}
-
-defoperator bloomify => q{
-  my ($n, $p) = @_;
-  my $f = bloom_new $n, $p;
-  chomp, bloom_add $f, $_ while <STDIN>;
-  print $f;
-};
-
-defshort '/zB', pmap q{bloomify_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
-
-defoperator bloom_rows => q{
-  my ($include_mode, $col, $bloom_lambda) = @_;
-  my $bloom;
-  my $r = sni @$bloom_lambda;
-  1 while read $r, $bloom, 65536, length $bloom;
-  $r->await;
-  while (<STDIN>) {
-    chomp(my @cols = split /\t/, $_, $col + 2);
-    print if !$include_mode == !bloom_contains $bloom, $cols[$col];
-  }
-};
-
-defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
-defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr 'B', colspec1, _qfn;
 3 core/binary/lib
 bytestream.pm
 bytewriter.pm
@@ -10305,7 +10390,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-336 doc/row.md
+342 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -10577,7 +10662,13 @@ $ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
 4	uber
 4	quux
 4	bake
+$ ni n10p'r "a", a' ggABn- r4
+a	10
+a	9
+a	8
+a	7
 ```
+
 
 ## Counting
 ni gives you the `c` operator to count runs of identical rows (just

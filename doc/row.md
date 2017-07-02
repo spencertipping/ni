@@ -269,7 +269,13 @@ $ ni i{foo,bar,bif,baz,quux,uber,bake} p'r length, a' ggAB-
 4	uber
 4	quux
 4	bake
+$ ni n10p'r "a", a' ggABn- r4
+a	10
+a	9
+a	8
+a	7
 ```
+
 
 ## Counting
 ni gives you the `c` operator to count runs of identical rows (just

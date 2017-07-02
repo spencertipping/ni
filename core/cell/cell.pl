@@ -14,6 +14,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
+  use Digest::MD5 qw/md5 md5_hex/;
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
@@ -46,18 +47,35 @@ defoperator intify_compact => q{
 defoperator intify_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 };
 
 defoperator real_hash => q{
   cell_eval {args  => '$seed',
              begin => '$seed ||= 0',
-             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
+};
+
+defoperator md5 => q{
+  cell_eval {args  => 'undef',
+             begin => '',
+             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
 };
 
 defshort 'cell/z', pmap q{intify_compact_op $_},  cellspec_fixed;
 defshort 'cell/h', pmap q{intify_hash_op    @$_}, pseq cellspec_fixed, popt integer;
 defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt integer;
+
+defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
+
+defoperator bloom_prehash => q{
+  cell_eval {args  => '$m, $k',
+             begin => '($m, $k) = bloom_args $m, $k',
+             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+};
+
+defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
+  pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
 
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.

@@ -31,6 +31,14 @@
 ## IMPLEMENTATION
 	stdin_to_perl binary_perl_mapper $_[0]
 
+# OPERATOR bloom_prehash
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$m, $k',
+	             begin => '($m, $k) = bloom_args $m, $k',
+	             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+
 # OPERATOR bloom_rows
 
 ## IMPLEMENTATION
@@ -52,6 +60,15 @@
 	  my ($n, $p) = @_;
 	  my $f = bloom_new $n, $p;
 	  chomp, bloom_add $f, $_ while <STDIN>;
+	  print $f;
+
+# OPERATOR bloomify_prehashed
+
+## IMPLEMENTATION
+	
+	  my ($n, $p) = @_;
+	  my $f = bloom_new $n, $p;
+	  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
 	  print $f;
 
 # OPERATOR buffer_null
@@ -503,7 +520,7 @@
 	
 	  cell_eval {args  => '$seed',
 	             begin => '$seed ||= 0',
-	             each  => '$xs[$_] = murmurhash3 $xs[$_], $seed'}, @_;
+	             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
 
 # OPERATOR jitter_uniform
 
@@ -562,6 +579,14 @@
 	    mapomatic_compress(mapomatic_header)
 	      . $encoded_points
 	      . mapomatic_compress(mapomatic_footer)) . "\n\0";
+
+# OPERATOR md5
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => 'undef',
+	             begin => '',
+	             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
 
 # OPERATOR memory_closure_append
 
@@ -821,7 +846,7 @@
 	
 	  cell_eval {args  => '$seed',
 	             begin => '$seed ||= 0',
-	             each  => '$xs[$_] = murmurhash3($xs[$_], $seed) / (1<<32)'}, @_;
+	             each  => '$xs[$_] = unpack("N", md5 $xs[$_] . $seed) / (1<<32)'}, @_;
 
 # OPERATOR resource_append
 
@@ -1014,7 +1039,7 @@
 	    : qq{/^([^\t\n]*)/};
 	
 	  my $sort_expr = join ' || ',
-	    map {my $sort_op = $$_[1] =~ /gn/ ? '<=>' : 'cmp';
+	    map {my $sort_op = $$_[1] =~ /[gn]/ ? '<=>' : 'cmp';
 	         $$_[1] =~ /-/ ? qq{\$b[$$_[0]] $sort_op \$a[$$_[0]]}
 	                       : qq{\$a[$$_[0]] $sort_op \$b[$$_[0]]}} @$sort_cols;
 	
