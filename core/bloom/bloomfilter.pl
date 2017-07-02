@@ -36,6 +36,24 @@ sub bloom_contains($$) {
   1;
 }
 
+# Prehashing variants
+# prehash($m, $k, $element) -> "prehash_string"
+# bloom_add_prehashed($filter, "prehash_string")
+sub bloom_prehash($$$) {
+  my ($m, $k) = @_;
+  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
+}
+
+sub bloom_add_prehashed($$) {
+  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
+  $_[0];
+}
+
+sub bloom_contains_prehashed($$) {
+  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
+  1;
+}
+
 # Set operations
 sub bloom_intersect {
   local $_;

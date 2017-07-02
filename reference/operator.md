@@ -31,6 +31,14 @@
 ## IMPLEMENTATION
 	stdin_to_perl binary_perl_mapper $_[0]
 
+# OPERATOR bloom_prehash
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$m, $k',
+	             begin => '($m, $k) = bloom_args $m, $k',
+	             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+
 # OPERATOR bloom_rows
 
 ## IMPLEMENTATION
@@ -52,6 +60,15 @@
 	  my ($n, $p) = @_;
 	  my $f = bloom_new $n, $p;
 	  chomp, bloom_add $f, $_ while <STDIN>;
+	  print $f;
+
+# OPERATOR bloomify_prehashed
+
+## IMPLEMENTATION
+	
+	  my ($n, $p) = @_;
+	  my $f = bloom_new $n, $p;
+	  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
 	  print $f;
 
 # OPERATOR buffer_null

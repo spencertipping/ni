@@ -5,6 +5,7 @@
 ## LONG OPERATORS (ni --doc/long X)
 
 ## SHORT OPERATORS (ni --doc/short X)
+	cell/BP
 	cell/H
 	cell/L
 	cell/a

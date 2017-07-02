@@ -18,7 +18,15 @@ defoperator bloomify => q{
   print $f;
 };
 
-defshort '/zB', pmap q{bloomify_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
+defoperator bloomify_prehashed => q{
+  my ($n, $p) = @_;
+  my $f = bloom_new $n, $p;
+  chomp, bloom_add_prehashed $f, $_ while <STDIN>;
+  print $f;
+};
+
+defshort '/zB',  pmap q{bloomify_op @$_},           pseq bloom_size_spec, bloom_fp_spec;
+defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
 
 defoperator bloom_rows => q{
   my ($include_mode, $col, $bloom_lambda) = @_;

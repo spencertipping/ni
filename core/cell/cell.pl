@@ -68,6 +68,15 @@ defshort 'cell/H', pmap q{real_hash_op      @$_}, pseq cellspec_fixed, popt inte
 
 defshort 'cell/m', pmap q{md5_op $_}, cellspec_fixed;
 
+defoperator bloom_prehash => q{
+  cell_eval {args  => '$m, $k',
+             begin => '($m, $k) = bloom_args $m, $k',
+             each  => '$xs[$_] = bloom_prehash $m, $k, $xs[$_]'}, @_;
+};
+
+defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
+  pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
+
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.
 

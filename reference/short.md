@@ -645,16 +645,6 @@
 ## SYNTAX
 	(
 	| (
-	    'B'
-	    <colspec1>
-	    </qfn>
-	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
-	| (
-	    'b'
-	    <colspec1>
-	    </qfn>
-	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
-	| (
 	    'l'
 	    <lispcode>
 	  ) -> {$$_[1]} -> {lisp_code_op lisp_grepgen->(prefix => lisp_prefix,
@@ -667,6 +657,16 @@
 	    'p'
 	    <perl_grepper_code>
 	  ) -> {$$_[1]} -> {perl_grepper_op $_}
+	| (
+	    'B'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
+	| (
+	    'b'
+	    <colspec1>
+	    </qfn>
+	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	| (
 	    /[+~]/
 	    <integer>
@@ -751,6 +751,14 @@
 	  <bloom_fp_spec>
 	) -> {bloomify_op @$_}
 
+# SHORT OPERATOR /zBP
+
+## SYNTAX
+	(
+	  <bloom_size_spec>
+	  <bloom_fp_spec>
+	) -> {bloomify_prehashed_op @$_}
+
 # SHORT OPERATOR /zd
 
 ## SYNTAX
@@ -760,6 +768,15 @@
 
 ## SYNTAX
 	<'', evaluate as [sink_null]>
+
+# SHORT OPERATOR cell/BP
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <bloom_size_spec>
+	  <bloom_fp_spec>
+	) -> {bloom_prehash_op @$_}
 
 # SHORT OPERATOR cell/H
 
