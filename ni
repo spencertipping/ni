@@ -6012,7 +6012,7 @@ defparseralias pycode => pmap q{pydent $_}, generic_code;
 2 core/bloom/lib
 bloomfilter.pl
 bloom.pl
-37 core/bloom/bloomfilter.pl
+59 core/bloom/bloomfilter.pl
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
 
@@ -6049,6 +6049,28 @@ sub bloom_contains($$) {
   my ($m, $k) = unpack "NN", $_[0];
   vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
   1;
+}
+
+# Set operations
+sub bloom_intersect($$) {
+  die "cannot intersect two bloomfilters of differing parameters"
+    unless unpack("a8", $_[0]) == unpack("a8", $_[1]);
+  my ($prefix, $filter) = unpack "a8a*", $_[0];
+  $filter &= unpack "x8a*", $_[1];
+  $prefix . $filter;
+}
+
+sub bloom_union($$) {
+  die "cannot union two bloomfilters of differing parameters"
+    unless unpack("a8", $_[0]) == unpack("a8", $_[1]);
+  my ($prefix, $filter) = unpack "a8a*", $_[0];
+  $filter |= unpack "x8a*", $_[1];
+  $prefix . $filter;
+}
+
+sub bloom_count($) {
+  my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  $m * -log(1 - $bits/$m) / $k;
 }
 36 core/bloom/bloom.pl
 # Bloom filter operators.
