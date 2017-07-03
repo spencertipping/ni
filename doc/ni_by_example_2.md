@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 2 Part 1 (alpha release)
+# `ni` by Example, Chapter 2 (beta release)
 
 Welcome to the second part of the tutorial. At this point, you know a little `ni` syntax, but you might not be able to do anything useful. In this chapter, our goal is to multiply your power to operate on a single machine by covering all of the Perl syntax you need to work effectively with `ni`.
 
@@ -6,68 +6,21 @@ Welcome to the second part of the tutorial. At this point, you know a little `ni
 
 This section written for an audience that has never worked with the language before, and from a user's (rather than a developer's) perspective. This tutorial encourages you to learn to use Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid discussing how to write a Perl subroutine, which (while easy) is unnecessary for most workflows.
 
-From the Perl Syntax docs:
-> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
-
-## `p'...'`: Perl mapper
-When you think of writing a simple data processing program in Python, Ruby, C, or even Perl, think about how many keystrokes are spent loading libraries that are used mostly implicitly; and if they're not loaded, the program won't run.
-
-Even the act of writing a script that reads from standard input and writes to standard output, maybe compiling it, and then calling it with arguments from the command line requires a lot of task-switching.  
-
-`ni` removes all of that; the moment you type `p'...'`, you're dropped directly into the middle of your Perl main subroutine, with the line you're operating on assigned to a default variable that's ready to use.
-
-
-### `p'r()'`: Emit row
-
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect.
-
-Let's take a look at the ouput of our script when we take out the `r` from inside the Perl mapper.
-
-Without `r()`, every value separated by a comma is **returned** on its own row; these returned rows are then sent to the output stream.
-
-The `r()` operator, on the other hand, **returns the empty list**. It works by printing the values separated by columns to a single tab-delimited row of the output stream.
-
-Now that the practical differences between `r()` and `p'...'` have been explained, we can examine the differences in their use that are entailed.  
-
-Clearly, if the desired output of the Perl mapper is two or more columns per row of stream data, you must use `r()`. If the desired output of the perl mapper step is a single column per row, you could either use `r()` or not.  The more concise statement leaving out `r()` is preferred.
-
-When it is clear from context (as above), `r()'` can be referred to as  `r`, which is how it is more commonly written in practice. This differs from the take-rows operator (also called `r`).
-
-
-
-## `1`: Dummy pulse
-
-One of the slighly tricky aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run. The following command, while syntactically correct, produces no output.
-
-```
-$ ni p'for my $i (1..5) {r map $i * $_, 1..3}'
-```
-
-In order to cause a script to execute, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
-
-```bash
-$ ni 1p'for my $i (1..5) {r map $i * $_, 1..3}'
-1	2	3
-2	4	6
-3	6	9
-4	8	12
-5	10	15
-```
-
-Several other operators also require a pulse to run, including the Numpy, Ruby, and Lisp operators, which will be covered in more detail in later chapters.
-
-
 
 ## Perl Syntax
 
-In truth, Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
+Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
+
+From the Perl Syntax docs:
+> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
+
 
 ### Sigils
 
 So far, we've been using without explanation Perl variables that start with the character `$`. This character is referred to as a sigil, and is not a part of the variable name.  Sigils are used in different ways by the Perl interpreter to increase the language's concision.
 
 
-```
+```sh
 $x = 5;
 @x = 1..10;
 %x = (foo => 1, bar => 2);
@@ -79,19 +32,21 @@ The question here, and its relevance for `ni`, is not whether this language synt
 
 When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it. The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
 
-* `my $x` indicates that `$x` is a scalar, for example a string or a number
-* `my @x` indicates that `@x` is a zero-indexed array
-* `my %x` indicates that `%x` is a hash
+* `my $x` indicates that `$x` is a scalar, for example a string or a number.
+* `my @x` indicates that `@x` is an array.
+* `my %x` indicates that `%x` is a hash.
 
-What's even cooler is that, because the syntax for all of these is different, we can use all of these:
+Because the syntax for all of these is different, we can use all of these
 
 ```
-print $x;         # gets the scalar value of $x
-print $x[3];      # gets a scalar value from @x at position 3
-print $x{"foo"};  # gets a scalar value from %x associated with the key "foo"
+print $x;         # get the scalar value of $x
+print $x[3];      # get the scalar from @x at index 3
+print $x{"foo"};  # get the scalar from %x associated with the key "foo"
 ```
 
-At first glance, this is very confusing; all of these values start with `$x`--but note that the calling syntax is different for all three; you get a scalar value (i.e `$`) out of a hash by indexing it with curly braces, you get a scalar value out of an array by indexing it with square brackets, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky.
+At first glance, this is very confusing; all of these values start with `$x`. The calling syntax, however, is different. You tell the Perl interpreter to get a scalar value by using the `$` sigil; Perl determines what to look for depending on the postfix indexing. 
+
+Using curly braces tells Perl to look in a hash, and square brackets tells Perl to look in an array, and without either of those, Perl knows that you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky. With a little practice, this will be second nature.
 
 
 ### Default Variables
@@ -190,7 +145,7 @@ x = 5
 The ternary operator is used to select between options based on the truth value of a statement or variable.
 
 ```bash
-$ ni 1p'my $x = 5; $x == 5 ? "x = 5" : "x != 5"' | cat
+$ ni 1p'my $x = 5; $x == 5 ? "x = 5" : "x != 5"'
 x = 5
 ```
 
@@ -302,13 +257,13 @@ When writing a regular expression, you want them to fail as quickly as possible 
 
 The following is (very minimally) adapted from the `perldoc`:
 
-\d matches a digit, not just [0-9] but also digits from non-Roman scripts
-\s matches a whitespace character, the set [\ \t\r\n\f] and others
-\w matches a word character (alphanumeric or _), not just [0-9a-zA-Z_] but also digits and characters from non-Roman scripts
-\D is a negated \d; it represents any other character than a digit, or [^\d]
-\S is a negated \s; it represents any non-whitespace character [^\s]
-\W is a negated \w; it represents any non-word character [^\w]
-The period '.' matches any character but "\n" (unless the modifier //s is in effect, as explained below).
+* `\d` matches a digit, not just `[0-9]` but also digits from non-Roman scripts
+* `\s` matches a whitespace character, the set `[\ \t\r\n\f]` and others
+* `\w` matches a word character (alphanumeric or underscore), not just `[0-9a-zA-Z_]` but also digits and characters from non-Roman scripts
+* `\D` is a negated `\d`; it represents any other character than a digit, or `[^\d]`
+* `\S` is a negated `\s`; it represents any non-whitespace character `[^\s]`
+* `\W` is a negated `\w`; it represents any non-word character `[^\w]`
+* `.` matches any character except newlines
 
 #### Regex Matching `=~`
 
@@ -334,6 +289,7 @@ a	b
 ```
 
 There is also a syntactic sugar using the default variable `$_`.
+
 ```bash
 $ ni iabcdefgh p'my @v = /^(.)(.)/; r @v'
 a	b
