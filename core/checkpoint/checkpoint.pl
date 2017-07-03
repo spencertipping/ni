@@ -5,9 +5,12 @@
 
 # Checkpoints are fully buffered before emitting output.
 
+use File::Temp qw/tempfile/;
+
 sub checkpoint_create($$) {
-  sforward sni(@{$_[1]}), swfile "$_[0].part";
-  rename "$_[0].part", $_[0];
+  my ($fh, $name) = tempfile "$_[0].part.XXXXXXXX";
+  sforward sni(@{$_[1]}), $fh;
+  rename $name, $_[0];
 }
 
 defoperator checkpoint => q{

@@ -3573,7 +3573,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl
-26 core/checkpoint/checkpoint.pl
+29 core/checkpoint/checkpoint.pl
 # Checkpoint files.
 # You can break a long pipeline into a series of smaller files using
 # checkpointing, whose operator is `:`. The idea is to cache intermediate
@@ -3581,9 +3581,12 @@ checkpoint.pl
 
 # Checkpoints are fully buffered before emitting output.
 
+use File::Temp qw/tempfile/;
+
 sub checkpoint_create($$) {
-  sforward sni(@{$_[1]}), swfile "$_[0].part";
-  rename "$_[0].part", $_[0];
+  my ($fh, $name) = tempfile "$_[0].part.XXXXXXXX";
+  sforward sni(@{$_[1]}), $fh;
+  rename $name, $_[0];
 }
 
 defoperator checkpoint => q{
