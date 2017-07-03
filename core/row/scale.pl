@@ -49,7 +49,7 @@ defoperator row_fixed_scale => q{
   sub new_ref() {\(my $x = '')}
 
   my ($n, $f) = @_;
-  $ENV{NI_NO_MONITOR} = 'yes';
+  conf_set monitor => 0;
 
   my ($iqueue, $oqueue) = (64, 64);
 
