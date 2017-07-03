@@ -3573,7 +3573,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl
-26 core/checkpoint/checkpoint.pl
+29 core/checkpoint/checkpoint.pl
 # Checkpoint files.
 # You can break a long pipeline into a series of smaller files using
 # checkpointing, whose operator is `:`. The idea is to cache intermediate
@@ -3581,9 +3581,12 @@ checkpoint.pl
 
 # Checkpoints are fully buffered before emitting output.
 
+use File::Temp qw/tempfile/;
+
 sub checkpoint_create($$) {
-  sforward sni(@{$_[1]}), swfile "$_[0].part";
-  rename "$_[0].part", $_[0];
+  my ($fh, $name) = tempfile "$_[0].part.XXXXXXXX";
+  sforward sni(@{$_[1]}), $fh;
+  rename $name, $_[0];
 }
 
 defoperator checkpoint => q{
@@ -4130,7 +4133,7 @@ defoperator row_fixed_scale => q{
   sub new_ref() {\(my $x = '')}
 
   my ($n, $f) = @_;
-  $ENV{NI_NO_MONITOR} = 'yes';
+  conf_set monitor => 0;
 
   my ($iqueue, $oqueue) = (64, 64);
 
@@ -7980,7 +7983,7 @@ sub hadoop_lambda_file($$) {
   my ($name, $lambda) = @_;
   my $tmp = resource_tmp('file://') . $name;
   my $w   = resource_write $tmp;
-  local $ENV{NI_NO_MONITOR} = 'yes';
+  conf_set monitor => 0;
   safewrite $w, ni_quoted_image 1, @$lambda;
   sforward_quoted resource_read($_), $w for quoted_resources;
   close $w;
