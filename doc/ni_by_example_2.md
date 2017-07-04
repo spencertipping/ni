@@ -149,6 +149,17 @@ $ ni 1p'my $x = 5; $x == 5 ? "x = 5" : "x != 5"'
 x = 5
 ```
 
+### `die`
+
+`die` is used to raise an error; it's not used much in `ni`. We play dangerously.
+
+```sh
+$ ni n5 p'a < 3 ? r a : die "too big"'
+too big at - line 2972, <STDIN> line 3.
+1
+2
+```
+
 ## Statements, Blocks, and Scope
 
 ### Statements and Blocks
@@ -376,9 +387,30 @@ match
 
 Perl arrays are prefixed with the `@` sigil, and their scalar values can be looked up by prefixing with a `$`, and indexing using square brackets.
 
-### `split`
+### Array Constructors
 
-`split` is useful for generating arrays from a string based on regular expressions.
+#### Explicit constructors
+
+Arrays are written in parentheses, with elements set off by commas.
+
+```bash
+$ ni 1p'my @arr = (1, 2, 3); r @arr'
+1	2	3
+```
+
+#### `qw`: Quote Word
+
+Writing lots of double quotes around strings is kind of a pain; Perl implements an operator called `qw` which allows you to build a list with a minimum of keystrokes:
+
+```bash
+$ ni 1p'my @arr = qw(1 2 3); r @arr'
+1	2	3
+```
+
+
+#### `split`
+
+`split` is another way for generating arrays from a string based on regular expressions.
 
 ```bash
 $ ni iabcd iefgh p'my @v = split /[cf]/; r @v'
@@ -386,6 +418,35 @@ ab	d
 e	gh
 ```
 
+#### Array references (OPTIONAL)
+Many other languages use square brackets; in Perl, these are used for array references:
+
+```sh
+$ ni 1p'my @arr = [1, 2, 3]; r @arr'
+ARRAY(0x7fa7e4184818)
+```
+
+This code has built a length-1 array containing an array reference; if you really wanted to create an array reference, you'd more likely do it explicitly.
+
+```sh
+$ ni 1p'my $arr_ref = [1, 2, 3]; r $arr_ref'
+ARRAY(0x7fa7e4184818)
+```
+
+To dereference the reference, use the appropriate sigil:
+
+```bash
+$ ni 1p'my $arr_ref = [1, 2, 3]; r @$arr_ref'
+1	2	3
+```
+
+Back to the first example, to dereference the array reference we've (probably unintentionally) wrapped in an array, do:
+
+
+```bash
+$ ni 1p'my @arr = [1, 2, 3]; r @{$arr[0]}'
+1	2	3
+```
 
 ### `for`
 Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java. `for` takes an initialization and a block of code to be run for each value of the initialization.
@@ -499,7 +560,7 @@ abcdefgh
 `map` can also be used with a capturing regular expression:
 
 ```sh
-$ ni i[/usr/bin /usr/tmp]  p'r map m#^/usr/(.*)$#, F_' | cat
+$ ni i[/usr/bin /usr/tmp]  p'r map m#^/usr/(.*)$#, F_'
 bin	tmp
 ```
 
@@ -526,7 +587,44 @@ ff
 hh
 ```
 
-Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice. 
+Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice.
+
+
+### `sort` and `reverse`
+
+`reverse` reverses an array:
+
+```bash
+$ ni 1p'my @arr = (3, 5, 1); r reverse @arr'
+1	5	3
+```
+
+`sort` with no arugments will sort an array in ascending order
+
+```bash
+$ ni 1p'my @arr = (3, 5, 1); r sort @arr'
+1	3	5
+```
+
+```bash
+$ ni 1p'@arr = qw[ foo bar baz ]; r sort @arr'
+bar	baz	foo
+```
+
+To do a reverse sort, simply compose the functions together like this:
+
+```bash
+$ ni 1p'@arr = qw[ foo bar baz ]; r reverse sort @arr'
+foo	baz	bar
+```
+
+### Custom Sorting (OPTIONAL)
+You can implement a custom sort by passing a block to `sort`.
+
+More details are available in the [perldocs](https://perldoc.perl.org/functions/sort.html).
+
+
+
 
 
 ### Operations on mulitple arrays and scalars
@@ -540,6 +638,48 @@ $ ni 1p'my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye"); map {$_ x 2} @x, 
 yoyo
 goodgood
 byebye
+```
+
+
+
+## Perl Hashes
+
+### Hash construction
+
+The easiest way to build up a hash is using the associative arrow syntax:
+
+```bash
+$ ni 1p'my %h = ("x" => 1); r $h{"x"}'
+1
+```
+
+You can also make hashes using the normal list syntax, but this is less clear.
+
+```bash
+$ ni 1p'my %h = ("x", 1); r $h{"x"}'
+1
+```
+
+
+Hashes can also be cast directly to and from arrays.
+
+```bash
+$ ni 1p'my @arr = qw[foo 1 bar 2]; my %h = @arr; r $h{"bar"}'
+2
+```
+
+### `keys`, `values`
+
+These, quite unsurprisingly, return the keys and values of a hash. 
+
+```bash
+$ ni 1p'my %h = ("foo" => 1, "bar" => 2); r sort keys %h
+bar	foo
+```
+
+```bash
+$ ni 1p'my %h = ("foo" => 1, "bar" => 2); @ks = keys %h; @vs = values %h; my $same_order = 1; for(my $i = 0; $i <= $#ks; $i++) { if($h{$ks[i]} != $vs[i]) {$same_order = 0; last} } r $same_order ? "Same order" : "Different order"'
+Same order
 ```
 
 
@@ -635,7 +775,6 @@ This has an important implication for hash lookups; we can use an unquoted strin
 $ ni 1p'my %h = ("foo" => 32); $h{foo}'
 32
 ```
-
 However, the default behavior is for a hash to look up the value of the string the bareword represents.
 
 As a result, there's a conflict when using the output of a function with no arguments (for example, `a`):
@@ -732,11 +871,21 @@ not equal
   * If `$length` is positive, the output substring will take (up to) `$length` characters.
   * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
   
+```bash
+$ ni iabcdefgh p'r substr(a, 3), substr(a, 0, 3), substr(a, -2), substr(a, 0, -2)'
+defgh	abc	gh	abcdef
+```
+
 
 
 #### Using regular expressions versus `substr` 
 
-`substr` does exactly one thing, and it is quite fast at doing it. If you need a fixed-length substring, you'll likely have higher performance with `substr` compared to a regex; 
+`substr` does exactly one thing, and it is quite fast at doing it. If all you need is a single fixed-length substring, you'll likely have higher performance with `substr` compared to a regex; otherwise, well-constructed regular expressions are a better and more flexible choice.
+
+```bash
+$ ni iabcdefgh p'r /(.{5})$/, /^(.{3})/, /(.{2})$/, /^(.*)../'
+defgh	abc	gh	abcdef
+```
 
 
 ### Logical Operations
@@ -808,10 +957,6 @@ $ ni 1p'r 3 & 10, 3 | 10'
 ```
 
 
-### Hash subroutines
-
-* `keys %h`: Returns the list of keys from a hash
-* `values %h`: Returns the list of values from a hash
 
 
 
@@ -820,23 +965,11 @@ $ ni 1p'r 3 & 10, 3 | 10'
 Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is also known for its religious overtones; here `ni` author Spencer Tipping drop the scales from your eyes about the language in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
 
 
->Python, Ruby, and even Javascript were designed to be good languages -- and
-just as importantly, to **feel** like good languages. Each embraces the
-politically correct notion that values are objects by default, distances itself
-from UNIX-as-a-ground-truth, and has a short history that it's willing to
-revise or forget. These languages are convenient and inoffensive by principle
-because that was the currency that made them viable.
-<!--- --->
+>Python, Ruby, and even Javascript were designed to be good languages -- and just as importantly, to **feel** like good languages. Each embraces the politically correct notion that values are objects by default, distances itself from UNIX-as-a-ground-truth, and has a short history that it's willing to revise or forget. These languages are convenient and inoffensive by principle because that was the currency that made them viable.
+
 >Perl is different.
-<!--- --->
->In today's world it's a neo-noir character dropped into a Superman comic; but 
-that's only true because it changed our collective notion of what an accessible
-scripting language should look like. People
-often accuse Perl of having no design principles; it's "line noise,"
-pragmatic over consistent. This is superficially true, but at a deeper level
-Perl is uncompromisingly principled in ways that most other languages aren't.
-Perl isn't good; it's complicated, and if you don't know it yet, it will
-probably change your idea of what a good language should be.
+
+>In today's world it's a neo-noir character dropped into a Superman comic; but that's only true because it changed our collective notion of what an accessible scripting language should look like. People often accuse Perl of having no design principles; it's "line noise," pragmatic over consistent. This is superficially true, but at a deeper level Perl is uncompromisingly principled in ways that most other languages aren't. Perl isn't good; it's complicated, and if you don't know it yet, it will probably change your idea of what a good language should be.
 
 
 

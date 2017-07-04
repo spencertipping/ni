@@ -4312,7 +4312,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-207 core/pl/util.pm
+227 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4326,6 +4326,26 @@ sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+
+sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
+sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]} 
+
+sub take_while(&@) {
+  local $_;
+  my ($f, @xs) = @_; 
+  my @out; 
+  for (@xs) { if(&$f($_)) {push @out, $_} else {last} }
+  @out;
+}
+
+sub drop_while(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my @out;
+  my $count = 0;
+  for (@xs) { if(!&$f($_)) {return drop $count, @xs} $count++;}
+  ();
+} 
 
 sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}

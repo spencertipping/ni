@@ -1,5 +1,11 @@
 #Future Chapter 5 Below
 
+## Hash
+
+* Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
+* Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
+* Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
+* `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'`
 
 ## Warnings
 
