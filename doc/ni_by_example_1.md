@@ -777,7 +777,9 @@ baz
 foo
 ```
 
-To print a row of data to the stream, instead use the `r(...)` function.
+What's happened here is that the return value of our mapper is an array consisting of the values of the functions `c()` and `a()`. When a perl mapper outputs a list, `ni` outputs the values of that list to the stream, one value per line of the stream. 
+
+What if we want to print more than one value per line to the stream? For that, there's the the `r(...)` function.
 
 ```bash
 $ ni i[first second third] i[foo bar baz] p'r(c, a)'
@@ -793,15 +795,9 @@ third	first
 baz	foo
 ```
 
+What does the `r()` function return? We know that `r()`'s job is to print a tab-separated line to the stream; if `r` had some nontrivial return value, that would be printed to the stream, one value per line; since nothing is printing, we know that `r()`'s return value is nothing [in fact, it's the empty list].
 
-### Perl Mapper Return Value
-
-We haven't yet talked about what the return value of a Perl mapper actually is, and the answer is a little tricky.
-
-The statements `ni i[foo bar] p'a'` and `ni i[foo bar] p'r a'` have identical output; if you run them, they'll both put "foo" out to the stream.
-
-However, there is a key difference in their return value. The first mapper **returns** the value `"foo"`, while the second mapper `p'r a'` **prints** the value `"foo"` and returns the empty list, `()`. 
-
+### Perl Mapper Return Value Tricks
 One way this has an impact is when you ask `ni` for a column that doesn't exist:
 
 ```bash
@@ -816,7 +812,7 @@ $ ni i[first second third] i[foo bar baz] p'r k'
 
 In both cases, the column accessor function `k` is returning an empty list. `p'k'` returns that empty list, which prints nothing. `p'r k'`, however, **prints the value** of `k`, which is the empty list. Printing the empty list puts a blank line back to the stream.
 
-This point will be important for the next section, where we combine the perl mapper with the take rows operator.
+This point will be important for the next section, where we combine the Perl mapper with the take rows operator.
 
 ### `rp'...'`: Take rows based on Perl
 

@@ -1810,33 +1810,33 @@ baz
 foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=783
+lazytest_line=785
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r(c, a)'\''
 ' 3<<'LAZYTEST_EOF'
 third	first
 baz	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=791
+lazytest_line=793
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r c, a'\''
 ' 3<<'LAZYTEST_EOF'
 third	first
 baz	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=808
+lazytest_line=804
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''k'\''
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=812
+lazytest_line=808
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r k'\''
 ' 3<<'LAZYTEST_EOF'
 
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=830
+lazytest_line=826
 lazytest_case 'ni n3 rp'\''a'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1844,14 +1844,14 @@ lazytest_case 'ni n3 rp'\''a'\''
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=839
+lazytest_line=835
 lazytest_case 'ni n03 rp'\''a'\''
 ' 3<<'LAZYTEST_EOF'
 1
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=847
+lazytest_line=843
 lazytest_case 'ni n03 rp'\''r a'\''
 ' 3<<'LAZYTEST_EOF'
 0
@@ -1859,7 +1859,7 @@ lazytest_case 'ni n03 rp'\''r a'\''
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=859
+lazytest_line=855
 lazytest_case 'ni n03 rp'\''r b'\''
 ' 3<<'LAZYTEST_EOF'
 
@@ -1867,49 +1867,49 @@ lazytest_case 'ni n03 rp'\''r b'\''
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=877
+lazytest_line=873
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r F_(1..3)'\''
 ' 3<<'LAZYTEST_EOF'
 second	third	fourth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=884
+lazytest_line=880
 lazytest_case 'ni i[first second third fourth fifth sixth] i[only two_fields ] p'\''r FM'\''
 ' 3<<'LAZYTEST_EOF'
 5
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=892
+lazytest_line=888
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r F_(3..FM)'\''
 ' 3<<'LAZYTEST_EOF'
 fourth	fifth	sixth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=899
+lazytest_line=895
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 fourth	fifth	sixth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=906
+lazytest_line=902
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r FT 3'\''
 ' 3<<'LAZYTEST_EOF'
 first	second	third
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=918
+lazytest_line=914
 lazytest_case 'ni p'\''r "foo" . "bar"'\''
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=924
+lazytest_line=920
 lazytest_case 'ni 1p'\''r "foo" . "bar"'\''
 ' 3<<'LAZYTEST_EOF'
 foobar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=943
+lazytest_line=939
 lazytest_case 'ni --explain n10 \>ten.txt \<
 ' 3<<'LAZYTEST_EOF'
 ["n",1,11]
