@@ -1,6 +1,6 @@
-# `ni` by Example, Chapter 3 (alpha release)
+# `ni` by Example, Chapter 4 (alpha release)
 
-Welcome to the third part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
+Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
 
 The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
 
@@ -46,6 +46,9 @@ $ ni --explain ::five[n5] n3p'r a, five'
 ["perl_mapper","r a, five"]
 ```
 
+In chapter 1, we described `ni` evaluating different operators as follows:
+
+`$ ni <op1> <op2> ... <opN> == $ ni <op1> | ni <op2> | ... | ni <opN>`
 
 Data closures provide a counterexample to the basics of `ni` evaluation written above. 
 
@@ -68,11 +71,11 @@ Data closures are (or will be shortly implemented such that they are) computed i
 
 We can rewrite a `ni` pipeline a little more accuartely as the following:
 
-```
+```sh
 $ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
 ```
 
-```
+```sh
 $ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
 $ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
 ```
@@ -86,7 +89,7 @@ A _quine_ (pronounced: KWINE) is a program that prints its source code when it i
 
 We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
 
-### Scheme/Lisp mini-tutorial
+### Scheme/Lisp micro-tutorial
 If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
 
 Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
@@ -101,7 +104,7 @@ Here's what you need to know:
   * `(list 1 3 5)` yields `(1 3 5)`
 * The function `quote` takes one argument and returns its literal value:
   * `(quote 5)` yields `5`
-  * `(quote (list 1 2 3))` yields `(list 1 2 3)`--note that the list function was not evaluated.
+  * `(quote (list 1 2 3))` yields `(list 1 2 3)`. Note that the list function was not evaluated.
 * `lambda` defines an anonymous function with any number of named parameters.
   * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
   * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
@@ -159,14 +162,14 @@ Heredocs can be parsed in non-obvious ways, and the non-obvious parsing is used 
 
 If you found the previous paragraphs on heredocs inscrutable, don't worry too much because it's not so important; like the quine we saw in the previous section, this quine is composed of code:
 
-```
+```sh
 #!/usr/bin/perl
 eval($_=<<'_');
 print 
 ```
 and data:
 
-```
+```sh
 "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
@@ -174,10 +177,9 @@ _
 What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, Perl.
 
 
-Copying the lines and running: 
+Copy the lines into a file `quine.pl` and run: 
 
-```
-$ pbpaste > quine.pl
+```sh
 $ cat quine.pl | perl
 #!/usr/bin/perl
 eval($_=<<'_');
@@ -219,7 +221,7 @@ As a reminder, you should be using a vanilla (to the greatest extent possible) b
 
 `$ ni //ni`
 
-```
+```sh
 #!/usr/bin/env perl
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
@@ -242,38 +244,39 @@ If we think about a pipe more generally, as passing data not just from one proce
 
 In the section on `ni` being self-modifying, it was mentioned that `ni` execution follows a structure something like this:
 
-```
+```sh
 $ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
 ```
 
 is equivalent to
 
-```
+```sh
 $ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
 $ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
 ```
 
 In fact, this `ni_prime` is a local modification of `ni`, which incorporates data closures. The details are outside the scope of how this occurs are outside the scope of this tutorial, but here's some evidence that this is going on.
 
-```
+```sh
 $ ni //ni | wc -c
   743514
 ```
 
-```
+```sh
 $ ni ::my_closure[n10] //ni | wc -c
   743569
 ```
 
 If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
 
-```
+```bash
 $ ni ::five[n5] //ni | perl - n1p'five'
 1
 2
 3
 4
 5
+
 ```
 
 This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
@@ -325,7 +328,7 @@ Running an operator with `S8` on a machine with only two cores is not going to g
   
 ## Hadoop Streaming MapReduce
 
-`ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides concise options to 
+`ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides significant concision and progrmmer ease in comparison to writing and submitting scripts. `ni` is often also low-overhead and very fast when written appropriately.
 
 ### MapReduce Fundamentals
 
@@ -391,9 +394,9 @@ The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` 
 
 
 ### How `ni` Interacts with Hadoop Streaming MapReduce
-When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
+When `ni HS...` is called, `ni` packages itself, its closures, **and its instructons** and submits itself as a mapper/combiner/reducer to the configured Hadoop server.
 
-Remember that when `ni` uploads itself, it uploads the self-modified version of itself including all data closures. If these closures are too large, the Hadoop server will refuse the job.
+Because `ni` includes its data closures on submission, if these closures are too large, the Hadoop server will refuse the job.
 
 
 ### `HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job

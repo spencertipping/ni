@@ -1,4 +1,4 @@
-# `ni` by Example, Chapter 3
+# `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
 
@@ -350,20 +350,6 @@ $ ni ::data[n5] 1p'a_ data'
 5
 ```
 
-### Reduction via buffered readahead
-
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a}'
-6
-6
-```
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
-12
-```
-
 
 ### `a__` through `l__`: Select-to-end-of-line
 These are useful for collecting data with an unknown shape.
@@ -377,10 +363,9 @@ In particular, these operations can be used in conjunction with Hadoop streaming
 
 
 
-
-
 ## `ni`-specific Array Processors
 
+These functions pair well with the multiline reducers introduced in the previous section.
 
 
 ### `min`, `max`, `minstr`, `maxstr`
@@ -388,23 +373,78 @@ In particular, these operations can be used in conjunction with Hadoop streaming
 Recall that text is numbers (and numbers are text) in Perl. Thus, there are two sets of methods for finding the minimum and maximum, depending on whether you want it in a numeric context (`min`, `max`) or in a string context (`minstr`, `maxstr`)
 
 
+```bash
+$ ni i[1 2 3] p'r min F_; r max F_'
+1
+3
+```
+
+```bash
+$ ni i[c a b] p'r minstr F_; r maxstr F_'
+a
+c
+```
+
+Be careful using these functions with both numeric and string arguments in the same line:
+
+```sh
+$ ni i[1 2 3 a b c] p'r min F_; r max F_; r minstr F_; r maxstr F_'
+b
+3
+1
+c
+```
+
+### `sum`, `prod`, `mean`
+These functions provide the sum, product, and average of a numeric array:
+
+```bash
+$ ni i[2 3 4] p'r sum(F_), prod(F_), mean(F_)'
+9	24	3
+```
+
+### `uniq`, `freqs`
+
+`uniq` returns an array of the unique elements of an array.
+
+```bash
+$ ni i[a c b c c a] p'my @uniqs = uniq F_; r sort @uniqs'
+a	b	c
+```
+
+`freqs` returns a reference to a hash that contains the count of each unique element in the input array.
+
+```bash
+$ ni i[a c b c c a] p'my %h = %{freqs F_}; r($_, $h{$_}) for sort keys %h'
+a	2
+b	1
+c	3
+```
 
 
-### `any`, `all`, `sum`, `prod`, `mean`
+### `any`, `all`, `argmax`, `argmin`
+These functions take two arguments: the first is a code block or a function, and the second is an array. 
 
-These return the logical OR of all elements, the logical AND of all elements of an array, the sum of all elements (as numbers), the product of all elements (as numbers), and their mean.
+`any` and `all` return the logical OR and logical AND, respectively of the code block mapped over the array.
 
-### `uniq`
 
-This returns all of the elements of an
+```bash
+$ ni i[2 3 4] p'r any {$_ > 3} F_; r all {$_ > 3} F_'
+1
+0
+```
 
-#### `argmax`, `argmin`
 
-These elements
+`argmax` returns the first value in the array that achieves the maximum of the block passed in, and `argmin` returns the first value in the array that achieves the minimum of the function 
 
-### `freqs`
 
-This method has 
+```bash
+$ ni i[aa bbb c] p'r argmax {length} F_; r argmin {length} F_'
+bbb
+c
+```
+
+
 
 ### `cart`: Cartesian Product
 To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
@@ -422,24 +462,46 @@ $ ni 1p'cart [10, 20], [1, 2, 3]'
 The output of `cart` will have the first column varying the least, the second column varying the second least, etc. so that the value of the last column will change for every row if its values are all distinct.
 
 
-
 Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
 
-```
+```sh
 $ ni 1p'r cart [1], ["a", "b", "c"]'
 ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 ```
+
+### Functional Programming Basics: `take`, `drop`, `take_while`, `drop_while`
+
+
+`take` and `drop` get the specified number of elements from an array.
+
+```bash
+$ ni i[1 2 3 4 5 6 7] p'r take 3, F_; r drop 3, F_'
+1	2	3
+4	5	6	7
+```
+
+`take_while` and `drop_while` take an additional block; they `take` or `drop` while the function is true.
+
+```bash
+$ ni i[1 2 3 4 5 6 7] p'r take_while {$_ < 3} F_; r drop_while {$_ < 3} F_'
+1	2
+3	4	5	6	7
+```
+
+Some day, `ni` will get lazy sequences, and this will be useful. Until that day...
 
 
 ## Hash Constructors
 
 ### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
-Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection and begin blocks.
+Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection.
+ 
 
-* Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
-* Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
-* Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-* `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'` 
+```bash
+$ ni i[a 1] i[b 2] i[foo bar] p'my @lines = rw {1}; my %h = ab_ @lines; @sorted_keys = sort keys %h; r @sorted_keys; r @h{@sorted_keys}'
+a	b	foo
+1	2	bar
+```
 
 ### `p'%h = <key_col><val_col>S @lines'`: Accumulator hash constructor
 
@@ -481,7 +543,7 @@ z	x	y
 
 `wf $filename, @lines`: write `@lines` to a file called `$filename`
 
-```
+```sh
 $ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
 file1
 file2
@@ -494,7 +556,7 @@ yo
 
 ### `af`: append to file
 
-```
+```sh
 $ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
 file3
 file4

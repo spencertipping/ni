@@ -761,13 +761,11 @@ $ ni i[easy speak] p'b . a'
 speakeasy
 ```
 
-As you might have suspected from the previous example, `.` is the string concatenation operator in Perl:
+As you might have suspected from the previous example, `.` is the string concatenation operator in Perl.
 
+### Perl Mapper return value
 
-### `p'r(...)'`: Print row
-
-Up to this point we have not discussed how or what the Perl operator returns; it turns out that this is less intuitive than one might expect. If we wanted to have a row of data we might try something like this:
-
+In each of the previous examples, there has been a single output value; what happens when we try returning multiple values?
 
 ```bash
 $ ni i[first second third] i[foo bar baz] p'c, a'
@@ -777,7 +775,13 @@ baz
 foo
 ```
 
-To print a row of data to the stream, instead use the `r(...)` function.
+Overall, the return value of a Perl mapper is its last statement. `ni` returns each element of the output array on its own row.
+
+Here, the return value of our Perl mapper for the first input line was the array `("third", "first")`, and the return value for the second input line was the array `("baz", "foo")`. When a perl mapper outputs an array, `ni` outputs the values of that list to the stream, one value per line of the stream. 
+
+### `p'r(...)'`: Emit row
+
+If we want to print more than one value per line to the stream there's the `r(...)` function.
 
 ```bash
 $ ni i[first second third] i[foo bar baz] p'r(c, a)'
@@ -785,7 +789,7 @@ third	first
 baz	foo
 ```
 
-`r(...)` is also often written as `r`, followed by its arguments.
+`r(...)` is more commonly written as `r`, followed by its arguments.
 
 ```bash
 $ ni i[first second third] i[foo bar baz] p'r c, a'
@@ -793,15 +797,10 @@ third	first
 baz	foo
 ```
 
+**CAVEAT:** `r()` is _printing_ a row to the stream, rather than _returning_ a string tab-separated string, for example. The `r()` function's job is to print; its return value is essentially nothing (in fact, it's the empty list `()`)
 
-### Perl Mapper Return Value
 
-We haven't yet talked about what the return value of a Perl mapper actually is, and the answer is a little tricky.
-
-The statements `ni i[foo bar] p'a'` and `ni i[foo bar] p'r a'` have identical output; if you run them, they'll both put "foo" out to the stream.
-
-However, there is a key difference in their return value. The first mapper **returns** the value `"foo"`, while the second mapper `p'r a'` **prints** the value `"foo"` and returns the empty list, `()`. 
-
+### Perl Mapper Return Value Tricks
 One way this has an impact is when you ask `ni` for a column that doesn't exist:
 
 ```bash
@@ -816,7 +815,7 @@ $ ni i[first second third] i[foo bar baz] p'r k'
 
 In both cases, the column accessor function `k` is returning an empty list. `p'k'` returns that empty list, which prints nothing. `p'r k'`, however, **prints the value** of `k`, which is the empty list. Printing the empty list puts a blank line back to the stream.
 
-This point will be important for the next section, where we combine the perl mapper with the take rows operator.
+This point will be important for the next section, where we combine the Perl mapper with the take rows operator.
 
 ### `rp'...'`: Take rows based on Perl
 
@@ -870,7 +869,7 @@ This discussion brings us to a final point on the operators both referred to as 
 
 ### `F_, FM, FR n, FT n`: Explicit field access
 
-`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_` allows you to work with your data as an array; to generate the array, `ni` tab-splits your data, a
+`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_`. `F_` is a function that takes no arguments, splits a line from the stream on tabs, and returns the values as an array.
 
 
 ```bash
@@ -932,12 +931,10 @@ The simplest way to build up a `ni` spell is by writing one step of the spell, c
 
 In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
 
-As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing.
-
 
 ### `--explain`: Print information on command
 
-For this, use `ni --explain ...`. Using the example from the file output section:
+As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing. For this, use `ni --explain ...`. Using the example from the file output section:
 
 ```bash
 $ ni --explain n10 \>ten.txt \<
@@ -946,7 +943,7 @@ $ ni --explain n10 \>ten.txt \<
 ["file_read"]
 ```
 
-Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. Often these are rich-text explanations 
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. The explanations are usually concise, but they can help you make sure your code is doing what it's supposed to.
 
 ### Staying in a command-line environment
 
