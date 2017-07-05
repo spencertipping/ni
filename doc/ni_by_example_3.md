@@ -350,20 +350,6 @@ $ ni ::data[n5] 1p'a_ data'
 5
 ```
 
-### Reduction via buffered readahead
-
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a}'
-6
-6
-```
-
-```bash
-$ ni 1p'cart [10, 20], [1, 2, 3]' p'sum b_ re {a % 10}'
-12
-```
-
 
 ### `a__` through `l__`: Select-to-end-of-line
 These are useful for collecting data with an unknown shape.
@@ -376,7 +362,11 @@ $ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
 In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
 
 
+
 ## `ni`-specific Array Processors
+
+These functions pair well with the multiline reducers introduced in the previous section.
+
 
 ### `min`, `max`, `minstr`, `maxstr`
 
@@ -415,7 +405,7 @@ $ ni i[2 3 4] p'r sum(F_), prod(F_), mean(F_)'
 
 ### `uniq`, `freqs`
 
-This returns all of the elements of an array.
+`uniq` returns an array of the unique elements of an array.
 
 ```bash
 $ ni i[a c b c c a] p'my @uniqs = uniq F_; r sort @uniqs'
@@ -435,9 +425,8 @@ c	3
 ### `any`, `all`, `argmax`, `argmin`
 These functions take two arguments: the first is a code block or a function, and the second is an array. 
 
-`any` and `all` return the logical OR and logical AND, respectively of the code block mapped over the 
+`any` and `all` return the logical OR and logical AND, respectively of the code block mapped over the array.
 
- the logical AND (`all`),
 
 ```bash
 $ ni i[2 3 4] p'r any {$_ > 3} F_; r all {$_ > 3} F_'

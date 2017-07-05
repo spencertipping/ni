@@ -2038,6 +2038,15 @@ lazytest_case 'ni n5p'\''$x = 10; $x += a; r a, $x'\''
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
 lazytest_line=232
+lazytest_case 'ni n5p'\''^{$x = 10} $x += a; r a, $x'\'' p'\''r $x'\''
+' 3<<'LAZYTEST_EOF'
+
+
+
+
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_2.md'
+lazytest_line=243
 lazytest_case 'ni i[faygo cola] i[orange juice] i[grape soda] i[orange crush] i[hawaiian punch] rp'\''^{%good_flavors = ("orange" => 1, "grape" => 1)} my $flavor = a; $good_flavors{$flavor}'\''
 ' 3<<'LAZYTEST_EOF'
 orange	juice
@@ -2045,182 +2054,182 @@ grape	soda
 orange	crush
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=252
+lazytest_line=263
 lazytest_case 'ni i37 p'\''if (a == 2) { r "input was 2" } elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } else { r "I dunno" }'\''
 ' 3<<'LAZYTEST_EOF'
 I dunno
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=261
+lazytest_line=272
 lazytest_case 'ni i5 p'\''r "input = 5" if a == 5'\''
 ' 3<<'LAZYTEST_EOF'
 input = 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=271
+lazytest_line=282
 lazytest_case 'ni i5 p'\''r "input = 5" unless a != 5'\''
 ' 3<<'LAZYTEST_EOF'
 input = 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=280
+lazytest_line=291
 lazytest_case 'ni i6 p'\''a == 5 ? "input = 5" : "input != 5"'\''
 ' 3<<'LAZYTEST_EOF'
 input != 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=326
+lazytest_line=337
 lazytest_case 'ni ihello p'\''a =~ /^h/ ? "match" : "no match"'\''
 ' 3<<'LAZYTEST_EOF'
 match
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=333
+lazytest_line=344
 lazytest_case 'ni igoodbye p'\''a !~ /^h/ ? "negative match" : "positive match"'\''
 ' 3<<'LAZYTEST_EOF'
 negative match
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=342
+lazytest_line=353
 lazytest_case 'ni iabcdefgh p'\''my @v = a =~ /^(.)(.)/; r @v'\''
 ' 3<<'LAZYTEST_EOF'
 a	b
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=353
+lazytest_line=364
 lazytest_case 'ni i/usr/bin p'\''m#^/usr/(.*)$#'\''
 ' 3<<'LAZYTEST_EOF'
 bin
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=363
+lazytest_line=374
 lazytest_case 'ni iabcdefgh p'\''tr/a-z/A-Z/'\''
 ' 3<<'LAZYTEST_EOF'
 8
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=368
+lazytest_line=379
 lazytest_case 'ni iabcdefgh p'\''s/abc/ABC/'\''
 ' 3<<'LAZYTEST_EOF'
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=376
+lazytest_line=387
 lazytest_case 'ni iabcdefgh p'\''$v = tr/a-z/A-Z/; $v'\''
 ' 3<<'LAZYTEST_EOF'
 8
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=383
+lazytest_line=394
 lazytest_case 'ni iabcdefgh p'\''tr/a-z/A-Z/; $_'\''
 ' 3<<'LAZYTEST_EOF'
 ABCDEFGH
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=388
+lazytest_line=399
 lazytest_case 'ni iabcdefgh p'\''s/abc/ABC/; $_'\''
 ' 3<<'LAZYTEST_EOF'
 ABCdefgh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=400
+lazytest_line=411
 lazytest_case 'ni 1p'\''$foo = "house"; "housecat" =~ /$foo/ ? "match" : "no match"'\''
 ' 3<<'LAZYTEST_EOF'
 match
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=405
+lazytest_line=416
 lazytest_case 'ni 1p'\''$foo = "house"; "cathouse" =~ /cat$foo/ ? "match" : "no match"'\''
 ' 3<<'LAZYTEST_EOF'
 match
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=410
+lazytest_line=421
 lazytest_case 'ni 1p'\''$foo = "house"; "housecat" =~ /${foo}cat/ ? "match" : "no match"'\''
 ' 3<<'LAZYTEST_EOF'
 match
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=421
+lazytest_line=432
 lazytest_case 'ni 1p'\''"foo" . "bar"'\'' 
 ' 3<<'LAZYTEST_EOF'
 foobar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=431
+lazytest_line=442
 lazytest_case 'ni 1p'\''my $x = "foo"; r "$x bar"'\''
 ' 3<<'LAZYTEST_EOF'
 foo bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=438
+lazytest_line=449
 lazytest_case 'ni 1p'\''my $x = "foo"; r "${x}bar"'\''
 ' 3<<'LAZYTEST_EOF'
 foobar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=445
+lazytest_line=456
 lazytest_case 'ni ifoo p'\''r "${\a}bar"'\''
 ' 3<<'LAZYTEST_EOF'
 foobar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=460
+lazytest_line=471
 lazytest_case 'ni 1p'\'' "ab" == "cd" ? "equal" : "not equal"'\''
 ' 3<<'LAZYTEST_EOF'
 equal
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=467
+lazytest_line=478
 lazytest_case 'ni 1p'\'' "ab" eq "cd" ? "equal" : "not equal"'\''
 ' 3<<'LAZYTEST_EOF'
 not equal
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=482
+lazytest_line=493
 lazytest_case 'ni iabcdefgh p'\''r substr(a, 3), substr(a, 0, 3), substr(a, -2), substr(a, 0, -2)'\''
 ' 3<<'LAZYTEST_EOF'
 defgh	abc	gh	abcdef
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=492
+lazytest_line=503
 lazytest_case 'ni iabcdefgh p'\''r /(.{5})$/, /^(.{3})/, /(.{2})$/, /^(.*)../'\''
 ' 3<<'LAZYTEST_EOF'
 defgh	abc	gh	abcdef
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=508
+lazytest_line=519
 lazytest_case 'ni 1p'\''my @arr = (1, 2, 3); r @arr'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=517
+lazytest_line=528
 lazytest_case 'ni 1p'\''my @arr = qw(1 2 3); r @arr'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=527
+lazytest_line=538
 lazytest_case 'ni iabcd iefgh p'\''my @v = split /[cf]/; r @v'\''
 ' 3<<'LAZYTEST_EOF'
 ab	d
 e	gh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=550
+lazytest_line=561
 lazytest_case 'ni 1p'\''my $arr_ref = [1, 2, 3]; r @$arr_ref'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=558
+lazytest_line=569
 lazytest_case 'ni 1p'\''my @arr = [1, 2, 3]; r @{$arr[0]}'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=568
+lazytest_line=579
 lazytest_case 'ni iabcdefgh p'\''my $string= a; for (my $i=0; $i < length $string; $i++) {r substr($string, $i, 1) x 2;}'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2233,7 +2242,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=582
+lazytest_line=593
 lazytest_case 'ni iabcdefgh p'\''for my $letter(split //, $_) {r $letter x 2}'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2246,7 +2255,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=596
+lazytest_line=607
 lazytest_case 'ni iabcdefgh p'\''for(split //, $_) {r $_ x 2}'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2259,7 +2268,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=610
+lazytest_line=621
 lazytest_case 'ni iabcdefgh p'\''for(split //, $_) {r $_ x 2} r $_'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2273,7 +2282,7 @@ hh
 abcdefgh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=631
+lazytest_line=642
 lazytest_case 'ni iabcdefgh p'\''r $_ x 2 for split //'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2286,7 +2295,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=647
+lazytest_line=658
 lazytest_case 'ni iabcdefgh p'\''for my $letter(split //, $_) {if($letter eq "b") {next;} r $letter x 2}'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2298,7 +2307,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=661
+lazytest_line=672
 lazytest_case 'ni iabcdefgh p'\''for my $letter(split //, $_) {r $letter x 2; last if $letter ge "c"}'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2306,14 +2315,14 @@ bb
 cc
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=674
+lazytest_line=685
 lazytest_case 'ni iabcd iefgh p'\''join "__", split //'\''
 ' 3<<'LAZYTEST_EOF'
 a__b__c__d
 e__f__g__h
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=684
+lazytest_line=695
 lazytest_case 'ni iabcdefgh p'\''map {$_ x 2} split //'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2326,13 +2335,13 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=698
+lazytest_line=709
 lazytest_case 'ni iabcdefgh p'\''my @v = map {$_ x 2} split //; r $_'\''
 ' 3<<'LAZYTEST_EOF'
 abcdefgh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=715
+lazytest_line=726
 lazytest_case 'ni iabcdefgh p'\''my @v = grep /^[acgh]/, map {$_ x 2} split //, $_; @v'\''
 ' 3<<'LAZYTEST_EOF'
 aa
@@ -2341,7 +2350,7 @@ gg
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=725
+lazytest_line=736
 lazytest_case 'ni iabcdefgh p'\''my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map { $_ x 2 } split //, $_; @v'\''
 ' 3<<'LAZYTEST_EOF'
 bb
@@ -2350,61 +2359,61 @@ ff
 hh
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=740
+lazytest_line=751
 lazytest_case 'ni 1p'\''my @arr = (3, 5, 1); r reverse @arr'\''
 ' 3<<'LAZYTEST_EOF'
 1	5	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=747
+lazytest_line=758
 lazytest_case 'ni 1p'\''my @arr = (3, 5, 1); r sort @arr'\''
 ' 3<<'LAZYTEST_EOF'
 1	3	5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=752
+lazytest_line=763
 lazytest_case 'ni 1p'\''@arr = qw[ foo bar baz ]; r sort @arr'\''
 ' 3<<'LAZYTEST_EOF'
 bar	baz	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=759
+lazytest_line=770
 lazytest_case 'ni 1p'\''@arr = qw[ foo bar baz ]; r reverse sort @arr'\''
 ' 3<<'LAZYTEST_EOF'
 foo	baz	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=766
+lazytest_line=777
 lazytest_case 'ni i[romeo juliet rosencrantz guildenstern] p'\''r sort F_'\''
 ' 3<<'LAZYTEST_EOF'
 F_
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=777
+lazytest_line=788
 lazytest_case 'ni i[romeo juliet rosencrantz guildenstern] p'\''r sort +F_'\''
 ' 3<<'LAZYTEST_EOF'
 guildenstern	juliet	romeo	rosencrantz
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=784
+lazytest_line=795
 lazytest_case 'ni i[romeo juliet rosencrantz guildenstern] p'\''my @arr = F_; r sort @arr'\''
 ' 3<<'LAZYTEST_EOF'
 guildenstern	juliet	romeo	rosencrantz
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=797
+lazytest_line=808
 lazytest_case 'ni i[romeo juliet rosencrantz guildenstern hero leander] p'\''my @arr = F_; r sort {length $a <=> length $b } F_'\''
 ' 3<<'LAZYTEST_EOF'
 hero	romeo	juliet	leander	rosencrantz	guildenstern
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=804
+lazytest_line=815
 lazytest_case 'ni i[romeo juliet rosencrantz guildenstern hero leander] p'\''my @arr = F_; r sort {length $b <=> length $a } F_'\''
 ' 3<<'LAZYTEST_EOF'
 guildenstern	rosencrantz	leander	juliet	romeo	hero
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=816
+lazytest_line=827
 lazytest_case 'ni 1p'\''my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye"); map {$_ x 2} @x, $y, @z'\''
 ' 3<<'LAZYTEST_EOF'
 11
@@ -2414,103 +2423,103 @@ goodgood
 byebye
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=833
+lazytest_line=844
 lazytest_case 'ni 1p'\''my %h = ("x" => 1); r $h{"x"}'\''
 ' 3<<'LAZYTEST_EOF'
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=840
+lazytest_line=851
 lazytest_case 'ni 1p'\''my %h = ("x", 1); r $h{"x"}'\''
 ' 3<<'LAZYTEST_EOF'
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=848
+lazytest_line=859
 lazytest_case 'ni 1p'\''my @arr = qw[foo 1 bar 2]; my %h = @arr; r $h{"bar"}'\''
 ' 3<<'LAZYTEST_EOF'
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=857
+lazytest_line=868
 lazytest_case 'ni 1p'\''my %h = ("foo" => 1, "bar" => 2); r sort keys %h'\''
 ' 3<<'LAZYTEST_EOF'
 bar	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=864
+lazytest_line=875
 lazytest_case 'ni 1p'\''my %h = ("foo" => 1, "bar" => 2); @ks = keys %h; @vs = values %h; my $same_order = 1; for(my $i = 0; $i <= $#ks; $i++) { if($h{$ks[i]} != $vs[i]) {$same_order = 0; last} } r $same_order ? "Same order" : "Different order"'\''
 ' 3<<'LAZYTEST_EOF'
 Same order
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=906
+lazytest_line=917
 lazytest_case 'ni 1p'\''125 >> 3'\''
 ' 3<<'LAZYTEST_EOF'
 15
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=911
+lazytest_line=922
 lazytest_case 'ni 1p'\''int(125/2**3)'\''
 ' 3<<'LAZYTEST_EOF'
 15
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=919
+lazytest_line=930
 lazytest_case 'ni 1p'\''125 << 3'\''
 ' 3<<'LAZYTEST_EOF'
 1000
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=935
+lazytest_line=946
 lazytest_case 'ni 1p'\''r 0x3 + 0xa, 0x3 + 0xA'\''
 ' 3<<'LAZYTEST_EOF'
 13	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=944
+lazytest_line=955
 lazytest_case 'ni 1p'\''r 0x3 & 0xa, 0x3 | 0xa'\''
 ' 3<<'LAZYTEST_EOF'
 2	11
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=952
+lazytest_line=963
 lazytest_case 'ni 1p'\''r 3 & 10, 3 | 10'\''
 ' 3<<'LAZYTEST_EOF'
 2	11
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=964
+lazytest_line=975
 lazytest_case 'ni 1p'\''my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'\''
 ' 3<<'LAZYTEST_EOF'
 15	555	5 golden rings
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=971
+lazytest_line=982
 lazytest_case 'ni 1p'\''my $v2="4.3" * "6.7"; r $v2'\''
 ' 3<<'LAZYTEST_EOF'
 28.81
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=978
+lazytest_line=989
 lazytest_case 'ni 1p'\''my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'\''
 ' 3<<'LAZYTEST_EOF'
 0	hihihi	hi golden rings
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=983
+lazytest_line=994
 lazytest_case 'ni 1p'\''my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'\''
 ' 3<<'LAZYTEST_EOF'
 9.42	3.14hi3.14hi3.14hi	3.14hi golden rings
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=988
+lazytest_line=999
 lazytest_case 'ni 1p'\''my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'\''
 ' 3<<'LAZYTEST_EOF'
 930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=998
+lazytest_line=1009
 lazytest_case 'ni n3p'\''r a, one'\''
 ' 3<<'LAZYTEST_EOF'
 1	one
@@ -2518,19 +2527,19 @@ lazytest_case 'ni n3p'\''r a, one'\''
 3	one
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1009
+lazytest_line=1020
 lazytest_case 'ni 1p'\''my %h = ("foo" => 32); $h{foo}'\''
 ' 3<<'LAZYTEST_EOF'
 32
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1023
+lazytest_line=1034
 lazytest_case 'ni ifoo p'\''my %h = ("foo" => 32, "a" => "hello"); $h{a}'\''
 ' 3<<'LAZYTEST_EOF'
 hello
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1031
+lazytest_line=1042
 lazytest_case 'ni ifoo p'\''my %h = ("foo" => 32); $h{+a}'\''
 ' 3<<'LAZYTEST_EOF'
 32
@@ -2759,52 +2768,39 @@ lazytest_case 'ni ::data[n5] 1p'\''a_ data'\''
 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=357
-lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\'' p'\''sum b_ re {a}'\''
-' 3<<'LAZYTEST_EOF'
-6
-6
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=363
-lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\'' p'\''sum b_ re {a % 10}'\''
-' 3<<'LAZYTEST_EOF'
-12
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=372
+lazytest_line=358
 lazytest_case 'ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'\''r b__ rea'\''
 ' 3<<'LAZYTEST_EOF'
 1	x	2	y	s	t	3	yo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=387
+lazytest_line=377
 lazytest_case 'ni i[1 2 3] p'\''r min F_; r max F_'\''
 ' 3<<'LAZYTEST_EOF'
 1
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=393
+lazytest_line=383
 lazytest_case 'ni i[c a b] p'\''r minstr F_; r maxstr F_'\''
 ' 3<<'LAZYTEST_EOF'
 a
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=412
+lazytest_line=402
 lazytest_case 'ni i[2 3 4] p'\''r sum(F_), prod(F_), mean(F_)'\''
 ' 3<<'LAZYTEST_EOF'
 9	24	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=421
+lazytest_line=411
 lazytest_case 'ni i[a c b c c a] p'\''my @uniqs = uniq F_; r sort @uniqs'\''
 ' 3<<'LAZYTEST_EOF'
 a	b	c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=428
+lazytest_line=418
 lazytest_case 'ni i[a c b c c a] p'\''my %h = %{freqs F_}; r($_, $h{$_}) for sort keys %h'\''
 ' 3<<'LAZYTEST_EOF'
 a	2
@@ -2812,21 +2808,21 @@ b	1
 c	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=443
+lazytest_line=432
 lazytest_case 'ni i[2 3 4] p'\''r any {$_ > 3} F_; r all {$_ > 3} F_'\''
 ' 3<<'LAZYTEST_EOF'
 1
 0
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=453
+lazytest_line=442
 lazytest_case 'ni i[aa bbb c] p'\''r argmax {length} F_; r argmin {length} F_'\''
 ' 3<<'LAZYTEST_EOF'
 bbb
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=464
+lazytest_line=453
 lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 ' 3<<'LAZYTEST_EOF'
 10	1
@@ -2837,35 +2833,35 @@ lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 20	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=489
+lazytest_line=478
 lazytest_case 'ni i[1 2 3 4 5 6 7] p'\''r take 3, F_; r drop 3, F_'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 4	5	6	7
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=497
+lazytest_line=486
 lazytest_case 'ni i[1 2 3 4 5 6 7] p'\''r take_while {$_ < 3} F_; r drop_while {$_ < 3} F_'\''
 ' 3<<'LAZYTEST_EOF'
 1	2
 3	4	5	6	7
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=512
+lazytest_line=501
 lazytest_case 'ni i[a 1] i[b 2] i[foo bar] p'\''my @lines = rw {1}; my %h = ab_ @lines; @sorted_keys = sort keys %h; r @sorted_keys; r @h{@sorted_keys}'\''
 ' 3<<'LAZYTEST_EOF'
 a	b	foo
 1	2	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=522
+lazytest_line=511
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'\''r acS rea'\''
 ' 3<<'LAZYTEST_EOF'
 x	5
 y	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=530
+lazytest_line=519
 lazytest_case 'ni i[y m 4 foo] i[y p 8] i[y n 1 bar] p'\''%h = dcSNN rea; @sorted_keys = kbv_dsc %h; r($_, $h{$_}) for @sorted_keys'\'''\''
 foo	4	
 bar	1
@@ -2879,13 +2875,13 @@ This is syntactic sugar for Perl'\''s sort function applied to keys of a hash.
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=541
+lazytest_line=530
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'\''r acS rea'\'' p'\''r kbv_dsc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 y	x	z
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=547
+lazytest_line=536
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'\''r acS rea'\'' p'\''r kbv_asc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 z	x	y
@@ -2907,7 +2903,7 @@ lazytest_case 'ni --explain ::five[n5] n3p'\''r a, five'\''
 ["perl_mapper","r a, five"]
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=53
+lazytest_line=56
 lazytest_case 'ni ::five[n5] | ni n3p'\''r a, five'\''
 ' 3<<'LAZYTEST_EOF'
 1	five
@@ -2915,7 +2911,18 @@ lazytest_case 'ni ::five[n5] | ni n3p'\''r a, five'\''
 3	five
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=512
+lazytest_line=273
+lazytest_case 'ni ::five[n5] //ni | perl - n1p'\''five'\''
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+4
+5
+
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_4.md'
+lazytest_line=515
 lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA
 ' 3<<'LAZYTEST_EOF'
 aNi+=1oK?x	1
@@ -2924,7 +2931,7 @@ bNi+=1oK?y	3
 cNi+=1oK?z	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=520
+lazytest_line=523
 lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA  p'\''r hrsplit a, sum b_ rea'\''
 ' 3<<'LAZYTEST_EOF'
 a	x	3
@@ -2932,19 +2939,19 @@ b	y	3
 c	z	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=534
+lazytest_line=537
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 Dt2clCTYSj64+6M8Nzhq4#
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=541
+lazytest_line=544
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c9424d84a3eb8fba33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=548
+lazytest_line=551
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''hyphenate_uuid b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c94-24d8-4a3e-b8fb-a33c37386ae1

@@ -224,7 +224,18 @@ $ ni n5p'$x = 10; $x += a; r a, $x'
 5	15
 ```
 
-In this Perl mapper, the value of the globally-scoped `$x` variable is being reset with each line to 10. 
+In this Perl mapper, the value of the globally-scoped `$x` variable is being reset with each line to 10.
+
+Variables defined in one Perl mapper, even those with global scope, do not carry over to other Perl mappers.
+
+```bash
+$ ni n5p'^{$x = 10} $x += a; r a, $x' p'r $x'
+
+
+
+
+```
+
 
 Begin blocks combine with the `rp'...'` function well to filtering a stream, for example:
 
