@@ -4,9 +4,11 @@
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
+defoperator safe_head => q{$. <= $_[0] && print while <STDIN>};
+
 defconfenv 'row/seed', NI_ROW_SEED => 42;
 
-defoperator row_every => q{$. % $_[0] || print while <STDIN>};
+defoperator row_every => q{($. -1) % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
   srand conf 'row/seed';
@@ -43,6 +45,7 @@ defshort '/r',
   defalt 'rowalt', 'alternatives for the /r row operator',
     pmap(q{tail_op '-n', '',  $_},       pn 1, prx '[+~]', integer),
     pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',    integer),
+    pmap(q{safe_head_op  $_},            pn 1, prx 's',    number),
     pmap(q{row_every_op  $_},            pn 1, prx 'x',    number),
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),

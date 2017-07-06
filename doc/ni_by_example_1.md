@@ -302,7 +302,7 @@ $ ni n10 r-3
 10
 ```
 
-`r~N` takes the last N rows.
+`r~N` and `r+N` take the last N rows.
 
 ```bash
 $ ni n10 r~3
@@ -311,13 +311,21 @@ $ ni n10 r~3
 10
 ```
 
-The `rxN` option takes the last of every `N` rows.
+```bash
+$ ni n10 r+3
+8
+9
+10
+```
+
+The `rxN` option takes the first of every `N` rows.
 
 ```bash
 $ ni n10 rx3
-3
-6
-9
+1
+4
+7
+10
 ```
 
 Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) pseudo-random sample of the stream data.

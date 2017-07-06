@@ -1,5 +1,5 @@
-# `ni` by Example Chapter 4 (alpha release)
-Welcome to Chapter 4. At this point you have enough skills to read the documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
+# `ni` by Example Chapter 5 (alpha release)
+Welcome to Chapter 4. At this point you have enough skills to read the other `ni` documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
 Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
 
@@ -16,13 +16,13 @@ You've already been using `ni` within bash, so you've always been using `ni` fro
 
 When you run a script without quotes, bash will first scan for metacharacters. So the script
 
-```
+```sh
 $ ni e[seq 10 | grep 1]
 ```
 
 is run as 
 
-```
+```sh
 ~/bin/ni "e[seq" "10" | /bin/grep "1]"
 ```
 
@@ -30,12 +30,12 @@ because bash will execute the pipe first.
 
 The correct way to execute the script: 
 
-```
+```sh
 $ni e'seq 10 | grep 1'
 ``` 
 
 turns into 
-```
+```sh
 exec("/bin/sh", "-c", "seq 10 | grep 1/")
 ```
 
@@ -46,6 +46,25 @@ Aside from bash, Ruby feels like the best scripting language from which to call 
 
 Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. There are a few caveats for running in `bin/sh`, which are covered in the [debugging docs](debugging.md).
 
+### `ni` and Python
+
+It's very easy to incorporate `ni` into Python is a very natural environment for adding `ni` as a command in your scripts.
+
+```python
+import subprocess
+
+def ni(cmd):
+	ni_cmd = ' '.join(cmd) if isinstance(cmd, list)
+	subprocess.call("ni {}".format(ni_cmd))
+```
+
+### `ni` and Jupyter
+
+`ni` can really shine in Jupyter; asynchronous processing turns out to be much easier in a Jupyter notebook than it is in a standard Python workflow.
+
+Shelling out in Jupyter is really easy; simply prefix your command with 
+
+Working in Jupyter, you'll want to set your 
 
 
 ## Stream Appending, Interleaving, Duplication, and Buffering

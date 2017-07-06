@@ -1447,15 +1447,24 @@ lazytest_case 'ni n10 r~3
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=317
-lazytest_case 'ni n10 rx3
+lazytest_line=315
+lazytest_case 'ni n10 r+3
 ' 3<<'LAZYTEST_EOF'
-3
-6
+8
 9
+10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=326
+lazytest_line=324
+lazytest_case 'ni n10 rx3
+' 3<<'LAZYTEST_EOF'
+1
+4
+7
+10
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_1.md'
+lazytest_line=334
 lazytest_case 'ni n20 r.15
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1466,7 +1475,7 @@ lazytest_case 'ni n20 r.15
 15
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=342
+lazytest_line=350
 lazytest_case 'ni n500 r/22/
 ' 3<<'LAZYTEST_EOF'
 22
@@ -1485,7 +1494,7 @@ lazytest_case 'ni n500 r/22/
 422
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=362
+lazytest_line=370
 lazytest_case 'ni n1000 r-500 r'\''/^(\d)\1+$/'\''
 ' 3<<'LAZYTEST_EOF'
 555
@@ -1495,7 +1504,7 @@ lazytest_case 'ni n1000 r-500 r'\''/^(\d)\1+$/'\''
 999
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=375
+lazytest_line=383
 lazytest_case 'ni i[one_column] i[two columns] i[three columns here]
 ' 3<<'LAZYTEST_EOF'
 one_column
@@ -1503,14 +1512,14 @@ two	columns
 three	columns	here
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=384
+lazytest_line=392
 lazytest_case 'ni i[one_column] i[two columns] i[three columns here] rB
 ' 3<<'LAZYTEST_EOF'
 two	columns
 three	columns	here
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=394
+lazytest_line=402
 lazytest_case 'ni ibubbles ibaubles ibarbaras F/[aeiou]+/
 ' 3<<'LAZYTEST_EOF'
 b	bbl	s
@@ -1518,44 +1527,44 @@ b	bl	s
 b	rb	r	s
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=406
+lazytest_line=414
 lazytest_case 'ni i~/bin/dependency/nightmare.jar FD
 ' 3<<'LAZYTEST_EOF'
 ~	bin	dependency	nightmare.jar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=413
+lazytest_line=421
 lazytest_case 'ni i"here               is   an              example" FS
 ' 3<<'LAZYTEST_EOF'
 here	is	an	example
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=420
+lazytest_line=428
 lazytest_case 'ni ibread,eggs,milk i'\''fruit gushers,index cards'\'' FC
 ' 3<<'LAZYTEST_EOF'
 bread	eggs	milk
 fruit gushers	index cards
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=428
+lazytest_line=436
 lazytest_case 'ni i'\''"hello,there",one,two,three'\'' FV
 ' 3<<'LAZYTEST_EOF'
 hello,there	one	two	three
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=435
+lazytest_line=443
 lazytest_case 'ni i'\''this@#$$gets&(*&^split'\'' FW
 ' 3<<'LAZYTEST_EOF'
 this	gets	split
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=441
+lazytest_line=449
 lazytest_case 'ni i'\''need|quotes|around|pipes|because|of|bash'\'' FP
 ' 3<<'LAZYTEST_EOF'
 need	quotes	around	pipes	because	of	bash
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=448
+lazytest_line=456
 lazytest_case 'ni ibubbles ibaubles ibarbaras F:a
 ' 3<<'LAZYTEST_EOF'
 bubbles
@@ -1563,7 +1572,7 @@ b	ubles
 b	rb	r	s
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=461
+lazytest_line=469
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS
 ' 3<<'LAZYTEST_EOF'
 this	is	how	we	do	it
@@ -1571,7 +1580,7 @@ it's	friday	night
 and	I	feel	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=470
+lazytest_line=478
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fC
 ' 3<<'LAZYTEST_EOF'
 how
@@ -1579,7 +1588,7 @@ night
 feel
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=479
+lazytest_line=487
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fAB
 ' 3<<'LAZYTEST_EOF'
 this	is
@@ -1587,7 +1596,7 @@ it's	friday
 and	I
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=488
+lazytest_line=496
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fAAC
 ' 3<<'LAZYTEST_EOF'
 this	this	how
@@ -1595,7 +1604,7 @@ it's	it's	night
 and	and	feel
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=497
+lazytest_line=505
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fAD.
 ' 3<<'LAZYTEST_EOF'
 this	we	do	it
@@ -1603,7 +1612,7 @@ it's
 and	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=505
+lazytest_line=513
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fB-E
 ' 3<<'LAZYTEST_EOF'
 is	how	we	do
@@ -1611,7 +1620,7 @@ friday	night
 I	feel	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=514
+lazytest_line=522
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" i"and I feel all right" FS fCBAD
 ' 3<<'LAZYTEST_EOF'
 how	is	this	we
@@ -1619,7 +1628,7 @@ night	friday	it's
 feel	I	and	all
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=529
+lazytest_line=537
 lazytest_case 'ni i"Ain'\''t nobody dope as me" i"I'\''m dressed so fresh, so clean" i"So fresh and so clean, clean" FS
 ' 3<<'LAZYTEST_EOF'
 Ain't	nobody	dope	as	me
@@ -1627,7 +1636,7 @@ I'm	dressed	so	fresh,	so	clean
 So	fresh	and	so	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=538
+lazytest_line=546
 lazytest_case 'ni i"Ain'\''t nobody dope as me" i"I'\''m dressed so fresh, so clean" i"So fresh and so clean, clean" FS x
 ' 3<<'LAZYTEST_EOF'
 nobody	Ain't	dope	as	me
@@ -1635,7 +1644,7 @@ dressed	I'm	so	fresh,	so	clean
 fresh	So	and	so	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=547
+lazytest_line=555
 lazytest_case 'ni i"Ain'\''t nobody dope as me" i"I'\''m dressed so fresh, so clean" i"So fresh and so clean, clean" FS xD
 ' 3<<'LAZYTEST_EOF'
 as	nobody	dope	Ain't	me
@@ -1643,7 +1652,7 @@ fresh,	dressed	so	I'm	so	clean
 so	fresh	and	So	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=556
+lazytest_line=564
 lazytest_case 'ni i"Ain'\''t nobody dope as me" i"I'\''m dressed so fresh, so clean" i"So fresh and so clean, clean" FS xEB
 ' 3<<'LAZYTEST_EOF'
 me	nobody	dope	as	Ain't
@@ -1651,7 +1660,7 @@ so	dressed	so	fresh,	I'm	clean
 clean,	fresh	and	so	So	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=571
+lazytest_line=579
 lazytest_case 'ni ib ia ic g
 ' 3<<'LAZYTEST_EOF'
 a
@@ -1659,7 +1668,7 @@ b
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=580
+lazytest_line=588
 lazytest_case 'ni ib ia ic gA-
 ' 3<<'LAZYTEST_EOF'
 c
@@ -1667,7 +1676,7 @@ b
 a
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=589
+lazytest_line=597
 lazytest_case 'ni i10 i5 i0.3 gAn
 ' 3<<'LAZYTEST_EOF'
 0.3
@@ -1675,7 +1684,7 @@ lazytest_case 'ni i10 i5 i0.3 gAn
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=599
+lazytest_line=607
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] gABn
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1687,7 +1696,7 @@ c	4
 c	5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=612
+lazytest_line=620
 lazytest_case 'ni i[b 0] i[b 4] i[a 2] i[a 1] i[c 4] i[c 0] i[a 0] gBnA
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1699,7 +1708,7 @@ b	4
 c	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=627
+lazytest_line=635
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] oB
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1711,7 +1720,7 @@ c	5
 b	6
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=638
+lazytest_line=646
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] OB
 ' 3<<'LAZYTEST_EOF'
 b	6
@@ -1723,7 +1732,7 @@ a	1
 a	0
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=653
+lazytest_line=661
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgu
 ' 3<<'LAZYTEST_EOF'
 a
@@ -1731,7 +1740,7 @@ b
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=663
+lazytest_line=671
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
 ' 3<<'LAZYTEST_EOF'
 3	a
@@ -1739,7 +1748,7 @@ lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
 2	c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=679
+lazytest_line=687
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \<
 ' 3<<'LAZYTEST_EOF'
 b	ba	bake
@@ -1751,7 +1760,7 @@ q	qu	quux
 u	ub	uber
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=692
+lazytest_line=700
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< gB-
 ' 3<<'LAZYTEST_EOF'
 u	ub	uber
@@ -1763,7 +1772,7 @@ b	ba	bar
 b	ba	baz
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=705
+lazytest_line=713
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< ggAB-
 ' 3<<'LAZYTEST_EOF'
 b	bi	bif
@@ -1775,33 +1784,33 @@ q	qa	qat
 u	ub	uber
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=741
+lazytest_line=749
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''a()'\''
 ' 3<<'LAZYTEST_EOF'
 first
 foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=747
+lazytest_line=755
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''c'\''
 ' 3<<'LAZYTEST_EOF'
 third
 baz
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=755
+lazytest_line=763
 lazytest_case 'ni i[3 5 7] p'\''a + b + c'\''
 ' 3<<'LAZYTEST_EOF'
 15
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=760
+lazytest_line=768
 lazytest_case 'ni i[easy speak] p'\''b . a'\''
 ' 3<<'LAZYTEST_EOF'
 speakeasy
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=771
+lazytest_line=779
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''c, a'\''
 ' 3<<'LAZYTEST_EOF'
 third
@@ -1810,33 +1819,33 @@ baz
 foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=787
+lazytest_line=795
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r(c, a)'\''
 ' 3<<'LAZYTEST_EOF'
 third	first
 baz	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=795
+lazytest_line=803
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r c, a'\''
 ' 3<<'LAZYTEST_EOF'
 third	first
 baz	foo
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=807
+lazytest_line=815
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''k'\''
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=811
+lazytest_line=819
 lazytest_case 'ni i[first second third] i[foo bar baz] p'\''r k'\''
 ' 3<<'LAZYTEST_EOF'
 
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=829
+lazytest_line=837
 lazytest_case 'ni n3 rp'\''a'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1844,14 +1853,14 @@ lazytest_case 'ni n3 rp'\''a'\''
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=838
+lazytest_line=846
 lazytest_case 'ni n03 rp'\''a'\''
 ' 3<<'LAZYTEST_EOF'
 1
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=846
+lazytest_line=854
 lazytest_case 'ni n03 rp'\''r a'\''
 ' 3<<'LAZYTEST_EOF'
 0
@@ -1859,7 +1868,7 @@ lazytest_case 'ni n03 rp'\''r a'\''
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=858
+lazytest_line=866
 lazytest_case 'ni n03 rp'\''r b'\''
 ' 3<<'LAZYTEST_EOF'
 
@@ -1867,49 +1876,49 @@ lazytest_case 'ni n03 rp'\''r b'\''
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=876
+lazytest_line=884
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r F_(1..3)'\''
 ' 3<<'LAZYTEST_EOF'
 second	third	fourth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=883
+lazytest_line=891
 lazytest_case 'ni i[first second third fourth fifth sixth] i[only two_fields ] p'\''r FM'\''
 ' 3<<'LAZYTEST_EOF'
 5
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=891
+lazytest_line=899
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r F_(3..FM)'\''
 ' 3<<'LAZYTEST_EOF'
 fourth	fifth	sixth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=898
+lazytest_line=906
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 fourth	fifth	sixth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=905
+lazytest_line=913
 lazytest_case 'ni i[first second third fourth fifth sixth] p'\''r FT 3'\''
 ' 3<<'LAZYTEST_EOF'
 first	second	third
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=917
+lazytest_line=925
 lazytest_case 'ni p'\''r "foo" . "bar"'\''
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=923
+lazytest_line=931
 lazytest_case 'ni 1p'\''r "foo" . "bar"'\''
 ' 3<<'LAZYTEST_EOF'
 foobar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=940
+lazytest_line=948
 lazytest_case 'ni --explain n10 \>ten.txt \<
 ' 3<<'LAZYTEST_EOF'
 ["n",1,11]
@@ -2922,7 +2931,17 @@ lazytest_case 'ni ::five[n5] //ni | perl - n1p'\''five'\''
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=515
+lazytest_line=496
+lazytest_case 'ni n1000 rs5
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+4
+5
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_4.md'
+lazytest_line=530
 lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA
 ' 3<<'LAZYTEST_EOF'
 aNi+=1oK?x	1
@@ -2931,7 +2950,7 @@ bNi+=1oK?y	3
 cNi+=1oK?z	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=523
+lazytest_line=538
 lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA  p'\''r hrsplit a, sum b_ rea'\''
 ' 3<<'LAZYTEST_EOF'
 a	x	3
@@ -2939,25 +2958,25 @@ b	y	3
 c	z	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=537
+lazytest_line=552
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 Dt2clCTYSj64+6M8Nzhq4#
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=544
+lazytest_line=559
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c9424d84a3eb8fba33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=551
+lazytest_line=566
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''hyphenate_uuid b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=65
+lazytest_line=84
 lazytest_case 'ni n3 ^[n05 fAA]
 ' 3<<'LAZYTEST_EOF'
 0	0
@@ -2970,7 +2989,7 @@ lazytest_case 'ni n3 ^[n05 fAA]
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=78
+lazytest_line=97
 lazytest_case 'ni n3 +[n05 fAA]
 ' 3<<'LAZYTEST_EOF'
 1
@@ -2983,7 +3002,7 @@ lazytest_case 'ni n3 +[n05 fAA]
 4	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=114
+lazytest_line=133
 lazytest_case 'ni n10 =[r5 \>short] r3fAA
 ' 3<<'LAZYTEST_EOF'
 1	1
@@ -2991,7 +3010,7 @@ lazytest_case 'ni n10 =[r5 \>short] r3fAA
 3	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=121
+lazytest_line=140
 lazytest_case 'ni short
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3001,7 +3020,7 @@ lazytest_case 'ni short
 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=146
+lazytest_line=165
 lazytest_case 'ni //license w[n3p'\''a*a'\'']
 ' 3<<'LAZYTEST_EOF'
 ni: https://github.com/spencertipping/ni	1
@@ -3009,7 +3028,7 @@ Copyright (c) 2016 Spencer Tipping | MIT license	4
 	9
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=157
+lazytest_line=176
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn
 ' 3<<'LAZYTEST_EOF'
 1	a
@@ -3019,7 +3038,7 @@ lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn
 5	e
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=171
+lazytest_line=190
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn p'\''r a, uc(b)'\''
 ' 3<<'LAZYTEST_EOF'
 1	A
@@ -3029,7 +3048,7 @@ lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn p'\''r a, uc(b)'\''
 5	E
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=182
+lazytest_line=201
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn vBpuc
 ' 3<<'LAZYTEST_EOF'
 1	A
@@ -3039,7 +3058,7 @@ lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' Wn vBpuc
 5	E
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=215
+lazytest_line=234
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' :letters gA- wn gA
 ' 3<<'LAZYTEST_EOF'
 a	5
@@ -3049,7 +3068,7 @@ d	2
 e	1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=226
+lazytest_line=245
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' :letters gA- wn gA +[letters]
 ' 3<<'LAZYTEST_EOF'
 a	5
@@ -3064,7 +3083,7 @@ d
 e
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=242
+lazytest_line=261
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' :letters gA- wn gA +[letters] wn
 ' 3<<'LAZYTEST_EOF'
 a	5	1
@@ -3079,7 +3098,7 @@ d	9
 e	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=259
+lazytest_line=278
 lazytest_case 'ni 1p'\''"a".."e"'\'' p'\''split / /'\'' :letters gA- wn gA +[letters] wn gABn
 ' 3<<'LAZYTEST_EOF'
 a	5	1
@@ -3094,7 +3113,7 @@ e	1	5
 e	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=285
+lazytest_line=304
 lazytest_case 'ni //license FW Y r10
 ' 3<<'LAZYTEST_EOF'
 0	0	ni
@@ -3109,14 +3128,14 @@ lazytest_case 'ni //license FW Y r10
 1	3	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=302
+lazytest_line=321
 lazytest_case 'ni //license FW Y r10 X
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=311
+lazytest_line=330
 lazytest_case 'ni 1p'\''"a".."l"'\'' Z4
 ' 3<<'LAZYTEST_EOF'
 a	b	c	d
@@ -3124,13 +3143,13 @@ e	f	g	h
 i	j	k	l
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=369
+lazytest_line=388
 lazytest_case 'ni nE4 fAAA ,aA ,sB, ,dC r~1
 ' 3<<'LAZYTEST_EOF'
 5000.5	50005000	1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=397
+lazytest_line=416
 lazytest_case 'ni n3p'\''r map a*$_, 1..3'\'' N'\''x = x + 1'\''
 ' 3<<'LAZYTEST_EOF'
 2	3	4
@@ -3138,7 +3157,7 @@ lazytest_case 'ni n3p'\''r map a*$_, 1..3'\'' N'\''x = x + 1'\''
 4	7	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=404
+lazytest_line=423
 lazytest_case 'ni n5p'\''r map a . $_, 1..3'\'' N'\''x = x.T'\''
 ' 3<<'LAZYTEST_EOF'
 11	21	31	41	51
@@ -3146,14 +3165,14 @@ lazytest_case 'ni n5p'\''r map a . $_, 1..3'\'' N'\''x = x.T'\''
 13	23	33	43	53
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=419
+lazytest_line=438
 lazytest_case 'ni i[1 0] i[1 1] N'\''x = dot(x, x.T)'\''
 ' 3<<'LAZYTEST_EOF'
 1	1
 1	2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=466
+lazytest_line=485
 lazytest_case 'ni n4m'\''r a, ai + 1'\''
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -3162,14 +3181,14 @@ lazytest_case 'ni n4m'\''r a, ai + 1'\''
 4	5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=477
+lazytest_line=496
 lazytest_case 'ni //license FWr2m'\''r fields[0..3]'\''
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com
 Copyright	c	2016	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
-lazytest_line=494
+lazytest_line=513
 lazytest_case 'ni n4fAA l"(r (sr ('\''+ a) ('\''* b)))"
 ' 3<<'LAZYTEST_EOF'
 10	24

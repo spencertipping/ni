@@ -676,6 +676,10 @@
 	    <integer>
 	  ) -> {$$_[1]} -> {tail_op '-n', '+', ($_ + 1)}
 	| (
+	    /s/
+	    <number>
+	  ) -> {$$_[1]} -> {safe_head_op  $_}
+	| (
 	    /x/
 	    <number>
 	  ) -> {$$_[1]} -> {row_every_op  $_}

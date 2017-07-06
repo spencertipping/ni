@@ -891,7 +891,7 @@
 # OPERATOR row_every
 
 ## IMPLEMENTATION
-	$. % $_[0] || print while <STDIN>
+	($. -1) % $_[0] || print while <STDIN>
 
 # OPERATOR row_fixed_scale
 
@@ -1119,6 +1119,11 @@
 
 ## IMPLEMENTATION
 	stdin_to_ruby ruby_mapper  $_[0]
+
+# OPERATOR safe_head
+
+## IMPLEMENTATION
+	$. <= $_[0] && print while <STDIN>
 
 # OPERATOR scan_regex
 

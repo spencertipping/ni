@@ -486,6 +486,21 @@ Some other ideas to keep in mind:
 
 ### Hadoop Streaming MapReduce Limitations
 
+#### Avoiding SIGPIPE
+
+`ni`'s `r<number>` operator uses `head`, which is very fast; however, when `head` finishes, it sends a SIGPIPE signal; this signal will kill your Hadoop Streaming job if received before all of the data is consumed.
+
+To remedy this, there is a "safe" version of `r<number>` called `rs<number>`, which has the exact same functions and specification as `r`, except that consumes the entire stream; it is significantly slower, but it will not fire off a SIGPIPE.
+
+```bash
+$ ni n1000 rs5
+1
+2
+3
+4
+5
+```
+
 #### Number of Input Partfiles
 
 It is hard-coded in Hadoop to not accept more than 100,000 input files as input for a single job. The error that you get if you try to use more than  this is not particularly informative, so try to keep this in mind.
