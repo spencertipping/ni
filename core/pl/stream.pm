@@ -19,12 +19,12 @@ our @F;
 
 sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
             chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
-sub pl($):lvalue {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
-sub F_(@):lvalue {@_ ? @F[@_] : @F}
-sub FM()         {$#F}
-sub FR($):lvalue {@F[$_[0]..$#F]}
-sub FT($):lvalue {@F[0..($_[0]-1)]}
-sub r(@)         {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
+sub pl($)  {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub F_(@)  {@_ ? @F[@_] : @F}
+sub FM()   {$#F}
+sub FR($)  {@F[$_[0]..$#F]}
+sub FT($)  {@F[0..($_[0]-1)]}
+sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}

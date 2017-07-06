@@ -53,6 +53,8 @@ EOF
 
 sub line_continues {
   local $_ = $_[0];
+  die "shell command appears to continue beyond closing markdown code fence"
+    if /^\`\`\`/;
   return 1 if /\\$/;
   s/\\.//g;
   1 while s/"[^"]*"//g || s/'[^']*'//g || s/\`[^\`]*\`//g || s/\([^()]*\)//g;
