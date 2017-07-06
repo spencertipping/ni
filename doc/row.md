@@ -34,11 +34,21 @@ Using commands like `r10` can break pipes and cause you to get less data than
 you might expect; see "pipe signals" in [warnings.md](warnings.md) (`ni
 //help/warnings`) for details.
 
+A "safe" version of `ni`'s "take first N" command exists, called `rs`. `rsN` will have the same result as `rN`, but `rs` will be much slower and should only be used when a pipe signal must be avoided, for example during a [Hadoop Streaming](hadoop.md) job.
+
+```bash
+$ ni n10 rs3
+1
+2
+3
+```
+
 ## Sampling
 ```bash
-$ ni n10000rx4000               # take every 4000th row
-4000
-8000
+$ ni n10000rx4000               # take the 1st of every 4000 rows
+1
+4001
+8001
 $ ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 1
 6823

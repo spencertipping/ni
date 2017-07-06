@@ -4499,14 +4499,23 @@ lazytest_case 'ni n10r-7                     # drop first 7
 10
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=39
-lazytest_case 'ni n10000rx4000               # take every 4000th row
+lazytest_line=40
+lazytest_case 'ni n10 rs3
 ' 3<<'LAZYTEST_EOF'
-4000
-8000
+1
+2
+3
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=42
+lazytest_line=48
+lazytest_case 'ni n10000rx4000               # take the 1st of every 4000 rows
+' 3<<'LAZYTEST_EOF'
+1
+4001
+8001
+LAZYTEST_EOF
+lazytest_file='doc/row.md'
+lazytest_line=52
 lazytest_case 'ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4515,14 +4524,14 @@ lazytest_case 'ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 9509
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=70
+lazytest_line=80
 lazytest_case 'ni n10000r/[42]000$/
 ' 3<<'LAZYTEST_EOF'
 2000
 4000
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=73
+lazytest_line=83
 lazytest_case 'ni n1000r/[^1]$/r3
 ' 3<<'LAZYTEST_EOF'
 2
@@ -4530,7 +4539,7 @@ lazytest_case 'ni n1000r/[^1]$/r3
 4
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=88
+lazytest_line=98
 lazytest_case 'ni n10000rp'\''$_ % 100 == 42'\'' r3
 ' 3<<'LAZYTEST_EOF'
 42
@@ -4538,7 +4547,7 @@ lazytest_case 'ni n10000rp'\''$_ % 100 == 42'\'' r3
 242
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=107
+lazytest_line=117
 lazytest_case 'ni n1000p'\''r/(.)(.*)/'\'' r15     # until 10, the second field is empty
 ' 3<<'LAZYTEST_EOF'
 1	
@@ -4558,7 +4567,7 @@ lazytest_case 'ni n1000p'\''r/(.)(.*)/'\'' r15     # until 10, the second field 
 1	5
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=123
+lazytest_line=133
 lazytest_case 'ni n1000p'\''r/(.)(.*)/'\'' rB r8   # rB = "rows for which field B exists"
 ' 3<<'LAZYTEST_EOF'
 1	0
@@ -4571,19 +4580,19 @@ lazytest_case 'ni n1000p'\''r/(.)(.*)/'\'' rB r8   # rB = "rows for which field 
 1	7
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=135
+lazytest_line=145
 lazytest_case 'ni n10rB | wc -l              # no field B here, so no output
 ' 3<<'LAZYTEST_EOF'
 0
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=140
+lazytest_line=150
 lazytest_case 'ni n10p'\''r a; ""'\'' rA | wc -l   # remove blank lines
 ' 3<<'LAZYTEST_EOF'
 10
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=150
+lazytest_line=160
 lazytest_case 'ni n100 riA[n4 p'\''a*2'\'']        # intersect column A with values from n4 p'\''a*2'\''
 ' 3<<'LAZYTEST_EOF'
 2
@@ -4592,7 +4601,7 @@ lazytest_case 'ni n100 riA[n4 p'\''a*2'\'']        # intersect column A with val
 8
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=160
+lazytest_line=170
 lazytest_case 'ni n10 rIAn5
 ' 3<<'LAZYTEST_EOF'
 6
@@ -4602,7 +4611,7 @@ lazytest_case 'ni n10 rIAn5
 10
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=173
+lazytest_line=183
 lazytest_case 'ni n100n10gr4                 # g = '\''group'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4611,7 +4620,7 @@ lazytest_case 'ni n100n10gr4                 # g = '\''group'\''
 10
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=178
+lazytest_line=188
 lazytest_case 'ni n100n100gur4               # u = '\''uniq'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4620,7 +4629,7 @@ lazytest_case 'ni n100n100gur4               # u = '\''uniq'\''
 11
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=192
+lazytest_line=202
 lazytest_case 'ni n100or3                    # o = '\''order'\'': sort numeric ascending
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4628,7 +4637,7 @@ lazytest_case 'ni n100or3                    # o = '\''order'\'': sort numeric a
 3
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=196
+lazytest_line=206
 lazytest_case 'ni n100Or3                    # O = '\''reverse order'\''
 ' 3<<'LAZYTEST_EOF'
 100
@@ -4636,12 +4645,12 @@ lazytest_case 'ni n100Or3                    # O = '\''reverse order'\''
 98
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=209
+lazytest_line=219
 lazytest_case 'ni n100p'\''r a, sin(a), log(a)'\'' > data          # generate multicolumn data
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=210
+lazytest_line=220
 lazytest_case 'ni data r4
 ' 3<<'LAZYTEST_EOF'
 1	0.841470984807897	0
@@ -4650,7 +4659,7 @@ lazytest_case 'ni data r4
 4	-0.756802495307928	1.38629436111989
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=221
+lazytest_line=231
 lazytest_case 'ni data oBr4
 ' 3<<'LAZYTEST_EOF'
 11	-0.999990206550703	2.39789527279837
@@ -4659,7 +4668,7 @@ lazytest_case 'ni data oBr4
 80	-0.993888653923375	4.38202663467388
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=233
+lazytest_line=243
 lazytest_case 'ni data oBg r4                # '\''g'\'' is a modifier of B, not another sort
 ' 3<<'LAZYTEST_EOF'
 11	-0.999990206550703	2.39789527279837
@@ -4668,7 +4677,7 @@ lazytest_case 'ni data oBg r4                # '\''g'\'' is a modifier of B, not
 80	-0.993888653923375	4.38202663467388
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=238
+lazytest_line=248
 lazytest_case 'ni data oB g r4               # '\''g'\'' is a sorting operator
 ' 3<<'LAZYTEST_EOF'
 1	0.841470984807897	0
@@ -4677,7 +4686,7 @@ lazytest_case 'ni data oB g r4               # '\''g'\'' is a sorting operator
 11	-0.999990206550703	2.39789527279837
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=250
+lazytest_line=260
 lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB
 ' 3<<'LAZYTEST_EOF'
 3	bar
@@ -4689,7 +4698,7 @@ lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB
 4	uber
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=264
+lazytest_line=274
 lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
 ' 3<<'LAZYTEST_EOF'
 3	foo
@@ -4701,7 +4710,7 @@ lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
 4	bake
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=272
+lazytest_line=282
 lazytest_case 'ni n10p'\''r "a", a'\'' ggABn- r4
 ' 3<<'LAZYTEST_EOF'
 a	10
@@ -4710,12 +4719,12 @@ a	8
 a	7
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=285
+lazytest_line=295
 lazytest_case 'ni //license FWpF_ > word-list
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=286
+lazytest_line=296
 lazytest_case 'ni word-list cr10             # unsorted count
 ' 3<<'LAZYTEST_EOF'
 1	ni
@@ -4730,7 +4739,7 @@ lazytest_case 'ni word-list cr10             # unsorted count
 1	Spencer
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=297
+lazytest_line=307
 lazytest_case 'ni word-list gcr10            # sort first to group words
 ' 3<<'LAZYTEST_EOF'
 1	2016
@@ -4745,7 +4754,7 @@ lazytest_case 'ni word-list gcr10            # sort first to group words
 1	BE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=308
+lazytest_line=318
 lazytest_case 'ni word-list gcOr10           # by descending count
 ' 3<<'LAZYTEST_EOF'
 7	to
@@ -4760,12 +4769,12 @@ lazytest_case 'ni word-list gcOr10           # by descending count
 3	SOFTWARE
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=326
+lazytest_line=336
 lazytest_case 'ni word-list p'\''r a, length a'\'' > word-lengths
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=327
+lazytest_line=337
 lazytest_case 'ni word-list gj[word-lengths g] r10
 ' 3<<'LAZYTEST_EOF'
 2016	2016	4
