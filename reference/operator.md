@@ -437,7 +437,7 @@
 	    };
 	
 	    close $hadoop_fh;
-	    die "ni: hadoop streaming failed" if $hadoop_fh->await;
+	    warn "ni: hadoop streaming failed" if $hadoop_fh->await;
 	
 	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
 	
