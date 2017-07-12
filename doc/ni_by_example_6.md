@@ -1,5 +1,16 @@
 #Future Chapter 5 Below
 
+### `pl` Pushback Queue
+
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' =\>jsons \
+     D:type,:word
+```
+
+
 ## Hash
 
 * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`

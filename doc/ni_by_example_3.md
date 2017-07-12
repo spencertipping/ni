@@ -55,7 +55,7 @@ $ ni i[34.058566 -118.416526] p'ghe(a, b)'
 9q5cc25twby7
 ```
 
-The parentheses are also often unnecessary, because of the prototypin:
+The parentheses are also often unnecessary, because of the prototyping:
 
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, 9'
@@ -156,7 +156,10 @@ A specific format string can also be provided, in which case `tep` is called as 
 For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'my $epoch_time = 1485079513; my $tz_offset = tsec(a, b); my @local_time_parts = tep($epoch_time + $tz_offset); r @local_time_parts'
+$ ni i[34.058566 -118.416526] \
+     p'my $epoch_time = 1485079513; my $tz_offset = tsec(a, b); 
+       my @local_time_parts = tep($epoch_time + $tz_offset); 
+       r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
@@ -168,12 +171,18 @@ It is meant for approximation of local time, not the actual time, which depends 
 `ghl` and `gh6l` get local time from an input geohash input in base-32 (`ghl`) or base-10 representation of a the geohash-60 in binary (`gh6l`).
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b' p'my $epoch_time = 1485079513; my @local_time_parts = tep ghl($epoch_time, a); r @local_time_parts'
+$ ni i[34.058566 -118.416526] p'ghe a, b' \
+     p'my $epoch_time = 1485079513; 
+       my @local_time_parts = tep ghl($epoch_time, a); 
+       r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my @local_time_parts = tep gh6l($epoch_time, a); r @local_time_parts'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+     p'my $epoch_time = 1485079513; 
+       my @local_time_parts = tep gh6l($epoch_time, a); 
+       r @local_time_parts'
 2017	1	22	2	41	13
 ```
 
@@ -183,7 +192,9 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; my
 ISO 8601 is a standardized time format defined by the International Organization for Standards. More information on formats is available [here](https://en.wikipedia.org/wiki/ISO_8601). `ni` implements decoding for date-time-timezone formatted ISO data into Unix timestamps.
 
 ```bash
-$ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 i20170624T152347-0300 i20170624T182347Z p'i2e a'
+$ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 \
+     i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 \
+     i20170624T152347-0300 i20170624T182347Z p'i2e a'
 1498328627
 1498328627
 1498328627
@@ -195,7 +206,9 @@ $ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 i2017-06-24T15:23:47-
 `ni` can also format epoch timestamps in an ISO 8601-compatible form. To do this, input an epoch timestamp and either a floating number of hours, or a timezone format string, for example `"+10:00"`.
 
 ```bash
-$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"'
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' \
+     p'r e2i a; r e2i a, -1.5; r e2i a, "+3";
+       r e2i a, "-05:45"'
 2017-06-24T18:23:47Z
 2017-06-24T16:53:47-01:30
 2017-06-24T21:23:47+03:00
@@ -205,7 +218,9 @@ $ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"
 These all represent the same instant:
 
 ```bash
-$ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"; r e2i a, "-05:45"' p'i2e a'
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' \
+     p'r e2i a; r e2i a, -1.5; r e2i a, "+3";
+       r e2i a, "-05:45"' p'i2e a'
 1498328627
 1498328627
 1498328627
@@ -218,22 +233,26 @@ $ ni i2017-06-24T18:23:47+00:00 p'i2e a' p'r e2i a; r e2i a, -1.5; r e2i a, "+3"
 These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a) '
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+     p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a)'
 Sun
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+     p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
 2
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+     p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
 Sun_02
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
+$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+     p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
 2017_01
 ```
 
@@ -242,7 +261,8 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' p'my $epoch_time = 1485079513; ym
 These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more practical in performance-environments (`HS`, for example).
 
 ```bash
-$ ni i1494110651 p'r tep ttd(a); r tep tth(a); r tep tt15(a); r tep ttm(a); r tep a'
+$ ni i1494110651 p'r tep ttd(a); r tep tth(a);
+                   r tep tt15(a); r tep ttm(a); r tep a'
 2017	5	6	0	0	0
 2017	5	6	22	0	0
 2017	5	6	22	30	0
@@ -264,7 +284,8 @@ $ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a'
 Undoes the clipping operation; the result of clipping followed by inflation is equivalent to the truncation operation. Separating the two options in time saves space (at the expense of more computation).
 
 ```bash
-$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a' p'r itd a, ith b, it15 c, itm d, e'
+$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a' \
+     p'r itd a, ith b, it15 c, itm d, e'
 1494028800	1494108000	1494109800	1494110640	1494110651
 ```
 
@@ -275,7 +296,8 @@ $ ni i1494110651 p'r ttd(a), tth(a), tt15(a), ttm(a), a'
 
 ## Buffered Readahead and Multiline Selection
 
-So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.  
+So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.
+
 
 ### `rl`, `rw`, `ru`, `re`: Buffered Readahead
 
@@ -328,15 +350,104 @@ $ ni n10p'r re {int(a**2/30)}'
 You have now seen two ways to generate arrays of lines: buffered readahead and data closures. In order to access data from a specific column of a line array, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
 
 
-An important thing to keep in mind when using buffered readahead with multiline reducers is that you must save. For example:
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = re {a}; r @lines;'
+j	can	j	you	j	feel
+k	the	k	love
+l	tonight
+```
+
+`re {a}` will give us all of the lines where `a()` has the same value (i.e. the first column is the same. What gets stored in the variable`my @lines` is the array of text lines where `a()` has the same value: `("j\tcan", "j\tyou", "j\tfeel")`. 
+
+To get data from one particular column of this data, we can use the multiline selectors; let's say we only wanted the second column of that data--we can get that by applying `b_` to `@lines`.
 
 ```bash
-$ ni i{a..d}{x..z} F// fB. p'@lines = re {a}; r a, b_ @lines'
-b	x	y	z
-c	x	y	z
-d	x	y	z
-	x	y	z
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = re {a}; r b_(@lines)'
+can	you	feel
+the	love
+tonight
 ```
+
+That's given us the second element of each line that started with the 
+
+As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `rea` as a shorthand for `re {a}`
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = rea; r b_ @lines'
+can	you	feel
+the	love
+tonight
+```
+
+And if we want to do this in a single line, we can combine multiline selection with buffered readahed:
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'r b_ rea'
+can	you	feel
+the	love
+tonight
+```
+
+The last two examples are used commonly. The former, more explicit one is often used when we want more than one reduction:
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = rea; r b_ @lines; r a_ @lines'
+can	you	feel
+j	j	j
+the	love
+k	k
+tonight
+l
+```
+
+Another common motif is getting the value of 
+
+### `reb ... rel`: Reduce while multiple columns are equal
+
+In the previous section, we covered `rea` as syntactic sugar for `re {a}`
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ rea'
+first	second	third
+fourth
+```
+
+This syntactic sugar is slightly different for `reb, rec, ..., rel`.
+
+Let's take a look at what happens with `re {b}`:
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ re {b}'
+first	second
+third	fourth
+```
+
+In general, that's not quite what we want; when we do reduction like this, we've probably already sorted our data appropriately, so we'll want to reduce over *all* of the columns; writing a function that reduces over columns `a` and `b` is a little clunky, so we use `reb` as a syntactic sugar for that function.
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ reb'
+first	second
+third
+fourth
+```
+
+This is our desired output.
+
+
+### Caveats
 
 * `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
 * `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
@@ -355,12 +466,13 @@ $ ni ::data[n5] 1p'a_ data'
 These are useful for collecting data with an unknown shape.
 
 ```bash
-$ ni i[m 1 x] i[m 2 y s t] i[m 3 yo] p'r b__ rea'
+$ ni i[m 1 x] i[m 2 y s t] \
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ rea'
 1	x	2	y	s	t	3	yo
+5	who	6	let	the	dogs
 ```
 
 In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
-
 
 
 ## `ni`-specific Array Processors
@@ -415,7 +527,8 @@ a	b	c
 `freqs` returns a reference to a hash that contains the count of each unique element in the input array.
 
 ```bash
-$ ni i[a c b c c a] p'my %h = %{freqs F_}; r($_, $h{$_}) for sort keys %h'
+$ ni i[a c b c c a] p'my %h = %{freqs F_}; 
+                      r($_, $h{$_}) for sort keys %h'
 a	2
 b	1
 c	3
@@ -435,11 +548,19 @@ $ ni i[2 3 4] p'r any {$_ > 3} F_; r all {$_ > 3} F_'
 ```
 
 
-`argmax` returns the first value in the array that achieves the maximum of the block passed in, and `argmin` returns the first value in the array that achieves the minimum of the function 
+`argmax` returns the value in the array that achieves the maximum of the block passed in, and `argmin` returns the value in the array that achieves the minimum of the function. 
 
 
 ```bash
 $ ni i[aa bbb c] p'r argmax {length} F_; r argmin {length} F_'
+bbb
+c
+```
+
+If there are any ties, the first element is picked.
+
+```bash
+$ ni i[aa bbb c ddd e] p'r argmax {length} F_; r argmin {length} F_'
 bbb
 c
 ```
@@ -472,7 +593,7 @@ ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
 ### Functional Programming Basics: `take`, `drop`, `take_while`, `drop_while`
 
 
-`take` and `drop` get the specified number of elements from an array.
+`take` and `drop` get (or get rid of) the specified number of elements from an array.
 
 ```bash
 $ ni i[1 2 3 4 5 6 7] p'r take 3, F_; r drop 3, F_'
@@ -483,7 +604,8 @@ $ ni i[1 2 3 4 5 6 7] p'r take 3, F_; r drop 3, F_'
 `take_while` and `drop_while` take an additional block; they `take` or `drop` while the function is true.
 
 ```bash
-$ ni i[1 2 3 4 5 6 7] p'r take_while {$_ < 3} F_; r drop_while {$_ < 3} F_'
+$ ni i[1 2 3 4 5 6 7] p'r take_while {$_ < 3} F_;
+                        r drop_while {$_ < 3} F_'
 1	2
 3	4	5	6	7
 ```
@@ -494,14 +616,45 @@ Some day, `ni` will get lazy sequences, and this will be useful. Until that day.
 ## Hash Constructors
 
 ### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
-Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. The hash constructor is also a useful demonstration of both multiline selection.
- 
+
+Hash constructors are useful for filtering or adding data. There are many hash constructor functions all with the same syntax. For example, `my %h = ab_ @lines` returns a hash where the keys are taken from column `a` and the values are taken from column `b`. `my %h = fd_ @lines` will return a hash where 
+
 
 ```bash
-$ ni i[a 1] i[b 2] i[foo bar] p'my @lines = rw {1}; my %h = ab_ @lines; @sorted_keys = sort keys %h; r @sorted_keys; r @h{@sorted_keys}'
+$ ni i[a 1] i[b 2] i[foo bar] \
+     p'my @lines = rw {1};
+       my %h = ab_ @lines; my @sorted_keys = sort keys %h;
+       r @sorted_keys; r map {$h{$_}} @sorted_keys'
 a	b	foo
 1	2	bar
 ```
+
+There's a nice piece of Perl syntactic sugar for the last return statement that gets all of the values out of a hash associated with the elements of an array:
+
+```bash
+$ ni i[a 1] i[b 2] i[foo bar] \
+     p'my @lines = rw {1};
+       my %h = ab_ @lines; my @sorted_keys = sort keys %h;
+       r @sorted_keys; r @h{@sorted_keys}'
+a	b	foo
+1	2	bar
+```
+
+Hashes are often combined with closures to do filtering operations:
+
+```bash
+$ ni ::passwords[idragon i12345] i[try this] i[123 fails] \
+     i[dragon does work] i[12345 also works] \
+     i[other ones] i[also fail] \
+     rp'^{%h = ab_ passwords} exists($h{+a})'
+dragon	does	work
+12345	also	works
+```
+
+#### Caveat
+
+Constructing hashes from closures can get very large; if you have more than 1 million keys in the hash, the hash will likely grow to several gigabytes in size. If you need to use a hash with millions of keys, you'll often be better off using a Bloom filter, described in Chapter 6. 
+
 
 ### `p'%h = <key_col><val_col>S @lines'`: Accumulator hash constructor
 
@@ -516,8 +669,11 @@ y	13
 If you have ragged data, where a value may not exist for a particular column, a convience method `SNN` gives you the non-null values. See the next section for the convenience methods `kbv_dsc`.
 
 ```bash 
-$ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] p'%h = dcSNN rea; @sorted_keys = kbv_dsc %h; r($_, $h{$_}) for @sorted_keys''
-foo	4	
+$ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
+     p'%h = dcSNN rea; 
+       @sorted_keys = kbv_dsc %h;
+       r($_, $h{$_}) for @sorted_keys'
+foo	4
 bar	1
 ```
 
@@ -527,13 +683,15 @@ bar	1
 This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
 ```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
+     p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
 y	x	z
 ```
 
 
 ```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
+     p'r acS rea' p'r kbv_asc(ab_ rl(3))'
 z	x	y
 ```
 
@@ -578,19 +736,14 @@ We'll spend the rest of this chapter discussing JSON and directory I/O; the form
 
 ### `D:<field1>,:<field2>...`: JSON Destructure
 
-`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-01-16), the JSON destructurer does not support list-based fields in JSON.
+`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-07-12), the JSON destructurer does not support list-based fields in JSON.
 
 ### `p'json_encode <hash or array reference>`: JSON Encode
 
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' =\>jsons \
-     D:type,:word
-```
+
+
 ### Other JSON parsing methods
 Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
@@ -615,7 +768,7 @@ This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't a
 `ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
 
 * Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
+* Because of this philosophy, large-scale sorting is not a `ni`-ic operation, while gzip compression is.
 * Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes uncompressed.
 
 Some jobs that are difficult for `ni`, and some ways to resolve them:
