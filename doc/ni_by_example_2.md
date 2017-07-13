@@ -172,7 +172,8 @@ $ ni n5 p'my $y = a; {$x = 100;} ++$x'
 
 
 ```bash
-$ ni n5 p'my $y = a; {my $x = 100;} defined $x ? "defined" : "not defined"'
+$ ni n5 p'my $y = a; {my $x = 100;} 
+			defined $x ? "defined" : "not defined"'
 not defined
 not defined
 not defined
@@ -190,7 +191,9 @@ bar	foo
 `my` can also assign anything left over to an array;
 
 ```bash
-$ ni i[foo bar baz qux qal] p'my ($first, $second, @rest) = F_; r $second, $first; r @rest'
+$ ni i[foo bar baz qux qal] \
+	  p'my ($first, $second, @rest) = F_;
+	    r $second, $first; r @rest'
 bar	foo
 baz	qux	qal
 ```
@@ -260,7 +263,9 @@ Recall that Perl has no specific boolean type. Recalling from Part 1, the number
 This form is common to almost every programming language in one form or another;
 
 ```bash
-$ ni i37 p'if (a == 2) { r "input was 2" } elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } else { r "I dunno" }'
+$ ni i37 p'if (a == 2) { r "input was 2" } 
+			 elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } 
+			 else { r "I dunno" }'
 I dunno
 ```
 
@@ -408,17 +413,20 @@ There are other syntaxes for `s///` and `tr///`, but many of them do not work wi
 Perl scalars can be interpolated into regular expressions, like this:
 
 ```bash
-$ ni 1p'$foo = "house"; "housecat" =~ /$foo/ ? "match" : "no match"'
+$ ni 1p'$foo = "house"; 
+        "housecat" =~ /$foo/ ? "match" : "no match"'
 match
 ```
 
 ```bash
-$ ni 1p'$foo = "house"; "cathouse" =~ /cat$foo/ ? "match" : "no match"'
+$ ni 1p'$foo = "house"; 
+        "cathouse" =~ /cat$foo/ ? "match" : "no match"'
 match
 ```
 
 ```bash
-$ ni 1p'$foo = "house"; "housecat" =~ /${foo}cat/ ? "match" : "no match"'
+$ ni 1p'$foo = "house"; 
+        "housecat" =~ /${foo}cat/ ? "match" : "no match"'
 match
 ```
 
@@ -490,7 +498,8 @@ not equal
   * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
   
 ```bash
-$ ni iabcdefgh p'r substr(a, 3), substr(a, 0, 3), substr(a, -2), substr(a, 0, -2)'
+$ ni iabcdefgh p'r substr(a, 3), substr(a, 0, 3),
+                   substr(a, -2), substr(a, 0, -2)'
 defgh	abc	gh	abcdef
 ```
 
@@ -655,7 +664,8 @@ hh
 The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
 
 ```bash
-$ ni iabcdefgh p'for my $letter(split //, $_) {if($letter eq "b") {next;} r $letter x 2}'
+$ ni iabcdefgh p'for my $letter(split //, $_) 
+                 {if($letter eq "b") {next;} r $letter x 2}'
 aa
 cc
 dd
@@ -733,7 +743,8 @@ hh
 `grep` also takes a block of code, as in:
 
 ```bash
-$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} map { $_ x 2 } split //, $_; @v'
+$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} 
+                         map { $_ x 2 } split //, $_; @v'
 bb
 dd
 ff
@@ -792,7 +803,8 @@ guildenstern	juliet	romeo	rosencrantz
 This syntax is a little tricky for my taste; I prefer the more explicit:
 
 ```bash
-$ ni i[romeo juliet rosencrantz guildenstern] p'my @arr = F_; r sort @arr'
+$ ni i[romeo juliet rosencrantz guildenstern] \
+     p'my @arr = F_; r sort @arr'
 guildenstern	juliet	romeo	rosencrantz
 ```
 
@@ -805,14 +817,16 @@ Let's say you wanted to sort by the length of the string, rather than the order:
 
 
 ```bash
-$ ni i[romeo juliet rosencrantz guildenstern hero leander] p'my @arr = F_; r sort {length $a <=> length $b } F_'
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $a <=> length $b } F_'
 hero	romeo	juliet	leander	rosencrantz	guildenstern
 ```
 
 To reverse the sort, reverse `$b` and `$a`.
 
 ```bash
-$ ni i[romeo juliet rosencrantz guildenstern hero leander] p'my @arr = F_; r sort {length $b <=> length $a } F_'
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $b <=> length $a } F_'
 guildenstern	rosencrantz	leander	juliet	romeo	hero
 ```
 
@@ -824,7 +838,8 @@ More details are available in the [perldocs](https://perldoc.perl.org/functions/
 You can feed multiple lists and scalars into `grep`, `map`, and `for`, by setting them off with commas; there is no need to construct a new array containing all of the elements you want to operate over.
 
 ```bash
-$ ni 1p'my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye"); map {$_ x 2} @x, $y, @z'
+$ ni 1p'my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye");
+        map {$_ x 2} @x, $y, @z'
 11
 22
 yoyo
@@ -872,7 +887,13 @@ bar	foo
 The function `values` returns values in the same order as the hash's `keys`.
 
 ```bash
-$ ni 1p'my %h = ("foo" => 1, "bar" => 2); @ks = keys %h; @vs = values %h; my $same_order = 1; for(my $i = 0; $i <= $#ks; $i++) { if($h{$ks[i]} != $vs[i]) {$same_order = 0; last} } r $same_order ? "Same order" : "Different order"'
+$ ni 1p'my %h = ("foo" => 1, "bar" => 2, "baz" => 3); 
+        my @ks = keys %h; my @vs = values %h; 
+        my $same_order = 1; 
+        for(my $i = 0; $i <= $#ks; $i++) { 
+          if($h{$ks[i]} != $vs[i]) {$same_order = 0; last} 
+        } 
+        r $same_order ? "Same order" : "Different order"'
 Same order
 ```
 
@@ -1049,16 +1070,15 @@ Since `ni` sits on top of Perl, so we can take credit for the excellent Perl doc
 ```sh
 $ perldoc -f my
 ...
-       my EXPR
-       my TYPE EXPR
-       my EXPR : ATTRS
-       my TYPE EXPR : ATTRS
-               A "my" declares the listed variables to be local (lexically) to
-               the enclosing block, file, or "eval".  If more than one value
-               is listed, the list must be placed in parentheses.
+my EXPR
+my TYPE EXPR
+my EXPR : ATTRS
+my TYPE EXPR : ATTRS
+   A "my" declares the listed variables to be local (lexically) to
+   the enclosing block, file, or "eval".  If more than one value
+   is listed, the list must be placed in parentheses.
 ...
 ```
-
 
 
 ## Conclusion

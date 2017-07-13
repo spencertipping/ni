@@ -445,6 +445,7 @@ this	gets	split
 ```
 
 `FP` splits on pipe characters:
+
 ```bash
 $ ni i'need|quotes|around|pipes|because|of|bash' FP
 need	quotes	around	pipes	because	of	bash
@@ -475,7 +476,8 @@ and	I	feel	all	right
 Like `r`, `f` has a lot of options. To select a column, use its corresponding letter. 
 
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fC
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fC
 how
 night
 feel
@@ -484,7 +486,8 @@ feel
 You can select multiple columns by providing multiple letters:
 
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAB
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAB
 this	is
 it's	friday
 and	I
@@ -493,7 +496,8 @@ and	I
 You can duplicate a column by using its corresponding letter multiple times:
 
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAAC
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAAC
 this	this	how
 it's	it's	night
 and	and	feel
@@ -502,7 +506,8 @@ and	and	feel
 To select all columns after a particular column, use `f<col>.`
 
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fAD.
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAD.
 this	we	do	it
 it's	
 and	all	right
@@ -510,7 +515,8 @@ and	all	right
 
 To select all data between two columns, inclusive, use a dash:
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fB-E
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fB-E
 is	how	we	do
 friday	night
 I	feel	all	right
@@ -519,7 +525,8 @@ I	feel	all	right
 You can also use `f` to re-order selected columns:
 
 ```bash
-$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS fCBAD
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fCBAD
 how	is	this	we
 night	friday	it's	
 feel	I	and	all
@@ -534,7 +541,9 @@ Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cu
 `x` is a shorthand for certain column exchange operations. All of these operations can be written with `f`, usually with a higher number of keystrokes.
 
 ```bash
-$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS
 Ain't	nobody	dope	as	me
 I'm	dressed	so	fresh,	so	clean
 So	fresh	and	so	clean,	clean
@@ -543,7 +552,9 @@ So	fresh	and	so	clean,	clean
 `x` exchanges the first two columns (same as `fBA.`)
 
 ```bash
-$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS x
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS x
 nobody	Ain't	dope	as	me
 dressed	I'm	so	fresh,	so	clean
 fresh	So	and	so	clean,	clean
@@ -552,7 +563,9 @@ fresh	So	and	so	clean,	clean
 `x` with a single column exchanges that column with column 1.
 
 ```bash
-$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS xD
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS xD
 as	nobody	dope	Ain't	me
 fresh,	dressed	so	I'm	so	clean
 so	fresh	and	So	clean,	clean
@@ -561,7 +574,9 @@ so	fresh	and	So	clean,	clean
 `x` with mulitple columns exchanges those into the first columns, in order.
 
 ```bash
-$ ni i"Ain't nobody dope as me" i"I'm dressed so fresh, so clean" i"So fresh and so clean, clean" FS xEB
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS xEB
 me	nobody	dope	as	Ain't
 so	dressed	so	fresh,	I'm	clean
 clean,	fresh	and	so	So	clean
@@ -684,7 +699,9 @@ Let's simulate this by sorting one column of the data and sinking the result to 
 
 
 ```bash
-$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \<
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \<
 b	ba	bake
 b	ba	bar
 b	ba	baz
@@ -697,7 +714,9 @@ u	ub	uber
 If we want the data sorted as if we had done `gAB-`, we cannot simply do `gB-` to the data we have; this will blow away the sort on the first column.
 
 ```bash
-$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< gB-
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \< gB-
 u	ub	uber
 q	qu	quux
 q	qa	qat
@@ -710,7 +729,9 @@ b	ba	baz
 Instead we used the grouped sort `ggAB-`. 
 
 ```bash
-$ ni i[b ba bar] i[b bi bif] i[b ba baz] i[q qa qat] i[q qu quux] i[b ba bake] i[u ub uber] gA \>tmp \< ggAB-
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \< ggAB-
 b	bi	bif
 b	ba	bake
 b	ba	bar
@@ -888,7 +909,8 @@ second	third	fourth
 `FM` is the index of the last field of your data (i.e. the total number of fields minus one):
 
 ```bash
-$ ni i[first second third fourth fifth sixth] i[only two_fields ] p'r FM'
+$ ni i[first second third fourth fifth sixth] \
+     i[only two_fields ] p'r FM'
 5
 1
 ```
