@@ -87,6 +87,6 @@ sub bloom_union {
 
 sub bloom_count($) {
   my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
-  return $m * -log(1 - ($m-0.1)/$m) / $k if $bits == $m;  # overflow case
+  return -1 if $bits >= $m;     # overflow case (> if %32b runs past end maybe)
   $m * -log(1 - $bits/$m) / $k;
 }
