@@ -17,6 +17,10 @@ sub bloom_new($$) {
   pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
 }
 
+sub bloom_from_hex($) {
+  pack 'H*', $_[0];
+}
+
 sub multihash($$) {
   my @hs;
   push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
@@ -83,5 +87,6 @@ sub bloom_union {
 
 sub bloom_count($) {
   my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  return $m * -log(1 - ($m-0.1)/$m) / $k if $bits == $m;  # overflow case
   $m * -log(1 - $bits/$m) / $k;
 }

@@ -5276,7 +5276,7 @@ defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
 2 core/bloom/lib
 bloomfilter.pl
 bloom.pl
-87 core/bloom/bloomfilter.pl
+92 core/bloom/bloomfilter.pl
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
 
@@ -5294,6 +5294,10 @@ sub bloom_new($$) {
   my ($m, $k) = @_;
   ($m, $k) = bloom_args($m, $k) if $k < 1;
   pack("NN", $m, $k) . "\0" x ($m + 7 >> 3);
+}
+
+sub bloom_from_hex($) {
+  pack 'H*', $_[0];
 }
 
 sub multihash($$) {
@@ -5362,6 +5366,7 @@ sub bloom_union {
 
 sub bloom_count($) {
   my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  return $m * -log(1 - ($m-0.1)/$m) / $k if $bits == $m;  # overflow case
   $m * -log(1 - $bits/$m) / $k;
 }
 52 core/bloom/bloom.pl
