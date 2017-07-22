@@ -76,7 +76,7 @@ sub shell_unquote_one($) {
 
 sub shell_unquote($) {
   local $_;
-  my $c = $_[0];
+  (my $c = $_[0]) =~ s/\\\n//g;
   1 while $c =~ s/^\s+|\s+$//g || $c =~ s/(?:^|\s)#.*/$1/gm;
   my @ps = $c =~ /"(?:[^"\\]+|\\[\s\S])*"|'[^']*'|\\[\s\S]|[^\s"'\\]+|\s+/g;
   my @s  = (-1, grep($ps[$_] =~ /^\s/, 0..$#ps), scalar @ps);
