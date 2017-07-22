@@ -22,13 +22,19 @@ sub dot($$) {local $_; my ($u, $v) = @_;
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
-sub proj($$) {local $_; my ($a, $b) = @_;
-              my $f = dot($a, $b) / dot($b, $b);
-              map $f * $_, @$b}
+sub proj($$)
+{ local $_; my ($a, $b) = @_;
+  my $f = dot($a, $b) / dot($b, $b);
+  map $f * $_, @$b }
 
-sub orth($$) {local $_; my ($a, $b) = @_;
-              my $proj = proj $a, $b;
-              map $$a[$_] - $$proj[$_], 0..$#{$a}}
+sub orth($$)
+{ local $_; my ($a, $b) = @_;
+  my $proj = proj $a, $b;
+  map $$a[$_] - $$proj[$_], 0..$#{$a} }
+
+sub cross($$)
+{ my ($x1, $y1, $z1, $x2, $y2, $z2) = (@{$_[0]}, @{$_[1]});
+  ($y1*$z2 - $z1*$y2, $z1*$x2 - $x1*$z2, $x1*$y2 - $y1*$x2) }
 
 sub rdeg($) {$_[0] * 360 / tau}
 sub drad($) {$_[0] / 360 * tau}
