@@ -16,11 +16,19 @@ sub log2($) {LOG2R * log $_[0]}
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
 
-sub dot {local $_; my ($u, $v) = @_;
-         sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+sub dot($$) {local $_; my ($u, $v) = @_;
+             sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
 
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+sub proj($$) {local $_; my ($a, $b) = @_;
+              my $f = dot($a, $b) / dot($b, $b);
+              map $f * $_, @$b}
+
+sub orth($$) {local $_; my ($a, $b) = @_;
+              my $proj = proj $a, $b;
+              map $$a[$_] - $$proj[$_], 0..$#{$a}}
 
 sub rdeg($) {$_[0] * 360 / tau}
 sub drad($) {$_[0] / 360 * tau}
