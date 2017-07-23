@@ -29,8 +29,8 @@ sub proj($$)
 
 sub orth($$)
 { local $_; my ($a, $b) = @_;
-  my $proj = proj $a, $b;
-  map $$a[$_] - $$proj[$_], 0..$#{$a} }
+  my @proj = proj $a, $b;
+  map $$a[$_] - $proj[$_], 0..$#{$a} }
 
 sub cross($$)
 { my ($x1, $y1, $z1, $x2, $y2, $z2) = (@{$_[0]}, @{$_[1]});
