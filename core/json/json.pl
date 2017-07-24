@@ -67,7 +67,8 @@ sub json_encode($) {
   return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq ref $v;
-  looks_like_number $v ? $v : defined $v ?  json_escape $v : 'null';
+  return json_escape $$v if 'SCALAR' eq ref $v;   # force string
+  looks_like_number $v ? $v : defined $v ? json_escape $v : 'null';
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
