@@ -1106,9 +1106,10 @@
 ## IMPLEMENTATION
 	
 	  exec 'sort', sort_extra_args(
-	    '--compress-program=' . conf 'row/sort-compress',
-	    '--buffer-size='      . conf 'row/sort-buffer',
-	    '--parallel='         . conf 'row/sort-parallel'), @_
+	    length(conf 'row/sort-compress')
+	      ? ('--compress-program=' . conf 'row/sort-compress') : (),
+	    '--buffer-size=' . conf 'row/sort-buffer',
+	    '--parallel='    . conf 'row/sort-parallel'), @_
 
 # OPERATOR ruby_grepper
 

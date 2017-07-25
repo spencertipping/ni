@@ -101,15 +101,16 @@ sub sort_extra_args(@) {
   @r;
 }
 
-defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
+defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => '';
 defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '64M';
 defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => '4';
 
 defoperator row_sort => q{
   exec 'sort', sort_extra_args(
-    '--compress-program=' . conf 'row/sort-compress',
-    '--buffer-size='      . conf 'row/sort-buffer',
-    '--parallel='         . conf 'row/sort-parallel'), @_};
+    length(conf 'row/sort-compress')
+      ? ('--compress-program=' . conf 'row/sort-compress') : (),
+    '--buffer-size=' . conf 'row/sort-buffer',
+    '--parallel='    . conf 'row/sort-parallel'), @_};
 
 defoperator partial_sort => q{
   my $sort_size = shift;
