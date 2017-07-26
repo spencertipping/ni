@@ -21,8 +21,8 @@ defoperator stream_to_gnuplot => q{
         close $fh;
         $fh->await;
       }
-      $fh = siproc {exec 'gnuplot', '-e', "KEY='$k';$command"};
       $k  = $rk;
+      $fh = siproc {exec 'gnuplot', '-e', "KEY='$k';$command"};
     }
     print $fh join("\t", @fs[$col+1..$#fs]) . "\n";
   }

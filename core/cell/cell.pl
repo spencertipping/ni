@@ -14,7 +14,7 @@ BEGIN {
 # Most of these have exactly the same format and take a column spec.
 
 use constant cell_op_gen => gen q{
-  use Digest::MD5 qw/md5 md5_hex/;
+  BEGIN {eval {require Digest::MD5; Digest::MD5->import(qw/md5 md5_hex/)}}
   my ($cs, %args) = @_;
   my ($floor, @cols) = @$cs;
   my $limit = $floor + 1;
