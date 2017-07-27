@@ -233,7 +233,7 @@ The operators in this section refer specifically to the
     * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
 * `ghd`: geohash decoding
   * `ghd($gh_base32)`
-     * Returns the corresponding latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+     * Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
   * `ghd($gh_int, $precision)`
     * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
 * `tpe`: time parts to epoch

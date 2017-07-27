@@ -385,7 +385,7 @@ $ ni n5 fAAAAAA ,eB ,eC2 ,lD ,lE3 ,eF ,lF
 You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
 
 ```bash
-$ ni nE4 fAAA ,aA ,sB, ,dC r~1
+$ ni nE4 fAAA ,aA ,sB ,dC r~1
 5000.5	50005000	1
 ```
 
@@ -408,7 +408,7 @@ It's great, you're gonna love it.
 The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
 
 The values streamed out of `N'...'` are the values of `x`, so all operations that you want to do to the stream must be saved back into `x`. Compared to the Perl syntax, this is inelegant, and if `ni`'s gotten into your soul yet, it should make you more than a little frustrated.
-
+ 
 However, the gains in power are quickly manifested:
 
 

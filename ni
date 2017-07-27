@@ -5054,7 +5054,7 @@ sub gh_localtime($$) {
 
 sub iso_8601_epoch {
   my $iso_time = $_[0];
-  my ($date_part, $time_part) = split /T/, $iso_time;
+  my ($date_part, $time_part) = split /[\sT]/, $iso_time;
   my $y, $m, $d;
   if ($date_part !~ /^\d{4}-/) {
     ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
@@ -5064,7 +5064,7 @@ sub iso_8601_epoch {
 
   return time_pieces_epoch($y, $m, $d) unless $time_part;
 
-  my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)$/);
+  my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
   my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
   return $raw_ts unless $tz_part;
   

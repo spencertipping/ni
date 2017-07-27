@@ -142,7 +142,7 @@ What we need now is the appropriate piece of data to feed to the code. We know o
 
 Note that not all quines are structured this way (with code and data to interpret the code), but these are the simplest types of quines to write and explain.
 
-For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm)
+For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm).
 
 ### A quine in Perl
 
@@ -174,7 +174,7 @@ and data:
 _
 ```
 
-What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, Perl.
+What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, it's Perl.
 
 
 Copy the lines into a file `quine.pl` and run: 
@@ -187,10 +187,10 @@ print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
 _
 ```
 
-Most of the trickery is done using the heredoc syntax (which is a way of writing multi-line strings starting with ). Heredocs are parsed in a non-obvious way. In this case, at a high level, the code works like this:
+Most of the trickery is done using the heredoc syntax, which are parsed in a non-obvious way. At a high level, the code works like this:
 
-1. `$_` becomes the code written as a heredoc, which is just the 3rd line. The heredoc parser knows to skip the end of the line.
-2. `eval $_` happens, causing that code to be executed
+1. `$_` is set to the string value prescribed by the heredoc; since the heredoc 
+2. `eval $_` happens, causing the string of code written in the third line.
 3. inside `eval $_`, `print "#!... ${_}..."` happens -- notice the reference back to `$_`, which contains the code being evaled
 
 The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
@@ -219,9 +219,8 @@ As a reminder, you should be using a vanilla (to the greatest extent possible) b
 
 `ni` is a quine. To get `ni` to print its source, run:
 
-`$ ni //ni`
-
 ```sh
+$ ni //ni
 #!/usr/bin/env perl
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
@@ -270,7 +269,7 @@ $ ni ::my_closure[n10] //ni | wc -c
 If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
 
 ```bash
-$ ni ::five[n5] //ni | perl - n1p'five'
+$ ni ::five[n5] //ni | perl - 1p'five'
 1
 2
 3
@@ -279,17 +278,8 @@ $ ni ::five[n5] //ni | perl - n1p'five'
 
 ```
 
-This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`:
+This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`. It is because `ni` is a quine that allows it to be self-modifying.
 
-```sh
-# NB(ST): this isn't a test because of nondeterministic behavior on centOS.
-# This is a ni bug, but it's such an edge case that I doubt I'll fix it on the
-# current codebase; most likely I'll handle it with the OO refactor.
-$ ni //ni | perl - n1p'ten'
-ten
-```
-
-One final note; by the ordering of the data, it may appear that the fact that `ni` is self-modifying and the fact that it is a quine are separate; or that the self-modifying power of `ni` makes it a quine. In fact, the opposite is true; it is because `ni` is a quine that allows it to be self-modifying.
 
 ## SSH, Containers, and Horizontal Scaling
 
@@ -313,9 +303,9 @@ host <alias>
     User <user.name>
 ```
 
-You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the other `ni` docs is `dev`, for your primary work machien.
+You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the other `ni` docs is `dev`.
 
-Inside the brackets,  you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
+Inside the brackets, you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
 
 ### `S`: Horizontal Scaling 
 Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
@@ -323,7 +313,6 @@ Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy int
 `$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
 
 Running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.  
-
 
   
 ## Hadoop Streaming MapReduce
@@ -450,8 +439,12 @@ You are given the transactions from every Starbucks in the world, in the form of
 
 On a gigabyte of data, this would be easy; you could use SQL or `pandas` to do something like:
 
-```
-day_store_item_df = raw_df.groupby(['Store ID', 'Date', 'Item ID'])['Price'].sum().reset_index().sort_values(['Price'], ascending=False).groupby(['Store ID', 'Date', 'ItemID']).first()
+```sh
+day_store_item_df = 
+	(raw_df.groupby(['Store ID', 'Date', 'Item ID'])['Price'].sum()
+	 .reset_index().sort_values(['Price'], ascending=False)
+	 .groupby(['Store ID', 'Date', 'Item ID'])
+	 .first())
 ```
 
 This idea doesn't translate over to MapReduce flawlessly. Let's take a look at one way to do this, using the store ID as the reduce key.
@@ -524,7 +517,7 @@ As noted above, you need to take advantage of randomization to run successful Ma
 #### `hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
 
 
-One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The pharse is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
+One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The string used to join columns (`"Ni+=1oK?"`) is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
 
 ```bash
 $ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA
@@ -594,7 +587,7 @@ Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS
 
 If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (the literal text operator from Chapter 1)
 
-```
+```sh
 $ ni ihdfst://<abspath> HS...
 ```
 
@@ -602,7 +595,7 @@ This will pass the directory path directly to the Hadoop Streaming job, which is
 
 If you do not use path, as in:
 
-```
+```sh
 $ ni hdfst://<abspath> HS...
 ```
 
@@ -614,22 +607,22 @@ $ ni hdfst://<abspath> HS...
 You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
 
 
-```
+```sh
 $ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
   hadoop/jobconf='mapred.map.tasks=10 \
   mapred.reduce.tasks=4'} HS...
   
 ```
 
-Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful; I believe the job server has to provide you at least 1 mapper for each of the input splits.
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful.
 
-```
+```sh
 export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
 ```
 
 Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
 
-```
+```sh
 export NI_HDFS_TMPDIR=/user/$(whoami)/tmp
 ```
 
@@ -653,7 +646,7 @@ $ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
 $ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
 ```
 
-You can appropriately process the checkopoint files to to get the correct paths, then use:
+You can appropriately process the checkpoint files to to get the correct paths, then use:
 
 ```
 nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _

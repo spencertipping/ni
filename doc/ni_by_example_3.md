@@ -189,12 +189,17 @@ $ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
 
 #### `i2e` and `e2i`: ISO 8601 time <=> epoch time
 
-ISO 8601 is a standardized time format defined by the International Organization for Standards. More information on formats is available [here](https://en.wikipedia.org/wiki/ISO_8601). `ni` implements decoding for date-time-timezone formatted ISO data into Unix timestamps.
+ISO 8601 is a standardized time format defined by the International Organization for Standards. More information on formats is available [here](https://en.wikipedia.org/wiki/ISO_8601). `ni` implements decoding for date-time-timezone formatted ISO data into Unix timestamps. 
+
+A similar non-ISO format (allowing for a space between date and time, and decimal precision to the time, which is ignored), is also supported.
 
 ```bash
 $ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 \
      i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 \
-     i20170624T152347-0300 i20170624T182347Z p'i2e a'
+     i20170624T152347-0300 i20170624T182347Z \
+     i2017-06-24T18:23:47+00:00 i"2017-06-24 18:23:47.683" p'i2e a'
+1498328627
+1498328627
 1498328627
 1498328627
 1498328627
