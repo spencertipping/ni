@@ -4930,7 +4930,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-204 core/pl/time.pm
+206 core/pl/time.pm
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5049,6 +5049,8 @@ sub gh_localtime($$) {
 # 2017-06-24T07:58:59+00:00 or 2017-06-24T07:58:59Z
 # There's also a form with no colons or dashes that's supported:
 # 20170624T075859Z
+# And also a form with a space between the time and the date:
+# 2017-06-24 07:58:59.729
 # The added or subtracted amount at the end corresponds to the
 # local timezone.
 
