@@ -73,9 +73,12 @@ sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
 
 sub ni_quoted_image($@) {
   my ($include_quoted_resources, @args) = @_;
+  my @env_keys = grep !$non_propagated_env_vars{$_}, keys %ENV;
+  my %reduced_env;
+  @reduced_env{@env_keys} = @ENV{@env_keys};
   image_with
     'quoted/op'        => json_encode [@args],
-    'quoted/env'       => json_encode {%ENV{grep !$non_propagated_env_vars{$_}, keys %ENV}},
+    'quoted/env'       => json_encode {%reduced_env},
     'quoted/resources' => json_encode($include_quoted_resources
                                         ? [@quoted_resources]
                                         : []);

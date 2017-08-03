@@ -2599,7 +2599,7 @@ sub scat {
     }
   }
 }
-98 core/stream/self.pl
+101 core/stream/self.pl
 # Self invocation.
 # You can run ni and read from the resulting file descriptor; this gives you a
 # way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2675,9 +2675,12 @@ sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
 
 sub ni_quoted_image($@) {
   my ($include_quoted_resources, @args) = @_;
+  my @env_keys = grep !$non_propagated_env_vars{$_}, keys %ENV;
+  my %reduced_env;
+  @reduced_env{@env_keys} = @ENV{@env_keys};
   image_with
     'quoted/op'        => json_encode [@args],
-    'quoted/env'       => json_encode {%ENV{grep !$non_propagated_env_vars{$_}, keys %ENV}},
+    'quoted/env'       => json_encode {%reduced_env},
     'quoted/resources' => json_encode($include_quoted_resources
                                         ? [@quoted_resources]
                                         : []);
