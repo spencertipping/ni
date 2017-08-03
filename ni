@@ -2637,7 +2637,7 @@ sub safereadbuf_exactly($$$;$) {
 
 defclispecial '--internal/operate-quoted', q{
   my $parent_env = json_decode $ni::self{'quoted/env'};
-  $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+  exists $ENV{$_} or $ENV{$_} = $$parent_env{$_} for keys %$parent_env;
 
   sforward_buf_unquoted $ni::data, resource_write($_)
     for @{json_decode $ni::self{'quoted/resources'}};
