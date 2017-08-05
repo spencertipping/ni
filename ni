@@ -2599,7 +2599,7 @@ sub scat {
     }
   }
 }
-83 core/stream/self.pl
+101 core/stream/self.pl
 # Self invocation.
 # You can run ni and read from the resulting file descriptor; this gives you a
 # way to evaluate lambda expressions (this is how checkpoints work, for example).
@@ -2608,6 +2608,12 @@ sub scat {
 use Errno qw/EINTR/;
 
 our @quoted_resources;
+our %non_propagated_env_vars;
+
+sub defnonpropagatedenv {@non_propagated_env_vars{@_} = map 1, @_}
+
+# TMPDIR is notoriously non-portable and shouldn't be forwarded at all.
+defnonpropagatedenv 'TMPDIR';
 
 sub quoted_resources()     {@quoted_resources}
 sub add_quoted_resource($) {push @quoted_resources, $_[0]}
@@ -2620,9 +2626,18 @@ sub safereadbuf($$$;$) {
   return undef;
 }
 
+sub safereadbuf_exactly($$$;$) {
+  my ($r, $n) = (0, 0);
+  while ($r < $_[2]) {
+    return undef unless $n = safereadbuf $_[0], $_[1], $_[2] - $r, ($_[3] || 0) + $r;
+    $r += $n;
+  }
+  $r;
+}
+
 defclispecial '--internal/operate-quoted', q{
   my $parent_env = json_decode $ni::self{'quoted/env'};
-  $ENV{$_} ||= $$parent_env{$_} for keys %$parent_env;
+  exists $ENV{$_} or $ENV{$_} = $$parent_env{$_} for keys %$parent_env;
 
   sforward_buf_unquoted $ni::data, resource_write($_)
     for @{json_decode $ni::self{'quoted/resources'}};
@@ -2648,7 +2663,7 @@ sub sforward_quoted($$) {
 
 sub sforward_buf_unquoted($$) {
   my ($n, $nb, $b, $eof) = (0, '', '', 0);
-  while (!$eof and safereadbuf $_[0], $nb, 2 and ($n) = unpack 'n', $nb) {
+  while (!$eof and safereadbuf_exactly $_[0], $nb, 2 and ($n) = unpack 'n', $nb) {
     $b = '';
     $eof ||= !safereadbuf $_[0], $b, $n - length($b), length $b
       until $eof or length($b) >= $n;
@@ -2660,9 +2675,12 @@ sub ni_quoted_exec_args() {qw|perl - --internal/operate-quoted|}
 
 sub ni_quoted_image($@) {
   my ($include_quoted_resources, @args) = @_;
+  my @env_keys = grep !$non_propagated_env_vars{$_}, keys %ENV;
+  my %reduced_env;
+  @reduced_env{@env_keys} = @ENV{@env_keys};
   image_with
     'quoted/op'        => json_encode [@args],
-    'quoted/env'       => json_encode {%ENV},
+    'quoted/env'       => json_encode {%reduced_env},
     'quoted/resources' => json_encode($include_quoted_resources
                                         ? [@quoted_resources]
                                         : []);
@@ -11358,7 +11376,7 @@ $ ni n10 +[n5 g]        # ni stdin --> n10 -------append--> ni stdout
                         #                        ni stdin --> n10
                         #                        ----------------
                         #                             |
-$ ni n10 +[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
+$ ni n10 ^[n5 g]        # /dev/null --> n5 --> g ---append---> ni stdout
 
 
                         #                  n5 --> g --> /dev/null
