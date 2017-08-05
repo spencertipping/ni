@@ -4317,7 +4317,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-227 core/pl/util.pm
+217 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4460,16 +4460,6 @@ sub af {
 sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
-}
-
-our $HADOOP_RANDOM_SEPARATOR = "$&Ni+=1oK?";
-
-sub hrjoin {
-  join($HADOOP_RANDOM_SEPARATOR, @_)
-}
-
-sub hrsplit($) {
-  split /\Q$HADOOP_RANDOM_SEPARATOR/, $_[0]
 }
 
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';

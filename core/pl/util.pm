@@ -142,16 +142,6 @@ sub testpath {
   $_;
 }
 
-our $HADOOP_RANDOM_SEPARATOR = "$&Ni+=1oK?";
-
-sub hrjoin {
-  join($HADOOP_RANDOM_SEPARATOR, @_)
-}
-
-sub hrsplit($) {
-  split /\Q$HADOOP_RANDOM_SEPARATOR/, $_[0]
-}
-
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
 our @base64_digits = split //, $base64_digits; 
 our $base64_ext_digits = substr($base64_digits, -16);

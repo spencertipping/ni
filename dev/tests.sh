@@ -4551,36 +4551,19 @@ lazytest_case 'ni n1000 rs5
 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=523
-lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA
-' 3<<'LAZYTEST_EOF'
-aNi+=1oK?x	1
-aNi+=1oK?x	2
-bNi+=1oK?y	3
-cNi+=1oK?z	4
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=531
-lazytest_case 'ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'\''r hrjoin(a, b), c'\'' gA  p'\''r hrsplit a, sum b_ rea'\''
-' 3<<'LAZYTEST_EOF'
-a	x	3
-b	y	3
-c	z	4
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=545
+lazytest_line=544
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 Dt2clCTYSj64+6M8Nzhq4#
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=552
+lazytest_line=551
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c9424d84a3eb8fba33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=559
+lazytest_line=558
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''hyphenate_uuid b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
