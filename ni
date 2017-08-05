@@ -7939,7 +7939,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-276 core/hadoop/hadoop.pl
+281 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -8074,8 +8074,13 @@ defoperator hadoop_streaming => q{
       my $cmd = shell_quote
         conf 'hadoop/name',
         jar => $streaming_jar,
-        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
-        map((-D => $_), @jobconf),
+        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
+        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
+        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
+        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
+        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
+         map((-D => $_), @jobconf),
         map((-input => $_), @$ipaths),
         -output => $opath,
         -file   => $mapper,
@@ -8184,17 +8189,17 @@ defoperator hadoop_test => q{
         -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
         -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
         map((-D => $_), @jobconf),
+        -files  => join(",", grep defined, ($mapper,$combiner,$reducer)),
+        # </GENERIC HADOOP OPTIONS>
+        # <HADOOP "COMMAND" OPTIONS>
         map((-input => $_), @$ipaths),
         -output => $opath,
-        -file   => $mapper,
         -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
         (defined $combiner
-          ? (-file     => $combiner,
-             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+          ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
           : ()),
         (defined $reducer
-          ? (-file    => $reducer,
-             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+          ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
           : (-reducer => 'NONE'));
       print "$cmd\n";
       };
