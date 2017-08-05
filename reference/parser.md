@@ -122,9 +122,13 @@
 	| '!' (
 	  | 'p' <perl_asserter_code> -> {perl_assert_op $_}
 	  )
+	| '$hadoop/fieldsep' '' -> {conf_get_op 'hadoop/fieldsep'}
 	| '$hadoop/jobconf' '' -> {conf_get_op 'hadoop/jobconf'}
 	| '$hadoop/jobname' '' -> {conf_get_op 'hadoop/jobname'}
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
+	| '$hadoop/nfields' '' -> {conf_get_op 'hadoop/nfields'}
+	| '$hadoop/partopt' '' -> {conf_get_op 'hadoop/partopt'}
+	| '$hadoop/sortopt' '' -> {conf_get_op 'hadoop/sortopt'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
 	| '$hdfs/tmpdir' '' -> {conf_get_op 'hdfs/tmpdir'}
 	| '$image_command' '' -> {conf_get_op 'image_command'}
@@ -320,6 +324,20 @@
 	        <empty>?
 	      ) -> {$$_[0]}
 	    ) -> {hadoop_streaming_op @$_}
+	  | 'T' (
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <hadoop_streaming_lambda>
+	        <empty>?
+	      ) -> {$$_[0]}
+	    ) -> {hadoop_test_op @$_}
 	  )
 	| 'I' </qfn> -> {each_image_op $_}
 	| 'IC' (
@@ -996,6 +1014,20 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  ) -> {hadoop_streaming_op @$_}
+	| 'T' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {hadoop_test_op @$_}
 	)
 
 # PARSER dsp/resourcealt

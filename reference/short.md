@@ -6,6 +6,11 @@
 	| 'p' <perl_asserter_code> -> {perl_assert_op $_}
 	)
 
+# SHORT OPERATOR /$hadoop/fieldsep
+
+## SYNTAX
+	'' -> {conf_get_op 'hadoop/fieldsep'}
+
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX
@@ -20,6 +25,21 @@
 
 ## SYNTAX
 	'' -> {conf_get_op 'hadoop/name'}
+
+# SHORT OPERATOR /$hadoop/nfields
+
+## SYNTAX
+	'' -> {conf_get_op 'hadoop/nfields'}
+
+# SHORT OPERATOR /$hadoop/partopt
+
+## SYNTAX
+	'' -> {conf_get_op 'hadoop/partopt'}
+
+# SHORT OPERATOR /$hadoop/sortopt
+
+## SYNTAX
+	'' -> {conf_get_op 'hadoop/sortopt'}
 
 # SHORT OPERATOR /$hadoop/streaming-jar
 
@@ -416,6 +436,20 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  ) -> {hadoop_streaming_op @$_}
+	| 'T' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {hadoop_test_op @$_}
 	)
 
 # SHORT OPERATOR /I

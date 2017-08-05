@@ -451,6 +451,71 @@
 	  resource_nuke $combiner if defined $combiner;
 	  resource_nuke $reducer  if defined $reducer;
 
+# OPERATOR hadoop_test
+
+## IMPLEMENTATION
+	
+	  my ($map, $combine, $reduce) = @_;
+	  my ($nuke_inputs, @ipath) = hdfs_input_path;
+	
+	  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
+	  my ($combiner, @combine_cmd) = $combine
+	    ? hadoop_lambda_file 'combiner', $combine : ();
+	  my ($reducer, @reduce_cmd) = $reduce
+	    ? hadoop_lambda_file 'reducer', $reduce : ();
+	
+	  my $streaming_jar = hadoop_streaming_jar;
+	
+	  for my $ipaths (@ipath) {
+	    my $opath = resource_tmp "hdfs://";
+	    my $hadoop_fh = siproc {
+	      $mapper   =~ s|^file://||;
+	      $combiner =~ s|^file://|| if $combiner;
+	      $reducer  =~ s|^file://|| if $reducer;
+	
+	      (my $mapper_file   = $mapper)         =~ s|.*/||;
+	      (my $combiner_file = $combiner || '') =~ s|.*/||;
+	      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+	
+	      my @jobconf =
+	        grep $reducer || !/reduce/,             # HACK
+	        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+	
+	      my $cmd = shell_quote
+	        conf 'hadoop/name',
+	        jar => $streaming_jar,
+	        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+	        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
+	        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\t"'),
+	        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
+	        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
+	        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
+	        map((-D => $_), @jobconf),
+	        map((-input => $_), @$ipaths),
+	        -output => $opath,
+	        -file   => $mapper,
+	        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+	        (defined $combiner
+	          ? (-file     => $combiner,
+	             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+	          : ()),
+	        (defined $reducer
+	          ? (-file    => $reducer,
+	             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+	          : (-reducer => 'NONE'));
+	      print "$cmd\n";
+	      };
+	
+	    close $hadoop_fh;
+	    warn "ni: hadoop streaming failed" if $hadoop_fh->await;
+	
+	    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+	
+	    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+	  }
+	
+	  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
+
 # OPERATOR head
 
 ## IMPLEMENTATION
