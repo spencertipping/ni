@@ -7947,7 +7947,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-263 core/hadoop/hadoop.pl
+268 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -8091,13 +8091,18 @@ sub make_hadoop_cmd($$$$$$$$$) {
     conf 'hadoop/name',
     jar => $streaming_jar,
     # <GENERIC HADOOP OPTIONS>
-    -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
-    -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
-    -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
-    -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
-    -D  => "mapreduce.job.output.key.comparator.class=" . 
-           "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
-    -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
+    -D => "mapreduce.job.name=" . 
+             dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+    -D => "stream.num.map.output.key.fields=" . 
+             dor(conf 'hadoop/nfields', 1),
+    -D => "stream.map.output.field.separator=" . 
+             dor(conf 'hadoop/fieldsep', '"\\t"'),
+    -D => "mapreduce.partition.keypartitioner.options=" . 
+             dor(conf 'hadoop/partopt', "-k1,1"),
+    -D => "mapreduce.job.output.key.comparator.class=" . 
+            "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
+    -D => "mapreduce.partition.keycomparator.options=" . 
+             dor(conf 'hadoop/sortopt', "-k1,1"),
     map((-D => $_), @jobconf),
     -files  => join(",", grep defined, ($mapper, $combiner, $reducer)),
     # </GENERIC HADOOP OPTIONS>
