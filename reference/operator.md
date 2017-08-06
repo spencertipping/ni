@@ -425,23 +425,18 @@
 
 ## IMPLEMENTATION
 	
-	  my ($map, $combine, $reduce) = @_;
-	  my ($nuke_inputs, @ipath) = hdfs_input_path;
+	  my ($mapper, $map_cmd_ref, 
+	      $combiner, $combine_cmd_ref,
+	      $reducer, $reduce_cmd_ref,
+	      $nuke_inputs, $ipath_ref,
+	      $streaming_jar) = hadoop_cmd_setup @_;
 	
-	  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
-	  my ($combiner, @combine_cmd) = $combine
-	    ? hadoop_lambda_file 'combiner', $combine : ();
-	  my ($reducer, @reduce_cmd) = $reduce
-	    ? hadoop_lambda_file 'reducer', $reduce : ();
-	
-	  my $streaming_jar = hadoop_streaming_jar;
-	
-	  for my $ipaths (@ipath) {
+	  for my $ipaths (@$ipath_ref) {
 	    my $opath = resource_tmp "hdfs://";
-	    my $cmd = make_hadoop_command($mapper, \@map_cmd, 
-	                                  $combiner, \@combine_cmd,
-	                                  $reducer, \@reduce_cmd,
-	                                  $streaming_jar, $ipaths, $opath);
+	    my $cmd = make_hadoop_cmd($mapper, $map_cmd_ref, 
+	                              $combiner, $combine_cmd_ref,
+	                              $reducer, $reduce_cmd_ref,
+	                              $streaming_jar, $ipaths, $opath);
 	    print "$cmd\n";
 	  }
 
