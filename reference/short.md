@@ -6,40 +6,1300 @@
 	| 'p' <perl_asserter_code> -> {perl_assert_op $_}
 	)
 
-# SHORT OPERATOR /$hadoop/fieldsep
+# SHORT OPERATOR /$Hcae
 
 ## SYNTAX
-	'' -> {conf_get_op 'hadoop/fieldsep'}
+	'' -> {conf_get_op 'Hcae'}
+
+# SHORT OPERATOR /$Hccp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hccp'}
+
+# SHORT OPERATOR /$Hcgu
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcgu'}
+
+# SHORT OPERATOR /$Hcld
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcld'}
+
+# SHORT OPERATOR /$Hcmm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcmm'}
+
+# SHORT OPERATOR /$Hcof
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcof'}
+
+# SHORT OPERATOR /$Hcpp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcpp'}
+
+# SHORT OPERATOR /$Hcps
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcps'}
+
+# SHORT OPERATOR /$Hcrm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcrm'}
+
+# SHORT OPERATOR /$Hcsfr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hcsfr'}
+
+# SHORT OPERATOR /$Hctd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hctd'}
+
+# SHORT OPERATOR /$Hdb
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdb'}
+
+# SHORT OPERATOR /$Hdbpc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdbpc'}
+
+# SHORT OPERATOR /$Hdchkr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdchkr'}
+
+# SHORT OPERATOR /$Hdchna
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdchna'}
+
+# SHORT OPERATOR /$Hdcrps
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdcrps'}
+
+# SHORT OPERATOR /$Hdcst
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdcst'}
+
+# SHORT OPERATOR /$Hdcwps
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdcwps'}
+
+# SHORT OPERATOR /$Hddnbb
+
+## SYNTAX
+	'' -> {conf_get_op 'Hddnbb'}
+
+# SHORT OPERATOR /$Hddndd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hddndd'}
+
+# SHORT OPERATOR /$Hddnh
+
+## SYNTAX
+	'' -> {conf_get_op 'Hddnh'}
+
+# SHORT OPERATOR /$Hddnmtt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hddnmtt'}
+
+# SHORT OPERATOR /$Hddns
+
+## SYNTAX
+	'' -> {conf_get_op 'Hddns'}
+
+# SHORT OPERATOR /$Hdmsi
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdmsi'}
+
+# SHORT OPERATOR /$Hdnnap
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnap'}
+
+# SHORT OPERATOR /$Hdnnba
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnba'}
+
+# SHORT OPERATOR /$Hdnnbha
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnbha'}
+
+# SHORT OPERATOR /$Hdnncd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnncd'}
+
+# SHORT OPERATOR /$Hdnnced
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnced'}
+
+# SHORT OPERATOR /$Hdnncp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnncp'}
+
+# SHORT OPERATOR /$Hdnned
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnned'}
+
+# SHORT OPERATOR /$Hdnnhri
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnhri'}
+
+# SHORT OPERATOR /$Hdnnhttp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnhttp'}
+
+# SHORT OPERATOR /$Hdnnhttps
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnhttps'}
+
+# SHORT OPERATOR /$Hdnnmo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnmo'}
+
+# SHORT OPERATOR /$Hdnnnd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnnd'}
+
+# SHORT OPERATOR /$Hdnnndr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnndr'}
+
+# SHORT OPERATOR /$Hdnnrc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnrc'}
+
+# SHORT OPERATOR /$Hdnnri
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnri'}
+
+# SHORT OPERATOR /$Hdnnrm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnrm'}
+
+# SHORT OPERATOR /$Hdnnrms
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnrms'}
+
+# SHORT OPERATOR /$Hdnnrpts
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnrpts'}
+
+# SHORT OPERATOR /$Hdnnse
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnse'}
+
+# SHORT OPERATOR /$Hdnnsha
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnsha'}
+
+# SHORT OPERATOR /$Hdnnstp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnstp'}
+
+# SHORT OPERATOR /$Hdnnup
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdnnup'}
+
+# SHORT OPERATOR /$Hdpe
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdpe'}
+
+# SHORT OPERATOR /$Hdps
+
+## SYNTAX
+	'' -> {conf_get_op 'Hdps'}
+
+# SHORT OPERATOR /$Hfcbd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfcbd'}
+
+# SHORT OPERATOR /$Hfd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfd'}
+
+# SHORT OPERATOR /$Hfdfs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfdfs'}
+
+# SHORT OPERATOR /$Hfdi
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfdi'}
+
+# SHORT OPERATOR /$Hfieldsep
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfieldsep'}
+
+# SHORT OPERATOR /$Hfmokvfs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfmokvfs'}
+
+# SHORT OPERATOR /$Hfrokvfs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hfrokvfs'}
+
+# SHORT OPERATOR /$Hifi
+
+## SYNTAX
+	'' -> {conf_get_op 'Hifi'}
+
+# SHORT OPERATOR /$Hifsmax
+
+## SYNTAX
+	'' -> {conf_get_op 'Hifsmax'}
+
+# SHORT OPERATOR /$Hifsmin
+
+## SYNTAX
+	'' -> {conf_get_op 'Hifsmin'}
+
+# SHORT OPERATOR /$Hifsmpn
+
+## SYNTAX
+	'' -> {conf_get_op 'Hifsmpn'}
+
+# SHORT OPERATOR /$Hifsmpr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hifsmpr'}
+
+# SHORT OPERATOR /$Hikkvs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hikkvs'}
+
+# SHORT OPERATOR /$Hill
+
+## SYNTAX
+	'' -> {conf_get_op 'Hill'}
+
+# SHORT OPERATOR /$Hillm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hillm'}
+
+# SHORT OPERATOR /$Himdf
+
+## SYNTAX
+	'' -> {conf_get_op 'Himdf'}
+
+# SHORT OPERATOR /$Himdm
+
+## SYNTAX
+	'' -> {conf_get_op 'Himdm'}
+
+# SHORT OPERATOR /$Hinla
+
+## SYNTAX
+	'' -> {conf_get_op 'Hinla'}
+
+# SHORT OPERATOR /$Hipc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hipc'}
+
+# SHORT OPERATOR /$Hisc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hisc'}
+
+# SHORT OPERATOR /$Hisf
+
+## SYNTAX
+	'' -> {conf_get_op 'Hisf'}
+
+# SHORT OPERATOR /$Hisr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hisr'}
+
+# SHORT OPERATOR /$Hjca
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjca'}
+
+# SHORT OPERATOR /$Hjcat
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcat'}
+
+# SHORT OPERATOR /$Hjcc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcc'}
+
+# SHORT OPERATOR /$Hjcci
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcci'}
+
+# SHORT OPERATOR /$Hjcf
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcf'}
+
+# SHORT OPERATOR /$Hjcft
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcft'}
+
+# SHORT OPERATOR /$Hjcla
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcla'}
+
+# SHORT OPERATOR /$Hjclf
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjclf'}
+
+# SHORT OPERATOR /$Hjcpa
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcpa'}
+
+# SHORT OPERATOR /$Hjcpf
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcpf'}
+
+# SHORT OPERATOR /$Hjcsc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcsc'}
+
+# SHORT OPERATOR /$Hjcscn
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjcscn'}
+
+# SHORT OPERATOR /$Hje
+
+## SYNTAX
+	'' -> {conf_get_op 'Hje'}
+
+# SHORT OPERATOR /$Hjenra
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjenra'}
+
+# SHORT OPERATOR /$Hjenri
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjenri'}
+
+# SHORT OPERATOR /$Hjenu
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjenu'}
+
+# SHORT OPERATOR /$Hji
+
+## SYNTAX
+	'' -> {conf_get_op 'Hji'}
+
+# SHORT OPERATOR /$Hjic
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjic'}
+
+# SHORT OPERATOR /$Hjj
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjj'}
+
+# SHORT OPERATOR /$Hjjn
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjjn'}
+
+# SHORT OPERATOR /$Hjk
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjk'}
+
+# SHORT OPERATOR /$Hjld
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjld'}
+
+# SHORT OPERATOR /$Hjm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjm'}
+
+# SHORT OPERATOR /$Hjmc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjmc'}
+
+# SHORT OPERATOR /$Hjmpt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjmpt'}
+
+# SHORT OPERATOR /$Hjn
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjn'}
+
+# SHORT OPERATOR /$Hjoc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjoc'}
+
+# SHORT OPERATOR /$Hjogcc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjogcc'}
+
+# SHORT OPERATOR /$Hjokc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjokc'}
+
+# SHORT OPERATOR /$Hjokcc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjokcc'}
+
+# SHORT OPERATOR /$Hjovc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjovc'}
+
+# SHORT OPERATOR /$Hjp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjp'}
+
+# SHORT OPERATOR /$Hjpc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjpc'}
+
+# SHORT OPERATOR /$Hjq
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjq'}
+
+# SHORT OPERATOR /$Hjr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjr'}
+
+# SHORT OPERATOR /$Hjrc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjrc'}
+
+# SHORT OPERATOR /$Hjrsc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjrsc'}
+
+# SHORT OPERATOR /$Hjs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjs'}
+
+# SHORT OPERATOR /$Hjso
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjso'}
+
+# SHORT OPERATOR /$Hjssc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjssc'}
+
+# SHORT OPERATOR /$Hjssnt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjssnt'}
+
+# SHORT OPERATOR /$Hjsstt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjsstt'}
+
+# SHORT OPERATOR /$Hjta
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjta'}
+
+# SHORT OPERATOR /$Hjtbat
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtbat'}
+
+# SHORT OPERATOR /$Hjteti
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjteti'}
+
+# SHORT OPERATOR /$Hjtha
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtha'}
+
+# SHORT OPERATOR /$Hjthc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjthc'}
+
+# SHORT OPERATOR /$Hjthef
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjthef'}
+
+# SHORT OPERATOR /$Hjthf
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjthf'}
+
+# SHORT OPERATOR /$Hjthis
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjthis'}
+
+# SHORT OPERATOR /$Hjti
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjti'}
+
+# SHORT OPERATOR /$Hjtjbs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtjbs'}
+
+# SHORT OPERATOR /$Hjtjcl
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtjcl'}
+
+# SHORT OPERATOR /$Hjtjl
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtjl'}
+
+# SHORT OPERATOR /$Hjtjlcs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtjlcs'}
+
+# SHORT OPERATOR /$Hjtjt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtjt'}
+
+# SHORT OPERATOR /$Hjtmmm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtmmm'}
+
+# SHORT OPERATOR /$Hjtmp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtmp'}
+
+# SHORT OPERATOR /$Hjtmrm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtmrm'}
+
+# SHORT OPERATOR /$Hjtpja
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtpja'}
+
+# SHORT OPERATOR /$Hjtpjd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtpjd'}
+
+# SHORT OPERATOR /$Hjtpjh
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtpjh'}
+
+# SHORT OPERATOR /$Hjtr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtr'}
+
+# SHORT OPERATOR /$Hjtrcs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtrcs'}
+
+# SHORT OPERATOR /$Hjtrr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtrr'}
+
+# SHORT OPERATOR /$Hjtsd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtsd'}
+
+# SHORT OPERATOR /$Hjtt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtt'}
+
+# SHORT OPERATOR /$Hjttl
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjttl'}
+
+# SHORT OPERATOR /$Hjttmp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjttmp'}
+
+# SHORT OPERATOR /$Hjtttc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtttc'}
+
+# SHORT OPERATOR /$Hjtttm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtttm'}
+
+# SHORT OPERATOR /$Hjtwt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjtwt'}
+
+# SHORT OPERATOR /$Hjun
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjun'}
+
+# SHORT OPERATOR /$Hjurh
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjurh'}
+
+# SHORT OPERATOR /$Hjwd
+
+## SYNTAX
+	'' -> {conf_get_op 'Hjwd'}
+
+# SHORT OPERATOR /$Hmcm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmcm'}
+
+# SHORT OPERATOR /$Hmds
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmds'}
+
+# SHORT OPERATOR /$Hme
+
+## SYNTAX
+	'' -> {conf_get_op 'Hme'}
+
+# SHORT OPERATOR /$Hmfm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmfm'}
+
+# SHORT OPERATOR /$Hmif
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmif'}
+
+# SHORT OPERATOR /$Hmil
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmil'}
+
+# SHORT OPERATOR /$Hmis
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmis'}
+
+# SHORT OPERATOR /$Hmjo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmjo'}
+
+# SHORT OPERATOR /$Hmll
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmll'}
+
+# SHORT OPERATOR /$Hmm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmm'}
+
+# SHORT OPERATOR /$Hmmm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmmm'}
+
+# SHORT OPERATOR /$Hmoc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmoc'}
+
+# SHORT OPERATOR /$Hmocc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmocc'}
+
+# SHORT OPERATOR /$Hmokc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmokc'}
+
+# SHORT OPERATOR /$Hmokfs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmokfs'}
+
+# SHORT OPERATOR /$Hmovc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmovc'}
+
+# SHORT OPERATOR /$Hmr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmr'}
+
+# SHORT OPERATOR /$Hmrg
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmrg'}
+
+# SHORT OPERATOR /$Hms
+
+## SYNTAX
+	'' -> {conf_get_op 'Hms'}
+
+# SHORT OPERATOR /$Hmsm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmsm'}
+
+# SHORT OPERATOR /$Hmspcai
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmspcai'}
+
+# SHORT OPERATOR /$Hmssp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hmssp'}
+
+# SHORT OPERATOR /$Hnfields
+
+## SYNTAX
+	'' -> {conf_get_op 'Hnfields'}
+
+# SHORT OPERATOR /$Hntcnm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hntcnm'}
+
+# SHORT OPERATOR /$Hntnsmi
+
+## SYNTAX
+	'' -> {conf_get_op 'Hntnsmi'}
+
+# SHORT OPERATOR /$Hntsfn
+
+## SYNTAX
+	'' -> {conf_get_op 'Hntsfn'}
+
+# SHORT OPERATOR /$Hntsna
+
+## SYNTAX
+	'' -> {conf_get_op 'Hntsna'}
+
+# SHORT OPERATOR /$Hofc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hofc'}
+
+# SHORT OPERATOR /$Hofcc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hofcc'}
+
+# SHORT OPERATOR /$Hofct
+
+## SYNTAX
+	'' -> {conf_get_op 'Hofct'}
+
+# SHORT OPERATOR /$Hofo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hofo'}
+
+# SHORT OPERATOR /$Holo
+
+## SYNTAX
+	'' -> {conf_get_op 'Holo'}
+
+# SHORT OPERATOR /$Hoskc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hoskc'}
+
+# SHORT OPERATOR /$Hosvc
+
+## SYNTAX
+	'' -> {conf_get_op 'Hosvc'}
+
+# SHORT OPERATOR /$Hots
+
+## SYNTAX
+	'' -> {conf_get_op 'Hots'}
+
+# SHORT OPERATOR /$Hpblo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpblo'}
+
+# SHORT OPERATOR /$Hpbro
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpbro'}
+
+# SHORT OPERATOR /$Hpcp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpcp'}
+
+# SHORT OPERATOR /$Hpe
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpe'}
+
+# SHORT OPERATOR /$Hpei
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpei'}
+
+# SHORT OPERATOR /$Hpif
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpif'}
+
+# SHORT OPERATOR /$Hpijm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpijm'}
+
+# SHORT OPERATOR /$Hpijr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpijr'}
+
+# SHORT OPERATOR /$Hpijrr
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpijrr'}
+
+# SHORT OPERATOR /$Hpijrw
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpijrw'}
+
+# SHORT OPERATOR /$Hpkco
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpkco'}
+
+# SHORT OPERATOR /$Hpkpo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpkpo'}
+
+# SHORT OPERATOR /$Hpp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hpp'}
+
+# SHORT OPERATOR /$Hrds
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrds'}
+
+# SHORT OPERATOR /$Hre
+
+## SYNTAX
+	'' -> {conf_get_op 'Hre'}
+
+# SHORT OPERATOR /$Hrfm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrfm'}
+
+# SHORT OPERATOR /$Hribp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hribp'}
+
+# SHORT OPERATOR /$Hrjo
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrjo'}
+
+# SHORT OPERATOR /$Hrll
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrll'}
+
+# SHORT OPERATOR /$Hrm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrm'}
+
+# SHORT OPERATOR /$Hrmbp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrmbp'}
+
+# SHORT OPERATOR /$Hrmit
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrmit'}
+
+# SHORT OPERATOR /$Hrmm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrmm'}
+
+# SHORT OPERATOR /$Hrmt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrmt'}
+
+# SHORT OPERATOR /$Hrs
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrs'}
+
+# SHORT OPERATOR /$Hrsct
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsct'}
+
+# SHORT OPERATOR /$Hrsibp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsibp'}
+
+# SHORT OPERATOR /$Hrsm
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsm'}
+
+# SHORT OPERATOR /$Hrsmp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsmp'}
+
+# SHORT OPERATOR /$Hrsp
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsp'}
+
+# SHORT OPERATOR /$Hrspcai
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrspcai'}
+
+# SHORT OPERATOR /$Hrsrt
+
+## SYNTAX
+	'' -> {conf_get_op 'Hrsrt'}
+
+# SHORT OPERATOR /$Hsjcpa
+
+## SYNTAX
+	'' -> {conf_get_op 'Hsjcpa'}
+
+# SHORT OPERATOR /$Hsjtpa
+
+## SYNTAX
+	'' -> {conf_get_op 'Hsjtpa'}
+
+# SHORT OPERATOR /$Htai
+
+## SYNTAX
+	'' -> {conf_get_op 'Htai'}
+
+# SHORT OPERATOR /$Htdl
+
+## SYNTAX
+	'' -> {conf_get_op 'Htdl'}
+
+# SHORT OPERATOR /$Htfpfp
+
+## SYNTAX
+	'' -> {conf_get_op 'Htfpfp'}
+
+# SHORT OPERATOR /$Htfpft
+
+## SYNTAX
+	'' -> {conf_get_op 'Htfpft'}
+
+# SHORT OPERATOR /$Htid
+
+## SYNTAX
+	'' -> {conf_get_op 'Htid'}
+
+# SHORT OPERATOR /$Htim
+
+## SYNTAX
+	'' -> {conf_get_op 'Htim'}
+
+# SHORT OPERATOR /$Htisf
+
+## SYNTAX
+	'' -> {conf_get_op 'Htisf'}
+
+# SHORT OPERATOR /$Htism
+
+## SYNTAX
+	'' -> {conf_get_op 'Htism'}
+
+# SHORT OPERATOR /$Htmpr
+
+## SYNTAX
+	'' -> {conf_get_op 'Htmpr'}
+
+# SHORT OPERATOR /$Htod
+
+## SYNTAX
+	'' -> {conf_get_op 'Htod'}
+
+# SHORT OPERATOR /$Htpart
+
+## SYNTAX
+	'' -> {conf_get_op 'Htpart'}
+
+# SHORT OPERATOR /$Htpm
+
+## SYNTAX
+	'' -> {conf_get_op 'Htpm'}
+
+# SHORT OPERATOR /$Htpp
+
+## SYNTAX
+	'' -> {conf_get_op 'Htpp'}
+
+# SHORT OPERATOR /$Htpr
+
+## SYNTAX
+	'' -> {conf_get_op 'Htpr'}
+
+# SHORT OPERATOR /$Htprof
+
+## SYNTAX
+	'' -> {conf_get_op 'Htprof'}
+
+# SHORT OPERATOR /$Htssa
+
+## SYNTAX
+	'' -> {conf_get_op 'Htssa'}
+
+# SHORT OPERATOR /$Htt
+
+## SYNTAX
+	'' -> {conf_get_op 'Htt'}
+
+# SHORT OPERATOR /$Httcls
+
+## SYNTAX
+	'' -> {conf_get_op 'Httcls'}
+
+# SHORT OPERATOR /$Httct
+
+## SYNTAX
+	'' -> {conf_get_op 'Httct'}
+
+# SHORT OPERATOR /$Httd
+
+## SYNTAX
+	'' -> {conf_get_op 'Httd'}
+
+# SHORT OPERATOR /$Httdi
+
+## SYNTAX
+	'' -> {conf_get_op 'Httdi'}
+
+# SHORT OPERATOR /$Httdn
+
+## SYNTAX
+	'' -> {conf_get_op 'Httdn'}
+
+# SHORT OPERATOR /$Htteb
+
+## SYNTAX
+	'' -> {conf_get_op 'Htteb'}
+
+# SHORT OPERATOR /$Httha
+
+## SYNTAX
+	'' -> {conf_get_op 'Httha'}
+
+# SHORT OPERATOR /$Htthi
+
+## SYNTAX
+	'' -> {conf_get_op 'Htthi'}
+
+# SHORT OPERATOR /$Htthn
+
+## SYNTAX
+	'' -> {conf_get_op 'Htthn'}
+
+# SHORT OPERATOR /$Htthsa
+
+## SYNTAX
+	'' -> {conf_get_op 'Htthsa'}
+
+# SHORT OPERATOR /$Htthsp
+
+## SYNTAX
+	'' -> {conf_get_op 'Htthsp'}
+
+# SHORT OPERATOR /$Htthst
+
+## SYNTAX
+	'' -> {conf_get_op 'Htthst'}
+
+# SHORT OPERATOR /$Httht
+
+## SYNTAX
+	'' -> {conf_get_op 'Httht'}
+
+# SHORT OPERATOR /$Htti
+
+## SYNTAX
+	'' -> {conf_get_op 'Htti'}
+
+# SHORT OPERATOR /$Httim
+
+## SYNTAX
+	'' -> {conf_get_op 'Httim'}
+
+# SHORT OPERATOR /$Httldmsk
+
+## SYNTAX
+	'' -> {conf_get_op 'Httldmsk'}
+
+# SHORT OPERATOR /$Httldmss
+
+## SYNTAX
+	'' -> {conf_get_op 'Httldmss'}
+
+# SHORT OPERATOR /$Httmtm
+
+## SYNTAX
+	'' -> {conf_get_op 'Httmtm'}
+
+# SHORT OPERATOR /$Httnsr
+
+## SYNTAX
+	'' -> {conf_get_op 'Httnsr'}
+
+# SHORT OPERATOR /$Httr
+
+## SYNTAX
+	'' -> {conf_get_op 'Httr'}
+
+# SHORT OPERATOR /$Httra
+
+## SYNTAX
+	'' -> {conf_get_op 'Httra'}
+
+# SHORT OPERATOR /$Httrtm
+
+## SYNTAX
+	'' -> {conf_get_op 'Httrtm'}
+
+# SHORT OPERATOR /$Httt
+
+## SYNTAX
+	'' -> {conf_get_op 'Httt'}
+
+# SHORT OPERATOR /$Htttm
+
+## SYNTAX
+	'' -> {conf_get_op 'Htttm'}
+
+# SHORT OPERATOR /$Httts
+
+## SYNTAX
+	'' -> {conf_get_op 'Httts'}
+
+# SHORT OPERATOR /$Htulk
+
+## SYNTAX
+	'' -> {conf_get_op 'Htulk'}
 
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX
 	'' -> {conf_get_op 'hadoop/jobconf'}
 
-# SHORT OPERATOR /$hadoop/jobname
-
-## SYNTAX
-	'' -> {conf_get_op 'hadoop/jobname'}
-
 # SHORT OPERATOR /$hadoop/name
 
 ## SYNTAX
 	'' -> {conf_get_op 'hadoop/name'}
-
-# SHORT OPERATOR /$hadoop/nfields
-
-## SYNTAX
-	'' -> {conf_get_op 'hadoop/nfields'}
-
-# SHORT OPERATOR /$hadoop/partopt
-
-## SYNTAX
-	'' -> {conf_get_op 'hadoop/partopt'}
-
-# SHORT OPERATOR /$hadoop/sortopt
-
-## SYNTAX
-	'' -> {conf_get_op 'hadoop/sortopt'}
 
 # SHORT OPERATOR /$hadoop/streaming-jar
 
