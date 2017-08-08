@@ -22,6 +22,16 @@ sub dot($$) {local $_; my ($u, $v) = @_;
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
+sub interp {
+  my $f = shift;
+  my @r;
+  while (@_) {
+    push @r, $_[0] * (1 - $f) + $_[1] * $f;
+    shift; shift;
+  }
+  @r;
+}
+
 sub proj($$)
 { local $_; my ($a, $b) = @_;
   my $f = dot($a, $b) / dot($b, $b);

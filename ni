@@ -4563,7 +4563,7 @@ BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;
 }
-61 core/pl/math.pm
+71 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -4587,6 +4587,16 @@ sub dot($$) {local $_; my ($u, $v) = @_;
 
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+sub interp {
+  my $f = shift;
+  my @r;
+  while (@_) {
+    push @r, $_[0] * (1 - $f) + $_[1] * $f;
+    shift; shift;
+  }
+  @r;
+}
 
 sub proj($$)
 { local $_; my ($a, $b) = @_;
