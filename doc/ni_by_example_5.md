@@ -342,6 +342,7 @@ Cell operations are similar to column operations, in that they are keystroke-eff
 * `,h`: Murmurhash (deterministic 32-bit hash function)
 * `,H`: Murmurhash and map the result into the unit interval.
 * `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,m`: MD5 hash
 
 Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
 
@@ -388,9 +389,6 @@ You can use these `,a` and `,s` to get the average and sum of all data in the st
 $ ni nE4 fAAA ,aA ,sB ,dC r~1
 5000.5	50005000	1
 ```
-
-
-
 
 
 ## Numpy Operations

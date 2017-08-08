@@ -86,6 +86,20 @@
 	      <empty>?
 	    ) -> {$$_[0]}
 	  ) -> {hadoop_streaming_op @$_}
+	| 'T' (
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    (
+	      <hadoop_streaming_lambda>
+	      <empty>?
+	    ) -> {$$_[0]}
+	  ) -> {hadoop_test_op @$_}
 	)
 
 # EXTENSIBLE DISPATCH TABLE resourcealt

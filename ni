@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-227 core/pl/util.pm
+217 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4478,16 +4478,6 @@ sub af {
 sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
-}
-
-our $HADOOP_RANDOM_SEPARATOR = "$&Ni+=1oK?";
-
-sub hrjoin {
-  join($HADOOP_RANDOM_SEPARATOR, @_)
-}
-
-sub hrsplit($) {
-  split /\Q$HADOOP_RANDOM_SEPARATOR/, $_[0]
 }
 
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
@@ -7967,7 +7957,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-202 core/hadoop/hadoop.pl
+281 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -7980,6 +7970,10 @@ defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
 defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
 defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
+defconfenv 'hadoop/fieldsep', NI_HADOOP_FIELDSEP => undef;
+defconfenv 'hadoop/nfields', NI_HADOOP_NFIELDS => undef;
+defconfenv 'hadoop/partopt', NI_HADOOP_PARTOPT => undef;
+defconfenv 'hadoop/sortopt', NI_HADOOP_SORTOPT => undef;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -8098,21 +8092,26 @@ defoperator hadoop_streaming => q{
       my $cmd = shell_quote
         conf 'hadoop/name',
         jar => $streaming_jar,
-        -D  => "mapred.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
+        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
+        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
+        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
+        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
         map((-D => $_), @jobconf),
+        -files  => join(",", grep defined, ($mapper,$combiner,$reducer)),
+        # </GENERIC HADOOP OPTIONS>
+        # <HADOOP "COMMAND" OPTIONS>
         map((-input => $_), @$ipaths),
         -output => $opath,
-        -file   => $mapper,
         -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
         (defined $combiner
-          ? (-file     => $combiner,
-             -combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+          ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
           : ()),
         (defined $reducer
-          ? (-file    => $reducer,
-             -reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+          ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
           : (-reducer => 'NONE'));
-      sh "$cmd 1>&2";
+     sh "$cmd 1>&2";
     };
 
     close $hadoop_fh;
@@ -8169,7 +8168,77 @@ our %hdp_conf = (
 "Mm", "mapreduce.map.memory.mb",
 "P", "mapreduce.job.priority.num",
 "Ss", "mapreduce.job.reduce.slowstart.completedmaps"
-)
+);
+
+defoperator hadoop_test => q{
+  my ($map, $combine, $reduce) = @_;
+  my ($nuke_inputs, @ipath) = hdfs_input_path;
+
+  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
+  my ($combiner, @combine_cmd) = $combine
+    ? hadoop_lambda_file 'combiner', $combine : ();
+  my ($reducer, @reduce_cmd) = $reduce
+    ? hadoop_lambda_file 'reducer', $reduce : ();
+
+  my $streaming_jar = hadoop_streaming_jar;
+
+  for my $ipaths (@ipath) {
+    my $opath = resource_tmp "hdfs://";
+    my $hadoop_fh = siproc {
+      $mapper   =~ s|^file://||;
+      $combiner =~ s|^file://|| if $combiner;
+      $reducer  =~ s|^file://|| if $reducer;
+
+      (my $mapper_file   = $mapper)         =~ s|.*/||;
+      (my $combiner_file = $combiner || '') =~ s|.*/||;
+      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+
+      my @jobconf =
+        grep $reducer || !/reduce/,             # HACK
+        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+
+      my $cmd = shell_quote
+        conf 'hadoop/name',
+        jar => $streaming_jar,
+        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
+        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
+        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
+        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
+        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
+        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
+        map((-D => $_), @jobconf),
+        -files  => join(",", grep defined, ($mapper,$combiner,$reducer)),
+        # </GENERIC HADOOP OPTIONS>
+        # <HADOOP "COMMAND" OPTIONS>
+        map((-input => $_), @$ipaths),
+        -output => $opath,
+        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+        (defined $combiner
+          ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+          : ()),
+        (defined $reducer
+          ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+          : (-reducer => 'NONE'));
+      print "$cmd\n";
+      };
+
+    close $hadoop_fh;
+    warn "ni: hadoop streaming failed" if $hadoop_fh->await;
+
+    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
+
+    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+  }
+
+  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
+
+};
+
+defhadoopalt T => pmap q{hadoop_test_op @$_},
+                  pseq pc hadoop_streaming_lambda,
+                       pc hadoop_streaming_lambda,
+                       pc hadoop_streaming_lambda;
+
 2 core/pyspark/lib
 pyspark.pl
 local.pl

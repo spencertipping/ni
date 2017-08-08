@@ -504,37 +504,36 @@ Mappers communicate their data to reducers over wired connections; the number of
 
 Because these connections are done over wire, they will fail with some frequency, and if the number of these failures gets too high, the entire `HS` job will fail.
 
-In general, keep the `(# of mappers) x (# of reducers) < 100 million` to avoid this issue.
+In general, keep `(# of mappers) x (# of reducers) < 100 million` to avoid this issue.
 
 #### More Notes on Hadoop Streaming
 There are a number of Hadoop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
 
-### Hadoop Randomization and Optimization
+### `^{...}`: `ni` configuration
 
-As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. An easy way to do this is to combine two columns of the data; when two columns are joined, that the hashed value of the combined data will be correlated to either of the initial values.
-
-
-#### `hrjoin` and `hrsplit`: Hadoop Randomization with dirty data
+As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. However, without instructions, `ni` will default to partitioning and sorting data to reducers using the first tab-delimited column. If this is not the default behavior you want, `ni` options can be set through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is often desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers, changing the way that data is partitioned and sorted 
 
 
-One way to overcome this limitation while still doing meaningful work in both the map and reduce phases of a MapReduce pass is by joining columns together with a separator at the end of the map phase, and splitting on that separator during the reduce phase. `ni` provides a way to join columns of the data such that each reducer will receive a similar quantity of data.  The string used to join columns (`"Ni+=1oK?"`) is chosen to be a very unlikely (`< 2**-56 ~ 1.5 x 10^-17`)
-
-```bash
-$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA
-aNi+=1oK?x	1
-aNi+=1oK?x	2
-bNi+=1oK?y	3
-cNi+=1oK?z	4
+```sh
+$ ni ^{hadoop/partopt="-k1,1 -k2,2" \
+       hadoop/nfields=3 \
+       hadoop/sortopt="-k1,1nr -k3,3" \
+  hadoop/jobconf='mapreduce.reduce.memory.mb=8192 mapreduce.job.reduces=128'} HS...
+  
 ```
 
-```bash
-$ ni i[a x 1] i[b y 3] i[c z 4] i[a x 2] p'r hrjoin(a, b), c' gA  p'r hrsplit a, sum b_ rea'
-a	x	3
-b	y	3
-c	z	4
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful.
+
+```sh
+export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
 ```
 
-When the data's form is a known quantity, it will be simpler and faster to join with a colon, underscore, or some other character.
+Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
+
+```sh
+export NI_HDFS_TMPDIR=/user/my_name/tmp
+```
+
 
 
 ### Reversible Hexadecimal to Base-64 Encoding `h2b64` and `b642h`
@@ -601,30 +600,6 @@ $ ni hdfst://<abspath> HS...
 
 `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
-
-### `^{...}`: `ni` configuration
-
-You can set `ni` options through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is sometimes desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers (controlled by ni configs) may have significant performance benefits.
-
-
-```sh
-$ ni ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-  hadoop/jobconf='mapred.map.tasks=10 \
-  mapred.reduce.tasks=4'} HS...
-  
-```
-
-Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful.
-
-```sh
-export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
-```
-
-Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
-
-```sh
-export NI_HDFS_TMPDIR=/user/$(whoami)/tmp
-```
 
 
 ## `nfu` HDFS Joins
