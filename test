@@ -33,7 +33,7 @@ build_tests() {
   {
     echo cd /tmp
     echo export NI_NO_MONITOR=yes
-    ./lazytest ${test_set:-$(find doc bugs -name '*.md')}
+    ./lazytest ${test_set:-$(find doc bugs -name '*.md' | sort)}
   } > dev/tests.sh
 }
 
