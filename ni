@@ -7957,23 +7957,286 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-281 core/hadoop/hadoop.pl
+579 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
+our %mr_generics = (
+'Hdb',      'dfs.blocksize',
+'Hdbpc',    'dfs.bytes-per-checksum',
+'Hdcwps',   'dfs.client-write-packet-size',
+'Hdchkr',   'dfs.client.https.keystore.resource',
+'Hdchna',   'dfs.client.https.need-auth',
+'Hdcrps',   'dfs.client.read.prefetch.size',
+'Hdcst',    'dfs.client.socket-timeout',
+'Hddns',    'dfs.datanode.StorageId',
+'Hddnbb',   'dfs.datanode.balance.bandwidthPerSec',
+'Hddndd',   'dfs.datanode.data.dir',
+'Hddnh',    'dfs.datanode.hostname',
+'Hddnmtt',  'dfs.datanode.max.transfer.threads',
+'Hdmsi',    'dfs.metrics.session-id',
+'Hdnnap',   'dfs.namenode.accesstime.precision',
+'Hdnnba',   'dfs.namenode.backup.address',
+'Hdnnbha',  'dfs.namenode.backup.http-address',
+'Hdnncd',   'dfs.namenode.checkpoint.dir',
+'Hdnnced',  'dfs.namenode.checkpoint.edits.dir',
+'Hdnncp',   'dfs.namenode.checkpoint.period',
+'Hdnned',   'dfs.namenode.edits.dir',
+'Hdnnhri',  'dfs.namenode.heartbeat.recheck-interval',
+'Hdnnhttp', 'dfs.namenode.http-address',
+'Hdnnhttps','dfs.namenode.https-address',
+'Hdnnmo',   'dfs.namenode.max.objects',
+'Hdnnnd',   'dfs.namenode.name.dir',
+'Hdnnndr',  'dfs.namenode.name.dir.restore',
+'Hdnnrc',   'dfs.namenode.replication.considerLoad',
+'Hdnnri',   'dfs.namenode.replication.interval',
+'Hdnnrms',  'dfs.namenode.replication.max-streams',
+'Hdnnrm',   'dfs.namenode.replication.min',
+'Hdnnrpts', 'dfs.namenode.replication.pending.timeout-sec',
+'Hdnnse',   'dfs.namenode.safemode.extension',
+'Hdnnstp',  'dfs.namenode.safemode.threshold-pct',
+'Hdnnsha',  'dfs.namenode.secondary.http-address',
+'Hdnnup',   'dfs.namenode.upgrade.permission',
+'Hdpe',     'dfs.permissions.enabled',
+'Hdps',     'dfs.permissions.superusergroup',
+'Hfcbd',    'fs.client.buffer.dir',
+'Hfd',      'fs.defaultFS',
+'Hfdi',     'fs.df.interval',
+'Hinla',    'io.native.lib.available',
+'Hccp',     'mapreduce.client.completion.pollinterval',
+'Hcgu',     'mapreduce.client.genericoptionsparser.used',
+'Hcof',     'mapreduce.client.output.filter',
+'Hcpp',     'mapreduce.client.progressmonitor.pollinterval',
+'Hcsfr',    'mapreduce.client.submit.file.replication',
+'Hcae',     'mapreduce.cluster.acls.enabled',
+'Hcld',     'mapreduce.cluster.local.dir',
+'Hcmm',     'mapreduce.cluster.mapmemory.mb',
+'Hcps',     'mapreduce.cluster.permissions.supergroup',
+'Hcrm',     'mapreduce.cluster.reducememory.mb',
+'Hctd',     'mapreduce.cluster.temp.dir',
+'Hfdfs',    'mapreduce.fieldsel.data.field.separator',
+'Hfmokvfs', 'mapreduce.fieldsel.map.output.key.value.fields.spec',
+'Hfrokvfs', 'mapreduce.fieldsel.reduce.output.key.value.fields.spec',
+'Hifi',     'mapreduce.input.fileinputformat.inputdir',
+'Hifsmax',  'mapreduce.input.fileinputformat.split.maxsize',
+'Hifsmin',  'mapreduce.input.fileinputformat.split.minsize',
+'Hifsmpn',  'mapreduce.input.fileinputformat.split.minsize.per.node',
+'Hifsmpr',  'mapreduce.input.fileinputformat.split.minsize.per.rack',
+'Hikkvs',   'mapreduce.input.keyvaluelinerecordreader.key.value.separator',
+'Hill',     'mapreduce.input.lineinputformat.linespermap',
+'Hillm',    'mapreduce.input.linerecordreader.line.maxlength',
+'Himdf',    'mapreduce.input.multipleinputs.dir.formats',
+'Himdm',    'mapreduce.input.multipleinputs.dir.mappers',
+'Hipc',     'mapreduce.input.pathFilter.class',
+'Hisc',     'mapreduce.input.sequencefileinputfilter.class',
+'Hisf',     'mapreduce.input.sequencefileinputfilter.frequency',
+'Hisr',     'mapreduce.input.sequencefileinputfilter.regex',
+'Hjca',     'mapreduce.job.cache.archives',
+'Hjcat',    'mapreduce.job.cache.archives.timestamps',
+'Hjcf',     'mapreduce.job.cache.files',
+'Hjcft',    'mapreduce.job.cache.files.timestamps',
+'Hjcla',    'mapreduce.job.cache.local.archives',
+'Hjclf',    'mapreduce.job.cache.local.files',
+'Hjcsc',    'mapreduce.job.cache.symlink.create',
+'Hjcpa',    'mapreduce.job.classpath.archives',
+'Hjcpf',    'mapreduce.job.classpath.files',
+'Hjcc',     'mapreduce.job.combine.class',
+'Hjcscn',   'mapreduce.job.committer.setup.cleanup.needed',
+'Hjenra',   'mapreduce.job.end-notification.retry.attempts',
+'Hjenri',   'mapreduce.job.end-notification.retry.interval',
+'Hjenu',    'mapreduce.job.end-notification.url',
+'Hji',      'mapreduce.job.id',
+'Hjic',     'mapreduce.job.inputformat.class',
+'Hjj',      'mapreduce.job.jar',
+'Hjjn',     'mapreduce.job.jvm.numtasks',
+'Hjld',     'mapreduce.job.local.dir',
+'Hjmc',     'mapreduce.job.map.class',
+'Hjm',      'mapreduce.job.maps',
+'Hjmpt',    'mapreduce.job.maxtaskfailures.per.tracker',
+'Hjn',      'mapreduce.job.name',
+'Hjogcc',   'mapreduce.job.output.group.comparator.class',
+'Hjokc',    'mapreduce.job.output.key.class',
+'Hjokcc',   'mapreduce.job.output.key.comparator.class',
+'Hjovc',    'mapreduce.job.output.value.class',
+'Hjoc',     'mapreduce.job.outputformat.class',
+'Hjpc',     'mapreduce.job.partitioner.class',
+'Hjp',      'mapreduce.job.priority',
+'Hjq',      'mapreduce.job.queuename',
+'Hjrc',     'mapreduce.job.reduce.class',
+'Hjrsc',    'mapreduce.job.reduce.slowstart.completedmaps',
+'Hjr',      'mapreduce.job.reduces',
+'Hjso',     'mapreduce.job.skip.outdir',
+'Hjs',      'mapreduce.job.skiprecords',
+'Hjssnt',   'mapreduce.job.speculative.slownodethreshold',
+'Hjsstt',   'mapreduce.job.speculative.slowtaskthreshold',
+'Hjssc',    'mapreduce.job.speculative.speculativecap',
+'Hjun',     'mapreduce.job.user.name',
+'Hjurh',    'mapreduce.job.userlog.retain.hours',
+'Hjwd',     'mapreduce.job.working.dir',
+'Hjcci',    'mapreduce.jobcontrol.createdir.ifnotexist',
+'Hjta',     'mapreduce.jobtracker.address',
+'Hjtbat',   'mapreduce.jobtracker.blacklist.average.threshold',
+'Hjteti',   'mapreduce.jobtracker.expire.trackers.interval',
+'Hjthc',    'mapreduce.jobtracker.handler.count',
+'Hjthis',   'mapreduce.jobtracker.heartbeats.in.second',
+'Hjthef',   'mapreduce.jobtracker.hosts.exclude.filename',
+'Hjthf',    'mapreduce.jobtracker.hosts.filename',
+'Hjtha',    'mapreduce.jobtracker.http.address',
+'Hjti',     'mapreduce.jobtracker.instrumentation',
+'Hjtjbs',   'mapreduce.jobtracker.jobhistory.block.size',
+'Hjtjcl',   'mapreduce.jobtracker.jobhistory.completed.location',
+'Hjtjl',    'mapreduce.jobtracker.jobhistory.location',
+'Hjtjlcs',  'mapreduce.jobtracker.jobhistory.lru.cache.size',
+'Hjtjt',    'mapreduce.jobtracker.jobinit.threads',
+'Hjtmmm',   'mapreduce.jobtracker.maxmapmemory.mb',
+'Hjtmrm',   'mapreduce.jobtracker.maxreducememory.mb',
+'Hjtmp',    'mapreduce.jobtracker.maxtasks.perjob',
+'Hjtpja',   'mapreduce.jobtracker.persist.jobstatus.active',
+'Hjtpjd',   'mapreduce.jobtracker.persist.jobstatus.dir',
+'Hjtpjh',   'mapreduce.jobtracker.persist.jobstatus.hours',
+'Hjtrr',    'mapreduce.jobtracker.restart.recover',
+'Hjtrcs',   'mapreduce.jobtracker.retiredjobs.cache.size',
+'Hjtr',     'mapreduce.jobtracker.retirejobs',
+'Hjtsd',    'mapreduce.jobtracker.system.dir',
+'Hjttl',    'mapreduce.jobtracker.taskcache.levels',
+'Hjtt',     'mapreduce.jobtracker.taskscheduler',
+'Hjttmp',   'mapreduce.jobtracker.taskscheduler.maxrunningtasks.perjob',
+'Hjtttc',   'mapreduce.jobtracker.taskscheduler.taskalloc.capacitypad',
+'Hjtttm',   'mapreduce.jobtracker.tasktracker.maxblacklists',
+'Hjtwt',    'mapreduce.jobtracker.webinterface.trusted',
+'Hje',      'mapreduce.join.expr',
+'Hjk',      'mapreduce.join.keycomparator',
+'Hmcm',     'mapreduce.map.combine.minspills',
+'Hmds',     'mapreduce.map.debug.script',
+'Hme',      'mapreduce.map.env',
+'Hmfm',     'mapreduce.map.failures.maxpercent',
+'Hmif',     'mapreduce.map.input.file',
+'Hmil',     'mapreduce.map.input.length',
+'Hmis',     'mapreduce.map.input.start',
+'Hmjo',     'mapreduce.map.java.opts',
+'Hmll',     'mapreduce.map.log.level',
+'Hmm',      'mapreduce.map.maxattempts',
+'Hmmm',     'mapreduce.map.memory.mb',
+'Hmoc',     'mapreduce.map.output.compress',
+'Hmocc',    'mapreduce.map.output.compress.codec',
+'Hmokc',    'mapreduce.map.output.key.class',
+'Hmokfs',   'mapreduce.map.output.key.field.separator',
+'Hmovc',    'mapreduce.map.output.value.class',
+'Hmsm',     'mapreduce.map.skip.maxrecords',
+'Hmspcai',  'mapreduce.map.skip.proc-count.auto-incr',
+'Hmssp',    'mapreduce.map.sort.spill.percent',
+'Hms',      'mapreduce.map.speculative',
+'Hmr',      'mapreduce.mapper.regex',
+'Hmrg',     'mapreduce.mapper.regexmapper..group',
+'Hofc',     'mapreduce.output.fileoutputformat.compress',
+'Hofcc',    'mapreduce.output.fileoutputformat.compress.codec',
+'Hofct',    'mapreduce.output.fileoutputformat.compress.type',
+'Hofo',     'mapreduce.output.fileoutputformat.outputdir',
+'Holo',     'mapreduce.output.lazyoutputformat.outputformat',
+'Hoskc',    'mapreduce.output.seqbinaryoutputformat.key.class',
+'Hosvc',    'mapreduce.output.seqbinaryoutputformat.value.class',
+'Hots',     'mapreduce.output.textoutputformat.separator',
+'Hpblo',    'mapreduce.partition.binarypartitioner.left.offset',
+'Hpbro',    'mapreduce.partition.binarypartitioner.right.offset',
+'Hpkco',    'mapreduce.partition.keycomparator.options',
+'Hpkpo',    'mapreduce.partition.keypartitioner.options',
+'Hpcp',     'mapreduce.pipes.commandfile.preserve',
+'Hpe',      'mapreduce.pipes.executable',
+'Hpei',     'mapreduce.pipes.executable.interpretor',
+'Hpif',     'mapreduce.pipes.inputformat',
+'Hpijm',    'mapreduce.pipes.isjavamapper',
+'Hpijrr',   'mapreduce.pipes.isjavarecordreader',
+'Hpijrw',   'mapreduce.pipes.isjavarecordwriter',
+'Hpijr',    'mapreduce.pipes.isjavareducer',
+'Hpp',      'mapreduce.pipes.partitioner',
+'Hrds',     'mapreduce.reduce.debug.script',
+'Hre',      'mapreduce.reduce.env',
+'Hrfm',     'mapreduce.reduce.failures.maxpercent',
+'Hribp',    'mapreduce.reduce.input.buffer.percent',
+'Hrjo',     'mapreduce.reduce.java.opts',
+'Hrll',     'mapreduce.reduce.log.level',
+'Hrmbp',    'mapreduce.reduce.markreset.buffer.percent',
+'Hrm',      'mapreduce.reduce.maxattempts',
+'Hrmm',     'mapreduce.reduce.memory.mb',
+'Hrmt',     'mapreduce.reduce.memory.totalbytes',
+'Hrmit',    'mapreduce.reduce.merge.inmem.threshold',
+'Hrsct',    'mapreduce.reduce.shuffle.connect.timeout',
+'Hrsibp',   'mapreduce.reduce.shuffle.input.buffer.percent',
+'Hrsmp',    'mapreduce.reduce.shuffle.merge.percent',
+'Hrsp',     'mapreduce.reduce.shuffle.parallelcopies',
+'Hrsrt',    'mapreduce.reduce.shuffle.read.timeout',
+'Hrsm',     'mapreduce.reduce.skip.maxgroups',
+'Hrspcai',  'mapreduce.reduce.skip.proc-count.auto-incr',
+'Hrs',      'mapreduce.reduce.speculative',
+'Htai',     'mapreduce.task.attempt.id',
+'Htdl',     'mapreduce.task.debugout.lines',
+'Htfpft',   'mapreduce.task.files.preserve.failedtasks',
+'Htfpfp',   'mapreduce.task.files.preserve.filepattern',
+'Htid',     'mapreduce.task.id',
+'Htisf',    'mapreduce.task.io.sort.factor',
+'Htism',    'mapreduce.task.io.sort.mb',
+'Htim',     'mapreduce.task.ismap',
+'Htmpr',    'mapreduce.task.merge.progress.records',
+'Htod',     'mapreduce.task.output.dir',
+'Htpart',   'mapreduce.task.partition',
+'Htprof',   'mapreduce.task.profile',
+'Htpm',     'mapreduce.task.profile.maps',
+'Htpp',     'mapreduce.task.profile.params',
+'Htpr',     'mapreduce.task.profile.reduces',
+'Htssa',    'mapreduce.task.skip.start.attempts',
+'Htt',      'mapreduce.task.timeout',
+'Httd',     'mapreduce.task.tmp.dir',
+'Htulk',    'mapreduce.task.userlog.limit.kb',
+'Httcls',   'mapreduce.tasktracker.cache.local.size',
+'Httct',    'mapreduce.tasktracker.contention.tracking',
+'Httdi',    'mapreduce.tasktracker.dns.interface',
+'Httdn',    'mapreduce.tasktracker.dns.nameserver',
+'Htteb',    'mapreduce.tasktracker.events.batchsize',
+'Htthi',    'mapreduce.tasktracker.healthchecker.interval',
+'Htthsa',   'mapreduce.tasktracker.healthchecker.script.args',
+'Htthsp',   'mapreduce.tasktracker.healthchecker.script.path',
+'Htthst',   'mapreduce.tasktracker.healthchecker.script.timeout',
+'Htthn',    'mapreduce.tasktracker.host.name',
+'Httha',    'mapreduce.tasktracker.http.address',
+'Httht',    'mapreduce.tasktracker.http.threads',
+'Httim',    'mapreduce.tasktracker.indexcache.mb',
+'Htti',     'mapreduce.tasktracker.instrumentation',
+'Httldmsk', 'mapreduce.tasktracker.local.dir.minspacekill',
+'Httldmss', 'mapreduce.tasktracker.local.dir.minspacestart',
+'Httmtm',   'mapreduce.tasktracker.map.tasks.maximum',
+'Httnsr',   'mapreduce.tasktracker.net.static.resolutions',
+'Httrtm',   'mapreduce.tasktracker.reduce.tasks.maximum',
+'Httra',    'mapreduce.tasktracker.report.address',
+'Httr',     'mapreduce.tasktracker.resourcecalculatorplugin',
+'Httt',     'mapreduce.tasktracker.taskcontroller',
+'Htttm',    'mapreduce.tasktracker.taskmemorymanager.monitoringinterval',
+'Httts',    'mapreduce.tasktracker.tasks.sleeptimebeforesigkill',
+'Hntcnm',   'net.topology.configured.node.mapping',
+'Hntnsmi',  'net.topology.node.switch.mapping.impl',
+'Hntsfn',   'net.topology.script.file.name',
+'Hntsna',   'net.topology.script.number.args',
+'Hsjcpa',   'security.job.client.protocol.acl',
+'Hsjtpa',   'security.job.task.protocol.acl',
+'Hfieldsep','stream.map.output.field.separator',
+'Hnfields', 'stream.num.map.output.key.fields',
+);
+
+for (keys %mr_generics) { 
+  my $var_name = $mr_generics{$_}; 
+  $var_name =~ tr/[a-z]\-./[A-Z]__/;
+  my $env_var_name = 'NI_HADOOP_' . $var_name; 
+  defconfenv $_, $env_var_name => undef;
+}
+
+our %mr_conf_abbrevs = reverse %mr_generics;
+
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
 defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
-
+defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
 
-defconfenv 'hadoop/jobname', NI_HADOOP_JOBNAME => undef;
-defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
-defconfenv 'hadoop/fieldsep', NI_HADOOP_FIELDSEP => undef;
-defconfenv 'hadoop/nfields', NI_HADOOP_NFIELDS => undef;
-defconfenv 'hadoop/partopt', NI_HADOOP_PARTOPT => undef;
-defconfenv 'hadoop/sortopt', NI_HADOOP_SORTOPT => undef;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -8062,7 +8325,7 @@ sub hadoop_embedded_cmd($@) {
   "sh -c " . shell_quote("cat " . shell_quote($_[0]) . " - | " . shell_quote(@_[1..$#_]));
 }
 
-defoperator hadoop_streaming => q{
+sub hadoop_cmd_setup(@) {
   my ($map, $combine, $reduce) = @_;
   my ($nuke_inputs, @ipath) = hdfs_input_path;
 
@@ -8074,43 +8337,125 @@ defoperator hadoop_streaming => q{
 
   my $streaming_jar = hadoop_streaming_jar;
 
-  for my $ipaths (@ipath) {
+  $mapper, \@map_cmd, $combiner, \@combine_cmd, 
+    $reducer, \@reduce_cmd, $nuke_inputs, \@ipath, $streaming_jar;
+}
+
+
+# These must be first in a hadoop command for... reasons.
+our @priority_hadoop_opts = ("stream.num.map.output.key.fields",
+                            "stream.map.output.field.separator",
+                            "mapreduce.partition.keypartitioner.options",
+                            "mapreduce.partition.keycomparator.options"); 
+our @priority_hadoop_opt_abbrevs = map {$mr_conf_abbrevs{$_}} @priority_hadoop_opts;
+
+sub priority_jobconf(@) {
+  # Apparently some of the Hadoop options must be in order;
+  # I have no idea what that order is exactly, but I follow
+  # the convention laid out here:
+  # https://hadoop.apache.org/docs/r1.2.1/streaming.html#Hadoop+Comparator+Class
+  # and here:
+  # http://ischoolreview.com/iSR_Grav/entries/entry-2
+#  print "priority jobconf running\n";
+
+  my %input_jobconf = @_;
+  my @high_priority_jobconf = ();
+
+  push @high_priority_jobconf, 
+    -D => "mapreduce.job.output.key.comparator.class=" . 
+          "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator"
+    if grep {$_ eq 'Hpkco'} keys %input_jobconf;
+
+  push @high_priority_jobconf, 
+    map { -D => $mr_generics{$_} . "=" . $input_jobconf{$_}} 
+    grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
+
+  delete @input_jobconf{@priority_hadoop_opt_abbrevs};
+  \@high_priority_jobconf, \%input_jobconf;
+}
+
+sub hadoop_generic_options(@) {
+  my @jobconf = @_;
+  my %jobconf = map {split /=/, $_, 2} @jobconf;
+
+  %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
+  my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
+  my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
+  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
+
+  my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
+  %jobconf = %$low_priority_jobconf_ref;
+  my @output_jobconf = @$high_priority_jobconf_ref;
+
+  my @low_priority_options = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
+  my @low_priority_jobconf = map((-D => $_), @low_priority_options);
+
+  # -partitioner is actually not a generic option
+  # so it must follow the lowest priority generic option.
+  push @low_priority_jobconf, 
+    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
+    if $needs_partitioner;
+
+  push @output_jobconf, @low_priority_jobconf;
+
+  @output_jobconf;
+}
+
+sub make_hadoop_cmd($$$$$$$$$) {
+  my ($mapper, $map_cmd_ref, $combiner, $combine_cmd_ref,
+      $reducer, $reduce_cmd_ref, $streaming_jar, $ipaths, $opath) = @_;
+  $mapper   =~ s|^file://||;
+  $combiner =~ s|^file://|| if $combiner;
+  $reducer  =~ s|^file://|| if $reducer;
+
+  my @map_cmd = @$map_cmd_ref;
+  my @combine_cmd = @$combine_cmd_ref;
+  my @reduce_cmd = @$reduce_cmd_ref;
+
+  (my $mapper_file   = $mapper)         =~ s|.*/||;
+  (my $combiner_file = $combiner || '') =~ s|.*/||;
+  (my $reducer_file  = $reducer  || '') =~ s|.*/||;
+
+  my @jobconf =
+    grep $reducer || !/reduce/,             # HACK
+    grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
+  push @jobconf, "mapreduce.job.name=" . "ni @$ipaths -> $opath";
+  
+  my @ordered_jobconf = hadoop_generic_options(@jobconf);
+ 
+  my $cmd = shell_quote
+    conf 'hadoop/name',
+    jar => $streaming_jar,
+    -files  => join(",", grep defined, ($mapper, $combiner, $reducer)),
+    @ordered_jobconf,
+    map((-input => $_), @$ipaths),
+    -output => $opath,
+    -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
+    (defined $combiner
+      ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
+      : ()),
+    (defined $reducer
+      ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
+      : (-reducer => 'NONE'));
+    
+  $cmd;
+}
+
+
+defoperator hadoop_streaming => q{
+  my ($mapper, $map_cmd_ref, 
+      $combiner, $combine_cmd_ref,
+      $reducer, $reduce_cmd_ref,
+      $nuke_inputs, $ipath_ref,
+      $streaming_jar) = hadoop_cmd_setup @_;
+
+  for my $ipaths (@$ipath_ref) {
     my $opath = resource_tmp "hdfs://";
+    my $cmd = make_hadoop_cmd($mapper, $map_cmd_ref,
+                              $combiner, $combine_cmd_ref,
+                              $reducer, $reduce_cmd_ref, 
+                              $streaming_jar, $ipaths, $opath);
     my $hadoop_fh = siproc {
-      $mapper   =~ s|^file://||;
-      $combiner =~ s|^file://|| if $combiner;
-      $reducer  =~ s|^file://|| if $reducer;
-
-      (my $mapper_file   = $mapper)         =~ s|.*/||;
-      (my $combiner_file = $combiner || '') =~ s|.*/||;
-      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
-
-      my @jobconf =
-        grep $reducer || !/reduce/,             # HACK
-        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
-
-      my $cmd = shell_quote
-        conf 'hadoop/name',
-        jar => $streaming_jar,
-        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
-        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
-        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
-        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
-        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
-        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
-        map((-D => $_), @jobconf),
-        -files  => join(",", grep defined, ($mapper,$combiner,$reducer)),
-        # </GENERIC HADOOP OPTIONS>
-        # <HADOOP "COMMAND" OPTIONS>
-        map((-input => $_), @$ipaths),
-        -output => $opath,
-        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
-        (defined $combiner
-          ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
-          : ()),
-        (defined $reducer
-          ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-          : (-reducer => 'NONE'));
      sh "$cmd 1>&2";
     };
 
@@ -8123,7 +8468,7 @@ defoperator hadoop_streaming => q{
     print "$result_path/part-*\n";
   }
 
-  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
+  if ($nuke_inputs) {resource_nuke $_ for map @$_, @$ipath_ref}
 
   resource_nuke $mapper;
   resource_nuke $combiner if defined $combiner;
@@ -8171,67 +8516,20 @@ our %hdp_conf = (
 );
 
 defoperator hadoop_test => q{
-  my ($map, $combine, $reduce) = @_;
-  my ($nuke_inputs, @ipath) = hdfs_input_path;
+  my ($mapper, $map_cmd_ref, 
+      $combiner, $combine_cmd_ref,
+      $reducer, $reduce_cmd_ref,
+      $nuke_inputs, $ipath_ref,
+      $streaming_jar) = hadoop_cmd_setup @_;
 
-  my ($mapper, @map_cmd) = hadoop_lambda_file 'mapper', $map;
-  my ($combiner, @combine_cmd) = $combine
-    ? hadoop_lambda_file 'combiner', $combine : ();
-  my ($reducer, @reduce_cmd) = $reduce
-    ? hadoop_lambda_file 'reducer', $reduce : ();
-
-  my $streaming_jar = hadoop_streaming_jar;
-
-  for my $ipaths (@ipath) {
+  for my $ipaths (@$ipath_ref) {
     my $opath = resource_tmp "hdfs://";
-    my $hadoop_fh = siproc {
-      $mapper   =~ s|^file://||;
-      $combiner =~ s|^file://|| if $combiner;
-      $reducer  =~ s|^file://|| if $reducer;
-
-      (my $mapper_file   = $mapper)         =~ s|.*/||;
-      (my $combiner_file = $combiner || '') =~ s|.*/||;
-      (my $reducer_file  = $reducer  || '') =~ s|.*/||;
-
-      my @jobconf =
-        grep $reducer || !/reduce/,             # HACK
-        grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
-
-      my $cmd = shell_quote
-        conf 'hadoop/name',
-        jar => $streaming_jar,
-        -D  => "mapreduce.job.name=" . dor(conf 'hadoop/jobname', "ni @$ipaths -> $opath"),
-        -D  => "stream.num.map.output.key.fields=" . dor(conf 'hadoop/nfields', 1),
-        -D  => "stream.map.output.field.separator=" . dor(conf 'hadoop/fieldsep', '"\\t"'),
-        -D  => "mapreduce.partition.keypartitioner.options=" . dor(conf 'hadoop/partopt', "-k1,1"),
-        -D  => "mapreduce.job.output.key.comparator.class=org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator",
-        -D  => "mapreduce.partition.keycomparator.options=" . dor(conf 'hadoop/sortopt', "-k1,1"),
-        map((-D => $_), @jobconf),
-        -files  => join(",", grep defined, ($mapper,$combiner,$reducer)),
-        # </GENERIC HADOOP OPTIONS>
-        # <HADOOP "COMMAND" OPTIONS>
-        map((-input => $_), @$ipaths),
-        -output => $opath,
-        -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
-        (defined $combiner
-          ? (-combiner => hadoop_embedded_cmd($combiner_file, @combine_cmd))
-          : ()),
-        (defined $reducer
-          ? (-reducer => hadoop_embedded_cmd($reducer_file, @reduce_cmd))
-          : (-reducer => 'NONE'));
-      print "$cmd\n";
-      };
-
-    close $hadoop_fh;
-    warn "ni: hadoop streaming failed" if $hadoop_fh->await;
-
-    /^hdfsrm:/ && resource_nuke($_) for @$ipaths;
-
-    (my $result_path = $opath) =~ s/^hdfs:/hdfst:/;
+    my $cmd = make_hadoop_cmd($mapper, $map_cmd_ref, 
+                              $combiner, $combine_cmd_ref,
+                              $reducer, $reduce_cmd_ref,
+                              $streaming_jar, $ipaths, $opath);
+    print "$cmd\n";
   }
-
-  if ($nuke_inputs) {resource_nuke $_ for map @$_, @ipath}
-
 };
 
 defhadoopalt T => pmap q{hadoop_test_op @$_},
