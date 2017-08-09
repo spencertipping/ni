@@ -411,14 +411,10 @@ sub priority_jobconf(@) {
     grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
 
   delete @input_jobconf{@priority_hadoop_opt_abbrevs};
-#  print "$_\n" for @high_priority_jobconf;
-#  print "low_priority options\n";
-#  print "$_\n" for keys %input_jobconf;
   \@high_priority_jobconf, \%input_jobconf;
 }
 
 sub hadoop_generic_options(@) {
-#  print "starting hadoop generic options\n";
   my @jobconf = @_;
   my %jobconf = map {split /=/, $_, 2} @jobconf;
 
@@ -426,28 +422,23 @@ sub hadoop_generic_options(@) {
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
   my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
-  #print "$_\n" for keys %clean_jobconf;
-  #print "$_\n" for values %clean_jobconf;
 
   my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
-  #print "back in generic opts\n";
   %jobconf = %$low_priority_jobconf_ref;
-  my @high_priority_jobconf = @$high_priority_jobconf_ref;
-  #print join "\n", @high_priority_jobconf;
-  #print "\nlow_priority\n";
+  my @output_jobconf = @$high_priority_jobconf_ref;
 
-  my @output_jobconf = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
-  # print join "\n", @output_jobconf;
-  my @low_priority_jobconf = map((-D => $_), @output_jobconf);
+  my @low_priority_options = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
+  my @low_priority_jobconf = map((-D => $_), @low_priority_options);
+
+  # -partitioner is actually not a generic option
+  # so it must follow the lowest priority generic option.
   push @low_priority_jobconf, 
     -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
     if $needs_partitioner;
 
-  # print "\n";
-  # print join "\n", @low_priority_jobconf;
-  push @high_priority_jobconf, @low_priority_jobconf;
+  push @output_jobconf, @low_priority_jobconf;
 
-  @high_priority_jobconf;
+  @output_jobconf;
 }
 
 sub make_hadoop_cmd($$$$$$$$$) {
