@@ -7947,7 +7947,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-580 core/hadoop/hadoop.pl
+588 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -8339,22 +8339,17 @@ our @priority_hadoop_opts = ("stream.num.map.output.key.fields",
                             "mapreduce.partition.keycomparator.options"); 
 our @priority_hadoop_opt_abbrevs = map {$mr_conf_abbrevs{$_}} @priority_hadoop_opts;
 
-sub priority_jobconf(%) {
+sub priority_jobconf(@) {
   # Apparently some of the Hadoop options must be in order;
   # I have no idea what that order is exactly, but I follow
   # the convention laid out here:
   # https://hadoop.apache.org/docs/r1.2.1/streaming.html#Hadoop+Comparator+Class
   # and here:
   # http://ischoolreview.com/iSR_Grav/entries/entry-2
+#  print "priority jobconf running\n";
 
   my %input_jobconf = @_;
-  
   my @high_priority_jobconf = ();
-
-  push @high_priority_jobconf, 
-    -partitioner => 
-      "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedPartitioner" 
-      if grep {$_ eq 'Hpkpo'} keys %input_jobconf;
 
   push @high_priority_jobconf, 
     -D => "mapreduce.job.output.key.comparator.class=" . 
@@ -8365,26 +8360,44 @@ sub priority_jobconf(%) {
     map { -D => $mr_generics{$_} . "=" . $input_jobconf{$_}} 
     grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
 
-  my %low_priority_jobconf = delete @input_jobconf{@priority_hadoop_opt_abbrevs};
-
-  \@high_priority_jobconf, \%low_priority_jobconf;
+  delete @input_jobconf{@priority_hadoop_opt_abbrevs};
+#  print "$_\n" for @high_priority_jobconf;
+#  print "low_priority options\n";
+#  print "$_\n" for keys %input_jobconf;
+  \@high_priority_jobconf, \%input_jobconf;
 }
 
-sub hadoop_generic_options($) {
-  my @jobconf = @$_[0];
-  my %jobconf = map {split /=/, $_} @jobconf;
+sub hadoop_generic_options(@) {
+#  print "starting hadoop generic options\n";
+  my @jobconf = @_;
+  my %jobconf = map {split /=/, $_, 2} @jobconf;
 
   %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
+  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
+  #print "$_\n" for keys %clean_jobconf;
+  #print "$_\n" for values %clean_jobconf;
 
   my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
+  #print "back in generic opts\n";
   %jobconf = %$low_priority_jobconf_ref;
   my @high_priority_jobconf = @$high_priority_jobconf_ref;
+  #print join "\n", @high_priority_jobconf;
+  #print "\nlow_priority\n";
 
   my @output_jobconf = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
+  # print join "\n", @output_jobconf;
   my @low_priority_jobconf = map((-D => $_), @output_jobconf);
+  push @low_priority_jobconf, 
+    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
+    if $needs_partitioner;
+
+  # print "\n";
+  # print join "\n", @low_priority_jobconf;
   push @high_priority_jobconf, @low_priority_jobconf;
+
+  @high_priority_jobconf;
 }
 
 sub make_hadoop_cmd($$$$$$$$$) {
@@ -8407,18 +8420,13 @@ sub make_hadoop_cmd($$$$$$$$$) {
     grep length, split /\s+/, dor conf 'hadoop/jobconf', '';
   push @jobconf, "mapreduce.job.name=" . "ni @$ipaths -> $opath";
   
-  my ($high_priority_options, $low_priority_options) = 
-    hadoop_generic_options(\@jobconf);
-
+  my @ordered_jobconf = hadoop_generic_options(@jobconf);
+ 
   my $cmd = shell_quote
     conf 'hadoop/name',
     jar => $streaming_jar,
-    # <GENERIC HADOOP OPTIONS>
-    @$high_priority_options,
-    @$low_priority_options,
     -files  => join(",", grep defined, ($mapper, $combiner, $reducer)),
-    # </GENERIC HADOOP OPTIONS>
-    # <HADOOP "COMMAND" OPTIONS>
+    @ordered_jobconf,
     map((-input => $_), @$ipaths),
     -output => $opath,
     -mapper => hadoop_embedded_cmd($mapper_file, @map_cmd),
