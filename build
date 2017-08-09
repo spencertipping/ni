@@ -54,7 +54,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   \
   doc
 
-./ni --dev/doc-check
+# ./ni --dev/doc-check
 
 ./test --update
 
