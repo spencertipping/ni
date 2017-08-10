@@ -547,14 +547,6 @@ defhadoopalt R =>
 #This will be useful for spinning up more customizable jobs once I
 #figure out exactly how configure_op works.
 
-our %hdp_conf = (
-"R", "mapreduce.job.reduces",
-"Rm", "mapreduce.reduce.memory.mb",
-"Mm", "mapreduce.map.memory.mb",
-"P", "mapreduce.job.priority.num",
-"Ss", "mapreduce.job.reduce.slowstart.completedmaps"
-);
-
 defoperator hadoop_test => q{
   my ($mapper, $map_cmd_ref, 
       $combiner, $combine_cmd_ref,
