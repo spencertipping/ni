@@ -7957,7 +7957,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
 1 core/hadoop/lib
 hadoop.pl
-578 core/hadoop/hadoop.pl
+577 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -8425,7 +8425,6 @@ sub make_hadoop_cmd($$$$$$$$$) {
   my $first_path = $$ipaths[0];
   $job_name = "ni $first_path and $n_addl_paths others" .
               " -> $opath" if $n_addl_paths > 0;
-  print $job_name;
   push @jobconf, "mapreduce.job.name=" . $job_name;
   
   my @ordered_jobconf = hadoop_generic_options(@jobconf);
