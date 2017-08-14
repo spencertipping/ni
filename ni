@@ -7955,14 +7955,15 @@ defoperator docker_exec => q{
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
-1 core/hadoop/lib
+2 core/hadoop/lib
+hadoop-conf.pl
 hadoop.pl
-578 core/hadoop/hadoop.pl
-# Hadoop operator.
-# The entry point for running various kinds of Hadoop jobs.
+359 core/hadoop/hadoop-conf.pl
+# MapReduce configuration is a huge pain;
+# we aim to make it a little easier.
 
-BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
-
+# Derived from https://github.com/Yelp/mrjob/blob/master/mrjob/compat.py
+ 
 our %mr_generics = (
 'Hdb',      'dfs.blocksize',
 'Hdbpc',    'dfs.bytes-per-checksum',
@@ -8120,8 +8121,6 @@ our %mr_generics = (
 'Hmm',      'mapreduce.map.maxattempts',
 'Hmmm',     'mapreduce.map.memory.mb',
 'Hmoc',     'mapreduce.map.output.compress',
-'Hmocc',    'mapreduce.map.output.compress.codec',
-'Hmokc',    'mapreduce.map.output.key.class',
 'Hmokfs',   'mapreduce.map.output.key.field.separator',
 'Hmovc',    'mapreduce.map.output.value.class',
 'Hmsm',     'mapreduce.map.skip.maxrecords',
@@ -8232,11 +8231,105 @@ for (keys %mr_generics) {
 
 our %mr_conf_abbrevs = reverse %mr_generics;
 
+our %compression_abbrevs = (
+  "gz", "org.apache.hadoop.io.compress.GzipCodec",
+  "lzo", "org.apache.hadoop.io.compress.DefaultCodec",
+  "bz", "org.apache.hadoop.io.compress.BZip2Codec",
+  "snappy", "org.apache.hadoop.io.compress.SnappyCodec"
+);
+
+sub sortconf($) {
+  my $spec = $_[0];
+  return undef unless substr($spec, 0, 1) eq "g";
+  join "", map {my $col = ord($_) - 64; $_ eq "n" ? "n" : $_ eq "-" ? "r" : " -k$col,$col" }
+   split //, substr $spec, 1;
+}
+
+sub partconf($) {
+  my $spec = $_[0];
+  return undef unless substr($spec, 0, 1) eq "f";
+  "-k" . join ",", map { ord($_) - 64 } split //, substr $spec, 1;
+}
+
+
+sub translate_mr_conf_var($$) {
+  my ($k, $v) = @_;
+  if ($k eq "Hofcc") {return $compression_abbrevs{$v} || $v;}
+  if ($k eq "Hpkco") {return sortconf($v) || $v;}
+  if ($k eq "Hpkpo") {return partconf($v) || $v;}
+  $v;
+}
+
+# These must be first in a hadoop command for... reasons.
+our @priority_hadoop_opts = ("stream.num.map.output.key.fields",
+                            "stream.map.output.field.separator",
+                            "mapreduce.partition.keypartitioner.options",
+                            "mapreduce.partition.keycomparator.options"); 
+our @priority_hadoop_opt_abbrevs = map {$mr_conf_abbrevs{$_}} @priority_hadoop_opts;
+
+sub priority_jobconf(@) {
+  # Apparently some of the Hadoop options must be in order;
+  # I have no idea what that order is exactly, but I follow
+  # the convention laid out here:
+  # https://hadoop.apache.org/docs/r1.2.1/streaming.html#Hadoop+Comparator+Class
+  # and here:
+  # http://ischoolreview.com/iSR_Grav/entries/entry-2
+
+  my %input_jobconf = @_;
+  my @high_priority_jobconf = ();
+
+  push @high_priority_jobconf, 
+    -D => "mapreduce.job.output.key.comparator.class=" . 
+          "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator"
+    if grep {$_ eq 'Hpkco'} keys %input_jobconf;
+
+  push @high_priority_jobconf, 
+    map { -D => $mr_generics{$_} . "=" . $input_jobconf{$_}} 
+    grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
+
+  delete @input_jobconf{@priority_hadoop_opt_abbrevs};
+  \@high_priority_jobconf, \%input_jobconf;
+}
+
+sub hadoop_generic_options(@) {
+  my @jobconf = @_;
+  my %jobconf = map {split /=/, $_, 2} @jobconf;
+
+  %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
+  my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
+  my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
+  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
+  my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
+
+  my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
+  %jobconf = %$low_priority_jobconf_ref;
+  my @output_jobconf = @$high_priority_jobconf_ref;
+
+  my @low_priority_options = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
+  my @low_priority_jobconf = map((-D => $_), @low_priority_options);
+
+  # -partitioner is actually not a generic option
+  # so it must follow the lowest priority generic option.
+  push @low_priority_jobconf, 
+    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
+    if $needs_partitioner;
+
+  push @output_jobconf, @low_priority_jobconf;
+
+  @output_jobconf;
+}
+251 core/hadoop/hadoop.pl
+# Hadoop operator.
+# The entry point for running various kinds of Hadoop jobs.
+
+BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
+
+defperlprefix "core/hadoop/hadoop-conf.pl";
+
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
 defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
 defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
-
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
@@ -8341,65 +8434,6 @@ sub hadoop_cmd_setup(@) {
     $reducer, \@reduce_cmd, $nuke_inputs, \@ipath, $streaming_jar;
 }
 
-
-# These must be first in a hadoop command for... reasons.
-our @priority_hadoop_opts = ("stream.num.map.output.key.fields",
-                            "stream.map.output.field.separator",
-                            "mapreduce.partition.keypartitioner.options",
-                            "mapreduce.partition.keycomparator.options"); 
-our @priority_hadoop_opt_abbrevs = map {$mr_conf_abbrevs{$_}} @priority_hadoop_opts;
-
-sub priority_jobconf(@) {
-  # Apparently some of the Hadoop options must be in order;
-  # I have no idea what that order is exactly, but I follow
-  # the convention laid out here:
-  # https://hadoop.apache.org/docs/r1.2.1/streaming.html#Hadoop+Comparator+Class
-  # and here:
-  # http://ischoolreview.com/iSR_Grav/entries/entry-2
-#  print "priority jobconf running\n";
-
-  my %input_jobconf = @_;
-  my @high_priority_jobconf = ();
-
-  push @high_priority_jobconf, 
-    -D => "mapreduce.job.output.key.comparator.class=" . 
-          "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator"
-    if grep {$_ eq 'Hpkco'} keys %input_jobconf;
-
-  push @high_priority_jobconf, 
-    map { -D => $mr_generics{$_} . "=" . $input_jobconf{$_}} 
-    grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
-
-  delete @input_jobconf{@priority_hadoop_opt_abbrevs};
-  \@high_priority_jobconf, \%input_jobconf;
-}
-
-sub hadoop_generic_options(@) {
-  my @jobconf = @_;
-  my %jobconf = map {split /=/, $_, 2} @jobconf;
-
-  %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
-  my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
-  my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
-  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
-
-  my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
-  %jobconf = %$low_priority_jobconf_ref;
-  my @output_jobconf = @$high_priority_jobconf_ref;
-
-  my @low_priority_options = map {$mr_generics{$_} . "=" . $clean_jobconf{$_}} keys %jobconf;
-  my @low_priority_jobconf = map((-D => $_), @low_priority_options);
-
-  # -partitioner is actually not a generic option
-  # so it must follow the lowest priority generic option.
-  push @low_priority_jobconf, 
-    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
-    if $needs_partitioner;
-
-  push @output_jobconf, @low_priority_jobconf;
-
-  @output_jobconf;
-}
 
 sub make_hadoop_cmd($$$$$$$$$) {
   my ($mapper, $map_cmd_ref, $combiner, $combine_cmd_ref,

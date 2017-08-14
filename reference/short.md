@@ -791,16 +791,6 @@
 ## SYNTAX
 	'' -> {conf_get_op 'Hmoc'}
 
-# SHORT OPERATOR /$Hmocc
-
-## SYNTAX
-	'' -> {conf_get_op 'Hmocc'}
-
-# SHORT OPERATOR /$Hmokc
-
-## SYNTAX
-	'' -> {conf_get_op 'Hmokc'}
-
 # SHORT OPERATOR /$Hmokfs
 
 ## SYNTAX

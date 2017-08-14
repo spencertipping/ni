@@ -479,6 +479,10 @@ Some other ideas to keep in mind:
 
 ### Hadoop Streaming MapReduce Limitations
 
+#### Number of files
+
+Hadoop (2) is only configured to accept up to at most 100,000 files per job. Instead of doing the sensible thing and failing before the job starts, Hadoop will fail after hitting the limit in the number of files. In general, you should not run over more than 80,000 files.  Be careful when you use wildcard characters in Hadoop paths.
+
 #### Avoiding SIGPIPE
 
 `ni`'s `r<number>` operator uses `head`, which is very fast; however, when `head` finishes, it sends a SIGPIPE signal; this signal will kill your Hadoop Streaming job if received before all of the data is consumed.

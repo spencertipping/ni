@@ -3122,7 +3122,7 @@ lazytest_case 'ni ::five[n5] //ni | perl - 1p'\''five'\''
 
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=489
+lazytest_line=493
 lazytest_case 'ni n1000 rs5
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3132,19 +3132,19 @@ lazytest_case 'ni n1000 rs5
 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=544
+lazytest_line=548
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 Dt2clCTYSj64+6M8Nzhq4#
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=551
+lazytest_line=555
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c9424d84a3eb8fba33c37386ae1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=558
+lazytest_line=562
 lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''hyphenate_uuid b642h h2b64 a'\''
 ' 3<<'LAZYTEST_EOF'
 0edd9c94-24d8-4a3e-b8fb-a33c37386ae1

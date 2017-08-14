@@ -279,8 +279,6 @@
 	| '$Hmm' '' -> {conf_get_op 'Hmm'}
 	| '$Hmmm' '' -> {conf_get_op 'Hmmm'}
 	| '$Hmoc' '' -> {conf_get_op 'Hmoc'}
-	| '$Hmocc' '' -> {conf_get_op 'Hmocc'}
-	| '$Hmokc' '' -> {conf_get_op 'Hmokc'}
 	| '$Hmokfs' '' -> {conf_get_op 'Hmokfs'}
 	| '$Hmovc' '' -> {conf_get_op 'Hmovc'}
 	| '$Hmr' '' -> {conf_get_op 'Hmr'}
