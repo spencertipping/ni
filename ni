@@ -7958,7 +7958,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
 2 core/hadoop/lib
 hadoop-conf.pl
 hadoop.pl
-359 core/hadoop/hadoop-conf.pl
+351 core/hadoop/hadoop-conf.pl
 # MapReduce configuration is a huge pain;
 # we aim to make it a little easier.
 
@@ -8222,13 +8222,6 @@ our %mr_generics = (
 'Hnfields', 'stream.num.map.output.key.fields',
 );
 
-for (keys %mr_generics) { 
-  my $var_name = $mr_generics{$_}; 
-  $var_name =~ tr/[a-z]\-./[A-Z]__/;
-  my $env_var_name = 'NI_HADOOP_' . $var_name; 
-  defconfenv $_, $env_var_name => undef;
-}
-
 our %mr_conf_abbrevs = reverse %mr_generics;
 
 our %compression_abbrevs = (
@@ -8250,7 +8243,6 @@ sub partconf($) {
   return undef unless substr($spec, 0, 1) eq "f";
   "-k" . join ",", map { ord($_) - 64 } split //, substr $spec, 1;
 }
-
 
 sub translate_mr_conf_var($$) {
   my ($k, $v) = @_;
@@ -8318,13 +8310,22 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-250 core/hadoop/hadoop.pl
+259 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
 BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
 defperlprefix "core/hadoop/hadoop-conf.pl";
+
+our %mr_generics;
+
+for (keys %mr_generics) {
+  my $var_name = $mr_generics{$_};
+  $var_name =~ tr/[a-z]\-./[A-Z]__/;
+  my $env_var_name = 'NI_HADOOP_' . $var_name;
+  defconfenv $_, $env_var_name => undef;
+}
 
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
 defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;

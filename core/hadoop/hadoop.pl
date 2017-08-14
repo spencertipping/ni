@@ -5,6 +5,15 @@ BEGIN {defshort '/H', defdsp 'hadoopalt', 'hadoop job dispatch table'}
 
 defperlprefix "core/hadoop/hadoop-conf.pl";
 
+our %mr_generics;
+
+for (keys %mr_generics) {
+  my $var_name = $mr_generics{$_};
+  $var_name =~ tr/[a-z]\-./[A-Z]__/;
+  my $env_var_name = 'NI_HADOOP_' . $var_name;
+  defconfenv $_, $env_var_name => undef;
+}
+
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
 defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
 defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;

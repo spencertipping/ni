@@ -261,13 +261,6 @@ our %mr_generics = (
 'Hnfields', 'stream.num.map.output.key.fields',
 );
 
-for (keys %mr_generics) { 
-  my $var_name = $mr_generics{$_}; 
-  $var_name =~ tr/[a-z]\-./[A-Z]__/;
-  my $env_var_name = 'NI_HADOOP_' . $var_name; 
-  defconfenv $_, $env_var_name => undef;
-}
-
 our %mr_conf_abbrevs = reverse %mr_generics;
 
 our %compression_abbrevs = (
@@ -289,7 +282,6 @@ sub partconf($) {
   return undef unless substr($spec, 0, 1) eq "f";
   "-k" . join ",", map { ord($_) - 64 } split //, substr $spec, 1;
 }
-
 
 sub translate_mr_conf_var($$) {
   my ($k, $v) = @_;
