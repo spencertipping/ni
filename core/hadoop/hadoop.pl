@@ -138,7 +138,6 @@ sub make_hadoop_cmd($$$$$$$$$) {
   my $first_path = $$ipaths[0];
   $job_name = "ni $first_path and $n_addl_paths others" .
               " -> $opath" if $n_addl_paths > 0;
-  print $job_name;
   push @jobconf, "mapreduce.job.name=" . $job_name;
   
   my @ordered_jobconf = hadoop_generic_options(@jobconf);
