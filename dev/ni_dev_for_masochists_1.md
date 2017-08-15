@@ -40,3 +40,47 @@ Well,
 
 ##`pmap`
 
+## Perl 
+
+### `defconfenv`
+
+`defconfenv` is used to define a `ni` environment variable; its syntax is the following:
+
+`defconfenv <ni_config_variable_name>, <environment_variable_name> => <default value>`
+
+Good examples of `defconfenv` are at the top of `core/hadoop/hadoop.pl`
+
+### `defperlprefix`
+
+`defperlprefix` allows you to import files; however, they must be known to `ni` by adding them to the appropriate `lib` file **in order**.
+
+A good example of this is the `core/hadoop` library; 
+
+
+```
+# core/hadoop/lib
+hadoop-conf.pl
+hadoop.pl
+```
+
+```
+# core/hadoop/hadoop-conf.pl
+...
+our %mr_generics (
+'Hpkpo', 'mapreduce.partition.keypartition.options',
+...
+);
+...
+```
+
+```
+# core/hadoop/hadoop.pl
+defperlprefix 'core/hadoop/hadoop-conf.pl';
+our %mr_generics;
+for (keys %mr_generics) {
+  my $env_var_name = uc $mr_generics{$_};
+  defconfenv $_, $env_var_name => undef;
+}
+```
+
+A package-level variable `our %mr_generics`, corresponding to short names for Hadoop Streaming MapReduce operators is written in `hadoop-conf.pl`. This hash is imported by `hadoop.pl` using `defperlprefix`; the package-level variable `our %mr_generics` is then imported, and a large number of environment variables are created using a loop. Note that `defconfenv` would not have worked had it been placed in the `hadoop-conf.pl` file, and that `%mr_generics` must be explicitly imported.
