@@ -4657,7 +4657,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-121 core/pl/stream.pm
+127 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4730,14 +4730,20 @@ BEGIN {for my $x ('a'..'l') {
                                     %r}',
                              $x, $y, $x, $y }}}
 
+# For this, we return a pair consisting of a hash reference and a 
+# reference to the lookups of the values of the hash, since
+# we'll always want to use them together. We add 1 so that the
+# 0 value will be the empty string; this will catch all of the
+# invalid lookups.
 BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
-          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; 
+          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
                                     for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
                                                         my $val = $_;
-                                                        $r{$_} = $val + 0 for @keys;} 
-                                    %r}',
-                             $x, $y, $x, $y }}}
+                                                        $r{$_} = $val + 1 for @keys;} 
+                                    unshift @val_arr, "";
+                                    \%r, \@val_arr}',
+                             $x, $y, $x, $y}}}
 ## Seeking functions.
 # It's possible to read downwards (i.e. future lines), which returns an array and
 # sends the after-rejected line into the lookahead queue to be used by the next
