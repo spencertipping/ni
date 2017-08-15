@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-217 core/pl/util.pm
+230 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4547,6 +4547,19 @@ sub startswith($$) {
 sub endswith($$) {
   my $affix_length = length($_[1]);
   substr($_[0], -$affix_length) eq $_[1]
+}
+
+sub get_from_hash($$) {
+  my ($ks_ref, $h_ref) = @_;
+  my @ks = @$ks_ref;
+  my %h = %$h_ref;
+  "" or first grep defined, map {$h{$_}} @ks;
+}
+
+sub get_from_hashes {
+  my ($k, $min_key_length, @hash_refs) = @_;
+  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
+  map { get_from_hash(\@potential_keys, $_) } @hash_refs;
 }
 
 BEGIN {

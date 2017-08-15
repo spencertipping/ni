@@ -211,6 +211,19 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
+sub get_from_hash($$) {
+  my ($ks_ref, $h_ref) = @_;
+  my @ks = @$ks_ref;
+  my %h = %$h_ref;
+  "" or first grep defined, map {$h{$_}} @ks;
+}
+
+sub get_from_hashes {
+  my ($k, $min_key_length, @hash_refs) = @_;
+  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
+  map { get_from_hash(\@potential_keys, $_) } @hash_refs;
+}
+
 BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;
