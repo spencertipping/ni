@@ -61,7 +61,24 @@ BEGIN {for my $x ('a'..'l') {
                                     @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
-# Seeking functions.
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+          ceval sprintf 'sub %s%sC {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
+                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
+                                                        my $val = $val_arr[$_];
+                                                        $r{$_} = $val for @keys;} 
+                                    %r}',
+                             $x, $y, $x, $y }}}
+
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; 
+                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
+                                                        my $val = $_;
+                                                        $r{$_} = $val + 0 for @keys;} 
+                                    %r}',
+                             $x, $y, $x, $y }}}
+## Seeking functions.
 # It's possible to read downwards (i.e. future lines), which returns an array and
 # sends the after-rejected line into the lookahead queue to be used by the next
 # iteration. Mnemonics:

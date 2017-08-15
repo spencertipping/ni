@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-230 core/pl/util.pm
+240 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4549,11 +4549,21 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub get_from_hash($$) {
+sub defined_in_hash($$) {
   my ($ks_ref, $h_ref) = @_;
   my @ks = @$ks_ref;
   my %h = %$h_ref;
-  "" or first grep defined, map {$h{$_}} @ks;
+  first grep defined, map {$h{$_}} @ks;
+}
+
+sub defined_in_hashes {
+  my ($k, $min_key_length, @hash_refs) = @_;
+  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
+  map {defined_in_hash(\@potential_keys, $_) } @hash_refs; 
+}
+
+sub get_from_hash($$) {
+  "" or defined_in_hash($_[0], $_[1]);
 }
 
 sub get_from_hashes {
@@ -4638,7 +4648,7 @@ if (eval {require Math::Trig}) {
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
 }
-104 core/pl/stream.pm
+121 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -4702,7 +4712,24 @@ BEGIN {for my $x ('a'..'l') {
                                     @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
-# Seeking functions.
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+          ceval sprintf 'sub %s%sC {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
+                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
+                                                        my $val = $val_arr[$_];
+                                                        $r{$_} = $val for @keys;} 
+                                    %r}',
+                             $x, $y, $x, $y }}}
+
+BEGIN {for my $x ('a'..'l') {
+        for my $y ('a'..'l') {
+          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; 
+                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
+                                                        my $val = $_;
+                                                        $r{$_} = $val + 0 for @keys;} 
+                                    %r}',
+                             $x, $y, $x, $y }}}
+## Seeking functions.
 # It's possible to read downwards (i.e. future lines), which returns an array and
 # sends the after-rejected line into the lookahead queue to be used by the next
 # iteration. Mnemonics:

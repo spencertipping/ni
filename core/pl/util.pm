@@ -211,11 +211,21 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub get_from_hash($$) {
+sub defined_in_hash($$) {
   my ($ks_ref, $h_ref) = @_;
   my @ks = @$ks_ref;
   my %h = %$h_ref;
-  "" or first grep defined, map {$h{$_}} @ks;
+  first grep defined, map {$h{$_}} @ks;
+}
+
+sub defined_in_hashes {
+  my ($k, $min_key_length, @hash_refs) = @_;
+  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
+  map {defined_in_hash(\@potential_keys, $_) } @hash_refs; 
+}
+
+sub get_from_hash($$) {
+  "" or defined_in_hash($_[0], $_[1]);
 }
 
 sub get_from_hashes {
