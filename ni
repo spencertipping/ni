@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-257 core/pl/util.pm
+251 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4555,30 +4555,24 @@ sub take_every($$@) {
 }
 
 sub take_even(@) {
-  take_every(0, 2, @_);
+  take_every(2, 0, @_);
 }
 
 sub take_odd(@) {
-  take_every(1, 2, @_);
+  take_every(2, 1, @_);
 }
 
-sub defined_in_hash($$) {
+sub get_from_hash($$) {
   my ($ks_ref, $h_ref) = @_;
   my @ks = @$ks_ref;
   my %h = %$h_ref;
   first grep defined, map {$h{$_}} @ks;
 }
 
-sub defined_in_hashes {
-  my ($k, $min_key_length, @hash_refs) = @_;
-  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
-  map {defined_in_hash(\@potential_keys, $_) } @hash_refs; 
-}
-
 sub get_from_hashes {
   my ($k, $min_key_length, @hash_refs) = @_;
   my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
-  map { defined_in_hash(\@potential_keys, $_) } @hash_refs;
+  map { get_from_hash(\@potential_keys, $_) } @hash_refs;
 }
 
 sub get_from_indexed_hashes {
@@ -4587,7 +4581,7 @@ sub get_from_indexed_hashes {
   my @hash_val_refs = take_odd @hash_and_val_refs;
   my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k); 
   my @val_indices =  map { get_from_hash(\@potential_keys, $_) } @index_hash_refs;
-  map {my @v = @$hash_val_refs[$_]; $v[$val_indices[$_]] } 0..$#val_indices; 
+  map {my @v = @{$hash_val_refs[$_]}; $v[$val_indices[$_]] } 0..$#val_indices; 
 }
 BEGIN {
   *h2b64 = \&hex2base64;
