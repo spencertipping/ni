@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-250 core/pl/util.pm
+263 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4345,7 +4345,7 @@ sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
 sub first  {$_[0]}
 sub final  {$_[$#_]}
-sub randel {$_[int(rand($#_ + 1))]}
+sub rando  {$_[int(rand($#_ + 1))]}
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
@@ -4564,7 +4564,20 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub get_from_indexed_hashes {
+# Indexed Hash Methods
+#
+
+sub ihash_get {
+  my @raw_output = ihash_all(@_);
+  map {first grep defined, @$_} @raw_output;
+}
+
+sub ihash_def {
+  my @raw_output = ihash_all(@_);
+  map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
+}
+
+sub ihash_all {
   my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
   unless (ref($ks_ref)) { my @ks = ($ks_ref, ); $ks_ref = \@ks; }
   my @index_hash_refs = take_even @hash_and_val_refs;
@@ -4742,7 +4755,7 @@ BEGIN {for my $x ('a'..'l') {
                                     for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
                                                         my $val = $_;
                                                         $r{$_} = $val + 1 for @keys;} 
-                                    unshift @val_arr, "";
+                                    unshift @val_arr, undef;
                                     \%r, \@val_arr}',
                              $x, $y, $x, $y}}}
 ## Seeking functions.

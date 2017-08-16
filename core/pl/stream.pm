@@ -81,7 +81,7 @@ BEGIN {for my $x ('a'..'l') {
                                     for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
                                                         my $val = $_;
                                                         $r{$_} = $val + 1 for @keys;} 
-                                    unshift @val_arr, "";
+                                    unshift @val_arr, undef;
                                     \%r, \@val_arr}',
                              $x, $y, $x, $y}}}
 ## Seeking functions.
