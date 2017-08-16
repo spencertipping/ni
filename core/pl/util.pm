@@ -32,6 +32,20 @@ sub drop_while(&@) {
   ();
 } 
 
+sub take_every($$@) {
+  my ($every, $start, @r) = @_;
+  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
+}
+
+sub take_even(@) {
+  take_every(2, 0, @_);
+}
+
+sub take_odd(@) {
+  take_every(2, 1, @_);
+}
+
+
 sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
 
@@ -211,24 +225,15 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub take_every($$@) {
-  my ($every, $start, @r) = @_;
-  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
-}
-
-sub take_even(@) {
-  take_every(2, 0, @_);
-}
-
-sub take_odd(@) {
-  take_every(2, 1, @_);
-}
-
-sub get_from_hash($$) {
+sub get_multiple_from_hash($$) {
   my ($ks_ref, $h_ref) = @_;
   my @ks = @$ks_ref;
   my %h = %$h_ref;
-  first grep defined, map {$h{$_}} @ks;
+  @h{@ks};
+}
+
+sub get_from_hash($$) {
+  first grep defined, get_multiple_from_hash(@_);
 }
 
 sub get_from_hashes {
@@ -245,6 +250,18 @@ sub get_from_indexed_hashes {
   my @val_indices =  map { get_from_hash(\@potential_keys, $_) } @index_hash_refs;
   map {my @v = @{$hash_val_refs[$_]}; $v[$val_indices[$_]] } 0..$#val_indices; 
 }
+
+sub get_multiple_from_indexed_hashes {
+  my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
+  my @index_hash_refs = take_even @hash_and_val_refs;
+  my @hash_val_refs = take_odd @hash_and_val_refs;
+  my @potential_keys = map{ my $k = $_; map {substr($k, 0, $_)} $min_key_length..length($k) } @$ks_ref; 
+  my @val_indices =  map { get_multiple_from_hash(\@potential_keys, $_) } @index_hash_refs;
+
+  map {my @v = @{$hash_val_refs[$_]; $v[$val_indices[$_]] } 0..$#val_indices; 
+}
+
+
 BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;
