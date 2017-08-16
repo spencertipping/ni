@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-251 core/pl/util.pm
+250 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4345,6 +4345,7 @@ sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
 sub first  {$_[0]}
 sub final  {$_[$#_]}
+sub randel {$_[int(rand($#_ + 1))]}
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
@@ -4369,6 +4370,20 @@ sub drop_while(&@) {
   for (@xs) { if(!&$f($_)) {return drop $count, @xs} $count++;}
   ();
 } 
+
+sub take_every($$@) {
+  my ($every, $start, @r) = @_;
+  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
+}
+
+sub take_even(@) {
+  take_every(2, 0, @_);
+}
+
+sub take_odd(@) {
+  take_every(2, 1, @_);
+}
+
 
 sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
@@ -4549,40 +4564,24 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub take_every($$@) {
-  my ($every, $start, @r) = @_;
-  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
-}
-
-sub take_even(@) {
-  take_every(2, 0, @_);
-}
-
-sub take_odd(@) {
-  take_every(2, 1, @_);
-}
-
-sub get_from_hash($$) {
-  my ($ks_ref, $h_ref) = @_;
-  my @ks = @$ks_ref;
-  my %h = %$h_ref;
-  first grep defined, map {$h{$_}} @ks;
-}
-
-sub get_from_hashes {
-  my ($k, $min_key_length, @hash_refs) = @_;
-  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
-  map { get_from_hash(\@potential_keys, $_) } @hash_refs;
-}
-
 sub get_from_indexed_hashes {
-  my ($k, $min_key_length, @hash_and_val_refs) = @_;
+  my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
+  unless (ref($ks_ref)) { my @ks = ($ks_ref, ); $ks_ref = \@ks; }
   my @index_hash_refs = take_even @hash_and_val_refs;
   my @hash_val_refs = take_odd @hash_and_val_refs;
-  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k); 
-  my @val_indices =  map { get_from_hash(\@potential_keys, $_) } @index_hash_refs;
-  map {my @v = @{$hash_val_refs[$_]}; $v[$val_indices[$_]] } 0..$#val_indices; 
+  my @potential_keys = map{ my $k = $_; map {substr($k, 0, $_)} $min_key_length..length($k) } @$ks_ref; 
+  my @output;
+  for (0..$#hash_val_refs) {
+    my %index_hash = %{$index_hash_refs[$_]};
+    my @hash_vals = @{$hash_val_refs[$_]};
+    my @val_indices = @index_hash{@potential_keys};
+    my @output_vals = @hash_vals[@val_indices];
+    push @output, \@output_vals;
+  }
+  @output;
 }
+
+
 BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;

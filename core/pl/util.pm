@@ -226,40 +226,21 @@ sub endswith($$) {
   substr($_[0], -$affix_length) eq $_[1]
 }
 
-sub get_multiple_from_hash($$) {
-  my ($ks_ref, $h_ref) = @_;
-  my @ks = @$ks_ref;
-  my %h = %$h_ref;
-  @h{@ks};
-}
-
-sub get_from_hash($$) {
-  first grep defined, get_multiple_from_hash(@_);
-}
-
-sub get_from_hashes {
-  my ($k, $min_key_length, @hash_refs) = @_;
-  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k);
-  map { get_from_hash(\@potential_keys, $_) } @hash_refs;
-}
-
 sub get_from_indexed_hashes {
-  my ($k, $min_key_length, @hash_and_val_refs) = @_;
-  my @index_hash_refs = take_even @hash_and_val_refs;
-  my @hash_val_refs = take_odd @hash_and_val_refs;
-  my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k); 
-  my @val_indices =  map { get_from_hash(\@potential_keys, $_) } @index_hash_refs;
-  map {my @v = @{$hash_val_refs[$_]}; $v[$val_indices[$_]] } 0..$#val_indices; 
-}
-
-sub get_multiple_from_indexed_hashes {
   my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
+  unless (ref($ks_ref)) { my @ks = ($ks_ref, ); $ks_ref = \@ks; }
   my @index_hash_refs = take_even @hash_and_val_refs;
   my @hash_val_refs = take_odd @hash_and_val_refs;
   my @potential_keys = map{ my $k = $_; map {substr($k, 0, $_)} $min_key_length..length($k) } @$ks_ref; 
-  my @val_indices =  map { get_multiple_from_hash(\@potential_keys, $_) } @index_hash_refs;
-
-  map {my @v = @{$hash_val_refs[$_]; $v[$val_indices[$_]] } 0..$#val_indices; 
+  my @output;
+  for (0..$#hash_val_refs) {
+    my %index_hash = %{$index_hash_refs[$_]};
+    my @hash_vals = @{$hash_val_refs[$_]};
+    my @val_indices = @index_hash{@potential_keys};
+    my @output_vals = @hash_vals[@val_indices];
+    push @output, \@output_vals;
+  }
+  @output;
 }
 
 
