@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-263 core/pl/util.pm
+273 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4576,6 +4576,16 @@ sub ihash_def {
   my @raw_output = ihash_all(@_);
   map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
 }
+
+sub ihash_uniq {
+  my @raw_output = ihash_all(@_);
+  map {my @uniq_out = uniq grep defined, @$_; \@uniq_out;} @raw_output;
+}
+
+sub ihash_freqs {
+  my @raw_output = ihash_all(@_);
+  map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
+} 
 
 sub ihash_all {
   my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;

@@ -239,6 +239,16 @@ sub ihash_def {
   map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
 }
 
+sub ihash_uniq {
+  my @raw_output = ihash_all(@_);
+  map {my @uniq_out = uniq grep defined, @$_; \@uniq_out;} @raw_output;
+}
+
+sub ihash_freqs {
+  my @raw_output = ihash_all(@_);
+  map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
+} 
+
 sub ihash_all {
   my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
   unless (ref($ks_ref)) { my @ks = ($ks_ref, ); $ks_ref = \@ks; }
