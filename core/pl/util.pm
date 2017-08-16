@@ -7,6 +7,7 @@ sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
 sub first  {$_[0]}
 sub final  {$_[$#_]}
+sub randel {$_[int(rand($#_ + 1))]}
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
 sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
 sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
