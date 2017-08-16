@@ -1,5 +1,11 @@
 #Future Chapter 5 Below
 
+
+## indexed hashing
+```
+ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[ux,uy,uc that]] 1p'^{@pair = abc test; @pair2 = abc test2} @ks = ("ux", "bb", "c1"); $j ="bb"; @ls = ihash_def(\@ks, 1, @pair, @pair2); @ls'
+```
+
 ### `pl` Pushback Queue
 
 ```
