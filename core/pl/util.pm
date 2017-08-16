@@ -216,6 +216,14 @@ sub take_every($$@) {
   @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
 }
 
+sub take_even(@) {
+  take_every(0, 2, @_);
+}
+
+sub take_odd(@) {
+  take_every(1, 2, @_);
+}
+
 sub defined_in_hash($$) {
   my ($ks_ref, $h_ref) = @_;
   my @ks = @$ks_ref;
@@ -237,8 +245,8 @@ sub get_from_hashes {
 
 sub get_from_indexed_hashes {
   my ($k, $min_key_length, @hash_and_val_refs) = @_;
-  my @index_hash_refs = take_every 2, 0, @hash_and_val_refs;
-  my @hash_val_refs = take_every 2, 1, @hash_and_val_refs;
+  my @index_hash_refs = take_even @hash_and_val_refs;
+  my @hash_val_refs = take_odd @hash_and_val_refs;
   my @potential_keys = map {substr($k, 0, $_)} $min_key_length..length($k); 
   my @val_indices =  map { get_from_hash(\@potential_keys, $_) } @index_hash_refs;
   map {my @v = @$hash_val_refs[$_]; $v[$val_indices[$_]] } 0..$#val_indices; 
