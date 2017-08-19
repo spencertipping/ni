@@ -152,6 +152,57 @@ sub af {
   $f;
 }
 
+sub pprint {
+  print join " ", @_;
+  print "\n";
+}
+
+sub merge_hash_values($$) {
+  my ($val1, $val2) = @_;
+  return $val1 unless defined $val2;
+  return $val2 unless defined $val1;
+
+  my $ref1 = ref($val1);
+  my $ref2 = ref($val2);
+  my $output;
+  if ($ref1 eq "" and $ref2 eq "") {
+    $output = $val1 || $val2;
+  } elsif($ref1 eq "ARRAY" and $ref2 eq "ARRAY") {
+    my @output = @$val1;
+    push @output, @$val2;
+    $output = \@output;
+  } elsif($ref1 eq "HASH" and $ref2 eq "HASH") {
+    $output = merge_hashes($val1, $val2);
+  } else {
+    die "cannot merge different types of values value 1: $val1, value 2: $val2\n";
+  }
+
+  $output
+}
+
+sub merge_hashes($$) {
+  my ($href1, $href2) = @_;
+  my %h1 = %$href1;
+  my %h2 = %$href2;
+  my @keys = uniq keys %h1, keys %h2; 
+  my %h;
+  for my $key(@keys) {
+    my $val1 = $h1{$key};
+    my $val2 = $h2{$key};
+    $h{$key} = merge_hash_values($val1, $val2); 
+  }
+  \%h;
+}
+
+sub accumulate {
+  $href = shift;
+  for(@_) {
+    $href = merge_hashes($href, $_);
+  }
+  %$href;
+}
+
+
 sub testpath {
   $_ =~ s/-\*/-0000\*/;
   $_;
@@ -248,6 +299,10 @@ sub ihash_freqs {
   my @raw_output = ihash_all(@_);
   map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
 } 
+
+# ihash_all takes as input a reference to an array of keys 
+# to check ($ks_ref), and will cast a single key to a reference to 
+# 
 
 sub ihash_all {
   my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
