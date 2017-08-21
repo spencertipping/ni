@@ -4525,6 +4525,7 @@ sub dump_hash {
 
 sub dump_data {
   $dumpme = pop @_;
+  print join "\t", @_, "\n";
   if(ref($dumpme) eq "HASH") {
     dump_hash($dumpme);
   } elsif(ref($dumpme) eq "ARRAY") {
@@ -4553,7 +4554,6 @@ sub merge_hash_values($$) {
   } else {
     die "cannot merge different types of values value 1: $val1, value 2: $val2\n";
   }
-
   $output
 }
 
@@ -4582,9 +4582,9 @@ sub accumulate {
 sub freqify_path($$) {
   my $r_hash  = shift;
   my $r_keyArray  = shift;
+  dump_data $r_keyArray;
   my(@keyArray) = @{$r_keyArray};
   my $lastKey = pop @keyArray;
-
   foreach my $key (@keyArray) {
     $r_hash = $r_hash->{$key};
   }
@@ -4593,13 +4593,13 @@ sub freqify_path($$) {
 
 sub freqify($$) {
   my ($href, $raw_paths) = @_;
-  dump "raw paths: ", $raw_paths;
+  dump_data "raw paths: ", $raw_paths;
   my @clean_paths = cart map {ref($_) eq "ARRAY" ? $_ : [$_]} @$raw_paths;
-  dump "clean paths: ", @clean_paths;
-  dump "clean path 1: ", @{$clean_paths[0]};
+  dump_data "clean paths: ", \@clean_paths;
+  dump_data "clean path 1: ", $clean_paths[0];
   for my $path(@clean_paths) {
-    dump "path: ", @$path;
-    freqify_path($href, @$path);
+    dump_data "path: ", $path;
+    freqify_path($href, $path);
   }
   $href;
 }
