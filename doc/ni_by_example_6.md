@@ -1,6 +1,27 @@
 #Future Chapter 5 Below
 
 
+## JSON Tools
+
+### `accumulate`
+
+```
+ni 1p'my %h1 = ("foo" => "u", "bar" => undef, "baz" => "drank", "horse" => "", "lst" => ["car", "cadr"], "hash" => {"secret" => "key", "lst2" => ["cubs"]}); my %h2 = ("bar" => "x", "foo" => "j", "horse" => "tiger", "lst" => ["caddr"], "hash" => {"worth" => "it", "lst2" => [34]}); %h3 = ("lst" => ["cadddr", "bye"], "hash" => {"word" => "up", "lst2" => ["verj"]}); %h = accumulate(\%h1, \%h2, \%h3); dump_data \%h'
+```
+
+### `dump_data`
+`ni`'s hacky `Data::Dumper` because we're too hardcore for SILLY LIBRARIES
+
+### `freqify`
+Convert lists to hashes of their frequencies. This is useful!!
+
+```
+my $h = {"foo" => {"bar" => [u,u,u,u,v,baz,baz], "qux" => [ay, ay, bee]}};
+my @keys = (foo, [bar, qux]); freqify $h, \@keys;
+$h => {"foo" => {"bar" => {"u" => 4, "v" => 1, "baz" => 2},
+                 "qux" => {"ay" => 2, "bee" => 1}}}
+```
+
 ## indexed hashing
 ```
 ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[ux,uy,uc that]] 1p'^{@pair = abc test; @pair2 = abc test2} @ks = ("ux", "bb", "c1"); $j ="bb"; @ls = ihash_def(\@ks, 1, @pair, @pair2); @ls'
