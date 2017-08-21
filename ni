@@ -4335,7 +4335,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-328 core/pl/util.pm
+391 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4490,9 +4490,48 @@ sub af {
   $f;
 }
 
-sub pprint {
-  print join " ", @_;
-  print "\n";
+sub dump_array {
+  my $r = shift;
+  my $indent = $_[0] ? $_[0] : 0;
+  print "\t" x $indent, "[\n";
+  for my $el (@$r) {
+    if( ref $el eq "HASH" ) { 
+        dump_hash( $el, $indent + 1 );
+    } elsif( ref $el eq "ARRAY") {
+        dump_array( $el, $indent + 1);
+    } else { 
+        print "\t" x ($indent + 1), "$el\n";
+    } 
+  } 
+  print "\t" x $indent, "]\n";
+}
+
+sub dump_hash { 
+  my $h = shift; 
+  my $indent = $_[0] ? $_[0] : 0;
+  foreach my $key (keys %$h) { 
+    print "\t" x $indent, "$key\t=>";
+    if( ref $h->{$key} eq "HASH" ) { 
+      print "\n";
+      dump_hash( $h->{$key}, $indent + 1);
+    } elsif( ref $h->{$key} eq "ARRAY") {
+      print "\n";
+      dump_array( $h->{$key}, $indent + 1);
+    } else { 
+      print "\t", $h->{$key}, "\n";
+    } 
+  }   
+}
+
+sub dump_data {
+  $dumpme = pop @_;
+  if(ref($dumpme) eq "HASH") {
+    dump_hash($dumpme);
+  } elsif(ref($dumpme) eq "ARRAY") {
+    dump_array($dumpme);
+  } else {
+    print "$dumpme\n";
+  }
 }
 
 sub merge_hash_values($$) {
@@ -4540,6 +4579,30 @@ sub accumulate {
   %$href;
 }
 
+sub freqify_path($$) {
+  my $r_hash  = shift;
+  my $r_keyArray  = shift;
+  my(@keyArray) = @{$r_keyArray};
+  my $lastKey = pop @keyArray;
+
+  foreach my $key (@keyArray) {
+    $r_hash = $r_hash->{$key};
+  }
+  $r_hash->{$lastKey} = freqs @{$r_hash->{$lastKey}};
+}
+
+sub freqify($$) {
+  my ($href, $raw_paths) = @_;
+  dump "raw paths: ", $raw_paths;
+  my @clean_paths = cart map {ref($_) eq "ARRAY" ? $_ : [$_]} @$raw_paths;
+  dump "clean paths: ", @clean_paths;
+  dump "clean path 1: ", @{$clean_paths[0]};
+  for my $path(@clean_paths) {
+    dump "path: ", @$path;
+    freqify_path($href, @$path);
+  }
+  $href;
+}
 
 sub testpath {
   $_ =~ s/-\*/-0000\*/;
