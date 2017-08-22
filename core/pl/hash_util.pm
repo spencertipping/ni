@@ -3,6 +3,7 @@
 # Key-By-Value ascending and descending
 sub kbv_dsc { my %h = @_; sort { $h{$b} <=> $h{$a} } keys %h }
 sub kbv_asc { my %h = @_; sort { $h{$a} <=> $h{$b} } keys %h }
+
 sub dump_array {
   my $r = shift;
   my $indent = $_[0] ? $_[0] : 0;
@@ -18,8 +19,6 @@ sub dump_array {
   } 
   print "\t" x $indent, "]\n";
 }
-
-
 
 sub dump_hash { 
   my $h = shift; 
@@ -74,19 +73,15 @@ sub merge_hash_values($$) {
 
 sub accumulate_two_hashes($$) {
   my ($href1, $href2) = @_;
-  dump_data "href1: ", $href1;
-  dump_data "href2: ", $href2;
   for my $key (keys %{$href2}) {
     $href1->{$key} = {} if not exists $href1->{$key};
-    print "key: $key\n";
     my $val = $href2->{$key};
-    print "val: $val\n";
     if(ref($val) eq "") {
       $href1->{$key}->{$val} += 1;
     } elsif(ref($val) eq "ARRAY") {
       for (@{$val}) {$href1->{$key}->{$_} += 1;}
     } elsif(ref($val) eq "HASH") {
-      $href1 = accumulate_two_hashes($href1->{$key}, $href2->{$key});
+      $href1->{$key} = accumulate_two_hashes($href1->{$key}, $val );
     } else {
       die "accumulating went bad";
     }
