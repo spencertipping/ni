@@ -305,10 +305,18 @@ sub priority_jobconf(@) {
   # https://hadoop.apache.org/docs/r1.2.1/streaming.html#Hadoop+Comparator+Class
   # and here:
   # http://ischoolreview.com/iSR_Grav/entries/entry-2
-
+  # Upshots: you need to use the stream.map.output.num.fields if 
+  # you use comparators 
   my %input_jobconf = @_;
+
   my @high_priority_jobconf = ();
 
+  my @field_based_opts = grep defined, @input_jobconf{'Hpkpo', 'Hpkco'};
+  if(@field_based_opts) {
+    my $max_field = max map {split /\D+/} @field_based_opts;
+    push @high_priority_jobconf, 
+      -D => "stream.num.map.output.key.fields=$max_field"
+  }
   push @high_priority_jobconf, 
     -D => "mapreduce.job.output.key.comparator.class=" . 
           "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator"
@@ -325,8 +333,11 @@ sub priority_jobconf(@) {
 sub hadoop_generic_options(@) {
   my @jobconf = @_;
   my %jobconf = map {split /=/, $_, 2} @jobconf;
+  $jobconf{'Hpkpo'} = '-k1,1' 
+    if exists($jobconf{'Hpkco'}) && !exists($jobconf{'Hpkpo'}); 
 
   %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
+
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
   my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 

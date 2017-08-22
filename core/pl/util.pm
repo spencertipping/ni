@@ -252,6 +252,7 @@ sub freqify_path($$) {
   my $r_keyArray  = shift;
   dump_data $r_keyArray;
   my(@keyArray) = @{$r_keyArray};
+  my @keyArray = defined($keyArray[0]) ? @keyArray : keys %{$r_hash};
   my $lastKey = pop @keyArray;
   foreach my $key (@keyArray) {
     $r_hash = $r_hash->{$key};
