@@ -55,7 +55,29 @@ sub merge_hash_values($$) {
   $output
 }
 
-sub merge_hashes($$) {
+sub accumulate_two_hashes($$) {
+  my ($href1, $href2) = @_;
+  dump_data "href1: ", $href1;
+  dump_data "href2: ", $href2;
+  for my $key (keys %{$href2}) {
+    $href1->{$key} = {} if not exists $href1->{$key};
+    print "key: $key\n";
+    my $val = $href2->{$key};
+    print "val: $val\n";
+    if(ref($val) eq "") {
+      $href1->{$key}->{$val} += 1;
+    } elsif(ref($val) eq "ARRAY") {
+      for (@{$val}) {$href1->{$key}->{$_} += 1;}
+    } elsif(ref($val) eq "HASH") {
+      $href1 = accumulate_two_hashes($href1->{$key}, $href2->{$key});
+    } else {
+      die "accumulating went bad";
+    }
+  }
+  $href1;
+}
+
+sub merge_two_hashes($$) {
   my ($href1, $href2) = @_;
   my %h1 = %$href1;
   my %h2 = %$href2;
@@ -69,16 +91,24 @@ sub merge_hashes($$) {
   \%h;
 }
 
-# "intelligently" accumulates values from many 
+# "intelligently" merges values from many 
 # multi-dimensional hashes. arrays are appended;
 # hashes are recursively accumulated, key-by-key,
 # and the first truthy scalar to occupy a particular 
 # hash slot is kept. See chapter 6 of ni by example 
 # for an example.
-sub accumulate {
-  $href = shift;
+sub merge_hashes {
+  my $href = shift;
   for(@_) {
-    $href = merge_hashes($href, $_);
+    $href = merge_two_hashes($href, $_);
+  }
+  $href;
+}
+
+sub accumulate_hashes {
+  my $href = {};
+  for(@_) {
+    $href = accumulate_two_hashes($href, $_);
   }
   $href;
 }
@@ -86,7 +116,6 @@ sub accumulate {
 sub freqify_path($$) {
   my $r_hash  = shift;
   my $r_keyArray  = shift;
-  dump_data $r_keyArray;
   my(@keyArray) = @{$r_keyArray};
   my @keyArray = defined($keyArray[0]) ? @keyArray : keys %{$r_hash};
   my $lastKey = pop @keyArray;
@@ -111,5 +140,4 @@ sub freqify($$) {
   }
   $href;
 }
-
 
