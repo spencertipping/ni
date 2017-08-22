@@ -340,7 +340,6 @@ sub hadoop_generic_options(@) {
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
   my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
   $clean_jobconf{'Hpkpo'} = "-k1,1" if exists($clean_jobconf{'Hpkco'}) and !exists($clean_jobconf{'Hpkpo'});
-  print join "\t", %clean_jobconf, "\n";
   my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
 
   my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
