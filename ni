@@ -4336,7 +4336,7 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-154 core/pl/hash_util.pm
+167 core/pl/hash_util.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
@@ -4408,6 +4408,19 @@ sub merge_hash_values($$) {
     die "cannot merge different types of values value 1: $val1, value 2: $val2\n";
   }
   $output
+}
+
+sub sum_two_hashes($$) {
+  my ($href1, $href2) = @_;
+  for my $key(keys %{$href2}) {
+    my $val = $href2->{$key};
+    if(ref($val) eq "") {
+       $href1->{$key} += $val;
+    } elsif(ref($val) eq "HASH") {
+      $href1->{$key} = sum_two_hashes($href1->{$key}, $val );
+    } else { die "bad structure" }
+  }
+  $href1;
 }
 
 sub accumulate_two_hashes($$) {

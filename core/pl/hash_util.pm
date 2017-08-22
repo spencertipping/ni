@@ -71,6 +71,19 @@ sub merge_hash_values($$) {
   $output
 }
 
+sub sum_two_hashes($$) {
+  my ($href1, $href2) = @_;
+  for my $key(keys %{$href2}) {
+    my $val = $href2->{$key};
+    if(ref($val) eq "") {
+       $href1->{$key} += $val;
+    } elsif(ref($val) eq "HASH") {
+      $href1->{$key} = sum_two_hashes($href1->{$key}, $val );
+    } else { die "bad structure" }
+  }
+  $href1;
+}
+
 sub accumulate_two_hashes($$) {
   my ($href1, $href2) = @_;
   for my $key (keys %{$href2}) {
