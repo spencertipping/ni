@@ -4336,12 +4336,29 @@ reducers.pm
 geohash.pm
 time.pm
 pl.pl
-114 core/pl/hash_util.pm
+131 core/pl/hash_util.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
 sub kbv_dsc { my %h = @_; sort { $h{$b} <=> $h{$a} } keys %h }
 sub kbv_asc { my %h = @_; sort { $h{$a} <=> $h{$b} } keys %h }
+sub dump_array {
+  my $r = shift;
+  my $indent = $_[0] ? $_[0] : 0;
+  print "\t" x $indent, "[\n";
+  for my $el (@$r) {
+    if( ref $el eq "HASH" ) { 
+        dump_hash( $el, $indent + 1 );
+    } elsif( ref $el eq "ARRAY") {
+        dump_array( $el, $indent + 1);
+    } else { 
+        print "\t" x ($indent + 1), "$el\n";
+    } 
+  } 
+  print "\t" x $indent, "]\n";
+}
+
+
 
 sub dump_hash { 
   my $h = shift; 
