@@ -8475,9 +8475,9 @@ sub translate_mr_conf_var($$) {
 
 # These must be first in a hadoop command for... reasons.
 our @priority_hadoop_opts = ("stream.num.map.output.key.fields",
-                            "stream.map.output.field.separator",
-                            "mapreduce.partition.keypartitioner.options",
-                            "mapreduce.partition.keycomparator.options"); 
+                             "stream.map.output.field.separator",
+                             "mapreduce.partition.keypartitioner.options",
+                             "mapreduce.partition.keycomparator.options"); 
 our @priority_hadoop_opt_abbrevs = map {$mr_conf_abbrevs{$_}} @priority_hadoop_opts;
 
 sub priority_jobconf(@) {
@@ -8497,8 +8497,9 @@ sub priority_jobconf(@) {
   if(@field_based_opts) {
     my $max_field = max map {split /\D+/} @field_based_opts;
     push @high_priority_jobconf, 
-      -D => "stream.num.map.output.key.fields=$max_field"
+      -D => "stream.num.map.output.key.fields=$max_field";
   }
+
   push @high_priority_jobconf, 
     -D => "mapreduce.job.output.key.comparator.class=" . 
           "org.apache.hadoop.mapreduce.lib.partition.KeyFieldBasedComparator"
@@ -8506,7 +8507,7 @@ sub priority_jobconf(@) {
 
   push @high_priority_jobconf, 
     map { -D => $mr_generics{$_} . "=" . $input_jobconf{$_}} 
-    grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
+      grep { defined($input_jobconf{$_}) } @priority_hadoop_opt_abbrevs; 
 
   delete @input_jobconf{@priority_hadoop_opt_abbrevs};
   \@high_priority_jobconf, \%input_jobconf;
@@ -8515,15 +8516,14 @@ sub priority_jobconf(@) {
 sub hadoop_generic_options(@) {
   my @jobconf = @_;
   my %jobconf = map {split /=/, $_, 2} @jobconf;
-  $jobconf{'Hpkpo'} = '-k1,1' 
-    if exists($jobconf{'Hpkco'}) && !exists($jobconf{'Hpkpo'}); 
-
-  %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
+    %jobconf = map {$mr_conf_abbrevs{$_}, $jobconf{$_}} keys %jobconf;
 
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
-  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
   my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
+  $clean_jobconf{'Hpkpo'} = "-k1,1" if exists($clean_jobconf{'Hpkco'}) and !exists($clean_jobconf{'Hpkpo'});
+  print join "\t", %clean_jobconf, "\n";
+  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
 
   my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
   %jobconf = %$low_priority_jobconf_ref;
