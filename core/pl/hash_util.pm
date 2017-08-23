@@ -124,12 +124,6 @@ sub sum_hashes {
   $href;
 }
 
-# "intelligently" merges values from many 
-# multi-dimensional hashes. arrays are appended;
-# hashes are recursively accumulated, key-by-key,
-# and the first truthy scalar to occupy a particular 
-# hash slot is kept. See chapter 6 of ni by example 
-# for an example.
 sub merge_hashes {
   my $href = shift;
   for(@_) {
@@ -142,34 +136,6 @@ sub accumulate_hashes {
   my $href = {};
   for(@_) {
     $href = accumulate_two_hashes($href, $_);
-  }
-  $href;
-}
-
-sub freqify_path($$) {
-  my $r_hash  = shift;
-  my $r_keyArray  = shift;
-  my(@keyArray) = @{$r_keyArray};
-  my @keyArray = defined($keyArray[0]) ? @keyArray : keys %{$r_hash};
-  my $lastKey = pop @keyArray;
-  foreach my $key (@keyArray) {
-    $r_hash = $r_hash->{$key};
-  }
-  $r_hash->{$lastKey} = freqs @{$r_hash->{$lastKey}};
-}
-
-# Use: freqify(\%h, \@paths) = \%h;
-# Converts the arrays located in the multidimensional
-# hash structure at that point to hashes of their frequencies
-# my $h = {"foo" => {"bar" => [u,u,u,u,v,baz,baz], "qux" => [ay, ay, bee]}};
-# my @keys = (foo, [bar, qux]); freqify $h, \@keys;
-# $h => {"foo" => {"bar" => {"u" => 4, "v" => 1, "baz" => 2}, 
-#                  "qux" => {"ay" => 2, "bee" => 1}}}
-sub freqify($$) {
-  my ($href, $raw_paths) = @_;
-  my @clean_paths = cart map {ref($_) eq "ARRAY" ? $_ : [$_]} @$raw_paths;
-  for my $path(@clean_paths) {
-    freqify_path($href, $path);
   }
   $href;
 }
