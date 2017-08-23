@@ -116,6 +116,14 @@ sub merge_two_hashes($$) {
   \%h;
 }
 
+sub sum_hashes {
+  my $href = shift;
+  for(@_) {
+    $href = sum_two_hashes($href, $_);
+  }
+  $href;
+}
+
 # "intelligently" merges values from many 
 # multi-dimensional hashes. arrays are appended;
 # hashes are recursively accumulated, key-by-key,
