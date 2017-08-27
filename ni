@@ -8552,7 +8552,7 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-259 core/hadoop/hadoop.pl
+260 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -8738,6 +8738,7 @@ defoperator hadoop_streaming => q{
                               $combiner, $combine_cmd_ref,
                               $reducer, $reduce_cmd_ref, 
                               $streaming_jar, $ipaths, $opath);
+    die "hadoop command text too long" if length $cmd > 125_000;
     my $hadoop_fh = siproc {
      sh "$cmd 1>&2";
     };

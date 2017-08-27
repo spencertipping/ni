@@ -402,6 +402,7 @@
 	                              $combiner, $combine_cmd_ref,
 	                              $reducer, $reduce_cmd_ref, 
 	                              $streaming_jar, $ipaths, $opath);
+	    die "hadoop command text too long" if length $cmd > 125_000;
 	    my $hadoop_fh = siproc {
 	     sh "$cmd 1>&2";
 	    };
