@@ -394,6 +394,18 @@ two	columns
 three	columns	here
 ```
 
+#### Set Filtering 
+
+You can also filter a column based on another dataset using `ri` and the index of the column to filter.
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] \
+     riA[ione_column ithree]
+one_column
+three	columns	here
+```
+
+
 ### `F`: Split stream into columns
 
 Like `r`, `F` also has many options. The most important is `F/regex/`, which splits text into columns based on a regular expression.
