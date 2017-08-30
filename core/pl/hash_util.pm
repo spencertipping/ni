@@ -140,3 +140,10 @@ sub accumulate_hashes {
   $href;
 }
 
+# JSON decoding is very slow; if you know that 
+# your data has no shared (top-level) keys, 
+# you can go from string json directly to string json.
+sub string_merge_hashes {
+  my @hash_vals = map {substr $_, 1, -1} @_;
+  "{" . join(",", @hash_vals) . "}";
+}
