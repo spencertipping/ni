@@ -78,7 +78,7 @@ sub sum_two_hashes($$) {
     if(ref($val) eq "") {
        $href1->{$key} += $val;
     } elsif(ref($val) eq "HASH") {
-      $href1->{$key} = sum_two_hashes($href1->{$key}, $val );
+      $href1->{$key} = sum_two_hashes($href1->{$key}, $val ) if %{$val};
     } else { die "bad structure" }
   }
   $href1;
