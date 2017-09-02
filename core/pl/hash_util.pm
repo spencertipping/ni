@@ -73,7 +73,6 @@ sub merge_hash_values($$) {
 
 sub sum_two_hashes($$) {
   my ($href1, $href2) = @_;
-  print %{$href2}, "\n";
   for my $key(keys %{$href2}) {
     my $val = $href2->{$key};
     if(ref($val) eq "") {
