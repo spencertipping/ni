@@ -19,7 +19,7 @@ our @F;
 
 sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
             chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
-sub pl($)  {chomp, push @q, $_ until !defined($_ = <STDIN>) || @q >= $_[0]; @q[0..$_[0]-1]}
+sub pl($)  {chomp, push @q, $_ until @q >= $_[0] || !defined($_ = <STDIN>); @q[0..$_[0]-1]}
 sub F_(@)  {@_ ? @F[@_] : @F}
 sub FM()   {$#F}
 sub FR($)  {@F[$_[0]..$#F]}
