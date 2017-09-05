@@ -4336,7 +4336,7 @@ reducers.pm
 time.pm
 geohash.pl
 pl.pl
-141 core/pl/hash_util.pm
+150 core/pl/hash_util.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
@@ -4417,7 +4417,8 @@ sub sum_two_hashes($$) {
     if(ref($val) eq "") {
        $href1->{$key} += $val;
     } elsif(ref($val) eq "HASH") {
-      $href1->{$key} = sum_two_hashes($href1->{$key}, $val );
+      $href1->{$key} = %{$val} ? sum_two_hashes($href1->{$key}, $val ) 
+                               : $href1->{$key} ? $href1->{$key} : {};
     } else { die "bad structure" }
   }
   $href1;
@@ -4477,6 +4478,14 @@ sub accumulate_hashes {
     $href = accumulate_two_hashes($href, $_);
   }
   $href;
+}
+
+# JSON decoding is very slow; if you know that 
+# your data has no shared (top-level) keys, 
+# you can go from string json directly to string json.
+sub string_merge_hashes {
+  my @hash_vals = map {substr $_, 1, -1} @_;
+  "{" . join(",", @hash_vals) . "}";
 }
 282 core/pl/util.pm
 # Utility library functions.
