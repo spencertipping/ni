@@ -51,10 +51,10 @@ $ ni //license FWpF_ p'r pl 3' \
 jsons
 $ ni jsons r5
 {"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
-{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"ni"}
-{"context":{"w1":"com","w2":"ni"},"type":"trigram","word":"c"}
-{"context":{"w1":"ni","w2":"c"},"type":"trigram","word":"Spencer"}
-{"context":{"w1":"c","w2":"Spencer"},"type":"trigram","word":"MIT"}
+{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"spencertipping"}
+{"context":{"w1":"com","w2":"spencertipping"},"type":"trigram","word":"ni"}
+{"context":{"w1":"spencertipping","w2":"ni"},"type":"trigram","word":"Copyright"}
+{"context":{"w1":"ni","w2":"Copyright"},"type":"trigram","word":"c"}
 ```
 
 A destructuring specification consists of a comma-delimited list of extractors:
@@ -62,10 +62,10 @@ A destructuring specification consists of a comma-delimited list of extractors:
 ```bash
 $ ni jsons D:w1,:w2,:word r5
 https	github	com
-github	com	ni
-com	ni	c
-ni	c	Spencer
-c	Spencer	MIT
+github	com	spencertipping
+com	spencertipping	ni
+spencertipping	ni	Copyright
+ni	Copyright	c
 ```
 
 ### Types of extractors
