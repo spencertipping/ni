@@ -3600,10 +3600,10 @@ checkpoint.pl
 
 # Checkpoints are fully buffered before emitting output.
 
-use File::Temp qw/tempfile/;
-
 sub checkpoint_create($$) {
-  my ($fh, $name) = tempfile "$_[0].part.XXXXXXXX";
+  my $name = "/";
+  $name = "$_[0].part." . noise_str 8 while -e $name;
+  my $fh = swfile $name;
   sforward sni(@{$_[1]}), $fh;
   rename $name, $_[0];
 }
