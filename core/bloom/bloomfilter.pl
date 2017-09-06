@@ -2,7 +2,6 @@
 # A simple pure-Perl implementation of Bloom filters.
 
 eval {require Digest::MD5; Digest::MD5->import('md5')};
-warn "Digest::MD5 not installed; bloom filters won't work" if $@;
 
 # Swiped from https://hur.st/bloomfilter
 sub bloom_args($$) {
