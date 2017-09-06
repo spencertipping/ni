@@ -5553,11 +5553,12 @@ defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
 2 core/bloom/lib
 bloomfilter.pl
 bloom.pl
-92 core/bloom/bloomfilter.pl
+93 core/bloom/bloomfilter.pl
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
 
-use Digest::MD5 qw/md5/;
+eval {require Digest::MD5; Digest::MD5->import('md5')};
+warn "Digest::MD5 not installed; bloom filters won't work" if $@;
 
 # Swiped from https://hur.st/bloomfilter
 sub bloom_args($$) {
@@ -5579,7 +5580,7 @@ sub bloom_from_hex($) {
 
 sub multihash($$) {
   my @hs;
-  push @hs, unpack "N4", md5 $_[0] . scalar @hs until @hs >= $_[1];
+  push @hs, unpack "N4", md5($_[0] . scalar @hs) until @hs >= $_[1];
   @hs[0..$_[1]-1];
 }
 
