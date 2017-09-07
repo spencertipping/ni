@@ -27,7 +27,7 @@
 # So ... what do we do? We have `simage` maintain a "leftovers" buffer so we
 # can still do big-ish block reads and keep track of unconsumed data.
 #
-# TODO: for now only PNG is supported.
+# TODO: for now only PNG and BMP are supported.
 
 sub simage_png {
   my ($into) = @_;
@@ -40,6 +40,18 @@ sub simage_png {
     saferead_exactly \*STDIN, $_, $l + 4, 8;
     safewrite_exactly $into, $_;
   }
+  close $into;
+  $into->await;
+}
+
+sub simage_bmp {
+  my ($into) = @_;
+  return undef unless saferead_exactly \*STDIN, $_, 4;
+  safewrite_exactly $into, $_;
+
+  # Super easy: bytes 2-6 store the total size as a little-endian int.
+  saferead_exactly \*STDIN, $_, unpack('V') - 2;
+  safewrite_exactly $into, $_;
   close $into;
   $into->await;
 }
@@ -59,8 +71,9 @@ sub simage_into(&) {
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {&$fn};
   safewrite_exactly $into, $_;
-  return simage_png $into  if /^\x89P$/;
+  return simage_png  $into if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
+  return simage_bmp  $into if /^BM$/;
   die "ni simage: unsupported image type (unrecognized magic in $_)";
 }
 
