@@ -558,7 +558,7 @@
 	  | 'R' (
 	      <number>
 	      <empty>?
-	    ) -> {$$_[0]} -> {configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+	    ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
 	                          [hadoop_streaming_op [], undef, []]}
 	  | 'S' (
 	      (
@@ -1248,7 +1248,7 @@
 	| 'R' (
 	    <number>
 	    <empty>?
-	  ) -> {$$_[0]} -> {configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+	  ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
 	                        [hadoop_streaming_op [], undef, []]}
 	| 'S' (
 	    (
