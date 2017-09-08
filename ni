@@ -4327,7 +4327,8 @@ defoperator join => q{
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
-8 core/pl/lib
+9 core/pl/lib
+json_util.pm
 hash_util.pm
 util.pm
 math.pm
@@ -4336,6 +4337,20 @@ reducers.pm
 time.pm
 geohash.pl
 pl.pl
+13 core/pl/json_util.pm
+# JSON utils 
+
+# for extracting a small number of fields from
+# complex JSON
+
+sub get_array {
+  my @raw_data = $_[0] =~ /"$_[1]":\[([^]]+)/;
+  return map {eval $_} map {split /,/, $_} @raw_data;
+}
+
+sub get_scalar {
+  return map {eval $_} $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+}
 150 core/pl/hash_util.pm
 # Hash utilities
 
