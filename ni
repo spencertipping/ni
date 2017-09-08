@@ -5395,7 +5395,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-154 core/pl/pl.pl
+155 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5466,6 +5466,7 @@ use constant perl_mapgen => gen q{
 };
 
 our @perl_prefix_keys = qw| core/pl/util.pm
+                            core/pl/json_util.pm
                             core/pl/hash_util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
