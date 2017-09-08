@@ -228,7 +228,7 @@ defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
                         pc hadoop_streaming_lambda;
 
 defhadoopalt R =>
-  pmap q{configure_op {'hadoop/jobconf' => "mapred.reduce.tasks=$_"},
+  pmap q{configure_op {'Hjr' => "$_"},
                       [hadoop_streaming_op [], undef, []]},
   pc number;
 
