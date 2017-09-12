@@ -9,7 +9,7 @@ sub get_array {
 }
 
 sub get_scalar {
-  my ($output_val,) = $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+  my ($output_val,) = $_[0] =~ /"$_[1]":("[^"]*"|-?\d+.?\d*)/;
   return eval $output_val;
 }
 
