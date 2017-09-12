@@ -9,7 +9,8 @@ sub get_array {
 }
 
 sub get_scalar {
-  return map {eval $_} $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+  my ($output_val,) = $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+  return eval $output_val;
 }
 
 sub get_flat_hash {

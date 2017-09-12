@@ -4337,7 +4337,7 @@ reducers.pm
 time.pm
 geohash.pl
 pl.pl
-18 core/pl/json_util.pm
+19 core/pl/json_util.pm
 # JSON utils 
 
 # for extracting a small number of fields from
@@ -4349,7 +4349,8 @@ sub get_array {
 }
 
 sub get_scalar {
-  return map {eval $_} $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+  my ($output_val,) = $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
+  return eval $output_val;
 }
 
 sub get_flat_hash {
