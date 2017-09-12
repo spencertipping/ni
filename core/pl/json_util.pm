@@ -12,3 +12,8 @@ sub get_scalar {
   return map {eval $_} $_[0] =~ /"$_[1]":("[^"]*"|\d+)/;
 }
 
+sub get_flat_hash {
+  my @raw_data = $_[0] =~ /"$_[1]":({[^}]*})/;
+  return @raw_data;
+}
+
