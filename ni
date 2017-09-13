@@ -4327,7 +4327,8 @@ defoperator join => q{
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
-8 core/pl/lib
+9 core/pl/lib
+json_util.pm
 hash_util.pm
 util.pm
 math.pm
@@ -4336,6 +4337,26 @@ reducers.pm
 time.pm
 geohash.pl
 pl.pl
+19 core/pl/json_util.pm
+# JSON utils 
+
+# for extracting a small number of fields from
+# complex JSON
+
+sub get_array {
+  my @raw_data = $_[0] =~ /"$_[1]":\[([^]]+)/;
+  return map {eval $_} map {split /,/, $_} @raw_data;
+}
+
+sub get_scalar {
+  my ($output_val,) = $_[0] =~ /"$_[1]":("[^"]*"|-?\d+.?\d*)/;
+  return eval $output_val;
+}
+
+sub get_flat_hash {
+  my @raw_data = $_[0] =~ /"$_[1]":({[^}]*})/;
+  return @raw_data;
+}
 150 core/pl/hash_util.pm
 # Hash utilities
 
@@ -5395,7 +5416,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-154 core/pl/pl.pl
+155 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5466,6 +5487,7 @@ use constant perl_mapgen => gen q{
 };
 
 our @perl_prefix_keys = qw| core/pl/util.pm
+                            core/pl/json_util.pm
                             core/pl/hash_util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
