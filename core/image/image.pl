@@ -50,7 +50,7 @@ sub simage_bmp {
   safewrite_exactly $into, $_;
 
   # Super easy: bytes 2-6 store the total size as a little-endian int.
-  saferead_exactly \*STDIN, $_, unpack('V') - 2;
+  saferead_exactly \*STDIN, $_, unpack('V', $_) - 2;
   safewrite_exactly $into, $_;
   close $into;
   $into->await;
