@@ -2,21 +2,52 @@
 ###...well, it was before it got out of hand.
 ######(I'm working on it.)
 
-`ni` is cheating already, so consider this a meta-cheatsheet of `ni` operations.
+## Preface
 
-`$ ni ...`
+If you use `ni` regularly, you'll be well-rewarded for walking through [`ni` by Example](ni_by_example_1.md), the more formal tutorial. If this is your first time using Perl, [Chapter 2](ni_by_example_2.md) should get you running with the language in under an hour.  This is meant to be an exhaustive and functional reference to `ni` as a language.
 
-Actually, there's already a cheatsheet [here](options.md), which is more like a glossary. This is meant to be an exhaustive and functional introduction to `ni` as a language.
+## How do I write code using `ni`?
+
+`ni` is a stream-processing language, and each piece of `ni` code (which we call a spell) is a pipeline composed of operators (which maybe we should call "runes," but we don't). 
+
+This makes it very easy to see `ni` code very easy to debug, even for a beginner.
+
+If you run 
+
+## What should I know about `ni` configuration?
+
+There
+
+* `NI_PAGER`
+  * The default `ni` pager is `less`. Generally, this is a safe and sensible choice. However, when using `ni` inside a Jupyter notebook, for exmaple, `less` will halt the notebook's progress, and you'll want to use `cat` 
+  * 
+* `NI_HADOOP_MAPREDUCE_CONFIGURATION`
+* `NI_NO_MONITOR`
+
+## What is `ni` is bad at?
+
+* Processing arbitrary text
+  * Newlines in text **will** result in unexpected behavior, since `ni` will interpret the newiline as the beginning of a new line of the stream.
+  * On the other hand, `ni` is blazing fast and very flexible when working with structured text.
+* Arbitrary JSON operations
+  * `ni` _can_ do arbitrary JSON operations, but they are slow 
+  * On the other hand, `ni` is blazing fast at doing **very specific** JSON operations.
+* That's it. I think. For now.
+
 
 ##Input Operations
+
 * `n`: Integer stream
   * `n#`: Stream the sequence `1..#`, one number per line
   * `n0#`: Stream the sequence `0..#-1`, one number per line
   * `n`: Stream the sequence `1..`, one number per line.
-* `filename{, .gz, .bz, .xz, .lzo, .txt, .csv, .json, etc}`: File input
+* `<filename>`: File input
   * Automatically decompresses the file and streams out one line of the file out at a time.
+  * Files are automatically decompressed from `gzip`, and `bzip`, `xzip` and `lzo` decompression are also supported if you have the binaries.
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
+  * Can also be written `e'<script'`
+  * Common example: `ni n10 e'wc -l'` will count lines.
 * `i<text>`: Literal text input
   * `$ ni iOK!` -- add the literal text `OK!` to the stream.
   * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
@@ -24,8 +55,11 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * `input_directory \<`: Read from directory
   * This tool can be powerful in combination with Hadoop operations, described below.
 * `D:<field1>,:<field2>...`: JSON Destructure
-  * `ni` implements a very fast JSON parser that is great at pulling out string and numeral fields.
-  * As of 2016-12-24, the JSON destructurer does not support list-based fields in JSON.
+  * `ni` can easily grab scalar fields (i.e. strings, numbers, and nulls) from JSON, For example: `ni i'{"hi":5,"there":"alive"}' D:there,:hi` yields `alive	5`
+  * The JSON destructurer does _not_ support pulling out list-based fields or nested hashes within JSON.
+* `1`: Dummy pulse
+  * `ni 1` is syntactic sugar for `ni n1`. It is useful for launching scripts in Perl, Ruby, Lisp, or Python from `ni`.
+  * Examples of the use of the `1` operator are shown in the Perl section below.
 
 ##File Output and Compression
 * ` > filename`: Redirect stream to file
@@ -34,25 +68,101 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * ` \>filename`: Redirect stream to file and emit filename
   * Consumes the stream and outputs it to the file named `filename`, and emits the filename.
   * Note that there is no whitespace between the angle-bracket and the filename.
+  * This "literal right angle bracket" operator `\>` is usually much more useful than a file redirect `>`, since the filename(s) output to the stream can be opened using the "literal left angle bracket" operator, `\<`.
 * `=\>filename`: Duplicate stream to file
   * This operation combines the `=` operator (described below) with `\>filename`.
   * Whereas `\>` will consume your entire stream, ending any future processing, `=\>` duplicates the stream, sending one version to a file, while the other can continue to be processed.
 * `z`: Compress stream
-  * Defaults to applying `gzip` compression, but can use any number of operations. 
-
+  * Defaults to `gzip` compression, but `xzip`, `bzip`, and others are available. See [`ni` by Example Chapter 1](ni_by_example_1.md) for details.
 
 ##Basic Row Operations
-* `r`: Take rows
+
+The operator `r` is used to filter rows.
+
   * `$ ni <data> r3` - take the first 3 rows of the stream
+    * CAVEAT: `r#` emits a `SIGPIPE` which will break Streaming MapReduce jobs. To use `r` in the context of MapReduce, use the safe rowoperator `rs` instead.
+    * `$ ni <data> rs3` - take the first 3 rows of the stream and do not emit a `SIGPIPE`. 
+    * In general, you should use `r` rather than 
   * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
   * `$ ni <data> r~3` - take the last 3 rows of the stream
-  * `$ ni <data> rx100` - take every 100th row in the stream
+  * `$ ni <data> rx100` - take the first row in the stream, and every 100th row that follows. 
   * `$ ni <data> r.05` - sample 5% of the rows in the stream.
     * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
-* `p'<...>'`: Perl
-   * applies the Perl snippet `<...>` to each row of the stream 
-   * `p'..., ..., ...'`: Prints each comma separated expression to its own row into the stream.
+
+##Basic Column Operations
+Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
+
+* `f`: Take columns
+  * `$ ni <data> fAA` - select the first column and duplicate it
+  * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
+  * `$ ni <data> fB-E` - select columns 2-5
+  * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+* Combining column operations with `r`
+  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
+* `F`: Split stream into columns
+  * `F:<char>`: split on character
+    * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
+  * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
+  * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
+  the field values.
+  * `FC`: split on commas (doesn't handle special CSV cases)
+  * `FV`: parse CSV "correctly", up to newlines in fields.
+  * `FS`: split on runs of horizontal whitespace
+  * `FW`: split on runs of non-word characters
+  * `FP`: split on pipe symbols
+* `x`: Exchange columns
+  * `x` -- exchange the first two columns. 
+    * Equivalent to `fBA.`
+  * `xC` -- exchange column 3 with column 1. 
+    * Equivalent to `fCBA.`
+  * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
+    * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
+    * Equivalent to `fBECDA.`
+
+  
+##Sort, Unique & Count Operations
+
+Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
+* `g`: General sorting
+  * `gB` - sort rows ascending by the lexicographic value of the second column
+    * Lexicographic value is determined by the ordering of characters in the ASCII table.
+    * `ni ia iC g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+  * `gC-` - sort rows *descending* by the lexicographic value of the third column
+   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
+  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
+    * The numeric sort works on integers and floating-point numbers written as decimals.
+    * The numeric sort will **not** work on numbers written in exponential/scientific notation
+  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
+  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+  
+
+## Perl
+
+`ni` fully supports Perl 5 with backwards compaitibility to 5.08. `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream 
+
+
+* Returning data 
+  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
+  * `p'<statements>; ..., ..., ...'`: Returns each element of .
+  * Examples:
+      * `ni n1p''`	
+* Field selection operations
+  * `a` through `l`: Short field access
+      * `a` through `l` are functions that access the first through twelfth fields of an input data stream. 
+      * `$ ni i[one two three four] p'r d, b'` prints `four	two` to the output stream. 
+    * In the context of hash lookup, the functions `a` through `l` without parentheses will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+      * `$h{a}` tries to retrieve the key `"a"` from the hash `%h`.
+      * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with 
+  * `F_`: Explicit field access
+    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
+    * `FM` is the number of fields in the row.
+    * `FR n` is equivalent to `F_ n..FM`
 * `rp'...'`: Take rows with Perl
   * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
   * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
@@ -91,80 +201,15 @@ Actually, there's already a cheatsheet [here](options.md), which is more like a 
 * And to emphasize the point, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
 
 
-##Basic Column Operations
-Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
-
-* `f`: Take columns
-  * `$ ni <data> fAA` - select the first column and duplicate it
-  * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
-  * `$ ni <data> fB-E` - select columns 2-5
-  * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
-* Combining column operations with `r`
-  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
-* `F`: Split stream into columns
-  * `F:<char>`: split on character
-    * Note: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
-  * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
-  * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
-  the field values.
-  * `FC`: split on commas (doesn't handle special CSV cases)
-  * `FV`: parse CSV "correctly", up to newlines in fields
-  * `FS`: split on runs of horizontal whitespace
-  * `FW`: split on runs of non-word characters
-  * `FP`: split on pipe symbols
-* `x`: Exchange columns
-  * `x` -- exchange the first two columns. 
-    * Equivalent to `fBA.`
-  * `xC` -- exchange column 3 with column 1. 
-    * Equivalent to `fCBA.`
-  * `xBE` -- exchange columns 2 and 5 with columns 1 and 2. 
-    * This runs in order, so `B` will be switched with `A` first, which will then be switched with column `E`. 
-    * Equivalent to `fBECDA.`
-
-  
-##Sort, Unique & Count Operations
-
-Sorting is often a rate-limiting step in `ni` jobs run on a single machine, and data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
-
-* `g`: General sorting
-  * `gB` - sort rows ascending by the lexicographic value of the second column
-    * Lexicographic value is determined by the ordering of characters in the ASCII table.
-    * `ni ia iC g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
-  * `gC-` - sort rows *descending* by the lexicographic value of the third column
-   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
-  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
-    * The numeric sort works on integers and floating-point numbers written as decimals.
-    * The numeric sort will **not** work on numbers written in exponential/scientific notation
-  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
-* `u`: unique sorted rows
-  * `$ ni <data> fACgABu` -- get the lexicographically-sorted unique values from the first and third columns of `<data>`.
-* `c`: count sorted rows
-  * `$ ni <data> fBgc` -- return the number of times each unique value of the second column occurs in `<data>`
-  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
-  
 ##Understanding the `ni` monitor
 More details [here](monitor.md). Overall:
 
 * Negative numbers = non-rate-determining step
 * Positive numbers = rate-determining step
 * Large Positive numbers = slow step
+
   
-##Perl for `ni` Fundamentals
-`ni` fully supports Perl 5, and many of the operations can be written without quoting the environment. 
 
-Note that whitespace is required after every `p'code'` operator; otherwise ni will assume that everything following your quoted code is also Perl.
-
-* Returning data 
-  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream
-  * `p'[..., ..., ...]'`: Return each element of the array as a field in a tab-delimited row to the stream.
-* Field selection operations
-  * `a`, `a()` through `l` and `l()`: Parsimonious field access
-    * `a` through `l` are functions that access the first through twelfth fields of an input data stream. They are syntactic sugar for the functions `a()` through `l()` with the same functionality.
-    * Generally, the functions `a` through `l` will be more parsimonious, however, in certain contexts (importantly, this includes hash lookup), these one-letter functions will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
-  * `F_`: Explicit field access
-    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
-    * `FM` is the number of fields in the row.
-    * `FR n` is equivalent to `F_ n..FM`
 
 ##SSH and Containers
 
