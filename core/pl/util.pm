@@ -16,8 +16,8 @@ sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
 sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
 sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]} 
 
-our @alphabet = "a".."z";
-sub alph {my $ind = shift; $alphabet[$ind-1]}
+our @alph = "a".."z";
+sub alph($) {my $index = shift; $alph[$index-1]}
 
 sub take_while(&@) {
   local $_;

@@ -2,9 +2,9 @@
 
 `ni`-fu is a companion piece to the [cheatsheet](cheatsheet.md). The cheatsheet serves as a reference to `ni` operators, while `ni`-fu serves as a reference for `ni` programming in general, covering topics like configuration, plotting, debugging, and coding best practices.
 
-## How do I write code using `ni`?
+## How do I write `ni`?
 
-`ni` is a stream-processing language, and each piece of `ni` code (which we call a spell) is a pipeline composed of operators (which maybe we should call "runes," but we don't). 
+`ni` is a stream-processing language, and each piece of `ni` code (which we call a spell) is a pipeline composed of operators (which maybe we should call "runes" or "glyphs" or something, but we don't). 
 
 This makes it very easy to see `ni` code very easy to debug, even for a beginner.
 
@@ -12,10 +12,44 @@ All you need to do to see a `ni` spell in action is to run each piece from begin
 
 For example, consider the spell:
 
-`$ ni n3 fAA p'r a, alph a'`
+`$ ni n3 fAA p'r alph a, a' OB`
 
-If you don't know what this code does, run it piece by piece.
+If you don't know what this code does, split it up at whitespace between operators, yielding:
 
+```
+n3
+fAA
+p'r alph a, a'
+OB
+```
+
+To see how this pipeline works, first run it using just the first operator:
+
+```
+$ ni n3
+1
+2
+3
+```
+
+Pretty straightforward. Now, run the pipeline once again, using the first two operators:
+
+```
+$ ni n3 fAA
+1	1
+2	2
+3	3
+```
+
+A little more interesting; if you didn't know before, you can use `f` to duplicate columns in the stream. Once more, using the first 3 operators:
+
+
+```
+$ ni n3 fAA p p'r alph a, a'
+a	1
+b	2
+c	3
+```
 
 ## What should I know about `ni` configuration?
 

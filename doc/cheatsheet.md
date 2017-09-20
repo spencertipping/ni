@@ -64,8 +64,13 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
   * `$ ni <data> fB-E` - select columns 2-5
   * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
-  * `$ ni <data> f#<N1>,#<N2>`, selects data from (zero-indexed columns <number1> and <number2>.
-  * `$ ni <data> f
+  * `$ ni <data> f#<N1>,#<N2>`, selects data from (zero-indexed columns <number1> and <number2>).
+      * This can be used to select columns beyond the 26th column. `$ ni <data> f#87,#45,#9,#18` will take the 88th, 46th, 10th, and 19th columns from the data source.
+      * Every column operation written with letters can be rewritten using the numeric form:
+          * `$ ni <data> f#0,#0` is equivalent to `$ ni <data> fAA`
+          * `$ ni <data> f#0,#3.` is equivalent to `$ ni <data> fAD.`
+          * `$ ni <data> f#1-#4` is equivalent to `$ ni <data> fB-E`
+          * `$ ni <data> f#2,#0,#7,#3,#5` is equivalent to `$ ni <data> fCAHDF`
 * Combining column operations with `r`
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
@@ -119,16 +124,18 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
 
 `ni` fully supports Perl 5 with backwards compaitibility to 5.08. `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream 
 
-### Returning Data
+### Printing and Returning Data
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
   * `p'<statements>; ..., ..., ...'`: Returns each element of .
   * Examples:
-      * `ni 1p''`
-      * Recall that `1` is the same thing as `n1`.	
+      * `ni 1p'20, 30'` returns `20` and `30` on separate lines.
+      * `ni 1p'r 20, 30'` returns `20	30` on a single, tab-separated line.
+      * Recall that `1` is the same thing as `n1`.
   * The `p'...; r ..., ...'` operator is used more frequently, 
   * There are some tricks to how `ni` prints data from references.
   * For example:
-
+      * `$ ni 1p'[hi, there]'` returns `hi	there` on a single tab-separated line:
+      * `$ ni 1p'r [hi, there]'` prints `ARRAY(0x7fa31dbc5b60)`.
   
 ### Field Selection
   * `a` through `l`: Short field access
@@ -136,7 +143,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
       * `$ ni i[one two three four] p'r d, b'` prints `four	two` to the output stream. 
     * In the context of hash lookup, the functions `a` through `l` without parentheses will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
       * `$h{a}` tries to retrieve the key associated with the string `"a"` from the hash `%h`.
-      * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with the value of the function `a`
+      * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with the value of the function `a`, _i.e._ the value in the first column.
       * `$ ni ihi p'my %h = ("hi", "bye", "a", "eiou"); r $h{a}, $h{+a}, $h{a()}'` returns `aeio	bye	bye`. Prefixing a bareword
   * `F_`: Explicit field access
     * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
@@ -148,17 +155,17 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
 ## Perl for `ni`
-A few important operators for doing data manipulation in Perl. Many Perl subroutines can be written without parentheses or unquoted directly in to `ni` scripts. Go look these up in docs online until something more substantial is written here.
+A list of important Perl functions is here.
 
 * `lc`
 * `uc`
 * `substr`
 * `split`
 * `join`
-* `**`: exponent
-* `my $<v> = <expr>`: instantiate a scalar `<v>` with the value of `<expr>`
 * `map`
-* `keys %h`
+* `grep`
+* `keys`
+* `values`
 * Regular Expressions
   * `$<v> =~ /regex/`
   * `$<v> =~ s/regex//`
@@ -166,6 +173,8 @@ A few important operators for doing data manipulation in Perl. Many Perl subrout
   * `$<v> = y/regex//`
 
 ## Useful `ni`-specific Perl Subroutines
+
+### Geographic Functions
 The operators in this section refer specifically to the 
 `$ ni <data> p'...'`
 
@@ -178,16 +187,35 @@ The operators in this section refer specifically to the
      * Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
   * `ghd($gh_int, $precision)`
     * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+
+### Time Functinos
 * `tpe`: time parts to epoch
   * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
   * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
 * `tep`: time epoch to parts
   * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
   * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
-* `timezone_seconds`
-  * `tep($raw_timestamp + $timezone_seconds($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+* `tsec`: Timezone offset in seconds
+  * `tep($raw_timestamp + $tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 
-
+* `i2e($iso_8601_time_string)`: ISO-8601 to Epcoh
+* `e2i($timestamp, $timezone)`: Epoch to ISO-8601
+* `ym`: year and month
+  * Input: a unix timestamp in 
+  * Output: the year and month
+  * Example: 
+* `how`: hour of day and weekday
+  * Input:
+  * Output:
+  * Example
+* `ttd`, `tth`, `tt15`, `ttm`: Truncate to day, hour, quarter-hour, minute
+  * Input:
+  * Output:
+  * Example:
+* `ghl($timestamp, $gh)` and `gh6l($timestamp, $gh60)`: geohash localtime and geohash-60 localtime
+  * Input:
+  * Output:
+  * Example:
 
 ## SSH and Containers
 

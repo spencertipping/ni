@@ -72,17 +72,6 @@ BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
-BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
-         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
-                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub clip_to_%s($) {my $ts = $_[0]; int($ts/%d)}',
-                       $x, $dur}}
-
-BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
-         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
-                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub inflate_to_%s($) {my $ts = $_[0]; $ts * %d}',
-                       $x, $dur}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -188,14 +177,6 @@ BEGIN {
   *hod = \&hour_of_day;
   *how = \&hour_of_week;
   *ym = \&year_month;
-  *itd = \&inflate_to_day;
-  *ith = \&inflate_to_hour;
-  *it15 = \&inflate_to_quarter_hour;
-  *itm = \&inflate_to_minute;
-  *ctd = \&clip_to_day;
-  *cth = \&clip_to_hour;
-  *ct15 = \&clip_to_quarter_hour;
-  *ctm = \&clip_to_minute;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
