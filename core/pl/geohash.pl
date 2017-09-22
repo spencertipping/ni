@@ -44,6 +44,7 @@ if (1 << 32) {
 
   *geohash_tagged_precision = sub {
     my ($gh) = @_;
+    $gh &= 0x3fff_ffff_ffff_ffff;
     my $bits = 0;
     for (my $b = 32; $b; $b >>= 1) {
       $bits |= $b if ($gh & ~(-1 << ($bits | $b))) != $gh;
