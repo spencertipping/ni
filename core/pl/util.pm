@@ -275,6 +275,8 @@ sub ihash_all {
   @output;
 }
 
+sub alph($) {chr($_[0] + 64)}
+
 
 BEGIN {
   *h2b64 = \&hex2base64;

@@ -4508,7 +4508,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-282 core/pl/util.pm
+284 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4786,6 +4786,8 @@ sub ihash_all {
   @output;
 }
 
+sub alph($) {chr($_[0] + 64)}
+
 
 BEGIN {
   *h2b64 = \&hex2base64;
@@ -5059,7 +5061,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-206 core/pl/time.pm
+187 core/pl/time.pm
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5134,17 +5136,6 @@ BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
          ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
                        $x, $dur, $dur}}
-BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
-         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
-                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub clip_to_%s($) {my $ts = $_[0]; int($ts/%d)}',
-                       $x, $dur}}
-
-BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
-         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
-                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub inflate_to_%s($) {my $ts = $_[0]; $ts * %d}',
-                       $x, $dur}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -5250,14 +5241,6 @@ BEGIN {
   *hod = \&hour_of_day;
   *how = \&hour_of_week;
   *ym = \&year_month;
-  *itd = \&inflate_to_day;
-  *ith = \&inflate_to_hour;
-  *it15 = \&inflate_to_quarter_hour;
-  *itm = \&inflate_to_minute;
-  *ctd = \&clip_to_day;
-  *cth = \&clip_to_hour;
-  *ct15 = \&clip_to_quarter_hour;
-  *ctm = \&clip_to_minute;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
