@@ -4,6 +4,8 @@
 
 BEGIN {
 
+use Scalar::Util qw/looks_like_number/;
+
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
 
@@ -40,9 +42,27 @@ if (1 << 32) {
                    : $gh;
   };
 
+  *geohash_tagged_precision = sub {
+    my ($gh) = @_;
+    my $bits = 0;
+    for (my $b = 32; $b; $b >>= 1) {
+      $bits |= $b if ($gh & ~(-1 << ($bits | $b))) != $gh;
+    }
+    $bits;
+  };
+
+  *geohash_decode_tagged = sub {
+    my ($gh) = @_;
+    $gh &= 0x3fff_ffff_ffff_ffff;
+    my $tag_bit_index = geohash_tagged_precision($gh);
+    geohash_decode($gh & ~(-1 << $tag_bit_index), $tag_bit_index);
+  };
+
   *geohash_decode = sub {
     local $_;
     my ($gh, $bits) = @_;
+    return geohash_decode_tagged($gh)
+      if looks_like_number $gh and $gh & 0x4000_0000_0000_0000;
     unless (defined $bits) {
       # Decode gh from base-32
       $bits = length($gh) * 5;
