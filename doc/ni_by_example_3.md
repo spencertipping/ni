@@ -275,29 +275,6 @@ $ ni i1494110651 p'r tep ttd(a); r tep tth(a);
 2017	5	6	22	44	11
 ```
 
-#### `ctd`, `cth`, `ct15`, `ctm`: clip to day, hour, quarter-hour, and minute
-
-This can be used to save time and space, especially when running Hadoop jobs that require carrying around timestamps.
-
-```bash
-$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a'
-17292	415030	1660122	24901844	1494110651
-```
-
-#### `itd`, `ith`, `it15`, `itm`: inflate to day, hour, quarter-hour, and minute
-
-Undoes the clipping operation; the result of clipping followed by inflation is equivalent to the truncation operation. Separating the two options in time saves space (at the expense of more computation).
-
-```bash
-$ ni i1494110651 p'r ctd(a), cth(a), ct15(a), ctm(a), a' \
-     p'r itd a, ith b, it15 c, itm d, e'
-1494028800	1494108000	1494109800	1494110640	1494110651
-```
-
-```bash
-$ ni i1494110651 p'r ttd(a), tth(a), tt15(a), ttm(a), a'
-1494028800	1494108000	1494109800	1494110640	1494110651
-```
 
 ## Buffered Readahead and Multiline Selection
 
