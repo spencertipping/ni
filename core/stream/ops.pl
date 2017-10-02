@@ -216,7 +216,7 @@ defoperator file_prepend_name_write => q{
   while (<STDIN>)
   {
     my ($fname, $l) = split /\t/, $_, 2;
-    print("$file\n"), $fh = swfile($file = $fname)
+    defined($file) && print("$file\n"), $fh = swfile($file = $fname)
       if !defined($file) or $fname ne $file;
     print $fh $l;
   }
