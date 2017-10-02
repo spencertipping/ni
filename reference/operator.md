@@ -379,6 +379,21 @@
 	    print "$file\t$_" while <$fh>;
 	  }
 
+# OPERATOR file_prepend_name_write
+
+## IMPLEMENTATION
+	
+	  my $file = undef;
+	  my $fh   = undef;
+	  while (<STDIN>)
+	  {
+	    my ($fname, $l) = split /\t/, $_, 2;
+	    print("$file\n"), $fh = swfile($file = $fname)
+	      if !defined($file) or $fname ne $file;
+	    print $fh $l;
+	  }
+	  print "$file\n";
+
 # OPERATOR file_read
 
 ## IMPLEMENTATION

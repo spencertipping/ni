@@ -4797,12 +4797,58 @@ lazytest_case 'ni n4 \>file3 \<
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=369
+lazytest_line=373
+lazytest_case '{ echo foo; echo bar; } > file1
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=374
+lazytest_case 'echo bif > file2
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=375
+lazytest_case 'ni ifile1 ifile2 \<       # regular file-read on multiple files
+' 3<<'LAZYTEST_EOF'
+foo
+bar
+bif
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=379
+lazytest_case 'ni ifile1 ifile2 W\<      # prepend-file read on multiple files
+' 3<<'LAZYTEST_EOF'
+file1	foo
+file1	bar
+file2	bif
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=389
+lazytest_case 'ni ifile1 ifile2 W\< p'\''r a.".txt", b'\'' W\>
+' 3<<'LAZYTEST_EOF'
+file1.txt
+file2.txt
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=392
+lazytest_case 'cat file1.txt
+' 3<<'LAZYTEST_EOF'
+foo
+bar
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=395
+lazytest_case 'cat file2.txt
+' 3<<'LAZYTEST_EOF'
+bif
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=403
 lazytest_case 'ni n3z >file3.gz
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=370
+lazytest_line=404
 lazytest_case 'zcat file3.gz
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4810,43 +4856,43 @@ lazytest_case 'zcat file3.gz
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=379
+lazytest_line=413
 lazytest_case 'ni igzip z | gzip -dc                 # gzip by default
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=381
+lazytest_line=415
 lazytest_case 'ni igzip zg | gzip -dc                # explicitly specify
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=383
+lazytest_line=417
 lazytest_case 'ni igzip zg9 | gzip -dc               # specify compression level
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=385
+lazytest_line=419
 lazytest_case 'ni ixz zx | xz -dc
 ' 3<<'LAZYTEST_EOF'
 xz
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=387
+lazytest_line=421
 lazytest_case 'ni ilzo zo | lzop -dc
 ' 3<<'LAZYTEST_EOF'
 lzo
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=389
+lazytest_line=423
 lazytest_case 'ni ibzip2 zb | bzip2 -dc
 ' 3<<'LAZYTEST_EOF'
 bzip2
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=405
+lazytest_line=439
 lazytest_case 'ni n4 z zd
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4855,7 +4901,7 @@ lazytest_case 'ni n4 z zd
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=410
+lazytest_line=444
 lazytest_case 'ni n4 zd
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4864,13 +4910,13 @@ lazytest_case 'ni n4 zd
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=421
+lazytest_line=455
 lazytest_case 'ni n4 zn | wc -c
 ' 3<<'LAZYTEST_EOF'
 0
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=430
+lazytest_line=464
 lazytest_case 'ni n1000000gr4
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4879,7 +4925,7 @@ lazytest_case 'ni n1000000gr4
 1000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=441
+lazytest_line=475
 lazytest_case 'ni n1000000gr4 :numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -4888,7 +4934,7 @@ lazytest_case 'ni n1000000gr4 :numbers
 1000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=451
+lazytest_line=485
 lazytest_case 'ni n1000000gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 1000
@@ -4897,18 +4943,18 @@ lazytest_case 'ni n1000000gr4 :numbers O
 1
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=462
+lazytest_line=496
 lazytest_case 'echo '\''checkpointed'\'' > numbers
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=463
+lazytest_line=497
 lazytest_case 'ni n1000000gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 checkpointed
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=471
+lazytest_line=505
 lazytest_case 'ni n100000z :biglist r+5
 ' 3<<'LAZYTEST_EOF'
 99996
@@ -4918,7 +4964,7 @@ lazytest_case 'ni n100000z :biglist r+5
 100000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=477
+lazytest_line=511
 lazytest_case 'ni n100000z :biglist r+5
 ' 3<<'LAZYTEST_EOF'
 99996

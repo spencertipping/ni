@@ -2701,7 +2701,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-250 core/stream/ops.pl
+265 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2913,6 +2913,21 @@ defoperator file_prepend_name_read => q{
 };
 
 defshort '/W<', pmap q{file_prepend_name_read_op}, pnone;
+
+defoperator file_prepend_name_write => q{
+  my $file = undef;
+  my $fh   = undef;
+  while (<STDIN>)
+  {
+    my ($fname, $l) = split /\t/, $_, 2;
+    print("$file\n"), $fh = swfile($file = $fname)
+      if !defined($file) or $fname ne $file;
+    print $fh $l;
+  }
+  print "$file\n";
+};
+
+defshort '/W>', pmap q{file_prepend_name_write_op}, pnone;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.
@@ -11795,7 +11810,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-483 doc/stream.md
+517 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -12161,6 +12176,40 @@ $ ni n4 \>file3 \<
 4
 ```
 
+## Reading/writing multiple files
+`\<` will already handle multiple files, behaving like `xargs cat`. But
+sometimes you want to know which file each line came from; for that you can use
+`W\<` (mnemonic: "prepend and read"; see [col.md](col.md) under
+"juxtaposition" for `W`). For example:
+
+```bash
+$ { echo foo; echo bar; } > file1
+$ echo bif > file2
+$ ni ifile1 ifile2 \<       # regular file-read on multiple files
+foo
+bar
+bif
+$ ni ifile1 ifile2 W\<      # prepend-file read on multiple files
+file1	foo
+file1	bar
+file2	bif
+```
+
+The inverse is `W\>`, which takes the stream produced by `W\<` and converts it
+back into files. For example, we can add a `.txt` extension to each one:
+
+```bash
+$ ni ifile1 ifile2 W\< p'r a.".txt", b' W\>
+file1.txt
+file2.txt
+$ cat file1.txt
+foo
+bar
+$ cat file2.txt
+bif
+```
+
+## Compression
 If you want to write a compressed file, you can use the `z` operator:
 
 ```bash

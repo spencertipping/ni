@@ -1785,6 +1785,11 @@
 ## SYNTAX
 	'' -> {file_prepend_name_read_op}
 
+# SHORT OPERATOR /W>
+
+## SYNTAX
+	'' -> {file_prepend_name_write_op}
+
 # SHORT OPERATOR /X
 
 ## SYNTAX

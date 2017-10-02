@@ -210,6 +210,21 @@ defoperator file_prepend_name_read => q{
 
 defshort '/W<', pmap q{file_prepend_name_read_op}, pnone;
 
+defoperator file_prepend_name_write => q{
+  my $file = undef;
+  my $fh   = undef;
+  while (<STDIN>)
+  {
+    my ($fname, $l) = split /\t/, $_, 2;
+    print("$file\n"), $fh = swfile($file = $fname)
+      if !defined($file) or $fname ne $file;
+    print $fh $l;
+  }
+  print "$file\n";
+};
+
+defshort '/W>', pmap q{file_prepend_name_write_op}, pnone;
+
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.
 # ni uses this format internally to store its k/v state.
