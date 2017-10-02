@@ -1780,6 +1780,11 @@
 ## SYNTAX
 	</qfn> -> {with_left_op  @$_}
 
+# SHORT OPERATOR /W<
+
+## SYNTAX
+	'' -> {file_prepend_name_read_op}
+
 # SHORT OPERATOR /X
 
 ## SYNTAX

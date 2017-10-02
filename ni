@@ -2701,7 +2701,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-238 core/stream/ops.pl
+250 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2901,6 +2901,18 @@ defoperator file_write => q{
 
 defshort '/>', pmap q{file_write_op $_}, nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
+
+defoperator file_prepend_name_read => q{
+  my $file;
+  while (defined($file = <STDIN>))
+  {
+    chomp $file;
+    my $fh = srfile $file;
+    print "$file\t$_" while <$fh>;
+  }
+};
+
+defshort '/W<', pmap q{file_prepend_name_read_op}, pnone;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.

@@ -367,6 +367,18 @@
 	  sio;
 	  sforward resource_read(closure_data $_[0]), \*STDOUT;
 
+# OPERATOR file_prepend_name_read
+
+## IMPLEMENTATION
+	
+	  my $file;
+	  while (defined($file = <STDIN>))
+	  {
+	    chomp $file;
+	    my $fh = srfile $file;
+	    print "$file\t$_" while <$fh>;
+	  }
+
 # OPERATOR file_read
 
 ## IMPLEMENTATION
