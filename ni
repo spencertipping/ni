@@ -4921,7 +4921,7 @@ sub FR($)  {@F[$_[0]..$#F]}
 sub FT($)  {@F[0..($_[0]-1)]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; wantarray ? map((split /\t/)[%d] || "", map split(/\n/), @_) : (split /\t/, $_[0] =~ /^(.*)/ && $1)[%d] || ""} ',
+       ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d] || "", map split(/\n/), @_)}',
                      $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
 BEGIN {ceval sprintf 'sub %s__ {my @r; foreach my $line(@_) 
                                       {my @line_arr = split /\t/, $line; 
