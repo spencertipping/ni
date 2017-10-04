@@ -135,6 +135,16 @@ defoperator perl_cell_transformer => q{
     each     => $gen->(cols => @cols ? join ',', @cols : '0..$#F'));
 };
 
+defmetaoperator perl_require => q{
+  my ($args, $left, $right) = @_;
+  my $code_fh = sni @$args;
+  my $code    = 'BEGIN{' . join('', <$code_fh>) . "\n}";
+  my $key     = "core/pl/require/" . gensym;
+  self_append_resource $key, $code;
+  push @ni::perl_prefix_keys, $key;
+  ($left, $right);
+};
+
 BEGIN {
   defparseralias perl_mapper_code         => plcode \&perl_mapper;
   defparseralias perl_grepper_code        => plcode \&perl_grepper;
@@ -145,6 +155,8 @@ BEGIN {
 defshort '/p',
   defalt 'perlalt', 'alternatives for /p perl operator',
     pmap q{perl_mapper_op $_}, perl_mapper_code;
+
+defshort '/pR', pmap q{perl_require_op @$_}, _qfn;
 
 defrowalt pmap q{perl_grepper_op $_},
           pn 1, pstr 'p', perl_grepper_code;

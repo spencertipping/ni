@@ -1934,6 +1934,11 @@
 	| <perl_mapper_code> -> {perl_mapper_op $_}
 	)
 
+# SHORT OPERATOR /pR
+
+## SYNTAX
+	</qfn> -> {perl_require_op @$_}
+
 # SHORT OPERATOR /r
 
 ## SYNTAX

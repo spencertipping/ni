@@ -62,6 +62,18 @@
 	  };
 	  ($left, [@$rewritten, @$right]);
 
+# META OPERATOR perl_require
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my $code_fh = sni @$args;
+	  my $code    = 'BEGIN{' . join('', <$code_fh>) . "\n}";
+	  my $key     = "core/pl/require/" . gensym;
+	  self_append_resource $key, $code;
+	  push @ni::perl_prefix_keys, $key;
+	  ($left, $right);
+
 # META OPERATOR stderr_monitor_transform
 
 ## IMPLEMENTATION

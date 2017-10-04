@@ -3,8 +3,9 @@
 internal libraries you use to extend ni. For the latter, see
 [extend.md](extend.md) (`ni //help/extend`).
 
-For a data transformer you're more likely to use and like, see
-[ruby.md](ruby.md).
+ni also grudgingly supports Ruby: [ruby.md](ruby.md). However, as far as I know
+nobody uses this code and I'm likely to cannibalize the `m` operator at some
+point.
 
 ni provides the `p` operator to execute a Perl line processor on the current
 data stream. For example:
@@ -31,7 +32,7 @@ $ ni ::plfoo[n4p'a*a'] //:plfoo
 
 **NOTE:** The Perl driver won't execute your code at all if the input stream is
 empty. If you're using the Perl driver to generate data, you need to feed it a
-row using, e.g. `n1`:
+row using, e.g. `n1` (for which a shorthand is just `1`):
 
 ```bash
 $ ni +p'1..5'                   # nothing happens here
@@ -41,6 +42,8 @@ $ ni +n1p'1..5'                 # the single input row causes `p` to run
 3
 4
 5
+$ ni 1p'"hello"'                # 1 == n1
+hello
 ```
 
 ## Basic stuff
@@ -75,10 +78,10 @@ sub b() {F_ 1}
 ```
 
 ### `F_`: the array of fields
-The Perl code given to `p` is invoked on each line of input, which is stored in `$_`. 
-`F_(...)` takes one or more column indexes (as zero-based integers) and returns
-the field values. If you don't pass in anything, it returns all of the fields
-for the line. For example:
+The Perl code given to `p` is invoked on each line of input, which is stored in
+`$_`. `F_(...)` takes one or more column indexes (as zero-based integers) and
+returns the field values. If you don't pass in anything, it returns all of the
+fields for the line. For example:
 
 ```bash
 $ ni /etc/passwd F::r3
@@ -157,6 +160,59 @@ $ ni n3p'[a, a+1, a+2]'
 1	2	3
 2	3	4
 3	4	5
+```
+
+### `pR`: `require` external source for perl context
+Sometimes you want to have access to external functions inside your perl
+mappers/greppers/etc; ni gives you the `pR` operator to do this. For example:
+
+```bash
+$ cat > functions.pm <<'EOF'
+package ni::pl;       # important! this is the package where your perl code runs
+sub normalize
+{
+  my $sum = sum @_;   # required code can call back into ni functions
+  map $_ / ($sum || 1), @_;
+}
+EOF
+$ ni pRfunctions.pm 1p'r normalize 1, 2, 5'
+0.125	0.25	0.625
+```
+
+As usual with ni, any source you require with `pR` will be shipped over SSH and
+Docker connections, bundled into Hadoop jars, and generally will be available
+wherever your pipeline goes. There are some limitations, though; in particular,
+ni doesn't track any files your code _itself_ requires -- so if `functions.pm`
+had `require`d `foo.pm`, for instance, ni would only know to ship
+`functions.pm` and not `foo.pm`.
+
+Normally this is a feature; it makes it possible for you to `use` or `require`
+Perl standard modules without propagating your local version onto
+possibly-incompatible remotes (e.g. if you have v5.22 locally but the remote
+runs v5.10, it's possible that your local standard libraries will break on the
+remote perl).
+
+ni can probably infer sub-inclusions, but this requires some invasive
+modification to Perl's `require` mechanism through the use of hooks, and I
+haven't implemented it yet. For the moment, sub-inclusions aren't really
+handled; although you could `pR` each one, this won't set `%INC` keys and any
+sub-`require` statements in your source is likely to fail as a result (since
+the files won't exist on the remote end). This is lame and will be fixed at
+some point.
+
+`pR` takes ni lambdas, which makes it possible to load source from nonstandard
+locations like HTTP:
+
+```bash
+$ nc -l -p 3001 <<'EOF' &
+HTTP/1.1 200 OK
+Content-Length: 49
+
+sub ni::pl::this_worked() { r "it worked", @_ }
+EOF
+$ sleep 1
+$ ni pRhttp://localhost:3001 1p'this_worked(5, 6, 7)'
+it worked	5	6	7
 ```
 
 ## Buffered readahead

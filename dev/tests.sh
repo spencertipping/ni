@@ -3512,7 +3512,7 @@ lazytest_case 'ni --explain /usr/share/dict/words rx40 r10 p'\''r substr(a, 0, 3
 ["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=13
+lazytest_line=14
 lazytest_case 'ni n5p'\''a * a'\''                 # square some numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3522,7 +3522,7 @@ lazytest_case 'ni n5p'\''a * a'\''                 # square some numbers
 25
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=25
+lazytest_line=26
 lazytest_case 'ni ::plfoo[n4p'\''a*a'\''] //:plfoo
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3531,12 +3531,12 @@ lazytest_case 'ni ::plfoo[n4p'\''a*a'\''] //:plfoo
 16
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=37
+lazytest_line=38
 lazytest_case 'ni +p'\''1..5'\''                   # nothing happens here
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=38
+lazytest_line=39
 lazytest_case 'ni +n1p'\''1..5'\''                 # the single input row causes `p` to run
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3546,7 +3546,13 @@ lazytest_case 'ni +n1p'\''1..5'\''                 # the single input row causes
 5
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=54
+lazytest_line=45
+lazytest_case 'ni 1p'\''"hello"'\''                # 1 == n1
+' 3<<'LAZYTEST_EOF'
+hello
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=57
 lazytest_case 'ni n4p'\''r a, a + 1'\''                    # generate two columns
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -3555,7 +3561,7 @@ lazytest_case 'ni n4p'\''r a, a + 1'\''                    # generate two column
 4	5
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=59
+lazytest_line=62
 lazytest_case 'ni n4p'\''r a, a + 1'\'' p'\''r a + b'\''         # ... and sum them
 ' 3<<'LAZYTEST_EOF'
 3
@@ -3564,7 +3570,7 @@ lazytest_case 'ni n4p'\''r a, a + 1'\'' p'\''r a + b'\''         # ... and sum t
 9
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=84
+lazytest_line=87
 lazytest_case 'ni /etc/passwd F::r3
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0	root	/root	/bin/bash
@@ -3572,7 +3578,7 @@ daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 bin	x	2	2	bin	/bin	/bin/sh
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=88
+lazytest_line=91
 lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 0..3'\''
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0
@@ -3580,7 +3586,7 @@ daemon	x	1	1
 bin	x	2	2
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=92
+lazytest_line=95
 lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 1..3'\''
 ' 3<<'LAZYTEST_EOF'
 x	0	0
@@ -3588,7 +3594,7 @@ x	1	1
 x	2	2
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=96
+lazytest_line=99
 lazytest_case 'ni /etc/passwd F::r3p'\''r scalar F_'\''            # number of fields
 ' 3<<'LAZYTEST_EOF'
 7
@@ -3596,7 +3602,7 @@ lazytest_case 'ni /etc/passwd F::r3p'\''r scalar F_'\''            # number of f
 7
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=106
+lazytest_line=109
 lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 3..FM'\''
 ' 3<<'LAZYTEST_EOF'
 0	root	/root	/bin/bash
@@ -3604,7 +3610,7 @@ lazytest_case 'ni /etc/passwd F::r3p'\''r F_ 3..FM'\''
 2	bin	/bin	/bin/sh
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=110
+lazytest_line=113
 lazytest_case 'ni /etc/passwd F::r3p'\''r FR 3'\''         # FR(n) == F_(n..FM)
 ' 3<<'LAZYTEST_EOF'
 0	root	/root	/bin/bash
@@ -3612,7 +3618,7 @@ lazytest_case 'ni /etc/passwd F::r3p'\''r FR 3'\''         # FR(n) == F_(n..FM)
 2	bin	/bin	/bin/sh
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=136
+lazytest_line=139
 lazytest_case 'ni n2p'\''a, a + 100'\''                    # return without "r"
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3621,14 +3627,14 @@ lazytest_case 'ni n2p'\''a, a + 100'\''                    # return without "r"
 102
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=141
+lazytest_line=144
 lazytest_case 'ni n2p'\''r a, a + 100'\''                  # use "r" for side effect, return ()
 ' 3<<'LAZYTEST_EOF'
 1	101
 2	102
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=144
+lazytest_line=147
 lazytest_case 'ni n3p'\''r $_ for 1..a'\''                 # use r imperatively, implicit return
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3639,7 +3645,7 @@ lazytest_case 'ni n3p'\''r $_ for 1..a'\''                 # use r imperatively,
 3
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=156
+lazytest_line=159
 lazytest_case 'ni n3p'\''[a, a+1, a+2]'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
@@ -3647,7 +3653,46 @@ lazytest_case 'ni n3p'\''[a, a+1, a+2]'\''
 3	4	5
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=175
+lazytest_line=170
+lazytest_case 'cat > functions.pm <<'\''EOF'\''
+package ni::pl;       # important! this is the package where your perl code runs
+sub normalize
+{
+  my $sum = sum @_;   # required code can call back into ni functions
+  map $_ / ($sum || 1), @_;
+}
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=178
+lazytest_case 'ni pRfunctions.pm 1p'\''r normalize 1, 2, 5'\''
+' 3<<'LAZYTEST_EOF'
+0.125	0.25	0.625
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=207
+lazytest_case 'nc -l -p 3001 <<'\''EOF'\'' &
+HTTP/1.1 200 OK
+Content-Length: 49
+
+sub ni::pl::this_worked() { r "it worked", @_ }
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=213
+lazytest_case 'sleep 1
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=214
+lazytest_case 'ni pRhttp://localhost:3001 1p'\''this_worked(5, 6, 7)'\''
+' 3<<'LAZYTEST_EOF'
+it worked	5	6	7
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=231
 lazytest_case 'ni n10p'\''r ru {a%4 == 0}'\''              # read forward until a multiple of 4
 ' 3<<'LAZYTEST_EOF'
 1	2	3
@@ -3655,7 +3700,7 @@ lazytest_case 'ni n10p'\''r ru {a%4 == 0}'\''              # read forward until 
 8	9	10
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=186
+lazytest_line=242
 lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' =\>mult-table
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8	9	10
@@ -3670,7 +3715,7 @@ lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' =\>mult-table
 10	20	30	40	50	60	70	80	90	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=197
+lazytest_line=253
 lazytest_case 'ni mult-table p'\''r g_ ru {a%4 == 0}'\''   # extract seventh column from each line
 ' 3<<'LAZYTEST_EOF'
 7	14	21
@@ -3678,7 +3723,7 @@ lazytest_case 'ni mult-table p'\''r g_ ru {a%4 == 0}'\''   # extract seventh col
 56	63	70
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=214
+lazytest_line=270
 lazytest_case 'ni ::squares[n100p'\''100 - a'\'' p'\''r a, a*a'\''] \
      n5p'\''^{@sq{a_ squares} = b_ squares} $sq{a()}'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3689,7 +3734,7 @@ lazytest_case 'ni ::squares[n100p'\''100 - a'\'' p'\''r a, a*a'\''] \
 25
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=228
+lazytest_line=284
 lazytest_case 'ni ::squares[n100p'\''100 - a'\'' p'\''r a, a*a'\''] n5p'\''^{%sq = ab_ squares} $sq{a()}'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3699,25 +3744,25 @@ lazytest_case 'ni ::squares[n100p'\''100 - a'\'' p'\''r a, a*a'\''] n5p'\''^{%sq
 25
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=249
+lazytest_line=305
 lazytest_case 'ni n100p'\''sum rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=251
+lazytest_line=307
 lazytest_case 'ni n10p'\''prod rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 3628800
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=253
+lazytest_line=309
 lazytest_case 'ni n100p'\''mean rw {1}'\''
 ' 3<<'LAZYTEST_EOF'
 50.5
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=261
+lazytest_line=317
 lazytest_case 'ni n1p'\''cart [1,2], [1,2,3], ["a","b"]'\''
 ' 3<<'LAZYTEST_EOF'
 1	1	a
@@ -3734,13 +3779,13 @@ lazytest_case 'ni n1p'\''cart [1,2], [1,2,3], ["a","b"]'\''
 2	3	b
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=292
+lazytest_line=348
 lazytest_case 'ni n10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=310
+lazytest_line=366
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -3749,7 +3794,7 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sync	,sync
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=331
+lazytest_line=387
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -3758,13 +3803,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=341
+lazytest_line=397
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=369
+lazytest_line=425
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
@@ -3794,7 +3839,7 @@ x	23
 y	12
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=417
+lazytest_line=473
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/gcx
 ' 3<<'LAZYTEST_EOF'
 a	39

@@ -685,6 +685,7 @@
 	| 'p' (
 	  | <perl_mapper_code> -> {perl_mapper_op $_}
 	  )
+	| 'pR' </qfn> -> {perl_require_op @$_}
 	| 'r' (
 	  | (
 	      'l'
