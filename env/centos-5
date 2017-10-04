@@ -1,5 +1,5 @@
 FROM centos:5
-RUN yum install -y sqlite perl curl bzip2 xz epel-release-5-4
+RUN yum install -y sqlite perl curl bzip2 xz epel-release-5-4 gcc
 RUN yum install -y sbcl lzop lz4 strace ruby
 RUN yum install -y numpy
 RUN yum install -y nc

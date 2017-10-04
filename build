@@ -32,6 +32,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/pl \
   core/bloom \
   core/cell \
+  core/c \
   \
   core/rb \
   core/lisp \

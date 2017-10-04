@@ -1281,6 +1281,16 @@
 ## SYNTAX
 	'' -> {conf_get_op 'Htulk'}
 
+# SHORT OPERATOR /$cc
+
+## SYNTAX
+	'' -> {conf_get_op 'cc'}
+
+# SHORT OPERATOR /$cc_opts
+
+## SYNTAX
+	'' -> {conf_get_op 'cc_opts'}
+
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX

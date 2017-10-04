@@ -49,7 +49,7 @@ ni::eval 'exit main @ARGV', 'main';
 _
 die $@ if $@
 __DATA__
-53 core/boot/ni.map
+54 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -87,6 +87,7 @@ lib core/row
 lib core/pl
 lib core/bloom
 lib core/cell
+lib core/c
 lib core/rb
 lib core/lisp
 lib core/sql
@@ -809,7 +810,7 @@ sub operate {
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
   $operators{$name}->(@args);
 }
-61 core/boot/self.pl
+67 core/boot/self.pl
 # Image functions.
 # ni needs to be able to reconstruct itself from a map. These functions implement
 # the map commands required to do this.
@@ -844,7 +845,13 @@ sub read_map {join '', map "$_\n",
 
 sub intern_lib($) {
   my ($l) = @_;
-  set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
+  if (-d $l) {
+    set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
+  } else {
+    my $k = "lib/$l";
+    self_append_resource $k, rfc $l;
+    set $k, $ni::self{$k};
+  }
 }
 
 sub modify_self() {
@@ -5450,7 +5457,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-167 core/pl/pl.pl
+168 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5513,6 +5520,7 @@ use constant perl_mapgen => gen q{
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
+    #line 1 "perl code context"
     %body
   }
   while (defined rl) {
@@ -5962,6 +5970,40 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+1 core/c/lib
+c.pl
+31 core/c/c.pl
+# C language interfacing
+# This allows you to use C99 as a compilation target, rather than executing all
+# operators in perl.
+
+defconfenv cc      => 'CC',      'c99';
+defconfenv cc_opts => 'CC_OPTS', '';
+
+# exec_c99($c_source, @argv...) -> doesn't return
+sub exec_c99
+{
+  local $SIG{CHLD} = 'DEFAULT';
+
+  # First write a tempfile for the c99 compiler. It's important that we put
+  # this into a directory that already exists, since all the program should do
+  # is unlink itself as a binary.
+  my $source_tmp = conf('tmpdir') . "/ni-$ENV{USER}-" . noise_str(16) . ".c";
+  {
+    open my $source, '>', $source_tmp or die "ni exec_c99: can't write source: $!";
+    print $source shift;
+    close $source;
+  }
+
+  my $compiler      = conf 'cc';
+  my $compiler_opts = conf 'cc_opts';
+  (my $binary = $source_tmp) =~ s/\.c$//;
+  system "$compiler $compiler_opts -o '$binary' '$source_tmp' >/dev/null && rm -f '$source_tmp'"
+     and die "ni exec_c99: failed to compile code";
+
+  exec $binary, @_;
+  die "ni exec_c99: failed to run compiled binary: $!";
+}
 2 core/rb/lib
 prefix.rb
 rb.pl

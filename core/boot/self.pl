@@ -32,7 +32,13 @@ sub read_map {join '', map "$_\n",
 
 sub intern_lib($) {
   my ($l) = @_;
-  set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
+  if (-d $l) {
+    set $_, rfc $_ for lib_entries $l, ($self{"$l/lib"} = rfc "$l/lib");
+  } else {
+    my $k = "lib/$l";
+    self_append_resource $k, rfc $l;
+    set $k, $ni::self{$k};
+  }
 }
 
 sub modify_self() {

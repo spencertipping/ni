@@ -323,6 +323,8 @@
 	| '$Htttm' '' -> {conf_get_op 'Htttm'}
 	| '$Httts' '' -> {conf_get_op 'Httts'}
 	| '$Htulk' '' -> {conf_get_op 'Htulk'}
+	| '$cc' '' -> {conf_get_op 'cc'}
+	| '$cc_opts' '' -> {conf_get_op 'cc_opts'}
 	| '$hadoop/jobconf' '' -> {conf_get_op 'hadoop/jobconf'}
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
