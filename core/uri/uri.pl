@@ -59,9 +59,9 @@ defshort "/'", pmap q{resource_quote_many_op @$_},
 sub defresource($%) {
   my ($scheme, %opts) = @_;
   defresourcealt("'$scheme://",
-    pmap qq{resource_quote_op "$scheme://\$_"}, prc '.*');
+    pmap qq{resource_quote_op "$scheme://\$_"}, prx '.*');
   defresourcealt("$scheme://",
-    pmap qq{resource_append_op "$scheme://\$_"}, prc '.*');
+    pmap qq{resource_append_op "$scheme://\$_"}, prx '.*');
 
   $resource_read{$scheme}   = fn $opts{read}   if exists $opts{read};
   $resource_write{$scheme}  = fn $opts{write}  if exists $opts{write};

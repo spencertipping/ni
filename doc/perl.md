@@ -179,6 +179,13 @@ $ ni pRfunctions.pm 1p'r normalize 1, 2, 5'
 0.125	0.25	0.625
 ```
 
+**NOTE:** If you're using `pR` and you have code that depends on that `pR` to
+parse, ni may fail to parse closing brackets. You can either explicitly wrap
+subroutines with `()`, or you can use the workarounds suggested by the
+perl-parse error message if you run into this. It isn't possible for ni to
+figure this out for you because it parses the command line before executing
+meta-operators.
+
 As usual with ni, any source you require with `pR` will be shipped over SSH and
 Docker connections, bundled into Hadoop jars, and generally will be available
 wherever your pipeline goes. There are some limitations, though; in particular,
@@ -204,14 +211,15 @@ some point.
 locations like HTTP:
 
 ```bash
-$ nc -l -p 3001 <<'EOF' &
+$ nc -l 3001 <<'EOF' > /dev/null &
 HTTP/1.1 200 OK
-Content-Length: 49
+Content-Length: 54
 
-sub ni::pl::this_worked() { r "it worked", @_ }
+package ni::pl;
+sub this_worked { r "it worked", @_ }
 EOF
 $ sleep 1
-$ ni pRhttp://localhost:3001 1p'this_worked(5, 6, 7)'
+$ ni pRhttp://localhost:3001 1p'this_worked 5, 6, 7'
 it worked	5	6	7
 ```
 
