@@ -2,12 +2,12 @@ alpine:
   image: spencertipping/ni-env-dev-alpine
   script:
     - ./test --ci
-centos-5:
-  image: spencertipping/ni-env-dev-centos-5
-  script:
-    - ./test --ci
 centos-6:
   image: spencertipping/ni-env-dev-centos-6
+  script:
+    - ./test --ci
+debian-wheezy:
+  image: spencertipping/ni-env-dev-debian-wheezy
   script:
     - ./test --ci
 ubuntu-12.04:
