@@ -10734,7 +10734,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-505 doc/perl.md
+506 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -10921,7 +10921,8 @@ parse, ni may fail to parse closing brackets. You can either explicitly wrap
 subroutines with `()`, or you can use the workarounds suggested by the
 perl-parse error message if you run into this. It isn't possible for ni to
 figure this out for you because it parses the command line before executing
-meta-operators.
+meta-operators. (And it isn't possible to do this differently because the `pR`
+might be inside `s` or similar.)
 
 As usual with ni, any source you require with `pR` will be shipped over SSH and
 Docker connections, bundled into Hadoop jars, and generally will be available
