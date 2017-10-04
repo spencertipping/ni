@@ -4820,7 +4820,7 @@ BEGIN {
   *h2b64 = \&hex2base64;
   *b642h = \&base642hex;
 }
-71 core/pl/math.pm
+74 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -4883,7 +4883,9 @@ sub entropy {
   $t;
 }
 
+BEGIN {
 if (eval {require Math::Trig}) {
+  Math::Trig->import('!sec');   # sec() conflicts with stream reducers
   sub haversine {
     local $_;
     my ($t1, $p1, $t2, $p2) = map drad $_, @_;
@@ -4891,6 +4893,7 @@ if (eval {require Math::Trig}) {
     my $a = clip 0, 1, sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
+}
 }
 127 core/pl/stream.pm
 # Perl stream-related functions.

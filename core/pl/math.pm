@@ -60,7 +60,9 @@ sub entropy {
   $t;
 }
 
+BEGIN {
 if (eval {require Math::Trig}) {
+  Math::Trig->import('!sec');   # sec() conflicts with stream reducers
   sub haversine {
     local $_;
     my ($t1, $p1, $t2, $p2) = map drad $_, @_;
@@ -68,4 +70,5 @@ if (eval {require Math::Trig}) {
     my $a = clip 0, 1, sin($dp / 2)**2 + cos($p1) * cos($p2) * sin($dt / 2)**2;
     2 * atan2(sqrt($a), sqrt(1 - $a));
   }
+}
 }
