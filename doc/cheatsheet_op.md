@@ -18,17 +18,17 @@ However, there's a lot more to achieving fluency than just knowing the words; if
 * `e[<script>]`: Evaluate script
   * evaluate `<script>` in bash, and stream out the results one line at a time.
   * Can also be written `e'<script'`
-  * Common example: `ni n10 e'wc -l'` will count lines.
+  * `$ ni n10 e'wc -l'` will count lines.
 * `i<text>`: Literal text input
-  * `$ ni iOK!` -- add the literal text `OK!` to the stream.
-  * `$ ni i'a cat'` -- add the literal text `a cat` to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
-  * `$ ni i[these cats]` -- add a tab-separated line consisting of `these   cats`
+  * `$ ni iOK!` -- add the literal text `OK!` (and a newline) to the stream.
+  * `$ ni i'a cat'` -- add the literal text `a cat` (and a newline) to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+  * `$ ni i[these cats]` -- add a tab-separated line consisting of `these   cats`, and a newline.
 * `D:<field1>,:<field2>...`: JSON Destructure
-  * `ni` can easily grab scalar fields (i.e. strings, numbers, and nulls) from JSON, For example: `ni i'{"hi":5,"there":"alive"}' D:there,:hi` yields `alive	5`
+  * `ni` can easily grab scalar fields (i.e. strings, numbers, and nulls) from JSON, For example: `$ ni i'{"hi":5,"there":"alive"}' D:there,:hi` yields `alive	5`
   * The JSON destructurer does _not_ support pulling out list-based fields or nested hashes within JSON.
 * `1`: Dummy pulse
-  * `ni 1` is syntactic sugar for `ni n1`. It is useful for launching scripts in Perl, Ruby, Lisp, or Python from `ni`.
-  * Examples of the use of the `1` operator are shown in the Perl section below.
+  * `$ ni 1` is syntactic sugar for `$ ni n1`. It is useful for launching scripts in Perl, Ruby, Lisp, or Python from `ni`.
+  * The `1` operator is primarily used to make a perl script run; it's often more useful in test than in actual development.
 
 ## File Operations and Compression
 * ` \>filename`: Redirect stream to file and emit filename
@@ -159,7 +159,9 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
 * Using HDFS paths in Hadoop Streaming Jobs:
   * `ni ... ihdfst://<path> HS...`
-  * The path must be input as literal text (with `i`) so that `ni` knows to get the data during the Hadoop job, and not collect the data, package it with itself, and then send the packaged data as a `.jar`.
+  * The path must be input as literal text (with `i`) so that `ni` knows to get the data during the Hadoop job.
+  * <span style="color:red">**WARNING**</span> if you do not use a literal path, for example with `ni hdfst://...`, `ni` will try to download all of the data, then upload the data to HDFS, and then run the job.
+  * If you find that a job takes over a minute to start, you may want to check that you haven't made this error.
 
 
 ## SSH and Containers
@@ -204,12 +206,13 @@ Data closures are useful in that they travel with `ni` when `ni` is sent somewhe
 * `@:[disk_backed_data_closure]`
 * `:[checkpoint]`
 
-## Stream Splitting/Joining/Duplication
-I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
-
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `=`: duplicate this stream through a process, discarding its output
+## Filename-Prepending File Operations
+* `W\<`: Read from files and prepend filename
+  * The `\<` operator will read data from files, but will not state which file each line came from.
+  * `W\<` does the same thing as `\<` except it prepends a column to the output data with the name of the file the data came from.
+* ` W\>`: Redirect filename-prepended stream to files
+  * This operator consumes stream data with lines of the form `<filename> <data1> <data2> ... <dataN>` and outputs the lines `<data1> <data2> ... <dataN>` to `<filename>`, and outputs `<filename>`
+  * Be aware that input data should be in sorted order; `ni i[a.txt 1] i[b.txt 2] i[a.txt 3]` will leave file `a.txt` with only one line with the value `3`.
 
 
 ## Matrix Operations
@@ -232,35 +235,44 @@ I don't find these operators particularly useful in practice (with the exception
     * Example: `ni n10p'r map a*$_, 1..10' N'x = dot(x, x.T)'`
     * Example: `ni n1N'x = random.normal(size=(5,3))'`
   * Note that your statements must always store the matrix back in the variable `x`.
+
+## Stream Splitting/Joining/Duplication
+I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
+
+* `+`: append a stream to this one
+* `^`: prepend a stream to this one
+* `=`: duplicate this stream through a process, discarding its output
  
-  
+
 ## Binary Operations
 The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
-
 
 
 ## Partitioned Matrix Operations
 One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that mathematical operations on tall and wide matrices have better support through partitioning.
 
-`ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex 
+`ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex matrix operations, `ni` may not be the right tool, 
 
 * `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * **BUG**: Still don't really get this 
-
-* `=\>filename`: Duplicate stream to file
-  * This operation combines the `=` operator (described below) with `\>filename`.
-  * Whereas `\>` will consume your entire stream, ending any future processing, `=\>` duplicates the stream, sending one version to a file, while the other can continue to be processed.
-
+  * `$ ni i[a b c d] i[a b x y] i[a b foo bar] YC` gives the following:
+```
+a	b	0	0	c
+a	b	0	1	d
+a	b	1	0	x
+a	b	1	1	y
+a	b	2	0	foo
+a	b	2	1	bar
+```
+  * `X<col>` inverts `Y<col>`
 
 ## Things other than Perl 
 
-When you write code with `ni`, you should almost always use Perl; however, 
+Don't use things other than Perl.
 
 *  `m'<...>'`: Ruby
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
-* Both Lisp and Ruby 
 
 In general, you should only use Lisp and Ruby in order to use specific libraries not available in Perl.
 
