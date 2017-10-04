@@ -5,12 +5,15 @@ RUN echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
       >> /etc/apk/repositories
 RUN echo '@community http://nl.alpinelinux.org/alpine/edge/community' \
       >> /etc/apk/repositories
-RUN apk update
-RUN apk add bash curl perl sqlite sbcl@testing gcc
+RUN apk --update upgrade
+RUN apk add gcc libc-dev
+RUN apk add bash curl perl sqlite
+RUN apk add sbcl@testing
 RUN apk add bzip2 lzo lz4 xz strace ruby
 RUN apk add py-numpy@community
 RUN apk add netcat-openbsd docker
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
+RUN ln /usr/bin/gcc /usr/bin/c99
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
