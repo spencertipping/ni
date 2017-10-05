@@ -6,7 +6,7 @@ RUN echo '@testing http://nl.alpinelinux.org/alpine/edge/testing' \
 RUN echo '@community http://nl.alpinelinux.org/alpine/edge/community' \
       >> /etc/apk/repositories
 RUN apk update
-RUN apk add bash curl perl sqlite sbcl@testing
+RUN apk add bash curl perl sqlite sbcl@testing gcc
 RUN apk add bzip2 lzo lz4 xz strace ruby
 RUN apk add py-numpy@community
 RUN apk add netcat-openbsd docker

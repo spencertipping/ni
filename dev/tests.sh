@@ -123,6 +123,39 @@ lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
 571
 3491
 LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=11
+lazytest_case 'cat > wcl.pl <<'\''EOF'\''
+# Defines the "wcl" operator, which works like "wc -l"
+defoperator wcl => q{
+  exec_c99 indent(q{
+    #include <unistd.h>
+    #include <stdio.h>
+    int main(int argc, char **argv)
+    {
+      char buf[8192];
+      ssize_t got = 0;
+      long lines = 0;
+      unlink(argv[0]);
+      while (got = read(0, buf, sizeof(buf)))
+        while (--got)
+          lines += buf[got] == '\''\n'\'';
+      printf("%ld\n", lines);
+      return 0;
+    }
+  }, -4);
+};
+
+defshort '\''/wcl'\'' => pmap q{wcl_op}, pnone;
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=39
+lazytest_case 'ni --lib wcl.pl n10 wcl
+' 3<<'LAZYTEST_EOF'
+10
+LAZYTEST_EOF
 lazytest_file='doc/cell.md'
 lazytest_line=11
 lazytest_case 'ni n5 p'\''r a, a*2'\''         # generate two columns of numbers
