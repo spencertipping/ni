@@ -10,7 +10,7 @@ RUN apk add gcc libc-dev
 RUN apk add bash curl perl sqlite
 RUN apk add sbcl@testing
 RUN apk add bzip2 lzo lz4 xz strace ruby
-RUN apk add py-numpy@community
+RUN apk add python py-numpy@community
 RUN apk add netcat-openbsd docker
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
 RUN ln /usr/bin/gcc /usr/bin/c99
