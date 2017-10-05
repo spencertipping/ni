@@ -35,7 +35,7 @@ $ ni n3
 Pretty straightforward. Now, run the pipeline once again, using the first two operators:
 
 ```
-$ ni n3 fAA
+$ ni n3 
 1	1
 2	2
 3	3
@@ -45,11 +45,27 @@ A little more interesting; if you didn't know before, you can use `f` to duplica
 
 
 ```
-$ ni n3 fAA p p'r alph a, a'
-a	1
-b	2
-c	3
+$ ni n3 fAA p p'r alph a, b'
+A	1
+B	2
+C	3
 ```
+
+The perl mapper `p'r alph a, b'` printed the Nth capital letter of the alphabet and 
+
+And finally, putting everything together:
+
+```
+$ ni n3 fAA p'r alph a, b' OB
+C	3
+B	2
+A	1
+```
+
+`OB` sorted the data in reverse numerical order based on column B.
+
+You can see each stage of the pipeline did one transformation to its input data. Thus, if you have a spell whose output you don't understand or know is incorrect, by stepping through the operators, you should be able to see where the data transformation goes wrong.
+
 
 ## What should I know about `ni` configuration?
 
@@ -57,7 +73,6 @@ c	3
 
 * `NI_PAGER`
   * The default `ni` pager is `less`. Generally, this is a safe and sensible choice. However, when using `ni` inside a Jupyter notebook, for exmaple, `less` will block the notebook, and you'll want to use `cat` or `head -n1000` as your pager, which won't block.
-  * 
 * `NI_NO_MONITOR`
   * The `ni` monitor occasionally causes issues (that are MapReduce-related, if I recall correctly). After working with `ni` for several months, I got a good feel for how fast each operation was and turned off the monitor.
 * `NI_HADOOP_MAPREDUCE_CONF` 
@@ -67,23 +82,29 @@ c	3
 
 ## What is `ni` is bad at?
 
-* Processing arbitrary text
+`ni` is good at a lot of things; it's fast, it runs everywhere, it spins up Hadoop Streaming jobs easily, interacts in ways that are highly intuitive with the command line, and much more. However, `ni` has weaknesses of which you should also be aware.
+
+### Processing arbitrary text
   * Newlines in text **will** result in unexpected behavior, since `ni` will interpret the newiline as the beginning of a new line of the stream.
   * On the other hand, `ni` is blazing fast and very flexible when working with structured text.
-* Arbitrary JSON operations
-  * `ni` _can_ do arbitrary JSON operations, but they are slow 
+
+### Arbitrary JSON operations
+  * `ni` _can_ do arbitrary JSON operations, but they are slow.
   * On the other hand, `ni` is blazing fast at doing **very specific** JSON operations.
-* Sorting data on a single machine
+
+### Sorting data on a single machine
   * This is not so much a weakness of `ni` as it is a weakness of your machine. It takes an excruciating amount of time to sort a gigabyte compared to processing it. 
   * When you have large quantities of data that need to be sorted, you should use `ni`'s very intuitive MapReduce bindings.
-* Matrix Math
+
+### Fancy Math and Stats
   * `ni` includes `numpy` bindings, but remember that this introduces a dependency on system configuration that should generally be avoided.
   * `ni` is data-processing and data-cleaning first, not math-first language; Spark with MLLib is probably the most appropriate tool if you're looking to do large matrix operations.
+  * `ni` does a good job of finding counts and sums, but things like complicated averages, standard deviation, etc. are better done in Python or R.
 * That's it. I think. For now.
 
 ## Basic `ni` Philosophy and Style
 
-#### `ni` is written for concision, fast testing, and productivity.
+### `ni` is written for concision, fast testing, and productivity.
 
 * Because `ni` processes streams of data in a streaming way, you should be able to build pipelines up from front-to-back, checking the integrity of the output at each step, for example by taking some rows using `r30` and/or sinking the output to a file.
 * As a result of this, `ni` spells can be developed completely in the command line; there is:
@@ -93,25 +114,23 @@ c	3
   * Nothing stopping you from joyful hacking.
 * If you find a common operation is taking a while, there's probably a faster way to do it. Ask. It may require more Perl, though.
 
-#### Everything is optional *unless its absence would create ambiguity*.
+### Everything is optional *unless its absence would create ambiguity*.
 
 * Consider the following three `ni` spells, all with the same output.
-  * Explicit: `ni n10p'r "hello"'`
-  * Concise: `ni n10p'hello'`
-  * Compact: `ni n10phello`
-* The technical details behind the `ni` parser are out of scope for right now, but note that `ni` does not bat an eyelash when a raw variable name (in Perl-speak, a bareword) is thrown into the mix; in this case, it is correctly interpreted as a string. 
-* Moreover, the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
-* Another example:
-  * Explicit: `ni n10p'"HELLO"' p'lc(a)'`
+  * Explicit: `ni n10p'r "HELLO"' p'r lc(a)'`
+  * Concise: `ni n10p'HELLO' p'lc a'`
   * Compact: `ni n10pHELLO plc`
+* The technical details behind the `ni` parser are out of scope for this tutorial, but note the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
 * `ni` carries over some of the philosophy of implicit and default values from Perl, so you don't need to tell the lowercase function `lc` on what to operate; it will operate on the entire input line.
 
-#### `ni` is not meant to be easy to read for those who do not speak `ni`.
+
+
+### `ni` is not meant to be easy to read for those who do not speak `ni`.
 
 * This principle naturally follows from the two, but it is worth articulating to understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
 * If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
 * Just as most `ni` spells are built front-to-back, they are best understood by `ni` learners back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of intermediate outputs of the processing pipeline, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
-* And to emphasize the point, `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
+* `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
 
 
 ## Understanding the `ni` monitor
@@ -145,10 +164,3 @@ You can enter ni formulas into the top bar (without the explicit `ni` call).
 Set the second x component to 0 to flatten the image's depth dimension; then
 set the first R component to 0 and the second R component to 90 to show a
 front-facing view of your plot.
-
-## Intermediate `ni` Philosophy and Style
-#### `ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
-
-* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
-* Because of this philosophy, large-scale sorting is not a `ni`ic operation, while gzip compression is.
-* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes, uncompressed.

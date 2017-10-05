@@ -2,9 +2,9 @@
 
 ## Preface
 
-This cheatsheet is meant to be an exhaustive reference to the operators that compose `ni` as a language, except for its many Perl extensions (which have [their own cheatsheet](cheatsheet_perl.md)). This document is designed such that it can be read in order and it should make sense, though it's quite long and light on details. Otherwise, `CTRL-F` for what you want.
+This cheatsheet is meant to be an exhaustive reference to the operators that compose `ni` as a language, except for its many Perl extensions (which have [their own cheatsheet](cheatsheet_perl.md)). This document is designed such that it can be read in order and it should make sense, though it's quite long and light on details.
 
-However, there's a lot more to achieving fluency than just knowing the words; if you use `ni` regularly, you'll be well-rewarded for walking through [`ni` by Example](ni_by_example_1.md), the more formal tutorial. And if you ever write your own `ni` pipelines, you should read [`ni`-fu](ni_fu.md) to learn how to write and debug them. I guarantee it will save you time.
+However, there's a lot more to achieving fluency than just knowing the words; if you use `ni` regularly, you'll be well-rewarded for walking through [`ni` by Example](ni_by_example_1.md), the more formal tutorial. And if you ever write your own `ni` pipelines, you should read [`ni`-fu](ni_fu.md) to learn how to debug them. I guarantee it will save you time.
 
 ## Input Operations
 
@@ -119,7 +119,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
     * `OB` is equivalent to `$ ni <data> gBn-` 
   * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
 
-  ## Cell Operations 
+## Cell Operations 
 `$ ni <data> ,<op><columns>`
 
 These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
@@ -165,17 +165,14 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
 
 
 ## SSH and Containers
+* `s<host>[...]`: execute `[...]` in `<host>`
+  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
+  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
 * `C<container_name>[...]`: execute `[...]` in `<container_name>`
   * Running in containers requires that Docker be installed on your machine.
   * Running containers can be especially useful to take advantage of better OS-dependent utilities.
-  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase by replacing:
-    * `ni n1E7 g` with
-    * `ni n1E7 Cubuntu[g]`
+  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase if you replace: `ni n1E7 g` with `ni n1E7 Cubuntu[g]`, because the sort will be done in the faster Ubuntu container.
   * Containers are also useful for testing the portability of your code.
-* `s<host>[...]`: execute `[...]` in `<host>`
-  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
-  * You will want to do this to reduce keystrokes.
-  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
 
 
 ## Intermediate Column Operations
@@ -251,11 +248,13 @@ The primary use of binary operations is to operate on data that is most effectiv
 ## Partitioned Matrix Operations
 One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that mathematical operations on tall and wide matrices have better support through partitioning.
 
-`ni`ic, since they may require space greater than memory, which will make them slow. If you're doing a lot of complex matrix operations, `ni` may not be the right tool, 
+Some matrix operations are not performant in `ni` because they may require space greater than memory. If you're doing a lot of complex matrix operations, `ni` may not be the right tool. However, `ni` does provide some 
 
-* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
-  * `$ ni i[a b c d] i[a b x y] i[a b foo bar] YC` gives the following:
-```
+* `Y<col>`: Dense-To-Sparse Transform with Partitioning
+
+
+```bash
+$ ni i[a b c d] i[a b x y] i[a b foo bar] YC
 a	b	0	0	c
 a	b	0	1	d
 a	b	1	0	x
@@ -263,18 +262,45 @@ a	b	1	1	y
 a	b	2	0	foo
 a	b	2	1	bar
 ```
-  * `X<col>` inverts `Y<col>`
+
+`Y` has reduced over the first two columns of the data, and kept their values in the first two columns of its output. The next two columns represent the row and column in the matrix as the normal `Y` operator does, and and the final column has the value.
+
+* `N<col>`: Numpy on Dense Partitioned Matrix
+
+Reduces over the columns before `<col>`, and then does the standard `N` operation.
+
+```bash
+$ ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
+     i[c d 1 0] i[c d 1 1] \
+      NC'x = dot(x.T, x)'
+a	b	10101	50205
+a	b	50205	250425
+c	d	2	1
+c	d	1	1
+```
+
+* `X<col>`: Sparse-To-Dense Transform of Partitioned Data
+
+`X<col>` inverts `Y<col>`
+
+```bash
+$ ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
+a	b	c	d
+a	b	x	y
+a	b	foo	bar
+```
+
 
 ## Things other than Perl 
 
-Don't use things other than Perl.
+Don't use things other than Perl. Here are other things:
 
 *  `m'<...>'`: Ruby
    * applies the Ruby snippet `<...>` to each row of the stream 
 *  `l'<...>'`: Lisp
    * applies the Lisp snippet `<...>` to each row of the stream 
 
-In general, you should only use Lisp and Ruby in order to use specific libraries not available in Perl.
+I have only ever used the Ruby extension, and only to us a library not written in `ni`.
 
 Keep in mind that code written in any other language will not be portable and result in configuration headaches. For example, if you have a Ruby gem installed on your local machine and are able to run a `ni` spell on your local, you will have to install the same gem on your remote machine to use it over SSH. Moreover, if you want to run the same task on your Hadoop cluster, you'll have to have the gem installed on every node of the cluster 
 
