@@ -416,6 +416,20 @@
 	  sforward \*STDIN, swfile $file;
 	  print "$file\n";
 
+# OPERATOR geohash_decode
+
+## IMPLEMENTATION
+	
+	  cell_eval {args => '@precision',
+	             each => q{$xs[$_] = join",", geohash_decode $xs[$_], @precision}}, @_;
+
+# OPERATOR geohash_encode
+
+## IMPLEMENTATION
+	
+	  cell_eval {args => '@precision',
+	             each => q{$xs[$_] = geohash_encode split(/,/, $xs[$_]), @precision}}, @_;
+
 # OPERATOR hadoop_make_nukeable
 
 ## IMPLEMENTATION

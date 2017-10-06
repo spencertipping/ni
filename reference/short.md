@@ -2099,6 +2099,14 @@
 	  <bloom_fp_spec>
 	) -> {bloom_prehash_op @$_}
 
+# SHORT OPERATOR cell/G
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <integer>?
+	) -> {geohash_decode_op @$_}
+
 # SHORT OPERATOR cell/H
 
 ## SYNTAX
@@ -2132,6 +2140,17 @@
 	  <cellspec_fixed>
 	  <log_base>
 	) -> {cell_exp_op @$_}
+
+# SHORT OPERATOR cell/g
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  (
+	  | <integer>
+	  | <'', evaluate as 12>
+	  )
+	) -> {geohash_encode_op @$_}
 
 # SHORT OPERATOR cell/h
 

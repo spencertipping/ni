@@ -5807,7 +5807,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-172 core/cell/cell.pl
+189 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -5980,6 +5980,23 @@ defoperator epoch_to_formatted => q{
 };
 
 defshort 'cell/t', pmap q{epoch_to_formatted_op $_}, cellspec_fixed;
+
+# Geohash conversions.
+# These can be parameterized by a precision spec, which takes the same form as
+# the one you normally use with `ghe` and `ghd`.
+
+defoperator geohash_encode => q{
+  cell_eval {args => '@precision',
+             each => q{$xs[$_] = geohash_encode split(/,/, $xs[$_]), @precision}}, @_;
+};
+
+defoperator geohash_decode => q{
+  cell_eval {args => '@precision',
+             each => q{$xs[$_] = join",", geohash_decode $xs[$_], @precision}}, @_;
+};
+
+defshort 'cell/g', pmap q{geohash_encode_op @$_}, pseq cellspec_fixed, palt integer, pk 12;
+defshort 'cell/G', pmap q{geohash_decode_op @$_}, pseq cellspec_fixed, popt integer;
 1 core/c/lib
 c.pl
 39 core/c/c.pl

@@ -974,6 +974,10 @@
 	    <bloom_size_spec>
 	    <bloom_fp_spec>
 	  ) -> {bloom_prehash_op @$_}
+	| 'G' (
+	    <cellspec_fixed>
+	    <integer>?
+	  ) -> {geohash_decode_op @$_}
 	| 'H' (
 	    <cellspec_fixed>
 	    <integer>?
@@ -988,6 +992,13 @@
 	    <cellspec_fixed>
 	    <log_base>
 	  ) -> {cell_exp_op @$_}
+	| 'g' (
+	    <cellspec_fixed>
+	    (
+	    | <integer>
+	    | <'', evaluate as 12>
+	    )
+	  ) -> {geohash_encode_op @$_}
 	| 'h' (
 	    <cellspec_fixed>
 	    <integer>?
