@@ -378,6 +378,36 @@ lazytest_case 'ni n5 ,a    # running average
 2.5
 3
 LAZYTEST_EOF
+lazytest_file='doc/cheatsheet_op.md'
+lazytest_line=257
+lazytest_case 'ni i[a b c d] i[a b x y] i[a b foo bar] YC
+' 3<<'LAZYTEST_EOF'
+a	b	0	0	c
+a	b	0	1	d
+a	b	1	0	x
+a	b	1	1	y
+a	b	2	0	foo
+a	b	2	1	bar
+LAZYTEST_EOF
+lazytest_file='doc/cheatsheet_op.md'
+lazytest_line=273
+lazytest_case 'ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
+     i[c d 1 0] i[c d 1 1] \
+      NC'\''x = dot(x.T, x)'\''
+' 3<<'LAZYTEST_EOF'
+a	b	10101	50205
+a	b	50205	250425
+c	d	2	1
+c	d	1	1
+LAZYTEST_EOF
+lazytest_file='doc/cheatsheet_op.md'
+lazytest_line=287
+lazytest_case 'ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
+' 3<<'LAZYTEST_EOF'
+a	b	c	d
+a	b	x	y
+a	b	foo	bar
+LAZYTEST_EOF
 lazytest_file='doc/closure.md'
 lazytest_line=10
 lazytest_case 'ni n5                         # some data
