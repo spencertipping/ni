@@ -4368,7 +4368,7 @@ util.pm
 math.pm
 stream.pm
 reducers.pm
-time.pm
+time.pl
 geohash.pl
 pl.pl
 19 core/pl/json_util.pm
@@ -5098,7 +5098,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-187 core/pl/time.pm
+187 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5171,8 +5171,8 @@ sub year_month($) {
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
-                       $x, $dur, $dur}}
+         eval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
+                      $x, $dur, $dur}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -5214,7 +5214,7 @@ sub gh_localtime($$) {
 sub iso_8601_epoch {
   my $iso_time = $_[0];
   my ($date_part, $time_part) = split /[\sT]/, $iso_time;
-  my $y, $m, $d;
+  my ($y, $m, $d);
   if ($date_part !~ /^\d{4}-/) {
     ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
   } else {
@@ -5807,7 +5807,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-162 core/cell/cell.pl
+172 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -5970,9 +5970,19 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+
+# Time conversions.
+
+defoperator epoch_to_formatted => q{
+  cell_eval {args => 'undef',
+             each => q{$xs[$_] = sprintf "%04d-%02d-%02d %02d:%02d:%02d",
+                                         time_epoch_pieces $xs[$_]}}, @_;
+};
+
+defshort 'cell/t', pmap q{epoch_to_formatted_op $_}, cellspec_fixed;
 1 core/c/lib
 c.pl
-31 core/c/c.pl
+39 core/c/c.pl
 # C language interfacing
 # This allows you to use C99 as a compilation target, rather than executing all
 # operators in perl.
@@ -6003,6 +6013,14 @@ sub exec_c99
 
   exec $binary, @_;
   die "ni exec_c99: failed to run compiled binary: $!";
+}
+
+# C RMI
+# You can seamlessly call functions that are written in C. The function
+# signature should refer to input/output data structs 
+sub c_rmi
+{
+  # TODO
 }
 2 core/rb/lib
 prefix.rb

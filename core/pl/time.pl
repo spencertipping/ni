@@ -70,8 +70,8 @@ sub year_month($) {
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
-         ceval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
-                       $x, $dur, $dur}}
+         eval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
+                      $x, $dur, $dur}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -113,7 +113,7 @@ sub gh_localtime($$) {
 sub iso_8601_epoch {
   my $iso_time = $_[0];
   my ($date_part, $time_part) = split /[\sT]/, $iso_time;
-  my $y, $m, $d;
+  my ($y, $m, $d);
   if ($date_part !~ /^\d{4}-/) {
     ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
   } else {

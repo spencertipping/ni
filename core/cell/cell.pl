@@ -160,3 +160,13 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+
+# Time conversions.
+
+defoperator epoch_to_formatted => q{
+  cell_eval {args => 'undef',
+             each => q{$xs[$_] = sprintf "%04d-%02d-%02d %02d:%02d:%02d",
+                                         time_epoch_pieces $xs[$_]}}, @_;
+};
+
+defshort 'cell/t', pmap q{epoch_to_formatted_op $_}, cellspec_fixed;

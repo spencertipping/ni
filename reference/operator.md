@@ -360,6 +360,14 @@
 	    print "$line_count $_\n", $s, "\n";
 	  }
 
+# OPERATOR epoch_to_formatted
+
+## IMPLEMENTATION
+	
+	  cell_eval {args => 'undef',
+	             each => q{$xs[$_] = sprintf "%04d-%02d-%02d %02d:%02d:%02d",
+	                                         time_epoch_pieces $xs[$_]}}, @_;
+
 # OPERATOR file_closure_append
 
 ## IMPLEMENTATION

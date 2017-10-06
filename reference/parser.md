@@ -1007,6 +1007,7 @@
 	    <quant_spec>
 	  ) -> {quantize_op @$_}
 	| 's' <cellspec_fixed> -> {col_sum_op     $_}
+	| 't' <cellspec_fixed> -> {epoch_to_formatted_op $_}
 	| 'z' <cellspec_fixed> -> {intify_compact_op $_}
 	)
 

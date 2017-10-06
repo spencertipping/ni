@@ -29,3 +29,11 @@ sub exec_c99
   exec $binary, @_;
   die "ni exec_c99: failed to run compiled binary: $!";
 }
+
+# C RMI
+# You can seamlessly call functions that are written in C. The function
+# signature should refer to input/output data structs 
+sub c_rmi
+{
+  # TODO
+}

@@ -2184,6 +2184,11 @@
 ## SYNTAX
 	<cellspec_fixed> -> {col_sum_op     $_}
 
+# SHORT OPERATOR cell/t
+
+## SYNTAX
+	<cellspec_fixed> -> {epoch_to_formatted_op $_}
+
 # SHORT OPERATOR cell/z
 
 ## SYNTAX

@@ -18,6 +18,7 @@
 	cell/p
 	cell/q
 	cell/s
+	cell/t
 	cell/z
 
 # CONTEXT pyspark
