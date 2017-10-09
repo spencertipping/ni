@@ -74,7 +74,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
                             core/pl/geohash.pl
-                            core/pl/time.pm
+                            core/pl/time.pl
                             core/cell/murmurhash.pl
                             core/bloom/bloomfilter.pl
                             core/gen/gen.pl
