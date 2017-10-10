@@ -5975,7 +5975,7 @@ defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 
 defoperator epoch_to_formatted => q{
   cell_eval {args => 'undef',
-             each => q{$xs[$_] = sprintf "%04d-%02d-%02d %02d:%02d:%02d",
+             each => q{$xs[$_] = sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ",
                                          time_epoch_pieces $xs[$_]}}, @_;
 };
 

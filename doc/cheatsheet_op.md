@@ -47,7 +47,7 @@ However, there's a lot more to achieving fluency than just knowing the words; if
 The operator `r` is used to filter rows.
 
   * `$ ni <data> r3` - take the first 3 rows of the stream
-    * **CAVEAT:** `r#` is a wrapper over the Unix utility `head`, and emits a `SIGPIPE` which will break Streaming MapReduce jobs. To use `r` in the context of MapReduce, use the safe rowoperator `rs` instead.
+    * **CAVEAT:** `r#` is a wrapper over the Unix utility `head`, and emits a `SIGPIPE` which will break Streaming MapReduce jobs. To use `r` in the context of MapReduce, use the safe row operator `rs` instead.
     * `$ ni <data> rs3` - take the first 3 rows of the stream and do not emit a `SIGPIPE`. 
   * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
   * `$ ni <data> r~3` - take the last 3 rows of the stream
@@ -57,7 +57,7 @@ The operator `r` is used to filter rows.
   * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
 
 ## Basic Column Operations
-Columns are referenced "Excel-style"--the first column is `A`, the second is `B`, etc.
+Columns are referenced "spreadsheet-style"--the first column is `A`, the second is `B`, etc.
 
 * `f`: Take columns
   * `$ ni <data> fAA` - select the first column and duplicate it
@@ -71,7 +71,7 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
           * `$ ni <data> f#0,#3.` is equivalent to `$ ni <data> fAD.`
           * `$ ni <data> f#1-#4` is equivalent to `$ ni <data> fB-E`
           * `$ ni <data> f#2,#0,#7,#3,#5` is equivalent to `$ ni <data> fCAHDF`
-* Combining column operations with `r`
+* `r<cols>` - take row if exists
   * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
 * `F`: Split stream into columns
   * `F:<char>`: split on character
@@ -104,9 +104,8 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
   * `gC-` - sort rows *descending* by the lexicographic value of the third column
    * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
   * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
-    * The numeric sort works on integers and floating-point numbers written as decimals.
-    * The numeric sort will **not** work on numbers written in exponential/scientific notation
   * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+    * **CAVEAT**: The numeric sort works on integers and floating-point numbers written as decimals. The numeric sort will **not** work on numbers written in exponential/scientific notation
 * `u`: unique sorted rows
   * `$ ni <data> fACgABu`: get the lexicographically-sorted unique values from the first and third columns of `<data>`.
 * `c`: count sorted rows
@@ -117,12 +116,13 @@ Columns are referenced "Excel-style"--the first column is `A`, the second is `B`
     * `oA` is syntactic sugar for `$ ni <data> gAn`
   * `O`: sort rows descending (numerical)
     * `OB` is equivalent to `$ ni <data> gBn-` 
-  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column.  With very high probability, they will not be sorted.
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column. If you want to sort by multiple conditions, you must use `g`.
 
 ## Cell Operations 
 `$ ni <data> ,<op><columns>`
 
-These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers. With ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for why.
+These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.
+
 
 * `,a`: Running average
 * `,d`: Difference between consecutive rows
@@ -133,12 +133,10 @@ These provide keystroke-efficient ways to do transformations on a single column 
 * `,s`: Running sum 
 * `,q`: Quantize
 * `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,t`: Convert timestamp to readable ISO 8601 form
+* `,g`: Geohash encode
+* `,G`: Geohash decod3
 
-## Horizontal Scaling
-Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down, as `ni` tries to spin up more processes than your machine can bear.
-
-* `S`: Horizontal Scaling 
-  * `$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors.
 
 ## HDFS I/O & Hadoop Streaming
 ### How `ni` Interacts with Hadoop Streaming
@@ -175,6 +173,12 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * Containers are also useful for testing the portability of your code.
 
 
+## Horizontal Scaling
+Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down, as `ni` tries to spin up more processes than your machine can bear.
+
+* `S`: Horizontal Scaling 
+  * `$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors.
+
 ## Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
@@ -192,16 +196,33 @@ We can weave together row, column, and Perl operations to create more complex ro
 
 
 ## Data Closures and Checkpoints
-Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
+Data closures are compiled into the `ni` source before the pipeline is executed. This allows them to serve the function of a broadcasted dataset across nodes in a distributed context. Closures can be accessed from within Perl snippets by using their name.
 
-* `closure_name::[...]`: Create a data closure
-  * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
+* `::closure_name[...]`: Create a data closure
+  * A common motif for closures is using them as a filter:
 
-* `::closure_name[...]`
-  * Regardless of where they are written in the `ni` command, data closures are computed before anything else, including Perl begin blocks. They are also computed separately from each other, which means that one closure cannot in general reference the value of another closure.
-  * If the value of one closure depends on the value of another, the other closure must be computed within the first closure; this leads to duplication of code. It's not the best, but if you need this, you're probably using `ni` wrong too.
-* `@:[disk_backed_data_closure]`
-* `:[checkpoint]`
+* ```
+$ ni ::good_points[i100 i3 i76] \
+	n100 rp'^{%h = ab_ good_points} exists($h{+a})'
+```
+
+  * Here we've created a closure called `good_points` which contains the data `100\n3\n76\n` as a string (initially). We use some Perl (see the [Perl Cheatsheet](cheatsheet_perl.md) for details) to convert those lines into a Perl hash called `%h`, whose keys are  and we check whether the value of the first column `+a` exists as a key in the hash
+  * Closures are computed separately from each other, which means that one closure cannot in general reference the value of another closure. If you find a situation where you need to create a closure that depends on the value of another closure, this is likely not (currently) good `ni` style, and you should look for another way to solve the problem.
+
+* `@:[disk_backed_data_closure]`: Create disk-backed data closure.
+  * A disk-backed data closure operates in much the same way as a regular data closure.
+  * In general, backing your data closures to disk is a way to get around memory restrictions on machines when using particularly large data closures.
+  * Disk-backed data closures may fail in environments where you have restrictions about writing to disk (_e.g._ in Hadoop mappers or reducers).
+* `:<checkpoint_name>`: Create a checkpoint
+  * Checkpoints are useful for building extended pipelines, especially ones with long-running or expensive operations (_e.g._ Hadoop MapReduce jobs).
+  * The use of checkpoints is a bit too tricky for your author's taste, but you are likely smarter than he.
+  * Here's an appropriate (if contrived) use of checkpoints:
+     * `$ ni nE7 g :alpha_numbers r3`
+     * With the checkpoint, the result of `$ ni nE7 g` will be stored in `:alpha_numbers`, and you can re-run the spell quickly.
+     * Without the checkpoint, the entire sort would have to be re-run each time, which takes a painfully long amount of time.
+     * In the background, `ni` is sinking the data from `$ni nE7 g` to a file called `alpha_numbers`. 
+     * **<span style="color:red">WARNING</span>**: Once a checkpoint has been written once, it will remain the same. For example, if, after running `$ ni nE7 g :alpha_numbers r10` you run `$ ni n1000 g :alpha_numbers r10`, `ni` will start using the previous `alpha_numbers` checkpoint data. This failure mode is silent, so **BE CAREFUL!!** (Or don't use them, like me).
+     * Checkpoints are also disk-backed, which means they suffer from many of the same limitations as disk-backed data closures. 
 
 ## Filename-Prepending File Operations
 * `W\<`: Read from files and prepend filename
@@ -230,19 +251,25 @@ Data closures are useful in that they travel with `ni` when `ni` is sent somewhe
   * Example `ni n5p'r map a*$_, 1..10' N'x = x.T'`
   * You also have available the entire numpy package at your disposal:
     * Example: `ni n10p'r map a*$_, 1..10' N'x = dot(x, x.T)'`
-    * Example: `ni n1N'x = random.normal(size=(5,3))'`
+    * Example: `ni 1N'x = random.normal(size=(5,3))'`
   * Note that your statements must always store the matrix back in the variable `x`.
 
-## Stream Splitting/Joining/Duplication
-I don't find these operators particularly useful in practice (with the exception of `=\>` for writing a file in the middle of a long processing pipeline), but it's possible that you will! Then come edit these docs and explain why.
+## Stream Operations
 
-* `+`: append a stream to this one
-* `^`: prepend a stream to this one
-* `=`: duplicate this stream through a process, discarding its output
- 
+* `%<#>[stream]`: interleave streams
+  * This is the most useful of the operations, especially for plotting data using `ni --js`.
+  * `%`
+  * **CAVEAT**: Interleaving is not an exact operation (though it's negligibly close for large datasets), and output can somewhat depend on the speed with which the two streams are generated.
+* `=`: duplicate this stream and discard its output
+  * The best use of this operation is to sink data to a file in the middle of a pipeline without impeding its progress.
+  * `$ ni n100 =\>hundo.txt fAA p'r a*3, b' \>other.txt` will sink the stream after `$ ni n100` to a file called `hundo.txt`, while still allowing the data to be processed through the rest of the pipeline.
+* `+`: append a stream
+  * In general, a stream written later in the spell will be appended automatically to the stream that comes before it; I rarely use this.
+  * `$ ni ia +ib` yields `a`, then `b`, the same as `$ ni ia ib` would. Not very useful.
+* `^`: prepend a stream 
+  * This is a more useful operator than `+` in theory, but it is also rarely used, since it in general makes more sense to order the streams.
+  * `$ni ia ^ib` yields `b` then `a`. Slightly useful!
 
-## Binary Operations
-The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
 
 
 ## Partitioned Matrix Operations
@@ -281,7 +308,7 @@ c	d	1	1
 
 * `X<col>`: Sparse-To-Dense Transform of Partitioned Data
 
-`X<col>` inverts `Y<col>`
+`X<col>` inverts `Y<col>`.
 
 ```bash
 $ ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
@@ -305,3 +332,7 @@ I have only ever used the Ruby extension, and only to us a library not written i
 Keep in mind that code written in any other language will not be portable and result in configuration headaches. For example, if you have a Ruby gem installed on your local machine and are able to run a `ni` spell on your local, you will have to install the same gem on your remote machine to use it over SSH. Moreover, if you want to run the same task on your Hadoop cluster, you'll have to have the gem installed on every node of the cluster 
 
 When I need another language for its library, I'll usually create a copy of the (part of the) library that I need and add it to `ni` instead.
+
+
+## Binary Operations
+The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
