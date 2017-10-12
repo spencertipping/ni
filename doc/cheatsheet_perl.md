@@ -2,7 +2,7 @@
 
 `ni` fully supports Perl 5 with backwards compaitibility to 5.08. `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream 
 
-### Printing and Returning Data
+## Printing and Returning Data
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
   * `p'<statements>; ..., ..., ...'`: Returns each element of .
   * Examples:
@@ -15,25 +15,40 @@
       * `$ ni 1p'[hi, there]'` returns `hi	there` on a single tab-separated line:
       * `$ ni 1p'r [hi, there]'` prints `ARRAY(0x7fa31dbc5b60)`.
   
-### Field Selection
-  * `a` through `l`: Short field access
-      * `a` through `l` are functions that access the first through twelfth fields of an input data stream. 
-      * `$ ni i[one two three four] p'r d, b'` prints `four	two` to the output stream. 
-    * In the context of hash lookup, the functions `a` through `l` without parentheses will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
-      * `$h{a}` tries to retrieve the key associated with the string `"a"` from the hash `%h`.
-      * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with the value of the function `a`, _i.e._ the value in the first column.
-      * `$ ni ihi p'my %h = ("hi", "bye", "a", "eiou"); r $h{a}, $h{+a}, $h{a()}'` returns `aeio	bye	bye`. Prefixing a bareword
-  * `F_`: Explicit field access
-    * Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
-    * `FM` is the number of fields in the row.
-    * `FR n` is equivalent to `F_ n..FM`
-* `rp'...'`: Take rows with Perl
-  * `r` can take `p'...'` as an arugment, forming the operator `rp'...'`
-  * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` is truthy in Perl. 
-  * Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
+## Field Selection
+
+### `a` through `l`: Short field access
+  * `a` through `l` are functions that access the first through twelfth fields of an input data stream. 
+  * `$ ni i[one two three four] p'r d, b'` prints `four	two` to the output stream. 
+* In the context of hash lookup, the functions `a` through `l` without parentheses will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+  * `$h{a}` tries to retrieve the key associated with the string `"a"` from the hash `%h`.
+  * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with the value of the function `a`, _i.e._ the value in the first column.
+
+```
+$ ni ihi p'my %h = ("hi", "bye", "a", "eiou");
+           r $h{a}, $h{+a}, $h{a()}'
+``` 
+returns `aeio	bye	bye`. Inside hash-lookup braces (among other places), prefixing a bareword with the `+` operator tells Perl to interpret it as a function call. This is useful in a number of contexts where 
+
+### `F_`, `FM`, `FT`, `FR` : Explicit field access
+
+* `F_` by itself returns an array where the values are the tab-delimited values of the input line.
+* Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
+* `FM` is the number of fields in the row.
+* `FR n` is equivalent to `F_ n..FM`
+* `FT n` is equivalent to `F_ 0..(n-1)`
+
+
+### `rp'...'`: Take rows with Perl
+
+This operator combines the `r` operator from the [operator cheatsheet](cheatsheet_op.md) with Perl, and takes every line that evaluates to true.
+
+* `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` returns a truthy value in Perl. 
+* Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
 ## Perl for `ni`
-A list of important Perl functions is here.
+
+### Important Perl Builtins
 
 * `lc`
 * `uc`
@@ -45,19 +60,18 @@ A list of important Perl functions is here.
 * `keys`
 * `values`
 * Regular Expressions
-  * `$<v> =~ /regex/`
-  * `$<v> =~ s/regex//`
-  * `$<v> = tr/regex//d`
-  * `$<v> = y/regex//`
-
+  * `$<v> =~ /regex/` -- standard regex form
+  * `$<v> =~ s/regex//` -- substitution
+  * `$<v> = tr/regex//` -- transliteration (also can be done with `y/regex//`)
 
 
 ### BEGIN and END Blocks
 
-* `p'^{BEGIN_BLOCK} ...'`: Begin block
-  * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation takes precedence over 
-  * Begin blocks are useful for converting data closures to Perl data structures, and defining other constants that are used in 
-  These blocks are evaluated in their entirety 
+* `p'^{<begin_block>} ...'`: Begin block
+  * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation occurs before any other code in the mapper is evaluated.
+  * Begin blocks are useful for converting data closures to Perl data structures, and defining things like constants and counters that should be maintained over runs with different rows.
+* `p'...; END {<end_block>}'`
+  * Similar to a begin block, these run only once the last line of the input stream has been processed. These are useful for emitting the value of counters and data structures that have been accumulated over all of the rows of a computation.
 
 ## Useful `ni`-specific Perl Subroutines
 
@@ -75,10 +89,13 @@ The operators in this section refer specifically to the
   * `ghd($gh_int, $precision)`
     * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
 * `ghb`: geohash box
-* `lat_lon_dist`
-* `gh_dist`
+  * `ghb` takes a base-32 geohash and returns the latitude and longitudes corresponding to the north, south, east, and west corners of a box on the earth enclosing this point.
+* `lat_lon_dist`: arc distance between points on the earth
+  * `lat_lon_dist` computes the distance in kilometers between two points on the earth, accounting for the earth's curvature.
+* `gh_dist`: arc distance between two base-32 geohashes
+  * Similar to `lat_lon_dist`, this computes the distance along the earth between the centroids of two geohashes.
 
-### Time Functinos
+### Time Functions
 * `tpe`: time parts to epoch
   * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
   * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
@@ -87,9 +104,10 @@ The operators in this section refer specifically to the
   * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
 * `tsec`: Timezone offset in seconds
   * `tep($raw_timestamp + $tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
-
 * `i2e($iso_8601_time_string)`: ISO-8601 to Epcoh
+  * Converts a timestamp in ISO 8601 form 
 * `e2i($timestamp, $timezone)`: Epoch to ISO-8601
+  * Converts a timestamp in epoch 
 * `ym`: year and month
   * Input: a unix timestamp in 
   * Output: the year and month
@@ -110,18 +128,18 @@ The operators in this section refer specifically to the
 
 ### List Utlities
 
-* `first(@r)`
-* `last(@r)`
-* `rando(@r)`
-* `max(@r)`, `min(@r)`
-* `maxstr(@r)`, `minstr(@r)`
-* `take(@r)`, `drop(@r)`
-* `take_while(&block, @r)`, `drop_while(@r, &block)`
+* `first(@r)`: first element of `@r` (`== $r[0]`)
+* `final(@r)`: last element of `@r` (`== $r[-1]`)
+* `rando(@r)`: random element of `@r`
+* `max(@r)`, `min(@r)`: numeric `max` and `min`
+* `maxstr(@r)`, `minstr(@r)`: lexicographic `max` and `min`
+* `take($n, @r)`, `drop($n, @r)`: take or drop the first `$n` elements of `@r` and return the result.
+* `take_while(&block, @r)`, `drop_while(@r, &block)`: 
 * `take_every(@r)`, `take_even(@r)`, `take_odd(@r)`
 * `deltas(@r)`, `totals(@r)`
 * `argmax(&block, @r)`, `argmin(&block, @r)`
 * `any(&block, @r)`, `all(&block, @r)`
-* `uniq`
+* `uniq(@r)`: unique elements of `@r`
 * `freqs`
 * `reduce(&block, $start, @r)`
 * `reductions(&block, $start, @r)`
@@ -129,25 +147,25 @@ The operators in this section refer specifically to the
 
 ### File Utilities
 
-* `rf`
-* `rfl`
-* `rfc`
-* `dirbase`
-* `basename`
-* `dirname`
-* `mkdir_p`
+* `rf`: 
+* `rfl`: 
+* `rfc`: 
+* `dirbase`: 
+* `basename`: 
+* `dirname`:
+* `mkdir_p`: make a directory and all necessary enclosing directories
 * `wf`: write to file
 * `af`: append to file
 
 ### String Utilities
 
-* `startswith($target, $prefix)`, `endswith($target, $suffix)`
-* `alph($alphabet_index)`
+* `startswith($target, $prefix)`, `endswith($target, $suffix)`:
+* `alph($n)`: returns the `$n`-th lowercase letter of the alphabet.
 
 ### Hash Utilities
 
-* `kbv_dsc`, `kbv_asc`
-* `merge_hashes`, `merge_two_hashes`
+* `kbv_dsc(%h)`, `kbv_asc(%h)`: returns the keys of `%h` sorted by the associated value
+* `merge_hashes`, `merge_two_hashes`: 
 * `sum_hashes`, `sum_two_hashes`
 * `accumulate_hashes`, `accumulate_two_hashes`
 * Hash Constructors
@@ -181,7 +199,7 @@ ni //license FWpF_ p'r pl 3' \
   * `get_scalar`
   * `get_array`
   * `get_hash`
-* `string_merge_hashes`
+  * `string_merge_hashes($hash_str1, $hash_str2)`: merges two hashes 
 
 
 ### Debugging Utilities
@@ -198,20 +216,17 @@ ni //license FWpF_ p'r pl 3' \
 
 
 ### Math Utilities
-`sum`, `prod`, `mean`
-`log2`, `quant`,
-`dot`, `cross`
-`l1norm`, `l2norm`
-`interp`
-`proj`, `orth`
-`rdeg`, `drad`
-`prec`: polar to rectangular
-`rpol`: rectangular to polar
-`entorpy`
-`haversine`
-
-## Reducers
-
+* `sum`, `prod`, `mean`, `log2`: standard math functions
+* `quant($x, $q)`: rounds `$x` to the nearest `$q`.
+* `dot`, `cross`: scalar and vector products
+* `l1norm`, `l2norm`: L1 and L2 vector norms
+* `interp($f, @r)`: interpolate `$f` numbers between every pair of values in `@r`.
+* `proj($v1_ref, $v2_ref)`, `orth($v1_ref, $v2_ref)`: vector projection 
+* `rdeg`, `drad`: radius to degrees
+* `prec`: polar to rectangular
+* `rpol`: rectangular to polar
+* `entorpy`: Shannon Entorpy in bits
+* `haversine`: haversine formula for arc length
 
 
 ## Basic Perl Reducers
