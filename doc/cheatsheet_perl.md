@@ -1,10 +1,30 @@
 # `ni` Perl Cheatsheet (alpha release)
 
-`ni` fully supports Perl 5 with backwards compaitibility to 5.08. `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream 
+`ni` fully supports Perl 5 with backwards compaitibility to 5.08, and most of your `ni` scripts likely should be written in Perl. 
+
+`$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream.
+
+
+
+## Basic Perl Syntax
+
+### Sigils
+
+Perl variables are indexed with "sigils" to signify their type. This can be 
+
+* `$x` is a scalar (a number, string, or reference to one of the other types)
+* `@x` is an array.
+* `$x[0]` is a scalar (its sigil is `$`), whose value is the first element of the array `@x`
+* `%h` is a hash.
+* `$h{"bar"}` is a scalar (its sigil is `$`), and it is the value of `%h` associated with the key `"bar"`.
+* `foo` (without a preceding sigil) is called a "bareword." There are Parsing rules for barewords are If there is a function with no arguments called `foo`, 
+
+### References
+
 
 ## Printing and Returning Data
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
-  * `p'<statements>; ..., ..., ...'`: Returns each element of .
+  * `p'<statements>; <$val1>, <$val2>, ...'`: Returns each element `<$val1>`, `<$val2>`,... on its own line.
   * Examples:
       * `ni 1p'20, 30'` returns `20` and `30` on separate lines.
       * `ni 1p'r 20, 30'` returns `20	30` on a single, tab-separated line.
@@ -72,6 +92,13 @@ This operator combines the `r` operator from the [operator cheatsheet](cheatshee
   * Begin blocks are useful for converting data closures to Perl data structures, and defining things like constants and counters that should be maintained over runs with different rows.
 * `p'...; END {<end_block>}'`
   * Similar to a begin block, these run only once the last line of the input stream has been processed. These are useful for emitting the value of counters and data structures that have been accumulated over all of the rows of a computation.
+
+### Lexical scoping
+
+Perl is lexically scoped; in general, when using `ni`, you will want to prefix every variable you define within a Perl mapper as scoped to the block, using the keyword `my`, as in `$ ni n10 p'my $x = 0; r $x'`
+
+The exception to this rule is for variables defined within a begin block. In this case `my` is not used at all. See: `$ ni n10 p'^{$x = 0} $x += 1; r $x'`.
+
 
 ## Useful `ni`-specific Perl Subroutines
 
