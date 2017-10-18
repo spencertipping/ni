@@ -63,7 +63,7 @@ if (1 << 32) {
     local $_;
     my ($gh, $bits) = @_;
     return geohash_decode_tagged($gh)
-      if looks_like_number $gh and $gh & 0x4000_0000_0000_0000;
+      if looks_like_number $gh and $gh !~ /[0-9a-z]{1,12}/ and $gh & 0x4000_0000_0000_0000;
     unless (defined $bits) {
       # Decode gh from base-32
       $bits = length($gh) * 5;
