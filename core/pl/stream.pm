@@ -1,14 +1,9 @@
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
-# | $ ni n:10p'a + a'             # emit single value
-#   $ ni n:10p'a, a * a'          # emit multiple values vertically
-#   $ ni n:10p'r a, a * a'        # emit multiple values horizontally
-
-# The 'pr' function can bypass split /\t/, which is useful in high-throughput
-# situations. For example:
-
-# | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
+# | $ ni n10p'a + a'             # emit single value
+#   $ ni n10p'a, a * a'          # emit multiple values vertically
+#   $ ni n10p'r a, a * a'        # emit multiple values horizontally
 
 # Lowercase letters followed by underscores are field-extractors that can take an
 # array of lines and return an array of field values. These are useful in
