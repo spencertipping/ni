@@ -5,7 +5,6 @@
 `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream.
 
 
-
 ## Basic Perl Syntax
 
 ### Sigils
@@ -18,9 +17,6 @@ Perl variables are indexed with "sigils" to signify their type. This can be
 * `%h` is a hash.
 * `$h{"bar"}` is a scalar (its sigil is `$`), and it is the value of `%h` associated with the key `"bar"`.
 * `foo` (without a preceding sigil) is called a "bareword." There are Parsing rules for barewords are If there is a function with no arguments called `foo`, 
-
-### References
-
 
 ## Printing and Returning Data
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
@@ -52,41 +48,46 @@ returns `aeio	bye	bye`. Inside hash-lookup braces (among other places), prefixin
 
 ### `F_`, `FM`, `FT`, `FR` : Explicit field access
 
-* `F_` by itself returns an array where the values are the tab-delimited values of the input line.
-* Useful for accessing fields beyond the first 12, for example `$ ni <data> F_ 6..15`
-* `FM` is the number of fields in the row.
-* `FR n` is equivalent to `F_ n..FM`
-* `FT n` is equivalent to `F_ 0..(n-1)`
+* `F_`: returns the values of the tab-separated columns as an array.
+  * `F_(@inds)` will return the values of 
+* `FM`: returns the index of the largest defined index in `F_` (`== @r = F_; $#r`)
+* `FR $n`, `FT $n`: `F_` fRom, `F_` To
+  * `FR $n` returns `F_` starting from and including position `$n` to the end of `F_`. 
+  * `FT $n` returns `F_` starting from index `0` up to and including index `$n-1`. 
+  * `F_ == FT $n, FR $n`.
 
-
-### `rp'...'`: Take rows with Perl
+## `rp'...'`: Take rows with Perl
 
 This operator combines the `r` operator from the [operator cheatsheet](cheatsheet_op.md) with Perl, and takes every line that evaluates to true.
 
 * `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` returns a truthy value in Perl. 
 * Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
 
-## Perl for `ni`
+## Important Perl Builtins
 
-### Important Perl Builtins
+If you are unfamiliar with these functions, they are explained more extensively in [Chapter 2 of `ni` by example](ni_by_ex_2.md).
 
+
+### String Utilities
 * `lc`
 * `uc`
 * `substr`
 * `split`
 * `join`
+
+### List Utilities
 * `map`
 * `grep`
 * `keys`
 * `values`
-* Regular Expressions
-  * `$<v> =~ /regex/` -- standard regex form
-  * `$<v> =~ s/regex//` -- substitution
-  * `$<v> = tr/regex//` -- transliteration (also can be done with `y/regex//`)
+ 
+### Regular Expressions
+* `$<v> =~ /regex/` -- standard regex form
+* `$<v> =~ s/regex//` -- substitution
+* `$<v> = tr/regex//` -- transliteration (also can be done with `y/regex//`)
 
 
 ### BEGIN and END Blocks
-
 * `p'^{<begin_block>} ...'`: Begin block
   * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation occurs before any other code in the mapper is evaluated.
   * Begin blocks are useful for converting data closures to Perl data structures, and defining things like constants and counters that should be maintained over runs with different rows.
@@ -101,6 +102,74 @@ The exception to this rule is for variables defined within a begin block. In thi
 
 
 ## Useful `ni`-specific Perl Subroutines
+
+
+### Line Utilities
+
+* Line Reading
+	* `rl($n)`: read lines
+	  * returns an array consisting of the next `$n` lines of the stream, including the current line.
+	  * When `rl` is executed without an argument, the current line is ignored, the next line in the stream is added to the pushback queue. 
+	* `pl($n)`: peek lines
+	  * `pl` ignores the current line, peeks ahead `$n` lines until the global pushback queue is full. Once the pushback queue is full, it does not pull in additional lines, and returns the value of the pushback queue.
+* Buffered Readahead
+   * Whereas `rl` and `pl` tab split their data, the buffered readahead options do not.
+	* `rw`: read while
+	  * `@lines = rw {condition}`: read lines while a condition is met
+	* `ru`: read until
+	  * `@lines = ru {condition}`: read lines until a condition is met
+	* `re`: read equal
+	  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+	  * `@lines = re { b }` will put text lines into `@lines` where `b` is constant.
+
+
+### List Utlities
+
+* List Access
+  * `first(@r)`: first element of `@r` (`== $r[0]`)
+  * `final(@r)`: last element of `@r` (`== $r[-1]`)
+  * `rando(@r)`: a random element of `@r`
+* Math and Logic Operations
+  * `max(@r)`, `min(@r)`: numeric `max` and `min`
+  * `maxstr(@r)`, `minstr(@r)`: lexicographic `max` and `min`
+  * `deltas(@r)`, `totals(@r)`: differences of consecutive elements, and running sum of elements.
+  * `argmax(&block, @r)`, `argmin(&block, @r)`: returns the value of the element of `@r` that maximizes (minimizes) `&block`.
+  * `indmax(&block, @r)`, `indmin(&block, @r)`: returns the index of the element of `@r` that maximizes (minimizes) `&block`.
+  * `any(&block, @r)`, `all(&block, @r)`
+     * Returns logical `or` (`and`) of `&block` applied to all of the elements of `@r`.
+* Count and Unique
+  * `uniq(@r)`: list of unique elements of `@r`
+  * `freqs(@r)`: hash of the count of each unique element in `@r`
+    * `freqs` returns a reference; it's commonly used as `p'...; my %h = %{freqs @r}; ...'`.
+* Functional Programming
+  * `take($n, @r)`, `drop($n, @r)`: take or drop the first `$n` elements of `@r` and return the result.
+  * `take_while(&block, @r)`, `drop_while(@r, &block)`: takes or drops elements from `@r` while the block `&block` is true. 
+  * `take_every($n, @r)`, `take_even(@r)`, `take_odd(@r)`: takes every `$n`th value, every value at an even index in the list, and every odd value of the list.
+  * `reduce(&block, $start, @r)` executes 
+     * Returns the result of iteratively applying `$start = &block($start, shift @r)`.
+  * `reductions(&block, $start, @r)`
+      * Returns a list consisting of all of the intermediate values computed in `reduce`.
+* Cartesian Product
+  * `cart`: Cartesian Product
+* Functions on arrays of text lines
+  * A number of functions described later (namely `re`, `ru`, `rw`) will read in lines of text without tab-splitting them.   
+  * `a_`, `b_`, and others: get column from lines
+     * 
+  * `a__`, `b__`, and others: get many columns from lines
+     * 
+
+### Math Utilities
+* `sum`, `prod`, `mean`, `log2`: standard math functions
+* `quant($x, $q)`: rounds `$x` to the nearest `$q`.
+* `dot`, `cross`: scalar and vector products
+* `l1norm`, `l2norm`: L1 and L2 vector norms
+* `interp($f, @r)`: interpolate `$f` numbers between every pair of values in `@r`.
+* `proj($v1_ref, $v2_ref)`, `orth($v1_ref, $v2_ref)`: vector projection 
+* `rdeg`, `drad`: radius to degrees
+* `prec`: polar to rectangular
+* `rpol`: rectangular to polar
+* `entorpy`: Shannon Entorpy in bits
+* `haversine`: haversine formula for arc length
 
 ### Geographic Functions
 The operators in this section refer specifically to the 
@@ -122,6 +191,9 @@ The operators in this section refer specifically to the
 * `gh_dist`: arc distance between two base-32 geohashes
   * Similar to `lat_lon_dist`, this computes the distance along the earth between the centroids of two geohashes.
 
+#### Tagged Geohashes
+A tagged geohash is a binary data format that is used to indicate the precision and value of a geohash in a single 8-byte value.
+
 ### Time Functions
 * `tpe`: time parts to epoch
   * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
@@ -132,68 +204,59 @@ The operators in this section refer specifically to the
 * `tsec`: Timezone offset in seconds
   * `tep($raw_timestamp + $tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
 * `i2e($iso_8601_time_string)`: ISO-8601 to Epcoh
-  * Converts a timestamp in ISO 8601 form 
+  * Converts a time in ISO-8601 form to an epoch timestamp.
 * `e2i($timestamp, $timezone)`: Epoch to ISO-8601
-  * Converts a timestamp in epoch 
+  * Converts a timestamp in epoch form to ISO-8601
 * `ym`: year and month
-  * Input: a unix timestamp in 
+  * Input: a unix timestamp (seconds since the epoch)
   * Output: the year and month
-  * Example: 
+  * Example: `$ ni i1508348294 p'r ym a'` returns `2017_10`
 * `how`: hour of day and weekday
-  * Input:
-  * Output:
-  * Example
+  * Input: a unix timestamp (seconds since the epoch)
+  * Output: the day of week and hour of day
+  * Example: `$ ni i1508348294 p'r how a'` returns `Wed_17`
 * `ttd`, `tth`, `tt15`, `ttm`: Truncate to day, hour, quarter-hour, minute
-  * Input:
+  * Input: a unix timestamp (seconds since the epoch)
   * Output:
-  * Example:
+      * `ttd`: the first second of the day that of the argument
+      * `tth`: the first second of the hour of the argument
+      * `tt15`: the first second of the quarter-hour of the argument 
+      * `ttm`: the first second of the minute of the argument
+  * Example: `$ ni i1508348294 p'r ttd a, tth a, tt15 a, ttm a'` returns `1508284800	1508346000	1508347800	1508348280`
 * `ghl($timestamp, $gh)` and `gh6l($timestamp, $gh60)`: geohash localtime and geohash-60 localtime
   * Input:
   * Output:
   * Example:
 
 
-### List Utlities
-
-* `first(@r)`: first element of `@r` (`== $r[0]`)
-* `final(@r)`: last element of `@r` (`== $r[-1]`)
-* `rando(@r)`: random element of `@r`
-* `max(@r)`, `min(@r)`: numeric `max` and `min`
-* `maxstr(@r)`, `minstr(@r)`: lexicographic `max` and `min`
-* `take($n, @r)`, `drop($n, @r)`: take or drop the first `$n` elements of `@r` and return the result.
-* `take_while(&block, @r)`, `drop_while(@r, &block)`: 
-* `take_every(@r)`, `take_even(@r)`, `take_odd(@r)`
-* `deltas(@r)`, `totals(@r)`
-* `argmax(&block, @r)`, `argmin(&block, @r)`
-* `any(&block, @r)`, `all(&block, @r)`
-* `uniq(@r)`: unique elements of `@r`
-* `freqs`
-* `reduce(&block, $start, @r)`
-* `reductions(&block, $start, @r)`
-* `cart`: Cartesian Product
-
 ### File Utilities
 
-* `rf`: 
-* `rfl`: 
-* `rfc`: 
-* `dirbase`: 
-* `basename`: 
-* `dirname`:
-* `mkdir_p`: make a directory and all necessary enclosing directories
-* `wf`: write to file
-* `af`: append to file
+* File Reading
+  * `rf`: reads the lines of a file and returns the result as a newline-separated string
+  * `rfl`: reads the lines of a file and returns each line as one element of an array.
+  * `rfc`: does `rf`, and returns the output after `chomp`ing any trailing newlines.
+* File Writing
+  * `wf`: write to file
+  * `af`: append to file
+
+### Directory Operations
+  * `dirbase`: splits the path path `a/b/c` into the base directory name and the final directory or filename. `$ ni ix/y/z p'r dirbase a` returns `x/y	z`.
+  * `basename`: splits the last filename or directory off a path. `$ ni ix/y/z p'r dirbase a` returns `x/y`.
+  * `dirname`: splits the last filename or directory off a path. `$ ni ix/y/z p'r dirname a` returns `z`.
+  * `mkdir_p`: make a directory and all necessary enclosing directories.
+
 
 ### String Utilities
-
-* `startswith($target, $prefix)`, `endswith($target, $suffix)`:
-* `alph($n)`: returns the `$n`-th lowercase letter of the alphabet.
+* `startswith($target, $prefix)`, `endswith($target, $suffix)`: returns `1` if the `$target` string starts with (ends with) `$prefix` (`$suffix`).
+* `alph($n)`: returns the `$n`th lowercase letter of the alphabet.
 
 ### Hash Utilities
 
 * `kbv_dsc(%h)`, `kbv_asc(%h)`: returns the keys of `%h` sorted by the associated value
-* `merge_hashes`, `merge_two_hashes`: 
-* `sum_hashes`, `sum_two_hashes`
+* `merge_hashes(\%h1, \%h2, \%h3, ...)`, `merge_two_hashes`: merges two hashes using the following recursive strategy:
+  * If a key exists in the first hash or the second hash, but not both, add the key and its associated value to the first hash
+  * If the key exists in both the first and se
+* `sum_hashes`, `sum_two_hashes`: 
 * `accumulate_hashes`, `accumulate_two_hashes`
 * Hash Constructors
   * `ab_` and others
@@ -205,7 +268,7 @@ The operators in this section refer specifically to the
     * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
     * Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
     * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
-    * `ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'`
+    * `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'`
 
 ### JSON Utilities
 
@@ -223,37 +286,19 @@ ni //license FWpF_ p'r pl 3' \
   * `json_decode`
   * `json_encode`
 * Partial-Featured but fast
-  * `get_scalar`
-  * `get_array`
-  * `get_hash`
-  * `string_merge_hashes($hash_str1, $hash_str2)`: merges two hashes 
+  * `get` methods 
+ 	 * `get_scalar($k, $json_str)`
+ 	 * `get_array($k, $json_str)`
+ 	 * `get_hash($k, $json_str)`
+ 	 * `string_merge_hashes($hash_str1, $hash_str2)`: merges two hashes 
+ * `delete` methods
+   * `delete_scalar($k, $json_str)` 
+   * `delete_array($k, $json_str)` 
+   * `delete_hash($k, $json_str)` 
 
 
 ### Debugging Utilities
 * `dump_data`
-
-### Line Utilities
-* `F_`
-* `FM`
-* `FR`, `FT`
-* `rl`
-* `pl`
-* `a_` and others: get column from lines
-* `a__` and others: get many columns from lines
-
-
-### Math Utilities
-* `sum`, `prod`, `mean`, `log2`: standard math functions
-* `quant($x, $q)`: rounds `$x` to the nearest `$q`.
-* `dot`, `cross`: scalar and vector products
-* `l1norm`, `l2norm`: L1 and L2 vector norms
-* `interp($f, @r)`: interpolate `$f` numbers between every pair of values in `@r`.
-* `proj($v1_ref, $v2_ref)`, `orth($v1_ref, $v2_ref)`: vector projection 
-* `rdeg`, `drad`: radius to degrees
-* `prec`: polar to rectangular
-* `rpol`: rectangular to polar
-* `entorpy`: Shannon Entorpy in bits
-* `haversine`: haversine formula for arc length
 
 
 ## Basic Perl Reducers
@@ -272,15 +317,7 @@ These operations encapsulate the most common types of reduce operations that you
 * `rfn`: Custom compound reduce
 
 
-## Buffered Readahead
-These operations are good for reducing 
 
-* `rw`: read while
-  * `@lines = rw {condition}`: read lines while a condition is met
-* `ru`: read until
-  * `@lines = ru {condition}`: read lines until a condition is met
-* `re`: read equal
-  * `@lines = re {condition}`: read lines while the value of the condition is equal.
 
 ## Multiline Reducers
 These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
@@ -295,12 +332,7 @@ These operations can be used to reduce the data output by the readahead function
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
 * `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ rea'` 
 
-
-## Annoyingly Advanced Perl
-* `use strict` and the `::` prefix in a Perl Environment
-  * When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
-  * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
-  * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
+`reb` reduces where both of the first _two_ columns are equal, and `rec` reduces where the first _three_ columns, etc.
 
 ## Data Closures in Perl Mappers
 
@@ -313,3 +345,33 @@ Data closures are useful in that they travel with `ni` when `ni` is sent somewhe
   * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
   * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+
+## Intermediate Perl Utilities
+
+### Functions
+
+Perl functions (also called "subroutines") 
+
+Perl functions are often written with a signature that allows them to be written without parentheses. In general, you should use the simplest written form of a function.
+
+### References
+
+* You cannot nest lists or hashes in Perl like you can in Python, and everything that is passed into a Perl function is passed as a flat list; instead, put your 
+
+
+
+
+## Annoyingly Advanced Perl
+* `use strict` and the `::` prefix in a Perl Environment
+  * When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
+  * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
+  * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
+
+### Global variables you shouldn't touch
+*  `@F`: array of values of the current line. 
+ *  Since many other functions depend on `@F`, it is recommended that you use `F_` to access the data indirectly rather than through `@F` itself.
+ *  `@F` is re-set every time a fresh line hits the beginning of the Perl mapper.
+* `@q`: global pushback queue
+  * `@q` persists between fresh lines, and allows past lines to be stored. It is used by `rl` and `pl` to store lines, as well as for the buffered readahead functions `re`, `ru`, `rw`
+  * Like `@F`, many functions rely on `@q`; you should not edit or access it directly, and instead use the functions that interact with it.
+  * If you want to to store your own array of lines that persists through fresh lines, use a BEGIN block, for example`p'^{@x;} ...; push @x, $data; ...`

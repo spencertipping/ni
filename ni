@@ -4579,7 +4579,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-284 core/pl/util.pm
+332 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4645,6 +4645,54 @@ sub argmin(&@) {
   }
   $m;
 }
+
+sub indmax(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) > $fm;
+    print "$im\t$fm\t$_\t$xs[$_]\t$fx\n";
+  }
+  $im;
+}
+
+
+sub indmin(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) < $fm;
+    print "$im\t$fm\t$_\t$xs[$_]\t$fx\n";
+  }
+  $im;
+}
+
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
+  }
+  $m;
+}
+
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
+  }
+  $m;
+}
+
 
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
@@ -4939,18 +4987,13 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-127 core/pl/stream.pm
+122 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
-# | $ ni n:10p'a + a'             # emit single value
-#   $ ni n:10p'a, a * a'          # emit multiple values vertically
-#   $ ni n:10p'r a, a * a'        # emit multiple values horizontally
-
-# The 'pr' function can bypass split /\t/, which is useful in high-throughput
-# situations. For example:
-
-# | $ ni n:10p'pr "$_\tfoo"'      # append a new field without splitting
+# | $ ni n10p'a + a'             # emit single value
+#   $ ni n10p'a, a * a'          # emit multiple values vertically
+#   $ ni n10p'r a, a * a'        # emit multiple values horizontally
 
 # Lowercase letters followed by underscores are field-extractors that can take an
 # array of lines and return an array of field values. These are useful in
@@ -5389,7 +5432,7 @@ if (1 << 32) {
     local $_;
     my ($gh, $bits) = @_;
     return geohash_decode_tagged($gh)
-      if looks_like_number $gh and $gh & 0x4000_0000_0000_0000;
+      if looks_like_number $gh and $gh !~ /[0-9a-z]{1,12}/ and $gh & 0x4000_0000_0000_0000;
     unless (defined $bits) {
       # Decode gh from base-32
       $bits = length($gh) * 5;

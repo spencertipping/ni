@@ -64,6 +64,52 @@ sub argmin(&@) {
   $m;
 }
 
+sub indmax(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) > $fm;
+  }
+  $im;
+}
+
+
+sub indmin(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) < $fm;
+  }
+  $im;
+}
+
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
+  }
+  $m;
+}
+
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
+  }
+  $m;
+}
+
+
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
 
