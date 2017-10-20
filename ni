@@ -4579,7 +4579,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-330 core/pl/util.pm
+308 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4626,26 +4626,6 @@ sub take_odd(@) { take_every(2, 1, @_); }
 sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
 sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
 
-sub argmax(&@) {
-  local $_;
-  my ($f, $m, @xs, $fx) = @_;
-  my $fm = &$f($_ = $m);
-  for (@xs) {
-    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
-  }
-  $m;
-}
-
-sub argmin(&@) {
-  local $_;
-  my ($f, $m, @xs, $fx) = @_;
-  my $fm = &$f($_ = $m);
-  for (@xs) {
-    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
-  }
-  $m;
-}
-
 sub indmax(&@) {
   local $_;
   my ($f, @xs) = @_;
@@ -4657,7 +4637,6 @@ sub indmax(&@) {
   }
   $im;
 }
-
 
 sub indmin(&@) {
   local $_;
@@ -4690,7 +4669,6 @@ sub argmin(&@) {
   }
   $m;
 }
-
 
 sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
 sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
