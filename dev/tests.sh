@@ -117,19 +117,19 @@ lazytest_case 'ni nE4 rBA[nE4 rp'\''a != 61 && a != 108'\'' zB45]
 LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
 lazytest_line=44
-lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
+lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 fAA rbA//:bloom
 ' 3<<'LAZYTEST_EOF'
-108
-571
-3491
+108	108
+571	571
+3491	3491
 LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
 lazytest_line=53
-lazytest_case 'ni ::bloom[i100 i101 i102 zB45] nE4 rp'\''bloom_contains bloom, a'\''
+lazytest_case 'ni ::bloom[i100 i101 i102 zB45] nE4 p'\''r a, a + 1'\'' rp'\''bloom_contains bloom, a'\''
 ' 3<<'LAZYTEST_EOF'
-100
-101
-102
+100	101
+101	102
+102	103
 LAZYTEST_EOF
 lazytest_file='doc/c.md'
 lazytest_line=11

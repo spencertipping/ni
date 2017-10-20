@@ -41,17 +41,17 @@ $ ni nE4 rBA[nE4 rp'a != 61 && a != 108' zB45]
 You can also stuff a bloom filter into a data closure:
 
 ```bash
-$ ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
-108
-571
-3491
+$ ni ::bloom[i108 i571 i3491 zB45] nE4 fAA rbA//:bloom
+108	108
+571	571
+3491	3491
 ```
 
 And, of course, you can use bloom filters directly:
 
 ```bash
-$ ni ::bloom[i100 i101 i102 zB45] nE4 rp'bloom_contains bloom, a'
-100
-101
-102
+$ ni ::bloom[i100 i101 i102 zB45] nE4 p'r a, a + 1' rp'bloom_contains bloom, a'
+100	101
+101	102
+102	103
 ```
