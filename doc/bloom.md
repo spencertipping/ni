@@ -46,3 +46,12 @@ $ ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
 571
 3491
 ```
+
+And, of course, you can use bloom filters directly:
+
+```bash
+$ ni ::bloom[i100 i101 i102 zB45] nE4 rp'bloom_contains bloom, a'
+100
+101
+102
+```

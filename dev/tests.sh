@@ -123,6 +123,14 @@ lazytest_case 'ni ::bloom[i108 i571 i3491 zB45] nE4 rbA//:bloom
 571
 3491
 LAZYTEST_EOF
+lazytest_file='doc/bloom.md'
+lazytest_line=53
+lazytest_case 'ni ::bloom[i100 i101 i102 zB45] nE4 rp'\''bloom_contains bloom, a'\''
+' 3<<'LAZYTEST_EOF'
+100
+101
+102
+LAZYTEST_EOF
 lazytest_file='doc/c.md'
 lazytest_line=11
 lazytest_case 'cat > wcl.pl <<'\''EOF'\''
