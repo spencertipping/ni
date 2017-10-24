@@ -8413,7 +8413,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
 2 core/hadoop/lib
 hadoop-conf.pl
 hadoop.pl
-363 core/hadoop/hadoop-conf.pl
+365 core/hadoop/hadoop-conf.pl
 # MapReduce configuration is a huge pain;
 # we aim to make it a little easier.
 
@@ -8675,6 +8675,8 @@ our %mr_generics = (
 'Hsjtpa',   'security.job.task.protocol.acl',
 'Hs3nk',    'fs.s3n.awsAccessKeyId',
 'Hs3ns',    'fs.s3n.awsSecretAccessKey',
+'Hs3ak',    'fs.s3a.awsAccessKeyId',
+'Hs3as',    'fs.s3a.awsSecretAccessKey',
 'Hfieldsep','stream.map.output.field.separator',
 'Hnfields', 'stream.num.map.output.key.fields',
 );

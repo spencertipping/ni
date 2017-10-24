@@ -259,6 +259,8 @@ our %mr_generics = (
 'Hsjtpa',   'security.job.task.protocol.acl',
 'Hs3nk',    'fs.s3n.awsAccessKeyId',
 'Hs3ns',    'fs.s3n.awsSecretAccessKey',
+'Hs3ak',    'fs.s3a.awsAccessKeyId',
+'Hs3as',    'fs.s3a.awsSecretAccessKey',
 'Hfieldsep','stream.map.output.field.separator',
 'Hnfields', 'stream.num.map.output.key.fields',
 );
