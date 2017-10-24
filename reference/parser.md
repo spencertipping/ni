@@ -278,6 +278,8 @@
 	| '$Hrsp' '' -> {conf_get_op 'Hrsp'}
 	| '$Hrspcai' '' -> {conf_get_op 'Hrspcai'}
 	| '$Hrsrt' '' -> {conf_get_op 'Hrsrt'}
+	| '$Hs3nk' '' -> {conf_get_op 'Hs3nk'}
+	| '$Hs3ns' '' -> {conf_get_op 'Hs3ns'}
 	| '$Hsjcpa' '' -> {conf_get_op 'Hsjcpa'}
 	| '$Hsjtpa' '' -> {conf_get_op 'Hsjtpa'}
 	| '$Htai' '' -> {conf_get_op 'Htai'}

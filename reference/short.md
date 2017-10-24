@@ -1056,6 +1056,16 @@
 ## SYNTAX
 	'' -> {conf_get_op 'Hrsrt'}
 
+# SHORT OPERATOR /$Hs3nk
+
+## SYNTAX
+	'' -> {conf_get_op 'Hs3nk'}
+
+# SHORT OPERATOR /$Hs3ns
+
+## SYNTAX
+	'' -> {conf_get_op 'Hs3ns'}
+
 # SHORT OPERATOR /$Hsjcpa
 
 ## SYNTAX

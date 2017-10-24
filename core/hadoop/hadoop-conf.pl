@@ -257,6 +257,8 @@ our %mr_generics = (
 'Hntsna',   'net.topology.script.number.args',
 'Hsjcpa',   'security.job.client.protocol.acl',
 'Hsjtpa',   'security.job.task.protocol.acl',
+'Hs3nk',    'fs.s3n.awsAccessKeyId',
+'Hs3ns',    'fs.s3n.awsSecretAccessKey',
 'Hfieldsep','stream.map.output.field.separator',
 'Hnfields', 'stream.num.map.output.key.fields',
 );
