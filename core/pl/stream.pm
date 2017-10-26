@@ -21,12 +21,16 @@ sub FR($)  {@F[$_[0]..$#F]}
 sub FT($)  {@F[0..($_[0]-1)]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
-       ceval sprintf 'sub %s_ {local $_; map((split /\t/)[%d] || "", map split(/\n/), @_)}',
-                     $_, ord($_) - 97, ord($_) - 97 for 'a'..'l'}
-BEGIN {ceval sprintf 'sub %s__ {my @r; foreach my $line(@_) 
-                                      {my @line_arr = split /\t/, $line; 
-                                       my @short = @line_arr[%d..$#line_arr];
-                                       push @r, @short} @r }', $_, ord($_) - 97 for 'a'..'l'}
+       ceval sprintf 'sub %s_ {local $_;
+                               die "coercing %s_() to a scalar is a mistake" unless wantarray;
+                               map((split /\t/)[%d] || "", map split(/\n/), @_)}',
+                     $_, $_, ord($_) - 97 for 'a'..'l'}
+BEGIN {ceval sprintf 'sub %s__ {my @r;
+                                die "coercing %s__() to a scalar is a mistake" unless wantarray;
+                                foreach my $line(@_) 
+                                { my @line_arr = split /\t/, $line; 
+                                  my @short = @line_arr[%d..$#line_arr];
+                                  push @r, @short } @r }', $_, $_, ord($_) - 97 for 'a'..'l'}
 
 sub cols(@) {
   local $_;
