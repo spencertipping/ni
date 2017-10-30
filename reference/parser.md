@@ -921,12 +921,12 @@
 # PARSER bloom_fp_spec
 
 ## DEFINITION
-	/(?^:\d)/ -> {10 ** -$_}
+	/(?^:\d(?:\.\d)?)/ -> {10 ** -$_}
 
 # PARSER bloom_size_spec
 
 ## DEFINITION
-	/(?^:\d)/ -> {10 **  $_}
+	/(?^:\d(?:\.\d)?)/ -> {10 **  $_}
 
 # PARSER cell/lambda
 	A bracketed lambda function in context 'cell'

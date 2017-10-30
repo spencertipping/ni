@@ -5792,8 +5792,8 @@ sub bloom_count($) {
 # store 10^7 (== 10M) elements with a 10^-4 likelihood of false positives."
 
 BEGIN {
-  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d/;
-  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d/;
+  defparseralias bloom_size_spec => pmap q{10 **  $_}, prx qr/\d(?:\.\d)?/;
+  defparseralias bloom_fp_spec   => pmap q{10 ** -$_}, prx qr/\d(?:\.\d)?/;
 }
 
 defoperator bloomify => q{
