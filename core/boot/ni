@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+$ni::is_lib = caller();
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 Copyright (c) 2016 Spencer Tipping | MIT license
@@ -27,9 +28,11 @@ $ni::data = \*DATA;
 
 sub ni::boot_header
 { join "\n", '#!/usr/bin/env perl',
+             "\$ni::is_lib = caller();",
              "\$ni::self{license} = <<'_';\n$ni::self{license}_",
              "eval(\$ni::self{ni} = <<'_');\n$ni::self{ni}_",
-             "die \$@ if \$@",
+             "die \$@ if \$@;",
+             "1;",
              "__DATA__" }
 
 sub ni::eval($;$)
@@ -45,7 +48,8 @@ sub ni::set
 
 ni::set $2, join '', map $_ = <DATA>, 1..$1
 while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
-ni::eval 'exit main @ARGV', 'main';
+ni::eval 'exit main @ARGV', 'main' unless $ni::is_lib;
 _
-die $@;
+die $@ if $@;
+1;
 __DATA__
