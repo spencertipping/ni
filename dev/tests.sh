@@ -662,8 +662,8 @@ lazytest_line=144
 lazytest_case 'ni //ni r3                            # some data
 ' 3<<'LAZYTEST_EOF'
 #!/usr/bin/env perl
+$ni::is_lib = caller();
 $ni::self{license} = <<'_';
-ni: https://github.com/spencertipping/ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
 lazytest_line=152

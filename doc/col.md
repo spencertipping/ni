@@ -143,8 +143,8 @@ The first three lines of ni's source code:
 ```bash
 $ ni //ni r3                            # some data
 #!/usr/bin/env perl
+$ni::is_lib = caller();
 $ni::self{license} = <<'_';
-ni: https://github.com/spencertipping/ni
 ```
 
 The first three lines of ni's source code, split on forward slashes:
