@@ -5521,7 +5521,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-169 core/pl/pl.pl
+170 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5664,7 +5664,8 @@ defoperator perl_cell_transformer => q{
 defmetaoperator perl_require => q{
   my ($args, $left, $right) = @_;
   my $code_fh = sni @$args;
-  my $code    = 'BEGIN{' . join('', <$code_fh>) . "\n}";
+  my $code    = 'BEGIN{#line 1 ' . json_encode(@$args) . "\n"
+                                 . join('', <$code_fh>) . "\n}";
   my $key     = "core/pl/require/" . gensym;
   self_append_resource $key, $code;
   push @ni::perl_prefix_keys, $key;
