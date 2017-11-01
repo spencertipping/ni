@@ -7,10 +7,21 @@ sub minhash_new($) { [map 0xffffffff, 1..$_[0]] }
 sub minhash_add
 {
   my $minhash = shift;
-  my %m;
-  ++$m{$_} for @$minhash, grep $_ < $$minhash[-1],
-                          map unpack('N', Digest::MD5::md5($_)), @_;
-  @$minhash = (sort {$a <=> $b} keys %m) [0..$#$minhash];
+  if (@_ > 1)
+  {
+    my %m;
+    ++$m{$_} for @$minhash, grep $_ < $$minhash[-1],
+                            map unpack('N', Digest::MD5::md5($_)), @_;
+    @$minhash = (sort {$a <=> $b} keys %m) [0..$#$minhash];
+  }
+  else
+  {
+    # Optimized single-add: don't allocate a hash
+    my $h = unpack 'N', Digest::MD5::md5($_[0]);
+    return $minhash if $h >= $$minhash[-1];
+    $_ == $h and return $minhash for @$minhash;
+    @$minhash = (sort {$a <=> $b} @$minhash, $h)[0..$#$minhash];
+  }
   $minhash;
 }
 
