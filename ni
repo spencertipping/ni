@@ -5663,9 +5663,9 @@ defoperator perl_cell_transformer => q{
 
 defmetaoperator perl_require => q{
   my ($args, $left, $right) = @_;
+  (my $filename = json_encode $args) =~ s/[\\\"]//g;
   my $code_fh = sni @$args;
-  my $code    = "BEGIN{\n#line 1 " . json_encode(json_encode($args)) . "\n"
-                                   . join('', <$code_fh>) . "\n}";
+  my $code    = "BEGIN{\n#line 1 \"$filename\"\n" . join('', <$code_fh>) . "\n}";
   my $key     = "core/pl/require/" . gensym;
   self_append_resource $key, $code;
   push @ni::perl_prefix_keys, $key;
