@@ -5798,10 +5798,10 @@ sub minhash_new($) { [map 0xffffffff, 1..$_[0]] }
 sub minhash_add
 {
   my $minhash = shift;
-  @$minhash =
-    (sort {$a <=> $b} @$minhash, grep $_ < $$minhash[-1],
-                                 map unpack('N', Digest::MD5::md5($_)), @_)
-    [0..$#$minhash];
+  my %m;
+  ++$m{$_} for @$minhash, grep $_ < $$minhash[-1],
+                          map unpack('N', Digest::MD5::md5($_)), @_;
+  @$minhash = (sort {$a <=> $b} keys %m) [0..$#$minhash];
   $minhash;
 }
 
