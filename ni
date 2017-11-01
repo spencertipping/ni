@@ -5521,7 +5521,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-168 core/pl/pl.pl
+169 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5601,6 +5601,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/time.pl
                             core/cell/murmurhash.pl
                             core/bloom/bloomfilter.pl
+                            core/bloom/minhash.pl
                             core/gen/gen.pl
                             core/json/json.pl
                             core/pl/reducers.pm |;
@@ -5690,8 +5691,9 @@ defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
-2 core/bloom/lib
+3 core/bloom/lib
 bloomfilter.pl
+minhash.pl
 bloom.pl
 92 core/bloom/bloomfilter.pl
 # Bloom filter library.
@@ -5785,6 +5787,43 @@ sub bloom_count($) {
   my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
   return -1 if $bits >= $m;     # overflow case (> if %32b runs past end maybe)
   $m * -log(1 - $bits/$m) / $k;
+}
+36 core/bloom/minhash.pl
+# minhash sets
+# These are mutable arrays of 32-bit slices of MD5s.
+
+BEGIN {eval {require Digest::MD5}}
+
+sub minhash_new($) { [map 0xffffffff, 1..$_[0]] }
+sub minhash_add
+{
+  my $minhash = shift;
+  @$minhash =
+    (sort {$a <=> $b} @$minhash, grep $_ < $$minhash[-1],
+                                 map unpack('N', Digest::MD5::md5($_)), @_)
+    [0..$#$minhash];
+  $minhash;
+}
+
+sub minhash_count($)
+{
+  my ($minhash) = @_;
+  my $i = $#$minhash;
+  --$i while $i && $$minhash[$i] == 0xffffffff;
+  return -1 if $$minhash[$i] == 0;
+  0xffffffff * ($i + 1) / $$minhash[$i];
+}
+
+sub minhash_union { [(sort {$a <=> $b} map @$_, @_)[0..$#{$_[0]}]] }
+sub minhash_intersect
+{
+  my %m;
+  for my $i (0..$#_) { $m{$_} |= 1 << $i for @{$_[$i]} }
+  my $all = (1 << @_) - 1;
+  my @i   = grep $m{$_} == $all, keys %m;
+  return minhash_new @{$_[0]} unless @i;
+  push @i, (0xffffffff) x (@{$_[0]} - @i) if @{$_[0]} > @i;
+  [(sort {$a <=> $b} @i)[0..$#{$_[0]}]];
 }
 52 core/bloom/bloom.pl
 # Bloom filter operators.
