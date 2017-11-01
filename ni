@@ -9417,7 +9417,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-238 doc/col.md
+237 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -9571,25 +9571,24 @@ The first three lines of ni's source code, split on forward slashes:
 ```bash
 $ ni //ni r3F/\\//                      # split on forward slashes
 #!	usr	bin	env perl
+$ni::is_lib = caller();
 $ni::self{license} = <<'_';
-ni: https:		github.com	spencertipping	ni
 ```
-
 
 The first three lines of ni's source code, split on non-words:
 ```bash
 $ ni //ni r3FW                          # split on non-words
 	usr	bin	env	perl
+	ni	is_lib	caller	
 	ni	self	license	_	
-ni	https	github	com	spencertipping	ni
 ```
 
 The first three lines of ni's source code, split on whitespace:
 ```bash
 $ ni //ni r3FS                          # split on whitespace
 #!/usr/bin/env	perl
+$ni::is_lib	=	caller();
 $ni::self{license}	=	<<'_';
-ni:	https://github.com/spencertipping/ni
 ```
 
 The first three lines of ni's source code, split on words beginning with a slash:
@@ -9597,7 +9596,7 @@ The first three lines of ni's source code, split on words beginning with a slash
 $ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
 /usr	/bin	/env
 
-/github	/spencertipping	/ni
+
 ```
 
 ## Vertical operator application
@@ -9608,8 +9607,8 @@ uppercase the third column of a dataset, we can do it like this:
 ```bash
 $ ni //ni r3FW p'r a, b, uc(c), FR 3'
 	usr	BIN	env	perl
+	ni	IS_LIB	caller
 	ni	SELF	license	_
-ni	https	GITHUB	com	spencertipping	ni
 ```
 
 But that requires a lot of keystrokes. More concise is to use `v` to pipe
@@ -9618,8 +9617,8 @@ column C to a separate ni process:
 ```bash
 $ ni //ni r3FW vCpuc
 	usr	BIN	env	perl
+	ni	IS_LIB	caller
 	ni	SELF	license	_
-ni	https	GITHUB	com	spencertipping	ni
 ```
 
 ## Left/right juxtaposition
@@ -9631,15 +9630,15 @@ join them horizontally, row by row. This is done using `w` and `W` (for
 $ ni //ni r3FWfB
 usr
 ni
-https
+ni
 $ ni //ni r3FWfB wn100          # right-join numbers
 usr	1
 ni	2
-https	3
+ni	3
 $ ni //ni r3FWfB Wn100          # left-join numbers
 1	usr
 2	ni
-3	https
+3	ni
 ```
 
 As shown above, the output stream is only as long as the shorter input. This is
@@ -10426,6 +10425,7 @@ ni provides a handful of operations that make it easy to work with sparse and de
 ```bash
 $ ni //ni FWr10
 	usr	bin	env	perl
+	ni	is_lib	caller	
 	ni	self	license	_	
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
@@ -10434,7 +10434,6 @@ Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
 of	this	software	and	associated	documentation	files	the	Software	to	deal
 in	the	Software	without	restriction	including	without	limitation	the	rights
 to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
-copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
 ```
 
 A sparse matrix is represented as a series of `row col value` tuples:
@@ -10448,9 +10447,9 @@ $ ni //ni FW Yr10
 0	4	perl
 1	0	
 1	1	ni
-1	2	self
-1	3	license
-1	4	_
+1	2	is_lib
+1	3	caller
+1	4	
 ```
 
 `X` inverts `Y` exactly:
@@ -10458,6 +10457,7 @@ $ ni //ni FW Yr10
 ```bash
 $ ni //ni FW fABCD Y X r10
 	usr	bin	env
+	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
 Copyright	c	2016	Spencer
@@ -10466,7 +10466,6 @@ Permission	is	hereby	granted
 of	this	software	and
 in	the	Software	without
 to	use	copy	modify
-copies	of	the	Software
 ```
 
 `X` is also additive in the event of cell collisions; this makes it useful as a

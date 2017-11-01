@@ -6,6 +6,7 @@ ni provides a handful of operations that make it easy to work with sparse and de
 ```bash
 $ ni //ni FWr10
 	usr	bin	env	perl
+	ni	is_lib	caller	
 	ni	self	license	_	
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
@@ -14,7 +15,6 @@ Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
 of	this	software	and	associated	documentation	files	the	Software	to	deal
 in	the	Software	without	restriction	including	without	limitation	the	rights
 to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
-copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
 ```
 
 A sparse matrix is represented as a series of `row col value` tuples:
@@ -28,9 +28,9 @@ $ ni //ni FW Yr10
 0	4	perl
 1	0	
 1	1	ni
-1	2	self
-1	3	license
-1	4	_
+1	2	is_lib
+1	3	caller
+1	4	
 ```
 
 `X` inverts `Y` exactly:
@@ -38,6 +38,7 @@ $ ni //ni FW Yr10
 ```bash
 $ ni //ni FW fABCD Y X r10
 	usr	bin	env
+	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
 Copyright	c	2016	Spencer
@@ -46,7 +47,6 @@ Permission	is	hereby	granted
 of	this	software	and
 in	the	Software	without
 to	use	copy	modify
-copies	of	the	Software
 ```
 
 `X` is also additive in the event of cell collisions; this makes it useful as a

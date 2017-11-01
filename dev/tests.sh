@@ -670,75 +670,75 @@ lazytest_line=152
 lazytest_case 'ni //ni r3F/\\//                      # split on forward slashes
 ' 3<<'LAZYTEST_EOF'
 #!	usr	bin	env perl
+$ni::is_lib = caller();
 $ni::self{license} = <<'_';
-ni: https:		github.com	spencertipping	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=161
+lazytest_line=160
 lazytest_case 'ni //ni r3FW                          # split on non-words
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env	perl
+	ni	is_lib	caller	
 	ni	self	license	_	
-ni	https	github	com	spencertipping	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=169
+lazytest_line=168
 lazytest_case 'ni //ni r3FS                          # split on whitespace
 ' 3<<'LAZYTEST_EOF'
 #!/usr/bin/env	perl
+$ni::is_lib	=	caller();
 $ni::self{license}	=	<<'_';
-ni:	https://github.com/spencertipping/ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=177
+lazytest_line=176
 lazytest_case 'ni //ni r3Fm'\''/\/\w+/'\''                 # words beginning with a slash
 ' 3<<'LAZYTEST_EOF'
 /usr	/bin	/env
 
-/github	/spencertipping	/ni
+
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=189
+lazytest_line=188
 lazytest_case 'ni //ni r3FW p'\''r a, b, uc(c), FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 	usr	BIN	env	perl
+	ni	IS_LIB	caller
 	ni	SELF	license	_
-ni	https	GITHUB	com	spencertipping	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=199
+lazytest_line=198
 lazytest_case 'ni //ni r3FW vCpuc
 ' 3<<'LAZYTEST_EOF'
 	usr	BIN	env	perl
+	ni	IS_LIB	caller
 	ni	SELF	license	_
-ni	https	GITHUB	com	spencertipping	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=211
+lazytest_line=210
 lazytest_case 'ni //ni r3FWfB
 ' 3<<'LAZYTEST_EOF'
 usr
 ni
-https
+ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=215
+lazytest_line=214
 lazytest_case 'ni //ni r3FWfB wn100          # right-join numbers
 ' 3<<'LAZYTEST_EOF'
 usr	1
 ni	2
-https	3
+ni	3
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=219
+lazytest_line=218
 lazytest_case 'ni //ni r3FWfB Wn100          # left-join numbers
 ' 3<<'LAZYTEST_EOF'
 1	usr
 2	ni
-3	https
+3	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=230
+lazytest_line=229
 lazytest_case 'ni //license Wn r~3
 ' 3<<'LAZYTEST_EOF'
 19	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -746,7 +746,7 @@ lazytest_case 'ni //license Wn r~3
 21	
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=234
+lazytest_line=233
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004
@@ -1177,6 +1177,7 @@ lazytest_line=7
 lazytest_case 'ni //ni FWr10
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env	perl
+	ni	is_lib	caller	
 	ni	self	license	_	
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
@@ -1185,7 +1186,6 @@ Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
 of	this	software	and	associated	documentation	files	the	Software	to	deal
 in	the	Software	without	restriction	including	without	limitation	the	rights
 to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
-copies	of	the	Software	and	to	permit	persons	to	whom	the	Software	is
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=23
@@ -1198,15 +1198,16 @@ lazytest_case 'ni //ni FW Yr10
 0	4	perl
 1	0	
 1	1	ni
-1	2	self
-1	3	license
-1	4	_
+1	2	is_lib
+1	3	caller
+1	4	
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=39
 lazytest_case 'ni //ni FW fABCD Y X r10
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env
+	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
 Copyright	c	2016	Spencer
@@ -1215,7 +1216,6 @@ Permission	is	hereby	granted
 of	this	software	and
 in	the	Software	without
 to	use	copy	modify
-copies	of	the	Software
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=56
