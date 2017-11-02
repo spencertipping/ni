@@ -490,6 +490,7 @@
 	| 'H' (
 	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
+	      <empty>?
 	      (
 	        <hadoop_streaming_lambda>
 	        <empty>?
@@ -502,7 +503,7 @@
 	        <hadoop_streaming_lambda>
 	        <empty>?
 	      ) -> {$$_[0]}
-	    ) -> {my ($m, $c, $r) = @$_;
+	    ) -> {my (undef, $m, $c, $r) = @$_;
 	                              my @cr =
 	                                (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
 	                                 defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
@@ -513,6 +514,7 @@
 	    ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
 	                          [hadoop_streaming_op [], undef, []]}
 	  | 'S' (
+	      <empty>?
 	      (
 	        <hadoop_streaming_lambda>
 	        <empty>?
@@ -525,7 +527,7 @@
 	        <hadoop_streaming_lambda>
 	        <empty>?
 	      ) -> {$$_[0]}
-	    ) -> {hadoop_streaming_op @$_}
+	    ) -> {hadoop_streaming_op @$_[1..$#$_]}
 	  | 'T' (
 	      (
 	        <hadoop_streaming_lambda>
@@ -1195,6 +1197,7 @@
 	(
 	| '#' '' -> {hadoop_make_nukeable_op}
 	| 'DS' (
+	    <empty>?
 	    (
 	      <hadoop_streaming_lambda>
 	      <empty>?
@@ -1207,7 +1210,7 @@
 	      <hadoop_streaming_lambda>
 	      <empty>?
 	    ) -> {$$_[0]}
-	  ) -> {my ($m, $c, $r) = @$_;
+	  ) -> {my (undef, $m, $c, $r) = @$_;
 	                            my @cr =
 	                              (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
 	                               defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
@@ -1218,6 +1221,7 @@
 	  ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
 	                        [hadoop_streaming_op [], undef, []]}
 	| 'S' (
+	    <empty>?
 	    (
 	      <hadoop_streaming_lambda>
 	      <empty>?
@@ -1230,7 +1234,7 @@
 	      <hadoop_streaming_lambda>
 	      <empty>?
 	    ) -> {$$_[0]}
-	  ) -> {hadoop_streaming_op @$_}
+	  ) -> {hadoop_streaming_op @$_[1..$#$_]}
 	| 'T' (
 	    (
 	      <hadoop_streaming_lambda>

@@ -211,19 +211,21 @@ BEGIN {defparseralias hadoop_streaming_lambda => palt pmap(q{undef}, prc '_'),
                                                       pmap(q{[]},    prc ':'),
                                                       _qfn}
 
-defhadoopalt S => pmap q{hadoop_streaming_op @$_},
-                  pseq pc hadoop_streaming_lambda,
+defhadoopalt S => pmap q{hadoop_streaming_op @$_[1..$#$_]},
+                  pseq popt pempty,
+                       pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
 defhadoopalt '#' => pmap q{hadoop_make_nukeable_op}, pnone;
 
-defhadoopalt DS => pmap q{my ($m, $c, $r) = @$_;
+defhadoopalt DS => pmap q{my (undef, $m, $c, $r) = @$_;
                           my @cr =
                             (defined $c ? (row_sort_op(sort_args [0]), @$c) : (),
                              defined $r ? (row_sort_op(sort_args [0]), @$r) : ());
                           [@$m, @cr]},
-                   pseq pc hadoop_streaming_lambda,
+                   pseq popt pempty,
+                        pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda,
                         pc hadoop_streaming_lambda;
 
