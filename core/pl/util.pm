@@ -8,10 +8,10 @@ sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 sub first  {$_[0]}
 sub final  {$_[$#_]}
 sub rando  {$_[int(rand($#_ + 1))]}
-sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
-sub min    {local $_; my $m = pop @_; $m = $m <  $_ ? $m : $_ for @_; $m}
-sub maxstr {local $_; my $m = pop @_; $m = $m gt $_ ? $m : $_ for @_; $m}
-sub minstr {local $_; my $m = pop @_; $m = $m lt $_ ? $m : $_ for @_; $m}
+sub max    {local $_; my $m = pop @_; $m = defined && $_ >  $m ? $_ : $m for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = defined && $_ <  $m ? $_ : $m for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = defined && $_ gt $m ? $_ : $m for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = defined && $_ lt $m ? $_ : $m for @_; $m}
 
 sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
 sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]} 
