@@ -5359,7 +5359,7 @@ BEGIN {
   *e2i = \&epoch_iso_8601;
 }
 
-170 core/pl/geohash.pl
+171 core/pl/geohash.pl
 # Fast, portable geohash encoder.
 # A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
 # Perl builds.
@@ -5424,9 +5424,10 @@ if (1 << 32) {
   *geohash_decode = sub {
     local $_;
     my ($gh, $bits) = @_;
-    return geohash_decode_tagged($gh)
-      if looks_like_number $gh and $gh !~ /[0-9a-z]{1,12}/ and $gh & 0x4000_0000_0000_0000;
     unless (defined $bits) {
+      return geohash_decode_tagged($gh)
+        if looks_like_number $gh && $gh & 0x4000_0000_0000_0000;
+
       # Decode gh from base-32
       $bits = length($gh) * 5;
       my $n = 0;
