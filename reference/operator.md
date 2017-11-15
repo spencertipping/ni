@@ -1266,13 +1266,16 @@
 	  my ($monitor_id, $monitor_name, $update_rate) = (@_, 1);
 	  my ($itime, $otime, $bytes) = (0, 0, 0);
 	  my $last_update = 0;
-	  my $start_time = time;
+	  my $start_time  = 0;
 	  my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
 	  while (1) {
 	    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
 	                   last unless $n;
 	    my $t2 = time; safewrite_exactly $stdout, $_;
 	    my $t3 = time;
+	
+	    # Start the clock only once some data starts moving
+	    $start_time ||= $t2;
 	
 	    $itime += $t2 - $t1;
 	    $otime += $t3 - $t2;
