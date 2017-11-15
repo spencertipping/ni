@@ -1985,7 +1985,7 @@
 	    <rbcode>
 	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
-	    'B'
+	    '^b'
 	    <colspec1>
 	    </qfn>
 	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
