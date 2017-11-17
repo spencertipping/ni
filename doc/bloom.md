@@ -10,7 +10,7 @@ queries. This is visible in two ways -- first as a set of Perl functions:
 
 These functions are available inside all Perl contexts. The other, and more
 common, way that you'd use bloom filters is by a trio of operators `zB`
-(compress into bloom filter), `rb` (rows which match bloom filter), and `rB`
+(compress into bloom filter), `rb` (rows which match bloom filter), and `r^b`
 (rows which don't match bloom filter). The syntax is this:
 
 ```
@@ -21,7 +21,7 @@ $ ni rows.txt zB45 \>filter     # compress lines as elements
 $ ni other-data.txt rbAfilter   # return rows of other-data.txt for which field
                                 # A occurs inside the bloom filter
 
-$ ni other-data.txt rBAfilter   # return rows of other-data.txt for which field
+$ ni other-data.txt r^bAfilter   # return rows of other-data.txt for which field
                                 # A does not occur inside the bloom filter
 ```
 
@@ -33,7 +33,7 @@ $ ni nE4 rbA[i108 i571 i3491 zB45]
 108
 571
 3491
-$ ni nE4 rBA[nE4 rp'a != 61 && a != 108' zB45]
+$ ni nE4 r^bA[nE4 rp'a != 61 && a != 108' zB45]
 61
 108
 ```
