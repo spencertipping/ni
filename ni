@@ -5534,7 +5534,7 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
-170 core/pl/pl.pl
+185 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5560,8 +5560,23 @@ sub syntax_check($$) {
 
 BEGIN {
 defparser 'plcode', '$', q{
-  return $_[1], '', @_[2..$#_] unless $_[1] =~ /\]$/;
   my ($self, $code, @xs) = @_;
+  die <<EOF if $code =~ /\\\r?\n/;
+ni: you have a trailing backslash in the perl code "$code", which perl will
+    interpret as a reference operator and things will go horribly wrong. If,
+    for some reason, you really do want a trailing backslash, you can bypass
+    this error by putting a space or a comment after it.
+
+    # this is why you're seeing this message (you don't want the backslash):
+    p'foo \
+      bar'
+
+    # this is the correct way to write it:
+    p'foo
+      bar'
+EOF
+
+  return $_[1], '', @_[2..$#_] unless $code =~ /\]$/;
   my $safecode      = $code;
   my $begin_warning = $safecode =~ s/BEGIN/ END /g;
   my $codegen       = $$self[1];
