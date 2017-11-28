@@ -1633,7 +1633,7 @@
 	      this error by putting a space or a comment after it.
 	  
 	      # this is why you're seeing this message (you don't want the backslash):
-	      p'foo \
+	      p'foo \\
 	        bar'
 	  
 	      # this is the correct way to write it:
