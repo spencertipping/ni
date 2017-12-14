@@ -16,15 +16,13 @@ defoperator join => q{
 
   while (!$leof && !$reof) {
     if ($lkey lt $rkey) {
-      print "$lkey < $rkey\n";
       chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
       $leof ||= !defined $lrow;
     } elsif ($lkey gt $rkey) {
-      print "$lkey > $rkey\n";
       chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>,   $rlimit + 1)[@rcols]);
       $reof ||= !defined $rrow;
     } else {
-      @rrows = ($rrow,);
+      @rrows = $rrow;
       while(!$reof) {
         chomp(my $new_rkey = join "\t", (split /\t/, $rrow = <$fh>, $rlimit + 1)[@rcols]);
         $reof ||= !defined $rrow;
@@ -40,11 +38,7 @@ defoperator join => q{
         chomp $lrow;
         print "$lrow\t$_" for @rrows;
         chomp(my $new_lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
-        if ($new_lkey eq $lkey) {
-        } else {
-          $lkey = $new_lkey; 
-          last;
-        }
+        if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
       }
     }
   }

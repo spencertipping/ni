@@ -4335,7 +4335,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-54 core/row/join.pl
+48 core/row/join.pl
 # Streaming joins.
 # The UNIX `join` command does this, but rearranges fields in the process. ni
 # implements its own operators as a workaround.
@@ -4354,15 +4354,13 @@ defoperator join => q{
 
   while (!$leof && !$reof) {
     if ($lkey lt $rkey) {
-      print "$lkey < $rkey\n";
       chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
       $leof ||= !defined $lrow;
     } elsif ($lkey gt $rkey) {
-      print "$lkey > $rkey\n";
       chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>,   $rlimit + 1)[@rcols]);
       $reof ||= !defined $rrow;
     } else {
-      @rrows = ($rrow,);
+      @rrows = $rrow;
       while(!$reof) {
         chomp(my $new_rkey = join "\t", (split /\t/, $rrow = <$fh>, $rlimit + 1)[@rcols]);
         $reof ||= !defined $rrow;
@@ -4378,11 +4376,7 @@ defoperator join => q{
         chomp $lrow;
         print "$lrow\t$_" for @rrows;
         chomp(my $new_lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
-        if ($new_lkey eq $lkey) {
-        } else {
-          $lkey = $new_lkey; 
-          last;
-        }
+        if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
       }
     }
   }
@@ -8519,9 +8513,10 @@ defoperator docker_exec => q{
 
 defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
                pseq pc docker_container_name, _qfn;
-2 core/hadoop/lib
+3 core/hadoop/lib
 hadoop-conf.pl
 hadoop.pl
+hdfsjoin.pl
 365 core/hadoop/hadoop-conf.pl
 # MapReduce configuration is a huge pain;
 # we aim to make it a little easier.
@@ -9151,6 +9146,48 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
+41 core/hadoop/hdfsjoin.pl
+
+sub hadoop_partfile_n { $_[0] =~ /[^0-9]([0-9]+)(?:\.[^\/]+)?$/ ? $1 : 0 }
+sub hadoop_partsort {
+  sort {hadoop_partfile_n($a) <=> hadoop_partfile_n($b)} @_
+}
+
+sub hadoop_ls {
+  # Now get the output file listing. This is a huge mess because Hadoop is a
+  # huge mess.
+  local $SIG{CHLD} = "DEFAULT";
+  my $ls_command = shell_quote conf 'hadoop/name', 'fs', '-ls', @_;
+  grep /\/[^_][^\/]*$/, map +(split " ", $_, 8)[7],
+                        grep !/^Found/,
+                        split /\n/, ''.qx/$ls_command/;
+}
+
+defresource 'hdfsj',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    my $left_path =  $ENV{mapreduce_map_input_file};
+                    my $left_file_number = hadoop_partfile_n $left_path; 
+                    my $left_folder = join "/", (split /\//, $left_path)[0..-1];
+                    my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                    my $right_folder = $_[1];
+                    my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
+                    my $right_file_idx = $left_file_number % @right_folder_files; 
+                    die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
+                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    sh qq{$hadoop_name fs -text $right_file 2>/dev/null }} @_};
+
+defresource 'hdfsjname',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    my $left_path =  $ENV{mapreduce_map_input_file};
+                    my $left_file_number = hadoop_partfile_n $left_path; 
+                    my $left_folder = join "/", (split /\//, $left_path)[0..-1];
+                    my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                    my $right_folder = $_[1];
+                    my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
+                    my $right_file_idx = $left_file_number % @right_folder_files; 
+                    die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
+                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    print "$left_path\t$right_file\n";} @_}; 
 2 core/pyspark/lib
 pyspark.pl
 local.pl
