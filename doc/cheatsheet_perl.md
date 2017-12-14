@@ -4,20 +4,6 @@
 
 `$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream.
 
-
-## Basic Perl Syntax
-
-### Sigils
-
-Perl variables are indexed with "sigils" to signify their type. This can be 
-
-* `$x` is a scalar (a number, string, or reference to one of the other types)
-* `@x` is an array.
-* `$x[0]` is a scalar (its sigil is `$`), whose value is the first element of the array `@x`
-* `%h` is a hash.
-* `$h{"bar"}` is a scalar (its sigil is `$`), and it is the value of `%h` associated with the key `"bar"`.
-* `foo` (without a preceding sigil) is called a "bareword." There are Parsing rules for barewords are If there is a function with no arguments called `foo`, 
-
 ## Printing and Returning Data
   * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
   * `p'<statements>; <$val1>, <$val2>, ...'`: Returns each element `<$val1>`, `<$val2>`,... on its own line.
@@ -30,6 +16,57 @@ Perl variables are indexed with "sigils" to signify their type. This can be
   * For example:
       * `$ ni 1p'[hi, there]'` returns `hi	there` on a single tab-separated line:
       * `$ ni 1p'r [hi, there]'` prints `ARRAY(0x7fa31dbc5b60)`.
+
+
+
+## Basic Perl Syntax
+
+### Data Types
+
+Perl has a relatively small number of data types, and for the purpose of this cheatsheet you really only need to know about these three:
+
+* Scalars -- numbers, strings
+* Arrays -- Arrays are written with parentheses
+* Hashes -- 
+* References: References are in fact just a special type of scalar used to refer to one of the other data types
+  * Array references are written inside square brackets
+  * Hash references are written inside curly braces
+
+### Sigils
+
+Perl variables are indexed with "sigils" to signify their type. This can be a little tricky for Perl beginners, so let's review quickly.
+
+* `$x` is a scalar (a number, string, or reference to one of the other types).
+* `@x` is an array.
+* `$x[0]` is a scalar (its sigil is `$`), whose value is the first element of the array `@x`. Perl knows that you're referring to an the array `@x` because you're indexing with square brackets.
+* `%h` is a hash.
+* `$h{"bar"}` is a scalar (its sigil is `$`), and it is the value of `%h` associated with the key `"bar"`. Perl nows you're referring to the hash `%h` because you're indexing it with curly braces.
+* Because sigils make the langauge very explicit, it is possible (though not advisable) to have a hash `%u`, an array `$u`, and a scalar `$u`, which have nothing to do with each other.
+* `foo` (without a preceding sigil) is called a "bareword." There are Parsing rules for barewords are If there is a function with no arguments called `foo`, 
+
+
+### Caveats
+
+* There are no key errors and no index errors in Perl
+* If you try to reference a key or index that does not exist, the hash or array will automatically create 
+* If you try to operate on an undefined value, it will define itself to be compatible with the operation you use and default to zero, the empty string, the empty array/hash, etc.
+
+
+### Lexical scoping
+
+Perl is lexically scoped; in general, when using `ni`, you will want to prefix every variable you define within a Perl mapper as scoped to the block, using the keyword `my`, as in `$ ni n10 p'my $x = 0; r $x'`
+
+The exception to this rule is for variables defined within a begin block. In this case `my` is not used at all. See: `$ ni n10 p'^{$x = 0} $x += 1; r $x'`.
+
+### Refernce Basics
+
+* To convert an object to a reference, use a backslash.
+* Example: `my $x = "nice ref!"; my $xref = \$x; r $xref` will print something like `SCALAR(0x7fc809a8ed20)`. 
+* To convert a reference back to a particular value type, wrap the reference in curly braces and prepend with the correct sigil.
+* Example: `$ ni 1p'my $x = "nice ref!"; my $xref = \$x; r ${$xref}'` prints `nice ref!`.
+* The curly braces are not always necessary, so you may also see confusing-at-first-blush compound sigils, as in: `$ ni 1p'my $x = "nice ref!"; my $xref = \$x; r $$xref'` which also prints `nice ref!`.
+* Dereferencing is time-consuming and can significantly degrade performance when used carelessly.
+
   
 ## Field Selection
 
@@ -86,6 +123,11 @@ If you are unfamiliar with these functions, they are explained more extensively 
 * `$<v> =~ s/regex//` -- substitution
 * `$<v> = tr/regex//` -- transliteration (also can be done with `y/regex//`)
 
+### Logical and Existence Operators
+* `exists` -- truthy when a key exists in a hash, falsey otherwise
+* `defined` -- truthy when a value is not `undef`, falsey otherwise
+* `&&`, `||` -- high priority boolean operators; use to perform boolean operations directly on scalar values 
+* `and`, `or` -- low priority; use to logically join compound statements
 
 ### BEGIN and END Blocks
 * `p'^{<begin_block>} ...'`: Begin block
@@ -94,11 +136,6 @@ If you are unfamiliar with these functions, they are explained more extensively 
 * `p'...; END {<end_block>}'`
   * Similar to a begin block, these run only once the last line of the input stream has been processed. These are useful for emitting the value of counters and data structures that have been accumulated over all of the rows of a computation.
 
-### Lexical scoping
-
-Perl is lexically scoped; in general, when using `ni`, you will want to prefix every variable you define within a Perl mapper as scoped to the block, using the keyword `my`, as in `$ ni n10 p'my $x = 0; r $x'`
-
-The exception to this rule is for variables defined within a begin block. In this case `my` is not used at all. See: `$ ni n10 p'^{$x = 0} $x += 1; r $x'`.
 
 
 ## Useful `ni`-specific Perl Subroutines
@@ -272,9 +309,11 @@ A tagged geohash is a binary data format that is used to indicate the precision 
 
 ### JSON Utilities
 
+* Full-Featured but slow
 *  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-  *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-  *  Here's an example:
+      *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
+      *  Here's an example:
+
 ```
 ni //license FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
@@ -282,14 +321,13 @@ ni //license FWpF_ p'r pl 3' \
                     word    => c}' \>jsons
 ```
 
-* Full-Featured but slow
   * `json_decode`
-  * `json_encode`
 * Partial-Featured but fast
   * `get` methods 
  	 * `get_scalar($k, $json_str)`
  	 * `get_array($k, $json_str)`
  	 * `get_hash($k, $json_str)`
+ * `merge` methods
  	 * `string_merge_hashes($hash_str1, $hash_str2)`: merges two hashes 
  * `delete` methods
    * `delete_scalar($k, $json_str)` 
@@ -350,13 +388,16 @@ Data closures are useful in that they travel with `ni` when `ni` is sent somewhe
 
 ### Functions
 
-Perl functions (also called "subroutines") 
+In `ni` you generally should not be defining Perl functions (also called "subroutines").
+
+Perl function definitions are denoted with the keyword `sub`.
 
 Perl functions are often written with a signature that allows them to be written without parentheses. In general, you should use the simplest written form of a function.
 
 ### References
 
-* You cannot nest lists or hashes in Perl like you can in Python, and everything that is passed into a Perl function is passed as a flat list; instead, put your 
+* You cannot nest lists or hashes in Perl like you can in Python, and everything that is passed into a Perl function is passed as a flat list;
+* Similarly, Perl subroutines also can only return scalars and flat lists. If you want to return multiple lists, or a hash, they must be returned as references.
 
 
 
