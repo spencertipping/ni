@@ -58,7 +58,7 @@ Perl is lexically scoped; in general, when using `ni`, you will want to prefix e
 
 The exception to this rule is for variables defined within a begin block. In this case `my` is not used at all. See: `$ ni n10 p'^{$x = 0} $x += 1; r $x'`.
 
-### Refernce Basics
+### Reference Basics
 
 * To convert an object to a reference, use a backslash.
 * Example: `my $x = "nice ref!"; my $xref = \$x; r $xref` will print something like `SCALAR(0x7fc809a8ed20)`. 
@@ -127,7 +127,10 @@ If you are unfamiliar with these functions, they are explained more extensively 
 * `exists` -- truthy when a key exists in a hash, falsey otherwise
 * `defined` -- truthy when a value is not `undef`, falsey otherwise
 * `&&`, `||` -- high priority boolean operators; use to perform boolean operations directly on scalar values 
-* `and`, `or` -- low priority; use to logically join compound statements
+* `//` -- "logical-defined OR"; `//` is identical to `||`, except it returns the first value if it is *defined* rather than if it is *truthy*.
+* `&&`, `||`, and `//` return the last value evaluated, unlike the corresponding C operators, which return `0` and `1`.
+* `and`, `or` -- low priority boolean operators; use to logically join compound statements
+
 
 ### BEGIN and END Blocks
 * `p'^{<begin_block>} ...'`: Begin block
