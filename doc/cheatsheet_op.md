@@ -149,6 +149,8 @@ When `ni` uploads itself, it will also upload all data that is stored in data cl
   * Equivalent to `hadoop fs -cat <path>`
 * `hdfst://<path>`: HDFS `text`
   * Equivalent to `hadoop fs -text <path>`
+* `hdfsj://<path>`: HDFS `join`
+  * Identifies the correct file within the directory `<path>` that should be joined with the map file (in a Hadoop Streaming context), `$ENV{mapreduce_map_input_file}` 
 * `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
   * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
   * `_` -- skip the mapper/reducer/combiner. 
@@ -182,15 +184,15 @@ Note that you will need sufficient processing cores to effectively horizontally 
 ## Intermediate Column Operations
 We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
 
+* `j` - streaming join
+  * This will (inner) join two streams using one or more of their columns as a key; if not specified, the key will be the first column  which is assumed to be sorted.
+  * Adding columns to the operator will use those as the join column. `jAB` will join on the first two columns the left and the right datasets.
 * `w`: Append column to stream
   * `$ ni <data> w[np'a*a']`
   * `w` will add columns only up to the length of the input stream
 * `W`: Prepend column stream
   * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
   * `W` will add rows only up to the length of the input stream
-* `j` - streaming join
-  * This will join two streams based on the value of their first column, which is assumed to be sorted.
-  * Note that this join will consume a single line of both streams; it does **NOT** provide a SQL-style left or right join.
 * `v`: Vertical operation on columns
   * **Important Note**: This operator is too slow to use in production.
 
