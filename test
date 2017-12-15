@@ -42,7 +42,7 @@ build_ni_stuff() {
 }
 
 tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
-image() { docker build -q -f env/$1 -t spencertipping/ni-env-dev-$1 .; }
+image() { echo spencertipping/ni-env-dev-$1; }
 
 default_image=ubuntu-16.04
 
@@ -60,6 +60,12 @@ case $c in
     echo
     docker build -f env/$e -t spencertipping/ni-env-dev-$e .
     docker push spencertipping/ni-env-dev-$e
+  done
+  ;;
+
+-p|--pull)
+  for e in ${envs[@]}; do
+    docker pull spencertipping/ni-env-dev-$e
   done
   ;;
 

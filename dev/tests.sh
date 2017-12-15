@@ -387,7 +387,7 @@ lazytest_case 'ni n5 ,a    # running average
 3
 LAZYTEST_EOF
 lazytest_file='doc/cheatsheet_op.md'
-lazytest_line=284
+lazytest_line=286
 lazytest_case 'ni i[a b c d] i[a b x y] i[a b foo bar] YC
 ' 3<<'LAZYTEST_EOF'
 a	b	0	0	c
@@ -398,7 +398,7 @@ a	b	2	0	foo
 a	b	2	1	bar
 LAZYTEST_EOF
 lazytest_file='doc/cheatsheet_op.md'
-lazytest_line=300
+lazytest_line=302
 lazytest_case 'ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
      i[c d 1 0] i[c d 1 1] \
       NC'\''x = dot(x.T, x)'\''
@@ -409,7 +409,7 @@ c	d	2	1
 c	d	1	1
 LAZYTEST_EOF
 lazytest_file='doc/cheatsheet_op.md'
-lazytest_line=314
+lazytest_line=316
 lazytest_case 'ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
 ' 3<<'LAZYTEST_EOF'
 a	b	c	d

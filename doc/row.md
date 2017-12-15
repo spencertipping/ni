@@ -355,4 +355,3 @@ X	Y	cat	bye
 In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
 
 The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
-
