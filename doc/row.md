@@ -335,17 +335,19 @@ value. ni assumes both streams are sorted already, e.g. using the `g` operator.
 ```bash
 $ ni word-list p'r a, length a' > word-lengths
 $ ni word-list gj[word-lengths g] r10
-2016	2016	4
-A	A	1
-ACTION	ACTION	6
-AN	AN	2
-AND	AND	3
-ANY	ANY	3
-ANY	ANY	3
-ARISING	ARISING	7
-AS	AS	2
-AUTHORS	AUTHORS	7
+2016	4
+A	1
+ACTION	6
+AN	2
+AND	3
+ANY	3
+ANY	3
+ARISING	7
+AS	2
+AUTHORS	7
 ```
+
+**TODO: revise docs below**
 
 As shown above, joins are strictly line-sequential: every output consumes a
 line from each stream. This is unlike the UNIX `join` command, which outputs a
