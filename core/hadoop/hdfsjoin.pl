@@ -24,7 +24,7 @@ defresource 'hdfsj',
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
-                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    my $right_file = shell_quote $right_folder_files[$right_file_idx];
                     sh qq{$hadoop_name fs -text $right_file 2>/dev/null }} @_};
 
 defresource 'hdfsjname',
@@ -37,6 +37,6 @@ defresource 'hdfsjname',
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
-                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    my $right_file = $right_folder_files[$right_file_idx];
                     print "$left_path\t$right_file\n";} @_}; 
 

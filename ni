@@ -4335,7 +4335,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-48 core/row/join.pl
+56 core/row/join.pl
 # Streaming joins.
 # The UNIX `join` command does this, but rearranges fields in the process. ni
 # implements its own operators as a workaround.
@@ -4372,15 +4372,23 @@ defoperator join => q{
         }
       }
 
+      my @clean_rrows = ();
+      my %delete_inds = map {$_ => 1} @rcols;
+      for my $rrow(@rrows) {
+        my @row_data = split /\t/, $rrow;
+        push @clean_rrows, join "\t", @row_data[grep {not $delete_inds{$_}} 0..$#row_data];
+      }
+
       while(!$leof) {
         chomp $lrow;
-        print "$lrow\t$_" for @rrows;
+        print "$lrow\t$_" for @clean_rrows;
         chomp(my $new_lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
         if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
       }
     }
   }
 };
+
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
@@ -9173,7 +9181,7 @@ defresource 'hdfsj',
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
-                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    my $right_file = shell_quote $right_folder_files[$right_file_idx];
                     sh qq{$hadoop_name fs -text $right_file 2>/dev/null }} @_};
 
 defresource 'hdfsjname',
@@ -9186,7 +9194,7 @@ defresource 'hdfsjname',
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
-                    my $right_file = shell_quote "$right_folder/$right_folder_files[$right_file_idx]";
+                    my $right_file = $right_folder_files[$right_file_idx];
                     print "$left_path\t$right_file\n";} @_}; 
 2 core/pyspark/lib
 pyspark.pl

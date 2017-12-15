@@ -131,39 +131,6 @@ lazytest_case 'ni ::bloom[i100 i101 i102 zB45] nE4 p'\''r a, a + 1'\'' rp'\''blo
 101	102
 102	103
 LAZYTEST_EOF
-lazytest_file='doc/c.md'
-lazytest_line=11
-lazytest_case 'cat > wcl.pl <<'\''EOF'\''
-# Defines the "wcl" operator, which works like "wc -l"
-defoperator wcl => q{
-  exec_c99 indent(q{
-    #include <unistd.h>
-    #include <stdio.h>
-    int main(int argc, char **argv)
-    {
-      char buf[8192];
-      ssize_t got = 0;
-      long lines = 0;
-      unlink(argv[0]);
-      while (got = read(0, buf, sizeof(buf)))
-        while (--got)
-          lines += buf[got] == '\''\n'\'';
-      printf("%ld\n", lines);
-      return 0;
-    }
-  }, -4);
-};
-
-defshort '\''/wcl'\'' => pmap q{wcl_op}, pnone;
-EOF
-' 3<<'LAZYTEST_EOF'
-LAZYTEST_EOF
-lazytest_file='doc/c.md'
-lazytest_line=39
-lazytest_case 'ni --lib wcl.pl n10 wcl
-' 3<<'LAZYTEST_EOF'
-10
-LAZYTEST_EOF
 lazytest_file='doc/cell.md'
 lazytest_line=11
 lazytest_case 'ni n5 p'\''r a, a*2'\''         # generate two columns of numbers
@@ -519,6 +486,39 @@ lazytest_case 'ni :@foo[nE6] Cubuntu[ \
 LAZYTEST_EOF
 fi                      # $SKIP_DOCKER
 cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=11
+lazytest_case 'cat > wcl.pl <<'\''EOF'\''
+# Defines the "wcl" operator, which works like "wc -l"
+defoperator wcl => q{
+  exec_c99 indent(q{
+    #include <unistd.h>
+    #include <stdio.h>
+    int main(int argc, char **argv)
+    {
+      char buf[8192];
+      ssize_t got = 0;
+      long lines = 0;
+      unlink(argv[0]);
+      while (got = read(0, buf, sizeof(buf)))
+        while (--got)
+          lines += buf[got] == '\''\n'\'';
+      printf("%ld\n", lines);
+      return 0;
+    }
+  }, -4);
+};
+
+defshort '\''/wcl'\'' => pmap q{wcl_op}, pnone;
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=39
+lazytest_case 'ni --lib wcl.pl n10 wcl
+' 3<<'LAZYTEST_EOF'
+10
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
 lazytest_line=15

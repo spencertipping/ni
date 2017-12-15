@@ -613,9 +613,16 @@
 	        }
 	      }
 	
+	      my @clean_rrows = ();
+	      my %delete_inds = map {$_ => 1} @rcols;
+	      for my $rrow(@rrows) {
+	        my @row_data = split /\t/, $rrow;
+	        push @clean_rrows, join "\t", @row_data[grep {not $delete_inds{$_}} 0..$#row_data];
+	      }
+	
 	      while(!$leof) {
 	        chomp $lrow;
-	        print "$lrow\t$_" for @rrows;
+	        print "$lrow\t$_" for @clean_rrows;
 	        chomp(my $new_lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
 	        if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
 	      }
