@@ -481,7 +481,7 @@ Some other ideas to keep in mind:
 
 #### Number of files
 
-Hadoop (2) is only configured to accept up to at most 100,000 files per job. Instead of doing the sensible thing and failing before the job starts, Hadoop will fail after hitting the limit in the number of files. In general, you should not run over more than 80,000 files.  Be careful when you use wildcard characters in Hadoop paths.
+Hadoop (2.x) is only configured to accept up to at most 100,000 files per job. Instead of doing the sensible thing and failing before the job starts, Hadoop will fail after hitting the limit in the number of files. In general, you should not run over more than 80,000 files.  Be careful when you use wildcard characters in Hadoop paths.
 
 #### Avoiding SIGPIPE
 
@@ -515,14 +515,13 @@ There are a number of Hadoop-specific issues that may make jobs that you can run
 
 ### `^{...}`: `ni` configuration
 
-As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. However, without instructions, `ni` will default to partitioning and sorting data to reducers using the first tab-delimited column. If this is not the default behavior you want, `ni` options can be set through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is often desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers, changing the way that data is partitioned and sorted 
+As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. However, without instructions, `ni` will default to partitioning and sorting data to reducers using the first tab-delimited column. If this is not the default behavior you want, `ni` options can be set through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is often desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers, changing the way that data is partitioned and sorted.
 
 
 ```sh
-$ ni ^{hadoop/partopt="-k1,1 -k2,2" \
-       hadoop/nfields=3 \
-       hadoop/sortopt="-k1,1nr -k3,3" \
-  hadoop/jobconf='mapreduce.reduce.memory.mb=8192 mapreduce.job.reduces=128'} HS...
+$ ni ^{Hpkpo="-k1,1 -k2,2" \
+       Hpkco="-k1,1nr -k3,3"
+       Hjr=128} HS...
   
 ```
 
@@ -605,45 +604,29 @@ $ ni hdfst://<abspath> HS...
 `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
 
+## Map-Side Joins
 
-## `nfu` HDFS Joins
+Map-side joins provide a way to join 2 large datasets on HDFS in a streaming way, and is useful for example, when one of the datasets is too large to fit in a data closure.
 
-I look forward to the day I rename this section to `ni` HDFS Joins, but for now, the easiest way to do large-scale joins is using `nfu`.
+To do a map-side join, first, the datasets must be sorted. As mentioned in Chapter 1, joins in `ni` are designed to belarger on the left. In the map-side join context, we require that each file on the left side of the join match with exactly one file on the right side of the join. Multiple files on the left can be joined to a single file on the right, however.
 
-To install:
+To be more concrete, if you want to join 50 files to 1000 files, the 50 files must be on the right side of the join and the 1000 files must be on the left, since 50 goes into 1,000 and not vice versa.
 
+`hdfsj:///` paths are used to find the path to join to a file.
+
+The overall paradigm can be written something like this:
+
+```sh
+$ ni ihdfst:///.../<left side path>/... \
+	HS[ j[hdfsj:///<right_side_path>/... ] ]
 ```
-$ git clone git://github.com/spencertipping/nfu
-$ cd nfu
-$ ln -s $PWD/nfu ~/bin/nfu      ## Or wherever you want to link in your path
-```
-
-HDFS joins occur only between the keys of the two datasets (i.e. the first columns of both datasets when expressed as TSV). They will be significantly more efficient when the data are partitioned the same in both the left and right datasets. In order to make sure that this is the case:
-
-```
-$ ni :hdfs_path1[ihdfst://<abspath1> HS:_: ]
-$ ni :hdfs_path2[ihdfst://<abspath2> HS:_: ]
-```
-
-You can appropriately process the checkpoint files to to get the correct paths, then use:
-
-```
-nfu hdfs://<abspath1> -j [hdfs://<abspath> 0] _
-```
-
-`nfu` offers two types of joins, inner and left-outer, and two options for whether the inputs need to be sorted. 
-
-* `i`: Inner join with preceding sort
-* `j`: Inner join without sort
-* `I`: Left-outer join with preceding sort
-* `J`: Left-outer join without sort
 
 
 ## Conclusion
 
 The classic word count program for Hadoop can be written like this:
 
->`$ ni //ni HS[FWpF_] _ [c]`
+>`$ ni //ni HS[FWpF_]_c`
 
 If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
 
@@ -653,10 +636,4 @@ If you've never had the opportunity to write the word count MapReduce program in
 * [Go](http://go-wise.blogspot.com/2011/09/go-on-hadoop.html)
 * [Perl](http://www.perlmonks.org/?node_id=859535)
 
-It would it take me at least an hour to get through the tutorial in the language I know best (Python). Look at how convoluted the Java program is; can you imagine trying to explain what it actually means to someone who isn't already highly skilled in the language?
-
-What's more important is that all of the examples above are completely uninspired, joyless programs. Every single one of those programs makes make me hate programming.
-
-`ni` does the opposite. I wrote the `ni` spell in about 5 seconds, and I can explain how it works in about 30. Even at this early stage, I bet it didn't take more than a couple of minutes to figure out how to write the program either. It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.
-
-Congrats on finishing this chapter of the tutorial. In the first two chapters, you've been introduced tools for manipulating and expanding individual rows of data; in the next chapter we'll develop tools that condense and combine multiple rows of data into one. We'll also look at some specialized `ni` functions, and `ni` interoperability with Ruby, Lisp, and Python/numpy.
+Compare the `ni` solution to Java. The `ni` spell can be written in 5 seconds, and explained in 30.  It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.

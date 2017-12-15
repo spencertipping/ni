@@ -11557,7 +11557,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-352 doc/row.md
+357 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -11889,27 +11889,32 @@ $ ni word-list gcOr10           # by descending count
 ```
 
 ## Joining
-You can use the `j` operator to inner-join two streams on the first column
-value. ni assumes both streams are sorted already, e.g. using the `g` operator.
 
+You can use the `j` operator to inner-join two streams. 
 ```bash
-$ ni word-list p'r a, length a' > word-lengths
-$ ni word-list gj[word-lengths g] r10
-2016	2016	4
-A	A	1
-ACTION	ACTION	6
-AN	AN	2
-AND	AND	3
-ANY	ANY	3
-ANY	ANY	3
-ARISING	ARISING	7
-AS	AS	2
-AUTHORS	AUTHORS	7
+$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \ 
+j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
+foo	bar	mine
+foo	car	mine
+foo	dar	mine
+this	yes	OK
+this	yes	yipes
 ```
 
-As shown above, joins are strictly line-sequential: every output consumes a
-line from each stream. This is unlike the UNIX `join` command, which outputs a
-Cartesian product.
+Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
+
+```bash
+$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
+jAB[ i[M N hi] i[X Y bye] ]
+M	N	foo	hi
+M	N	bar	hi
+X	Y	cat	bye
+```
+
+
+In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
+
+The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
 143 doc/ruby.md
 # Ruby interface
 The `m` operator (for "map") lets you use a Ruby line processor to transform
