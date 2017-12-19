@@ -8,25 +8,49 @@ defoperator join => q{
   my ($leof, $reof) = (0, 0);
   my ($llimit, @lcols) = @$left_cols;
   my ($rlimit, @rcols) = @$right_cols;
+  my @rrows = ();
+  my @lrows = ();
+
+  chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>, $llimit + 1)[@lcols]);
+  chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>,   $rlimit + 1)[@rcols]);
+
   while (!$leof && !$reof) {
-    chomp(my $lkey = join "\t", (split /\t/, my $lrow = <STDIN>, $llimit + 1)[@lcols]);
-    chomp(my $rkey = join "\t", (split /\t/, my $rrow = <$fh>,   $rlimit + 1)[@rcols]);
-    $reof ||= !defined $rrow;
-    $leof ||= !defined $lrow;
+    if ($lkey lt $rkey) {
+      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
+      $leof ||= !defined $lrow;
+    } elsif ($lkey gt $rkey) {
+      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>,   $rlimit + 1)[@rcols]);
+      $reof ||= !defined $rrow;
+    } else {
+      @rrows = $rrow;
+      while(!$reof) {
+        chomp(my $new_rkey = join "\t", (split /\t/, $rrow = <$fh>, $rlimit + 1)[@rcols]);
+        $reof ||= !defined $rrow;
+        if($new_rkey eq $rkey) {
+          push @rrows, $rrow;
+        } else {
+          $rkey = $new_rkey;
+          last;
+        }
+      }
 
-    until ($lkey eq $rkey or $leof or $reof) {
-      chomp($rkey = join "\t", (split /\t/, $rrow = <$fh>, $llimit + 1)[@lcols]),
-        $reof ||= !defined $rrow until $reof or $rkey ge $lkey;
-      chomp($lkey = join "\t", (split /\t/, $lrow = <STDIN>, $rlimit + 1)[@rcols]),
-        $leof ||= !defined $lrow until $leof or $lkey ge $rkey;
-    }
+      my @clean_rrows = ();
+      my %delete_inds = map {$_ => 1} @rcols;
+      for my $rrow(@rrows) {
+        my @row_data = split /\t/, $rrow;
+        push @clean_rrows, join "\t", @row_data[grep {not $delete_inds{$_}} 0..$#row_data];
+      }
 
-    if ($lkey eq $rkey and !$leof && !$reof) {
-      chomp $lrow;
-      print "$lrow\t$rrow";
+      while(!$leof) {
+        chomp $lrow;
+        print "$lrow\t$_" for @clean_rrows;
+        chomp(my $new_lkey = join "\t", (split /\t/, $lrow = <STDIN>, $llimit + 1)[@lcols]);
+        if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
+      }
     }
   }
 };
+
 
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;

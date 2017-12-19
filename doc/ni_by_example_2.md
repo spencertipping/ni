@@ -51,6 +51,140 @@ In the case of `$x[3]`, you've told the Perl interpreter to get a scalar value b
 
 Similarly, using curly braces tells Perl to look in a hash, and without either of those, the Perl interpreter assumes you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky. With a little practice, this will be second nature.
 
+## `p'...'`: Perl mapper
+
+The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a Perl mapper gives you access to the standard Perl libraries, as well as concise `ni` extensions to Perl. We describe the most critical `ni` extensions here, and `ni` is backwards-compatible with Perl through Perl 5.08.
+
+### Column Accessor Functions `a` and `a()`
+
+
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
+
+The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous. 
+
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'a()'
+first
+foo
+```
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'c'
+third
+baz
+```
+
+You can use the output of these functions like any other Perl variable.
+
+```bash
+$ ni i[3 5 7] p'a + b + c'
+15
+```
+
+```bash
+$ ni i[easy speak] p'b . a'
+speakeasy
+```
+
+As you might have suspected from the previous example, `.` is the string concatenation operator in Perl.
+
+### Perl Mapper return value
+
+In each of the previous examples, there has been a single output value; what happens when we try returning multiple values?
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'c, a'
+third
+first
+baz
+foo
+```
+
+Overall, the return value of a Perl mapper is its last statement. `ni` returns each element of the output array on its own row.
+
+Here, the return value of our Perl mapper for the first input line was the array `("third", "first")`, and the return value for the second input line was the array `("baz", "foo")`. When a perl mapper outputs an array, `ni` outputs the values of that list to the stream, one value per line of the stream. 
+
+### `p'r(...)'`: Emit row
+
+If we want to print more than one value per line to the stream there's the `r(...)` function.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r(c, a)'
+third	first
+baz	foo
+```
+
+`r(...)` is more commonly written as `r`, followed by its arguments.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r c, a'
+third	first
+baz	foo
+```
+
+**CAVEAT:** `r()` is _printing_ a row to the stream, rather than _returning_ a string tab-separated string, for example. The `r()` function's job is to print; its return value is essentially nothing (in fact, it's the empty list `()`)
+
+
+
+### `F_, FM, FR n, FT n`: Explicit field access
+
+`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_`. `F_` is a function that takes no arguments, splits a line from the stream on tabs, and returns the values as an array.
+
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(1..3)'
+second	third	fourth
+```
+
+`FM` is the index of the last field of your data (i.e. the total number of fields minus one):
+
+```bash
+$ ni i[first second third fourth fifth sixth] \
+     i[only two_fields ] p'r FM'
+5
+1
+```
+
+`FM` allows you to write code that takes you to the end of a line
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(3..FM)'
+fourth	fifth	sixth
+```
+
+However, since this operation is common `ni` provides syntactic sugar for `F_(n..FM)` as `FR n`. 
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FR 3'
+fourth	fifth	sixth
+```
+
+A symmetric operation, which takes the first `n` columns is called `FT`
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FT 3'
+first	second	third
+```
+
+A mnemonic to remember these is `FR = "Fields fRom"`, and `FT = "Fields To"`.
+
+
+## `1`: Dummy pulse
+
+One of the slighly tricky aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run. The following command, while syntactically correct, produces no output.
+
+```bash
+$ ni p'r "foo" . "bar"'
+```
+
+In order to cause a perl mapper to execute, it needs lines to map over. In the case you have a Perl snippet you want to run, for example, to generate input, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
+
+```bash
+$ ni 1p'r "foo" . "bar"'
+foobar
+```
+
 
 ## Default Variables and Values
 
@@ -248,6 +382,73 @@ orange	juice
 grape	soda
 orange	crush
 ```
+
+### Perl Mapper Return Value Tricks
+One way this has an impact is when you ask `ni` for a column that doesn't exist:
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'k'
+```
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r k'
+
+
+```
+
+In both cases, the column accessor function `k` is returning an empty list. That means that `p'k'` returns that empty list, which prints nothing. `p'r k'`, however, **prints the value** of `k`, which is the empty list. Printing the empty list puts a blank line back to the stream.
+
+This point will be important for the next section, where we combine the Perl mapper with the take rows operator.
+
+### `rp'...'`: Take rows based on Perl
+
+We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the return value of the Perl statement **is _truthy_ in Perl**.
+
+The number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the Perl keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
+
+Let's take a look at some examples.
+
+```bash
+$ ni n3 rp'a'
+1
+2
+3
+```
+
+In the above example, all of the return values are truthy, so they are all printed. In the next example, we start the `n` stream at zero, which is falsey.
+
+```bash
+$ ni n03 rp'a'
+1
+2
+```
+
+Because 0 is falsey, it is filtered out. Here's a trickier exmaple.
+
+```bash
+$ ni n03 rp'r a'
+0
+1
+2
+```
+
+We stated in the previous section that `p'r ...'` returns the empty list, which is falsey, so everything should be filtered out, however, the entire stream ends up returned to us intact, including the `0` that was filetered out when we didn't use `p'r a'`.
+
+To see what's happening in these examples, it's useful to think of the order in which these operations are happening; first the numbers (0, 1, 2) are generated by `n03`. Then, the perl mapper is executed; In this case, the perl mapper prints the value of `a()` to the stream
+
+
+```bash
+$ ni n03 rp'r b'
+
+
+
+```
+
+With the previous explanation, the reason you get three blank lines here should be obvious. 
+
+This discussion brings us to a final point on the operators both referred to as `r`:  
+
+> Using the take rows operator `r`, and the perl emit-row function `p'r(...)'` in the same statement is offensive. It is sometimes okay to be offensive.
 
 
 ## Flow Control

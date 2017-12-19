@@ -112,6 +112,8 @@
 	| ''file-closure://' /.*/ -> {resource_quote_op "file-closure://$_"}
 	| ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	| ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
+	| ''hdfsj://' /.*/ -> {resource_quote_op "hdfsj://$_"}
+	| ''hdfsjname://' /.*/ -> {resource_quote_op "hdfsjname://$_"}
 	| ''hdfsrm://' /.*/ -> {resource_quote_op "hdfsrm://$_"}
 	| ''hdfst://' /.*/ -> {resource_quote_op "hdfst://$_"}
 	| ''http://' /.*/ -> {resource_quote_op "http://$_"}
@@ -121,6 +123,8 @@
 	| 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
 	| 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
+	| 'hdfsj://' /.*/ -> {resource_append_op "hdfsj://$_"}
+	| 'hdfsjname://' /.*/ -> {resource_append_op "hdfsjname://$_"}
 	| 'hdfsrm://' /.*/ -> {resource_append_op "hdfsrm://$_"}
 	| 'hdfst://' /.*/ -> {resource_append_op "hdfst://$_"}
 	| 'http://' /.*/ -> {resource_append_op "http://$_"}
