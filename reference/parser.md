@@ -368,14 +368,8 @@
 	| '--dev/local-operate' </qfn> -> {dev_local_operate_op $_}
 	| '--http/wse' '' -> {http_websocket_encode_op}
 	| '--http/wse-batch' <integer>? -> {http_websocket_encode_batch_op $_}
-	| '//:' (
-	    <closure_name>
-	    <empty>?
-	  ) -> {$$_[0]} -> {memory_closure_append_op $_}
-	| '//@' (
-	    <closure_name>
-	    <empty>?
-	  ) -> {$$_[0]} -> {file_closure_append_op $_}
+	| '//:' <closure_name> -> {memory_closure_append_op $_}
+	| '//@' <closure_name> -> {file_closure_append_op $_}
 	| '//help' //(.*)/? -> {meta_help_op $_}
 	| '//license' '' -> {meta_key_op 'license'}
 	| '//ni' '' -> {meta_image_op}

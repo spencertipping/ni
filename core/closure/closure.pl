@@ -26,6 +26,6 @@ defoperator memory_closure_append => q{sio; print closure_data $_[0]};
 
 BEGIN {defparseralias closure_name => prx '[^][]+'}
 
-defshort '///:', pmap q{memory_closure_append_op $_}, pc closure_name;
+defshort '///:', pmap q{memory_closure_append_op $_}, closure_name;
 defshort '/::',  pmap q{memory_data_closure_op @$_},
                  pseq pc closure_name, _qfn;

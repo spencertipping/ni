@@ -1433,18 +1433,12 @@
 # SHORT OPERATOR ///:
 
 ## SYNTAX
-	(
-	  <closure_name>
-	  <empty>?
-	) -> {$$_[0]} -> {memory_closure_append_op $_}
+	<closure_name> -> {memory_closure_append_op $_}
 
 # SHORT OPERATOR ///@
 
 ## SYNTAX
-	(
-	  <closure_name>
-	  <empty>?
-	) -> {$$_[0]} -> {file_closure_append_op $_}
+	<closure_name> -> {file_closure_append_op $_}
 
 # SHORT OPERATOR ///help
 
