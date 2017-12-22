@@ -1,9 +1,15 @@
+# Hadoop Map (and Reduce!) Side Joins
+# This is a port of the old logic from nfu with
+# some nice improvements. hdfsj takes a stream and a folder,
+# and using the hadoop context clues, identifies the file
+# in that folder that should match the stream.
+# Joins can be done on both the map _and_ on the reduce side, and
+# they're blazing fast; they should be used liberally.
 
 sub hadoop_partfile_n { $_[0] =~ /[^0-9]([0-9]+)(?:\.[^\/]+)?$/ ? $1 : 0 }
 sub hadoop_partsort {
   sort {hadoop_partfile_n($a) <=> hadoop_partfile_n($b)} @_
 }
-
 sub hadoop_ls {
   # Now get the output file listing. This is a huge mess because Hadoop is a
   # huge mess.
@@ -16,14 +22,25 @@ sub hadoop_ls {
 
 defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
-                    my $left_path =  $ENV{mapreduce_map_input_file};
-                    my $left_file_number = hadoop_partfile_n $left_path; 
-                    my $left_folder = join "/", (split /\//, $left_path)[0..-1];
-                    my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                    my $total_left_files;
+                    my $left_file_number;
+                    if(exists $ENV{mapreduce_map_input_file}) {
+                      my $left_path = $ENV{mapreduce_map_input_file};
+                      my $left_folder = join "/", (split /\//, $left_path)[0..-1];
+                      my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                      $left_file_number = hadoop_partfile_n $left_path; 
+                      $total_left_files = @left_folder_files;
+                    } else {
+                      my $left_task_id = $ENV{mapreduce_task_id};
+                      my @left_task_id_parts = split /_/, $left_task_id;
+                      die "not on the reduce side" unless $left_task_id_parts[-2] eq "r";
+                      $left_file_number = $left_task_id_parts[-1];
+                      $total_left_files = $ENV{mapreduce_job_reduces};
+                    }
                     my $right_folder = $_[1];
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
-                    die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
+                    die "# of left files must be evenly divisible by # of right files" if $total_left_files % @right_folder_files;
                     my $right_file = shell_quote $right_folder_files[$right_file_idx];
                     sh qq{$hadoop_name fs -text $right_file 2>/dev/null }} @_};
 
@@ -39,4 +56,3 @@ defresource 'hdfsjname',
                     die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
                     my $right_file = $right_folder_files[$right_file_idx];
                     print "$left_path\t$right_file\n";} @_}; 
-
