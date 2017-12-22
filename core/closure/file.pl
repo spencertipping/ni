@@ -38,6 +38,6 @@ defoperator file_closure_append => q{
   sforward resource_read(closure_data $_[0]), \*STDOUT;
 };
 
-defshort '///@', pmap q{file_closure_append_op $_}, pc closure_name;
+defshort '///@', pmap q{file_closure_append_op $_}, closure_name;
 defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
