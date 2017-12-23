@@ -24,15 +24,16 @@ defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     my $total_left_files;
                     my $left_file_number;
+                    my $left_path;
                     if(exists $ENV{mapreduce_map_input_file}) {
-                      my $left_path = $ENV{mapreduce_map_input_file};
+                      $left_path = $ENV{mapreduce_map_input_file};
                       my $left_folder = join "/", (split /\//, $left_path)[0..-1];
                       my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
                       $left_file_number = hadoop_partfile_n $left_path; 
                       $total_left_files = @left_folder_files;
                     } else {
-                      my $left_task_id = $ENV{mapreduce_task_id};
-                      my @left_task_id_parts = split /_/, $left_task_id;
+                      $left_path = $ENV{mapreduce_task_id};
+                      my @left_task_id_parts = split /_/, $left_path;
                       die "not on the reduce side" unless $left_task_id_parts[-2] eq "r";
                       $left_file_number = $left_task_id_parts[-1];
                       $total_left_files = $ENV{mapreduce_job_reduces};
@@ -46,13 +47,25 @@ defresource 'hdfsj',
 
 defresource 'hdfsjname',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
-                    my $left_path =  $ENV{mapreduce_map_input_file};
-                    my $left_file_number = hadoop_partfile_n $left_path; 
-                    my $left_folder = join "/", (split /\//, $left_path)[0..-1];
-                    my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                    my $total_left_files;
+                    my $left_file_number;
+                    my $left_path;
+                    if(exists $ENV{mapreduce_map_input_file}) {
+                      $left_path = $ENV{mapreduce_map_input_file};
+                      my $left_folder = join "/", (split /\//, $left_path)[0..-1];
+                      my @left_folder_files = hadoop_partsort hadoop_ls $left_folder;
+                      $left_file_number = hadoop_partfile_n $left_path; 
+                      $total_left_files = @left_folder_files;
+                    } else {
+                      $left_path = $ENV{mapreduce_task_id};
+                      my @left_task_id_parts = split /_/, $left_path;
+                      die "not on the reduce side" unless $left_task_id_parts[-2] eq "r";
+                      $left_file_number = $left_task_id_parts[-1];
+                      $total_left_files = $ENV{mapreduce_job_reduces};
+                    }
                     my $right_folder = $_[1];
                     my @right_folder_files = hadoop_partsort hadoop_ls $right_folder;
                     my $right_file_idx = $left_file_number % @right_folder_files; 
-                    die "number of left files must be evenly divisible by number of right files" if @left_folder_files % @right_folder_files;
-                    my $right_file = $right_folder_files[$right_file_idx];
-                    print "$left_path\t$right_file\n";} @_}; 
+                    die "# of left files must be evenly divisible by # of right files" if $total_left_files % @right_folder_files;
+                    my $right_file = shell_quote $right_folder_files[$right_file_idx];
+                     print "$left_path\t$right_file\n";} @_}; 
