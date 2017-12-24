@@ -20,6 +20,12 @@ sub hadoop_ls {
                         split /\n/, ''.qx/$ls_command/;
 }
 
+defresource 'hdfsc',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    die unless my $map_path = $ENV{mapreduce_map_input_file};
+                    my $n_files = $_[1];
+                   } @_};
+
 defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     my $total_left_files;
@@ -68,4 +74,4 @@ defresource 'hdfsjname',
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "# of left files must be evenly divisible by # of right files" if $total_left_files % @right_folder_files;
                     my $right_file = shell_quote $right_folder_files[$right_file_idx];
-                     print "$left_path\t$right_file\n";} @_}; 
+                    print "$left_path\t$right_file\n";} @_}; 

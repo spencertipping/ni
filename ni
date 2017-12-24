@@ -4335,7 +4335,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-56 core/row/join.pl
+62 core/row/join.pl
 # Streaming joins.
 # The UNIX `join` command does this, but rearranges fields in the process. ni
 # implements its own operators as a workaround.
@@ -4386,6 +4386,12 @@ defoperator join => q{
         if ($new_lkey ne $lkey) { $lkey = $new_lkey; last;}
       }
     }
+  }
+  if (!$leof) {
+    # We need to stream the entire left side
+    # of the join to avoid breaking the pipe in
+    # a Hadoop streaming context.
+    while(<STDIN>) { }
   }
 };
 
@@ -9154,7 +9160,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-71 core/hadoop/hdfsjoin.pl
+77 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -9176,6 +9182,12 @@ sub hadoop_ls {
                         grep !/^Found/,
                         split /\n/, ''.qx/$ls_command/;
 }
+
+defresource 'hdfsc',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    die unless my $map_path = $ENV{mapreduce_map_input_file};
+                    my $n_files = $_[1];
+                   } @_};
 
 defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
@@ -9225,7 +9237,7 @@ defresource 'hdfsjname',
                     my $right_file_idx = $left_file_number % @right_folder_files; 
                     die "# of left files must be evenly divisible by # of right files" if $total_left_files % @right_folder_files;
                     my $right_file = shell_quote $right_folder_files[$right_file_idx];
-                     print "$left_path\t$right_file\n";} @_}; 
+                    print "$left_path\t$right_file\n";} @_}; 
 2 core/pyspark/lib
 pyspark.pl
 local.pl

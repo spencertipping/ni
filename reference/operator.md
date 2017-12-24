@@ -628,6 +628,12 @@
 	      }
 	    }
 	  }
+	  if (!$leof) {
+	    # We need to stream the entire left side
+	    # of the join to avoid breaking the pipe in
+	    # a Hadoop streaming context.
+	    while(<STDIN>) { }
+	  }
 
 # OPERATOR lisp_code
 
