@@ -8531,7 +8531,7 @@ defshort '/E', pmap q{docker_exec_op $$_[0], @{$$_[1]}},
 hadoop-conf.pl
 hadoop.pl
 hdfsjoin.pl
-365 core/hadoop/hadoop-conf.pl
+366 core/hadoop/hadoop-conf.pl
 # MapReduce configuration is a huge pain;
 # we aim to make it a little easier.
 
@@ -8877,8 +8877,10 @@ sub hadoop_generic_options(@) {
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
   my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
-  $clean_jobconf{'Hpkpo'} = "-k1,1" if exists($clean_jobconf{'Hpkco'}) and !exists($clean_jobconf{'Hpkpo'});
-  my $needs_partitioner = grep {$_ eq 'Hpkpo'} keys %clean_jobconf; 
+
+  # Every job needs at least a trivial KeyFieldBasedPartitioner
+  # to avoid compatibility issues between jobs.
+  $clean_jobconf{'Hpkpo'} = "-k1,1" if !exists($clean_jobconf{'Hpkpo'});
 
   my ($high_priority_jobconf_ref, $low_priority_jobconf_ref) = priority_jobconf(%clean_jobconf);
   %jobconf = %$low_priority_jobconf_ref;
@@ -8890,8 +8892,7 @@ sub hadoop_generic_options(@) {
   # -partitioner is actually not a generic option
   # so it must follow the lowest priority generic option.
   push @low_priority_jobconf, 
-    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner" 
-    if $needs_partitioner;
+    -partitioner => "org.apache.hadoop.mapred.lib.KeyFieldBasedPartitioner"; 
 
   push @output_jobconf, @low_priority_jobconf;
 
