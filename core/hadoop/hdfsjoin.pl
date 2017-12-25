@@ -29,14 +29,15 @@ sub stem_partfile_path($$) {
 defresource 'hdfsc',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my $map_folder = join "/", (split /\//, $map_path)[0..-1];
+                    my @map_path_parts = split /\//, $map_path;
+                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
                     my $map_fn  = (split /\//, $map_path)[-1];
                     my $n_files = $_[1];
                     my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
-                    my $stem_path = stem_part_file_path $map_fn, $shift_amt; 
+                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
                     my $compact_path = join "/", $map_folder, $stem_path;
                     sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
-
+ 
 defresource 'hdfscname',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
