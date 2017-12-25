@@ -22,6 +22,7 @@
 	  | ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	  | ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
 	  | ''hdfsc://' /.*/ -> {resource_quote_op "hdfsc://$_"}
+	  | ''hdfscname://' /.*/ -> {resource_quote_op "hdfscname://$_"}
 	  | ''hdfsj://' /.*/ -> {resource_quote_op "hdfsj://$_"}
 	  | ''hdfsjname://' /.*/ -> {resource_quote_op "hdfsjname://$_"}
 	  | ''hdfsrm://' /.*/ -> {resource_quote_op "hdfsrm://$_"}
@@ -34,6 +35,7 @@
 	  | 'file://' /.*/ -> {resource_append_op "file://$_"}
 	  | 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
 	  | 'hdfsc://' /.*/ -> {resource_append_op "hdfsc://$_"}
+	  | 'hdfscname://' /.*/ -> {resource_append_op "hdfscname://$_"}
 	  | 'hdfsj://' /.*/ -> {resource_append_op "hdfsj://$_"}
 	  | 'hdfsjname://' /.*/ -> {resource_append_op "hdfsjname://$_"}
 	  | 'hdfsrm://' /.*/ -> {resource_append_op "hdfsrm://$_"}
@@ -1259,6 +1261,7 @@
 	| ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	| ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
 	| ''hdfsc://' /.*/ -> {resource_quote_op "hdfsc://$_"}
+	| ''hdfscname://' /.*/ -> {resource_quote_op "hdfscname://$_"}
 	| ''hdfsj://' /.*/ -> {resource_quote_op "hdfsj://$_"}
 	| ''hdfsjname://' /.*/ -> {resource_quote_op "hdfsjname://$_"}
 	| ''hdfsrm://' /.*/ -> {resource_quote_op "hdfsrm://$_"}
@@ -1271,6 +1274,7 @@
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
 	| 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
 	| 'hdfsc://' /.*/ -> {resource_append_op "hdfsc://$_"}
+	| 'hdfscname://' /.*/ -> {resource_append_op "hdfscname://$_"}
 	| 'hdfsj://' /.*/ -> {resource_append_op "hdfsj://$_"}
 	| 'hdfsjname://' /.*/ -> {resource_append_op "hdfsjname://$_"}
 	| 'hdfsrm://' /.*/ -> {resource_append_op "hdfsrm://$_"}
