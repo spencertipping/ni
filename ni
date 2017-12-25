@@ -9215,11 +9215,11 @@ defresource 'hdfscname',
                     my $map_folder = join "/", (split /\//, $map_path)[0..-1];
                     my $map_fn  = (split /\//, $map_path)[-1];
                     my $n_files = $_[1];
-                    print "$n_files\n";
                     my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
+                    print "$n_files\t$shift_amt$map_fn\n";
                     my $stem_path = stem_part_file_path $map_fn, $shift_amt; 
                     my $compact_path = join "/", $map_folder, $stem_path;
-                    print "$map_path\t$compact_path\n"; } @_};
+                    print "$map_path\t$stem_path\t$compact_path\n"; } @_};
 
 defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
