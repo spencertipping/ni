@@ -44,8 +44,8 @@ defresource 'hdfscname',
                     my $map_fn  = (split /\//, $map_path)[-1];
                     my $n_files = $_[1];
                     my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
-                    print "$n_files\t$shift_amt$map_fn\n";
-                    my $stem_path = stem_part_file_path $map_fn, $shift_amt; 
+                    print "$n_files\t$shift_amt\t$map_fn\n";
+                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
                     my $compact_path = join "/", $map_folder, $stem_path;
                     print "$map_path\t$stem_path\t$compact_path\n"; } @_};
 
