@@ -5204,7 +5204,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-187 core/pl/time.pl
+195 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5267,13 +5267,20 @@ sub hour_of_week($) {
 
 sub year_month($) {
   my @year_month = tep('Ym', $_[0]);
-  my $year = @year_month[0];
-  my $month = sprintf "%02d", @year_month[1];
-  $year . "_" . $month;
+  my $year = $year_month[0];
+  my $month = sprintf "%02d", $year_month[1];
+  $year . "-" . $month;
+}
+
+sub year_month_day($) {
+  my @year_month = tep('Ymd', $_[0]);
+  my $year = $year_month[0];
+  my $month = sprintf "%02d", $year_month[1];
+  my $day = sprintf "%02d", $year_month[2];
+  join "-", $year, $month, $day;
 }
 
 # Round to day/hour/quarter-hour/minute.
-
 BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
          my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
                     $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
@@ -5384,6 +5391,7 @@ BEGIN {
   *hod = \&hour_of_day;
   *how = \&hour_of_week;
   *ym = \&year_month;
+  *ymd = \&year_month_day;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
