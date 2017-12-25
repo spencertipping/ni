@@ -9169,7 +9169,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-100 core/hadoop/hdfsjoin.pl
+101 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -9213,6 +9213,7 @@ defresource 'hdfscname',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
                     my $map_folder = join "/", (split /\//, $map_path)[0..-1];
+                    print "$map_path\t$map_folder\n";
                     my $map_fn  = (split /\//, $map_path)[-1];
                     my $n_files = $_[1];
                     my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
