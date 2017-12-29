@@ -11969,8 +11969,8 @@ $ ni word-list gcOr10           # by descending count
 
 You can use the `j` operator to inner-join two streams. 
 ```bash
-$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \ 
-j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
+$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
+     j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 foo	bar	mine
 foo	car	mine
 foo	dar	mine
@@ -11982,7 +11982,7 @@ Without any options, `j` will join on the first tab-delimited column of both str
 
 ```bash
 $ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
-jAB[ i[M N hi] i[X Y bye] ]
+     jAB[ i[M N hi] i[X Y bye] ]
 M	N	foo	hi
 M	N	bar	hi
 X	Y	cat	bye

@@ -2891,7 +2891,7 @@ lazytest_line=259
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
-2017_01
+2017-01
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=269
@@ -4280,9 +4280,9 @@ lazytest_case 'ni word-list gcOr10           # by descending count
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=335
-lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \ 
+lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
+     j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 ' 3<<'LAZYTEST_EOF'
-j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 foo	bar	mine
 foo	car	mine
 foo	dar	mine
@@ -4292,7 +4292,7 @@ LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=347
 lazytest_case 'ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
-jAB[ i[M N hi] i[X Y bye] ]
+     jAB[ i[M N hi] i[X Y bye] ]
 ' 3<<'LAZYTEST_EOF'
 M	N	foo	hi
 M	N	bar	hi
