@@ -1912,9 +1912,9 @@ u	ub	uber
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
 lazytest_line=773
-lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \ 
+lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
+  j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 ' 3<<'LAZYTEST_EOF'
-j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 foo	bar	mine
 foo	car	mine
 foo	dar	mine
@@ -1924,7 +1924,7 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
 lazytest_line=785
 lazytest_case 'ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
-jAB[ i[M N hi] i[X Y bye] ]
+  jAB[ i[M N hi] i[X Y bye] ]
 ' 3<<'LAZYTEST_EOF'
 M	N	foo	hi
 M	N	bar	hi
