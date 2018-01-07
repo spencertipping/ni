@@ -7843,7 +7843,7 @@ caterwaul(':all')(function () {
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
                                                                   : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-118 core/jsplot/render.waul
+104 core/jsplot/render.waul
 // Rendering support.
 // Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 // details are all hidden inside a render request.
@@ -7921,35 +7921,21 @@ caterwaul(':all')(function () {
 
           if (sx >= 0 && sx < width-1 && sy >= 0 && sy < height-1) {
             tx -= sx; ty -= sy;
-            if (zi > 1)
-              for (var dx = 0; dx <= 1; ++dx)
-                for (var dy = 0; dy <= 1; ++dy) {
-                  var pi = (sy+dy)*width + sx+dx << 2,
-                      op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
-                      lp = id[pi|3] || 64,
-                      ci = l * op * (256 - lp) * q,
-                      li = ci * zi*zi,
-                      d  = sr / (ci + lp);
+            for (var dx = 0; dx <= 1; ++dx)
+              for (var dy = 0; dy <= 1; ++dy) {
+                var pi = (sy+dy)*width + sx+dx << 2,
+                    op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
+                    lp = id[pi|3] || 64,
+                    ci = l * op * (256 - lp) * q,
+                    li = ci * zi*zi,
+                    d  = sr / (ci + lp);
 
-                  total_shade += li;
-                  id[pi|3] += li;
-                  id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
-                  id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
-                  id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
-                }
-            else {
-              var pi = sy*width + sx << 2,
-                  lp = id[pi|3] || 64,
-                  ci = l * (256 - lp) * q,
-                  li = ci * zi*zi,
-                  d  = sr / (ci + lp);
-
-              total_shade += li;
-              id[pi|3] += li;
-              id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
-              id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
-              id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
-            }
+                total_shade += li;
+                id[pi|3] += li;
+                id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
+                id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
+                id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
+              }
           }
         }
       }
