@@ -55,7 +55,9 @@ don't understand. I assume it has something to do with libc differences, but
 you should assume `bf` doesn't work until I get this sorted out (the test below
 is disabled for now).
 
-```sh
+**TODO:** enabled the test; update the above if it works
+
+```bash
 $ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097

@@ -9384,7 +9384,7 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-83 doc/binary.md
+85 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
@@ -9442,7 +9442,9 @@ don't understand. I assume it has something to do with libc differences, but
 you should assume `bf` doesn't work until I get this sorted out (the test below
 is disabled for now).
 
-```sh
+**TODO:** enabled the test; update the above if it works
+
+```bash
 $ ni test.wav bf'ss' r-15r10
 2052	2052
 4097	4097
