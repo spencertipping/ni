@@ -6879,7 +6879,7 @@ defoperator binary_fixed => q{
     read STDIN, $buf, $bufsize - length($buf), length($buf) or return
       until length($buf) >= $length;
     my $o = 0;
-    for (; $o + $length <= length; $o += $length)
+    for (; $o + $length <= length($buf); $o += $length)
     {
       print join("\t", unpack $pack_template, substr $buf, $o, $length), "\n";
     }
