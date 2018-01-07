@@ -6878,13 +6878,13 @@ defoperator binary_fixed => q{
   while (1)
   {
     read STDIN, $_, $buf - length, length or return until length >= $length;
-    my @vs = unpack "($pack_template)*", $_;
+    my @vs = unpack "($pack_template)*a", $_;
     my $n  = int @vs / @packed;
+    $_     = substr $_, $n * $length;
     for my $i (0..$n-1)
     {
       print join("\t", @vs[$i*@packed..($i+1)*@packed-1]), "\n";
     }
-    $_ = length() % $length ? substr($_, $n * @packed) : '';
   }
 };
 
