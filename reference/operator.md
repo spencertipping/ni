@@ -17,13 +17,16 @@
 	  die "ni: binary_fixed template consumes no data" unless $length;
 	  my $buf = $length;
 	  $buf <<= 1 until $buf >= 65536;
-	  while (1) {
+	  while (1)
+	  {
 	    read STDIN, $_, $buf - length, length or return until length >= $length;
 	    my @vs = unpack "($pack_template)*", $_;
-	    for (my $n = 0; $n + @packed < @vs; $n += @packed) {
-	      print join("\t", @vs[$n..$n+$#packed]), "\n";
+	    my $n  = int @vs / @packed;
+	    for my $i (0..$n-1)
+	    {
+	      print join("\t", @vs[$i*@packed..($i+1)*@packed-1]), "\n";
 	    }
-	    $_ = length() % $length ? substr($_, $length * @vs / @packed) : '';
+	    $_ = length() % $length ? substr($_, $n * @packed) : '';
 	  }
 
 # OPERATOR binary_perl
