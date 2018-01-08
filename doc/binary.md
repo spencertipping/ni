@@ -50,25 +50,18 @@ A faster approach is to use the `bf` operator to read fixed-length packed
 records (internally it uses more efficient logic to manage the queue of
 incoming bytes):
 
-**NOTE:** The following behaves nondeterministically on Alpine for reasons I
-don't understand. I assume it has something to do with libc differences, but
-you should assume `bf` doesn't work until I get this sorted out (the test below
-is disabled for now).
-
-**TODO:** enabled the test; update the above if it works
-
 ```bash
 $ ni test.wav bf'ss' r-15r10
-2052	2052
-4097	4097
-6126	6126
-8130	8130
 10103	10103
 12036	12036
 13921	13921
 15752	15752
 17521	17521
 19222	19222
+20846	20846
+22389	22389
+23844	23844
+25205	25205
 ```
 
 If we wanted to find the dominant frequencies, for example (the `,qB.01`
