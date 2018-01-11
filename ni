@@ -5204,7 +5204,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-195 core/pl/time.pl
+208 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5351,8 +5351,8 @@ sub iso_8601_epoch {
 # time zone; gives local time when a second argument
 # corresponding to the local timezone is given.
 
-sub epoch_iso_8601($;$) {
-  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
+sub make_tz_str($) {
+  my $tz_raw = shift;
   my $epoch_offset;
   my $tz_str;
   if ($tz_raw =~ /^-?\d+\.?\d*$/) {
@@ -5374,12 +5374,24 @@ sub epoch_iso_8601($;$) {
   } else {
     die("badly formatted ISO 8601 timestamp: $tz_raw");
   }
+  $tz_str, $epoch_offset;
+}
+
+sub epoch_iso_8601($;$) {
+  my ($epoch, $tz_raw) = $#_ == 2 ? @_ : (@_ , "Z");
+  my ($tz_str, $epoch_offset) = make_tz_str($tz_raw);
   $epoch += $epoch_offset;
   my ($y, $m, $d, $h, $min, $s) = time_epoch_pieces($epoch);
   my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
   $iso_time;
 }
 
+sub time_parts_iso8601($$$$$$$) {
+  my ($y, $m, $d, $h, $min, $s, $tz_raw) = @_;
+  my ($tz_str, $epoch_offset) = make_tz_str($tz_raw);
+  my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
+  $iso_time;
+}
 
 BEGIN {
   *tep  = \&time_epoch_pieces;
@@ -5398,6 +5410,7 @@ BEGIN {
   *ttm = \&truncate_to_minute;
   *i2e = \&iso_8601_epoch;
   *e2i = \&epoch_iso_8601;
+  *tpi = \&time_parts_iso_8601;
 }
 
 171 core/pl/geohash.pl
