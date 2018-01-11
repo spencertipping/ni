@@ -101,8 +101,8 @@ sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
 sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
 
-sub perl_quote($)    {(my $x = $_[0]) =~ s/([\\'])/\\$1/g; "'$x'"}
-sub perl_closure($$) {"use constant $_[0] => " . perl_quote($_[1]) . ";"}
+sub perl_quote($)    {pack u => $_[0]}
+sub perl_closure($$) {"use constant $_[0] => unpack u => q|" . perl_quote($_[1]) . "|;"}
 sub perl_closures()
 {join "\n", map perl_closure($_, closure_data $_), closure_keys}
 
