@@ -2918,7 +2918,7 @@ lazytest_line=274
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
-2017_01
+2017-01
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=284

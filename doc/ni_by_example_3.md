@@ -273,7 +273,7 @@ Sun_02
 ```bash
 $ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
      p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
-2017_01
+2017-01
 ```
 
 #### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
