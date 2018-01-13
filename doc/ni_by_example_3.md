@@ -232,6 +232,21 @@ $ ni i2017-06-24T18:23:47+00:00 p'i2e a' \
 1498328627
 ```
 
+#### `tpi`: time parts to ISO 8601
+Takes 7 mandatory arguments: year, month, day, hour, minute, second, and time zone. The time zone can either be reported as a string `-08:00` or a number `-8`.
+
+```bash
+$ ni 1p'r tpi tep(tpe(2018, 1, 14, 9, 12, 31)), "Z"'
+2018-01-14T09:12:31Z
+```
+
+To verify correctness:
+
+```bash
+$ ni 1p'r i2e tpi tep(1515801233), "Z"'
+1515801233
+```
+
 
 #### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
 

@@ -179,7 +179,7 @@ sub epoch_iso_8601($;$) {
   $iso_time;
 }
 
-sub time_parts_iso8601($$$$$$$) {
+sub time_parts_iso_8601 {
   my ($y, $m, $d, $h, $min, $s, $tz_raw) = @_;
   my ($tz_str, $epoch_offset) = make_tz_str($tz_raw);
   my $iso_time = sprintf "%d-%02d-%02dT%02d:%02d:%02d%s", $y, $m, $d, $h, $min, $s, $tz_str;
