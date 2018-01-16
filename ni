@@ -9179,7 +9179,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-145 core/hadoop/hdfsjoin.pl
+139 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -9277,14 +9277,8 @@ defresource 'hdfsjname',
 
 sub stem_partfile_path($$) {
   my ($fn, $shift_amt) = @_;  
-  my ($part, $idx) = ($fn =~ /^(part[^\d]+)(\d+)/);
-  $part . substr($idx, $shift_amt) . "*";
-}
-
-sub stem_partfile_path2($$) {
-  my ($fn, $shift_amt) = @_;  
   my ($part, $idx, $rest) = ($fn =~ /^(part[^\d]+)(\d+)(.*)/);
-  $part . "*" . substr($idx, $shift_amt) . "*" . $rest;
+  $part . "*" . substr($idx, $shift_amt) . $rest;
 }
 
 defresource 'hdfsc',
@@ -9301,7 +9295,7 @@ defresource 'hdfsc',
                     elsif ($n_files = 10_000) {$shift_amt = 4;}
                     elsif ($n_files = 100_000) {$shift_amt = 5;}
                     else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    my $stem_path = stem_partfile_path2 $map_fn, $shift_amt; 
+                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
                     my $compact_path = shell_quote join "/", $map_folder, $stem_path;
                     sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
  
@@ -9320,10 +9314,10 @@ defresource 'hdfscname',
                     elsif ($n_files = 10_000) {$shift_amt = 4;}
                     elsif ($n_files = 100_000) {$shift_amt = 5;}
                     else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    print "$n_files\t$shift_amt\t$map_fn\n";
-                    my $stem_path = stem_partfile_path2 $map_fn, $shift_amt; 
+                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
                     my $compact_path = join "/", $map_folder, $stem_path;
-                    print "$map_path\t$stem_path\t$compact_path\n"; } @_};
+                    my $files_per_mapper = scalar hadoop_ls $compact_path;
+                    print "$map_path\t$stem_path\t$files_per_mapper\t$compact_path\n"; } @_};
 
 2 core/pyspark/lib
 pyspark.pl
