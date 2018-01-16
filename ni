@@ -9179,7 +9179,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-103 core/hadoop/hdfsjoin.pl
+145 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -9201,38 +9201,6 @@ sub hadoop_ls {
                         grep !/^Found/,
                         split /\n/, ''.qx/$ls_command/;
 }
-
-sub stem_partfile_path($$) {
-  my ($fn, $shift_amt) = @_;  
-  my ($part, $idx) = ($fn =~ /^(part[^\d]+)(\d+)/);
-  $part . substr($idx, $shift_amt) . "*";
-}
-
-defresource 'hdfsc',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
-                    die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = shell_quote join "/", $map_folder, $stem_path;
-                    sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
- 
-defresource 'hdfscname',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
-                    die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    print "$map_path\t$map_folder\n";
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt = $n_files == 10 ? 1 : $n_files == 100 ? 2 : die "only 10 or 100 files";
-                    print "$n_files\t$shift_amt\t$map_fn\n";
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = join "/", $map_folder, $stem_path;
-                    print "$map_path\t$stem_path\t$compact_path\n"; } @_};
 
 defresource 'hdfsj',
   read => q{soproc {my $hadoop_name = conf 'hadoop/name';
@@ -9283,6 +9251,80 @@ defresource 'hdfsjname',
                     die "# of left files must be evenly divisible by # of right files" if $total_left_files % @right_folder_files;
                     my $right_file = shell_quote $right_folder_files[$right_file_idx];
                     print "$left_path\t$right_file\n";} @_}; 
+
+
+# Map-side partfile concatenation
+# Hadoop 2.x has an upper limit of 100,000 partfiles per map/reduce,
+# and sometimes (map-only) jobs will have a large number of files
+# where each file only contains a small amount of data. Running
+# a job on such a file suffers from high overhead for container
+# startup/shutdown and instability from map to reduce because of the
+# high number of networked connections required to transmit data
+# from one side ot the other. To get around the first restriction
+# and improve performance, hdfsc takes a maximum
+# number of partfiles to process per mapper, and uses
+# hadoop fs -text <path> to run on all of the partfiles that 
+# have 
+# Usage:
+# ni ihdfst://path/.../part-00*.path \
+#   HS[zn hdfsc://100 mapper] [combiner] [reducer]
+# 
+# Caveats:
+# - zn is necessary to consume the input stream, which will be
+#     re-created using hdfsc; this leads to a small amount of overhead.
+# - the number of leading zeroes in the input path must match
+#     the number of zeroes in the hdfsc://<number> path
+
+sub stem_partfile_path($$) {
+  my ($fn, $shift_amt) = @_;  
+  my ($part, $idx) = ($fn =~ /^(part[^\d]+)(\d+)/);
+  $part . substr($idx, $shift_amt) . "*";
+}
+
+sub stem_partfile_path2($$) {
+  my ($fn, $shift_amt) = @_;  
+  my ($part, $idx, $rest) = ($fn =~ /^(part[^\d]+)(\d+)(.*)/);
+  $part . "*" . substr($idx, $shift_amt) . "*" . $rest;
+}
+
+defresource 'hdfsc',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
+                    my @map_path_parts = split /\//, $map_path;
+                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
+                    my $map_fn  = (split /\//, $map_path)[-1];
+                    my $n_files = $_[1];
+                    my $shift_amt;
+                    if ($n_files == 10) {$shift_amt = 1;}
+                    elsif ($n_files == 100) {$shift_amt = 2;}
+                    elsif ($n_files == 1_000) {$shift_amt = 3;}
+                    elsif ($n_files = 10_000) {$shift_amt = 4;}
+                    elsif ($n_files = 100_000) {$shift_amt = 5;}
+                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
+                    my $stem_path = stem_partfile_path2 $map_fn, $shift_amt; 
+                    my $compact_path = shell_quote join "/", $map_folder, $stem_path;
+                    sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
+ 
+defresource 'hdfscname',
+  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+                    die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
+                    my @map_path_parts = split /\//, $map_path;
+                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
+                    print "$map_path\t$map_folder\n";
+                    my $map_fn  = (split /\//, $map_path)[-1];
+                    my $n_files = $_[1];
+                    my $shift_amt;
+                    if ($n_files == 10) {$shift_amt = 1;}
+                    elsif ($n_files == 100) {$shift_amt = 2;}
+                    elsif ($n_files == 1_000) {$shift_amt = 3;}
+                    elsif ($n_files = 10_000) {$shift_amt = 4;}
+                    elsif ($n_files = 100_000) {$shift_amt = 5;}
+                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
+                    print "$n_files\t$shift_amt\t$map_fn\n";
+                    my $stem_path = stem_partfile_path2 $map_fn, $shift_amt; 
+                    my $compact_path = join "/", $map_folder, $stem_path;
+                    print "$map_path\t$stem_path\t$compact_path\n"; } @_};
+
 2 core/pyspark/lib
 pyspark.pl
 local.pl
