@@ -562,6 +562,39 @@ bbb
 c
 ```
 
+### `zip`: Interleave two arrays
+
+Given a list of keys `@ks` and a list of values `@vs`; how would you construct a hash where the `$ks[i]` is associated to `$vs[i]` for every index `i`? One way is to write a loop; `zip` short-circuits this loop.
+
+```bash
+$ ni 1p'my @ks = ("u", "v"); my @vs = (1, 10); r zip \@ks, \@vs'
+u	1	v	10
+```
+
+This output can be cast as a hash:
+
+```bash
+$ ni 1p'my @ks = ("u", "v"); \
+	my @vs = (1, 10); my %h = zip \@ks, \@vs; r $h{"v"}'
+10
+```
+
+It is also possible to `zip` more than 2 arrays:
+
+```bash
+$ ni 1p'my @ks = ("u", "v"); \
+	my @vs = (1, 10); my @ws =("foo", "bar"); \
+	r zip \@ks, \@vs, \@ws'
+u	1	foo	v	10	bar
+```
+
+If the arrays are of unequal length, the data will be output only up to the length of the shortest array.
+
+```bash
+$ ni 1p'my @ks = ("u", "v"); \
+	my @vs = (1, 10, "nope", 100, 1000,); r zip \@ks, \@vs'
+u	1	v	10
+```
 
 
 ### `cart`: Cartesian Product

@@ -4616,7 +4616,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-326 core/pl/util.pm
+327 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4632,11 +4632,12 @@ sub min    {local $_; my $m = pop @_; $m = defined && $_ <  $m ? $_ : $m for @_;
 sub maxstr {local $_; my $m = pop @_; $m = defined && $_ gt $m ? $_ : $m for @_; $m}
 sub minstr {local $_; my $m = pop @_; $m = defined && $_ lt $m ? $_ : $m for @_; $m}
 
-sub zip($$) {
-  (my $r1, my $r2) = @_;
+sub zip {
+  my @rs = @_;
+  my $min_length = min map {$#{$_}} @rs;
   my @r;
-  for (0..$#$r1) {
-    push @r, $$r1[$_], $$r2[$_];
+  for my $idx(0..$min_length) {
+    push @r, ${$rs[$_]}[$idx] for 0..$#rs;
   }
   @r;
 }

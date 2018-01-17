@@ -1009,7 +1009,6 @@ $ ni i[romeo juliet rosencrantz guildenstern] \
 guildenstern	juliet	romeo	rosencrantz
 ```
 
-> To avoid any potential nastiness, only apply `sort` directly to arrays you've computed somewhere else.
 
 ### Custom Sorting (OPTIONAL)
 You can implement a custom sort by passing a block to `sort`.

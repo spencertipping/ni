@@ -604,22 +604,48 @@ $ ni hdfst://<abspath> HS...
 `ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
 
 
-## Map-Side Joins
+## HDFS Joins
 
-Map-side joins provide a way to join 2 large datasets on HDFS in a streaming way, and is useful for example, when one of the datasets is too large to fit in a data closure.
+HDFS joins provide a way to join 2 large datasets on HDFS in a streaming way, and is useful for example, when one of the datasets is too large to fit in a data closure.
 
-To do a map-side join, first, the datasets must be sorted. As mentioned in Chapter 1, joins in `ni` are designed to belarger on the left. In the map-side join context, we require that each file on the left side of the join match with exactly one file on the right side of the join. Multiple files on the left can be joined to a single file on the right, however.
+To do an HDFS join, first, the datasets must be sorted. As mentioned in Chapter 1, joins in `ni` are designed to belarger on the left. In the map-side join context, we require that each file on the left side of the join match with exactly one file on the right side of the join. Multiple files on the left can be joined to a single file on the right, however.
 
 To be more concrete, if you want to join 50 files to 1000 files, the 50 files must be on the right side of the join and the 1000 files must be on the left, since 50 goes into 1,000 and not vice versa.
 
-`hdfsj:///` paths are used to find the path to join to a file.
+### `hdfsj`: HDFS Join resource
+
+`hdfsj:///` paths are used to find the path to join to a file; they will identify the path to join automatically from the path and environment variables.
 
 The overall paradigm can be written something like this:
 
 ```sh
 $ ni ihdfst:///.../<left side path>/... \
-	HS[ j[hdfsj:///<right_side_path>/... ] ]
+	HS[ j[hdfsj:///.../<right_side_path>/... ] ] ...
 ```
+
+### `hdfsc`: Map-side file concatenation
+
+As stated above, Hadoop limits the number of partfiles per map/reduce job to 100,000 (`10^5`). There are times when this is not enough; moreover, Hadoop 2.x requires every mapper to be run in a separate container, which means that every individual map file incurs a fixed cost of container startup that can equal the cost of running the container when the amount of data per map file is small.
+
+`hdfsc` gets around these restrictions, allowing you to write jobs that run on up to 10,000,000,000 (`10^10`) files. It does this by concatenating the output of a large number of partfiles within the same folder on HDFS, and running their concatenation through the same mapper container.
+
+In practical terms, this means that it will be most useful to use `hdfsc` to run between 10 medium-sized and 1000 small files through a single mapper; running more files through a single mapper will likely result in having very long-running mappers, which is bad in general.
+
+Practically speaking, `hdfsc` is good for extending the number of partfiles that can be run through a single job up to approximately 10 million (`10^7`). Going up another order of magnitude will likely result in significantly degraded performance, unless the input files are incredibly small.
+
+Here's how to use it:
+
+```
+ni ihdfst://input_path/.../part-000* \
+   HS[zn hdfsc://1000 mapper] [combiner] [reducer]
+```
+
+Assume there are 100,000 files in the input path. Only 100 mappers will be engaged for this task; each mapper will read 1000 files; in particular, the mapper assigned to process `part-00015` will read all of the partfiles of the form `part-*15.lzo_deflate`; this ensures equal distribution of files among mappers. `zn` is a necessary first step to throw away all of the input data, since `hdfsc` will output the text of the file from which it is called, in addition to all of the other files matching the pattern.
+
+#### Caveats
+ - zn is necessary to consume the input stream, which will be re-created using hdfsc; this leads to a small amount of overhead. 
+ - the number of leading zeroes in the input path must match the number of zeroes in the hdfsc://<number> path
+ - `hdfsc` only works on files that are given as partfiles. 
 
 
 ## Conclusion
