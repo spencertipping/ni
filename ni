@@ -4335,7 +4335,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-62 core/row/join.pl
+65 core/row/join.pl
 # Streaming joins.
 # The UNIX `join` command does this, but rearranges fields in the process. ni
 # implements its own operators as a workaround.
@@ -4378,6 +4378,9 @@ defoperator join => q{
         my @row_data = split /\t/, $rrow;
         push @clean_rrows, join "\t", @row_data[grep {not $delete_inds{$_}} 0..$#row_data];
       }
+      # If we join on all the columns on the right
+      # we'll need to append a newline;
+      @clean_rrows = map {substr($_, -1) ne "\n" ? "$_\n" : $_ } @clean_rrows;
 
       while(!$leof) {
         chomp $lrow;
