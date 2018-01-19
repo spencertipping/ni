@@ -3118,22 +3118,22 @@ u	1	v	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=577
-lazytest_case 'ni 1p'\''my @ks = ("u", "v"); \
+lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 	my @vs = (1, 10); my %h = zip \@ks, \@vs; r $h{"v"}'\''
 ' 3<<'LAZYTEST_EOF'
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=585
-lazytest_case 'ni 1p'\''my @ks = ("u", "v"); \
-	my @vs = (1, 10); my @ws =("foo", "bar"); \
+lazytest_case 'ni 1p'\''my @ks = ("u", "v");
+	my @vs = (1, 10); my @ws =("foo", "bar");
 	r zip \@ks, \@vs, \@ws'\''
 ' 3<<'LAZYTEST_EOF'
 u	1	foo	v	10	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=594
-lazytest_case 'ni 1p'\''my @ks = ("u", "v"); \
+lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 	my @vs = (1, 10, "nope", 100, 1000,); r zip \@ks, \@vs'\''
 ' 3<<'LAZYTEST_EOF'
 u	1	v	10

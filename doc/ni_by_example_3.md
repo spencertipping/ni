@@ -574,7 +574,7 @@ u	1	v	10
 This output can be cast as a hash:
 
 ```bash
-$ ni 1p'my @ks = ("u", "v"); \
+$ ni 1p'my @ks = ("u", "v");
 	my @vs = (1, 10); my %h = zip \@ks, \@vs; r $h{"v"}'
 10
 ```
@@ -582,8 +582,8 @@ $ ni 1p'my @ks = ("u", "v"); \
 It is also possible to `zip` more than 2 arrays:
 
 ```bash
-$ ni 1p'my @ks = ("u", "v"); \
-	my @vs = (1, 10); my @ws =("foo", "bar"); \
+$ ni 1p'my @ks = ("u", "v");
+	my @vs = (1, 10); my @ws =("foo", "bar");
 	r zip \@ks, \@vs, \@ws'
 u	1	foo	v	10	bar
 ```
@@ -591,7 +591,7 @@ u	1	foo	v	10	bar
 If the arrays are of unequal length, the data will be output only up to the length of the shortest array.
 
 ```bash
-$ ni 1p'my @ks = ("u", "v"); \
+$ ni 1p'my @ks = ("u", "v");
 	my @vs = (1, 10, "nope", 100, 1000,); r zip \@ks, \@vs'
 u	1	v	10
 ```
