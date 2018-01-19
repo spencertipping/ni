@@ -385,8 +385,10 @@
 	  while (defined($file = <STDIN>))
 	  {
 	    chomp $file;
-	    my $fh = scat $file;
+	    my $fh = soproc {scat $file};
 	    print "$file\t$_" while <$fh>;
+	    close $fh;
+	    $fh->await;
 	  }
 
 # OPERATOR file_prepend_name_write
