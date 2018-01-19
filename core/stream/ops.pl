@@ -203,7 +203,7 @@ defoperator file_prepend_name_read => q{
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    my $fh = srfile $file;
+    my $fh = scat $file;
     print "$file\t$_" while <$fh>;
   }
 };
