@@ -647,7 +647,7 @@
 	    # We need to stream the entire left side
 	    # of the join to avoid breaking the pipe in
 	    # a Hadoop streaming context.
-	    while(<STDIN>) { }
+	    1 while read STDIN, $_, 65536;
 	  }
 
 # OPERATOR lisp_code
@@ -684,6 +684,26 @@
 
 ## IMPLEMENTATION
 	sio; print closure_data $_[0]
+
+# OPERATOR memory_join
+
+## IMPLEMENTATION
+	
+	  my ($col, $f) = @_;
+	  my %lookup;
+	  my $fh = sni @$f;
+	  chomp, /^([^\t]+)\t(.*)/ and $lookup{$1} = $2 while <$fh>;
+	  close $fh;
+	  $fh->await;
+	
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my $f = (split /\t/, $_, $col + 2)[$col];
+	    print exists $lookup{$f}
+	      ? "$_\t$lookup{$f}\n"
+	      : "$_\t\n";
+	  }
 
 # OPERATOR meta_conf
 

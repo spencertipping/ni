@@ -561,6 +561,10 @@
 	    ) -> {$$_[0]}
 	  ) -> {composite_images_op @$_}
 	| 'IJ' '' -> {each_image_op [sh_op "convert - jpg:-"]}
+	| 'J' (
+	    <colspec1>?
+	    </qfn>
+	  ) -> {memory_join_op $$_[0] || 0, $$_[1]}
 	| 'MM' '' -> {mapomatic_op}
 	| 'N' (
 	    <colspec1>?

@@ -56,10 +56,34 @@ defoperator join => q{
     # We need to stream the entire left side
     # of the join to avoid breaking the pipe in
     # a Hadoop streaming context.
-    while(<STDIN>) { }
+    1 while read STDIN, $_, 65536;
   }
 };
 
-
 defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
                pseq popt colspec, _qfn;
+
+# In-memory joins
+# This is an alternative to the usual build-a-dataclosure approach in perl.
+
+defoperator memory_join =>
+q{
+  my ($col, $f) = @_;
+  my %lookup;
+  my $fh = sni @$f;
+  chomp, /^([^\t]+)\t(.*)/ and $lookup{$1} = $2 while <$fh>;
+  close $fh;
+  $fh->await;
+
+  while (<STDIN>)
+  {
+    chomp;
+    my $f = (split /\t/, $_, $col + 2)[$col];
+    print exists $lookup{$f}
+      ? "$_\t$lookup{$f}\n"
+      : "$_\t\n";
+  }
+};
+
+defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1]},
+               pseq popt colspec1, _qfn;

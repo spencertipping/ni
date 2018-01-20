@@ -1756,6 +1756,14 @@
 ## SYNTAX
 	'' -> {each_image_op [sh_op "convert - jpg:-"]}
 
+# SHORT OPERATOR /J
+
+## SYNTAX
+	(
+	  <colspec1>?
+	  </qfn>
+	) -> {memory_join_op $$_[0] || 0, $$_[1]}
+
 # SHORT OPERATOR /MM
 
 ## SYNTAX
