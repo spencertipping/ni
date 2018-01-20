@@ -6049,7 +6049,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-215 core/cell/cell.pl
+218 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -6203,8 +6203,11 @@ BEGIN
 
 defoperator attenuate => q{
   my ($cs, $power) = @_;
+  my $rand_code = $power == int $power
+    ? join"*", ("rand()") x $power
+    : "rand() ** $power";
   cell_eval {args => 'undef',
-             each => "\$xs[\$_] *= (1 - rand() ** $power)"}, $cs;
+             each => "\$xs[\$_] *= (1 - $rand_code)"}, $cs;
 };
 
 defshort 'cell/A',

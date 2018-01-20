@@ -10,8 +10,11 @@
 ## IMPLEMENTATION
 	
 	  my ($cs, $power) = @_;
+	  my $rand_code = $power == int $power
+	    ? join"*", ("rand()") x $power
+	    : "rand() ** $power";
 	  cell_eval {args => 'undef',
-	             each => "\$xs[\$_] *= (1 - rand() ** $power)"}, $cs;
+	             each => "\$xs[\$_] *= (1 - $rand_code)"}, $cs;
 
 # OPERATOR binary_fixed
 
