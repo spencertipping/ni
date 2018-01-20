@@ -683,6 +683,10 @@
 	      <number>
 	    ) -> {$$_[1]} -> {row_every_op  $_}
 	  | (
+	      /x/
+	      <colspec1>
+	    ) -> {$$_[1]} -> {row_repeat_op $_}
+	  | (
 	      ///
 	      <regex>
 	    ) -> {$$_[1]} -> {row_match_op  $_}
@@ -849,6 +853,10 @@
 	    <number>
 	  ) -> {$$_[1]} -> {row_every_op  $_}
 	| (
+	    /x/
+	    <colspec1>
+	  ) -> {$$_[1]} -> {row_repeat_op $_}
+	| (
 	    ///
 	    <regex>
 	  ) -> {$$_[1]} -> {row_match_op  $_}
@@ -922,6 +930,11 @@
 	| <sqlcode> -> {['filter', $_]}
 	)
 
+# PARSER attenuate_spec
+
+## DEFINITION
+	<number>? -> {$_ || 4}
+
 # PARSER bloom_fp_spec
 
 ## DEFINITION
@@ -977,6 +990,10 @@
 
 ## DEFINITION
 	(
+	| 'A' (
+	    <cellspec_fixed>
+	    <attenuate_spec>
+	  ) -> {attenuate_op @$_}
 	| 'BP' (
 	    <cellspec_fixed>
 	    <bloom_size_spec>
@@ -994,6 +1011,12 @@
 	    <cellspec_fixed>
 	    <log_base>
 	  ) -> {cell_signed_log_op @$_}
+	| 'Q' (
+	    <cellspec_fixed>
+	    <quant_spec>
+	  ) -> { my ($cellspec, $quantum) = @$_;
+	            [quantize_op($cellspec, $quantum),
+	             jitter_uniform_op($cellspec, $quantum * 0.9)] }
 	| 'a' <cellspec_fixed> -> {col_average_op $_}
 	| 'd' <cellspec_fixed> -> {col_delta_op   $_}
 	| 'e' (

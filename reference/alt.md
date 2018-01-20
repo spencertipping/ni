@@ -110,6 +110,10 @@
 	    <number>
 	  ) -> {$$_[1]} -> {row_every_op  $_}
 	| (
+	    /x/
+	    <colspec1>
+	  ) -> {$$_[1]} -> {row_repeat_op $_}
+	| (
 	    ///
 	    <regex>
 	  ) -> {$$_[1]} -> {row_match_op  $_}

@@ -5,10 +5,12 @@
 ## LONG OPERATORS (ni --doc/long X)
 
 ## SHORT OPERATORS (ni --doc/short X)
+	cell/A
 	cell/BP
 	cell/G
 	cell/H
 	cell/L
+	cell/Q
 	cell/a
 	cell/d
 	cell/e

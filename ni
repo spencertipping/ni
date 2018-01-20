@@ -3959,7 +3959,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-187 core/row/row.pl
+196 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -3970,13 +3970,22 @@ defoperator safe_head => q{$. <= $_[0] && print while <STDIN>};
 
 defconfenv 'row/seed', NI_ROW_SEED => 42;
 
-defoperator row_every => q{($. -1) % $_[0] || print while <STDIN>};
+defoperator row_every => q{($. - 1) % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
   srand conf 'row/seed';
   $. = 0;
   while (<STDIN>) {
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+  }
+};
+
+defoperator row_repeat => q{
+  my $col = shift;
+  while (defined (my $l = <STDIN>))
+  {
+    my $r = (split /\t/, $l, $col + 2)[$col];
+    print $l for 1..$r;
   }
 };
 
@@ -4009,6 +4018,7 @@ defshort '/r',
     pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',    integer),
     pmap(q{safe_head_op  $_},            pn 1, prx 's',    number),
     pmap(q{row_every_op  $_},            pn 1, prx 'x',    number),
+    pmap(q{row_repeat_op $_},            pn 1, prx 'x',    colspec1),
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
@@ -4146,7 +4156,6 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-
 189 core/row/scale.pl
 # Row-based process scaling.
 # Allows you to bypass process bottlenecks by distributing rows across multiple
@@ -6016,7 +6025,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-189 core/cell/cell.pl
+215 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -6152,6 +6161,32 @@ defoperator quantize => q{
 };
 
 defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
+
+# Cellular quantization (for visualization): quantize axes to cell centers, then
+# uniformly jitter them by 0.9 * that amount. This will produce visually
+# distinct but uniformly shaded cells.
+defshort 'cell/Q',
+  pmap q{ my ($cellspec, $quantum) = @$_;
+          [quantize_op($cellspec, $quantum),
+           jitter_uniform_op($cellspec, $quantum * 0.9)] },
+  pseq cellspec_fixed, quant_spec;
+
+
+# Random value attenuation (for visualization): attenuate by 1-rand()**n, where
+# you can specify n. This results in values casting a shadow downwards.
+BEGIN
+{ defparseralias attenuate_spec => pmap q{$_ || 4}, popt number }
+
+defoperator attenuate => q{
+  my ($cs, $power) = @_;
+  cell_eval {args => 'undef',
+             each => "\$xs[\$_] *= (1 - rand() ** $power)"}, $cs;
+};
+
+defshort 'cell/A',
+  pmap q{attenuate_op @$_},
+  pseq cellspec_fixed, attenuate_spec;
+
 
 # Streaming numeric transformations.
 # Sum, delta, average, variance, entropy, etc. Arguably these are column operators and

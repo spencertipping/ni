@@ -8,13 +8,22 @@ defoperator safe_head => q{$. <= $_[0] && print while <STDIN>};
 
 defconfenv 'row/seed', NI_ROW_SEED => 42;
 
-defoperator row_every => q{($. -1) % $_[0] || print while <STDIN>};
+defoperator row_every => q{($. - 1) % $_[0] || print while <STDIN>};
 defoperator row_match => q{$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>};
 defoperator row_sample => q{
   srand conf 'row/seed';
   $. = 0;
   while (<STDIN>) {
     print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+  }
+};
+
+defoperator row_repeat => q{
+  my $col = shift;
+  while (defined (my $l = <STDIN>))
+  {
+    my $r = (split /\t/, $l, $col + 2)[$col];
+    print $l for 1..$r;
   }
 };
 
@@ -47,6 +56,7 @@ defshort '/r',
     pmap(q{tail_op '-n', '+', ($_ + 1)}, pn 1, prx '-',    integer),
     pmap(q{safe_head_op  $_},            pn 1, prx 's',    number),
     pmap(q{row_every_op  $_},            pn 1, prx 'x',    number),
+    pmap(q{row_repeat_op $_},            pn 1, prx 'x',    colspec1),
     pmap(q{row_match_op  $_},            pn 1, prx '/',    regex),
     pmap(q{row_sample_op $_},                  prx '\.\d+'),
     pmap(q{head_op '-n', 0 + $_},        integer),
@@ -184,5 +194,3 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
-
-

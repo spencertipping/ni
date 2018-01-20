@@ -5,6 +5,14 @@
 ## IMPLEMENTATION
 	my @xs = @_; sio; exec_ni @xs
 
+# OPERATOR attenuate
+
+## IMPLEMENTATION
+	
+	  my ($cs, $power) = @_;
+	  cell_eval {args => 'undef',
+	             each => "\$xs[\$_] *= (1 - rand() ** $power)"}, $cs;
+
 # OPERATOR binary_fixed
 
 ## IMPLEMENTATION
@@ -966,7 +974,7 @@
 # OPERATOR row_every
 
 ## IMPLEMENTATION
-	($. -1) % $_[0] || print while <STDIN>
+	($. - 1) % $_[0] || print while <STDIN>
 
 # OPERATOR row_fixed_scale
 
@@ -1165,6 +1173,17 @@
 
 ## IMPLEMENTATION
 	$\ = "\n"; chomp, /$_[0]/o && print while <STDIN>
+
+# OPERATOR row_repeat
+
+## IMPLEMENTATION
+	
+	  my $col = shift;
+	  while (defined (my $l = <STDIN>))
+	  {
+	    my $r = (split /\t/, $l, $col + 2)[$col];
+	    print $l for 1..$r;
+	  }
 
 # OPERATOR row_sample
 

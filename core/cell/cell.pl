@@ -134,6 +134,32 @@ defoperator quantize => q{
 
 defshort 'cell/q', pmap q{quantize_op @$_}, pseq cellspec_fixed, quant_spec;
 
+# Cellular quantization (for visualization): quantize axes to cell centers, then
+# uniformly jitter them by 0.9 * that amount. This will produce visually
+# distinct but uniformly shaded cells.
+defshort 'cell/Q',
+  pmap q{ my ($cellspec, $quantum) = @$_;
+          [quantize_op($cellspec, $quantum),
+           jitter_uniform_op($cellspec, $quantum * 0.9)] },
+  pseq cellspec_fixed, quant_spec;
+
+
+# Random value attenuation (for visualization): attenuate by 1-rand()**n, where
+# you can specify n. This results in values casting a shadow downwards.
+BEGIN
+{ defparseralias attenuate_spec => pmap q{$_ || 4}, popt number }
+
+defoperator attenuate => q{
+  my ($cs, $power) = @_;
+  cell_eval {args => 'undef',
+             each => "\$xs[\$_] *= (1 - rand() ** $power)"}, $cs;
+};
+
+defshort 'cell/A',
+  pmap q{attenuate_op @$_},
+  pseq cellspec_fixed, attenuate_spec;
+
+
 # Streaming numeric transformations.
 # Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
 # not cell operators, but in practice you tend to use them in the same context as
