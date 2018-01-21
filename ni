@@ -2201,7 +2201,7 @@ sub load {
 1;
 1 core/conf/lib
 conf.pl
-57 core/conf/conf.pl
+58 core/conf/conf.pl
 # Configuration variables.
 # These can be specified as environment vars or overridden locally for specific
 # operations.
@@ -2247,6 +2247,7 @@ sub defconfenv($$$) {
 defoperator configure => q{
   my ($vars, $f) = @_;
   conf_set $_, $$vars{$_} for keys %$vars;
+  conf_set monitor => 0 unless exists $$vars{monitor};
   &$ni::main_operator(@$f);
 };
 
