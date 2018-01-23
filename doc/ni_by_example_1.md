@@ -2,7 +2,7 @@
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-`ni` and Perl both suffer from their sharp differences from . This tutorial is structured in 5 parts:
+`ni` and Perl both suffer from their sharp differences from . This tutorial is structured in 6 parts:
 
 1. Intro to `ni`
 2. Perl for `ni`
@@ -191,7 +191,7 @@ $ echo "genius" > dir_test/file3
 
 We can look at the contents of the directory with `ni`:
 
-```
+```sh
 $ ni dir_test
 dir_test/file1
 dir_test/file2
@@ -342,69 +342,6 @@ $ ni n20 r.15
 
 These last examples show the value of `r` in development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to view smaller samples of large datasets.
 
-#### Logical Options
-
-`r` can also be thought of as "take rows where the predicate that follows evaluates to true." In this context, `r` can take a regex as an option: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
-
-```bash
-$ ni n500 r/22/
-22
-122
-220
-221
-222
-223
-224
-225
-226
-227
-228
-229
-322
-422
-```
-
-To use escaped characters in a regex, it's often more efficient to wrap in quotes:
-
-```bash
-$ ni n1000 r-500 r'/^(\d)\1+$/'
-555
-666
-777
-888
-999
-```
-
-In `ni`, tab-delimited columns of data are referenced like a spreadsheet: the first column is `A`, the second is `B`, etc.
-
-We've seen how to generate tab-delimited columns using the `i` operator with brackets:
-
-```bash
-$ ni i[one_column] i[two columns] i[three columns here]
-one_column
-two	columns
-three	columns	here
-```
-
-Because an empty column is falsey (it evaluates to false), we can filter it using `r`. 
-
-```bash
-$ ni i[one_column] i[two columns] i[three columns here] rB
-two	columns
-three	columns	here
-```
-
-#### Set Filtering 
-
-You can also filter a column based on another dataset using `ri` and the index of the column to filter.
-
-```bash
-$ ni i[one_column] i[two columns] i[three columns here] \
-     riA[ione_column ithree]
-one_column
-three	columns	here
-```
-
 
 ### `F`: Split stream into columns
 
@@ -474,7 +411,6 @@ b	rb	r	s
 
 
 ### `f`: Column Selection
-Columns are indexed using letters, as in Excel. The `f` operator gives you access to the first 26 columns of your data. If your data has more than 26 columns, these fields can be accessed using the Perl field syntax, discussed later.
 
 Let's start by generating some text and converting it to columns using `F`.
 
@@ -485,7 +421,8 @@ it's	friday	night
 and	I	feel	all	right
 ```
 
-Like `r`, `f` has a lot of options. To select a column, use its corresponding letter. 
+In `ni`, tab-delimited columns of data are referenced like a spreadsheet: the first column is `A`, the second is `B`, etc.
+The `f` operator gives you access to the columns of your data. 
 
 ```bash
 $ ni i"this is how we do it" i"it's friday night" \
@@ -544,6 +481,26 @@ night	friday	it's
 feel	I	and	all
 ```
 
+Columns can also be accessed by using `#<number>`. The same options are available by subsitituting `A => #0`, `B => #1`, `C => #2`, ... `Z => #25`. This syntax also allows you to access columns 26 and beyond.
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS f#2#1#0#3
+how	is	this	we
+night	friday	it's	
+feel	I	and	all
+```
+
+It is also possible to increase readability by inserting commas between specified columns.
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fA,#3.
+this	we	do	it
+it's	
+and	all	right
+```
+
 
 Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cut` is much faster of the two, but it's only used when the output columns are in the same relative order as the input columns.
 
@@ -596,7 +553,7 @@ clean,	fresh	and	so	So	clean
 
 
 
-## Sort, Unique, Count, and Join
+## Sort, Unique & Count
 
 
 ### `g`: General sorting
@@ -758,20 +715,28 @@ The first column indicates the key column (i.e. the sorted column we want to hol
 ### Sorting strategies
 
 
-Sorting large amounts of data requires buffering to disk, and the vagaries of how this works internally is a source of headaches and slow performance. 
+Sorting large amounts of data requires buffering to disk. Be careful about how much data you sort; large sorts are a source of headaches and slow performance. 
 
 `$ ni nE7 F// fB gc \>first_numeral_counts.txt`
 
-Running this command you may see see the `ni` monitor for the first time, which showing the steps of the computation, and what steps are taking time.  The whole process takes about 2 minutes on my computer.
+Running this command you may see see the `ni` [monitor](monitor.md) for the first time, which showing the steps of the computation, and what steps are taking time.  The whole process takes about 2 minutes on my computer.
 
-Sorting workflows are important, and while performance is decent (`ni` is basically calling the Unix `sort` tool under the hood), general sorting is not yet yet a point of strength for `ni`. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+General sorting is not yet yet a point of strength for `ni`. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
 
-### `j`: Join sorted rows
+## Join and Filter Operators
 
-You can use the `j` operator to inner-join two streams. 
+`ni` has 2 join operators, `j` and `J`. `j` is an inner join simplified functionality similar to the unix `join` command. Like the unix `join`, `j` only works properly when both streams are sorted.
+
+`J` is a left join. it does not impose any requirements on sorting, but requires that the right side of the join fit into memory, and only allows a single value for each key on the right side of the join.
+
+Joining and filtering have a lot in common, since they both require a key. Later in this section, some more uses of `r` to filter datasets are demonstrated.
+
+### `j`: Streaming Inner Join 
+
+You can use the `j` operator to inner-join two streams.
+ 
 ```bash
-$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
-  j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
+$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 foo	bar	mine
 foo	car	mine
 foo	dar	mine
@@ -782,7 +747,7 @@ this	yes	yipes
 Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
 
 ```bash
-$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
+$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] 
   jAB[ i[M N hi] i[X Y bye] ]
 M	N	foo	hi
 M	N	bar	hi
@@ -793,6 +758,84 @@ X	Y	cat	bye
 In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
 
 The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
+
+### `J`: In-memory (limited) left join
+
+
+```bash
+$ ni i[foo bar] i[foo car] i[that no] i[this yes] i[foo dar] \
+     J[ i[this yipes] i[this OK] i[foo mine] i[not here] ]
+foo	bar	mine
+foo	car	mine
+that	no
+this	yes	OK
+foo	dar	mine
+```
+
+There are a number of things to notice here. First, we can reiterate that neither the right nor the left side of the join need to be sorted. Second, notice that this is a left join--the row `i[that no]` passes through even though there is no associated key on the right. On the right side of the join, notice that the value associated with the **last** element with the same key is used.
+
+### Filtering with `r`
+
+`r` can more generally be thought of as "take rows where the predicate that follows evaluates to true." 
+
+
+#### `r<col>` Null filtering
+
+Because an empty column is falsey (it evaluates to false), we can filter it using `r`. 
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] rB
+two	columns
+three	columns	here
+```
+
+#### `ri<col>`: Set Filtering 
+
+A very common motif in `ni` (especially in the MapReduce context) is to filter a large dataset down to a much smaller one with a certain set of keys or values. You can also filter a column based on another dataset using `ri` and the index of the column to filter.
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] \
+     riA[ione_column ithree]
+one_column
+three	columns	here
+```
+
+#### `r/regex/`: regex filtering
+
+In this context, `r` can take a regex as an option: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
+
+```bash
+$ ni n500 r/22/
+22
+122
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+322
+422
+```
+
+To use escaped characters in a regex, it's often more efficient to wrap in quotes:
+
+```bash
+$ ni n1000 r-500 r'/^(\d)\1+$/'
+555
+666
+777
+888
+999
+```
+
+To write this same command without quotes requires a lot of escaping: `$ ni n1000 r-500 r/^\(\\d\)\\1+$/`
+
+
 
 
 ## `ni` Coding and Debugging
