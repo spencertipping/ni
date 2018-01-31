@@ -2794,49 +2794,56 @@ lazytest_case 'ni i[34.058566 -118.416526] p'\''r ghd ghe(a, b, -41), 41'\''
 34.0584754943848	-118.416652679443
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=90
+lazytest_line=97
+lazytest_case 'ni 1p'\''r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'\''
+' 3<<'LAZYTEST_EOF'
+9q5cc25tufw5
+9q5cc25tufw5
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=108
 lazytest_case 'ni 1p'\''r ghb "95qc"'\''
 ' 3<<'LAZYTEST_EOF'
 18.6328123323619	18.45703125	-125.156250335276	-125.5078125
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=98
+lazytest_line=116
 lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv", mi'\''
 ' 3<<'LAZYTEST_EOF'
 1.23981551084308
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=105
+lazytest_line=123
 lazytest_case 'ni 1p'\''gh_dist "95qcc25y", "95qccdnv"'\''
 ' 3<<'LAZYTEST_EOF'
 1.99516661267524
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=114
+lazytest_line=132
 lazytest_case 'ni 1p'\''lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'\''
 ' 3<<'LAZYTEST_EOF'
 10426.7380460312
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=130
+lazytest_line=148
 lazytest_case 'ni 1p'\''tpe(2017, 1, 22, 8, 5, 13)'\''
 ' 3<<'LAZYTEST_EOF'
 1485072313
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=137
+lazytest_line=155
 lazytest_case 'ni 1p'\''tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'\''
 ' 3<<'LAZYTEST_EOF'
 1485072313
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=146
+lazytest_line=164
 lazytest_case 'ni 1p'\''r tep tpe 2017, 1, 22, 8, 5, 13'\''
 ' 3<<'LAZYTEST_EOF'
 2017	1	22	8	5	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=159
+lazytest_line=177
 lazytest_case 'ni i[34.058566 -118.416526] \
      p'\''my $epoch_time = 1485079513; my $tz_offset = tsec(a, b); 
        my @local_time_parts = tep($epoch_time + $tz_offset); 
@@ -2845,7 +2852,7 @@ lazytest_case 'ni i[34.058566 -118.416526] \
 2017	1	22	2	41	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=174
+lazytest_line=192
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b'\'' \
      p'\''my $epoch_time = 1485079513; 
        my @local_time_parts = tep ghl($epoch_time, a); 
@@ -2854,7 +2861,7 @@ lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b'\'' \
 2017	1	22	2	41	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=182
+lazytest_line=200
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; 
        my @local_time_parts = tep gh6l($epoch_time, a); 
@@ -2863,7 +2870,7 @@ lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
 2017	1	22	2	41	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=197
+lazytest_line=215
 lazytest_case 'ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 \
      i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 \
      i20170624T152347-0300 i20170624T182347Z \
@@ -2879,7 +2886,7 @@ lazytest_case 'ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 \
 1498328627
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=214
+lazytest_line=232
 lazytest_case 'ni i2017-06-24T18:23:47+00:00 p'\''i2e a'\'' \
      p'\''r e2i a; r e2i a, -1.5; r e2i a, "+3";
        r e2i a, "-05:45"'\''
@@ -2890,7 +2897,7 @@ lazytest_case 'ni i2017-06-24T18:23:47+00:00 p'\''i2e a'\'' \
 2017-06-24T12:38:47-05:45
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=226
+lazytest_line=244
 lazytest_case 'ni i2017-06-24T18:23:47+00:00 p'\''i2e a'\'' \
      p'\''r e2i a; r e2i a, -1.5; r e2i a, "+3";
        r e2i a, "-05:45"'\'' p'\''i2e a'\''
@@ -2901,47 +2908,47 @@ lazytest_case 'ni i2017-06-24T18:23:47+00:00 p'\''i2e a'\'' \
 1498328627
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=239
+lazytest_line=257
 lazytest_case 'ni 1p'\''r tpi tep(tpe(2018, 1, 14, 9, 12, 31)), "Z"'\''
 ' 3<<'LAZYTEST_EOF'
 2018-01-14T09:12:31Z
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=246
+lazytest_line=264
 lazytest_case 'ni 1p'\''r i2e tpi tep(1515801233), "Z"'\''
 ' 3<<'LAZYTEST_EOF'
 1515801233
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=256
+lazytest_line=274
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; dow gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
 Sun
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=262
+lazytest_line=280
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
 2
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=268
+lazytest_line=286
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; how gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
 Sun_02
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=274
+lazytest_line=292
 lazytest_case 'ni i[34.058566 -118.416526] p'\''ghe a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'\''
 ' 3<<'LAZYTEST_EOF'
 2017-01
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=284
+lazytest_line=302
 lazytest_case 'ni i1494110651 p'\''r tep ttd(a); r tep tth(a);
                    r tep tt15(a); r tep ttm(a); r tep a'\''
 ' 3<<'LAZYTEST_EOF'
@@ -2952,7 +2959,7 @@ lazytest_case 'ni i1494110651 p'\''r tep ttd(a); r tep tth(a);
 2017	5	6	22	44	11
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=322
+lazytest_line=340
 lazytest_case 'ni n10p'\''r rw {a < 7}'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6
@@ -2962,7 +2969,7 @@ lazytest_case 'ni n10p'\''r rw {a < 7}'\''
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=331
+lazytest_line=349
 lazytest_case 'ni n10p'\''r ru {a % 4 == 0}'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
@@ -2970,7 +2977,7 @@ lazytest_case 'ni n10p'\''r ru {a % 4 == 0}'\''
 8	9	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=338
+lazytest_line=356
 lazytest_case 'ni n10p'\''r re {int(a**2/30)}'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5
@@ -2979,7 +2986,7 @@ lazytest_case 'ni n10p'\''r re {int(a**2/30)}'\''
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=351
+lazytest_line=369
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
      p'\''my @lines = re {a}; r @lines;'\''
@@ -2989,7 +2996,7 @@ k	the	k	love
 l	tonight
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=364
+lazytest_line=382
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
      p'\''my @lines = re {a}; r b_(@lines)'\''
@@ -2999,7 +3006,7 @@ the	love
 tonight
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=377
+lazytest_line=395
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
      p'\''my @lines = rea; r b_ @lines'\''
@@ -3009,7 +3016,7 @@ the	love
 tonight
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=388
+lazytest_line=406
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
      p'\''r b_ rea'\''
@@ -3019,7 +3026,7 @@ the	love
 tonight
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=399
+lazytest_line=417
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
      p'\''my @lines = rea; r b_ @lines; r a_ @lines'\''
@@ -3032,7 +3039,7 @@ tonight
 l
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=417
+lazytest_line=435
 lazytest_case 'ni i[a x first] i[a x second] \
      i[a y third] i[b y fourth] p'\''r c_ rea'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3040,7 +3047,7 @@ first	second	third
 fourth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=428
+lazytest_line=446
 lazytest_case 'ni i[a x first] i[a x second] \
      i[a y third] i[b y fourth] p'\''r c_ re {b}'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3048,7 +3055,7 @@ first	second
 third	fourth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=437
+lazytest_line=455
 lazytest_case 'ni i[a x first] i[a x second] \
      i[a y third] i[b y fourth] p'\''r c_ reb'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3057,7 +3064,7 @@ third
 fourth
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=453
+lazytest_line=471
 lazytest_case 'ni ::data[n5] 1p'\''a_ data'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -3067,7 +3074,7 @@ lazytest_case 'ni ::data[n5] 1p'\''a_ data'\''
 5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=466
+lazytest_line=484
 lazytest_case 'ni i[m 1 x] i[m 2 y s t] \
      i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'\''r b__ rea'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3075,33 +3082,33 @@ lazytest_case 'ni i[m 1 x] i[m 2 y s t] \
 5	who	6	let	the	dogs
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=486
+lazytest_line=504
 lazytest_case 'ni i[1 2 3] p'\''r min F_; r max F_'\''
 ' 3<<'LAZYTEST_EOF'
 1
 3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=492
+lazytest_line=510
 lazytest_case 'ni i[c a b] p'\''r minstr F_; r maxstr F_'\''
 ' 3<<'LAZYTEST_EOF'
 a
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=511
+lazytest_line=529
 lazytest_case 'ni i[2 3 4] p'\''r sum(F_), prod(F_), mean(F_)'\''
 ' 3<<'LAZYTEST_EOF'
 9	24	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=520
+lazytest_line=538
 lazytest_case 'ni i[a c b c c a] p'\''my @uniqs = uniq F_; r sort @uniqs'\''
 ' 3<<'LAZYTEST_EOF'
 a	b	c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=527
+lazytest_line=545
 lazytest_case 'ni i[a c b c c a] p'\''my %h = %{freqs F_}; 
                       r($_, $h{$_}) for sort keys %h'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3110,41 +3117,41 @@ b	1
 c	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=542
+lazytest_line=560
 lazytest_case 'ni i[2 3 4] p'\''r any {$_ > 3} F_; r all {$_ > 3} F_'\''
 ' 3<<'LAZYTEST_EOF'
 1
 0
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=552
+lazytest_line=570
 lazytest_case 'ni i[aa bbb c] p'\''r argmax {length} F_; r argmin {length} F_'\''
 ' 3<<'LAZYTEST_EOF'
 bbb
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=560
+lazytest_line=578
 lazytest_case 'ni i[aa bbb c ddd e] p'\''r argmax {length} F_; r argmin {length} F_'\''
 ' 3<<'LAZYTEST_EOF'
 bbb
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=570
+lazytest_line=588
 lazytest_case 'ni 1p'\''my @ks = ("u", "v"); my @vs = (1, 10); r zip \@ks, \@vs'\''
 ' 3<<'LAZYTEST_EOF'
 u	1	v	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=577
+lazytest_line=595
 lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 	my @vs = (1, 10); my %h = zip \@ks, \@vs; r $h{"v"}'\''
 ' 3<<'LAZYTEST_EOF'
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=585
+lazytest_line=603
 lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 	my @vs = (1, 10); my @ws =("foo", "bar");
 	r zip \@ks, \@vs, \@ws'\''
@@ -3152,14 +3159,14 @@ lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 u	1	foo	v	10	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=594
+lazytest_line=612
 lazytest_case 'ni 1p'\''my @ks = ("u", "v");
 	my @vs = (1, 10, "nope", 100, 1000,); r zip \@ks, \@vs'\''
 ' 3<<'LAZYTEST_EOF'
 u	1	v	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=604
+lazytest_line=622
 lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 ' 3<<'LAZYTEST_EOF'
 10	1
@@ -3170,14 +3177,14 @@ lazytest_case 'ni 1p'\''cart [10, 20], [1, 2, 3]'\''
 20	3
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=629
+lazytest_line=647
 lazytest_case 'ni i[1 2 3 4 5 6 7] p'\''r take 3, F_; r drop 3, F_'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3
 4	5	6	7
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=637
+lazytest_line=655
 lazytest_case 'ni i[1 2 3 4 5 6 7] p'\''r take_while {$_ < 3} F_;
                         r drop_while {$_ < 3} F_'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3185,7 +3192,7 @@ lazytest_case 'ni i[1 2 3 4 5 6 7] p'\''r take_while {$_ < 3} F_;
 3	4	5	6	7
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=654
+lazytest_line=672
 lazytest_case 'ni i[a 1] i[b 2] i[foo bar] \
      p'\''my @lines = rw {1};
        my %h = ab_ @lines; my @sorted_keys = sort keys %h;
@@ -3195,7 +3202,7 @@ a	b	foo
 1	2	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=665
+lazytest_line=683
 lazytest_case 'ni i[a 1] i[b 2] i[foo bar] \
      p'\''my @lines = rw {1};
        my %h = ab_ @lines; my @sorted_keys = sort keys %h;
@@ -3205,7 +3212,7 @@ a	b	foo
 1	2	bar
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=676
+lazytest_line=694
 lazytest_case 'ni ::passwords[idragon i12345] i[try this] i[123 fails] \
      i[dragon does work] i[12345 also works] \
      i[other ones] i[also fail] \
@@ -3215,14 +3222,14 @@ dragon	does	work
 12345	also	works
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=694
+lazytest_line=712
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'\''r acS rea'\''
 ' 3<<'LAZYTEST_EOF'
 x	5
 y	13
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=702
+lazytest_line=720
 lazytest_case 'ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
      p'\''%h = dcSNN rea; 
        @sorted_keys = kbv_dsc %h;
@@ -3232,14 +3239,14 @@ foo	4
 bar	1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=716
+lazytest_line=734
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
      p'\''r acS rea'\'' p'\''r kbv_dsc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 y	x	z
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=723
+lazytest_line=741
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
      p'\''r acS rea'\'' p'\''r kbv_asc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'

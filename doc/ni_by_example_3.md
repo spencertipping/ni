@@ -82,6 +82,24 @@ $ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
 34.0584754943848	-118.416652679443
 ```
 
+#### `g3b` and `gb3`: geohash transcoding from binary to base-32
+
+`g3b` (geohash base-32 to binary) and `gb3` (geohash binary to base-32) transcode between base-32 and binary geohashes.
+
+```
+$ ni 1p'r g3b "9q5cc25tufw5"'
+349217367909022597
+```
+
+`gb3` takes a binary geohash and its precision in binary bits, and returns a base-32 geohash.
+
+```bash
+$ ni 1p'r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'
+9q5cc25tufw5
+9q5cc25tufw5
+```
+
+
 #### `ghb`: geohash bounding box
 
 For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
