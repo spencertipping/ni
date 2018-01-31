@@ -215,15 +215,19 @@ If you are unfamiliar with these functions, they are explained more extensively 
 The operators in this section refer specifically to the 
 `$ ni <data> p'...'`
 
-* `ghe`: geohash encoding
-  * `ghe($lat, $lng, $precision)`
+* `llg` and `ghe`: Latitude and Longitude to geohash
+  * `ghe` is a synonym of `llg` provided for backwards compatibility. `llg` should be favored as more explicit.
+  * `llg($lat, $lng, $precision)`
     * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
     * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
-* `ghd`: geohash decoding
-  * `ghd($gh_base32)`
+* `gll` and `ghd`: geohash to latitude and longitude
+  * `ghd` is a synonym of `gll` provided for backwards compatibility. `gll` should be favored as more explicit.
+  * `gll($gh_base32)`
      * Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
-  * `ghd($gh_int, $precision)`
-    * If the number of bits of precision is specified, `ghd` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+  * `gll($gh_int, $precision)`
+    * If the number of bits of precision is specified, `gll` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+* `g3b` and `gb3`: geohash transcoding
+  * 
 * `ghb`: geohash box
   * `ghb` takes a base-32 geohash and returns the latitude and longitudes corresponding to the north, south, east, and west corners of a box on the earth enclosing this point.
 * `lat_lon_dist`: arc distance between points on the earth

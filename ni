@@ -5462,7 +5462,7 @@ BEGIN {
   *tpi = \&time_parts_iso_8601;
 }
 
-192 core/pl/geohash.pl
+194 core/pl/geohash.pl
 # Fast, portable geohash encoder.
 # A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
 # Perl builds.
@@ -5608,7 +5608,9 @@ if (1 << 32) {
   };
 }
 *ghe = \&geohash_encode;
+*llg = \&geohash_encode;
 *ghd = \&geohash_decode;
+*gll = \&geohash_decode;
 *g3b = \&geohash_base32_to_binary;
 *gb3 = \&geohash_binary_to_base32;
 }

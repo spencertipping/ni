@@ -12,8 +12,8 @@ The next set of operators work with multiple lines of input data; this allows re
 
 ### Geographic Perl Functions
 
-#### `ghe`: geohash encoding
-Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations.
+#### `llg` & `ghe`: Latitude and Longitude to geohash
+Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations. 
 
 The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
 
@@ -32,53 +32,55 @@ base-32 characters | Approximate geohash size
 11 | 15cm x 15cm
 12 | 4cm x 2cm
 
-`ghe($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer.
+`llg($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer. `ghe` is a synonym of `llg` provided for backwards the purpose of backwards compatibility. 
 
 If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. When geohashes are specified in this way, they are referred to in short as `gh<$precision>`, for example gh6, gh8, or gh12. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
 
 Examples:
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe(a, b, 7)'
+$ ni i[34.058566 -118.416526] p'llg(a, b, 7)'
 9q5cc25
 ```
+ 
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe(a, b, -35)'
+$ ni i[34.058566 -118.416526] p'llg(a, b, -35)'
 10407488581
 ```
 
 The default is to encode with 12 base-32 characters, i.e. a gh12, or 60 bits of precision.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe(a, b)'
+$ ni i[34.058566 -118.416526] p'llg(a, b)'
 9q5cc25twby7
 ```
 
 The parentheses are also often unnecessary, because of the prototyping:
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, 9'
+$ ni i[34.058566 -118.416526] p'llg a, b, 9'
 9q5cc25tw
 ```
 
-#### `ghd`: geohash decoding
+#### `gll` and `ghd`: Geohash to latitude and longitude
 
 `ni` provides two prototypes for geohash decoding:
 
-`ghd($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
+`gll($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash. `ghd` is a synonym of `gll` provided for backwards the purpose of backwards compatibility. 
 
-`ghd($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.  As with `ghe`, parentheses are not always necessary.
+
+`gll($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.  As with `llg`, parentheses are not always necessary.
 
 Examples:
 
 ```bash
-$ ni i[34.058566 -118.416526] p'r ghd ghe a, b'
+$ ni i[34.058566 -118.416526] p'r gll llg a, b'
 34.058565851301	-118.416526280344
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'r ghd ghe(a, b, -41), 41'
+$ ni i[34.058566 -118.416526] p'r gll llg(a, b, -41), 41'
 34.0584754943848	-118.416652679443
 ```
 
@@ -189,7 +191,7 @@ It is meant for approximation of local time, not the actual time, which depends 
 `ghl` and `gh6l` get local time from an input geohash input in base-32 (`ghl`) or base-10 representation of a the geohash-60 in binary (`gh6l`).
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b' \
+$ ni i[34.058566 -118.416526] p'llg a, b' \
      p'my $epoch_time = 1485079513; 
        my @local_time_parts = tep ghl($epoch_time, a); 
        r @local_time_parts'
@@ -197,7 +199,7 @@ $ ni i[34.058566 -118.416526] p'ghe a, b' \
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
      p'my $epoch_time = 1485079513; 
        my @local_time_parts = tep gh6l($epoch_time, a); 
        r @local_time_parts'
@@ -271,25 +273,25 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
      p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a)'
 Sun
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
      p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
 2
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
      p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
 Sun_02
 ```
 
 ```bash
-$ ni i[34.058566 -118.416526] p'ghe a, b, -60' \
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
      p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
 2017-01
 ```
