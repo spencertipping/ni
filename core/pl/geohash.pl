@@ -76,6 +76,12 @@ if (1 << 32) {
     return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
             morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
   };
+  *geohash_transcode = sub {
+    my $string_gh = substr(shift, 0, 6);
+    my $i = length $string_gh;
+    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $string_gh;
+    $gh;
+  };
 } else {
   *morton_gap = sub($) {
     my ($x) = @_;
@@ -120,23 +126,15 @@ if (1 << 32) {
     my $lng_int = morton_ungap($low_30 >> 1) | morton_ungap($high_30 >> 1) << 15;
     ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
   };
-}
-
-*ghe = \&geohash_encode;
-*ghd = \&geohash_decode;
-
-*gh_box = sub {
-  local $_;
-  my $gh = shift;
-  my $northeast_corner = substr($gh . "z" x 12, 0, 12);
-  my $southwest_corner = substr($gh . "0" x 12, 0, 12);
-  my ($north, $east) = ghd($northeast_corner);
-  my ($south, $west) = ghd($southwest_corner);
-  ($north, $south, $east, $west);
+  
+  *geohash_transcode = sub {
+    my $string_gh = shift;
+    my $i = length $string_gh;
+    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $string_gh;
+    $gh;
   };
-
-*ghb = \&gh_box;
 }
+
 
 sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
@@ -169,3 +167,20 @@ sub gh_dist {
   push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
+
+sub geohash_box {
+  my $gh = shift;
+  my $northeast_corner = substr($gh . "z" x 12, 0, 12);
+  my $southwest_corner = substr($gh . "0" x 12, 0, 12);
+  my ($north, $east) = ghd($northeast_corner);
+  my ($south, $west) = ghd($southwest_corner);
+  ($north, $south, $east, $west);
+  };
+
+}
+
+*ghe = \&geohash_encode;
+*ghd = \&geohash_decode;
+*ghb = \&geohash_box;
+*ght = \&geohash_transcode;
+
