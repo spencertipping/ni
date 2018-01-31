@@ -9,6 +9,13 @@ use Scalar::Util qw/looks_like_number/;
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
 
+sub geohash_binary_to_base32($$) {
+  my ($gh, $precision) = @_;
+  my $n_letters = $precision % 5 == 0 ? $precision/5 : int($precision/5) + 1;
+  my $gh_b32 = join "", reverse map {$geohash_alphabet[($gh >> 5*$_) & 31]} 0..($n_letters-1); 
+  $gh_b32;
+}
+
 if (1 << 32) {
   *morton_gap = sub($) {
     my ($x) = @_;
@@ -76,10 +83,11 @@ if (1 << 32) {
     return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
             morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
   };
-  *geohash_transcode = sub {
-    my $string_gh = substr(shift, 0, 6);
-    my $i = length $string_gh;
-    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $string_gh;
+
+  *geohash_base32_to_binary = sub($) {
+    my $gh_b32 = shift;
+    my $i = length $gh_b32;
+    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
     $gh;
   };
 } else {
@@ -127,14 +135,18 @@ if (1 << 32) {
     ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
   };
   
-  *geohash_transcode = sub {
-    my $string_gh = shift;
-    my $i = length $string_gh;
-    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $string_gh;
+  *geohash_base32_to_binary = sub($) {
+    my $gh_b32 = substr(shift, 0, 6);
+    my $i = length $gh_b32;
+    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
     $gh;
   };
 }
-
+*ghe = \&geohash_encode;
+*ghd = \&geohash_decode;
+*g3b = \&geohash_base32_to_binary;
+*gb3 = \&geohash_binary_to_base32;
+}
 
 sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
@@ -168,19 +180,14 @@ sub gh_dist {
   lat_lon_dist @lat_lons;
 }
 
-sub geohash_box {
+sub geohash_box($;$) {
   my $gh = shift;
   my $northeast_corner = substr($gh . "z" x 12, 0, 12);
   my $southwest_corner = substr($gh . "0" x 12, 0, 12);
   my ($north, $east) = ghd($northeast_corner);
   my ($south, $west) = ghd($southwest_corner);
   ($north, $south, $east, $west);
-  };
-
 }
 
-*ghe = \&geohash_encode;
-*ghd = \&geohash_decode;
 *ghb = \&geohash_box;
-*ght = \&geohash_transcode;
 
