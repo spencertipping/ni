@@ -4,6 +4,7 @@ util.pm
 math.pm
 stream.pm
 reducers.pm
+wkt.pm
 time.pl
 geohash.pl
 pl.pl
