@@ -747,7 +747,7 @@ this	yes	yipes
 Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
 
 ```bash
-$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] 
+$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
   jAB[ i[M N hi] i[X Y bye] ]
 M	N	foo	hi
 M	N	bar	hi
@@ -767,7 +767,7 @@ $ ni i[foo bar] i[foo car] i[that no] i[this yes] i[foo dar] \
      J[ i[this yipes] i[this OK] i[foo mine] i[not here] ]
 foo	bar	mine
 foo	car	mine
-that	no
+that	no	
 this	yes	OK
 foo	dar	mine
 ```
