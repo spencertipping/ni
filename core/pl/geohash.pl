@@ -1,153 +1,136 @@
 # Fast, portable geohash encoder.
-# A port of https://www.factual.com/blog/how-geohashes-work that works on 32-bit
-# Perl builds.
-
-BEGIN {
+# A port of https://www.factual.com/blog/how-geohashes-work. I'm assuming 64-bit
+# int support.
 
 use Scalar::Util qw/looks_like_number/;
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
 
-sub geohash_binary_to_base32($$) {
-  my ($gh, $precision) = @_;
-  my $n_letters = $precision % 5 == 0 ? $precision/5 : int($precision/5) + 1;
-  my $gh_b32 = join "", reverse map {$geohash_alphabet[($gh >> 5*$_) & 31]} 0..($n_letters-1); 
-  $gh_b32;
+sub geohash_base32_to_binary($) {
+  my $gh_b32 = shift;
+  my $i = length $gh_b32;
+  my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
+  $gh;
 }
 
-if (1 << 32) {
-  *morton_gap = sub($) {
-    my ($x) = @_;
-    $x |= $x << 16; $x &= 0x0000ffff0000ffff;
-    $x |= $x << 8;  $x &= 0x00ff00ff00ff00ff;
-    $x |= $x << 4;  $x &= 0x0f0f0f0f0f0f0f0f;
-    $x |= $x << 2;  $x &= 0x3333333333333333;
-    return ($x | $x << 1) & 0x5555555555555555;
-  };
-
-  *morton_ungap = sub($) {
-    my ($x) = @_;  $x &= 0x5555555555555555;
-    $x ^= $x >> 1; $x &= 0x3333333333333333;
-    $x ^= $x >> 2; $x &= 0x0f0f0f0f0f0f0f0f;
-    $x ^= $x >> 4; $x &= 0x00ff00ff00ff00ff;
-    $x ^= $x >> 8; $x &= 0x0000ffff0000ffff;
-    return ($x ^ $x >> 16) & 0x00000000ffffffff;
-  };
-
-  *geohash_encode = sub {
-    local $_;
-    my ($lat, $lng, $precision) = @_;
-    $precision ||= 12;
-    my $bits = $precision > 0 ? $precision * 5 : -$precision;
-    my $gh   = (morton_gap(int(($lat +  90) / 180 * 0x40000000)) |
-                morton_gap(int(($lng + 180) / 360 * 0x40000000)) << 1)
-               >> 60 - $bits;
-
-    $precision > 0 ? join '', reverse map $geohash_alphabet[$gh >> $_ * 5 & 31],
-                                          0 .. $precision - 1
-                   : $gh;
-  };
-
-  *geohash_tagged_precision = sub {
-    my ($gh) = @_;
-    $gh &= 0x3fff_ffff_ffff_ffff;
-    my $bits = 0;
-    for (my $b = 32; $b; $b >>= 1) {
-      $bits |= $b if ($gh & ~(-1 << ($bits | $b))) != $gh;
-    }
-    $bits;
-  };
-
-  *geohash_decode_tagged = sub {
-    my ($gh) = @_;
-    $gh &= 0x3fff_ffff_ffff_ffff;
-    my $tag_bit_index = geohash_tagged_precision($gh);
-    geohash_decode($gh & ~(-1 << $tag_bit_index), $tag_bit_index);
-  };
-
-  *geohash_decode = sub {
-    local $_;
-    my ($gh, $bits) = @_;
-    unless (defined $bits) {
-      return geohash_decode_tagged($gh)
-        if looks_like_number $gh && $gh & 0x4000_0000_0000_0000;
-
-      # Decode gh from base-32
-      $bits = length($gh) * 5;
-      my $n = 0;
-      $n = $n << 5 | $geohash_decode{lc $_} for split //, $gh;
-      $gh = $n;
-    }
-    $gh <<= 60 - $bits;
-    return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
-            morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
-  };
-
-  *geohash_base32_to_binary = sub($) {
-    my $gh_b32 = shift;
-    my $i = length $gh_b32;
-    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
-    $gh;
-  };
-} else {
-  *morton_gap = sub($) {
-    my ($x) = @_;
-    $x |= $x << 8;  $x &= 0x00ff00ff;
-    $x |= $x << 4;  $x &= 0x0f0f0f0f;
-    $x |= $x << 2;  $x &= 0x33333333;
-    return ($x | $x << 1) & 0x55555555;
-  };
-
-  *morton_ungap = sub($) {
-    my ($x) = @_;  $x &= 0x55555555;
-    $x ^= $x >> 1; $x &= 0x33333333;
-    $x ^= $x >> 2; $x &= 0x0f0f0f0f;
-    $x ^= $x >> 4; $x &= 0x00ff00ff;
-    return ($x ^= $x >> 8) & 0x0000ffff;
-  };
-
-  *geohash_encode = sub {
-    local $_;
-    my ($lat, $lng, $precision) = (@_, 12);
-    my $unit_lat = ($lat + 90)  / 180;
-    my $unit_lng = ($lng + 180) / 360;
-    my $high_30  = morton_gap($unit_lat * 0x8000)
-                 | morton_gap($unit_lng * 0x8000) << 1;
-    my $low_30   = morton_gap($unit_lat * 0x40000000 & 0x7fff)
-                 | morton_gap($unit_lng * 0x40000000 & 0x7fff) << 1;
-
-    my $gh12 = join '', map($geohash_alphabet[$high_30 >> 30 - 5*$_ & 31], 1..6),
-                        map($geohash_alphabet[$low_30  >> 30 - 5*$_ & 31], 1..6);
-    substr $gh12, 0, $precision;
-  };
-
-  *geohash_decode = sub {
-    local $_;
-    my $gh12 = "$_[0]s" . "0" x 11;
-    my ($low_30, $high_30) = (0, 0);
-    for (0..5) {
-      $low_30  = $low_30  << 5 | $geohash_decode{lc substr $gh12, $_ + 6, 1};
-      $high_30 = $high_30 << 5 | $geohash_decode{lc substr $gh12, $_    , 1};
-    }
-    my $lat_int = morton_ungap($low_30)      | morton_ungap($high_30)      << 15;
-    my $lng_int = morton_ungap($low_30 >> 1) | morton_ungap($high_30 >> 1) << 15;
-    ($lat_int / 0x40000000 * 180 - 90, $lng_int / 0x40000000 * 360 - 180);
-  };
-  
-  *geohash_base32_to_binary = sub($) {
-    my $gh_b32 = substr(shift, 0, 6);
-    my $i = length $gh_b32;
-    my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
-    $gh;
-  };
+sub gh58($)
+{
+  my $gh30 = shift;
+  $gh30 = ($gh30 & 0x3fff8000) << 9 | $gh30 & 0x7fff;
+  $gh30      &   0x1f00001f
+    | ($gh30 &  0x3e00003e0) << 3
+    | ($gh30 & 0x7c00007c00) << 6;
 }
-*ghe = \&geohash_encode;
-*llg = \&geohash_encode;
-*ghd = \&geohash_decode;
-*gll = \&geohash_decode;
-*g3b = \&geohash_base32_to_binary;
-*gb3 = \&geohash_binary_to_base32;
+
+sub geohash_binary_to_base32($$)
+{
+  my ($gh, $p) = @_;
+  if ($p <= 20)
+  {
+    $gh = gh58 $gh << $p;
+    my $s = pack "N", $gh;
+    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+    substr $s, 0, int(($p + 4) / 5);
+  }
+  elsif ($p <= 40)
+  {
+    $gh <<= 40 - $p;
+    my $w1 = gh58 $gh;
+    my $w2 = gh58 $gh >> 30;
+    my $s  = pack "N2", $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
+                        $w1 & 0xffffffff;
+    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+    substr $s, 0, int(($p + 4) / 5);
+  }
+  else
+  {
+    $gh <<= 60 - $p;
+    my $w1 = gh58 $gh;
+    my $w2 = gh58 $gh >> 30;
+    my $s  = pack "N3", $w2 >> 16,
+                        $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
+                        $w1 & 0xffffffff;
+    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+    substr $s, 0, int(($p + 4) / 5);
+  }
+}
+
+sub morton_gap($) {
+  my ($x) = @_;
+  $x |= $x << 16; $x &= 0x0000ffff0000ffff;
+  $x |= $x << 8;  $x &= 0x00ff00ff00ff00ff;
+  $x |= $x << 4;  $x &= 0x0f0f0f0f0f0f0f0f;
+  $x |= $x << 2;  $x &= 0x3333333333333333;
+  return ($x | $x << 1) & 0x5555555555555555;
+}
+
+sub morton_ungap($) {
+  my ($x) = @_;  $x &= 0x5555555555555555;
+  $x ^= $x >> 1; $x &= 0x3333333333333333;
+  $x ^= $x >> 2; $x &= 0x0f0f0f0f0f0f0f0f;
+  $x ^= $x >> 4; $x &= 0x00ff00ff00ff00ff;
+  $x ^= $x >> 8; $x &= 0x0000ffff0000ffff;
+  return ($x ^ $x >> 16) & 0x00000000ffffffff;
+}
+
+sub geohash_encode {
+  local $_;
+  my ($lat, $lng, $precision) = @_;
+  $precision ||= 12;
+  my $bits = $precision > 0 ? $precision * 5 : -$precision;
+  my $gh   = (morton_gap(int(($lat +  90) / 180 * 0x40000000)) |
+              morton_gap(int(($lng + 180) / 360 * 0x40000000)) << 1)
+             >> 60 - $bits;
+
+  $precision > 0 ? join '', reverse map $geohash_alphabet[$gh >> $_ * 5 & 31],
+                                        0 .. $precision - 1
+                 : $gh;
+}
+
+sub geohash_tagged_precision {
+  my ($gh) = @_;
+  $gh &= 0x3fff_ffff_ffff_ffff;
+  my $bits = 0;
+  for (my $b = 32; $b; $b >>= 1) {
+    $bits |= $b if ($gh & ~(-1 << ($bits | $b))) != $gh;
+  }
+  $bits;
+}
+
+sub geohash_decode_tagged {
+  my ($gh) = @_;
+  $gh &= 0x3fff_ffff_ffff_ffff;
+  my $tag_bit_index = geohash_tagged_precision($gh);
+  geohash_decode($gh & ~(-1 << $tag_bit_index), $tag_bit_index);
+}
+
+sub geohash_decode {
+  local $_;
+  my ($gh, $bits) = @_;
+  unless (defined $bits) {
+    return geohash_decode_tagged($gh)
+      if looks_like_number $gh && $gh & 0x4000_0000_0000_0000;
+
+    # Decode gh from base-32
+    $bits = length($gh) * 5;
+    my $n = 0;
+    $n = $n << 5 | $geohash_decode{lc $_} for split //, $gh;
+    $gh = $n;
+  }
+  $gh <<= 60 - $bits;
+  return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
+          morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
+}
+
+BEGIN
+{
+  *ghe = \&geohash_encode;
+  *llg = \&geohash_encode;
+  *ghd = \&geohash_decode;
+  *gll = \&geohash_decode;
+  *g3b = \&geohash_base32_to_binary;
+  *gb3 = \&geohash_binary_to_base32;
 }
 
 sub to_radians {
@@ -191,5 +174,4 @@ sub geohash_box($;$) {
   ($north, $south, $east, $west);
 }
 
-*ghb = \&geohash_box;
-
+BEGIN { *ghb = \&geohash_box }
