@@ -4997,7 +4997,7 @@ BEGIN {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-74 core/pl/math.pm
+99 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5013,14 +5013,17 @@ sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_}
 
 sub log2($) {LOG2R * log $_[0]}
+
+sub entropy {
+  local $_;
+  my $sum = sum @_;
+  my $t = 0;
+  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
+  $t;
+}
+
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
-
-sub dot($$) {local $_; my ($u, $v) = @_;
-             sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
-
-sub l1norm {local $_; sum map abs($_), @_}
-sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
 sub interp {
   my $f = shift;
@@ -5032,6 +5035,7 @@ sub interp {
   @r;
 }
 
+## Vector Functions
 sub proj($$)
 { local $_; my ($a, $b) = @_;
   my $f = dot($a, $b) / dot($b, $b);
@@ -5046,19 +5050,40 @@ sub cross($$)
 { my ($x1, $y1, $z1, $x2, $y2, $z2) = (@{$_[0]}, @{$_[1]});
   ($y1*$z2 - $z1*$y2, $z1*$x2 - $x1*$z2, $x1*$y2 - $y1*$x2) }
 
+
+sub dot($$) {local $_; my ($u, $v) = @_;
+             sum map $$u[$_] * $$v[$_], 0..min $#{$u}, $#{$v}}
+
+sub l1norm {local $_; sum map abs($_), @_}
+sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+
+## Trig Functions
 sub rdeg($) {$_[0] * 360 / tau}
 sub drad($) {$_[0] / 360 * tau}
 
 sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 
-sub entropy {
-  local $_;
-  my $sum = sum @_;
-  my $t = 0;
-  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
-  $t;
+# Numpy synonyms and extensions
+*radians = \&drad;
+*degrees = \&rdeg;
+
+sub linspace($$$) {
+  $n_spaces = $_[2] - 1;
+  map {$_[0] + $_/$n_spaces *($_[1] - $_[0])} 0..$n_spaces;
 }
+
+
+sub arange($$$) {
+  $n_spaces = int abs ($_[1] - $_[0])/$_[2];
+  linspace $_[0], $_[0] + $_[2]*$n_spaces, $n_spaces;
+}
+
+sub aspace($$$) {
+  linspace $_[0], $_[1], 1 + abs int(($_[1] - $_[0])/$_[2]);
+}
+
 
 BEGIN {
 if (eval {require Math::Trig}) {
