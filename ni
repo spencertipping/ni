@@ -4997,7 +4997,7 @@ BEGIN {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-99 core/pl/math.pm
+105 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5070,19 +5070,25 @@ sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 *degrees = \&rdeg;
 
 sub linspace($$$) {
-  $n_spaces = $_[2] - 1;
+  my $n_spaces = $_[2] - 1;
   map {$_[0] + $_/$n_spaces *($_[1] - $_[0])} 0..$n_spaces;
 }
 
-
 sub arange($$$) {
-  $n_spaces = int abs ($_[1] - $_[0])/$_[2];
+  my $n_spaces = int abs ($_[1] - $_[0])/$_[2];
   linspace $_[0], $_[0] + $_[2]*$n_spaces, $n_spaces;
 }
 
 sub aspace($$$) {
   linspace $_[0], $_[1], 1 + abs int(($_[1] - $_[0])/$_[2]);
 }
+
+sub logspace($$$;$) {
+  my @powers = linspace(@_[0..2]);
+  my $base = defined $_[3] && $_[3] or 10; 
+  map {$base ** $_} @powers;
+}
+
 
 
 BEGIN {
