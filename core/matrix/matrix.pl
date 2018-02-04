@@ -75,12 +75,25 @@ defoperator unflatten => q{
       my @emit_vals = splice(@row, 0, $n_cols);
       print(join("\t", @emit_vals). "\n");
     }
-  } 
+  }
+};
+
+defoperator partial_transpose =>
+q{
+  my ($col) = @_;
+  while (<STDIN>)
+  {
+    chomp;
+    my @fs   = split /\t/;
+    my $base = join "", map "$_\t", @fs[0..$col-1];
+    print "$base$fs[$_]\n" for $col..$#fs;
+  }
 };
 
 defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
-defshort '/Z', pmap q{unflatten_op 0 + $_}, integer;
+defshort '/Z', palt pmap(q{unflatten_op 0 + $_}, integer),
+                    pmap(q{partial_transpose_op $_}, colspec1);
 
 # NumPy interop.
 # Partitioned by the first row value and sent in as dense matrices.

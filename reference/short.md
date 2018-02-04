@@ -1837,7 +1837,10 @@
 # SHORT OPERATOR /Z
 
 ## SYNTAX
-	<integer> -> {unflatten_op 0 + $_}
+	(
+	| <integer> -> {unflatten_op 0 + $_}
+	| <colspec1> -> {partial_transpose_op $_}
+	)
 
 # SHORT OPERATOR /^
 

@@ -879,6 +879,19 @@
 	  }
 	  print sort(@buff) if @buff;
 
+# OPERATOR partial_transpose
+
+## IMPLEMENTATION
+	
+	  my ($col) = @_;
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my @fs   = split /\t/;
+	    my $base = join "", map "$_\t", @fs[0..$col-1];
+	    print "$base$fs[$_]\n" for $col..$#fs;
+	  }
+
 # OPERATOR perl_assert
 
 ## IMPLEMENTATION
@@ -1431,7 +1444,7 @@
 	      my @emit_vals = splice(@row, 0, $n_cols);
 	      print(join("\t", @emit_vals). "\n");
 	    }
-	  } 
+	  }
 
 # OPERATOR uniq
 

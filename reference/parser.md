@@ -591,7 +591,10 @@
 	| 'W>' '' -> {file_prepend_name_write_op}
 	| 'X' <colspec1>? -> {sparse_to_dense_op $_}
 	| 'Y' <colspec1>? -> {dense_to_sparse_op $_}
-	| 'Z' <integer> -> {unflatten_op 0 + $_}
+	| 'Z' (
+	  | <integer> -> {unflatten_op 0 + $_}
+	  | <colspec1> -> {partial_transpose_op $_}
+	  )
 	| '^' </qfn> -> {prepend_op   @$_}
 	| '^{' (
 	    <config_option_map>
