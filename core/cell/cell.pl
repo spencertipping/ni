@@ -190,6 +190,39 @@ defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 
+
+# Grouped sum/average.
+# This is to save you the indignity of writing something like
+# "p'r a, sum b_ rea'", which is a common and keystroke-heavy thing to do.
+# Instead, you can write the much-suaver ",sgA": sum values grouped ending with
+# column A (so the values are in col B). The same goes for averaging.
+#
+# We're overloading the syntax against "g", the geohash encoding operator,
+# which you would never use immediately after a non-colspec ,s or ,a -- so this
+# will never collide in practice.
+
+defshort 'cell/ag', pmap
+  q{
+    my $col  = $_;
+    my $fs   = "0..$col";
+    my $se   = "se" . ("a".."z")[$col];
+    my $next = ("a".."z")[$col + 1];
+    perl_mapper_op "
+      my \@fs = F_($fs);
+      my (\$t, \$n) = $se { (\$_[0] + $next, \$_[1] + 1) } 0, 0;
+      r \@fs, \$t / (\$n || 1)";
+  }, colspec1;
+
+defshort 'cell/sg', pmap
+  q{
+    my $col  = $_;
+    my $fs   = "0..$col";
+    my $se   = "se" . ("a".."z")[$col];
+    my $next = ("a".."z")[$col + 1];
+    perl_mapper_op "r F_($fs), $se { \$_[0] + $next } 0";
+  }, colspec1;
+
+
 # Time conversions.
 
 defoperator epoch_to_formatted => q{

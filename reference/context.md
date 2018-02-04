@@ -12,6 +12,7 @@
 	cell/L
 	cell/Q
 	cell/a
+	cell/ag
 	cell/d
 	cell/e
 	cell/g
@@ -22,6 +23,7 @@
 	cell/p
 	cell/q
 	cell/s
+	cell/sg
 	cell/t
 	cell/z
 

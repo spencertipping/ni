@@ -1025,6 +1025,16 @@
 	            [quantize_op($cellspec, $quantum),
 	             jitter_uniform_op($cellspec, $quantum * 0.9)] }
 	| 'a' <cellspec_fixed> -> {col_average_op $_}
+	| 'ag' <colspec1> -> {
+	      my $col  = $_;
+	      my $fs   = "0..$col";
+	      my $se   = "se" . ("a".."z")[$col];
+	      my $next = ("a".."z")[$col + 1];
+	      perl_mapper_op "
+	        my \@fs = F_($fs);
+	        my (\$t, \$n) = $se { (\$_[0] + $next, \$_[1] + 1) } 0, 0;
+	        r \@fs, \$t / (\$n || 1)";
+	    }
 	| 'd' <cellspec_fixed> -> {col_delta_op   $_}
 	| 'e' (
 	    <cellspec_fixed>
@@ -1056,6 +1066,13 @@
 	    <quant_spec>
 	  ) -> {quantize_op @$_}
 	| 's' <cellspec_fixed> -> {col_sum_op     $_}
+	| 'sg' <colspec1> -> {
+	      my $col  = $_;
+	      my $fs   = "0..$col";
+	      my $se   = "se" . ("a".."z")[$col];
+	      my $next = ("a".."z")[$col + 1];
+	      perl_mapper_op "r F_($fs), $se { \$_[0] + $next } 0";
+	    }
 	| 't' <cellspec_fixed> -> {epoch_to_formatted_op $_}
 	| 'z' <cellspec_fixed> -> {intify_compact_op $_}
 	)
