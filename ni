@@ -5084,7 +5084,7 @@ sub aspace($$$) {
 }
 
 sub logspace($$$;$) {
-  my @powers = linspace(@_[0..2]);
+  my @powers = linspace($_[0], $_[1], $_[2]);
   my $base = defined $_[3] && $_[3] or 10; 
   map {$base ** $_} @powers;
 }
