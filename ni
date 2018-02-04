@@ -4997,7 +4997,7 @@ BEGIN {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-105 core/pl/math.pm
+124 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5056,6 +5056,25 @@ sub dot($$) {local $_; my ($u, $v) = @_;
 
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
+
+sub vec_sum($$) {
+  local $_; my ($u, $v) = @_;
+  map $$u[$_] + $$v[$_], 0..$#u;
+}
+
+sub vec_diff($$) {
+  local $_; my ($u, $v) = @_;
+  map $$u[$_] - $$v[$_], 0..$#u;
+}
+
+sub distance_to_line($$$) {
+  local $_;
+  my ($a, $l, $p) = @_;
+  my @n = vec_diff($a, $l);
+  my @d = vec_diff($a, $p);
+  
+  l2norm orth(\@d, \@n);
+}
 
 
 ## Trig Functions
@@ -5597,10 +5616,10 @@ BEGIN {
   *tpi = \&time_parts_iso_8601;
 }
 
-177 core/pl/geohash.pl
-# Fast, portable geohash encoder.
-# A port of https://www.factual.com/blog/how-geohashes-work. I'm assuming 64-bit
-# int support.
+235 core/pl/geohash.pl
+# Fast, portable geohash encoder... AND MORE!
+# A port of https://www.factual.com/blog/how-geohashes-work. 
+# I'm assuming 64-bit int support.
 
 use Scalar::Util qw/looks_like_number/;
 
@@ -5723,33 +5742,17 @@ sub geohash_decode {
           morton_ungap($gh >> 1) / 0x40000000 * 360 - 180);
 }
 
-BEGIN
-{
-  *ghe = \&geohash_encode;
-  *llg = \&geohash_encode;
-  *ghd = \&geohash_decode;
-  *gll = \&geohash_decode;
-  *g3b = \&geohash_base32_to_binary;
-  *gb3 = \&geohash_binary_to_base32;
-}
-
 sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
 }
 
-sub earth_radius_in_units {
-  if ($_[0] eq "km") {
-    6371} elsif ($_[0] eq "mi") {
-    3959} elsif ($_[0] eq "m") {
-    6371E3} elsif ($_[0] eq "ft") {
-    20903520 }  #3959 * 5280
-     else { -1 }
-}
+our %earth_radius_in_units = ("km" => 6371, "mi" =>3959, 
+                              "m" =>6371E3, "ft"=>3959 * 5280);
 
 sub lat_lon_dist {
   my $units = @_ == 4 ? "km" : pop;
   my ($lat1, $lon1, $lat2, $lon2) = @_;
-  my $earth_radius = earth_radius_in_units $units;
+  my $earth_radius = $earth_radius_in_units{$units};
   my $phi1 = to_radians $lat1;
   my $phi2 = to_radians $lat2;
   my $d_phi = $phi1 - $phi2;
@@ -5759,9 +5762,9 @@ sub lat_lon_dist {
   $earth_radius * $c
 }
 
-sub gh_dist {
+sub gh_dist_exact {
   my @lat_lons;
-  push @lat_lons, ghd($_[0]), ghd($_[1]), ($_[2] || "km");
+  push @lat_lons, gll($_[0]), gll($_[1]), ($_[2] || "km");
   lat_lon_dist @lat_lons;
 }
 
@@ -5769,12 +5772,86 @@ sub geohash_box($;$) {
   my $gh = shift;
   my $northeast_corner = substr($gh . "z" x 12, 0, 12);
   my $southwest_corner = substr($gh . "0" x 12, 0, 12);
-  my ($north, $east) = ghd($northeast_corner);
-  my ($south, $west) = ghd($southwest_corner);
+  my ($north, $east) = gll($northeast_corner);
+  my ($south, $west) = gll($southwest_corner);
   ($north, $south, $east, $west);
 }
 
-BEGIN { *ghb = \&geohash_box }
+sub geohash_cardinal_direction {
+  my ($gh1, $gh2, $precision) = @_;
+  my $n = ($gh2 & 0x5555_5555_5555_5555) > ($gh1 & 0x5555_5555_5555_5555);
+  my $s = ($gh1 & 0x5555_5555_5555_5555) > ($gh2 & 0x5555_5555_5555_5555);
+  my $e = ($gh2 & 0xaaaa_aaaa_aaaa_aaaa) > ($gh1 & 0xaaaa_aaaa_aaaa_aaaa);
+  my $w = ($gh1 & 0xaaaa_aaaa_aaaa_aaaa) > ($gh2 & 0xaaaa_aaaa_aaaa_aaaa);
+  $n - $s, $e - $w;
+}
+
+sub most_significant_even_bit_index {
+  my $x = shift;
+  my $index = 2;
+  ($x & 0xffff_ffff_0000_0000) && ($index += 32) && ($x >>= 32);
+  ($x & 0xffff_0000)           && ($index += 16) && ($x >>= 16);
+  ($x & 0xff00)                && ($index += 8)  && ($x >>= 8 );
+  ($x & 0xf0)                  && ($index += 4)  && ($x >>= 4 );
+  ($x & 0xc)                   && ($index += 2);
+  $index;
+}
+
+
+sub morton_generate($$) {
+  my ($n_bits, $offset) = @_;
+  map {morton_ungap $_ >> $offset} 0..(2**$n_bits - 1);
+}
+
+our $MORTON_PRECISION = 10;
+our @morton_eastings  = morton_generate($MORTON_PRECISION, 0);
+our @morton_northings = morton_generate($MORTON_PRECISION, 1);
+our $latitude_meters  = $earth_radius_in_units{"m"} * to_radians(1);
+our @longitude_meters = map {$latitude_meters * cos(to_radians($_ * 90/16))} 0..16; 
+our @morton_longitude_lengths = map {$longitude_meters[abs $_ - 16] } @morton_northings;
+
+
+sub gh_dist_approx {
+  # Compute approximate distance along the earth
+  # without branching, map, or inverse trig functions
+  # BIT HACKS BIT HACKS BIT HACKS
+#  printf "%s\n", join "\t", @morton_northings;
+  my ($gh1, $gh2, $precision) = @_;
+  my $diff = ($gh1 ^ $gh2) << (60 - $precision);
+  # need to be in the same 10-bit geohash
+  return gh_dist gb3 $gh1, gb3 $gh2 if $diff & 0x0ffc_0000_0000_0000;
+  my $diff_msb_index = most_significant_even_bit_index $diff;
+#  printf "%s: %d\n", "Most significant difference at position:", $diff_msb_index - $precision;
+  my $ms_diff = $diff  >> max 0, $diff_msb_index - $MORTON_PRECISION;
+#  printf "%s %d %b\n", "most significant gh diff @ position:", $diff_msb_index, $ms_diff;
+  my $northing = $morton_northings[$ms_diff]; 
+  my $easting  = $morton_eastings[$ms_diff];
+#  print("Northing/Easting: $northing\t$easting\n");
+  my $north_degrees = $northing * 180 * 2**(($diff_msb_index - $MORTON_PRECISION - 60)/2);
+  my $east_degrees  = $easting  * 360 * 2**(($diff_msb_index - $MORTON_PRECISION - 60)/2);
+#  print("North/East Degrees: $north_degrees\t$east_degrees\n");
+  # longitude is a different length at different latitudes 
+  my $longitude_meters = $morton_longitude_lengths[$gh1 >> ($precision - $MORTON_PRECISION)];
+
+  print("Longitude Length: $longitude_meters\n");
+  my $dist = sqrt (($north_degrees * $latitude_meters)**2 + ($east_degrees * $longitude_meters)**2);
+  $dist; 
+}
+
+
+
+BEGIN
+{
+  *ghe = \&geohash_encode;
+  *llg = \&geohash_encode;
+  *ghd = \&geohash_decode;
+  *gll = \&geohash_decode;
+  *g3b = \&geohash_base32_to_binary;
+  *gb3 = \&geohash_binary_to_base32;
+  *ghb = \&geohash_box;
+  *gh_dist_a = \&gh_dist_approx;
+  *gh_dist = \&gh_dist_exact;
+}
 186 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works

@@ -57,6 +57,25 @@ sub dot($$) {local $_; my ($u, $v) = @_;
 sub l1norm {local $_; sum map abs($_), @_}
 sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
+sub vec_sum($$) {
+  local $_; my ($u, $v) = @_;
+  map $$u[$_] + $$v[$_], 0..$#u;
+}
+
+sub vec_diff($$) {
+  local $_; my ($u, $v) = @_;
+  map $$u[$_] - $$v[$_], 0..$#u;
+}
+
+sub distance_to_line($$$) {
+  local $_;
+  my ($a, $l, $p) = @_;
+  my @n = vec_diff($a, $l);
+  my @d = vec_diff($a, $p);
+  
+  l2norm orth(\@d, \@n);
+}
+
 
 ## Trig Functions
 sub rdeg($) {$_[0] * 360 / tau}
