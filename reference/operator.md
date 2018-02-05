@@ -693,7 +693,8 @@
 
 ## IMPLEMENTATION
 	
-	  my ($col, $f) = @_;
+	  my ($col, $n, $f) = @_;
+	  my $default = "\t" x ($n - 1);
 	  my %lookup;
 	  my $fh = sni @$f;
 	  chomp, /^([^\t]+)\t(.*)/ and $lookup{$1} = $2 while <$fh>;
@@ -706,7 +707,7 @@
 	    my $f = (split /\t/, $_, $col + 2)[$col];
 	    print exists $lookup{$f}
 	      ? "$_\t$lookup{$f}\n"
-	      : "$_\t\n";
+	      : "$_\t$default\n";
 	  }
 
 # OPERATOR meta_conf

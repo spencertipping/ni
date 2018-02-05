@@ -4347,7 +4347,7 @@ defoperator row_fixed_scale => q{
 };
 
 defscalealt pmap q{row_fixed_scale_op @$_}, pseq integer, _qfn;
-89 core/row/join.pl
+90 core/row/join.pl
 # Streaming joins.
 # The UNIX `join` command does this, but rearranges fields in the process. ni
 # implements its own operators as a workaround.
@@ -4418,7 +4418,8 @@ defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
 
 defoperator memory_join =>
 q{
-  my ($col, $f) = @_;
+  my ($col, $n, $f) = @_;
+  my $default = "\t" x ($n - 1);
   my %lookup;
   my $fh = sni @$f;
   chomp, /^([^\t]+)\t(.*)/ and $lookup{$1} = $2 while <$fh>;
@@ -4431,12 +4432,12 @@ q{
     my $f = (split /\t/, $_, $col + 2)[$col];
     print exists $lookup{$f}
       ? "$_\t$lookup{$f}\n"
-      : "$_\t\n";
+      : "$_\t$default\n";
   }
 };
 
-defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1]},
-               pseq popt colspec1, _qfn;
+defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
+               pseq popt colspec1, popt integer, _qfn;
 10 core/pl/lib
 json_util.pm
 hash_util.pm

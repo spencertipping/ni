@@ -563,8 +563,9 @@
 	| 'IJ' '' -> {each_image_op [sh_op "convert - jpg:-"]}
 	| 'J' (
 	    <colspec1>?
+	    <integer>?
 	    </qfn>
-	  ) -> {memory_join_op $$_[0] || 0, $$_[1]}
+	  ) -> {memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]}
 	| 'MM' '' -> {mapomatic_op}
 	| 'N' (
 	    <colspec1>?

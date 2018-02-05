@@ -1761,8 +1761,9 @@
 ## SYNTAX
 	(
 	  <colspec1>?
+	  <integer>?
 	  </qfn>
-	) -> {memory_join_op $$_[0] || 0, $$_[1]}
+	) -> {memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]}
 
 # SHORT OPERATOR /MM
 
