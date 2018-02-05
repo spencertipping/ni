@@ -1728,6 +1728,11 @@
 	  ) -> {hadoop_test_op @$_}
 	)
 
+# SHORT OPERATOR /H>
+
+## SYNTAX
+	<nefilename> -> {hadoop_outpath_set_op $_}
+
 # SHORT OPERATOR /I
 
 ## SYNTAX

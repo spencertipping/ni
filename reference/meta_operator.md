@@ -26,6 +26,16 @@
 	  add_quoted_resource $c;
 	  ();
 
+# META OPERATOR hadoop_outpath_set
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my $hadoop_op = pop @$left;
+	  my ($path) = @$args;
+	  my $new_op = configure_op {"hdfs/tmpdir" => $path}, [$hadoop_op];
+	  ([@$left, $new_op], $right);
+
 # META OPERATOR inline_checkpoint
 
 ## IMPLEMENTATION

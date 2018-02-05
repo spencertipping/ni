@@ -545,6 +545,7 @@
 	      ) -> {$$_[0]}
 	    ) -> {hadoop_test_op @$_}
 	  )
+	| 'H>' <nefilename> -> {hadoop_outpath_set_op $_}
 	| 'I' </qfn> -> {each_image_op $_}
 	| 'IC' (
 	    (

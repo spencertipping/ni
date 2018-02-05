@@ -9251,7 +9251,7 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-262 core/hadoop/hadoop.pl
+273 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -9270,8 +9270,19 @@ for (keys %mr_generics) {
 
 defconfenv 'hadoop/name',          NI_HADOOP               => 'hadoop';
 defconfenv 'hadoop/streaming-jar', NI_HADOOP_STREAMING_JAR => undef;
-defconfenv 'hadoop/jobconf', NI_HADOOP_JOBCONF => undef;
-defconfenv 'hdfs/tmpdir', NI_HDFS_TMPDIR => '/tmp';
+defconfenv 'hadoop/jobconf',       NI_HADOOP_JOBCONF => undef;
+defconfenv 'hdfs/tmpdir',          NI_HDFS_TMPDIR => '/tmp';
+
+defmetaoperator hadoop_outpath_set =>
+q{
+  my ($args, $left, $right) = @_;
+  my $hadoop_op = pop @$left;
+  my ($path) = @$args;
+  my $new_op = configure_op {"hdfs/tmpdir" => $path}, [$hadoop_op];
+  ([@$left, $new_op], $right);
+};
+
+defshort '/H>', pmap q{hadoop_outpath_set_op $_}, nefilename;
 
 defresource 'hdfs',
   read   => q{soproc {exec conf 'hadoop/name', 'fs', '-cat', $_[1]} @_},
