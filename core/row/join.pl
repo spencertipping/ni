@@ -69,7 +69,7 @@ defshort '/j', pmap q{join_op $$_[0] || [1, 0], $$_[0] || [1, 0], $$_[1]},
 defoperator memory_join =>
 q{
   my ($col, $n, $f) = @_;
-  my $default = "\t" x ($n - 1);
+  my $default = "\t" x $n;
   my %lookup;
   my $fh = sni @$f;
   chomp, /^([^\t]+)\t(.*)/ and $lookup{$1} = $2 while <$fh>;
@@ -82,7 +82,7 @@ q{
     my $f = (split /\t/, $_, $col + 2)[$col];
     print exists $lookup{$f}
       ? "$_\t$lookup{$f}\n"
-      : "$_\t$default\n";
+      : "$_$default\n";
   }
 };
 
