@@ -122,7 +122,7 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ eq "ARRAY" ? r(@$_) : length && print $_, "\n" for row'}
 sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
   print $_, "\n";
