@@ -219,11 +219,12 @@ defoperator file_prepend_name_write => q{
 
   while (<STDIN>)
   {
-    my ($fname, $l) = split /\t/, $_, 2;
+    my ($fname, $l) = /^([^\t\n]*)\t(.*)/;
     if (!defined $file or $fname ne $file)
     {
       close $fh, $fh->await if defined $fh;
-      $fh = siproc {exec_ni @$lambda, file_write_op($fname = $file)};
+      $file = $fname;
+      $fh = siproc {exec_ni(@$lambda, file_write_op $file)};
     }
     print $fh $l;
   }
