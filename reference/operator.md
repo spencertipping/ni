@@ -407,16 +407,22 @@
 
 ## IMPLEMENTATION
 	
-	  my $file = undef;
-	  my $fh   = undef;
+	  my ($lambda) = @_;
+	  my $file     = undef;
+	  my $fh       = undef;
+	
 	  while (<STDIN>)
 	  {
 	    my ($fname, $l) = split /\t/, $_, 2;
-	    defined($file) && print("$file\n"), $fh = swfile($file = $fname)
-	      if !defined($file) or $fname ne $file;
+	    if (!defined $file or $fname ne $file)
+	    {
+	      close $fh, $fh->await if defined $fh;
+	      $fh = siproc {exec_ni @$lambda, file_write_op($fname = $file)};
+	    }
 	    print $fh $l;
 	  }
-	  print "$file\n";
+	
+	  close $fh, $fh->await if defined $fh;
 
 # OPERATOR file_read
 

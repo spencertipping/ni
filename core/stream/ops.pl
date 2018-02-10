@@ -213,19 +213,25 @@ defoperator file_prepend_name_read => q{
 defshort '/W<', pmap q{file_prepend_name_read_op}, pnone;
 
 defoperator file_prepend_name_write => q{
-  my $file = undef;
-  my $fh   = undef;
+  my ($lambda) = @_;
+  my $file     = undef;
+  my $fh       = undef;
+
   while (<STDIN>)
   {
     my ($fname, $l) = split /\t/, $_, 2;
-    defined($file) && print("$file\n"), $fh = swfile($file = $fname)
-      if !defined($file) or $fname ne $file;
+    if (!defined $file or $fname ne $file)
+    {
+      close $fh, $fh->await if defined $fh;
+      $fh = siproc {exec_ni @$lambda, file_write_op($fname = $file)};
+    }
     print $fh $l;
   }
-  print "$file\n";
+
+  close $fh, $fh->await if defined $fh;
 };
 
-defshort '/W>', pmap q{file_prepend_name_write_op}, pnone;
+defshort '/W>', pmap q{file_prepend_name_write_op $_}, popt _qfn;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.

@@ -2713,7 +2713,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-267 core/stream/ops.pl
+273 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2929,19 +2929,25 @@ defoperator file_prepend_name_read => q{
 defshort '/W<', pmap q{file_prepend_name_read_op}, pnone;
 
 defoperator file_prepend_name_write => q{
-  my $file = undef;
-  my $fh   = undef;
+  my ($lambda) = @_;
+  my $file     = undef;
+  my $fh       = undef;
+
   while (<STDIN>)
   {
     my ($fname, $l) = split /\t/, $_, 2;
-    defined($file) && print("$file\n"), $fh = swfile($file = $fname)
-      if !defined($file) or $fname ne $file;
+    if (!defined $file or $fname ne $file)
+    {
+      close $fh, $fh->await if defined $fh;
+      $fh = siproc {exec_ni @$lambda, file_write_op($fname = $file)};
+    }
     print $fh $l;
   }
-  print "$file\n";
+
+  close $fh, $fh->await if defined $fh;
 };
 
-defshort '/W>', pmap q{file_prepend_name_write_op}, pnone;
+defshort '/W>', pmap q{file_prepend_name_write_op $_}, popt _qfn;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.
@@ -12780,7 +12786,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-517 doc/stream.md
+530 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -13177,6 +13183,19 @@ foo
 bar
 $ cat file2.txt
 bif
+```
+
+You can transform the output into each file by specifying a lambda:
+
+```bash
+$ ni ifile1 ifile2 W\< p'r a.".txt2", b' W\>p'uc'
+file1.txt2
+file2.txt2
+$ cat file1.txt2
+FOO
+BAR
+$ cat file2.txt2
+BIF
 ```
 
 ## Compression

@@ -1828,7 +1828,7 @@
 # SHORT OPERATOR /W>
 
 ## SYNTAX
-	'' -> {file_prepend_name_write_op}
+	</qfn>? -> {file_prepend_name_write_op $_}
 
 # SHORT OPERATOR /X
 

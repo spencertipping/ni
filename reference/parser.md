@@ -590,7 +590,7 @@
 	  )
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'W<' '' -> {file_prepend_name_read_op}
-	| 'W>' '' -> {file_prepend_name_write_op}
+	| 'W>' </qfn>? -> {file_prepend_name_write_op $_}
 	| 'X' <colspec1>? -> {sparse_to_dense_op $_}
 	| 'Y' <colspec1>? -> {dense_to_sparse_op $_}
 	| 'Z' (

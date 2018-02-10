@@ -396,6 +396,19 @@ $ cat file2.txt
 bif
 ```
 
+You can transform the output into each file by specifying a lambda:
+
+```bash
+$ ni ifile1 ifile2 W\< p'r a.".txt2", b' W\>p'uc'
+file1.txt2
+file2.txt2
+$ cat file1.txt2
+FOO
+BAR
+$ cat file2.txt2
+BIF
+```
+
 ## Compression
 If you want to write a compressed file, you can use the `z` operator:
 
