@@ -5620,7 +5620,7 @@ BEGIN {
   *tpi = \&time_parts_iso_8601;
 }
 
-234 core/pl/geohash.pl
+248 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
@@ -5682,9 +5682,23 @@ sub geohash_base32_to_binary($)
 {
   (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x31/;
   my $bits = 5 * length $gh;
-  my ($n1, $n2, $n3) = unpack "N3", "$gh\0\0\0\0";
-  my $n = gh85($n1) << 40 | gh85($n2 || 0) << 20 | gh85($n3 || 0);
-  $n >> 60 - $bits;
+
+  if ($bits <= 20)
+  {
+    gh85(unpack "N", "$gh\0\0\0\0") >> 20 - $bits;
+  }
+  elsif ($bits <= 40)
+  {
+    my ($n1, $n2) = unpack "N2", "$gh\0\0\0\0";
+    my $n = gh85($n1) << 20 | gh85($n2 || 0);
+    $n >> 40 - $bits;
+  }
+  else
+  {
+    my ($n1, $n2, $n3) = unpack "N3", "$gh\0\0\0\0";
+    my $n = gh85($n1) << 40 | gh85($n2 || 0) << 20 | gh85($n3 || 0);
+    $n >> 60 - $bits;
+  }
 }
 
 sub morton_gap($) {
