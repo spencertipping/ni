@@ -413,7 +413,7 @@
 	
 	  while (<STDIN>)
 	  {
-	    my ($fname, $l) = /^([^\t\n]*)\t(.*)/;
+	    my ($fname, $l) = /^([^\t\n]*)\t([\s\S]*)/;
 	    if (!defined $file or $fname ne $file)
 	    {
 	      close $fh, $fh->await if defined $fh;
