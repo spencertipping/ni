@@ -115,6 +115,19 @@ lazytest_case 'ni test.wav bp'\''bi?r rp "ss":rb 44'\'' fA N'\''x = fft.fft(x, a
 8461	667.75
 12181	620.78
 LAZYTEST_EOF
+lazytest_file='doc/binary.md'
+lazytest_line=98
+lazytest_case 'ni nE4 op'\''wp"Nd", a, sin(a)'\'' > binary-lookup
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/binary.md'
+lazytest_line=118
+lazytest_case 'ni nE4 eshuf p'\''^{ri $table, "<binary-lookup"}
+                 r a, sin(a), bsflookup $table, "N", 12, a, "x4d"'\'' \
+               rp'\''b ne c'\'' e'\''wc -l'\''      # any records have a failed lookup?
+' 3<<'LAZYTEST_EOF'
+0
+LAZYTEST_EOF
 lazytest_file='doc/bloom.md'
 lazytest_line=32
 lazytest_case 'ni nE4 rbA[i108 i571 i3491 zB45]
@@ -970,6 +983,19 @@ lazytest_case 'ni --lib fractional2 frac 10 .5
 4
 4.5
 5
+LAZYTEST_EOF
+lazytest_file='doc/geohash.md'
+lazytest_line=21
+lazytest_case 'ni nE4p'\''my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
+          my $gh_base32   = ghe $lat, $lng, 12;   # positive = base32 letters
+          my $gh_binary   = ghe $lat, $lng, -60;  # negative = bits
+
+          r "base32 works" if ghe(ghd($gh_base32)) eq $gh_base32;
+          r "binary works" if ghe(ghd($gh_binary, 60), 60) == $gh_binary'\'' \
+     gc
+' 3<<'LAZYTEST_EOF'
+10000	base32 works
+10000	binary works
 LAZYTEST_EOF
 if ! [[ $SKIP_DOCKER ]]; then
 cat <<'LAZYTEST_EOF'

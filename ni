@@ -5620,7 +5620,7 @@ BEGIN {
   *tpi = \&time_parts_iso_8601;
 }
 
-235 core/pl/geohash.pl
+234 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
@@ -5629,13 +5629,6 @@ use Scalar::Util qw/looks_like_number/;
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
-
-sub geohash_base32_to_binary($) {
-  my $gh_b32 = shift;
-  my $i = length $gh_b32;
-  my $gh = sum map {$geohash_decode{$_} << 5 * (--$i)} split //, $gh_b32;
-  $gh;
-}
 
 sub gh58($)
 {
@@ -5646,37 +5639,52 @@ sub gh58($)
     | ($gh30 & 0x7c00007c00) << 6;
 }
 
+sub gh85($)
+{
+  my $g = shift;
+  $g = ($g &     0x1f00001f)
+     | ($g &   0x1f00001f00) >> 3
+     | ($g & 0x1f00001f0000) >> 6;
+  ($g & 0x7fff000000) >> 9 | $g & 0x7fff;
+}
+
 sub geohash_binary_to_base32($$)
 {
   my ($gh, $p) = @_;
+  my $s;
   if ($p <= 20)
   {
-    $gh = gh58 $gh << $p;
-    my $s = pack "N", $gh;
-    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
-    substr $s, 0, int(($p + 4) / 5);
+    $s = pack "N", gh58 $gh << 20 - $p;
   }
   elsif ($p <= 40)
   {
     $gh <<= 40 - $p;
     my $w1 = gh58 $gh;
     my $w2 = gh58 $gh >> 30;
-    my $s  = pack "N2", $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
-                        $w1 & 0xffffffff;
-    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
-    substr $s, 0, int(($p + 4) / 5);
+    $s = pack "N2", $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
+                    $w1 & 0xffffffff;
   }
   else
   {
     $gh <<= 60 - $p;
     my $w1 = gh58 $gh;
     my $w2 = gh58 $gh >> 30;
-    my $s  = pack "N3", $w2 >> 16,
-                        $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
-                        $w1 & 0xffffffff;
-    $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
-    substr $s, 0, int(($p + 4) / 5);
+    $s = pack "N3", $w2 >> 16,
+                    $w1 >> 32 & 0xffff | $w2 << 16 & 0xffff0000,
+                    $w1 & 0xffffffff;
   }
+
+  $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+  substr $s, 0, int(($p + 4) / 5);
+}
+
+sub geohash_base32_to_binary($)
+{
+  (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x31/;
+  my $bits = 5 * length $gh;
+  my ($n1, $n2, $n3) = unpack "N3", $gh . "\0" x 12;
+  my $n = gh85($n1) << 40 | gh85($n2) << 20 | gh85 $n3;
+  $n >> 60 - $bits;
 }
 
 sub morton_gap($) {
@@ -5698,7 +5706,6 @@ sub morton_ungap($) {
 }
 
 sub geohash_encode {
-  local $_;
   my ($lat, $lng, $precision) = @_;
   $precision ||= 12;
   my $bits = $precision > 0 ? $precision * 5 : -$precision;
@@ -5706,14 +5713,11 @@ sub geohash_encode {
               morton_gap(int(($lng + 180) / 360 * 0x40000000)) << 1)
              >> 60 - $bits;
 
-  $precision > 0 ? join '', reverse map $geohash_alphabet[$gh >> $_ * 5 & 31],
-                                        0 .. $precision - 1
-                 : $gh;
+  $precision > 0 ? geohash_binary_to_base32 $gh, $bits : $gh;
 }
 
 sub geohash_tagged_precision {
-  my ($gh) = @_;
-  $gh &= 0x3fff_ffff_ffff_ffff;
+  my $gh = 0x3fff_ffff_ffff_ffff & shift;
   my $bits = 0;
   for (my $b = 32; $b; $b >>= 1) {
     $bits |= $b if ($gh & ~(-1 << ($bits | $b))) != $gh;
@@ -5722,24 +5726,19 @@ sub geohash_tagged_precision {
 }
 
 sub geohash_decode_tagged {
-  my ($gh) = @_;
-  $gh &= 0x3fff_ffff_ffff_ffff;
+  my $gh = 0x3fff_ffff_ffff_ffff & shift;
   my $tag_bit_index = geohash_tagged_precision($gh);
   geohash_decode($gh & ~(-1 << $tag_bit_index), $tag_bit_index);
 }
 
-sub geohash_decode {
-  local $_;
+sub geohash_decode
+{
   my ($gh, $bits) = @_;
-  unless (defined $bits) {
+  unless (defined $bits)
+  {
     return geohash_decode_tagged($gh)
       if looks_like_number $gh && $gh & 0x4000_0000_0000_0000;
-
-    # Decode gh from base-32
-    $bits = length($gh) * 5;
-    my $n = 0;
-    $n = $n << 5 | $geohash_decode{lc $_} for split //, $gh;
-    $gh = $n;
+    $gh = geohash_base32_to_binary $gh, 60;
   }
   $gh <<= 60 - $bits;
   return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
@@ -5837,9 +5836,9 @@ sub gh_dist_approx {
   # longitude is a different length at different latitudes 
   my $longitude_meters = $morton_longitude_lengths[$gh1 >> ($precision - $MORTON_PRECISION)];
 
-  print("Longitude Length: $longitude_meters\n");
+#  print("Longitude Length: $longitude_meters\n");
   my $dist = sqrt (($north_degrees * $latitude_meters)**2 + ($east_degrees * $longitude_meters)**2);
-  $dist; 
+  $dist;
 }
 
 
@@ -7186,7 +7185,7 @@ sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-32 core/binary/search.pm
+34 core/binary/search.pm
 # Binary searching functions, esp for packed values
 #
 # These functions are useful when you don't have space for a hashtable but want
@@ -7217,7 +7216,9 @@ sub bsf
 sub bsflookup
 {
   my $index = bsf @_[0..3];
-  unpack $_[4], substr $_[0], $index * $_[2], $_[2];
+  my $record = substr $_[0], $index * $_[2], $_[2];
+  my $key    = unpack $_[1], $record;
+  $key == $_[3] ? unpack $_[4], $record : undef;
 }
 53 core/binary/binary.pl
 # Binary import operator.
@@ -9825,7 +9826,7 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-80 doc/binary.md
+126 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
@@ -9906,6 +9907,52 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 ```
 
 ### Packed searching/lookup
+Perl's normal data structures are optimized for performance rather than small
+memory footprint, but sometimes you're up against a hard memory limit. For cases
+like this, you can use things like [bloom filters](bloom.md) or, for associative
+lookups, binary-search tables.
+
+Let's suppose we want to build a lookup table for the `sin` function. In text
+we'd do this:
+
+```sh
+$ ni numbers... p'r a, sin(a)' > lookup-table
+```
+
+Then we'd have TSV/ascii, which isn't very efficient. If we `pack` each value
+into `Nd` (network byte-order `long` followed by a `double`, so 12 bytes per
+entry), then we get a much smaller table:
+
+```bash
+$ ni nE4 op'wp"Nd", a, sin(a)' > binary-lookup
+```
+
+Importantly, we use `o` before `p` because the entries need to be sorted by
+lookup key.
+
+#### Lookups
+Let's use this lookup table in a random-access way. We can read the whole table
+into memory using `ri`, "read into", and then we can use the `bsflookup`
+function to binary-search fixed records. Its signature is:
+
+```pl
+bsflookup($packed_table,        # contents of binary-lookup
+          $key_unpacker,        # "N"
+          $record_length,       # 12
+          $target_key,          # a number
+          $value_unpacker)      # "x4d" (remember to skip over the key)
+```
+
+```bash
+$ ni nE4 eshuf p'^{ri $table, "<binary-lookup"}
+                 r a, sin(a), bsflookup $table, "N", 12, a, "x4d"' \
+               rp'b ne c' e'wc -l'      # any records have a failed lookup?
+0
+```
+
+If a lookup fails, `bsflookup` will return `undef`. You can access the insertion
+location for the missing record using `bsf`, which takes the first four args to
+`bsflookup` and returns a record index. (`bsflookup` uses `bsf` internally.)
 112 doc/closure.md
 # Data closures
 Sometimes it's useful to bundle data with ni so that it's available on a
