@@ -19,12 +19,18 @@ There are a few operators and functions that operate on geohashes:
 ## Geohashes in the perl context
 ```bash
 $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
-          my $gh_base32   = ghe $lat, $lng, 12;   # positive = base32 letters
-          my $gh_binary   = ghe $lat, $lng, -60;  # negative = bits
+          my $bits        = int clip 1, 60, rand(61);
+          my $b32_digits  = int(($bits + 4) / 5);
+          my $gh_base32   = ghe $lat, $lng, $b32_digits;  # positive = letters
+          my $gh_binary   = ghe $lat, $lng, -$bits;       # negative = bits
+          my $gh2_b32     = ghe ghd($gh_base32), $b32_digits;
+          my $gh2_bin     = ghe ghd($gh_binary, $bits), -$bits;
+          my $b32_ok      = $gh2_b32 eq $gh_base32;
+          my $bin_ok      = $gh2_bin == $gh_binary;
 
-          r "base32 works" if ghe(ghd($gh_base32)) eq $gh_base32;
-          r "binary works" if ghe(ghd($gh_binary, 60), 60) == $gh_binary' \
-     gc
-10000	base32 works
-10000	binary works
+          r $b32_ok ? "B32 OK" : "B32 FAIL $lat $lng $gh_base32 $gh2_b32";
+          r $bin_ok ? "BIN OK" : "BIN FAIL $lat $lng $gh_binary $gh2_bin"' \
+     gcfB.
+B32 OK
+BIN OK
 ```

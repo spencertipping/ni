@@ -59,8 +59,8 @@ sub geohash_base32_to_binary($)
 {
   (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x31/;
   my $bits = 5 * length $gh;
-  my ($n1, $n2, $n3) = unpack "N3", $gh . "\0" x 12;
-  my $n = gh85($n1) << 40 | gh85($n2) << 20 | gh85 $n3;
+  my ($n1, $n2, $n3) = unpack "N3", "$gh\0\0\0\0";
+  my $n = gh85($n1) << 40 | gh85($n2 || 0) << 20 | gh85($n3 || 0);
   $n >> 60 - $bits;
 }
 
@@ -113,9 +113,9 @@ sub geohash_decode
   my ($gh, $bits) = @_;
   unless (defined $bits)
   {
-    return geohash_decode_tagged($gh)
-      if looks_like_number $gh && $gh & 0x4000_0000_0000_0000;
-    $gh = geohash_base32_to_binary $gh, 60;
+    return geohash_decode_tagged($gh) if $gh =~ /^\d{19}/ && $gh & 1 << 62;
+    $bits = 5 * length $gh;
+    $gh   = geohash_base32_to_binary $gh;
   }
   $gh <<= 60 - $bits;
   return (morton_ungap($gh)      / 0x40000000 * 180 -  90,
