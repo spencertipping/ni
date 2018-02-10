@@ -76,3 +76,51 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
+
+### Packed searching/lookup
+Perl's normal data structures are optimized for performance rather than small
+memory footprint, but sometimes you're up against a hard memory limit. For cases
+like this, you can use things like [bloom filters](bloom.md) or, for associative
+lookups, binary-search tables.
+
+Let's suppose we want to build a lookup table for the `sin` function. In text
+we'd do this:
+
+```sh
+$ ni numbers... p'r a, sin(a)' > lookup-table
+```
+
+Then we'd have TSV/ascii, which isn't very efficient. If we `pack` each value
+into `Nd` (network byte-order `long` followed by a `double`, so 12 bytes per
+entry), then we get a much smaller table:
+
+```bash
+$ ni nE4 op'wp"Nd", a, sin(a)' > binary-lookup
+```
+
+Importantly, we use `o` before `p` because the entries need to be sorted by
+lookup key.
+
+#### Lookups
+Let's use this lookup table in a random-access way. We can read the whole table
+into memory using `ri`, "read into", and then we can use the `bsflookup`
+function to binary-search fixed records. Its signature is:
+
+```pl
+bsflookup($packed_table,        # contents of binary-lookup
+          $key_unpacker,        # "N"
+          $record_length,       # 12
+          $target_key,          # a number
+          $value_unpacker)      # "x4d" (remember to skip over the key)
+```
+
+```bash
+$ ni nE4 eshuf p'^{ri $table, "<binary-lookup"}
+                 r a, sin(a), bsflookup $table, "N", 12, a, "x4d"' \
+               rp'b ne c' e'wc -l'      # any records have a failed lookup?
+0
+```
+
+If a lookup fails, `bsflookup` will return `undef`. You can access the insertion
+location for the missing record using `bsf`, which takes the first four args to
+`bsflookup` and returns a record index. (`bsflookup` uses `bsf` internally.)

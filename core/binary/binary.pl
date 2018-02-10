@@ -12,6 +12,7 @@ use constant binary_perlgen => gen q{
 };
 
 defperlprefix 'core/binary/bytewriter.pm';
+defperlprefix 'core/binary/search.pm';
 
 our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
 

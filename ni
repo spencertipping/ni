@@ -4657,7 +4657,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-340 core/pl/util.pm
+343 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4814,6 +4814,9 @@ sub within {
 sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
 sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
+
+# ri(my $var, "< file"): read entire contents into
+sub ri  {open my $fh, $_[1] or die "ri $_[1]: $!"; 1 while read $fh, $_[0], 65536, length $_[0]}
 
 sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
 sub basename($) {(dirbase $_[0])[1]}
@@ -7140,9 +7143,10 @@ sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 # particularly common.
 
 defparseralias pycode => pmap q{pydent $_}, generic_code;
-3 core/binary/lib
+4 core/binary/lib
 bytestream.pm
 bytewriter.pm
+search.pm
 binary.pl
 29 core/binary/bytestream.pm
 # Binary byte stream driver.
@@ -7182,7 +7186,40 @@ sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
 
 sub ws($)  {print $_[0]; ()}
 sub wp($@) {ws pack $_[0], @_[1..$#_]}
-52 core/binary/binary.pl
+32 core/binary/search.pm
+# Binary searching functions, esp for packed values
+#
+# These functions are useful when you don't have space for a hashtable but want
+# associative lookups anyway.
+
+# bsf(packed-string, unpack-template, reclength, target-value) -> recindex
+sub bsf
+{
+  my $packed = \shift;
+  my ($unpacker, $reclength, $target) = @_;
+  my $upper = length($$packed) / $reclength;
+  die "bsf: total length " . length($$packed) . " isn't evenly divided "
+    . "by record length $reclength" unless $upper == int $upper;
+
+  for (my ($lower, $mid) = (0, 0);
+       $mid = $upper + $lower >> 1, $upper > 1 + $lower;)
+  {
+    my $midval = unpack $unpacker,
+                 substr $$packed, $mid * $reclength, $reclength;
+    return $mid   if $target == $midval;
+    $upper = $mid if $target <  $midval;
+    $lower = $mid if $target >  $midval;
+  }
+  $upper - 1;
+}
+
+# bsflookup(packed, unpacker, reclength, target, valunpacker) -> val...
+sub bsflookup
+{
+  my $index = bsf @_[0..3];
+  unpack $_[4], substr $_[0], $index * $_[2], $_[2];
+}
+53 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -7197,6 +7234,7 @@ use constant binary_perlgen => gen q{
 };
 
 defperlprefix 'core/binary/bytewriter.pm';
+defperlprefix 'core/binary/search.pm';
 
 our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
 
@@ -9787,7 +9825,7 @@ stream.md
 tutorial.md
 visual.md
 warnings.md
-78 doc/binary.md
+80 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
@@ -9866,6 +9904,8 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 8461	667.75
 12181	620.78
 ```
+
+### Packed searching/lookup
 112 doc/closure.md
 # Data closures
 Sometimes it's useful to bundle data with ni so that it's available on a
