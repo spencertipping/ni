@@ -33,11 +33,17 @@ defoperator stderr_monitor => q{
     my $t2 = time; safewrite_exactly $stdout, $_;
     my $t3 = time;
 
-    # Start the clock only once some data starts moving
-    $start_time ||= $t2;
-
-    $itime += $t2 - $t1;
-    $otime += $t3 - $t2;
+    # Start the clocks only once some data starts moving; we ignore the initial
+    # read/write warmup
+    if ($start_time)
+    {
+      $itime += $t2 - $t1;
+      $otime += $t3 - $t2;
+    }
+    else
+    {
+      $start_time = $t2;
+    }
 
     if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
       $last_update = $t3;
