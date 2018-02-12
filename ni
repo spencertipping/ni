@@ -2713,7 +2713,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-274 core/stream/ops.pl
+279 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2938,9 +2938,14 @@ defoperator file_prepend_name_write => q{
     my ($fname, $l) = /^([^\t\n]*)\t([\s\S]*)/;
     if (!defined $file or $fname ne $file)
     {
-      close $fh, $fh->await if defined $fh;
+      close $fh if defined $fh;
       $file = $fname;
-      $fh = siproc {exec_ni(@$lambda, file_write_op $file)};
+
+      # NB: swfile is much faster than exec_ni(), so use that unless we have a
+      # lambda that requires slower operation.
+      $fh = defined $lambda
+        ? siproc {exec_ni(@$lambda, file_write_op $file)}
+        : swfile $file;
     }
     print $fh $l;
   }
