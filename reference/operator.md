@@ -416,11 +416,11 @@
 	    my ($fname, $l) = /^([^\t\n]*)\t([\s\S]*)/;
 	    if (!defined $file or $fname ne $file)
 	    {
-	      close $fh if defined $fh;
+	      close $fh, $fh->can('await') && $fh->await if defined $fh;
 	      $file = $fname;
 	
-	      # NB: swfile is much faster than exec_ni(), so use that unless we have a
-	      # lambda that requires slower operation.
+	      # NB: swfile has much lower startup overhead than exec_ni(), so use that
+	      # unless we have a lambda that requires slower operation.
 	      $fh = defined $lambda
 	        ? siproc {exec_ni(@$lambda, file_write_op $file)}
 	        : swfile $file;
