@@ -1470,6 +1470,14 @@
 ## IMPLEMENTATION
 	exec 'uniq'
 
+# OPERATOR unordered_count
+
+## IMPLEMENTATION
+	
+	  my %h;
+	  chomp, ++$h{$_} while <STDIN>;
+	  print "$h{$_}\t$_\n" for sort keys %h;
+
 # OPERATOR vertical_apply
 
 ## IMPLEMENTATION

@@ -3978,7 +3978,7 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-196 core/row/row.pl
+204 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -4175,6 +4175,14 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+
+defoperator unordered_count => q{
+  my %h;
+  chomp, ++$h{$_} while <STDIN>;
+  print "$h{$_}\t$_\n" for sort keys %h;
+};
+
+defshort '/U', pmap q{unordered_count_op}, pnone;
 189 core/row/scale.pl
 # Row-based process scaling.
 # Allows you to bypass process bottlenecks by distributing rows across multiple

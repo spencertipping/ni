@@ -1815,6 +1815,11 @@
 	  ) -> {row_fixed_scale_op @$_}
 	)
 
+# SHORT OPERATOR /U
+
+## SYNTAX
+	'' -> {unordered_count_op}
+
 # SHORT OPERATOR /W
 
 ## SYNTAX

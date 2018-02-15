@@ -194,3 +194,11 @@ defoperator uniq => q{exec 'uniq'};
 
 defshort '/c', pmap q{count_op}, pnone;
 defshort '/u', pmap q{uniq_op},  pnone;
+
+defoperator unordered_count => q{
+  my %h;
+  chomp, ++$h{$_} while <STDIN>;
+  print "$h{$_}\t$_\n" for sort keys %h;
+};
+
+defshort '/U', pmap q{unordered_count_op}, pnone;
