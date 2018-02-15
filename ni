@@ -8173,7 +8173,7 @@ caterwaul(':all')(function () {
                                  p(i)               = this.data[i],
                                  pnorm(i)           = (this.data[i] - this.offset()) / this.range() + 0.5,
 
-                                 push(x, r)         = this.n++ < this.c ? this.set(this.n, +x) : this /+x /~uniform_push/ r,
+                                 push(x, r)         = this.n++ < this.c ? this.set(this.n - 1, +x) : this /+x /~uniform_push/ r,
                                  uniform_push(x, r) = this.set(r * this.n | 0, x) -when [r * this.n < this.c]]]})();
 32 core/jsplot/label.waul
 // A column vector of labeled data.
