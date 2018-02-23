@@ -10,8 +10,11 @@ use constant LOG2R => 1 / LOG2;
 
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
-sub mean {scalar @_ && sum(@_) / @_}
-
+sub mean {scalar @_ && sum(@_) / @_;}
+sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[int($length/2)];}
+sub gmean {exp mean map {log $_} @_;}
+sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
+ 
 sub log2($) {LOG2R * log $_[0]}
 
 sub entropy {
