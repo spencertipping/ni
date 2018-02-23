@@ -38,9 +38,9 @@
 	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
 	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
 	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
-	| 'QP' <'', evaluate as set terminal qt persist;>
-	| 'WP' <'', evaluate as set terminal wx persist;>
-	| 'XP' <'', evaluate as set terminal x11 persist;>
+	| 'Q' 'P'? -> {"set terminal qt persist;"}
+	| 'W' 'P'? -> {"set terminal wx persist;"}
+	| 'X' 'P'? -> {"set terminal x11 persist;"}
 	)
 
 # EXTENSIBLE DISPATCH TABLE hadoopalt

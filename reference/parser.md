@@ -487,6 +487,7 @@
 	    <gnuplot_colspec>
 	    <gnuplot_code>
 	  ) -> {stream_to_gnuplot_op @$_}
+	| 'G*' <gnuplot_code> -> {gnuplot_all_op $_}
 	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 	| 'GF^' <shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
 	| 'H' (
@@ -1238,9 +1239,9 @@
 	| 'J' <gnuplot_terminal_size> -> {"set terminal jpeg $_;"}
 	| 'P' <gnuplot_terminal_size> -> {"set terminal png $_;"}
 	| 'PC' <gnuplot_terminal_size> -> {"set terminal pngcairo $_;"}
-	| 'QP' <'', evaluate as set terminal qt persist;>
-	| 'WP' <'', evaluate as set terminal wx persist;>
-	| 'XP' <'', evaluate as set terminal x11 persist;>
+	| 'Q' 'P'? -> {"set terminal qt persist;"}
+	| 'W' 'P'? -> {"set terminal wx persist;"}
+	| 'X' 'P'? -> {"set terminal x11 persist;"}
 	)
 
 # PARSER dsp/hadoopalt

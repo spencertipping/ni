@@ -458,6 +458,50 @@
 	  cell_eval {args => '@precision',
 	             each => q{$xs[$_] = geohash_encode split(/,/, $xs[$_]), @precision}}, @_;
 
+# OPERATOR gnuplot_all
+
+## IMPLEMENTATION
+	
+	  my $code_prefix = shift || "set terminal wx persist";
+	  my @col_vectors;
+	  my @col_titles;
+	
+	  chomp(my $l = <STDIN>);
+	  my @fs = split /\t/, $l;
+	  if (grep !looks_like_number($_), @fs)
+	  {
+	    # First line is a header
+	    @col_titles = @fs[1..$#fs];
+	  }
+	  else
+	  {
+	    # First line is data
+	    @col_titles  = ("A".."Z")[1..$#fs];
+	    @col_vectors = map [$_], @fs;
+	  }
+	
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my @fs = split /\t/;
+	    push @{$col_vectors[$_] ||= []}, 0+$fs[$_] for 0..$#fs;
+	  }
+	
+	  # NB: col A is implicitly the shared X coordinate
+	  my $code = $code_prefix
+	    . ";plot "
+	    . join",", map "\"-\" with lines title \"$_\"", @col_titles;
+	
+	  my $xs = shift @col_vectors;
+	  my $fh = siproc {exec 'gnuplot', '-e', $code};
+	  for my $v (@col_vectors)
+	  {
+	    print $fh "$$xs[$_]\t$$v[$_]\n" for 0..$#$v;
+	    print $fh "e\n";
+	  }
+	  close $fh;
+	  $fh->await;
+
 # OPERATOR hadoop_make_nukeable
 
 ## IMPLEMENTATION

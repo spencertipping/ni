@@ -1658,6 +1658,11 @@
 	  <gnuplot_code>
 	) -> {stream_to_gnuplot_op @$_}
 
+# SHORT OPERATOR /G*
+
+## SYNTAX
+	<gnuplot_code> -> {gnuplot_all_op $_}
+
 # SHORT OPERATOR /GF
 
 ## SYNTAX
