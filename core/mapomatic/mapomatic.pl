@@ -1,7 +1,7 @@
 # Map-O-Matic
 # Runs a webserver that uses GeoJSON to render a map.
 
-use constant geojson_html => <<'EOF';
+use constant geojson_html_gen => gen <<'EOF';
 <!DOCTYPE html>
 <!-- NB: code template swiped from geojson.io, with my mapbox access key -->
 
@@ -47,19 +47,6 @@ var map = L.mapbox.map('map');
 
 L.mapbox.tileLayer('mapbox.streets').addTo(map);
 
-$.getJSON('map.geojson', function(geojson) {
-    var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
-    var bounds = geojsonLayer.getBounds();
-    if (bounds.isValid()) {
-        map.fitBounds(geojsonLayer.getBounds());
-    } else {
-        map.setView([0, 0], 2);
-    }
-    geojsonLayer.eachLayer(function(l) {
-        showProperties(l);
-    });
-});
-
 function showProperties(l) {
     var properties = l.toGeoJSON().properties;
     var table = document.createElement('table');
@@ -84,6 +71,22 @@ function createTableRows(key, value) {
     return tr
 }
 
+geojson_callback = function(geojson) {
+  var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
+  var bounds = geojsonLayer.getBounds();
+  if (bounds.isValid()) {
+      map.fitBounds(geojsonLayer.getBounds());
+  } else {
+      map.setView([0, 0], 2);
+  }
+  geojsonLayer.eachLayer(function(l) {
+      showProperties(l);
+  });
+};
+</script>
+<script id='geojson'>
+geojson_callback(%geojson);
+$('#geojson').remove();
 </script>
 </body>
 </html>
@@ -97,9 +100,8 @@ sub mapomatic_server {
   $|++;
   http $port, sub {
     my ($url, $req, $reply) = @_;
-    return print "http://localhost:$port/\n"    unless defined $reply;
-    return http_reply $reply, 200, geojson_html if $url eq '/';
-    return http_reply $reply, 200, $geojson     if $url eq '/map.geojson';
+    return print "http://localhost:$port/\n" unless defined $reply;
+    return http_reply $reply, 200, geojson_html_gen->(geojson => $geojson) if $url eq '/';
     return http_reply $reply, 404, $url;
   };
 }

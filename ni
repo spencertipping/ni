@@ -5450,7 +5450,7 @@ sub in_poly
   }
   $hits & 1;
 }
-208 core/pl/time.pl
+215 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5477,6 +5477,13 @@ sub time_epoch_pieces($;$) {
   $pieces[5] += 1900;
   $pieces[4]++;
   @pieces[time_element_indexes $es];
+}
+
+sub time_epoch_formatted($;$)
+{
+  # TODO
+  my ($es, $t) = $_[0] =~ /^[-:. SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+  my $pieces = join"", $es =~ /\w/g;
 }
 
 sub time_pieces_epoch {
@@ -5659,7 +5666,7 @@ BEGIN {
   *tpi = \&time_parts_iso_8601;
 }
 
-248 core/pl/geohash.pl
+249 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
@@ -5875,7 +5882,8 @@ sub gh_dist_approx {
   my ($gh1, $gh2, $precision) = @_;
   my $diff = ($gh1 ^ $gh2) << (60 - $precision);
   # need to be in the same 10-bit geohash
-  return gh_dist gb3 $gh1, gb3 $gh2 if $diff & 0x0ffc_0000_0000_0000;
+  return gh_dist_exact(geohash_binary_to_base32($gh1, $precision),
+                       geohash_binary_to_base32($gh2, $precision)) if $diff & 0x0ffc_0000_0000_0000;
   my $diff_msb_index = most_significant_even_bit_index $diff;
 #  printf "%s: %d\n", "Most significant difference at position:", $diff_msb_index - $precision;
   my $ms_diff = $diff  >> max 0, $diff_msb_index - $MORTON_PRECISION;
@@ -9087,11 +9095,11 @@ q{
 };
 
 defshort '/geojsonify', pmap q{geojsonify_op}, pnone;
-111 core/mapomatic/mapomatic.pl
+113 core/mapomatic/mapomatic.pl
 # Map-O-Matic
 # Runs a webserver that uses GeoJSON to render a map.
 
-use constant geojson_html => <<'EOF';
+use constant geojson_html_gen => gen <<'EOF';
 <!DOCTYPE html>
 <!-- NB: code template swiped from geojson.io, with my mapbox access key -->
 
@@ -9137,19 +9145,6 @@ var map = L.mapbox.map('map');
 
 L.mapbox.tileLayer('mapbox.streets').addTo(map);
 
-$.getJSON('map.geojson', function(geojson) {
-    var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
-    var bounds = geojsonLayer.getBounds();
-    if (bounds.isValid()) {
-        map.fitBounds(geojsonLayer.getBounds());
-    } else {
-        map.setView([0, 0], 2);
-    }
-    geojsonLayer.eachLayer(function(l) {
-        showProperties(l);
-    });
-});
-
 function showProperties(l) {
     var properties = l.toGeoJSON().properties;
     var table = document.createElement('table');
@@ -9174,6 +9169,22 @@ function createTableRows(key, value) {
     return tr
 }
 
+geojson_callback = function(geojson) {
+  var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
+  var bounds = geojsonLayer.getBounds();
+  if (bounds.isValid()) {
+      map.fitBounds(geojsonLayer.getBounds());
+  } else {
+      map.setView([0, 0], 2);
+  }
+  geojsonLayer.eachLayer(function(l) {
+      showProperties(l);
+  });
+};
+</script>
+<script id='geojson'>
+geojson_callback(%geojson);
+$('#geojson').remove();
 </script>
 </body>
 </html>
@@ -9187,9 +9198,8 @@ sub mapomatic_server {
   $|++;
   http $port, sub {
     my ($url, $req, $reply) = @_;
-    return print "http://localhost:$port/\n"    unless defined $reply;
-    return http_reply $reply, 200, geojson_html if $url eq '/';
-    return http_reply $reply, 200, $geojson     if $url eq '/map.geojson';
+    return print "http://localhost:$port/\n" unless defined $reply;
+    return http_reply $reply, 200, geojson_html_gen->(geojson => $geojson) if $url eq '/';
     return http_reply $reply, 404, $url;
   };
 }

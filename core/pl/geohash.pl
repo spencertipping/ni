@@ -213,7 +213,8 @@ sub gh_dist_approx {
   my ($gh1, $gh2, $precision) = @_;
   my $diff = ($gh1 ^ $gh2) << (60 - $precision);
   # need to be in the same 10-bit geohash
-  return gh_dist gb3 $gh1, gb3 $gh2 if $diff & 0x0ffc_0000_0000_0000;
+  return gh_dist_exact(geohash_binary_to_base32($gh1, $precision),
+                       geohash_binary_to_base32($gh2, $precision)) if $diff & 0x0ffc_0000_0000_0000;
   my $diff_msb_index = most_significant_even_bit_index $diff;
 #  printf "%s: %d\n", "Most significant difference at position:", $diff_msb_index - $precision;
   my $ms_diff = $diff  >> max 0, $diff_msb_index - $MORTON_PRECISION;

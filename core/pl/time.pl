@@ -26,6 +26,13 @@ sub time_epoch_pieces($;$) {
   @pieces[time_element_indexes $es];
 }
 
+sub time_epoch_formatted($;$)
+{
+  # TODO
+  my ($es, $t) = $_[0] =~ /^[-:. SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+  my $pieces = join"", $es =~ /\w/g;
+}
+
 sub time_pieces_epoch {
   local $_;
   my ($es, @ps) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
