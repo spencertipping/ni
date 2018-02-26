@@ -9071,11 +9071,11 @@ q{
 };
 
 defshort '/geojsonify', pmap q{geojsonify_op}, pnone;
-112 core/mapomatic/mapomatic.pl
+129 core/mapomatic/mapomatic.pl
 # Map-O-Matic
 # Generates a bl.ocks.org URL that points to a geojson.io map.
 
-use constant geojson_page => <<'EOF';
+use constant geojson_page_json => json_encode <<'EOF';
 <!DOCTYPE html>
 <!-- NB: code template swiped from geojson.io, with my mapbox access key -->
 
@@ -9163,23 +9163,40 @@ function createTableRows(key, value) {
 </html>
 EOF
 
+# NB: we do indeed want to escape all of the quote marks in these things. This
+# is an optimization that makes it much faster to format the JSON that
+# gist.github.com expects. (See the mapomatic operator for some details.)
 
 use constant geojson_container_gen => gen
-  '{"type":"FeatureCollection","features":[%features]}';
+  '{\"type\":\"FeatureCollection\",\"features\":[%features]}';
+
+use constant mapomatic_upload_gen => gen
+    '{'
+  .   '"description":"mapomatic",'
+  .   '"files":{'
+  .     '"index.html":{"content":%page},'
+  .     '"map.geojson":{"content":"%escaped_geojson"}'
+  .   '}'
+  . '}';
 
 defoperator mapomatic => q{
-  my $geojson_features = geojson_container_gen->(features => join",", <STDIN>);
+  my @escaped_lines;
+  while (<STDIN>)
+  {
+    chomp;
+    s/([\\\\"])/\\\\$1/g;
+    push @escaped_lines, $_;
+  }
+  my $geojson_features =
+    geojson_container_gen->(features => join",", @escaped_lines);
+
   my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
-  print $in json_encode {
-    description => 'mapomatic',
-    files => {
-      'index.html' => {content => geojson_page},
-      'map.geojson' => {content => $geojson_features}
-    }
-  };
+  print $in mapomatic_upload_gen->(
+    page            => geojson_page_json,
+    escaped_geojson => $geojson_features);
   close $in;
   my $out_json = join'', <$out>;
-  my ($gist_id) = json_decode($out_json)->{id};
+  my ($gist_id) = $out_json =~ /"id"\s*:\s*"([0-9a-f]+)"/;
   print "http://bl.ocks.org/anonymous/raw/$gist_id";
 };
 

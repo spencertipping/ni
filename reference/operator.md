@@ -737,18 +737,23 @@
 
 ## IMPLEMENTATION
 	
-	  my $geojson_features = geojson_container_gen->(features => join",", <STDIN>);
+	  my @escaped_lines;
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    s/([\\"])/\\$1/g;
+	    push @escaped_lines, $_;
+	  }
+	  my $geojson_features =
+	    geojson_container_gen->(features => join",", @escaped_lines);
+	
 	  my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
-	  print $in json_encode {
-	    description => 'mapomatic',
-	    files => {
-	      'index.html' => {content => geojson_page},
-	      'map.geojson' => {content => $geojson_features}
-	    }
-	  };
+	  print $in mapomatic_upload_gen->(
+	    page            => geojson_page_json,
+	    escaped_geojson => $geojson_features);
 	  close $in;
 	  my $out_json = join'', <$out>;
-	  my ($gist_id) = json_decode($out_json)->{id};
+	  my ($gist_id) = $out_json =~ /"id"\s*:\s*"([0-9a-f]+)"/;
 	  print "http://bl.ocks.org/anonymous/raw/$gist_id";
 
 # OPERATOR md5
