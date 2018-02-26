@@ -9,7 +9,8 @@ use Scalar::Util qw/looks_like_number/;
 #
 #   lat lng ...                     # render a point
 #   lat,lng ...                     # ditto
-#   lat,lng +lat,lng ...            # render a point with a delta
+#   lat,lng >lat,lng ...            # render a line between two points
+#   lat,lng +dlat,dlng ...          # render a line towards a delta
 #   POINT(...) ...                  # and other WKT formats
 #   POLYGON(...) ...
 #   9q5c ...                        # base-32 geohash
@@ -136,10 +137,15 @@ sub geojson_parse
   {
     my ($lat1, $lng1) = ($1, $2);
 
-    # Do we have another lat/lng as the second arg?
-    if ($_[1] =~ /^\+([-+0-9.eE]+),([-+0-9.eE]+)$/)
+    # Do we have another lat/lng as the second arg? (or a delta?)
+    if ($_[1] =~ /^[>+]([-+0-9.eE]+),([-+0-9.eE]+)$/)
     {
       my ($lat2, $lng2) = ($1, $2);
+      if ($_[1] =~ /^\+/)   # + means delta
+      {
+        $lat2 += $lat1;
+        $lng2 += $lng1;
+      }
       return (geojson_vector($lat1, $lng1, $lat2, $lng2),
               geojson_props(@_[2..$#_]));
     }
