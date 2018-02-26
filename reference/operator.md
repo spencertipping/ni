@@ -737,24 +737,7 @@
 
 ## IMPLEMENTATION
 	
-	  my @escaped_lines;
-	  while (<STDIN>)
-	  {
-	    chomp;
-	    s/([\\"])/\\$1/g;
-	    push @escaped_lines, $_;
-	  }
-	  my $geojson_features =
-	    geojson_container_gen->(features => join",", @escaped_lines);
-	
-	  my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
-	  print $in mapomatic_upload_gen->(
-	    page            => geojson_page_json,
-	    escaped_geojson => $geojson_features);
-	  close $in;
-	  my $out_json = join'', <$out>;
-	  my ($gist_id) = $out_json =~ /"id"\s*:\s*"([0-9a-f]+)"/;
-	  print "http://bl.ocks.org/anonymous/raw/$gist_id";
+	  mapomatic_server 32768, geojson_container_gen->(features => join",", <STDIN>);
 
 # OPERATOR md5
 
