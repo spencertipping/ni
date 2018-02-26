@@ -4471,7 +4471,7 @@ util.pm
 math.pm
 stream.pm
 reducers.pm
-wkt.pm
+wkt.pl
 time.pl
 geohash.pl
 pl.pl
@@ -5350,7 +5350,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-89 core/pl/wkt.pm
+89 core/pl/wkt.pl
 # WKT and polygons (ported from nfu)
 
 sub line_opposite
@@ -5989,7 +5989,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/hash_util.pm
                             core/pl/math.pm
                             core/pl/stream.pm
-                            core/pl/wkt.pm
+                            core/pl/wkt.pl
                             core/pl/geohash.pl
                             core/pl/time.pl
                             core/cell/murmurhash.pl
