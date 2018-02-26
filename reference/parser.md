@@ -568,7 +568,7 @@
 	    <integer>?
 	    </qfn>
 	  ) -> {memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]}
-	| 'MM' '' -> {mapomatic_op}
+	| 'MM' '' -> {[geojsonify_op, mapomatic_op]}
 	| 'N' (
 	    <colspec1>?
 	    <pycode>
@@ -626,6 +626,7 @@
 	    ) -> {$$_[1]} -> {partial_sort_op               $_}
 	  | <sortspec> -> {row_sort_op        sort_args @$_}
 	  )
+	| 'geojsonify' '' -> {geojsonify_op}
 	| 'gg' (
 	    <colspec1>
 	    <sortspec>

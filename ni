@@ -5399,7 +5399,7 @@ sub parse_wkb
   my $template =
       $type == 2 || $type == 3 ? "x$prefix $long/(   $long/($long X4 $long/($float$float)))"
     : $type == 5 || $type == 6 ? "x$prefix $long/(x5 $long/($long X4 $long/($float$float)))"
-    :                            die "parse_wkb: unknown type $type";
+    :                            die "parse_wkb: unknown type $type in $_[0]";
 
   my @pts = unpack $template, $wkb;
 
@@ -8863,69 +8863,327 @@ Usage: ni --js [port=8090]
 Runs a web interface that allows you to visualize data streams. See ni
 //help/visual for details.
 _
-1 core/mapomatic/lib
+2 core/mapomatic/lib
+geojson.pl
 mapomatic.pl
-60 core/mapomatic/mapomatic.pl
-# Map-O-Matic
-# Generates a data: url that maps points on a page using Leaflet.
+204 core/mapomatic/geojson.pl
+# GeoJSON functions
+# Converts WKTs and other things to geoJSON for export to Map-O-Matic.
 
-sub mapomatic_compress {
-  local $_ = shift;
-  s/^\s+//mg; s/\v+//g; s/\s+/ /g;
-  $_;
+use Scalar::Util qw/looks_like_number/;
+
+# The universal operator here is "geojsonify", which takes inputs in a few
+# different formats and emits one line of geoJSON each. Specifically, these
+# formats are supported:
+#
+#   lat lng ...                     # render a point
+#   lat,lng ...                     # ditto
+#   lat,lng +lat,lng ...            # render a point with a delta
+#   POINT(...) ...                  # and other WKT formats
+#   POLYGON(...) ...
+#   9q5c ...                        # base-32 geohash
+#   6114200779206244058 ...         # tagged geohash
+#   010600... ...                   # WKB
+#   {...} ...                       # geoJSON
+#
+# gh60s will be rendered as points, whereas anything less precise will be a
+# bounding polygon.
+#
+# You can specify other attributes in the columns rightwards of the geometry.
+# Those can be any of the following:
+#
+#   name=value                      # stuff something into properties
+#   {"name":"value",...}            # merge into properties
+#   #341802                         # set rendering color
+#   arbitrary text                  # set title attribute so you get a tooltip
+#
+# The geoJSON lines coming out of this operator are just the individual
+# features. To render as geoJSON for real, you'll want to collect these lines
+# and wrap with the boilerplate:
+#
+# {
+#   "type": "FeatureCollection",
+#   "features": [
+#     <your-geojson-features>
+#   ]
+# }
+#
+# ni's mapomatic operator does all of this for you.
+
+use constant geojson_point_gen => gen '{"type":"Point","coordinates":[%x,%y]}';
+use constant geojson_vector_gen => gen
+  '{"type":"LineString","coordinates":[[%x1,%y1],[%x2,%y2]]}';
+
+use constant geojson_box_gen => gen
+    '{'
+  .   '"type":"Polygon",'
+  .   '"coordinates":['
+  .     '[[%w,%s],[%e,%s],[%e,%n],[%w,%n],[%w,%s]]'
+  .   ']'
+  . '}';
+
+use constant geojson_polygon_gen => gen
+    '{'
+  .   '"type":"Polygon",'
+  .   '"coordinates":[%linear_rings]'
+  . '}';
+
+# Individual geojson parsing cases
+sub geojson_point
+{
+  my ($lat, $lng) = @_;
+  geojson_point_gen->(x => $lng, y => $lat);
 }
 
-use constant mapomatic_header => <<'EOF';
+sub geojson_vector
+{
+  my ($lat1, $lng1, $lat2, $lng2) = @_;
+  geojson_vector_gen->(x1 => $lng1, y1 => $lat1,
+                       x2 => $lng2, y2 => $lat2);
+}
+
+sub geojson_box
+{
+  my ($n, $s, $e, $w) = @_;
+  geojson_box_gen->(n => $n, s => $s, e => $e, w => $w);
+}
+
+use constant geojson_ring_gen      => gen '[%points]';
+use constant geojson_ringpoint_gen => gen '[%x,%y]';
+
+sub geojson_polygon
+{
+  my ($wkx) = @_;
+  my $rings = ($wkx =~ /^[A-Za-z]/ ? parse_wkt $wkx : parse_wkb $wkx)->{rings};
+  my $json_rings = join",", map {
+    my $lr = $_;
+    my @ps;
+    for (my $i = 0; $i + 1 < $#$lr; $i += 2)
+    {
+      push @ps, geojson_ringpoint_gen->(x => $$lr[$i], y => $$lr[$i + 1]);
+    }
+    geojson_ring_gen->(points => join",", @ps);
+  } @$rings;
+  geojson_polygon_gen->(linear_rings => $json_rings);
+}
+
+# Property extraction
+sub geojson_props
+{
+  my $props = {title => ''};
+  for (@_)
+  {
+    %$props = (%$props, %{json_decode $_}), next if /^{/;
+    $$props{$1} = $2, next                       if /([^=]+)=(.*)$/;
+    $$props{'marker-color'}
+      = $$props{'stroke'}
+      = $$props{'fill'} = $_, next               if /^#/;
+    $$props{title} .= $_;
+  }
+  $props;
+}
+
+# geojson_parse_geometry(F_) -> ($geometry_obj, $properties_obj)
+sub geojson_parse
+{
+  # Detect obvious cases like WKT, WKB, and JSON
+  if ($_[0] =~ /^{/)
+  {
+    my $decoded = json_decode $_[0];
+    (json_encode $$decoded{geometry}, $$decoded{properties});
+  }
+  elsif ($_[0] =~ /^POINT/)
+  {
+    my ($lng, $lat) = $_[0] =~ /[-+0-9.eE]+/g;
+    return (geojson_point($lat, $lng), geojson_props(@_[1..$#_]));
+  }
+  elsif ($_[0] =~ /^M|^P/)
+  {
+    return (geojson_polygon($_[0]), geojson_props(@_[1..$#_]));
+  }
+  elsif ($_[0] =~ /^([-+0-9.eE]+),([-+0-9.eE]+)$/)
+  {
+    my ($lat1, $lng1) = ($1, $2);
+
+    # Do we have another lat/lng as the second arg?
+    if ($_[1] =~ /^\+([-+0-9.eE]+),([-+0-9.eE]+)$/)
+    {
+      my ($lat2, $lng2) = ($1, $2);
+      return (geojson_vector($lat1, $lng1, $lat2, $lng2),
+              geojson_props(@_[2..$#_]));
+    }
+    else
+    {
+      # Just a point
+      return (geojson_point($lat1, $lng1), geojson_props(@_[1..$#_]));
+    }
+  }
+  elsif ($_[0] =~ /^0[01](?:0000000[2356]|0[2356]000000)[0-9A-Fa-f]{4,}$/)
+  {
+    # WKB
+    return (geojson_polygon($_[0]), geojson_props(@_[1..$#_]));
+  }
+  elsif (looks_like_number $_[0] && $_[0] & 1 << 62)
+  {
+    # Tagged geohash
+    my $prec = geohash_tagged_precision $_[0];
+    if ($prec == 60)
+    {
+      my ($lat, $lng) = geohash_decode($_[0]);
+      return (geojson_point($lat, $lng), geojson_props(@_[1..$#_]));
+    }
+    else
+    {
+      my ($n, $s, $e, $w) = geohash_box(gb3 $_[0] & 0x0fff_ffff_ffff_ffff, $prec);
+      return (geojson_box($n, $s, $e, $w), geojson_props(@_[1..$#_]));
+    }
+  }
+  elsif (looks_like_number $_[0] && $_[0] >= -90 && $_[0] <= 90)
+  {
+    # A latitude, so assume the next field is the longitude
+    return (geojson_point($_[0], $_[1]), geojson_props(@_[2..$#_]));
+  }
+  elsif ($_[0] =~ /[0-9a-z]+/)
+  {
+    # base-32 geohash
+    my $geom = length $_[0] == 12 ? geojson_point(geohash_decode $_[0])
+                                  : geojson_box(geohash_box $_[0]);
+    return ($geom, geojson_props @_[1..$#_]);
+  }
+  else
+  {
+    die "geojson_parse: unknown format for row @_";
+  }
+}
+
+use constant geojson_row_gen => gen
+  '{"type":"Feature","geometry":%geom,"properties":%props}';
+
+defoperator geojsonify =>
+q{
+  while (<STDIN>)
+  {
+    chomp;
+    my ($geom, $props) = geojson_parse(split /\t/);
+    print geojson_row_gen->(geom  => $geom,
+                            props => json_encode($props)), "\n";
+  }
+};
+
+defshort '/geojsonify', pmap q{geojsonify_op}, pnone;
+112 core/mapomatic/mapomatic.pl
+# Map-O-Matic
+# Generates a bl.ocks.org URL that points to a geojson.io map.
+
+use constant geojson_page => <<'EOF';
+<!DOCTYPE html>
+<!-- NB: code template swiped from geojson.io, with my mapbox access key -->
+
 <html>
 <head>
-  <link rel="stylesheet"href="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css"/>
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
-  <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
-  <style>body {margin: 0}</style>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+  <style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+  .marker-properties {
+    border-collapse:collapse;
+    font-size:11px;
+    border:1px solid #eee;
+    margin:0;
+}
+.marker-properties th {
+    white-space:nowrap;
+    border:1px solid #eee;
+    padding:5px 10px;
+}
+.marker-properties td {
+    border:1px solid #eee;
+    padding:5px 10px;
+}
+.marker-properties tr:last-child td,
+.marker-properties tr:last-child th {
+    border-bottom:none;
+}
+.marker-properties tr:nth-child(even) th,
+.marker-properties tr:nth-child(even) td {
+    background-color:#f7f7f7;
+}
+  </style>
+  <script src='//api.tiles.mapbox.com/mapbox.js/v2.2.2/mapbox.js'></script>
+  <script src='//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js' ></script>
+  <link href='//api.tiles.mapbox.com/mapbox.js/v2.2.2/mapbox.css' rel='stylesheet' />
 </head>
-<body id='map'>
-  <script type='geodata'>
-EOF
+<body>
+<div id='map'></div>
+<script type='text/javascript'>
+L.mapbox.accessToken = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';
+var map = L.mapbox.map('map');
 
-use constant mapomatic_footer => <<'EOF';
-  </script>
-  <script>
-  $(function () {
-    var rf = function () {
-      if ($('#map').height() !== $(window).height())
-        $('#map').height($(window).height());
-    };
-    $(window).resize(rf);
-    setTimeout(rf, 100);
-    var m = L.map('map');
-    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
-                {attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
-    var sy = 0, sx = 0;
-    var ls = $('script[type="geodata"]').text().replace(/^\s*|\s*$/g, '').split(/~/);
-    for (var i = 0, l = ls.length; i < l; ++i) {
-      var ps = ls[i].split(/\s+/);
-      var ll = [+ps[0], +ps[1]];
-      L.marker(ll).addTo(m).bindPopup(ps.slice(2).join(' '));
-      sy += ll[0];
-      sx += ll[1];
+L.mapbox.tileLayer('mapbox.streets').addTo(map);
+
+$.getJSON('map.geojson', function(geojson) {
+    var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
+    var bounds = geojsonLayer.getBounds();
+    if (bounds.isValid()) {
+        map.fitBounds(geojsonLayer.getBounds());
+    } else {
+        map.setView([0, 0], 2);
     }
-    m.setView([sy / ls.length, sx / ls.length], 4);
-  });
-  </script>
+    geojsonLayer.eachLayer(function(l) {
+        showProperties(l);
+    });
+});
+
+function showProperties(l) {
+    var properties = l.toGeoJSON().properties;
+    var table = document.createElement('table');
+    table.setAttribute('class', 'marker-properties display')
+    for (var key in properties) {
+        var tr = createTableRows(key, properties[key]);
+        table.appendChild(tr);
+    }
+    if (table) l.bindPopup(table);
+}
+
+function createTableRows(key, value) {
+    var tr = document.createElement('tr');
+    var th = document.createElement('th');
+    var td = document.createElement('td');
+    key = document.createTextNode(key);
+    value = document.createTextNode(value);
+    th.appendChild(key);
+    td.appendChild(value);
+    tr.appendChild(th);
+    tr.appendChild(td);
+    return tr
+}
+
+</script>
 </body>
 </html>
 EOF
 
+
+use constant geojson_container_gen => gen
+  '{"type":"FeatureCollection","features":[%features]}';
+
 defoperator mapomatic => q{
-  eval {require MIME::Base64};
-  my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
-  print "data:text/html;base64," . MIME::Base64::encode_base64(
-    mapomatic_compress(mapomatic_header)
-      . $encoded_points
-      . mapomatic_compress(mapomatic_footer)) . "\n\0";
+  my $geojson_features = geojson_container_gen->(features => join",", <STDIN>);
+  my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
+  print $in json_encode {
+    description => 'mapomatic',
+    files => {
+      'index.html' => {content => geojson_page},
+      'map.geojson' => {content => $geojson_features}
+    }
+  };
+  close $in;
+  my $out_json = join'', <$out>;
+  my ($gist_id) = json_decode($out_json)->{id};
+  print "http://bl.ocks.org/anonymous/raw/$gist_id";
 };
 
-defshort '/MM',  pmap q{mapomatic_op}, pnone;
+defshort '/MM',  pmap q{[geojsonify_op, mapomatic_op]}, pnone;
 1 core/docker/lib
 docker.pl
 88 core/docker/docker.pl

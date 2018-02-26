@@ -46,7 +46,7 @@ sub parse_wkb
   my $template =
       $type == 2 || $type == 3 ? "x$prefix $long/(   $long/($long X4 $long/($float$float)))"
     : $type == 5 || $type == 6 ? "x$prefix $long/(x5 $long/($long X4 $long/($float$float)))"
-    :                            die "parse_wkb: unknown type $type";
+    :                            die "parse_wkb: unknown type $type in $_[0]";
 
   my @pts = unpack $template, $wkb;
 

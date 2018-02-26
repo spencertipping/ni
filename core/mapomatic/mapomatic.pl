@@ -1,60 +1,112 @@
 # Map-O-Matic
-# Generates a data: url that maps points on a page using Leaflet.
+# Generates a bl.ocks.org URL that points to a geojson.io map.
 
-sub mapomatic_compress {
-  local $_ = shift;
-  s/^\s+//mg; s/\v+//g; s/\s+/ /g;
-  $_;
-}
+use constant geojson_page => <<'EOF';
+<!DOCTYPE html>
+<!-- NB: code template swiped from geojson.io, with my mapbox access key -->
 
-use constant mapomatic_header => <<'EOF';
 <html>
 <head>
-  <link rel="stylesheet"href="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.css"/>
-  <script src="http://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.3/leaflet.js"></script>
-  <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
-  <style>body {margin: 0}</style>
+  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+  <style>
+  body { margin:0; padding:0; }
+  #map { position:absolute; top:0; bottom:0; width:100%; }
+  .marker-properties {
+    border-collapse:collapse;
+    font-size:11px;
+    border:1px solid #eee;
+    margin:0;
+}
+.marker-properties th {
+    white-space:nowrap;
+    border:1px solid #eee;
+    padding:5px 10px;
+}
+.marker-properties td {
+    border:1px solid #eee;
+    padding:5px 10px;
+}
+.marker-properties tr:last-child td,
+.marker-properties tr:last-child th {
+    border-bottom:none;
+}
+.marker-properties tr:nth-child(even) th,
+.marker-properties tr:nth-child(even) td {
+    background-color:#f7f7f7;
+}
+  </style>
+  <script src='//api.tiles.mapbox.com/mapbox.js/v2.2.2/mapbox.js'></script>
+  <script src='//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js' ></script>
+  <link href='//api.tiles.mapbox.com/mapbox.js/v2.2.2/mapbox.css' rel='stylesheet' />
 </head>
-<body id='map'>
-  <script type='geodata'>
-EOF
+<body>
+<div id='map'></div>
+<script type='text/javascript'>
+L.mapbox.accessToken = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';
+var map = L.mapbox.map('map');
 
-use constant mapomatic_footer => <<'EOF';
-  </script>
-  <script>
-  $(function () {
-    var rf = function () {
-      if ($('#map').height() !== $(window).height())
-        $('#map').height($(window).height());
-    };
-    $(window).resize(rf);
-    setTimeout(rf, 100);
-    var m = L.map('map');
-    L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png',
-                {attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'}).addTo(m);
-    var sy = 0, sx = 0;
-    var ls = $('script[type="geodata"]').text().replace(/^\s*|\s*$/g, '').split(/~/);
-    for (var i = 0, l = ls.length; i < l; ++i) {
-      var ps = ls[i].split(/\s+/);
-      var ll = [+ps[0], +ps[1]];
-      L.marker(ll).addTo(m).bindPopup(ps.slice(2).join(' '));
-      sy += ll[0];
-      sx += ll[1];
+L.mapbox.tileLayer('mapbox.streets').addTo(map);
+
+$.getJSON('map.geojson', function(geojson) {
+    var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
+    var bounds = geojsonLayer.getBounds();
+    if (bounds.isValid()) {
+        map.fitBounds(geojsonLayer.getBounds());
+    } else {
+        map.setView([0, 0], 2);
     }
-    m.setView([sy / ls.length, sx / ls.length], 4);
-  });
-  </script>
+    geojsonLayer.eachLayer(function(l) {
+        showProperties(l);
+    });
+});
+
+function showProperties(l) {
+    var properties = l.toGeoJSON().properties;
+    var table = document.createElement('table');
+    table.setAttribute('class', 'marker-properties display')
+    for (var key in properties) {
+        var tr = createTableRows(key, properties[key]);
+        table.appendChild(tr);
+    }
+    if (table) l.bindPopup(table);
+}
+
+function createTableRows(key, value) {
+    var tr = document.createElement('tr');
+    var th = document.createElement('th');
+    var td = document.createElement('td');
+    key = document.createTextNode(key);
+    value = document.createTextNode(value);
+    th.appendChild(key);
+    td.appendChild(value);
+    tr.appendChild(th);
+    tr.appendChild(td);
+    return tr
+}
+
+</script>
 </body>
 </html>
 EOF
 
+
+use constant geojson_container_gen => gen
+  '{"type":"FeatureCollection","features":[%features]}';
+
 defoperator mapomatic => q{
-  eval {require MIME::Base64};
-  my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
-  print "data:text/html;base64," . MIME::Base64::encode_base64(
-    mapomatic_compress(mapomatic_header)
-      . $encoded_points
-      . mapomatic_compress(mapomatic_footer)) . "\n\0";
+  my $geojson_features = geojson_container_gen->(features => join",", <STDIN>);
+  my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
+  print $in json_encode {
+    description => 'mapomatic',
+    files => {
+      'index.html' => {content => geojson_page},
+      'map.geojson' => {content => $geojson_features}
+    }
+  };
+  close $in;
+  my $out_json = join'', <$out>;
+  my ($gist_id) = json_decode($out_json)->{id};
+  print "http://bl.ocks.org/anonymous/raw/$gist_id";
 };
 
-defshort '/MM',  pmap q{mapomatic_op}, pnone;
+defshort '/MM',  pmap q{[geojsonify_op, mapomatic_op]}, pnone;

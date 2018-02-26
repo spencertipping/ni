@@ -458,6 +458,18 @@
 	  cell_eval {args => '@precision',
 	             each => q{$xs[$_] = geohash_encode split(/,/, $xs[$_]), @precision}}, @_;
 
+# OPERATOR geojsonify
+
+## IMPLEMENTATION
+	
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my ($geom, $props) = geojson_parse(split /\t/);
+	    print geojson_row_gen->(geom  => $geom,
+	                            props => json_encode($props)), "\n";
+	  }
+
 # OPERATOR gnuplot_all
 
 ## IMPLEMENTATION
@@ -725,12 +737,19 @@
 
 ## IMPLEMENTATION
 	
-	  eval {require MIME::Base64};
-	  my $encoded_points = join "~", map mapomatic_compress($_), <STDIN>;
-	  print "data:text/html;base64," . MIME::Base64::encode_base64(
-	    mapomatic_compress(mapomatic_header)
-	      . $encoded_points
-	      . mapomatic_compress(mapomatic_footer)) . "\n\0";
+	  my $geojson_features = geojson_container_gen->(features => join",", <STDIN>);
+	  my ($in, $out) = sioproc {sh 'curl -sS -d @- https://api.github.com/gists'};
+	  print $in json_encode {
+	    description => 'mapomatic',
+	    files => {
+	      'index.html' => {content => geojson_page},
+	      'map.geojson' => {content => $geojson_features}
+	    }
+	  };
+	  close $in;
+	  my $out_json = join'', <$out>;
+	  my ($gist_id) = json_decode($out_json)->{id};
+	  print "http://bl.ocks.org/anonymous/raw/$gist_id";
 
 # OPERATOR md5
 

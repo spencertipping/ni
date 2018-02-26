@@ -1778,7 +1778,7 @@
 # SHORT OPERATOR /MM
 
 ## SYNTAX
-	'' -> {mapomatic_op}
+	'' -> {[geojsonify_op, mapomatic_op]}
 
 # SHORT OPERATOR /N
 
@@ -1917,6 +1917,11 @@
 	  ) -> {$$_[1]} -> {partial_sort_op               $_}
 	| <sortspec> -> {row_sort_op        sort_args @$_}
 	)
+
+# SHORT OPERATOR /geojsonify
+
+## SYNTAX
+	'' -> {geojsonify_op}
 
 # SHORT OPERATOR /gg
 
