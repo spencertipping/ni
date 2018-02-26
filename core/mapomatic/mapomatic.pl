@@ -94,6 +94,7 @@ use constant geojson_container_gen => gen
 
 sub mapomatic_server {
   my ($port, $geojson) = @_;
+  $|++;
   http $port, sub {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n"    unless defined $reply;

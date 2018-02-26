@@ -9077,7 +9077,7 @@ q{
 };
 
 defshort '/geojsonify', pmap q{geojsonify_op}, pnone;
-110 core/mapomatic/mapomatic.pl
+111 core/mapomatic/mapomatic.pl
 # Map-O-Matic
 # Runs a webserver that uses GeoJSON to render a map.
 
@@ -9174,6 +9174,7 @@ use constant geojson_container_gen => gen
 
 sub mapomatic_server {
   my ($port, $geojson) = @_;
+  $|++;
   http $port, sub {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n"    unless defined $reply;
