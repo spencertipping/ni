@@ -717,18 +717,13 @@
 	  | <colspec_fixed> -> {row_cols_defined_op @$_}
 	  )
 	| 's' (
-	    (
-	    | (
-	        <ssh_host> -> {[$_]}
-	        <empty>?
-	      ) -> {$$_[0]}
-	    | (
-	        <multiword>
-	        <empty>?
-	      ) -> {$$_[0]}
-	    )
+	    <ssh_host_full>
 	    </qfn>
 	  ) -> {ssh_op @$_}
+	| 'sF' (
+	    <ssh_host_full>
+	    <integer>
+	  ) -> {port_forward_op @$_}
 	| 'u' '' -> {uniq_op}
 	| 'v' (
 	    <colspec_fixed>
@@ -2032,6 +2027,20 @@
 
 ## DEFINITION
 	/[^][/,]+/
+
+# PARSER ssh_host_full
+
+## DEFINITION
+	(
+	| (
+	    <ssh_host> -> {[$_]}
+	    <empty>?
+	  ) -> {$$_[0]}
+	| (
+	    <multiword>
+	    <empty>?
+	  ) -> {$$_[0]}
+	)
 
 # PARSER super_brackets
 

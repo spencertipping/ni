@@ -990,6 +990,13 @@
 ## IMPLEMENTATION
 	stdin_to_perl perl_mapper   $_[0]
 
+# OPERATOR port_forward
+
+## IMPLEMENTATION
+	
+	  my ($host, $port) = @_;
+	  exec 'ssh', '-L', "$port:localhost:$port", '-N', @$host;
+
 # OPERATOR prepend
 	Prepend a ni stream to this one
 

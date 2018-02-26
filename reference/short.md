@@ -2067,18 +2067,17 @@
 
 ## SYNTAX
 	(
-	  (
-	  | (
-	      <ssh_host> -> {[$_]}
-	      <empty>?
-	    ) -> {$$_[0]}
-	  | (
-	      <multiword>
-	      <empty>?
-	    ) -> {$$_[0]}
-	  )
+	  <ssh_host_full>
 	  </qfn>
 	) -> {ssh_op @$_}
+
+# SHORT OPERATOR /sF
+
+## SYNTAX
+	(
+	  <ssh_host_full>
+	  <integer>
+	) -> {port_forward_op @$_}
 
 # SHORT OPERATOR /u
 
