@@ -5450,7 +5450,7 @@ sub in_poly
   }
   $hits & 1;
 }
-215 core/pl/time.pl
+218 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5462,6 +5462,7 @@ sub in_poly
 # to shift your epochs by some multiple of 3600.
 
 use POSIX ();
+BEGIN {eval {require Time::HiRes; Time::HiRes->import('time')}}
 
 use constant time_pieces => 'SMHdmYwjDN';
 
@@ -5481,9 +5482,10 @@ sub time_epoch_pieces($;$) {
 
 sub time_epoch_formatted($;$)
 {
-  # TODO
-  my ($es, $t) = $_[0] =~ /^[-:. SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
-  my $pieces = join"", $es =~ /\w/g;
+  my ($es, $t) = $_[0] =~ /^\D+$/ ? @_ : ('Y-m-d H:M:S', @_);
+  my $pieces = join"", $es =~ /[SMHdmYjDN]/g;
+  (my $format = $es) =~ s/([a-zA-Z])/$1 eq "Y" ? "%04d" : "%02d"/eg;
+  sprintf $format, time_epoch_pieces $pieces, $t;
 }
 
 sub time_pieces_epoch {
@@ -5648,6 +5650,7 @@ sub time_parts_iso_8601 {
 
 BEGIN {
   *tep  = \&time_epoch_pieces;
+  *tef  = \&time_epoch_formatted;
   *tpe  = \&time_pieces_epoch;
   *tsec = \&timezone_seconds;
   *ghl = \&gh_localtime;
