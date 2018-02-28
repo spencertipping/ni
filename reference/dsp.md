@@ -24,6 +24,16 @@
 	| 'n' '' -> {buffer_null_op}
 	)
 
+# EXTENSIBLE DISPATCH TABLE combinealt
+	dispatch table for /F^ combine operator
+
+## OPTIONS
+	(
+	| ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
+	| 'C' '' -> {sh_op 'tr "\t" ,'}
+	| 'P' '' -> {sh_op 'tr "\t" "|"'}
+	)
+
 # EXTENSIBLE DISPATCH TABLE gnuplot_code_prefixalt
 	prefixes for gnuplot code
 

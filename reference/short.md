@@ -1650,6 +1650,15 @@
 	  ) -> {$$_[1]}
 	)
 
+# SHORT OPERATOR /F^
+
+## SYNTAX
+	(
+	| ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
+	| 'C' '' -> {sh_op 'tr "\t" ,'}
+	| 'P' '' -> {sh_op 'tr "\t" "|"'}
+	)
+
 # SHORT OPERATOR /G
 
 ## SYNTAX

@@ -483,6 +483,11 @@
 	      <regex> -> {scan_regex_op $_}
 	    ) -> {$$_[1]}
 	  )
+	| 'F^' (
+	  | ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
+	  | 'C' '' -> {sh_op 'tr "\t" ,'}
+	  | 'P' '' -> {sh_op 'tr "\t" "|"'}
+	  )
 	| 'G' (
 	    <gnuplot_colspec>
 	    <gnuplot_code>
@@ -1220,6 +1225,15 @@
 ## DEFINITION
 	(
 	| 'n' '' -> {buffer_null_op}
+	)
+
+# PARSER dsp/combinealt
+
+## DEFINITION
+	(
+	| ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
+	| 'C' '' -> {sh_op 'tr "\t" ,'}
+	| 'P' '' -> {sh_op 'tr "\t" "|"'}
 	)
 
 # PARSER dsp/gnuplot_code_prefixalt

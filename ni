@@ -3795,7 +3795,7 @@ defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
-188 core/col/col.pl
+195 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -3884,6 +3884,13 @@ defshort '/F',
     '/' => pmap(q{split_regex_op $_},                regex),
     ':' => pmap(q{split_chr_op   $_},                prx '.'),
     'm' => pn(1, pstr '/', pmap q{scan_regex_op $_}, regex);
+
+# Combining
+defshort '/F^',
+  defdsp 'combinealt', 'dispatch table for /F^ combine operator',
+    'C' => pmap(q{sh_op 'tr "\t" ,'},        pnone),
+    'P' => pmap(q{sh_op 'tr "\t" "|"'},      pnone),
+    ':' => pmap(q{sh_op 'tr "\t" "'.$_.'"'}, prx '.');
 
 # Juxtaposition.
 # You can juxtapose two data sources horizontally by using `w` for `with`.
