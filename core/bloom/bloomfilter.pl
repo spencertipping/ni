@@ -45,16 +45,16 @@ sub bloom_contains($$) {
 # bloom_add_prehashed($filter, "prehash_string")
 sub bloom_prehash($$$) {
   my ($m, $k) = @_;
-  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
+  join ",", map $_ % $m, multihash $_[2], $k;
 }
 
 sub bloom_add_prehashed($$) {
-  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
+  vec($_[0], $_ + 64, 1) = 1 for split /,/, $_[1];
   $_[0];
 }
 
 sub bloom_contains_prehashed($$) {
-  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
+  vec($_[0], $_ + 64, 1) || return 0 for split /,/, $_[1];
   1;
 }
 

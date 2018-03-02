@@ -6165,16 +6165,16 @@ sub bloom_contains($$) {
 # bloom_add_prehashed($filter, "prehash_string")
 sub bloom_prehash($$$) {
   my ($m, $k) = @_;
-  unpack "H*", pack "N*", map $_ % $m + 64, multihash $_[2], $k;
+  join ",", map $_ % $m, multihash $_[2], $k;
 }
 
 sub bloom_add_prehashed($$) {
-  vec($_[0], $_, 1) = 1 for unpack "N*", pack "H*", $_[1];
+  vec($_[0], $_ + 64, 1) = 1 for split /,/, $_[1];
   $_[0];
 }
 
 sub bloom_contains_prehashed($$) {
-  vec($_[0], $_, 1) || return 0 for unpack "N*", pack "H*", $_[1];
+  vec($_[0], $_ + 64, 1) || return 0 for split /,/, $_[1];
   1;
 }
 
@@ -9682,7 +9682,7 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-273 core/hadoop/hadoop.pl
+281 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -9843,10 +9843,18 @@ sub make_hadoop_cmd($$$$$$$$$) {
   my $first_path = $$ipaths[0];
   $job_name = "ni $first_path and $n_addl_paths others" .
               " -> $opath" if $n_addl_paths > 0;
-  push @jobconf, "mapreduce.job.name=" . $job_name;
-  
+
+  my $mapper_explain   = json_encode $map_cmd_ref;
+  my $combiner_explain = json_encode $combine_cmd_ref;
+  my $reducer_explain  = json_encode $reduce_cmd_ref;
+  my $job_explain = "\nM$mapper_explain\nC$combiner_explain\nR$reducer_explain";
+
+  push @jobconf, "mapreduce.job.name="
+    . $job_name
+    . substr($job_explain, 0, 4096);
+
   my @ordered_jobconf = hadoop_generic_options(@jobconf);
- 
+
   my $cmd = shell_quote
     conf 'hadoop/name',
     jar => $streaming_jar,

@@ -158,10 +158,18 @@ sub make_hadoop_cmd($$$$$$$$$) {
   my $first_path = $$ipaths[0];
   $job_name = "ni $first_path and $n_addl_paths others" .
               " -> $opath" if $n_addl_paths > 0;
-  push @jobconf, "mapreduce.job.name=" . $job_name;
-  
+
+  my $mapper_explain   = json_encode $map_cmd_ref;
+  my $combiner_explain = json_encode $combine_cmd_ref;
+  my $reducer_explain  = json_encode $reduce_cmd_ref;
+  my $job_explain = "\nM$mapper_explain\nC$combiner_explain\nR$reducer_explain";
+
+  push @jobconf, "mapreduce.job.name="
+    . $job_name
+    . substr($job_explain, 0, 4096);
+
   my @ordered_jobconf = hadoop_generic_options(@jobconf);
- 
+
   my $cmd = shell_quote
     conf 'hadoop/name',
     jar => $streaming_jar,
