@@ -37,6 +37,7 @@ defshort '/zBH', pmap q{bloomify_hex_op @$_},       pseq bloom_size_spec, bloom_
 defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
 
 defoperator bloom_rows => q{
+  use bytes;
   my ($include_mode, $col, $bloom_lambda) = @_;
   my $bloom;
   my $r = sni @$bloom_lambda;

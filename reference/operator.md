@@ -56,6 +56,7 @@
 
 ## IMPLEMENTATION
 	
+	  use bytes;
 	  my ($include_mode, $col, $bloom_lambda) = @_;
 	  my $bloom;
 	  my $r = sni @$bloom_lambda;

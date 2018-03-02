@@ -6258,7 +6258,7 @@ sub minhash_intersect
   push @i, (0xffffffff) x (@{$_[0]} - @i) if @{$_[0]} > @i;
   [(sort {$a <=> $b} @i)[0..$#{$_[0]}]];
 }
-52 core/bloom/bloom.pl
+53 core/bloom/bloom.pl
 # Bloom filter operators.
 # Operators to construct and query bloom filters. The bloom constructor is a
 # sub-operator of `z` (compress), and querying is done using `rb`.
@@ -6298,6 +6298,7 @@ defshort '/zBH', pmap q{bloomify_hex_op @$_},       pseq bloom_size_spec, bloom_
 defshort '/zBP', pmap q{bloomify_prehashed_op @$_}, pseq bloom_size_spec, bloom_fp_spec;
 
 defoperator bloom_rows => q{
+  use bytes;
   my ($include_mode, $col, $bloom_lambda) = @_;
   my $bloom;
   my $r = sni @$bloom_lambda;
