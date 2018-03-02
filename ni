@@ -9682,7 +9682,7 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-281 core/hadoop/hadoop.pl
+274 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -9844,14 +9844,7 @@ sub make_hadoop_cmd($$$$$$$$$) {
   $job_name = "ni $first_path and $n_addl_paths others" .
               " -> $opath" if $n_addl_paths > 0;
 
-  my $mapper_explain   = json_encode $map_cmd_ref;
-  my $combiner_explain = json_encode $combine_cmd_ref;
-  my $reducer_explain  = json_encode $reduce_cmd_ref;
-  my $job_explain = "\nM$mapper_explain\nC$combiner_explain\nR$reducer_explain";
-
-  push @jobconf, "mapreduce.job.name="
-    . $job_name
-    . substr($job_explain, 0, 4096);
+  push @jobconf, "mapreduce.job.name=" . $job_name;
 
   my @ordered_jobconf = hadoop_generic_options(@jobconf);
 
