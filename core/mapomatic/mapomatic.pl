@@ -101,19 +101,21 @@ sub mapomatic_server {
   my $key = conf 'mapbox/key';
   unless (defined $key)
   {
-    print "NOTE:\n";
+    print "WARNING\n";
     print "  You're using ni's builtin Mapbox key, which is shared across\n";
-    print "  all ni users. If you're using Map-O-Matic occasionally, this\n";
-    print "  is probably fine; but if you use it a lot, you should head to\n";
-    print "  mapbox.com and generate a new key. Keys are free and give you\n";
-    print "  about 50000 map views per day. To set your key, add this line\n";
-    print "  to your .bashrc:\n";
+    print "  all ni users. To avoid hitting the free-tier quota, you should\n";
+    print "  head to mapbox.com and generate a new key. Keys are free and\n";
+    print "  give you about 50000 map views per month. Once you have a key,\n";
+    print "  add this line to your .bashrc:\n";
     print "\n";
     print "  export NI_MAPBOX_KEY='<your mapbox access token>'\n";
     print "\n";
     print "  For example:\n";
     print "\n";
     print "  export NI_MAPBOX_KEY='pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ'\n";
+    print "\n";
+    print "  You can verify that ni is using your key by running this:\n";
+    print "  \$ ni \\\$mapbox/key\n";
     print "\n";
 
     $key = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';

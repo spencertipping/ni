@@ -5573,7 +5573,7 @@ sub gh_localtime($$) {
 
 {
   my $t = time;
-  $mktime_error = time_pieces_epoch(time_epoch_pieces $t) - $t;
+  $mktime_error = int time_pieces_epoch(time_epoch_pieces $t) - $t;
 }
 
 
@@ -5596,17 +5596,17 @@ sub iso_8601_epoch {
     ($y, $m, $d) = split /-/, $date_part;
   }
 
-  return int time_pieces_epoch($y, $m, $d) unless $time_part;
+  return time_pieces_epoch($y, $m, $d) unless $time_part;
 
   my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
   my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
-  return int $raw_ts unless $tz_part;
-  
+  return $raw_ts unless $tz_part;
+
   my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
 
   my $offset_amt = $offset_type eq "-" ? 1 : -1; 
   my $offset = $offset_amt * (3600 * $offset_hr + 60 * $offset_min); 
-  int $raw_ts + $offset;
+  $raw_ts + $offset;
 }
 
 # Converts an epoch timestamp to the corresponding 
@@ -9117,7 +9117,7 @@ q{
 };
 
 defshort '/geojsonify', pmap q{geojsonify_op}, pnone;
-139 core/mapomatic/mapomatic.pl
+141 core/mapomatic/mapomatic.pl
 # Map-O-Matic
 # Runs a webserver that uses GeoJSON to render a map.
 
@@ -9221,19 +9221,21 @@ sub mapomatic_server {
   my $key = conf 'mapbox/key';
   unless (defined $key)
   {
-    print "NOTE:\n";
+    print "WARNING\n";
     print "  You're using ni's builtin Mapbox key, which is shared across\n";
-    print "  all ni users. If you're using Map-O-Matic occasionally, this\n";
-    print "  is probably fine; but if you use it a lot, you should head to\n";
-    print "  mapbox.com and generate a new key. Keys are free and give you\n";
-    print "  about 50000 map views per day. To set your key, add this line\n";
-    print "  to your .bashrc:\n";
+    print "  all ni users. To avoid hitting the free-tier quota, you should\n";
+    print "  head to mapbox.com and generate a new key. Keys are free and\n";
+    print "  give you about 50000 map views per month. Once you have a key,\n";
+    print "  add this line to your .bashrc:\n";
     print "\n";
     print "  export NI_MAPBOX_KEY='<your mapbox access token>'\n";
     print "\n";
     print "  For example:\n";
     print "\n";
     print "  export NI_MAPBOX_KEY='pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ'\n";
+    print "\n";
+    print "  You can verify that ni is using your key by running this:\n";
+    print "  \$ ni \\\$mapbox/key\n";
     print "\n";
 
     $key = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';
