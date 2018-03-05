@@ -10,29 +10,27 @@ ni: two-fisted data science
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
-  - ni's only dependency is core Perl 5, which is installed nearly everywhere
-- Portability across OSX, Linux, and other POSIX operating systems
-  - [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
-  - [Automatic self-installation onto Hadoop worker nodes](doc/hadoop.md)
-  - [Automatic self-installation into Docker containers](doc/container.md)
-  - Runs on PCs, Raspberry Pi, and Android phones (we haven't tested iOS yet)
+- [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
+- [Automatic self-installation onto Hadoop worker nodes](doc/hadoop.md)
+- [Automatic self-installation into Docker containers](doc/container.md)
 - [Self-contained and extensible](doc/libraries.md)
 - [Streaming, constant-space data processing](doc/stream.md)
 - [Concise syntax for unstructured data transformation](doc/ni_fu.md)
   - Highly stable API: unit tests are generated from documentation examples
 - [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
-  - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
+- [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
   - Builtin HTTP/websocket server for offline data visualization
-  - Realtime client-side buffering/downsampling, ~30FPS rendering at 4M points
-- Seamless integration with common data formats and libraries
-  - [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
-  - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
-  - [JSON](doc/ni_by_example_3.md#json-io)
-  - [Binary files](doc/binary.md)
-  - [Bloom filters](doc/bloom.md)
-  - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
-  - [NumPy](doc/matrix.md#numpy-interop)
+
+### Interoperability with common data formats
+- [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
+  - Automatic detection + decompression based on stream contents
+- [Date/time](doc/ni_by_example_3.md#time-perl-functions)
+- [JSON](doc/ni_by_example_3.md#json-io)
+- [Binary files](doc/binary.md)
+- [Bloom filters](doc/bloom.md)
+- [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
+- [NumPy](doc/matrix.md#numpy-interop)
 
 ## Getting started
 ```sh
@@ -45,6 +43,19 @@ Now you have ni installed; you can try it out like this:
 ```sh
 $ ni n10
 ```
+
+**Use `ni` anywhere you would normally use `less`.** ni will automatically
+decompress streams, and it supports a variety of data sources:
+
+```sh
+$ ni https://google.com
+$ ni /etc/passwd
+$ find . | ni
+$ echo "hi" | bzip2 | ni
+```
+
+ni will intermittently print monitor updates that may overwrite your output; use
+`Ctrl+L` twice to refresh the screen.
 
 <h2 align='center'>
 <img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
