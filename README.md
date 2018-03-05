@@ -19,7 +19,7 @@ ni: two-fisted data science
 - [Self-contained and extensible](doc/libraries.md)
 - [Streaming, constant-space data processing](doc/stream.md)
 - [Concise syntax for unstructured data transformation](doc/ni_fu.md)
-  - Highly stable API: unit tests are generated from documentation examples
+  - Highly stable API: [unit tests are generated from documentation examples](https://github.com/spencertipping/lazytest)
 - [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
   - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
@@ -33,6 +33,7 @@ ni: two-fisted data science
   - [Bloom filters](doc/bloom.md)
   - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
   - [NumPy](doc/matrix.md#numpy-interop)
+  - [Gnuplot, ImageMagick, and FFMpeg](doc/image.md)
 
 ## Getting started
 ```sh
@@ -44,6 +45,16 @@ Now you have ni installed; you can try it out like this:
 
 ```sh
 $ ni n10
+```
+
+**Use `ni` anywhere you would normally use `less`.** ni will automatically
+decompress data based on contents, and it supports a variety of data sources:
+
+```sh
+$ ni https://google.com                 # NB: requires curl
+$ ni /etc/passwd
+$ find . | ni
+$ echo "hi" | bzip2 | ni                # automatic decompression
 ```
 
 <h2 align='center'>

@@ -4,17 +4,10 @@
 ni provides a handful of operations that make it easy to work with sparse and dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to dense), which work like this:
 
 ```bash
-$ ni //ni FWr10
+$ ni //ni FWr3
 	usr	bin	env	perl
 	ni	is_lib	caller	
 	ni	self	license	_	
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
-of	this	software	and	associated	documentation	files	the	Software	to	deal
-in	the	Software	without	restriction	including	without	limitation	the	rights
-to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
 ```
 
 A sparse matrix is represented as a series of `row col value` tuples:
@@ -36,17 +29,11 @@ $ ni //ni FW Yr10
 `X` inverts `Y` exactly:
 
 ```bash
-$ ni //ni FW fABCD Y X r10
+$ ni //ni FW fABCD Y X r4
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
-Copyright	c	2016	Spencer
-
-Permission	is	hereby	granted
-of	this	software	and
-in	the	Software	without
-to	use	copy	modify
 ```
 
 `X` is also additive in the event of cell collisions; this makes it useful as a
@@ -131,7 +118,7 @@ each matrix ends when the partition fields change.
 For example, suppose we've got a bunch of words and we want to partition our analysis by the first letter. We start by splitting that into its own column:
 
 ```bash
-$ ni //license plc FW Z1 p'r/(.)(.*)/' g r10
+$ ni dev/license-for-testing plc FW Z1 p'r/(.)(.*)/' g r10
 2	016
 a	
 a	
@@ -147,7 +134,7 @@ a	nd
 Now we can apply matrix operators with the `B` qualifier, indicating that matrices start at column B and everything left of that is the partition ID. Let's form letter occurrence matrices by expanding into sparse form.
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' g r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' g r10
 2	0	1	6
 a
 a
@@ -158,7 +145,7 @@ a	n
 a	n	d
 a	n	d
 a	n	d
-$ ni //license plc FWpF_ p'r split//' g YB r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' g YB r10
 2	0	0	0
 2	0	1	1
 2	0	2	6
@@ -169,7 +156,7 @@ a	1	3	e
 a	2	0	c
 a	2	1	t
 a	2	2	i
-$ ni //license plc FWpF_ p'r split//' gYB fABD gcfBCDA r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' gYB fABD gcfBCDA r10
 2	0	6	1
 a			2
 a	b	v	1
@@ -188,7 +175,7 @@ dense matrices by using `,z` to assign a number to each subsequent letter (so
 that each gets a unique column index), then sorting and using `X`.
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
       gYBfABDgcfBCDA ,zC o XB r10
 a		2
 a			1
@@ -205,7 +192,7 @@ b		1
 Now the matrix is in a form that NumPy can process. The `N` operator automatically zero-fills to the right to make sure the matrix is rectangular (as opposed to the ragged edges we have above).
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'x *= 2' YB,qD.01XB r10
 a	0	4	0	0	0	0	0
@@ -223,7 +210,7 @@ b	0	2
 You can use multiline code with Python and ni will fix the indentation so everything works. For example:
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'x *= 2
         x += 1' r10
@@ -242,7 +229,7 @@ b	1	3
 It also works with blocks that require indentation:
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'if True:
           x = x + 1' r3

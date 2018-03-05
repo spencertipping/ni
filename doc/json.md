@@ -15,7 +15,7 @@ generate the output of `--explain`.
 ## Full encode/decode
 ### Perl driver
 ```bash
-$ ni //license FWp'json_encode [F_]' r4
+$ ni dev/license-for-testing FWp'json_encode [F_]' r4
 ["ni","https","github","com","spencertipping","ni"]
 ["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
 []
@@ -25,7 +25,7 @@ $ ni //license FWp'json_encode [F_]' r4
 `json_decode` inverts and always returns a reference:
 
 ```bash
-$ ni //license FWp'json_encode [F_]' p'r @{json_decode a}' r4
+$ ni dev/license-for-testing FWp'json_encode [F_]' p'r @{json_decode a}' r4
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
 
@@ -44,7 +44,7 @@ pre-vs-post-decode. ni helps to mitigate this by providing a very fast
 destructuring operator that works like `jq` (but 2-3x faster):
 
 ```bash
-$ ni //license FWpF_ p'r pl 3' \
+$ ni dev/license-for-testing FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
                     word    => c}' \>jsons

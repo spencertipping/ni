@@ -36,7 +36,7 @@ $ ni --lib fractional frac4.5
 You can also define a nullary function, which is just a regular shorthand:
 
 ```bash
-$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
+$ ni --run 'defexpander "/license-words", qw[dev/license-for-testing FWpF_]' \
      license-words r10
 ni
 https

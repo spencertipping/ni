@@ -11123,7 +11123,7 @@ $ ni --lib fractional frac4.5
 You can also define a nullary function, which is just a regular shorthand:
 
 ```bash
-$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
+$ ni --run 'defexpander "/license-words", qw[dev/license-for-testing FWpF_]' \
      license-words r10
 ni
 https
@@ -11199,7 +11199,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-119 doc/hadoop.md
+121 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. For example, here's what it looks like to
 use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
@@ -11275,11 +11275,12 @@ $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 ```
 
-Now let's get a word count for `ni //license`:
+Now let's get a word count for `ni --license`:
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+$ ni dev/license-for-testing \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+     Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 2016	1
 A	1
 ACTION	1
@@ -11298,10 +11299,11 @@ setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
 reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+$ ni dev/license-for-testing \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       hadoop/jobconf='mapred.map.tasks=10
+                       mapred.reduce.tasks=4'} \
+     Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
 BE	1
@@ -11337,7 +11339,7 @@ generate the output of `--explain`.
 ## Full encode/decode
 ### Perl driver
 ```bash
-$ ni //license FWp'json_encode [F_]' r4
+$ ni dev/license-for-testing FWp'json_encode [F_]' r4
 ["ni","https","github","com","spencertipping","ni"]
 ["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
 []
@@ -11347,7 +11349,7 @@ $ ni //license FWp'json_encode [F_]' r4
 `json_decode` inverts and always returns a reference:
 
 ```bash
-$ ni //license FWp'json_encode [F_]' p'r @{json_decode a}' r4
+$ ni dev/license-for-testing FWp'json_encode [F_]' p'r @{json_decode a}' r4
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
 
@@ -11366,7 +11368,7 @@ pre-vs-post-decode. ni helps to mitigate this by providing a very fast
 destructuring operator that works like `jq` (but 2-3x faster):
 
 ```bash
-$ ni //license FWpF_ p'r pl 3' \
+$ ni dev/license-for-testing FWpF_ p'r pl 3' \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
                     word    => c}' \>jsons
@@ -11536,24 +11538,17 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-252 doc/matrix.md
+239 doc/matrix.md
 # Matrix operations
 
 ## Sparse and Dense Matrix Operations (`X` and `Y`)
 ni provides a handful of operations that make it easy to work with sparse and dense matrices. The first two are `Y` (dense to sparse) and `X` (sparse to dense), which work like this:
 
 ```bash
-$ ni //ni FWr10
+$ ni //ni FWr3
 	usr	bin	env	perl
 	ni	is_lib	caller	
 	ni	self	license	_	
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
-of	this	software	and	associated	documentation	files	the	Software	to	deal
-in	the	Software	without	restriction	including	without	limitation	the	rights
-to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
 ```
 
 A sparse matrix is represented as a series of `row col value` tuples:
@@ -11575,17 +11570,11 @@ $ ni //ni FW Yr10
 `X` inverts `Y` exactly:
 
 ```bash
-$ ni //ni FW fABCD Y X r10
+$ ni //ni FW fABCD Y X r4
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
-Copyright	c	2016	Spencer
-
-Permission	is	hereby	granted
-of	this	software	and
-in	the	Software	without
-to	use	copy	modify
 ```
 
 `X` is also additive in the event of cell collisions; this makes it useful as a
@@ -11670,7 +11659,7 @@ each matrix ends when the partition fields change.
 For example, suppose we've got a bunch of words and we want to partition our analysis by the first letter. We start by splitting that into its own column:
 
 ```bash
-$ ni //license plc FW Z1 p'r/(.)(.*)/' g r10
+$ ni dev/license-for-testing plc FW Z1 p'r/(.)(.*)/' g r10
 2	016
 a	
 a	
@@ -11686,7 +11675,7 @@ a	nd
 Now we can apply matrix operators with the `B` qualifier, indicating that matrices start at column B and everything left of that is the partition ID. Let's form letter occurrence matrices by expanding into sparse form.
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' g r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' g r10
 2	0	1	6
 a
 a
@@ -11697,7 +11686,7 @@ a	n
 a	n	d
 a	n	d
 a	n	d
-$ ni //license plc FWpF_ p'r split//' g YB r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' g YB r10
 2	0	0	0
 2	0	1	1
 2	0	2	6
@@ -11708,7 +11697,7 @@ a	1	3	e
 a	2	0	c
 a	2	1	t
 a	2	2	i
-$ ni //license plc FWpF_ p'r split//' gYB fABD gcfBCDA r10
+$ ni dev/license-for-testing plc FWpF_ p'r split//' gYB fABD gcfBCDA r10
 2	0	6	1
 a			2
 a	b	v	1
@@ -11727,7 +11716,7 @@ dense matrices by using `,z` to assign a number to each subsequent letter (so
 that each gets a unique column index), then sorting and using `X`.
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
       gYBfABDgcfBCDA ,zC o XB r10
 a		2
 a			1
@@ -11744,7 +11733,7 @@ b		1
 Now the matrix is in a form that NumPy can process. The `N` operator automatically zero-fills to the right to make sure the matrix is rectangular (as opposed to the ragged edges we have above).
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'x *= 2' YB,qD.01XB r10
 a	0	4	0	0	0	0	0
@@ -11762,7 +11751,7 @@ b	0	2
 You can use multiline code with Python and ni will fix the indentation so everything works. For example:
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'x *= 2
         x += 1' r10
@@ -11781,7 +11770,7 @@ b	1	3
 It also works with blocks that require indentation:
 
 ```bash
-$ ni //license plc FWpF_ p'r split//' \
+$ ni dev/license-for-testing plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
      NB'if True:
           x = x + 1' r3
@@ -11928,13 +11917,13 @@ disk is writable.
 The SSH operator is `s` and looks like this:
 
 ```sh
-$ ni //license shostname[gc FW p'r a, length b'] r10
+$ ni dev/license-for-testing shostname[gc FW p'r a, length b'] r10
 ```
 
 Conceptually, here's how ni executes the above:
 
 ```
-$ ni //license \
+$ ni dev/license-for-testing \
   | ssh hostname "ni gc FW p'r a, length b'" \
   | ni r10
 ```
@@ -11942,7 +11931,7 @@ $ ni //license \
 You can, of course, nest SSH operators:
 
 ```sh
-$ ni //license shost1[shost2[gc]] r10
+$ ni dev/license-for-testing shost1[shost2[gc]] r10
 ```
 98 doc/options.md
 # Complete ni operator listing
@@ -12874,7 +12863,7 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni //license FWpF_ > word-list
+$ ni dev/license-for-testing FWpF_ > word-list
 $ ni word-list cr10             # unsorted count
 1	ni
 1	https

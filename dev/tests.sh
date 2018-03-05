@@ -935,7 +935,7 @@ lazytest_case 'ni --lib fractional frac4.5
 LAZYTEST_EOF
 lazytest_file='doc/fn.md'
 lazytest_line=39
-lazytest_case 'ni --run '\''defexpander "/license-words", qw[//license FWpF_]'\'' \
+lazytest_case 'ni --run '\''defexpander "/license-words", qw[dev/license-for-testing FWpF_]'\'' \
      license-words r10
 ' 3<<'LAZYTEST_EOF'
 ni
@@ -1044,8 +1044,9 @@ lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
 lazytest_line=79
-lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+lazytest_case 'ni dev/license-for-testing \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+     Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 ' 3<<'LAZYTEST_EOF'
 2016	1
 A	1
@@ -1059,11 +1060,12 @@ AUTHORS	1
 BE	1
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=99
-lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='\''mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'\''} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+lazytest_line=100
+lazytest_case 'ni dev/license-for-testing \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       hadoop/jobconf='\''mapred.map.tasks=10
+                       mapred.reduce.tasks=4'\''} \
+     Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 ' 3<<'LAZYTEST_EOF'
 2016	1
 A	1
@@ -1093,7 +1095,7 @@ lazytest_case 'ni n4E7 ,hA Cubuntu[o] uc
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=18
-lazytest_case 'ni //license FWp'\''json_encode [F_]'\'' r4
+lazytest_case 'ni dev/license-for-testing FWp'\''json_encode [F_]'\'' r4
 ' 3<<'LAZYTEST_EOF'
 ["ni","https","github","com","spencertipping","ni"]
 ["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
@@ -1102,7 +1104,7 @@ lazytest_case 'ni //license FWp'\''json_encode [F_]'\'' r4
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=28
-lazytest_case 'ni //license FWp'\''json_encode [F_]'\'' p'\''r @{json_decode a}'\'' r4
+lazytest_case 'ni dev/license-for-testing FWp'\''json_encode [F_]'\'' p'\''r @{json_decode a}'\'' r4
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer	Tipping	MIT	license
@@ -1111,7 +1113,7 @@ Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=47
-lazytest_case 'ni //license FWpF_ p'\''r pl 3'\'' \
+lazytest_case 'ni dev/license-for-testing FWpF_ p'\''r pl 3'\'' \
      p'\''json_encode {type    => '\''trigram'\'',
                     context => {w1 => a, w2 => b},
                     word    => c}'\'' \>jsons
@@ -1222,21 +1224,14 @@ lazytest_case 'ni /etc/passwd F::gG l"(r g (se (partial #'\''join #\,) a g))"
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=7
-lazytest_case 'ni //ni FWr10
+lazytest_case 'ni //ni FWr3
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env	perl
 	ni	is_lib	caller	
 	ni	self	license	_	
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
-of	this	software	and	associated	documentation	files	the	Software	to	deal
-in	the	Software	without	restriction	including	without	limitation	the	rights
-to	use	copy	modify	merge	publish	distribute	sublicense	and	or	sell
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=23
+lazytest_line=16
 lazytest_case 'ni //ni FW Yr10
 ' 3<<'LAZYTEST_EOF'
 0	0	
@@ -1251,28 +1246,22 @@ lazytest_case 'ni //ni FW Yr10
 1	4	
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=39
-lazytest_case 'ni //ni FW fABCD Y X r10
+lazytest_line=32
+lazytest_case 'ni //ni FW fABCD Y X r4
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
-Copyright	c	2016	Spencer
-
-Permission	is	hereby	granted
-of	this	software	and
-in	the	Software	without
-to	use	copy	modify
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=56
+lazytest_line=43
 lazytest_case 'ni n010p'\''r 0, a%3, 1'\'' X
 ' 3<<'LAZYTEST_EOF'
 4	3	3
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=64
+lazytest_line=51
 lazytest_case 'ni i[a b] i[c d] pF_
 ' 3<<'LAZYTEST_EOF'
 a
@@ -1281,14 +1270,14 @@ c
 d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=74
+lazytest_line=61
 lazytest_case 'ni i[a b] i[c d] pF_ Z2
 ' 3<<'LAZYTEST_EOF'
 a	b
 c	d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=86
+lazytest_line=73
 lazytest_case 'ni n10p'\''r map a*$_, 1..10'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8	9	10
@@ -1303,7 +1292,7 @@ lazytest_case 'ni n10p'\''r map a*$_, 1..10'\''
 10	20	30	40	50	60	70	80	90	100
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=97
+lazytest_line=84
 lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' N'\''x = x + 1'\''
 ' 3<<'LAZYTEST_EOF'
 2	3	4	5	6	7	8	9	10	11
@@ -1318,13 +1307,13 @@ lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' N'\''x = x + 1'\''
 11	21	31	41	51	61	71	81	91	101
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=113
+lazytest_line=100
 lazytest_case 'ni n4N'\''x = x.T'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=120
+lazytest_line=107
 lazytest_case 'ni n4N'\''x = reshape(x, (-1))'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1333,8 +1322,8 @@ lazytest_case 'ni n4N'\''x = reshape(x, (-1))'\''
 4
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=134
-lazytest_case 'ni //license plc FW Z1 p'\''r/(.)(.*)/'\'' g r10
+lazytest_line=121
+lazytest_case 'ni dev/license-for-testing plc FW Z1 p'\''r/(.)(.*)/'\'' g r10
 ' 3<<'LAZYTEST_EOF'
 2	016
 a	
@@ -1348,8 +1337,8 @@ a	nd
 a	nd
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=150
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' g r10
+lazytest_line=137
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' g r10
 ' 3<<'LAZYTEST_EOF'
 2	0	1	6
 a
@@ -1363,8 +1352,8 @@ a	n	d
 a	n	d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=161
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' g YB r10
+lazytest_line=148
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' g YB r10
 ' 3<<'LAZYTEST_EOF'
 2	0	0	0
 2	0	1	1
@@ -1378,8 +1367,8 @@ a	2	1	t
 a	2	2	i
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=172
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' gYB fABD gcfBCDA r10
+lazytest_line=159
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' gYB fABD gcfBCDA r10
 ' 3<<'LAZYTEST_EOF'
 2	0	6	1
 a			2
@@ -1393,8 +1382,8 @@ a	s	o	1
 a	u	h	1
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=191
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
+lazytest_line=178
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' \
       gYBfABDgcfBCDA ,zC o XB r10
 ' 3<<'LAZYTEST_EOF'
 a		2
@@ -1409,8 +1398,8 @@ b		2
 b		1
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=208
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
+lazytest_line=195
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''x *= 2'\'' YB,qD.01XB r10
 ' 3<<'LAZYTEST_EOF'
@@ -1426,8 +1415,8 @@ b	0	4
 b	0	2
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=226
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
+lazytest_line=213
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''x *= 2
         x += 1'\'' r10
@@ -1444,8 +1433,8 @@ b	1	5
 b	1	3
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=245
-lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
+lazytest_line=232
+lazytest_case 'ni dev/license-for-testing plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''if True:
           x = x + 1'\'' r3
@@ -3394,7 +3383,7 @@ lazytest_case 'ni short
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=165
-lazytest_case 'ni //license w[n3p'\''a*a'\'']
+lazytest_case 'ni dev/license-for-testing w[n3p'\''a*a'\'']
 ' 3<<'LAZYTEST_EOF'
 ni: https://github.com/spencertipping/ni	1
 Copyright (c) 2016 Spencer Tipping | MIT license	4
@@ -3487,7 +3476,7 @@ e	10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=304
-lazytest_case 'ni //license FW Y r10
+lazytest_case 'ni dev/license-for-testing FW Y r10
 ' 3<<'LAZYTEST_EOF'
 0	0	ni
 0	1	https
@@ -3502,7 +3491,7 @@ lazytest_case 'ni //license FW Y r10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=321
-lazytest_case 'ni //license FW Y r10 X
+lazytest_case 'ni dev/license-for-testing FW Y r10 X
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer
@@ -3555,7 +3544,7 @@ lazytest_case 'ni n4m'\''r a, ai + 1'\''
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=494
-lazytest_case 'ni //license FWr2m'\''r fields[0..3]'\''
+lazytest_case 'ni dev/license-for-testing FWr2m'\''r fields[0..3]'\''
 ' 3<<'LAZYTEST_EOF'
 ni	https	github	com
 Copyright	c	2016	Spencer
@@ -4345,7 +4334,7 @@ a	7
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=295
-lazytest_case 'ni //license FWpF_ > word-list
+lazytest_case 'ni dev/license-for-testing FWpF_ > word-list
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
