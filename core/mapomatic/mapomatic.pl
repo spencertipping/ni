@@ -3,15 +3,13 @@
 
 use constant geojson_html_gen => gen <<'EOF';
 <!DOCTYPE html>
-<!-- NB: code template swiped from geojson.io, with my mapbox access key -->
-
 <html>
 <head>
-  <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
-  <style>
-  body { margin:0; padding:0; }
-  #map { position:absolute; top:0; bottom:0; width:100%; }
-  .marker-properties {
+<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' />
+<style>
+body { margin:0; padding:0; }
+#map { position:absolute; top:0; bottom:0; width:100%; }
+.marker-properties {
     border-collapse:collapse;
     font-size:11px;
     border:1px solid #eee;
@@ -95,13 +93,40 @@ EOF
 use constant geojson_container_gen => gen
   '{"type":"FeatureCollection","features":[%features]}';
 
+use constant mapbox_key_default => 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';
+defconfenv 'mapbox/key', NI_MAPBOX_KEY => undef;
+
 sub mapomatic_server {
   my ($port, $geojson) = @_;
+
+  my $key = conf 'mapbox/key';
+  unless (defined $key)
+  {
+    print "NOTE:\n";
+    print "  You're using ni's builtin Mapbox key, which is shared across\n";
+    print "  all ni users. If you're using Map-O-Matic occasionally, this\n";
+    print "  is probably fine; but if you use it a lot, you should head to\n";
+    print "  mapbox.com and generate a new key. Keys are free and give you\n";
+    print "  about 50000 map views per day. To set your key, add this line\n";
+    print "  to your .bashrc:\n";
+    print "\n";
+    print "  export NI_MAPBOX_KEY='<your mapbox access token>'\n";
+    print "\n";
+    print "  For example:\n";
+    print "\n";
+    print "  export NI_MAPBOX_KEY='pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ'\n";
+    print "\n";
+
+    $key = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';
+  }
+
   $|++;
   http $port, sub {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n" unless defined $reply;
-    return http_reply $reply, 200, geojson_html_gen->(geojson => $geojson) if $url eq '/';
+    return http_reply $reply, 200,
+             geojson_html_gen->(geojson => $geojson, mapbox_key => $key)
+      if $url eq '/';
     return http_reply $reply, 404, $url;
   };
 }
