@@ -8,34 +8,37 @@ ni: two-fisted data science
 <br>
 </h1>
 
-# TODO: rewrite stuff below
-![ni!](http://spencertipping.com/ni-chroma-rendering.png)
+<h3 align="center">
+A self-contained command line tool for quickly transforming and visualizing data
+of any size.
+</h3>
 
-```sh
-$ git clone git://github.com/spencertipping/ni && cd ni
-$ ./ni --help                   # start here
-$ ./ni --js                     # ...or here if you like to live on the edge
-```
+## Features
+- [Zero-dependency installation: clone the repo and you're done](#getting-started)
+  - ni's only dependency is core Perl 5, which is installed nearly everywhere
+- Portability across OSX, Linux, and other POSIX operating systems
+  - Automatic self-installation over SSH for remote pipeline execution
+  - Automatic self-installation onto Hadoop worker nodes
+  - Runs on PCs, Raspberry Pi, and Android phones (haven't tested iOS yet)
+- Streaming, constant-space data processing
+- Concise syntax for unstructured data transformation
+- [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
+  - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
+- Realtime 2D/3D visualization of arbitrarily large datasets
 
-Some places to start reading:
-
-- [The Docs](doc/README.md): really smashing documentation
-- [Ni by Example](doc/ni_by_example_1.md): a tutorial that won't say "ni" to you
-- [The Cheatsheet](doc/cheatsheet.md): a tutorial that will say "ni" to you
-- [Web UI Examples](doc/examples.md): straight into the deep end with the web UI
-
-## ni works on every machine
-...in the last decade, except Windows. Its only dependency is Perl 5.8 or
-later, which is installed basically everywhere (and in any context involving
-remote jobs, like hadoop, SSH, docker, etc, ni automatically installs itself so
-you don't have to do any configuration).
-
-### Installing ni
+## Getting started
 ```sh
 $ git clone git://github.com/spencertipping/ni
-$ ln -s $PWD/ni/ni ~/bin/               # if ~/bin is on your $PATH
-$ sudo ln -s $PWD/ni/ni /usr/bin/       # system-wide installation
+$ sudo ln -s $PWD/ni/ni /usr/bin/
 ```
+
+<h2 align='center'>
+<img src='http://spencertipping.com/ni-explain.png'>
+<br>
+Using ni
+</h2>
+
+
 
 ## Contributors
 - [Factual, Inc](https://github.com/Factual)
@@ -45,11 +48,8 @@ $ sudo ln -s $PWD/ni/ni /usr/bin/       # system-wide installation
 - [Wes Henderson](https://github.com/weshenderson)
 
 ## License
-(Also included in the top of the ni image, and available by running `ni
-//license`.)
-
 ```
-Copyright (c) 2016 Spencer Tipping
+Copyright (c) 2016-2018 Spencer Tipping
 
 MIT license
 
@@ -71,51 +71,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## For ni developers
-### [Amazingly cool development documentation](dev/README.md)
-
-### How to test your changes
-```sh
-$ ./test                        # accurate but time-consuming; see below
-```
-
-`./test` automatically rebuilds your `./ni` image from source.
-
-If you've just made a small change and don't want to wait the full ten minutes
-it takes to run all tests on all distributions, here's a lighter-weight way to
-do it:
-
-```sh
-$ ./test --build                # if you're testing for the first time
-$ ./test --quick centos-5       # faster than running all tests
-$ ./test --quick ubuntu-16.04   # includes hadoop/spark/docker tests
-```
-
-### Main files and what they do
-- `./boot`: create the base `ni` image with no extensions. This image does
-  almost nothing and is effectively unusable.
-- `bugs/`: documentation and tests for all nontrivial bugs I've found, starting
-  2016.0918.
-- `./build`: run `./boot`, then extend with a bunch of libraries. See [the dev
-  docs](dev/) for information about how this works.
-- `core/`: all of the core libraries installed by `./build` onto the base
-  image (which itself is built from `core/boot`).
-- `dev/`: documentation and scripts for ni development.
-- `doc/`: documentation for using ni. This ends up being added to the ni image
-  by `./build`. Examples in the documentation are extracted into tests by
-  `./lazytest`. (**Warning:** Turn off your editor's whitespace features if you
-  edit `doc/`; test outputs are verified at the byte level, including tabs and
-  trailing whitespace in some cases.)
-- `env/`: dockerfiles for ni portability testing. This way we can make sure it
-  works with new and old versions of Perl and coreutils. `./test` builds and
-  runs these.
-- `./lazytest`: a copy of
-  [LazyTest](https://github.com/spencertipping/lazytest) used to generate unit
-  tests from the documentation examples. This is run by `./test`.
-- `./ni`: the fully-built ni image if you run `./build`, or just the core image
-  if you run `./boot`. The version checked into the repo should always be a
-  full build.
-- `./test`: runs unit tests or launches a test environment. All tests are run
-  inside one of the dockerized environments; see the [dev docs](dev/) for more
-  details about how this works.
