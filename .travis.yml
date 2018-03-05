@@ -1,12 +1,21 @@
-language: perl
-os: linux
-dist: xenial
-
+sudo: required
+services:
+- docker
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get -qqy install sbcl sqlite curl gcc
-  - sudo apt-get -qqy install bzip2 lzop liblz4-tool xz-utils strace ruby
-  - sudo apt-get -qqy install python-numpy netcat-openbsd
-
+- docker pull spencertipping/ni-env-dev-alpine
+- docker pull spencertipping/ni-env-dev-centos-6
+- docker pull spencertipping/ni-env-dev-debian-wheezy
+- docker pull spencertipping/ni-env-dev-ubuntu-12.04
+- docker pull spencertipping/ni-env-dev-ubuntu-14.04
+- docker pull spencertipping/ni-env-dev-ubuntu-16.04
+- docker pull spencertipping/ni-env-dev-ubuntu-16.04-p3
+- docker pull spencertipping/ni-env-dev-ubuntu-16.10
 script:
-  - sudo ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-alpine ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-centos-6 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-debian-wheezy ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-12.04 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-14.04 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04-p3 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.10 ./test --ci

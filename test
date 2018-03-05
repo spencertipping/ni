@@ -21,7 +21,24 @@ generate_gitlab_ci() {
   done
 }
 
+generate_travis_ci() {
+  echo "sudo: required"
+  echo "services:"
+  echo "- docker"
+
+  echo "before_install:"
+  for e in ${envs[@]}; do
+    echo "- docker pull spencertipping/ni-env-dev-$e"
+  done
+
+  echo "script:"
+  for e in ${envs[@]}; do
+    echo "- docker run --rm -it -v \$PWD:/data spencertipping/ni-env-dev-$e ./test --ci"
+  done
+}
+
 generate_gitlab_ci > .gitlab-ci.yml
+generate_travis_ci > .travis.yml
 
 if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   test_set=$2
