@@ -107,6 +107,10 @@ case $c in
 --ci)
   cp dev/tests.sh /tmp/
   cp ni /usr/bin/
+
+  /usr/bin/ni --run '$ni::self{license} = ni::rf "dev/license-for-testing";
+                     ni::modify_self' > /dev/null
+
   export SKIP_DOCKER=yes                # FIXME when possible
   # FIXME sorry about this. Some tests are flaky in the CI environment but not
   # in the real world or in normal docker -- no clue why. I'm working on the
