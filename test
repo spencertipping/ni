@@ -108,7 +108,7 @@ case $c in
   cp dev/tests.sh /tmp/
   cp ni /usr/bin/
 
-  /usr/bin/ni --run '$ni::self{license} = ni::rf "dev/license-for-testing";
+  /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
                      ni::modify_self' > /dev/null
 
   export SKIP_DOCKER=yes                # FIXME when possible
