@@ -1,5 +1,5 @@
 .*.swp
 dev/docker
 /gen
-.*.yml
+.gitlab-ci.yml
 test.log

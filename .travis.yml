@@ -1,0 +1,8 @@
+before_install:
+  - sudo apt-get -qq update
+  - sudo apt-get -qqy install sbcl sqlite curl gcc
+  - sudo apt-get -qqy install bzip2 lzop liblz4-tool xz-utils strace ruby
+  - sudo apt-get -qqy install python-numpy netcat-openbsd
+
+script:
+  - ./test --ci
