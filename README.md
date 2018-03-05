@@ -63,9 +63,10 @@ $ ni n10
 <h2 align='center'>
 <img alt='ni license' src='http://spencertipping.com/ni-license.png'>
 </h2>
-**Copyright (c) 2016-2018 Spencer Tipping**
 
 **MIT license**
+
+Copyright (c) 2016-2018 Spencer Tipping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
