@@ -5596,17 +5596,17 @@ sub iso_8601_epoch {
     ($y, $m, $d) = split /-/, $date_part;
   }
 
-  return time_pieces_epoch($y, $m, $d) unless $time_part;
+  return int time_pieces_epoch($y, $m, $d) unless $time_part;
 
   my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
   my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
-  return $raw_ts unless $tz_part;
+  return int $raw_ts unless $tz_part;
   
   my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
 
   my $offset_amt = $offset_type eq "-" ? 1 : -1; 
   my $offset = $offset_amt * (3600 * $offset_hr + 60 * $offset_min); 
-  $raw_ts + $offset;
+  int $raw_ts + $offset;
 }
 
 # Converts an epoch timestamp to the corresponding 
