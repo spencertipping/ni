@@ -674,12 +674,18 @@
 	    ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	  | (
 	      '^b'
-	      <colspec1>
+	      (
+	        <colspec1>
+	        <empty>?
+	      ) -> {$$_[0]}
 	      </qfn>
 	    ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
 	  | (
 	      'b'
-	      <colspec1>
+	      (
+	        <colspec1>
+	        <empty>?
+	      ) -> {$$_[0]}
 	      </qfn>
 	    ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	  | (
@@ -839,12 +845,18 @@
 	  ) -> {$$_[1]} -> {ruby_grepper_op $_}
 	| (
 	    '^b'
-	    <colspec1>
+	    (
+	      <colspec1>
+	      <empty>?
+	    ) -> {$$_[0]}
 	    </qfn>
 	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 0, @$_}
 	| (
 	    'b'
-	    <colspec1>
+	    (
+	      <colspec1>
+	      <empty>?
+	    ) -> {$$_[0]}
 	    </qfn>
 	  ) -> {[@$_[1,2]]} -> {bloom_rows_op 1, @$_}
 	| (

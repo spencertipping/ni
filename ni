@@ -6311,8 +6311,8 @@ defoperator bloom_rows => q{
   }
 };
 
-defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', colspec1, _qfn;
-defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr '^b', colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 1, @$_}, pn [1, 2], pstr 'b', pc colspec1, _qfn;
+defrowalt pmap q{bloom_rows_op 0, @$_}, pn [1, 2], pstr '^b', pc colspec1, _qfn;
 2 core/cell/lib
 murmurhash.pl
 cell.pl
