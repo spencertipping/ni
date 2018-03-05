@@ -1,5 +1,12 @@
-# ni: APL for unstructured streaming data
-![travis CI](https://travis-ci.org/spencertipping/ni.svg?branch=develop)
+<h1 align="center">
+<br>
+<a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-explain-screenshot.png" alt="ni"></a>
+<br>
+ni
+<br>
+<img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
+<br>
+</h1>
 
 ![ni!](http://spencertipping.com/ni-chroma-rendering.png)
 
