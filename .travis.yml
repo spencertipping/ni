@@ -5,4 +5,4 @@ before_install:
   - sudo apt-get -qqy install python-numpy netcat-openbsd
 
 script:
-  - ./test --ci
+  - sudo ./test --ci
