@@ -1,4 +1,6 @@
 # ni: APL for unstructured streaming data
+![travis CI](https://travis-ci.org/spencertipping/ni.svg?branch=develop)
+
 ![ni!](http://spencertipping.com/ni-chroma-rendering.png)
 
 ```sh
