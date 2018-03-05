@@ -1,3 +1,7 @@
+language: perl
+os: linux
+dist: xenial
+
 before_install:
   - sudo apt-get -qq update
   - sudo apt-get -qqy install sbcl sqlite curl gcc
