@@ -2,14 +2,13 @@
 <br>
 <a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-logo.png" alt="ni"></a>
 <br>
-<br>
 ni: two-fisted data science
-<br>
 <br>
 <img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
 <br>
 </h1>
 
+# TODO: rewrite stuff below
 ![ni!](http://spencertipping.com/ni-chroma-rendering.png)
 
 ```sh
