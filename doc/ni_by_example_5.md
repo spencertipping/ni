@@ -162,7 +162,7 @@ These operations are used to add columns vertically to to a stream, either by me
 `w` adds a column to the end of a stream, up to the minimum length of either stream.
 
 ```bash
-$ ni dev/license-for-testing w[n3p'a*a']
+$ ni //license w[n3p'a*a']
 ni: https://github.com/spencertipping/ni	1
 Copyright (c) 2016 Spencer Tipping | MIT license	4
 	9
@@ -301,7 +301,7 @@ We sort the data (necessary to perform the join) first ascending lexicographical
 
 
 ```bash
-$ ni dev/license-for-testing FW Y r10
+$ ni //license FW Y r10
 0	0	ni
 0	1	https
 0	2	github
@@ -318,7 +318,7 @@ $ ni dev/license-for-testing FW Y r10
 `X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
 ```bash
-$ ni dev/license-for-testing FW Y r10 X
+$ ni //license FW Y r10 X
 ni	https	github	com	spencertipping	ni
 Copyright	c	2016	Spencer
 ```
@@ -491,7 +491,7 @@ $ ni n4m'r a, ai + 1'
 Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
 ```bash
-$ ni dev/license-for-testing FWr2m'r fields[0..3]'
+$ ni //license FWr2m'r fields[0..3]'
 ni	https	github	com
 Copyright	c	2016	Spencer
 ```

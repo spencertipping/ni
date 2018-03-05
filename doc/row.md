@@ -292,7 +292,7 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni dev/license-for-testing FWpF_ > word-list
+$ ni //license FWpF_ > word-list
 $ ni word-list cr10             # unsorted count
 1	ni
 1	https

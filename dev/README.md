@@ -2,10 +2,6 @@
 Note that all paths in this README are relative to the repository root, not to
 this directory.
 
-**NB:** `license-for-testing` is an older copy of the license text that I use
-for unit test examples. It's only different in that it doesn't have an
-up-to-date copyright year.
-
 ## How ni works
 See [internals.md](internals.md) for the gory details. For the most part you
 won't need to worry about this stuff unless you're writing very involved ni

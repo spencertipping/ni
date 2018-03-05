@@ -73,12 +73,11 @@ $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 ```
 
-Now let's get a word count for `ni --license`:
+Now let's get a word count for `ni //license`:
 
 ```bash
-$ ni dev/license-for-testing \
-     ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-     Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
+                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 2016	1
 A	1
 ACTION	1
@@ -97,11 +96,10 @@ setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
 reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni dev/license-for-testing \
-     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-       hadoop/jobconf='mapred.map.tasks=10
-                       mapred.reduce.tasks=4'} \
-     Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+                 hadoop/jobconf='mapred.map.tasks=10
+                                 mapred.reduce.tasks=4'} \
+                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
 2016	1
 A	1
 BE	1
