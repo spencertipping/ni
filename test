@@ -47,6 +47,7 @@ fi
 
 build_tests() {
   {
+    echo "#!/bin/bash"
     echo cd /tmp
     echo export NI_NO_MONITOR=yes
     ./lazytest ${test_set:-$(find doc bugs -name '*.md' | sort)}

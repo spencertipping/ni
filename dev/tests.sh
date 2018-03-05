@@ -1,3 +1,4 @@
+#!/bin/bash
 cd /tmp
 export NI_NO_MONITOR=yes
 #!/bin/bash
