@@ -4,35 +4,35 @@
 <br>
 ni: two-fisted data science
 <br>
-</h1>
-
-<h3 align="center">
-A self-contained command line tool for quickly transforming and visualizing data
-of any size.
 <br>
 <img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
-</h3>
+</h1>
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
   - ni's only dependency is core Perl 5, which is installed nearly everywhere
 - Portability across OSX, Linux, and other POSIX operating systems
-  - Automatic self-installation over SSH for remote pipeline execution
-  - Automatic self-installation onto Hadoop worker nodes
-  - Automatic self-installation into Docker containers
+  - [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
+  - [Automatic self-installation onto Hadoop worker nodes](doc/hadoop.md)
+  - [Automatic self-installation into Docker containers](doc/container.md)
   - Runs on PCs, Raspberry Pi, and Android phones (we haven't tested iOS yet)
 - [Self-contained and extensible](doc/libraries.md)
 - [Streaming, constant-space data processing](doc/stream.md)
-- Concise syntax for unstructured data transformation
+- [Concise syntax for unstructured data transformation](doc/ni_fu.md)
+  - Highly stable API: unit tests are generated from documentation examples
 - [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
   - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
+  - Builtin HTTP/websocket server for offline data visualization
+  - Realtime client-side buffering/downsampling, ~30FPS rendering at 4M points
 - Seamless integration with common data formats and libraries
+  - [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
   - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
   - [JSON](doc/ni_by_example_3.md#json-io)
   - [Binary files](doc/binary.md)
   - [Bloom filters](doc/bloom.md)
   - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
+  - [NumPy](doc/matrix.md#numpy-interop)
 
 ## Getting started
 ```sh
