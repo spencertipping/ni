@@ -342,6 +342,8 @@
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
 	| '$hdfs/tmpdir' '' -> {conf_get_op 'hdfs/tmpdir'}
 	| '$image_command' '' -> {conf_get_op 'image_command'}
+	| '$mapbox/key' '' -> {conf_get_op 'mapbox/key'}
+	| '$mapbox/tileset' '' -> {conf_get_op 'mapbox/tileset'}
 	| '$monitor' '' -> {conf_get_op 'monitor'}
 	| '$pager' '' -> {conf_get_op 'pager'}
 	| '$row/seed' '' -> {conf_get_op 'row/seed'}

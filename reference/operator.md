@@ -225,7 +225,7 @@
 	  my ($vars, $f) = @_;
 	  conf_set $_, $$vars{$_} for keys %$vars;
 	  conf_set monitor => 0 unless exists $$vars{monitor};
-	  &$ni::main_operator(@$f);
+	  &$ni::main_operator(flatten_operators $f);
 
 # OPERATOR count
 

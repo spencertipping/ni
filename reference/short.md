@@ -1336,6 +1336,16 @@
 ## SYNTAX
 	'' -> {conf_get_op 'image_command'}
 
+# SHORT OPERATOR /$mapbox/key
+
+## SYNTAX
+	'' -> {conf_get_op 'mapbox/key'}
+
+# SHORT OPERATOR /$mapbox/tileset
+
+## SYNTAX
+	'' -> {conf_get_op 'mapbox/tileset'}
+
 # SHORT OPERATOR /$monitor
 
 ## SYNTAX
