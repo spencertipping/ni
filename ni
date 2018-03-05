@@ -8895,7 +8895,7 @@ _
 2 core/mapomatic/lib
 geojson.pl
 mapomatic.pl
-210 core/mapomatic/geojson.pl
+221 core/mapomatic/geojson.pl
 # GeoJSON functions
 # Converts WKTs and other things to geoJSON for export to Map-O-Matic.
 
@@ -8925,6 +8925,7 @@ use Scalar::Util qw/looks_like_number/;
 #   name=value                      # stuff something into properties
 #   {"name":"value",...}            # merge into properties
 #   #341802                         # set rendering color
+#   0.12518251                      # generate a color from a unit float
 #   arbitrary text                  # set title attribute so you get a tooltip
 #
 # The geoJSON lines coming out of this operator are just the individual
@@ -8998,16 +8999,26 @@ sub geojson_polygon
 }
 
 # Property extraction
+sub geojson_rgb($)
+{
+  my ($x) = @_;
+  return $x if $x =~ /^#/;
+  my $r = min 1, max 0, 1 - 2 * (0.5 - abs 0.5 - $x);
+  my $g = min 1, max 0,     2 * (0.5 - abs 1/3 - $x);
+  my $b = min 1, max 0,     2 * (0.5 - abs 2/3 - $x);
+  sprintf "#%02x%02x%02x", int $r * 255, int $g * 255, int $b * 255;
+}
+
 sub geojson_props
 {
   my $props = {title => ''};
   for (@_)
   {
     %$props = (%$props, %{json_decode $_}), next if /^{/;
-    $$props{$1} = $2, next                       if /([^=]+)=(.*)$/;
     $$props{'marker-color'}
       = $$props{'stroke'}
-      = $$props{'fill'} = $_, next               if /^#/;
+      = $$props{'fill'} = geojson_rgb $_, next   if /^#/ || looks_like_number $_;
+    $$props{$1} = $2, next                       if /^([^=]+)=(.*)$/;
     $$props{title} .= $_;
   }
   $props;
