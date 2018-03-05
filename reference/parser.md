@@ -378,6 +378,7 @@
 	| '--dev/local-operate' </qfn> -> {dev_local_operate_op $_}
 	| '--http/wse' '' -> {http_websocket_encode_op}
 	| '--http/wse-batch' <integer>? -> {http_websocket_encode_batch_op $_}
+	| '--license' '' -> {meta_key_op 'license'}
 	| '//:' <closure_name> -> {memory_closure_append_op $_}
 	| '//@' <closure_name> -> {file_closure_append_op $_}
 	| '//help' //(.*)/? -> {meta_help_op $_}

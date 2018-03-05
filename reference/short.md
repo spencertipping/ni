@@ -1440,6 +1440,11 @@
 ## SYNTAX
 	<integer>? -> {http_websocket_encode_batch_op $_}
 
+# SHORT OPERATOR /--license
+
+## SYNTAX
+	'' -> {meta_key_op 'license'}
+
 # SHORT OPERATOR ///:
 
 ## SYNTAX

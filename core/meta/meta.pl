@@ -38,6 +38,7 @@ defoperator meta_options => q{
 defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
 defshort '///license', pmap q{meta_key_op 'license'}, pnone;
+defshort '/--license', pmap q{meta_key_op 'license'}, pnone;
 
 defoperator meta_conf => q{
   sio;

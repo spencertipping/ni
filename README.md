@@ -4,13 +4,13 @@
 <br>
 ni: two-fisted data science
 <br>
-<img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
-<br>
 </h1>
 
 <h3 align="center">
 A self-contained command line tool for quickly transforming and visualizing data
 of any size.
+<br>
+<img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
 </h3>
 
 ## Features
@@ -19,12 +19,20 @@ of any size.
 - Portability across OSX, Linux, and other POSIX operating systems
   - Automatic self-installation over SSH for remote pipeline execution
   - Automatic self-installation onto Hadoop worker nodes
-  - Runs on PCs, Raspberry Pi, and Android phones (haven't tested iOS yet)
-- Streaming, constant-space data processing
+  - Automatic self-installation into Docker containers
+  - Runs on PCs, Raspberry Pi, and Android phones (we haven't tested iOS yet)
+- [Self-contained and extensible](doc/libraries.md)
+- [Streaming, constant-space data processing](doc/stream.md)
 - Concise syntax for unstructured data transformation
 - [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
   - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
-- Realtime 2D/3D visualization of arbitrarily large datasets
+- [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
+- Seamless integration with common data formats and libraries
+  - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
+  - [JSON](doc/ni_by_example_3.md#json-io)
+  - [Binary files](doc/binary.md)
+  - [Bloom filters](doc/bloom.md)
+  - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
 
 ## Getting started
 ```sh
@@ -32,23 +40,29 @@ $ git clone git://github.com/spencertipping/ni
 $ sudo ln -s $PWD/ni/ni /usr/bin/
 ```
 
+Now you have ni installed; you can try it out like this:
+
+```sh
+$ ni n10
+```
+
 <h2 align='center'>
-<img src='http://spencertipping.com/ni-explain.png'>
-<br>
-Using ni
+<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
 </h2>
 
+### Ni By Example
+- [Chapter 1: Streams](doc/ni_by_example_1.md)
+- [Chapter 2: Perl scripting](doc/ni_by_example_2.md)
+- [Chapter 3: ni's Perl API, JSON, datetime](doc/ni_by_example_3.md)
+- [Chapter 4: Data closures, Hadoop](doc/ni_by_example_4.md)
+- [Chapter 5: Jupyter interop, matrix operations, joins](doc/ni_by_example_5.md)
+- [ni fu](doc/ni_fu.md)
+- [Operator cheatsheet](doc/cheatsheet_op.md)
+- [Perl cheatsheet](doc/cheatsheet_perl.md)
 
-
-## Contributors
-- [Factual, Inc](https://github.com/Factual)
-- [Joyce Tipping](https://github.com/joycetipping)
-- [Michael Bilow](https://github.com/michaelbilow)
-- [Spencer Tipping](https://github.com/spencertipping)
-- [Wes Henderson](https://github.com/weshenderson)
-
-## License
-```
+<h2 align='center'>
+<img alt='ni license' src='http://spencertipping.com/ni-license.png'>
+</h2>
 Copyright (c) 2016-2018 Spencer Tipping
 
 MIT license
@@ -70,4 +84,10 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
+
+### Contributors
+- [Factual, Inc](https://github.com/Factual)
+- [Joyce Tipping](https://github.com/joycetipping)
+- [Michael Bilow](https://github.com/michaelbilow)
+- [Spencer Tipping](https://github.com/spencertipping)
+- [Wes Henderson](https://github.com/weshenderson)

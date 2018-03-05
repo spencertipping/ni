@@ -2,7 +2,7 @@
 $ni::is_lib = caller();
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
-Copyright (c) 2016 Spencer Tipping | MIT license
+Copyright (c) 2016-2018 Spencer Tipping | MIT license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -3083,7 +3083,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl
 map.pl
-76 core/meta/meta.pl
+77 core/meta/meta.pl
 # Image-related data sources.
 # Long options to access ni's internal state. Also the ability to instantiate ni
 # within a shell process.
@@ -3124,6 +3124,7 @@ defoperator meta_options => q{
 defshort '///ni/options', pmap q{meta_options_op}, pnone;
 
 defshort '///license', pmap q{meta_key_op 'license'}, pnone;
+defshort '/--license', pmap q{meta_key_op 'license'}, pnone;
 
 defoperator meta_conf => q{
   sio;
