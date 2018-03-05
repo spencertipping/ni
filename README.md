@@ -1,8 +1,10 @@
 <h1 align="center">
 <br>
-<a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-explain-screenshot.png" alt="ni"></a>
+<a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-logo.png" alt="ni"></a>
 <br>
-ni
+<br>
+ni: two-fisted data science
+<br>
 <br>
 <img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
 <br>
