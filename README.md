@@ -5,7 +5,7 @@
 ni: two-fisted data science
 <br>
 <br>
-<img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'>
+<a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
 </h1>
 
 ## Features
