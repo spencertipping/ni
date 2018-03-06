@@ -4,6 +4,8 @@
 <br>
 ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
 <br>
+<br>
+<br>
 <img src='http://spencertipping.com/ni-osm.gif'>
 </h1>
 
