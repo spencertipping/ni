@@ -23,7 +23,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
   - Builtin HTTP/websocket server for offline data visualization
-- Self-contained online documentation (`ni --inspect`)
+- [Online documentation and source code introspection](#online-documentation)
 
 ![image](http://storage6.static.itmages.com/i/18/0306/h_1520341324_1461936_f6fd3073ba.png)
 
