@@ -6,9 +6,9 @@ ni is two-fisted data science.
 <br>
 <br>
 <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
+<br>
+<img src='http://spencertipping.com/ni-osm.gif'>
 </h1>
-
-![ni OSM](http://spencertipping.com/ni-osm.gif)
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
