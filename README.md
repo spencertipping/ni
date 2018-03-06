@@ -2,7 +2,7 @@
 <br>
 <a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-logo.png" alt="ni"></a>
 <br>
-ni: two-fisted data science
+ni is two-fisted data science.
 <br>
 <br>
 <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
@@ -60,6 +60,8 @@ ni will intermittently print monitor updates that may overwrite your output; use
 <h2 align='center'>
 <img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
 </h2>
+
+![ni basics](http://spencertipping.com/ni-basics.gif)
 
 ### Ni By Example
 - [Chapter 1: Streams](doc/ni_by_example_1.md)
