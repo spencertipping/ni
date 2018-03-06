@@ -11,7 +11,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
-- [Launch Hadoop Streaming jobs with five characters](doc/hadoop.md)
+- [Launch Hadoop Streaming jobs with five characters](doc/ni_by_example_4.md#hadoop-streaming-mapreduce)
 - [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
 - [Automatic self-installation into Docker containers](doc/container.md)
 - [Self-contained and extensible](doc/libraries.md)
