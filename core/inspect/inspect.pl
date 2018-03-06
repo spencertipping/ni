@@ -79,7 +79,9 @@ sub inspect_lib
 {
   my ($reply, $k) = @_;
   inspect_snip $reply, "<h1>Library <code>$k</code></h1>",
-    inspect_text lib_entries $k, $ni::self{"$k/lib"};
+    "<ul>",
+    map(inspect_linkify("<li>$_</li>"), lib_entries $k, $ni::self{"$k/lib"}),
+    "</ul>";
 }
 
 sub inspect_defined
@@ -155,7 +157,14 @@ sub inspect_root
     next if $k =~ /_op$/ || $type eq 'short' && $k =~ /^\/\$/;
     my $thing = "<a href='/$type/$target'><code>$k</code></a>";
 
-    $thing .= " = <code>" . conf($k) . "</code>" if $type eq "conf";
+    if ($type eq 'conf')
+    {
+      my ($env) = $ni::conf_variables{$k} =~ /conf_env '(\w+)'/;
+      $env ||= '';
+      $thing .= " <code class='conf-env'>\$$env</code>";
+      $thing .= " = <code>" . conf($k) . "</code>" if length conf $k;
+    }
+
     $thing .= " [<a href='/parser_short/$k'>grammar</a>]"
       if $type eq "short";
 
@@ -181,7 +190,7 @@ sub inspect_root
                dsp         => "Parser dispatch table",
                alt         => "Parser alternative list");
 
-  for (qw/ lib short op meta_op cli_special conf attr sub constant dsp alt /)
+  for (qw/ lib cli_special short op meta_op conf attr sub constant dsp alt /)
   {
     push @rendered,
       "<h1>$names{$_}</h1>",

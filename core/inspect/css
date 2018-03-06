@@ -22,4 +22,6 @@ body { font-family: sans-serif; margin: auto; width: 600px }
 a { color: #444; text-decoration: none }
 a:hover { color: #f80; text-decoration: underline }
 
+.conf-env { color: #aaa }
+
 ul { list-style-type: square }
