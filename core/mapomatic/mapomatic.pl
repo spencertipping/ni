@@ -115,7 +115,7 @@ sub mapomatic_server {
     print "  export NI_MAPBOX_KEY='pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ'\n";
     print "\n";
     print "  You can verify that ni is using your key by running this:\n";
-    print "  \$ ni \\\$mapbox/key\n";
+    print "  \$ ni '\$mapbox/key'\n";
     print "\n";
 
     $key = 'pk.eyJ1Ijoic3BlbmNlcnRpcHBpbmciLCJhIjoiY2plNGducGNxMTR3cTJycnF1bGRkYmJ0NiJ9.aGaYbtzy_cSYfuQ0fawfTQ';

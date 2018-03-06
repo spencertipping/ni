@@ -11,8 +11,8 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
+- [Launch Hadoop Streaming jobs with five characters](doc/hadoop.md)
 - [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
-- [Automatic self-installation onto Hadoop worker nodes](doc/hadoop.md)
 - [Automatic self-installation into Docker containers](doc/container.md)
 - [Self-contained and extensible](doc/libraries.md)
 - [Data closures: lambda capture for data pipelines](doc/closure.md)
@@ -25,6 +25,8 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
   - Builtin HTTP/websocket server for offline data visualization
 
 ### Interoperability
+![image](http://storage6.static.itmages.com/i/18/0306/h_1520341324_1461936_f6fd3073ba.png)
+
 - [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
   - Automatic detection + decompression based on stream contents
 - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
@@ -34,6 +36,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
 - [NumPy](doc/matrix.md#numpy-interop)
 - [Git](doc/git.md)
+- [MapBox, GeoJSON, and WKT](doc/wkt.md)
 
 ## Getting started
 ```sh
