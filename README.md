@@ -80,6 +80,9 @@ ni will intermittently print monitor updates that may overwrite your output; use
 - [Operator cheatsheet](doc/cheatsheet_op.md)
 - [Perl cheatsheet](doc/cheatsheet_perl.md)
 
+### Online documentation
+![ni inspect](http://spencertipping.com/ni-inspect.gif)
+
 <h2 align='center'>
 <img alt='ni license' src='http://spencertipping.com/ni-license.png'>
 </h2>
