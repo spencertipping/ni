@@ -49,6 +49,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/caterwaul \
   core/jsplot \
   core/mapomatic \
+  core/inspect \
   \
   core/docker \
   core/hadoop \

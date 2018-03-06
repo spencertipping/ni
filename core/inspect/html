@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head>
+<title>ni/inspect</title>
+<style>%css</style>
+<script>%js</script>
+</head>
+<body>
+<div id='header'>
+<a href='/root'><span id='shell'>$</span><span id='ni'>ni --inspect</span></a>
+</div>
+<textarea spellcheck='false' id='explain'>n10 gcO</textarea>
+<div id='explanation'></div>
+<div id='content'>
+%content
+</div>
+</body>
+</html>

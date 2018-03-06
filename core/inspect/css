@@ -1,0 +1,25 @@
+body { font-family: sans-serif; margin: auto; width: 600px }
+
+#header {
+  padding: 40px 0 20px 0;
+  font-family: "Ubuntu Mono", "Inconsolata", "Anonymous Pro", monospace;
+  font-size: 40px;
+}
+
+#shell { color: #888; padding-right: 10px }
+#ni    { color: black }
+
+#explain-pre, #explain, #explanation {
+  font-family: "Ubuntu Mono", "Inconsolata", "Anonymous Pro", monospace;
+  font-size: 20pt;
+}
+
+#explain-pre, #explanation { color: #888 }
+
+#explain { border: none; outline: none; width: 100% }
+#content { border-top: solid 1px #444; margin-top: 20px }
+
+a { color: #444; text-decoration: none }
+a:hover { color: #f80; text-decoration: underline }
+
+ul { list-style-type: square }
