@@ -33,6 +33,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/bloom \
   core/cell \
   core/c \
+  core/git \
   \
   core/rb \
   core/lisp \

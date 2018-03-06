@@ -11,11 +11,11 @@ before_install:
 - docker pull spencertipping/ni-env-dev-ubuntu-16.04-p3
 - docker pull spencertipping/ni-env-dev-ubuntu-16.10
 script:
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-alpine ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-centos-6 ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-debian-wheezy ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-12.04 ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-14.04 ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04 ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04-p3 ./test --ci
-- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.10 ./test --ci
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-alpine ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-centos-6 ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-debian-wheezy ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-12.04 ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-14.04 ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04 ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.04-p3 ./test --travis
+- docker run --rm -it -v $PWD:/data spencertipping/ni-env-dev-ubuntu-16.10 ./test --travis

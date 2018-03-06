@@ -121,6 +121,13 @@
 	(
 	| ''file-closure://' /.*/ -> {resource_quote_op "file-closure://$_"}
 	| ''file://' /.*/ -> {resource_quote_op "file://$_"}
+	| ''git://' /.*/ -> {resource_quote_op "git://$_"}
+	| ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
+	| ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
+	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
+	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
+	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
+	| ''gittree://' /.*/ -> {resource_quote_op "gittree://$_"}
 	| ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
 	| ''hdfsc://' /.*/ -> {resource_quote_op "hdfsc://$_"}
 	| ''hdfscname://' /.*/ -> {resource_quote_op "hdfscname://$_"}
@@ -134,6 +141,13 @@
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
 	| 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
+	| 'git://' /.*/ -> {resource_append_op "git://$_"}
+	| 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
+	| 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
+	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
+	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
+	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
+	| 'gittree://' /.*/ -> {resource_append_op "gittree://$_"}
 	| 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
 	| 'hdfsc://' /.*/ -> {resource_append_op "hdfsc://$_"}
 	| 'hdfscname://' /.*/ -> {resource_append_op "hdfscname://$_"}

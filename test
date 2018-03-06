@@ -33,7 +33,7 @@ generate_travis_ci() {
 
   echo "script:"
   for e in ${envs[@]}; do
-    echo "- docker run --rm -it -v \$PWD:/data spencertipping/ni-env-dev-$e ./test --ci"
+    echo "- docker run --rm -it -v \$PWD:/data spencertipping/ni-env-dev-$e ./test --travis"
   done
 }
 
@@ -102,6 +102,16 @@ case $c in
 -c|--cancel)
   touch .test-cancel
   docker rm -f ni-test ni-test-hadoop
+  ;;
+
+--travis)
+  cp dev/tests.sh /tmp/
+  cp ni /usr/bin/
+
+  /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
+                     ni::modify_self' > /dev/null
+
+  bash /tmp/tests.sh || exit 1
   ;;
 
 --ci)

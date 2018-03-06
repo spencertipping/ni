@@ -15,6 +15,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Automatic self-installation onto Hadoop worker nodes](doc/hadoop.md)
 - [Automatic self-installation into Docker containers](doc/container.md)
 - [Self-contained and extensible](doc/libraries.md)
+- [Data closures: lambda capture for data pipelines](doc/closure.md)
 - [Streaming, constant-space data processing](doc/stream.md)
 - [Concise syntax for unstructured data transformation](doc/ni_fu.md)
   - Highly stable API: unit tests are generated from documentation examples
@@ -23,7 +24,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
   - Builtin HTTP/websocket server for offline data visualization
 
-### Interoperability with common data formats
+### Interoperability
 - [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
   - Automatic detection + decompression based on stream contents
 - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
@@ -32,6 +33,7 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Bloom filters](doc/bloom.md)
 - [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
 - [NumPy](doc/matrix.md#numpy-interop)
+- [Git](doc/git.md)
 
 ## Getting started
 ```sh
