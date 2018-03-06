@@ -17,6 +17,8 @@ $(function () {
     });
   }, 50);
 
+  if (document.location.hash === '') document.location.hash = '/root';
+
   $('body').on('click', 'a', function (e) {
     document.location.hash = encodeURI($(this).attr('href'));
     e.preventDefault();

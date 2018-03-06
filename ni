@@ -9390,7 +9390,7 @@ ul { list-style-type: square }
 </div>
 </body>
 </html>
-28 core/inspect/inspect.js
+30 core/inspect/inspect.js
 $(function () {
   var reload_explanation = function () {
     $.getJSON("/explain/" + $('#explain').val(), function (result) {
@@ -9409,6 +9409,8 @@ $(function () {
       $('#content').html(reply);
     });
   }, 50);
+
+  if (document.location.hash === '') document.location.hash = '/root';
 
   $('body').on('click', 'a', function (e) {
     document.location.hash = encodeURI($(this).attr('href'));
