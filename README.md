@@ -24,9 +24,9 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
   - Builtin HTTP/websocket server for offline data visualization
 
-### Interoperability
 ![image](http://storage6.static.itmages.com/i/18/0306/h_1520341324_1461936_f6fd3073ba.png)
 
+### Interoperability
 - [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
   - Automatic detection + decompression based on stream contents
 - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
