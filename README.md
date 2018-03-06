@@ -8,6 +8,8 @@ ni is two-fisted data science.
 <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
 </h1>
 
+![ni OSM](http://spencertipping.com/ni-osm.gif)
+
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
 - [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
