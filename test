@@ -33,7 +33,7 @@ generate_travis_ci() {
 
   echo "script:"
   for e in ${envs[@]}; do
-    echo "- docker run --rm -it -v \$PWD:/data spencertipping/ni-env-dev-$e ./test --travis"
+    echo "- docker run --rm -it -v \$PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-$e ./test --travis"
   done
 }
 
