@@ -111,6 +111,7 @@ case $c in
   /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
                      ni::modify_self' > /dev/null
 
+  export SKIP_DOCKER=yes                # FIXME when possible
   bash /tmp/tests.sh || exit 1
   ;;
 
