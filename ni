@@ -9421,7 +9421,7 @@ $(function () {
   $('#explain').on('keyup change', reload_explanation);
   reload_explanation();
 });
-189 core/inspect/inspect.pl
+230 core/inspect/inspect.pl
 # Inspect ni's internal state
 
 use constant inspect_gen => gen $ni::self{'core/inspect/html'};
@@ -9451,6 +9451,8 @@ sub inspect_linkable_things()
    map(($_        => [constant => $_]), map /use constant\s+(\w+)/g, @ni::self{grep /\.pl$/, sort keys %ni::self}),
    map(($_        => [lib      => $_]), grep s/\/lib$//, sort keys %ni::self),
    map(($_        => [doc      => $_]), grep /^doc\//,   sort keys %ni::self),
+   map(($_        => [conf     => $_]), sort keys %ni::conf_variables),
+   map(($_        => [parser   => $_]), sort keys %ni::parsers),
    map(($_        => [short    => $_]), sort keys %ni::shorts),
    map(($_        => [attr     => $_]), sort keys %ni::self),
    map(($_        => [op       => $_]), sort keys %ni::operators),
@@ -9480,12 +9482,20 @@ sub inspect_linkify
   @xs;
 }
 
-sub inspect_text { ("<pre>", inspect_linkify(@_), "</pre>") }
+sub inspect_text
+{
+  my @xs = @_;
+  s/&/&amp;/g, s/</&lt;/g, s/>/&gt;/g for @xs;
+  ("<pre>", inspect_linkify(@xs), "</pre>");
+}
 
 sub inspect_attr
 {
   my ($reply, $k) = @_;
-  inspect_snip $reply, "<h1>Attribute <code>$k</code></h1>",
+  (my $lib = $k) =~ s/\/[^\/]+$//;
+  inspect_snip $reply,
+    inspect_linkify("<h1>Attribute <code>$k</code></h1>",
+                    "<h2>Defined in library <code>$lib</code></h2>"),
     inspect_text $ni::self{$k};
 }
 
@@ -9525,6 +9535,22 @@ sub inspect_short       { inspect_defined $_[0], short       => qr/defshort\s+["
 sub inspect_op          { inspect_defined $_[0], op          => qr/defoperator\s+["']?\s*/, $_[1] }
 sub inspect_meta_op     { inspect_defined $_[0], meta_op     => qr/defmetaoperator\s+["']?\s*/, $_[1] }
 
+sub inspect_parser_short
+{
+  my ($reply, $short) = @_;
+  inspect_snip $reply,
+    inspect_linkify("<h1>Parser for short operator <code>$short</code></h1>"),
+    inspect_text(parser_ebnf $ni::shorts{$short});
+}
+
+sub inspect_parser
+{
+  my ($reply, $p) = @_;
+  inspect_snip $reply,
+    inspect_linkify("<h1>Parser <code>$p</code></h1>"),
+    inspect_text(parser_ebnf $ni::parsers{$p});
+}
+
 sub inspect_bootcode
 {
   my ($reply) = @_;
@@ -9551,22 +9577,35 @@ sub inspect_root
     my ($k, $v)         = @linkables[$i, $i + 1];
     my ($type, $target) = @$v;
     next if $k =~ /_op$/ || $type eq 'short' && $k =~ /^\/\$/;
-    push @{$links{$type} ||= []}, "<a href='/$type/$target'><code>$k</code></a>";
+    my $thing = "<a href='/$type/$target'><code>$k</code></a>";
+
+    $thing .= " = <code>" . conf($k) . "</code>" if $type eq "conf";
+    $thing .= " [<a href='/parser_short/$k'>grammar</a>]"
+      if $type eq "short";
+
+    push @{$links{$type} ||= []}, $thing;
   }
 
-  my @rendered;
-  my %names = (short       => "Short operator parsers",
+  my @rendered =
+    ("<h1>Entry points (internal)</h1>",
+     "<ul>",
+     "<li><a href='/bootcode'>Bootcode</a></li>",
+     "<li><a href='/attr/core/boot/ni.map'>Image map file</a></li>",
+     "</ul>");
+
+  my %names = (lib         => "Libraries",
+               conf        => "Configuration variables",
+               short       => "Short operator parsers",
                op          => "Stream operators",
                meta_op     => "Meta operators",
                cli_special => "Toplevel CLI options",
-               lib         => "Internal libraries",
                attr        => "Internal attributes",
                sub         => "Internal functions",
                constant    => "Internal constants",
                dsp         => "Parser dispatch table",
                alt         => "Parser alternative list");
 
-  for (qw/ short op meta_op cli_special lib attr sub constant dsp alt /)
+  for (qw/ lib short op meta_op cli_special conf attr sub constant dsp alt /)
   {
     push @rendered,
       "<h1>$names{$_}</h1>",
@@ -9591,18 +9630,20 @@ sub inspect_server
   {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n" unless defined $reply;
-    return inspect_root_page   $reply     if $url eq '/';
-    return inspect_root        $reply     if $url =~ /^\/root/;
-    return inspect_bootcode    $reply     if $url =~ /^\/bootcode/;
-    return inspect_explain     $reply, $1 if $url =~ /^\/explain\/(.*)/;
-    return inspect_attr        $reply, $1 if $url =~ /^\/attr\/(.*)/;
-    return inspect_lib         $reply, $1 if $url =~ /^\/lib\/(.*)/;
-    return inspect_sub         $reply, $1 if $url =~ /^\/sub\/(.*)/;
-    return inspect_constant    $reply, $1 if $url =~ /^\/constant\/(.*)/;
-    return inspect_short       $reply, $1 if $url =~ /^\/short\/(.*)/;
-    return inspect_op          $reply, $1 if $url =~ /^\/op\/(.*)/;
-    return inspect_meta_op     $reply, $1 if $url =~ /^\/meta_op\/(.*)/;
-    return inspect_cli_special $reply, $1 if $url =~ /^\/cli_special\/(.*)/;
+    return inspect_root_page    $reply     if $url eq '/';
+    return inspect_root         $reply     if $url =~ /^\/root/;
+    return inspect_bootcode     $reply     if $url =~ /^\/bootcode/;
+    return inspect_explain      $reply, $1 if $url =~ /^\/explain\/(.*)/;
+    return inspect_attr         $reply, $1 if $url =~ /^\/attr\/(.*)/;
+    return inspect_lib          $reply, $1 if $url =~ /^\/lib\/(.*)/;
+    return inspect_sub          $reply, $1 if $url =~ /^\/sub\/(.*)/;
+    return inspect_constant     $reply, $1 if $url =~ /^\/constant\/(.*)/;
+    return inspect_short        $reply, $1 if $url =~ /^\/short\/(.*)/;
+    return inspect_op           $reply, $1 if $url =~ /^\/op\/(.*)/;
+    return inspect_meta_op      $reply, $1 if $url =~ /^\/meta_op\/(.*)/;
+    return inspect_cli_special  $reply, $1 if $url =~ /^\/cli_special\/(.*)/;
+    return inspect_parser       $reply, $1 if $url =~ /^\/parser\/(.*)/;
+    return inspect_parser_short $reply, $1 if $url =~ /^\/parser_short\/(.*)/;
   };
 }
 
