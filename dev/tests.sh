@@ -1004,9 +1004,11 @@ lazytest_case 'ni nE4p'\''my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 1
 B32 OK
 BIN OK
 LAZYTEST_EOF
+# unit test setup; you won't have to run this
 if ! [[ $SKIP_DOCKER ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
+# more unit test setup
 start_time=0;
 until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
@@ -1021,7 +1023,7 @@ done
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=55
+lazytest_line=88
 lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
   ni n5 Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ _ \<]
 ' 3<<'LAZYTEST_EOF'
@@ -1032,7 +1034,7 @@ lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 5	25
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=67
+lazytest_line=100
 lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
           Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
@@ -1043,7 +1045,7 @@ lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=79
+lazytest_line=112
 lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
                  Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
 ' 3<<'LAZYTEST_EOF'
@@ -1059,7 +1061,7 @@ AUTHORS	1
 BE	1
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=99
+lazytest_line=132
 lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
                  hadoop/jobconf='\''mapred.map.tasks=10
                                  mapred.reduce.tasks=4'\''} \

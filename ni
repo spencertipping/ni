@@ -11388,12 +11388,43 @@ gitblob://.:c3e84a5dfefc7a84cd3476dfc11dafa15921dde6    100644  tests.sh
 ```
 
 You could then use `fA\<` or `fA W\<` to get the contents of each.
-119 doc/hadoop.md
+152 doc/hadoop.md
 # Hadoop operator
-The `H` operator runs a Hadoop job. For example, here's what it looks like to
-use Hadoop Streaming (in this case, inside a `sequenceiq/hadoop-docker`
-container):
+The `H` operator runs a Hadoop job. Here's what it looks like to use Hadoop
+Streaming:
 
+```sh
+$ ni ihdfs:///input/path HS[mapper] [combiner] [reducer] > output-hdfs-path
+```
+
+For example, the ubiquitous word count:
+
+```sh
+# locally
+$ ni README.md FW pF_ gcOx
+ni      27
+md      26
+doc     25
+com     16
+spencertipping  12
+https   11
+to      9
+the     9
+github  9
+and     9
+...
+
+# on hadoop streaming
+$ ni ihdfs:///user/spencer/textfiles/part* HSFWpF_ _ c \<Ox
+word1   count1
+word2   count2
+...
+```
+
+See [Hadoop in Ni By Example](ni_by_example_4.md#hadoop-streaming-mapreduce) for
+a much better usage guide.
+
+## Local setup
 ```sh
 $ docker run --detach -i -m 2G --name ni-test-hadoop \
     sequenceiq/hadoop-docker \
@@ -11401,6 +11432,7 @@ $ docker run --detach -i -m 2G --name ni-test-hadoop \
 ```
 
 ```lazytest
+# unit test setup; you won't have to run this
 if ! [[ $SKIP_DOCKER ]]; then
 ```
 
@@ -11415,6 +11447,7 @@ over. This is all just for unit testing; you won't have to worry about this
 stuff if you're using ni to run hadoop jobs.)
 
 ```lazytest
+# more unit test setup
 start_time=0;
 until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
