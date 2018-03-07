@@ -37,5 +37,5 @@ ul { list-style-type: square }
 .markdown { text-align: justify; font-size: 125%; line-height: 1.44em; color: #444 }
 .markdown a { color: #c60 }
 .markdown code { background: #eee; color: black }
-.markdown pre { line-height: 1.44em; font-size: 150%; color: black; background: #eee; padding: 8px; border-left: solid 1px #444 }
+.markdown pre { line-height: 1.44em; font-size: 125%; color: black; background: #eee; padding: 8px; border-left: solid 1px #444 }
 .markdown blockquote { margin-left: 2em; padding-left: 8px; border-left: solid 1px #888 }

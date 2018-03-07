@@ -9385,7 +9385,7 @@ ul { list-style-type: square }
 .markdown { text-align: justify; font-size: 125%; line-height: 1.44em; color: #444 }
 .markdown a { color: #c60 }
 .markdown code { background: #eee; color: black }
-.markdown pre { line-height: 1.44em; font-size: 150%; color: black; background: #eee; padding: 8px; border-left: solid 1px #444 }
+.markdown pre { line-height: 1.44em; font-size: 125%; color: black; background: #eee; padding: 8px; border-left: solid 1px #444 }
 .markdown blockquote { margin-left: 2em; padding-left: 8px; border-left: solid 1px #888 }
 18 core/inspect/html
 <!doctype html>
@@ -11658,7 +11658,7 @@ Each line represents one step of the pipeline defined by the spell, and the expl
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
 The next chapter covers all the Perl you need to be productive in `ni`. You need some, but not too much.
-1301 doc/ni_by_example_2.md
+1303 doc/ni_by_example_2.md
 # `ni` by Example, Chapter 2 (beta release)
 
 Welcome to the second part of the tutorial. At this point, you know a little `ni` syntax, but you might not be able to do anything useful. In this chapter, our goal is to multiply your power to operate on a single machine by covering all of the Perl syntax you need to work effectively with `ni`.
@@ -12247,8 +12247,10 @@ $ ni iabcdefgh p's/abc/ABC/'
 1
 ```
 
-The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
-This also will give somewhat-surprising behavior to code like:
+The reason for these somewhat surp The return value of `tr` and `y` is the
+number of characters that were translated, and the return value of `s` is 0 if
+no characters were substituted and 1 if characters were. This also will give
+somewhat-surprising behavior to code like:
 
 ```bash
 $ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'

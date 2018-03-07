@@ -586,8 +586,10 @@ $ ni iabcdefgh p's/abc/ABC/'
 1
 ```
 
-The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
-This also will give somewhat-surprising behavior to code like:
+The reason for these somewhat surp The return value of `tr` and `y` is the
+number of characters that were translated, and the return value of `s` is 0 if
+no characters were substituted and 1 if characters were. This also will give
+somewhat-surprising behavior to code like:
 
 ```bash
 $ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
