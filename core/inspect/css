@@ -1,4 +1,4 @@
-body { font-family: sans-serif; margin: auto; width: 600px }
+body { font-family: "Ubuntu Sans", sans-serif; margin: auto; width: 800px }
 
 #header {
   padding: 40px 0 20px 0;
@@ -25,3 +25,7 @@ a:hover { color: #f80; text-decoration: underline }
 .conf-env { color: #aaa }
 
 ul { list-style-type: square }
+
+.markdown { text-align: justify; line-height: 1.2em }
+.markdown pre { background: #eee; padding: 8px; border-left: solid 1px #444 }
+.markdown blockquote { margin-left: 2em; padding-left: 8px; border-left: solid 1px #888 }

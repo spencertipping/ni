@@ -6146,20 +6146,20 @@ sub bloom_from_hex($) {
 
 sub multihash($$) {
   my @hs;
-  push @hs, unpack "N4", md5($_[0] . scalar @hs) until @hs >= $_[1];
+  push @hs, unpack "Q2", md5($_[0] . scalar @hs) until @hs >= $_[1];
   @hs[0..$_[1]-1];
 }
 
 # Destructively adds an element to the filter and returns the filter.
 sub bloom_add($$) {
-  my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ % $m + 64, 1) = 1 for multihash $_[1], $k;
+  my ($m, $k) = unpack "QQ", $_[0];
+  vec($_[0], $_ % $m + 128, 1) = 1 for multihash $_[1], $k;
   $_[0];
 }
 
 sub bloom_contains($$) {
   my ($m, $k) = unpack "NN", $_[0];
-  vec($_[0], $_ % $m + 64, 1) || return 0 for multihash $_[1], $k;
+  vec($_[0], $_ % $m + 128, 1) || return 0 for multihash $_[1], $k;
   1;
 }
 
@@ -6172,44 +6172,44 @@ sub bloom_prehash($$$) {
 }
 
 sub bloom_add_prehashed($$) {
-  vec($_[0], $_ + 64, 1) = 1 for split /,/, $_[1];
+  vec($_[0], $_ + 128, 1) = 1 for split /,/, $_[1];
   $_[0];
 }
 
 sub bloom_contains_prehashed($$) {
-  vec($_[0], $_ + 64, 1) || return 0 for split /,/, $_[1];
+  vec($_[0], $_ + 128, 1) || return 0 for split /,/, $_[1];
   1;
 }
 
 # Set operations
 sub bloom_intersect {
   local $_;
-  my ($n, $k, $filter) = unpack "NNa*", shift;
+  my ($n, $k, $filter) = unpack "QQa*", shift;
   for (@_) {
-    my ($rn, $rk) = unpack "NN", $_;
+    my ($rn, $rk) = unpack "QQ", $_;
     die "cannot intersect two bloomfilters of differing parameters "
       . "($n, $k) vs ($rn, $rk)"
       unless $n == $rn && $k == $rk;
-    $filter &= unpack "x8 a*", $_;
+    $filter &= unpack "x16 a*", $_;
   }
   pack("NN", $n, $k) . $filter;
 }
 
 sub bloom_union {
   local $_;
-  my ($n, $k, $filter) = unpack "NNa*", shift;
+  my ($n, $k, $filter) = unpack "QQa*", shift;
   for (@_) {
-    my ($rn, $rk) = unpack "NN", $_;
+    my ($rn, $rk) = unpack "QQ", $_;
     die "cannot union two bloomfilters of differing parameters "
       . "($n, $k) vs ($rn, $rk)"
       unless $n == $rn && $k == $rk;
-    $filter |= unpack "x8 a*", $_;
+    $filter |= unpack "x16 a*", $_;
   }
   pack("NN", $n, $k) . $filter;
 }
 
 sub bloom_count($) {
-  my ($m, $k, $bits) = unpack "NN %32b*", $_[0];
+  my ($m, $k, $bits) = unpack "QQ %64b*", $_[0];
   return -1 if $bits >= $m;     # overflow case (> if %32b runs past end maybe)
   $m * -log(1 - $bits/$m) / $k;
 }
@@ -9345,8 +9345,8 @@ css
 html
 inspect.js
 inspect.pl
-27 core/inspect/css
-body { font-family: sans-serif; margin: auto; width: 600px }
+31 core/inspect/css
+body { font-family: "Ubuntu Sans", sans-serif; margin: auto; width: 800px }
 
 #header {
   padding: 40px 0 20px 0;
@@ -9373,6 +9373,10 @@ a:hover { color: #f80; text-decoration: underline }
 .conf-env { color: #aaa }
 
 ul { list-style-type: square }
+
+.markdown { text-align: justify; line-height: 1.2em }
+.markdown pre { background: #eee; padding: 8px; border-left: solid 1px #444 }
+.markdown blockquote { margin-left: 2em; padding-left: 8px; border-left: solid 1px #888 }
 18 core/inspect/html
 <!doctype html>
 <html>
@@ -9423,10 +9427,68 @@ $(function () {
   $('#explain').on('keyup change', reload_explanation);
   reload_explanation();
 });
-239 core/inspect/inspect.pl
+321 core/inspect/inspect.pl
 # Inspect ni's internal state
 
 use constant inspect_gen => gen $ni::self{'core/inspect/html'};
+
+sub markdown_to_html($)
+{
+  join "",
+  map
+  {
+      /^\`\`\`(.*)([\s\S]*)\`\`\`\h*$/ ? ("<div class='code-$1'>", inspect_text($2), "</div>")
+    : /^!\[[^]]*\]\((.*)\)/            ? "<img src='$1'>"
+    : /^\[([^]]+)\]\((https?:.*)\)/    ? "<a href='$2'>" . markdown_to_html($1) . "</a>"
+    : /^\[([^]]+)\]\((.*)\)/           ?
+      exists $ni::self{"doc/$2"}
+        ? "<a href='/doc/doc/$2'>"  . markdown_to_html($1) . "</a>"
+        : "<a href='/attr/doc/$2'>" . markdown_to_html($1) . "</a>"
+
+    : /^>/                             ?
+      "<blockquote>"
+        . markdown_to_html(join"\n", map substr($_, 1), split /\n/, $_)
+        . "</blockquote>"
+
+    : /^\n######(.*)/    ? "<h6>"   . markdown_to_html($1) . "</h6>"
+    : /^\n#####(.*)/     ? "<h5>"   . markdown_to_html($1) . "</h5>"
+    : /^\n####(.*)/      ? "<h4>"   . markdown_to_html($1) . "</h4>"
+    : /^\n###(.*)/       ? "<h3>"   . markdown_to_html($1) . "</h3>"
+    : /^\n##(.*)/        ? "<h2>"   . markdown_to_html($1) . "</h2>"
+    : /^\n#(.*)/         ? "<h1>"   . markdown_to_html($1) . "</h1>"
+    : /^\n\h*[-*] (.*)/  ? "<li>"   . markdown_to_html($1) . "</li>"
+    : /^\n\h*\d+\. (.*)/ ? "<li>"   . markdown_to_html($1) . "</li>"
+    : /^\*\*(.*)\*\*$/   ? "<b>"    . markdown_to_html($1) . "</b>"
+    : /^([_*])(.*)\1$/   ? "<i>"    . markdown_to_html($2) . "</i>"
+    : /^\`([^\`]*)\`$/   ? "<code>" . markdown_to_html($1) . "</code>"
+    : /^\n\h*$/          ? "<p>"
+    :                      $_;
+  }
+  split /
+    (
+      \n\#+.*$                                # headings
+    | \n\h*$                                  # paragraph breaks
+    | _\S(?:[^_]*\S)?_                        # italics
+    | \*\S(?:[^*]*\S)?\*                      # italics with *
+    | \*\*\S(?:[^*]*?\S)?\*\*                 # bold
+    | ^>.*(?:\n>.*)*$                         # blockquote
+    | ^\`\`\`.*\n(?:[\s\S]*?\n)?\`\`\`\h*$    # code block
+    | \n\h*[-*]\s.*                           # bulleted list item
+    | \n\h*\d+\.\s.*                          # numbered list item
+    | \`[^\`]*\`                              # inline code
+    | !?\[[^]]+\]\([^\)]+\)                   # link
+    )
+  /mx, shift;
+}
+
+sub html_escape($)
+{
+  my $x = shift;
+  $x =~ s/&/&amp;/g;
+  $x =~ s/</&lt;/g;
+  $x =~ s/>/&gt;/g;
+  $x;
+}
 
 sub inspect_page
 {
@@ -9453,6 +9515,7 @@ sub inspect_linkable_things()
    map(($_        => [constant => $_]), map /use constant\s+(\w+)/g, @ni::self{grep /\.pl$/, sort keys %ni::self}),
    map(($_        => [lib      => $_]), grep s/\/lib$//, sort keys %ni::self),
    map(($_        => [doc      => $_]), grep /^doc\//,   sort keys %ni::self),
+   map(("$_:"     => [resource => $_]), sort keys %ni::resource_read),
    map(($_        => [conf     => $_]), sort keys %ni::conf_variables),
    map(($_        => [parser   => $_]), sort keys %ni::parsers),
    map(($_        => [short    => $_]), sort keys %ni::shorts),
@@ -9466,10 +9529,11 @@ sub inspect_linkable_things()
    map(($_     => [cli_special => $_]), sort keys %ni::cli_special));
 }
 
-sub inspect_link_for($)
+sub inspect_link_for($$)
 {
-  my ($type, $thing) = @{+shift};
-  "<a href='/$type/$thing'>$thing</a>";
+  return "<span class='error'>MISSING LINK for $_[0]</span>" unless ref $_[1];
+  my ($name, $type, $thing) = (shift, @{+shift});
+  "<a href='/$type/$thing'>$name</a>";
 }
 
 sub inspect_linkify
@@ -9479,17 +9543,12 @@ sub inspect_linkify
   my $link_detector = join"|", map qr/\Q$_\E/,
                                sort {length($b) - length($a)}
                                keys %linkable_things;
-  my $r = qr/(^|\W)($link_detector)(\W|$)/;
-  s/$r/$1 . inspect_link_for($linkable_things{$2}) . $3/ge for @xs;
+  my $r = qr/(?<=\W)($link_detector)(?=\W)/;
+  s/$r/inspect_link_for $1, $linkable_things{$1}/ge for @xs;
   @xs;
 }
 
-sub inspect_text
-{
-  my @xs = @_;
-  s/&/&amp;/g, s/</&lt;/g, s/>/&gt;/g for @xs;
-  ("<pre>", inspect_linkify(@xs), "</pre>");
-}
+sub inspect_text { ("<pre>", inspect_linkify(map html_escape($_), @_), "</pre>") }
 
 sub inspect_attr
 {
@@ -9505,6 +9564,7 @@ sub inspect_lib
 {
   my ($reply, $k) = @_;
   inspect_snip $reply, "<h1>Library <code>$k</code></h1>",
+    "<h2>Defined in <code><a href='/root'>ni root</a></code></h2>",
     "<ul>",
     map(inspect_linkify("<li>$_</li>"), lib_entries $k, $ni::self{"$k/lib"}),
     "</ul>";
@@ -9533,6 +9593,7 @@ sub inspect_defined
 }
 
 sub inspect_sub         { inspect_defined $_[0], sub         => qr/sub\s+/, $_[1] }
+sub inspect_resource    { inspect_defined $_[0], resource    => qr/defresource\s+['"]?\s*/, $_[1] }
 sub inspect_constant    { inspect_defined $_[0], constant    => qr/use constant\s+/, $_[1] }
 sub inspect_cli_special { inspect_defined $_[0], cli_special => qr/defclispecial\s+['"]?\s*/, $_[1] }
 sub inspect_short       { inspect_defined $_[0], short       => qr/defshort\s+["']?\s*/, $_[1] }
@@ -9570,6 +9631,15 @@ sub inspect_explain
                  unparsed => [@rest]};
 }
 
+sub inspect_doc
+{
+  my ($reply, $doc) = @_;
+  inspect_snip $reply,
+    "<div class='markdown'>",
+    markdown_to_html "\n$ni::self{$doc}",
+    "</div>";
+}
+
 sub inspect_root
 {
   my ($reply) = @_;
@@ -9598,13 +9668,23 @@ sub inspect_root
   }
 
   my @rendered =
-    ("<h1>Entry points (internal)</h1>",
+    ("<h1>Reference</h1>",
+     "<ul>",
+     "<li><a href='/doc/doc/ni_by_example_1.md'>Ni By Example, chapter 1</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_2.md'>Ni By Example, chapter 2</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_3.md'>Ni By Example, chapter 3</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_4.md'>Ni By Example, chapter 4</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_5.md'>Ni By Example, chapter 5</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_6.md'>Ni By Example, chapter 6</a></li>",
+     "</ul>",
      "<ul>",
      "<li><a href='/bootcode'>Bootcode</a></li>",
      "<li><a href='/attr/core/boot/ni.map'>Image map file</a></li>",
      "</ul>");
 
-  my %names = (lib         => "Libraries",
+  my %names = (doc         => "Documentation",
+               lib         => "Installed libraries",
+               resources   => "Resources",
                conf        => "Configuration variables",
                short       => "Short operator parsers",
                op          => "Stream operators",
@@ -9616,7 +9696,7 @@ sub inspect_root
                dsp         => "Parser dispatch table",
                alt         => "Parser alternative list");
 
-  for (qw/ lib cli_special short op meta_op conf attr sub constant dsp alt /)
+  for (qw/ lib cli_special doc short op meta_op conf attr sub constant dsp alt /)
   {
     push @rendered,
       "<h1>$names{$_}</h1>",
@@ -9641,13 +9721,19 @@ sub inspect_server
   {
     my ($url, $req, $reply) = @_;
     return print "http://localhost:$port/\n" unless defined $reply;
+
     return inspect_root_page    $reply     if $url eq '/';
     return inspect_root         $reply     if $url =~ /^\/root/;
     return inspect_bootcode     $reply     if $url =~ /^\/bootcode/;
     return inspect_explain      $reply, $1 if $url =~ /^\/explain\/(.*)/;
+
+    1 while $url =~ s/\/\.\.\//\//g;
+
+    return inspect_doc          $reply, $1 if $url =~ /^\/doc\/(.*)/;
     return inspect_attr         $reply, $1 if $url =~ /^\/attr\/(.*)/;
     return inspect_lib          $reply, $1 if $url =~ /^\/lib\/(.*)/;
     return inspect_sub          $reply, $1 if $url =~ /^\/sub\/(.*)/;
+    return inspect_resource     $reply, $1 if $url =~ /^\/resource\/(.*)/;
     return inspect_constant     $reply, $1 if $url =~ /^\/constant\/(.*)/;
     return inspect_short        $reply, $1 if $url =~ /^\/short\/(.*)/;
     return inspect_op           $reply, $1 if $url =~ /^\/op\/(.*)/;
@@ -10635,7 +10721,13 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-29 doc/lib
+35 doc/lib
+ni_by_example_1.md
+ni_by_example_2.md
+ni_by_example_3.md
+ni_by_example_4.md
+ni_by_example_5.md
+ni_by_example_6.md
 binary.md
 closure.md
 col.md
@@ -10665,6 +10757,4733 @@ tutorial.md
 visual.md
 warnings.md
 wkt.md
+869 doc/ni_by_example_1.md
+# `ni` by Example, Chapter 1 (beta release)
+
+Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
+
+`ni` and Perl both suffer from their sharp differences from . This tutorial is structured in 6 parts:
+
+1. Intro to `ni`
+2. Perl for `ni`
+3. The real power of `ni`
+4. `ni` and Ruby, Perl, Python, Lisp & Bash
+5. `ni` odds and ends
+6. `ni` + Jupyter (TODO)
+
+
+## What is `ni`?
+
+`ni` is write-anywhere, run-everywhere
+
+`ni` is a self-modifying quine.
+
+`ni` is everything-from-the-command-line.
+
+`ni` is concise.
+
+`ni` is beautiful.
+
+`ni` is two-fisted data science.
+
+
+## Installation
+`ni` works on any Unix-based OS. You should use a bash prompt when calling `ni`.
+
+```
+git clone git@github.com:spencertipping/ni.git
+cd ni
+ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
+```
+
+
+## Basic Stream Operators
+
+`ni` is a stream-processing language. Most operations in `ni` are done over a single line, which enables `ni` to be fast and memory-efficient. 
+
+### `n`: Integer Stream
+`ni n` generates a stream of consecutive integers starting at 1. The number after determines how many numbers will be generated.
+
+```bash
+$ ni n5
+1
+2
+3
+4
+5
+```
+
+In general, `ni` will drop you into a `less` pager after a command finishes. You can change the default pager by setting the `NI_PAGER` environment variable.
+
+`ni n0` gives you consecutive integers starting from zero. For example:
+
+```bash
+$ ni n03
+0
+1
+2
+```
+
+To generate a large  number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
+
+
+### `i`: Literal text 
+The `i` operator puts literal text into the stream:
+
+```bash
+$ ni ihello
+hello
+```
+
+You can use quotes with `i` to include spaces within strings.
+
+```bash
+$ ni i"hello there"
+hello there
+```
+
+`ni` is optimized to work with tab-delimited text. If you want your text to be tab-delimited, put your text inside square brackets.
+
+```bash
+$ ni i[hello there new friend]
+hello	there	new	friend
+```
+
+### `e'...'`: Evaluate `bash` script
+
+`ni` is deeply connected to bash, so easy access is provided to running bash commands from within `ni`.  
+
+```bash
+$ ni n500 e'grep 22'
+22
+122
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+322
+422
+```
+
+
+### Structure of `ni` commands
+
+`ni` commands are composed of operators. Examples introduced in the last section include `n`, which generates a stream of integers; `e`, which executes a bash command, and `i`, which puts literal text to the stream. `z`, which compresses a stream. Later, we'll introduce more complex operators like `HS`, whichexecutes a Hadoop Streaming MapReduce job. 
+
+In the last section, you saw a `ni` command linking two operators; `n500` was used to generate a stream of integers from 1 to 500, and the `e'grep 22'` was used to take the lines that had a `22` in them. If you're not used to working with streams, there's a slightly subtle point to notice.
+
+In general commands are written `ni <op_1> <op_2> ... <op_n>`. It is often helpful to think of each command by piping the output of one command to the input of the next `ni <op_1> | ni <op_2> | ... | ni <op_n>`.
+
+More compressed syntax is favored, and very short commands are often compressed without spaces in between. A common example is sort (`g`) + unique (`u`); this is commonly written as `gu` in rather than the more explicit `g u`. Because `ni` commands are highly compressed and difficult to be read by people who are uninitiated, they are sometimes referred to as "spells."
+
+## Streaming I/O
+
+`ni` provides very flexible file input and output. In particular, compressing streams in `ni` is very simple, and decompression is done by default.
+
+
+### `>`: `bash`-style file output
+
+`ni` is a streaming tool, so you can redirect output using the standard redirect.
+
+```sh
+$ ni n5 > five.txt
+```
+
+While this works fine, it is in general not used, in favor of the literal angle-bracket operator `\>` described in the next section.
+
+
+### File Input
+
+To add a file to the stream in `ni`, add the name of the file to the stream.
+
+```sh
+$ ni five.txt
+1
+2
+3
+4
+5
+```
+
+
+### `\>`: Output and Emit File Name
+
+
+```bash
+$ ni n5 \>five.txt
+five.txt
+```
+
+Note that there is **no space** between `\>` and `ten.txt`. Because `ni` is concise, whitespace is frequently important.
+
+### `\<` Read from Filenames
+
+The reason that `\>` is favored over `>` is because `\<` inverts it by reading the data from filenames.
+
+```bash
+$ ni n5 \>five.txt \<
+1
+2
+3
+4
+5
+```
+
+It's important to understand how this short spell works; first, a stream of 5 integers is generated; those integers sink to a file called `five.txt`, and the text string `five.txt` is put out to the stream. Finally, `\<` instructs `ni` to open the file named `five.txt` and put its contents on the stream.
+
+### Directory I/O
+The contents of this section 
+
+Start by making some data:
+
+```sh
+$ rm -rf dir_test && mkdir dir_test
+$ echo "hello" > dir_test/file1
+$ echo "you" > dir_test/file2
+$ echo "genius" > dir_test/file3
+```
+
+We can look at the contents of the directory with `ni`:
+
+```sh
+$ ni dir_test
+dir_test/file1
+dir_test/file2
+```
+
+`ni` has converted the folder into a stream of the names of files (and directories) inside it. You can thus access the files inside a directory using `\<`.
+
+```sh
+$ ni dir_test \<
+hello
+you
+genius
+```
+
+`ni` will use bash expansion as well:
+
+```sh
+$ ni dir_test/*
+hello
+you
+genius
+```
+
+
+```sh
+$ ni dir_test/file{1,3}
+hello
+genius
+```
+
+
+### `z`: Compression
+
+`ni` provides compression in a highly keystroke-efficient way, using the `z` operator.
+
+```bash
+$ ni n10 z \>ten.gz
+ten.gz
+```
+
+`ni` decompresses its input by default. 
+
+```sh
+cat ten.gz
+2�SY3�2�2�2�2�2�2���24�뿊
+```
+
+```sh
+$ cat ten.gz | ni
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
+
+
+```bash
+$ ni n10 z \>ten.gz \<
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+```
+
+The default compression with `z` is `gzip`, however there are options for bzip (`zb`), xzip (`zx`), lzo (`zo`), and lz4 (`z4`). You can also specify a numeric flag to gzip by using a number other than `4`, for example `z9` executes `gzip -9` on the stream.
+
+
+## Basic Row and Column Operations
+
+`ni` works especially well on data formatted as tab-delimited rows of text; in this section we'll show how to filter, trim, and convert raw text into tab-delimited form.
+
+### `r`: Take rows
+
+`r` is a powerful and flexible operation for filtering rows; it encompasses the functionality of Unix operators `head` and `tail`, as well as a large number of filtering operations.
+
+#### Numeric Options
+
+`rN` takes the first N rows.
+
+```bash
+$ ni n10 r3
+1
+2
+3
+```
+
+`r-N` drops the first N rows.
+```bash
+$ ni n10 r-3
+4
+5
+6
+7
+8
+9
+10
+```
+
+`r~N` and `r+N` take the last N rows.
+
+```bash
+$ ni n10 r~3
+8
+9
+10
+```
+
+```bash
+$ ni n10 r+3
+8
+9
+10
+```
+
+The `rxN` option takes the first of every `N` rows.
+
+```bash
+$ ni n10 rx3
+1
+4
+7
+10
+```
+
+Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) pseudo-random sample of the stream data.
+
+```bash
+$ ni n20 r.15
+1
+9
+11
+12
+14
+15
+```
+
+These last examples show the value of `r` in development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to view smaller samples of large datasets.
+
+
+### `F`: Split stream into columns
+
+Like `r`, `F` also has many options. The most important is `F/regex/`, which splits text into columns based on a regular expression.
+
+```bash
+$ ni ibubbles ibaubles ibarbaras F/[aeiou]+/
+b	bbl	s
+b	bl	s
+b	rb	r	s
+```
+
+The rest of the operations are syntactic sugar, but they're worth knowing.
+
+
+`FD` splits on forward slashes:
+
+```bash
+$ ni i~/bin/dependency/nightmare.jar FD
+~	bin	dependency	nightmare.jar
+```
+
+`FS` splits on runs of whitespace:
+
+```bash
+$ ni i"here               is   an              example" FS
+here	is	an	example
+```
+
+`FC` splits on commas, but doesn't handle CSV:
+
+```bash
+$ ni ibread,eggs,milk i'fruit gushers,index cards' FC
+bread	eggs	milk
+fruit gushers	index cards
+```
+
+`FV` splits CSV fields correctly (i.e. it doesn't split commas in quoted strings). However, `ni` splits lines of input on newline characters, so this can't handle newlines in quoted fields.
+
+```bash
+$ ni i'"hello,there",one,two,three' FV
+hello,there	one	two	three
+```
+
+`FW` splits on non-word characters (i.e. equivalent to splitting on the regex  `/\W+/`)
+
+```bash
+$ ni i'this@#$$gets&(*&^split' FW
+this	gets	split
+```
+
+`FP` splits on pipe characters:
+
+```bash
+$ ni i'need|quotes|around|pipes|because|of|bash' FP
+need	quotes	around	pipes	because	of	bash
+```
+
+`F:<char>` splits data on a particular character:
+
+```bash
+$ ni ibubbles ibaubles ibarbaras F:a
+bubbles
+b	ubles
+b	rb	r	s
+```
+
+
+### `f`: Column Selection
+
+Let's start by generating some text and converting it to columns using `F`.
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" i"and I feel all right" FS
+this	is	how	we	do	it
+it's	friday	night
+and	I	feel	all	right
+```
+
+In `ni`, tab-delimited columns of data are referenced like a spreadsheet: the first column is `A`, the second is `B`, etc.
+The `f` operator gives you access to the columns of your data. 
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fC
+how
+night
+feel
+```
+
+You can select multiple columns by providing multiple letters:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAB
+this	is
+it's	friday
+and	I
+```
+
+You can duplicate a column by using its corresponding letter multiple times:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAAC
+this	this	how
+it's	it's	night
+and	and	feel
+```
+
+To select all columns after a particular column, use `f<col>.`
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fAD.
+this	we	do	it
+it's	
+and	all	right
+```
+
+To select all data between two columns, inclusive, use a dash:
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fB-E
+is	how	we	do
+friday	night
+I	feel	all	right
+```
+
+You can also use `f` to re-order selected columns:
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fCBAD
+how	is	this	we
+night	friday	it's	
+feel	I	and	all
+```
+
+Columns can also be accessed by using `#<number>`. The same options are available by subsitituting `A => #0`, `B => #1`, `C => #2`, ... `Z => #25`. This syntax also allows you to access columns 26 and beyond.
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS f#2#1#0#3
+how	is	this	we
+night	friday	it's	
+feel	I	and	all
+```
+
+It is also possible to increase readability by inserting commas between specified columns.
+
+```bash
+$ ni i"this is how we do it" i"it's friday night" \
+     i"and I feel all right" FS fA,#3.
+this	we	do	it
+it's	
+and	all	right
+```
+
+
+Under the hood, `ni` is using either `cut` or Perl to rearrange the columns. `cut` is much faster of the two, but it's only used when the output columns are in the same relative order as the input columns.
+
+
+### `x`: Exchange columns
+
+`x` is a shorthand for certain column exchange operations. All of these operations can be written with `f`, usually with a higher number of keystrokes.
+
+```bash
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS
+Ain't	nobody	dope	as	me
+I'm	dressed	so	fresh,	so	clean
+So	fresh	and	so	clean,	clean
+```
+
+`x` exchanges the first two columns (same as `fBA.`)
+
+```bash
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS x
+nobody	Ain't	dope	as	me
+dressed	I'm	so	fresh,	so	clean
+fresh	So	and	so	clean,	clean
+```
+
+`x` with a single column exchanges that column with column 1.
+
+```bash
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS xD
+as	nobody	dope	Ain't	me
+fresh,	dressed	so	I'm	so	clean
+so	fresh	and	So	clean,	clean
+```
+
+`x` with mulitple columns exchanges those into the first columns, in order.
+
+```bash
+$ ni i"Ain't nobody dope as me" \
+     i"I'm dressed so fresh, so clean" \
+     i"So fresh and so clean, clean" FS xEB
+me	nobody	dope	as	Ain't
+so	dressed	so	fresh,	I'm	clean
+clean,	fresh	and	so	So	clean
+```
+
+
+
+## Sort, Unique & Count
+
+
+### `g`: General sorting
+With a single column of data, as in the example, the simple command `g` will give you lexicographic sorting in ascending order. 
+
+```bash
+$ ni ib ia ic g
+a
+b
+c
+```
+
+To do more complicated sorts, you can give `g` columns (`A-Z`) and modifiers. For example, `-` after a column reverses the sort.
+
+```bash
+$ ni ib ia ic gA-
+c
+b
+a
+```
+
+`n` after a column does a numeric sort.
+
+```bash
+$ ni i10 i5 i0.3 gAn
+0.3
+5
+10
+```
+
+You can sort multiple columns in order:
+
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] gABn
+a	0
+a	1
+a	2
+b	3
+b	6
+c	4
+c	5
+``` 
+
+The columns can be sorted in any order:
+
+```bash
+$ ni i[b 0] i[b 4] i[a 2] i[a 1] i[c 4] i[c 0] i[a 0] gBnA
+a	0
+b	0
+c	0
+a	1
+a	2
+b	4
+c	4
+```
+
+  
+### `o` and `O`: Syntactic Sugar for Numeric Sorting
+Often you will want numeric sorting in a more keystroke-efficient way than `gn<column>-`. The `o` (sort rows ascending, numerically) and `O` (sort rows  descending, numerically) operator has been provided for this purpose.
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] oB
+a	0
+a	1
+a	2
+b	3
+c	4
+c	5
+b	6
+```
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] OB
+b	6
+c	5
+c	4
+b	3
+a	2
+a	1
+a	0
+```
+
+
+### `u`: Unique Sorted Rows
+`u` is `ni` syntax for `uniq`, which takes sorted rows and returns the unique values.
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgu
+a
+b
+c
+```
+  
+### `c`: Count Sorted Rows
+`c` is `ni`'s version of `uniq -c`, which counts the number of identical  consecutive rows in a stream. The main difference is that `ni`'s `c` tab-delimits the output, while `uniq -c` space-delimits.
+
+```bash
+$ ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
+3	a
+2	b
+2	c
+```
+
+### `gg`: Grouped sort
+
+Sorts *cannot be chained together using g*. If you write a command like `$ ni ... gA gBn`, there is no guarantee that the output will have a sorted first column after the second sort. If you want to sort by the first column ascending lexicographically and the second column ascending numerically in the same sort, you should use a more explicit `g` operator: `$ni ... gABn`.
+
+If you have data that is already partially sorted, for example, when working with the input of the reduce step of a MapReduce job, you may want to perform an additional sort of the already partially-sorted data without sorting the entire stream. 
+
+Let's simulate this by sorting one column of the data and sinking the result to a tempfile.
+
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \<
+b	ba	bake
+b	ba	bar
+b	ba	baz
+b	bi	bif
+q	qa	qat
+q	qu	quux
+u	ub	uber
+```
+
+If we want the data sorted as if we had done `gAB-`, we cannot simply do `gB-` to the data we have; this will blow away the sort on the first column.
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \< gB-
+u	ub	uber
+q	qu	quux
+q	qa	qat
+b	bi	bif
+b	ba	bake
+b	ba	bar
+b	ba	baz
+```
+
+Instead we used the grouped sort `ggAB-`. 
+
+```bash
+$ ni i[b ba bar] i[b bi bif] i[b ba baz] \
+     i[q qa qat] i[q qu quux] i[b ba bake] \
+     i[u ub uber] gA \>tmp \< ggAB-
+b	bi	bif
+b	ba	bake
+b	ba	bar
+b	ba	baz
+q	qu	quux
+q	qa	qat
+u	ub	uber
+``` 
+
+The first column indicates the key column (i.e. the sorted column we want to hold constant); the anything after the first column is treated like the arguments to the sorting operator, `g`.
+
+### Sorting strategies
+
+
+Sorting large amounts of data requires buffering to disk. Be careful about how much data you sort; large sorts are a source of headaches and slow performance. 
+
+`$ ni nE7 F// fB gc \>first_numeral_counts.txt`
+
+Running this command you may see see the `ni` [monitor](monitor.md) for the first time, which showing the steps of the computation, and what steps are taking time.  The whole process takes about 2 minutes on my computer.
+
+General sorting is not yet yet a point of strength for `ni`. If your data is larger than a gigabyte uncompressed, you may want to take advantage of massively distributing the workload through Hadoop operations.
+
+## Join and Filter Operators
+
+`ni` has 2 join operators, `j` and `J`. `j` is an inner join simplified functionality similar to the unix `join` command. Like the unix `join`, `j` only works properly when both streams are sorted.
+
+`J` is a left join. it does not impose any requirements on sorting, but requires that the right side of the join fit into memory, and only allows a single value for each key on the right side of the join.
+
+Joining and filtering have a lot in common, since they both require a key. Later in this section, some more uses of `r` to filter datasets are demonstrated.
+
+### `j`: Streaming Inner Join 
+
+You can use the `j` operator to inner-join two streams.
+ 
+```bash
+$ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
+foo	bar	mine
+foo	car	mine
+foo	dar	mine
+this	yes	OK
+this	yes	yipes
+```
+
+Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
+
+```bash
+$ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
+  jAB[ i[M N hi] i[X Y bye] ]
+M	N	foo	hi
+M	N	bar	hi
+X	Y	cat	bye
+```
+
+
+In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
+
+The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
+
+### `J`: In-memory (limited) left join
+
+
+```bash
+$ ni i[foo bar] i[foo car] i[that no] i[this yes] i[foo dar] \
+     J[ i[this yipes] i[this OK] i[foo mine] i[not here] ]
+foo	bar	mine
+foo	car	mine
+that	no	
+this	yes	OK
+foo	dar	mine
+```
+
+There are a number of things to notice here. First, we can reiterate that neither the right nor the left side of the join need to be sorted. Second, notice that this is a left join--the row `i[that no]` passes through even though there is no associated key on the right. On the right side of the join, notice that the value associated with the **last** element with the same key is used.
+
+### Filtering with `r`
+
+`r` can more generally be thought of as "take rows where the predicate that follows evaluates to true." 
+
+
+#### `r<col>` Null filtering
+
+Because an empty column is falsey (it evaluates to false), we can filter it using `r`. 
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] rB
+two	columns
+three	columns	here
+```
+
+#### `ri<col>`: Set Filtering 
+
+A very common motif in `ni` (especially in the MapReduce context) is to filter a large dataset down to a much smaller one with a certain set of keys or values. You can also filter a column based on another dataset using `ri` and the index of the column to filter.
+
+```bash
+$ ni i[one_column] i[two columns] i[three columns here] \
+     riA[ione_column ithree]
+one_column
+three	columns	here
+```
+
+#### `r/regex/`: regex filtering
+
+In this context, `r` can take a regex as an option: `$ ni <data> r/<regex>/` takes all rows where the regex has a match. We can rewrite our example for `e` `$ ni n500 e'grep 22'` as:
+
+```bash
+$ ni n500 r/22/
+22
+122
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+322
+422
+```
+
+To use escaped characters in a regex, it's often more efficient to wrap in quotes:
+
+```bash
+$ ni n1000 r-500 r'/^(\d)\1+$/'
+555
+666
+777
+888
+999
+```
+
+To write this same command without quotes requires a lot of escaping: `$ ni n1000 r-500 r/^\(\\d\)\\1+$/`
+
+
+
+
+## `ni` Coding and Debugging
+
+The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
+
+In general, `ni` spells will start producing output very quickly (or can be coerced to produce output quickly). Once the output of one step in the spell looks good, you can move on to the next step.
+
+
+### `--explain`: Print information on command
+
+As you advance through this tutorial, you'll want a quicker way to understand at a high level what a particular `ni` spell is doing. For this, use `ni --explain ...`. Using the example from the file output section:
+
+```bash
+$ ni --explain n10 \>ten.txt \<
+["n",1,11]
+["file_write","ten.txt"]
+["file_read"]
+```
+
+Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. The explanations are usually concise, but they can help you make sure your code is doing what it's supposed to.
+
+### Staying in a command-line environment
+
+`ni` is a bottom-up, ad hoc language; `ni` spells can be developed efficiently from the command line, or from a command line-like environment, like a Jupyter notebook.
+
+
+## Conclusion
+Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
+
+The next chapter covers all the Perl you need to be productive in `ni`. You need some, but not too much.
+1301 doc/ni_by_example_2.md
+# `ni` by Example, Chapter 2 (beta release)
+
+Welcome to the second part of the tutorial. At this point, you know a little `ni` syntax, but you might not be able to do anything useful. In this chapter, our goal is to multiply your power to operate on a single machine by covering all of the Perl syntax you need to work effectively with `ni`.
+
+## Perl for `ni`
+
+This section written for an audience that has never worked with Perl before, and from a user's (rather than a developer's) perspective. To that end, you are encouraged to focus on using Perl's core functions rather than writing your own. For example, we'll cover the somewhat obscure operation of bit shifting but avoid discussing how to write a Perl subroutine, which (while easy) is unnecessary for most workflows.
+
+
+## Perl Syntax
+
+Perl has a lot of rules that allow for code to be hacked together quickly and easily; there's no way around learning them (as there is in nice-feeling languages), so let's strap in and get this over with.
+
+From the Perl Syntax [docs](https://perldoc.perl.org/perlsyn.html):
+
+> Many of Perl's syntactic elements are optional. Rather than requiring you to put parentheses around every function call and declare every variable, you can often leave such explicit elements off and Perl will figure out what you meant. This is known as **Do What I Mean**, abbreviated **DWIM**. It allows programmers to be lazy and to code in a style with which they are comfortable.
+
+
+### Sigils
+
+If you've seen a little bit of Perl, one of the most intimidating parts of getting started is its use of odd characters (like `$`, `@`, and `%`) to start variable names. These characters are referred to as sigils and are used by the Perl interpreter to increase the language's concision.
+
+
+```sh
+$x = 5;
+@x = 1..10;
+%x = (foo => 1, bar => 2);
+```
+
+Coming from a Python/Ruby/C/Java/Lisp background, this probably feels wrong. That this code works, and that all of the variables defined within would properly be referred to (at least, in brief) as `x`, can trigger a great deal of cognitive dissonance within a reasonably-skilled but Perl-ignorant programmer.
+
+The question here, and its relevance for `ni`, is not whether this language syntax is useful (it is), but how to open our minds and increase our reading skills to take advantage of Perl's unique qualities.
+
+When a Perl variable is brought into existence, its nature is determined by the sigil that precedes it. The explicit use of sigils allows for more variables to be packed into the same linguistic namespace. When creating a variable:
+
+* `$x` indicates the variable `$x` is a scalar, for example a string or a number.
+* `@x` indicates the variable `@x` is an array.
+* `%x` indicates the variable `%x` is a hash.
+
+Because the syntax for all of these is different, we can use all of these
+
+```
+print $x;         # get the scalar value of $x
+print $x[3];      # get the scalar from @x at index 3
+print $x{"foo"};  # get the scalar from %x associated with the key "foo"
+```
+
+At first glance, this is adds to the confusion; all of these values start with `$x`. In fact, it's very explicit, you just need to learn the rules. You're completely in control of telling the interpreter what to do. 
+
+In the case of `$x[3]`, you've told the Perl interpreter to get a scalar value by using the prefixed `$` sigil; based on the square brackets used to as a postfix index, Perl knows that you're referring to an array, since square brackets are used to index arrays.
+
+Similarly, using curly braces tells Perl to look in a hash, and without either of those, the Perl interpreter assumes you are referring to the scalar value `$x`. The syntax is a little complicated, but it's not tricky. With a little practice, this will be second nature.
+
+## `p'...'`: Perl mapper
+
+The Perl mapper is the most important, most fundamental, and most flexible operator in `ni`. Using a Perl mapper gives you access to the standard Perl libraries, as well as concise `ni` extensions to Perl. We describe the most critical `ni` extensions here, and `ni` is backwards-compatible with Perl through Perl 5.08.
+
+### Column Accessor Functions `a` and `a()`
+
+
+The most fundamental of these are the column accessor functions `a(), b(), c(),..., l()`. These functions give access to the values of the first 12 columns of the input data. If you're wondering, the reason that there is no `m` is because it is a reserved character by the Perl system for writing regular expressions with nonstandard delimiters (e.g. pipes).
+
+The functions `a() ... l()` are usually shortened to `a, b, c, ..., l` when their meanings would be unambiguous. 
+
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'a()'
+first
+foo
+```
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'c'
+third
+baz
+```
+
+You can use the output of these functions like any other Perl variable.
+
+```bash
+$ ni i[3 5 7] p'a + b + c'
+15
+```
+
+```bash
+$ ni i[easy speak] p'b . a'
+speakeasy
+```
+
+As you might have suspected from the previous example, `.` is the string concatenation operator in Perl.
+
+### Perl Mapper return value
+
+In each of the previous examples, there has been a single output value; what happens when we try returning multiple values?
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'c, a'
+third
+first
+baz
+foo
+```
+
+Overall, the return value of a Perl mapper is its last statement. `ni` returns each element of the output array on its own row.
+
+Here, the return value of our Perl mapper for the first input line was the array `("third", "first")`, and the return value for the second input line was the array `("baz", "foo")`. When a perl mapper outputs an array, `ni` outputs the values of that list to the stream, one value per line of the stream. 
+
+### `p'r(...)'`: Emit row
+
+If we want to print more than one value per line to the stream there's the `r(...)` function.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r(c, a)'
+third	first
+baz	foo
+```
+
+`r(...)` is more commonly written as `r`, followed by its arguments.
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r c, a'
+third	first
+baz	foo
+```
+
+**CAVEAT:** `r()` is _printing_ a row to the stream, rather than _returning_ a string tab-separated string, for example. The `r()` function's job is to print; its return value is essentially nothing (in fact, it's the empty list `()`)
+
+
+
+### `F_, FM, FR n, FT n`: Explicit field access
+
+`ni` does not tab-split an input line of data by default; to access the columns of your data, you can use `F_`. `F_` is a function that takes no arguments, splits a line from the stream on tabs, and returns the values as an array.
+
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(1..3)'
+second	third	fourth
+```
+
+`FM` is the index of the last field of your data (i.e. the total number of fields minus one):
+
+```bash
+$ ni i[first second third fourth fifth sixth] \
+     i[only two_fields ] p'r FM'
+5
+1
+```
+
+`FM` allows you to write code that takes you to the end of a line
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r F_(3..FM)'
+fourth	fifth	sixth
+```
+
+However, since this operation is common `ni` provides syntactic sugar for `F_(n..FM)` as `FR n`. 
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FR 3'
+fourth	fifth	sixth
+```
+
+A symmetric operation, which takes the first `n` columns is called `FT`
+
+```bash
+$ ni i[first second third fourth fifth sixth] p'r FT 3'
+first	second	third
+```
+
+A mnemonic to remember these is `FR = "Fields fRom"`, and `FT = "Fields To"`.
+
+
+## `1`: Dummy pulse
+
+One of the slighly tricky aspects of `ni` is that the Perl operator `p'...'` requires an input stream to run. In this case, the number of lines in the input stream will determine the number of times the Perl mapper is run. The following command, while syntactically correct, produces no output.
+
+```bash
+$ ni p'r "foo" . "bar"'
+```
+
+In order to cause a perl mapper to execute, it needs lines to map over. In the case you have a Perl snippet you want to run, for example, to generate input, `ni` provides the `1` operator, which provides a pulse to run the stream. `1` is syntactic sugar for `n1`, which would work just as well here.
+
+```bash
+$ ni 1p'r "foo" . "bar"'
+foobar
+```
+
+
+## Default Variables and Values
+
+### The Default Variable `$_`
+
+We can start our discussion with a pretty normal-looking Perl function:
+
+```bash
+$ ni i1 i10 i100 i1000 p'r a, length(a)'
+1	1
+10	2
+100	3
+1000	4
+```
+
+What's going on here is pretty clear: we're using the Perl builtin `length` function to count the number of digits in each of the numbers in our input line. Looks straightforward.
+
+What's shocking is that you can also write the function this way:
+
+```bash
+$ ni i1 i10 i100 i1000 p'r a, length'
+1	1
+10	2
+100	3
+1000	4
+```
+
+Suddenly, the `length` function, which looks like it _should_ have an argument, doesn't have one. And it still works just fine.  What's actually happening here is that Perl is using a default variable, called `$_`. 
+
+What can we say about the type of `$_`? Since it's prefixed with a `$` sigil, we know it's a scalar value, and its name is `_`. In `ni`, `$_` is set to the whole incoming line from the stream (minus the trailing newline).
+
+
+```bash
+$ ni i1 i10 i100 i1000 p'$_'
+1
+10
+100
+1000
+```
+
+Many Perl functions will operate on `$_` if they are not given an argument; we'll revisit this in the section about regular expressions below, as well as when we discuss `for` loops.
+
+### Default Values
+
+There are no key errors or index errors in Perl. In the spirit of "Do What I Mean", you're allowed to leave variables undefined and initialize values later.
+
+```bash
+$ ni 1p'$x; ++$x'
+1
+```
+
+```bash
+$ ni 1p'@x; $x[3] = "yo"; r @x'
+			yo
+```
+
+
+### `defined` and `exists`
+
+Because there are no key errors in Perl, `exists` is used to check the presence of a hash element or array element.
+
+```bash
+$ ni 1p'@x; $x[3] = "yo"; exists $x[0] ? "yes" : "no"'
+no
+```
+
+```bash
+$ ni 1p'%h = {"u" => "ok"}; exists $h["me"] ? "yes" : "no"'
+no
+```
+
+The scalar analog of `exists` is `defined`, which checks if a scalar has been assigned a value.
+
+```bash
+$ ni 1p'$x; defined $x ? "yes" : "no"'
+no
+```
+
+## Statements, Blocks, and Scope
+
+### Statements and Blocks
+
+- An expression is a series of variables, operators, and method calls that evaluates to a single value. 
+
+- A statement forms a complete unit of execution and is terminated with a semicolon `;`.
+
+- A group zero or more statements group together into a block with braces: `{...}`. 
+
+
+In Perl, a block has its own scope. Blocks can modify and use variables from a containing scope, or define variables in their own scope using the `my` keyword that are inaccessible from blocks outside.
+
+
+### `my`: Lexical scoping
+
+Perl is lexically scoped: The Perl keyword `my` restricts the scope of a variable to the current block. 
+
+
+```bash
+$ ni n5 p'my $x = a; {my $x = 100;} ++$x'
+2
+3
+4
+5
+6
+```
+
+Let's take a look at this slightly different example, where we've dropped the `my` keyword within the block.
+
+```bash
+$ ni n5 p'my $y = a; {$x = 100;} ++$x'
+101
+101
+101
+101
+101
+```
+
+> In `ni` you should always use `my` in your perl mapper variables to avoid their accidental persistence.
+
+
+```bash
+$ ni n5 p'my $y = a; {my $x = 100;} 
+			defined $x ? "defined" : "not defined"'
+not defined
+not defined
+not defined
+not defined
+not defined
+```
+
+`my` can also assign values to and from an array, for example:
+
+```bash
+$ ni i[foo bar] p'my ($first, $second) = F_; r $second, $first'
+bar	foo
+```
+
+`my` can also assign anything left over to an array;
+
+```bash
+$ ni i[foo bar baz qux qal] \
+	  p'my ($first, $second, @rest) = F_;
+	    r $second, $first; r @rest'
+bar	foo
+baz	qux	qal
+```
+
+The major exception to the rule of always using `$my` for your Perl mapper variables is in a begin block, described below.
+
+### `p'^{...} ...'`: BEGIN Block
+
+
+A begin block is indicated by attaching a caret (`^`) to a block of code (enclosed in `{ }`). Begin blocks are most useful for initializing data structures that will be manipulated, and in particular for converting data closures to Perl data structures, as we will see later in this section.
+
+Inside a begin block, the code is evaluated once and factored over the entire remaining Perl code. 
+
+```bash
+$ ni n5p'^{$x = 10} $x += a; r a, $x'
+1	11
+2	13
+3	16
+4	20
+5	25
+```
+
+Note that the value of `$x` is persisted between runs of the perl mapper code. Without the begin block, we would have:
+
+```bash
+$ ni n5p'$x = 10; $x += a; r a, $x'
+1	11
+2	12
+3	13
+4	14
+5	15
+```
+
+In this Perl mapper, the value of the globally-scoped `$x` variable is being reset with each line to 10.
+
+Variables defined in one Perl mapper, even those with global scope, do not carry over to other Perl mappers.
+
+```bash
+$ ni n5p'^{$x = 10} $x += a; r a, $x' p'r $x'
+
+
+
+
+```
+
+
+Begin blocks combine with the `rp'...'` function well to filtering a stream, for example:
+
+```bash
+$ ni i[faygo cola] i[orange juice] i[grape soda] i[orange crush] i[hawaiian punch] rp'^{%good_flavors = ("orange" => 1, "grape" => 1)} my $flavor = a; $good_flavors{$flavor}'
+orange	juice
+grape	soda
+orange	crush
+```
+
+### Perl Mapper Return Value Tricks
+One way this has an impact is when you ask `ni` for a column that doesn't exist:
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'k'
+```
+
+```bash
+$ ni i[first second third] i[foo bar baz] p'r k'
+
+
+```
+
+In both cases, the column accessor function `k` is returning an empty list. That means that `p'k'` returns that empty list, which prints nothing. `p'r k'`, however, **prints the value** of `k`, which is the empty list. Printing the empty list puts a blank line back to the stream.
+
+This point will be important for the next section, where we combine the Perl mapper with the take rows operator.
+
+### `rp'...'`: Take rows based on Perl
+
+We can combine the take-rows operator `r` with the Perl operator `p'...'` to create powerful filters. In this case, `r` will take all rows where the return value of the Perl statement **is _truthy_ in Perl**.
+
+The number 0, the string 0 (which is the same as the number 0), the empty list, the empty string, and the Perl keyword `undef` are all **falsey** (i.e. interpreted as boolean false) in Perl. Pretty much everything else is truthy. There is no boolean True or False in Perl, so `false` and `False` are still truthy.
+
+Let's take a look at some examples.
+
+```bash
+$ ni n3 rp'a'
+1
+2
+3
+```
+
+In the above example, all of the return values are truthy, so they are all printed. In the next example, we start the `n` stream at zero, which is falsey.
+
+```bash
+$ ni n03 rp'a'
+1
+2
+```
+
+Because 0 is falsey, it is filtered out. Here's a trickier exmaple.
+
+```bash
+$ ni n03 rp'r a'
+0
+1
+2
+```
+
+We stated in the previous section that `p'r ...'` returns the empty list, which is falsey, so everything should be filtered out, however, the entire stream ends up returned to us intact, including the `0` that was filetered out when we didn't use `p'r a'`.
+
+To see what's happening in these examples, it's useful to think of the order in which these operations are happening; first the numbers (0, 1, 2) are generated by `n03`. Then, the perl mapper is executed; In this case, the perl mapper prints the value of `a()` to the stream
+
+
+```bash
+$ ni n03 rp'r b'
+
+
+
+```
+
+With the previous explanation, the reason you get three blank lines here should be obvious. 
+
+This discussion brings us to a final point on the operators both referred to as `r`:  
+
+> Using the take rows operator `r`, and the perl emit-row function `p'r(...)'` in the same statement is offensive. It is sometimes okay to be offensive.
+
+
+## Flow Control
+
+### Truthiness in Perl
+
+Recall that Perl has no specific boolean type. Recalling from Part 1, the number 0, the string `"0"`, the empty list `()`, the empty string`""`, and the keyword `undef` are all falsey; everything else evaluates to true.
+
+### `if`, `else`, `elsif`
+
+#### Block Prefix Form
+
+This form is common to almost every programming language in one form or another;
+
+```bash
+$ ni i37 p'if (a == 2) { r "input was 2" } 
+			 elsif (a =~ /^[Qq]/ ) { r "input started with a Q" } 
+			 else { r "I dunno" }'
+I dunno
+```
+
+#### Inline Form
+
+`if` also has an inline form, which provides a readable syntax for lines that should be evaluated conditionally.
+
+```bash
+$ ni i5 p'r "input = 5" if a == 5'
+input = 5
+```
+
+
+#### `unless`
+
+`unless EXPR` is equivalent to `if !EXPR`, and it has the same syntax.
+
+```bash
+$ ni i5 p'r "input = 5" unless a != 5'
+input = 5
+```
+
+#### Ternary Operator `... ? ... : ...`
+
+The ternary operator is used to select between options based on the truth value of a statement or variable.
+
+```bash
+$ ni i6 p'a == 5 ? "input = 5" : "input != 5"'
+input != 5
+```
+
+### `die`
+
+`die` is used to raise an error; it's not used much in `ni`, but can be useful for debugging important workflows.
+
+```sh
+$ ni n5 p'a < 3 ? r a : die "too big"'
+too big at - line 2972, <STDIN> line 3.
+1
+2
+```
+
+
+## Regular Expressions
+
+Covering regular expressions in their entirety is outside the scope of this tutorial, but Perl and regex are tightly bound, and we'll cover a few pointers. The [Perl Regex Tutorial](https://perldoc.perl.org/perlretut.html) is excellent.
+
+
+### Writing Good Regular Expressions
+
+When writing a regular expression, you want them to fail as quickly as possible on strings that don't match.
+
+1. `^` and `$` are anchor tags that represent the start and end of the string, respectively. Use them when possible. 
+2. Try to limit the number of branching "or" paths in your regular expression.
+
+
+### Special Characters 
+
+The following is (very minimally) adapted from the `perldoc`:
+
+* `\d` matches a digit, not just `[0-9]` but also digits from non-Roman scripts
+* `\s` matches a whitespace character, the set `[\ \t\r\n\f]` and others
+* `\w` matches a word character (alphanumeric or underscore), not just `[0-9a-zA-Z_]` but also digits and characters from non-Roman scripts
+* `\D` is a negated `\d`; it represents any other character than a digit, or `[^\d]`
+* `\S` is a negated `\s`; it represents any non-whitespace character `[^\s]`
+* `\W` is a negated `\w`; it represents any non-word character `[^\w]`
+* `.` matches any character except newlines
+
+### Regex Matching `=~` and `!~`
+
+To match a string to a regex, use `=~`.
+
+```bash
+$ ni ihello p'a =~ /^h/ ? "match" : "no match"'
+match
+```
+
+Negative matches to a regex can be performed with `!~`.
+
+```bash
+$ ni igoodbye p'a !~ /^h/ ? "negative match" : "positive match"'
+negative match
+```
+
+### Using Capture Groups
+
+Capture groups are set off using parentheses; to get them explicitly:
+
+```bash
+$ ni iabcdefgh p'my @v = a =~ /^(.)(.)/; r @v'
+a	b
+```
+
+
+
+### Regex Barriers
+
+Usually regular expressions are set off using forward slashes, however, this means that forward slashes within a regex will have to be escaped. You can use `m` and another character when you need to match forward slashes.
+
+```bash
+$ ni i/usr/bin p'm#^/usr/(.*)$#'
+bin
+```
+
+
+### Substitution `s///`, Transliteration `tr///` and `y///`
+
+These operators have a slightly tricky syntax. For example, you can't use these operators the way you'd use capture groups. 
+
+```bash
+$ ni iabcdefgh p'tr/a-z/A-Z/'
+8
+```
+
+```bash
+$ ni iabcdefgh p's/abc/ABC/'
+1
+```
+
+The reason for these somewhat surp The return value of `tr` and `y` is the number of characters that were translated, and the return value of `s` is 0 if no characters were substituted and ` if characters were.
+This also will give somewhat-surprising behavior to code like:
+
+```bash
+$ ni iabcdefgh p'$v = tr/a-z/A-Z/; $v'
+8
+```
+
+Instead, these operators work as side-effects.
+
+```bash
+$ ni iabcdefgh p'tr/a-z/A-Z/; $_'
+ABCDEFGH
+```
+
+```bash
+$ ni iabcdefgh p's/abc/ABC/; $_'
+ABCdefgh
+```
+
+There are other syntaxes for `s///` and `tr///`, but many of them do not work with Perl 5.8, which is the earliest Perl version with which `ni` is designed to work.
+
+
+### Regex Interpolation
+
+Perl scalars can be interpolated into regular expressions, like this:
+
+```bash
+$ ni 1p'$foo = "house"; 
+        "housecat" =~ /$foo/ ? "match" : "no match"'
+match
+```
+
+```bash
+$ ni 1p'$foo = "house"; 
+        "cathouse" =~ /cat$foo/ ? "match" : "no match"'
+match
+```
+
+```bash
+$ ni 1p'$foo = "house"; 
+        "housecat" =~ /${foo}cat/ ? "match" : "no match"'
+match
+```
+
+## String Operators
+
+### String Concatenation
+String concatenation is done with `.` in Perl rather than `+` common in other languages. We'll discuss why `+` can't be used later, but you may want to test it out now to see what happens when you try to add two strings with `+`.
+
+
+```bash
+$ ni 1p'"foo" . "bar"' 
+foobar
+```
+
+
+### String Interpolation
+
+In Perl, string interpolation occurs between double-quoted strings. 
+
+```bash
+$ ni 1p'my $x = "foo"; r "$x bar"'
+foo bar
+```
+
+If the interpolated variable could be confused, it can be wrapped in curly braces.
+
+```bash
+$ ni 1p'my $x = "foo"; r "${x}bar"'
+foobar
+```
+
+You can also use the results of functions, however, these need to be prefixed with a backslash to tell Perl to evaluate the function.
+
+```bash
+$ ni ifoo p'r "${\a}bar"'
+foobar
+```
+
+Because `ni` is written in Perl, Perl mappers are set off with single quotes (otherwise  the parser would try to interpolate variable declarations). Moral of the story: 
+
+> DO NOT USE single-quoted strings in `ni`.
+
+
+
+### String Comparison: `eq`, `ge`, `gt`, `le`, `lt`
+
+Because strings are interpreted as numbers, if you use the numeric comparator operators, strings will be cast to numbers and compared.
+
+```bash
+$ ni 1p' "ab" == "cd" ? "equal" : "not equal"'
+equal
+```
+
+You need to use the specific string-comparison opeartors instead.
+
+```bash
+$ ni 1p' "ab" eq "cd" ? "equal" : "not equal"'
+not equal
+```
+
+
+### `substr`
+
+`substr($s, $offset, $length)`: The behavior of `substr` is a little tricky if you have a Python background:
+
+  * If `$offset` is positive, then the start position of the substring will be that position in the string, starting from an index of zero;
+  * If `$offset` is negative, then the start position of the substring will be `$offset` charaters from the end of the string.
+  * If `$length` is positive, the output substring will take (up to) `$length` characters.
+  * If `$length` is negative, the output substring will take characters from `$offset` to the `$length` characters from the end of the string.
+  
+```bash
+$ ni iabcdefgh p'r substr(a, 3), substr(a, 0, 3),
+                   substr(a, -2), substr(a, 0, -2)'
+defgh	abc	gh	abcdef
+```
+
+
+### Using regular expressions versus `substr` 
+
+`substr` does exactly one thing, and it is quite fast at doing it. If all you need is a single fixed-length substring, you'll likely have higher performance with `substr` compared to a regex; otherwise, well-constructed regular expressions are a better and more flexible choice.
+
+```bash
+$ ni iabcdefgh p'r /(.{5})$/, /^(.{3})/, /(.{2})$/, /^(.*)../'
+defgh	abc	gh	abcdef
+```
+
+
+## Operations on Arrays
+
+Perl arrays are prefixed with the `@` sigil, and their scalar values can be looked up by prefixing with a `$`, and indexing using square brackets.
+
+### Array Constructors
+
+#### Explicit constructors
+
+Arrays are written in parentheses, with elements set off by commas.
+
+```bash
+$ ni 1p'my @arr = (1, 2, 3); r @arr'
+1	2	3
+```
+
+#### `qw`: Quote Word
+
+Writing lots of double quotes around strings is kind of a pain; Perl implements an operator called `qw` which allows you to build a list with a minimum of keystrokes:
+
+```bash
+$ ni 1p'my @arr = qw(1 2 3); r @arr'
+1	2	3
+```
+
+
+#### `split`
+
+`split` is another way for generating arrays from a string based on regular expressions.
+
+```bash
+$ ni iabcd iefgh p'my @v = split /[cf]/; r @v'
+ab	d
+e	gh
+```
+
+#### Array references (OPTIONAL)
+Many other languages use square brackets; in Perl, these are used for array references:
+
+```sh
+$ ni 1p'my @arr = [1, 2, 3]; r @arr'
+ARRAY(0x7fa7e4184818)
+```
+
+This code has built a length-1 array containing an array reference; if you really wanted to create an array reference, you'd more likely do it explicitly.
+
+```sh
+$ ni 1p'my $arr_ref = [1, 2, 3]; r $arr_ref'
+ARRAY(0x7fa7e4184818)
+```
+
+To dereference the reference, use the appropriate sigil:
+
+```bash
+$ ni 1p'my $arr_ref = [1, 2, 3]; r @$arr_ref'
+1	2	3
+```
+
+Back to the first example, to dereference the array reference we've (probably unintentionally) wrapped in an array, do:
+
+
+```bash
+$ ni 1p'my @arr = [1, 2, 3]; r @{$arr[0]}'
+1	2	3
+```
+
+### `for`
+Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java. `for` takes an initialization and a block of code to be run for each value of the initialization.
+
+#### Block Prefix Syntax
+
+```bash
+$ ni iabcdefgh p'my $string= a; for (my $i=0; $i < length $string; $i++) {r substr($string, $i, 1) x 2;}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+In the above code, `substr($string, $i, 1)` is used to get 1 character from `$string` at position `$i`.  Perl also has a for syntax allowing you to define a variable name. 
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+You do not need to explicitly name a loop variable, as we have done above; if you don't, the loop variable will be put into a variable called `$_`:
+
+```bash
+$ ni iabcdefgh p'for(split //, $_) {r $_ x 2}'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+Using your knowledge of blocks and scoping, you should know what will happen if we add `r $_` to the command: `$ ni iabcdefgh p'for(split //, $_) {r $_ x 2} r $_'`. Figure it out? Let's check.
+
+```bash
+$ ni iabcdefgh p'for(split //, $_) {r $_ x 2} r $_'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+abcdefgh
+```
+
+`$_` in the loop block is scoped to the loop; it does not affect the `$_` scoped to the top-level Perl mapper, which is printed by `r $_`.
+
+
+#### Inline Syntax
+
+Finally, there is an even more parsimonious postfix syntax that is useful for short repetitive operations.
+
+
+```bash
+$ ni iabcdefgh p'r $_ x 2 for split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+
+#### `next` and `last`
+The keyword `next` is used to skip to the next iteration of the loop, similar to `continue` in Python, Java, or C.
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) 
+                 {if($letter eq "b") {next;} r $letter x 2}'
+aa
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+`last` in Perl is similar to `break` in other programming languages.
+
+
+```bash
+$ ni iabcdefgh p'for my $letter(split //, $_) {r $letter x 2; last if $letter ge "c"}'
+aa
+bb
+cc
+```
+
+Note the way that `last` and `next` combine with `if` and `unless` for readable syntax. 
+
+
+### `join`
+The opposite of `split` is `join`. It takes a string rather than an expression, and intersperses the string between the 
+
+```bash
+$ ni iabcd iefgh p'join "__", split //'
+a__b__c__d
+e__f__g__h
+```
+
+
+### `map`
+`map` is in many ways similar to `for`; in exchange for some flexibility that `for` loops offer, `map` statements often have better performance through vectorization, and they are often more intuitive to read. `map` takes two arguments, a block of code and a perl array, and returns an array.
+
+```bash
+$ ni iabcdefgh p'map {$_ x 2} split //'
+aa
+bb
+cc
+dd
+ee
+ff
+gg
+hh
+```
+
+`map` uses a **lexically scoped** default variable `$_`. Because `$_` within the block is lexically scoped to the block, the `$_` in the block doesn't change the value of `$_` outside the block. For example:
+
+```bash
+$ ni iabcdefgh p'my @v = map {$_ x 2} split //; r $_'
+abcdefgh
+```
+
+`map` can also be used with a capturing regular expression:
+
+```sh
+$ ni i[/usr/bin /usr/tmp]  p'r map m#^/usr/(.*)$#, F_'
+bin	tmp
+```
+
+
+### `grep`
+
+`grep` is a useful Unix command-line tool that is also useful for filtering Perl arrays. `grep` and `map` have similar syntax; grep can take an expression, for example:
+
+```bash
+$ ni iabcdefgh p'my @v = grep /^[acgh]/, map {$_ x 2} split //, $_; @v'
+aa
+cc
+gg
+hh
+```
+
+`grep` also takes a block of code, as in:
+
+```bash
+$ ni iabcdefgh p'my @v = grep { ord(substr($_, 0, 1)) % 2 == 0} 
+                         map { $_ x 2 } split //, $_; @v'
+bb
+dd
+ff
+hh
+```
+
+Note that the expression syntax requires a comma following the expression, whereas the block syntax does not. Expect to mess this up a lot. That's not a _nice_ syntax, but Perl isn't nice.
+
+
+### `sort` and `reverse`
+
+`reverse` reverses an array:
+
+```bash
+$ ni 1p'my @arr = (3, 5, 1); r reverse @arr'
+1	5	3
+```
+
+`sort` with no arugments will sort an array in ascending order
+
+```bash
+$ ni 1p'my @arr = (3, 5, 1); r sort @arr'
+1	3	5
+```
+
+```bash
+$ ni 1p'@arr = qw[ foo bar baz ]; r sort @arr'
+bar	baz	foo
+```
+
+To do a reverse sort, compose the functions together like this:
+
+```bash
+$ ni 1p'@arr = qw[ foo bar baz ]; r reverse sort @arr'
+foo	baz	bar
+```
+
+**CAVEAT** `sort` is a little bit finnicky. If you run:
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern] p'r sort F_'
+F_
+```
+
+That's not what we want, so what's going on?
+
+In Perl, if you pass a function to `sort`, it will try to use that function to do the sort. Perl also expects that function to be in a particular form. In this case, we've really confused the hell out of Perl, so it returns that nonsense.
+
+We can fix this by giving Perl a hint to execute the function `F_`:
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern] p'r sort +F_'
+guildenstern	juliet	romeo	rosencrantz
+```
+
+This syntax is a little tricky for my taste; I prefer the more explicit:
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern] \
+     p'my @arr = F_; r sort @arr'
+guildenstern	juliet	romeo	rosencrantz
+```
+
+
+### Custom Sorting (OPTIONAL)
+You can implement a custom sort by passing a block to `sort`.
+
+Let's say you wanted to sort by the length of the string, rather than the order:
+
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $a <=> length $b } F_'
+hero	romeo	juliet	leander	rosencrantz	guildenstern
+```
+
+To reverse the sort, reverse `$b` and `$a`.
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $b <=> length $a } F_'
+guildenstern	rosencrantz	leander	juliet	romeo	hero
+```
+
+More details are available in the [perldocs](https://perldoc.perl.org/functions/sort.html).
+
+
+### Operations on mulitple arrays and scalars
+
+You can feed multiple lists and scalars into `grep`, `map`, and `for`, by setting them off with commas; there is no need to construct a new array containing all of the elements you want to operate over.
+
+```bash
+$ ni 1p'my @x = (1, 2); my $y = "yo"; my @z = ("good", "bye");
+        map {$_ x 2} @x, $y, @z'
+11
+22
+yoyo
+goodgood
+byebye
+```
+
+
+
+## Perl Hashes
+
+### Hash construction
+
+The easiest way to build up a hash is using the associative arrow syntax:
+
+```bash
+$ ni 1p'my %h = ("x" => 1); r $h{"x"}'
+1
+```
+
+You can also make hashes using the normal list syntax, but this is less clear.
+
+```bash
+$ ni 1p'my %h = ("x", 1); r $h{"x"}'
+1
+```
+
+
+Hashes can also be cast directly to and from arrays.
+
+```bash
+$ ni 1p'my @arr = qw[foo 1 bar 2]; my %h = @arr; r $h{"bar"}'
+2
+```
+
+### `keys`, `values`
+
+These, quite unsurprisingly, return the keys and values of a hash. 
+
+```bash
+$ ni 1p'my %h = ("foo" => 1, "bar" => 2); r sort keys %h'
+bar	foo
+```
+
+The function `values` returns values in the same order as the hash's `keys`.
+
+```bash
+$ ni 1p'my %h = ("foo" => 1, "bar" => 2, "baz" => 3); 
+        my @ks = keys %h; my @vs = values %h; 
+        my $same_order = 1; 
+        for(my $i = 0; $i <= $#ks; $i++) { 
+          if($h{$ks[i]} != $vs[i]) {$same_order = 0; last} 
+        } 
+        r $same_order ? "Same order" : "Different order"'
+Same order
+```
+
+### `%ENV`: Hash of Environment Variables
+
+Environment variables are much easier to access and modify in Perl than in any comparable language. To get the value of the variable you want, remember to dereference with `$ENV{varname}`.
+
+```sh
+$ ni 1p'%ENV'
+...
+LOGNAME
+bilow
+_system_type
+Darwin
+SHELL
+/bin/bash
+...
+```
+
+
+## Logical and Bitwise Operations
+
+### Logical Operations
+
+Logical operators come in two flavors, high-precedence and low-precedence. The low-precedence operators `and`, `or`, `not`, and their high-precedence C-like counterparts `&&`, `||`, `!`.
+
+In general, there is little difference between these operations, but tricky errors may arise. In general, it is safe and syntactically pleasing to use the low-precedence operators between statements, and to use the high-precedence operators with scalars and expressions.
+
+```sh
+open my $fh, '<', $filename || die "A horrible death!"; ## Fails
+open my $fh, '<', $filename or die "A horrible death!"; ## Succeeds
+```
+
+
+### Bit Shifts `<<` and `>>`
+
+Bit shifting is useful because it is an incredibly fast operation; it's very useful for building hash functions and reducing computational burden. 
+
+Bit shifting to the right is (in general) the equivalent of taking the integer part of dividing by the specified power of 2.
+
+```bash
+$ ni 1p'125 >> 3'
+15
+```
+
+```bash
+$ ni 1p'int(125/2**3)'
+15
+```
+
+Bit shifting to the left is equivalent to multiplying by the specified power of 2.
+
+
+```bash
+$ ni 1p'125 << 3'
+1000
+```
+
+The exception to this rule is when the number of bits to shift is larger than the number of bits of the registers in the underlying hardware. Be careful when using bit shifts with large numbers, and using bit shifts on numbers that might be negative. The results can be quite unexpected.
+
+```sh
+$ ni 1p'r 18 << 63, -1 >> 10'
+0	18014398509481983
+```
+
+### Hexadecimal Numbers
+
+You can write numbers in hexadecimal (base-16) in Perl without specifying a type:
+
+```bash
+$ ni 1p'r 0x3 + 0xa, 0x3 + 0xA'
+13	13
+```
+
+### Bitwise `&` and `|`
+
+These operations can be useful for unwinding loops in programs; like bit shifts, they're very fast and convenient for running on binary-like data.
+
+```bash
+$ ni 1p'r 0x3 & 0xa, 0x3 | 0xa'
+2	11
+```
+
+They also work on decimal numbers:
+
+
+```bash
+$ ni 1p'r 3 & 10, 3 | 10'
+2	11
+```
+
+## Common Tricks
+
+
+### Text is numbers
+
+In any nice langauge, strings and numbers are different data types, and trying to use one as another (without an explicit cast) raises an error. Take a look at the following example:
+
+```bash
+$ ni 1p'my $v1="5"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+15	555	5 golden rings
+```
+
+It's unsurprising that the Perl infix `x` operator (string duplication) and the Perl infix `.` operator (string concatenation) work, but if you come from a friendly language that just wants you to be sure you're doing the right thing, the idea that you can multiply a string by a number and get a number is frustrating. But it gets worse.
+
+```bash
+$ ni 1p'my $v2="4.3" * "6.7"; r $v2'
+28.81
+```
+
+You can perform floating point multiplication on two string variables with zero consequences.  This is complicated, but not ambiguous; if it is possible to cast the two strings (silently) to numbers, then Perl will do that for you automatically. Strings that start with valid numbers are cast to the longest  component parseable as a float or integer, and strings that do not are cast to zero when used in an arithmetic context.
+
+```bash
+$ ni 1p'my $v1="hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+0	hihihi	hi golden rings
+```
+
+```bash
+$ ni 1p'my $v1="3.14hi"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+9.42	3.14hi3.14hi3.14hi	3.14hi golden rings
+```
+
+```bash
+$ ni 1p'my $v1="3.1E17"; r $v1 * 3, $v1 x 3, $v1 . " golden rings"'
+930000000000000000	3.1E173.1E173.1E17	3.1E17 golden rings
+```
+
+
+### Barewords are strings
+
+In Perl, a "bareword" is an sequence of characters with no sigil prefix, for example:
+
+```bash
+$ ni n3p'r a, one'
+1	one
+2	one
+3	one
+```
+
+Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist--in this case, `one`--  Perl gives the programmer a great deal of freedom to be concise. `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
+
+This has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
+
+```bash
+$ ni 1p'my %h = ("foo" => 32); $h{foo}'
+32
+```
+However, the default behavior is for a hash to look up the value of the string the bareword represents.
+
+As a result, there's a conflict when using the output of a function with no arguments (for example, `a`):
+
+```sh
+$ ni ifoo p'my %h = ("foo" => 32); $h{a}'
+```
+
+Returns nothing; in fact it is looking for the value with the key `"a"`.
+
+```bash
+$ ni ifoo p'my %h = ("foo" => 32, "a" => "hello"); $h{a}'
+hello
+```
+
+In this case we prefix with a single `+` to indicate that the bareword in braces should be interpreted as a function.
+
+
+```bash
+$ ni ifoo p'my %h = ("foo" => 32); $h{+a}'
+32
+```
+
+### `perldoc`	
+Since `ni` sits on top of Perl, so we can take credit for the excellent Perl docs, which are often better than Google/StackOveflow for syntax help. You can get them at `perldoc -f <function>` at the command line.
+
+```sh
+$ perldoc -f my
+...
+my EXPR
+my TYPE EXPR
+my EXPR : ATTRS
+my TYPE EXPR : ATTRS
+   A "my" declares the listed variables to be local (lexically) to
+   the enclosing block, file, or "eval".  If more than one value
+   is listed, the list must be placed in parentheses.
+...
+```
+
+
+## Conclusion
+
+Perl is much-maligned for its syntax; much of that malignancy comes from people whose only exposure to the language is hearing about the [Obfuscated Perl Contest](https://en.wikipedia.org/wiki/Obfuscated_Perl_Contest). Perl is also known for its religious overtones; here `ni` author Spencer Tipping drop the scales from your eyes about the language in this section from his short intro to the language, [Perl in 10 Minutes](https://github.com/spencertipping/perl-in-ten-minutes). 
+
+
+>Python, Ruby, and even Javascript were designed to be good languages -- and just as importantly, to **feel** like good languages. Each embraces the politically correct notion that values are objects by default, distances itself from UNIX-as-a-ground-truth, and has a short history that it's willing to revise or forget. These languages are convenient and inoffensive by principle because that was the currency that made them viable.
+
+>Perl is different.
+
+>In today's world it's a neo-noir character dropped into a Superman comic; but that's only true because it changed our collective notion of what an accessible scripting language should look like. People often accuse Perl of having no design principles; it's "line noise," pragmatic over consistent. This is superficially true, but at a deeper level Perl is uncompromisingly principled in ways that most other languages aren't. Perl isn't good; it's complicated, and if you don't know it yet, it will probably change your idea of what a good language should be.
+
+
+
+
+
+
+
+
+839 doc/ni_by_example_3.md
+# `ni` by Example, Chapter 3 (beta release)
+
+## Introduction
+
+In this section, we introduce `ni`-specific Perl extensions. 
+`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.
+
+The next set of operators work with multiple lines of input data; this allows reductions over multiple lines to take place. This section ends with a discussion of more I/O functions.
+
+
+## `ni`-specific Perl Functions
+
+### Geographic Perl Functions
+
+#### `llg` & `ghe`: Latitude and Longitude to geohash
+Geohashes are an efficient way of encoding a position on the globe, and is also useful for determining neighboring locations. 
+
+The geohashing algorithm works by splitting first on longitude, then by latitude. Thus, geohashes with an odd number of binary bits of precision will be (approximately) squares, and geohashes with an even number of digits will be (approximately) rectangles with their longer side parallel to the equator.
+
+base-32 characters | Approximate geohash size
+--- |  ----
+1 | 5,000km x 5,000km
+2 | 1,250km x 625km
+3 | 160km x 160km
+4 | 40km x 20km
+5 | 5km x 5km
+6 | 1.2km x 600m
+7 | 150m x 150m
+8 | 40m x 20m
+9 | 5m x 5m
+10 | 1.2m x 60cm
+11 | 15cm x 15cm
+12 | 4cm x 2cm
+
+`llg($lat, $lng, $precision)` returns either a geohash in a special base-32 alphabet, or as a long integer. `ghe` is a synonym of `llg` provided for backwards the purpose of backwards compatibility. 
+
+If `$precision > 0`, the geohash is specified with `$precison` base-32 characters. When geohashes are specified in this way, they are referred to in short as `gh<$precision>`, for example gh6, gh8, or gh12. If `$precision < 0`, it returns an integer geohash with `-$precision` bits of precision.
+
+Examples:
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg(a, b, 7)'
+9q5cc25
+```
+ 
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg(a, b, -35)'
+10407488581
+```
+
+The default is to encode with 12 base-32 characters, i.e. a gh12, or 60 bits of precision.
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg(a, b)'
+9q5cc25twby7
+```
+
+The parentheses are also often unnecessary, because of the prototyping:
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, 9'
+9q5cc25tw
+```
+
+#### `gll` and `ghd`: Geohash to latitude and longitude
+
+`ni` provides two prototypes for geohash decoding:
+
+`gll($gh_base32)` Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash. `ghd` is a synonym of `gll` provided for backwards the purpose of backwards compatibility. 
+
+
+`gll($gh_int, $precision)` decodes the input integer as a geohash with `$precision` bits and returns the  latitude and longitude (in that order) of the center point corresponding to that geohash.  As with `llg`, parentheses are not always necessary.
+
+Examples:
+
+```bash
+$ ni i[34.058566 -118.416526] p'r gll llg a, b'
+34.058565851301	-118.416526280344
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'r gll llg(a, b, -41), 41'
+34.0584754943848	-118.416652679443
+```
+
+#### `g3b` and `gb3`: geohash transcoding from binary to base-32
+
+`g3b` (geohash base-32 to binary) and `gb3` (geohash binary to base-32) transcode between base-32 and binary geohashes.
+
+```
+$ ni 1p'r g3b "9q5cc25tufw5"'
+349217367909022597
+```
+
+`gb3` takes a binary geohash and its precision in binary bits, and returns a base-32 geohash.
+
+```bash
+$ ni 1p'r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'
+9q5cc25tufw5
+9q5cc25tufw5
+```
+
+
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
+
+```bash
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
+```
+
+#### `gh_dist`: distance between geohash centroids
+It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+1.23981551084308
+```
+
+When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
+
+```bash
+$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+1.99516661267524
+```
+
+
+#### `lat_lon_dist`: distance between points on the globe
+This subroutine implements the haversine distance formula. Like `gh_dist`, it also takes units ("mi", "km", "ft", "m"), and will return the distance in kilometers if no other information is given.
+
+```bash
+$ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
+10426.7380460312
+```
+
+
+### Time Perl Functions
+
+`tpe` and `tep` are the most flexible and powerful time functions in `ni`'s arsenal for converting between Unix timestamps and date. Other important functions here are used for localization by lat/long or geohash, and several syntactic sugars are provided for common mathematical and semntic time operations.
+
+    
+#### `tpe`: time parts to epoch
+`tpe(@time_pieces)`: Returns the epoch time in GMT (see important note below)
+and assumes that the pieces are year, month, day, hour, minute, and second, 
+in that order. 
+
+```bash
+$ ni 1p'tpe(2017, 1, 22, 8, 5, 13)'
+1485072313
+```
+
+You can also specify a format string and call the function as `tpe($time_format, @time_pieces)`.
+
+```bash
+$ ni 1p'tpe("mdYHMS", 1, 22, 2017, 8, 5, 13)'
+1485072313
+```
+
+#### `tep`: time epoch to parts
+
+`tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable format from the epoch time.
+
+```bash
+$ ni 1p'r tep tpe 2017, 1, 22, 8, 5, 13'
+2017	1	22	8	5	13
+```
+
+A specific format string can also be provided, in which case `tep` is called as `tep($time_format, $epoch_time)`.
+
+#### `tsec`: approximately convert epoch to local time
+
+`tep($raw_timestamp + tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+
+For example, let's say you have the Unix timestamp and want to know what time it is at the coordinates: 34.058566<sup>0</sup> N, 118.416526<sup>0</sup> W.
+
+```bash
+$ ni i[34.058566 -118.416526] \
+     p'my $epoch_time = 1485079513; my $tz_offset = tsec(a, b); 
+       my @local_time_parts = tep($epoch_time + $tz_offset); 
+       r @local_time_parts'
+2017	1	22	2	41	13
+```
+
+This correction cuts the globe into 4-minute strips by degree of longitude.
+It is meant for approximation of local time, not the actual time, which depends much more on politics and introduces many more factors to think about.
+
+#### `ghl` and `gh6l`: approximate conversion to local time from geohash/gh60 
+
+`ghl` and `gh6l` get local time from an input geohash input in base-32 (`ghl`) or base-10 representation of a the geohash-60 in binary (`gh6l`).
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b' \
+     p'my $epoch_time = 1485079513; 
+       my @local_time_parts = tep ghl($epoch_time, a); 
+       r @local_time_parts'
+2017	1	22	2	41	13
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
+     p'my $epoch_time = 1485079513; 
+       my @local_time_parts = tep gh6l($epoch_time, a); 
+       r @local_time_parts'
+2017	1	22	2	41	13
+```
+
+
+#### `i2e` and `e2i`: ISO 8601 time <=> epoch time
+
+ISO 8601 is a standardized time format defined by the International Organization for Standards. More information on formats is available [here](https://en.wikipedia.org/wiki/ISO_8601). `ni` implements decoding for date-time-timezone formatted ISO data into Unix timestamps. 
+
+A similar non-ISO format (allowing for a space between date and time, and decimal precision to the time, which is ignored), is also supported.
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 i2017-06-24T19:23:47+01:00 \
+     i2017-06-24T15:23:47-03:00 i2017-06-24T13:08:47-05:15 \
+     i20170624T152347-0300 i20170624T182347Z \
+     i2017-06-24T18:23:47+00:00 i"2017-06-24 18:23:47.683" p'i2e a'
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+1498328627
+```
+
+`ni` can also format epoch timestamps in an ISO 8601-compatible form. To do this, input an epoch timestamp and either a floating number of hours, or a timezone format string, for example `"+10:00"`.
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' \
+     p'r e2i a; r e2i a, -1.5; r e2i a, "+3";
+       r e2i a, "-05:45"'
+2017-06-24T18:23:47Z
+2017-06-24T16:53:47-01:30
+2017-06-24T21:23:47+03:00
+2017-06-24T12:38:47-05:45
+```
+
+These all represent the same instant:
+
+```bash
+$ ni i2017-06-24T18:23:47+00:00 p'i2e a' \
+     p'r e2i a; r e2i a, -1.5; r e2i a, "+3";
+       r e2i a, "-05:45"' p'i2e a'
+1498328627
+1498328627
+1498328627
+1498328627
+```
+
+#### `tpi`: time parts to ISO 8601
+Takes 7 mandatory arguments: year, month, day, hour, minute, second, and time zone. The time zone can either be reported as a string `-08:00` or a number `-8`.
+
+```bash
+$ ni 1p'r tpi tep(tpe(2018, 1, 14, 9, 12, 31)), "Z"'
+2018-01-14T09:12:31Z
+```
+
+To verify correctness:
+
+```bash
+$ ni 1p'r i2e tpi tep(1515801233), "Z"'
+1515801233
+```
+
+
+#### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
+
+These functions give the 3-letter abbreviation for day of week, hour of day, and hour of week, and year + month.
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
+     p'my $epoch_time = 1485079513; dow gh6l($epoch_time, a)'
+Sun
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
+     p'my $epoch_time = 1485079513; hod gh6l($epoch_time, a)'
+2
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
+     p'my $epoch_time = 1485079513; how gh6l($epoch_time, a)'
+Sun_02
+```
+
+```bash
+$ ni i[34.058566 -118.416526] p'llg a, b, -60' \
+     p'my $epoch_time = 1485079513; ym gh6l($epoch_time, a)'
+2017-01
+```
+
+#### `ttd`, `tth`, `tt15`, `ttm`: truncate to day, hour, quarter-hour, and minute
+
+These functions truncate dates, which is useful for bucketing times; they're much faster than calls to the POSIX library, which can make them more practical in performance-environments (`HS`, for example).
+
+```bash
+$ ni i1494110651 p'r tep ttd(a); r tep tth(a);
+                   r tep tt15(a); r tep ttm(a); r tep a'
+2017	5	6	0	0	0
+2017	5	6	22	0	0
+2017	5	6	22	30	0
+2017	5	6	22	44	0
+2017	5	6	22	44	11
+```
+
+
+## Buffered Readahead and Multiline Selection
+
+So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.
+
+
+### `rl`, `rw`, `ru`, `re`: Buffered Readahead
+
+In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce (discussed in a later chapter); however, the syntax for  buffered readahead is often much simpler. Generating arrays of lines using readahead operations is a common motif in `ni` scripts:
+
+* `rl(n)`: read `n` lines
+  * `@lines = rl(n)`: `n` is optional, and if it is not given, only one line will be read.
+* `rw`: read while
+  * `@lines = rw {condition}`: read lines while a condition is met
+* `ru`: read until
+  * `@lines = ru {condition}`: read lines until a condition is met
+* `re`: read equal
+  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+
+
+```
+$ ni n10 p'r rl 3'
+1	2	3
+4	5	6
+7	8	9
+10
+```
+
+```bash
+$ ni n10p'r rw {a < 7}'
+1	2	3	4	5	6
+7
+8
+9
+10
+```
+
+```bash
+$ ni n10p'r ru {a % 4 == 0}'
+1	2	3
+4	5	6	7
+8	9	10
+```
+
+```bash
+$ ni n10p'r re {int(a**2/30)}'
+1	2	3	4	5
+6	7
+8	9
+10
+```
+
+
+### `a_` through `l_`: Multiline Selection operations 
+You have now seen two ways to generate arrays of lines: buffered readahead and data closures. In order to access data from a specific column of a line array, you will need to use multiline operators `a_` through `l_`, which are the multiline analogs to the line-based operators `a/a()` through `l/l()`.
+
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = re {a}; r @lines;'
+j	can	j	you	j	feel
+k	the	k	love
+l	tonight
+```
+
+`re {a}` will give us all of the lines where `a()` has the same value (i.e. the first column is the same. What gets stored in the variable`my @lines` is the array of text lines where `a()` has the same value: `("j\tcan", "j\tyou", "j\tfeel")`. 
+
+To get data from one particular column of this data, we can use the multiline selectors; let's say we only wanted the second column of that data--we can get that by applying `b_` to `@lines`.
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = re {a}; r b_(@lines)'
+can	you	feel
+the	love
+tonight
+```
+
+That's given us the second element of each line that started with the 
+
+As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `rea` as a shorthand for `re {a}`
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = rea; r b_ @lines'
+can	you	feel
+the	love
+tonight
+```
+
+And if we want to do this in a single line, we can combine multiline selection with buffered readahed:
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'r b_ rea'
+can	you	feel
+the	love
+tonight
+```
+
+The last two examples are used commonly. The former, more explicit one is often used when we want more than one reduction:
+
+```bash
+$ ni i[j can] i[j you] i[j feel] \
+     i[k the] i[k love] i[l tonight] \
+     p'my @lines = rea; r b_ @lines; r a_ @lines'
+can	you	feel
+j	j	j
+the	love
+k	k
+tonight
+l
+```
+
+Another common motif is getting the value of 
+
+### `reb ... rel`: Reduce while multiple columns are equal
+
+In the previous section, we covered `rea` as syntactic sugar for `re {a}`
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ rea'
+first	second	third
+fourth
+```
+
+This syntactic sugar is slightly different for `reb, rec, ..., rel`.
+
+Let's take a look at what happens with `re {b}`:
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ re {b}'
+first	second
+third	fourth
+```
+
+In general, that's not quite what we want; when we do reduction like this, we've probably already sorted our data appropriately, so we'll want to reduce over *all* of the columns; writing a function that reduces over columns `a` and `b` is a little clunky, so we use `reb` as a syntactic sugar for that function.
+
+```bash
+$ ni i[a x first] i[a x second] \
+     i[a y third] i[b y fourth] p'r c_ reb'
+first	second
+third
+fourth
+```
+
+This is our desired output.
+
+
+### Caveats
+
+* `$ ni ::data[n5] 1p'a(data)'` and `$ ni ::data[n5] 1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+* `$ ni ::data[n5] 1p'a_ data'` works, because `a_` operates on each line.
+
+```bash
+$ ni ::data[n5] 1p'a_ data'
+1
+2
+3
+4
+5
+```
+
+
+### `a__` through `l__`: Select-to-end-of-line
+These are useful for collecting data with an unknown shape.
+
+```bash
+$ ni i[m 1 x] i[m 2 y s t] \
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ rea'
+1	x	2	y	s	t	3	yo
+5	who	6	let	the	dogs
+```
+
+In particular, these operations can be used in conjunction with Hadoop streaming to join together data that have been computed separately.
+
+
+## `ni`-specific Array Processors
+
+These functions pair well with the multiline reducers introduced in the previous section.
+
+
+### `min`, `max`, `minstr`, `maxstr`
+
+Recall that text is numbers (and numbers are text) in Perl. Thus, there are two sets of methods for finding the minimum and maximum, depending on whether you want it in a numeric context (`min`, `max`) or in a string context (`minstr`, `maxstr`)
+
+
+```bash
+$ ni i[1 2 3] p'r min F_; r max F_'
+1
+3
+```
+
+```bash
+$ ni i[c a b] p'r minstr F_; r maxstr F_'
+a
+c
+```
+
+Be careful using these functions with both numeric and string arguments in the same line:
+
+```sh
+$ ni i[1 2 3 a b c] p'r min F_; r max F_; r minstr F_; r maxstr F_'
+b
+3
+1
+c
+```
+
+### `sum`, `prod`, `mean`
+These functions provide the sum, product, and average of a numeric array:
+
+```bash
+$ ni i[2 3 4] p'r sum(F_), prod(F_), mean(F_)'
+9	24	3
+```
+
+### `uniq`, `freqs`
+
+`uniq` returns an array of the unique elements of an array.
+
+```bash
+$ ni i[a c b c c a] p'my @uniqs = uniq F_; r sort @uniqs'
+a	b	c
+```
+
+`freqs` returns a reference to a hash that contains the count of each unique element in the input array.
+
+```bash
+$ ni i[a c b c c a] p'my %h = %{freqs F_}; 
+                      r($_, $h{$_}) for sort keys %h'
+a	2
+b	1
+c	3
+```
+
+
+### `any`, `all`, `argmax`, `argmin`
+These functions take two arguments: the first is a code block or a function, and the second is an array. 
+
+`any` and `all` return the logical OR and logical AND, respectively of the code block mapped over the array.
+
+
+```bash
+$ ni i[2 3 4] p'r any {$_ > 3} F_; r all {$_ > 3} F_'
+1
+0
+```
+
+
+`argmax` returns the value in the array that achieves the maximum of the block passed in, and `argmin` returns the value in the array that achieves the minimum of the function. 
+
+
+```bash
+$ ni i[aa bbb c] p'r argmax {length} F_; r argmin {length} F_'
+bbb
+c
+```
+
+If there are any ties, the first element is picked.
+
+```bash
+$ ni i[aa bbb c ddd e] p'r argmax {length} F_; r argmin {length} F_'
+bbb
+c
+```
+
+### `zip`: Interleave two arrays
+
+Given a list of keys `@ks` and a list of values `@vs`; how would you construct a hash where the `$ks[i]` is associated to `$vs[i]` for every index `i`? One way is to write a loop; `zip` short-circuits this loop.
+
+```bash
+$ ni 1p'my @ks = ("u", "v"); my @vs = (1, 10); r zip \@ks, \@vs'
+u	1	v	10
+```
+
+This output can be cast as a hash:
+
+```bash
+$ ni 1p'my @ks = ("u", "v");
+	my @vs = (1, 10); my %h = zip \@ks, \@vs; r $h{"v"}'
+10
+```
+
+It is also possible to `zip` more than 2 arrays:
+
+```bash
+$ ni 1p'my @ks = ("u", "v");
+	my @vs = (1, 10); my @ws =("foo", "bar");
+	r zip \@ks, \@vs, \@ws'
+u	1	foo	v	10	bar
+```
+
+If the arrays are of unequal length, the data will be output only up to the length of the shortest array.
+
+```bash
+$ ni 1p'my @ks = ("u", "v");
+	my @vs = (1, 10, "nope", 100, 1000,); r zip \@ks, \@vs'
+u	1	v	10
+```
+
+
+### `cart`: Cartesian Product
+To generate examples for our buffered readahead, we'll take a short detour the builtin `ni` operation `cart`.
+
+```bash
+$ ni 1p'cart [10, 20], [1, 2, 3]'
+10	1
+10	2
+10	3
+20	1
+20	2
+20	3
+```
+
+The output of `cart` will have the first column varying the least, the second column varying the second least, etc. so that the value of the last column will change for every row if its values are all distinct.
+
+
+Note that `cart` takeas array references (in square brackets), and returns array references. `ni` will interpret these array references as rows, and expand them. Thus `r`, when applied to `cart`, will likely not produce your desired results.
+
+```sh
+$ ni 1p'r cart [1], ["a", "b", "c"]'
+ARRAY(0x7ff2bb109568)   ARRAY(0x7ff2ba8c93c8)   ARRAY(0x7ff2bb109b80)
+```
+
+### Functional Programming Basics: `take`, `drop`, `take_while`, `drop_while`
+
+
+`take` and `drop` get (or get rid of) the specified number of elements from an array.
+
+```bash
+$ ni i[1 2 3 4 5 6 7] p'r take 3, F_; r drop 3, F_'
+1	2	3
+4	5	6	7
+```
+
+`take_while` and `drop_while` take an additional block; they `take` or `drop` while the function is true.
+
+```bash
+$ ni i[1 2 3 4 5 6 7] p'r take_while {$_ < 3} F_;
+                        r drop_while {$_ < 3} F_'
+1	2
+3	4	5	6	7
+```
+
+Some day, `ni` will get lazy sequences, and this will be useful. Until that day...
+
+
+## Hash Constructors
+
+### `p'%h = <key_col><val_col>_ @lines'`: Hash constructor
+
+Hash constructors are useful for filtering or adding data. There are many hash constructor functions all with the same syntax. For example, `my %h = ab_ @lines` returns a hash where the keys are taken from column `a` and the values are taken from column `b`. `my %h = fd_ @lines` will return a hash where 
+
+
+```bash
+$ ni i[a 1] i[b 2] i[foo bar] \
+     p'my @lines = rw {1};
+       my %h = ab_ @lines; my @sorted_keys = sort keys %h;
+       r @sorted_keys; r map {$h{$_}} @sorted_keys'
+a	b	foo
+1	2	bar
+```
+
+There's a nice piece of Perl syntactic sugar for the last return statement that gets all of the values out of a hash associated with the elements of an array:
+
+```bash
+$ ni i[a 1] i[b 2] i[foo bar] \
+     p'my @lines = rw {1};
+       my %h = ab_ @lines; my @sorted_keys = sort keys %h;
+       r @sorted_keys; r @h{@sorted_keys}'
+a	b	foo
+1	2	bar
+```
+
+Hashes are often combined with closures to do filtering operations:
+
+```bash
+$ ni ::passwords[idragon i12345] i[try this] i[123 fails] \
+     i[dragon does work] i[12345 also works] \
+     i[other ones] i[also fail] \
+     rp'^{%h = ab_ passwords} exists($h{+a})'
+dragon	does	work
+12345	also	works
+```
+
+#### Caveat
+
+Constructing hashes from closures can get very large; if you have more than 1 million keys in the hash, the hash will likely grow to several gigabytes in size. If you need to use a hash with millions of keys, you'll often be better off using a Bloom filter, described in Chapter 6. 
+
+
+### `p'%h = <key_col><val_col>S @lines'`: Accumulator hash constructor
+
+This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+x	5
+y	13
+```
+
+If you have ragged data, where a value may not exist for a particular column, a convience method `SNN` gives you the non-null values. See the next section for the convenience methods `kbv_dsc`.
+
+```bash 
+$ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
+     p'%h = dcSNN rea; 
+       @sorted_keys = kbv_dsc %h;
+       r($_, $h{$_}) for @sorted_keys'
+foo	4
+bar	1
+```
+
+
+### `p'kbv_asc %h'` and `p'kbv_dsc %h'`: Sort hash keys by value
+
+This is syntactic sugar for Perl's sort function applied to keys of a hash.
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
+     p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+y	x	z
+```
+
+
+```bash 
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
+     p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+z	x	y
+```
+
+## I/O Perl Functions
+
+### `wf`: write to file
+
+`wf $filename, @lines`: write `@lines` to a file called `$filename`
+
+```sh
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
+file1
+file2
+$ ni file1
+1
+2
+$ ni file2
+yo
+```
+
+### `af`: append to file
+
+```sh
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
+file3
+file4
+file3
+$ ni file3
+1
+2
+hi
+$ ni file4
+yo
+```
+
+`af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
+
+## JSON I/O
+
+We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
+
+### `D:<field1>,:<field2>...`: JSON Destructure
+
+`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-07-12), the JSON destructurer does not support list-based fields in JSON.
+
+### `p'json_encode <hash or array reference>`: JSON Encode
+
+The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
+  
+
+
+### Other JSON parsing methods
+Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
+
+
+## `ni` Philosophy and Style
+
+If you've made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you're ready to get off the crazy ride of this tutorial and get to work, here's a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'s philosophy and style, and how those two intersect.
+
+### `ni` optimizes at-will programmer productivity
+Many data science projects start with a request that you have never seen before; in this case, it's often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
+
+`ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
+
+### Mastery counts
+
+Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
+
+This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
+
+### Outsource hard jobs to more appropriate tools
+
+`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
+
+* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
+* Because of this philosophy, large-scale sorting is not a `ni`-ic operation, while gzip compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes uncompressed.
+
+Some jobs that are difficult for `ni`, and some ways to resolve them:
+
+* Sorting
+  * Challenge: Requires buffering of entire stream (possibly to disk, which is slow)
+  * Solution: Hadoop Streaming will do much of the heavy lifting for you in any sort, and will distribute the computation so it's easy.
+* Matrix Multiplication
+  * Challenge: Difficult to implement in a streaming context
+  * Solution: Numpy operations 
+* SQL Joins
+  * Challenge: SQL joins can take more than one line
+  * Solution:
+    * Small Data: There are several options here. You can use `N'...'` and do the join in numpy, you can use `N'...'` with `import pandas as pd` to do the join in pandas, or you can pipe data in and out of `join -t $'\t'`
+    * Large Data: HDFS Joins
+* Iterating a `ni` process over directories where the directory provides contextual information about its contents.
+  * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
+  * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
+665 doc/ni_by_example_4.md
+# `ni` by Example, Chapter 4 (alpha release)
+
+Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
+
+The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
+
+Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
+
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
+
+## `ni` is self-modifying
+
+`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
+
+
+### `ni` evaluation basics
+Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
+
+```
+ni <op1> <op2> <op3> ... <opN>
+``` 
+is, for the most part, equivalent to 
+
+```
+ni <op1> | ni <op2> | ni <op3> | ... | ni <opN>
+```
+
+`ni --explain` works by telling you what each `<op>` above is.
+
+However, this isn't quite the whole story. 
+
+### `::closure_name[...]`: Create a data closure
+
+```bash
+$ ni ::five[n5] n3p'r a, five'
+1	12345
+2	12345
+3	12345
+```
+Any `ni` operations executable on the machine from whose context `ni` is being executed can be turned into a data closure. This caveat will become more important when we start using `ni` to execute on machines other than the ones we develop on.  The closure can be referenced within a Perl snippet as  `p'... closure_name ...'`
+
+```bash
+$ ni --explain ::five[n5] n3p'r a, five'
+["memory_data_closure","five",[["n",1,6]]]
+["n",1,4]
+["perl_mapper","r a, five"]
+```
+
+In chapter 1, we described `ni` evaluating different operators as follows:
+
+`$ ni <op1> <op2> ... <opN> == $ ni <op1> | ni <op2> | ... | ni <opN>`
+
+Data closures provide a counterexample to the basics of `ni` evaluation written above. 
+
+```bash
+$ ni ::five[n5] | ni n3p'r a, five'
+1	five
+2	five
+3	five
+```
+
+The reason that the example including pipes gives different results than the example with no pipes is that **creating the data closure modifies `ni` itself**.  In the piped example, the first `ni` is modified but is not used; the second `ni` is your system `ni`, which remains unmodified. The second `ni` therefore cannot access the data closure built in the first `ni`.
+
+
+### Data Closure Evaluation and `ni` self-modification
+Data closures, regardless of where they are written in a ni spell, will be evaluated before everything else, and in the order that they are written.
+
+That means that `$ ni ::five[n5] n3p'r a, five'` ie equivalent to `$ ni n3p'r a, five' ::five[n5]`, even though in the latter, it looks like it's referencing something that was computed later in the pipeline.
+
+Data closures are (or will be shortly implemented such that they are) computed in order; that means you can use one data closure to compute another, so long as the one computed from is expressed in the stream before the one which uses it to do some computation.
+
+We can rewrite a `ni` pipeline a little more accuartely as the following:
+
+```sh
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
+
+```sh
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
+
+We will see how `ni` actually does this in the following sections.
+
+
+## `ni` is a quine
+
+A _quine_ (pronounced: KWINE) is a program that prints its source code when it is run. If you haven't run into quines before (or the equivalent terms selfrep or self-representing program), and you go out and start looking at them, they can be mind-bending and near-impossible to read. That is the correct reaction; you should start becoming comfortable with that feeling.
+
+We'll write a classic quine in Scheme (or Lisp), then a quine in Perl, and then demonstrate that `ni` is a quine without getting too deep into the details.
+
+### Scheme/Lisp micro-tutorial
+If you're already familiar with Lisp syntax, skip ahead to the next section. If you're not familiar with either of those languages, they're much more worth learning than `ni`, but it's probably more urgent that you learn `ni` for some reason, so this mini-tutorial will teach you enough to understand our first example quine.
+
+Start by checking out [repl.it](http://www.repl.it). Select Scheme and you'll be taken to a Scheme REPL.
+
+Here's what you need to know:
+
+* Function applcation in Scheme/Lisp starts with an open parenthesis.
+  * `(+ 1 2)` yields `3`. 
+  * `(* 5 6 7)` yields `210`
+* Scheme lists are written in parentheses and are delimited by spaces.
+* The function `list` returns a list of its arguments:
+  * `(list 1 3 5)` yields `(1 3 5)`
+* The function `quote` takes one argument and returns its literal value:
+  * `(quote 5)` yields `5`
+  * `(quote (list 1 2 3))` yields `(list 1 2 3)`. Note that the list function was not evaluated.
+* `lambda` defines an anonymous function with any number of named parameters.
+  * `(lambda (u v) (u + v))` yields a lambda (i.e. an anonymous function) that adds two values.
+  * `((lambda (u v) (u + v)) 4 5)` yields 9, because the 4 and the 5 are passed as arguments to the lambda.
+
+### A simple quine in Scheme
+Let's build a quine, starting with this piece:
+
+```
+(lambda (x)
+   (list x (list (quote quote) x))
+```
+
+`lambda` creates an anonymous function which, on input x, returns a list with first element `x`. The second element of the list is also a list. The first element of the sublist is the result of  `(quote quote)`, and the second element is `x`. To make the operation of this function more concrete, head over to  and look at what happens when we do the following:
+
+```
+((lambda (x)
+    (list x (list (quote quote) x)))
+  1)
+=> (1 (quote 1))
+```
+So when we apply ths function to an argument, we get back the argument, followed by a list consisting of `quote` and the argument.
+
+Already that should feel like a step in the right direction; we have a function that takes a piece of data, reproduces that data and then a quoted representation of that data. In quines with this structure, this function is often referred to as "the code."
+
+What we need now is the appropriate piece of data to feed to the code. We know our data has to reproduce our code, so that means what we feed to our code must be a string representation of itself. We do this by applying `quote` to the text of the code.
+
+```
+((lambda (x)
+  (list x (list (quote quote) x)))
+ (quote
+  (lambda (x)
+   (list x (list (quote quote) x)))))
+=> ((lambda (x) (list x (list (quote quote) x))) (quote (lambda (x) (list x (list (quote quote) x)))))
+```
+
+Note that not all quines are structured this way (with code and data to interpret the code), but these are the simplest types of quines to write and explain.
+
+For those inclined to theoretical computer science, [David Madore's tutorial on quines](http://www.madore.org/~david/computers/quine.html) is excellent.  For more examples quines, see [Gary P. Thompson's page](http://www.nyx.net/~gthompso/quine.htm).
+
+### A quine in Perl
+
+```
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+This code uses heredoc syntax, which is a way of writing multi-line strings in bash, POSIX, and Perl (and other Perl-influenced languages like PHP and Ruby). Enrichment on heredocs is available[... here](http://www.tldp.org/LDP/abs/html/here-docs.html).
+
+Heredocs start with `<<` followed by a delimiter which is the instruction to the interpreter of where the string stops. In this case, the delimiter is the character `_`. Surrounding the delimiter with single quotes, as above, allows for string interpolation within heredocs; without these quotes around the delimiter, no string interpolation is allowed.
+
+Heredocs can be parsed in non-obvious ways, and the non-obvious parsing is used in this quine. The heredoc can be parsed starting on the line after the `<<` and the delimiter, and that is what is used here. Due to the parsing, the string `print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"` is stored into `$_`.
+
+
+If you found the previous paragraphs on heredocs inscrutable, don't worry too much because it's not so important; like the quine we saw in the previous section, this quine is composed of code:
+
+```sh
+#!/usr/bin/perl
+eval($_=<<'_');
+print 
+```
+and data:
+
+```sh
+"#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+What makes this quine a bit more difficult to read is that there is some overlap between the code and the data involving the assignment statement. Also, it's Perl.
+
+
+Copy the lines into a file `quine.pl` and run: 
+
+```sh
+$ cat quine.pl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+Most of the trickery is done using the heredoc syntax, which are parsed in a non-obvious way. At a high level, the code works like this:
+
+1. `$_` is set to the string value prescribed by the heredoc; since the heredoc 
+2. `eval $_` happens, causing the string of code written in the third line.
+3. inside `eval $_`, `print "#!... ${_}..."` happens -- notice the reference back to `$_`, which contains the code being evaled
+
+The key here is that because the code is inside a single-quoted heredoc, it can be interpolated directly into its own representation.
+
+### Quines, so what?
+
+When studying quines, most of the examples you see don't do anything (other than print themselves), which should make us ask why they're even worth studying.
+
+Consider what happens when we pipe the output of a quine back to an interpreter. Copying our quine from above into `quine.pl`:
+
+```
+$  cat quine.pl | perl | perl | perl
+#!/usr/bin/perl
+eval($_=<<'_');
+print "#!/usr/bin/perl\neval(\$_=<<'_');\n${_}_\n"
+_
+```
+
+We can keep connecting output pipes to input pipes and getting the same output. If we think about pipes more generally, we might imagine taking a quine, passing its output as text over ssh, and executing that quine using perl on another machine. A quine can be passed from machine to machine, always with the same output; it is a fixed point of the code under the evaluation/interpretation operator.
+
+
+
+### `//ni`: Print `ni`'s _current_ source
+As a reminder, you should be using a vanilla (to the greatest extent possible) bash shell for these commands. If you're not running a bash shell, `bash` at the terminal will pop you into a bash shell.
+
+
+`ni` is a quine. To get `ni` to print its source, run:
+
+```sh
+$ ni //ni
+#!/usr/bin/env perl
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
+Copyright (c) 2016 Spencer Tipping | MIT license
+....
+_
+....
+```
+
+Like the example Perl quine above, `ni` uses the tricky interpretation of the heredoc syntax, and the semicolon at the end of the line is not subsumed into the multi-line string. Also, because `ni` is self-modifying, `//ni` cannot be said to print `ni`'s source per se; instead it prints `ni`'s source at the time that it is called.
+
+This provides us with a surprising power. We can now execute `ni` indirectly by piping `ni`'s source to `perl -`. The `-` instructs perl to read code from the command line.  More generally,
+
+> `$ ni ...` is equivalent to `ni //ni | perl - ...`
+
+If we think about a pipe more generally, as passing data not just from one process to another, but from one machine to another, you should envision the possibilities of offloading work from one machine to another that's better equipped to solve your target problem.
+
+
+## `ni` is a self-modifying quine
+
+In the section on `ni` being self-modifying, it was mentioned that `ni` execution follows a structure something like this:
+
+```sh
+$ ni ::dataclosure1 ... ::dataclosureM <op1> <op2> ... <opN> 
+```
+
+is equivalent to
+
+```sh
+$ ni ::dataclosure1 ... ::dataclosureM (export to) ni_prime
+$ ni_prime op1 | ni_prime op2 | ... | ni_prime opN
+```
+
+In fact, this `ni_prime` is a local modification of `ni`, which incorporates data closures. The details are outside the scope of how this occurs are outside the scope of this tutorial, but here's some evidence that this is going on.
+
+```sh
+$ ni //ni | wc -c
+  743514
+```
+
+```sh
+$ ni ::my_closure[n10] //ni | wc -c
+  743569
+```
+
+If we've really inserted a data closure into `ni` as a quine, `ni` is really a quine, then we should be able to execute it, for example, by passing the code to perl.
+
+```bash
+$ ni ::five[n5] //ni | perl - 1p'five'
+1
+2
+3
+4
+5
+
+```
+
+This is really quite magical; we've taken `ni`, made a simple but powerful modification to its source, then passed the entire source to `perl` (which had no idea what it would receive), and it was able to access something that doesn't exist in the installed version of `ni`. It is because `ni` is a quine that allows it to be self-modifying.
+
+
+## SSH, Containers, and Horizontal Scaling
+
+We've covered why `ni` can be indirectly executed on the same machine using the identity `$ ni ...` == `$ ni //ni | perl - ...`. The natural next steps are to explore indirect execution of `ni` scripts on virtual machines and on machines you control via `ssh`. While horizontal scaling (running a process on multiple cores) has nothing to do with the indirect execution in containerized operations, it has functional and semantic similarity with these other operators in this section.
+
+### `C`: execute in a container
+
+Running in containers requires that Docker be installed on your machine. It is easy to install from [here](https://www.docker.com/).
+
+Running containers can be especially useful to take advantage of better OS-dependent utilities. For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance change using `$ ni n1E7 g` vs `$ ni n1E7 Cubuntu[g]`.
+
+
+### `s`: execute over `ssh`
+
+You will need to set up your hosts properly in your `.ssh/config` to use a named host. For example, if you log in with the command `ssh user.name@host.name:port.number`, you would create an alias for that host by entering the following lines in your `.ssh/config` 
+
+```
+host <alias>
+    HostName <host.name>
+    Port <port.number>
+    User <user.name>
+```
+
+You would access this as `$ ni ... s<alias>[...]`. The alias used in most of the other `ni` docs is `dev`.
+
+Inside the brackets, you will have access to the filesystem of the remote machine (but not the machine from which `ni` was originally called). 
+
+### `S`: Horizontal Scaling 
+Remember that `ni` should be I/O bounded; as such, `ni` provides a very easy interface to multiprocessing using the horizontal scaling operator, `S`. 
+
+`$ ni S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors. 
+
+Running an operator with `S8` on a machine with only two cores is not going to give 8x the computing power. In fact, if you request more cores than you have, you'll likely end up slowing your progress.  
+
+  
+## Hadoop Streaming MapReduce
+
+`ni` and MapReduce complement each other very well; in particular, the MapReduce paradigm provides efficient large-scale sorting and massive horizontal scaling to `ni`, while `ni` provides significant concision and progrmmer ease in comparison to writing and submitting scripts. `ni` is often also low-overhead and very fast when written appropriately.
+
+### MapReduce Fundamentals
+
+MapReduce landed with a splash in 2004 with this [excellent paper](https://static.googleusercontent.com/media/research.google.com/en//archive/mapreduce-osdi04.pdf) by Jeffrey Dean and Sanjay Ghemawat of Google and (with Hadoop) in many ways ushered in the era of "big data."
+
+To understand how to best use `ni` with MapReduce, it's important to understand how it works.
+
+The MapReduce paradigm breaks down into three steps:
+
+1. Map
+2. Combine (optional)
+3. Reduce
+
+In general, a mapper will read in large, often unstructured data, and output  more highly structured information, which will be combined into statements about the original data by the reduce operation.  Because both map and reduce occur across many processors, there is often high network overhead transferring data from mappers to reducers. A combiner is used to reduce the amount of data passed between mappers and reducers.
+
+### MapReduce Example: Word Count
+
+The classic example of a MapReduce job is counting the words in a document.  Let's see how it fits with the MapReduce technique.
+
+If we were going to count the words in a document on a single machine, we might follow a process like the following:
+
+1. Read in a line of text
+2. Split the line into words
+3. Emit each word on its own line
+4. Sort the words alphabetically
+5. Count the sorted words.
+
+Let's see how this would work in MapReduce.
+
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Hash each word (mod number of reducers) to determine which reducer to send each word to.
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted words
+  2. Count the sorted words.
+
+
+We could also write this job with a combiner, decreasing network overhead at the cost of some slightly more complicated code.
+
+* **Mapper**
+  1. Read in a line of text
+  2. Split the line into words
+  3. Sort words and emit one word per line to the combiner
+* **Combiner**
+  1. Count sorted words and emit key-value pairs in the form of (word, count)
+* ** Shuffle (sort words per reducer) **
+* ** Reducer **
+  1. Reducer receives sorted key-value pairs 
+  2. Sum up the counts, reducing over the individual words.
+
+
+
+### Taking advantage of MapReduce with `ni`
+An important difference in philosophy between MapReduce and `ni` is how expensive sorting is; any MapReduce job you write will have the output of the mapper sorted (so long as your job has a reducer), so you always get (a ton of) sorting done for free. In `ni`, on the other hand, sorting is one of the most expenisve operations you can do because it requries buffering the entire stream to disk.
+
+This makes clear a point that we introduced above in our discussion of containerized `ni` operations, and `ni` operations over `ssh`: one of the most powerful ways to use `ni` is to write what would otherwise be complicated scripts in `ni`'s concise and powerful syntax, and then push these scripts to platforms more suited to the task at hand using `ni` interops.
+
+The key thing to remember for leveraging MapReduce's sort and shuffle with `ni` is the following:
+
+> You can assume the output of each mapper and combiner, and the input of each combiner and reducer, is sorted.
+
+
+### How `ni` Interacts with Hadoop Streaming MapReduce
+When `ni HS...` is called, `ni` packages itself, its closures, **and its instructons** and submits itself as a mapper/combiner/reducer to the configured Hadoop server.
+
+Because `ni` includes its data closures on submission, if these closures are too large, the Hadoop server will refuse the job.
+
+
+### `HS[mapper] [combiner] [reducer]`: Hadoop Streaming MapReduce Job
+
+`HS` creates a hadoop streaming job with a given mapper, combiner, and reducer (specified as `ni` operators). Any `ni` snippet can be used for the mapper, combiner, and reducer. 
+
+Two shorthands for common Hadoop Streaming jobs exist:
+
+* `_` skips the mapper/reducer/combiner. 
+* `:` applies the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner.
+
+A useful Hadoop Streaming job that repartitions your data, for example, to be used in an HDFS join is the following:
+
+`$ ni ... HS:_:`
+
+It has a trivial map step, no combiner, and a trivial reducer; it looks like nothing is being done, but due to the shuffle in the MapReduce 
+
+If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
+
+
+
+## Developing Hadoop Streaming Jobs
+
+Because Hadoop is such an important part of `ni`'s power, we're devoting a section not just to the operator, but to the principles of development using `HS`. `HS` is, in fact actually a combination of two operations, `H` and `S`. `H` initiates a Hadoop Job, and `S` indicates that the job is a streaming job.
+
+`ni` handles the creation of input and output paths for Hadoop, and the output of a Hadoop Streaming job is a path to the data where your data is stored, or more accurately, it is a `ni` command to read all the data from the output directory of 
+
+### Fundamental Theorem of MapReduce
+
+You can convert a hadoop streaming job to a `ni` job without Hadoop streaming via the following identity:
+
+> `$ ni ... HS[mapper][combiner][reducer]` = `$ ni ... mapper gA combiner gA reducer`
+
+This identity allows you to iterate fast, completely within `less` and the command line.
+  
+**Exercise**: Write a `ni` spell that counts the number of instances of each word in the `ni` source using Hadoop Streaming job. Start by writing the job for a single All of the tools needed for it (except the Hadoop cluster) are included in the first two chapters of this tutorial. Once you have it working, see how concise you can make your program.
+
+### `HDS[mapper][combiner][reducer]`: Hadoop Develop Streaming (... coming soon)
+
+I have this great idea to apply the fundamental theorem to `ni` jobs so the only thing you have to do is replace `HS` with `HDS` and you get a test-run of your job. It's been a little hard to cook up though.
+
+## Architecting Hadoop Streaming Pipelines
+
+Now that you have an idea of how to write a job that runs, it's important to think about how to write jobs that actually work. One of the most fun and frustrating things about Hadoop is that techniques that would solve a problem on a gigabyte of data and a single machine fail painfully when applied to a terabyte of data distributed over thousands of machines.
+
+There is a big difference between jobs that can run and jobs that actually work in MapReduce, and you need to be aware of Hadoop's architecture and configuration to take advantage of it.
+
+### MapReduce Pipelining Case Study
+
+You are given the transactions from every Starbucks in the world, in the form of five columns: `Transasction ID, Store ID, Item ID, Date, Price`. You're instructed to identify the highest revenue item by store, by day.
+
+On a gigabyte of data, this would be easy; you could use SQL or `pandas` to do something like:
+
+```sh
+day_store_item_df = 
+	(raw_df.groupby(['Store ID', 'Date', 'Item ID'])['Price'].sum()
+	 .reset_index().sort_values(['Price'], ascending=False)
+	 .groupby(['Store ID', 'Date', 'Item ID'])
+	 .first())
+```
+
+This idea doesn't translate over to MapReduce flawlessly. Let's take a look at one way to do this, using the store ID as the reduce key.
+
+If we were to do that, all of the data from every store will go to the same reducer, and we'll have data on each reducer that is sorted by store. For simplicity, let's assume each store gets its own reducer.
+
+We're first faced with the problem of one reducer having potentially a hundred times more data to process than another (if we use fewer stores than reducers, this problem persists in reduced form); this makes the job more prone to failure, as the longest-running reducers are also, in general, the most liable to fail or be pre-empted and killed by a scheduler.
+
+Compounding this problem is that we need to do a secondary sort of the data on each reducer, to order the data by date and by item id.  You might also try to get around this sort by using a hash; this may work when the number of dates and item ids is smaller than several million, but when working with several terabytes of data, this number might grow to billions (consider the effect of getting data by hour or minute, rather than by day), and the combinatorial effects must always be considered.
+
+A better approach is to first collect the data using a compound reduce key of `Store ID - Date - Item ID`. This will give us a good amount of randomization, approximately equal amounts of data per reducer, and a very easy and straightforward reduce step.
+
+We likely want to collect the data by store, but running another MapReduce job using only `Store ID` as the reduce key may still be a bad idea, since there will still need to be a secondary sort of size on the order of `# of items x # of Days`. Instead, we can re-shard using `Store ID - Date` as the reduce key, and sort or hash something on the order of `# of items`.
+
+At this point, we have the highest revenue item for each store and date; we may be able to stream the data out directly from HDFS, or run a trivial job to reshard the data by store.
+
+### Single Step Down Principle
+
+In each MapReduce pass, the whole dataset is swallowed, but it often can't be digested completely. When building a pipeline on a multi-terabyte dataset using MapReduce, I've found the following principle to be valuable: 
+
+> Take a smaller step on a larger dataset rather than running the same larger task on multiple smaller datasets.
+
+Some other ideas to keep in mind:
+
+1. You must take advantage of randomization to run performant MapReduce.
+1. Run as few separate jobs as possible.
+1. Run the largest number of mappers and reducers that your cluster will allow, while maintaining a map time of at least 1 minute.
+1. Your average reducer time should be under 5 minutes, if possible.
+1. Your slowest reducer should take no more than twice as much time as your average reducer.
+1. Be very careful of running a secondary sort in the reduce phase; often you're better off running a second job. 
+1. Compress your data to the greatest extent possible.
+
+### Hadoop Streaming MapReduce Limitations
+
+#### Number of files
+
+Hadoop (2.x) is only configured to accept up to at most 100,000 files per job. Instead of doing the sensible thing and failing before the job starts, Hadoop will fail after hitting the limit in the number of files. In general, you should not run over more than 80,000 files.  Be careful when you use wildcard characters in Hadoop paths.
+
+#### Avoiding SIGPIPE
+
+`ni`'s `r<number>` operator uses `head`, which is very fast; however, when `head` finishes, it sends a SIGPIPE signal; this signal will kill your Hadoop Streaming job if received before all of the data is consumed.
+
+To remedy this, there is a "safe" version of `r<number>` called `rs<number>`, which has the exact same functions and specification as `r`, except that consumes the entire stream; it is significantly slower, but it will not fire off a SIGPIPE.
+
+```bash
+$ ni n1000 rs5
+1
+2
+3
+4
+5
+```
+
+#### Number of Input Partfiles
+
+It is hard-coded in Hadoop to not accept more than 100,000 input files as input for a single job. The error that you get if you try to use more than  this is not particularly informative, so try to keep this in mind.
+
+#### Number of Mappers x Reducers
+
+Mappers communicate their data to reducers over wired connections; the number of these connections that must be made is equal to the number of mappers times the number of reducers.
+
+Because these connections are done over wire, they will fail with some frequency, and if the number of these failures gets too high, the entire `HS` job will fail.
+
+In general, keep `(# of mappers) x (# of reducers) < 100 million` to avoid this issue.
+
+#### More Notes on Hadoop Streaming
+There are a number of Hadoop-specific issues that may make jobs that you can run on your machine not run on Hadoop. See the [optimization](optimization.md) docs or the [debugging](debugging.md) docs for more information.
+
+### `^{...}`: `ni` configuration
+
+As noted above, you need to take advantage of randomization to run successful MapReduce pipelines. Because our reducers receive sorted input, it's often the case that a Hadoop streaming job will fail as a result of too much data going to a single reducer. However, without instructions, `ni` will default to partitioning and sorting data to reducers using the first tab-delimited column. If this is not the default behavior you want, `ni` options can be set through environment variables in your `.bash_profile`. Setting ni configuration variables on the fly is often desirable, particularly in the context of hadoop operations, where increasing or decreasing the number of mappers and reducers, changing the way that data is partitioned and sorted.
+
+
+```sh
+$ ni ^{Hpkpo="-k1,1 -k2,2" \
+       Hpkco="-k1,1nr -k3,3"
+       Hjr=128} HS...
+  
+```
+
+Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful.
+
+```sh
+export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
+```
+
+Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
+
+```sh
+export NI_HDFS_TMPDIR=/user/my_name/tmp
+```
+
+
+
+### Reversible Hexadecimal to Base-64 Encoding `h2b64` and `b642h`
+
+Hexadecimal is a very common form for storing ID data in a readable format. However, it is not highly compressed, as one hex character represents 4 bits of data while occupying an 8-bit printable character. We can save 1/3 of this data by converting it to base-64 which stores 6 bits of data in a larger alphabet of 8-bit printable characters. 
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a'
+Dt2clCTYSj64+6M8Nzhq4#
+```
+
+Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
+0edd9c9424d84a3eb8fba33c37386ae1
+```
+
+If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
+
+```bash
+$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
+0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
+```
+
+## HDFS I/O
+
+### `hdfst://<path>` and `hdfs://<path>`: HDFS I/O
+
+Hadoop Distributed File System (HDFS) is a redundant distributed file system that was based on a 2003 [paper](https://static.googleusercontent.com/media/research.google.com/en//archive/gfs-sosp2003.pdf) by Sanjay Ghemawat, Howard Gobioff, and Shun-Tak Leung of Google.
+
+HDFS stores files in triplicate, and distributes copies of files across different nodes in a cluster. This helps prevent data loss in the event of hard drive failure, and allows for MapReduce jobs to use data-local processing, which decreases network overhead (which is often rate-limiting in Hadoop MapReduce jobs).
+
+There are two `ni` operators 
+
+`$ ni hdfs://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -cat <abspath> | ni ...`
+
+`$ ni hdfst://<abspath> ...`
+
+This is equivalent to `$ hadoop fs -text <abspath> | ni ...`
+
+Files are often stored in compressed form on HDFS, so `hdfst` is usually the operator you want. 
+
+Also, note that the paths for the HDFS I/O operators must be absolute; thus HDFS I/O operators start with **three** slashes, for example: `$ ni hdfst:///user/bilow/data ...`
+
+
+### Using HDFS paths in Hadoop Streaming Jobs
+
+If you want to use data in HDFS for Hadoop Streaming jobs, you need to use the path as literal text, which uses the `i` operator (the literal text operator from Chapter 1)
+
+```sh
+$ ni ihdfst://<abspath> HS...
+```
+
+This will pass the directory path directly to the Hadoop Streaming job, which is the behavior you want (in general). 
+
+If you do not use path, as in:
+
+```sh
+$ ni hdfst://<abspath> HS...
+```
+
+`ni` will read all of the data out of HDFS to the machine from which ni is being called, stream that data to an HDFS temp-path, and run the Hadoop job using the temp folder. That's a huge amount of overhead compared to just quoting the path.  If you run the code on a quoted path, your Hadoop Streaming job should start in under 3 minutes. If you don't quote the path, it might take hours. Quote the damn path.
+
+
+## HDFS Joins
+
+HDFS joins provide a way to join 2 large datasets on HDFS in a streaming way, and is useful for example, when one of the datasets is too large to fit in a data closure.
+
+To do an HDFS join, first, the datasets must be sorted. As mentioned in Chapter 1, joins in `ni` are designed to belarger on the left. In the map-side join context, we require that each file on the left side of the join match with exactly one file on the right side of the join. Multiple files on the left can be joined to a single file on the right, however.
+
+To be more concrete, if you want to join 50 files to 1000 files, the 50 files must be on the right side of the join and the 1000 files must be on the left, since 50 goes into 1,000 and not vice versa.
+
+### `hdfsj`: HDFS Join resource
+
+`hdfsj:///` paths are used to find the path to join to a file; they will identify the path to join automatically from the path and environment variables.
+
+The overall paradigm can be written something like this:
+
+```sh
+$ ni ihdfst:///.../<left side path>/... \
+	HS[ j[hdfsj:///.../<right_side_path>/... ] ] ...
+```
+
+### `hdfsc`: Map-side file concatenation
+
+As stated above, Hadoop limits the number of partfiles per map/reduce job to 100,000 (`10^5`). There are times when this is not enough; moreover, Hadoop 2.x requires every mapper to be run in a separate container, which means that every individual map file incurs a fixed cost of container startup that can equal the cost of running the container when the amount of data per map file is small.
+
+`hdfsc` gets around these restrictions, allowing you to write jobs that run on up to 10,000,000,000 (`10^10`) files. It does this by concatenating the output of a large number of partfiles within the same folder on HDFS, and running their concatenation through the same mapper container.
+
+In practical terms, this means that it will be most useful to use `hdfsc` to run between 10 medium-sized and 1000 small files through a single mapper; running more files through a single mapper will likely result in having very long-running mappers, which is bad in general.
+
+Practically speaking, `hdfsc` is good for extending the number of partfiles that can be run through a single job up to approximately 10 million (`10^7`). Going up another order of magnitude will likely result in significantly degraded performance, unless the input files are incredibly small.
+
+Here's how to use it:
+
+```
+ni ihdfst://input_path/.../part-000* \
+   HS[zn hdfsc://1000 mapper] [combiner] [reducer]
+```
+
+Assume there are 100,000 files in the input path. Only 100 mappers will be engaged for this task; each mapper will read 1000 files; in particular, the mapper assigned to process `part-00015` will read all of the partfiles of the form `part-*15.lzo_deflate`; this ensures equal distribution of files among mappers. `zn` is a necessary first step to throw away all of the input data, since `hdfsc` will output the text of the file from which it is called, in addition to all of the other files matching the pattern.
+
+#### Caveats
+ - zn is necessary to consume the input stream, which will be re-created using hdfsc; this leads to a small amount of overhead. 
+ - the number of leading zeroes in the input path must match the number of zeroes in the hdfsc://<number> path
+ - `hdfsc` only works on files that are given as partfiles. 
+
+
+## Conclusion
+
+The classic word count program for Hadoop can be written like this:
+
+>`$ ni //ni HS[FWpF_]_c`
+
+If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
+
+* [Python](http://www.michael-noll.com/tutorials/writing-an-hadoop-mapreduce-program-in-python/)
+* [Ruby](http://www.bigfastblog.com/map-reduce-with-ruby-using-hadoop)
+* [Java](https://hadoop.apache.org/docs/stable/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html)
+* [Go](http://go-wise.blogspot.com/2011/09/go-on-hadoop.html)
+* [Perl](http://www.perlmonks.org/?node_id=859535)
+
+Compare the `ni` solution to Java. The `ni` spell can be written in 5 seconds, and explained in 30.  It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.
+529 doc/ni_by_example_5.md
+# `ni` by Example Chapter 5 (alpha release)
+Welcome to Chapter 4. At this point you have enough skills to read the other `ni` documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
+
+Unlike the other chapters thus far, this chapter has no theme; it's a list of useful operations. This chapter covers some of the interplay between `ni` and `bash`, HDFS joins using `nfu`, The `ni` monitor, cell operations, stream splitting, vertical column operations, sparse matrix operations, Ruby and Lisp operators, ni-specific perl operators, and has another Perl chapter.
+
+
+## Calling`ni` from other programming languages
+
+You've already been using `ni` within bash, so you've always been using `ni` from another langauge. In this section, we'll make the connections more explicit, and briefly discuss how to use `ni` from Ruby.
+
+### `ni` and bash
+
+[Spencer](https://github.com/spencertipping) refers to `ni` as Huffman-encoded bash, but we haven't given the treatment of `ni` and bash fully yet. If you're already familiar with bash, this will likely be review.
+
+`e` also can use brackets rather than quotes to execute commands. However, this exposes the code that would have been quoted to bash, which might do something you don't want it to.
+
+When you run a script without quotes, bash will first scan for metacharacters. So the script
+
+```sh
+$ ni e[seq 10 | grep 1]
+```
+
+is run as 
+
+```sh
+~/bin/ni "e[seq" "10" | /bin/grep "1]"
+```
+
+because bash will execute the pipe first.
+
+The correct way to execute the script: 
+
+```sh
+$ni e'seq 10 | grep 1'
+``` 
+
+turns into 
+```sh
+exec("/bin/sh", "-c", "seq 10 | grep 1/")
+```
+
+This is a non-obvious feature of the bracketed version of `e`: `e[ word1 word2 ... wordN ]` turns into `exec("word1", "word2", ..., "wordN")`. You'll get shell character expansion with quotes, but not with brackets, the idea being that if you're using brackets, bash has already had a chance to expand the metacharacters like `$foo`.
+
+### `ni` and Ruby
+Aside from bash, Ruby feels like the best scripting language from which to call `ni`. Ruby has an easy and simple syntax for calling shell commands using backticks (i.e. `` `cmd` `` will run using the shell). 
+
+Ruby backticks will execute using `/bin/sh` and not `/bin/bash`. There are a few caveats for running in `bin/sh`, which are covered in the [debugging docs](debugging.md).
+
+### `ni` and Python
+
+It's very easy to incorporate `ni` into Python is a very natural environment for adding `ni` as a command in your scripts.
+
+```python
+import subprocess
+
+def ni(cmd):
+	ni_cmd = ' '.join(cmd) if isinstance(cmd, list)
+	subprocess.call("ni {}".format(ni_cmd))
+```
+
+### `ni` and Jupyter
+
+`ni` can really shine in Jupyter; asynchronous processing turns out to be much easier in a Jupyter notebook than it is in a standard Python workflow.
+
+Shelling out in Jupyter is really easy; simply prefix your command with 
+
+Working in Jupyter, you'll want to set your 
+
+
+## Stream Appending, Interleaving, Duplication, and Buffering
+You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
+
+### `+` and `^`: Append (Prepend) Stream
+
+
+Streams in `ni` can be concatenated, however, once concatenated,
+any operator on the stream will apply to the stream in its entirety.
+`+` and `^` are useful when you have a complicated operator you want
+to apply to only part of the stream.
+
+Examples:
+
+```bash
+$ ni n3 ^[n05 fAA]
+0	0
+1	1
+2	2
+3	3
+4	4
+1
+2
+3
+```
+
+
+```bash
+$ ni n3 +[n05 fAA]
+1
+2
+3
+0	0
+1	1
+2	2
+3	3
+4	4
+```
+
+`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
+
+```
+while ($data = read from stream 1) {print $data}
+while ($data = read from stream 2) {print $data}
+```
+The second stream waits to execute until an `EOF` is received from the first stream, so
+for even simple streams, you may see a noticeable pause between the end of the
+first stream and the start of the second.
+
+
+
+### `%`: Interleave Streams
+
+The bare `%` will interleave streams as the data is output, and will consume both streams fully. For example `$ ni nE5fAA %[n100]` will output the second stream non-deterministically; it depends how fast that data is able to stream out.
+
+You can also call `%#` with a positive number, in which case the streams will be interleaved with a ratio of `first stream : second stream :: #:1.` You can also call `%-#`, and the streams will be interleaved with a ratio: `first stream : second stream :: 1:#.`
+
+Interleaving streams with a numeric argument will cut off the output stream when either stream is exhausted.
+
+
+###  `=`: Duplicate Stream and Discard
+This operation is most useful for writing a file in-stream, perhaps with some modifications.
+
+```bash
+$ ni n10 =[r5 \>short] r3fAA
+1	1
+2	2
+3	3
+```
+
+```bash
+$ ni short
+1
+2
+3
+4
+5
+```
+
+One thing to be aware of is that the stream's duplication does not block the stream, and that data written to the output file should not be used as input later in the same `ni` spell. 
+
+If you need to do something like this, you may be better off writing two `ni` spells, or using a `ni` [script](script.md).
+
+
+### `B<op>`: Buffer operation
+
+Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
+
+## Intermediate Column Operations
+These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
+
+### `w`: Append column to stream
+
+`w` adds a column to the end of a stream, up to the minimum length of either stream.
+
+```bash
+$ ni //license w[n3p'a*a']
+ni: https://github.com/spencertipping/ni	1
+Copyright (c) 2016 Spencer Tipping | MIT license	4
+	9
+```
+
+### `W`: Prepend column stream
+
+`W` operates like `w`, except its output column is prepended. 
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn
+1	a
+2	b
+3	c
+4	d
+5	e
+```
+  
+
+### `v`: Vertical operation on columns
+
+We can upper-case the letters in the previous example via:
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn p'r a, uc(b)'
+1	A
+2	B
+3	C
+4	D
+5	E
+```
+
+However `ni` also offers a shorter syntax using the `v` operator.
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' Wn vBpuc
+1	A
+2	B
+3	C
+4	D
+5	E
+```
+
+**Important Note**: As of 2017-01-22, this operator is too slow to use in production.
+
+Also note that the Perl upper-case operator is written as `puc`, without quotes, as it's good `ni` style to do so.
+
+  
+### `j` - streaming join
+
+**Important note**: [Spencer](https://github.com/spencertipping) considers `j` to be broken. This section is liable to change.
+
+Streaming joins are performed by matching two sorted streams on the value of their first column.  This significantly limits their utility  because each successfully-joined pair of rows will consume a line from both streams. As such, the `j` operator **DOES NOT** provide a SQL-style join.
+
+Example:
+
+```
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn j[letters]
+a	5	1	a
+b	4	2	b
+c	3	3	c
+d	2	4	d
+e	1	5	e
+```
+
+This operation is a little long-winded, and it will probably help to look at some of the intermediate steps.
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA
+a	5
+b	4
+c	3
+d	2
+e	1
+```
+
+This is probably a terrible way to generate the letters a through e, joined with then numbers 5 through 1, respectively.
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters]
+a	5
+b	4
+c	3
+d	2
+e	1
+a
+b
+c
+d
+e
+```
+
+We've checkpointed our list of letters into a file called `letters`, which allows us to reuse it. The `+` operator appends one stream to another, so at this stage the first half of our stream has numbers appended, and one without.
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn
+a	5	1
+b	4	2
+c	3	3
+d	2	4
+e	1	5
+a	6
+b	7
+c	8
+d	9
+e	10
+```
+
+We append another column of numbers; note that `w` adds new columns to every row, but does not make sure that the rows are the same length, so the 
+
+
+```bash
+$ ni 1p'"a".."e"' p'split / /' :letters gA- wn gA +[letters] wn gABn
+a	5	1
+a	6
+b	4	2
+b	7
+c	3	3
+c	8
+d	2	4
+d	9
+e	1	5
+e	10
+```
+
+We sort the data (necessary to perform the join) first ascending lexicographically by column `A`, and then ascending numerically by column `B`.
+
+
+
+### `Y` - dense-to-sparse transformation
+`Y` Explodes each row of the stream into several rows, each with three columns:
+
+* The index of the row that the input data that came from
+* The index of the column that the input data came from
+* The value of the input stream at the row and column specified by the first two columns.
+
+
+```bash
+$ ni //license FW Y r10
+0	0	ni
+0	1	https
+0	2	github
+0	3	com
+0	4	spencertipping
+0	5	ni
+1	0	Copyright
+1	1	c
+1	2	2016
+1	3	Spencer
+```
+
+### `X` - sparse-to-dense transformation
+`X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
+
+```bash
+$ ni //license FW Y r10 X
+ni	https	github	com	spencertipping	ni
+Copyright	c	2016	Spencer
+```
+
+### `Z<n_cols>` - unflatten
+`Z` takes data in the form of a single column and returns the same data reshaped into rows with the specified number of columns. Any overhanging data is pushed onto an incomplete row.
+
+```bash
+$ ni 1p'"a".."l"' Z4
+a	b	c	d
+e	f	g	h
+i	j	k	l
+```
+
+## Cell Operations
+
+Cell operations are similar to column operations, in that they are keystroke-efficient ways to do transformations on a single column of the input data.
+
+
+### Hashing Algorithms
+* `,h`: Murmurhash (deterministic 32-bit hash function)
+* `,H`: Murmurhash and map the result into the unit interval.
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,m`: MD5 hash
+
+Likely the most important of these functions is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.  This hashing should be good-enough for reasonable-sized data.
+
+Using a little math, with ~40 million IDs, there will be only be about 1% hash collisions, and with 400 million IDs, there will be 10% hash collisions.  See [this](http://math.stackexchange.com/questions/35791/birthday-problem-expected-number-of-collisions) for an explanation.
+
+Let's check that invariant:
+
+```
+$ ni n4E7 ,hA Cubuntu[o] uc
+39814375
+```
+
+That means we had about 200,000 hash collisions in 40 million IDs, a rate of about .5%, which is good enough for my back-of-the envelope calculations.
+
+
+
+### Cell Math Operations
+* `,e<b>`: exponent b<sup>x</sup> -- deafults to e<sup>x</sup>
+* `,l<b>`: logarithm (log<sub>b</sub>x) -- defaults to natural log
+* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
+* `,q<amt>`: Round to the nearest integer multiple of `<amt>`
+
+These operations are mostly self-explanatory; jitter is often used for `ni --js` operations to create rectangular blocks of color.
+
+```
+# Test disabled for floating point imprecision.
+$ ni n5 fAAAAAA ,eB ,eC2 ,lD ,lE3 ,eF ,lF
+1	2.71828182845905	2	0	0	1
+2	7.38905609893065	4	0.693147180559945	0.630929753571457	2
+3	20.0855369231877	7.99999999999999	1.09861228866811	1	3
+4	54.5981500331442	16	1.38629436111989	1.26185950714291	4
+5	148.413159102577	31.9999999999999	1.6094379124341	1.46497352071793	5
+```
+
+
+### Column Math Operations
+* `,a`: Running average
+* `,d`: Difference between consecutive rows
+* `,s`: Running sum 
+
+You can use these `,a` and `,s` to get the average and sum of all data in the stream using, for example:
+
+```bash
+$ ni nE4 fAAA ,aA ,sB ,dC r~1
+5000.5	50005000	1
+```
+
+
+## Numpy Operations
+
+Writing Perl reducers is among the most challenging aspects of `ni` development, and it is arguably more error-prone than most other operations because proper reduction depends on an input sort. 
+
+Moreover, Perl reducers are good with data, but they're still not great with math. If you had considered doing matrix multiplication in `ni` up to this point, you'd be pretty much out of luck. 
+
+However, `ni` provides an interface to numpy (and all of the other Python packages on your machine), which gives you access to hugely powerful mathematical operations.  There are several associated costs, however: 1) the entire stream must be buffered into memory (though you can use partitioned matrix operations to get around this in some cases); 2) there are some arbitrary-feeling limitations on I/O; 3) the syntax is clunky compared to Perl.
+
+It's great, you're gonna love it.
+
+### `N'x = ...'`: Numpy matrix operations
+
+The stream input to `N'...'` is converted into a matrix, where each row and column of the input is converted to a corresponding cell in a numpy matrix, `x`.
+
+The values streamed out of `N'...'` are the values of `x`, so all operations that you want to do to the stream must be saved back into `x`. Compared to the Perl syntax, this is inelegant, and if `ni`'s gotten into your soul yet, it should make you more than a little frustrated.
+ 
+However, the gains in power are quickly manifested:
+
+
+```bash
+$ ni n3p'r map a*$_, 1..3' N'x = x + 1'
+2	3	4
+3	5	7
+4	7	10
+```
+
+```bash
+$ ni n5p'r map a . $_, 1..3' N'x = x.T'
+11	21	31	41	51
+12	22	32	42	52
+13	23	33	43	53
+```
+
+```
+$ ni n1N'x = random.normal(size=(4,3))'
+-0.144392928715457      0.823863130371182       -0.0884075304437077
+-0.696189074356781      1.5246371050062 -2.33198542804912
+1.40260347893123        0.0910618083600519      0.851396708020142
+0.52419501996823        -0.546343207826548      -1.67995253555456
+```
+
+```bash
+$ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
+1	1
+1	2
+```
+
+
+
+### How `N'x = ...'` works
+What `ni` is actually doing here is taking the code that you write and inserting it into a Python environment (you can see the python used with `ni e[which python]`
+
+Any legal Python script is allowable, so if you're comfortable with `pandas` and you have it installed, you can execute scripts like:
+
+```
+ni ... N'import pandas as pd; 
+		 df = pd.DataFrame(x); ... ; 
+		 df.to_excel(...); 
+		 x = df.reset_index().values;' 
+		 ...
+```
+
+The last line is key, because the data that is streamed out of this operation must be stored in the variable `x`.  You can also use indented code within `N'...'`, and it will be processed correctly.
+
+Also, like other operators, `N'...'` requires at least a row for input. `ni N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will return nothing, but adding a dummy row `ni n1N'x = random.rand(size=(5,5)); x = dot(x, x.T)'` will.
+
+This is not (yet) the cleanest or most beautiful syntax [and that matters!], but it works.
+
+
+
+## `m'...'`: Ruby
+You have always had permission to use Ruby, but I've held off documenting it until you can do so responsibly. Why does Ruby require responsibility, whereas Python/numpy gets a pass (mostly)?
+
+1. The Ruby driver operates in a streaming context, whereas the numpy environment `N` performs operations in-memory. As a result, the Python environment can do things that `ni` alone cannot do. The Ruby operators are weak-tea versions of cutting-edge Perl operators.
+1. That means the primary use of Ruby in `ni` should be for its extensive and customizable libraries (i.e. gems). Thus, most of your Ruby code should look something like: `ni ... m'require "lib1"; require "lib2"; <do stuff with those libraries>'`
+1. Because the primary use of Ruby is access to Ruby gems, your code becomes less portable. Here's a [good article](http://zachmoshe.com/2015/02/23/use-ruby-gems-with-hadoop-streaming.html) about using Ruby gems with Hadoop Streaming. It's really complicated!
+1. Unlike Perl, where text is numbers, the Ruby driver requires that you explicitly cast to a datatype. Just saying, those extra keystrokes add up. Concretely: `ni n4m'r a, a + 1'` will complain about conversion of Fixnum to String without a proper cast.
+
+### `m'a' ... m'q'`: Ruby Column Accessors
+
+You can get the first 17 tab-delimited columns using the Ruby `a` through `q` operators. However, when using these functions to get numeric values, you must use explicit casts to coerce the value:
+
+* `f`: `to_f`
+* `i`: `to_i`
+* `s`: `to_s`
+
+To fix the example above, you need to run:
+
+```bash
+$ ni n4m'r a, ai + 1'
+1	2
+2	3
+3	4
+4	5
+```
+
+### `m'fields'`: Array of fields.
+Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
+
+```bash
+$ ni //license FWr2m'r fields[0..3]'
+ni	https	github	com
+Copyright	c	2016	Spencer
+```
+
+### `m'r ...'`: Print row
+Analogous to `p'r ...'`.
+
+
+
+## `l"..."`: Lisp
+
+Lisp is in the same boat as Ruby, as a language that `ni` supports. Lisp operates in a streaming context, which is much better learned (and in most cases executed) in Perl. Lisp ends up even lower on the totem pole than Ruby because it can be a huge pain to install (on Mac, you have to bootstrap installation of SBCL by installing some other Lisp first).
+
+So, if Ruby has gems, why even support Lisp? Here's why:
+
+```bash
+$ ni n4fAA l"(r (sr ('+ a) ('* b)))"
+10	24
+```
+
+Streaming reduce is ugly in Perl, but smooth and easily understood in Lisp. There's something here, and it's worth working on.
+
+### `l"a" ... l"q"`: Lisp Column Accessors
+
+Analogous to the Perl and Ruby column accessors.
+
+### `l"(r ...)"`: Print row
+
+Analogous to `p'r ...'`; prints its arguments.
+
+Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just do that. I don't know Lisp. Go read these [docs](lisp.md).
+  
+  
+## Conclusion
+You've reached the end of chapter 4 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
+518 doc/ni_by_example_6.md
+#Future Chapter 5 Below
+
+
+## JSON Tools
+
+### `accumulate`
+
+```
+ni 1p'my %h1 = ("foo" => "u", "bar" => undef, "baz" => "drank", "horse" => "", "lst" => ["car", "cadr"], "hash" => {"secret" => "key", "lst2" => ["cubs"]}); my %h2 = ("bar" => "x", "foo" => "j", "horse" => "tiger", "lst" => ["caddr"], "hash" => {"worth" => "it", "lst2" => [34]}); %h3 = ("lst" => ["cadddr", "bye"], "hash" => {"word" => "up", "lst2" => ["verj"]}); %h = accumulate(\%h1, \%h2, \%h3); dump_data \%h'
+```
+
+### `dump_data`
+`ni`'s hacky `Data::Dumper` because we're too hardcore for SILLY LIBRARIES
+
+### `freqify`
+Convert lists to hashes of their frequencies. This is useful!!
+
+```
+my $h = {"foo" => {"bar" => [u,u,u,u,v,baz,baz], "qux" => [ay, ay, bee]}};
+my @keys = (foo, [bar, qux]); freqify $h, \@keys;
+$h => {"foo" => {"bar" => {"u" => 4, "v" => 1, "baz" => 2},
+                 "qux" => {"ay" => 2, "bee" => 1}}}
+```
+
+## indexed hashing
+```
+ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[ux,uy,uc that]] 1p'^{@pair = abc test; @pair2 = abc test2} @ks = ("ux", "bb", "c1"); $j ="bb"; @ls = ihash_def(\@ks, 1, @pair, @pair2); @ls'
+```
+
+### `pl` Pushback Queue
+
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' =\>jsons \
+     D:type,:word
+```
+
+
+## Hash
+
+* Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
+* Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
+* Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
+* `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'`
+
+## Warnings
+
+**WARNING**: `ni` will let you name your files the same name as `ni` commands. `ni` will look for filenames before it uses its own operators. Therefore, be careful not to name your files anything too obviously terrible. For example:
+
+```bash
+$ ni n5 \>n1.3E5
+n1.3E5
+```
+
+```bash
+$ ni n1.3E5
+1
+2
+3
+4
+5
+```
+because `ni` is reading from the file named `n10`.
+
+## Understanding the `ni` monitor
+
+At this point, you've probably executed a long-running enough `ni` job to see the `ni` monitor appear at the top of your screen. 
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+
+Some things to keep in mind when examining the output of the monitor: if you have access to more compute resources for slow steps, you can use them for that step alone, and this can be done in a very simple way via the `S` horizontal scaling operator.
+
+You may also want to consider refactoring your job to make use of Hadoop Streaming with `HS`, depending on what's suited to your job. More details are available in the [monitor docs](monitor.md) and in the [optimization docs](optimization.md).
+
+
+## Even More Perl for Ni
+
+### Other syntaxes for `map`
+
+
+`map` can also take an expression rather than a block, but this syntax is tricky 
+
+
+The following example is taken from [Perl Monks](http://www.perlmonks.org/?node_id=613280)
+
+You'd probably be even more surprised by the result of this:
+my @in = qw(aaa bbb ccc);
+my @out = map { s/.$/x/ } @in;
+print "@in\n=>\n@out\n";
+[download]
+which prints:
+aax bbx ccx
+=>
+1 1 1
+[download]
+Yeah, the original is modified. Basically: never modify $_ in a map, and remember that the "output" of s/// is the success count/code. To get what you want, you need to localize $_ and reuse it as the last expression evaluated in the block:
+my @in = qw(aaa bbb ccc);
+my @out = map { local $_ = $_; s/.$/x/; $_ } @in;
+print "@in\n=>\n@out\n";
+[download]
+which indeed shows:
+aaa bbb ccc
+=>
+aax bbx ccx
+
+
+### `push`, `pop`, `shift`, `unshift`
+
+### `p'... END { }'`: END Block
+
+Similar to a BEGIN block, and END block is used to calculate totals from the data that has accumulated in persistent variables.
+
+```bash
+$ ni n5p'^{@x}; push @x, 2*a; undef; END{r join " and ", @x}'
+2 and 4 and 6 and 8 and 10
+```
+
+We accumulate all of the values in `x`, then join them together and return them all. The statement `undef` is added to make the perl mapper be quiet while it is accumulating values (otherwise, the return value of `push` is the length of the output array).
+
+### `our` and `local`
+
+
+
+### `use strict` and the `::` prefix within `p'...'`
+
+When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
+
+The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`. 
+
+It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
+
+
+### Subroutines
+
+Perl is a multi-paradigm language, but the dominant paradigm for Perl within `ni` is procedural programming. Unlike the object-oriented languages with which you are likely familiar, where methods are objects (often "first-class" objects, [whatever that means](http://stackoverflow.com/questions/245192/what-are-first-class-objects)) procedural languages focus on their functions, called "subroutines."  
+
+Perl subroutines store the variables with which they are called in a default variable named `@_`. Before continuing, take a moment to think about how one would refer the elements in `@_`.
+
+Subroutines are stored and referenced with the following syntax:
+
+```
+*x = sub {"hi"}
+$v = &x         # $v will be set to "hi"
+```
+
+
+Here's how you'd write a function that copies a stream of values 4 times in `ni`, using Perl.
+
+```bash
+$ ni n3p'*v = sub {$_[0] x 4}; &v(a)'
+1111
+2222
+3333
+```
+
+To review the syntax, the *name* of the variable is `_`, and within the body of the subroutine, the array associated with that name, `@_` is the array of values that are passed to the function.  To get any particular scalar value within `@_`, you tell Perl you want a scalar (`$`) from the variable with name `_`, and then indicate to Perl that of the variables named `_`, you want to reference the array, by using the postfix `[0]`.
+
+Subroutines can also be called without the preceding `&`, or created using the following syntax:
+
+```bash
+$ ni 1p'sub yo {"hi " . $_[0]} yo a'
+hi 1
+```
+
+Note that in these examples, a new function will be defined for every line in the input, which is highly inefficient. In the next section, we will introduce begin blocks, which allow functions to be defined once and then used over all of the lines in a Perl mapper block.
+
+## Streaming Reduce
+In earlier drafts of `ni` by example, streaming reduce had a much greater role; however, with time I've found that most operations that are done with streaming reduce are more simply performed using buffered readahead; moreover, buffered readahead.  Streaming reduce is still useful and very much worth knowing as an alternative, highly flexible, constant-space set of reduce methods in Perl.
+
+Reduction is dependent on the stream being appropriately sorted, which can make the combined act of sort and reduce expensive to execute on a single machine. Operations like these are (unsurprisingly) good options for using in the combiner or reducer steps of `HS` operations.
+
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using buffered readahead and multi-line reducers.
+
+### `sr`: Reduce over entire stream
+
+Let's look at a simple example, summing the integers from 1 to 100,000: 
+
+```bash
+$ ni n1E5p'sr {$_[0] + a} 0'
+5000050000
+```
+
+Outside of Perl's trickiness,that the syntax is relatively simple; `sr` takes an anonymous function wrapped in curly braces, and one or more initial values. A more general syntax is the following: 
+ 
+ ```
+@final_state = sr {reducer} @init_state
+```
+
+To return both the sum of all the integers as well as their product, as well as them all concatenated as a string, we could write the following:
+
+```bash
+$ ni n1E1p'r sr {$_[0] + a, $_[1] * a, $_[2] . a} 0, 1, ""'
+55	3628800	12345678910
+```
+A few useful details to note here: The array `@init_state` is read automatically from the comma-separated list of arguments; it does not need to be wrapped in parentheses like one would use to explicitly declare an array in Perl. The results of this streaming reduce come out on separate lines, which is how `p'...'` returns from array-valued functions
+
+
+### `se`: Reduce while equal
+`sr` is useful, but limited in that it will always reduce the entire stream. Often, it is more useful to reduce over a specific set of criteria.
+
+Let's say we want to sum all of the 1-digit numbers, all of the 2-digit numbers, all of the 3-digit numbers, etc. The first thing to check is that our input is sorted, and we're in luck, because when we use the `n` operator to generate numbers for us, they'll come out sorted numerically, which implies they will be sorted by their number of digits.
+
+What we'd like to do is, each time a number streams in, to check if it  number of digits is equal to the number of digits for the previous number we saw in the stream. If it does, we'll add it to a running total, otherwise, we emit the running total to the output stream and start a new running total.
+
+In `ni`-speak, the reduce-while-equal operator looks like this:
+
+```
+@final_state = se {reducer} \&partition_fn, @init_state
+```
+
+`se` differs from `sr` only in the addition of the somewhat cryptic `\&partition_fn`. This is an anonymous function, which is can be expressed pretty much a block with the perl keyword `sub` in front of it. For our example, we'll use `sub {length}`, which uses the implicit default variable `$_`, as our partition function.
+
+**NOTE**: The comma after `partition_fn` is important.
+
+```bash
+$ ni n1000p'se {$_[0] + a} sub {length}, 0'
+45
+4905
+494550
+1000
+```
+
+That's pretty good, but it's often useful to know what the value of the partition function was for each partition (this is useful, for example, to catch errors where the input was not sorted). This allows us to see how `se` interacts with row-based operators.
+
+```bash
+$ ni n1000p'r length a, se {$_[0] + a} sub {length}, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+One might worry that the row operators will continue to fire for each line of the input while the streaming reduce operator is running. In fact, the streaming reduce will eat all of the lines, and the first line will only be used once.
+
+If your partition function is sufficiently complicated, you may want to write it once and reference it in multiple places.
+
+```bash
+$ ni n1000p'sub len($) {length $_}; r len a, se {$_[0] + a} \&len, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+The code above uses a Perl function signature `sub len($)` tells Perl that the function has one argument. The signature for a function with two arguments would be written as `sub foo($$)`. This allows the function to be called as `len a` rather than the more explicit `len(a)`. The above code will work with or without the begin block syntax.
+
+
+### `sea` through `seq`: Reduce with partition function `a()...q()`
+
+It's very common that you will want to reduce over one of the columns in the data. For example, we could equivalently use the following spell to perform the same sum-over-number-of digits as we did above. 
+
+```bash
+$ ni n1000p'r a, length a' p'r b, se {$_[0] + a} \&b, 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+`ni` offers a shorthand for reducing over a particular column and everything to
+its left:
+
+```bash
+$ ni n1000p'r length a, a' p'r a, sea {$_[0] + b} 0'
+1	45
+2	4905
+3	494550
+4	1000
+```
+
+
+### `rc`: Compound reduce
+
+Consider the following reduction operation, which computes the sum, mean, min and max.
+
+```bash
+$ ni n100p'my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
+                                            min($_[2], a), max($_[3], a)}
+                                           0, 0, a, a;
+            r $sum, $sum / $n, $min, $max'
+5050	50.5	1	100
+```
+
+For common operations like these, `ni` offers a shorthand:
+
+```bash
+$ ni n100p'r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'
+5050	50.5	1	100
+```
+
+
+
+## Data Development with `ni` and Hadoop
+
+If you screw up your partitioning, you're ruined. 
+
+JSON => Raw TSV => Cleaned TSV => Filtered TSV => Joined TSV => Statistics
+
+If there's a potential problem with a column, you cannot use it as the first column in a reduce. If you do, Hadoop is very unforgiving; you'll end up having to bail on a particular slice of your data, or restart from the last nearly-equally-partitioned step.
+
+Let's say you have data with 3 columns: `user_id`, `geohash`, `timestamp`. 
+
+It's likely that both some of the users and some of the geohashes are spurious.  This will cause us difficulty down the line, for example when we want to join data to each record using geohash as the joining key.
+
+### `:checkpoint_name[...]`: Checkpoints
+
+Developing and deploying to producion `ni` pipelines that involve multiple Hadoop streaming steps involves a risk of failure outside the programmer's control; when this happens, we don't want to have to run the entire job again. 
+
+Checkpoints allow you to save the results of difficult jobs while continuing to develop in `ni`.
+
+Checkpoints and files share many commonalities. The key difference between a checkpoint and a file are:
+
+1. A checkpoint will wait for an `EOF` before writing to the specified checkpoint name, so the data in a checkpoint file will consist of all the output of the operator it encloses. A file, on the other hand, will accept all output that is streamed in, with no guarantee that it is complete.
+2. If you run a `ni` pipeline with checkpoints, and there are files that correspond to the checkpoint names in the directory from which `ni` is being run, then `ni` will use the data in the checkpoints in place of running the job. This allows you to save the work of long and expensive jobs, and to run these jobs multiple times without worrying that bhe steps earlier in the pipeline that have succeeded will have to be re-run.
+
+An example of checkpoint use is the following:
+
+```bash
+$ rm -f numbers                 # prevent ni from reusing any existing file
+$ ni nE6gr4 :numbers
+1
+10
+100
+1000
+```
+
+This computation will take a while, because `g` requires buffering to disk; However, this result has been checkpointed, thus more instuctions can be added to the command without requiring a complete re-run.
+
+
+```bash
+$ ni nE6gr4 :numbers O
+1000
+100
+10
+1
+```
+
+Compare this to the same code writing to a file:
+
+```
+$ ni nE6gr4 =\>numbers
+1000
+100
+10
+1
+```
+
+Because the sort is not checkpointed, adding to the command is not performant, and everything must be recomputed.
+
+```
+$ ni nE6gr4 =\>numbers O
+1000
+100
+10
+1
+```
+
+One caveat with checkpoint files is that they are persisted, so these files must be cleared between separate runs of `ni` pipelines to avoid collisions. Luckily, if you're using checkpoints to do your data science, errors like these will come out fast and should be obvious.
+
+
+### Developing Hadoop Streaming pipelines with checkpoints
+
+As of now, `ni` auto-generates the names for the Hadoop directories, and these can be hard to remember off the top of your head. If you want to 
+
+
+### Tools for Data Development
+
+1. A good markdown editor; I like Laverna, and it should work on basically all platforms.
+2. Infinite patience
+3. A reasonable test set.
+
+
+## Plotting with `ni --js`
+Check out the [tutorial](tutorial.md) for some examples of cool, interactive `ni` plotting.
+
+**TODO**: Say something useful.
+
+
+## Stream Duplication and Compression
+In this section, we'll cover two useful operations
+
+We recognize the first and last operators instantly; the middle two operators are new.
+
+### `=[...]`: Divert Stream
+
+The `=` operator can be used to divert the stream Running the spell puts us back in `less`:
+
+```bash
+$ ni n10 =[\>ten.txt] z\>ten.gz
+ten.gz
+```
+
+The last statement is another `\>`, which, as we saw above, writes to a file and emits the file name. That checks out with the output above.
+
+To examine the contents 
+
+Let's take a look at this with `--explain`:
+
+```bash
+$ ni --explain n10 =[\>ten.txt] z\>ten.gz
+["n",1,11]
+["divert",["file_write","ten.txt"]]
+["sh","gzip"]
+["file_write","ten.gz"]
+```
+
+
+Looking at the output of `ni --explain`:
+
+```
+...
+["divert",["file_write","ten.txt"]]
+...
+```
+
+We see that, after `"divert"`, the output of `ni --explain` of the operator within brackets is shown as a list.
+
+`=` is formed of two parallel lines, this may be a useful mnemonic to remember how this operator functions; it takes the input stream and duplicates it.  One copy is diverted to the operators within the brackets, while the other copy continues to the other operations in the spell.
+
+One of the most obvious uses of the `=` operator is to sink data to a file midway through the stream while allowing the stream to continue to flow.
+
+For simple operations, the square brackets are unnecessary; we could have equivalently written:
+
+`ni n10 =\>ten.txt z\>ten.gz`
+
+This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
+
+
+##Custom Compound Reduce
+#### `rfn`: Custom compound reduce
+
+**TODO: Understand this**
+
+## Partitioned Matrix Operations
+
+Operations on huge matrices are not entirely `ni`ic, since they may require space greater than memory, whichwill make them slow. However, operators are provided to improve These operations are suited best to 
+
+
+* `X<col>`, `Y<col>`, `N<col>`: Matrix Partitioning
+  * **TODO**: understand how these actually work.
+* `X`: sparse-to-dense transformation
+  * In the case that there are collisions for locations `X`, `X` will sum the values
+  * For example: `ni n010p'r 0, a%3, 1' X`
+
+## Disk-Backed Data Closures
+
+* `@:[disk_backed_data_closure]`
+
+## Binary Operations
+In theory, this can save you a lot of space. But I haven't used this in practice.
+
+## Less Useful `ni`-specific Perl Extensions
+
+
+### Array Functions
+  * `clip`
+  * `within`
+  
+
+   
+## Writing Your Own `ni` Extensions
+**TODO** Understand how this works
+
+## Obscure Interops/Extensions
+
+* [SQL](sql.md)
+* [PySpark](pyspark.md)
+* [Scripting](script.md)
+* [HTTP Operations](net.md)
+* [Defining `ni` functions](fn.md)
+
+## More `ni` modules
+
+* Image
+* Binary
+* Bytestream
+* gnuplot
+
+
+## Perl Operations
+`ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
+
+In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
+
+We'll start with the following `ni` spell.
+
+`$ ni /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'`
+
+The output here will depend on the contents of your `/usr/share/dict/words/`, but you should have 3 columns; the first 3 letters of each word, the second 3 letters of each word, and any remaining letters. On my machine it looks like this:
+
+```sh
+aba     iss     ed
+aba     sta     rdize
+abb     rev     iature
+abd     uct     ion
+abe     tme     nt
+abi     gai     l
+abj     udg     e
+abl     est     
+abo     lis     h
+abo     rti     vely
+```
+
+Notice that `ni` has produced tab-delimited columns for us; these will be useful for the powerful column operators we will introduce in this section and the next.
+
+```bash
+$ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)'
+["cat","/usr/share/dict/words"]
+["row_every",40]
+["head","-n",10]
+["perl_mapper","r substr(a, 0, 3), substr(a, 3, 3), substr(a, 6)"]
+```
+
+We have reviewed every operator previously except the last. 
 126 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
