@@ -3,9 +3,14 @@
 ## Introduction
 
 In this section, we introduce `ni`-specific Perl extensions. 
-`ni` was developed at [Factual, Inc.](www.factual.com), which works with mobile location data; these geographically-oriented operators are open-sourced and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in learning more.
+`ni` was developed at [Factual, Inc.](https://factual.com), which works with
+mobile location data; these geographically-oriented operators are open-sourced
+and highly efficient. There's also a [blog post](https://www.factual.com/blog/how-geohashes-work) if you're interested in
+learning more.
 
-The next set of operators work with multiple lines of input data; this allows reductions over multiple lines to take place. This section ends with a discussion of more I/O functions.
+The next set of operators work with multiple lines of input data; this allows
+reductions over multiple lines to take place. This section ends with a
+discussion of more I/O functions.
 
 
 ## `ni`-specific Perl Functions

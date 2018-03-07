@@ -14,6 +14,12 @@ body { font-family: "Ubuntu Sans", sans-serif; margin: auto; width: 800px }
   font-size: 20pt;
 }
 
+pre {
+  font-family: "Ubuntu Mono", "Inconsolata", "Anonymous Pro", monospace;
+  font-size: 125%;
+  line-height: 1.44em;
+}
+
 #explain-pre, #explanation { color: #888 }
 
 #explain { border: none; outline: none; width: 100% }
@@ -26,6 +32,10 @@ a:hover { color: #f80; text-decoration: underline }
 
 ul { list-style-type: square }
 
-.markdown { text-align: justify; line-height: 1.2em }
-.markdown pre { background: #eee; padding: 8px; border-left: solid 1px #444 }
+.markdown ul { margin: 0; padding: 0 }
+
+.markdown { text-align: justify; font-size: 125%; line-height: 1.44em; color: #444 }
+.markdown a { color: #c60 }
+.markdown code { background: #eee; color: black }
+.markdown pre { line-height: 1.44em; font-size: 150%; color: black; background: #eee; padding: 8px; border-left: solid 1px #444 }
 .markdown blockquote { margin-left: 2em; padding-left: 8px; border-left: solid 1px #888 }

@@ -2,51 +2,72 @@
 
 use constant inspect_gen => gen $ni::self{'core/inspect/html'};
 
+sub markdown_table($)
+{
+  (my $table = shift)
+    =~ s/^(.*)\n[-|\s]+\n/join("|", map"**$_**", split m(\|), $1) . "\n"/e;
+  ("<table><tbody>",
+   map(("<tr>",
+        map(("<td>", markdown_to_html($_), "</td>"), split /\|/),
+        "</tr>"),
+       split /\n/, $table),
+   "</tbody></table>");
+}
+
 sub markdown_to_html($)
 {
-  join "",
-  map
-  {
-      /^\`\`\`(.*)([\s\S]*)\`\`\`\h*$/ ? ("<div class='code-$1'>", inspect_text($2), "</div>")
-    : /^!\[[^]]*\]\((.*)\)/            ? "<img src='$1'>"
-    : /^\[([^]]+)\]\((https?:.*)\)/    ? "<a href='$2'>" . markdown_to_html($1) . "</a>"
-    : /^\[([^]]+)\]\((.*)\)/           ?
+  map /^\`\`\`(.*)([\s\S]*)\`\`\`\h*$/ ?
+      ("<div class='code-$1'>", inspect_text($2), "</div>")
+
+    : /^\`([^\`]*)\`$/ ?
+      ("<code>", html_escape($1), "</code>")
+
+    : /^!\[[^]]*\]\((.*)\)/ ?
+      "<img src='$1'>"
+
+    : /^\[([^]]+)\]\((https?:.*)\)/ ?
+      ("<a href='$2'>", markdown_to_html($1), "</a>")
+
+    : /^\[([^]]+)\]\((.*)\)/ ?
       exists $ni::self{"doc/$2"}
-        ? "<a href='/doc/doc/$2'>"  . markdown_to_html($1) . "</a>"
-        : "<a href='/attr/doc/$2'>" . markdown_to_html($1) . "</a>"
+        ? ("<a href='/doc/doc/$2'>",  markdown_to_html($1), "</a>")
+        : ("<a href='/attr/doc/$2'>", markdown_to_html($1), "</a>")
 
-    : /^>/                             ?
-      "<blockquote>"
-        . markdown_to_html(join"\n", map substr($_, 1), split /\n/, $_)
-        . "</blockquote>"
+    : /^>/ ?
+      ("<blockquote>",
+       markdown_to_html(join"\n", map substr($_, 1), split /\n/, $_),
+       "</blockquote>")
 
-    : /^\n######(.*)/    ? "<h6>"   . markdown_to_html($1) . "</h6>"
-    : /^\n#####(.*)/     ? "<h5>"   . markdown_to_html($1) . "</h5>"
-    : /^\n####(.*)/      ? "<h4>"   . markdown_to_html($1) . "</h4>"
-    : /^\n###(.*)/       ? "<h3>"   . markdown_to_html($1) . "</h3>"
-    : /^\n##(.*)/        ? "<h2>"   . markdown_to_html($1) . "</h2>"
-    : /^\n#(.*)/         ? "<h1>"   . markdown_to_html($1) . "</h1>"
-    : /^\n\h*[-*] (.*)/  ? "<li>"   . markdown_to_html($1) . "</li>"
-    : /^\n\h*\d+\. (.*)/ ? "<li>"   . markdown_to_html($1) . "</li>"
-    : /^\*\*(.*)\*\*$/   ? "<b>"    . markdown_to_html($1) . "</b>"
-    : /^([_*])(.*)\1$/   ? "<i>"    . markdown_to_html($2) . "</i>"
-    : /^\`([^\`]*)\`$/   ? "<code>" . markdown_to_html($1) . "</code>"
-    : /^\n\h*$/          ? "<p>"
-    :                      $_;
-  }
+    : /^\n(\h*)(?:[-*]|\d\.) (.*)/ ?
+      ("<ul style='padding-left:".(2 + length($1))."em'><li>",
+       markdown_to_html($2),
+       "</li></ul>")
+
+    : /^\n######(.*)/  ? ("<h6>",   markdown_to_html($1), "</h6>")
+    : /^\n#####(.*)/   ? ("<h5>",   markdown_to_html($1), "</h5>")
+    : /^\n####(.*)/    ? ("<h4>",   markdown_to_html($1), "</h4>")
+    : /^\n###(.*)/     ? ("<h3>",   markdown_to_html($1), "</h3>")
+    : /^\n##(.*)/      ? ("<h2>",   markdown_to_html($1), "</h2>")
+    : /^\n#(.*)/       ? ("<h1>",   markdown_to_html($1), "</h1>")
+    : /\|.*\n.*\|/     ? markdown_table $_
+    : /^\*\*(.*)\*\*$/ ? ("<b>",    markdown_to_html($1), "</b>")
+    : /^([_*])(.*)\1$/ ? ("<i>",    markdown_to_html($2), "</i>")
+    : /^\n\h*$/        ? "<p>"
+    :                    $_,
   split /
     (
-      \n\#+.*$                                # headings
-    | \n\h*$                                  # paragraph breaks
-    | _\S(?:[^_]*\S)?_                        # italics
-    | \*\S(?:[^*]*\S)?\*                      # italics with *
-    | \*\*\S(?:[^*]*?\S)?\*\*                 # bold
-    | ^>.*(?:\n>.*)*$                         # blockquote
-    | ^\`\`\`.*\n(?:[\s\S]*?\n)?\`\`\`\h*$    # code block
-    | \n\h*[-*]\s.*                           # bulleted list item
-    | \n\h*\d+\.\s.*                          # numbered list item
-    | \`[^\`]*\`                              # inline code
-    | !?\[[^]]+\]\([^\)]+\)                   # link
+      \n\#+.*$                                  # headings
+    | \n\h*$                                    # paragraph breaks
+    | _\S(?:[^_]*\S)?_                          # italics
+    | \*\S(?:[^*]*\S)?\*                        # italics with *
+    | \*\*\S(?:[^*]*?\S)?\*\*                   # bold
+    | ^>.*(?:\n>.*)*$                           # blockquote
+    | ^\`\`\`.*\n(?:[\s\S]*?\n)?\`\`\`\h*$      # code block
+    | \`[^\`]*\`                                # inline code
+    | (?:[^|\`\n]+(?:[-\h]\|[-\h][^|\n]*)+\n)+  # tables
+    | \n\h*[-*]\s.*                             # bulleted list item
+    | \n\h*\d+\.\s.*                            # numbered list item
+    | !?\[[^]]+\]\([^\)]+\)                     # link
     )
   /mx, shift;
 }
@@ -74,14 +95,14 @@ sub inspect_page
 sub inspect_snip
 {
   my $reply = shift;
-  http_reply $reply, 200, join "\n", @_;
+  http_reply $reply, 200, join "", @_;
 }
 
 sub inspect_linkable_things()
 {
   # There's a lot of stuff here: operators, attributes, libraries, etc.
   (bootcode => [bootcode => 'bootcode'],
-   map(($_        => [sub      => $_]), map /sub\s+(\w+)/g,          @ni::self{grep /\.pl$/, sort keys %ni::self}),
+   map(($_        => [sub      => $_]), map +(/sub\s+(\w+)/g, /\*(\w+)\s*=/g), @ni::self{grep /\.p[lm]$/, sort keys %ni::self}),
    map(($_        => [constant => $_]), map /use constant\s+(\w+)/g, @ni::self{grep /\.pl$/, sort keys %ni::self}),
    map(($_        => [lib      => $_]), grep s/\/lib$//, sort keys %ni::self),
    map(($_        => [doc      => $_]), grep /^doc\//,   sort keys %ni::self),
@@ -143,14 +164,14 @@ sub inspect_lib
 sub inspect_defined
 {
   my ($reply, $type, $def_regex, $k) = @_;
-  my @defined_in = grep $ni::self{$_} =~ /$def_regex\Q$k\E\W/s, sort keys %ni::self;
+  my @defined_in = grep $ni::self{$_} =~ /$def_regex/s, sort keys %ni::self;
 
   if (@defined_in == 1)
   {
     my ($in) = @defined_in;
     inspect_snip $reply, "<h1><code>$type $k</code></h1>",
       inspect_linkify("<h2>Defined in <code>$in</code></h2>"),
-      inspect_text $ni::self{$in} =~ /($def_regex\Q$k\E\W.*$)/s;
+      inspect_text $ni::self{$in} =~ /($def_regex.*$)/s;
   }
   else
   {
@@ -162,13 +183,13 @@ sub inspect_defined
   }
 }
 
-sub inspect_sub         { inspect_defined $_[0], sub         => qr/sub\s+/, $_[1] }
-sub inspect_resource    { inspect_defined $_[0], resource    => qr/defresource\s+['"]?\s*/, $_[1] }
-sub inspect_constant    { inspect_defined $_[0], constant    => qr/use constant\s+/, $_[1] }
-sub inspect_cli_special { inspect_defined $_[0], cli_special => qr/defclispecial\s+['"]?\s*/, $_[1] }
-sub inspect_short       { inspect_defined $_[0], short       => qr/defshort\s+["']?\s*/, $_[1] }
-sub inspect_op          { inspect_defined $_[0], op          => qr/defoperator\s+["']?\s*/, $_[1] }
-sub inspect_meta_op     { inspect_defined $_[0], meta_op     => qr/defmetaoperator\s+["']?\s*/, $_[1] }
+sub inspect_sub         { inspect_defined $_[0], sub         => qr/sub\s+$_[1]\W|\*$_[1]\s*=/, $_[1] }
+sub inspect_resource    { inspect_defined $_[0], resource    => qr/defresource\s+['"]?\s*$_[1]\W/, $_[1] }
+sub inspect_constant    { inspect_defined $_[0], constant    => qr/use constant\s+$_[1]\W/, $_[1] }
+sub inspect_cli_special { inspect_defined $_[0], cli_special => qr/defclispecial\s+['"]?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_short       { inspect_defined $_[0], short       => qr/defshort\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_op          { inspect_defined $_[0], op          => qr/defoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_meta_op     { inspect_defined $_[0], meta_op     => qr/defmetaoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
 
 sub inspect_parser_short
 {
