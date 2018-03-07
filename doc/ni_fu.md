@@ -1,6 +1,6 @@
 # `ni`-fu
 
-`ni`-fu is a companion piece to the [cheatsheet](cheatsheet.md). The cheatsheet serves as a reference to `ni` operators, while `ni`-fu serves as a reference for `ni` programming in general, covering topics like configuration, plotting, debugging, and coding best practices.
+`ni`-fu is a companion piece to the [cheatsheet](cheatsheet_op.md). The cheatsheet serves as a reference to `ni` operators, while `ni`-fu serves as a reference for `ni` programming in general, covering topics like configuration, plotting, debugging, and coding best practices.
 
 ## How do I write `ni`?
 

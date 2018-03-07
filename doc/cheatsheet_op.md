@@ -203,7 +203,7 @@ Data closures are compiled into the `ni` source before the pipeline is executed.
 * `::closure_name[...]`: Create a data closure
   * A common motif for closures is using them as a filter:
 
-* ```
+```
 $ ni ::good_points[i100 i3 i76] \
 	n100 rp'^{%h = ab_ good_points} exists($h{+a})'
 ```

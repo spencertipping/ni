@@ -9406,7 +9406,7 @@ ul { list-style-type: square }
 </div>
 </body>
 </html>
-30 core/inspect/inspect.js
+34 core/inspect/inspect.js
 $(function () {
   var reload_explanation = function () {
     $.getJSON("/explain/" + $('#explain').val(), function (result) {
@@ -9429,18 +9429,55 @@ $(function () {
   if (document.location.hash === '') document.location.hash = '/root';
 
   $('body').on('click', 'a', function (e) {
-    document.location.hash = encodeURI($(this).attr('href'));
-    e.preventDefault();
-    return false;
+    var href = $(this).attr('href');
+    if (!/^http/.test(href))
+    {
+      document.location.hash = encodeURI($(this).attr('href'));
+      e.preventDefault();
+      return false;
+    }
   });
 
   $('#explain').on('keyup change', reload_explanation);
   reload_explanation();
 });
-342 core/inspect/inspect.pl
+389 core/inspect/inspect.pl
 # Inspect ni's internal state
 
 use constant inspect_gen => gen $ni::self{'core/inspect/html'};
+
+our %inspect_index;
+our @inspect_precedence
+  = qw/ op meta_op cli_special parser short constant sub resource
+        conf attr doc lib dsp alt /;
+
+sub inspect_build_index()
+{
+  # There's a lot of stuff here: operators, attributes, libraries, etc.
+  %inspect_index = ();
+
+  $inspect_index{bootcode}{bootcode} = 'bootcode';
+  $inspect_index{$_}{sub}      = $_ for map +(/sub\s+(\w+)/g, /\*(\w+)\s*=/g), @ni::self{grep /\.p[lm]$/, keys %ni::self};
+  $inspect_index{$_}{constant} = $_ for map /use constant\s+(\w+)/g,           @ni::self{grep /\.p[lm]$/, keys %ni::self};
+  $inspect_index{$_}{lib}      = $_ for grep s/\/lib$//, keys %ni::self;
+  $inspect_index{$_}{doc}      = $_ for grep /^doc\//,   keys %ni::self;
+
+  $inspect_index{"$_:"}{resource} = $_ for keys %ni::resource_read;
+  $inspect_index{$_}{conf}        = $_ for keys %ni::conf_varibles;
+  $inspect_index{$_}{parser}      = $_ for keys %ni::parsers;
+  $inspect_index{$_}{short}       = $_ for keys %ni::shorts;
+  $inspect_index{$_}{long}        = $_ for keys %ni::longs;
+  $inspect_index{$_}{attr}        = $_ for keys %ni::self;
+  $inspect_index{$_}{op}
+    = $inspect_index{"${_}_op"}{op} = $_ for keys %ni::operators;
+
+  $inspect_index{$_}{meta_op}
+    = $inspect_index{"${_}_op"}{meta_op} = $_ for keys %ni::meta_operators;
+
+  $inspect_index{$_}{dsp}         = $_ for keys %ni::dsps;
+  $inspect_index{$_}{alt}         = $_ for keys %ni::alts;
+  $inspect_index{$_}{cli_special} = $_ for keys %ni::cli_special;
+}
 
 sub markdown_table($)
 {
@@ -9538,44 +9575,35 @@ sub inspect_snip
   http_reply $reply, 200, join "", @_;
 }
 
-sub inspect_linkable_things()
+sub inspect_disambiguation_for($)
 {
-  # There's a lot of stuff here: operators, attributes, libraries, etc.
-  (bootcode => [bootcode => 'bootcode'],
-   map(($_        => [sub      => $_]), map +(/sub\s+(\w+)/g, /\*(\w+)\s*=/g), @ni::self{grep /\.p[lm]$/, sort keys %ni::self}),
-   map(($_        => [constant => $_]), map /use constant\s+(\w+)/g, @ni::self{grep /\.pl$/, sort keys %ni::self}),
-   map(($_        => [lib      => $_]), grep s/\/lib$//, sort keys %ni::self),
-   map(($_        => [doc      => $_]), grep /^doc\//,   sort keys %ni::self),
-   map(("$_:"     => [resource => $_]), sort keys %ni::resource_read),
-   map(($_        => [conf     => $_]), sort keys %ni::conf_variables),
-   map(($_        => [parser   => $_]), sort keys %ni::parsers),
-   map(($_        => [short    => $_]), sort keys %ni::shorts),
-   map(($_        => [attr     => $_]), sort keys %ni::self),
-   map(($_        => [op       => $_]), sort keys %ni::operators),
-   map(("${_}_op" => [op       => $_]), sort keys %ni::operators),
-   map(($_        => [meta_op  => $_]), sort keys %ni::meta_operators),
-   map(("${_}_op" => [meta_op  => $_]), sort keys %ni::meta_operators),
-   map(($_        => [dsp      => $_]), sort keys %ni::dsps),
-   map(($_        => [alt      => $_]), sort keys %ni::alts),
-   map(($_     => [cli_special => $_]), sort keys %ni::cli_special));
+  my $k   = shift;
+  my $ref = $inspect_index{$k};
+  return () unless keys(%$ref) > 1;
+
+  ("<h2><code>$k</code> refers to:</h2>",
+   "<ul>",
+   map("<li><code><a href='/$_/$$ref{$_}'>$_ $k</a></code></li>",
+       sort keys %$ref),
+   "</ul>");
 }
 
-sub inspect_link_for($$)
+sub inspect_link_for($)
 {
-  return "<span class='error'>MISSING LINK for $_[0]</span>" unless ref $_[1];
-  my ($name, $type, $thing) = (shift, @{+shift});
-  "<a href='/$type/$thing'>$name</a>";
+  my $k      = shift;
+  my $entry  = $inspect_index{$k};
+  my ($type) = grep exists $$entry{$_}, @inspect_precedence;
+  "<a href='/$type/$$entry{$type}'>$k</a>";
 }
 
 sub inspect_linkify
 {
   my @xs = @_;
-  my %linkable_things = inspect_linkable_things;
   my $link_detector = join"|", map qr/\Q$_\E/,
                                sort {length($b) - length($a)}
-                               keys %linkable_things;
+                               keys %inspect_index;
   my $r = qr/(?<=\W)($link_detector)(?=\W)/;
-  s/$r/inspect_link_for $1, $linkable_things{$1}/ge for @xs;
+  s/$r/inspect_link_for $1/ge for @xs;
   @xs;
 }
 
@@ -9584,10 +9612,12 @@ sub inspect_text { ("<pre>", inspect_linkify(map html_escape($_), @_), "</pre>")
 sub inspect_attr
 {
   my ($reply, $k) = @_;
-  (my $lib = $k) =~ s/\/[^\/]+$//;
+  my $lib = $k;
+  $lib =~ s/\/[^\/]+$// until $lib !~ /\// || exists $ni::self{"$lib/lib"};
   inspect_snip $reply,
-    inspect_linkify("<h1>Attribute <code>$k</code></h1>",
-                    "<h2>Defined in library <code>$lib</code></h2>"),
+    inspect_linkify("<h1>Attribute <code>$k</code></h1>"),
+    inspect_disambiguation_for($k),
+    inspect_linkify("<h2>Defined in library <code>$lib</code></h2>"),
     inspect_text $ni::self{$k};
 }
 
@@ -9596,6 +9626,7 @@ sub inspect_lib
   my ($reply, $k) = @_;
   inspect_snip $reply, "<h1>Library <code>$k</code></h1>",
     "<h2>Defined in <code><a href='/root'>ni root</a></code></h2>",
+    inspect_disambiguation_for($k),
     "<ul>",
     map(inspect_linkify("<li>$_</li>"), lib_entries $k, $ni::self{"$k/lib"}),
     "</ul>";
@@ -9603,40 +9634,48 @@ sub inspect_lib
 
 sub inspect_defined
 {
-  my ($reply, $type, $def_regex, $k) = @_;
-  my @defined_in = grep $ni::self{$_} =~ /$def_regex/s, sort keys %ni::self;
-
-  if (@defined_in == 1)
-  {
-    my ($in) = @defined_in;
-    inspect_snip $reply, "<h1><code>$type $k</code></h1>",
-      inspect_linkify("<h2>Defined in <code>$in</code></h2>"),
-      inspect_text $ni::self{$in} =~ /($def_regex.*$)/s;
-  }
-  else
-  {
-    inspect_snip $reply, "<h1><code>$type $k</code></h1>",
-      "<h2>Defined in</h2>",
-      "<ul>",
-      inspect_linkify(map "<li>$_</li>", @defined_in),
-      "</ul>";
-  }
+  my ($type, $def_regex, $k) = @_;
+  map +(inspect_linkify("<h2>Defined in <code>$_</code></h2>"),
+        inspect_text $ni::self{$_} =~ /\n?([^\n]*$def_regex.*$)/s),
+      grep $ni::self{$_} =~ /$def_regex/s, sort keys %ni::self;
 }
 
-sub inspect_sub         { inspect_defined $_[0], sub         => qr/sub\s+$_[1]\W|\*$_[1]\s*=/, $_[1] }
-sub inspect_resource    { inspect_defined $_[0], resource    => qr/defresource\s+['"]?\s*$_[1]\W/, $_[1] }
-sub inspect_constant    { inspect_defined $_[0], constant    => qr/use constant\s+$_[1]\W/, $_[1] }
-sub inspect_cli_special { inspect_defined $_[0], cli_special => qr/defclispecial\s+['"]?\s*\Q$_[1]\E\W/, $_[1] }
-sub inspect_short       { inspect_defined $_[0], short       => qr/defshort\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
-sub inspect_op          { inspect_defined $_[0], op          => qr/defoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
-sub inspect_meta_op     { inspect_defined $_[0], meta_op     => qr/defmetaoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_defined_snip
+{
+  my ($reply, $type, $def_regex, $k) = @_;
+  inspect_snip $reply,
+    "<h1><code>$type $k</code></h1>",
+    inspect_disambiguation_for($k),
+    inspect_defined($type, $def_regex, $k);
+ }
+
+sub inspect_sub         { inspect_defined_snip $_[0], sub         => qr/sub\s+$_[1]\W|\*$_[1]\s*=/, $_[1] }
+sub inspect_resource    { inspect_defined_snip $_[0], resource    => qr/defresource\s+['"]?\s*$_[1]\W/, $_[1] }
+sub inspect_constant    { inspect_defined_snip $_[0], constant    => qr/use constant\s+$_[1]\W/, $_[1] }
+sub inspect_cli_special { inspect_defined_snip $_[0], cli_special => qr/defclispecial\s+['"]?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_short       { inspect_defined_snip $_[0], short       => qr/defshort\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_long        { inspect_defined_snip $_[0], long        => qr/deflong\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_op          { inspect_defined_snip $_[0], op          => qr/defoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
+sub inspect_meta_op     { inspect_defined_snip $_[0], meta_op     => qr/defmetaoperator\s+["']?\s*\Q$_[1]\E\W/, $_[1] }
 
 sub inspect_parser_short
 {
   my ($reply, $short) = @_;
   inspect_snip $reply,
     inspect_linkify("<h1>Parser for short operator <code>$short</code></h1>"),
-    inspect_text(parser_ebnf $ni::shorts{$short});
+    inspect_disambiguation_for($short),
+    inspect_text(parser_ebnf $ni::shorts{$short}),
+    inspect_defined(parser => qr/defparser\w*\s+['"]?\s*\Q$short\E\W/, $short);
+}
+
+sub inspect_parser_long
+{
+  my ($reply, $long) = @_;
+  inspect_snip $reply,
+    inspect_linkify("<h1>Parser for long operator <code>$long</code></h1>"),
+    inspect_disambiguation_for($long),
+    inspect_text(parser_ebnf $ni::longs{$long}),
+    inspect_defined(parser => qr/defparser\w*\s+['"]?\s*\Q$long\E\W/, $long);
 }
 
 sub inspect_parser
@@ -9644,7 +9683,9 @@ sub inspect_parser
   my ($reply, $p) = @_;
   inspect_snip $reply,
     inspect_linkify("<h1>Parser <code>$p</code></h1>"),
-    inspect_text(parser_ebnf $ni::parsers{$p});
+    inspect_disambiguation_for($p),
+    inspect_text(parser_ebnf $ni::parsers{$p}),
+    inspect_defined(parser => qr/defparser\w*\s+['"]?\s*\Q$p\E\W/, $p);
 }
 
 sub inspect_bootcode
@@ -9675,39 +9716,44 @@ sub inspect_root
 {
   my ($reply) = @_;
   my %links;
-  my @linkables = inspect_linkable_things;
 
-  for (my $i = 0; $i + 1 < @linkables; $i += 2)
+  while (my ($k, $v) = each %inspect_index)
   {
-    my ($k, $v)         = @linkables[$i, $i + 1];
-    my ($type, $target) = @$v;
-    next if $k =~ /_op$/ || $type eq 'short' && $k =~ /^\/\$/;
-    my $thing = "<a href='/$type/$target'><code>$k</code></a>";
-
-    if ($type eq 'conf')
+    while (my ($type, $target) = each %$v)
     {
-      my ($env) = $ni::conf_variables{$k} =~ /conf_env '(\w+)'/;
-      $env ||= '';
-      $thing .= " <code class='conf-env'>\$$env</code>";
-      $thing .= " = <code>" . conf($k) . "</code>" if length conf $k;
+      next if $k =~ /_op$/ || $type eq 'short' && $k =~ /^\/\$/;
+      my $thing = "<a href='/$type/$target'><code>$k</code></a>";
+
+      if ($type eq 'conf')
+      {
+        my ($env) = $ni::conf_variables{$k} =~ /conf_env '(\w+)'/;
+        $env ||= '';
+        $thing .= " <code class='conf-env'>\$$env</code>";
+        $thing .= " = <code>" . conf($k) . "</code>" if length conf $k;
+      }
+
+      $thing .= " [<a href='/parser_short/$k'>grammar</a>]"
+        if $type eq "short";
+
+      push @{$links{$type} ||= []}, $thing;
     }
-
-    $thing .= " [<a href='/parser_short/$k'>grammar</a>]"
-      if $type eq "short";
-
-    push @{$links{$type} ||= []}, $thing;
   }
 
   my @rendered =
     ("<h1>Reference</h1>",
+     "<h2><i>Ni By Example</i>, by <a href='https://github.com/michaelbilow'>Michael Bilow</a></h2>",
      "<ul>",
-     "<li><a href='/doc/doc/ni_by_example_1.md'>Ni By Example, chapter 1</a></li>",
-     "<li><a href='/doc/doc/ni_by_example_2.md'>Ni By Example, chapter 2</a></li>",
-     "<li><a href='/doc/doc/ni_by_example_3.md'>Ni By Example, chapter 3</a></li>",
-     "<li><a href='/doc/doc/ni_by_example_4.md'>Ni By Example, chapter 4</a></li>",
-     "<li><a href='/doc/doc/ni_by_example_5.md'>Ni By Example, chapter 5</a></li>",
-     "<li><a href='/doc/doc/ni_by_example_6.md'>Ni By Example, chapter 6</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_1.md'>Chapter 1</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_2.md'>Chapter 2</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_3.md'>Chapter 3</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_4.md'>Chapter 4</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_5.md'>Chapter 5</a></li>",
+     "<li><a href='/doc/doc/ni_by_example_6.md'>Chapter 6</a></li>",
+     "<li><a href='/doc/doc/ni_fu.md'>Ni Fu</a></li>",
+     "<li><a href='/doc/doc/cheatsheet_op.md'>Operator Cheatsheet</a></li>",
+     "<li><a href='/doc/doc/cheatsheet_perl.md'>Ni Perl Cheatsheet</a></li>",
      "</ul>",
+     "<h2>Internal documentation: entry points</h2>",
      "<ul>",
      "<li><a href='/bootcode'>Bootcode</a></li>",
      "<li><a href='/attr/core/boot/ni.map'>Image map file</a></li>",
@@ -9729,11 +9775,12 @@ sub inspect_root
 
   for (qw/ lib cli_special doc short op meta_op conf attr sub constant dsp alt /)
   {
+    my $ls = $links{$_};
     push @rendered,
       "<h1>$names{$_}</h1>",
       "<ul>",
-      map("<li>$_</li>", @{$links{$_}}),
-      "</ul>";
+      map("<li>$_</li>", sort @$ls),
+      "</ul>" if ref $ls;
   }
 
   inspect_snip $reply, @rendered;
@@ -9748,6 +9795,8 @@ sub inspect_root_page
 sub inspect_server
 {
   my ($port) = @_;
+
+  inspect_build_index;
   http $port, sub
   {
     my ($url, $req, $reply) = @_;
@@ -9767,11 +9816,13 @@ sub inspect_server
     return inspect_resource     $reply, $1 if $url =~ /^\/resource\/(.*)/;
     return inspect_constant     $reply, $1 if $url =~ /^\/constant\/(.*)/;
     return inspect_short        $reply, $1 if $url =~ /^\/short\/(.*)/;
+    return inspect_long         $reply, $1 if $url =~ /^\/long\/(.*)/;
     return inspect_op           $reply, $1 if $url =~ /^\/op\/(.*)/;
     return inspect_meta_op      $reply, $1 if $url =~ /^\/meta_op\/(.*)/;
     return inspect_cli_special  $reply, $1 if $url =~ /^\/cli_special\/(.*)/;
     return inspect_parser       $reply, $1 if $url =~ /^\/parser\/(.*)/;
     return inspect_parser_short $reply, $1 if $url =~ /^\/parser_short\/(.*)/;
+    return inspect_parser_long  $reply, $1 if $url =~ /^\/parser_long\/(.*)/;
   };
 }
 
@@ -10752,13 +10803,16 @@ defoperator pyspark_local_text => q{
 defsparkprofile L => pmap q{[pyspark_local_text_op($_),
                              file_read_op,
                              row_match_op '/part-']}, pyspark_rdd;
-35 doc/lib
+38 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
 ni_by_example_3.md
 ni_by_example_4.md
 ni_by_example_5.md
 ni_by_example_6.md
+ni_fu.md
+cheatsheet_op.md
+cheatsheet_perl.md
 binary.md
 closure.md
 col.md
@@ -15522,6 +15576,940 @@ $ ni --explain /usr/share/dict/words rx40 r10 p'r substr(a, 0, 3), substr(a, 3, 
 ```
 
 We have reviewed every operator previously except the last. 
+166 doc/ni_fu.md
+# `ni`-fu
+
+`ni`-fu is a companion piece to the [cheatsheet](cheatsheet_op.md). The cheatsheet serves as a reference to `ni` operators, while `ni`-fu serves as a reference for `ni` programming in general, covering topics like configuration, plotting, debugging, and coding best practices.
+
+## How do I write `ni`?
+
+`ni` is a stream-processing language, and each piece of `ni` code (which we call a spell) is a pipeline composed of operators (which maybe we should call "runes" or "glyphs" or something, but we don't). 
+
+This makes it very easy to see `ni` code very easy to debug, even for a beginner.
+
+All you need to do to see a `ni` spell in action is to run each piece from beginning to end.
+
+For example, consider the spell:
+
+`$ ni n3 fAA p'r alph a, a' OB`
+
+If you don't know what this code does, split it up at whitespace between operators, yielding:
+
+```
+n3
+fAA
+p'r alph a, a'
+OB
+```
+
+To see how this pipeline works, first run it using just the first operator:
+
+```
+$ ni n3
+1
+2
+3
+```
+
+Pretty straightforward. Now, run the pipeline once again, using the first two operators:
+
+```
+$ ni n3 
+1	1
+2	2
+3	3
+```
+
+A little more interesting; if you didn't know before, you can use `f` to duplicate columns in the stream. Once more, using the first 3 operators:
+
+
+```
+$ ni n3 fAA p p'r alph a, b'
+A	1
+B	2
+C	3
+```
+
+The perl mapper `p'r alph a, b'` printed the Nth capital letter of the alphabet and 
+
+And finally, putting everything together:
+
+```
+$ ni n3 fAA p'r alph a, b' OB
+C	3
+B	2
+A	1
+```
+
+`OB` sorted the data in reverse numerical order based on column B.
+
+You can see each stage of the pipeline did one transformation to its input data. Thus, if you have a spell whose output you don't understand or know is incorrect, by stepping through the operators, you should be able to see where the data transformation goes wrong.
+
+
+## What should I know about `ni` configuration?
+
+`ni` has dozens of configuration variables, which can be modified in your `~/.bash_profile`. A few of the most important ones to know about are covered here:
+
+* `NI_PAGER`
+  * The default `ni` pager is `less`. Generally, this is a safe and sensible choice. However, when using `ni` inside a Jupyter notebook, for exmaple, `less` will block the notebook, and you'll want to use `cat` or `head -n1000` as your pager, which won't block.
+* `NI_NO_MONITOR`
+  * The `ni` monitor occasionally causes issues (that are MapReduce-related, if I recall correctly). After working with `ni` for several months, I got a good feel for how fast each operation was and turned off the monitor.
+* `NI_HADOOP_MAPREDUCE_CONF` 
+  * This is a good place to store your Hadoop MapReduce Job defaults. The format of the 
+* `NI_HADOOP_STREAMING_JAR`
+  * You'll want to have some control over the Hadoop Streaming JAR that `ni` uses.
+
+## What is `ni` is bad at?
+
+`ni` is good at a lot of things; it's fast, it runs everywhere, it spins up Hadoop Streaming jobs easily, interacts in ways that are highly intuitive with the command line, and much more. However, `ni` has weaknesses of which you should also be aware.
+
+### Processing arbitrary text
+  * Newlines in text **will** result in unexpected behavior, since `ni` will interpret the newiline as the beginning of a new line of the stream.
+  * On the other hand, `ni` is blazing fast and very flexible when working with structured text.
+
+### Arbitrary JSON operations
+  * `ni` _can_ do arbitrary JSON operations, but they are slow.
+  * On the other hand, `ni` is blazing fast at doing **very specific** JSON operations.
+
+### Sorting data on a single machine
+  * This is not so much a weakness of `ni` as it is a weakness of your machine. It takes an excruciating amount of time to sort a gigabyte compared to processing it. 
+  * When you have large quantities of data that need to be sorted, you should use `ni`'s very intuitive MapReduce bindings.
+
+### Fancy Math and Stats
+  * `ni` includes `numpy` bindings, but remember that this introduces a dependency on system configuration that should generally be avoided.
+  * `ni` is data-processing and data-cleaning first, not math-first language; Spark with MLLib is probably the most appropriate tool if you're looking to do large matrix operations.
+  * `ni` does a good job of finding counts and sums, but things like complicated averages, standard deviation, etc. are better done in Python or R.
+* That's it. I think. For now.
+
+## Basic `ni` Philosophy and Style
+
+### `ni` is written for concision, fast testing, and productivity.
+
+* Because `ni` processes streams of data in a streaming way, you should be able to build pipelines up from front-to-back, checking the integrity of the output at each step, for example by taking some rows using `r30` and/or sinking the output to a file.
+* As a result of this, `ni` spells can be developed completely in the command line; there is:
+  * No compilation (in the most common sense).
+  * No need for a text editor.
+  * No need to switch windows.
+  * Nothing stopping you from joyful hacking.
+* If you find a common operation is taking a while, there's probably a faster way to do it. Ask. It may require more Perl, though.
+
+### Everything is optional *unless its absence would create ambiguity*.
+
+* Consider the following three `ni` spells, all with the same output.
+  * Explicit: `ni n10p'r "HELLO"' p'r lc(a)'`
+  * Concise: `ni n10p'HELLO' p'lc a'`
+  * Compact: `ni n10pHELLO plc`
+* The technical details behind the `ni` parser are out of scope for this tutorial, but note the `ni` parser doesn't **need** quotes around perl snippets if their meaning is clear. It's a matter of programmer style whether you prefer to use them, but over time you'll be able to read both paradigms and likely end up preferring compact code when the meaning is clear.
+* `ni` carries over some of the philosophy of implicit and default values from Perl, so you don't need to tell the lowercase function `lc` on what to operate; it will operate on the entire input line.
+
+
+
+### `ni` is not meant to be easy to read for those who do not speak `ni`.
+
+* This principle naturally follows from the two, but it is worth articulating to understand why the `ni` learning curve is steep. If you come to `ni` from a Python/Ruby background, with their almost English-like syntax, you may find `ni` unfriendly at first. 
+* If you're coming from a heavy-featured scripting language, try to take joy in the speed of development that `ni` provides. `ni`'s row and column selection operations are much easier to discuss than `pandas`' `.loc` and `.ix`, for example.
+* Just as most `ni` spells are built front-to-back, they are best understood by `ni` learners back-to-front. By repeatedly clipping operations off the end, you can see the entire sequence of intermediate outputs of the processing pipeline, and the magic of `ni`--building complex processing pipelines from single letters--becomes clear.
+* `ni` is magic. Magic is not meant to be understood by the uninitiated. That's why wizards live in towers and why `ni` snippets are properly referred to as spells.
+
+
+## Understanding the `ni` monitor
+More details [here](monitor.md). Overall:
+
+* Negative numbers = non-rate-determining step
+* Positive numbers = rate-determining step
+* Large Positive numbers = slow step
+
+
+## Plotting with `ni --js`
+Check out the [examples](examples.md) for some examples of cool, interactive `ni` plotting.
+
+### Formula Bar
+You can enter ni formulas into the top bar (without the explicit `ni` call).
+
+### Controls
+
+- D : Distance
+  - D represents the distance from the camera to the origin
+- R : Rotation
+  - The first R component is the angle between the image and the plane of the image and the plane of the screen
+  - The second R component is the rotation of the image within the plane of the screenin degrees
+- x : Dimensional Scaling
+  - The first component controls scaling in the direction of the width of the screen;
+  - The second component controls scaling in the direction of the depth of the screen;
+  - The third component controls scaling in the direction of the height of the screen.
+
+### Viewing a 3D plot to 2D
+
+Set the second x component to 0 to flatten the image's depth dimension; then
+set the first R component to 0 and the second R component to 90 to show a
+front-facing view of your plot.
+340 doc/cheatsheet_op.md
+# `ni` Operator Cheatsheet (alpha release)
+
+## Preface
+
+This cheatsheet is meant to be an exhaustive reference to the operators that compose `ni` as a language, except for its many Perl extensions (which have [their own cheatsheet](cheatsheet_perl.md)). This document is designed such that it can be read in order and it should make sense, though it's quite long and light on details.
+
+However, there's a lot more to achieving fluency than just knowing the words; if you use `ni` regularly, you'll be well-rewarded for walking through [`ni` by Example](ni_by_example_1.md), the more formal tutorial. And if you ever write your own `ni` pipelines, you should read [`ni`-fu](ni_fu.md) to learn how to debug them. I guarantee it will save you time.
+
+## Input Operations
+
+* `n`: Integer stream
+  * `n#`: Stream the sequence `1..#`, one number per line
+  * `n0#`: Stream the sequence `0..#-1`, one number per line
+  * `n`: Stream the sequence `1..`, one number per line.
+* `<filename>`: File input
+  * Automatically decompresses the file and streams out one line of the file out at a time.
+  * Files are automatically decompressed from `gzip`, and `bzip`, `xzip` and `lzo` decompression are also supported if you have the binaries.
+* `e[<script>]`: Evaluate script
+  * evaluate `<script>` in bash, and stream out the results one line at a time.
+  * Can also be written `e'<script'`
+  * `$ ni n10 e'wc -l'` will count lines.
+* `i<text>`: Literal text input
+  * `$ ni iOK!` -- add the literal text `OK!` (and a newline) to the stream.
+  * `$ ni i'a cat'` -- add the literal text `a cat` (and a newline) to the stream. The quotes are necessary to instruct the `ni` parser where the boundaries of the string are. Double quotes will work as well.
+  * `$ ni i[these cats]` -- add a tab-separated line consisting of `these   cats`, and a newline.
+* `D:<field1>,:<field2>...`: JSON Destructure
+  * `ni` can easily grab scalar fields (i.e. strings, numbers, and nulls) from JSON, For example: `$ ni i'{"hi":5,"there":"alive"}' D:there,:hi` yields `alive	5`
+  * The JSON destructurer does _not_ support pulling out list-based fields or nested hashes within JSON.
+* `1`: Dummy pulse
+  * `$ ni 1` is syntactic sugar for `$ ni n1`. It is useful for launching scripts in Perl, Ruby, Lisp, or Python from `ni`.
+  * The `1` operator is primarily used to make a perl script run; it's often more useful in test than in actual development.
+
+## File Operations and Compression
+* ` \>filename`: Redirect stream to file and emit filename
+  * Consumes the stream and outputs it to the file named `filename`, and emits the filename.
+  * Note that there is **no whitespace** between the angle-bracket and the filename.
+  * This "literal right angle bracket" operator `\>` is usually much more useful than a file redirect `>`, since the filename(s) output to the stream can be opened using the "literal left angle bracket" operator, `\<`.
+* `\<`: Read from filenames
+  * Normally when `ni` sees a filename in its instructions, it will open the file and `cat` its contents to the stream.
+  * However, if you have a list of filenames, 
+  * This tool can be powerful in combination with Hadoop operations, described later.
+* `z`: Compress stream
+  * Defaults to `gzip` compression, but `xzip`, `bzip`, and others are available. See [`ni` by Example Chapter 1](ni_by_example_1.md) for details.
+
+## Basic Row Operations
+
+The operator `r` is used to filter rows.
+
+  * `$ ni <data> r3` - take the first 3 rows of the stream
+    * **CAVEAT:** `r#` is a wrapper over the Unix utility `head`, and emits a `SIGPIPE` which will break Streaming MapReduce jobs. To use `r` in the context of MapReduce, use the safe row operator `rs` instead.
+    * `$ ni <data> rs3` - take the first 3 rows of the stream and do not emit a `SIGPIPE`. 
+  * `$ ni <data> r-3` - take everything after the first 3 rows of the stream
+  * `$ ni <data> r~3` - take the last 3 rows of the stream
+  * `$ ni <data> rx100` - take the first row in the stream, and every 100th row that follows. 
+  * `$ ni <data> r.05` - sample 5% of the rows in the stream.
+    * The sampling here is deterministic (conditioned on the environment variable `NI_SEED`) and will always return the same set of rows.
+  * `$ ni <data> r/<regex>/` - take rows where `<regex>` matches.
+
+## Basic Column Operations
+Columns are referenced "spreadsheet-style"--the first column is `A`, the second is `B`, etc.
+
+* `f`: Take columns
+  * `$ ni <data> fAA` - select the first column and duplicate it
+  * `$ ni <data> fAD.` - select the first column and all remaining columns starting with the fourth
+  * `$ ni <data> fB-E` - select columns 2-5
+  * `$ ni <data> fCAHDF` - selects columns 3, 1, 8, 4, 6, and streams them out in that order.
+  * `$ ni <data> f#<N1>,#<N2>`, selects data from (zero-indexed columns <number1> and <number2>).
+      * This can be used to select columns beyond the 26th column. `$ ni <data> f#87,#45,#9,#18` will take the 88th, 46th, 10th, and 19th columns from the data source.
+      * Every column operation written with letters can be rewritten using the numeric form:
+          * `$ ni <data> f#0,#0` is equivalent to `$ ni <data> fAA`
+          * `$ ni <data> f#0,#3.` is equivalent to `$ ni <data> fAD.`
+          * `$ ni <data> f#1-#4` is equivalent to `$ ni <data> fB-E`
+          * `$ ni <data> f#2,#0,#7,#3,#5` is equivalent to `$ ni <data> fCAHDF`
+* `r<cols>` - take row if exists
+  * `$ ni <data> rCF` - take rows where columns 3 and 6 are nonempty.
+* `F`: Split stream into columns
+  * `F:<char>`: split on character
+      * **WARNING**: this does not work with certain characters that need to be escaped; use `F/regex/` below for more flexibility (at the cost of less concision).
+  * `F/regex/`: split on occurrences of regex. If present, the first capture group will be included before a tab is appended to a field.
+  * `Fm/regex/`: don't split; instead, look for matches of regex and use those as
+  the field values.
+  * `FC`: split on commas (doesn't handle special CSV cases)
+  * `FV`: parse CSV "correctly", up to newlines in fields.
+  * `FS`: split on runs of horizontal whitespace
+  * `FW`: split on runs of non-word characters
+  * `FP`: split on pipe symbols
+* `x`: Exchange columns
+  * `x`: exchange the first two columns. 
+      * `$ ni data x` is equivalent to `$ ni data fBA.`
+  * `xC`: exchange column 3 with column 1. 
+      * `$ni data xC` is equivalent to `$ ni data fCBA.`
+  * `xBE`: exchange columns 2 and 5 with columns 1 and 2. 
+      * This runs in order, so `B` will be switched with `A` first, and whatever is in the second column now will be switched with column `E`. 
+      * `$ ni data xBE` is equivalent to `$ ni data fBECDA.`
+
+  
+## Sort, Unique & Count Operations
+
+* **WARNING**: Sorting is often a rate-limiting step in `ni` jobs, as data will need to be buffered to disk if a sort is too large to fit in memory. If your data is larger than **1 GB**, you should consider distributing your workload using Hadoop operations.
+* `g`: General sorting
+  * `gB` - sort rows ascending by the lexicographic value of the second column
+    * Lexicographic value is determined by the ordering of characters in the ASCII table.
+    * `ni ia iC g` will put the capital `C` before the lower-case `a`, because capital Latin letters precede lowercase Latin letters in ASCII.
+  * `gC-` - sort rows *descending* by the lexicographic value of the third column
+   * `gCA-` - sort rows first by the lexicographic value of the third column, ascending. For rows with the same value for the third column, sort by *descending* value of the first column.
+  * `gDn` - sort rows ascending by the *numerical* value of the fourth column.
+  * `gEnA-` - sort rows ascending by the numerical value of the fifth column; in the case where values in the fifth column are equal, sort by the lexicographic value of the first column, descending.
+    * **CAVEAT**: The numeric sort works on integers and floating-point numbers written as decimals. The numeric sort will **not** work on numbers written in exponential/scientific notation
+* `u`: unique sorted rows
+  * `$ ni <data> fACgABu`: get the lexicographically-sorted unique values from the first and third columns of `<data>`.
+* `c`: count sorted rows
+  * `$ ni <data> fBgc`: return the number of times each unique value of the second column occurs in `<data>`
+  * Note that the above operation is superior to `$ ni <data> gBfBc` (which will give the same results), since the total amount of data that needs to be sorted is reduced.
+* `o` and `O`: Numeric sorting
+  * `o`: Sort rows ascending (numerical)
+    * `oA` is syntactic sugar for `$ ni <data> gAn`
+  * `O`: sort rows descending (numerical)
+    * `OB` is equivalent to `$ ni <data> gBn-` 
+  * **Important Note**: `o` and `O` sorts *cannot be chained together* or combined with `g`. There is no guarantee that the output of `$ ni <data> gAoB` will have a lexicographically sorted first column, and there is no guarantee that `$ ni <data> oBOA` will have a numerically sorted second column. If you want to sort by multiple conditions, you must use `g`.
+
+## Cell Operations 
+`$ ni <data> ,<op><columns>`
+
+These provide keystroke-efficient ways to do transformations on a single column of the input data. Of particular use is the deterministic hashing function, which does a good job of compacting long IDs into 32-bit integers.
+
+
+* `,a`: Running average
+* `,d`: Difference between consecutive rows
+* `,e`: Natural exponential (`e**x`)
+* `,h`: Murmurhash (deterministic 32-bit hash function)
+* `,j<amt>`: Jitter (add uniform random noise in the range `[-amt/2, amt/2]`)
+* `,l`: Natural log (`ln x`)
+* `,s`: Running sum 
+* `,q`: Quantize
+* `,z`: Intify (hash and then convert hash values to integers starting with 1)
+* `,t`: Convert timestamp to readable ISO 8601 form
+* `,g`: Geohash encode
+* `,G`: Geohash decod3
+
+
+## HDFS I/O & Hadoop Streaming
+### How `ni` Interacts with Hadoop Streaming
+When `ni HS...` is called, `ni` packages itself as a `.jar` to the configured Hadoop server, which includes all the instructions for Hadoop to run `ni`.
+
+When `ni` uploads itself, it will also upload all data that is stored in data closures; if these closures are too large, the Hadoop server will refuse the job.
+
+### Hadoop Operators
+* `hdfs://<path>`: HDFS `cat`
+  * Equivalent to `hadoop fs -cat <path>`
+* `hdfst://<path>`: HDFS `text`
+  * Equivalent to `hadoop fs -text <path>`
+* `hdfsj://<path>`: HDFS `join`
+  * Identifies the correct file within the directory `<path>` that should be joined with the map file (in a Hadoop Streaming context), `$ENV{mapreduce_map_input_file}` 
+* `HS[mapper] [combiner] [reducer]`: Hadoop Streaming Job
+  * Any `ni` snippet can be used for the mapper, combiner, and reducer. Be careful that all of the data you reference is available to the Hadoop cluster; `w/W` operations referencing a local file are good examples of operations that may work on your machine that may fail on a Hadoop cluster with no access to those files.
+  * `_` -- skip the mapper/reducer/combiner. 
+  * `:` -- apply the trivial operation (i.e. redirect STDIN to STDOUT) for the mapper/reducer/combiner
+  * If the reducer step is skipped with `_`, the output may not be sorted, as one might expect from a Hadoop operation. Use `:` for the reducer to ensure that output is sorted correctly.
+  * Remember that you will be limited in the size of the `.jar` that can be uploaded to your Hadoop job server; you can upload data closures that are large, but not too large.
+* Using HDFS paths in Hadoop Streaming Jobs:
+  * `ni ... ihdfst://<path> HS...`
+  * The path must be input as literal text (with `i`) so that `ni` knows to get the data during the Hadoop job.
+  * <span style="color:red">**WARNING**</span> if you do not use a literal path, for example with `ni hdfst://...`, `ni` will try to download all of the data, then upload the data to HDFS, and then run the job.
+  * If you find that a job takes over a minute to start, you may want to check that you haven't made this error.
+
+
+## SSH and Containers
+* `s<host>[...]`: execute `[...]` in `<host>`
+  * You will need to set up your hosts properly in your `.ssh/config` to use a named host. 
+  * Remember that within the bracketed operator, you will have access to the `<host>` filesystem.
+* `C<container_name>[...]`: execute `[...]` in `<container_name>`
+  * Running in containers requires that Docker be installed on your machine.
+  * Running containers can be especially useful to take advantage of better OS-dependent utilities.
+  * For example, Mac OS X's `sort` is painfully slow compared to Ubuntu's. If you are developing on a Mac, there will be a noticeable performance difference increase if you replace: `ni n1E7 g` with `ni n1E7 Cubuntu[g]`, because the sort will be done in the faster Ubuntu container.
+  * Containers are also useful for testing the portability of your code.
+
+
+## Horizontal Scaling
+Note that you will need sufficient processing cores to effectively horizontally scale. If your computer has 2 cores and you call `S8`, it may slow your work down, as `ni` tries to spin up more processes than your machine can bear.
+
+* `S`: Horizontal Scaling 
+  * `$ ni <data> S<# cores>[...]`: distributes the computation of `...` across `<# cores>` processors.
+
+## Intermediate Column Operations
+We can weave together row, column, and Perl operations to create more complex row operations. We also introduce some more advanced column operators.
+
+* `j` - streaming join
+  * This will (inner) join two streams using one or more of their columns as a key; if not specified, the key will be the first column  which is assumed to be sorted.
+  * Adding columns to the operator will use those as the join column. `jAB` will join on the first two columns the left and the right datasets.
+* `w`: Append column to stream
+  * `$ ni <data> w[np'a*a']`
+  * `w` will add columns only up to the length of the input stream
+* `W`: Prepend column stream
+  * `$ ni <data> Wn` - Add line numbers to the stream (by prepending one element the infinite stream `n`)
+  * `W` will add rows only up to the length of the input stream
+* `v`: Vertical operation on columns
+  * **Important Note**: This operator is too slow to use in production.
+
+
+## Data Closures and Checkpoints
+Data closures are compiled into the `ni` source before the pipeline is executed. This allows them to serve the function of a broadcasted dataset across nodes in a distributed context. Closures can be accessed from within Perl snippets by using their name.
+
+* `::closure_name[...]`: Create a data closure
+  * A common motif for closures is using them as a filter:
+
+```
+$ ni ::good_points[i100 i3 i76] \
+	n100 rp'^{%h = ab_ good_points} exists($h{+a})'
+```
+
+  * Here we've created a closure called `good_points` which contains the data `100\n3\n76\n` as a string (initially). We use some Perl (see the [Perl Cheatsheet](cheatsheet_perl.md) for details) to convert those lines into a Perl hash called `%h`, whose keys are  and we check whether the value of the first column `+a` exists as a key in the hash
+  * Closures are computed separately from each other, which means that one closure cannot in general reference the value of another closure. If you find a situation where you need to create a closure that depends on the value of another closure, this is likely not (currently) good `ni` style, and you should look for another way to solve the problem.
+
+* `@:[disk_backed_data_closure]`: Create disk-backed data closure.
+  * A disk-backed data closure operates in much the same way as a regular data closure.
+  * In general, backing your data closures to disk is a way to get around memory restrictions on machines when using particularly large data closures.
+  * Disk-backed data closures may fail in environments where you have restrictions about writing to disk (_e.g._ in Hadoop mappers or reducers).
+* `:<checkpoint_name>`: Create a checkpoint
+  * Checkpoints are useful for building extended pipelines, especially ones with long-running or expensive operations (_e.g._ Hadoop MapReduce jobs).
+  * The use of checkpoints is a bit too tricky for your author's taste, but you are likely smarter than he.
+  * Here's an appropriate (if contrived) use of checkpoints:
+     * `$ ni nE7 g :alpha_numbers r3`
+     * With the checkpoint, the result of `$ ni nE7 g` will be stored in `:alpha_numbers`, and you can re-run the spell quickly.
+     * Without the checkpoint, the entire sort would have to be re-run each time, which takes a painfully long amount of time.
+     * In the background, `ni` is sinking the data from `$ni nE7 g` to a file called `alpha_numbers`. 
+     * **<span style="color:red">WARNING</span>**: Once a checkpoint has been written once, it will remain the same. For example, if, after running `$ ni nE7 g :alpha_numbers r10` you run `$ ni n1000 g :alpha_numbers r10`, `ni` will start using the previous `alpha_numbers` checkpoint data. This failure mode is silent, so **BE CAREFUL!!** (Or don't use them, like me).
+     * Checkpoints are also disk-backed, which means they suffer from many of the same limitations as disk-backed data closures. 
+
+## Filename-Prepending File Operations
+* `W\<`: Read from files and prepend filename
+  * The `\<` operator will read data from files, but will not state which file each line came from.
+  * `W\<` does the same thing as `\<` except it prepends a column to the output data with the name of the file the data came from.
+* ` W\>`: Redirect filename-prepended stream to files
+  * This operator consumes stream data with lines of the form `<filename> <data1> <data2> ... <dataN>` and outputs the lines `<data1> <data2> ... <dataN>` to `<filename>`, and outputs `<filename>`
+  * Be aware that input data should be in sorted order; `ni i[a.txt 1] i[b.txt 2] i[a.txt 3]` will leave file `a.txt` with only one line with the value `3`.
+
+
+## Matrix Operations
+* `Y` - dense-to-sparse transformation
+  * Explodes each row of the stream into several rows, each with three columns:
+    * The index of the row that the input data that came from
+    * The index of the column that the input data came from
+    * The value of the input stream at the row + column specified by the first two columns.
+* `X` - sparse-to-dense transformation
+  * `X` inverts `Y`; it converts a specifically-formatted 3-column stream into a multiple-column stream.
+  * In the case that there are collisions for locations `X`, `X` will sum the values
+  * For example: `ni n010p'r 0, a%3, 1' X`
+  * The specification for what the input matrix must look like is described above in the `Y` operator.
+* `N'x = ...'`: Numpy matrix operations
+  * Dense matrices can be transformed using Numpy-like operations
+  * The entire input matrix (i.e. the stream) is referred to as `x`.
+  * Example: `ni n10p'r map a*$_, 1..10' N'x = x + 1'` creates a matrix and adds one to every element with high keystroke efficiency.
+  * Example `ni n5p'r map a*$_, 1..10' N'x = x.T'`
+  * You also have available the entire numpy package at your disposal:
+    * Example: `ni n10p'r map a*$_, 1..10' N'x = dot(x, x.T)'`
+    * Example: `ni 1N'x = random.normal(size=(5,3))'`
+  * Note that your statements must always store the matrix back in the variable `x`.
+
+## Stream Operations
+
+* `%<#>[stream]`: interleave streams
+  * This is the most useful of the operations, especially for plotting data using `ni --js`.
+  * `%`
+  * **CAVEAT**: Interleaving is not an exact operation (though it's negligibly close for large datasets), and output can somewhat depend on the speed with which the two streams are generated.
+* `=`: duplicate this stream and discard its output
+  * The best use of this operation is to sink data to a file in the middle of a pipeline without impeding its progress.
+  * `$ ni n100 =\>hundo.txt fAA p'r a*3, b' \>other.txt` will sink the stream after `$ ni n100` to a file called `hundo.txt`, while still allowing the data to be processed through the rest of the pipeline.
+* `+`: append a stream
+  * In general, a stream written later in the spell will be appended automatically to the stream that comes before it; I rarely use this.
+  * `$ ni ia +ib` yields `a`, then `b`, the same as `$ ni ia ib` would. Not very useful.
+* `^`: prepend a stream 
+  * This is a more useful operator than `+` in theory, but it is also rarely used, since it in general makes more sense to order the streams.
+  * `$ni ia ^ib` yields `b` then `a`. Slightly useful!
+
+
+
+## Partitioned Matrix Operations
+One improvement of `ni` over its predecessor, [`nfu`](github.com/spencertipping/nfu) is that mathematical operations on tall and wide matrices have better support through partitioning.
+
+Some matrix operations are not performant in `ni` because they may require space greater than memory. If you're doing a lot of complex matrix operations, `ni` may not be the right tool. However, `ni` does provide some 
+
+* `Y<col>`: Dense-To-Sparse Transform with Partitioning
+
+
+```bash
+$ ni i[a b c d] i[a b x y] i[a b foo bar] YC
+a	b	0	0	c
+a	b	0	1	d
+a	b	1	0	x
+a	b	1	1	y
+a	b	2	0	foo
+a	b	2	1	bar
+```
+
+`Y` has reduced over the first two columns of the data, and kept their values in the first two columns of its output. The next two columns represent the row and column in the matrix as the normal `Y` operator does, and and the final column has the value.
+
+* `N<col>`: Numpy on Dense Partitioned Matrix
+
+Reduces over the columns before `<col>`, and then does the standard `N` operation.
+
+```bash
+$ ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
+     i[c d 1 0] i[c d 1 1] \
+      NC'x = dot(x.T, x)'
+a	b	10101	50205
+a	b	50205	250425
+c	d	2	1
+c	d	1	1
+```
+
+* `X<col>`: Sparse-To-Dense Transform of Partitioned Data
+
+`X<col>` inverts `Y<col>`.
+
+```bash
+$ ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
+a	b	c	d
+a	b	x	y
+a	b	foo	bar
+```
+
+
+## Things other than Perl 
+
+Don't use things other than Perl. Here are other things:
+
+*  `m'<...>'`: Ruby
+   * applies the Ruby snippet `<...>` to each row of the stream 
+*  `l'<...>'`: Lisp
+   * applies the Lisp snippet `<...>` to each row of the stream 
+
+I have only ever used the Ruby extension, and only to us a library not written in `ni`.
+
+Keep in mind that code written in any other language will not be portable and result in configuration headaches. For example, if you have a Ruby gem installed on your local machine and are able to run a `ni` spell on your local, you will have to install the same gem on your remote machine to use it over SSH. Moreover, if you want to run the same task on your Hadoop cluster, you'll have to have the gem installed on every node of the cluster 
+
+When I need another language for its library, I'll usually create a copy of the (part of the) library that I need and add it to `ni` instead.
+
+
+## Binary Operations
+The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
+425 doc/cheatsheet_perl.md
+# `ni` Perl Cheatsheet (alpha release)
+
+`ni` fully supports Perl 5 with backwards compaitibility to 5.08, and most of your `ni` scripts likely should be written in Perl. 
+
+`$ ni data p'<...>'` applies the Perl snippet `<...>` to each row of the stream.
+
+## Printing and Returning Data
+  * `p'r ..., ..., ...'`: Print all comma separated expressions to one tab-delimited row to the stream.
+  * `p'<statements>; <$val1>, <$val2>, ...'`: Returns each element `<$val1>`, `<$val2>`,... on its own line.
+  * Examples:
+      * `ni 1p'20, 30'` returns `20` and `30` on separate lines.
+      * `ni 1p'r 20, 30'` returns `20	30` on a single, tab-separated line.
+      * Recall that `1` is the same thing as `n1`.
+  * The `p'...; r ..., ...'` operator is used more frequently, 
+  * There are some tricks to how `ni` prints data from references.
+  * For example:
+      * `$ ni 1p'[hi, there]'` returns `hi	there` on a single tab-separated line:
+      * `$ ni 1p'r [hi, there]'` prints `ARRAY(0x7fa31dbc5b60)`.
+
+
+
+## Basic Perl Syntax
+
+### Data Types
+
+Perl has a relatively small number of data types, and for the purpose of this cheatsheet you really only need to know about these three:
+
+* Scalars -- numbers, strings
+* Arrays -- Arrays are written with parentheses
+* Hashes -- 
+* References: References are in fact just a special type of scalar used to refer to one of the other data types
+  * Array references are written inside square brackets
+  * Hash references are written inside curly braces
+
+### Sigils
+
+Perl variables are indexed with "sigils" to signify their type. This can be a little tricky for Perl beginners, so let's review quickly.
+
+* `$x` is a scalar (a number, string, or reference to one of the other types).
+* `@x` is an array.
+* `$x[0]` is a scalar (its sigil is `$`), whose value is the first element of the array `@x`. Perl knows that you're referring to an the array `@x` because you're indexing with square brackets.
+* `%h` is a hash.
+* `$h{"bar"}` is a scalar (its sigil is `$`), and it is the value of `%h` associated with the key `"bar"`. Perl nows you're referring to the hash `%h` because you're indexing it with curly braces.
+* Because sigils make the langauge very explicit, it is possible (though not advisable) to have a hash `%u`, an array `$u`, and a scalar `$u`, which have nothing to do with each other.
+* `foo` (without a preceding sigil) is called a "bareword." There are Parsing rules for barewords are If there is a function with no arguments called `foo`, 
+
+
+### Caveats
+
+* There are no key errors and no index errors in Perl
+* If you try to reference a key or index that does not exist, the hash or array will automatically create 
+* If you try to operate on an undefined value, it will define itself to be compatible with the operation you use and default to zero, the empty string, the empty array/hash, etc.
+
+
+### Lexical scoping
+
+Perl is lexically scoped; in general, when using `ni`, you will want to prefix every variable you define within a Perl mapper as scoped to the block, using the keyword `my`, as in `$ ni n10 p'my $x = 0; r $x'`
+
+The exception to this rule is for variables defined within a begin block. In this case `my` is not used at all. See: `$ ni n10 p'^{$x = 0} $x += 1; r $x'`.
+
+### Reference Basics
+
+* To convert an object to a reference, use a backslash.
+* Example: `my $x = "nice ref!"; my $xref = \$x; r $xref` will print something like `SCALAR(0x7fc809a8ed20)`. 
+* To convert a reference back to a particular value type, wrap the reference in curly braces and prepend with the correct sigil.
+* Example: `$ ni 1p'my $x = "nice ref!"; my $xref = \$x; r ${$xref}'` prints `nice ref!`.
+* The curly braces are not always necessary, so you may also see confusing-at-first-blush compound sigils, as in: `$ ni 1p'my $x = "nice ref!"; my $xref = \$x; r $$xref'` which also prints `nice ref!`.
+* Dereferencing is time-consuming and can significantly degrade performance when used carelessly.
+
+  
+## Field Selection
+
+### `a` through `l`: Short field access
+  * `a` through `l` are functions that access the first through twelfth fields of an input data stream. 
+  * `$ ni i[one two three four] p'r d, b'` prints `four	two` to the output stream. 
+* In the context of hash lookup, the functions `a` through `l` without parentheses will be interpreted as strings; in this case, you must use the more explicit `a()` syntax. 
+  * `$h{a}` tries to retrieve the key associated with the string `"a"` from the hash `%h`.
+  * `$h{a()}` or `$h{+a}` tries to retrieve the key associated with the value of the function `a`, _i.e._ the value in the first column.
+
+```
+$ ni ihi p'my %h = ("hi", "bye", "a", "eiou");
+           r $h{a}, $h{+a}, $h{a()}'
+``` 
+returns `aeio	bye	bye`. Inside hash-lookup braces (among other places), prefixing a bareword with the `+` operator tells Perl to interpret it as a function call. This is useful in a number of contexts where 
+
+### `F_`, `FM`, `FT`, `FR` : Explicit field access
+
+* `F_`: returns the values of the tab-separated columns as an array.
+  * `F_(@inds)` will return the values of 
+* `FM`: returns the index of the largest defined index in `F_` (`== @r = F_; $#r`)
+* `FR $n`, `FT $n`: `F_` fRom, `F_` To
+  * `FR $n` returns `F_` starting from and including position `$n` to the end of `F_`. 
+  * `FT $n` returns `F_` starting from index `0` up to and including index `$n-1`. 
+  * `F_ == FT $n, FR $n`.
+
+## `rp'...'`: Take rows with Perl
+
+This operator combines the `r` operator from the [operator cheatsheet](cheatsheet_op.md) with Perl, and takes every line that evaluates to true.
+
+* `$ ni <data> rp'<...>'` - take rows where the Perl snippet `<...>` returns a truthy value in Perl. 
+* Be careful using `rp'...'` with numeric values, because `0` is falsey in Perl. `$ ni n10 p'r a, 0' rp'b'` returns an empty stream. 
+
+## Important Perl Builtins
+
+If you are unfamiliar with these functions, they are explained more extensively in [Chapter 2 of `ni` by example](ni_by_ex_2.md).
+
+
+### String Utilities
+* `lc`
+* `uc`
+* `substr`
+* `split`
+* `join`
+
+### List Utilities
+* `map`
+* `grep`
+* `keys`
+* `values`
+ 
+### Regular Expressions
+* `$<v> =~ /regex/` -- standard regex form
+* `$<v> =~ s/regex//` -- substitution
+* `$<v> = tr/regex//` -- transliteration (also can be done with `y/regex//`)
+
+### Logical and Existence Operators
+* `exists` -- truthy when a key exists in a hash, falsey otherwise
+* `defined` -- truthy when a value is not `undef`, falsey otherwise
+* `&&`, `||` -- high priority boolean operators; use to perform boolean operations directly on scalar values 
+* `//` -- "logical-defined OR"; `//` is identical to `||`, except it returns the first value if it is *defined* rather than if it is *truthy*.
+* `&&`, `||`, and `//` return the last value evaluated, unlike the corresponding C operators, which return `0` and `1`.
+* `and`, `or` -- low priority boolean operators; use to logically join compound statements
+
+
+### BEGIN and END Blocks
+* `p'^{<begin_block>} ...'`: Begin block
+  * A begin block is indicated by attaching a caret (`^`) to a block of code (encolsed in `{ }`). Outside of begin blocks, the Perl code is evaluated for every row; inside a begin block, the code is evaluated once and this evaluation occurs before any other code in the mapper is evaluated.
+  * Begin blocks are useful for converting data closures to Perl data structures, and defining things like constants and counters that should be maintained over runs with different rows.
+* `p'...; END {<end_block>}'`
+  * Similar to a begin block, these run only once the last line of the input stream has been processed. These are useful for emitting the value of counters and data structures that have been accumulated over all of the rows of a computation.
+
+
+
+## Useful `ni`-specific Perl Subroutines
+
+
+### Line Utilities
+
+* Line Reading
+	* `rl($n)`: read lines
+	  * returns an array consisting of the next `$n` lines of the stream, including the current line.
+	  * When `rl` is executed without an argument, the current line is ignored, the next line in the stream is added to the pushback queue. 
+	* `pl($n)`: peek lines
+	  * `pl` ignores the current line, peeks ahead `$n` lines until the global pushback queue is full. Once the pushback queue is full, it does not pull in additional lines, and returns the value of the pushback queue.
+* Buffered Readahead
+   * Whereas `rl` and `pl` tab split their data, the buffered readahead options do not.
+	* `rw`: read while
+	  * `@lines = rw {condition}`: read lines while a condition is met
+	* `ru`: read until
+	  * `@lines = ru {condition}`: read lines until a condition is met
+	* `re`: read equal
+	  * `@lines = re {condition}`: read lines while the value of the condition is equal.
+	  * `@lines = re { b }` will put text lines into `@lines` where `b` is constant.
+
+
+### List Utlities
+
+* List Access
+  * `first(@r)`: first element of `@r` (`== $r[0]`)
+  * `final(@r)`: last element of `@r` (`== $r[-1]`)
+  * `rando(@r)`: a random element of `@r`
+* Math and Logic Operations
+  * `max(@r)`, `min(@r)`: numeric `max` and `min`
+  * `maxstr(@r)`, `minstr(@r)`: lexicographic `max` and `min`
+  * `deltas(@r)`, `totals(@r)`: differences of consecutive elements, and running sum of elements.
+  * `argmax(&block, @r)`, `argmin(&block, @r)`: returns the value of the element of `@r` that maximizes (minimizes) `&block`.
+  * `indmax(&block, @r)`, `indmin(&block, @r)`: returns the index of the element of `@r` that maximizes (minimizes) `&block`.
+  * `any(&block, @r)`, `all(&block, @r)`
+     * Returns logical `or` (`and`) of `&block` applied to all of the elements of `@r`.
+* Count and Unique
+  * `uniq(@r)`: list of unique elements of `@r`
+  * `freqs(@r)`: hash of the count of each unique element in `@r`
+    * `freqs` returns a reference; it's commonly used as `p'...; my %h = %{freqs @r}; ...'`.
+* Functional Programming
+  * `take($n, @r)`, `drop($n, @r)`: take or drop the first `$n` elements of `@r` and return the result.
+  * `take_while(&block, @r)`, `drop_while(@r, &block)`: takes or drops elements from `@r` while the block `&block` is true. 
+  * `take_every($n, @r)`, `take_even(@r)`, `take_odd(@r)`: takes every `$n`th value, every value at an even index in the list, and every odd value of the list.
+  * `reduce(&block, $start, @r)` executes 
+     * Returns the result of iteratively applying `$start = &block($start, shift @r)`.
+  * `reductions(&block, $start, @r)`
+      * Returns a list consisting of all of the intermediate values computed in `reduce`.
+* Cartesian Product
+  * `cart`: Cartesian Product
+* Functions on arrays of text lines
+  * A number of functions described later (namely `re`, `ru`, `rw`) will read in lines of text without tab-splitting them.   
+  * `a_`, `b_`, and others: get column from lines
+     * 
+  * `a__`, `b__`, and others: get many columns from lines
+     * 
+
+### Math Utilities
+* `sum`, `prod`, `mean`, `log2`: standard math functions
+* `quant($x, $q)`: rounds `$x` to the nearest `$q`.
+* `dot`, `cross`: scalar and vector products
+* `l1norm`, `l2norm`: L1 and L2 vector norms
+* `interp($f, @r)`: interpolate `$f` numbers between every pair of values in `@r`.
+* `proj($v1_ref, $v2_ref)`, `orth($v1_ref, $v2_ref)`: vector projection 
+* `rdeg`, `drad`: radius to degrees
+* `prec`: polar to rectangular
+* `rpol`: rectangular to polar
+* `entorpy`: Shannon Entorpy in bits
+* `haversine`: haversine formula for arc length
+
+### Geographic Functions
+The operators in this section refer specifically to the 
+`$ ni <data> p'...'`
+
+* `llg` and `ghe`: Latitude and Longitude to geohash
+  * `ghe` is a synonym of `llg` provided for backwards compatibility. `llg` should be favored as more explicit.
+  * `llg($lat, $lng, $precision)`
+    * If `$precision > 0`, returns a geohash with `$precision` base-32 characters of precision. 
+    * If `$precision < 0`, returns a geohash with `$precision` (base-2) bits of precision.
+* `gll` and `ghd`: geohash to latitude and longitude
+  * `ghd` is a synonym of `gll` provided for backwards compatibility. `gll` should be favored as more explicit.
+  * `gll($gh_base32)`
+     * Returns the corresponding latitude and longitude (in that order) of the center point corresponding to that geohash.
+  * `gll($gh_int, $precision)`
+    * If the number of bits of precision is specified, `gll` will decode the input integer as a geohash with $precision bits. Returns the  latitude and longitude (in that order) of the southwesternmost point corresponding to that geohash.
+* `g3b` and `gb3`: geohash transcoding
+  * 
+* `ghb`: geohash box
+  * `ghb` takes a base-32 geohash and returns the latitude and longitudes corresponding to the north, south, east, and west corners of a box on the earth enclosing this point.
+* `lat_lon_dist`: arc distance between points on the earth
+  * `lat_lon_dist` computes the distance in kilometers between two points on the earth, accounting for the earth's curvature.
+* `gh_dist`: arc distance between two base-32 geohashes
+  * Similar to `lat_lon_dist`, this computes the distance along the earth between the centroids of two geohashes.
+
+#### Tagged Geohashes
+A tagged geohash is a binary data format that is used to indicate the precision and value of a geohash in a single 8-byte value.
+
+### Time Functions
+* `tpe`: time parts to epoch
+  * `tpe(@time_pieces)`: Returns the epoch time and assumes that the pieces are year, month, day, hour, minute, and second, in that order.
+  * `tpe($time_format, @time_pieces)`: Returns the epoch time, using `$time_format` to determine what the ordered `@time_pieces` are.
+* `tep`: time epoch to parts
+  * `tep($epoch_time)`: returns the year, month, day, hour, minute, and second in human-readable formatfrom the epoch time.
+  * `tep($time_format, $epoch_time)`: returns the specified parts of the date using following `$time_format`.
+* `tsec`: Timezone offset in seconds
+  * `tep($raw_timestamp + $tsec($lat, $lng))` returns the approximate date and time at the location `$lat, $lng` at a Unix timestamp of `$raw_timestamp`.
+* `i2e($iso_8601_time_string)`: ISO-8601 to Epcoh
+  * Converts a time in ISO-8601 form to an epoch timestamp.
+* `e2i($timestamp, $timezone)`: Epoch to ISO-8601
+  * Converts a timestamp in epoch form to ISO-8601
+* `ym`: year and month
+  * Input: a unix timestamp (seconds since the epoch)
+  * Output: the year and month
+  * Example: `$ ni i1508348294 p'r ym a'` returns `2017_10`
+* `how`: hour of day and weekday
+  * Input: a unix timestamp (seconds since the epoch)
+  * Output: the day of week and hour of day
+  * Example: `$ ni i1508348294 p'r how a'` returns `Wed_17`
+* `ttd`, `tth`, `tt15`, `ttm`: Truncate to day, hour, quarter-hour, minute
+  * Input: a unix timestamp (seconds since the epoch)
+  * Output:
+      * `ttd`: the first second of the day that of the argument
+      * `tth`: the first second of the hour of the argument
+      * `tt15`: the first second of the quarter-hour of the argument 
+      * `ttm`: the first second of the minute of the argument
+  * Example: `$ ni i1508348294 p'r ttd a, tth a, tt15 a, ttm a'` returns `1508284800	1508346000	1508347800	1508348280`
+* `ghl($timestamp, $gh)` and `gh6l($timestamp, $gh60)`: geohash localtime and geohash-60 localtime
+  * Input:
+  * Output:
+  * Example:
+
+
+### File Utilities
+
+* File Reading
+  * `rf`: reads the lines of a file and returns the result as a newline-separated string
+  * `rfl`: reads the lines of a file and returns each line as one element of an array.
+  * `rfc`: does `rf`, and returns the output after `chomp`ing any trailing newlines.
+* File Writing
+  * `wf`: write to file
+  * `af`: append to file
+
+### Directory Operations
+  * `dirbase`: splits the path path `a/b/c` into the base directory name and the final directory or filename. `$ ni ix/y/z p'r dirbase a` returns `x/y	z`.
+  * `basename`: splits the last filename or directory off a path. `$ ni ix/y/z p'r dirbase a` returns `x/y`.
+  * `dirname`: splits the last filename or directory off a path. `$ ni ix/y/z p'r dirname a` returns `z`.
+  * `mkdir_p`: make a directory and all necessary enclosing directories.
+
+
+### String Utilities
+* `startswith($target, $prefix)`, `endswith($target, $suffix)`: returns `1` if the `$target` string starts with (ends with) `$prefix` (`$suffix`).
+* `alph($n)`: returns the `$n`th lowercase letter of the alphabet.
+
+### Hash Utilities
+
+* `kbv_dsc(%h)`, `kbv_asc(%h)`: returns the keys of `%h` sorted by the associated value
+* `merge_hashes(\%h1, \%h2, \%h3, ...)`, `merge_two_hashes`: merges two hashes using the following recursive strategy:
+  * If a key exists in the first hash or the second hash, but not both, add the key and its associated value to the first hash
+  * If the key exists in both the first and se
+* `sum_hashes`, `sum_two_hashes`: 
+* `accumulate_hashes`, `accumulate_two_hashes`
+* Hash Constructors
+  * `ab_` and others
+  * `abS` and others
+  * `abSNN` and others
+  * `abC` and others
+* `p'%h = <col_1><col_2>_ @lines`: Hash constructor
+  * Hash constructors are useful for filtering large datasets without having to invoke an expensive sort or an HDFS join. Hash constructors are useful inside of begin blocks, often using the following workflow:
+    * Generate a list of things you want to filter, and put it in a data closure. `::ids[list_of_ids]`
+    * Convert the data closure to a hash using a begin block (`^{%id_hash = ab_ ids}`)
+    * Filter another dataset (`ids_and_data`) using the hash (`exists($id_hash{a()})`)
+    * `$ ni ::ids[list_of_ids] ids_and_data rp'^{%id_hash = ab_ ids} exists($id_hash{a()})'`
+
+### JSON Utilities
+
+* Full-Featured but slow
+*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
+      *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
+      *  Here's an example:
+
+```
+ni //license FWpF_ p'r pl 3' \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \>jsons
+```
+
+  * `json_decode`
+* Partial-Featured but fast
+  * `get` methods 
+ 	 * `get_scalar($k, $json_str)`
+ 	 * `get_array($k, $json_str)`
+ 	 * `get_hash($k, $json_str)`
+ * `merge` methods
+ 	 * `string_merge_hashes($hash_str1, $hash_str2)`: merges two hashes 
+ * `delete` methods
+   * `delete_scalar($k, $json_str)` 
+   * `delete_array($k, $json_str)` 
+   * `delete_hash($k, $json_str)` 
+
+
+### Debugging Utilities
+* `dump_data`
+
+
+## Basic Perl Reducers
+
+The operations here are generally dependent on sorting to function properly, which can make them very expensive to execute on a single machine.
+
+### Streaming Reduce
+These operations encapsulate the most common types of reduce operations that you would want to do on a dataset; if your operation is more complicated, it may be more effectively performed using the buffered readahead and line-array reducers.
+
+* `sr`: Reduce over entire stream
+  * `$ ni n1E5p'sr {$_[0] + a} 0'`: sum the integers from 1 to 100,000
+* `se`: Reduce while equal
+  * `@final_state = se {reducer} \&partition_fn, @init_state`
+* `sea` through `seq`: Reduce with partition function `a()...q()`
+* `rc`: Compound reduce
+* `rfn`: Custom compound reduce
+
+
+
+
+## Multiline Reducers
+These operations can be used to reduce the data output by the readahead functions. Look at the input provided by the first perl statement, 
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
+
+`rea` is the more commonly used shorthand for `re {a}`
+
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
+* `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ rea'` 
+
+`reb` reduces where both of the first _two_ columns are equal, and `rec` reduces where the first _three_ columns, etc.
+
+## Data Closures in Perl Mappers
+
+Data closures are useful in that they travel with `ni` when `ni` is sent somewhere else, for example over ssh, or as a jar to a Hadoop cluster. Importantly, closures can be accessed from within Perl snippets by using their name.
+
+* `closure_name::[...]`: Create a data closure
+  * Any legal `ni` snippet that is executable on the machine from whose context `ni` is being executed.
+  * The closure can be referenced within a Perl snippet as  `p' ... closure_name ...'`
+* `a_` through `l_`: Multiline Selection Operators
+  * Data closures are transferred as an array of lines; in order to access data from a specific column of the data closure, you will need to use multiline operators `a_` through `l_`, which are the multilineanalogs to the line-based operators `a/a()` through `l/l()`.
+  * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a_ data'` works, because `a_` is operating on each element of the array.
+  * `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a(data)'` and `ni ::data[n1p'cart [1,2], [3,4]'] n1p'a data'` will raise syntax errors, since `a/a()` are not prepared to deal with the more than one line data in the closure.
+
+## Intermediate Perl Utilities
+
+### Functions
+
+In `ni` you generally should not be defining Perl functions (also called "subroutines").
+
+Perl function definitions are denoted with the keyword `sub`.
+
+Perl functions are often written with a signature that allows them to be written without parentheses. In general, you should use the simplest written form of a function.
+
+### References
+
+* You cannot nest lists or hashes in Perl like you can in Python, and everything that is passed into a Perl function is passed as a flat list;
+* Similarly, Perl subroutines also can only return scalars and flat lists. If you want to return multiple lists, or a hash, they must be returned as references.
+
+
+
+
+## Annoyingly Advanced Perl
+* `use strict` and the `::` prefix in a Perl Environment
+  * When `use strict` is enabled, Perl will complain when you try to create a variable in a Perl snippet that does not start with `::`.
+  * The reasons for this are very specific to Perl; if you are a true Perl nerd, you can look them up, but you do not need to know them if you just accept that variables need to start with `::` when you apply `use strict`.
+  * It is probably a good idea to `use strict` when the variables you define are sufficiently complex; otherwise you're probably okay not using it.
+
+### Global variables you shouldn't touch
+*  `@F`: array of values of the current line. 
+ *  Since many other functions depend on `@F`, it is recommended that you use `F_` to access the data indirectly rather than through `@F` itself.
+ *  `@F` is re-set every time a fresh line hits the beginning of the Perl mapper.
+* `@q`: global pushback queue
+  * `@q` persists between fresh lines, and allows past lines to be stored. It is used by `rl` and `pl` to store lines, as well as for the buffered readahead functions `re`, `ru`, `rw`
+  * Like `@F`, many functions rely on `@q`; you should not edit or access it directly, and instead use the functions that interact with it.
+  * If you want to to store your own array of lines that persists through fresh lines, use a BEGIN block, for example`p'^{@x;} ...; push @x, $data; ...`
 126 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the

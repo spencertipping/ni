@@ -20,9 +20,13 @@ $(function () {
   if (document.location.hash === '') document.location.hash = '/root';
 
   $('body').on('click', 'a', function (e) {
-    document.location.hash = encodeURI($(this).attr('href'));
-    e.preventDefault();
-    return false;
+    var href = $(this).attr('href');
+    if (!/^http/.test(href))
+    {
+      document.location.hash = encodeURI($(this).attr('href'));
+      e.preventDefault();
+      return false;
+    }
   });
 
   $('#explain').on('keyup change', reload_explanation);
