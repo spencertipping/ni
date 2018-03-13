@@ -1726,6 +1726,14 @@
 	    <empty>?
 	  ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
 	                        [hadoop_streaming_op [], undef, []]}
+	| 'RR' (
+	    <number>
+	    <empty>?
+	  ) -> {$$_[0]} -> {configure_op {'Hjr' => "$_"},
+	                        [hadoop_streaming_op
+	                          [perl_mapper_op 'print "$.\t$_\n";()'],
+	                          undef,
+	                          [cols_op 2, 1, -1]]}
 	| 'S' (
 	    <empty>?
 	    (

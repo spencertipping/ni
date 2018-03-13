@@ -10293,7 +10293,7 @@ sub hadoop_generic_options(@) {
 
   @output_jobconf;
 }
-274 core/hadoop/hadoop.pl
+283 core/hadoop/hadoop.pl
 # Hadoop operator.
 # The entry point for running various kinds of Hadoop jobs.
 
@@ -10540,6 +10540,15 @@ defhadoopalt DS => pmap q{my (undef, $m, $c, $r) = @$_;
 defhadoopalt R =>
   pmap q{configure_op {'Hjr' => "$_"},
                       [hadoop_streaming_op [], undef, []]},
+  pc number;
+
+# HRR == HR, but really randomize across reducers
+defhadoopalt RR =>
+  pmap q{configure_op {'Hjr' => "$_"},
+                      [hadoop_streaming_op
+                        [perl_mapper_op 'print "$.\t$_\n";()'],
+                        undef,
+                        [cols_op 2, 1, -1]]},
   pc number;
 
 #Hadoop quick configuration.

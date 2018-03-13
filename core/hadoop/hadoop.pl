@@ -246,6 +246,15 @@ defhadoopalt R =>
                       [hadoop_streaming_op [], undef, []]},
   pc number;
 
+# HRR == HR, but really randomize across reducers
+defhadoopalt RR =>
+  pmap q{configure_op {'Hjr' => "$_"},
+                      [hadoop_streaming_op
+                        [perl_mapper_op 'print "$.\t$_\n";()'],
+                        undef,
+                        [cols_op 2, 1, -1]]},
+  pc number;
+
 #Hadoop quick configuration.
 #This will be useful for spinning up more customizable jobs once I
 #figure out exactly how configure_op works.
