@@ -4703,7 +4703,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-343 core/pl/util.pm
+288 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4731,6 +4731,8 @@ sub zip {
 
 sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
 sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]}
+sub take_last($@) {my ($n, @xs) = @_; @xs[($#xs-$n)..$#xs]}
+sub drop_last($@) {my ($n, @xs) = @_; @xs[0..($#xs-$n-1)]}
 
 sub take_while(&@) {
   local $_;
@@ -4895,10 +4897,29 @@ sub af {
   $f;
 }
 
-sub testpath {
-  $_ =~ s/-\*/-0000\*/;
-  $_;
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
 }
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
+sub alph($) {chr($_[0] + 64)}
+
+sub restrict_hdfs_path ($$) {
+  my ($path, $restriction) = @_;
+  my ($zeroes) = ($restriction =~ /^1(0*)$/);
+  if (endswith $path, "part-*") {
+    $path =~ s/part-\*/part-$zeroes\*/;
+  } else {
+    $path = $path . "part-$zeroes*"
+  }
+  $path;
+}
+
 
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
 our @base64_digits = split //, $base64_digits; 
@@ -4957,82 +4978,6 @@ sub hyphenate_uuid($) {
   join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
             substr($_[0], 12, 4), substr($_[0], 16, 4),
             substr($_[0], 20))
-}
-
-sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
-}
-
-sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
-}
-
-# Indexed Hash Methods
-#
-
-sub ihash_get {
-  my @raw_output = ihash_all(@_);
-  map {first grep defined, @$_} @raw_output;
-}
-
-sub ihash_def {
-  my @raw_output = ihash_all(@_);
-  map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
-}
-
-sub ihash_uniq {
-  my @raw_output = ihash_all(@_);
-  map {my @uniq_out = uniq grep defined, @$_; \@uniq_out;} @raw_output;
-}
-
-sub ihash_freqs {
-  my @raw_output = ihash_all(@_);
-  map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
-} 
-
-
-# OK, let's solve this problem: You want to look up the 
-# same key in multiple hashes that would be exceedingly large
-# if you stored them in memory.
-# These are special hashes!
-# Each hash has a large number of entries but a small
-# number of unique but long keys, so you store the keys in an array
-# and store indexes of that array as the values of a hash.  
-# I'll call that pair of hash with indices as values with the array
-# an indexed hash, or ihash for short.
-# ihash_all takes as input a reference to an array of keys 
-# (or single key which is cast to an array of one key, $ks_ref;
-# a minimum key length $min_key_length, and an array of ihashes.
-# ihash_all looks up each of the keys in @$ksref in each of 
-# the ihashes, and then returns all matches as an array of arrays.
-
-sub ihash_all {
-  my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
-  $ks_ref = [$ks] unless ref $ks_ref; 
-  my @index_hash_refs = take_even @hash_and_val_refs;
-  my @hash_val_refs = take_odd @hash_and_val_refs;
-  my @potential_keys = 
-    map{ my $k = $_; my @r = $min_key_length..length($k);
-         map {substr($k, 0, $_)} @r } @$ks_ref; 
-  my @output;
-  for (0..$#hash_val_refs) {
-    my %index_hash = %{$index_hash_refs[$_]};
-    my @hash_vals = @{$hash_val_refs[$_]};
-    my @val_indices = @index_hash{@potential_keys};
-    my @output_vals = @hash_vals[@val_indices];
-    push @output, \@output_vals;
-  }
-  @output;
-}
-
-sub alph($) {chr($_[0] + 64)}
-
-
-BEGIN {
-  *h2b64 = \&hex2base64;
-  *b642h = \&base642hex;
 }
 
 
@@ -14525,7 +14470,7 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
 
 The classic word count program for Hadoop can be written like this:
 
->`$ ni //ni HS[FWpF_]_c`
+>`$ ni //ni HS[FW Z1]_c`
 
 If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
 
