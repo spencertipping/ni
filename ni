@@ -4703,7 +4703,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-288 core/pl/util.pm
+307 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4992,6 +4992,25 @@ sub hyphenate_uuid($) {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
+
+# Debug for hdfsc
+# See ../hadoop/hdfsjoin.pl for more details
+
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount);
+  return "$prefix*$compact_partfile_index$suffix";
+}
+
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
 127 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
@@ -10522,7 +10541,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-139 core/hadoop/hdfsjoin.pl
+137 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -10618,49 +10637,47 @@ defresource 'hdfsjname',
 # - the number of leading zeroes in the input path must match
 #     the number of zeroes in the hdfsc://<number> path
 
-sub stem_partfile_path($$) {
-  my ($fn, $shift_amt) = @_;  
-  my ($part, $idx, $rest) = ($fn =~ /^(part[^\d]+)(\d+)(.*)/);
-  $part . "*" . substr($idx, $shift_amt) . $rest;
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;  
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount); 
+  return "$prefix*$compact_partfile_index$suffix";
 }
 
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
+
+sub generate_compact_path($$) {
+  my ($map_path, $max_files_per_mapper) = @_;
+  my @map_path_parts = split /\//, $map_path;
+  my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
+  my $map_filename  = (split /\//, $map_path)[-1];
+  my $compact_tail = generate_compact_tail($map_filename, $max_files_per_mapper);
+  my $compact_path = shell_quote join "/", $map_folder, $compact_tail;
+  return $compact_path;
+}
+
+
 defresource 'hdfsc',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+  read => q{soproc {my $compact_factor = $_[1];
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt;
-                    if ($n_files == 10) {$shift_amt = 1;}
-                    elsif ($n_files == 100) {$shift_amt = 2;}
-                    elsif ($n_files == 1_000) {$shift_amt = 3;}
-                    elsif ($n_files = 10_000) {$shift_amt = 4;}
-                    elsif ($n_files = 100_000) {$shift_amt = 5;}
-                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = shell_quote join "/", $map_folder, $stem_path;
+                    my $compact_path = generate_compact_path($map_path, $compact_factor);
+                    my $hadoop_name = conf 'hadoop/name';
                     sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
  
 defresource 'hdfscname',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+  read => q{soproc {my $compact_factor = $_[1];
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    print "$map_path\t$map_folder\n";
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt;
-                    if ($n_files == 10) {$shift_amt = 1;}
-                    elsif ($n_files == 100) {$shift_amt = 2;}
-                    elsif ($n_files == 1_000) {$shift_amt = 3;}
-                    elsif ($n_files = 10_000) {$shift_amt = 4;}
-                    elsif ($n_files = 100_000) {$shift_amt = 5;}
-                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = join "/", $map_folder, $stem_path;
+                    my $compact_path = generate_compact_path($map_path, $compact_factor);
+                    my $hadoop_name = conf 'hadoop/name';
                     my $files_per_mapper = scalar hadoop_ls $compact_path;
-                    print "$map_path\t$stem_path\t$files_per_mapper\t$compact_path\n"; } @_};
+                    print "$map_path\t$compact_path\t$files_per_mapper\t\n"; } @_};
 
 2 core/pyspark/lib
 pyspark.pl

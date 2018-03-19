@@ -286,3 +286,23 @@ sub hyphenate_uuid($) {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
+
+# Debug for hdfsc
+# See ../hadoop/hdfsjoin.pl for more details
+
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount);
+  return "$prefix*$compact_partfile_index$suffix";
+}
+
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
+
