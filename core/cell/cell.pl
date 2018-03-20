@@ -205,7 +205,7 @@ defshort 'cell/ag', pmap
   q{
     my $col  = $_;
     my $fs   = "0..$col";
-    my $se   = "se" . ("a".."z")[$col];
+    my $se   = "se" . ("A".."Z")[$col];
     my $next = ("a".."z")[$col + 1];
     perl_mapper_op "
       my \@fs = F_($fs);
@@ -217,7 +217,7 @@ defshort 'cell/sg', pmap
   q{
     my $col  = $_;
     my $fs   = "0..$col";
-    my $se   = "se" . ("a".."z")[$col];
+    my $se   = "se" . ("A".."Z")[$col];
     my $next = ("a".."z")[$col + 1];
     perl_mapper_op "r F_($fs), $se { \$_[0] + $next } 0";
   }, colspec1;

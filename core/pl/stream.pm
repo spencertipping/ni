@@ -105,8 +105,17 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
+BEGIN {ceval sprintf '
+       our $warned_about_lowercase_reX = 0;
+       sub re%s() {
+         warn "WARNING: the lowercase re<col> functions are deprecated "
+            . "because ref conflicts with the perl ref() builtin; you "
+            . "should use re%s instead" unless $warned_about_lowercase_reX++;
+         re {join "\t", @F[0..%d]}}',
+       $_, uc, ord($_) - 97 for 'b'..'l'}
+
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
-                     $_, ord($_) - 97 for 'b'..'l'}
+       $_, ord($_) - 65 for 'B'..'Z'}
 
 # Streaming aggregations.
 # These functions are like the ones above, but designed to work in constant
@@ -121,6 +130,6 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
-                      }', $_, ord($_) - 97 for 'a'..'l'}
+                      }', $_, ord($_) - 97 for 'A'..'Z'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
