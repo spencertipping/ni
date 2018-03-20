@@ -4703,7 +4703,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-343 core/pl/util.pm
+307 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4731,6 +4731,8 @@ sub zip {
 
 sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
 sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]}
+sub take_last($@) {my ($n, @xs) = @_; @xs[($#xs-$n)..$#xs]}
+sub drop_last($@) {my ($n, @xs) = @_; @xs[0..($#xs-$n-1)]}
 
 sub take_while(&@) {
   local $_;
@@ -4895,10 +4897,29 @@ sub af {
   $f;
 }
 
-sub testpath {
-  $_ =~ s/-\*/-0000\*/;
-  $_;
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
 }
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
+sub alph($) {chr($_[0] + 64)}
+
+sub restrict_hdfs_path ($$) {
+  my ($path, $restriction) = @_;
+  my ($zeroes) = ($restriction =~ /^1(0*)$/);
+  if (endswith $path, "part-*") {
+    $path =~ s/part-\*/part-$zeroes\*/;
+  } else {
+    $path = $path . "/part-$zeroes*"
+  }
+  $path;
+}
+
 
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
 our @base64_digits = split //, $base64_digits; 
@@ -4959,82 +4980,6 @@ sub hyphenate_uuid($) {
             substr($_[0], 20))
 }
 
-sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
-}
-
-sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
-}
-
-# Indexed Hash Methods
-#
-
-sub ihash_get {
-  my @raw_output = ihash_all(@_);
-  map {first grep defined, @$_} @raw_output;
-}
-
-sub ihash_def {
-  my @raw_output = ihash_all(@_);
-  map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
-}
-
-sub ihash_uniq {
-  my @raw_output = ihash_all(@_);
-  map {my @uniq_out = uniq grep defined, @$_; \@uniq_out;} @raw_output;
-}
-
-sub ihash_freqs {
-  my @raw_output = ihash_all(@_);
-  map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
-} 
-
-
-# OK, let's solve this problem: You want to look up the 
-# same key in multiple hashes that would be exceedingly large
-# if you stored them in memory.
-# These are special hashes!
-# Each hash has a large number of entries but a small
-# number of unique but long keys, so you store the keys in an array
-# and store indexes of that array as the values of a hash.  
-# I'll call that pair of hash with indices as values with the array
-# an indexed hash, or ihash for short.
-# ihash_all takes as input a reference to an array of keys 
-# (or single key which is cast to an array of one key, $ks_ref;
-# a minimum key length $min_key_length, and an array of ihashes.
-# ihash_all looks up each of the keys in @$ksref in each of 
-# the ihashes, and then returns all matches as an array of arrays.
-
-sub ihash_all {
-  my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
-  $ks_ref = [$ks] unless ref $ks_ref; 
-  my @index_hash_refs = take_even @hash_and_val_refs;
-  my @hash_val_refs = take_odd @hash_and_val_refs;
-  my @potential_keys = 
-    map{ my $k = $_; my @r = $min_key_length..length($k);
-         map {substr($k, 0, $_)} @r } @$ks_ref; 
-  my @output;
-  for (0..$#hash_val_refs) {
-    my %index_hash = %{$index_hash_refs[$_]};
-    my @hash_vals = @{$hash_val_refs[$_]};
-    my @val_indices = @index_hash{@potential_keys};
-    my @output_vals = @hash_vals[@val_indices];
-    push @output, \@output_vals;
-  }
-  @output;
-}
-
-sub alph($) {chr($_[0] + 64)}
-
-
-BEGIN {
-  *h2b64 = \&hex2base64;
-  *b642h = \&base642hex;
-}
-
 
 # Binary repacking
 # It's common to pack(), then unpack() immediately; for instance, to parse WKB
@@ -5047,6 +4992,25 @@ BEGIN {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
+
+# Debug for hdfsc
+# See ../hadoop/hdfsjoin.pl for more details
+
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount);
+  return "$prefix*$compact_partfile_index$suffix";
+}
+
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
 127 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
@@ -5175,7 +5139,11 @@ if (eval {require Math::Trig}) {
   }
 }
 }
+<<<<<<< HEAD
 135 core/pl/stream.pm
+=======
+111 core/pl/stream.pm
+>>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5238,29 +5206,6 @@ BEGIN {for my $x ('a'..'l') {
                                     @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
-BEGIN {for my $x ('a'..'l') {
-        for my $y ('a'..'l') {
-          ceval sprintf 'sub %s%sC {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
-                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
-                                                        my $val = $val_arr[$_];
-                                                        $r{$_} = $val for @keys;} 
-                                    %r}',
-                             $x, $y, $x, $y }}}
-
-# For this, we return a pair consisting of a hash reference and a 
-# reference to the lookups of the values of the hash, since
-# we'll always want to use them together. We add 1 so that the
-# 0 value will be the empty string; this will catch all of the
-# invalid lookups.
-BEGIN {for my $x ('a'..'l') {
-        for my $y ('a'..'l') {
-          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
-                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
-                                                        my $val = $_;
-                                                        $r{$_} = $val + 1 for @keys;} 
-                                    unshift @val_arr, undef;
-                                    \%r, \@val_arr}',
-                             $x, $y, $x, $y}}}
 ## Seeking functions.
 # It's possible to read downwards (i.e. future lines), which returns an array and
 # sends the after-rejected line into the lookahead queue to be used by the next
@@ -5283,6 +5228,7 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
+<<<<<<< HEAD
 BEGIN {ceval sprintf '
        our $warned_about_lowercase_reX = 0;
        sub re%s() {
@@ -5294,6 +5240,13 @@ BEGIN {ceval sprintf '
 
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
        $_, ord($_) - 65 for 'B'..'Z'}
+=======
+sub reA() {re {a}}
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+                     $_, ord($_) - 97 for 'b'..'l'}
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+                     $_, ord($_) - 65 for 'B'..'L'}
+>>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
 
 # Streaming aggregations.
 # These functions are like the ones above, but designed to work in constant
@@ -5308,7 +5261,16 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+<<<<<<< HEAD
                       }', $_, ord($_) - 97 for 'A'..'Z'}
+=======
+                      }', $_, ord($_) - 97 for 'a'..'l'}
+BEGIN {ceval sprintf 'sub se%s(&$@) {
+                        my ($f, @xs) = @_;
+                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                      }', $_, ord($_) - 65 for 'A'..'L'}
+
+>>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 67 core/pl/reducers.pm
@@ -10586,7 +10548,7 @@ defhadoopalt T => pmap q{hadoop_test_op @$_},
                        pc hadoop_streaming_lambda,
                        pc hadoop_streaming_lambda;
 
-139 core/hadoop/hdfsjoin.pl
+137 core/hadoop/hdfsjoin.pl
 # Hadoop Map (and Reduce!) Side Joins
 # This is a port of the old logic from nfu with
 # some nice improvements. hdfsj takes a stream and a folder,
@@ -10682,49 +10644,47 @@ defresource 'hdfsjname',
 # - the number of leading zeroes in the input path must match
 #     the number of zeroes in the hdfsc://<number> path
 
-sub stem_partfile_path($$) {
-  my ($fn, $shift_amt) = @_;  
-  my ($part, $idx, $rest) = ($fn =~ /^(part[^\d]+)(\d+)(.*)/);
-  $part . "*" . substr($idx, $shift_amt) . $rest;
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;  
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount); 
+  return "$prefix*$compact_partfile_index$suffix";
 }
 
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
+
+sub generate_compact_path($$) {
+  my ($map_path, $max_files_per_mapper) = @_;
+  my @map_path_parts = split /\//, $map_path;
+  my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
+  my $map_filename  = (split /\//, $map_path)[-1];
+  my $compact_tail = generate_compact_tail($map_filename, $max_files_per_mapper);
+  my $compact_path = shell_quote join "/", $map_folder, $compact_tail;
+  return $compact_path;
+}
+
+
 defresource 'hdfsc',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+  read => q{soproc {my $compact_factor = $_[1];
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt;
-                    if ($n_files == 10) {$shift_amt = 1;}
-                    elsif ($n_files == 100) {$shift_amt = 2;}
-                    elsif ($n_files == 1_000) {$shift_amt = 3;}
-                    elsif ($n_files = 10_000) {$shift_amt = 4;}
-                    elsif ($n_files = 100_000) {$shift_amt = 5;}
-                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = shell_quote join "/", $map_folder, $stem_path;
+                    my $compact_path = generate_compact_path($map_path, $compact_factor);
+                    my $hadoop_name = conf 'hadoop/name';
                     sh qq{$hadoop_name fs -text $compact_path 2>/dev/null }} @_};
  
 defresource 'hdfscname',
-  read => q{soproc {my $hadoop_name = conf 'hadoop/name';
+  read => q{soproc {my $compact_factor = $_[1];
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
-                    my @map_path_parts = split /\//, $map_path;
-                    my $map_folder = join "/", @map_path_parts[0..$#map_path_parts-1];
-                    print "$map_path\t$map_folder\n";
-                    my $map_fn  = (split /\//, $map_path)[-1];
-                    my $n_files = $_[1];
-                    my $shift_amt;
-                    if ($n_files == 10) {$shift_amt = 1;}
-                    elsif ($n_files == 100) {$shift_amt = 2;}
-                    elsif ($n_files == 1_000) {$shift_amt = 3;}
-                    elsif ($n_files = 10_000) {$shift_amt = 4;}
-                    elsif ($n_files = 100_000) {$shift_amt = 5;}
-                    else {die "# of files must be a power of 10 between 10 and 10**5, inclusive";}
-                    my $stem_path = stem_partfile_path $map_fn, $shift_amt; 
-                    my $compact_path = join "/", $map_folder, $stem_path;
-                    my $files_per_mapper = scalar hadoop_ls $compact_path;
-                    print "$map_path\t$stem_path\t$files_per_mapper\t$compact_path\n"; } @_};
+                    my $compact_path = generate_compact_path($map_path, $compact_factor);
+                    my $hadoop_name = conf 'hadoop/name';
+                    my $files_per_mapper = scalar hadoop_ls shell_unquote $compact_path;
+                    print "$map_path\t$compact_path\t$files_per_mapper\n"; } @_};
 
 2 core/pyspark/lib
 pyspark.pl
@@ -14534,7 +14494,7 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
 
 The classic word count program for Hadoop can be written like this:
 
->`$ ni //ni HS[FWpF_]_c`
+>`$ ni //ni HS[FW Z1]_c`
 
 If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
 

@@ -652,7 +652,7 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
 
 The classic word count program for Hadoop can be written like this:
 
->`$ ni //ni HS[FWpF_]_c`
+>`$ ni //ni HS[FW Z1]_c`
 
 If you've never had the opportunity to write the word count MapReduce program in another language, take a look at the state of the art in:
 

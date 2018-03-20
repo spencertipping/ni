@@ -60,29 +60,6 @@ BEGIN {for my $x ('a'..'l') {
                                     @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
                        $x, $y, $x, $y }}}
 
-BEGIN {for my $x ('a'..'l') {
-        for my $y ('a'..'l') {
-          ceval sprintf 'sub %s%sC {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
-                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
-                                                        my $val = $val_arr[$_];
-                                                        $r{$_} = $val for @keys;} 
-                                    %r}',
-                             $x, $y, $x, $y }}}
-
-# For this, we return a pair consisting of a hash reference and a 
-# reference to the lookups of the values of the hash, since
-# we'll always want to use them together. We add 1 so that the
-# 0 value will be the empty string; this will catch all of the
-# invalid lookups.
-BEGIN {for my $x ('a'..'l') {
-        for my $y ('a'..'l') {
-          ceval sprintf 'sub %s%sc {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_; 
-                                    for (0..$#key_arr) { my @keys = split /,/, $key_arr[$_]; 
-                                                        my $val = $_;
-                                                        $r{$_} = $val + 1 for @keys;} 
-                                    unshift @val_arr, undef;
-                                    \%r, \@val_arr}',
-                             $x, $y, $x, $y}}}
 ## Seeking functions.
 # It's possible to read downwards (i.e. future lines), which returns an array and
 # sends the after-rejected line into the lookahead queue to be used by the next
@@ -105,6 +82,7 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
+sub reA() {re {a}}
 BEGIN {ceval sprintf '
        our $warned_about_lowercase_reX = 0;
        sub re%s() {
@@ -130,6 +108,10 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
-                      }', $_, ord($_) - 97 for 'A'..'Z'}
+                      }', $_, ord($_) - 97 for 'a'..'l'}
+BEGIN {ceval sprintf 'sub se%s(&$@) {
+                        my ($f, @xs) = @_;
+                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                      }', $_, ord($_) - 65 for 'A'..'L'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}

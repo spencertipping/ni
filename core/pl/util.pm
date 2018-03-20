@@ -25,6 +25,8 @@ sub zip {
 
 sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
 sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]}
+sub take_last($@) {my ($n, @xs) = @_; @xs[($#xs-$n)..$#xs]}
+sub drop_last($@) {my ($n, @xs) = @_; @xs[0..($#xs-$n-1)]}
 
 sub take_while(&@) {
   local $_;
@@ -189,10 +191,29 @@ sub af {
   $f;
 }
 
-sub testpath {
-  $_ =~ s/-\*/-0000\*/;
-  $_;
+sub startswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], 0, $affix_length) eq $_[1]
 }
+
+sub endswith($$) {
+  my $affix_length = length($_[1]);
+  substr($_[0], -$affix_length) eq $_[1]
+}
+
+sub alph($) {chr($_[0] + 64)}
+
+sub restrict_hdfs_path ($$) {
+  my ($path, $restriction) = @_;
+  my ($zeroes) = ($restriction =~ /^1(0*)$/);
+  if (endswith $path, "part-*") {
+    $path =~ s/part-\*/part-$zeroes\*/;
+  } else {
+    $path = $path . "/part-$zeroes*"
+  }
+  $path;
+}
+
 
 our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
 our @base64_digits = split //, $base64_digits; 
@@ -253,82 +274,6 @@ sub hyphenate_uuid($) {
             substr($_[0], 20))
 }
 
-sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
-}
-
-sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
-}
-
-# Indexed Hash Methods
-#
-
-sub ihash_get {
-  my @raw_output = ihash_all(@_);
-  map {first grep defined, @$_} @raw_output;
-}
-
-sub ihash_def {
-  my @raw_output = ihash_all(@_);
-  map {my @def_out = grep defined, @$_; \@def_out;} @raw_output;
-}
-
-sub ihash_uniq {
-  my @raw_output = ihash_all(@_);
-  map {my @uniq_out = uniq grep defined, @$_; \@uniq_out;} @raw_output;
-}
-
-sub ihash_freqs {
-  my @raw_output = ihash_all(@_);
-  map {my %h = %{freqs grep defined, @$_}; \%h; } @raw_output;
-} 
-
-
-# OK, let's solve this problem: You want to look up the 
-# same key in multiple hashes that would be exceedingly large
-# if you stored them in memory.
-# These are special hashes!
-# Each hash has a large number of entries but a small
-# number of unique but long keys, so you store the keys in an array
-# and store indexes of that array as the values of a hash.  
-# I'll call that pair of hash with indices as values with the array
-# an indexed hash, or ihash for short.
-# ihash_all takes as input a reference to an array of keys 
-# (or single key which is cast to an array of one key, $ks_ref;
-# a minimum key length $min_key_length, and an array of ihashes.
-# ihash_all looks up each of the keys in @$ksref in each of 
-# the ihashes, and then returns all matches as an array of arrays.
-
-sub ihash_all {
-  my ($ks_ref, $min_key_length, @hash_and_val_refs) = @_;
-  $ks_ref = [$ks] unless ref $ks_ref; 
-  my @index_hash_refs = take_even @hash_and_val_refs;
-  my @hash_val_refs = take_odd @hash_and_val_refs;
-  my @potential_keys = 
-    map{ my $k = $_; my @r = $min_key_length..length($k);
-         map {substr($k, 0, $_)} @r } @$ks_ref; 
-  my @output;
-  for (0..$#hash_val_refs) {
-    my %index_hash = %{$index_hash_refs[$_]};
-    my @hash_vals = @{$hash_val_refs[$_]};
-    my @val_indices = @index_hash{@potential_keys};
-    my @output_vals = @hash_vals[@val_indices];
-    push @output, \@output_vals;
-  }
-  @output;
-}
-
-sub alph($) {chr($_[0] + 64)}
-
-
-BEGIN {
-  *h2b64 = \&hex2base64;
-  *b642h = \&base642hex;
-}
-
 
 # Binary repacking
 # It's common to pack(), then unpack() immediately; for instance, to parse WKB
@@ -341,3 +286,23 @@ BEGIN {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
+
+# Debug for hdfsc
+# See ../hadoop/hdfsjoin.pl for more details
+
+sub generate_compact_filename($$) {
+  my ($filename, $shift_amount) = @_;
+  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
+  my $compact_partfile_index =  substr($partfile_index, $shift_amount);
+  return "$prefix*$compact_partfile_index$suffix";
+}
+
+our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
+sub generate_compact_tail($$) {
+  my ($map_filename, $max_files_per_mapper) = @_;
+  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
+  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
+  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
+  return $compact_filename;
+}
+
