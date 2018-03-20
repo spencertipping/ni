@@ -5139,7 +5139,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-105 core/pl/stream.pm
+111 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5224,10 +5224,11 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
+sub reA() {re {a}}
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
                      $_, ord($_) - 97 for 'b'..'l'}
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
-                     $_, ord($_) - 65 for 'A'..'L'}
+                     $_, ord($_) - 65 for 'B'..'L'}
 
 # Streaming aggregations.
 # These functions are like the ones above, but designed to work in constant
@@ -5243,6 +5244,11 @@ BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
                       }', $_, ord($_) - 97 for 'a'..'l'}
+BEGIN {ceval sprintf 'sub se%s(&$@) {
+                        my ($f, @xs) = @_;
+                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                      }', $_, ord($_) - 65 for 'A'..'L'}
+
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 67 core/pl/reducers.pm
