@@ -129,13 +129,10 @@ defresource 'hdfsc',
  
 defresource 'hdfscname',
   read => q{soproc {my $compact_factor = $_[1];
-                    print "$compact_factor\n";
                     die "map side compact only" unless my $map_path = $ENV{mapreduce_map_input_file};
                     my $compact_path = generate_compact_path($map_path, $compact_factor);
-                    print "$compact_path\n";
                     my $hadoop_name = conf 'hadoop/name';
-                    my $files_per_mapper = scalar hadoop_ls $compact_path;
-                    print "$files_per_mapper\n";
-                    print "$map_path\t$compact_path\t$files_per_mapper\t\n"; } @_};
+                    my $files_per_mapper = scalar hadoop_ls shell_unquote $compact_path;
+                    print "$map_path\t$compact_path\t$files_per_mapper\n"; } @_};
 
 
