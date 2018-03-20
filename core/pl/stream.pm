@@ -112,6 +112,6 @@ BEGIN {ceval sprintf 'sub se%s(&$@) {
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
-                      }', $_, ord($_) - 65 for 'A'..'L'}
+                      }', $_, ord($_) - 65 for 'A'..'Z'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
