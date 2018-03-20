@@ -5139,7 +5139,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-126 core/pl/stream.pm
+128 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5249,6 +5249,8 @@ sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
                      $_, ord($_) - 97 for 'b'..'l'}
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+                     $_, ord($_) - 65 for 'A'..'L'}
 
 # Streaming aggregations.
 # These functions are like the ones above, but designed to work in constant
