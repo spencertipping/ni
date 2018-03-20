@@ -1,5 +1,4 @@
 sudo: required
-language: perl
 services:
 - docker
 before_install:

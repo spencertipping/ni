@@ -23,7 +23,6 @@ generate_gitlab_ci() {
 
 generate_travis_ci() {
   echo "sudo: required"
-  echo "language: perl"
   echo "services:"
   echo "- docker"
 
