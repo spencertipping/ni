@@ -8,7 +8,7 @@ envs=( alpine
        ubuntu-14.04
        ubuntu-16.04
        ubuntu-16.04-p3
-       ubuntu-16.10 )
+       ubuntu-18.04 )
 
 markdowns=( $(ls doc | sed 's/.md$//' ) )
 
@@ -23,6 +23,7 @@ generate_gitlab_ci() {
 
 generate_travis_ci() {
   echo "sudo: required"
+  echo "language: perl"
   echo "services:"
   echo "- docker"
 

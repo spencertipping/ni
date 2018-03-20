@@ -1,4 +1,5 @@
 sudo: required
+language: perl
 services:
 - docker
 before_install:
@@ -9,7 +10,7 @@ before_install:
 - docker pull spencertipping/ni-env-dev-ubuntu-14.04
 - docker pull spencertipping/ni-env-dev-ubuntu-16.04
 - docker pull spencertipping/ni-env-dev-ubuntu-16.04-p3
-- docker pull spencertipping/ni-env-dev-ubuntu-16.10
+- docker pull spencertipping/ni-env-dev-ubuntu-18.04
 script:
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-alpine ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-centos-6 ./test --travis
@@ -18,4 +19,4 @@ script:
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-14.04 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-16.04 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-16.04-p3 ./test --travis
-- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-16.10 ./test --travis
+- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-18.04 ./test --travis

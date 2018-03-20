@@ -26,7 +26,7 @@ ubuntu-16.04-p3:
   image: spencertipping/ni-env-dev-ubuntu-16.04-p3
   script:
     - ./test --ci
-ubuntu-16.10:
-  image: spencertipping/ni-env-dev-ubuntu-16.10
+ubuntu-18.04:
+  image: spencertipping/ni-env-dev-ubuntu-18.04
   script:
     - ./test --ci
