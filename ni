@@ -5139,11 +5139,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-<<<<<<< HEAD
-135 core/pl/stream.pm
-=======
-111 core/pl/stream.pm
->>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
+117 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5228,7 +5224,7 @@ sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ 
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
 sub rea() {re {a}}
-<<<<<<< HEAD
+sub reA() {re {a}}
 BEGIN {ceval sprintf '
        our $warned_about_lowercase_reX = 0;
        sub re%s() {
@@ -5240,13 +5236,6 @@ BEGIN {ceval sprintf '
 
 BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
        $_, ord($_) - 65 for 'B'..'Z'}
-=======
-sub reA() {re {a}}
-BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
-                     $_, ord($_) - 97 for 'b'..'l'}
-BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
-                     $_, ord($_) - 65 for 'B'..'L'}
->>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
 
 # Streaming aggregations.
 # These functions are like the ones above, but designed to work in constant
@@ -5261,16 +5250,11 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
-<<<<<<< HEAD
-                      }', $_, ord($_) - 97 for 'A'..'Z'}
-=======
                       }', $_, ord($_) - 97 for 'a'..'l'}
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
                         se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
-                      }', $_, ord($_) - 65 for 'A'..'L'}
-
->>>>>>> 30fde911cb14f2e0396bec558248c623e0d9f7a1
+                      }', $_, ord($_) - 65 for 'A'..'Z'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
 67 core/pl/reducers.pm
