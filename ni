@@ -13823,7 +13823,7 @@ Some jobs that are difficult for `ni`, and some ways to resolve them:
 * Iterating a `ni` process over directories where the directory provides contextual information about its contents.
   * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
   * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
-665 doc/ni_by_example_4.md
+668 doc/ni_by_example_4.md
 # `ni` by Example, Chapter 4 (alpha release)
 
 Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
@@ -14369,21 +14369,24 @@ export NI_HDFS_TMPDIR=/user/my_name/tmp
 
 Hexadecimal is a very common form for storing ID data in a readable format. However, it is not highly compressed, as one hex character represents 4 bits of data while occupying an 8-bit printable character. We can save 1/3 of this data by converting it to base-64 which stores 6 bits of data in a larger alphabet of 8-bit printable characters. 
 
-```bash
+```sh
+# NB: test disabled
 $ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a'
 Dt2clCTYSj64+6M8Nzhq4#
 ```
 
 Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
 
-```bash
+```sh
+# NB: test disabled
 $ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
 0edd9c9424d84a3eb8fba33c37386ae1
 ```
 
 If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
 
-```bash
+```sh
+# NB: test disabled
 $ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
 0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
 ```

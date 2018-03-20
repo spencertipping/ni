@@ -3332,24 +3332,6 @@ lazytest_case 'ni n1000 rs5
 4
 5
 LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=547
-lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''h2b64 a'\''
-' 3<<'LAZYTEST_EOF'
-Dt2clCTYSj64+6M8Nzhq4#
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=554
-lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''b642h h2b64 a'\''
-' 3<<'LAZYTEST_EOF'
-0edd9c9424d84a3eb8fba33c37386ae1
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_4.md'
-lazytest_line=561
-lazytest_case 'ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'\''hyphenate_uuid b642h h2b64 a'\''
-' 3<<'LAZYTEST_EOF'
-0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
-LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_5.md'
 lazytest_line=84
 lazytest_case 'ni n3 ^[n05 fAA]
