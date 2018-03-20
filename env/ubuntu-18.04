@@ -1,5 +1,6 @@
 FROM ubuntu:18.04
 RUN apt-get update
+RUN apt-get install -y perl
 RUN apt-get install -y sbcl sqlite curl gcc
 RUN apt-get install -y bzip2 lzop liblz4-tool xz-utils strace ruby
 RUN apt-get install -y python-numpy
