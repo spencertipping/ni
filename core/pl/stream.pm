@@ -17,8 +17,8 @@ sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
 sub pl($)  {chomp, push @q, $_ until @q >= $_[0] || !defined($_ = <STDIN>); @q[0..$_[0]-1]}
 sub F_(@)  {@_ ? @F[@_] : @F}
 sub FM()   {$#F}
-sub FR($)  {@F[$_[0]..$#F]}
-sub FT($)  {@F[0..($_[0]-1)]}
+sub FR($)  {$_[0] > 0 ? @F[$_[0]..$#F] : @F[($#F + $_[0] + 1)..$#F]}
+sub FT($)  {$_[0] > 0 ? @F[0..($_[0] - 1)] : @F[0..($#F + $_[0])]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_;
@@ -75,8 +75,6 @@ BEGIN {for my $x ('a'..'l') {
 
 # | do_stuff until rl =~ /<\//;           # iterate until closing XML tag
 #   push @q, $_;                          # important: stash rejected line
-
-# The other is to use the faceting functions defined in facet.pm.
 
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}

@@ -5139,7 +5139,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-117 core/pl/stream.pm
+115 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5159,8 +5159,8 @@ sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
 sub pl($)  {chomp, push @q, $_ until @q >= $_[0] || !defined($_ = <STDIN>); @q[0..$_[0]-1]}
 sub F_(@)  {@_ ? @F[@_] : @F}
 sub FM()   {$#F}
-sub FR($)  {@F[$_[0]..$#F]}
-sub FT($)  {@F[0..($_[0]-1)]}
+sub FR($)  {$_[0] > 0 ? @F[$_[0]..$#F] : @F[($#F + $_[0] + 1)..$#F]}
+sub FT($)  {$_[0] > 0 ? @F[0..($_[0] - 1)] : @F[0..($#F + $_[0])]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
 BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_;
@@ -5217,8 +5217,6 @@ BEGIN {for my $x ('a'..'l') {
 
 # | do_stuff until rl =~ /<\//;           # iterate until closing XML tag
 #   push @q, $_;                          # important: stash rejected line
-
-# The other is to use the faceting functions defined in facet.pm.
 
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
@@ -13823,7 +13821,7 @@ Some jobs that are difficult for `ni`, and some ways to resolve them:
 * Iterating a `ni` process over directories where the directory provides contextual information about its contents.
   * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
   * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
-668 doc/ni_by_example_4.md
+638 doc/ni_by_example_4.md
 # `ni` by Example, Chapter 4 (alpha release)
 
 Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
@@ -14345,16 +14343,13 @@ As noted above, you need to take advantage of randomization to run successful Ma
 
 
 ```sh
-$ ni ^{Hpkpo="-k1,1 -k2,2" \
-       Hpkco="-k1,1nr -k3,3"
-       Hjr=128} HS...
-  
+$ ni ^{Hpkpo="-k1,1 -k2,2" Hpkco="-k1,1nr -k3,3" Hjr=128} HS...
 ```
 
 Some caveats about hadoop job configuration; Hadoop some times makes decisions about your job for you; often these are in complete disregard of what you demanded from Hadoop. When this happens, repartitioning your data may be helpful.
 
 ```sh
-export NI_HADOOP_JOBCONF="mapreduce.job.reduces=1024"
+export NI_HADOOP_JOBCONF="mapreduce.job.reduces=256"
 ```
 
 Hadoop jobs are generally intelligent about where they spill their contents; if you want to change where in your HDFS this output goes, you can set the `NI_HDFS_TMPDIR` enviornment variable.
@@ -14363,33 +14358,6 @@ Hadoop jobs are generally intelligent about where they spill their contents; if 
 export NI_HDFS_TMPDIR=/user/my_name/tmp
 ```
 
-
-
-### Reversible Hexadecimal to Base-64 Encoding `h2b64` and `b642h`
-
-Hexadecimal is a very common form for storing ID data in a readable format. However, it is not highly compressed, as one hex character represents 4 bits of data while occupying an 8-bit printable character. We can save 1/3 of this data by converting it to base-64 which stores 6 bits of data in a larger alphabet of 8-bit printable characters. 
-
-```sh
-# NB: test disabled
-$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'h2b64 a'
-Dt2clCTYSj64+6M8Nzhq4#
-```
-
-Decreasing the amount of data stored in each step will speed up every phase of your MapReduce pipeline and decrease your program's footprint. When you need the original data back, it can be returned with `b642h`.
-
-```sh
-# NB: test disabled
-$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'b642h h2b64 a'
-0edd9c9424d84a3eb8fba33c37386ae1
-```
-
-If you really care about the dashes, they can be put back with `hyphenate_uuid`; this method only works with standard 32-character hexadecimal uuids.
-
-```sh
-# NB: test disabled
-$ ni i0edd9c94-24d8-4a3e-b8fb-a33c37386ae1 p'hyphenate_uuid b642h h2b64 a'
-0edd9c94-24d8-4a3e-b8fb-a33c37386ae1
-```
 
 ## HDFS I/O
 
