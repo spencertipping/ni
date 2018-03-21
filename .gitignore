@@ -2,5 +2,4 @@
 *.swp
 dev/docker
 /gen
-.gitlab-ci.yml
 test.log
