@@ -10,7 +10,8 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 </h1>
 
 ## Support
-- [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
+- For ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
+- For ni developers: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
 
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
