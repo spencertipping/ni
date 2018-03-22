@@ -1,6 +1,8 @@
 sudo: required
 services:
 - docker
+notifications:
+  webhooks: https://dev.spencertipping.com/hooks/8TSfdovkfELZ9mP8d/Wui8arE5N9EnKvykNoo7ieCxQbxz9p7MDXLPuqSZeuJnTgbK
 before_install:
 - docker pull spencertipping/ni-env-dev-alpine
 - docker pull spencertipping/ni-env-dev-centos-6
