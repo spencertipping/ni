@@ -9,6 +9,9 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 <img src='http://spencertipping.com/ni-osm.gif'>
 </h1>
 
+## Support
+- [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
+
 ## Features
 - [Zero-dependency installation: clone the repo and you're done](#getting-started)
 - [Launch Hadoop Streaming jobs with five characters](doc/ni_by_example_4.md#hadoop-streaming-mapreduce)
