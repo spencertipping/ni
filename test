@@ -25,6 +25,8 @@ generate_travis_ci() {
   echo "sudo: required"
   echo "services:"
   echo "- docker"
+  echo "notifications:"
+  echo "  webhooks: https://dev.spencertipping.com/hooks/8TSfdovkfELZ9mP8d/Wui8arE5N9EnKvykNoo7ieCxQbxz9p7MDXLPuqSZeuJnTgbK"
 
   echo "before_install:"
   for e in ${envs[@]}; do
