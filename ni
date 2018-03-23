@@ -5413,7 +5413,7 @@ sub in_poly
   }
   $hits & 1;
 }
-218 core/pl/time.pl
+224 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5499,11 +5499,16 @@ sub year_month_day($) {
 }
 
 # Round to day/hour/quarter-hour/minute.
-BEGIN {for my $x ('day', 'hour', 'quarter_hour', 'minute') {
-         my $dur = $x eq 'day' ? 86400 : $x eq 'hour' ? 3600 : 
-                    $x eq 'quarter_hour' ? 900 : $x eq 'minute' ? 60 : 0; 
+
+BEGIN {my %duration_in_seconds = ('day' => 86400, 
+                                  'hour' => 3600,
+                                  'quarter_hour' => 900, 
+                                  'minute' => 60,
+                                  'week' => 7*86400);
+        for my $time_period (keys %duration_in_seconds) {
+         my $seconds = $duration_in_seconds{$time_period};
          eval sprintf 'sub truncate_to_%s($) {my $ts = $_[0]; %d * int($ts/%d)}',
-                      $x, $dur, $dur}}
+                      $time_period, $seconds, $seconds}}
 
 # Approximate timezone shifts by lat/lng.
 # Uses the Bilow-Steinmetz approximation to quickly calculate a timezone offset
@@ -5623,6 +5628,7 @@ BEGIN {
   *how = \&hour_of_week;
   *ym = \&year_month;
   *ymd = \&year_month_day;
+  *ttw = \&truncate_to_week;
   *ttd = \&truncate_to_day;
   *tth = \&truncate_to_hour;
   *tt15 = \&truncate_to_quarter_hour;
