@@ -1877,6 +1877,11 @@
 ## SYNTAX
 	<colspec1>? -> {sparse_to_dense_op $_}
 
+# SHORT OPERATOR /XP
+
+## SYNTAX
+	'' -> {pivot_table_op}
+
 # SHORT OPERATOR /Y
 
 ## SYNTAX

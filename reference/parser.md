@@ -624,6 +624,7 @@
 	| 'W<' '' -> {file_prepend_name_read_op}
 	| 'W>' </qfn>? -> {file_prepend_name_write_op $_}
 	| 'X' <colspec1>? -> {sparse_to_dense_op $_}
+	| 'XP' '' -> {pivot_table_op}
 	| 'Y' <colspec1>? -> {dense_to_sparse_op $_}
 	| 'Z' (
 	  | <integer> -> {unflatten_op 0 + $_}

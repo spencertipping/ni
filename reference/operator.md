@@ -991,6 +991,35 @@
 ## IMPLEMENTATION
 	stdin_to_perl perl_mapper   $_[0]
 
+# OPERATOR pivot_table
+
+## IMPLEMENTATION
+	
+	  my $row_id = 0;
+	  my $col_id = 0;
+	  my %row_ids;
+	  my %col_ids;
+	  my @cells;
+	  my @row_labels;
+	  my @col_labels;
+	
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my ($row, $col, $v) = split /\t/;
+	    my $x = ($col_ids{$col} ||= ++$col_id) - 1;
+	    my $y = ($row_ids{$row} ||= ++$row_id) - 1;
+	    $row_labels[$y] = $row;
+	    $col_labels[$x] = $col;
+	    ${$cells[$y] ||= []}[$x] += $v;
+	  }
+	
+	  print join("\t", "", @col_labels), "\n";
+	  for my $i (0..$#cells)
+	  {
+	    print join("\t", $row_labels[$i], @{$cells[$i] || []}), "\n";
+	  }
+
 # OPERATOR port_forward
 
 ## IMPLEMENTATION

@@ -59,6 +59,33 @@ defoperator sparse_to_dense => q{
   }
 };
 
+defoperator pivot_table => q{
+  my $row_id = 0;
+  my $col_id = 0;
+  my %row_ids;
+  my %col_ids;
+  my @cells;
+  my @row_labels;
+  my @col_labels;
+
+  while (<STDIN>)
+  {
+    chomp;
+    my ($row, $col, $v) = split /\t/;
+    my $x = ($col_ids{$col} ||= ++$col_id) - 1;
+    my $y = ($row_ids{$row} ||= ++$row_id) - 1;
+    $row_labels[$y] = $row;
+    $col_labels[$x] = $col;
+    ${$cells[$y] ||= []}[$x] += $v;
+  }
+
+  print join("\t", "", @col_labels), "\n";
+  for my $i (0..$#cells)
+  {
+    print join("\t", $row_labels[$i], @{$cells[$i] || []}), "\n";
+  }
+};
+
 defoperator unflatten => q{
   my ($n_cols) = @_;
   my @row = ();
@@ -90,7 +117,9 @@ q{
   }
 };
 
-defshort '/X', pmap q{sparse_to_dense_op $_}, popt colspec1;
+defshort '/X',  pmap q{sparse_to_dense_op $_}, popt colspec1;
+defshort '/XP', pmap q{pivot_table_op}, pnone;
+
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
 defshort '/Z', palt pmap(q{unflatten_op 0 + $_}, integer),
                     pmap(q{partial_transpose_op $_}, colspec1);
