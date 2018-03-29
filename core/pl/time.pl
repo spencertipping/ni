@@ -200,6 +200,13 @@ sub time_parts_iso_8601 {
   $iso_time;
 }
 
+sub mdy_epoch {
+  my ($m, $d, $y, $h, $min, $s) = split m#[/:\s]+#, $_[0];
+  $y = $y < 100 ? $y + 2000 : $y;
+  time_pieces_epoch($y, $m, $d, $h, $min, $s);
+}
+
+
 BEGIN {
   *tep  = \&time_epoch_pieces;
   *tef  = \&time_epoch_formatted;
@@ -220,6 +227,7 @@ BEGIN {
   *i2e = \&iso_8601_epoch;
   *e2i = \&epoch_iso_8601;
   *tpi = \&time_parts_iso_8601;
+  *usfe = \&mdy_epoch
 }
 
 

@@ -207,7 +207,7 @@ sub restrict_hdfs_path ($$) {
   my ($path, $restriction) = @_;
   my ($zeroes) = ($restriction =~ /^1(0*)$/);
   if (endswith $path, "part-*") {
-    $path =~ s/part-\*/part-$zeroes\*/;
+    $path =~ s/part-\d*\*/part-$zeroes\*/;
   } else {
     $path = $path . "/part-$zeroes*"
   }

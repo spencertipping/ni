@@ -4913,7 +4913,7 @@ sub restrict_hdfs_path ($$) {
   my ($path, $restriction) = @_;
   my ($zeroes) = ($restriction =~ /^1(0*)$/);
   if (endswith $path, "part-*") {
-    $path =~ s/part-\*/part-$zeroes\*/;
+    $path =~ s/part-\d*\*/part-$zeroes\*/;
   } else {
     $path = $path . "/part-$zeroes*"
   }
@@ -5413,7 +5413,7 @@ sub in_poly
   }
   $hits & 1;
 }
-224 core/pl/time.pl
+232 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5616,6 +5616,13 @@ sub time_parts_iso_8601 {
   $iso_time;
 }
 
+sub mdy_epoch {
+  my ($m, $d, $y, $h, $min, $s) = split m#[/:\s]+#, $_[0];
+  $y = $y < 100 ? $y + 2000 : $y;
+  time_pieces_epoch($y, $m, $d, $h, $min, $s);
+}
+
+
 BEGIN {
   *tep  = \&time_epoch_pieces;
   *tef  = \&time_epoch_formatted;
@@ -5636,6 +5643,7 @@ BEGIN {
   *i2e = \&iso_8601_epoch;
   *e2i = \&epoch_iso_8601;
   *tpi = \&time_parts_iso_8601;
+  *usfe = \&mdy_epoch
 }
 
 249 core/pl/geohash.pl
