@@ -277,7 +277,7 @@ Takes a US formatted time and converts it to epoch time.
 
 ```bash
 $ ni i'2/14/18 0:46' p'r usfe a'
-1518572761
+1518569160
 ```
 
 

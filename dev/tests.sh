@@ -2958,7 +2958,7 @@ lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=279
 lazytest_case 'ni i'\''2/14/18 0:46'\'' p'\''r usfe a'\''
 ' 3<<'LAZYTEST_EOF'
-1518572761
+1518569160
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=289
