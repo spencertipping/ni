@@ -13019,7 +13019,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-844 doc/ni_by_example_3.md
+852 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13292,6 +13292,14 @@ To verify correctness:
 ```bash
 $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 1515801233
+```
+
+#### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
+Takes a US formatted time and converts it to epoch time.
+
+```bash
+$ ni i'2/14/18 0:46' p'r usfe a'
+1518572761
 ```
 
 

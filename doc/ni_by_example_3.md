@@ -272,6 +272,14 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 1515801233
 ```
 
+#### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
+Takes a US formatted time and converts it to epoch time.
+
+```bash
+$ ni i'2/14/18 0:46' p'r usfe a'
+1518572761
+```
+
 
 #### `dow`, `hod`, `how`, `ym`: Day-of-Week, Hour-of-Day, Hour-of-Week, Year-and-Month shorthands
 
