@@ -165,18 +165,6 @@ aaa bbb ccc
 aax bbx ccx
 
 
-### `push`, `pop`, `shift`, `unshift`
-
-### `p'... END { }'`: END Block
-
-Similar to a BEGIN block, and END block is used to calculate totals from the data that has accumulated in persistent variables.
-
-```bash
-$ ni n5p'^{@x}; push @x, 2*a; undef; END{r join " and ", @x}'
-2 and 4 and 6 and 8 and 10
-```
-
-We accumulate all of the values in `x`, then join them together and return them all. The statement `undef` is added to make the perl mapper be quiet while it is accumulating values (otherwise, the return value of `push` is the length of the output array).
 
 ### `our` and `local`
 

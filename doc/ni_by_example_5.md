@@ -162,10 +162,10 @@ These operations are used to add columns vertically to to a stream, either by me
 `w` adds a column to the end of a stream, up to the minimum length of either stream.
 
 ```bash
-$ ni //license w[n3p'a*a']
-ni: https://github.com/spencertipping/ni	1
-Copyright (c) 2016-2018 Spencer Tipping | MIT license	4
-	9
+$ ni ia ib ic w[n3p'a*a']
+a	1
+b	4
+c	9
 ```
 
 ### `W`: Prepend column stream
@@ -219,26 +219,27 @@ Also note that the Perl upper-case operator is written as `puc`, without quotes,
 
 
 ```bash
-$ ni //license FW Y r10
-0	0	ni
-0	1	https
-0	2	github
-0	3	com
-0	4	spencertipping
-0	5	ni
-1	0	Copyright
-1	1	c
-1	2	2016
-1	3	2018
+$ ni i[operator could you help me] i[ place this call ] i[see the number on the matchbook]  FW Y r10
+0	0	operator
+0	1	could
+0	2	you
+0	3	help
+0	4	me
+1	0	place
+1	1	this
+1	2	call
+2	0	see
+2	1	the
 ```
 
 ### `X` - sparse-to-dense transformation
 `X` inverts `Y`: it converts a specifically-formatted 3-column stream into a multiple-column stream. The specification for what the input matrix must look like is described above in the `Y` operator.
 
 ```bash
-$ ni //license FW Y r10 X
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	2018
+$ ni i[operator could you help me] i[ place this call ] i[see the number on the matchbook] FW Y r10 X 
+operator	could	you	help	me
+place	this	call
+see	the
 ```
 
 ### `Z<n_cols>` - unflatten
@@ -501,14 +502,13 @@ $ ni n4m'r a, ai + 1'
 Analogous to `p'F_ ...'`. `fields` is a Ruby array, so you can use array syntax to get particular fields, for example: 
 
 ```bash
-$ ni //license FWr2m'r fields[0..3]'
-ni	https	github	com
-Copyright	c	2016	2018
+$ ni i[operator could you help me] i[ place this call ] i[see the number on the matchbook] FWr2m'r fields[0..3]'
+operator	could	you	help
+place	this	call
 ```
 
 ### `m'r ...'`: Print row
 Analogous to `p'r ...'`.
-
 
 
 ## `l"..."`: Lisp
