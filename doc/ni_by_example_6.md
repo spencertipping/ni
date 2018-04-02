@@ -1,4 +1,61 @@
-#Future Chapter 5 Below
+#Future Chapter 6 Below
+
+
+## Advanced Perl
+### Array references
+Many other languages use square brackets to represent literal arrays; in Perl, these are used for array references:
+
+```sh
+$ ni 1p'my @arr = [1, 2, 3]; r @arr'
+ARRAY(0x7fa7e4184818)
+```
+
+This code has built a length-1 array containing an array reference; if you really wanted to create an array reference, you'd more likely do it explicitly.
+
+```sh
+$ ni 1p'my $arr_ref = [1, 2, 3]; r $arr_ref'
+ARRAY(0x7fa7e4184818)
+```
+
+To dereference the reference, use the appropriate sigil:
+
+```bash
+$ ni 1p'my $arr_ref = [1, 2, 3]; r @$arr_ref'
+1	2	3
+```
+
+Back to the first example, to dereference the array reference we've (probably unintentionally) wrapped in an array, do:
+
+
+```bash
+$ ni 1p'my @arr = [1, 2, 3]; r @{$arr[0]}'
+1	2	3
+```
+
+
+### Custom Sorting
+You can implement a custom sort by passing a block to `sort`.
+
+Let's say you wanted to sort by the length of the string, rather than the order:
+
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $a <=> length $b } F_'
+hero	romeo	juliet	leander	rosencrantz	guildenstern
+```
+
+To reverse the sort, reverse `$b` and `$a`.
+
+```bash
+$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
+     p'my @arr = F_; r sort {length $b <=> length $a } F_'
+guildenstern	rosencrantz	leander	juliet	romeo	hero
+```
+
+More details are available in the [perldocs](https://perldoc.perl.org/functions/sort.html).
+
+
 
 
 ## JSON Tools
