@@ -14,7 +14,12 @@ sub mean {scalar @_ && sum(@_) / @_;}
 sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[int($length/2)];}
 sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
- 
+
+sub randint {my ($low, $high) = @_; 
+             $high, $low = $high ? ($high, $low) : ($low, 0);  
+             int(rand($high - $low) + $low);
+           }
+
 sub log2($) {LOG2R * log $_[0]}
 
 sub entropy {

@@ -383,6 +383,19 @@ grape	soda
 orange	crush
 ```
 
+### `p'... END {...}'`: END Block
+
+An `END` block is used to dump values that have been accumulated over the course of computation. Usually a `BEGIN` block will be used to initialize the values to be returned by the end block (often an empty hash), which will be populated by the lines, and then returned via the `END` block.
+
+The `END` block will be executed only after all of the input lines have been processed.
+
+```bash
+$ ni n10 p'^{$sum; $str} $sum += a; $str .= a; return; END {r $sum, $str; }'
+55	12345678910
+```
+
+Note the use of `return` here in order to prevent each line from prtining its return value (in the above case, the value of `$str .= a`). You can also use `();` to achieve the same effect.
+
 ### Perl Mapper Return Value Tricks
 One way this has an impact is when you ask `ni` for a column that doesn't exist:
 
@@ -732,6 +745,9 @@ $ ni 1p'my @arr = (1, 2, 3); r @arr'
 1	2	3
 ```
 
+#### `push`, `pop`, `shift`, `unshift`: add and remove elements from an array
+
+
 #### `qw`: Quote Word
 
 Writing lots of double quotes around strings is kind of a pain; Perl implements an operator called `qw` which allows you to build a list with a minimum of keystrokes:
@@ -752,35 +768,6 @@ ab	d
 e	gh
 ```
 
-#### Array references (OPTIONAL)
-Many other languages use square brackets; in Perl, these are used for array references:
-
-```sh
-$ ni 1p'my @arr = [1, 2, 3]; r @arr'
-ARRAY(0x7fa7e4184818)
-```
-
-This code has built a length-1 array containing an array reference; if you really wanted to create an array reference, you'd more likely do it explicitly.
-
-```sh
-$ ni 1p'my $arr_ref = [1, 2, 3]; r $arr_ref'
-ARRAY(0x7fa7e4184818)
-```
-
-To dereference the reference, use the appropriate sigil:
-
-```bash
-$ ni 1p'my $arr_ref = [1, 2, 3]; r @$arr_ref'
-1	2	3
-```
-
-Back to the first example, to dereference the array reference we've (probably unintentionally) wrapped in an array, do:
-
-
-```bash
-$ ni 1p'my @arr = [1, 2, 3]; r @{$arr[0]}'
-1	2	3
-```
 
 ### `for`
 Perl has several syntaxes for `for` loops; the most explicit syntax is very much like C or Java. `for` takes an initialization and a block of code to be run for each value of the initialization.
@@ -1010,30 +997,6 @@ $ ni i[romeo juliet rosencrantz guildenstern] \
      p'my @arr = F_; r sort @arr'
 guildenstern	juliet	romeo	rosencrantz
 ```
-
-
-### Custom Sorting (OPTIONAL)
-You can implement a custom sort by passing a block to `sort`.
-
-Let's say you wanted to sort by the length of the string, rather than the order:
-
-
-```bash
-$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
-     p'my @arr = F_; r sort {length $a <=> length $b } F_'
-hero	romeo	juliet	leander	rosencrantz	guildenstern
-```
-
-To reverse the sort, reverse `$b` and `$a`.
-
-```bash
-$ ni i[romeo juliet rosencrantz guildenstern hero leander] \
-     p'my @arr = F_; r sort {length $b <=> length $a } F_'
-guildenstern	rosencrantz	leander	juliet	romeo	hero
-```
-
-More details are available in the [perldocs](https://perldoc.perl.org/functions/sort.html).
-
 
 ### Operations on mulitple arrays and scalars
 
