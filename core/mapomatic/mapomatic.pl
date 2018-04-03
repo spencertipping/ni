@@ -32,6 +32,11 @@ body { margin:0; padding:0; }
 .marker-properties tr:nth-child(even) td {
   background-color:#f7f7f7;
 }
+.leaflet-tooltip.my-labels {
+  background-color: transparent;
+  border: transparent;
+  box-shadow: none;
+}
 </style>
 <script src='//api.tiles.mapbox.com/mapbox.js/v2.2.2/mapbox.js'></script>
 <script src='//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js' ></script>
@@ -70,7 +75,11 @@ function createTableRows(key, value) {
 }
 
 geojson_callback = function(geojson) {
-  var geojsonLayer = L.mapbox.featureLayer(geojson).addTo(map);
+  var geojsonLayer = L.mapbox.featureLayer(geojson, {
+    pointToLayer: function(feature,latlng){
+      return new L.CircleMarker(latlng, { radius: 5 })
+    }
+  }).addTo(map);
   var bounds = geojsonLayer.getBounds();
   if (bounds.isValid()) {
     map.fitBounds(geojsonLayer.getBounds());
