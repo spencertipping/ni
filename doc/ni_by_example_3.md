@@ -94,41 +94,44 @@ $ ni i[34.058566 -118.416526] p'r gll llg(a, b, -41), 41'
 `g3b` (geohash base-32 to binary) and `gb3` (geohash binary to base-32) transcode between base-32 and binary geohashes.
 
 ```
-$ ni 1p'r g3b "9q5cc25tufw5"'
+$ ni i9q5cc25tufw5 p'r g3b a'
 349217367909022597
 ```
 
 `gb3` takes a binary geohash and its precision in binary bits, and returns a base-32 geohash.
 
 ```bash
-$ ni 1p'r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'
+$ ni i[349217367909022597 9q5cc25tufw5] p'r gb3 a, 60; r gb3 g3b b, 60;'
 9q5cc25tufw5
 9q5cc25tufw5
 ```
 
-
-#### `ghb`: geohash bounding box
-
-For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
-
-```bash
-$ ni 1p'r ghb "95qc"'
-18.6328123323619	18.45703125	-125.156250335276	-125.5078125
-```
 
 #### `gh_dist`: distance between geohash centroids
 It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b, mi'
 1.23981551084308
 ```
 
 When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b'
 1.99516661267524
+```
+
+You can also pass in binary geohashes, along with a precision.
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40'
+1.99516661267524
+```
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40, "m"'
+1995.16661267524
 ```
 
 
@@ -140,6 +143,14 @@ $ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
 10426.7380460312
 ```
 
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
+
+```bash
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
+```
 
 ### Time Perl Functions
 
