@@ -214,7 +214,7 @@ the number of distinct words we have -- we can calculate it easily, in this
 case by just taking the maximum:
 
 ```sh
-$ ni /usr/share/man/man1 \<FWpF_ ,z Or1
+$ ni /usr/share/man/man1 \<FWZ1 ,z Or1
 84480
 ```
 

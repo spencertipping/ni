@@ -551,12 +551,7 @@ cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
 lazytest_line=15
-lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' > mult-table
-' 3<<'LAZYTEST_EOF'
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=16
-lazytest_case 'ni mult-table
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16
@@ -568,8 +563,8 @@ lazytest_case 'ni mult-table
 8	16	24	32	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=31
-lazytest_case 'ni mult-table fA      # the first column
+lazytest_line=30
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fA      # the first column
 ' 3<<'LAZYTEST_EOF'
 1
 2
@@ -581,8 +576,8 @@ lazytest_case 'ni mult-table fA      # the first column
 8
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=40
-lazytest_case 'ni mult-table fDC     # fourth, then third column
+lazytest_line=42
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDC     # fourth, then third column
 ' 3<<'LAZYTEST_EOF'
 4	3
 8	6
@@ -594,8 +589,8 @@ lazytest_case 'ni mult-table fDC     # fourth, then third column
 32	24
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=49
-lazytest_case 'ni mult-table fAA     # first column, duplicated
+lazytest_line=54
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fAA     # first column, duplicated
 ' 3<<'LAZYTEST_EOF'
 1	1
 2	2
@@ -607,8 +602,8 @@ lazytest_case 'ni mult-table fAA     # first column, duplicated
 8	8
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=58
-lazytest_case 'ni mult-table fA-D    # first four columns
+lazytest_line=66
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fA-D    # first four columns
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4
 2	4	6	8
@@ -620,8 +615,8 @@ lazytest_case 'ni mult-table fA-D    # first four columns
 8	16	24	32
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=74
-lazytest_case 'ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+lazytest_line=82
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 ' 3<<'LAZYTEST_EOF'
 4	1	5	6	7	8
 8	2	10	12	14	16
@@ -633,8 +628,8 @@ lazytest_case 'ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 32	8	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=83
-lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
+lazytest_line=94
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fBA.    # an easy way to swap first two columns
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
@@ -646,8 +641,8 @@ lazytest_case 'ni mult-table fBA.    # an easy way to swap first two columns
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=92
-lazytest_case 'ni mult-table x       # even easier (see below)
+lazytest_line=106
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' x       # even easier (see below)
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
@@ -659,115 +654,72 @@ lazytest_case 'ni mult-table x       # even easier (see below)
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=107
-lazytest_case 'ni mult-table xC r2   # swap third column into first position
+lazytest_line=121
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xC r2   # swap third column into first position
 ' 3<<'LAZYTEST_EOF'
 3	2	1	4	5	6	7	8
 6	4	2	8	10	12	14	16
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=110
-lazytest_case 'ni mult-table xGHr2   # swap seventh, eighth columns into first two
+lazytest_line=127
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xGHr2   # swap seventh, eighth columns into first two
 ' 3<<'LAZYTEST_EOF'
 7	8	3	4	5	6	1	2
 14	16	6	8	10	12	2	4
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=113
-lazytest_case 'ni mult-table xr2     # swap first two columns
+lazytest_line=133
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xr2     # swap first two columns
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=137
-lazytest_case 'ni /etc/passwd r2F::          # F: followed by :, which is the split char
+lazytest_line=162
+lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] p'\''r FT 2, uc(c), FR 3'\''
 ' 3<<'LAZYTEST_EOF'
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+who	let	THE	dogs	out
+who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=144
-lazytest_case 'ni //ni r3                            # some data
+lazytest_line=170
+lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] vCpuc
 ' 3<<'LAZYTEST_EOF'
-#!/usr/bin/env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
+who	let	THE	dogs	out
+who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=152
-lazytest_case 'ni //ni r3F/\\//                      # split on forward slashes
+lazytest_line=181
+lazytest_case 'ni i[who let the dogs out] Z1
 ' 3<<'LAZYTEST_EOF'
-#!	usr	bin	env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
+who
+let
+the
+dogs
+out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=160
-lazytest_case 'ni //ni r3FW                          # split on non-words
+lazytest_line=190
+lazytest_case 'ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
-	usr	bin	env	perl
-	ni	is_lib	caller	
-	ni	self	license	_	
+who	1
+let	2
+the	3
+dogs	4
+out	5
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=168
-lazytest_case 'ni //ni r3FS                          # split on whitespace
+lazytest_line=199
+lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
-#!/usr/bin/env	perl
-$ni::is_lib	=	caller();
-$ni::self{license}	=	<<'_';
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=176
-lazytest_case 'ni //ni r3Fm'\''/\/\w+/'\''                 # words beginning with a slash
-' 3<<'LAZYTEST_EOF'
-/usr	/bin	/env
-
-
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=188
-lazytest_case 'ni //ni r3FW p'\''r a, b, uc(c), FR 3'\''
-' 3<<'LAZYTEST_EOF'
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=198
-lazytest_case 'ni //ni r3FW vCpuc
-' 3<<'LAZYTEST_EOF'
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+1	who
+2	let
+3	the
+4	dogs
+5	out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
 lazytest_line=210
-lazytest_case 'ni //ni r3FWfB
-' 3<<'LAZYTEST_EOF'
-usr
-ni
-ni
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=214
-lazytest_case 'ni //ni r3FWfB wn100          # right-join numbers
-' 3<<'LAZYTEST_EOF'
-usr	1
-ni	2
-ni	3
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=218
-lazytest_case 'ni //ni r3FWfB Wn100          # left-join numbers
-' 3<<'LAZYTEST_EOF'
-1	usr
-2	ni
-3	ni
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=227
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004
@@ -1036,38 +988,44 @@ lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=112
-lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
+lazytest_line=116
+lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      hadoop/jobconf='\''mapred.map.tasks=10
+      					  mapred.reduce.tasks=4'\''} \
+     Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
-2016	1
-A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
-BE	1
+1	2
+2	5
+3	10
+4	17
+5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=132
-lazytest_case 'ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='\''mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'\''} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
+lazytest_line=133
+lazytest_case 'ni 1p'\''%mr_generics'\'' Z2 e'\''grep memory'\'' gA
 ' 3<<'LAZYTEST_EOF'
-2016	1
-A	1
-BE	1
-BUT	1
-FOR	2
-INCLUDING	1
-LIABILITY	1
-LIABLE	1
-OF	4
-OR	7
+Hcmm	mapreduce.cluster.mapmemory.mb
+Hcrm	mapreduce.cluster.reducememory.mb
+Hjtmmm	mapreduce.jobtracker.maxmapmemory.mb
+Hjtmrm	mapreduce.jobtracker.maxreducememory.mb
+Hmmm	mapreduce.map.memory.mb
+Hrmm	mapreduce.reduce.memory.mb
+Hrmt	mapreduce.reduce.memory.totalbytes
+Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
+LAZYTEST_EOF
+lazytest_file='doc/hadoop.md'
+lazytest_line=147
+lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      Hrmm=4096 Hmmm=3072} \
+     Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
+' 3<<'LAZYTEST_EOF'
+1	2
+2	5
+3	10
+4	17
+5	26
 LAZYTEST_EOF
 docker rm -f ni-test-hadoop >&2
 
@@ -1260,7 +1218,7 @@ lazytest_case 'ni n010p'\''r 0, a%3, 1'\'' X
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=64
-lazytest_case 'ni i[a b] i[c d] pF_
+lazytest_case 'ni i[a b] i[c d] Z1
 ' 3<<'LAZYTEST_EOF'
 a
 b
@@ -1269,13 +1227,13 @@ d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=74
-lazytest_case 'ni i[a b] i[c d] pF_ Z2
+lazytest_case 'ni i[a b] i[c d] Z1 Z2
 ' 3<<'LAZYTEST_EOF'
 a	b
 c	d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=86
+lazytest_line=84
 lazytest_case 'ni n10p'\''r map a*$_, 1..10'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5	6	7	8	9	10
@@ -1290,7 +1248,7 @@ lazytest_case 'ni n10p'\''r map a*$_, 1..10'\''
 10	20	30	40	50	60	70	80	90	100
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=97
+lazytest_line=95
 lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' N'\''x = x + 1'\''
 ' 3<<'LAZYTEST_EOF'
 2	3	4	5	6	7	8	9	10	11
@@ -1305,13 +1263,13 @@ lazytest_case 'ni n10p'\''r map a*$_, 1..10'\'' N'\''x = x + 1'\''
 11	21	31	41	51	61	71	81	91	101
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=113
+lazytest_line=111
 lazytest_case 'ni n4N'\''x = x.T'\''
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=120
+lazytest_line=118
 lazytest_case 'ni n4N'\''x = reshape(x, (-1))'\''
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1320,7 +1278,7 @@ lazytest_case 'ni n4N'\''x = reshape(x, (-1))'\''
 4
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=134
+lazytest_line=132
 lazytest_case 'ni //license plc FW Z1 p'\''r/(.)(.*)/'\'' g r10
 ' 3<<'LAZYTEST_EOF'
 2	016
@@ -1335,7 +1293,7 @@ a	nd
 a	nd
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=150
+lazytest_line=148
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' g r10
 ' 3<<'LAZYTEST_EOF'
 2	0	1	6
@@ -1350,7 +1308,7 @@ a	n	d
 a	n	d
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=161
+lazytest_line=159
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' g YB r10
 ' 3<<'LAZYTEST_EOF'
 2	0	0	0
@@ -1365,7 +1323,7 @@ a	2	1	t
 a	2	2	i
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=172
+lazytest_line=170
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' gYB fABD gcfBCDA r10
 ' 3<<'LAZYTEST_EOF'
 2	0	6	1
@@ -1380,7 +1338,7 @@ a	s	o	1
 a	u	h	1
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=191
+lazytest_line=189
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
       gYBfABDgcfBCDA ,zC o XB r10
 ' 3<<'LAZYTEST_EOF'
@@ -1396,7 +1354,7 @@ b		2
 b		1
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=208
+lazytest_line=206
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''x *= 2'\'' YB,qD.01XB r10
@@ -1413,7 +1371,7 @@ b	0	4
 b	0	2
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=226
+lazytest_line=224
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''x *= 2
@@ -1431,7 +1389,7 @@ b	1	5
 b	1	3
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
-lazytest_line=245
+lazytest_line=243
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
      NB'\''if True:

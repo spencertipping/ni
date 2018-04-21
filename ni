@@ -16833,7 +16833,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-231 doc/col.md
+214 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -16848,8 +16848,7 @@ second form can be useful for large data files.
 First let's generate some data, in this case an 8x8 multiplication table:
 
 ```bash
-$ ni n8p'r map a*$_, 1..8' > mult-table
-$ ni mult-table
+$ ni n8p'r map a*$_, 1..8'
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16
 3	6	9	12	15	18	21	24
@@ -16864,7 +16863,7 @@ The `f` operator takes a multi-column spec and reorders, duplicates, or deletes
 columns accordingly.
 
 ```bash
-$ ni mult-table fA      # the first column
+$ ni n8p'r map a*$_, 1..8' fA      # the first column
 1
 2
 3
@@ -16873,7 +16872,10 @@ $ ni mult-table fA      # the first column
 6
 7
 8
-$ ni mult-table fDC     # fourth, then third column
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fDC     # fourth, then third column
 4	3
 8	6
 12	9
@@ -16882,7 +16884,10 @@ $ ni mult-table fDC     # fourth, then third column
 24	18
 28	21
 32	24
-$ ni mult-table fAA     # first column, duplicated
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fAA     # first column, duplicated
 1	1
 2	2
 3	3
@@ -16891,7 +16896,10 @@ $ ni mult-table fAA     # first column, duplicated
 6	6
 7	7
 8	8
-$ ni mult-table fA-D    # first four columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fA-D    # first four columns
 1	2	3	4
 2	4	6	8
 3	6	9	12
@@ -16907,7 +16915,7 @@ spec. This selects everything to the right of the rightmost column you've
 mentioned.
 
 ```bash
-$ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+$ ni n8p'r map a*$_, 1..8' fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 4	1	5	6	7	8
 8	2	10	12	14	16
 12	3	15	18	21	24
@@ -16916,7 +16924,10 @@ $ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 24	6	30	36	42	48
 28	7	35	42	49	56
 32	8	40	48	56	64
-$ ni mult-table fBA.    # an easy way to swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fBA.    # an easy way to swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -16925,7 +16936,10 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
-$ ni mult-table x       # even easier (see below)
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' x       # even easier (see below)
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -16940,13 +16954,19 @@ $ ni mult-table x       # even easier (see below)
 You can swap columns into leading positions using the `x` operator:
 
 ```bash
-$ ni mult-table xC r2   # swap third column into first position
+$ ni n8p'r map a*$_, 1..8' xC r2   # swap third column into first position
 3	2	1	4	5	6	7	8
 6	4	2	8	10	12	14	16
-$ ni mult-table xGHr2   # swap seventh, eighth columns into first two
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xGHr2   # swap seventh, eighth columns into first two
 7	8	3	4	5	6	1	2
 14	16	6	8	10	12	2	4
-$ ni mult-table xr2     # swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xr2     # swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 ```
@@ -16968,52 +16988,6 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 
 ### Examples
 
-`/etc/passwd` split on colons:
-```bash
-$ ni /etc/passwd r2F::          # F: followed by :, which is the split char
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
-```
-
-The first three lines of ni's source code:
-```bash
-$ ni //ni r3                            # some data
-#!/usr/bin/env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on forward slashes:
-```bash
-$ ni //ni r3F/\\//                      # split on forward slashes
-#!	usr	bin	env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on non-words:
-```bash
-$ ni //ni r3FW                          # split on non-words
-	usr	bin	env	perl
-	ni	is_lib	caller	
-	ni	self	license	_	
-```
-
-The first three lines of ni's source code, split on whitespace:
-```bash
-$ ni //ni r3FS                          # split on whitespace
-#!/usr/bin/env	perl
-$ni::is_lib	=	caller();
-$ni::self{license}	=	<<'_';
-```
-
-The first three lines of ni's source code, split on words beginning with a slash:
-```bash
-$ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
-/usr	/bin	/env
-
-
-```
 
 ## Vertical operator application
 A situation that comes up a lot in real-world workflows is that you want to
@@ -17021,40 +16995,49 @@ apply some mapper code to a specific column. For example, if we want to
 uppercase the third column of a dataset, we can do it like this:
 
 ```bash
-$ ni //ni r3FW p'r a, b, uc(c), FR 3'
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] p'r FT 2, uc(c), FR 3'
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
 
-But that requires a lot of keystrokes. More concise is to use `v` to pipe
-column C to a separate ni process:
+But that requires a lot of keystrokes. More concise is to use `v` to pipe column C to a separate ni process:
 
 ```bash
-$ ni //ni r3FW vCpuc
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] vCpuc
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
+
+**CAVEAT**: The `v` operator is **WAY** too slow to use in production code. Be a hero and speed it up.
 
 ## Left/right juxtaposition
-ni has the `+` and `^` operators to join streams vertically, but you can also
-join them horizontally, row by row. This is done using `w` and `W` (for
-"with"):
+ni has the `+` and `^` operators to join streams vertically, but you can also join them horizontally, row by row. This is done using `w` and `W` (for "with"):
 
 ```bash
-$ ni //ni r3FWfB
-usr
-ni
-ni
-$ ni //ni r3FWfB wn100          # right-join numbers
-usr	1
-ni	2
-ni	3
-$ ni //ni r3FWfB Wn100          # left-join numbers
-1	usr
-2	ni
-3	ni
+$ ni i[who let the dogs out] Z1
+who
+let
+the
+dogs
+out
+```
+
+```bash
+$ ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
+who	1
+let	2
+the	3
+dogs	4
+out	5
+```
+
+```bash
+$ ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
+1	who
+2	let
+3	the
+4	dogs
+5	out
 ```
 
 As shown above, the output stream is only as long as the shorter input. This is useful in conjunction with infinite generators like `n`; for example, you can prepend line numbers to an arbitrarily long data stream like this:
@@ -17368,7 +17351,7 @@ the number of distinct words we have -- we can calculate it easily, in this
 case by just taking the maximum:
 
 ```sh
-$ ni /usr/share/man/man1 \<FWpF_ ,z Or1
+$ ni /usr/share/man/man1 \<FWZ1 ,z Or1
 84480
 ```
 
@@ -17633,7 +17616,7 @@ gitblob://.:c3e84a5dfefc7a84cd3476dfc11dafa15921dde6    100644  tests.sh
 ```
 
 You could then use `fA\<` or `fA W\<` to get the contents of each.
-152 doc/hadoop.md
+163 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. Here's what it looks like to use Hadoop
 Streaming:
@@ -17646,7 +17629,7 @@ For example, the ubiquitous word count:
 
 ```sh
 # locally
-$ ni README.md FW pF_ gcOx
+$ ni README.md FW Z1 gcOx
 ni      27
 md      26
 doc     25
@@ -17660,7 +17643,7 @@ and     9
 ...
 
 # on hadoop streaming
-$ ni ihdfs:///user/spencer/textfiles/part* HSFWpF_ _ c \<Ox
+$ ni ihdfs:///user/spencer/textfiles/part* HSFWZ1 _ c \<Ox
 word1   count1
 word2   count2
 ...
@@ -17742,22 +17725,6 @@ $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 ```
 
-Now let's get a word count for `ni //license`:
-
-```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
-2016	1
-A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
-BE	1
-```
 
 ## Jobconf
 You can pass in jobconf options using the `hadoop/jobconf` variable or by
@@ -17765,21 +17732,48 @@ setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
 reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
-2016	1
-A	1
-BE	1
-BUT	1
-FOR	2
-INCLUDING	1
-LIABILITY	1
-LIABLE	1
-OF	4
-OR	7
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      hadoop/jobconf='mapred.map.tasks=10
+      					  mapred.reduce.tasks=4'} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
 ```
+
+### Jobconf shorthand
+
+The names of Hadoop configuration variables are generally quite long; to see the whole list, you can see the whole list in a Perl context using `%mr_generics`. Let's look at a few:
+
+```bash
+$ ni 1p'%mr_generics' Z2 e'grep memory' gA
+Hcmm	mapreduce.cluster.mapmemory.mb
+Hcrm	mapreduce.cluster.reducememory.mb
+Hjtmmm	mapreduce.jobtracker.maxmapmemory.mb
+Hjtmrm	mapreduce.jobtracker.maxreducememory.mb
+Hmmm	mapreduce.map.memory.mb
+Hrmm	mapreduce.reduce.memory.mb
+Hrmt	mapreduce.reduce.memory.totalbytes
+Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
+```
+
+Use the abbreviations in the first column in your configuration; for example, to set your mappers to have 3072 MB of memory and reducers to have 4096 MB, you could do the following:
+
+```bash
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      Hrmm=4096 Hmmm=3072} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
+```
+
 
 ```lazytest
 docker rm -f ni-test-hadoop >&2
@@ -17993,7 +17987,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-252 doc/matrix.md
+250 doc/matrix.md
 # Matrix operations
 
 ## Sparse and Dense Matrix Operations (`X` and `Y`)
@@ -18057,7 +18051,7 @@ $ ni n010p'r 0, a%3, 1' X
 Data in row form can be flattened (lengthened?) into a column via `pF_`.
 
 ```bash
-$ ni i[a b] i[c d] pF_
+$ ni i[a b] i[c d] Z1
 a
 b
 c
@@ -18067,12 +18061,10 @@ d
 Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
 
 ```bash
-$ ni i[a b] i[c d] pF_ Z2
+$ ni i[a b] i[c d] Z1 Z2
 a	b
 c	d
 ```
-
-In fact, `pF_` can be replaced effectively with `Z1`
  
 
 ## NumPy interop
@@ -18385,13 +18377,13 @@ disk is writable.
 The SSH operator is `s` and looks like this:
 
 ```sh
-$ ni //license shostname[gc FW p'r a, length b'] r10
+$ ni i[who let the dogs out who who who] shostname[gc FW p'r a, length b'] r10
 ```
 
 Conceptually, here's how ni executes the above:
 
-```
-$ ni //license \
+```sh
+$ ni i[who let the dogs out who who who] \
   | ssh hostname "ni gc FW p'r a, length b'" \
   | ni r10
 ```
@@ -18399,7 +18391,7 @@ $ ni //license \
 You can, of course, nest SSH operators:
 
 ```sh
-$ ni //license shost1[shost2[gc]] r10
+$ ni i[who let the dogs out who who who] shost1[shost2[gc]] r10
 ```
 98 doc/options.md
 # Complete ni operator listing

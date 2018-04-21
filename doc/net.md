@@ -28,13 +28,13 @@ disk is writable.
 The SSH operator is `s` and looks like this:
 
 ```sh
-$ ni //license shostname[gc FW p'r a, length b'] r10
+$ ni i[who let the dogs out who who who] shostname[gc FW p'r a, length b'] r10
 ```
 
 Conceptually, here's how ni executes the above:
 
-```
-$ ni //license \
+```sh
+$ ni i[who let the dogs out who who who] \
   | ssh hostname "ni gc FW p'r a, length b'" \
   | ni r10
 ```
@@ -42,5 +42,5 @@ $ ni //license \
 You can, of course, nest SSH operators:
 
 ```sh
-$ ni //license shost1[shost2[gc]] r10
+$ ni i[who let the dogs out who who who] shost1[shost2[gc]] r10
 ```

@@ -12,8 +12,7 @@ second form can be useful for large data files.
 First let's generate some data, in this case an 8x8 multiplication table:
 
 ```bash
-$ ni n8p'r map a*$_, 1..8' > mult-table
-$ ni mult-table
+$ ni n8p'r map a*$_, 1..8'
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16
 3	6	9	12	15	18	21	24
@@ -28,7 +27,7 @@ The `f` operator takes a multi-column spec and reorders, duplicates, or deletes
 columns accordingly.
 
 ```bash
-$ ni mult-table fA      # the first column
+$ ni n8p'r map a*$_, 1..8' fA      # the first column
 1
 2
 3
@@ -37,7 +36,10 @@ $ ni mult-table fA      # the first column
 6
 7
 8
-$ ni mult-table fDC     # fourth, then third column
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fDC     # fourth, then third column
 4	3
 8	6
 12	9
@@ -46,7 +48,10 @@ $ ni mult-table fDC     # fourth, then third column
 24	18
 28	21
 32	24
-$ ni mult-table fAA     # first column, duplicated
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fAA     # first column, duplicated
 1	1
 2	2
 3	3
@@ -55,7 +60,10 @@ $ ni mult-table fAA     # first column, duplicated
 6	6
 7	7
 8	8
-$ ni mult-table fA-D    # first four columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fA-D    # first four columns
 1	2	3	4
 2	4	6	8
 3	6	9	12
@@ -71,7 +79,7 @@ spec. This selects everything to the right of the rightmost column you've
 mentioned.
 
 ```bash
-$ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+$ ni n8p'r map a*$_, 1..8' fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 4	1	5	6	7	8
 8	2	10	12	14	16
 12	3	15	18	21	24
@@ -80,7 +88,10 @@ $ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 24	6	30	36	42	48
 28	7	35	42	49	56
 32	8	40	48	56	64
-$ ni mult-table fBA.    # an easy way to swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fBA.    # an easy way to swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -89,7 +100,10 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
-$ ni mult-table x       # even easier (see below)
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' x       # even easier (see below)
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -104,13 +118,19 @@ $ ni mult-table x       # even easier (see below)
 You can swap columns into leading positions using the `x` operator:
 
 ```bash
-$ ni mult-table xC r2   # swap third column into first position
+$ ni n8p'r map a*$_, 1..8' xC r2   # swap third column into first position
 3	2	1	4	5	6	7	8
 6	4	2	8	10	12	14	16
-$ ni mult-table xGHr2   # swap seventh, eighth columns into first two
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xGHr2   # swap seventh, eighth columns into first two
 7	8	3	4	5	6	1	2
 14	16	6	8	10	12	2	4
-$ ni mult-table xr2     # swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xr2     # swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 ```
@@ -132,52 +152,6 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 
 ### Examples
 
-`/etc/passwd` split on colons:
-```bash
-$ ni /etc/passwd r2F::          # F: followed by :, which is the split char
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
-```
-
-The first three lines of ni's source code:
-```bash
-$ ni //ni r3                            # some data
-#!/usr/bin/env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on forward slashes:
-```bash
-$ ni //ni r3F/\\//                      # split on forward slashes
-#!	usr	bin	env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on non-words:
-```bash
-$ ni //ni r3FW                          # split on non-words
-	usr	bin	env	perl
-	ni	is_lib	caller	
-	ni	self	license	_	
-```
-
-The first three lines of ni's source code, split on whitespace:
-```bash
-$ ni //ni r3FS                          # split on whitespace
-#!/usr/bin/env	perl
-$ni::is_lib	=	caller();
-$ni::self{license}	=	<<'_';
-```
-
-The first three lines of ni's source code, split on words beginning with a slash:
-```bash
-$ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
-/usr	/bin	/env
-
-
-```
 
 ## Vertical operator application
 A situation that comes up a lot in real-world workflows is that you want to
@@ -185,40 +159,49 @@ apply some mapper code to a specific column. For example, if we want to
 uppercase the third column of a dataset, we can do it like this:
 
 ```bash
-$ ni //ni r3FW p'r a, b, uc(c), FR 3'
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] p'r FT 2, uc(c), FR 3'
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
 
-But that requires a lot of keystrokes. More concise is to use `v` to pipe
-column C to a separate ni process:
+But that requires a lot of keystrokes. More concise is to use `v` to pipe column C to a separate ni process:
 
 ```bash
-$ ni //ni r3FW vCpuc
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] vCpuc
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
+
+**CAVEAT**: The `v` operator is **WAY** too slow to use in production code. Be a hero and speed it up.
 
 ## Left/right juxtaposition
-ni has the `+` and `^` operators to join streams vertically, but you can also
-join them horizontally, row by row. This is done using `w` and `W` (for
-"with"):
+ni has the `+` and `^` operators to join streams vertically, but you can also join them horizontally, row by row. This is done using `w` and `W` (for "with"):
 
 ```bash
-$ ni //ni r3FWfB
-usr
-ni
-ni
-$ ni //ni r3FWfB wn100          # right-join numbers
-usr	1
-ni	2
-ni	3
-$ ni //ni r3FWfB Wn100          # left-join numbers
-1	usr
-2	ni
-3	ni
+$ ni i[who let the dogs out] Z1
+who
+let
+the
+dogs
+out
+```
+
+```bash
+$ ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
+who	1
+let	2
+the	3
+dogs	4
+out	5
+```
+
+```bash
+$ ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
+1	who
+2	let
+3	the
+4	dogs
+5	out
 ```
 
 As shown above, the output stream is only as long as the shorter input. This is useful in conjunction with infinite generators like `n`; for example, you can prepend line numbers to an arbitrarily long data stream like this:

@@ -10,7 +10,7 @@ For example, the ubiquitous word count:
 
 ```sh
 # locally
-$ ni README.md FW pF_ gcOx
+$ ni README.md FW Z1 gcOx
 ni      27
 md      26
 doc     25
@@ -24,7 +24,7 @@ and     9
 ...
 
 # on hadoop streaming
-$ ni ihdfs:///user/spencer/textfiles/part* HSFWpF_ _ c \<Ox
+$ ni ihdfs:///user/spencer/textfiles/part* HSFWZ1 _ c \<Ox
 word1   count1
 word2   count2
 ...
@@ -106,22 +106,6 @@ $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 ```
 
-Now let's get a word count for `ni //license`:
-
-```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
-2016	1
-A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
-BE	1
-```
 
 ## Jobconf
 You can pass in jobconf options using the `hadoop/jobconf` variable or by
@@ -129,21 +113,48 @@ setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
 reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
-2016	1
-A	1
-BE	1
-BUT	1
-FOR	2
-INCLUDING	1
-LIABILITY	1
-LIABLE	1
-OF	4
-OR	7
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      hadoop/jobconf='mapred.map.tasks=10
+      					  mapred.reduce.tasks=4'} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
 ```
+
+### Jobconf shorthand
+
+The names of Hadoop configuration variables are generally quite long; to see the whole list, you can see the whole list in a Perl context using `%mr_generics`. Let's look at a few:
+
+```bash
+$ ni 1p'%mr_generics' Z2 e'grep memory' gA
+Hcmm	mapreduce.cluster.mapmemory.mb
+Hcrm	mapreduce.cluster.reducememory.mb
+Hjtmmm	mapreduce.jobtracker.maxmapmemory.mb
+Hjtmrm	mapreduce.jobtracker.maxreducememory.mb
+Hmmm	mapreduce.map.memory.mb
+Hrmm	mapreduce.reduce.memory.mb
+Hrmt	mapreduce.reduce.memory.totalbytes
+Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
+```
+
+Use the abbreviations in the first column in your configuration; for example, to set your mappers to have 3072 MB of memory and reducers to have 4096 MB, you could do the following:
+
+```bash
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      Hrmm=4096 Hmmm=3072} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
+```
+
 
 ```lazytest
 docker rm -f ni-test-hadoop >&2
