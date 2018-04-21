@@ -767,15 +767,7 @@ lazytest_case 'ni //ni r3FWfB Wn100          # left-join numbers
 3	ni
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=229
-lazytest_case 'ni //license Wn r~3
-' 3<<'LAZYTEST_EOF'
-19	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-20	SOFTWARE.
-21	
-LAZYTEST_EOF
-lazytest_file='doc/col.md'
-lazytest_line=233
+lazytest_line=227
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004
