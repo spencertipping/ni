@@ -1094,51 +1094,45 @@ lazytest_case 'ni n4E7 ,hA Cubuntu[o] uc
 39814375
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
-lazytest_line=18
-lazytest_case 'ni //license FWp'\''json_encode [F_]'\'' r4
+lazytest_line=19
+lazytest_case 'ni i[hi there] i[my friend] p'\''json_encode [F_]'\''
 ' 3<<'LAZYTEST_EOF'
-["ni","https","github","com","spencertipping","ni"]
-["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
-[]
-["Permission","is","hereby","granted","free","of","charge","to","any","person","obtaining","a","copy"]
+["hi","there"]
+["my","friend"]
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
-lazytest_line=28
-lazytest_case 'ni //license FWp'\''json_encode [F_]'\'' p'\''r @{json_decode a}'\'' r4
+lazytest_line=27
+lazytest_case 'ni i[hi there] i[my friend] p'\''json_encode [F_]'\'' p'\''r @{json_decode a}'\''
 ' 3<<'LAZYTEST_EOF'
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+hi	there
+my	friend
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
-lazytest_line=47
-lazytest_case 'ni //license FWpF_ p'\''r pl 3'\'' \
+lazytest_line=36
+lazytest_case 'ni i[who let the dogs out?! who? who?? who???] Z1 p'\''r pl 3'\'' r5 \
      p'\''json_encode {type    => '\''trigram'\'',
                     context => {w1 => a, w2 => b},
-                    word    => c}'\'' \>jsons
+                    word    => c}'\''
 ' 3<<'LAZYTEST_EOF'
-jsons
+{"context":{"w1":"let","w2":"the"},"type":"trigram","word":"dogs"}
+{"context":{"w1":"the","w2":"dogs"},"type":"trigram","word":"out?!"}
+{"context":{"w1":"dogs","w2":"out?!"},"type":"trigram","word":"who?"}
+{"context":{"w1":"out?!","w2":"who?"},"type":"trigram","word":"who??"}
+{"context":{"w1":"who?","w2":"who??"},"type":"trigram","word":"who???"}
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
-lazytest_line=52
-lazytest_case 'ni jsons r5
+lazytest_line=50
+lazytest_case 'ni i[who let the dogs out?! who? who?? who???] Z1 p'\''r pl 3'\'' r5 \
+     p'\''json_encode {type    => '\''trigram'\'',
+                    context => {w1 => a, w2 => b},
+                    word    => c}'\'' \
+      D:w1,:w2,:word
 ' 3<<'LAZYTEST_EOF'
-{"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
-{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"spencertipping"}
-{"context":{"w1":"com","w2":"spencertipping"},"type":"trigram","word":"ni"}
-{"context":{"w1":"spencertipping","w2":"ni"},"type":"trigram","word":"Copyright"}
-{"context":{"w1":"ni","w2":"Copyright"},"type":"trigram","word":"c"}
-LAZYTEST_EOF
-lazytest_file='doc/json.md'
-lazytest_line=63
-lazytest_case 'ni jsons D:w1,:w2,:word r5
-' 3<<'LAZYTEST_EOF'
-https	github	com
-github	com	spencertipping
-com	spencertipping	ni
-spencertipping	ni	Copyright
-ni	Copyright	c
+let	the	dogs
+the	dogs	out?!
+dogs	out?!	who?
+out?!	who?	who??
+who?	who??	who???
 LAZYTEST_EOF
 lazytest_file='doc/lisp.md'
 lazytest_line=6

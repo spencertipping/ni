@@ -13,61 +13,51 @@ Internally, ni uses its own JSON library for pipeline serialization and to
 generate the output of `--explain`.
 
 ## Full encode/decode
+
 ### Perl driver
 ```bash
-$ ni //license FWp'json_encode [F_]' r4
-["ni","https","github","com","spencertipping","ni"]
-["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
-[]
-["Permission","is","hereby","granted","free","of","charge","to","any","person","obtaining","a","copy"]
+$ ni i[hi there] i[my friend] p'json_encode [F_]'
+["hi","there"]
+["my","friend"]
 ```
 
 `json_decode` inverts and always returns a reference:
 
 ```bash
-$ ni //license FWp'json_encode [F_]' p'r @{json_decode a}' r4
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+$ ni i[hi there] i[my friend] p'json_encode [F_]' p'r @{json_decode a}'
+hi	there
+my	friend
 ```
 
-### Ruby driver
-**TODO**: this is necessary because older Rubies don't provide any JSON
-support.
-
 ## Sparse extraction
-It's uncommon to need every field in a JSON object, particularly when you're
-testing specific hypotheses on rich data. This makes it likely that JSON
-decoding will be pipeline bottleneck simply due to the ratio of bytes
-pre-vs-post-decode. ni helps to mitigate this by providing a very fast
-destructuring operator that works like `jq` (but 2-3x faster):
+It's uncommon to need every field in a JSON object, particularly when you're testing specific hypotheses on rich data. This makes it likely that JSON decoding will be pipeline bottleneck simply due to the ratio of bytes pre-vs-post-decode. ni helps to mitigate this by providing a very fast destructuring operator that works like `jq` (but 2-3x faster):
 
 ```bash
-$ ni //license FWpF_ p'r pl 3' \
+$ ni i[who let the dogs out?! who? who?? who???] Z1 p'r pl 3' r5 \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
-jsons
-$ ni jsons r5
-{"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
-{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"spencertipping"}
-{"context":{"w1":"com","w2":"spencertipping"},"type":"trigram","word":"ni"}
-{"context":{"w1":"spencertipping","w2":"ni"},"type":"trigram","word":"Copyright"}
-{"context":{"w1":"ni","w2":"Copyright"},"type":"trigram","word":"c"}
+                    word    => c}'
+{"context":{"w1":"let","w2":"the"},"type":"trigram","word":"dogs"}
+{"context":{"w1":"the","w2":"dogs"},"type":"trigram","word":"out?!"}
+{"context":{"w1":"dogs","w2":"out?!"},"type":"trigram","word":"who?"}
+{"context":{"w1":"out?!","w2":"who?"},"type":"trigram","word":"who??"}
+{"context":{"w1":"who?","w2":"who??"},"type":"trigram","word":"who???"}
 ```
 
 A destructuring specification consists of a comma-delimited list of extractors:
 
 ```bash
-$ ni jsons D:w1,:w2,:word r5
-https	github	com
-github	com	spencertipping
-com	spencertipping	ni
-spencertipping	ni	Copyright
-ni	Copyright	c
+$ ni i[who let the dogs out?! who? who?? who???] Z1 p'r pl 3' r5 \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \
+      D:w1,:w2,:word
+let	the	dogs
+the	dogs	out?!
+dogs	out?!	who?
+out?!	who?	who??
+who?	who??	who???
 ```
 
 ### Types of extractors
-The example above used the `:field` extractor, which means "find the first
-occurrence of a field called `field`, and return its value."
+The example above used the `:field` extractor, which means "find the first occurrence of a field called `field`, and return its value."
