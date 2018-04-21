@@ -86,13 +86,7 @@ ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[
 
 ### `pl` Pushback Queue
 
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' =\>jsons \
-     D:type,:word
-```
+
 
 
 ## Hash

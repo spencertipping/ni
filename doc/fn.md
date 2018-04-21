@@ -36,18 +36,17 @@ $ ni --lib fractional frac4.5
 You can also define a nullary function, which is just a regular shorthand:
 
 ```bash
-$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
-     license-words r10
-ni
-https
-github
-com
-spencertipping
-ni
-Copyright
-c
-2016
-Spencer
+$ ni --run 'defexpander "/evens", qw[np2*a]' evens r10
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
 ```
 
 ## Using Perl functions

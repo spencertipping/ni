@@ -317,17 +317,7 @@ A tagged geohash is a binary data format that is used to indicate the precision 
 ### JSON Utilities
 
 * Full-Featured but slow
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-      *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-      *  Here's an example:
-
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
-```
-
+  *  `p'json_encode {hash reference}`: JSON Encode
   * `json_decode`
 * Partial-Featured but fast
   * `get` methods 

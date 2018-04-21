@@ -15111,7 +15111,7 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
 ## Conclusion
 You've reached the end of chapter 5 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
-563 doc/ni_by_example_6.md
+557 doc/ni_by_example_6.md
 #Future Chapter 6 Below
 
 
@@ -15200,13 +15200,7 @@ ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[
 
 ### `pl` Pushback Queue
 
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' =\>jsons \
-     D:type,:word
-```
+
 
 
 ## Hash
@@ -16183,7 +16177,7 @@ When I need another language for its library, I'll usually create a copy of the 
 
 ## Binary Operations
 The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
-425 doc/cheatsheet_perl.md
+415 doc/cheatsheet_perl.md
 # `ni` Perl Cheatsheet (alpha release)
 
 `ni` fully supports Perl 5 with backwards compaitibility to 5.08, and most of your `ni` scripts likely should be written in Perl. 
@@ -16503,17 +16497,7 @@ A tagged geohash is a binary data format that is used to indicate the precision 
 ### JSON Utilities
 
 * Full-Featured but slow
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-      *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-      *  Here's an example:
-
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
-```
-
+  *  `p'json_encode {hash reference}`: JSON Encode
   * `json_decode`
 * Partial-Featured but fast
   * `get` methods 
@@ -17427,7 +17411,7 @@ $ ni --lib my-library n100wc
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
-77 doc/fn.md
+76 doc/fn.md
 # Function definitions
 ni lets you define aliases using the `defexpander` internal function. These
 support arguments of arbitrary parse types and provide basic substitution. For
@@ -17466,18 +17450,17 @@ $ ni --lib fractional frac4.5
 You can also define a nullary function, which is just a regular shorthand:
 
 ```bash
-$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
-     license-words r10
-ni
-https
-github
-com
-spencertipping
-ni
-Copyright
-c
-2016
-Spencer
+$ ni --run 'defexpander "/evens", qw[np2*a]' evens r10
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
 ```
 
 ## Using Perl functions
