@@ -19059,7 +19059,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-357 doc/row.md
+348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -19354,40 +19354,31 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni //license FWpF_ > word-list
-$ ni word-list cr10             # unsorted count
-1	ni
-1	https
-1	github
-1	com
-1	spencertipping
-1	ni
-1	Copyright
-1	c
-1	2016
-1	Spencer
-$ ni word-list gcr10            # sort first to group words
-1	2016
-1	A
-1	ACTION
-1	AN
-1	AND
-2	ANY
-1	ARISING
-1	AS
-1	AUTHORS
-1	BE
-$ ni word-list gcOr10           # by descending count
-7	to
-7	the
-7	OR
-6	THE
-5	Software
-4	of
-4	and
-4	OF
-4	IN
-3	SOFTWARE
+$ ni i[who let the dogs out who who who] Z1 c # unsorted count
+1	who
+1	let
+1	the
+1	dogs
+1	out
+3	who
+```
+
+```bash
+$ ni  i[who let the dogs out who who who] Z1 gc # sort first to group words
+1	dogs
+1	let
+1	out
+1	the
+4	who
+```
+
+```bash
+$ ni i[who let the dogs out who who who] Z1 gcO # by descending count
+4	who
+1	the
+1	out
+1	let
+1	dogs
 ```
 
 ## Joining

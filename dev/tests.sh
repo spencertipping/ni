@@ -4336,56 +4336,37 @@ a	7
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=295
-lazytest_case 'ni //license FWpF_ > word-list
+lazytest_case 'ni i[who let the dogs out who who who] Z1 c # unsorted count
 ' 3<<'LAZYTEST_EOF'
+1	who
+1	let
+1	the
+1	dogs
+1	out
+3	who
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=296
-lazytest_case 'ni word-list cr10             # unsorted count
+lazytest_line=305
+lazytest_case 'ni  i[who let the dogs out who who who] Z1 gc # sort first to group words
 ' 3<<'LAZYTEST_EOF'
-1	ni
-1	https
-1	github
-1	com
-1	spencertipping
-1	ni
-1	Copyright
-1	c
-1	2016
-1	Spencer
+1	dogs
+1	let
+1	out
+1	the
+4	who
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=307
-lazytest_case 'ni word-list gcr10            # sort first to group words
+lazytest_line=314
+lazytest_case 'ni i[who let the dogs out who who who] Z1 gcO # by descending count
 ' 3<<'LAZYTEST_EOF'
-1	2016
-1	A
-1	ACTION
-1	AN
-1	AND
-2	ANY
-1	ARISING
-1	AS
-1	AUTHORS
-1	BE
+4	who
+1	the
+1	out
+1	let
+1	dogs
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=318
-lazytest_case 'ni word-list gcOr10           # by descending count
-' 3<<'LAZYTEST_EOF'
-7	to
-7	the
-7	OR
-6	THE
-5	Software
-4	of
-4	and
-4	OF
-4	IN
-3	SOFTWARE
-LAZYTEST_EOF
-lazytest_file='doc/row.md'
-lazytest_line=335
+lazytest_line=326
 lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
      j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 ' 3<<'LAZYTEST_EOF'
@@ -4396,7 +4377,7 @@ this	yes	OK
 this	yes	yipes
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=347
+lazytest_line=338
 lazytest_case 'ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
      jAB[ i[M N hi] i[X Y bye] ]
 ' 3<<'LAZYTEST_EOF'
