@@ -3036,7 +3036,7 @@ lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=421
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'\''my @lines = rea; r b_ @lines'\''
+     p'\''my @lines = reA; r b_ @lines'\''
 ' 3<<'LAZYTEST_EOF'
 can	you	feel
 the	love
@@ -3046,7 +3046,7 @@ lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=432
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'\''r b_ rea'\''
+     p'\''r b_ reA'\''
 ' 3<<'LAZYTEST_EOF'
 can	you	feel
 the	love
@@ -3056,7 +3056,7 @@ lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=443
 lazytest_case 'ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'\''my @lines = rea; r b_ @lines; r a_ @lines'\''
+     p'\''my @lines = reA; r b_ @lines; r a_ @lines'\''
 ' 3<<'LAZYTEST_EOF'
 can	you	feel
 j	j	j
@@ -3068,7 +3068,7 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=461
 lazytest_case 'ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'\''r c_ rea'\''
+     i[a y third] i[b y fourth] p'\''r c_ reA'\''
 ' 3<<'LAZYTEST_EOF'
 first	second	third
 fourth
@@ -3084,7 +3084,7 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=481
 lazytest_case 'ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'\''r c_ reb'\''
+     i[a y third] i[b y fourth] p'\''r c_ reB'\''
 ' 3<<'LAZYTEST_EOF'
 first	second
 third
@@ -3103,7 +3103,7 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=510
 lazytest_case 'ni i[m 1 x] i[m 2 y s t] \
-     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'\''r b__ rea'\''
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'\''r b__ reA'\''
 ' 3<<'LAZYTEST_EOF'
 1	x	2	y	s	t	3	yo
 5	who	6	let	the	dogs
@@ -3250,7 +3250,7 @@ dragon	does	work
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=738
-lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'\''r acS rea'\''
+lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'\''r acS reA'\''
 ' 3<<'LAZYTEST_EOF'
 x	5
 y	13
@@ -3258,7 +3258,7 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=746
 lazytest_case 'ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
-     p'\''%h = dcSNN rea; 
+     p'\''%h = dcSNN reA; 
        @sorted_keys = kbv_dsc %h;
        r($_, $h{$_}) for @sorted_keys'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3268,14 +3268,14 @@ LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=760
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'\''r acS rea'\'' p'\''r kbv_dsc(ab_ rl(3))'\''
+     p'\''r acS reA'\'' p'\''r kbv_dsc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 y	x	z
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=767
 lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'\''r acS rea'\'' p'\''r kbv_asc(ab_ rl(3))'\''
+     p'\''r acS reA'\'' p'\''r kbv_asc(ab_ rl(3))'\''
 ' 3<<'LAZYTEST_EOF'
 z	x	y
 LAZYTEST_EOF

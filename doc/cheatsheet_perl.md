@@ -370,14 +370,14 @@ These operations can be used to reduce the data output by the readahead function
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
 
-`rea` is the more commonly used shorthand for `re {a}`
+`reA` is the more commonly used shorthand for `re {a}`
 
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ rea'` 
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reB'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reB'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reB'`
+* `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ reA'` 
 
-`reb` reduces where both of the first _two_ columns are equal, and `rec` reduces where the first _three_ columns, etc.
+`reB` reduces where both of the first _two_ columns are equal, and `reC` reduces where the first _three_ columns, etc.
 
 ## Data Closures in Perl Mappers
 

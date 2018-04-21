@@ -415,12 +415,12 @@ tonight
 
 That's given us the second element of each line that started with the 
 
-As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `rea` as a shorthand for `re {a}`
+As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `reA` as a shorthand for `re {a}`
 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines'
+     p'my @lines = reA; r b_ @lines'
 can	you	feel
 the	love
 tonight
@@ -431,7 +431,7 @@ And if we want to do this in a single line, we can combine multiline selection w
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'r b_ rea'
+     p'r b_ reA'
 can	you	feel
 the	love
 tonight
@@ -442,7 +442,7 @@ The last two examples are used commonly. The former, more explicit one is often 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines; r a_ @lines'
+     p'my @lines = reA; r b_ @lines; r a_ @lines'
 can	you	feel
 j	j	j
 the	love
@@ -453,18 +453,18 @@ l
 
 Another common motif is getting the value of 
 
-### `reb ... rel`: Reduce while multiple columns are equal
+### `reB ... reL`: Reduce while multiple columns are equal
 
-In the previous section, we covered `rea` as syntactic sugar for `re {a}`
+In the previous section, we covered `reA` as syntactic sugar for `re {a}`
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ rea'
+     i[a y third] i[b y fourth] p'r c_ reA'
 first	second	third
 fourth
 ```
 
-This syntactic sugar is slightly different for `reb, rec, ..., rel`.
+This syntactic sugar is slightly different for `reB, reC, ..., reL`.
 
 Let's take a look at what happens with `re {b}`:
 
@@ -479,7 +479,7 @@ In general, that's not quite what we want; when we do reduction like this, we've
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ reb'
+     i[a y third] i[b y fourth] p'r c_ reB'
 first	second
 third
 fourth
@@ -508,7 +508,7 @@ These are useful for collecting data with an unknown shape.
 
 ```bash
 $ ni i[m 1 x] i[m 2 y s t] \
-     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ rea'
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ reA'
 1	x	2	y	s	t	3	yo
 5	who	6	let	the	dogs
 ```
@@ -735,7 +735,7 @@ Constructing hashes from closures can get very large; if you have more than 1 mi
 This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
 
 ```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS reA'
 x	5
 y	13
 ```
@@ -744,7 +744,7 @@ If you have ragged data, where a value may not exist for a particular column, a 
 
 ```bash 
 $ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
-     p'%h = dcSNN rea; 
+     p'%h = dcSNN reA; 
        @sorted_keys = kbv_dsc %h;
        r($_, $h{$_}) for @sorted_keys'
 foo	4
@@ -758,14 +758,14 @@ This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_dsc(ab_ rl(3))'
 y	x	z
 ```
 
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_asc(ab_ rl(3))'
 z	x	y
 ```
 
@@ -776,7 +776,7 @@ z	x	y
 `wf $filename, @lines`: write `@lines` to a file called `$filename`
 
 ```sh
-$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ reA'
 file1
 file2
 $ ni file1
@@ -789,7 +789,7 @@ yo
 ### `af`: append to file
 
 ```sh
-$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ reA'
 file3
 file4
 file3
