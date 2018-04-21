@@ -2,8 +2,6 @@
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
 
-use Scalar::Util qw/looks_like_number/;
-
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
 
@@ -140,11 +138,11 @@ sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
 }
 
-our %earth_radius_in_units = ("km" => 6371, "mi" =>3959, 
-                              "m" =>6371E3, "ft"=>3959 * 5280);
+our %earth_radius_in_units = ("km" => 6371,   "mi" => 3959, 
+                              "m" =>  6371E3, "ft" => 3959 * 5280);
 
 sub lat_lon_dist {
-  my $units = @_ == 4 ? "km" : pop;
+  my $units = @_ == 4 ? "km" : pop || "km";
   my ($lat1, $lon1, $lat2, $lon2) = @_;
   my $earth_radius = $earth_radius_in_units{$units};
   my $phi1 = to_radians $lat1;
@@ -157,9 +155,10 @@ sub lat_lon_dist {
 }
 
 sub gh_dist_exact {
-  my @lat_lons;
-  push @lat_lons, gll($_[0]), gll($_[1]), ($_[2] || "km");
-  lat_lon_dist @lat_lons;
+  my ($gh1, $gh2, $precision, $unit) = @_;
+  $unit = $precision if exists $earth_radius_in_units{$precision}; 
+  $precision = undef if exists $earth_radius_in_units{$precision};
+  lat_lon_dist gll($gh1, $precision), gll($gh2, $precision), $unit;
 }
 
 sub geohash_box($;$) {
