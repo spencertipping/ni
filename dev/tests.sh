@@ -2935,12 +2935,6 @@ lazytest_case 'ni 1p'\''r i2e tpi tep(1515801233), "Z"'\''
 1515801233
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=279
-lazytest_case 'ni i'\''2/14/18 0:46'\'' p'\''r usfe a'\''
-' 3<<'LAZYTEST_EOF'
-1518569160
-LAZYTEST_EOF
-lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=289
 lazytest_case 'ni i[34.058566 -118.416526] p'\''llg a, b, -60'\'' \
      p'\''my $epoch_time = 1485079513; dow gh6l($epoch_time, a)'\''

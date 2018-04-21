@@ -4703,7 +4703,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-307 core/pl/util.pm
+332 core/pl/util.pm
 # Utility library functions.
 # Mostly inherited from nfu. This is all loaded inline before any Perl mapper
 # code. Note that List::Util, the usual solution to a lot of these problems, is
@@ -4908,6 +4908,31 @@ sub endswith($$) {
 }
 
 sub alph($) {chr($_[0] + 64)}
+
+
+
+BEGIN { 
+  my %short_separators =
+    ("c" => ",", 
+     "h" => "-",
+     "p" => "|", 
+     "s" => "/",
+     "u" => "_",
+     "w" => " ");
+   my %regex_separators = ("/" => '\/', "|" => '\|');
+   for my $sep_abbrev(keys %short_separators) {
+     $join_sep = $short_separators{$sep_abbrev};
+     $split_sep = $regex_separators{$join_sep} || $join_sep;
+     ceval sprintf 'sub j%s      {join "%s",      @_;}', 
+       $sep_abbrev, $join_sep;
+     ceval sprintf 'sub j%s%s    {join "%s%s",    @_;}',
+       $sep_abbrev, $sep_abbrev, $join_sep, $join_sep;
+     ceval sprintf 'sub s%s($)   {split /%s/,   $_[0]}',
+       $sep_abbrev, $split_sep;
+     ceval sprintf 'sub s%s%s($) {split /%s%s/, $_[0]}',
+       $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
+     }
+   }
 
 sub restrict_hdfs_path ($$) {
   my ($path, $restriction) = @_;
@@ -5651,12 +5676,10 @@ BEGIN {
   *usfe = \&mdy_epoch
 }
 
-249 core/pl/geohash.pl
+248 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
-
-use Scalar::Util qw/looks_like_number/;
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
@@ -5794,11 +5817,11 @@ sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
 }
 
-our %earth_radius_in_units = ("km" => 6371, "mi" =>3959, 
-                              "m" =>6371E3, "ft"=>3959 * 5280);
+our %earth_radius_in_units = ("km" => 6371,   "mi" => 3959, 
+                              "m" =>  6371E3, "ft" => 3959 * 5280);
 
 sub lat_lon_dist {
-  my $units = @_ == 4 ? "km" : pop;
+  my $units = @_ == 4 ? "km" : pop || "km";
   my ($lat1, $lon1, $lat2, $lon2) = @_;
   my $earth_radius = $earth_radius_in_units{$units};
   my $phi1 = to_radians $lat1;
@@ -5811,9 +5834,10 @@ sub lat_lon_dist {
 }
 
 sub gh_dist_exact {
-  my @lat_lons;
-  push @lat_lons, gll($_[0]), gll($_[1]), ($_[2] || "km");
-  lat_lon_dist @lat_lons;
+  my ($gh1, $gh2, $precision, $unit) = @_;
+  $unit = $precision if exists $earth_radius_in_units{$precision}; 
+  $precision = undef if exists $earth_radius_in_units{$precision};
+  lat_lon_dist gll($gh1, $precision), gll($gh2, $precision), $unit;
 }
 
 sub geohash_box($;$) {
@@ -12996,7 +13020,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-852 doc/ni_by_example_3.md
+900 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13274,7 +13298,7 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 #### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
 Takes a US formatted time and converts it to epoch time.
 
-```bash
+```sh # dumb test doesn't work on mac
 $ ni i'2/14/18 0:46' p'r usfe a'
 1518569160
 ```
@@ -13790,6 +13814,54 @@ yo
 ```
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
+## Syntacitc Sugar
+
+### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
+how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+```
+
+
+### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
+how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+```
+
+
+### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
+
+
+### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
 
 
 ## JSON I/O

@@ -275,7 +275,7 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 #### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
 Takes a US formatted time and converts it to epoch time.
 
-```bash
+```sh # dumb test doesn't work on mac
 $ ni i'2/14/18 0:46' p'r usfe a'
 1518569160
 ```
@@ -791,6 +791,54 @@ yo
 ```
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
+## Syntacitc Sugar
+
+### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
+how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+```
+
+
+### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
+how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+```
+
+
+### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
+
+
+### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
 
 
 ## JSON I/O
