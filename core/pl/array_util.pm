@@ -136,4 +136,11 @@ sub cart {
   } 1..prod(@ns);
 }
 
+sub clip {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  wantarray ? map min($upper, max $lower, $_), @xs
+            : min $upper, max $lower, $xs[0];
+}
+
 

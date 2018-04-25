@@ -2,13 +2,6 @@
 
 sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
 
-sub clip {
-  local $_;
-  my ($lower, $upper, @xs) = @_;
-  wantarray ? map min($upper, max $lower, $_), @xs
-            : min $upper, max $lower, $xs[0];
-}
-
 sub within {
   local $_;
   my ($lower, $upper, @xs) = @_;

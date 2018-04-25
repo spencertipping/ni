@@ -4498,17 +4498,10 @@ wkt.pl
 time.pl
 geohash.pl
 pl.pl
-28 core/pl/util.pm
+21 core/pl/util.pm
 # Utility library functions.
 
 sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
-
-sub clip {
-  local $_;
-  my ($lower, $upper, @xs) = @_;
-  wantarray ? map min($upper, max $lower, $_), @xs
-            : min $upper, max $lower, $xs[0];
-}
 
 sub within {
   local $_;
@@ -4613,7 +4606,7 @@ sub af {
   $f;
 }
 
-138 core/pl/array_util.pm
+145 core/pl/array_util.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -4750,6 +4743,13 @@ sub cart {
     }
     $xs;
   } 1..prod(@ns);
+}
+
+sub clip {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  wantarray ? map min($upper, max $lower, $_), @xs
+            : min $upper, max $lower, $xs[0];
 }
 
 56 core/pl/json_util.pm
@@ -17409,9 +17409,9 @@ surrounding Perl-specific optimizations for base-32 transcoding.
 There are a few operators and functions that operate on geohashes:
 
 - Perl context functions
-  - `$gh = ghe/llg/geohash_encode($lat, $lng, $precision)`: encode a geohash
-  - `($lat, $lng) = ghd/gll/geohash_decode($gh [, $bits])`: decode a geohash
-  - `$dist = gh_dist_exact($gh1, $gh2, unit = "km")`
+  - `$gh = llg/ghe/geohash_encode($lat, $lng, $precision)`: encode a geohash
+  - `($lat, $lng) = gll/ghd/geohash_decode($gh [, $bits])`: decode a geohash
+  - `$dist = gh_dist($gh1, $gh2, unit = "km")`
   - `($n, $s, $e, $w) = ghb/geohash_box($gh)`
 - Cell operators
   - `,g`: encode comma-delimited column values to a geohash
@@ -17422,8 +17422,8 @@ There are a few operators and functions that operate on geohashes:
 $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
           my $bits        = int clip 1, 60, rand(61);
           my $b32_digits  = int(($bits + 4) / 5);
-          my $gh_base32   = ghe $lat, $lng, $b32_digits;  # positive = letters
-          my $gh_binary   = ghe $lat, $lng, -$bits;       # negative = bits
+          my $gh_base32   = llg $lat, $lng, $b32_digits;  # positive = letters
+          my $gh_binary   = llg $lat, $lng, -$bits;       # negative = bits
           my $gh2_b32     = ghe ghd($gh_base32), $b32_digits;
           my $gh2_bin     = ghe ghd($gh_binary, $bits), -$bits;
           my $b32_ok      = $gh2_b32 eq $gh_base32;
