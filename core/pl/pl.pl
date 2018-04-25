@@ -84,6 +84,9 @@ use constant perl_mapgen => gen q{
 };
 
 our @perl_prefix_keys = qw| core/pl/util.pm
+                            core/pl/array_util.pm
+                            core/pl/file_util.pm
+                            core/pl/string_util.pm
                             core/pl/json_util.pm
                             core/pl/hash_util.pm
                             core/pl/math.pm
