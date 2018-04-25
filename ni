@@ -4527,17 +4527,15 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-47 core/pl/string_util.pm
+45 core/pl/string_util.pm
 # String utilities
 
 sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
+  $_[0] =~ /^$_[1]/;
 }
 
 sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
+  $_[0] =~/$_[1]$/;
 }
 
 # Number to letter 1 => "A", 2 => "B", etc.

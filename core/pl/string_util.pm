@@ -1,13 +1,11 @@
 # String utilities
 
 sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
+  $_[0] =~ /^$_[1]/;
 }
 
 sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
+  $_[0] =~/$_[1]$/;
 }
 
 # Number to letter 1 => "A", 2 => "B", etc.
