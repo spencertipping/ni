@@ -1,9 +1,10 @@
 util.pm
-string_util.pm
-file_util.pm
-array_util.pm
-json_util.pm
-hash_util.pm
+string.pm
+file.pm
+array.pm
+json.pm
+hash.pm
+hadoop.pm
 math.pm
 stream.pm
 reducers.pm

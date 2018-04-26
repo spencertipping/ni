@@ -620,6 +620,32 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
  - the number of leading zeroes in the input path must match the number of zeroes in the hdfsc://<number> path
  - `hdfsc` only works on files that are given as partfiles. 
 
+## Hadoop Operations in Perl
+
+The output of hadoop jobs can be moved inside a perl context:
+
+```sh
+ni data HS[<job>] p'hdfs_mv a, /user/bilow/output_path/'
+```
+
+You can also specify normal paths to move.
+
+```sh
+ni i[/user/bilow/tmp/output /user/bilow/data/product] p'hdfs_mv a, b'
+```
+
+You also have access to:
+
+- `hadoop fs -du -h hdfsPath` via `p'hddu hdfsPath'`
+- `hadoop fs -mkdir -p hdfsPath ` via `p'hdmp hdfsPath'`
+- `hadoop fs -rm -r hdfsPath` via `p'hddu /path/'`
+- `hadoop fs -put localFile hdfsPath` via `p'hdpt localFile hdfsPath'`
+- `hadoop fs -get hdfsPath localFile` via `p'hdgt hdfsPath localFile'`
+- `hadoop fs -ls -h hdfsPath` via `p'hdls hdfsPath'`
+- `yarn application -kill app_id` via `p'yak app_id`
+
+If you just want the HDFS path from an `hdfst:///` or `hdfs://` path:
+
 
 ## Conclusion
 

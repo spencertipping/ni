@@ -4484,13 +4484,14 @@ q{
 
 defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
                pseq popt colspec1, popt integer, _qfn;
-13 core/pl/lib
+14 core/pl/lib
 util.pm
-string_util.pm
-file_util.pm
-array_util.pm
-json_util.pm
-hash_util.pm
+string.pm
+file.pm
+array.pm
+json.pm
+hash.pm
+hadoop.pm
 math.pm
 stream.pm
 reducers.pm
@@ -4520,7 +4521,7 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-45 core/pl/string_util.pm
+45 core/pl/string.pm
 # String utilities
 
 sub startswith($$) {
@@ -4566,7 +4567,7 @@ sub restrict_hdfs_path ($$) {
   }
   $path;
 }
-39 core/pl/file_util.pm
+39 core/pl/file.pm
 # File Readers
 sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
 sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
@@ -4606,7 +4607,7 @@ sub af {
   $f;
 }
 
-145 core/pl/array_util.pm
+145 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -4752,7 +4753,7 @@ sub clip {
             : min $upper, max $lower, $xs[0];
 }
 
-56 core/pl/json_util.pm
+56 core/pl/json.pm
 # JSON utils 
 
 # for extracting a small number of fields from
@@ -4809,7 +4810,7 @@ sub delete_flat_hash {
     return $_[0];
   }
 }
-150 core/pl/hash_util.pm
+150 core/pl/hash.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
@@ -4959,6 +4960,68 @@ sub accumulate_hashes {
 sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
+}
+61 core/pl/hadoop.pm
+# Helpers for interacting with Hadoop and YARN
+sub extract_hdfs_path($) {
+  my @input_path_parts = $_[0] =~ m([^/]+)mg;
+  if($input_path_parts[0] =~ /^hdfs[^:]*:/) {
+    shift @input_path_parts;
+  };
+  if ($input_path_parts[-1] =~ /^(\*|part-)/) {
+    pop @input_path_parts;
+  }
+ "/" . join "/", @input_path_parts;
+}
+
+sub hdfs_du_h ($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -du -h $hdfs_path`
+}
+
+sub hdfs_mkdir_p($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -mkdir -p $_[0]`  
+}
+
+sub hdfs_rm_r($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -rm -r $_[0]`
+}
+
+sub hdfs_put($$) {
+  `hadoop fs -put -f $_[0] $_[1]`
+}
+
+sub hdfs_get($$) {
+  my $hdfs_path = extract_hdfs_path $_[1];
+  `hadoop fs -get $_[0] $hdfs_path`
+}
+
+sub hdfs_ls($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -ls -h $hdfs_path`
+}
+
+sub hdfs_mv($$) {
+  my ($raw_hdfs_input_path, $output_hdfs_path) = @_;
+  my $input_hdfs_path = extract_hdfs_path $raw_hdfs_input_path;
+ `hadoop fs -mv $input_hdfs_path $output_hdfs_path`
+}
+
+sub yarn_application_kill($) {
+  `yarn application -kill $_[0]`
+}
+
+BEGIN {
+  *hddu = \&hdfs_du_h;
+  *hdmp = \&hdfs_mkdir_p;
+  *hdrm = \&hdfs_rm_r;
+  *hdpt = \&hdfs_put;
+  *hdgt = \&hdfs_get;
+  *hdls = \&hdfs_ls;
+  *hdmv = \&hdfs_mv;
+  *yak = \&yarn_application_kill;
 }
 132 core/pl/math.pm
 # Math utility functions.
@@ -5849,7 +5912,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-189 core/pl/pl.pl
+190 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5936,11 +5999,12 @@ use constant perl_mapgen => gen q{
 };
 
 our @perl_prefix_keys = qw| core/pl/util.pm
-                            core/pl/array_util.pm
-                            core/pl/file_util.pm
-                            core/pl/string_util.pm
-                            core/pl/json_util.pm
-                            core/pl/hash_util.pm
+                            core/pl/array.pm
+                            core/pl/file.pm
+                            core/pl/string.pm
+                            core/pl/json.pm
+                            core/pl/hadoop.pm
+                            core/pl/hash.pm
                             core/pl/math.pm
                             core/pl/stream.pm
                             core/pl/wkt.pl
@@ -13859,7 +13923,7 @@ Some jobs that are difficult for `ni`, and some ways to resolve them:
 * Iterating a `ni` process over directories where the directory provides contextual information about its contents.
   * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
   * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
-638 doc/ni_by_example_4.md
+664 doc/ni_by_example_4.md
 # `ni` by Example, Chapter 4 (alpha release)
 
 Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
@@ -14481,6 +14545,32 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
  - zn is necessary to consume the input stream, which will be re-created using hdfsc; this leads to a small amount of overhead. 
  - the number of leading zeroes in the input path must match the number of zeroes in the hdfsc://<number> path
  - `hdfsc` only works on files that are given as partfiles. 
+
+## Hadoop Operations in Perl
+
+The output of hadoop jobs can be moved inside a perl context:
+
+```sh
+ni data HS[<job>] p'hdfs_mv a, /user/bilow/output_path/'
+```
+
+You can also specify normal paths to move.
+
+```sh
+ni i[/user/bilow/tmp/output /user/bilow/data/product] p'hdfs_mv a, b'
+```
+
+You also have access to:
+
+- `hadoop fs -du -h hdfsPath` via `p'hddu hdfsPath'`
+- `hadoop fs -mkdir -p hdfsPath ` via `p'hdmp hdfsPath'`
+- `hadoop fs -rm -r hdfsPath` via `p'hddu /path/'`
+- `hadoop fs -put localFile hdfsPath` via `p'hdpt localFile hdfsPath'`
+- `hadoop fs -get hdfsPath localFile` via `p'hdgt hdfsPath localFile'`
+- `hadoop fs -ls -h hdfsPath` via `p'hdls hdfsPath'`
+- `yarn application -kill app_id` via `p'yak app_id`
+
+If you just want the HDFS path from an `hdfst:///` or `hdfs://` path:
 
 
 ## Conclusion
