@@ -94,41 +94,44 @@ $ ni i[34.058566 -118.416526] p'r gll llg(a, b, -41), 41'
 `g3b` (geohash base-32 to binary) and `gb3` (geohash binary to base-32) transcode between base-32 and binary geohashes.
 
 ```
-$ ni 1p'r g3b "9q5cc25tufw5"'
+$ ni i9q5cc25tufw5 p'r g3b a'
 349217367909022597
 ```
 
 `gb3` takes a binary geohash and its precision in binary bits, and returns a base-32 geohash.
 
 ```bash
-$ ni 1p'r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'
+$ ni i[349217367909022597 9q5cc25tufw5] p'r gb3 a, 60; r gb3 g3b b, 60;'
 9q5cc25tufw5
 9q5cc25tufw5
 ```
 
-
-#### `ghb`: geohash bounding box
-
-For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
-
-```bash
-$ ni 1p'r ghb "95qc"'
-18.6328123323619	18.45703125	-125.156250335276	-125.5078125
-```
 
 #### `gh_dist`: distance between geohash centroids
 It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b, mi'
 1.23981551084308
 ```
 
 When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b'
 1.99516661267524
+```
+
+You can also pass in binary geohashes, along with a precision.
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40'
+1.99516661267524
+```
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40, "m"'
+1995.16661267524
 ```
 
 
@@ -140,6 +143,14 @@ $ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
 10426.7380460312
 ```
 
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
+
+```bash
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
+```
 
 ### Time Perl Functions
 
@@ -275,7 +286,7 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 #### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
 Takes a US formatted time and converts it to epoch time.
 
-```bash
+```sh # dumb test doesn't work on mac
 $ ni i'2/14/18 0:46' p'r usfe a'
 1518569160
 ```
@@ -404,12 +415,12 @@ tonight
 
 That's given us the second element of each line that started with the 
 
-As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `rea` as a shorthand for `re {a}`
+As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `reA` as a shorthand for `re {a}`
 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines'
+     p'my @lines = reA; r b_ @lines'
 can	you	feel
 the	love
 tonight
@@ -420,7 +431,7 @@ And if we want to do this in a single line, we can combine multiline selection w
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'r b_ rea'
+     p'r b_ reA'
 can	you	feel
 the	love
 tonight
@@ -431,7 +442,7 @@ The last two examples are used commonly. The former, more explicit one is often 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines; r a_ @lines'
+     p'my @lines = reA; r b_ @lines; r a_ @lines'
 can	you	feel
 j	j	j
 the	love
@@ -442,18 +453,18 @@ l
 
 Another common motif is getting the value of 
 
-### `reb ... rel`: Reduce while multiple columns are equal
+### `reB ... reL`: Reduce while multiple columns are equal
 
-In the previous section, we covered `rea` as syntactic sugar for `re {a}`
+In the previous section, we covered `reA` as syntactic sugar for `re {a}`
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ rea'
+     i[a y third] i[b y fourth] p'r c_ reA'
 first	second	third
 fourth
 ```
 
-This syntactic sugar is slightly different for `reb, rec, ..., rel`.
+This syntactic sugar is slightly different for `reB, reC, ..., reL`.
 
 Let's take a look at what happens with `re {b}`:
 
@@ -468,7 +479,7 @@ In general, that's not quite what we want; when we do reduction like this, we've
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ reb'
+     i[a y third] i[b y fourth] p'r c_ reB'
 first	second
 third
 fourth
@@ -497,7 +508,7 @@ These are useful for collecting data with an unknown shape.
 
 ```bash
 $ ni i[m 1 x] i[m 2 y s t] \
-     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ rea'
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ reA'
 1	x	2	y	s	t	3	yo
 5	who	6	let	the	dogs
 ```
@@ -724,7 +735,7 @@ Constructing hashes from closures can get very large; if you have more than 1 mi
 This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
 
 ```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS reA'
 x	5
 y	13
 ```
@@ -733,7 +744,7 @@ If you have ragged data, where a value may not exist for a particular column, a 
 
 ```bash 
 $ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
-     p'%h = dcSNN rea; 
+     p'%h = dcSNN reA; 
        @sorted_keys = kbv_dsc %h;
        r($_, $h{$_}) for @sorted_keys'
 foo	4
@@ -747,14 +758,14 @@ This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_dsc(ab_ rl(3))'
 y	x	z
 ```
 
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_asc(ab_ rl(3))'
 z	x	y
 ```
 
@@ -765,7 +776,7 @@ z	x	y
 `wf $filename, @lines`: write `@lines` to a file called `$filename`
 
 ```sh
-$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ reA'
 file1
 file2
 $ ni file1
@@ -778,7 +789,7 @@ yo
 ### `af`: append to file
 
 ```sh
-$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ reA'
 file3
 file4
 file3
@@ -791,6 +802,54 @@ yo
 ```
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
+## Syntacitc Sugar
+
+### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
+how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+```
+
+
+### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
+how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+```
+
+
+### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
+
+
+### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
 
 
 ## JSON I/O

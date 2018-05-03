@@ -4484,10 +4484,14 @@ q{
 
 defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
                pseq popt colspec1, popt integer, _qfn;
-10 core/pl/lib
-json_util.pm
-hash_util.pm
+14 core/pl/lib
 util.pm
+string.pm
+file.pm
+array.pm
+json.pm
+hash.pm
+hadoop.pm
 math.pm
 stream.pm
 reducers.pm
@@ -4495,7 +4499,261 @@ wkt.pl
 time.pl
 geohash.pl
 pl.pl
-56 core/pl/json_util.pm
+21 core/pl/util.pm
+# Utility library functions.
+
+sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
+
+sub within {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  not grep $_ < $lower || $_ > $upper, @xs;
+}
+
+# Binary repacking
+# It's common to pack(), then unpack() immediately; for instance, to parse WKB
+# we'd pack hex and then unpack doubles. This transcoding can be more concisely
+# represented using two functions, pu and up, each of which uses a colon to
+# split the templates.
+#
+# For example, up("H*:Q*", 1, 2, 3) would give you a bunch of hex digits to
+# encode the quadwords 1, 2, and 3.
+
+sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
+sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
+45 core/pl/string.pm
+# String utilities
+
+sub startswith($$) {
+  $_[0] =~ /^$_[1]/;
+}
+
+sub endswith($$) {
+  $_[0] =~/$_[1]$/;
+}
+
+# Number to letter 1 => "A", 2 => "B", etc.
+sub alph($) {chr($_[0] + 64)}
+
+# Syntactic sugar for join/split
+BEGIN { 
+  my %short_separators =
+    ("c" => ",", 
+     "p" => "|", 
+     "u" => "_",
+     "w" => " ");
+   my %regex_separators = ("/" => '\/', "|" => '\|');
+   for my $sep_abbrev(keys %short_separators) {
+     $join_sep = $short_separators{$sep_abbrev};
+     $split_sep = $regex_separators{$join_sep} || $join_sep;
+     ceval sprintf 'sub j%s      {join "%s",      @_;}', 
+       $sep_abbrev, $join_sep;
+     ceval sprintf 'sub j%s%s    {join "%s%s",    @_;}',
+       $sep_abbrev, $sep_abbrev, $join_sep, $join_sep;
+     ceval sprintf 'sub s%s($)   {split /%s/,   $_[0]}',
+       $sep_abbrev, $split_sep;
+     ceval sprintf 'sub s%s%s($) {split /%s%s/, $_[0]}',
+       $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
+    }
+}
+
+sub restrict_hdfs_path ($$) {
+  my ($path, $restriction) = @_;
+  my ($zeroes) = ($restriction =~ /^1(0*)$/);
+  if (endswith $path, "part-*") {
+    $path =~ s/part-\d*\*/part-$zeroes\*/;
+  } else {
+    $path = $path . "/part-$zeroes*"
+  }
+  $path;
+}
+39 core/pl/file.pm
+# File Readers
+sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
+sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub rfc {chomp(my $r = rf @_); $r}
+
+# ri(my $var, "< file"): read entire contents into
+sub ri  {open my $fh, $_[1] or die "ri $_[1]: $!"; 1 while read $fh, $_[0], 65536, length $_[0]}
+
+sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
+sub basename($) {(dirbase $_[0])[1]}
+sub dirname($)  {(dirbase $_[0])[0]}
+
+sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
+
+sub wf {
+  local $_;
+  my $f = shift;
+  my $fh;
+  if ($f =~ /^\|/) {
+    open $fh, $f or die "wf $f: $!";
+  } else {
+    mkdir_p dirname $f;
+    open $fh, "> $f" or die "wf $f: $!";
+  }
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
+}
+
+sub af {
+  local $_;
+  my $f = shift;
+  mkdir_p dirname $f;
+  open my $fh, ">> $f" or die "af $f: $!";
+  print $fh /\n$/ ? $_ : "$_\n" for @_;
+  close $fh;
+  $f;
+}
+
+145 core/pl/array.pm
+# Array processors
+sub first  {$_[0]}
+sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
+sub rando  {$_[int(rand($#_ + 1))]}
+sub max    {local $_; my $m = pop @_; $m = defined && $_ >  $m ? $_ : $m for @_; $m}
+sub min    {local $_; my $m = pop @_; $m = defined && $_ <  $m ? $_ : $m for @_; $m}
+sub maxstr {local $_; my $m = pop @_; $m = defined && $_ gt $m ? $_ : $m for @_; $m}
+sub minstr {local $_; my $m = pop @_; $m = defined && $_ lt $m ? $_ : $m for @_; $m}
+
+sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
+sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
+
+sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
+sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+
+sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
+sub reductions(&$@) {
+  local $_;
+  my ($f, $x, @xs, @ys) = @_;
+  push @ys, $x = &$f($x, $_) for @xs;
+  @ys;
+}
+
+sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
+sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
+
+sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
+sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]}
+sub take_last($@) {my ($n, @xs) = @_; @xs[($#xs-$n)..$#xs]}
+sub drop_last($@) {my ($n, @xs) = @_; @xs[0..($#xs-$n-1)]}
+
+sub take_while(&@) {
+  local $_;
+  my ($f, @xs) = @_; 
+  my @out; 
+  for (@xs) { if(&$f($_)) {push @out, $_} else {last} }
+  @out;
+}
+
+sub drop_while(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my @out;
+  my $count = 0;
+  for (@xs) { if(!&$f($_)) {return drop $count, @xs} $count++;}
+  ();
+} 
+
+sub take_every($$@) {
+  my ($every, $start, @r) = @_;
+  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
+}
+
+sub take_even(@) { take_every(2, 0, @_); }
+sub take_odd(@) { take_every(2, 1, @_); }
+
+sub argmax(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
+  }
+  $m;
+}
+
+sub argmin(&@) {
+  local $_;
+  my ($f, $m, @xs, $fx) = @_;
+  my $fm = &$f($_ = $m);
+  for (@xs) {
+    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
+  }
+  $m;
+}
+
+# Index of Maximum Element
+sub indmax(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) > $fm;
+  }
+  $im;
+}
+
+# Index of Minimum Element
+sub indmin(&@) {
+  local $_;
+  my ($f, @xs) = @_;
+  my $im = 0;
+  my $fm = &$f($xs[$im]);
+  my $fx;
+  for (1..$#xs) {
+    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) < $fm;
+  }
+  $im;
+}
+
+sub most_common(@)
+{
+  local $_;
+  my %freqs;
+  ++$freqs{$_} for @_;
+  my $most = max values %freqs;
+  grep $freqs{$_} == $most, keys %freqs;
+}
+
+sub zip {
+  my @rs = @_;
+  my $min_length = min map {$#{$_}} @rs;
+  my @r;
+  for my $idx(0..$min_length) {
+    push @r, ${$rs[$_]}[$idx] for 0..$#rs;
+  }
+  @r;
+}
+
+sub cart {
+  use integer;
+  local $_;
+  return () unless @_;
+  @$_ or return () for @_;
+  return map [$_], @{$_[0]} if @_ == 1;
+  my @ns = map scalar(@$_), @_;
+  map {
+    my ($i, $xs) = ($_ - 1, []);
+    for (reverse 0..$#ns) {
+      unshift @$xs, ${$_[$_]}[$i % $ns[$_]];
+      $i /= $ns[$_];
+    }
+    $xs;
+  } 1..prod(@ns);
+}
+
+sub clip {
+  local $_;
+  my ($lower, $upper, @xs) = @_;
+  wantarray ? map min($upper, max $lower, $_), @xs
+            : min $upper, max $lower, $xs[0];
+}
+
+56 core/pl/json.pm
 # JSON utils 
 
 # for extracting a small number of fields from
@@ -4552,7 +4810,7 @@ sub delete_flat_hash {
     return $_[0];
   }
 }
-150 core/pl/hash_util.pm
+150 core/pl/hash.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
@@ -4703,313 +4961,67 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-307 core/pl/util.pm
-# Utility library functions.
-# Mostly inherited from nfu. This is all loaded inline before any Perl mapper
-# code. Note that List::Util, the usual solution to a lot of these problems, is
-# introduced in v5.7.3, so we can't rely on it being there.
-
-sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
-
-sub first  {$_[0]}
-sub final  {$_[$#_]}
-sub rando  {$_[int(rand($#_ + 1))]}
-sub max    {local $_; my $m = pop @_; $m = defined && $_ >  $m ? $_ : $m for @_; $m}
-sub min    {local $_; my $m = pop @_; $m = defined && $_ <  $m ? $_ : $m for @_; $m}
-sub maxstr {local $_; my $m = pop @_; $m = defined && $_ gt $m ? $_ : $m for @_; $m}
-sub minstr {local $_; my $m = pop @_; $m = defined && $_ lt $m ? $_ : $m for @_; $m}
-
-sub zip {
-  my @rs = @_;
-  my $min_length = min map {$#{$_}} @rs;
-  my @r;
-  for my $idx(0..$min_length) {
-    push @r, ${$rs[$_]}[$idx] for 0..$#rs;
+61 core/pl/hadoop.pm
+# Helpers for interacting with Hadoop and YARN
+sub extract_hdfs_path($) {
+  my @input_path_parts = $_[0] =~ m([^/]+)mg;
+  if($input_path_parts[0] =~ /^hdfs[^:]*:/) {
+    shift @input_path_parts;
+  };
+  if ($input_path_parts[-1] =~ /^(\*|part-)/) {
+    pop @input_path_parts;
   }
-  @r;
+ "/" . join "/", @input_path_parts;
 }
 
-sub take($@) {my ($n, @xs) = @_; @xs[0..($n-1)]}
-sub drop($@) {my ($n, @xs) = @_; @xs[$n..$#xs]}
-sub take_last($@) {my ($n, @xs) = @_; @xs[($#xs-$n)..$#xs]}
-sub drop_last($@) {my ($n, @xs) = @_; @xs[0..($#xs-$n-1)]}
-
-sub take_while(&@) {
-  local $_;
-  my ($f, @xs) = @_; 
-  my @out; 
-  for (@xs) { if(&$f($_)) {push @out, $_} else {last} }
-  @out;
+sub hdfs_du_h ($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -du -h $hdfs_path`
 }
 
-sub drop_while(&@) {
-  local $_;
-  my ($f, @xs) = @_;
-  my @out;
-  my $count = 0;
-  for (@xs) { if(!&$f($_)) {return drop $count, @xs} $count++;}
-  ();
-} 
-
-sub take_every($$@) {
-  my ($every, $start, @r) = @_;
-  @r[grep { ($_ - $start) % $every == 0 } 0..$#r];
+sub hdfs_mkdir_p($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -mkdir -p $_[0]`  
 }
 
-sub take_even(@) { take_every(2, 0, @_); }
-sub take_odd(@) { take_every(2, 1, @_); }
-
-sub deltas {local $_; return () unless @_ > 1; map $_[$_] - $_[$_ - 1], 1..$#_}
-sub totals {local $_; my ($x, @xs) = 0; push @xs, $x += $_ for @_; @xs}
-
-sub indmax(&@) {
-  local $_;
-  my ($f, @xs) = @_;
-  my $im = 0;
-  my $fm = &$f($xs[$im]);
-  my $fx;
-  for (1..$#xs) {
-    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) > $fm;
-  }
-  $im;
+sub hdfs_rm_r($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -rm -r $_[0]`
 }
 
-sub indmin(&@) {
-  local $_;
-  my ($f, @xs) = @_;
-  my $im = 0;
-  my $fm = &$f($xs[$im]);
-  my $fx;
-  for (1..$#xs) {
-    ($im, $fm) = ($_, $fx) if ($fx = &$f($xs[$_])) < $fm;
-  }
-  $im;
+sub hdfs_put($$) {
+  `hadoop fs -put -f $_[0] $_[1]`
 }
 
-sub argmax(&@) {
-  local $_;
-  my ($f, $m, @xs, $fx) = @_;
-  my $fm = &$f($_ = $m);
-  for (@xs) {
-    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) > $fm;
-  }
-  $m;
+sub hdfs_get($$) {
+  my $hdfs_path = extract_hdfs_path $_[1];
+  `hadoop fs -get $_[0] $hdfs_path`
 }
 
-sub argmin(&@) {
-  local $_;
-  my ($f, $m, @xs, $fx) = @_;
-  my $fm = &$f($_ = $m);
-  for (@xs) {
-    ($m, $fm) = ($_, $fx) if ($fx = &$f($_)) < $fm;
-  }
-  $m;
+sub hdfs_ls($) {
+  my $hdfs_path = extract_hdfs_path $_[0];
+  `hadoop fs -ls -h $hdfs_path`
 }
 
-sub most_common(@)
-{
-  local $_;
-  my %freqs;
-  ++$freqs{$_} for @_;
-  my $most = max values %freqs;
-  grep $freqs{$_} == $most, keys %freqs;
+sub hdfs_mv($$) {
+  my ($raw_hdfs_input_path, $output_hdfs_path) = @_;
+  my $input_hdfs_path = extract_hdfs_path $raw_hdfs_input_path;
+ `hadoop fs -mv $input_hdfs_path $output_hdfs_path`
 }
 
-sub any(&@) {local $_; my ($f, @xs) = @_; &$f($_) && return 1 for @xs; 0}
-sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
-
-sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
-sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
-
-sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
-sub reductions(&$@) {
-  local $_;
-  my ($f, $x, @xs, @ys) = @_;
-  push @ys, $x = &$f($x, $_) for @xs;
-  @ys;
+sub yarn_application_kill($) {
+  `yarn application -kill $_[0]`
 }
 
-sub cart {
-  use integer;
-  local $_;
-  return () unless @_;
-  @$_ or return () for @_;
-  return map [$_], @{$_[0]} if @_ == 1;
-  my @ns = map scalar(@$_), @_;
-  map {
-    my ($i, $xs) = ($_ - 1, []);
-    for (reverse 0..$#ns) {
-      unshift @$xs, ${$_[$_]}[$i % $ns[$_]];
-      $i /= $ns[$_];
-    }
-    $xs;
-  } 1..prod(@ns);
-}
-
-sub clip {
-  local $_;
-  my ($lower, $upper, @xs) = @_;
-  wantarray ? map min($upper, max $lower, $_), @xs
-            : min $upper, max $lower, $xs[0];
-}
-
-sub within {
-  local $_;
-  my ($lower, $upper, @xs) = @_;
-  not grep $_ < $lower || $_ > $upper, @xs;
-}
-
-sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
-sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
-sub rfc {chomp(my $r = rf @_); $r}
-
-# ri(my $var, "< file"): read entire contents into
-sub ri  {open my $fh, $_[1] or die "ri $_[1]: $!"; 1 while read $fh, $_[0], 65536, length $_[0]}
-
-sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
-sub basename($) {(dirbase $_[0])[1]}
-sub dirname($)  {(dirbase $_[0])[0]}
-
-sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
-
-sub wf {
-  local $_;
-  my $f = shift;
-  my $fh;
-  if ($f =~ /^\|/) {
-    open $fh, $f or die "wf $f: $!";
-  } else {
-    mkdir_p dirname $f;
-    open $fh, "> $f" or die "wf $f: $!";
-  }
-  print $fh /\n$/ ? $_ : "$_\n" for @_;
-  close $fh;
-  $f;
-}
-
-sub af {
-  local $_;
-  my $f = shift;
-  mkdir_p dirname $f;
-  open my $fh, ">> $f" or die "af $f: $!";
-  print $fh /\n$/ ? $_ : "$_\n" for @_;
-  close $fh;
-  $f;
-}
-
-sub startswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], 0, $affix_length) eq $_[1]
-}
-
-sub endswith($$) {
-  my $affix_length = length($_[1]);
-  substr($_[0], -$affix_length) eq $_[1]
-}
-
-sub alph($) {chr($_[0] + 64)}
-
-sub restrict_hdfs_path ($$) {
-  my ($path, $restriction) = @_;
-  my ($zeroes) = ($restriction =~ /^1(0*)$/);
-  if (endswith $path, "part-*") {
-    $path =~ s/part-\d*\*/part-$zeroes\*/;
-  } else {
-    $path = $path . "/part-$zeroes*"
-  }
-  $path;
-}
-
-
-our $base64_digits = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/!#$%&()[]*@?|;<>';
-our @base64_digits = split //, $base64_digits; 
-our $base64_ext_digits = substr($base64_digits, -16);
-our @base64_ext_digits = split //, $base64_ext_digits;
-our %base64_ext_decode = map(($base64_ext_digits[$_], 1), 0..$#base64_ext_digits);
-our %base64_decode = map(($base64_digits[$_], ($_ % 64)), 0..$#base64_digits);
-
-sub hex2extbase64($) {
-  my $hex_num = hex $_[0];
-  my $n_hex_chars = length $_[0];
-  if ($n_hex_chars == 3) {
-    $base64_digits[$hex_num >> 6] . $base64_digits[$hex_num % 64];
-  } elsif ($n_hex_chars == 2) {
-    $base64_digits[$hex_num >> 2] . $base64_ext_digits[$hex_num % 4];
-  } else {
-    $base64_ext_digits[$hex_num];
-  }
-}
-
-sub hex2base64($) {
-  $_[0] =~ tr/\-//d;
-  my @hex_strs = unpack("(A3)*", $_[0]); 
-  my $last_hex_str = pop @hex_strs;
-  my @hex_nums = map {hex $_} @hex_strs;
-  my @b64_strs = map { $base64_digits[$_ >> 6] . $base64_digits[$_ % 64] } @hex_nums;
-  my $b64_str = join("", @b64_strs);
-  my $last_chars = hex2extbase64 $last_hex_str;
-  $b64_str . $last_chars;
-}
-
-sub extbase642hex ($) {
-  my $n_hex_digits = length($_[0]) + 1 - sum(map { $base64_ext_decode{$_} } (split //, $_[0]));
-  my $fmt_str = "%0" . $n_hex_digits . "x";
-  my $value;
-  if ($n_hex_digits > 1) {
-    $shift_amt = $n_hex_digits == 2 ? 2 : 6;
-    $value = ($base64_decode{substr($_[0], 0, 1)} << $shift_amt) + $base64_decode{substr($_[0], 1, 1)}; 
-  } else {
-    $value = $base64_decode{$_[0]}; 
-  }
-  sprintf $fmt_str, $value;
-}
-
-sub base642hex($) {
-  my @b64_strs = unpack("(A2)*", $_[0]); 
-  my $last_b64 = pop @b64_strs;
-  my $last_hex_str = extbase642hex $last_b64;
-  my @b64_nums = map { ($base64_decode{substr($_, 0, 1)} << 6) + $base64_decode{substr($_, 1, 1)}} @b64_strs;
-  my @hex_strs = map {sprintf "%03x", $_} @b64_nums;
-  my $output_str = join("", @hex_strs) .  $last_hex_str;
-  $output_str
-}
-
-sub hyphenate_uuid($) {
-  join("-", substr($_[0], 0, 8), substr($_[0], 8, 4), 
-            substr($_[0], 12, 4), substr($_[0], 16, 4),
-            substr($_[0], 20))
-}
-
-
-# Binary repacking
-# It's common to pack(), then unpack() immediately; for instance, to parse WKB
-# we'd pack hex and then unpack doubles. This transcoding can be more concisely
-# represented using two functions, pu and up, each of which uses a colon to
-# split the templates.
-#
-# For example, up("H*:Q*", 1, 2, 3) would give you a bunch of hex digits to
-# encode the quadwords 1, 2, and 3.
-
-sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
-sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-
-# Debug for hdfsc
-# See ../hadoop/hdfsjoin.pl for more details
-
-sub generate_compact_filename($$) {
-  my ($filename, $shift_amount) = @_;
-  my ($prefix, $partfile_index, $suffix) = ($filename =~ /^(part[^\d]+)(\d+)(.*)/);
-  my $compact_partfile_index =  substr($partfile_index, $shift_amount);
-  return "$prefix*$compact_partfile_index$suffix";
-}
-
-our %FILES_PER_MAPPER_TO_SHIFT= (10 => 1, 100 => 2, 1_000 => 3, 10_000 => 4, 100_000 => 5);
-sub generate_compact_tail($$) {
-  my ($map_filename, $max_files_per_mapper) = @_;
-  my $shift_amount = $FILES_PER_MAPPER_TO_SHIFT{$max_files_per_mapper};
-  die "# of files must be a power of 10 between 10 and 10**5, inclusive" unless $shift_amount;
-  my $compact_filename = generate_compact_filename $map_filename, $shift_amount;
-  return $compact_filename;
+BEGIN {
+  *hddu = \&hdfs_du_h;
+  *hdmp = \&hdfs_mkdir_p;
+  *hdrm = \&hdfs_rm_r;
+  *hdpt = \&hdfs_put;
+  *hdgt = \&hdfs_get;
+  *hdls = \&hdfs_ls;
+  *hdmv = \&hdfs_mv;
+  *yak = \&yarn_application_kill;
 }
 134 core/pl/math.pm
 # Math utility functions.
@@ -5653,12 +5665,10 @@ BEGIN {
   *usfe = \&mdy_epoch
 }
 
-249 core/pl/geohash.pl
+248 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
-
-use Scalar::Util qw/looks_like_number/;
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
@@ -5796,11 +5806,11 @@ sub to_radians {
   3.1415926535897943284626 * $_[0]/180.0;
 }
 
-our %earth_radius_in_units = ("km" => 6371, "mi" =>3959, 
-                              "m" =>6371E3, "ft"=>3959 * 5280);
+our %earth_radius_in_units = ("km" => 6371,   "mi" => 3959, 
+                              "m" =>  6371E3, "ft" => 3959 * 5280);
 
 sub lat_lon_dist {
-  my $units = @_ == 4 ? "km" : pop;
+  my $units = @_ == 4 ? "km" : pop || "km";
   my ($lat1, $lon1, $lat2, $lon2) = @_;
   my $earth_radius = $earth_radius_in_units{$units};
   my $phi1 = to_radians $lat1;
@@ -5813,9 +5823,10 @@ sub lat_lon_dist {
 }
 
 sub gh_dist_exact {
-  my @lat_lons;
-  push @lat_lons, gll($_[0]), gll($_[1]), ($_[2] || "km");
-  lat_lon_dist @lat_lons;
+  my ($gh1, $gh2, $precision, $unit) = @_;
+  $unit = $precision if exists $earth_radius_in_units{$precision}; 
+  $precision = undef if exists $earth_radius_in_units{$precision};
+  lat_lon_dist gll($gh1, $precision), gll($gh2, $precision), $unit;
 }
 
 sub geohash_box($;$) {
@@ -5903,7 +5914,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-186 core/pl/pl.pl
+190 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -5990,8 +6001,12 @@ use constant perl_mapgen => gen q{
 };
 
 our @perl_prefix_keys = qw| core/pl/util.pm
-                            core/pl/json_util.pm
-                            core/pl/hash_util.pm
+                            core/pl/array.pm
+                            core/pl/file.pm
+                            core/pl/string.pm
+                            core/pl/json.pm
+                            core/pl/hadoop.pm
+                            core/pl/hash.pm
                             core/pl/math.pm
                             core/pl/stream.pm
                             core/pl/wkt.pl
@@ -12998,7 +13013,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-852 doc/ni_by_example_3.md
+911 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13095,41 +13110,44 @@ $ ni i[34.058566 -118.416526] p'r gll llg(a, b, -41), 41'
 `g3b` (geohash base-32 to binary) and `gb3` (geohash binary to base-32) transcode between base-32 and binary geohashes.
 
 ```
-$ ni 1p'r g3b "9q5cc25tufw5"'
+$ ni i9q5cc25tufw5 p'r g3b a'
 349217367909022597
 ```
 
 `gb3` takes a binary geohash and its precision in binary bits, and returns a base-32 geohash.
 
 ```bash
-$ ni 1p'r gb3 349217367909022597, 60; r gb3 g3b "9q5cc25tufw5", 60;'
+$ ni i[349217367909022597 9q5cc25tufw5] p'r gb3 a, 60; r gb3 g3b b, 60;'
 9q5cc25tufw5
 9q5cc25tufw5
 ```
 
-
-#### `ghb`: geohash bounding box
-
-For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
-
-```bash
-$ ni 1p'r ghb "95qc"'
-18.6328123323619	18.45703125	-125.156250335276	-125.5078125
-```
 
 #### `gh_dist`: distance between geohash centroids
 It is also useful to compute the distance between the center points of geohashes; this is implemented through `gh_dist`.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv", mi'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b, mi'
 1.23981551084308
 ```
 
 When the units are not specified, `gh_dist` gives its answers in kilometers, which can be specified explicitly as "km". Other options include feet ("ft") and meters ("m"). To specify meters, you will need to use quotation marks, as the bareword `m` is taken.
 
 ```bash
-$ ni 1p'gh_dist "95qcc25y", "95qccdnv"'
+$ ni i[95qcc25y 95qccdnv] p'gh_dist a, b'
 1.99516661267524
+```
+
+You can also pass in binary geohashes, along with a precision.
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40'
+1.99516661267524
+```
+
+```bash
+$ ni i[95qcc25y 95qccdnv] p'gh_dist g3b a, g3b b, 40, "m"'
+1995.16661267524
 ```
 
 
@@ -13141,6 +13159,14 @@ $ ni 1p'lat_lon_dist 31.21984, 121.41619, 34.058686, -118.416762'
 10426.7380460312
 ```
 
+#### `ghb`: geohash bounding box
+
+For plotting, it is useful to get the latitude and longitude coordinates of  the box that is mapped to a particular geohash. `ghb` returns the coordinates of that box in order: northernmost point, southernmost point, easternmost point, westernmost point.
+
+```bash
+$ ni 1p'r ghb "95qc"'
+18.6328123323619	18.45703125	-125.156250335276	-125.5078125
+```
 
 ### Time Perl Functions
 
@@ -13276,7 +13302,7 @@ $ ni 1p'r i2e tpi tep(1515801233), "Z"'
 #### `usfe`: US Formatted time (mm/dd/yy hh:mm:ss) to epoch
 Takes a US formatted time and converts it to epoch time.
 
-```bash
+```sh # dumb test doesn't work on mac
 $ ni i'2/14/18 0:46' p'r usfe a'
 1518569160
 ```
@@ -13405,12 +13431,12 @@ tonight
 
 That's given us the second element of each line that started with the 
 
-As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `rea` as a shorthand for `re {a}`
+As with most everything in `ni`, we can shorten this up considerably; we can drop the parentheses around `@lines`, and use `reA` as a shorthand for `re {a}`
 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines'
+     p'my @lines = reA; r b_ @lines'
 can	you	feel
 the	love
 tonight
@@ -13421,7 +13447,7 @@ And if we want to do this in a single line, we can combine multiline selection w
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'r b_ rea'
+     p'r b_ reA'
 can	you	feel
 the	love
 tonight
@@ -13432,7 +13458,7 @@ The last two examples are used commonly. The former, more explicit one is often 
 ```bash
 $ ni i[j can] i[j you] i[j feel] \
      i[k the] i[k love] i[l tonight] \
-     p'my @lines = rea; r b_ @lines; r a_ @lines'
+     p'my @lines = reA; r b_ @lines; r a_ @lines'
 can	you	feel
 j	j	j
 the	love
@@ -13443,18 +13469,18 @@ l
 
 Another common motif is getting the value of 
 
-### `reb ... rel`: Reduce while multiple columns are equal
+### `reB ... reL`: Reduce while multiple columns are equal
 
-In the previous section, we covered `rea` as syntactic sugar for `re {a}`
+In the previous section, we covered `reA` as syntactic sugar for `re {a}`
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ rea'
+     i[a y third] i[b y fourth] p'r c_ reA'
 first	second	third
 fourth
 ```
 
-This syntactic sugar is slightly different for `reb, rec, ..., rel`.
+This syntactic sugar is slightly different for `reB, reC, ..., reL`.
 
 Let's take a look at what happens with `re {b}`:
 
@@ -13469,7 +13495,7 @@ In general, that's not quite what we want; when we do reduction like this, we've
 
 ```bash
 $ ni i[a x first] i[a x second] \
-     i[a y third] i[b y fourth] p'r c_ reb'
+     i[a y third] i[b y fourth] p'r c_ reB'
 first	second
 third
 fourth
@@ -13498,7 +13524,7 @@ These are useful for collecting data with an unknown shape.
 
 ```bash
 $ ni i[m 1 x] i[m 2 y s t] \
-     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ rea'
+     i[m 3 yo] i[n 5 who] i[n 6 let the dogs] p'r b__ reA'
 1	x	2	y	s	t	3	yo
 5	who	6	let	the	dogs
 ```
@@ -13725,7 +13751,7 @@ Constructing hashes from closures can get very large; if you have more than 1 mi
 This is useful for doing reduction on data you've already reduced; for example, you've counted the number of neighborhoods in each city in each country and now want to count the number of neighborhoods in each country.
 
 ```bash 
-$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS rea'
+$ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] p'r acS reA'
 x	5
 y	13
 ```
@@ -13734,7 +13760,7 @@ If you have ragged data, where a value may not exist for a particular column, a 
 
 ```bash 
 $ ni i[y m 4 foo] i[y p 8] i[y n 1 bar] \
-     p'%h = dcSNN rea; 
+     p'%h = dcSNN reA; 
        @sorted_keys = kbv_dsc %h;
        r($_, $h{$_}) for @sorted_keys'
 foo	4
@@ -13748,14 +13774,14 @@ This is syntactic sugar for Perl's sort function applied to keys of a hash.
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_dsc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_dsc(ab_ rl(3))'
 y	x	z
 ```
 
 
 ```bash 
 $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
-     p'r acS rea' p'r kbv_asc(ab_ rl(3))'
+     p'r acS reA' p'r kbv_asc(ab_ rl(3))'
 z	x	y
 ```
 
@@ -13766,7 +13792,7 @@ z	x	y
 `wf $filename, @lines`: write `@lines` to a file called `$filename`
 
 ```sh
-$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ rea'
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ reA'
 file1
 file2
 $ ni file1
@@ -13779,7 +13805,7 @@ yo
 ### `af`: append to file
 
 ```sh
-$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ rea'
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ reA'
 file3
 file4
 file3
@@ -13792,6 +13818,54 @@ yo
 ```
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
+## Syntacitc Sugar
+
+### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
+how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+```
+
+
+### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
+how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+```
+
+
+### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
+
+
+### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+
+
+```sh # no idea why these don't work
+$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+how	are	you
+```
 
 
 ## JSON I/O
@@ -13851,7 +13925,7 @@ Some jobs that are difficult for `ni`, and some ways to resolve them:
 * Iterating a `ni` process over directories where the directory provides contextual information about its contents.
   * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
   * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
-638 doc/ni_by_example_4.md
+664 doc/ni_by_example_4.md
 # `ni` by Example, Chapter 4 (alpha release)
 
 Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
@@ -14474,6 +14548,32 @@ Assume there are 100,000 files in the input path. Only 100 mappers will be engag
  - the number of leading zeroes in the input path must match the number of zeroes in the hdfsc://<number> path
  - `hdfsc` only works on files that are given as partfiles. 
 
+## Hadoop Operations in Perl
+
+The output of hadoop jobs can be moved inside a perl context:
+
+```sh
+ni data HS[<job>] p'hdfs_mv a, /user/bilow/output_path/'
+```
+
+You can also specify normal paths to move.
+
+```sh
+ni i[/user/bilow/tmp/output /user/bilow/data/product] p'hdfs_mv a, b'
+```
+
+You also have access to:
+
+- `hadoop fs -du -h hdfsPath` via `p'hddu hdfsPath'`
+- `hadoop fs -mkdir -p hdfsPath ` via `p'hdmp hdfsPath'`
+- `hadoop fs -rm -r hdfsPath` via `p'hddu /path/'`
+- `hadoop fs -put localFile hdfsPath` via `p'hdpt localFile hdfsPath'`
+- `hadoop fs -get hdfsPath localFile` via `p'hdgt hdfsPath localFile'`
+- `hadoop fs -ls -h hdfsPath` via `p'hdls hdfsPath'`
+- `yarn application -kill app_id` via `p'yak app_id`
+
+If you just want the HDFS path from an `hdfst:///` or `hdfs://` path:
+
 
 ## Conclusion
 
@@ -15030,7 +15130,7 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
 ## Conclusion
 You've reached the end of chapter 5 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
-563 doc/ni_by_example_6.md
+557 doc/ni_by_example_6.md
 #Future Chapter 6 Below
 
 
@@ -15119,13 +15219,7 @@ ni ::test[i[a,b,c,d hi] i[c1,c2,c3 foo] i[u,v,w yo]] ::test2[i[ba,bb,bc this] i[
 
 ### `pl` Pushback Queue
 
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' =\>jsons \
-     D:type,:word
-```
+
 
 
 ## Hash
@@ -16102,7 +16196,7 @@ When I need another language for its library, I'll usually create a copy of the 
 
 ## Binary Operations
 The primary use of binary operations is to operate on data that is most effectively represented in raw binary form (for example, `.wav` files). See the [binary docs](binary.md) until I figure out something useful.
-425 doc/cheatsheet_perl.md
+415 doc/cheatsheet_perl.md
 # `ni` Perl Cheatsheet (alpha release)
 
 `ni` fully supports Perl 5 with backwards compaitibility to 5.08, and most of your `ni` scripts likely should be written in Perl. 
@@ -16422,17 +16516,7 @@ A tagged geohash is a binary data format that is used to indicate the precision 
 ### JSON Utilities
 
 * Full-Featured but slow
-*  `p'json_encode {<row to JSON instructions>}`: JSON Encode
-      *  The syntax of the row to JSON instructions is difficult; I believe `ni` will try to interpret value as a `ni` command, but every other unquoted piece of text will be interpreted as 
-      *  Here's an example:
-
-```
-ni //license FWpF_ p'r pl 3' \
-     p'json_encode {type    => 'trigram',
-                    context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
-```
-
+  *  `p'json_encode {hash reference}`: JSON Encode
   * `json_decode`
 * Partial-Featured but fast
   * `get` methods 
@@ -16475,14 +16559,14 @@ These operations can be used to reduce the data output by the readahead function
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum b_ re {a}'`
 * `ni n1p'cart ["a", "b", "c"], [1, 2]' p'sum a_ re {b}'`
 
-`rea` is the more commonly used shorthand for `re {a}`
+`reA` is the more commonly used shorthand for `re {a}`
 
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reb'`
-* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reb'`
-* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reb'`
-* `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ rea'` 
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r all {a_($_)} reB'`
+* `ni n1p'cart ["a", "a", "b", "c"], [1, 2]' p'r uniq a_ reB'`
+* `ni n1p'cart ["a", "b", "c"], [1, 2]' p'r maxstr a_ reB'`
+* `n1p'cart ["a", "b", "c"], [1, 2]' p'r reduce {$_ + $_[0]} 0, b_ reA'` 
 
-`reb` reduces where both of the first _two_ columns are equal, and `rec` reduces where the first _three_ columns, etc.
+`reB` reduces where both of the first _two_ columns are equal, and `reC` reduces where the first _three_ columns, etc.
 
 ## Data Closures in Perl Mappers
 
@@ -16768,7 +16852,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-237 doc/col.md
+214 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -16783,8 +16867,7 @@ second form can be useful for large data files.
 First let's generate some data, in this case an 8x8 multiplication table:
 
 ```bash
-$ ni n8p'r map a*$_, 1..8' > mult-table
-$ ni mult-table
+$ ni n8p'r map a*$_, 1..8'
 1	2	3	4	5	6	7	8
 2	4	6	8	10	12	14	16
 3	6	9	12	15	18	21	24
@@ -16799,7 +16882,7 @@ The `f` operator takes a multi-column spec and reorders, duplicates, or deletes
 columns accordingly.
 
 ```bash
-$ ni mult-table fA      # the first column
+$ ni n8p'r map a*$_, 1..8' fA      # the first column
 1
 2
 3
@@ -16808,7 +16891,10 @@ $ ni mult-table fA      # the first column
 6
 7
 8
-$ ni mult-table fDC     # fourth, then third column
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fDC     # fourth, then third column
 4	3
 8	6
 12	9
@@ -16817,7 +16903,10 @@ $ ni mult-table fDC     # fourth, then third column
 24	18
 28	21
 32	24
-$ ni mult-table fAA     # first column, duplicated
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fAA     # first column, duplicated
 1	1
 2	2
 3	3
@@ -16826,7 +16915,10 @@ $ ni mult-table fAA     # first column, duplicated
 6	6
 7	7
 8	8
-$ ni mult-table fA-D    # first four columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fA-D    # first four columns
 1	2	3	4
 2	4	6	8
 3	6	9	12
@@ -16842,7 +16934,7 @@ spec. This selects everything to the right of the rightmost column you've
 mentioned.
 
 ```bash
-$ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
+$ ni n8p'r map a*$_, 1..8' fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 4	1	5	6	7	8
 8	2	10	12	14	16
 12	3	15	18	21	24
@@ -16851,7 +16943,10 @@ $ ni mult-table fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 24	6	30	36	42	48
 28	7	35	42	49	56
 32	8	40	48	56	64
-$ ni mult-table fBA.    # an easy way to swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' fBA.    # an easy way to swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -16860,7 +16955,10 @@ $ ni mult-table fBA.    # an easy way to swap first two columns
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
-$ ni mult-table x       # even easier (see below)
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' x       # even easier (see below)
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 6	3	9	12	15	18	21	24
@@ -16875,13 +16973,19 @@ $ ni mult-table x       # even easier (see below)
 You can swap columns into leading positions using the `x` operator:
 
 ```bash
-$ ni mult-table xC r2   # swap third column into first position
+$ ni n8p'r map a*$_, 1..8' xC r2   # swap third column into first position
 3	2	1	4	5	6	7	8
 6	4	2	8	10	12	14	16
-$ ni mult-table xGHr2   # swap seventh, eighth columns into first two
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xGHr2   # swap seventh, eighth columns into first two
 7	8	3	4	5	6	1	2
 14	16	6	8	10	12	2	4
-$ ni mult-table xr2     # swap first two columns
+```
+
+```bash
+$ ni n8p'r map a*$_, 1..8' xr2     # swap first two columns
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 ```
@@ -16903,52 +17007,6 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 
 ### Examples
 
-`/etc/passwd` split on colons:
-```bash
-$ ni /etc/passwd r2F::          # F: followed by :, which is the split char
-root	x	0	0	root	/root	/bin/bash
-daemon	x	1	1	daemon	/usr/sbin	/bin/sh
-```
-
-The first three lines of ni's source code:
-```bash
-$ ni //ni r3                            # some data
-#!/usr/bin/env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on forward slashes:
-```bash
-$ ni //ni r3F/\\//                      # split on forward slashes
-#!	usr	bin	env perl
-$ni::is_lib = caller();
-$ni::self{license} = <<'_';
-```
-
-The first three lines of ni's source code, split on non-words:
-```bash
-$ ni //ni r3FW                          # split on non-words
-	usr	bin	env	perl
-	ni	is_lib	caller	
-	ni	self	license	_	
-```
-
-The first three lines of ni's source code, split on whitespace:
-```bash
-$ ni //ni r3FS                          # split on whitespace
-#!/usr/bin/env	perl
-$ni::is_lib	=	caller();
-$ni::self{license}	=	<<'_';
-```
-
-The first three lines of ni's source code, split on words beginning with a slash:
-```bash
-$ ni //ni r3Fm'/\/\w+/'                 # words beginning with a slash
-/usr	/bin	/env
-
-
-```
 
 ## Vertical operator application
 A situation that comes up a lot in real-world workflows is that you want to
@@ -16956,51 +17014,54 @@ apply some mapper code to a specific column. For example, if we want to
 uppercase the third column of a dataset, we can do it like this:
 
 ```bash
-$ ni //ni r3FW p'r a, b, uc(c), FR 3'
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] p'r FT 2, uc(c), FR 3'
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
 
-But that requires a lot of keystrokes. More concise is to use `v` to pipe
-column C to a separate ni process:
+But that requires a lot of keystrokes. More concise is to use `v` to pipe column C to a separate ni process:
 
 ```bash
-$ ni //ni r3FW vCpuc
-	usr	BIN	env	perl
-	ni	IS_LIB	caller
-	ni	SELF	license	_
+$ ni i[who let the dogs out] i[who? who?? who???] vCpuc
+who	let	THE	dogs	out
+who?	who??	WHO???
 ```
+
+**CAVEAT**: The `v` operator is **WAY** too slow to use in production code. Be a hero and speed it up.
 
 ## Left/right juxtaposition
-ni has the `+` and `^` operators to join streams vertically, but you can also
-join them horizontally, row by row. This is done using `w` and `W` (for
-"with"):
+ni has the `+` and `^` operators to join streams vertically, but you can also join them horizontally, row by row. This is done using `w` and `W` (for "with"):
 
 ```bash
-$ ni //ni r3FWfB
-usr
-ni
-ni
-$ ni //ni r3FWfB wn100          # right-join numbers
-usr	1
-ni	2
-ni	3
-$ ni //ni r3FWfB Wn100          # left-join numbers
-1	usr
-2	ni
-3	ni
+$ ni i[who let the dogs out] Z1
+who
+let
+the
+dogs
+out
 ```
 
-As shown above, the output stream is only as long as the shorter input. This is
-useful in conjunction with infinite generators like `n`; for example, you can
-prepend line numbers to an arbitrarily long data stream like this:
+```bash
+$ ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
+who	1
+let	2
+the	3
+dogs	4
+out	5
+```
 
 ```bash
-$ ni //license Wn r~3
-19	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-20	SOFTWARE.
-21	
+$ ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
+1	who
+2	let
+3	the
+4	dogs
+5	out
+```
+
+As shown above, the output stream is only as long as the shorter input. This is useful in conjunction with infinite generators like `n`; for example, you can prepend line numbers to an arbitrarily long data stream like this:
+
+```bash
 $ ni nE5p'a*a' Wn r~3
 99998	9999600004
 99999	9999800001
@@ -17309,7 +17370,7 @@ the number of distinct words we have -- we can calculate it easily, in this
 case by just taking the maximum:
 
 ```sh
-$ ni /usr/share/man/man1 \<FWpF_ ,z Or1
+$ ni /usr/share/man/man1 \<FWZ1 ,z Or1
 84480
 ```
 
@@ -17352,7 +17413,7 @@ $ ni --lib my-library n100wc
 
 Most ni extensions are about defining a new operator, which involves extending
 ni's command-line grammar.
-77 doc/fn.md
+76 doc/fn.md
 # Function definitions
 ni lets you define aliases using the `defexpander` internal function. These
 support arguments of arbitrary parse types and provide basic substitution. For
@@ -17391,18 +17452,17 @@ $ ni --lib fractional frac4.5
 You can also define a nullary function, which is just a regular shorthand:
 
 ```bash
-$ ni --run 'defexpander "/license-words", qw[//license FWpF_]' \
-     license-words r10
-ni
-https
-github
-com
-spencertipping
-ni
-Copyright
-c
-2016
-Spencer
+$ ni --run 'defexpander "/evens", qw[np2*a]' evens r10
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
 ```
 
 ## Using Perl functions
@@ -17441,9 +17501,9 @@ surrounding Perl-specific optimizations for base-32 transcoding.
 There are a few operators and functions that operate on geohashes:
 
 - Perl context functions
-  - `$gh = ghe/llg/geohash_encode($lat, $lng, $precision)`: encode a geohash
-  - `($lat, $lng) = ghd/gll/geohash_decode($gh [, $bits])`: decode a geohash
-  - `$dist = gh_dist_exact($gh1, $gh2, unit = "km")`
+  - `$gh = llg/ghe/geohash_encode($lat, $lng, $precision)`: encode a geohash
+  - `($lat, $lng) = gll/ghd/geohash_decode($gh [, $bits])`: decode a geohash
+  - `$dist = gh_dist($gh1, $gh2, unit = "km")`
   - `($n, $s, $e, $w) = ghb/geohash_box($gh)`
 - Cell operators
   - `,g`: encode comma-delimited column values to a geohash
@@ -17454,8 +17514,8 @@ There are a few operators and functions that operate on geohashes:
 $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
           my $bits        = int clip 1, 60, rand(61);
           my $b32_digits  = int(($bits + 4) / 5);
-          my $gh_base32   = ghe $lat, $lng, $b32_digits;  # positive = letters
-          my $gh_binary   = ghe $lat, $lng, -$bits;       # negative = bits
+          my $gh_base32   = llg $lat, $lng, $b32_digits;  # positive = letters
+          my $gh_binary   = llg $lat, $lng, -$bits;       # negative = bits
           my $gh2_b32     = ghe ghd($gh_base32), $b32_digits;
           my $gh2_bin     = ghe ghd($gh_binary, $bits), -$bits;
           my $b32_ok      = $gh2_b32 eq $gh_base32;
@@ -17575,7 +17635,7 @@ gitblob://.:c3e84a5dfefc7a84cd3476dfc11dafa15921dde6    100644  tests.sh
 ```
 
 You could then use `fA\<` or `fA W\<` to get the contents of each.
-152 doc/hadoop.md
+163 doc/hadoop.md
 # Hadoop operator
 The `H` operator runs a Hadoop job. Here's what it looks like to use Hadoop
 Streaming:
@@ -17588,7 +17648,7 @@ For example, the ubiquitous word count:
 
 ```sh
 # locally
-$ ni README.md FW pF_ gcOx
+$ ni README.md FW Z1 gcOx
 ni      27
 md      26
 doc     25
@@ -17602,7 +17662,7 @@ and     9
 ...
 
 # on hadoop streaming
-$ ni ihdfs:///user/spencer/textfiles/part* HSFWpF_ _ c \<Ox
+$ ni ihdfs:///user/spencer/textfiles/part* HSFWZ1 _ c \<Ox
 word1   count1
 word2   count2
 ...
@@ -17684,22 +17744,6 @@ $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 ```
 
-Now let's get a word count for `ni //license`:
-
-```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-                 Eni-test-hadoop [HS[FW pF_] _ [fAcx] \<] r10
-2016	1
-A	1
-ACTION	1
-AN	1
-AND	1
-ANY	2
-ARISING	1
-AS	1
-AUTHORS	1
-BE	1
-```
 
 ## Jobconf
 You can pass in jobconf options using the `hadoop/jobconf` variable or by
@@ -17707,28 +17751,55 @@ setting `NI_HADOOP_JOBCONF` (note the different output; if you use multiple
 reducers, you'll see the shard boundaries):
 
 ```bash
-$ ni //license ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-                 hadoop/jobconf='mapred.map.tasks=10
-                                 mapred.reduce.tasks=4'} \
-                 Eni-test-hadoop [HSFWpF_ _ fAcx \<] r10
-2016	1
-A	1
-BE	1
-BUT	1
-FOR	2
-INCLUDING	1
-LIABILITY	1
-LIABLE	1
-OF	4
-OR	7
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      hadoop/jobconf='mapred.map.tasks=10
+      					  mapred.reduce.tasks=4'} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
 ```
+
+### Jobconf shorthand
+
+The names of Hadoop configuration variables are generally quite long; to see the whole list, you can see the whole list in a Perl context using `%mr_generics`. Let's look at a few:
+
+```bash
+$ ni 1p'%mr_generics' Z2 e'grep memory' gA
+Hcmm	mapreduce.cluster.mapmemory.mb
+Hcrm	mapreduce.cluster.reducememory.mb
+Hjtmmm	mapreduce.jobtracker.maxmapmemory.mb
+Hjtmrm	mapreduce.jobtracker.maxreducememory.mb
+Hmmm	mapreduce.map.memory.mb
+Hrmm	mapreduce.reduce.memory.mb
+Hrmt	mapreduce.reduce.memory.totalbytes
+Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
+```
+
+Use the abbreviations in the first column in your configuration; for example, to set your mappers to have 3072 MB of memory and reducers to have 4096 MB, you could do the following:
+
+```bash
+$ ni i'who let the dogs out who who who' \
+	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+      Hrmm=4096 Hmmm=3072} \
+     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+1	2
+2	5
+3	10
+4	17
+5	26
+```
+
 
 ```lazytest
 docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
-73 doc/json.md
+63 doc/json.md
 # JSON operators
 ## Background
 Perl has a standard JSON library since 5.14, but it's written in pure Perl and
@@ -17744,64 +17815,54 @@ Internally, ni uses its own JSON library for pipeline serialization and to
 generate the output of `--explain`.
 
 ## Full encode/decode
+
 ### Perl driver
 ```bash
-$ ni //license FWp'json_encode [F_]' r4
-["ni","https","github","com","spencertipping","ni"]
-["Copyright","c",2016,"Spencer","Tipping","MIT","license"]
-[]
-["Permission","is","hereby","granted","free","of","charge","to","any","person","obtaining","a","copy"]
+$ ni i[hi there] i[my friend] p'json_encode [F_]'
+["hi","there"]
+["my","friend"]
 ```
 
 `json_decode` inverts and always returns a reference:
 
 ```bash
-$ ni //license FWp'json_encode [F_]' p'r @{json_decode a}' r4
-ni	https	github	com	spencertipping	ni
-Copyright	c	2016	Spencer	Tipping	MIT	license
-
-Permission	is	hereby	granted	free	of	charge	to	any	person	obtaining	a	copy
+$ ni i[hi there] i[my friend] p'json_encode [F_]' p'r @{json_decode a}'
+hi	there
+my	friend
 ```
 
-### Ruby driver
-**TODO**: this is necessary because older Rubies don't provide any JSON
-support.
-
 ## Sparse extraction
-It's uncommon to need every field in a JSON object, particularly when you're
-testing specific hypotheses on rich data. This makes it likely that JSON
-decoding will be pipeline bottleneck simply due to the ratio of bytes
-pre-vs-post-decode. ni helps to mitigate this by providing a very fast
-destructuring operator that works like `jq` (but 2-3x faster):
+It's uncommon to need every field in a JSON object, particularly when you're testing specific hypotheses on rich data. This makes it likely that JSON decoding will be pipeline bottleneck simply due to the ratio of bytes pre-vs-post-decode. ni helps to mitigate this by providing a very fast destructuring operator that works like `jq` (but 2-3x faster):
 
 ```bash
-$ ni //license FWpF_ p'r pl 3' \
+$ ni i[who let the dogs out?! who? who?? who???] Z1 p'r pl 3' r5 \
      p'json_encode {type    => 'trigram',
                     context => {w1 => a, w2 => b},
-                    word    => c}' \>jsons
-jsons
-$ ni jsons r5
-{"context":{"w1":"https","w2":"github"},"type":"trigram","word":"com"}
-{"context":{"w1":"github","w2":"com"},"type":"trigram","word":"spencertipping"}
-{"context":{"w1":"com","w2":"spencertipping"},"type":"trigram","word":"ni"}
-{"context":{"w1":"spencertipping","w2":"ni"},"type":"trigram","word":"Copyright"}
-{"context":{"w1":"ni","w2":"Copyright"},"type":"trigram","word":"c"}
+                    word    => c}'
+{"context":{"w1":"let","w2":"the"},"type":"trigram","word":"dogs"}
+{"context":{"w1":"the","w2":"dogs"},"type":"trigram","word":"out?!"}
+{"context":{"w1":"dogs","w2":"out?!"},"type":"trigram","word":"who?"}
+{"context":{"w1":"out?!","w2":"who?"},"type":"trigram","word":"who??"}
+{"context":{"w1":"who?","w2":"who??"},"type":"trigram","word":"who???"}
 ```
 
 A destructuring specification consists of a comma-delimited list of extractors:
 
 ```bash
-$ ni jsons D:w1,:w2,:word r5
-https	github	com
-github	com	spencertipping
-com	spencertipping	ni
-spencertipping	ni	Copyright
-ni	Copyright	c
+$ ni i[who let the dogs out?! who? who?? who???] Z1 p'r pl 3' r5 \
+     p'json_encode {type    => 'trigram',
+                    context => {w1 => a, w2 => b},
+                    word    => c}' \
+      D:w1,:w2,:word
+let	the	dogs
+the	dogs	out?!
+dogs	out?!	who?
+out?!	who?	who??
+who?	who??	who???
 ```
 
 ### Types of extractors
-The example above used the `:field` extractor, which means "find the first
-occurrence of a field called `field`, and return its value."
+The example above used the `:field` extractor, which means "find the first occurrence of a field called `field`, and return its value."
 28 doc/libraries.md
 # Libraries
 A library is just a directory with a `lib` file in it. `lib` lists the names of
@@ -17945,7 +18006,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-252 doc/matrix.md
+250 doc/matrix.md
 # Matrix operations
 
 ## Sparse and Dense Matrix Operations (`X` and `Y`)
@@ -18009,7 +18070,7 @@ $ ni n010p'r 0, a%3, 1' X
 Data in row form can be flattened (lengthened?) into a column via `pF_`.
 
 ```bash
-$ ni i[a b] i[c d] pF_
+$ ni i[a b] i[c d] Z1
 a
 b
 c
@@ -18019,12 +18080,10 @@ d
 Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
 
 ```bash
-$ ni i[a b] i[c d] pF_ Z2
+$ ni i[a b] i[c d] Z1 Z2
 a	b
 c	d
 ```
-
-In fact, `pF_` can be replaced effectively with `Z1`
  
 
 ## NumPy interop
@@ -18337,13 +18396,13 @@ disk is writable.
 The SSH operator is `s` and looks like this:
 
 ```sh
-$ ni //license shostname[gc FW p'r a, length b'] r10
+$ ni i[who let the dogs out who who who] shostname[gc FW p'r a, length b'] r10
 ```
 
 Conceptually, here's how ni executes the above:
 
-```
-$ ni //license \
+```sh
+$ ni i[who let the dogs out who who who] \
   | ssh hostname "ni gc FW p'r a, length b'" \
   | ni r10
 ```
@@ -18351,7 +18410,7 @@ $ ni //license \
 You can, of course, nest SSH operators:
 
 ```sh
-$ ni //license shost1[shost2[gc]] r10
+$ ni i[who let the dogs out who who who] shost1[shost2[gc]] r10
 ```
 98 doc/options.md
 # Complete ni operator listing
@@ -18988,7 +19047,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-357 doc/row.md
+348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -19283,40 +19342,31 @@ ni gives you the `c` operator to count runs of identical rows (just
 like `uniq -c`).
 
 ```bash
-$ ni //license FWpF_ > word-list
-$ ni word-list cr10             # unsorted count
-1	ni
-1	https
-1	github
-1	com
-1	spencertipping
-1	ni
-1	Copyright
-1	c
-1	2016
-1	Spencer
-$ ni word-list gcr10            # sort first to group words
-1	2016
-1	A
-1	ACTION
-1	AN
-1	AND
-2	ANY
-1	ARISING
-1	AS
-1	AUTHORS
-1	BE
-$ ni word-list gcOr10           # by descending count
-7	to
-7	the
-7	OR
-6	THE
-5	Software
-4	of
-4	and
-4	OF
-4	IN
-3	SOFTWARE
+$ ni i[who let the dogs out who who who] Z1 c # unsorted count
+1	who
+1	let
+1	the
+1	dogs
+1	out
+3	who
+```
+
+```bash
+$ ni  i[who let the dogs out who who who] Z1 gc # sort first to group words
+1	dogs
+1	let
+1	out
+1	the
+4	who
+```
+
+```bash
+$ ni i[who let the dogs out who who who] Z1 gcO # by descending count
+4	who
+1	the
+1	out
+1	let
+1	dogs
 ```
 
 ## Joining

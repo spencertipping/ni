@@ -58,7 +58,7 @@ In this case, the tasks that you are running are taking too long. The "ideal" ma
 ### Modifying the sort column
 ```sh
 $ ni ihdfst:///<path> HS[p'r a =~/^(.{8})/, FR 1' ] \
-                        [p'@ls = sort {f_($b) <=> f_($a)} rea; $n = min($#ls, 10); @ls[0..$n-1]' ] \
+                        [p'@ls = sort {f_($b) <=> f_($a)} reA; $n = min($#ls, 10); @ls[0..$n-1]' ] \
                         :
 ```
 

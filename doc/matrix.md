@@ -61,7 +61,7 @@ $ ni n010p'r 0, a%3, 1' X
 Data in row form can be flattened (lengthened?) into a column via `pF_`.
 
 ```bash
-$ ni i[a b] i[c d] pF_
+$ ni i[a b] i[c d] Z1
 a
 b
 c
@@ -71,12 +71,10 @@ d
 Inverting that operation, converting a column to a row with a specified number of fields is done using `Z`, which takes the number of fields as a parameter. 
 
 ```bash
-$ ni i[a b] i[c d] pF_ Z2
+$ ni i[a b] i[c d] Z1 Z2
 a	b
 c	d
 ```
-
-In fact, `pF_` can be replaced effectively with `Z1`
  
 
 ## NumPy interop
