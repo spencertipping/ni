@@ -1,15 +1,12 @@
 # String utilities
 
 sub startswith($$) {
-  my ($str, $match) = @_;
-  $quoted = quotemeta($match);
-  $str =~ /^$quoted/;
+  $_[1] eq substr $_[0], 0, length $_[1];
 }
 
 sub endswith($$) {
-  my ($str, $match) = @_;
-  $quoted = quotemeta($match);
-  $str =~ qr/$quoted$/;
+  length($_[0]) >= length($_[1])
+    and $_[1] eq substr $_[0], length($_[0]) - length($_[1]);
 }
 
 # Number to letter 1 => "A", 2 => "B", etc.
