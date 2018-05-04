@@ -4521,19 +4521,35 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-45 core/pl/string.pm
+50 core/pl/string.pm
 # String utilities
 
 sub startswith($$) {
-  $_[0] =~ /^$_[1]/;
+  my ($str, $match) = @_;
+  $quoted = quotemeta($match);
+  $str =~ /^$quoted/;
 }
 
 sub endswith($$) {
-  $_[0] =~/$_[1]$/;
+  my ($str, $match) = @_;
+  $quoted = quotemeta($match);
+  $str =~ qr/$quoted$/;
 }
 
 # Number to letter 1 => "A", 2 => "B", etc.
 sub alph($) {chr($_[0] + 64)}
+
+sub restrict_hdfs_path ($$) {
+  my ($path, $restriction) = @_;
+  my ($zeroes) = ($restriction =~ /^1(0*)$/);
+  if (endswith $path, "part-*") {
+    $path =~ s/part-\*/part-$zeroes\*/;
+  } else {
+    print("$path\n");
+    $path = $path . "/part-$zeroes*"
+  }
+  $path;
+}
 
 # Syntactic sugar for join/split
 BEGIN { 
@@ -4542,7 +4558,7 @@ BEGIN {
      "p" => "|", 
      "u" => "_",
      "w" => " ");
-   my %regex_separators = ("/" => '\/', "|" => '\|');
+   my %regex_separators = ("|" => '\|');
    for my $sep_abbrev(keys %short_separators) {
      $join_sep = $short_separators{$sep_abbrev};
      $split_sep = $regex_separators{$join_sep} || $join_sep;
@@ -4555,17 +4571,6 @@ BEGIN {
      ceval sprintf 'sub s%s%s($) {split /%s%s/, $_[0]}',
        $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
     }
-}
-
-sub restrict_hdfs_path ($$) {
-  my ($path, $restriction) = @_;
-  my ($zeroes) = ($restriction =~ /^1(0*)$/);
-  if (endswith $path, "part-*") {
-    $path =~ s/part-\d*\*/part-$zeroes\*/;
-  } else {
-    $path = $path . "/part-$zeroes*"
-  }
-  $path;
 }
 39 core/pl/file.pm
 # File Readers
@@ -4961,7 +4966,7 @@ sub string_merge_hashes {
   my @hash_vals = map {substr $_, 1, -1} @_;
   "{" . join(",", @hash_vals) . "}";
 }
-61 core/pl/hadoop.pm
+63 core/pl/hadoop.pm
 # Helpers for interacting with Hadoop and YARN
 sub extract_hdfs_path($) {
   my @input_path_parts = $_[0] =~ m([^/]+)mg;
@@ -5004,9 +5009,11 @@ sub hdfs_ls($) {
 }
 
 sub hdfs_mv($$) {
-  my ($raw_hdfs_input_path, $output_hdfs_path) = @_;
-  my $input_hdfs_path = extract_hdfs_path $raw_hdfs_input_path;
- `hadoop fs -mv $input_hdfs_path $output_hdfs_path`
+  my ($raw_input_hdfs_path, $raw_output_hdfs_path) = @_;
+  my $input_hdfs_path  = extract_hdfs_path $raw_input_hdfs_path;
+  my $output_hdfs_path = extract_hdfs_path $raw_output_hdfs_path;
+ `hadoop fs -mv $input_hdfs_path $output_hdfs_path`;
+ return "hdfst://$output_hdfs_path";
 }
 
 sub yarn_application_kill($) {

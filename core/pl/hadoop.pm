@@ -40,9 +40,11 @@ sub hdfs_ls($) {
 }
 
 sub hdfs_mv($$) {
-  my ($raw_hdfs_input_path, $output_hdfs_path) = @_;
-  my $input_hdfs_path = extract_hdfs_path $raw_hdfs_input_path;
- `hadoop fs -mv $input_hdfs_path $output_hdfs_path`
+  my ($raw_input_hdfs_path, $raw_output_hdfs_path) = @_;
+  my $input_hdfs_path  = extract_hdfs_path $raw_input_hdfs_path;
+  my $output_hdfs_path = extract_hdfs_path $raw_output_hdfs_path;
+ `hadoop fs -mv $input_hdfs_path $output_hdfs_path`;
+ return "hdfst://$output_hdfs_path";
 }
 
 sub yarn_application_kill($) {
