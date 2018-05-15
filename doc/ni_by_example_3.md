@@ -803,34 +803,31 @@ yo
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
-## Syntacitc Sugar
+## String Operations
 
-### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `jc`, `jp`, `ju`, `jw`: join with _one_ comma; pipe; underscore; whitespace
 
 
 ```sh # no idea why these don't work
 $ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
-how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+how,are,you	how|are|you	how_are_you	how are you
 ```
 
 
-### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+### `jcc`, `jpp` `juu`, `jww`: join with _two_ commas;  pipes; underscores; whitespaces
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
-how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+$ ni i[how are you] p'r jcc(F_), jpp(F_), juu(F_), jww(F_)'
+how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
 
 
-### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `sc`, `sp` `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
-how	are	you
-how	are	you
-how	are	you
+$ ni i[how are you] p'r jc(F_), jp(F_), ju(F_), jw(F_)' p'r sc a; r sp b; r su c; r sw d;'
 how	are	you
 how	are	you
 how	are	you
@@ -842,13 +839,30 @@ how	are	you
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+$ ni i[how are you] p'r jcc(F_), jpp(F_), juu(F_), jww(F_)' p'r scc a; r spp b; r suu c; r sww d;'
 how	are	you
 how	are	you
 how	are	you
 how	are	you
-how	are	you
-how	are	you
+```
+
+### `startswith` and `endswith`
+
+```sh
+$ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
+1
+1
+```
+
+## Hadoop
+
+### `restrict_hdfs_path`
+
+```sh
+ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
+ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path, a, 100'
+hdfst:///user/bilow/tmp/test_ni_job/part-00*
+hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 
 
