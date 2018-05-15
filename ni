@@ -3622,11 +3622,11 @@ destructure.pl
 # TODO: replace all of this
 
 use constant json_si_gen => gen q#
-  (/"%k":\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
-               : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
-               : /\G([^][{},]+)/              ? "" . $1
-               : undef
-               : undef) #;
+  (/"%k"\s*:\s*/g ? /\G("[^\\\\"]*")/            ? json_unescape $1
+                  : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_unescape $1
+                  : /\G([^][{},]+)/              ? "" . $1
+                  : undef
+                  : undef) #;
 
 sub json_extractor($) {
   my @pieces = split /\s*,\s*/, $_[0];
