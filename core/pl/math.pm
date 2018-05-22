@@ -10,6 +10,8 @@ use constant LOG2R => 1 / LOG2;
 
 BEGIN { eval "use constant E$_ => 1e$_" for 0..20 }
 
+sub ceil($)  {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) + 1 : int($_[0])}
+sub floor($) {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) : int($_[0]) -1 }
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_;}
