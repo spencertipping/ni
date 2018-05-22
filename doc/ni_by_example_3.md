@@ -805,29 +805,29 @@ yo
 
 ## String Operations
 
-### `jc`, `jp`, `ju`, `jw`: join with _one_ comma; pipe; underscore; whitespace
+### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
+$ ni i[how are you] p'r jjc(F_),  jjp(F_), jju(F_), jjw(F_)' 
 how,are,you	how|are|you	how_are_you	how are you
 ```
 
 
-### `jcc`, `jpp` `juu`, `jww`: join with _two_ commas;  pipes; underscores; whitespaces
+### `jjcc`, `jjpp` `jjuu`, `jjww`: join with _two_ commas;  pipes; underscores; whitespaces
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jpp(F_), juu(F_), jww(F_)'
+$ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'
 how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
 
 
-### `sc`, `sp` `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jc(F_), jp(F_), ju(F_), jw(F_)' p'r sc a; r sp b; r su c; r sw d;'
+$ ni i[how are you] p'r jjc(F_), jjp(F_), jju(F_), jjw(F_)' p'r ssc a; r ssp b; r ssu c; r ssw d;'
 how	are	you
 how	are	you
 how	are	you
@@ -839,7 +839,7 @@ how	are	you
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jpp(F_), juu(F_), jww(F_)' p'r scc a; r spp b; r suu c; r sww d;'
+$ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)' p'r sscc a; r sspp b; r ssuu c; r ssww d;'
 how	are	you
 how	are	you
 how	are	you

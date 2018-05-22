@@ -35,13 +35,13 @@ BEGIN {
    for my $sep_abbrev(keys %short_separators) {
      $join_sep = $short_separators{$sep_abbrev};
      $split_sep = $regex_separators{$join_sep} || $join_sep;
-     ceval sprintf 'sub j%s      {join "%s",      @_;}', 
+     ceval sprintf 'sub jj%s($;@)      {join "%s",      @_;}', 
        $sep_abbrev, $join_sep;
-     ceval sprintf 'sub j%s%s    {join "%s%s",    @_;}',
+     ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
        $sep_abbrev, $sep_abbrev, $join_sep, $join_sep;
-     ceval sprintf 'sub s%s($)   {split /%s/,   $_[0]}',
+     ceval sprintf 'sub ss%s($)   {split /%s/,   $_[0]}',
        $sep_abbrev, $split_sep;
-     ceval sprintf 'sub s%s%s($) {split /%s%s/, $_[0]}',
+     ceval sprintf 'sub ss%s%s($) {split /%s%s/, $_[0]}',
        $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
     }
 }
