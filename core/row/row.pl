@@ -1,6 +1,9 @@
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
+defoperator cleandos => q{exec 'perl -pi -e "s/\r\n/\n/g"'};
+defshort '/cleandos', pmap q{cleandos_op}, pnone; 
+
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
