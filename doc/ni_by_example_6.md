@@ -1,5 +1,15 @@
-#Future Chapter 6 Below
+# Future Chapter 6 Below
 
+
+## More functions
+
+### DOS file cleaning
+
+```sh
+$ ni <DOSFILE> cleandos
+```
+
+This will replace the CR/LFs in DOS with just LFs.
 
 ## Advanced Perl
 ### Array references
