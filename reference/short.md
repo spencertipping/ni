@@ -1921,6 +1921,11 @@
 ## SYNTAX
 	'' -> {count_op}
 
+# SHORT OPERATOR /cleandos
+
+## SYNTAX
+	'' -> {cleandos_op}
+
 # SHORT OPERATOR /e
 	Exec shell command as a filter for the current stream
 

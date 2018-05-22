@@ -640,6 +640,7 @@
 	  | 'p' <plcode ni::binary_perl_mapper> -> {binary_perl_op $_}
 	  )
 	| 'c' '' -> {count_op}
+	| 'cleandos' '' -> {cleandos_op}
 	| 'e' <shell_command> -> {sh_op $_}
 	| 'f' (
 	  | <colspec> -> {cols_op @$_}

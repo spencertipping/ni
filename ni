@@ -3998,9 +3998,12 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-204 core/row/row.pl
+207 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
+
+defoperator cleandos => q{exec 'perl -pi -e "s/\r\n/\n/g"'};
+defshort '/cleandos', pmap q{cleandos_op}, pnone; 
 
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
@@ -4559,13 +4562,13 @@ BEGIN {
    for my $sep_abbrev(keys %short_separators) {
      $join_sep = $short_separators{$sep_abbrev};
      $split_sep = $regex_separators{$join_sep} || $join_sep;
-     ceval sprintf 'sub j%s      {join "%s",      @_;}', 
+     ceval sprintf 'sub jj%s($;@)      {join "%s",      @_;}', 
        $sep_abbrev, $join_sep;
-     ceval sprintf 'sub j%s%s    {join "%s%s",    @_;}',
+     ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
        $sep_abbrev, $sep_abbrev, $join_sep, $join_sep;
-     ceval sprintf 'sub s%s($)   {split /%s/,   $_[0]}',
+     ceval sprintf 'sub ss%s($)   {split /%s/,   $_[0]}',
        $sep_abbrev, $split_sep;
-     ceval sprintf 'sub s%s%s($) {split /%s%s/, $_[0]}',
+     ceval sprintf 'sub ss%s%s($) {split /%s%s/, $_[0]}',
        $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
     }
 }
@@ -5027,7 +5030,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-134 core/pl/math.pm
+136 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5040,6 +5043,8 @@ use constant LOG2R => 1 / LOG2;
 
 BEGIN { eval "use constant E$_ => 1e$_" for 0..20 }
 
+sub ceil($)  {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) + 1 : int($_[0])}
+sub floor($) {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) : int($_[0]) -1 }
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_;}
@@ -13017,7 +13022,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-911 doc/ni_by_example_3.md
+925 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13823,34 +13828,31 @@ yo
 
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
-## Syntacitc Sugar
+## String Operations
 
-### `jc`, `jh`, `jp` `js`, `ju`, `jw`: join with _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' 
-how,are,you	how-are-you	how|are|you	how/are/you	how_are_you	how are you
+$ ni i[how are you] p'r jjc(F_),  jjp(F_), jju(F_), jjw(F_)' 
+how,are,you	how|are|you	how_are_you	how are you
 ```
 
 
-### `jcc`, `jhh`, `jpp` `jss`, `juu`, `jww`: join with _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+### `jjcc`, `jjpp` `jjuu`, `jjww`: join with _two_ commas;  pipes; underscores; whitespaces
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)'
-how,,are,,you	how--are--you	how||are||you	how//are//you	how__are__you	how  are  you
+$ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'
+how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
 
 
-### `sc`, `sh`, `sp` `ss`, `su`, `sw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jc(F_), jh(F_), jp(F_), js(F_), ju(F_), jw(F_)' p'r sc a; r sh b; r sp c; r ss d; r su e; r sw f;'
-how	are	you
-how	are	you
-how	are	you
+$ ni i[how are you] p'r jjc(F_), jjp(F_), jju(F_), jjw(F_)' p'r ssc a; r ssp b; r ssu c; r ssw d;'
 how	are	you
 how	are	you
 how	are	you
@@ -13862,13 +13864,30 @@ how	are	you
 
 
 ```sh # no idea why these don't work
-$ ni i[how are you] p'r jcc(F_), jhh(F_), jpp(F_), jss(F_), juu(F_), jww(F_)' p'r scc a; r shh b; r spp c; r sss d; r suu f; r sww g;'
+$ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)' p'r sscc a; r sspp b; r ssuu c; r ssww d;'
 how	are	you
 how	are	you
 how	are	you
 how	are	you
-how	are	you
-how	are	you
+```
+
+### `startswith` and `endswith`
+
+```sh
+$ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
+1
+1
+```
+
+## Hadoop
+
+### `restrict_hdfs_path`
+
+```sh
+ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
+ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path, a, 100'
+hdfst:///user/bilow/tmp/test_ni_job/part-00*
+hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 
 
@@ -15134,9 +15153,19 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
 ## Conclusion
 You've reached the end of chapter 5 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
-557 doc/ni_by_example_6.md
-#Future Chapter 6 Below
+567 doc/ni_by_example_6.md
+# Future Chapter 6 Below
 
+
+## More functions
+
+### DOS file cleaning
+
+```sh
+$ ni <DOSFILE> cleandos
+```
+
+This will replace the CR/LFs in DOS with just LFs.
 
 ## Advanced Perl
 ### Array references

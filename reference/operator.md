@@ -139,6 +139,11 @@
 	  checkpoint_create $file, $generator unless -r $file;
 	  scat $file;
 
+# OPERATOR cleandos
+
+## IMPLEMENTATION
+	exec 'perl -pi -e "s/\r\n/\n/g"'
+
 # OPERATOR col_average
 
 ## IMPLEMENTATION
