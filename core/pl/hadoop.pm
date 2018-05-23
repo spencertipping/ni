@@ -43,8 +43,20 @@ sub hdfs_mv($$) {
   my ($raw_input_hdfs_path, $raw_output_hdfs_path) = @_;
   my $input_hdfs_path  = extract_hdfs_path $raw_input_hdfs_path;
   my $output_hdfs_path = extract_hdfs_path $raw_output_hdfs_path;
+  my ($output_hdfs_parent_folder,) = $output_hdfs_path =~ m|^(/.+/)|m;
+  hdfs_mkdir_p $output_hdfs_path;
  `hadoop fs -mv $input_hdfs_path $output_hdfs_path`;
  return "hdfst://$output_hdfs_path";
+}
+
+sub hdfs_mv_multiple() {
+  my (@raw_input_hdfs_paths, $raw_output_hdfs_path) = @_;
+  my @input_hdfs_paths  = map {extract_hdfs_path $raw_input_hdfs_path} @raw_input_hdfs_paths;
+  my $output_hdfs_parent_folder = extract_hdfs_path($raw_output_hdfs_path);
+  hdfs_mkdir_p $output_hdfs_parent_folder;
+  my @output_hdfs_paths = map {$output_hdfs_parent_folder . "/$_"} 0..$#raw_input_paths;
+ `hadoop fs -mv $input_hdfs_paths[$_] $output_hdfs_paths[$_]` for 0..$#raw_input_paths;
+ return "hdfst://$output_hdfs_parent_folder/*/*";
 }
 
 sub yarn_application_kill($) {
