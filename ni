@@ -4487,7 +4487,7 @@ q{
 
 defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
                pseq popt colspec1, popt integer, _qfn;
-14 core/pl/lib
+15 core/pl/lib
 util.pm
 string.pm
 file.pm
@@ -4502,6 +4502,7 @@ wkt.pl
 time.pl
 geohash.pl
 pl.pl
+url.pl
 21 core/pl/util.pm
 # Utility library functions.
 
@@ -5185,7 +5186,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-115 core/pl/stream.pm
+116 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5264,6 +5265,7 @@ BEGIN {for my $x ('a'..'l') {
 # | do_stuff until rl =~ /<\//;           # iterate until closing XML tag
 #   push @q, $_;                          # important: stash rejected line
 
+sub r1()  {my @r = ($_); push @r, $_ while  defined rl; push @q, $_ if defined $_;  @r}
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
@@ -5941,7 +5943,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-190 core/pl/pl.pl
+191 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6039,6 +6041,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/wkt.pl
                             core/pl/geohash.pl
                             core/pl/time.pl
+                            core/pl/url.pl
                             core/cell/murmurhash.pl
                             core/bloom/bloomfilter.pl
                             core/bloom/minhash.pl
@@ -6132,6 +6135,22 @@ defassertdsp 'p', pmap q{perl_assert_op $_}, perl_asserter_code;
 
 defshort 'cell/p', pmap q{perl_cell_transformer_op @$_},
                    pseq colspec, perl_cell_transform_code;
+15 core/pl/url.pl
+# Credit to S. Vertigan from this post:
+# http://code.activestate.com/recipes/577450-perl-url-encode-and-decode/#c6
+
+sub url_encode($) {
+  my ($rv) = @_;
+  $rv =~ s/([^A-Za-z0-9])/sprintf("%%%2.2X", ord($1))/ge;
+  return $rv;
+}
+
+sub url_decode($) {
+  my ($rv) = @_;
+  $rv =~ s/\+/ /g;
+  $rv =~ s/%(..)/pack("c",hex($1))/ge;
+  return $rv;
+}
 3 core/bloom/lib
 bloomfilter.pl
 minhash.pl
@@ -13040,7 +13059,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-925 doc/ni_by_example_3.md
+927 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13383,7 +13402,7 @@ $ ni i1494110651 p'r tep ttd(a); r tep tth(a);
 So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.
 
 
-### `rl`, `rw`, `ru`, `re`: Buffered Readahead
+### `rl`, `rw`, `ru`, `re`, `r1`: Buffered Readahead
 
 In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce (discussed in a later chapter); however, the syntax for  buffered readahead is often much simpler. Generating arrays of lines using readahead operations is a common motif in `ni` scripts:
 
@@ -13395,6 +13414,8 @@ In general, the types of reductions that can be done with buffered readahead and
   * `@lines = ru {condition}`: read lines until a condition is met
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
+* `r1`: read equal
+  * `@lines = r1`: Read all the lines in the stream.
 
 
 ```
@@ -15171,7 +15192,7 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
 ## Conclusion
 You've reached the end of chapter 5 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
-567 doc/ni_by_example_6.md
+576 doc/ni_by_example_6.md
 # Future Chapter 6 Below
 
 
@@ -15181,6 +15202,15 @@ You've reached the end of chapter 5 of `ni` by Example, which coincides comforta
 
 ```sh
 $ ni <DOSFILE> cleandos
+```
+
+### URL encode/decode in perl context
+
+TODO: write real docs
+
+```sh
+p'url_encode'
+p'url_decode'
 ```
 
 This will replace the CR/LFs in DOS with just LFs.

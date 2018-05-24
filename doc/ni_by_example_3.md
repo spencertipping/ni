@@ -340,7 +340,7 @@ $ ni i1494110651 p'r tep ttd(a); r tep tth(a);
 So far, we have only seen many ways to operate on data, but only one way to reduce it, the counting operator `c`. Buffered readahead allows us to perform operations on many lines at onceThese operations are used to convert columnar data into arrays of lines.
 
 
-### `rl`, `rw`, `ru`, `re`: Buffered Readahead
+### `rl`, `rw`, `ru`, `re`, `r1`: Buffered Readahead
 
 In general, the types of reductions that can be done with buffered readahead and multiline reducers can also be done with streaming reduce (discussed in a later chapter); however, the syntax for  buffered readahead is often much simpler. Generating arrays of lines using readahead operations is a common motif in `ni` scripts:
 
@@ -352,6 +352,8 @@ In general, the types of reductions that can be done with buffered readahead and
   * `@lines = ru {condition}`: read lines until a condition is met
 * `re`: read equal
   * `@lines = re {condition}`: read lines while the value of the condition is equal.
+* `r1`: read equal
+  * `@lines = r1`: Read all the lines in the stream.
 
 
 ```

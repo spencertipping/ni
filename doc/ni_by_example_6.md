@@ -9,6 +9,15 @@
 $ ni <DOSFILE> cleandos
 ```
 
+### URL encode/decode in perl context
+
+TODO: write real docs
+
+```sh
+p'url_encode'
+p'url_decode'
+```
+
 This will replace the CR/LFs in DOS with just LFs.
 
 ## Advanced Perl
