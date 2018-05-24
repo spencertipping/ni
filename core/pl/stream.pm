@@ -76,6 +76,7 @@ BEGIN {for my $x ('a'..'l') {
 # | do_stuff until rl =~ /<\//;           # iterate until closing XML tag
 #   push @q, $_;                          # important: stash rejected line
 
+sub r1()  {my @r = ($_); push @r, $_ while  defined rl; push @q, $_ if defined $_;  @r}
 sub rw(&) {my @r = ($_); push @r, $_ while  defined rl && &{$_[0]}; push @q, $_ if defined $_; @r}
 sub ru(&) {my @r = ($_); push @r, $_ until !defined rl || &{$_[0]}; push @q, $_ if defined $_; @r}
 sub re(&) {my ($f, $i) = ($_[0], &{$_[0]}); rw {&$f eq $i}}
