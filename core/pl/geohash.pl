@@ -2,6 +2,8 @@
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
 
+no warnings 'portable';
+
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
 
@@ -49,13 +51,13 @@ sub geohash_binary_to_base32($$)
                     $w1 & 0xffffffff;
   }
 
-  $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+  $s =~ y/\x00-\x1f/0123456789bcdefghjkmnpqrstuvwxyz/;
   substr $s, 0, int(($p + 4) / 5);
 }
 
 sub geohash_base32_to_binary($)
 {
-  (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x31/;
+  (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x1f/;
   my $bits = 5 * length $gh;
 
   if ($bits <= 20)

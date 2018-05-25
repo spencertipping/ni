@@ -342,7 +342,7 @@ sub hadoop_generic_options(@) {
 
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
-  my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
+  %clean_jobconf    = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
 
   # Every job needs at least a trivial KeyFieldBasedPartitioner
   # to avoid compatibility issues between jobs.

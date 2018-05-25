@@ -52,7 +52,7 @@ our @days = qw(Thu Fri Sat Sun Mon Tue Wed);
 sub day_of_week($) {
   my $ts = $_[0];
   my $weekday = int(($ts % 604800)/86400);
-  @days[$weekday];
+  $days[$weekday];
 }
 
 sub hour_of_day($) {

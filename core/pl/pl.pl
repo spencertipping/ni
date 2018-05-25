@@ -70,15 +70,21 @@ EOF
 
 use constant perl_mapgen => gen q{
   package ni::pl;
+  use strict;
+  use warnings;
   %prefix
+#line 1 "perl context dataclosures"
   %closures
+#line 7 "perl_mapgen template"
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
-    #line 1 "perl code context"
+    no strict;
+#line 1 "perl code context"
     %body
   }
   while (defined rl) {
+#line 1 "perl_mapgen each snippet"
     %each
   }
 };
@@ -103,9 +109,13 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/json/json.pl
                             core/pl/reducers.pm |;
 
+defoperator perl_prefix => q{ sio; print join"\n", @ni::perl_prefix_keys };
+defshort '///ni/perl_prefix' => pmap q{perl_prefix_op}, pnone;
+
 sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
-sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
+sub perl_prefix() { join "\n", map "BEGIN{\n# line 1 \"//ni/$_\"\n$ni::self{$_}\n}",
+                                   @perl_prefix_keys }
 
 sub perl_quote($)    {pack u => $_[0]}
 sub perl_closure($$) {"use constant $_[0] => unpack u => q|" . perl_quote($_[1]) . "|;"}
@@ -127,7 +137,7 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ eq "ARRAY" ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'CORE::ref $_ eq "ARRAY" ? r(@$_) : length && print $_, "\n" for row'}
 sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
   print $_, "\n";

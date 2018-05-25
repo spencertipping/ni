@@ -543,8 +543,9 @@ c
 Be careful using these functions with both numeric and string arguments in the same line:
 
 ```sh
+# this code emits warnings and has unexpected output
 $ ni i[1 2 3 a b c] p'r min F_; r max F_; r minstr F_; r maxstr F_'
-b
+c
 3
 1
 c
@@ -810,7 +811,7 @@ yo
 ### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjc(F_),  jjp(F_), jju(F_), jjw(F_)' 
 how,are,you	how|are|you	how_are_you	how are you
 ```
@@ -819,7 +820,7 @@ how,are,you	how|are|you	how_are_you	how are you
 ### `jjcc`, `jjpp` `jjuu`, `jjww`: join with _two_ commas;  pipes; underscores; whitespaces
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'
 how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
@@ -828,7 +829,7 @@ how,,are,,you	how||are||you	how__are__you	how  are  you
 ### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjc(F_), jjp(F_), jju(F_), jjw(F_)' p'r ssc a; r ssp b; r ssu c; r ssw d;'
 how	are	you
 how	are	you
@@ -840,7 +841,7 @@ how	are	you
 ### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)' p'r sscc a; r sspp b; r ssuu c; r ssww d;'
 how	are	you
 how	are	you
@@ -850,8 +851,8 @@ how	are	you
 
 ### `startswith` and `endswith`
 
-```sh
-$ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
+```bash
+$ ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 1
 1
 ```
@@ -860,10 +861,11 @@ $ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 
 ### `restrict_hdfs_path`
 
-```sh
-ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
-ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path, a, 100'
+```bash
+$ ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
+     ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path a, 100'
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
+hdfst:///user/bilow/tmp/test_ni_job
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 

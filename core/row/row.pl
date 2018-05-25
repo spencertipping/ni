@@ -1,7 +1,7 @@
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
-defoperator cleandos => q{exec 'perl -pi -e "s/\r\n/\n/g"'};
+defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
 defshort '/cleandos', pmap q{cleandos_op}, pnone; 
 
 defoperator head => q{exec 'head', @_};

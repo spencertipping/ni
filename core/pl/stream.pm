@@ -9,9 +9,12 @@
 # array of lines and return an array of field values. These are useful in
 # conjunction with the line-reading functions `rw`, `ru`, and `re`.
 
+no warnings 'uninitialized';
+
 our @q;
 our @F;
 
+sub rl(;$);
 sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
             chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
 sub pl($)  {chomp, push @q, $_ until @q >= $_[0] || !defined($_ = <STDIN>); @q[0..$_[0]-1]}
@@ -20,7 +23,7 @@ sub FM()   {$#F}
 sub FR($)  {$_[0] > 0 ? @F[$_[0]..$#F] : @F[($#F + $_[0] + 1)..$#F]}
 sub FT($)  {$_[0] > 0 ? @F[0..($_[0] - 1)] : @F[0..($#F + $_[0])]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
-BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
+BEGIN {ceval sprintf 'sub %s():lvalue {$ni::pl::F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_;
                                die "coercing %s_() to a scalar is a mistake" unless wantarray;
                                map((split /\t/)[%d] || "", map split(/\n/), @_)}',
@@ -45,19 +48,19 @@ sub cols(@) {
 # `%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
 
 BEGIN {for my $x ('a'..'l') {
-         ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
+         ceval sprintf 'sub %s%s_ {my %%r; @r{%s_ @_} = %s_ @_; %%r}',
                        $x, $_, $x, $_ for 'a'..'l'}}
 BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
-         ceval sprintf 'sub %s%sS {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
-                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %r}',
+         ceval sprintf 'sub %s%sS {my %%r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %%r}',
                        $x, $y, $x, $y }}}
 BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
-         ceval sprintf 'sub %s%sSNN {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+         ceval sprintf 'sub %s%sSNN {my %%r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
                                     $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr;
-                                    my %r_output; @filtered_keys = grep {$_ ne ""} keys %r;
-                                    @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
+                                    my %%r_output; my @filtered_keys = grep {$_ ne ""} keys %%r;
+                                    @r_output{@filtered_keys} = @r{@filtered_keys}; %%r_output}',
                        $x, $y, $x, $y }}}
 
 ## Seeking functions.
@@ -88,10 +91,10 @@ BEGIN {ceval sprintf '
          warn "WARNING: the lowercase re<col> functions are deprecated "
             . "because ref conflicts with the perl ref() builtin; you "
             . "should use re%s instead" unless $warned_about_lowercase_reX++;
-         re {join "\t", @F[0..%d]}}',
+         re {join "\t", @ni::pl::F[0..%d]}}',
        $_, uc, ord($_) - 97 for 'b'..'l'}
 
-BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @ni::pl::F[0..%d]}}',
        $_, ord($_) - 65 for 'B'..'Z'}
 
 # Streaming aggregations.
@@ -106,11 +109,11 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              push @q, $_ if defined; @xs}
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
-                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                        se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 97 for 'a'..'l'}
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
-                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                        se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 65 for 'A'..'Z'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}

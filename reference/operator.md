@@ -142,7 +142,7 @@
 # OPERATOR cleandos
 
 ## IMPLEMENTATION
-	exec 'perl -pi -e "s/\r\n/\n/g"'
+	exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'
 
 # OPERATOR col_average
 
@@ -995,6 +995,11 @@
 
 ## IMPLEMENTATION
 	stdin_to_perl perl_mapper   $_[0]
+
+# OPERATOR perl_prefix
+
+## IMPLEMENTATION
+	 sio; print join"\n", @ni::perl_prefix_keys 
 
 # OPERATOR pivot_table
 

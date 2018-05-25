@@ -38,7 +38,7 @@ sub dump_hash {
 }
 
 sub dump_data {
-  $dumpme = pop @_;
+  my $dumpme = pop @_;
   print join "\t", @_, "\n";
   if(ref($dumpme) eq "HASH") {
     dump_hash($dumpme);
@@ -71,6 +71,7 @@ sub merge_hash_values($$) {
   $output
 }
 
+sub sum_two_hashes($$);     # prevent prototype-check errors for recursion
 sub sum_two_hashes($$) {
   my ($href1, $href2) = @_;
   for my $key(keys %{$href2}) {
@@ -85,6 +86,7 @@ sub sum_two_hashes($$) {
   $href1;
 }
 
+sub accumulate_two_hashes($$);
 sub accumulate_two_hashes($$) {
   my ($href1, $href2) = @_;
   for my $key (keys %{$href2}) {

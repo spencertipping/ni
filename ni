@@ -1089,7 +1089,7 @@ sub gen($) {
 }
 1 core/json/lib
 json.pl
-77 core/json/json.pl
+78 core/json/json.pl
 # JSON parser/generator.
 # Perl has native JSON libraries available in CPAN, but we can't assume those are
 # installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -1156,14 +1156,15 @@ sub json_encode($);
 sub json_encode($) {
   local $_;
   my ($v) = @_;
-  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq CORE::ref $v;
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
-                             sort keys %$v) . "}" if 'HASH' eq ref $v;
-  return json_escape $$v if 'SCALAR' eq ref $v;   # force string
+                             sort keys %$v) . "}" if 'HASH' eq CORE::ref $v;
+  return json_escape $$v if 'SCALAR' eq CORE::ref $v;   # force string
   looks_like_number $v ? $v : defined $v ? json_escape $v : 'null';
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
+  no warnings 'once';
   *je = \&json_encode;
   *jd = \&json_decode;
 }
@@ -4002,7 +4003,7 @@ join.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
-defoperator cleandos => q{exec 'perl -pi -e "s/\r\n/\n/g"'};
+defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
 defshort '/cleandos', pmap q{cleandos_op}, pnone; 
 
 defoperator head => q{exec 'head', @_};
@@ -4503,10 +4504,17 @@ time.pl
 geohash.pl
 pl.pl
 url.pl
-21 core/pl/util.pm
+28 core/pl/util.pm
 # Utility library functions.
 
-sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
+use constant DEBUG_PRINT_CEVALS => 0;
+
+sub ceval
+{
+  print STDERR "ceval: $_[0]\n" if DEBUG_PRINT_CEVALS;
+  eval $_[0];
+  die "error evaluating $_[0]: $@" if $@;
+}
 
 sub within {
   local $_;
@@ -4525,7 +4533,7 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-47 core/pl/string.pm
+51 core/pl/string.pm
 # String utilities
 
 sub startswith($$) {
@@ -4553,24 +4561,28 @@ sub restrict_hdfs_path ($$) {
 }
 
 # Syntactic sugar for join/split
-BEGIN { 
+BEGIN
+{
   my %short_separators =
-    ("c" => ",", 
-     "p" => "|", 
+    ("c" => ",",
+     "C" => ":",
+     "n" => "\n",
+     "p" => "|",
+     "t" => "\t",
      "u" => "_",
      "w" => " ");
-   my %regex_separators = ("|" => '\|');
-   for my $sep_abbrev(keys %short_separators) {
-     $join_sep = $short_separators{$sep_abbrev};
-     $split_sep = $regex_separators{$join_sep} || $join_sep;
-     ceval sprintf 'sub jj%s($;@)      {join "%s",      @_;}', 
-       $sep_abbrev, $join_sep;
+
+   for my $abbrev (keys %short_separators)
+   {
+     my $sep = $short_separators{$abbrev};
+     ceval sprintf 'sub jj%s($;@) {join "%s",      @_;}',
+       $abbrev, $sep;
      ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
-       $sep_abbrev, $sep_abbrev, $join_sep, $join_sep;
-     ceval sprintf 'sub ss%s($)   {split /%s/,   $_[0]}',
-       $sep_abbrev, $split_sep;
-     ceval sprintf 'sub ss%s%s($) {split /%s%s/, $_[0]}',
-       $sep_abbrev, $sep_abbrev, $split_sep, $split_sep;
+       $abbrev, $abbrev, $sep, $sep;
+     ceval sprintf 'sub ss%s($)   {split /\Q%s\E/,   $_[0]}',
+       $abbrev, $sep;
+     ceval sprintf 'sub ss%s%s($) {split /\Q%s%s\E/, $_[0]}',
+       $abbrev, $abbrev, $sep, $sep;
     }
 }
 39 core/pl/file.pm
@@ -4816,7 +4828,7 @@ sub delete_flat_hash {
     return $_[0];
   }
 }
-150 core/pl/hash.pm
+152 core/pl/hash.pm
 # Hash utilities
 
 # Key-By-Value ascending and descending
@@ -4857,7 +4869,7 @@ sub dump_hash {
 }
 
 sub dump_data {
-  $dumpme = pop @_;
+  my $dumpme = pop @_;
   print join "\t", @_, "\n";
   if(ref($dumpme) eq "HASH") {
     dump_hash($dumpme);
@@ -4890,6 +4902,7 @@ sub merge_hash_values($$) {
   $output
 }
 
+sub sum_two_hashes($$);     # prevent prototype-check errors for recursion
 sub sum_two_hashes($$) {
   my ($href1, $href2) = @_;
   for my $key(keys %{$href2}) {
@@ -4904,6 +4917,7 @@ sub sum_two_hashes($$) {
   $href1;
 }
 
+sub accumulate_two_hashes($$);
 sub accumulate_two_hashes($$) {
   my ($href1, $href2) = @_;
   for my $key (keys %{$href2}) {
@@ -5049,7 +5063,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-136 core/pl/math.pm
+138 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5072,7 +5086,7 @@ sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
 
 sub randint {my ($low, $high) = @_; 
-             $high, $low = $high ? ($high, $low) : ($low, 0);  
+             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
              int(rand($high - $low) + $low);
            }
 
@@ -5123,12 +5137,12 @@ sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
 sub vec_sum($$) {
   local $_; my ($u, $v) = @_;
-  map $$u[$_] + $$v[$_], 0..$#u;
+  map $$u[$_] + $$v[$_], 0..$#$u;
 }
 
 sub vec_diff($$) {
   local $_; my ($u, $v) = @_;
-  map $$u[$_] - $$v[$_], 0..$#u;
+  map $$u[$_] - $$v[$_], 0..$#$u;
 }
 
 sub distance_to_line($$$) {
@@ -5149,8 +5163,11 @@ sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 
 # Numpy synonyms and extensions
-*radians = \&drad;
-*degrees = \&rdeg;
+BEGIN
+{
+  *radians = \&drad;
+  *degrees = \&rdeg;
+}
 
 sub linspace($$$) {
   my $n_spaces = $_[2] - 1;
@@ -5168,10 +5185,9 @@ sub aspace($$$) {
 
 sub logspace($$$;$) {
   my @powers = linspace($_[0], $_[1], $_[2]);
-  my $base = defined $_[3] && $_[3] or 10; 
+  my $base = defined $_[3] ? $_[3] : 10;
   map {$base ** $_} @powers;
 }
-
 
 
 BEGIN {
@@ -5186,7 +5202,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-116 core/pl/stream.pm
+119 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5198,9 +5214,12 @@ if (eval {require Math::Trig}) {
 # array of lines and return an array of field values. These are useful in
 # conjunction with the line-reading functions `rw`, `ru`, and `re`.
 
+no warnings 'uninitialized';
+
 our @q;
 our @F;
 
+sub rl(;$);
 sub rl(;$) {return ($_, map rl(), 2..$_[0]) if @_;
             chomp($_ = @q ? shift @q : <STDIN>); @F = split /\t/; $_}
 sub pl($)  {chomp, push @q, $_ until @q >= $_[0] || !defined($_ = <STDIN>); @q[0..$_[0]-1]}
@@ -5209,7 +5228,7 @@ sub FM()   {$#F}
 sub FR($)  {$_[0] > 0 ? @F[$_[0]..$#F] : @F[($#F + $_[0] + 1)..$#F]}
 sub FT($)  {$_[0] > 0 ? @F[0..($_[0] - 1)] : @F[0..($#F + $_[0])]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
-BEGIN {ceval sprintf 'sub %s():lvalue {@F[%d]}', $_, ord($_) - 97 for 'a'..'l';
+BEGIN {ceval sprintf 'sub %s():lvalue {$ni::pl::F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_;
                                die "coercing %s_() to a scalar is a mistake" unless wantarray;
                                map((split /\t/)[%d] || "", map split(/\n/), @_)}',
@@ -5234,19 +5253,19 @@ sub cols(@) {
 # `%h = ab_ @lines` is the same as `@h{a_ @lines} = b_ @lines`.
 
 BEGIN {for my $x ('a'..'l') {
-         ceval sprintf 'sub %s%s_ {my %r; @r{%s_ @_} = %s_ @_; %r}',
+         ceval sprintf 'sub %s%s_ {my %%r; @r{%s_ @_} = %s_ @_; %%r}',
                        $x, $_, $x, $_ for 'a'..'l'}}
 BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
-         ceval sprintf 'sub %s%sS {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
-                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %r}',
+         ceval sprintf 'sub %s%sS {my %%r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+                                    $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr; %%r}',
                        $x, $y, $x, $y }}}
 BEGIN {for my $x ('a'..'l') {
         for my $y ('a'..'l') {
-         ceval sprintf 'sub %s%sSNN {my %r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
+         ceval sprintf 'sub %s%sSNN {my %%r; my @key_arr = %s_ @_; my @val_arr = %s_ @_;
                                     $r{$key_arr[$_]} += $val_arr[$_] for 0..$#key_arr;
-                                    my %r_output; @filtered_keys = grep {$_ ne ""} keys %r;
-                                    @r_output{@filtered_keys} = @r{@filtered_keys}; %r_output}',
+                                    my %%r_output; my @filtered_keys = grep {$_ ne ""} keys %%r;
+                                    @r_output{@filtered_keys} = @r{@filtered_keys}; %%r_output}',
                        $x, $y, $x, $y }}}
 
 ## Seeking functions.
@@ -5277,10 +5296,10 @@ BEGIN {ceval sprintf '
          warn "WARNING: the lowercase re<col> functions are deprecated "
             . "because ref conflicts with the perl ref() builtin; you "
             . "should use re%s instead" unless $warned_about_lowercase_reX++;
-         re {join "\t", @F[0..%d]}}',
+         re {join "\t", @ni::pl::F[0..%d]}}',
        $_, uc, ord($_) - 97 for 'b'..'l'}
 
-BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @F[0..%d]}}',
+BEGIN {ceval sprintf 'sub re%s() {re {join "\t", @ni::pl::F[0..%d]}}',
        $_, ord($_) - 65 for 'B'..'Z'}
 
 # Streaming aggregations.
@@ -5295,11 +5314,11 @@ sub se(&$@) {my ($f, $e, @xs) = @_; my $k = &$e;
              push @q, $_ if defined; @xs}
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
-                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                        se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 97 for 'a'..'l'}
 BEGIN {ceval sprintf 'sub se%s(&$@) {
                         my ($f, @xs) = @_;
-                        se {&$f(@_)} sub {join "\t", @F[0..%d]}, @xs;
+                        se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 65 for 'A'..'Z'}
 
 sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
@@ -5516,7 +5535,7 @@ our @days = qw(Thu Fri Sat Sun Mon Tue Wed);
 sub day_of_week($) {
   my $ts = $_[0];
   my $weekday = int(($ts % 604800)/86400);
-  @days[$weekday];
+  $days[$weekday];
 }
 
 sub hour_of_day($) {
@@ -5694,10 +5713,12 @@ BEGIN {
   *usfe = \&mdy_epoch
 }
 
-248 core/pl/geohash.pl
+250 core/pl/geohash.pl
 # Fast, portable geohash encoder... AND MORE!
 # A port of https://www.factual.com/blog/how-geohashes-work. 
 # I'm assuming 64-bit int support.
+
+no warnings 'portable';
 
 our @geohash_alphabet = split //, '0123456789bcdefghjkmnpqrstuvwxyz';
 our %geohash_decode   = map(($geohash_alphabet[$_], $_), 0..$#geohash_alphabet);
@@ -5746,13 +5767,13 @@ sub geohash_binary_to_base32($$)
                     $w1 & 0xffffffff;
   }
 
-  $s =~ y/\x00-\x31/0123456789bcdefghjkmnpqrstuvwxyz/;
+  $s =~ y/\x00-\x1f/0123456789bcdefghjkmnpqrstuvwxyz/;
   substr $s, 0, int(($p + 4) / 5);
 }
 
 sub geohash_base32_to_binary($)
 {
-  (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x31/;
+  (my $gh = lc shift) =~ y/0123456789bcdefghjkmnpqrstuvwxyz/\x00-\x1f/;
   my $bits = 5 * length $gh;
 
   if ($bits <= 20)
@@ -5943,7 +5964,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-191 core/pl/pl.pl
+201 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6016,15 +6037,21 @@ EOF
 
 use constant perl_mapgen => gen q{
   package ni::pl;
+  use strict;
+  use warnings;
   %prefix
+#line 1 "perl context dataclosures"
   %closures
+#line 7 "perl_mapgen template"
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
-    #line 1 "perl code context"
+    no strict;
+#line 1 "perl code context"
     %body
   }
   while (defined rl) {
+#line 1 "perl_mapgen each snippet"
     %each
   }
 };
@@ -6049,9 +6076,13 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/json/json.pl
                             core/pl/reducers.pm |;
 
+defoperator perl_prefix => q{ sio; print join"\n", @ni::perl_prefix_keys };
+defshort '///ni/perl_prefix' => pmap q{perl_prefix_op}, pnone;
+
 sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
 
-sub perl_prefix() {join "\n", @ni::self{@perl_prefix_keys}}
+sub perl_prefix() { join "\n", map "BEGIN{\n# line 1 \"//ni/$_\"\n$ni::self{$_}\n}",
+                                   @perl_prefix_keys }
 
 sub perl_quote($)    {pack u => $_[0]}
 sub perl_closure($$) {"use constant $_[0] => unpack u => q|" . perl_quote($_[1]) . "|;"}
@@ -6073,7 +6104,7 @@ sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
                                  body     => $_[0],
                                  each     => $_[1])}
 
-sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'ref $_ eq "ARRAY" ? r(@$_) : length && print $_, "\n" for row'}
+sub perl_mapper($)   {perl_code perl_expand_begin $_[0], 'CORE::ref $_ eq "ARRAY" ? r(@$_) : length && print $_, "\n" for row'}
 sub perl_grepper($)  {perl_code perl_expand_begin $_[0], 'print $_, "\n" if row'}
 sub perl_asserter($) {perl_code perl_expand_begin $_[0], q(
   print $_, "\n";
@@ -10344,7 +10375,7 @@ sub hadoop_generic_options(@) {
 
   my %raw = map {$_, dor(conf $_, $jobconf{$_})} keys %mr_generics;
   my %clean_jobconf = map {$_, $raw{$_}} grep {defined $raw{$_}} keys %raw;
-  my %clean_jobconf = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
+  %clean_jobconf    = map {$_, translate_mr_conf_var($_, $clean_jobconf{$_})} keys %clean_jobconf;
 
   # Every job needs at least a trivial KeyFieldBasedPartitioner
   # to avoid compatibility issues between jobs.
@@ -13059,7 +13090,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-927 doc/ni_by_example_3.md
+929 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13605,8 +13636,9 @@ c
 Be careful using these functions with both numeric and string arguments in the same line:
 
 ```sh
+# this code emits warnings and has unexpected output
 $ ni i[1 2 3 a b c] p'r min F_; r max F_; r minstr F_; r maxstr F_'
-b
+c
 3
 1
 c
@@ -13872,7 +13904,7 @@ yo
 ### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjc(F_),  jjp(F_), jju(F_), jjw(F_)' 
 how,are,you	how|are|you	how_are_you	how are you
 ```
@@ -13881,7 +13913,7 @@ how,are,you	how|are|you	how_are_you	how are you
 ### `jjcc`, `jjpp` `jjuu`, `jjww`: join with _two_ commas;  pipes; underscores; whitespaces
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'
 how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
@@ -13890,7 +13922,7 @@ how,,are,,you	how||are||you	how__are__you	how  are  you
 ### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjc(F_), jjp(F_), jju(F_), jjw(F_)' p'r ssc a; r ssp b; r ssu c; r ssw d;'
 how	are	you
 how	are	you
@@ -13902,7 +13934,7 @@ how	are	you
 ### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
 
 
-```sh # no idea why these don't work
+```bash
 $ ni i[how are you] p'r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)' p'r sscc a; r sspp b; r ssuu c; r ssww d;'
 how	are	you
 how	are	you
@@ -13912,8 +13944,8 @@ how	are	you
 
 ### `startswith` and `endswith`
 
-```sh
-$ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
+```bash
+$ ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 1
 1
 ```
@@ -13922,10 +13954,11 @@ $ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 
 ### `restrict_hdfs_path`
 
-```sh
-ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
-ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path, a, 100'
+```bash
+$ ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
+     ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path a, 100'
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
+hdfst:///user/bilow/tmp/test_ni_job
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 

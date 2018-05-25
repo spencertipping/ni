@@ -1,6 +1,13 @@
 # Utility library functions.
 
-sub ceval {eval $_[0]; die "error evaluating $_[0]: $@" if $@}
+use constant DEBUG_PRINT_CEVALS => 0;
+
+sub ceval
+{
+  print STDERR "ceval: $_[0]\n" if DEBUG_PRINT_CEVALS;
+  eval $_[0];
+  die "error evaluating $_[0]: $@" if $@;
+}
 
 sub within {
   local $_;

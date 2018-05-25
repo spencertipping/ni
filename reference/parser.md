@@ -417,6 +417,7 @@
 	    <empty>?
 	  ) -> {$$_[0]} -> {meta_parser_op $_}
 	| '//ni/parsers' '' -> {meta_parsers_op}
+	| '//ni/perl_prefix' '' -> {perl_prefix_op}
 	| '1' '' -> {n_op 1, 2}
 	| ':' (
 	    <nefilename>

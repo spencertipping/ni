@@ -20,7 +20,7 @@ sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
 
 sub randint {my ($low, $high) = @_; 
-             $high, $low = $high ? ($high, $low) : ($low, 0);  
+             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
              int(rand($high - $low) + $low);
            }
 
@@ -71,12 +71,12 @@ sub l2norm {local $_; sqrt sum map $_*$_, @_}
 
 sub vec_sum($$) {
   local $_; my ($u, $v) = @_;
-  map $$u[$_] + $$v[$_], 0..$#u;
+  map $$u[$_] + $$v[$_], 0..$#$u;
 }
 
 sub vec_diff($$) {
   local $_; my ($u, $v) = @_;
-  map $$u[$_] - $$v[$_], 0..$#u;
+  map $$u[$_] - $$v[$_], 0..$#$u;
 }
 
 sub distance_to_line($$$) {
@@ -97,8 +97,11 @@ sub prec {($_[0] * sin drad $_[1], $_[0] * cos drad $_[1])}
 sub rpol {(l2norm(@_), rdeg atan2($_[0], $_[1]))}
 
 # Numpy synonyms and extensions
-*radians = \&drad;
-*degrees = \&rdeg;
+BEGIN
+{
+  *radians = \&drad;
+  *degrees = \&rdeg;
+}
 
 sub linspace($$$) {
   my $n_spaces = $_[2] - 1;
@@ -116,10 +119,9 @@ sub aspace($$$) {
 
 sub logspace($$$;$) {
   my @powers = linspace($_[0], $_[1], $_[2]);
-  my $base = defined $_[3] && $_[3] or 10; 
+  my $base = defined $_[3] ? $_[3] : 10;
   map {$base ** $_} @powers;
 }
-
 
 
 BEGIN {

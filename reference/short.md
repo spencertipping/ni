@@ -1529,6 +1529,11 @@
 ## SYNTAX
 	'' -> {meta_parsers_op}
 
+# SHORT OPERATOR ///ni/perl_prefix
+
+## SYNTAX
+	'' -> {perl_prefix_op}
+
 # SHORT OPERATOR /1
 	Alias for 'n1'
 

@@ -64,14 +64,15 @@ sub json_encode($);
 sub json_encode($) {
   local $_;
   my ($v) = @_;
-  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq ref $v;
+  return "[" . join(',', map json_encode($_), @$v) . "]" if 'ARRAY' eq CORE::ref $v;
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
-                             sort keys %$v) . "}" if 'HASH' eq ref $v;
-  return json_escape $$v if 'SCALAR' eq ref $v;   # force string
+                             sort keys %$v) . "}" if 'HASH' eq CORE::ref $v;
+  return json_escape $$v if 'SCALAR' eq CORE::ref $v;   # force string
   looks_like_number $v ? $v : defined $v ? json_escape $v : 'null';
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
+  no warnings 'once';
   *je = \&json_encode;
   *jd = \&json_decode;
 }
