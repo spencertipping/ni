@@ -39,7 +39,7 @@ BEGIN
    for my $abbrev (keys %short_separators)
    {
      my $sep = $short_separators{$abbrev};
-     ceval sprintf 'sub jj%s($;@) {join "%s",      @_;}',
+     ceval sprintf 'sub jj%s      {join "%s",      @_;}',
        $abbrev, $sep;
      ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
        $abbrev, $abbrev, $sep, $sep;

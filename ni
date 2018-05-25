@@ -4575,7 +4575,7 @@ BEGIN
    for my $abbrev (keys %short_separators)
    {
      my $sep = $short_separators{$abbrev};
-     ceval sprintf 'sub jj%s($;@) {join "%s",      @_;}',
+     ceval sprintf 'sub jj%s      {join "%s",      @_;}',
        $abbrev, $sep;
      ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
        $abbrev, $abbrev, $sep, $sep;
@@ -5480,7 +5480,7 @@ sub in_poly
   }
   $hits & 1;
 }
-232 core/pl/time.pl
+234 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5501,6 +5501,7 @@ our $mktime_error = 0;          # bugfix for OSX
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
 sub time_epoch_pieces($;$) {
+  no warnings;
   local $_;
   my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @pieces = gmtime $t;
@@ -5519,6 +5520,7 @@ sub time_epoch_formatted($;$)
 }
 
 sub time_pieces_epoch {
+  no warnings;
   local $_;
   my ($es, @ps) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @tvs = (0, 0, 0, 1, 1, 1970, 0, 0, -1, 0);

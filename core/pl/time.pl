@@ -18,6 +18,7 @@ our $mktime_error = 0;          # bugfix for OSX
 sub time_element_indexes($) {map index(time_pieces, $_), split //, $_[0]}
 
 sub time_epoch_pieces($;$) {
+  no warnings;
   local $_;
   my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @pieces = gmtime $t;
@@ -36,6 +37,7 @@ sub time_epoch_formatted($;$)
 }
 
 sub time_pieces_epoch {
+  no warnings;
   local $_;
   my ($es, @ps) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
   my @tvs = (0, 0, 0, 1, 1, 1970, 0, 0, -1, 0);
