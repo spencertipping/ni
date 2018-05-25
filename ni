@@ -6048,7 +6048,7 @@ use constant perl_mapgen => gen q{
   close STDIN;
   open STDIN, '<&=3' or die "ni: failed to open fd 3: $!";
   sub row {
-    no strict;
+    no strict 'subs';
 #line 1 "perl code context"
     %body
   }
