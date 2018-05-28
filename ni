@@ -6711,7 +6711,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-75 core/git/git.pl
+77 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6723,9 +6723,11 @@ defresource 'git',
   read => q{
     my $path = git_dir $_[1];
     (my $outpath = $path) =~ s/\/\.git$//;
-    soproc {sh shell_quote
-      git => "--git-dir=$path", "branch", "-a",
-             "--format=gitcommit://$outpath:%(refname)\t%(objectname)"};
+    soproc {
+      my $format = "--format=gitcommit://$outpath:%(refname)\t%(objectname)";
+      sh join";",
+         shell_quote(git => "--git-dir=$path", "branch", "-a", $format),
+         shell_quote(git => "--git-dir=$path", "tag", "-l", $format)};
   };
 
 # Commits: emit options
