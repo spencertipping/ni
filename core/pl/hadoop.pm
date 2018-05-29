@@ -1,10 +1,13 @@
 # Helpers for interacting with Hadoop and YARN
 sub extract_hdfs_path($) {
-  my @input_path_parts = $_[0] =~ m([^/]+)mg;
-  if($input_path_parts[0] =~ /^hdfs[^:]*:/) {
+  my ($raw_path) = @_;
+  my @input_path_parts = $raw_path =~ m([^/]+)mg;
+  if(defined $input_path_parts[0] and 
+    $input_path_parts[0] =~ /^hdfs[^:]*:/) {
     shift @input_path_parts;
   };
-  if ($input_path_parts[-1] =~ /^(\*|part-)/) {
+  if (defined $input_path_parts[-1] and
+      $input_path_parts[-1] =~ /^(\*|part-)/) {
     pop @input_path_parts;
   }
  "/" . join "/", @input_path_parts;
@@ -50,7 +53,9 @@ sub hdfs_mv {
   my @input_hdfs_paths  = map {extract_hdfs_path $_} @_;
   my $output_hdfs_folder = extract_hdfs_path($raw_output_hdfs_path);
   my $output_hdfs_parent_folder = extract_parent_path $output_hdfs_folder;
-  my @output_hdfs_paths = map {@input_hdfs_paths == 1 ? $output_hdfs_folder : $output_hdfs_folder . "/$_"} 0..$#input_hdfs_paths;
+  my $pad = length (scalar @input_hdfs_paths - 1);
+  my $pad_fmt_str = "/%0$pad" . "d";
+  my @output_hdfs_paths = map {@input_hdfs_paths == 1 ? $output_hdfs_folder : $output_hdfs_folder . sprintf($pad_fmt_str, $_)} 0..$#input_hdfs_paths;
   if(@input_hdfs_paths == 1) {
     hdfs_mkdir_p $output_hdfs_parent_folder;
   } else {
