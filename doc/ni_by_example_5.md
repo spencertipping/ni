@@ -67,54 +67,8 @@ Shelling out in Jupyter is really easy; simply prefix your command with
 Working in Jupyter, you'll want to set your 
 
 
-## Stream Appending, Interleaving, Duplication, and Buffering
+## Stream Interleaving, Duplication, and Buffering
 You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
-
-### `+` and `^`: Append (Prepend) Stream
-
-
-Streams in `ni` can be concatenated, however, once concatenated,
-any operator on the stream will apply to the stream in its entirety.
-`+` and `^` are useful when you have a complicated operator you want
-to apply to only part of the stream.
-
-Examples:
-
-```bash
-$ ni n3 ^[n05 fAA]
-0	0
-1	1
-2	2
-3	3
-4	4
-1
-2
-3
-```
-
-
-```bash
-$ ni n3 +[n05 fAA]
-1
-2
-3
-0	0
-1	1
-2	2
-3	3
-4	4
-```
-
-`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
-
-```
-while ($data = read from stream 1) {print $data}
-while ($data = read from stream 2) {print $data}
-```
-The second stream waits to execute until an `EOF` is received from the first stream, so
-for even simple streams, you may see a noticeable pause between the end of the
-first stream and the start of the second.
-
 
 
 ### `%`: Interleave Streams

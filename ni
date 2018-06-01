@@ -5079,7 +5079,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-138 core/pl/math.pm
+158 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5089,11 +5089,16 @@ use constant tau4 => tau/4;
 
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
+use constant LOG10 => log 10;
+use constant LOG10R=> 1 / LOG10;
 
 BEGIN { eval "use constant E$_ => 1e$_" for 0..20 }
 
+# Integer Functions
 sub ceil($)  {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) + 1 : int($_[0])}
 sub floor($) {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) : int($_[0]) -1 }
+
+# Sums, Products, Medians
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_;}
@@ -5101,21 +5106,11 @@ sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[in
 sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
 
-sub randint {my ($low, $high) = @_; 
-             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
-             int(rand($high - $low) + $low);
-           }
-
+# Logarithmic
 sub log2($) {LOG2R * log $_[0]}
+sub log10($) {LOG10R * log $_[0]}
 
-sub entropy {
-  local $_;
-  my $sum = sum @_;
-  my $t = 0;
-  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
-  $t;
-}
-
+# Quantize and Interpolate
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
 
@@ -5205,7 +5200,32 @@ sub logspace($$$;$) {
   map {$base ** $_} @powers;
 }
 
+## Numpy stats synonyms
+sub var {
+  my $mean = mean @_;
+  mean map {($_ - $mean)**2} @_;
+}
 
+sub std {
+  sqrt(var(@_));
+}
+
+sub entropy {
+  local $_;
+  my $sum = sum @_;
+  my $t = 0;
+  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
+  $t;
+}
+
+# Random
+sub randint {my ($low, $high) = @_; 
+             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
+             int(rand($high - $low) + $low);
+           }
+
+
+# Sphere distance
 BEGIN {
 if (eval {require Math::Trig}) {
   Math::Trig->import('!sec');   # sec() conflicts with stream reducers
@@ -13110,7 +13130,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-929 doc/ni_by_example_3.md
+993 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -13568,7 +13588,7 @@ l
 
 Another common motif is getting the value of 
 
-### `reB ... reL`: Reduce while multiple columns are equal
+### `reA ... reL`: Reduce while multiple columns are equal
 
 In the previous section, we covered `reA` as syntactic sugar for `re {a}`
 
@@ -13601,6 +13621,71 @@ fourth
 ```
 
 This is our desired output.
+
+### Quick Detour: More Row Operations
+
+Let's say we get some temperature data and we want to compute
+some statistics around it:
+
+```bash
+$ ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	 p'my $city = a; my @temps = b_ rea; r $city, mean(@temps), std(@temps)'
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+```
+
+#### Append and prepend streams
+
+To present this data, we'll want to add a header of `City, Average Temperature, Temperature Standard Deviation`. To do this, we can prepend to the stream using the `^` operator.
+
+```bash
+$ ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ]
+City	Average Temperature	Temperature Standard Deviation
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+```
+
+
+If we wanted to add data for another city, we could do it using append with the `+` operator
+
+```
+$  ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ] +[ i[ABQ 67 10] ]
+City	Average Temperature	Temperature Standard Deviation
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+ABQ	67	10
+```
+
+#### `mdtable`: Convert the stream to a Markdown table
+
+Now, let's display this data nicely; the `mdtable` operation does this automatically:
+
+```
+$  ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ] +[ i[ABQ 67 10] ] mdtable
+|City|Average Temperature|Temperature Standard Deviation|
+|:----:|:----:|:----:|
+|LA|78|2.16024689946929|
+|CHI|59|24.9933324442073|
+|ABQ|67|10|
+```
+
+In Markdown, the above output turns into a nicely-formatted table.
+
+|City|Average Temperature|Temperature Standard Deviation|
+|:----:|:----:|:----:|
+|LA|78|2.16024689946929|
+|CHI|59|24.9933324442073|
+|ABQ|67|10|
+
 
 
 ### Caveats
@@ -13978,7 +14063,6 @@ $ ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 $ ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
      ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path a, 100'
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
-hdfst:///user/bilow/tmp/test_ni_job
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 
@@ -14705,7 +14789,7 @@ If you've never had the opportunity to write the word count MapReduce program in
 * [Perl](http://www.perlmonks.org/?node_id=859535)
 
 Compare the `ni` solution to Java. The `ni` spell can be written in 5 seconds, and explained in 30.  It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.
-539 doc/ni_by_example_5.md
+493 doc/ni_by_example_5.md
 # `ni` by Example Chapter 5 (alpha release)
 Welcome to Chapter 4. At this point you have enough skills to read the other `ni` documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
@@ -14775,54 +14859,8 @@ Shelling out in Jupyter is really easy; simply prefix your command with
 Working in Jupyter, you'll want to set your 
 
 
-## Stream Appending, Interleaving, Duplication, and Buffering
+## Stream Interleaving, Duplication, and Buffering
 You've seen one of these operators before, the very useful `=\>`, which we've used to write a file in the middle of a stream. The way this works is by duplicating the input stream, and sending one of the duplicated streams silently to an output file. 
-
-### `+` and `^`: Append (Prepend) Stream
-
-
-Streams in `ni` can be concatenated, however, once concatenated,
-any operator on the stream will apply to the stream in its entirety.
-`+` and `^` are useful when you have a complicated operator you want
-to apply to only part of the stream.
-
-Examples:
-
-```bash
-$ ni n3 ^[n05 fAA]
-0	0
-1	1
-2	2
-3	3
-4	4
-1
-2
-3
-```
-
-
-```bash
-$ ni n3 +[n05 fAA]
-1
-2
-3
-0	0
-1	1
-2	2
-3	3
-4	4
-```
-
-`+` and `^` operate sends both streams to ni's output (stdout, usually into a `less` process). Internally, ni is basically doing this:
-
-```
-while ($data = read from stream 1) {print $data}
-while ($data = read from stream 2) {print $data}
-```
-The second stream waits to execute until an `EOF` is received from the first stream, so
-for even simple streams, you may see a noticeable pause between the end of the
-first stream and the start of the second.
-
 
 
 ### `%`: Interleave Streams

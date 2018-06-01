@@ -455,7 +455,7 @@ l
 
 Another common motif is getting the value of 
 
-### `reB ... reL`: Reduce while multiple columns are equal
+### `reA ... reL`: Reduce while multiple columns are equal
 
 In the previous section, we covered `reA` as syntactic sugar for `re {a}`
 
@@ -488,6 +488,71 @@ fourth
 ```
 
 This is our desired output.
+
+### Quick Detour: More Row Operations
+
+Let's say we get some temperature data and we want to compute
+some statistics around it:
+
+```bash
+$ ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	 p'my $city = a; my @temps = b_ rea; r $city, mean(@temps), std(@temps)'
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+```
+
+#### Append and prepend streams
+
+To present this data, we'll want to add a header of `City, Average Temperature, Temperature Standard Deviation`. To do this, we can prepend to the stream using the `^` operator.
+
+```bash
+$ ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ]
+City	Average Temperature	Temperature Standard Deviation
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+```
+
+
+If we wanted to add data for another city, we could do it using append with the `+` operator
+
+```
+$  ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ] +[ i[ABQ 67 10] ]
+City	Average Temperature	Temperature Standard Deviation
+LA	78	2.16024689946929
+CHI	59	24.9933324442073
+ABQ	67	10
+```
+
+#### `mdtable`: Convert the stream to a Markdown table
+
+Now, let's display this data nicely; the `mdtable` operation does this automatically:
+
+```
+$  ni i[LA 75] i[LA 80] i[LA 79] i[CHI 62] i[CHI 27] i[CHI 88] \
+	  p'my $city = a; my @temps = b_ rea; 
+	    r $city, mean(@temps), std(@temps)' \
+	  ^[i[City "Average Temperature" "Temperature Standard Deviation"] ] +[ i[ABQ 67 10] ] mdtable
+|City|Average Temperature|Temperature Standard Deviation|
+|:----:|:----:|:----:|
+|LA|78|2.16024689946929|
+|CHI|59|24.9933324442073|
+|ABQ|67|10|
+```
+
+In Markdown, the above output turns into a nicely-formatted table.
+
+|City|Average Temperature|Temperature Standard Deviation|
+|:----:|:----:|:----:|
+|LA|78|2.16024689946929|
+|CHI|59|24.9933324442073|
+|ABQ|67|10|
+
 
 
 ### Caveats
@@ -865,7 +930,6 @@ $ ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 $ ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
      ihdfst:///user/bilow/tmp/test_ni_job p'r restrict_hdfs_path a, 100'
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
-hdfst:///user/bilow/tmp/test_ni_job
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 
