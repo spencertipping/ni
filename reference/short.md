@@ -2015,6 +2015,11 @@
 	| <rbcode> -> {ruby_mapper_op $_}
 	)
 
+# SHORT OPERATOR /mdtable
+
+## SYNTAX
+	'' -> {mdtable_op}
+
 # SHORT OPERATOR /n
 	Append integers 1..N, or 1..infinity if N is unspecified
 

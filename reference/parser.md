@@ -680,6 +680,7 @@
 	| 'm' (
 	  | <rbcode> -> {ruby_mapper_op $_}
 	  )
+	| 'mdtable' '' -> {mdtable_op}
 	| 'n' <number>? -> {n_op 1, defined $_ ? $_ + 1 : -1}
 	| 'n0' <number>? -> {n_op 0, defined $_ ? $_ : -1}
 	| 'o' <sortspec> -> {row_sort_op '-n',  sort_args @$_}

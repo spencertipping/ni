@@ -3999,12 +3999,9 @@ defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
 row.pl
 scale.pl
 join.pl
-207 core/row/row.pl
+219 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
-
-defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
-defshort '/cleandos', pmap q{cleandos_op}, pnone; 
 
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
@@ -4207,6 +4204,21 @@ defoperator unordered_count => q{
 };
 
 defshort '/U', pmap q{unordered_count_op}, pnone;
+
+defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
+defshort '/cleandos', pmap q{cleandos_op}, pnone; 
+
+defoperator mdtable => q{
+  my @lines;
+  chomp, push @lines, $_ while <STDIN>;
+  my $n_field_seps = $lines[0] =~ tr/\t//;
+  my $n_fields = $n_field_seps + 1;
+  my @output_lines = map {"|$_|"} map {s/\t/\|/gr} @lines;
+  splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
+  print join "\n", @output_lines;
+};
+
+defshort '/mdtable', pmap q{mdtable_op}, pnone;
 189 core/row/scale.pl
 # Row-based process scaling.
 # Allows you to bypass process bottlenecks by distributing rows across multiple
@@ -4533,7 +4545,7 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-51 core/pl/string.pm
+50 core/pl/string.pm
 # String utilities
 
 sub startswith($$) {
@@ -4554,7 +4566,6 @@ sub restrict_hdfs_path ($$) {
   if (endswith $path, "part-*") {
     $path =~ s/part-\*/part-$zeroes\*/;
   } else {
-    print("$path\n");
     $path = $path . "/part-$zeroes*"
   }
   $path;

@@ -753,6 +753,18 @@
 	             begin => '',
 	             each  => '$xs[$_] = md5_hex $xs[$_]'}, @_;
 
+# OPERATOR mdtable
+
+## IMPLEMENTATION
+	
+	  my @lines;
+	  chomp, push @lines, $_ while <STDIN>;
+	  my $n_field_seps = $lines[0] =~ tr/\t//;
+	  my $n_fields = $n_field_seps + 1;
+	  my @output_lines = map {"|$_|"} map {s/\t/\|/gr} @lines;
+	  splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
+	  print join "\n", @output_lines;
+
 # OPERATOR memory_closure_append
 
 ## IMPLEMENTATION

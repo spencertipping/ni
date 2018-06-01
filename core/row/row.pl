@@ -1,9 +1,6 @@
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
-defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
-defshort '/cleandos', pmap q{cleandos_op}, pnone; 
-
 defoperator head => q{exec 'head', @_};
 defoperator tail => q{exec 'tail', $_[0], join "", @_[1..$#_]};
 
@@ -205,3 +202,18 @@ defoperator unordered_count => q{
 };
 
 defshort '/U', pmap q{unordered_count_op}, pnone;
+
+defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
+defshort '/cleandos', pmap q{cleandos_op}, pnone; 
+
+defoperator mdtable => q{
+  my @lines;
+  chomp, push @lines, $_ while <STDIN>;
+  my $n_field_seps = $lines[0] =~ tr/\t//;
+  my $n_fields = $n_field_seps + 1;
+  my @output_lines = map {"|$_|"} map {s/\t/\|/gr} @lines;
+  splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
+  print join "\n", @output_lines;
+};
+
+defshort '/mdtable', pmap q{mdtable_op}, pnone;
