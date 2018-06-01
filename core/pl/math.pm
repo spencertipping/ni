@@ -7,11 +7,16 @@ use constant tau4 => tau/4;
 
 use constant LOG2  => log 2;
 use constant LOG2R => 1 / LOG2;
+use constant LOG10 => log 10;
+use constant LOG10R=> 1 / LOG10;
 
 BEGIN { eval "use constant E$_ => 1e$_" for 0..20 }
 
+# Integer Functions
 sub ceil($)  {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) + 1 : int($_[0])}
 sub floor($) {$_[0] == int($_[0]) ? $_[0] : $_[0] > 0 ? int($_[0]) : int($_[0]) -1 }
+
+# Sums, Products, Medians
 sub sum  {local $_; my $s = 0; $s += $_ for @_; $s}
 sub prod {local $_; my $p = 1; $p *= $_ for @_; $p}
 sub mean {scalar @_ && sum(@_) / @_;}
@@ -19,21 +24,11 @@ sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[in
 sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
 
-sub randint {my ($low, $high) = @_; 
-             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
-             int(rand($high - $low) + $low);
-           }
-
+# Logarithmic
 sub log2($) {LOG2R * log $_[0]}
+sub log10($) {LOG10R * log $_[0]}
 
-sub entropy {
-  local $_;
-  my $sum = sum @_;
-  my $t = 0;
-  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
-  $t;
-}
-
+# Quantize and Interpolate
 sub quant {my ($x, $q) = @_; $q ||= 1;
            my $s = $x < 0 ? -1 : 1; int(abs($x) / $q + 0.5) * $q * $s}
 
@@ -123,7 +118,32 @@ sub logspace($$$;$) {
   map {$base ** $_} @powers;
 }
 
+## Numpy stats synonyms
+sub var {
+  my $mean = mean @_;
+  mean map {($_ - $mean)**2} @_;
+}
 
+sub std {
+  sqrt(var(@_));
+}
+
+sub entropy {
+  local $_;
+  my $sum = sum @_;
+  my $t = 0;
+  $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
+  $t;
+}
+
+# Random
+sub randint {my ($low, $high) = @_; 
+             ($high, $low) = $high ? ($high, $low) : ($low, 0);  
+             int(rand($high - $low) + $low);
+           }
+
+
+# Sphere distance
 BEGIN {
 if (eval {require Math::Trig}) {
   Math::Trig->import('!sec');   # sec() conflicts with stream reducers
