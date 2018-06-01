@@ -211,7 +211,7 @@ defoperator mdtable => q{
   chomp, push @lines, $_ while <STDIN>;
   my $n_field_seps = $lines[0] =~ tr/\t//;
   my $n_fields = $n_field_seps + 1;
-  my @output_lines = map {"|$_|"} map {s/\t/\|/gr} @lines;
+  my @output_lines = map {"|$_|"} map {local $_ = $_; $_ =~ s/\t/\|/g; $_} @lines;
   splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
   print join "\n", @output_lines;
 };
