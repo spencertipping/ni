@@ -3242,6 +3242,12 @@ lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
 z	x	y
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=881
+lazytest_case 'ni 1p'\''r squote a, dquote a, squo, dquo'\''
+' 3<<'LAZYTEST_EOF'
+'1'	"1"	'	"
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=891
 lazytest_case 'ni i[how are you] p'\''r jjc(F_),  jjp(F_), jju(F_), jjw(F_)'\'' 
 ' 3<<'LAZYTEST_EOF'

@@ -14015,8 +14015,8 @@ yo
 
 Escaping quotes is a pain; `ni` provides `squote` and `dquote` to single- and double-quote strings; `squo` and `dquo` provide literal single and double quotes.
 
-```sh # This test makes ni crazy
-$ ni 1p'r squote a, dquote a, squo, dquo
+```bash
+$ ni 1p'r squote a, dquote a, squo, dquo'
 '1'	"1"	'	"
 ```
 
