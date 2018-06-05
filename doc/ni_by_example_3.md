@@ -873,6 +873,17 @@ yo
 
 ## String Operations
 
+### `squote`, `dquote`, `squo`, `dquo`: single and double quote strings
+
+Escaping quotes is a pain; `ni` provides `squote` and `dquote` to single- and double-quote strings; `squo` and `dquo` provide literal single and double quotes.
+
+```sh # This test makes ni crazy
+$ ni 1p'r squote a, dquote a, squo, dquo
+'1'	"1"	'	"
+```
+
+
+
 ### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
 

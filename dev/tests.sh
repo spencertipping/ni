@@ -3242,19 +3242,19 @@ lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
 z	x	y
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=880
+lazytest_line=891
 lazytest_case 'ni i[how are you] p'\''r jjc(F_),  jjp(F_), jju(F_), jjw(F_)'\'' 
 ' 3<<'LAZYTEST_EOF'
 how,are,you	how|are|you	how_are_you	how are you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=889
+lazytest_line=900
 lazytest_case 'ni i[how are you] p'\''r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'\''
 ' 3<<'LAZYTEST_EOF'
 how,,are,,you	how||are||you	how__are__you	how  are  you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=898
+lazytest_line=909
 lazytest_case 'ni i[how are you] p'\''r jjc(F_), jjp(F_), jju(F_), jjw(F_)'\'' p'\''r ssc a; r ssp b; r ssu c; r ssw d;'\''
 ' 3<<'LAZYTEST_EOF'
 how	are	you
@@ -3263,7 +3263,7 @@ how	are	you
 how	are	you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=910
+lazytest_line=921
 lazytest_case 'ni i[how are you] p'\''r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'\'' p'\''r sscc a; r sspp b; r ssuu c; r ssww d;'\''
 ' 3<<'LAZYTEST_EOF'
 how	are	you
@@ -3272,14 +3272,14 @@ how	are	you
 how	are	you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=920
+lazytest_line=931
 lazytest_case 'ni ifoobar p'\''r startswith a, "fo"; r endswith a, "obar";'\''
 ' 3<<'LAZYTEST_EOF'
 1
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=930
+lazytest_line=941
 lazytest_case 'ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
      ihdfst:///user/bilow/tmp/test_ni_job p'\''r restrict_hdfs_path a, 100'\''
 ' 3<<'LAZYTEST_EOF'

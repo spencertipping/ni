@@ -12,6 +12,11 @@ sub endswith($$) {
 # Number to letter 1 => "A", 2 => "B", etc.
 sub alph($) {chr($_[0] + 64)}
 
+sub squo()    {"'"}
+sub dquo()    {'"'}
+sub squote($) {"'$_[0]'"}
+sub dquote($) {"\"$_[0]\""}
+
 sub restrict_hdfs_path ($$) {
   my ($path, $restriction) = @_;
   my ($zeroes) = ($restriction =~ /^1(0*)$/);

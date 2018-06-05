@@ -4545,7 +4545,7 @@ sub within {
 
 sub pu { my ($p, $u) = split /:/, shift; pack $p, unpack $u, @_ }
 sub up { my ($u, $p) = split /:/, shift; unpack $u, pack $p, @_ }
-50 core/pl/string.pm
+55 core/pl/string.pm
 # String utilities
 
 sub startswith($$) {
@@ -4559,6 +4559,11 @@ sub endswith($$) {
 
 # Number to letter 1 => "A", 2 => "B", etc.
 sub alph($) {chr($_[0] + 64)}
+
+sub squo()    {"'"}
+sub dquo()    {'"'}
+sub squote($) {"'$_[0]'"}
+sub dquote($) {"\"$_[0]\""}
 
 sub restrict_hdfs_path ($$) {
   my ($path, $restriction) = @_;
@@ -13130,7 +13135,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-993 doc/ni_by_example_3.md
+1004 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -14005,6 +14010,17 @@ yo
 `af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
 ## String Operations
+
+### `squote`, `dquote`, `squo`, `dquo`: single and double quote strings
+
+Escaping quotes is a pain; `ni` provides `squote` and `dquote` to single- and double-quote strings; `squo` and `dquo` provide literal single and double quotes.
+
+```sh # This test makes ni crazy
+$ ni 1p'r squote a, dquote a, squo, dquo
+'1'	"1"	'	"
+```
+
+
 
 ### `jjc`, `jjp`, `jju`, `jjw`: join with _one_ comma; pipe; underscore; whitespace
 
