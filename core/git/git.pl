@@ -11,9 +11,7 @@ defresource 'git',
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {
       my $format = "--format=gitcommit://$outpath:%(refname)\t%(objectname)";
-      sh join";",
-         shell_quote(git => "--git-dir=$path", "branch", "-a", $format),
-         shell_quote(git => "--git-dir=$path", "tag", "-l", $format)};
+      sh shell_quote(git => "--git-dir=$path", "for-each-ref", $format)};
   };
 
 # Commits: emit options
