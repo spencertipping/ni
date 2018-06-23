@@ -3799,7 +3799,7 @@ defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
-195 core/col/col.pl
+196 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -3892,6 +3892,7 @@ defshort '/F',
 # Combining
 defshort '/F^',
   defdsp 'combinealt', 'dispatch table for /F^ combine operator',
+    'S' => pmap(q{sh_op 'tr "\t" " "},       pnone),
     'C' => pmap(q{sh_op 'tr "\t" ,'},        pnone),
     'P' => pmap(q{sh_op 'tr "\t" "|"'},      pnone),
     ':' => pmap(q{sh_op 'tr "\t" "'.$_.'"'}, prx '.');

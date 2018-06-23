@@ -505,6 +505,7 @@
 	  | ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
 	  | 'C' '' -> {sh_op 'tr "\t" ,'}
 	  | 'P' '' -> {sh_op 'tr "\t" "|"'}
+	  | 'S' '' -> {sh_op 'tr "\t" " "}
 	  )
 	| 'G' (
 	    <gnuplot_colspec>
@@ -1275,6 +1276,7 @@
 	| ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
 	| 'C' '' -> {sh_op 'tr "\t" ,'}
 	| 'P' '' -> {sh_op 'tr "\t" "|"'}
+	| 'S' '' -> {sh_op 'tr "\t" " "}
 	)
 
 # PARSER dsp/gnuplot_code_prefixalt
