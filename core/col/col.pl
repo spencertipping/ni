@@ -90,7 +90,7 @@ defshort '/F',
 # Combining
 defshort '/F^',
   defdsp 'combinealt', 'dispatch table for /F^ combine operator',
-    'S' => pmap(q{sh_op 'tr "\t" " "},       pnone),
+    'S' => pmap(q{sh_op 'tr "\t" " "'},      pnone),
     'C' => pmap(q{sh_op 'tr "\t" ,'},        pnone),
     'P' => pmap(q{sh_op 'tr "\t" "|"'},      pnone),
     ':' => pmap(q{sh_op 'tr "\t" "'.$_.'"'}, prx '.');

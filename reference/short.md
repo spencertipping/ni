@@ -1677,7 +1677,7 @@
 	| ':' /./ -> {sh_op 'tr "\t" "'.$_.'"'}
 	| 'C' '' -> {sh_op 'tr "\t" ,'}
 	| 'P' '' -> {sh_op 'tr "\t" "|"'}
-	| 'S' '' -> {sh_op 'tr "\t" " "}
+	| 'S' '' -> {sh_op 'tr "\t" " "'}
 	)
 
 # SHORT OPERATOR /G
