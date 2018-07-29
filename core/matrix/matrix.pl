@@ -195,6 +195,18 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
+defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
+
+
+# @bilow:
+# There are a couple of ways you can do this. One is to do what you have below,
+# where you're specifying filename on command line; then your usage syntax is
+#
+#   ni ... excel foo.xls ...
+#
+# and semantically, the excel short-op appends an excel spreadsheet. Here's a
+# modified version of your code that does this:
+
 use constant excel_gen => gen pydent q{
   import pandas as pd
   from sys import stdout
@@ -216,6 +228,36 @@ defoperator excel => q{
       or die "ni: failed to execute python: $!";
 };
 
-defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
-defshort '/excel', pmap q{excel_op @$_}, pnone; 
+# NB: sio to forward original stream; then excel_op to append a new one
+# filename() is a parser for an existing file
+defshort '/excel', pmap q{sio; excel_op @$_}, filename;
 
+
+# The alternative is to stream filenames in and behave more like \<. Here's a
+# version of your code that would work that way, where usage is a bare
+# excel_streaming:
+#
+#   ni ifilename.xls excel_streaming ...
+
+use constant excel_streaming_gen => gen pydent q{
+  import pandas as pd
+  from sys import stdin, stdout
+  try:
+    stdout = stdout.buffer
+  except:
+    pass
+  for filename in sys.stdin:
+    stdout.write(bytes("hi, test", "utf-8"))
+    stdout.flush()
+    df = pd.read_excel(filename.strip())
+    for _idx, row in df.iterrows():
+      stdout.write(bytes("\t".join([str(x) for x in row][1:]), "utf-8"))
+      stdout.flush()
+};
+
+defoperator excel_streaming => q{
+  exec 'python', '-c', excel_gen->()
+      or die "ni: failed to execute python: $!";
+};
+
+defshort '/excel_streaming', pmap q{excel_streaming_op}, pnone;

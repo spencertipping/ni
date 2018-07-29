@@ -1938,6 +1938,16 @@
 ## SYNTAX
 	<shell_command> -> {sh_op $_}
 
+# SHORT OPERATOR /excel
+
+## SYNTAX
+	<filename> -> {sio; excel_op @$_}
+
+# SHORT OPERATOR /excel_streaming
+
+## SYNTAX
+	'' -> {excel_streaming_op}
+
 # SHORT OPERATOR /f
 
 ## SYNTAX

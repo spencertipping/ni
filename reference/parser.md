@@ -644,6 +644,8 @@
 	| 'c' '' -> {count_op}
 	| 'cleandos' '' -> {cleandos_op}
 	| 'e' <shell_command> -> {sh_op $_}
+	| 'excel' <filename> -> {sio; excel_op @$_}
+	| 'excel_streaming' '' -> {excel_streaming_op}
 	| 'f' (
 	  | <colspec> -> {cols_op @$_}
 	  )
