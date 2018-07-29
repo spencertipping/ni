@@ -195,4 +195,27 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
+use constant excel_gen => gen pydent q{
+  import pandas as pd
+  from sys import stdout
+  try:
+    stdout = stdout.buffer
+  except:
+    pass
+  stdout.write(bytes("hi, test", "utf-8"))
+  stdout.flush()
+  df = pd.read_excel("%filename")
+  for _idx, row in df.iterrows():
+    stdout.write(bytes("\t".join([str(x) for x in row][1:]), "utf-8"))
+    stdout.flush()
+};
+
+defoperator excel => q{
+  my ($filename) = @_;
+  exec 'python', '-c', excel_gen->(filename => $filename)
+      or die "ni: failed to execute python: $!";
+};
+
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
+defshort '/excel', pmap q{excel_op @$_}, pnone; 
+
