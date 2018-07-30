@@ -6864,10 +6864,12 @@ defresource 'zipentry',
     my ($zipfile, $fname) = split /:/, $_[1], 2;
     zip_file_fh $zipfile, $fname;
   };
-67 core/archive/xlsx.pl
+69 core/archive/xlsx.pl
 # xlsx parsing
 # This backs into the zip archive handler, adding some shorthands for working
 # with xlsx worksheets.
+#
+# NB: this is a good resource: https://stackoverflow.com/questions/18334314/what-do-excel-xml-cell-attribute-values-mean
 
 # List all worksheets: xlsx:///path/to/file.xlsx
 defresource 'xlsx',
