@@ -6864,7 +6864,7 @@ defresource 'zipentry',
     my ($zipfile, $fname) = split /:/, $_[1], 2;
     zip_file_fh $zipfile, $fname;
   };
-50 core/archive/xlsx.pl
+67 core/archive/xlsx.pl
 # xlsx parsing
 # This backs into the zip archive handler, adding some shorthands for working
 # with xlsx worksheets.
@@ -6888,14 +6888,26 @@ sub worksheet_col_to_offset($)
   $i - 1;
 }
 
+sub workbook_shared_strings($)
+{
+  # Takes a workbook filename and returns an array of shared strings. This will
+  # fail if any strings are multiline (TODO)
+  my $fh = zip_file_fh shift, "xl/sharedStrings.xml";
+  my @r;
+  /<t>(.*)<\/t>/ and push @r, $1 while <$fh>;
+  @r;
+}
+
 # Decode a worksheet: xlssheet:///path/to/file.xlsx:<sheet-number>
 defresource 'xlssheet',
   read => q{
     my ($file, $sheet_id) = split /:/, $_[1], 2;
     soproc {
       my $fh = zip_file_fh $file, "xl/worksheets/sheet$sheet_id.xml";
+      my @ss = workbook_shared_strings $file;
       my @row;
       my $i;                  # next col index to assign
+      my $is_shared = 0;      # true if <v> node is a shared string index
       while (<$fh>)
       {
         chomp;
@@ -6904,14 +6916,19 @@ defresource 'xlssheet',
           print join("\t", @row), "\n";
           @row = ();
         }
-        elsif (/<c r="([A-Z]+)\d*"/)
+
+        if (/<c /)
         {
-          $i = worksheet_col_to_offset $1;
+          # We need to know the data type of the cell. If it's a shared string,
+          # type it as such so we know how to interpret the <v> node.
+          $i         = worksheet_col_to_offset $1 if /r="([A-Z]+)/;
+          $is_shared = /t="s"/;
         }
-        elsif (/<[vt]>([^<]+)<\/[vt]>/)
+
+        if (/<[vt]>([^<]+)<\/[vt]>/)
         {
           push @row, "" until $#row >= $i;
-          $row[$i] = $1;
+          $row[$i] = $is_shared ? $ss[$1] : $1;
         }
       } };
   };
