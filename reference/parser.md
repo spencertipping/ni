@@ -38,6 +38,10 @@
 	  | ''https://' /.*/ -> {resource_quote_op "https://$_"}
 	  | ''s3cmd://' /.*/ -> {resource_quote_op "s3cmd://$_"}
 	  | ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
+	  | ''xlssheet://' /.*/ -> {resource_quote_op "xlssheet://$_"}
+	  | ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
+	  | ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
+	  | ''zipentry://' /.*/ -> {resource_quote_op "zipentry://$_"}
 	  | 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
 	  | 'file://' /.*/ -> {resource_append_op "file://$_"}
 	  | 'git://' /.*/ -> {resource_append_op "git://$_"}
@@ -58,6 +62,10 @@
 	  | 'https://' /.*/ -> {resource_append_op "https://$_"}
 	  | 's3cmd://' /.*/ -> {resource_append_op "s3cmd://$_"}
 	  | 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
+	  | 'xlssheet://' /.*/ -> {resource_append_op "xlssheet://$_"}
+	  | 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}
+	  | 'zip://' /.*/ -> {resource_append_op "zip://$_"}
+	  | 'zipentry://' /.*/ -> {resource_append_op "zipentry://$_"}
 	  )
 	| <filename> -> {cat_op $_}
 	| </short>
@@ -1389,6 +1397,10 @@
 	| ''https://' /.*/ -> {resource_quote_op "https://$_"}
 	| ''s3cmd://' /.*/ -> {resource_quote_op "s3cmd://$_"}
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
+	| ''xlssheet://' /.*/ -> {resource_quote_op "xlssheet://$_"}
+	| ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
+	| ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
+	| ''zipentry://' /.*/ -> {resource_quote_op "zipentry://$_"}
 	| 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
 	| 'git://' /.*/ -> {resource_append_op "git://$_"}
@@ -1409,6 +1421,10 @@
 	| 'https://' /.*/ -> {resource_append_op "https://$_"}
 	| 's3cmd://' /.*/ -> {resource_append_op "s3cmd://$_"}
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
+	| 'xlssheet://' /.*/ -> {resource_append_op "xlssheet://$_"}
+	| 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}
+	| 'zip://' /.*/ -> {resource_append_op "zip://$_"}
+	| 'zipentry://' /.*/ -> {resource_append_op "zipentry://$_"}
 	)
 
 # PARSER dsp/sparkprofile

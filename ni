@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-56 core/boot/ni.map
+57 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -93,6 +93,7 @@ lib core/bloom
 lib core/cell
 lib core/c
 lib core/git
+lib core/archive
 lib core/rb
 lib core/lisp
 lib core/sql
@@ -6828,6 +6829,91 @@ defresource 'gitblob',
     $path = git_dir $path;
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
+  };
+2 core/archive/lib
+zip.pl
+xlsx.pl
+30 core/archive/zip.pl
+# Zip archive support (requires the "unzip" command-line tool)
+
+sub zip_listing_fh($)
+{
+  my $f = shift;
+  soproc { sh shell_quote(unzip => '-l', '-qq', $f)
+            . " | cut -c31- " };
+}
+
+sub zip_file_fh($$)
+{
+  my ($zipf, $entry) = @_;
+  soproc { sh shell_quote(unzip => '-p', $zipf, $entry) };
+}
+
+# Zip file listing: zip:///path/to/zipfile
+defresource 'zip',
+  read => q{
+    my $filename = $_[1];
+    soproc {
+      my $fh = zip_listing_fh $filename;
+      print "zipentry://$filename:$_" while <$fh> };
+  };
+
+# Single-entry unpacking: gitentry:///path/to/file.zip:subfilename
+defresource 'zipentry',
+  read => q{
+    my ($zipfile, $fname) = split /:/, $_[1], 2;
+    zip_file_fh $zipfile, $fname;
+  };
+50 core/archive/xlsx.pl
+# xlsx parsing
+# This backs into the zip archive handler, adding some shorthands for working
+# with xlsx worksheets.
+
+# List all worksheets: xlsx:///path/to/file.xlsx
+defresource 'xlsx',
+  read => q{
+    my $file = $_[1];
+    soproc {
+      my $fh = zip_listing_fh $file;
+      /^xl\/worksheets\/sheet(\d+)\.xml/ && print "xlsxsheet://$file:$1\n"
+        while <$fh> };
+  };
+
+sub worksheet_col_to_offset($)
+{
+  # Takes a column ID like "AZ" and converts it to the zero-based offset it
+  # represents; that is, the offset of A = 0.
+  my $i = 0;
+  $i = $i * 26 + (1 + ord() - ord"A") for split //, shift;
+  $i - 1;
+}
+
+# Decode a worksheet: xlssheet:///path/to/file.xlsx:<sheet-number>
+defresource 'xlssheet',
+  read => q{
+    my ($file, $sheet_id) = split /:/, $_[1], 2;
+    soproc {
+      my $fh = zip_file_fh $file, "xl/worksheets/sheet$sheet_id.xml";
+      my @row;
+      my $i;                  # next col index to assign
+      while (<$fh>)
+      {
+        chomp;
+        if (/<\/row>/)
+        {
+          print join("\t", @row), "\n";
+          @row = ();
+        }
+        elsif (/<c r="([A-Z]+)\d*"/)
+        {
+          $i = worksheet_col_to_offset $1;
+        }
+        elsif (/<[vt]>([^<]+)<\/[vt]>/)
+        {
+          push @row, "" until $#row >= $i;
+          $row[$i] = $1;
+        }
+      } };
   };
 2 core/rb/lib
 prefix.rb
