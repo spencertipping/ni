@@ -388,6 +388,21 @@
 	             each => q{$xs[$_] = sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ",
 	                                         time_epoch_pieces $xs[$_]}}, @_;
 
+# OPERATOR excel
+
+## IMPLEMENTATION
+	
+	  my ($filename) = @_;
+	  exec 'python', '-c', excel_gen->(filename => $filename)
+	      or die "ni: failed to execute python: $!";
+
+# OPERATOR excel_streaming
+
+## IMPLEMENTATION
+	
+	  exec 'python', '-c', excel_gen->()
+	      or die "ni: failed to execute python: $!";
+
 # OPERATOR file_closure_append
 
 ## IMPLEMENTATION

@@ -2380,7 +2380,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-234 core/stream/pipeline.pl
+253 core/stream/pipeline.pl
 # Pipeline construction.
 # A way to build a shell pipeline in-process by consing a transformation onto
 # this process's standard input. This will cause a fork to happen, and the forked
@@ -2447,6 +2447,7 @@ sub safewrite_exactly($$) {
   }
   $w;
 }
+
 
 # Process construction.
 # A few functions, depending on what you want to do:
@@ -2566,10 +2567,22 @@ sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
 #   lzo:   89 4c 5a 4f
 #   lz4:   04 22 4d 18
 #   xz:    fd 37 7a 58 5a
+#   xlsx:  50 4b 03 04 14 00 (actually this is all MS OOXML)
+#   xls:   d0 cf 11 e0 a1 b1 1a e1
 
 # Decoding works by reading enough to decode the magic, then forwarding data
 # into the appropriate decoding process (or doing nothing if we don't know what
 # the data is).
+
+# NB: this constant exists before we've defined pydent, so don't modify the
+# indentation (or migrate the pydent definition into gen.pl, at which point you
+# can use it here).
+use constant excel_cat => gen q{
+import pandas as pd
+from sys import stdin, stdout
+df = pd.read_excel(stdin)
+for _idx, row in df.iterrows():
+  stdout.write(bytes("\t".join([str(x) for x in row][1:])) + "\n")};
 
 sub sdecode(;$) {
   local $_;
@@ -2579,7 +2592,13 @@ sub sdecode(;$) {
               : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
               : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" 
+
+              # Excel files
+              : /^\x50\x4b\x03\x04\x14\x00/         ? shell_quote('python', '-c', excel_cat->())
+              : /^\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1/ ? shell_quote('python', '-c', excel_cat->())
+
+              : undef;
 
   if (defined $decoder) {
     my $o = siproc {exec $decoder};
@@ -7682,7 +7701,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl
-198 core/matrix/matrix.pl
+263 core/matrix/matrix.pl
 # Matrix conversions.
 # Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 # dense inverts that. You can specify where the matrix data begins using a column
@@ -7881,6 +7900,71 @@ defoperator numpy_dense => q{
 };
 
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
+
+
+# @bilow:
+# There are a couple of ways you can do this. One is to do what you have below,
+# where you're specifying filename on command line; then your usage syntax is
+#
+#   ni ... excel foo.xls ...
+#
+# and semantically, the excel short-op appends an excel spreadsheet. Here's a
+# modified version of your code that does this:
+
+use constant excel_gen => gen pydent q{
+  import pandas as pd
+  from sys import stdout
+  try:
+    stdout = stdout.buffer
+  except:
+    pass
+  stdout.write(bytes("hi, test", "utf-8"))
+  stdout.flush()
+  df = pd.read_excel("%filename")
+  for _idx, row in df.iterrows():
+    stdout.write(bytes("\t".join([str(x) for x in row][1:]), "utf-8"))
+    stdout.flush()
+};
+
+defoperator excel => q{
+  my ($filename) = @_;
+  exec 'python', '-c', excel_gen->(filename => $filename)
+      or die "ni: failed to execute python: $!";
+};
+
+# NB: sio to forward original stream; then excel_op to append a new one
+# filename() is a parser for an existing file
+defshort '/excel', pmap q{sio; excel_op @$_}, filename;
+
+
+# The alternative is to stream filenames in and behave more like \<. Here's a
+# version of your code that would work that way, where usage is a bare
+# excel_streaming:
+#
+#   ni ifilename.xls excel_streaming ...
+
+use constant excel_streaming_gen => gen pydent q{
+  import pandas as pd
+  from sys import stdin, stdout
+  try:
+    stdout = stdout.buffer
+  except:
+    pass
+  for filename in sys.stdin:
+    stdout.write(bytes("hi, test", "utf-8"))
+    stdout.flush()
+    df = pd.read_excel(filename.strip())
+    for _idx, row in df.iterrows():
+      stdout.write(bytes("\t".join([str(x) for x in row][1:]), "utf-8"))
+      stdout.flush()
+};
+
+defoperator excel_streaming => q{
+  exec 'python', '-c', excel_gen->()
+      or die "ni: failed to execute python: $!";
+};
+
+defshort '/excel_streaming', pmap q{excel_streaming_op}, pnone;
 1 core/gnuplot/lib
 gnuplot.pl
 121 core/gnuplot/gnuplot.pl
