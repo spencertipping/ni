@@ -148,6 +148,8 @@
 	| ''https://' /.*/ -> {resource_quote_op "https://$_"}
 	| ''s3cmd://' /.*/ -> {resource_quote_op "s3cmd://$_"}
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
+	| ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
+	| ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
 	| ''xlssheet://' /.*/ -> {resource_quote_op "xlssheet://$_"}
 	| ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
 	| ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
@@ -172,6 +174,8 @@
 	| 'https://' /.*/ -> {resource_append_op "https://$_"}
 	| 's3cmd://' /.*/ -> {resource_append_op "s3cmd://$_"}
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
+	| 'tar://' /.*/ -> {resource_append_op "tar://$_"}
+	| 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
 	| 'xlssheet://' /.*/ -> {resource_append_op "xlssheet://$_"}
 	| 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}
 	| 'zip://' /.*/ -> {resource_append_op "zip://$_"}
