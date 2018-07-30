@@ -65,6 +65,7 @@ sub safewrite_exactly($$) {
   $w;
 }
 
+
 # Process construction.
 # A few functions, depending on what you want to do:
 
@@ -183,6 +184,8 @@ sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
 #   lzo:   89 4c 5a 4f
 #   lz4:   04 22 4d 18
 #   xz:    fd 37 7a 58 5a
+#   xlsx:  50 4b 03 04 14 00 06 00 (actually this is all MS OOXML)
+#   xls:   d0 cf 11 e0 a1 b1 1a e1
 
 # Decoding works by reading enough to decode the magic, then forwarding data
 # into the appropriate decoding process (or doing nothing if we don't know what
@@ -196,7 +199,10 @@ sub sdecode(;$) {
               : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
               : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" 
+              : /^\x50\x4b\x03\x04\x14\x00\x06\x00/ ? "python -c \"${excel_cat->()}\""
+              : /^\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1/ ? "python -c \"${excel_cat->()}\""
+              : undef;
 
   if (defined $decoder) {
     my $o = siproc {exec $decoder};
@@ -209,6 +215,15 @@ sub sdecode(;$) {
     sio;
   }
 }
+
+use constant excel_cat => gen pydent q{
+  import pandas as pd
+  from sys import stdin, stdout
+  stdout = stdout.buffer
+  df = pd.read_excel(stdin)
+  for _idx, row in df.iterrows():
+    stdout.write(bytes("\t".join([str(x) for x in row][1:]), "utf-8"))
+    stdout.flush()};
 
 # File/directory cat.
 # cat exists to turn filesystem objects into text. Files are emitted and
