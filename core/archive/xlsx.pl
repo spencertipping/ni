@@ -33,8 +33,8 @@ sub workbook_shared_strings($)
   @r;
 }
 
-# Decode a worksheet: xlssheet:///path/to/file.xlsx:<sheet-number>
-defresource 'xlssheet',
+# Decode a worksheet: xlsxsheet:///path/to/file.xlsx:<sheet-number>
+defresource 'xlsxsheet',
   read => q{
     my ($file, $sheet_id) = split /:/, $_[1], 2;
     soproc {

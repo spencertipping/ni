@@ -22,7 +22,7 @@ defresource 'zip',
       print "zipentry://$filename:$_" while <$fh> };
   };
 
-# Single-entry unpacking: gitentry:///path/to/file.zip:subfilename
+# Single-entry unpacking: zipentry:///path/to/file.zip:subfilename
 defresource 'zipentry',
   read => q{
     my ($zipfile, $fname) = split /:/, $_[1], 2;

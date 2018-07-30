@@ -6859,7 +6859,7 @@ defresource 'zip',
       print "zipentry://$filename:$_" while <$fh> };
   };
 
-# Single-entry unpacking: gitentry:///path/to/file.zip:subfilename
+# Single-entry unpacking: zipentry:///path/to/file.zip:subfilename
 defresource 'zipentry',
   read => q{
     my ($zipfile, $fname) = split /:/, $_[1], 2;
@@ -6938,8 +6938,8 @@ sub workbook_shared_strings($)
   @r;
 }
 
-# Decode a worksheet: xlssheet:///path/to/file.xlsx:<sheet-number>
-defresource 'xlssheet',
+# Decode a worksheet: xlsxsheet:///path/to/file.xlsx:<sheet-number>
+defresource 'xlsxsheet',
   read => q{
     my ($file, $sheet_id) = split /:/, $_[1], 2;
     soproc {

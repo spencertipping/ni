@@ -40,8 +40,8 @@
 	  | ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
 	  | ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
 	  | ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
-	  | ''xlssheet://' /.*/ -> {resource_quote_op "xlssheet://$_"}
 	  | ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
+	  | ''xlsxsheet://' /.*/ -> {resource_quote_op "xlsxsheet://$_"}
 	  | ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
 	  | ''zipentry://' /.*/ -> {resource_quote_op "zipentry://$_"}
 	  | 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
@@ -66,8 +66,8 @@
 	  | 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
 	  | 'tar://' /.*/ -> {resource_append_op "tar://$_"}
 	  | 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
-	  | 'xlssheet://' /.*/ -> {resource_append_op "xlssheet://$_"}
 	  | 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}
+	  | 'xlsxsheet://' /.*/ -> {resource_append_op "xlsxsheet://$_"}
 	  | 'zip://' /.*/ -> {resource_append_op "zip://$_"}
 	  | 'zipentry://' /.*/ -> {resource_append_op "zipentry://$_"}
 	  )
@@ -1403,8 +1403,8 @@
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
 	| ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
 	| ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
-	| ''xlssheet://' /.*/ -> {resource_quote_op "xlssheet://$_"}
 	| ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
+	| ''xlsxsheet://' /.*/ -> {resource_quote_op "xlsxsheet://$_"}
 	| ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
 	| ''zipentry://' /.*/ -> {resource_quote_op "zipentry://$_"}
 	| 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
@@ -1429,8 +1429,8 @@
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
 	| 'tar://' /.*/ -> {resource_append_op "tar://$_"}
 	| 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
-	| 'xlssheet://' /.*/ -> {resource_append_op "xlssheet://$_"}
 	| 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}
+	| 'xlsxsheet://' /.*/ -> {resource_append_op "xlsxsheet://$_"}
 	| 'zip://' /.*/ -> {resource_append_op "zip://$_"}
 	| 'zipentry://' /.*/ -> {resource_append_op "zipentry://$_"}
 	)
