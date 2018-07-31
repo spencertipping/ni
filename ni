@@ -14292,7 +14292,7 @@ See `core/pl/json.pm`
 - To get the data from a single file in a `tar` or `tar.gz` archive:
   - `$ ni tarentry:///path/to/file.tar:<sub_file_name>`
 - To get the data from a single sheet in an excel workbook as TSV:
-  - `$ ni zip:///path/to/file.xlsx:<sheet-number>`
+  - `$ ni xlsxsheet:///path/to/file.xlsx:<sheet-number>`
 
 
 ## Web Source Input
