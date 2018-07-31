@@ -973,7 +973,7 @@ $ ni i'{"a": 1, "foo":"bar", "c":3.14159}' p'my $h = json_decode a; r $h->{"a"},
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
 ```bash
-$ ni i'{"a": 1, "foo":"bar", "c":3.14159}' D:foo,:c,:a p'json_encode {foo => a, c => b, a => c, treasure=>"trove"}
+$ ni i'{"a": 1, "foo":"bar", "c":3.14159}' D:foo,:c,:a p'json_encode {foo => a, c => b, a => c, treasure=>"trove"}'
 {"a":1,"c":3.14159,"foo":"bar","treasure":"trove"}
 ```
 
