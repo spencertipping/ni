@@ -836,8 +836,6 @@ $ ni n1000 r-500 r'/^(\d)\1+$/'
 To write this same command without quotes requires a lot of escaping: `$ ni n1000 r-500 r/^\(\\d\)\\1+$/`
 
 
-
-
 ## `ni` Coding and Debugging
 
 The simplest way to build up a `ni` spell is by writing one step of the spell, checking that step's output for correctness, then writing another step.
@@ -858,12 +856,14 @@ $ ni --explain n10 \>ten.txt \<
 
 Each line represents one step of the pipeline defined by the spell, and the explanation shows how the `ni` parser interprets what's written. The explanations are usually concise, but they can help you make sure your code is doing what it's supposed to.
 
+
+## Conclusion
+
 ### Staying in a command-line environment
 
 `ni` is a bottom-up, ad hoc language; `ni` spells can be developed efficiently from the command line, or from a command line-like environment, like a Jupyter notebook.
 
-
-## Conclusion
+### Wrap-Up
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
 The next chapter covers all the Perl you need to be productive in `ni`. You need some, but not too much.
