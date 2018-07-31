@@ -1944,7 +1944,7 @@ lazytest_case 'ni n1000 r-500 r'\''/^(\d)\1+$/'\''
 999
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=853
+lazytest_line=851
 lazytest_case 'ni --explain n10 \>ten.txt \<
 ' 3<<'LAZYTEST_EOF'
 ["n",1,11]
@@ -3242,25 +3242,25 @@ lazytest_case 'ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
 z	x	y
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=881
+lazytest_line=848
 lazytest_case 'ni 1p'\''r squote a, dquote a, squo, dquo'\''
 ' 3<<'LAZYTEST_EOF'
 '1'	"1"	'	"
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=891
+lazytest_line=858
 lazytest_case 'ni i[how are you] p'\''r jjc(F_),  jjp(F_), jju(F_), jjw(F_)'\'' 
 ' 3<<'LAZYTEST_EOF'
 how,are,you	how|are|you	how_are_you	how are you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=900
+lazytest_line=867
 lazytest_case 'ni i[how are you] p'\''r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'\''
 ' 3<<'LAZYTEST_EOF'
 how,,are,,you	how||are||you	how__are__you	how  are  you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=909
+lazytest_line=876
 lazytest_case 'ni i[how are you] p'\''r jjc(F_), jjp(F_), jju(F_), jjw(F_)'\'' p'\''r ssc a; r ssp b; r ssu c; r ssw d;'\''
 ' 3<<'LAZYTEST_EOF'
 how	are	you
@@ -3269,7 +3269,7 @@ how	are	you
 how	are	you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=921
+lazytest_line=888
 lazytest_case 'ni i[how are you] p'\''r jjcc(F_), jjpp(F_), jjuu(F_), jjww(F_)'\'' p'\''r sscc a; r sspp b; r ssuu c; r ssww d;'\''
 ' 3<<'LAZYTEST_EOF'
 how	are	you
@@ -3278,19 +3278,145 @@ how	are	you
 how	are	you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=931
+lazytest_line=898
 lazytest_case 'ni ifoobar p'\''r startswith a, "fo"; r endswith a, "obar";'\''
 ' 3<<'LAZYTEST_EOF'
 1
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=941
+lazytest_line=907
 lazytest_case 'ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
      ihdfst:///user/bilow/tmp/test_ni_job p'\''r restrict_hdfs_path a, 100'\''
 ' 3<<'LAZYTEST_EOF'
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=957
+lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' D:foo,:c,:a
+' 3<<'LAZYTEST_EOF'
+bar	3.14159	1
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=966
+lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' p'\''my $h = json_decode a; r $h->{"a"}, $h->{"foo"}, $h->{"c"};'\''
+' 3<<'LAZYTEST_EOF'
+1	bar	3.14159
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=976
+lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' D:foo,:c,:a p'\''json_encode {foo => a, c => b, a => c, treasure=>"trove"}
+{"a":1,"c":3.14159,"foo":"bar","treasure":"trove"}
+```
+
+The output JSON will have its keys in sorted order.
+
+### Other JSON parsing methods
+Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
+
+See `core/pl/json.pm`
+
+- `get_scalar`
+- `get_array`
+- `get_flat_hash`
+
+## Compressed Archive Input
+
+### `zip://`, `tar://`, `xlsx://`: List from compressed archive
+
+- To list all the files in a `zip` archive:
+  - `$ ni zip:///path/to/file.zip`
+- To list the sheets in an `tar` or `tar.gz` archive:
+  - `$ ni tar:///path/to/file.tar`
+- To list the sheets in an Excel workbook:
+  - `$ ni xlsx:///path/to/file.xlsx`
+
+
+
+### `zipentry://`, `tarentry://`, `xlsxsheet://`: Read from compressed archive
+
+- To get the data from a single file in a `zip` archive:
+  - `$ ni zipentry:///path/to/file.zip:<sub_file_name>`
+- To get the data from a single file in a `tar` or `tar.gz` archive:
+  - `$ ni tarentry:///path/to/file.tar:<sub_file_name>`
+- To get the data from a single sheet in an excel workbook as TSV:
+  - `$ ni zip:///path/to/file.xlsx:<sheet-number>`
+
+
+## Web Source Input
+
+### `https://`, `http://`, `sftp://`, `s3cmd://`: Read from web sources 
+
+- Read from web resources: 
+ - `$ ni http://path/to/file.txt`
+ - `$ ni https://path/to/file.txt`
+ - `$ ni sftp://path/to/file.txt`
+ - `$ ni s3cmd://path/to/file.txt`
+- Write to web resources:
+ - `$ ni data \>http://path/to/file.txt`
+ - `$ ni data \>https://path/to/file.txt`
+ - `$ ni data \>s3cmd://path/to/file.txt`
+ - Note this does not work for `sftp`.
+
+## `ni` Philosophy and Style
+
+If you'\''ve made it this far in the tutorial, you now have enough tools to be extremely productive in `ni`. If you'\''re ready to get off the crazy ride of this tutorial and get to work, here'\''s a great point to stop. Before you go, though, it will help to take a few minutes to think through `ni`'\''s philosophy and style, and how those two intersect.
+
+### `ni` optimizes at-will programmer productivity
+Many data science projects start with a request that you have never seen before; in this case, it'\''s often easier to start from very little and be able to build rapidly, than it is to have a huge personal library of Python scripts and Jupyter notebooks that you can bend to fit the task at hand.
+' 3<<'LAZYTEST_EOF'
+
+`ni` is great at generating throwaway code, and this code can be made production-ready through `ni` scripting, discussed in the next chapter.
+
+### Mastery counts
+
+Just because you can read a Python script and understand what it does at a basic level does not mean you can code in Python, and Python can trick very intelligent people into thinking they know what they're doing even when they don't. The opposite is true of `ni`. It will be inherently obvious when you don't know something in `ni`, because if you don't know something, it'll be likely that the part of the spell you're reading won't make sense.
+
+This is a gruff approach to programming, but it's not unfriendly. `ni` doesn't allow you to just get by--your only option is mastering `ni` one piece at a time.
+
+### Outsource hard jobs to more appropriate tools
+
+`ni` is a domain-specific language; its domain is processing single lines and chunks of data that fit in memory
+
+* Because of this philosophy, `ni` is fantastic for data munging and cleaning.
+* Because of this philosophy, large-scale sorting is not a `ni`-ic operation, while gzip compression is.
+* Because of this philosophy, `ni` relies heavily on Hadoop for big data processing. Without Hadoop, most sufficiently complicated operations become infeasible from a runtime perspective once the amount of data exceeds a couple of gigabytes uncompressed.
+
+Some jobs that are difficult for `ni`, and some ways to resolve them:
+
+* Sorting
+  * Challenge: Requires buffering of entire stream (possibly to disk, which is slow)
+  * Solution: Hadoop Streaming will do much of the heavy lifting for you in any sort, and will distribute the computation so it's easy.
+* Matrix Multiplication
+  * Challenge: Difficult to implement in a streaming context
+  * Solution: Numpy operations 
+* SQL Joins
+  * Challenge: SQL joins can take more than one line
+  * Solution:
+    * Small Data: There are several options here. You can use `N'...'` and do the join in numpy, you can use `N'...'` with `import pandas as pd` to do the join in pandas, or you can pipe data in and out of `join -t $'\t'`
+    * Large Data: HDFS Joins
+* Iterating a `ni` process over directories where the directory provides contextual information about its contents.
+  * Challenge: This is something `ni` can probably do, but I'm not sure how to do it offhand.
+  * Solution: Write out the `ni` spell for the critical part, embed the spell in a script written in Ruby/Python, and call it using `bash -c`.
+# `ni` by Example, Chapter 4 (alpha release)
+
+Welcome to the fourth part of the tutorial. At this point, you should be familiar with fundamental row and column operations; sorting, I/O and compression. You've also covered the basics of Perl, as well as many important `ni` extensions to Perl.
+
+The key concept that we will cover (and really, the key to `ni`'s power) is the ability of `ni` to package itself and execute in-memory on remote machines. To that end, we will explain the use of `ni` on local Docker instances; over `ssh` on remote machines, and how to use `ni` to write simple and powerful Hadoop Streaming jobs. 
+
+Other key concepts for this tutorial include streaming reduce operations, data closures, and cell operations. We'll also cover more `ni`-specific Perl extensions, and some important parts of Perl that will be particularly useful in `ni`.
+
+Before we get into anything too useful, however, we need to take a detour into how `ni` works at a high level. It's not completely necessary to know this in order to use `ni`, but understanding this will help you think like `ni`. 
+
+## `ni` is self-modifying
+
+`ni` is written in [self-modifying Perl](https://github.com/spencertipping/writing-self-modifying-perl), and the ability to rewrite its source code is the key to its virality. In biological terms, it is useful to think of `ni` is truly viral; it can be run in-memory on any machine with bash and Perl.
+
+
+### `ni` evaluation basics
+Part of the reason `ni` spells are easy to build is because they are pipelined by default, and in particular, they are pipelined with Unix pipes; the output of one `ni` operation is piped as input to the next operation.
+
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_4.md'
 lazytest_line=35

@@ -837,39 +837,6 @@ $ ni i[x k 3] i[x j 2] i[y m 4] i[y p 8] i[y n 1] i[z u 0] \
 z	x	y
 ```
 
-## I/O Perl Functions
-
-### `wf`: write to file
-
-`wf $filename, @lines`: write `@lines` to a file called `$filename`
-
-```sh
-$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ reA'
-file1
-file2
-$ ni file1
-1
-2
-$ ni file2
-yo
-```
-
-### `af`: append to file
-
-```sh
-$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ reA'
-file3
-file4
-file3
-$ ni file3
-1
-2
-hi
-$ ni file4
-yo
-```
-
-`af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
 
 ## String Operations
 
@@ -933,9 +900,8 @@ $ ni ifoobar p'r startswith a, "fo"; r endswith a, "obar";'
 1
 ```
 
-## Hadoop
-
 ### `restrict_hdfs_path`
+`ni` tends to work better with globs (`*`) than with lists of file paths; this allows the restriction of file paths from MapReduce Jobs
 
 ```bash
 $ ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
@@ -944,24 +910,121 @@ hdfst:///user/bilow/tmp/test_ni_job/part-00*
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 ```
 
+## I/O Perl Functions
+
+### `wf`: write to file
+
+`wf $filename, @lines`: write `@lines` to a file called `$filename`
+
+```sh
+$ ni i[file1 1] i[file1 2] i[file2 yo] p'wf a, b_ reA'
+file1
+file2
+$ ni file1
+1
+2
+$ ni file2
+yo
+```
+
+### `af`: append to file
+
+```sh
+$ ni i[file3 1] i[file3 2] i[file4 yo] i[file3 hi] p'af a, b_ reA'
+file3
+file4
+file3
+$ ni file3
+1
+2
+hi
+$ ni file4
+yo
+```
+
+`af` is not highly performant; in general, if you have to write many lines to a file, you should process and sort the data in such a way that all lines can be written to the same file at once with `wf`. `wf` will blow your files away though, so be careful.
+
 
 ## JSON I/O
 
-We'll spend the rest of this chapter discussing JSON and directory I/O; the former is fundamental to a lot of the types of operations that `ni` is good at, the latter will expand your understanding of `ni`'s internal workings.
+We'll spend the rest of this chapter discussing more exotic types of I/O, including `JSON`, `zip`, `xlsx`, and various web resources.
 
 ### `D:<field1>,:<field2>...`: JSON Destructure
 
-`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2017-07-12), the JSON destructurer does not support list-based fields in JSON.
+`ni` implements a very fast JSON parser that is great at pulling out string and numeric fields.  As of this writing (2018-07-30), the JSON destructurer does not support list-based fields in JSON.
+  
+```bash
+$ ni i'{"a": 1, "foo":"bar", "c":3.14159}' D:foo,:c,:a
+bar	3.14159	1
+```
+
+### `p'json_decode <json_string>`: Decode JSON to Perl Hash Reference
+
+`json_decode` will fully decode JSON into a Perl object (in this case, a hash reference. Decoding, as you might expect, is much slower than destructuring.
+
+```bash
+$ ni i'{"a": 1, "foo":"bar", "c":3.14159}' p'my $h = json_decode a; r $h->{"a"}, $h->{"foo"}, $h->{"c"};'
+1	bar	3.14159
+```
+
 
 ### `p'json_encode <hash or array reference>`: JSON Encode
 
 The syntax of the row to JSON instructions is similar to hash construction syntax in Ruby. 
   
+```bash
+$ ni i'{"a": 1, "foo":"bar", "c":3.14159}' D:foo,:c,:a p'json_encode {foo => a, c => b, a => c, treasure=>"trove"}
+{"a":1,"c":3.14159,"foo":"bar","treasure":"trove"}
+```
 
+The output JSON will have its keys in sorted order.
 
 ### Other JSON parsing methods
 Some aspects of JSON parsing are not quite there yet, so you may want to use (also very fast) raw Perl to destructure your JSONs.
 
+See `core/pl/json.pm`
+
+- `get_scalar`
+- `get_array`
+- `get_flat_hash`
+
+## Compressed Archive Input
+
+### `zip://`, `tar://`, `xlsx://`: List from compressed archive
+
+- To list all the files in a `zip` archive:
+  - `$ ni zip:///path/to/file.zip`
+- To list the sheets in an `tar` or `tar.gz` archive:
+  - `$ ni tar:///path/to/file.tar`
+- To list the sheets in an Excel workbook:
+  - `$ ni xlsx:///path/to/file.xlsx`
+
+
+
+### `zipentry://`, `tarentry://`, `xlsxsheet://`: Read from compressed archive
+
+- To get the data from a single file in a `zip` archive:
+  - `$ ni zipentry:///path/to/file.zip:<sub_file_name>`
+- To get the data from a single file in a `tar` or `tar.gz` archive:
+  - `$ ni tarentry:///path/to/file.tar:<sub_file_name>`
+- To get the data from a single sheet in an excel workbook as TSV:
+  - `$ ni zip:///path/to/file.xlsx:<sheet-number>`
+
+
+## Web Source Input
+
+### `https://`, `http://`, `sftp://`, `s3cmd://`: Read from web sources 
+
+- Read from web resources: 
+ - `$ ni http://path/to/file.txt`
+ - `$ ni https://path/to/file.txt`
+ - `$ ni sftp://path/to/file.txt`
+ - `$ ni s3cmd://path/to/file.txt`
+- Write to web resources:
+ - `$ ni data \>http://path/to/file.txt`
+ - `$ ni data \>https://path/to/file.txt`
+ - `$ ni data \>s3cmd://path/to/file.txt`
+ - Note this does not work for `sftp`.
 
 ## `ni` Philosophy and Style
 
