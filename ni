@@ -12010,7 +12010,7 @@ Each line represents one step of the pipeline defined by the spell, and the expl
 Congrats on making it to the end of the first part. Hopefully you're starting to see the power in `ni`'s conciseness. If you haven't gotten a chance to develop or play with `ni` code yet, there will likely be some accompanying exercises for this tutorial in the near future, or you can write some yourself and contribute to the development of this fascinating language.
 
 The next chapter covers all the Perl you need to be productive in `ni`. You need some, but not too much.
-1266 doc/ni_by_example_2.md
+1270 doc/ni_by_example_2.md
 # `ni` by Example, Chapter 2 (beta release)
 
 Welcome to the second part of the tutorial. At this point, you know a little `ni` syntax, but you might not be able to do anything useful. In this chapter, our goal is to multiply your power to operate on a single machine by covering all of the Perl syntax you need to work effectively with `ni`.
@@ -13211,9 +13211,13 @@ $ ni n3p'r a, one'
 3	one
 ```
 
-Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist--in this case, `one`--  Perl gives the programmer a great deal of freedom to be concise. `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
+This is useful for speed but not great for building maintainable code; `ni` now raises a warning like:
 
-This has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
+> `Unquoted string "one" may clash with future reserved word at perl code context line 2.`
+
+Generally, be careful and quote strings that are meant to be strings (though this rule can be ignored if you are writing a throwaway script).
+
+The use of barewords as strings has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
 
 ```bash
 $ ni 1p'my %h = ("foo" => 32); $h{foo}'
@@ -20122,7 +20126,7 @@ operator in question to execute.
 
 
 ```bash
-$ ni ::word[1p'pretty'] n3 w[np'r word']
+$ ni ::word[1p'"pretty"'] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -20162,7 +20166,7 @@ $ ni e'seq 4'                  # output of shell command "seq 4"
 ### Whitespace
 
 ```bash
-$ ni 1p'hi' +1p'there'
+$ ni 1p'"hi"' +1p'"there"'
 hi
 there
 ```

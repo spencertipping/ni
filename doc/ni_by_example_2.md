@@ -1198,9 +1198,13 @@ $ ni n3p'r a, one'
 3	one
 ```
 
-Whereas in almost any other language, a syntax error or name error would be raised on referencing a variable that does not exist--in this case, `one`--  Perl gives the programmer a great deal of freedom to be concise. `one` has not been defined, so Perl assumes you know what you're doing and interprets it as a string. Perl assumes you are a great programmer, and in doing so, allows you to rise to the challenge.
+This is useful for speed but not great for building maintainable code; `ni` now raises a warning like:
 
-This has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
+> `Unquoted string "one" may clash with future reserved word at perl code context line 2.`
+
+Generally, be careful and quote strings that are meant to be strings (though this rule can be ignored if you are writing a throwaway script).
+
+The use of barewords as strings has an important implication for hash lookups; we can use an unquoted string to look up terms, for example:
 
 ```bash
 $ ni 1p'my %h = ("foo" => 32); $h{foo}'

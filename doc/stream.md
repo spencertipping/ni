@@ -68,7 +68,7 @@ operator in question to execute.
 
 
 ```bash
-$ ni ::word[1p'pretty'] n3 w[np'r word']
+$ ni ::word[1p'"pretty"'] n3 w[np'r word']
 1	pretty
 2	pretty
 3	pretty
@@ -108,7 +108,7 @@ $ ni e'seq 4'                  # output of shell command "seq 4"
 ### Whitespace
 
 ```bash
-$ ni 1p'hi' +1p'there'
+$ ni 1p'"hi"' +1p'"there"'
 hi
 there
 ```

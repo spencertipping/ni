@@ -2698,19 +2698,19 @@ lazytest_case 'ni n3p'\''r a, one'\''
 3	one
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1206
+lazytest_line=1210
 lazytest_case 'ni 1p'\''my %h = ("foo" => 32); $h{foo}'\''
 ' 3<<'LAZYTEST_EOF'
 32
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1220
+lazytest_line=1224
 lazytest_case 'ni ifoo p'\''my %h = ("foo" => 32, "a" => "hello"); $h{a}'\''
 ' 3<<'LAZYTEST_EOF'
 hello
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_2.md'
-lazytest_line=1228
+lazytest_line=1232
 lazytest_case 'ni ifoo p'\''my %h = ("foo" => 32); $h{+a}'\''
 ' 3<<'LAZYTEST_EOF'
 32
@@ -4715,7 +4715,7 @@ lazytest_case 'ni n04                        # integer generator, zero-based
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
 lazytest_line=71
-lazytest_case 'ni ::word[1p'\''pretty'\''] n3 w[np'\''r word'\'']
+lazytest_case 'ni ::word[1p'\''"pretty"'\''] n3 w[np'\''r word'\'']
 ' 3<<'LAZYTEST_EOF'
 1	pretty
 2	pretty
@@ -4758,7 +4758,7 @@ lazytest_case 'ni e'\''seq 4'\''                  # output of shell command "seq
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
 lazytest_line=111
-lazytest_case 'ni 1p'\''hi'\'' +1p'\''there'\''
+lazytest_case 'ni 1p'\''"hi"'\'' +1p'\''"there"'\''
 ' 3<<'LAZYTEST_EOF'
 hi
 there
