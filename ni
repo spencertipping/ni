@@ -5523,7 +5523,7 @@ sub in_poly
   }
   $hits & 1;
 }
-234 core/pl/time.pl
+235 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -5673,7 +5673,8 @@ sub iso_8601_epoch {
 
   my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
   my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
-  return $raw_ts unless $tz_part;
+  return $raw_ts unless defined $tz_part;
+  return $raw_ts if $tz_part eq "Z";
 
   my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
 
