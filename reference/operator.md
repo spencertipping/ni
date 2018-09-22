@@ -599,6 +599,11 @@
 	  load 'core/http/ws.pm';
 	  safewrite \*STDOUT, ws_encode($_) while saferead \*STDIN, $_, $_[0] || 8192;
 
+# OPERATOR identity
+
+## IMPLEMENTATION
+	sio
+
 # OPERATOR interleave
 
 ## IMPLEMENTATION

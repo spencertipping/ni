@@ -26,4 +26,7 @@ defmetaoperator inline_checkpoint => q{
   ([], [checkpoint_op($file, $left), @$right]);
 };
 
-defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;
+defoperator identity => q{sio};
+
+defshort '/:', pmap q{$_ ? inline_checkpoint_op $_
+                         : identity_op}, popt pc nefilename;

@@ -434,7 +434,8 @@
 	| ':' (
 	    <nefilename>
 	    <empty>?
-	  ) -> {$$_[0]} -> {inline_checkpoint_op $_}
+	  ) -> {$$_[0]}? -> {$_ ? inline_checkpoint_op $_
+	                           : identity_op}
 	| '::' (
 	    (
 	      <closure_name>

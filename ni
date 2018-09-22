@@ -3668,7 +3668,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl
-29 core/checkpoint/checkpoint.pl
+32 core/checkpoint/checkpoint.pl
 # Checkpoint files.
 # You can break a long pipeline into a series of smaller files using
 # checkpointing, whose operator is `:`. The idea is to cache intermediate
@@ -3697,7 +3697,10 @@ defmetaoperator inline_checkpoint => q{
   ([], [checkpoint_op($file, $left), @$right]);
 };
 
-defshort '/:', pmap q{inline_checkpoint_op $_}, pc nefilename;
+defoperator identity => q{sio};
+
+defshort '/:', pmap q{$_ ? inline_checkpoint_op $_
+                         : identity_op}, popt pc nefilename;
 1 core/net/lib
 net.pl
 42 core/net/net.pl
