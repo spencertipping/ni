@@ -1351,11 +1351,6 @@
 ## SYNTAX
 	'' -> {conf_get_op 'monitor'}
 
-# SHORT OPERATOR /$monitor/atomic
-
-## SYNTAX
-	'' -> {conf_get_op 'monitor/atomic'}
-
 # SHORT OPERATOR /$pager
 
 ## SYNTAX
