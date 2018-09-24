@@ -3219,7 +3219,7 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl
-79 core/monitor/monitor.pl
+114 core/monitor/monitor.pl
 # Pipeline monitoring.
 # nfu provided a simple throughput/data count for each pipeline stage. ni can do
 # much more, for instance determining the cause of a bottleneck and previewing
@@ -3234,6 +3234,7 @@ sub unit_bytes($) {
 }
 
 defconfenv 'monitor', NI_MONITOR => 'yes';
+defconfenv 'monitor/atomic', NI_MONITOR_ATOMIC => 'no';
 
 defmetaoperator stderr_monitor_transform => q{
   my ($args, $left) = @_;
@@ -3249,30 +3250,62 @@ defoperator stderr_monitor => q{
   my $last_update = 0;
   my $start_time  = 0;
   my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
+  my $atomic = conf('monitor/atomic') eq 'yes';
+
+  $_ = '';
   while (1) {
-    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
-                   last unless $n;
-    my $t2 = time; safewrite_exactly $stdout, $_;
-    my $t3 = time;
+    my $istart = time;
+    $bytes += my $n = saferead $stdin, $_, 65536 - length, length;
+    last unless $n;
+    my $iend = time;
+
+    # If atomic writes have been requested, then write on newline boundaries
+    # no more than 512 bytes long if possible.
+    my $ostart = $iend;
+    if ($atomic)
+    {
+      for (my $offset = 0; $offset < length;)
+      {
+        # Skip at least 256 bytes ahead so we don't make a whole bunch of tiny
+        # writes.
+        my $next_newline = index $_, "\n", $offset + 256;
+        if ($next_newline == -1 || $next_newline > $offset + 512)
+        {
+          $_ = substr $_, $offset;
+          $offset = length;
+        }
+        else
+        {
+          safewrite_exactly $stdout,
+            substr $_, $offset, $next_newline + 1 - $offset;
+          $offset = $next_newline + 1;
+        }
+      }
+    }
+    else
+    {
+      safewrite_exactly $stdout, $_;
+    }
+    my $oend = time;
 
     # Start the clocks only once some data starts moving; we ignore the initial
     # read/write warmup
     if ($start_time)
     {
-      $itime += $t2 - $t1;
-      $otime += $t3 - $t2;
+      $itime += $iend - $istart;
+      $otime += $oend - $ostart;
     }
     else
     {
-      $start_time = $t2;
+      $start_time = $ostart;
     }
 
-    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
-      $last_update = $t3;
-      my $runtime = $t3 - $start_time || 1;
+    if ($oend - $last_update > $update_rate && $oend - $start_time > 2) {
+      $last_update = $oend;
+      my $runtime = $oend - $start_time || 1;
       my $width   = $ENV{COLUMNS} || 80;
       my $preview;
-      if ($t3 & 3 && /\n(.*)\n/) {
+      if ($oend & 3 && /\n(.*)\n/) {
         ($preview = substr $1, 0, $width - 20) =~ s/\t/  /g;
         $preview =~ s/[[:cntrl:]]/./g;
         $preview = substr $preview, 0, $width - 20;
@@ -3285,12 +3318,14 @@ defoperator stderr_monitor => q{
       safewrite \*STDERR,
         sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
           $monitor_id + 1,
-          int($t3),
+          int($oend),
           unit_bytes $bytes,
           unit_bytes $bytes / $runtime,
           $factor_log * 10,
           $preview;
     }
+
+    $_ = '' unless $atomic;
   }
 };
 
@@ -20687,7 +20722,7 @@ You can view the example in the screenshots by opening the following link on
 your system while running `ni --js`:
 
 ```
-http://localhost:8090/#%7B%22ni%22%3A%22n2E2p'r%20%24_%2C%20a%20for%200..199'%20p'r(a*10%20%2B%20%24_%2C%20b*10)%2C%20r(a*10%2C%20b*10%20%2B%20%24_)%20for%200..9'%20p'r%20a%2C%20sin(1%20%2B%20a%20%2F%20340)%20*%20cos(b*b%20%2F%2030000)%20%2B%20sin((a%20%2B%2050)*b%20%2F%20120000)%2C%20b'%22%2C%22vm%22%3A%5B1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.4%7D
+http://localhost:8090/#%7B%22ni%22:%22n2E2p'r%20$_,%20a%20for%200..199'%20p'r(a*10%20+%20$_,%20b*10),%20r(a*10,%20b*10%20+%20$_)%20for%200..9'%20p'r%20a,%20sin(1%20+%20a%20/%20340)%20*%20cos(b*b%20/%2030000)%20+%20sin((a%20+%2050)*b%20/%20120000),%20b'%22,%22v%22:%7B%22br%22:1,%22ot%22:%5B-770.7425674121397,1.8043842499741498,-872.5578946367137%5D,%22os%22:%5B0.3134861808826051,46.99306323157935,0.4025242240336357%5D,%22sa%22:0.03,%22cr%22:%5B24.607594936708868,29.16455696202535%5D,%22cd%22:385.7425530696977,%22axes%22:%5B0,1,2,3%5D%7D%7D
 ```
 
 ![web ui](http://spencertipping.com/ni-jsplot-sinewave.png)
@@ -20779,7 +20814,7 @@ $ ni n1000000 :a-million-things-2 r5
 $ wc -l < a-million-things-2
 1000000
 ```
-87 doc/wkt.md
+85 doc/wkt.md
 # WKT and WKB
 ni has some support for polygon geometry using WKT and WKB; in particular, it
 supports visualization (using [Map-O-Matic](../core/mapomatic/mapomatic.pl)) and
@@ -20841,9 +20876,7 @@ WARNING
 http://localhost:32768/           # open this link to see the map
 ```
 
-![image](http://storage7.static.itmages.com/i/18/0306/h_1520339724_2796459_7968a9cf8d.png)
-
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520339761_4850348_0d5ca9b5f8.png)
+![image](http://spencertipping.com/nimap1.png)
 
 ### Geometry metadata
 You can assign attributes to geometries by appending TSV columns to the right.
@@ -20866,5 +20899,5 @@ $ ni i[9whp 9whp '#fa4'] \
      MM
 ```
 
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520340382_4974654_ce07e420d6.png)
+![image](http://spencertipping.com/nimap2.png)
 __END__

@@ -1507,30 +1507,62 @@
 	  my $last_update = 0;
 	  my $start_time  = 0;
 	  my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
+	  my $atomic = conf('monitor/atomic') eq 'yes';
+	
+	  $_ = '';
 	  while (1) {
-	    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
-	                   last unless $n;
-	    my $t2 = time; safewrite_exactly $stdout, $_;
-	    my $t3 = time;
+	    my $istart = time;
+	    $bytes += my $n = saferead $stdin, $_, 65536 - length, length;
+	    last unless $n;
+	    my $iend = time;
+	
+	    # If atomic writes have been requested, then write on newline boundaries
+	    # no more than 512 bytes long if possible.
+	    my $ostart = $iend;
+	    if ($atomic)
+	    {
+	      for (my $offset = 0; $offset < length;)
+	      {
+	        # Skip at least 256 bytes ahead so we don't make a whole bunch of tiny
+	        # writes.
+	        my $next_newline = index $_, "\n", $offset + 256;
+	        if ($next_newline == -1 || $next_newline > $offset + 512)
+	        {
+	          $_ = substr $_, $offset;
+	          $offset = length;
+	        }
+	        else
+	        {
+	          safewrite_exactly $stdout,
+	            substr $_, $offset, $next_newline + 1 - $offset;
+	          $offset = $next_newline + 1;
+	        }
+	      }
+	    }
+	    else
+	    {
+	      safewrite_exactly $stdout, $_;
+	    }
+	    my $oend = time;
 	
 	    # Start the clocks only once some data starts moving; we ignore the initial
 	    # read/write warmup
 	    if ($start_time)
 	    {
-	      $itime += $t2 - $t1;
-	      $otime += $t3 - $t2;
+	      $itime += $iend - $istart;
+	      $otime += $oend - $ostart;
 	    }
 	    else
 	    {
-	      $start_time = $t2;
+	      $start_time = $ostart;
 	    }
 	
-	    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
-	      $last_update = $t3;
-	      my $runtime = $t3 - $start_time || 1;
+	    if ($oend - $last_update > $update_rate && $oend - $start_time > 2) {
+	      $last_update = $oend;
+	      my $runtime = $oend - $start_time || 1;
 	      my $width   = $ENV{COLUMNS} || 80;
 	      my $preview;
-	      if ($t3 & 3 && /\n(.*)\n/) {
+	      if ($oend & 3 && /\n(.*)\n/) {
 	        ($preview = substr $1, 0, $width - 20) =~ s/\t/  /g;
 	        $preview =~ s/[[:cntrl:]]/./g;
 	        $preview = substr $preview, 0, $width - 20;
@@ -1543,12 +1575,14 @@
 	      safewrite \*STDERR,
 	        sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
 	          $monitor_id + 1,
-	          int($t3),
+	          int($oend),
 	          unit_bytes $bytes,
 	          unit_bytes $bytes / $runtime,
 	          $factor_log * 10,
 	          $preview;
 	    }
+	
+	    $_ = '' unless $atomic;
 	  }
 
 # OPERATOR stream_to_gnuplot
