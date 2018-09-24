@@ -162,8 +162,17 @@ http://localhost:8090                   # open this link in a browser
 - [Git](doc/git.md)
 - [MapBox, GeoJSON, and WKT](doc/wkt.md)
 
-### `ni` is a lot more
-Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
+<h2 align='center'>
+<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
+</h2>
+
+## RocketChat support forums
+- ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
+- general data science: [#datascience on dev.spencertipping.com](https://dev.spencertipping.com/channel/datascience)
+- ni development: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
+
+## Ni By Example
+An excellent guide by [Michael Bilow](https://github.com/michaelbilow):
 
 - [Chapter 1: Streams](doc/ni_by_example_1.md)
 - [Chapter 2: Perl scripting](doc/ni_by_example_2.md)
@@ -174,18 +183,6 @@ Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
 - [ni fu](doc/ni_fu.md)
 - [Operator cheatsheet](doc/cheatsheet_op.md)
 - [Perl cheatsheet](doc/cheatsheet_perl.md)
-
-<h2 align='center'>
-<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
-</h2>
-
-I run a RocketChat instance to provide a forum for ni tech support. If you're
-curious about ni or using it for real work, create an account and fire away with
-questions, suggestions, bug reports, or anything else:
-
-- ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
-- general data science: [#datascience on dev.spencertipping.com](https://dev.spencertipping.com/channel/datascience)
-- ni development: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
 
 <h2 align='center'>
 <img alt='ni license' src='http://spencertipping.com/ni-license.png'>
