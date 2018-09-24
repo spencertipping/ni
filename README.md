@@ -144,14 +144,6 @@ $ find /usr -type f \
 $ ni shost[ /etc/hostname ]             # == ssh host ni /etc/hostname | ni
 ```
 
-### `ni` is [realtime visualization for big data](doc/visual.md)
-```sh
-$ ni --js                               # start the webserver (Ctrl+C to exit)
-http://localhost:8090                   # open this link in a browser
-```
-
-![image](http://spencertipping.com/niwav.gif)
-
 ### `ni` is interoperable
 - [Date/time](doc/ni_by_example_3.md#time-perl-functions)
 - [JSON](doc/ni_by_example_3.md#json-io)
@@ -161,6 +153,14 @@ http://localhost:8090                   # open this link in a browser
 - [NumPy](doc/matrix.md#numpy-interop)
 - [Git](doc/git.md)
 - [MapBox, GeoJSON, and WKT](doc/wkt.md)
+
+### `ni` is [realtime visualization for big data](doc/visual.md)
+```sh
+$ ni --js                               # start the webserver (Ctrl+C to exit)
+http://localhost:8090                   # open this link in a browser
+```
+
+![image](http://spencertipping.com/niwav.gif)
 
 <h2 align='center'>
 <img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
