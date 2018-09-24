@@ -59,9 +59,7 @@ WARNING
 http://localhost:32768/           # open this link to see the map
 ```
 
-![image](http://storage7.static.itmages.com/i/18/0306/h_1520339724_2796459_7968a9cf8d.png)
-
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520339761_4850348_0d5ca9b5f8.png)
+![image](http://spencertipping.com/nimap1.png)
 
 ### Geometry metadata
 You can assign attributes to geometries by appending TSV columns to the right.
@@ -84,4 +82,4 @@ $ ni i[9whp 9whp '#fa4'] \
      MM
 ```
 
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520340382_4974654_ce07e420d6.png)
+![image](http://spencertipping.com/nimap2.png)

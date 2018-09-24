@@ -13,45 +13,25 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 - For ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
 - For ni developers: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
 
-## Features
-- [Zero-dependency installation: clone the repo and you're done](#getting-started)
-- [Launch Hadoop Streaming jobs with five characters](doc/ni_by_example_4.md#hadoop-streaming-mapreduce)
-- [Automatic self-installation over SSH for remote pipeline execution](doc/net.md)
-- [Automatic self-installation into Docker containers](doc/container.md)
-- [Self-contained and extensible](doc/libraries.md)
-- [Data closures: lambda capture for data pipelines](doc/closure.md)
-- [Streaming, constant-space data processing](doc/stream.md)
-- [Concise syntax for unstructured data transformation](doc/ni_fu.md)
-  - Highly stable API: unit tests are generated from documentation examples
-- [Realtime preview, throughput, and bottleneck monitoring](doc/monitor.md)
-- [Horizontal pipeline scaling to parallelize slow pipeline regions](doc/scale.md)
-- [Realtime 2D/3D visualization of arbitrarily large datasets](https://github.com/spencertipping/www/blob/master/audio.md)
-  - Builtin HTTP/websocket server for offline data visualization
-- [Online documentation and source code introspection](#online-documentation)
-
-![image](http://storage6.static.itmages.com/i/18/0306/h_1520341324_1461936_f6fd3073ba.png)
-
-### Interoperability
-- [Compressed data](https://github.com/spencertipping/osm#openstreetmap-data-processing)
-  - Automatic detection + decompression based on stream contents
-- [Date/time](doc/ni_by_example_3.md#time-perl-functions)
-- [JSON](doc/ni_by_example_3.md#json-io)
-- [Binary files](doc/binary.md)
-- [Bloom filters](doc/bloom.md)
-- [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
-- [NumPy](doc/matrix.md#numpy-interop)
-- [Git](doc/git.md)
-- [MapBox, GeoJSON, and WKT](doc/wkt.md)
-
-## Getting started
+## Installing `ni`
 ```sh
 $ git clone git://github.com/spencertipping/ni
 $ sudo ln -s $PWD/ni/ni /usr/bin/
 ```
 
-So ... what is ni?
-
+## What is `ni`?
 ![ni basics](http://spencertipping.com/ni-basics.gif)
+
+### `ni` is efficient for big and small data
+`ni` can process terabytes or petabytes of data in constant space, and knows
+about things like GNU `sort`'s `--compress-program` option to make it possible
+to process more data than will fit on disk. With scaling, `ni` can handle about
+1GB/sec on a single machine.
+
+I've used `ni` to process full datasets, e.g.
+[Wikipedia (~40GB)](https://en.wikipedia.org/wiki/Wikipedia:Database_download),
+[OpenStreetMap (~400GB)](https://github.com/spencertipping/www/blob/master/osm-animation.md), and
+[Reddit (~1.5TB)](https://files.pushshift.io/reddit/).
 
 ### `ni` is `cat` and `less` (and `zless`, `bzless`, etc)
 ```sh
@@ -70,7 +50,7 @@ decompressor automatically.
 $ cat mystery-file | ni > decoded-file
 ```
 
-### `ni` is `pv`/`pipemeter`
+### `ni` is [`pv`/`pipemeter`](doc/monitor.md)
 ```sh
 $ find / | ni > /dev/null               # == cat, but show data throughput
 ```
@@ -79,7 +59,7 @@ $ find / | ni > /dev/null               # == cat, but show data throughput
 intermittently print monitor updates that temporarily overwrite your output; use
 `Ctrl+L` twice to refresh the screen.)
 
-### `ni` is `ls`
+### `ni` is [`ls`](doc/ni_by_example_1.md#directory-io)
 ...but often faster because it doesn't look at file attributes; it just gives
 you the listing.
 
@@ -89,20 +69,20 @@ $ ni /etc
 $ ni .
 ```
 
-### `ni` is `curl`
+### `ni` is [`curl`/`sftp`](doc/ni_by_example_3.md#https-http-sftp-s3cmd-read-from-web-sources)
 ```sh
 $ ni https://google.com
 $ ni http://wikipedia.org http://github.com
 ```
 
-### `ni` is `seq`
+### `ni` is [`seq`](doc/ni_by_example_1.md#n-integer-stream)
 ```sh
 $ ni n100
 $ ni n01000
 $ ni nE6                                # E6 == 10^6 = 1000000
 ```
 
-### `ni` is `grep`
+### `ni` is [`grep`](doc/ni_by_example_1.md#filtering-with-r)
 ni's `r//` operator searches for rows which match a regular expression:
 
 ```sh
@@ -118,26 +98,26 @@ $ ni n1000 r/77/
 $ ni n1000 r/77/ r/3/
 ```
 
-### `ni` is `echo`
+### `ni` is [`echo`](doc/ni_by_example_1.md#i-literal-text)
 ```sh
 $ ni ifoo                               # == echo foo
 $ ni i[foo bar]                         # == echo -e "foo\tbar"
 ```
 
-### `ni` is `xargs ni` (`xargs cat`)
+### `ni` is [`xargs ni` (`xargs cat`)](doc/ni_by_example_1.md#-read-from-filenames)
 ```sh
 $ ni /etc \<                            # \< == xargs ni, give or take
 $ ni /usr/share/man/man1 \<             # \< auto-decompresses files
 $ ni ihttps://google.com /etc \<        # \< recognizes URL formats
 ```
 
-### `ni` is `hadoop fs -cat` and `hadoop fs -text`
+### `ni` is [`hadoop fs -cat` and `hadoop fs -text`](doc/ni_by_example_4.md#hdfs-io)
 ```sh
 $ ni hdfs:///path/to/file               # == hadoop fs -cat /path/to/file
 $ ni hdfst:///path/to/file              # == hadoop fs -text /path/to/file
 ```
 
-### `ni` is `unzip` and `tar -x`, but better
+### `ni` is [`unzip` and `tar -x/-t`, but better](doc/ni_by_example_3.md#compressed-archive-input)
 ```sh
 $ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz
 $ ni zip://myfile.zip                   # == zip file listing
@@ -151,7 +131,7 @@ $ ni xlsx://spreadsheet.xlsx            # list of sheets
 $ ni xlsxsheet://spreadsheet.xlsx:1     # contents of sheet 1 as TSV
 ```
 
-### `ni` is `xargs -P` for data
+### `ni` is [`xargs -P` for data](doc/ni_by_example_4.md#s-horizontal-scaling)
 ```sh
 $ find /usr -type f \
     | ni \< S4[ r'/all your base/' ]    # use four workers for r// operator
@@ -164,6 +144,24 @@ $ find /usr -type f \
 $ ni shost[ /etc/hostname ]             # == ssh host ni /etc/hostname | ni
 ```
 
+### `ni` is realtime visualization for big data
+```sh
+$ ni --js                               # start the webserver (Ctrl+C to exit)
+http://localhost:8090                   # open this link in a browser
+```
+
+![image](http://spencertipping.com/niwav.gif)
+
+### `ni` is interoperable
+- [Date/time](doc/ni_by_example_3.md#time-perl-functions)
+- [JSON](doc/ni_by_example_3.md#json-io)
+- [Binary files](doc/binary.md)
+- [Bloom filters](doc/bloom.md)
+- [Geohashes](doc/ni_by_example_3.md#geographic-perl-functions)
+- [NumPy](doc/matrix.md#numpy-interop)
+- [Git](doc/git.md)
+- [MapBox, GeoJSON, and WKT](doc/wkt.md)
+
 ### `ni` is a lot more
 Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
 
@@ -172,16 +170,10 @@ Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
 - [Chapter 3: ni's Perl API, JSON, datetime](doc/ni_by_example_3.md)
 - [Chapter 4: Data closures, Hadoop](doc/ni_by_example_4.md)
 - [Chapter 5: Jupyter interop, matrix operations, joins](doc/ni_by_example_5.md)
+- [Chapter 6: More functions, advanced Perl (WIP)](doc/ni_by_example_6.md)
 - [ni fu](doc/ni_fu.md)
 - [Operator cheatsheet](doc/cheatsheet_op.md)
 - [Perl cheatsheet](doc/cheatsheet_perl.md)
-
-<h2 align='center'>
-<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
-</h2>
-
-### Online documentation
-![ni inspect](http://spencertipping.com/ni-inspect.gif)
 
 <h2 align='center'>
 <img alt='ni license' src='http://spencertipping.com/ni-license.png'>
