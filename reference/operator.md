@@ -1420,15 +1420,15 @@
 	
 	  while (<STDIN>)
 	  {
-	    next unless s/^([^\t\n]*)\t//;
-	    my $file = $1;
-	    my $fh   = $fhs{$file} //= defined $lambda
+	    my ($file, $l) = /^([^\t\n]*)\t([\s\S]*)/;
+	    my $fh = $fhs{$file} //= defined $lambda
 	      ? siproc {exec_ni(@$lambda, file_write_op $file)}
 	      : swfile $file;
-	    print $fh $_;
+	    print $fh $l;
 	  }
 	
-	  close $_, $_->can('await') && $_->await for values %fhs;
+	  close $_ for values %fhs;
+	  $_->can('await') && $_->await for values %fhs;
 
 # OPERATOR sink_null
 	Consume stream and produce nothing
