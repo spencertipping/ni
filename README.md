@@ -49,32 +49,124 @@ $ git clone git://github.com/spencertipping/ni
 $ sudo ln -s $PWD/ni/ni /usr/bin/
 ```
 
-Now you have ni installed; you can try it out like this:
-
-```sh
-$ ni n10
-```
-
-**Use `ni` anywhere you would normally use `less`.** ni will automatically
-decompress streams, and it supports a variety of data sources:
-
-```sh
-$ ni https://google.com
-$ ni /etc/passwd
-$ find . | ni
-$ echo "hi" | bzip2 | ni
-```
-
-ni will intermittently print monitor updates that may overwrite your output; use
-`Ctrl+L` twice to refresh the screen.
-
-<h2 align='center'>
-<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
-</h2>
+So ... what is ni?
 
 ![ni basics](http://spencertipping.com/ni-basics.gif)
 
-### Ni By Example
+### `ni` is `cat` and `less` (and `zless`, `bzless`, etc)
+```sh
+$ ni /etc/passwd
+$ ni /usr/share/dict/words
+$ ni /usr/share/man/man1/ls.1.gz
+$ find . | ni
+$ echo hi | bzip2 | ni                  # auto-decompression
+```
+
+### `ni` is `gzip -dc`, `xz -dc`, `lz4 -dc`, etc
+ni knows the magic number for common compression formats and invokes the correct
+decompressor automatically.
+
+```sh
+$ cat mystery-file | ni > decoded-file
+```
+
+### `ni` is `pv`/`pipemeter`
+```sh
+$ find / | ni > /dev/null               # == cat, but show data throughput
+```
+
+(**NB:** if you're not redirecting data to `/dev/null` or a file, ni may
+intermittently print monitor updates that temporarily overwrite your output; use
+`Ctrl+L` twice to refresh the screen.)
+
+### `ni` is `ls`
+...but often faster because it doesn't look at file attributes; it just gives
+you the listing.
+
+```sh
+$ ni /
+$ ni /etc
+$ ni .
+```
+
+### `ni` is `curl`
+```sh
+$ ni https://google.com
+$ ni http://wikipedia.org http://github.com
+```
+
+### `ni` is `seq`
+```sh
+$ ni n100
+$ ni n01000
+$ ni nE6                                # E6 == 10^6 = 1000000
+```
+
+### `ni` is `grep`
+ni's `r//` operator searches for rows which match a regular expression:
+
+```sh
+$ ni n1000 | ni r/77/
+```
+
+### `ni` is `|`
+In general, `ni X Y` == `ni X | ni Y`. Data generators like files are appended
+to the stream: `ni /etc/passwd` == `cat - /etc/passwd`.
+
+```sh
+$ ni n1000 r/77/
+$ ni n1000 r/77/ r/3/
+```
+
+### `ni` is `echo`
+```sh
+$ ni ifoo                               # == echo foo
+$ ni i[foo bar]                         # == echo -e "foo\tbar"
+```
+
+### `ni` is `xargs ni` (`xargs cat`)
+```sh
+$ ni /etc \<                            # \< == xargs ni, give or take
+$ ni /usr/share/man/man1 \<             # \< auto-decompresses files
+$ ni ihttps://google.com /etc \<        # \< recognizes URL formats
+```
+
+### `ni` is `hadoop fs -cat` and `hadoop fs -text`
+```sh
+$ ni hdfs:///path/to/file               # == hadoop fs -cat /path/to/file
+$ ni hdfst:///path/to/file              # == hadoop fs -text /path/to/file
+```
+
+### `ni` is `unzip` and `tar -x`, but better
+```sh
+$ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz
+$ ni zip://myfile.zip                   # == zip file listing
+$ ni tarentry://myfile.tgz:foo.txt      # contents of specific tar entry
+$ ni zipentry://myfile.zip:foo.txt      # contents of specific zip entry
+```
+
+### `ni` reads `xlsx`
+```sh
+$ ni xlsx://spreadsheet.xlsx            # list of sheets
+$ ni xlsxsheet://spreadsheet.xlsx:1     # contents of sheet 1 as TSV
+```
+
+### `ni` is `xargs -P` for data
+```sh
+$ find /usr -type f \
+    | ni \< S4[ r'/all your base/' ]    # use four workers for r// operator
+```
+
+### `ni` is `ssh`
+...and self-installs on remote hosts.
+
+```sh
+$ ni shost[ /etc/hostname ]             # == ssh host ni /etc/hostname | ni
+```
+
+### `ni` is a lot more
+Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
+
 - [Chapter 1: Streams](doc/ni_by_example_1.md)
 - [Chapter 2: Perl scripting](doc/ni_by_example_2.md)
 - [Chapter 3: ni's Perl API, JSON, datetime](doc/ni_by_example_3.md)
@@ -83,6 +175,10 @@ ni will intermittently print monitor updates that may overwrite your output; use
 - [ni fu](doc/ni_fu.md)
 - [Operator cheatsheet](doc/cheatsheet_op.md)
 - [Perl cheatsheet](doc/cheatsheet_perl.md)
+
+<h2 align='center'>
+<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
+</h2>
 
 ### Online documentation
 ![ni inspect](http://spencertipping.com/ni-inspect.gif)
