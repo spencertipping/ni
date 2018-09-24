@@ -1859,6 +1859,11 @@
 	  ) -> {row_fixed_scale_op @$_}
 	)
 
+# SHORT OPERATOR /S>
+
+## SYNTAX
+	</qfn>? -> {sharded_write_op $_}
+
 # SHORT OPERATOR /U
 
 ## SYNTAX

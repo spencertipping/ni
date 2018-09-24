@@ -434,7 +434,7 @@
 	    print $fh $l;
 	  }
 	
-	  close $fh, $fh->await if defined $fh;
+	  close $fh, $fh->can('await') && $fh->await if defined $fh;
 
 # OPERATOR file_read
 
@@ -1410,6 +1410,25 @@
 
 ## IMPLEMENTATION
 	my ($c) = @_; sh $c
+
+# OPERATOR sharded_write
+
+## IMPLEMENTATION
+	
+	  my ($lambda) = @_;
+	  my %fhs;
+	
+	  while (<STDIN>)
+	  {
+	    next unless s/^([^\t\n]*)\t//;
+	    my $file = $1;
+	    my $fh   = $fhs{$file} //= defined $lambda
+	      ? siproc {exec_ni(@$lambda, file_write_op $file)}
+	      : swfile $file;
+	    print $fh $_;
+	  }
+	
+	  close $_, $_->can('await') && $_->await for values %fhs;
 
 # OPERATOR sink_null
 	Consume stream and produce nothing

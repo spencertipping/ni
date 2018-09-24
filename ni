@@ -2717,7 +2717,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-279 core/stream/ops.pl
+306 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2954,10 +2954,37 @@ defoperator file_prepend_name_write => q{
     print $fh $l;
   }
 
-  close $fh, $fh->await if defined $fh;
+  close $fh, $fh->can('await') && $fh->await if defined $fh;
 };
 
 defshort '/W>', pmap q{file_prepend_name_write_op $_}, popt _qfn;
+
+# Random-access sharding.
+# Similar to prepended-name write, but splits data into a finite number of
+# shards deterministically, i.e. we keep filehandles open.
+#
+# This may fail with "too many open files" if you have too many shards. If you
+# have that problem, you can nest sharding operators by specifying intermediate
+# partitions.
+
+defoperator sharded_write => q{
+  my ($lambda) = @_;
+  my %fhs;
+
+  while (<STDIN>)
+  {
+    next unless s/^([^\t\n]*)\t//;
+    my $file = $1;
+    my $fh   = $fhs{$file} //= defined $lambda
+      ? siproc {exec_ni(@$lambda, file_write_op $file)}
+      : swfile $file;
+    print $fh $_;
+  }
+
+  close $_, $_->can('await') && $_->await for values %fhs;
+};
+
+defshort '/S>', pmap q{sharded_write_op $_}, popt _qfn;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.

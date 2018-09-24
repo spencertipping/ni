@@ -634,6 +634,7 @@
 	      </qfn>
 	    ) -> {row_fixed_scale_op @$_}
 	  )
+	| 'S>' </qfn>? -> {sharded_write_op $_}
 	| 'U' '' -> {unordered_count_op}
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'W<' '' -> {file_prepend_name_read_op}
