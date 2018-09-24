@@ -9,10 +9,6 @@ ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'
 <img src='http://spencertipping.com/ni-osm.gif'>
 </h1>
 
-## Support
-- For ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
-- For ni developers: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
-
 ## Installing `ni`
 ```sh
 $ git clone git://github.com/spencertipping/ni
@@ -20,20 +16,24 @@ $ sudo ln -s $PWD/ni/ni /usr/bin/
 ```
 
 ## What is `ni`?
+`ni` is a fast, portable tool that reduces most data processing operations to a
+handful of keystrokes.
+
 ![ni basics](http://spencertipping.com/ni-basics.gif)
 
 ### `ni` is efficient for big and small data
 `ni` can process terabytes or petabytes of data in constant space, and knows
 about things like GNU `sort`'s `--compress-program` option to make it possible
-to process more data than will fit on disk. With scaling, `ni` can handle about
-1GB/sec on a single machine.
+to process more data than will fit on disk. Commands written in `ni` are
+typically as fast or faster than hand-written equivalents.
 
-I've used `ni` to process full datasets, e.g.
+`ni` can process full datasets on one machine, e.g.
 [Wikipedia (~40GB)](https://en.wikipedia.org/wiki/Wikipedia:Database_download),
 [OpenStreetMap (~400GB)](https://github.com/spencertipping/www/blob/master/osm-animation.md), and
-[Reddit (~1.5TB)](https://files.pushshift.io/reddit/).
+[Reddit (~1.5TB)](https://files.pushshift.io/reddit/). Intermediate streams
+aren't written to disk unless you sort them.
 
-### `ni` is `cat` and `less` (and `zless`, `bzless`, etc)
+### `ni` is [`cat` and `less` (and `zless`, `bzless`, etc)](doc/ni_by_example_1.md#file-input)
 ```sh
 $ ni /etc/passwd
 $ ni /usr/share/dict/words
@@ -42,7 +42,7 @@ $ find . | ni
 $ echo hi | bzip2 | ni                  # auto-decompression
 ```
 
-### `ni` is `gzip -dc`, `xz -dc`, `lz4 -dc`, etc
+### `ni` is [`gzip -dc`, `xz -dc`, `lz4 -dc`, etc](doc/ni_by_example_1.md#z-compression)
 ni knows the magic number for common compression formats and invokes the correct
 decompressor automatically.
 
@@ -137,14 +137,14 @@ $ find /usr -type f \
     | ni \< S4[ r'/all your base/' ]    # use four workers for r// operator
 ```
 
-### `ni` is `ssh`
+### `ni` is [`ssh`](doc/ni_by_example_4.md#ssh-containers-and-horizontal-scaling)
 ...and self-installs on remote hosts.
 
 ```sh
 $ ni shost[ /etc/hostname ]             # == ssh host ni /etc/hostname | ni
 ```
 
-### `ni` is realtime visualization for big data
+### `ni` is [realtime visualization for big data](doc/visual.md)
 ```sh
 $ ni --js                               # start the webserver (Ctrl+C to exit)
 http://localhost:8090                   # open this link in a browser
@@ -174,6 +174,18 @@ Ni By Example, courtesy of [Michael Bilow](https://github.com/michaelbilow):
 - [ni fu](doc/ni_fu.md)
 - [Operator cheatsheet](doc/cheatsheet_op.md)
 - [Perl cheatsheet](doc/cheatsheet_perl.md)
+
+<h2 align='center'>
+<img alt='ni explain' src='http://spencertipping.com/ni-explain.png'>
+</h2>
+
+I run a RocketChat instance to provide a forum for ni tech support. If you're
+curious about ni or using it for real work, create an account and fire away with
+questions, suggestions, bug reports, or anything else:
+
+- ni usage: [#ni on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni)
+- general data science: [#datascience on dev.spencertipping.com](https://dev.spencertipping.com/channel/datascience)
+- ni development: [#ni-dev on dev.spencertipping.com](https://dev.spencertipping.com/channel/ni-dev)
 
 <h2 align='center'>
 <img alt='ni license' src='http://spencertipping.com/ni-license.png'>
