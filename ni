@@ -20687,7 +20687,7 @@ You can view the example in the screenshots by opening the following link on
 your system while running `ni --js`:
 
 ```
-http://localhost:8090/#%7B%22ni%22%3A%22n2E2p'r%20%24_%2C%20a%20for%200..199'%20p'r(a*10%20%2B%20%24_%2C%20b*10)%2C%20r(a*10%2C%20b*10%20%2B%20%24_)%20for%200..9'%20p'r%20a%2C%20sin(1%20%2B%20a%20%2F%20340)%20*%20cos(b*b%20%2F%2030000)%20%2B%20sin((a%20%2B%2050)*b%20%2F%20120000)%2C%20b'%22%2C%22vm%22%3A%5B1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%2C0%2C0%2C0%2C0%2C1%5D%2C%22d%22%3A1.4%7D
+http://localhost:8090/#%7B%22ni%22:%22n2E2p'r%20$_,%20a%20for%200..199'%20p'r(a*10%20+%20$_,%20b*10),%20r(a*10,%20b*10%20+%20$_)%20for%200..9'%20p'r%20a,%20sin(1%20+%20a%20/%20340)%20*%20cos(b*b%20/%2030000)%20+%20sin((a%20+%2050)*b%20/%20120000),%20b'%22,%22v%22:%7B%22br%22:1,%22ot%22:%5B-770.7425674121397,1.8043842499741498,-872.5578946367137%5D,%22os%22:%5B0.3134861808826051,46.99306323157935,0.4025242240336357%5D,%22sa%22:0.03,%22cr%22:%5B24.607594936708868,29.16455696202535%5D,%22cd%22:385.7425530696977,%22axes%22:%5B0,1,2,3%5D%7D%7D
 ```
 
 ![web ui](http://spencertipping.com/ni-jsplot-sinewave.png)
@@ -20779,7 +20779,7 @@ $ ni n1000000 :a-million-things-2 r5
 $ wc -l < a-million-things-2
 1000000
 ```
-87 doc/wkt.md
+85 doc/wkt.md
 # WKT and WKB
 ni has some support for polygon geometry using WKT and WKB; in particular, it
 supports visualization (using [Map-O-Matic](../core/mapomatic/mapomatic.pl)) and
@@ -20841,9 +20841,7 @@ WARNING
 http://localhost:32768/           # open this link to see the map
 ```
 
-![image](http://storage7.static.itmages.com/i/18/0306/h_1520339724_2796459_7968a9cf8d.png)
-
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520339761_4850348_0d5ca9b5f8.png)
+![image](http://spencertipping.com/nimap1.png)
 
 ### Geometry metadata
 You can assign attributes to geometries by appending TSV columns to the right.
@@ -20866,5 +20864,5 @@ $ ni i[9whp 9whp '#fa4'] \
      MM
 ```
 
-![image](http://storage1.static.itmages.com/i/18/0306/h_1520340382_4974654_ce07e420d6.png)
+![image](http://spencertipping.com/nimap2.png)
 __END__
