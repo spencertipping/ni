@@ -1376,6 +1376,16 @@
 ## SYNTAX
 	'' -> {conf_get_op 'row/sort-parallel'}
 
+# SHORT OPERATOR /$scale/ibuf
+
+## SYNTAX
+	'' -> {conf_get_op 'scale/ibuf'}
+
+# SHORT OPERATOR /$scale/obuf
+
+## SYNTAX
+	'' -> {conf_get_op 'scale/obuf'}
+
 # SHORT OPERATOR /$tmpdir
 
 ## SYNTAX

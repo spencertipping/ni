@@ -376,6 +376,8 @@
 	| '$row/sort-buffer' '' -> {conf_get_op 'row/sort-buffer'}
 	| '$row/sort-compress' '' -> {conf_get_op 'row/sort-compress'}
 	| '$row/sort-parallel' '' -> {conf_get_op 'row/sort-parallel'}
+	| '$scale/ibuf' '' -> {conf_get_op 'scale/ibuf'}
+	| '$scale/obuf' '' -> {conf_get_op 'scale/obuf'}
 	| '$tmpdir' '' -> {conf_get_op 'tmpdir'}
 	| '%' (
 	    <number>?

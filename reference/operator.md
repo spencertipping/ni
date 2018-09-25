@@ -1145,7 +1145,8 @@
 
 ## IMPLEMENTATION
 	
-	  use constant buf_size => 32768;
+	  my $ibuf = conf 'scale/ibuf';
+	  my $obuf = conf 'scale/obuf';
 	
 	  sub new_ref() {\(my $x = '')}
 	
@@ -1198,7 +1199,7 @@
 	          push @bufs, $b unless @bufs >= $buf_limit;
 	        }
 	        my $so = $stdout[$i];
-	        if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, buf_size) {
+	        if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, $obuf) {
 	          push @$so, $b;
 	          my $np;
 	          if (@$so >= $oqueue and 0 <= ($np = rindex $$b, "\n")) {
@@ -1244,7 +1245,7 @@
 	          push @$si, shift @queue while @$si < $iqueue and @queue;
 	          while (@queue or not $eof) {
 	            unless ($b = $queue[0]) {
-	              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size;
+	              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf;
 	              push @queue, $b;
 	            }
 	
@@ -1259,7 +1260,7 @@
 	          }
 	        }
 	
-	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf
 	        or push @queue, $b
 	          while @queue < $iqueue * $n and !$eof
 	            and select $ibtmp = $ib, undef, undef, 0;
@@ -1269,7 +1270,7 @@
 	          push @bufs, $b unless @bufs >= $buf_limit;
 	        }
 	
-	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+	        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf
 	        or push @queue, $b
 	          while @queue < $iqueue * $n and !$eof
 	            and select $ibtmp = $ib, undef, undef, 0;

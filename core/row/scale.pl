@@ -43,8 +43,12 @@ BEGIN {defshort '/S', defalt 'scalealt', 'row scaling alternation list'}
 # up with various "combine streams vertically/horizontally/etc" library
 # functions.
 
+defconfenv 'scale/ibuf', NI_SCALE_INPUT_BUFFER  => 32768;
+defconfenv 'scale/obuf', NI_SCALE_OUTPUT_BUFFER => 32768;
+
 defoperator row_fixed_scale => q{
-  use constant buf_size => 32768;
+  my $ibuf = conf 'scale/ibuf';
+  my $obuf = conf 'scale/obuf';
 
   sub new_ref() {\(my $x = '')}
 
@@ -97,7 +101,7 @@ defoperator row_fixed_scale => q{
           push @bufs, $b unless @bufs >= $buf_limit;
         }
         my $so = $stdout[$i];
-        if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, buf_size) {
+        if (saferead $wo[$i], ${$b = pop(@bufs) || new_ref}, $obuf) {
           push @$so, $b;
           my $np;
           if (@$so >= $oqueue and 0 <= ($np = rindex $$b, "\n")) {
@@ -143,7 +147,7 @@ defoperator row_fixed_scale => q{
           push @$si, shift @queue while @$si < $iqueue and @queue;
           while (@queue or not $eof) {
             unless ($b = $queue[0]) {
-              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size;
+              last if $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf;
               push @queue, $b;
             }
 
@@ -158,7 +162,7 @@ defoperator row_fixed_scale => q{
           }
         }
 
-        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf
         or push @queue, $b
           while @queue < $iqueue * $n and !$eof
             and select $ibtmp = $ib, undef, undef, 0;
@@ -168,7 +172,7 @@ defoperator row_fixed_scale => q{
           push @bufs, $b unless @bufs >= $buf_limit;
         }
 
-        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, buf_size
+        $eof ||= !saferead $stdin, ${$b = pop(@bufs) || new_ref}, $ibuf
         or push @queue, $b
           while @queue < $iqueue * $n and !$eof
             and select $ibtmp = $ib, undef, undef, 0;
