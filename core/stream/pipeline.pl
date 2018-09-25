@@ -169,7 +169,8 @@ sub stee($$$)    {local $_; safewrite_exactly($_[1], $_), safewrite_exactly($_[2
 sub sio()        {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
-sub swfile($) {open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
+sub swfile($) {mkdir_p dirname $_[0];
+               open my $fh, '>', $_[0] or die "ni: swfile $_[0]: $!"; $fh}
 
 # Compressed stream support.
 # This provides a stdin filter you can use to read the contents of a compressed

@@ -24,8 +24,9 @@ handful of keystrokes.
 ### `ni` is efficient for big and small data
 `ni` can process terabytes or petabytes of data in constant space, and knows
 about things like GNU `sort`'s `--compress-program` option to make it possible
-to process more data than will fit on disk. Commands written in `ni` are
-typically as fast or faster than hand-written equivalents.
+to process more data than will fit on disk. It can interoperate with Hadoop and
+self-install on workers if you have a cluster available. Commands written in
+`ni` are typically as fast or faster than hand-written equivalents.
 
 `ni` can process full datasets on one machine, e.g.
 [Wikipedia (~40GB)](https://en.wikipedia.org/wiki/Wikipedia:Database_download),
@@ -39,7 +40,6 @@ $ ni /etc/passwd
 $ ni /usr/share/dict/words
 $ ni /usr/share/man/man1/ls.1.gz
 $ find . | ni
-$ echo hi | bzip2 | ni                  # auto-decompression
 ```
 
 ### `ni` is [`gzip -dc`, `xz -dc`, `lz4 -dc`, etc](doc/ni_by_example_1.md#z-compression)
@@ -117,12 +117,17 @@ $ ni hdfs:///path/to/file               # == hadoop fs -cat /path/to/file
 $ ni hdfst:///path/to/file              # == hadoop fs -text /path/to/file
 ```
 
+ni can also run Hadoop Streaming jobs with itself nondestructively installed on
+worker nodes.
+
 ### `ni` is [`unzip` and `tar -x/-t`, but better](doc/ni_by_example_3.md#compressed-archive-input)
 ```sh
-$ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz
-$ ni zip://myfile.zip                   # == zip file listing
+$ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz (requires tar)
+$ ni zip://myfile.zip                   # == zip file listing (requires unzip)
+$ ni 7z://myfile.7z                     # == 7zip file listing (requires 7z, 7za, 7zr, or p7zip)
 $ ni tarentry://myfile.tgz:foo.txt      # contents of specific tar entry
 $ ni zipentry://myfile.zip:foo.txt      # contents of specific zip entry
+$ ni 7zentry://myfile.7z:foo.txt        # contents of specific 7zip entry
 ```
 
 ### `ni` reads `xlsx`
