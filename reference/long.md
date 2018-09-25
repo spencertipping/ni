@@ -9,6 +9,8 @@
 
 ## SYNTAX
 	(
+	| ''7z://' /.*/ -> {resource_quote_op "7z://$_"}
+	| ''7zentry://' /.*/ -> {resource_quote_op "7zentry://$_"}
 	| ''file-closure://' /.*/ -> {resource_quote_op "file-closure://$_"}
 	| ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	| ''git://' /.*/ -> {resource_quote_op "git://$_"}
@@ -35,6 +37,8 @@
 	| ''xlsxsheet://' /.*/ -> {resource_quote_op "xlsxsheet://$_"}
 	| ''zip://' /.*/ -> {resource_quote_op "zip://$_"}
 	| ''zipentry://' /.*/ -> {resource_quote_op "zipentry://$_"}
+	| '7z://' /.*/ -> {resource_append_op "7z://$_"}
+	| '7zentry://' /.*/ -> {resource_append_op "7zentry://$_"}
 	| 'file-closure://' /.*/ -> {resource_append_op "file-closure://$_"}
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
 	| 'git://' /.*/ -> {resource_append_op "git://$_"}

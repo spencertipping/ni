@@ -6880,8 +6880,9 @@ defresource 'gitblob',
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
   };
-3 core/archive/lib
+4 core/archive/lib
 zip.pl
+7z.pl
 tar.pl
 xlsx.pl
 30 core/archive/zip.pl
@@ -6914,6 +6915,39 @@ defresource 'zipentry',
   read => q{
     my ($zipfile, $fname) = split /:/, $_[1], 2;
     zip_file_fh $zipfile, $fname;
+  };
+32 core/archive/7z.pl
+# 7zip archive support (requires the "7z" tool)
+
+sub sevenzip_listing_fh($)
+{
+  my $f = shift;
+  soproc { sh shell_quote('7z', 'l', '-slt', $f)
+            . " | grep '^Path = '"
+            . " | tail -n+2"
+            . " | cut -c8-" };
+}
+
+sub sevenzip_file_fh($$)
+{
+  my ($f, $entry) = @_;
+  soproc { sh shell_quote('7z', 'x', '-so', $f, $entry) };
+}
+
+# 7z file listing: 7z:///path/to/7zfile
+defresource '7z',
+  read => q{
+    my $filename = $_[1];
+    soproc {
+      my $fh = sevenzip_listing_fh $filename;
+      print "7zentry://$filename:$_" while <$fh> };
+  };
+
+# Single-entry unpacking: 7zentry:///path/to/file.7z:subfilename
+defresource '7zentry',
+  read => q{
+    my ($zipfile, $fname) = split /:/, $_[1], 2;
+    sevenzip_file_fh $zipfile, $fname;
   };
 36 core/archive/tar.pl
 # tar unpacking (file version)
