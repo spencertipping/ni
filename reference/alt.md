@@ -152,6 +152,24 @@
 ## OPTIONS
 	(
 	| (
+	    'X'
+	    (
+	      (
+	        <integer>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      </qfn>
+	    )
+	  ) -> {$$_[1]} -> {row_xargs_scale_op @$_}
+	| (
 	    <integer>
 	    </qfn>
 	  ) -> {row_fixed_scale_op @$_}

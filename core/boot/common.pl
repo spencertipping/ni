@@ -74,8 +74,14 @@ docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 # just about everything else. Two possibilities there: if we need special stuff,
 # there's the `file://` prefix; otherwise we assume the non-bracket
 # interpretation.
+#
+# There are cases where it's useful to compute the name of a file. If a filename
+# begins with $, we evaluate the rest of it with perl to calculate its name.
 
-BEGIN {defparseralias filename   => palt prx 'file://(.+)',
+BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
+                                         pn 1, pstr"\$", prx '.*'}
+BEGIN {defparseralias filename   => palt computed,
+                                         prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}

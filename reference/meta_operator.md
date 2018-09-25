@@ -85,6 +85,15 @@
 	  push @ni::perl_prefix_keys, $key;
 	  ($left, $right);
 
+# META OPERATOR run_quoted_lambda
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my ($name) = @$args;
+	  my $ops = json_decode $ni::self{"quoted/$name"};
+	  ($left, [@$ops, @$right]);
+
 # META OPERATOR stderr_monitor_transform
 
 ## IMPLEMENTATION

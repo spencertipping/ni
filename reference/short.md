@@ -1391,6 +1391,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'tmpdir'}
 
+# SHORT OPERATOR /$xargs/arg
+
+## SYNTAX
+	'' -> {conf_get_op 'xargs/arg'}
+
 # SHORT OPERATOR /%
 
 ## SYNTAX
@@ -1433,7 +1438,10 @@
 # SHORT OPERATOR /--dev/backdoor
 
 ## SYNTAX
-	/.*/ -> {dev_backdoor_op $_}
+	(
+	  /.*/
+	  <empty>?
+	) -> {$$_[0]} -> {dev_backdoor_op $_}
 
 # SHORT OPERATOR /--dev/local-operate
 
@@ -1449,6 +1457,14 @@
 
 ## SYNTAX
 	<integer>? -> {http_websocket_encode_batch_op $_}
+
+# SHORT OPERATOR /--internal/lambda
+
+## SYNTAX
+	(
+	  /.*/
+	  <empty>?
+	) -> {$$_[0]} -> {run_quoted_lambda_op $_}
 
 # SHORT OPERATOR /--license
 
@@ -1594,7 +1610,7 @@
 # SHORT OPERATOR />
 
 ## SYNTAX
-	<nefilename> -> {file_write_op $_}
+	<nefilename>? -> {file_write_op $_}
 
 # SHORT OPERATOR />'R
 
@@ -1863,6 +1879,24 @@
 
 ## SYNTAX
 	(
+	| (
+	    'X'
+	    (
+	      (
+	        <integer>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      </qfn>
+	    )
+	  ) -> {$$_[1]} -> {row_xargs_scale_op @$_}
 	| (
 	    <integer>
 	    </qfn>

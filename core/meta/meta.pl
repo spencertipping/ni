@@ -65,7 +65,7 @@ defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
 # code within this process, and behaves like a normal streaming operator.
 
 defoperator dev_backdoor => q{ni::eval $_[0]};
-defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
+defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prc '.*';
 
 # Used for regression testing
 defoperator dev_local_operate => q{

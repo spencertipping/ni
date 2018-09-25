@@ -383,6 +383,7 @@
 	| '$scale/ibuf' '' -> {conf_get_op 'scale/ibuf'}
 	| '$scale/obuf' '' -> {conf_get_op 'scale/obuf'}
 	| '$tmpdir' '' -> {conf_get_op 'tmpdir'}
+	| '$xargs/arg' '' -> {conf_get_op 'xargs/arg'}
 	| '%' (
 	    <number>?
 	    </qfn>
@@ -406,10 +407,17 @@
 	  | <cell/lambda>
 	  | <cell/suffix>
 	  )
-	| '--dev/backdoor' /.*/ -> {dev_backdoor_op $_}
+	| '--dev/backdoor' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {dev_backdoor_op $_}
 	| '--dev/local-operate' </qfn> -> {dev_local_operate_op $_}
 	| '--http/wse' '' -> {http_websocket_encode_op}
 	| '--http/wse-batch' <integer>? -> {http_websocket_encode_batch_op $_}
+	| '--internal/lambda' (
+	    /.*/
+	    <empty>?
+	  ) -> {$$_[0]} -> {run_quoted_lambda_op $_}
 	| '--license' '' -> {meta_key_op 'license'}
 	| '//:' <closure_name> -> {memory_closure_append_op $_}
 	| '//@' <closure_name> -> {file_closure_append_op $_}
@@ -458,7 +466,7 @@
 	  ) -> {file_data_closure_op @$_}
 	| '<' '' -> {file_read_op}
 	| '=' </qfn> -> {divert_op    @$_}
-	| '>' <nefilename> -> {file_write_op $_}
+	| '>' <nefilename>? -> {file_write_op $_}
 	| '>'R' '' -> {encode_resource_stream_op}
 	| 'B' (
 	  | 'n' '' -> {buffer_null_op}
@@ -635,6 +643,24 @@
 	  | 'dev/compile' <sql_query> -> {sql_preview_op($_[0])}
 	  )
 	| 'S' (
+	  | (
+	      'X'
+	      (
+	        (
+	          <integer>
+	          <empty>?
+	        ) -> {$$_[0]}
+	        (
+	          <shell_arg>
+	          <empty>?
+	        ) -> {$$_[0]}
+	        (
+	          <shell_arg>
+	          <empty>?
+	        ) -> {$$_[0]}
+	        </qfn>
+	      )
+	    ) -> {$$_[1]} -> {row_xargs_scale_op @$_}
 	  | (
 	      <integer>
 	      </qfn>
@@ -961,6 +987,24 @@
 ## DEFINITION
 	(
 	| (
+	    'X'
+	    (
+	      (
+	        <integer>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      (
+	        <shell_arg>
+	        <empty>?
+	      ) -> {$$_[0]}
+	      </qfn>
+	    )
+	  ) -> {$$_[1]} -> {row_xargs_scale_op @$_}
+	| (
 	    <integer>
 	    </qfn>
 	  ) -> {row_fixed_scale_op @$_}
@@ -1234,6 +1278,14 @@
 	           $c = $ni::compressors{$c || 'g'};
 	           defined $level ? sh_op "$c -$level" : sh_op $c}
 
+# PARSER computed
+
+## DEFINITION
+	(
+	  '$'
+	  /.*/
+	) -> {$$_[1]} -> {eval "(sub {$_})->()"}
+
 # PARSER config_map_key
 
 ## DEFINITION
@@ -1487,6 +1539,7 @@
 
 ## DEFINITION
 	(
+	| <computed>
 	| /file://(.+)/
 	| /\.?/(?:[^/]|$)[^]]*/
 	| /[^][]+/ such that {-e}
@@ -2014,6 +2067,16 @@
 
 ## DEFINITION
 	/(?^:^(?:[^\\/]+|\\.)*/)/ -> {s/\/$//; $_}
+
+# PARSER shell_arg
+
+## DEFINITION
+	(
+	| <super_brackets> -> {shell_quote @$_}
+	| <multiword_ws> -> {shell_quote @$_}
+	| <multiword> -> {shell_quote @$_}
+	| /[^][]+/ -> {shell_quote $_}
+	)
 
 # PARSER shell_command
 	A quoted or bracketed shell command

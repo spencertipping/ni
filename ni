@@ -519,7 +519,7 @@ defparserebnf pnx => fn q{
   my ($self, $r) = @{$_[0]};
   "!/$r/";
 };
-84 core/boot/common.pl
+90 core/boot/common.pl
 # Regex parsing.
 # Sometimes we'll have an operator that takes a regex, which is subject to the
 # CLI reader problem the same way code arguments are. Rather than try to infer
@@ -596,8 +596,14 @@ docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 # just about everything else. Two possibilities there: if we need special stuff,
 # there's the `file://` prefix; otherwise we assume the non-bracket
 # interpretation.
+#
+# There are cases where it's useful to compute the name of a file. If a filename
+# begins with $, we evaluate the rest of it with perl to calculate its name.
 
-BEGIN {defparseralias filename   => palt prx 'file://(.+)',
+BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
+                                         pn 1, pstr"\$", prx '.*'}
+BEGIN {defparseralias filename   => palt computed,
+                                         prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
                                          pcond q{-e}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
@@ -2717,7 +2723,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-306 core/stream/ops.pl
+312 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2740,6 +2746,12 @@ BEGIN {
                                        pmap(q{shell_quote @$_}, multiword_ws),
                                        pmap(q{shell_quote @$_}, multiword),
                                        prx '[^][]+';
+
+  defparseralias shell_arg => palt pmap(q{shell_quote @$_}, super_brackets),
+                                   pmap(q{shell_quote @$_}, multiword_ws),
+                                   pmap(q{shell_quote @$_}, multiword),
+                                   pmap q{shell_quote $_},  prx '[^][]+';
+
   defparseralias id_text => palt pmap(q{join "\t", @$_}, super_brackets),
                                  pmap(q{join "\t", @$_}, multiword_ws),
                                  pmap(q{join "\t", @$_}, multiword),
@@ -2915,7 +2927,7 @@ defoperator file_write => q{
   print "$file\n";
 };
 
-defshort '/>', pmap q{file_write_op $_}, nefilename;
+defshort '/>', pmap q{file_write_op $_}, popt nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
 
 defoperator file_prepend_name_read => q{
@@ -3182,7 +3194,7 @@ defshort '///ni/parsers', pmap q{meta_parsers_op}, pnone;
 # code within this process, and behaves like a normal streaming operator.
 
 defoperator dev_backdoor => q{ni::eval $_[0]};
-defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prx '.*';
+defshort '/--dev/backdoor', pmap q{dev_backdoor_op $_}, prc '.*';
 
 # Used for regression testing
 defoperator dev_local_operate => q{
@@ -4036,10 +4048,11 @@ defoperator vertical_apply => q{
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
-3 core/row/lib
+4 core/row/lib
 row.pl
 scale.pl
 join.pl
+xargs.pl
 219 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
@@ -4545,6 +4558,51 @@ q{
 
 defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
                pseq popt colspec1, popt integer, _qfn;
+44 core/row/xargs.pl
+# Row-based process scaling, powered by xargs.
+# Similar to S8, but SX8 will use xargs -P8. xargs has every process write to
+# the same output fd, so we have to redirect each output into a file in order to
+# prevent rows from getting spliced.
+
+# Overall usage looks like this:
+#
+#   ni indir SX4 {} z\>output/{}.gz [ ni commands to distribute ]
+#
+# {} and z\>output/{}.gz are both parsed as _strings_ -- i.e. as shell commands
+# -- because they get passed straight through to xargs. The above is
+# semantically equivalent to this:
+#
+#   ni indir e[ xargs -P4 -I{} /tmp/ni {} --internal/lambda z\>output/{}.gz ]
+#
+# We write our current state, closures and all, to a tempfile so the xargs
+# indirection doesn't lose anything.
+
+defconfenv 'xargs/arg', NI_XARGS_ARG => '{}';
+
+defmetaoperator run_quoted_lambda => q{
+  my ($args, $left, $right) = @_;
+  my ($name) = @$args;
+  my $ops = json_decode $ni::self{"quoted/$name"};
+  ($left, [@$ops, @$right]);
+};
+
+defshort '/--internal/lambda' => pmap q{run_quoted_lambda_op $_}, prc '.*';
+
+defoperator row_xargs_scale => q{
+  my ($n, $inform, $outform, $lambda) = @_;
+  my $arg = conf 'xargs/arg';
+  my $tmp_ni = uri_path resource_tmp "file://";
+  wf $tmp_ni, image_with "quoted/$$-lambda" => json_encode $lambda;
+  chmod 0700, $tmp_ni;
+  my $cmd = shell_quote "xargs", "-P$n", "-I$arg", "sh", "-c",
+              "$tmp_ni $inform --internal/lambda$$-lambda $outform";
+  system $cmd and die "ni SX$n: $cmd failed; temporary ni in $tmp_ni";
+  unlink $tmp_ni;
+};
+
+defscalealt pmap q{row_xargs_scale_op @$_},
+            pn 1, pstr"X",
+                  pseq pc integer, pc shell_arg, pc shell_arg, _qfn;
 15 core/pl/lib
 util.pm
 string.pm

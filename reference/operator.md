@@ -1371,6 +1371,20 @@
 	    '--buffer-size=' . conf 'row/sort-buffer',
 	    '--parallel='    . conf 'row/sort-parallel'), @_
 
+# OPERATOR row_xargs_scale
+
+## IMPLEMENTATION
+	
+	  my ($n, $inform, $outform, $lambda) = @_;
+	  my $arg = conf 'xargs/arg';
+	  my $tmp_ni = uri_path resource_tmp "file://";
+	  wf $tmp_ni, image_with "quoted/$$-lambda" => json_encode $lambda;
+	  chmod 0700, $tmp_ni;
+	  my $cmd = shell_quote "xargs", "-P$n", "-I$arg", "sh", "-c",
+	              "$tmp_ni $inform --internal/lambda$$-lambda $outform";
+	  system $cmd and die "ni SX$n: $cmd failed; temporary ni in $tmp_ni";
+	  unlink $tmp_ni;
+
 # OPERATOR ruby_grepper
 
 ## IMPLEMENTATION

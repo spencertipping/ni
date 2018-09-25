@@ -20,6 +20,12 @@ BEGIN {
                                        pmap(q{shell_quote @$_}, multiword_ws),
                                        pmap(q{shell_quote @$_}, multiword),
                                        prx '[^][]+';
+
+  defparseralias shell_arg => palt pmap(q{shell_quote @$_}, super_brackets),
+                                   pmap(q{shell_quote @$_}, multiword_ws),
+                                   pmap(q{shell_quote @$_}, multiword),
+                                   pmap q{shell_quote $_},  prx '[^][]+';
+
   defparseralias id_text => palt pmap(q{join "\t", @$_}, super_brackets),
                                  pmap(q{join "\t", @$_}, multiword_ws),
                                  pmap(q{join "\t", @$_}, multiword),
@@ -195,7 +201,7 @@ defoperator file_write => q{
   print "$file\n";
 };
 
-defshort '/>', pmap q{file_write_op $_}, nefilename;
+defshort '/>', pmap q{file_write_op $_}, popt nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
 
 defoperator file_prepend_name_read => q{
