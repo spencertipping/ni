@@ -6798,7 +6798,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-77 core/git/git.pl
+81 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6846,11 +6846,15 @@ defresource 'githistory',
 defresource 'gitdiff',
   read => q{
     my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
+    my @refs          = split /\.\./, $refs, 2;
     $path = git_dir $path;
-    my @refs       = split /\.\./, $refs, 2;
-    my $parent_cmd = shell_quote git => "--git-dir=$path",
-                       "show", "--format=%P", "-s", $refs[0];
-    unshift(@refs, `$parent_cmd`), chomp @refs if @refs < 2;
+    if (@refs < 2)
+    {
+      my $parent_cmd = shell_quote git => "--git-dir=$path",
+                         "show", "--format=%P", "-s", $refs[0];
+      my @parents = grep length, split /\s+/, `$parent_cmd`;
+      unshift @refs, $parents[0];
+    }
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
   };
 
