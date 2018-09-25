@@ -1,18 +1,22 @@
 # 7zip archive support (requires the "7z" tool)
 
+use constant sevenzip_names => [qw/ 7z 7za 7zr /];
+
 sub sevenzip_listing_fh($)
 {
   my $f = shift;
-  soproc { sh shell_quote('7z', 'l', '-slt', $f)
-            . " | grep '^Path = '"
-            . " | tail -n+2"
-            . " | cut -c8-" };
+  soproc { sh join '||', map shell_quote($_, 'l', '-slt', $f)
+                             . " | grep '^Path = '"
+                             . " | tail -n+2"
+                             . " | cut -c8-",
+                             @{+sevenzip_names} };
 }
 
 sub sevenzip_file_fh($$)
 {
   my ($f, $entry) = @_;
-  soproc { sh shell_quote('7z', 'x', '-so', $f, $entry) };
+  soproc { sh join '||', map shell_quote($_, 'x', '-so', $f, $entry),
+                             @{+sevenzip_names} };
 }
 
 # 7z file listing: 7z:///path/to/7zfile
