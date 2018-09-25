@@ -46,7 +46,7 @@ defresource 'gitdiff',
   read => q{
     my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
     my @refs          = split /\.\./, $refs, 2;
-    push @refs, "$refs[0]^" if @refs < 2;
+    unshift @refs, "$refs[0]^" if @refs < 2;
     $path = git_dir $path;
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
   };
