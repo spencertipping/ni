@@ -6112,7 +6112,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-201 core/pl/pl.pl
+203 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6290,6 +6290,8 @@ defmetaoperator perl_require => q{
   my $code    = "BEGIN{\n#line 1 \"$filename\"\n" . join('', <$code_fh>) . "\n}";
   my $key     = "core/pl/require/" . gensym;
   self_append_resource $key, $code;
+  self_append_resource "$key-prepend.pl",
+    qq{ push \@ni::perl_prefix_keys, q{$key} };
   push @ni::perl_prefix_keys, $key;
   ($left, $right);
 };

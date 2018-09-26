@@ -82,6 +82,8 @@
 	  my $code    = "BEGIN{\n#line 1 \"$filename\"\n" . join('', <$code_fh>) . "\n}";
 	  my $key     = "core/pl/require/" . gensym;
 	  self_append_resource $key, $code;
+	  self_append_resource "$key-prepend.pl",
+	    qq{ push \@ni::perl_prefix_keys, q{$key} };
 	  push @ni::perl_prefix_keys, $key;
 	  ($left, $right);
 
