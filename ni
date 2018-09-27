@@ -8884,19 +8884,19 @@ caterwaul(':all')(function () {
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
                                                                   : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
-104 core/jsplot/render.waul
+112 core/jsplot/render.waul
 // Rendering support.
 // Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 // details are all hidden inside a render request.
 
 caterwaul(':all')(function () {
   render(state = null, last_render = 0, frames_requested = 0)
-        (axes, vm, l0, limit, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
-                                                              total_shade: 0, saturation_rate: sr /!Math.exp, limit: limit, cb: cb,
-                                                              id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
-                                                                    ? state.id
-                                                                    : ctx.getImageData(0, 0, w, h)}]
-                                                   -then- request_frame()
+        (axes, vm, l0, deadline, sr, ctx, w, h, cb) = state /eq[{a: axes, vm: vm, ctx: ctx, w: w, h: h, i: 0, vt: n[4] *[vm.transformer(x)] -seq, l: 0, l0: l0,
+                                                                 deadline: deadline, total_shade: 0, saturation_rate: sr /!Math.exp, cb: cb,
+                                                                 id: state && state.id && state.ctx === ctx && state.w === w && state.h === h
+                                                                       ? state.id
+                                                                       : ctx.getImageData(0, 0, w, h)}]
+                                                      -then- request_frame()
 
 // Render function.
 // This is kind of subtle, so I'll explain how it all works. My liberal use of scare quotes is indicative of the amount of duplicity going on around here.
@@ -8932,22 +8932,23 @@ caterwaul(':all')(function () {
 // modified each iteration as we figure out how dense our shading is empirically; state.l0, the "target luminosity", is measured in full shades per screen pixel.
 // Here's the calculation:
 
-// | initial_l = target_shade_per_pixel * pixels / data_points;
+// | initial_l = target_shade_per_pixel * pixels / data_points / 10;
 //   next_l    = target_shade_per_pixel * pixels / (actual_shading_so_far / layers_so_far * total_layers);
 
     --frames_requested;
     var ax = state.a[0], ay = state.a[1],                  xt = state.vt[0], yt = state.vt[1], width  = state.id.width,
         az = state.a[2], aw = state.a[3], aq = state.a[4], zt = state.vt[2], wt = state.vt[3], height = state.id.height,
         id = state.id.data, n = state.a[0].end(), use_hue = !!aw, cx = width >> 1, cy = height >> 1,
-        l  = state.l || state.l0 * (width*height) / n, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
-        sr = state.saturation_rate, ss = state.limit || slice_size;
+        l  = state.l || state.l0 * width*height / n / 10, total_shade = state.total_shade, s = width /-Math.min/ height >> 1,
+        sr = state.saturation_rate;
 
-    if (state.cb)      state.cb(state.i, ss);
-    if (state.i < ss)  request_frame();
-    if (state.i === 0) id.fill(0);
+    if (state.cb)                                 state.cb(state.i, slice_size);
+    if (state.i < slice_size && !state.deadline)  request_frame();
+    if (state.i === 0)                            id.fill(0);
 
-    var t = +new Date;
-    for (; state.i < ss && +new Date - t < 30; ++state.i) {
+    var start = +new Date;
+    var stop  = state.deadline || start + 30;
+    for (; state.i < slice_size && (state.i < 8 || +new Date < stop); ++state.i) {
       for (var j = slices[state.i]; j < n; j += slice_size) {
         var w  = aw ? j /!aw.pnorm : 0, x  = ax ? j /!ax.p : 0, y  = ay ? j /!ay.p : 0, z  = az ? j /!az.p : 0,
             wi = 1 / wt(x, y, z),       xp = wi * xt(x, y, z),  yp = wi * yt(x, y, z),  zp = wi * zt(x, y, z),
@@ -8981,7 +8982,14 @@ caterwaul(':all')(function () {
         }
       }
 
-      if (total_shade) l = state.l0 * width * height / (total_shade / (state.i + 1) * ss);
+      if (total_shade)
+      {
+        var target_shade   = state.l0 * width * height;
+        var progress       = state.deadline ? (+new Date - start || 1) / (state.deadline - start)
+                                            : (state.i + 1) / slice_size;
+        var expected_shade = total_shade / progress;
+        l = target_shade / expected_shade;
+      }
     }
 
     state.l           = l;
@@ -9191,9 +9199,9 @@ $(caterwaul(':all')(function ($) {
         axis_map(as)         = w.val().v.axes *[as[x]] -seq,
         renderer             = render(),
         full_render_tmout    = null,
-        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, preview_slices, v.sa, sc, screen.width(), screen.height())
+        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br * 32, +new Date + 30, v.sa, sc, screen.width(), screen.height())
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
-                                       preview_slices = Math.min(4096, 128 / preview_factor | 0)]
+                                       preview_slices = Math.min(4096, 64 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
                         -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
                         -where [v = w.val().v],

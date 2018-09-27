@@ -141,9 +141,9 @@ $(caterwaul(':all')(function ($) {
         axis_map(as)         = w.val().v.axes *[as[x]] -seq,
         renderer             = render(),
         full_render_tmout    = null,
-        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br, preview_slices, v.sa, sc, screen.width(), screen.height())
+        update_screen_fast() = renderer(data_state.frame.axes /!axis_map, v /!camera.m, v.br * 32, +new Date + 30, v.sa, sc, screen.width(), screen.height())
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
-                                       preview_slices = Math.min(4096, 128 / preview_factor | 0)]
+                                       preview_slices = Math.min(4096, 64 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
                         -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
                         -where [v = w.val().v],
