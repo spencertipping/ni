@@ -82,14 +82,15 @@ caterwaul(':all')(function () {
                     op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                     lp = id[pi|3] || 64,
                     ci = l * op * (256 - lp) * q,
-                    li = ci * zi*zi,
-                    d  = sr / (ci + lp);
+                    li = ci * zi,
+                    d  = sr / (li + lp),
+                    cmax = Math.max(r, g, b);
 
                 total_shade += li;
                 id[pi|3] += li;
-                id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
-                id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
-                id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
+                id[pi|0] = (id[pi|0] * lp + r * 256 * li / cmax) * d;
+                id[pi|1] = (id[pi|1] * lp + g * 256 * li / cmax) * d;
+                id[pi|2] = (id[pi|2] * lp + b * 256 * li / cmax) * d;
               }
           }
         }

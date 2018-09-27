@@ -145,7 +145,7 @@ $(caterwaul(':all')(function ($) {
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
                                        preview_slices = Math.min(4096, 64 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
-                        -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
+                        -then- full_render_tmout /eq[update_screen /-setTimeout/ 120]
                         -where [v = w.val().v],
 
         update_render_status(i, m) = $('#render-bar-inner') /~css/ {width: $('#render-bar').width() * i/m} -then- status.activate(),

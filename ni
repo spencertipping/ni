@@ -8888,7 +8888,7 @@ caterwaul(':all')(function () {
                                                                                        -where[tstart = +new Date,
                                                                                               m      = k + e.data, lines = m.split(/\n/),
                                                                                               dt     = +new Date - tstart]]})();
-112 core/jsplot/render.waul
+113 core/jsplot/render.waul
 // Rendering support.
 // Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
 // details are all hidden inside a render request.
@@ -8973,14 +8973,15 @@ caterwaul(':all')(function () {
                     op = (1 - Math.abs(dx-tx)) * (1 - Math.abs(dy-ty)),
                     lp = id[pi|3] || 64,
                     ci = l * op * (256 - lp) * q,
-                    li = ci * zi*zi,
-                    d  = sr / (ci + lp);
+                    li = ci * zi,
+                    d  = sr / (li + lp),
+                    cmax = Math.max(r, g, b);
 
                 total_shade += li;
                 id[pi|3] += li;
-                id[pi|0] = (id[pi|0] * lp + r * 256 * ci) * d;
-                id[pi|1] = (id[pi|1] * lp + g * 256 * ci) * d;
-                id[pi|2] = (id[pi|2] * lp + b * 256 * ci) * d;
+                id[pi|0] = (id[pi|0] * lp + r * 256 * li / cmax) * d;
+                id[pi|1] = (id[pi|1] * lp + g * 256 * li / cmax) * d;
+                id[pi|2] = (id[pi|2] * lp + b * 256 * li / cmax) * d;
               }
           }
         }
@@ -9207,7 +9208,7 @@ $(caterwaul(':all')(function ($) {
                                /where [preview_factor = Math.min(1, data_state.frame.n / data_state.frame.capacity()),
                                        preview_slices = Math.min(4096, 64 / preview_factor | 0)]
                         -then- full_render_tmout /!clearTimeout
-                        -then- full_render_tmout /eq[update_screen /-setTimeout/ 50]
+                        -then- full_render_tmout /eq[update_screen /-setTimeout/ 120]
                         -where [v = w.val().v],
 
         update_render_status(i, m) = $('#render-bar-inner') /~css/ {width: $('#render-bar').width() * i/m} -then- status.activate(),
