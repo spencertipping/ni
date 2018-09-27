@@ -41,22 +41,6 @@ lazytest_end() {
 }
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
-lazytest_file='bugs/2016.0918.replicated-garbage.md'
-lazytest_line=653
-lazytest_case 'ni //ni --dev/local-operate[ \
-     p'\''/(^\d+ )(.*)/ ? map r($2, $_), rl $1 : ()'\'' ,zA r-1 r10]
-' 3<<'LAZYTEST_EOF'
-0	# Resource layout map.
-0	# ni is assembled by following the instructions here. This script is also
-0	# included in the ni image itself so it can rebuild accordingly.
-0	
-0	bootcode
-0	resource core/boot/ni.map
-0	
-0	resource core/boot/util.pl
-0	resource core/boot/doc.pl
-0	resource core/boot/dev.pl
-LAZYTEST_EOF
 lazytest_file='bugs/2017.0407.hash-constructors.md'
 lazytest_line=6
 lazytest_case 'ni i[a 1 b] i[a 2] i[a 3 c] p'\''@lines = rea; %h = cb_ @lines; @sorted_keys = sort keys %h;  r($_, $h{$_}) for @sorted_keys'\''
