@@ -56,9 +56,11 @@ sub jsplot_stream($$@) {
   vec($rmask, fileno $reply, 1) = 1;
 
   while (saferead $ni_pipe, $_, 65536) {
-    if (select my $rout = $rmask, undef, undef, 0) {
+    safewrite $reply, $_;
+    if (select(my $rout = $rmask, undef, undef, 0.004))
+    {
       saferead $reply, $incoming, 8192;
-      if (length $incoming) {
+      if ($incoming =~ /^\x88/) {
         jsplot_log "SIGTERM to worker\n";
         $ni_pipe->kill('TERM');
         jsplot_log "awaiting worker exit\n";
@@ -66,7 +68,6 @@ sub jsplot_stream($$@) {
         return;
       }
     }
-    safewrite $reply, $_;
   }
   jsplot_log "done transferring data\n";
   $ni_pipe->await;
