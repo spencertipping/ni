@@ -22,10 +22,10 @@ lazytest_case() {
     echo -e "\033[J\033[1;31mFAIL\033[0;0m $*"
     echo -e "\033[1;31m$lazytest_file:$lazytest_line\033[0;0m"
     echo -e "EXPECTED\033[1;34m"
-    echo    "$expected"
+    printf %s "$expected"
     echo
     echo -e "\033[0;0mACTUAL\033[1;34m"
-    echo    "$actual"
+    printf %s "$actual"
     echo -e "\033[0;0m"
     return 1
   fi
@@ -659,21 +659,44 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xr2     # swap first two columns
 4	2	6	8	10	12	14	16
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=162
+lazytest_line=157
+lazytest_case 'cat > pathological.csv <<'\''EOF'\''
+"foo
+	bar",bif,"baz ""bok""
+biffski"
+,,,
+,"",,biffski
+
+1,2,3,4
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=166
+lazytest_case 'ni ./pathological.csv FV p'\''r map je($_), F_'\''
+' 3<<'LAZYTEST_EOF'
+"foo\r        bar"	"bif"	"baz \"bok\"\rbiffski"
+
+""	""	""	"biffski"
+
+1	2	3	4
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=183
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] p'\''r FT 2, uc(c), FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=170
+lazytest_line=191
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] vCpuc
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=181
+lazytest_line=202
 lazytest_case 'ni i[who let the dogs out] Z1
 ' 3<<'LAZYTEST_EOF'
 who
@@ -683,7 +706,7 @@ dogs
 out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=190
+lazytest_line=211
 lazytest_case 'ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 who	1
@@ -693,7 +716,7 @@ dogs	4
 out	5
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=199
+lazytest_line=220
 lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 1	who
@@ -703,7 +726,7 @@ lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 5	out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=210
+lazytest_line=231
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004

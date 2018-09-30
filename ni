@@ -3852,7 +3852,7 @@ defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
-196 core/col/col.pl
+198 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -3920,13 +3920,15 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#
 defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-# TODO: collapse multiline fields
 defoperator split_proper_csv => q{
-  while (<STDIN>) {
-    my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
-    s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
-    pop @fields;
-    print join("\t", @fields), "\n";
+  while (<STDIN>)
+  {
+    $_ = ",$_";
+    $_ .= <STDIN> while 1 & (() = /"/g);
+    chomp;
+    print join("\t",
+      map { s/^"|"$//g; s/\t/        /g; y/\n/\r/; s/""/\n/g; s/"//g; y/\n/"/; $_ }
+          /\G,((?:"(?:[^"]+|"")*"|[^",]+)*)/g), "\n";
   }
 };
 
@@ -17416,7 +17418,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-214 doc/col.md
+235 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -17568,6 +17570,27 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 - `FS`: split on runs of horizontal whitespace
 - `FW`: split on runs of non-word characters
 - `FP`: split on pipe symbols
+
+`FV` does things to preserve cell boundaries for CSV files whose cells contain
+`\n` and `\t`. In particular, `\n` becomes `\r` and `\t` becomes eight spaces.
+
+```bash
+$ cat > pathological.csv <<'EOF'
+"foo
+	bar",bif,"baz ""bok""
+biffski"
+,,,
+,"",,biffski
+
+1,2,3,4
+EOF
+$ ni ./pathological.csv FV p'r map je($_), F_'
+"foo\r        bar"	"bif"	"baz \"bok\"\rbiffski"
+
+""	""	""	"biffski"
+
+1	2	3	4
+```
 
 ### Examples
 

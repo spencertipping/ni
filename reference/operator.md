@@ -1487,11 +1487,14 @@
 
 ## IMPLEMENTATION
 	
-	  while (<STDIN>) {
-	    my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
-	    s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
-	    pop @fields;
-	    print join("\t", @fields), "\n";
+	  while (<STDIN>)
+	  {
+	    $_ = ",$_";
+	    $_ .= <STDIN> while 1 & (() = /"/g);
+	    chomp;
+	    print join("\t",
+	      map { s/^"|"$//g; s/\t/        /g; y/\n/\r/; s/""/\n/g; s/"//g; y/\n/"/; $_ }
+	          /\G,((?:"(?:[^"]+|"")*"|[^",]+)*)/g), "\n";
 	  }
 
 # OPERATOR split_regex

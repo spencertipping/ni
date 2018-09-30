@@ -31,10 +31,10 @@ lazytest_case() {
     echo -e "\033[J\033[1;31mFAIL\033[0;0m $*"
     echo -e "\033[1;31m$lazytest_file:$lazytest_line\033[0;0m"
     echo -e "EXPECTED\033[1;34m"
-    echo    "$expected"
+    printf %s "$expected"
     echo
     echo -e "\033[0;0mACTUAL\033[1;34m"
-    echo    "$actual"
+    printf %s "$actual"
     echo -e "\033[0;0m"
     return 1
   fi

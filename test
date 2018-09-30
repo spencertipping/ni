@@ -61,7 +61,7 @@ build_ni_stuff() {
   build_tests
 }
 
-tests() { rm -f .test-cancel; echo 'bash /data/dev/tests.sh'; }
+tests() { rm -f .test-cancel; echo 'cp /data/ni /usr/bin/; bash /data/dev/tests.sh'; }
 image() { echo spencertipping/ni-env-dev-$1; }
 
 default_image=ubuntu-16.04
@@ -96,7 +96,11 @@ case $c in
   ;;
 
 -r|--repl)
-  echo "NOTE: to run tests, cd /tmp && bash /data/dev/tests.sh"
+  echo "NOTE: to run tests:"
+  echo "  $ cd /tmp"
+  echo "  $ cp /data/ni /usr/bin/"
+  echo "  $ bash /data/dev/tests.sh"
+  echo
   build_ni_stuff
   docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;

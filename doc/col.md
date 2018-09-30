@@ -150,6 +150,27 @@ The `F` operator gives you a way to convert non-tab-delimited data into TSV.
 - `FW`: split on runs of non-word characters
 - `FP`: split on pipe symbols
 
+`FV` does things to preserve cell boundaries for CSV files whose cells contain
+`\n` and `\t`. In particular, `\n` becomes `\r` and `\t` becomes eight spaces.
+
+```bash
+$ cat > pathological.csv <<'EOF'
+"foo
+	bar",bif,"baz ""bok""
+biffski"
+,,,
+,"",,biffski
+
+1,2,3,4
+EOF
+$ ni ./pathological.csv FV p'r map je($_), F_'
+"foo\r        bar"	"bif"	"baz \"bok\"\rbiffski"
+
+""	""	""	"biffski"
+
+1	2	3	4
+```
+
 ### Examples
 
 

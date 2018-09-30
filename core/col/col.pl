@@ -65,13 +65,15 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#
 defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
-# TODO: collapse multiline fields
 defoperator split_proper_csv => q{
-  while (<STDIN>) {
-    my @fields = /\G([^,"\n]*|"(?:[^"]+|"")*")(?:,|$)/g;
-    s/\t/        /g, s/^"|"$//g, s/""/"/g for @fields;
-    pop @fields;
-    print join("\t", @fields), "\n";
+  while (<STDIN>)
+  {
+    $_ = ",$_";
+    $_ .= <STDIN> while 1 & (() = /"/g);
+    chomp;
+    print join("\t",
+      map { s/^"|"$//g; s/\t/        /g; y/\n/\r/; s/""/\n/g; s/"//g; y/\n/"/; $_ }
+          /\G,((?:"(?:[^"]+|"")*"|[^",]+)*)/g), "\n";
   }
 };
 
