@@ -6697,8 +6697,8 @@ defoperator jitter_gaussian => q{
   my ($cs, $mag) = @_;
   cell_eval {
     args => 'undef',
-    each => "\$xs[\$_] += sqrt(-2 * log(max 1e-16, rand()))
-                                  * cos(6.28318530717959 * rand())"},
+    each => "\$xs[\$_] += $mag * sqrt(-2 * log(max 1e-16, rand()))
+                                         * cos(6.28318530717959 * rand())"},
     $cs;
 };
 
