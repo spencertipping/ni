@@ -2283,6 +2283,14 @@
 	  <integer>?
 	) -> {real_hash_op      @$_}
 
+# SHORT OPERATOR cell/J
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <jitter_mag>
+	) -> {jitter_gaussian_op @$_}
+
 # SHORT OPERATOR cell/L
 
 ## SYNTAX

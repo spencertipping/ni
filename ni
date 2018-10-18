@@ -6565,7 +6565,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-251 core/cell/cell.pl
+264 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -6691,6 +6691,19 @@ defoperator jitter_uniform => q{
 
 defshort 'cell/j', pmap q{jitter_uniform_op @$_},
                    pseq cellspec_fixed, jitter_mag, jitter_bias;
+
+
+defoperator jitter_gaussian => q{
+  my ($cs, $mag) = @_;
+  cell_eval {
+    args => 'undef',
+    each => "\$xs[\$_] += sqrt(-2 * log(max 1e-16, rand()))
+                                  * cos(6.28318530717959 * rand())"},
+    $cs;
+};
+
+defshort 'cell/J', pmap q{jitter_gaussian_op @$_},
+                   pseq cellspec_fixed, jitter_mag;
 
 
 defoperator quantize => q{

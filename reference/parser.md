@@ -1125,6 +1125,10 @@
 	    <cellspec_fixed>
 	    <integer>?
 	  ) -> {real_hash_op      @$_}
+	| 'J' (
+	    <cellspec_fixed>
+	    <jitter_mag>
+	  ) -> {jitter_gaussian_op @$_}
 	| 'L' (
 	    <cellspec_fixed>
 	    <log_base>
