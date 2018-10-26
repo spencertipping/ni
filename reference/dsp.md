@@ -138,6 +138,7 @@
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
+	| ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
 	| ''gittree://' /.*/ -> {resource_quote_op "gittree://$_"}
 	| ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
 	| ''hdfsc://' /.*/ -> {resource_quote_op "hdfsc://$_"}
@@ -166,6 +167,7 @@
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
+	| 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}
 	| 'gittree://' /.*/ -> {resource_append_op "gittree://$_"}
 	| 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
 	| 'hdfsc://' /.*/ -> {resource_append_op "hdfsc://$_"}

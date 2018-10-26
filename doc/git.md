@@ -25,7 +25,7 @@ $ ni git://. r1 fA
 gitcommit://.:refs/heads/archive/concatenative
 
 $ ni git://. r1 fA \<
-gitcommitmeta://.:refs/heads/archive/concatenative      githistory://.:refs/heads/archive/concatenative gitdiff://.:refs/heads/archive/concatenative    gittree://.:refs/heads/archive/concatenative
+gitcommitmeta://.:refs/heads/archive/concatenative githistory://.:refs/heads/archive/concatenative gitdiff://.:refs/heads/archive/concatenative gittree://.:refs/heads/archive/concatenative gitpdiff://.:refs/heads/archive/concatenative
 ```
 
 ## Commit metadata
@@ -75,6 +75,13 @@ index cea0535..e21e314 100644
      } elsif ($k eq 'closer') {
        my $last = pop @stack;
        die "too many closing brackets" unless @stack;
+```
+
+## Processed commit diffs
+```sh
+$ ni git://. r1 fA \< fE \<
+src/boot-interpreter.pl 82:82:-       push @tags, $+{opener};
+src/boot-interpreter.pl 83:82:+       push @tags, $+{opener} =~ s/.$//r;
 ```
 
 ## Commit trees

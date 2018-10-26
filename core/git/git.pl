@@ -20,7 +20,7 @@ defresource 'gitcommit',
     my $pathref = $_[1];
     soproc {
       print join("\t", map "$_://$pathref",
-                 qw/ gitcommitmeta githistory gitdiff gittree /), "\n";
+                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff /), "\n";
     };
   };
 
@@ -55,6 +55,39 @@ defresource 'gitdiff',
       unshift @refs, $parents[0];
     }
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
+  };
+
+defresource 'gitpdiff',
+  read => q{
+    my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
+    my @refs          = split /\.\./, $refs, 2;
+    $path = git_dir $path;
+    if (@refs < 2)
+    {
+      my $parent_cmd = shell_quote git => "--git-dir=$path",
+                         "show", "--format=%P", "-s", $refs[0];
+      my @parents = grep length, split /\s+/, `$parent_cmd`;
+      unshift @refs, $parents[0];
+    }
+    soproc
+    {
+      my $gd = soproc {sh
+        shell_quote git => "--git-dir=$path", "diff", "-U0", @refs};
+      my ($file, $lline, $rline) = (undef, 0, 0);
+      while (<$gd>)
+      {
+        $file = $1, next if /^--- a\/(.*)/;
+        if (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
+        {
+          ($lline, $rline) = ($1, $2);
+          while (defined($_ = <$gd>) && /^([-+])/)
+          {
+            print join"\t", $file, "$lline:$rline:$1", substr $_, 1;
+            $1 eq "-" ? ++$lline : ++$rline;
+          }
+        }
+      }
+    };
   };
 
 # Tree/blob objects: behave just like directories/files normally

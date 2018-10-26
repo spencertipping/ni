@@ -6876,7 +6876,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-81 core/git/git.pl
+114 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6899,7 +6899,7 @@ defresource 'gitcommit',
     my $pathref = $_[1];
     soproc {
       print join("\t", map "$_://$pathref",
-                 qw/ gitcommitmeta githistory gitdiff gittree /), "\n";
+                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff /), "\n";
     };
   };
 
@@ -6934,6 +6934,39 @@ defresource 'gitdiff',
       unshift @refs, $parents[0];
     }
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
+  };
+
+defresource 'gitpdiff',
+  read => q{
+    my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
+    my @refs          = split /\.\./, $refs, 2;
+    $path = git_dir $path;
+    if (@refs < 2)
+    {
+      my $parent_cmd = shell_quote git => "--git-dir=$path",
+                         "show", "--format=%P", "-s", $refs[0];
+      my @parents = grep length, split /\s+/, `$parent_cmd`;
+      unshift @refs, $parents[0];
+    }
+    soproc
+    {
+      my $gd = soproc {sh
+        shell_quote git => "--git-dir=$path", "diff", "-U0", @refs};
+      my ($file, $lline, $rline) = (undef, 0, 0);
+      while (<$gd>)
+      {
+        $file = $1, next if /^--- a\/(.*)/;
+        if (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
+        {
+          ($lline, $rline) = ($1, $2);
+          while (defined($_ = <$gd>) && /^([-+])/)
+          {
+            print join"\t", $file, "$lline:$rline:$1", substr $_, 1;
+            $1 eq "-" ? ++$lline : ++$rline;
+          }
+        }
+      }
+    };
   };
 
 # Tree/blob objects: behave just like directories/files normally
@@ -18139,7 +18172,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-107 doc/git.md
+114 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18167,7 +18200,7 @@ $ ni git://. r1 fA
 gitcommit://.:refs/heads/archive/concatenative
 
 $ ni git://. r1 fA \<
-gitcommitmeta://.:refs/heads/archive/concatenative      githistory://.:refs/heads/archive/concatenative gitdiff://.:refs/heads/archive/concatenative    gittree://.:refs/heads/archive/concatenative
+gitcommitmeta://.:refs/heads/archive/concatenative githistory://.:refs/heads/archive/concatenative gitdiff://.:refs/heads/archive/concatenative gittree://.:refs/heads/archive/concatenative gitpdiff://.:refs/heads/archive/concatenative
 ```
 
 ## Commit metadata
@@ -18217,6 +18250,13 @@ index cea0535..e21e314 100644
      } elsif ($k eq 'closer') {
        my $last = pop @stack;
        die "too many closing brackets" unless @stack;
+```
+
+## Processed commit diffs
+```sh
+$ ni git://. r1 fA \< fE \<
+src/boot-interpreter.pl 82:82:-       push @tags, $+{opener};
+src/boot-interpreter.pl 83:82:+       push @tags, $+{opener} =~ s/.$//r;
 ```
 
 ## Commit trees
