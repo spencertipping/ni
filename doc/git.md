@@ -48,11 +48,11 @@ $ ni git://. r1 fA \< fB
 githistory://.:refs/heads/archive/concatenative
 
 $ ni git://. r1 fA \< fB \<
-gitcommit://.:6971535d4edc37a28740fccd8a3f09a6158cba29  Spencer Tipping 1427636233      Fixed a parse bug
-gitcommit://.:ddfafe9307ca18cd059ed8efa1d3cfdbe98a0ffe  Spencer Tipping 1427377653      Preliminary tag support for bootstrap interpreter
-gitcommit://.:d360dfe6c6183bdaca0552a1a49a3631e955b312  Spencer Tipping 1427377113      Resolved the problem
-gitcommit://.:226c1b8d27fc02129981d0f73535f3e69797c8af  Spencer Tipping 1427293623      Minor changes, still thinking about the untyped-data problem. No great ideas yet apart from adding value metadata (which seems wrong).
-gitcommit://.:c062e734d23ece6b3137354af30abc3da7320d2a  Spencer Tipping 1427289277      Hrm, untyped
+gitcommit://.:6971535d4edc37a28740fccd8a3f09a6158cba29  spencer@spencertipping.com      1427636233      Fixed a parse bug
+gitcommit://.:ddfafe9307ca18cd059ed8efa1d3cfdbe98a0ffe  spencer@spencertipping.com      1427377653      Preliminary tag support for bootstrap interpreter
+gitcommit://.:d360dfe6c6183bdaca0552a1a49a3631e955b312  spencer@spencertipping.com      1427377113      Resolved the problem
+gitcommit://.:226c1b8d27fc02129981d0f73535f3e69797c8af  spencer@spencertipping.com      1427293623      Minor changes, still thinking about the untyped-data problem. No great ideas yet apart from adding value metadata (which seems wrong).
+gitcommit://.:c062e734d23ece6b3137354af30abc3da7320d2a  spencer@spencertipping.com      1427289277      Hrm, untyped
 ...
 ```
 

@@ -39,7 +39,7 @@ defresource 'githistory',
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
-             "--format=gitcommit://$outpath:%H\t%an\t%at\t%s", $ref};
+             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
   };
 
 defresource 'gitdiff',
