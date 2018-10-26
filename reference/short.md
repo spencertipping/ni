@@ -1926,7 +1926,7 @@
 # SHORT OPERATOR /W<
 
 ## SYNTAX
-	'' -> {file_prepend_name_read_op}
+	<generic_code>? -> {file_prepend_name_read_op $_}
 
 # SHORT OPERATOR /W>
 

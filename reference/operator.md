@@ -400,10 +400,12 @@
 ## IMPLEMENTATION
 	
 	  my $file;
+	  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
+	                                : sub {shift};
 	  while (defined($file = <STDIN>))
 	  {
 	    chomp $file;
-	    my $fh = soproc {scat $file};
+	    my $fh = soproc {scat &$transform($file)};
 	    print "$file\t$_" while <$fh>;
 	    close $fh;
 	    $fh->await;
