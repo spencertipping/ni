@@ -11324,7 +11324,7 @@ tutorial.md
 visual.md
 warnings.md
 wkt.md
-877 doc/ni_by_example_1.md
+879 doc/ni_by_example_1.md
 # `ni` by Example, Chapter 1 (beta release)
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
@@ -11791,12 +11791,14 @@ and	all	right
 
 To select all data between two columns, inclusive, use a dash. ni defaults to
 using `cut` to process column selections when possible, which normally produces
-identical output to its Perl-hosted colum selector; the only difference is when
-the input has fewer columns than you're selecting. In that case `cut` will fail
-to append blanks for the columns you selected, resulting in a ragged right edge.
+identical output to its Perl-hosted colum selector; the only difference is on
+most platforms when the input has fewer columns than you're selecting. In that
+case `cut` will fail to append blanks for the columns you selected, resulting in
+a ragged right edge.
 
 You can force ni to disallow `cut` for a specific operator by prepending a `^{}`
-configuration block with the `col/disallow-cut` option:
+configuration block with the `col/disallow-cut` option. This option is enabled
+here because the code below is run as a cross-platform unit test.
 
 ```bash
 $ ni i"this is how we do it" i"it's friday night" \
@@ -18655,7 +18657,7 @@ $ ni //ni FW Yr10
 `X` inverts `Y` exactly:
 
 ```bash
-$ ni //ni FW fABCD Y X r10
+$ ni //ni FW fABCD Y X r10 p's/\t+$//; $_'
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
@@ -19657,7 +19659,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-348 doc/row.md
+350 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -19899,7 +19901,9 @@ Columns can be suffixed with `g`, `n`, and/or `-` modifiers to modify how they
 are sorted (these behave as described for `sort`'s `-k` option), and ni prefers
 this interpretation:
 
-```bash
+```sh
+# NB: not a unit test because g doesn't always produce the same ordering for
+# numeric inputs (it depends on the locale).
 $ ni data oBg r4                # 'g' is a modifier of B, not another sort
 11	-0.999990206550703	2.39789527279837
 55	-0.99975517335862	4.00733318523247

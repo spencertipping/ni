@@ -1204,7 +1204,7 @@ lazytest_case 'ni //ni FW Yr10
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=39
-lazytest_case 'ni //ni FW fABCD Y X r10
+lazytest_case 'ni //ni FW fABCD Y X r10 p'\''s/\t+$//; $_'\''
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env
 	ni	is_lib	caller
@@ -1671,7 +1671,7 @@ it's
 and	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=475
+lazytest_line=477
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" \
      i"and I feel all right" FS ^{col/disallow-cut=1} fB-E
 ' 3<<'LAZYTEST_EOF'
@@ -1680,7 +1680,7 @@ friday	night
 I	feel	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=485
+lazytest_line=487
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" \
      i"and I feel all right" FS fCBAD
 ' 3<<'LAZYTEST_EOF'
@@ -1689,7 +1689,7 @@ night	friday	it's
 feel	I	and	all
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=495
+lazytest_line=497
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" \
      i"and I feel all right" FS f#2#1#0#3
 ' 3<<'LAZYTEST_EOF'
@@ -1698,7 +1698,7 @@ night	friday	it's
 feel	I	and	all
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=505
+lazytest_line=507
 lazytest_case 'ni i"this is how we do it" i"it'\''s friday night" \
      i"and I feel all right" FS fA,#3.
 ' 3<<'LAZYTEST_EOF'
@@ -1707,7 +1707,7 @@ it's
 and	all	right
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=521
+lazytest_line=523
 lazytest_case 'ni i"Ain'\''t nobody dope as me" \
      i"I'\''m dressed so fresh, so clean" \
      i"So fresh and so clean, clean" FS
@@ -1717,7 +1717,7 @@ I'm	dressed	so	fresh,	so	clean
 So	fresh	and	so	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=532
+lazytest_line=534
 lazytest_case 'ni i"Ain'\''t nobody dope as me" \
      i"I'\''m dressed so fresh, so clean" \
      i"So fresh and so clean, clean" FS x
@@ -1727,7 +1727,7 @@ dressed	I'm	so	fresh,	so	clean
 fresh	So	and	so	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=543
+lazytest_line=545
 lazytest_case 'ni i"Ain'\''t nobody dope as me" \
      i"I'\''m dressed so fresh, so clean" \
      i"So fresh and so clean, clean" FS xD
@@ -1737,7 +1737,7 @@ fresh,	dressed	so	I'm	so	clean
 so	fresh	and	So	clean,	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=554
+lazytest_line=556
 lazytest_case 'ni i"Ain'\''t nobody dope as me" \
      i"I'\''m dressed so fresh, so clean" \
      i"So fresh and so clean, clean" FS xEB
@@ -1747,7 +1747,7 @@ so	dressed	so	fresh,	I'm	clean
 clean,	fresh	and	so	So	clean
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=571
+lazytest_line=573
 lazytest_case 'ni ib ia ic g
 ' 3<<'LAZYTEST_EOF'
 a
@@ -1755,7 +1755,7 @@ b
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=580
+lazytest_line=582
 lazytest_case 'ni ib ia ic gA-
 ' 3<<'LAZYTEST_EOF'
 c
@@ -1763,7 +1763,7 @@ b
 a
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=589
+lazytest_line=591
 lazytest_case 'ni i10 i5 i0.3 gAn
 ' 3<<'LAZYTEST_EOF'
 0.3
@@ -1771,7 +1771,7 @@ lazytest_case 'ni i10 i5 i0.3 gAn
 10
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=599
+lazytest_line=601
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] gABn
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1783,7 +1783,7 @@ c	4
 c	5
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=612
+lazytest_line=614
 lazytest_case 'ni i[b 0] i[b 4] i[a 2] i[a 1] i[c 4] i[c 0] i[a 0] gBnA
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1795,7 +1795,7 @@ b	4
 c	4
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=627
+lazytest_line=629
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] oB
 ' 3<<'LAZYTEST_EOF'
 a	0
@@ -1807,7 +1807,7 @@ c	5
 b	6
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=638
+lazytest_line=640
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] OB
 ' 3<<'LAZYTEST_EOF'
 b	6
@@ -1819,7 +1819,7 @@ a	1
 a	0
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=653
+lazytest_line=655
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgu
 ' 3<<'LAZYTEST_EOF'
 a
@@ -1827,7 +1827,7 @@ b
 c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=663
+lazytest_line=665
 lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
 ' 3<<'LAZYTEST_EOF'
 3	a
@@ -1835,7 +1835,7 @@ lazytest_case 'ni i[b 6] i[b 3] i[a 2] i[a 1] i[c 4] i[c 5] i[a 0] fAgc
 2	c
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=679
+lazytest_line=681
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] \
      i[q qa qat] i[q qu quux] i[b ba bake] \
      i[u ub uber] gA \>tmp \<
@@ -1849,7 +1849,7 @@ q	qu	quux
 u	ub	uber
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=694
+lazytest_line=696
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] \
      i[q qa qat] i[q qu quux] i[b ba bake] \
      i[u ub uber] gA \>tmp \< gB-
@@ -1863,7 +1863,7 @@ b	ba	bar
 b	ba	baz
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=709
+lazytest_line=711
 lazytest_case 'ni i[b ba bar] i[b bi bif] i[b ba baz] \
      i[q qa qat] i[q qu quux] i[b ba bake] \
      i[u ub uber] gA \>tmp \< ggAB-
@@ -1877,7 +1877,7 @@ q	qa	qat
 u	ub	uber
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=747
+lazytest_line=749
 lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 ' 3<<'LAZYTEST_EOF'
 foo	bar	mine
@@ -1887,7 +1887,7 @@ this	yes	OK
 this	yes	yipes
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=758
+lazytest_line=760
 lazytest_case 'ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
   jAB[ i[M N hi] i[X Y bye] ]
 ' 3<<'LAZYTEST_EOF'
@@ -1896,7 +1896,7 @@ M	N	bar	hi
 X	Y	cat	bye
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=774
+lazytest_line=776
 lazytest_case 'ni i[foo bar] i[foo car] i[that no] i[this yes] i[foo dar] \
      J[ i[this yipes] i[this OK] i[foo mine] i[not here] ]
 ' 3<<'LAZYTEST_EOF'
@@ -1907,14 +1907,14 @@ this	yes	OK
 foo	dar	mine
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=795
+lazytest_line=797
 lazytest_case 'ni i[one_column] i[two columns] i[three columns here] rB
 ' 3<<'LAZYTEST_EOF'
 two	columns
 three	columns	here
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=805
+lazytest_line=807
 lazytest_case 'ni i[one_column] i[two columns] i[three columns here] \
      riA[ione_column ithree]
 ' 3<<'LAZYTEST_EOF'
@@ -1922,7 +1922,7 @@ one_column
 three	columns	here
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=816
+lazytest_line=818
 lazytest_case 'ni n500 r/22/
 ' 3<<'LAZYTEST_EOF'
 22
@@ -1941,7 +1941,7 @@ lazytest_case 'ni n500 r/22/
 422
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=836
+lazytest_line=838
 lazytest_case 'ni n1000 r-500 r'\''/^(\d)\1+$/'\''
 ' 3<<'LAZYTEST_EOF'
 555
@@ -1951,7 +1951,7 @@ lazytest_case 'ni n1000 r-500 r'\''/^(\d)\1+$/'\''
 999
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_1.md'
-lazytest_line=859
+lazytest_line=861
 lazytest_case 'ni --explain n10 \>ten.txt \<
 ' 3<<'LAZYTEST_EOF'
 ["n",1,11]
@@ -4302,25 +4302,7 @@ lazytest_case 'ni data oBr4
 80	-0.993888653923375	4.38202663467388
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=243
-lazytest_case 'ni data oBg r4                # '\''g'\'' is a modifier of B, not another sort
-' 3<<'LAZYTEST_EOF'
-11	-0.999990206550703	2.39789527279837
-55	-0.99975517335862	4.00733318523247
-99	-0.999206834186354	4.59511985013459
-80	-0.993888653923375	4.38202663467388
-LAZYTEST_EOF
-lazytest_file='doc/row.md'
-lazytest_line=248
-lazytest_case 'ni data oB g r4               # '\''g'\'' is a sorting operator
-' 3<<'LAZYTEST_EOF'
-1	0.841470984807897	0
-10	-0.54402111088937	2.30258509299405
-100	-0.506365641109759	4.60517018598809
-11	-0.999990206550703	2.39789527279837
-LAZYTEST_EOF
-lazytest_file='doc/row.md'
-lazytest_line=260
+lazytest_line=262
 lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB
 ' 3<<'LAZYTEST_EOF'
 3	bar
@@ -4332,7 +4314,7 @@ lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB
 4	uber
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=274
+lazytest_line=276
 lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
 ' 3<<'LAZYTEST_EOF'
 3	foo
@@ -4344,7 +4326,7 @@ lazytest_case 'ni i{foo,bar,bif,baz,quux,uber,bake} p'\''r length, a'\'' ggAB-
 4	bake
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=282
+lazytest_line=284
 lazytest_case 'ni n10p'\''r "a", a'\'' ggABn- r4
 ' 3<<'LAZYTEST_EOF'
 a	10
@@ -4353,7 +4335,7 @@ a	8
 a	7
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=295
+lazytest_line=297
 lazytest_case 'ni i[who let the dogs out who who who] Z1 c # unsorted count
 ' 3<<'LAZYTEST_EOF'
 1	who
@@ -4364,7 +4346,7 @@ lazytest_case 'ni i[who let the dogs out who who who] Z1 c # unsorted count
 3	who
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=305
+lazytest_line=307
 lazytest_case 'ni  i[who let the dogs out who who who] Z1 gc # sort first to group words
 ' 3<<'LAZYTEST_EOF'
 1	dogs
@@ -4374,7 +4356,7 @@ lazytest_case 'ni  i[who let the dogs out who who who] Z1 gc # sort first to gro
 4	who
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=314
+lazytest_line=316
 lazytest_case 'ni i[who let the dogs out who who who] Z1 gcO # by descending count
 ' 3<<'LAZYTEST_EOF'
 4	who
@@ -4384,7 +4366,7 @@ lazytest_case 'ni i[who let the dogs out who who who] Z1 gcO # by descending cou
 1	dogs
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=326
+lazytest_line=328
 lazytest_case 'ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
      j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
 ' 3<<'LAZYTEST_EOF'
@@ -4395,7 +4377,7 @@ this	yes	OK
 this	yes	yipes
 LAZYTEST_EOF
 lazytest_file='doc/row.md'
-lazytest_line=338
+lazytest_line=340
 lazytest_case 'ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
      jAB[ i[M N hi] i[X Y bye] ]
 ' 3<<'LAZYTEST_EOF'
