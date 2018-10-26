@@ -18657,7 +18657,7 @@ $ ni //ni FW Yr10
 `X` inverts `Y` exactly:
 
 ```bash
-$ ni //ni FW fABCD Y X r10 p's/\t+$//; $_'
+$ ni //ni FW fABCD Y X r10 p's/\t+$//mg; $_'
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
