@@ -4,6 +4,7 @@ services:
 notifications:
   webhooks: https://dev.spencertipping.com/hooks/8TSfdovkfELZ9mP8d/Wui8arE5N9EnKvykNoo7ieCxQbxz9p7MDXLPuqSZeuJnTgbK
 before_install:
+- docker pull spencertipping/ni-env-dev-arch
 - docker pull spencertipping/ni-env-dev-alpine
 - docker pull spencertipping/ni-env-dev-centos-6
 - docker pull spencertipping/ni-env-dev-debian-wheezy
@@ -13,6 +14,7 @@ before_install:
 - docker pull spencertipping/ni-env-dev-ubuntu-16.04-p3
 - docker pull spencertipping/ni-env-dev-ubuntu-18.04
 script:
+- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-arch ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-alpine ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-centos-6 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-debian-wheezy ./test --travis

@@ -239,7 +239,9 @@ Columns can be suffixed with `g`, `n`, and/or `-` modifiers to modify how they
 are sorted (these behave as described for `sort`'s `-k` option), and ni prefers
 this interpretation:
 
-```bash
+```sh
+# NB: not a unit test because g doesn't always produce the same ordering for
+# numeric inputs (it depends on the locale).
 $ ni data oBg r4                # 'g' is a modifier of B, not another sort
 11	-0.999990206550703	2.39789527279837
 55	-0.99975517335862	4.00733318523247

@@ -1,3 +1,7 @@
+arch:
+  image: spencertipping/ni-env-dev-arch
+  script:
+    - ./test --ci
 alpine:
   image: spencertipping/ni-env-dev-alpine
   script:

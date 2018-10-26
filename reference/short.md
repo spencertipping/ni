@@ -1311,6 +1311,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'cc_opts'}
 
+# SHORT OPERATOR /$col/disallow-cut
+
+## SYNTAX
+	'' -> {conf_get_op 'col/disallow-cut'}
+
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX

@@ -367,6 +367,7 @@
 	| '$Htulk' '' -> {conf_get_op 'Htulk'}
 	| '$cc' '' -> {conf_get_op 'cc'}
 	| '$cc_opts' '' -> {conf_get_op 'cc_opts'}
+	| '$col/disallow-cut' '' -> {conf_get_op 'col/disallow-cut'}
 	| '$hadoop/jobconf' '' -> {conf_get_op 'hadoop/jobconf'}
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}

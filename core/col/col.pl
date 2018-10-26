@@ -11,6 +11,8 @@ sub col_cut {
   exec 'cut', '-f', join ',', $rest ? (@fs, "$floor-") : @fs;
 }
 
+defconfenv 'col/disallow-cut', NI_COL_DISALLOW_CUT => 0;
+
 use constant cols_gen =>
   gen q{@_ = split /\t/, $_, %limit; print join "\t", @_[%is]};
 
@@ -19,7 +21,7 @@ defoperator cols => q{
   my $asc = join('', @cs) eq join('', sort {$a <=> $b} @cs);
   my %dup; ++$dup{$_} for @cs;
   return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
-    if $asc && !grep $_ > 1, values %dup;
+    if !conf "col/disallow-cut" && $asc && !grep $_ > 1, values %dup;
   exec 'perl', '-lne',
        cols_gen->(limit => $floor + 1,
                   is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);

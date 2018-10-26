@@ -176,7 +176,7 @@
 	  my $asc = join('', @cs) eq join('', sort {$a <=> $b} @cs);
 	  my %dup; ++$dup{$_} for @cs;
 	  return col_cut $floor + 1, scalar(grep $_ == -1, @cs), map $_ + 1, @cs
-	    if $asc && !grep $_ > 1, values %dup;
+	    if !conf "col/disallow-cut" && $asc && !grep $_ > 1, values %dup;
 	  exec 'perl', '-lne',
 	       cols_gen->(limit => $floor + 1,
 	                  is    => join ',', map $_ == -1 ? "$floor..\$#_" : $_, @cs);

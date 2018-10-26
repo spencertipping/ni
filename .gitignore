@@ -3,3 +3,4 @@
 dev/docker
 /gen
 test.log
+.test-cancel
