@@ -465,13 +465,13 @@ and	all	right
 To select all data between two columns, inclusive, use a dash. ni defaults to
 using `cut` to process column selections when possible, which normally produces
 identical output to its Perl-hosted colum selector; the only difference is on
-some platforms (currently only Arch Linux that I know of) when the input has
-fewer columns than you're selecting. In that case `cut` will fail to append
-blanks for the columns you selected, resulting in a ragged right edge.
+most platforms when the input has fewer columns than you're selecting. In that
+case `cut` will fail to append blanks for the columns you selected, resulting in
+a ragged right edge.
 
 You can force ni to disallow `cut` for a specific operator by prepending a `^{}`
-configuration block with the `col/disallow-cut` option. Again, this should be
-necessary only on a few platforms.
+configuration block with the `col/disallow-cut` option. This option is enabled
+here because the code below is run as a cross-platform unit test.
 
 ```bash
 $ ni i"this is how we do it" i"it's friday night" \
