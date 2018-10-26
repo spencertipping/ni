@@ -1204,14 +1204,14 @@ lazytest_case 'ni //ni FW Yr10
 LAZYTEST_EOF
 lazytest_file='doc/matrix.md'
 lazytest_line=39
-lazytest_case 'ni //ni FW fABCD Y X r10 p'\''s/\t+$//mg; $_'\''
+lazytest_case 'ni //ni FW ^{col/disallow-cut=1} fABCD Y X r10
 ' 3<<'LAZYTEST_EOF'
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
 Copyright	c	2016	Spencer
-
+			
 Permission	is	hereby	granted
 of	this	software	and
 in	the	Software	without

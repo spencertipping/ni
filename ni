@@ -18657,13 +18657,13 @@ $ ni //ni FW Yr10
 `X` inverts `Y` exactly:
 
 ```bash
-$ ni //ni FW fABCD Y X r10 p's/\t+$//mg; $_'
+$ ni //ni FW ^{col/disallow-cut=1} fABCD Y X r10
 	usr	bin	env
 	ni	is_lib	caller
 	ni	self	license
 ni	https	github	com
 Copyright	c	2016	Spencer
-
+			
 Permission	is	hereby	granted
 of	this	software	and
 in	the	Software	without
