@@ -6239,7 +6239,7 @@ sub perl_closure($$) {"use constant $_[0] => unpack u => q|" . perl_quote($_[1])
 sub perl_closures()
 {join "\n", map perl_closure($_, closure_data $_), closure_keys}
 
-sub perl_expand_begin($) {sr $_[0], qr/^\^/, 'BEGIN'}
+sub perl_expand_begin($) {sr $_[0], qr/^\s*\^/, 'BEGIN'}
 
 sub stdin_to_perl($) {
   eval {cdup2 0, 3; POSIX::close 0};
