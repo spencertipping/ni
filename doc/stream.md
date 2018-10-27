@@ -535,6 +535,7 @@ given checkpoint. The checkpoint will be recomputed if any dependency is newer
 than the output. For example:
 
 ```bash
+$ rm -f numbers sum
 $ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
 5050
 $ sleep 2

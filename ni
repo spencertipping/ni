@@ -20343,7 +20343,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-545 doc/stream.md
+546 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -20881,6 +20881,7 @@ given checkpoint. The checkpoint will be recomputed if any dependency is newer
 than the output. For example:
 
 ```bash
+$ rm -f numbers sum
 $ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
 5050
 $ sleep 2
