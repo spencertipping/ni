@@ -16,7 +16,7 @@ sub checkpoint_create($$) {
 sub checkpoint_needs_regen($$)
 {
   my ($f, $deps) = @_;
-  return 0 unless ref $deps;
+  return 0 unless defined $deps;
   my $f_mtime = (stat $f)[9];
   grep -e && (stat)[9] > $f_mtime, @$deps;
 }
