@@ -19,7 +19,7 @@ sub checkpoint_needs_regen($$)
   return 1 unless -r $f;
   return 0 unless defined $deps;
   my $f_mtime = (stat $f)[9];
-  grep -e && (stat)[9] > $f_mtime, @$deps;
+  grep !-e || (stat)[9] > $f_mtime, @$deps;
 }
 
 defoperator checkpoint => q{
