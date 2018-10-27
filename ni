@@ -6893,7 +6893,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-132 core/git/git.pl
+135 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6990,8 +6990,11 @@ defresource 'gitpdiff',
       my ($file, $lline, $rline) = (undef, 0, 0);
       while (<$gd>)
       {
-        $file = $1, next if /^--- a\/(.*)/ || /^\+\+\+ b\/(.*)/;
-        if (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
+        next unless /^index/;
+        $file = $1 if <$gd> =~ /^--- a\/(.*)/;
+        $file = $1 if <$gd> =~ /^\+\+\+ b\/(.*)/;
+        last unless defined($_ = <$gd>);
+        while (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
         {
           ($lline, $rline) = ($1, $2);
           while (defined($_ = <$gd>) && /^([-+])/)

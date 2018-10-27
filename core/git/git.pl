@@ -94,8 +94,11 @@ defresource 'gitpdiff',
       my ($file, $lline, $rline) = (undef, 0, 0);
       while (<$gd>)
       {
-        $file = $1, next if /^--- a\/(.*)/ || /^\+\+\+ b\/(.*)/;
-        if (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
+        next unless /^index/;
+        $file = $1 if <$gd> =~ /^--- a\/(.*)/;
+        $file = $1 if <$gd> =~ /^\+\+\+ b\/(.*)/;
+        last unless defined($_ = <$gd>);
+        while (/^\@\@ -(\d+)(?:,\d+)? \+(\d+)/)
         {
           ($lline, $rline) = ($1, $2);
           while (defined($_ = <$gd>) && /^([-+])/)
