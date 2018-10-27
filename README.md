@@ -124,9 +124,22 @@ worker nodes.
 ```sh
 $ ni git://.                            # show all branches/tags
 $ ni githistory://.:develop             # full history of develop branch
+$ ni githistory://.:develop::a/file     # full history of a file on develop
 $ ni gittree://.:develop                # file listing for develop branch
+$ ni gittree://.:develop::folder        # directory listing at develop revision
 $ ni gitblob://.:18891afd4              # file contents
+$ ni gitblob://.:develop::ni            # file contents of 'ni' on develop
+$ ni gitdiff://.:master..develop        # regular diff
 $ ni gitpdiff://.:develop               # processed diff
+$ ni gitpdiff://.:develop::path/path    # processed diff for a specific path
+```
+
+### `ni` is `sqlite3`
+```sh
+$ ni sqlite:///path/to/file.db          # list tables in database
+$ ni sqlitet:///path/to/file.db:table   # output all table data as TSV
+$ ni sqlites:///path/to/file.db:table   # output table schema as SQL
+$ ni sqliteq:///path/to/file.db:'sql'   # output SQL results as TSV
 ```
 
 ### `ni` is [`unzip` and `tar -x/-t`, but better](doc/ni_by_example_3.md#compressed-archive-input)

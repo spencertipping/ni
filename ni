@@ -7245,7 +7245,7 @@ defresource 'sqlite',
 defresource 'sqlites',
   read => q{
     my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
-    soproc { 
+    soproc {
       sh shell_quote conf"sqlite", "file:$db?immutable=1",
                      "select sql from sqlite_master where name='$table'" };
   };
