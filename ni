@@ -3710,7 +3710,7 @@ defoperator destructure => q{
 defshort '/D', pmap q{destructure_op $_}, generic_code;
 1 core/checkpoint/lib
 checkpoint.pl
-32 core/checkpoint/checkpoint.pl
+47 core/checkpoint/checkpoint.pl
 # Checkpoint files.
 # You can break a long pipeline into a series of smaller files using
 # checkpointing, whose operator is `:`. The idea is to cache intermediate
@@ -3726,23 +3726,38 @@ sub checkpoint_create($$) {
   rename $name, $_[0];
 }
 
+sub checkpoint_needs_regen($$)
+{
+  my ($f, $deps) = @_;
+  return 0 unless ref $deps;
+  my $f_mtime = (stat $f)[9];
+  grep -e && (stat)[9] > $f_mtime, @$deps;
+}
+
 defoperator checkpoint => q{
-  my ($file, $generator) = @_;
+  my ($file, $deps, $generator) = @_;
   sio;
-  checkpoint_create $file, $generator unless -r $file;
+  checkpoint_create $file, $generator
+    if ! -r $file || checkpoint_needs_regen($file, $deps);
   scat $file;
 };
 
 defmetaoperator inline_checkpoint => q{
   my ($args, $left, $right) = @_;
-  my ($file) = @$args;
-  ([], [checkpoint_op($file, $left), @$right]);
+  my ($file, $deps) = @$args;
+  ([], [checkpoint_op($file, $deps, $left), @$right]);
 };
 
 defoperator identity => q{sio};
 
-defshort '/:', pmap q{$_ ? inline_checkpoint_op $_
-                         : identity_op}, popt pc nefilename;
+BEGIN
+{
+  defparseralias nefilelist => palt super_brackets, multiword_ws, multiword;
+}
+
+defshort '/:', pmap q{$_ ? inline_checkpoint_op @$_
+                         : identity_op},
+               popt pseq pc nefilename, popt nefilelist;
 1 core/net/lib
 net.pl
 42 core/net/net.pl
@@ -20328,7 +20343,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-530 doc/stream.md
+545 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -20858,6 +20873,21 @@ $ ni n100000z :biglist r+5
 99998
 99999
 100000
+```
+
+## Checkpoint dependencies
+If you want a system like `make`, you can specify build dependencies for any
+given checkpoint. The checkpoint will be recomputed if any dependency is newer
+than the output. For example:
+
+```bash
+$ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+5050
+$ sleep 2
+$ ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+5050
+$ ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+1275
 ```
 46 doc/tutorial.md
 # ni tutorial

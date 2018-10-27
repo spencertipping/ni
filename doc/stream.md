@@ -528,3 +528,18 @@ $ ni n100000z :biglist r+5
 99999
 100000
 ```
+
+## Checkpoint dependencies
+If you want a system like `make`, you can specify build dependencies for any
+given checkpoint. The checkpoint will be recomputed if any dependency is newer
+than the output. For example:
+
+```bash
+$ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+5050
+$ sleep 2
+$ ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+5050
+$ ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+1275
+```

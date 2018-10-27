@@ -134,9 +134,10 @@
 
 ## IMPLEMENTATION
 	
-	  my ($file, $generator) = @_;
+	  my ($file, $deps, $generator) = @_;
 	  sio;
-	  checkpoint_create $file, $generator unless -r $file;
+	  checkpoint_create $file, $generator
+	    if ! -r $file || checkpoint_needs_regen($file, $deps);
 	  scat $file;
 
 # OPERATOR cleandos

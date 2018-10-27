@@ -1575,9 +1575,12 @@
 
 ## SYNTAX
 	(
-	  <nefilename>
-	  <empty>?
-	) -> {$$_[0]}? -> {$_ ? inline_checkpoint_op $_
+	  (
+	    <nefilename>
+	    <empty>?
+	  ) -> {$$_[0]}
+	  <nefilelist>?
+	)? -> {$_ ? inline_checkpoint_op @$_
 	                         : identity_op}
 
 # SHORT OPERATOR /::

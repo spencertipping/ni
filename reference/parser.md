@@ -451,9 +451,12 @@
 	| '//ni/perl_prefix' '' -> {perl_prefix_op}
 	| '1' '' -> {n_op 1, 2}
 	| ':' (
-	    <nefilename>
-	    <empty>?
-	  ) -> {$$_[0]}? -> {$_ ? inline_checkpoint_op $_
+	    (
+	      <nefilename>
+	      <empty>?
+	    ) -> {$$_[0]}
+	    <nefilelist>?
+	  )? -> {$_ ? inline_checkpoint_op @$_
 	                           : identity_op}
 	| '::' (
 	    (
@@ -1759,6 +1762,15 @@
 	  !/\]$/+
 	  /\]$/
 	) -> {$$_[1]}
+
+# PARSER nefilelist
+
+## DEFINITION
+	(
+	| <super_brackets>
+	| <multiword_ws>
+	| <multiword>
+	)
 
 # PARSER nefilename
 	The name of a possibly-nonexisting file

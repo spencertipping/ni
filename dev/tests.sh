@@ -5221,6 +5221,29 @@ lazytest_case 'ni n100000z :biglist r+5
 99999
 100000
 LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=538
+lazytest_case 'ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+' 3<<'LAZYTEST_EOF'
+5050
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=540
+lazytest_case 'sleep 2
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=541
+lazytest_case 'ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+' 3<<'LAZYTEST_EOF'
+5050
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=543
+lazytest_case 'ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+' 3<<'LAZYTEST_EOF'
+1275
+LAZYTEST_EOF
 lazytest_file='doc/warnings.md'
 lazytest_line=14
 lazytest_case 'ni n1000000 =\>not-a-million-things r5

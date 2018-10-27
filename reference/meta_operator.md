@@ -41,8 +41,8 @@
 ## IMPLEMENTATION
 	
 	  my ($args, $left, $right) = @_;
-	  my ($file) = @$args;
-	  ([], [checkpoint_op($file, $left), @$right]);
+	  my ($file, $deps) = @$args;
+	  ([], [checkpoint_op($file, $deps, $left), @$right]);
 
 # META OPERATOR memory_data_closure
 

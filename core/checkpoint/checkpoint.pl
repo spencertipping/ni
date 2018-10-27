@@ -13,20 +13,35 @@ sub checkpoint_create($$) {
   rename $name, $_[0];
 }
 
+sub checkpoint_needs_regen($$)
+{
+  my ($f, $deps) = @_;
+  return 0 unless ref $deps;
+  my $f_mtime = (stat $f)[9];
+  grep -e && (stat)[9] > $f_mtime, @$deps;
+}
+
 defoperator checkpoint => q{
-  my ($file, $generator) = @_;
+  my ($file, $deps, $generator) = @_;
   sio;
-  checkpoint_create $file, $generator unless -r $file;
+  checkpoint_create $file, $generator
+    if ! -r $file || checkpoint_needs_regen($file, $deps);
   scat $file;
 };
 
 defmetaoperator inline_checkpoint => q{
   my ($args, $left, $right) = @_;
-  my ($file) = @$args;
-  ([], [checkpoint_op($file, $left), @$right]);
+  my ($file, $deps) = @$args;
+  ([], [checkpoint_op($file, $deps, $left), @$right]);
 };
 
 defoperator identity => q{sio};
 
-defshort '/:', pmap q{$_ ? inline_checkpoint_op $_
-                         : identity_op}, popt pc nefilename;
+BEGIN
+{
+  defparseralias nefilelist => palt super_brackets, multiword_ws, multiword;
+}
+
+defshort '/:', pmap q{$_ ? inline_checkpoint_op @$_
+                         : identity_op},
+               popt pseq pc nefilename, popt nefilelist;
