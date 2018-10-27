@@ -18,8 +18,17 @@ defresource 'sqlite',
     soproc { sqlite_tsv
       "file:$db?immutable=1",
       "select 'sqlitet://$db:' || name, "
-           . "'sqliteq://$db:''select * from ' || name || ''''"
+           . "'sqlites://$db:' || name, "
+           . "'sqliteq://$db:''select * from ' || name || '''' "
       . "from sqlite_master where type='table' order by name" };
+  };
+
+defresource 'sqlites',
+  read => q{
+    my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
+    soproc {
+      sh shell_quote conf"sqlite", "file:$db?immutable=1",
+                     "select sql from sqlite_master where name='$table'" };
   };
 
 defresource 'sqlitet',

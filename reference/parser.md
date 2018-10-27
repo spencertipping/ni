@@ -44,6 +44,7 @@
 	  | ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
 	  | ''sqlite://' /.*/ -> {resource_quote_op "sqlite://$_"}
 	  | ''sqliteq://' /.*/ -> {resource_quote_op "sqliteq://$_"}
+	  | ''sqlites://' /.*/ -> {resource_quote_op "sqlites://$_"}
 	  | ''sqlitet://' /.*/ -> {resource_quote_op "sqlitet://$_"}
 	  | ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
 	  | ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
@@ -77,6 +78,7 @@
 	  | 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
 	  | 'sqlite://' /.*/ -> {resource_append_op "sqlite://$_"}
 	  | 'sqliteq://' /.*/ -> {resource_append_op "sqliteq://$_"}
+	  | 'sqlites://' /.*/ -> {resource_append_op "sqlites://$_"}
 	  | 'sqlitet://' /.*/ -> {resource_append_op "sqlitet://$_"}
 	  | 'tar://' /.*/ -> {resource_append_op "tar://$_"}
 	  | 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
@@ -1486,6 +1488,7 @@
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
 	| ''sqlite://' /.*/ -> {resource_quote_op "sqlite://$_"}
 	| ''sqliteq://' /.*/ -> {resource_quote_op "sqliteq://$_"}
+	| ''sqlites://' /.*/ -> {resource_quote_op "sqlites://$_"}
 	| ''sqlitet://' /.*/ -> {resource_quote_op "sqlitet://$_"}
 	| ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
 	| ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
@@ -1519,6 +1522,7 @@
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
 	| 'sqlite://' /.*/ -> {resource_append_op "sqlite://$_"}
 	| 'sqliteq://' /.*/ -> {resource_append_op "sqliteq://$_"}
+	| 'sqlites://' /.*/ -> {resource_append_op "sqlites://$_"}
 	| 'sqlitet://' /.*/ -> {resource_append_op "sqlitet://$_"}
 	| 'tar://' /.*/ -> {resource_append_op "tar://$_"}
 	| 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
