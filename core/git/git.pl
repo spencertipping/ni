@@ -62,7 +62,8 @@ defresource 'gitdiff',
     {
       my $parent_cmd = shell_quote git => "--git-dir=$path",
                          "show", "--format=%P", "-s", $refs[0];
-      my @parents = grep length, split /\s+/, `$parent_cmd`;
+      my @parents = grep length, split(/\s+/, `$parent_cmd`),
+                                 '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
       unshift @refs, $parents[0];
     }
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
@@ -77,7 +78,8 @@ defresource 'gitpdiff',
     {
       my $parent_cmd = shell_quote git => "--git-dir=$path",
                          "show", "--format=%P", "-s", $refs[0];
-      my @parents = grep length, split /\s+/, `$parent_cmd`;
+      my @parents = grep length, split(/\s+/, `$parent_cmd`),
+                                 '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
       unshift @refs, $parents[0];
     }
     soproc
