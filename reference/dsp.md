@@ -152,6 +152,9 @@
 	| ''https://' /.*/ -> {resource_quote_op "https://$_"}
 	| ''s3cmd://' /.*/ -> {resource_quote_op "s3cmd://$_"}
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
+	| ''sqlite://' /.*/ -> {resource_quote_op "sqlite://$_"}
+	| ''sqliteq://' /.*/ -> {resource_quote_op "sqliteq://$_"}
+	| ''sqlitet://' /.*/ -> {resource_quote_op "sqlitet://$_"}
 	| ''tar://' /.*/ -> {resource_quote_op "tar://$_"}
 	| ''tarentry://' /.*/ -> {resource_quote_op "tarentry://$_"}
 	| ''xlsx://' /.*/ -> {resource_quote_op "xlsx://$_"}
@@ -182,6 +185,9 @@
 	| 'https://' /.*/ -> {resource_append_op "https://$_"}
 	| 's3cmd://' /.*/ -> {resource_append_op "s3cmd://$_"}
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
+	| 'sqlite://' /.*/ -> {resource_append_op "sqlite://$_"}
+	| 'sqliteq://' /.*/ -> {resource_append_op "sqliteq://$_"}
+	| 'sqlitet://' /.*/ -> {resource_append_op "sqlitet://$_"}
 	| 'tar://' /.*/ -> {resource_append_op "tar://$_"}
 	| 'tarentry://' /.*/ -> {resource_append_op "tarentry://$_"}
 	| 'xlsx://' /.*/ -> {resource_append_op "xlsx://$_"}

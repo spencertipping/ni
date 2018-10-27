@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-57 core/boot/ni.map
+58 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -94,6 +94,7 @@ lib core/cell
 lib core/c
 lib core/git
 lib core/archive
+lib core/sqlite
 lib core/rb
 lib core/lisp
 lib core/sql
@@ -7212,6 +7213,46 @@ defresource 'xlsxsheet',
           $row[$i] = $is_shared ? $ss[$1] : $1;
         }
       } };
+  };
+1 core/sqlite/lib
+sqlite.pl
+37 core/sqlite/sqlite.pl
+# SQLite support via URI schemas
+
+defconfenv sqlite => NI_SQLITE => 'sqlite3';
+
+sub sqlite_tsv
+{
+  my ($db, $sql, @sqlite_opts) = @_;
+  sh join" | ", shell_quote(conf"sqlite", "-csv", "-separator", ",",
+                            @sqlite_opts, $db, $sql),
+                shell_quote("perl", "-e", $ni::operators{split_proper_csv});
+}
+
+# sqlite:///path/to/file.db
+# List all tables as sqlitet:// entries
+defresource 'sqlite',
+  read => q{
+    my $db = $_[1];
+    soproc { sqlite_tsv
+      "file:$db?immutable=1",
+      "select 'sqlitet://$db:' || name, "
+           . "'sqliteq://$db:''select * from ' || name || ''''"
+      . "from sqlite_master where type='table' order by name" };
+  };
+
+defresource 'sqlitet',
+  read => q{
+    my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
+    soproc { sqlite_tsv "file:$db?immutable=1",
+                        "select * from $table",
+                        "-header" };
+  };
+
+defresource 'sqliteq',
+  read => q{
+    my ($db, $sql) = $_[1] =~ /(.*):([^:]+)$/;
+    soproc { sqlite_tsv "file:$db?immutable=1", $sql, "-header" };
   };
 2 core/rb/lib
 prefix.rb

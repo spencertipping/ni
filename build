@@ -35,6 +35,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/c \
   core/git \
   core/archive \
+  core/sqlite \
   \
   core/rb \
   core/lisp \

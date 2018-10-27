@@ -1391,6 +1391,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'scale/obuf'}
 
+# SHORT OPERATOR /$sqlite
+
+## SYNTAX
+	'' -> {conf_get_op 'sqlite'}
+
 # SHORT OPERATOR /$tmpdir
 
 ## SYNTAX
