@@ -20,7 +20,8 @@ defresource 'gitcommit',
     my $pathref = $_[1];
     soproc {
       print join("\t", map "$_://$pathref",
-                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff /), "\n";
+                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
+                     gitnmhistory /), "\n";
     };
   };
 
@@ -39,6 +40,16 @@ defresource 'githistory',
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
+             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
+  };
+
+defresource 'gitnmhistory',
+  read => q{
+    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
+    $path = git_dir $path;
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {sh shell_quote
+      git => "--git-dir=$path", "log", "--no-merges",
              "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
   };
 

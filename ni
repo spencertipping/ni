@@ -6878,7 +6878,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-114 core/git/git.pl
+125 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6901,7 +6901,8 @@ defresource 'gitcommit',
     my $pathref = $_[1];
     soproc {
       print join("\t", map "$_://$pathref",
-                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff /), "\n";
+                 qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
+                     gitnmhistory /), "\n";
     };
   };
 
@@ -6920,6 +6921,16 @@ defresource 'githistory',
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
+             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
+  };
+
+defresource 'gitnmhistory',
+  read => q{
+    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
+    $path = git_dir $path;
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {sh shell_quote
+      git => "--git-dir=$path", "log", "--no-merges",
              "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
   };
 
@@ -18174,7 +18185,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-114 doc/git.md
+117 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18220,6 +18231,9 @@ Fixed a parse bug
 ```
 
 ## Commit history
+There are two variants of this URI scheme: `githistory://repo:ref` and
+`gitnmhistory://repo:ref`. `gitnmhistory` excludes merge commits.
+
 ```sh
 $ ni git://. r1 fA \< fB
 githistory://.:refs/heads/archive/concatenative

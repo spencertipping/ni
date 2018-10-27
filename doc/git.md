@@ -43,6 +43,9 @@ Fixed a parse bug
 ```
 
 ## Commit history
+There are two variants of this URI scheme: `githistory://repo:ref` and
+`gitnmhistory://repo:ref`. `gitnmhistory` excludes merge commits.
+
 ```sh
 $ ni git://. r1 fA \< fB
 githistory://.:refs/heads/archive/concatenative
