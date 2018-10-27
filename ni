@@ -3729,6 +3729,7 @@ sub checkpoint_create($$) {
 sub checkpoint_needs_regen($$)
 {
   my ($f, $deps) = @_;
+  return 1 unless -r $f;
   return 0 unless defined $deps;
   my $f_mtime = (stat $f)[9];
   grep -e && (stat)[9] > $f_mtime, @$deps;
@@ -3737,8 +3738,7 @@ sub checkpoint_needs_regen($$)
 defoperator checkpoint => q{
   my ($file, $deps, $generator) = @_;
   sio;
-  checkpoint_create $file, $generator
-    if ! -r $file || checkpoint_needs_regen($file, $deps);
+  checkpoint_create $file, $generator if checkpoint_needs_regen $file, $deps;
   scat $file;
 };
 
@@ -20343,7 +20343,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-546 doc/stream.md
+548 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -20882,12 +20882,14 @@ than the output. For example:
 
 ```bash
 $ rm -f numbers sum
-$ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+$ ni n100 :numbers ,s r+1 :sum          # generate numbers and sum
 5050
 $ sleep 2
-$ ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+$ ni n50 \>numbers
+numbers
+$ ni numbers ,s r+1 :sum                # no recalculation here
 5050
-$ ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+$ ni numbers ,s r+1 :sum[numbers]       # now we recalculate
 1275
 ```
 46 doc/tutorial.md

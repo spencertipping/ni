@@ -536,11 +536,13 @@ than the output. For example:
 
 ```bash
 $ rm -f numbers sum
-$ ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+$ ni n100 :numbers ,s r+1 :sum          # generate numbers and sum
 5050
 $ sleep 2
-$ ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+$ ni n50 \>numbers
+numbers
+$ ni numbers ,s r+1 :sum                # no recalculation here
 5050
-$ ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+$ ni numbers ,s r+1 :sum[numbers]       # now we recalculate
 1275
 ```

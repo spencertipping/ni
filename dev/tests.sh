@@ -5228,7 +5228,7 @@ lazytest_case 'rm -f numbers sum
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
 lazytest_line=539
-lazytest_case 'ni n100 :numbers ,s r+1 :sum              # generate numbers and sum
+lazytest_case 'ni n100 :numbers ,s r+1 :sum          # generate numbers and sum
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
@@ -5239,13 +5239,19 @@ lazytest_case 'sleep 2
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
 lazytest_line=542
-lazytest_case 'ni n50 \>numbers \< ,s r+1 :sum           # no recalculation of sum
+lazytest_case 'ni n50 \>numbers
+' 3<<'LAZYTEST_EOF'
+numbers
+LAZYTEST_EOF
+lazytest_file='doc/stream.md'
+lazytest_line=544
+lazytest_case 'ni numbers ,s r+1 :sum                # no recalculation here
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=544
-lazytest_case 'ni n50 \>numbers \< ,s r+1 :sum[numbers]  # now we recalculate
+lazytest_line=546
+lazytest_case 'ni numbers ,s r+1 :sum[numbers]       # now we recalculate
 ' 3<<'LAZYTEST_EOF'
 1275
 LAZYTEST_EOF
