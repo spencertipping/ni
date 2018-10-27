@@ -3,6 +3,14 @@
 
 sub git_dir($) { -d "$_[0]/.git" ? "$_[0]/.git" : $_[0] }
 
+sub git_parse_pathref($)
+{
+  my ($path, $ref, $extra) = shift =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/;
+  $path = git_dir $path;
+  (my $outpath = $path) =~ s/\/.git$//;
+  ($outpath, $path, $ref, $extra);
+}
+
 # Main entry point: repo -> branches/tags
 # git:///path/to/repo
 defresource 'git',
@@ -27,48 +35,33 @@ defresource 'gitcommit',
 
 defresource 'gitcommitmeta',
   read => q{
-    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
-    $path = git_dir $path;
+    my (undef, $path, $ref, undef) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "cat-file", "commit", $ref};
   };
 
 defresource 'githistory',
   read => q{
-    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
-    $path = git_dir $path;
-    (my $outpath = $path) =~ s/\/\.git$//;
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
-             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
+             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref,
+             (defined $file ? ("--", $file) : ())};
   };
 
 defresource 'gitnmhistory',
   read => q{
-    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
-    $path = git_dir $path;
-    (my $outpath = $path) =~ s/\/\.git$//;
-    soproc {sh shell_quote
-      git => "--git-dir=$path", "log", "--no-merges",
-             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
-  };
-
-defresource 'gitlog',
-  read => q{
-    my ($path, $ref, $file) = $_[1] =~ /([^:]+):([^:]+):(.*)$/;
-    $path = git_dir $path;
-    (my $outpath = $path) =~ s/\/\.git$//;
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "log", "--no-merges",
              "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref,
-             "--", $file};
+             (defined $file ? ("--", $file) : ())};
   };
 
 defresource 'gitdiff',
   read => q{
-    my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
-    my @refs          = split /\.\./, $refs, 2;
-    $path = git_dir $path;
+    my (undef, $path, $refs, $file) = git_parse_pathref $_[1];
+    my @refs = split /\.\./, $refs, 2;
     if (@refs < 2)
     {
       my $parent_cmd = shell_quote git => "--git-dir=$path",
@@ -77,14 +70,14 @@ defresource 'gitdiff',
                                  '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
       unshift @refs, $parents[0];
     }
-    soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs};
+    soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs,
+                                  (defined $file ? ("--", $file) : ())};
   };
 
 defresource 'gitpdiff',
   read => q{
-    my ($path, $refs) = $_[1] =~ /(.*):([^:]+)$/;
-    my @refs          = split /\.\./, $refs, 2;
-    $path = git_dir $path;
+    my (undef, $path, $refs, $file) = git_parse_pathref $_[1];
+    my @refs = split /\.\./, $refs, 2;
     if (@refs < 2)
     {
       my $parent_cmd = shell_quote git => "--git-dir=$path",
@@ -96,7 +89,8 @@ defresource 'gitpdiff',
     soproc
     {
       my $gd = soproc {sh
-        shell_quote git => "--git-dir=$path", "diff", "-U0", @refs};
+        shell_quote git => "--git-dir=$path", "diff", "-U0", @refs,
+                           (defined $file ? ("--", $file) : ())};
       my ($file, $lline, $rline) = (undef, 0, 0);
       while (<$gd>)
       {
@@ -117,11 +111,10 @@ defresource 'gitpdiff',
 # Tree/blob objects: behave just like directories/files normally
 defresource 'gittree',
   read => q{
-    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
-    $path = git_dir $path;
-    (my $outpath = $path) =~ s/\/\.git$//;
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $file_opt = defined $file ? "-- '$file/'" : "";
     soproc {
-      for (`git --git-dir='$path' ls-tree '$ref'`)
+      for (`git --git-dir='$path' ls-tree '$ref' $file_opt`)
       {
         chomp(my ($mode, $type, $id, $name) = split /\h/, $_, 4);
         print "git$type://$outpath:$id\t$mode\t$name\n";
@@ -131,8 +124,9 @@ defresource 'gittree',
 
 defresource 'gitblob',
   read => q{
-    my ($path, $ref) = $_[1] =~ /(.*):([^:]+)$/;
-    $path = git_dir $path;
-    (my $outpath = $path) =~ s/\/\.git$//;
-    soproc {sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
+    my (undef, $path, $ref, $file) = git_parse_pathref $_[1];
+    soproc {
+      defined $file
+        ? sh shell_quote git => "--git-dir=$path", 'show', "$ref:$file"
+        : sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
   };

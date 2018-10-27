@@ -59,6 +59,12 @@ gitcommit://.:c062e734d23ece6b3137354af30abc3da7320d2a  spencer@spencertipping.c
 ...
 ```
 
+You can also see history for a specific path by adding a `::<file>` suffix:
+
+```sh
+$ ni githistory://.:master::reference     # history for reference/ only
+```
+
 ## Commit diffs
 ```sh
 $ ni git://. r1 fA \< fC
@@ -80,14 +86,35 @@ index cea0535..e21e314 100644
        die "too many closing brackets" unless @stack;
 ```
 
+Diffs also support `::<path>`:
+
+```sh
+$ ni gitdiff://.:master::ni
+```
+
 ## Processed commit diffs
+These diffs fold the filename and position markers into each output line to make
+the diff output easier to machine-read.
+
 ```sh
 $ ni git://. r1 fA \< fE \<
 src/boot-interpreter.pl 82:82:-       push @tags, $+{opener};
 src/boot-interpreter.pl 83:82:+       push @tags, $+{opener} =~ s/.$//r;
+
+$ ni gitpdiff://.:master..develop::ni
+ni      56:56:- 56 core/boot/ni.map
+ni      57:56:+ 57 core/boot/ni.map
+ni      521:522:-       84 core/boot/common.pl
+ni      522:522:+       90 core/boot/common.pl
+ni      599:603:-       BEGIN {defparseralias filename   => palt prx 'file://(.+)',
+ni      600:603:+       BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
+ni      600:604:+                                                pn 1, pstr"\$", prx '.*'}
+...
 ```
 
 ## Commit trees
+You can browse these using object IDs or `::<path>` suffixes.
+
 ```sh
 $ ni git://. r1 fA \< fD
 gittree://.:refs/heads/archive/concatenative
@@ -102,16 +129,36 @@ gitblob://.:8ec3efe84f53125f611a3785f24968d987e3832b    100755  run-tests
 gittree://.:225bd52669273772cc5b88165df6cf598cc7c61f    040000  src
 gittree://.:b88775b02aace595d17f7c607e874dbcd91c8e62    040000  tools
 gitblob://.:32dc3893527c8b87e601003dd40f6e63b520ad86    100755  verify-transcript
+
+$ ni gittree://.:master::dev
+gitblob://.:097b5a219b412618451e2f6a59c9914d77ed018a    100644  dev/README.md
+gitblob://.:daf27ce78755ad67049fd5ca454f3c0b93000ab5    100755  dev/bench
+gitblob://.:d4ba52a1976a44ff313ac504da4740ca282b3992    100755  dev/bench-baseline-throughput
+gitblob://.:11ff59ce25b12ba0247296e82c0638f8451ec693    100755  dev/bench-json
+gitblob://.:50f0be3bc8a6cf5cfaab18398e37c6a075f9a8e9    100755  dev/bench-line-processors
+gitblob://.:74e397407335af195ff32f5acef147ea4683edb3    100755  dev/bench-lisp
+gitblob://.:7f114c5c98a7f22a32eabc8adcef86d2165a5712    100755  dev/bench-perl
+gitblob://.:e17ca75137046aeed580cbe498996a6c08734c1f    100755  dev/bench-sort
+gitblob://.:6641e5d2692461406c2b4d1a53150330caa2785a    100755  dev/bench-startup
+gitblob://.:e69de29bb2d1d6434b8b29ae775ad8c2e48c5391    100644  dev/benchmarks.log
+gittree://.:6547dcb96dd3809b838194cf27728ab70f7e9135    040000  dev/hackery
+gitblob://.:af1625e313f4683be187eb6134a30629898036f4    100644  dev/internals.md
+gitblob://.:2c56b13c4aa670e3741c75be2531a780212deaa8    100644  dev/json.md
+gitblob://.:2664c5ba7533c2c29d3b39610557142d970a9ac6    100644  dev/license-for-testing
+gitblob://.:77e94adbb0354012debdbb370ec2e53ed26334f3    100755  dev/nfu
+gitblob://.:2e51e5aaabe6d7cc30df3099c8f7196ec54de727    100644  dev/ni_dev_for_masochists_1.md
+gittree://.:07800bd7cb6d90ae0a5f1c770f67f8d3ead65496    040000  dev/test-data
+gitblob://.:46770d04fae01715ec41048e3b157d52645c7e27    100644  dev/tests.sh
+gitblob://.:cd2ffd7f8572f40bc0d461cc7c1e780d2f47b75f    100755  dev/unsdoc
 ```
 
-## Example: find every revision of `dev/tests.sh`
+Similarly, `gitblob://` returns the contents of an object or a path.
+
 ```sh
-$ ni git://. fA \< fB \< fAgu \< fD \< rp'c eq "dev"' fA\< rp'c eq "tests.sh"'
-gitblob://.:a653261f3582234f8a5875221acbb892550b3b55    100644  tests.sh
-gitblob://.:aeef8ad0315c5b00c7472e75bdf15aa1145e4a70    100644  tests.sh
-gitblob://.:f2ed4a2c8d1bf4599d8074ebab2973be6d97aa51    100644  tests.sh
-gitblob://.:c3e84a5dfefc7a84cd3476dfc11dafa15921dde6    100644  tests.sh
-...
+$ ni gitblob://.:master::ni r5
+#!/usr/bin/env perl
+$ni::is_lib = caller();
+$ni::self{license} = <<'_';
+ni: https://github.com/spencertipping/ni
+Copyright (c) 2016-2018 Spencer Tipping | MIT license
 ```
-
-You could then use `fA\<` or `fA W\<` to get the contents of each.
