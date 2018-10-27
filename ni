@@ -6893,7 +6893,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-127 core/git/git.pl
+138 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6947,6 +6947,17 @@ defresource 'gitnmhistory',
     soproc {sh shell_quote
       git => "--git-dir=$path", "log", "--no-merges",
              "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref};
+  };
+
+defresource 'gitlog',
+  read => q{
+    my ($path, $ref, $file) = $_[1] =~ /([^:]+):([^:]+):(.*)$/;
+    $path = git_dir $path;
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {sh shell_quote
+      git => "--git-dir=$path", "log", "--no-merges",
+             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref,
+             "--", $file};
   };
 
 defresource 'gitdiff',

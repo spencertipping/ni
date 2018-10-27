@@ -28,6 +28,7 @@
 	  | ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	  | ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	  | ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
+	  | ''gitlog://' /.*/ -> {resource_quote_op "gitlog://$_"}
 	  | ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
 	  | ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
 	  | ''gittree://' /.*/ -> {resource_quote_op "gittree://$_"}
@@ -58,6 +59,7 @@
 	  | 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	  | 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	  | 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
+	  | 'gitlog://' /.*/ -> {resource_append_op "gitlog://$_"}
 	  | 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
 	  | 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}
 	  | 'gittree://' /.*/ -> {resource_append_op "gittree://$_"}
@@ -1463,6 +1465,7 @@
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
+	| ''gitlog://' /.*/ -> {resource_quote_op "gitlog://$_"}
 	| ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
 	| ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
 	| ''gittree://' /.*/ -> {resource_quote_op "gittree://$_"}
@@ -1493,6 +1496,7 @@
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
+	| 'gitlog://' /.*/ -> {resource_append_op "gitlog://$_"}
 	| 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
 	| 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}
 	| 'gittree://' /.*/ -> {resource_append_op "gittree://$_"}
