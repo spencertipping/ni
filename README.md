@@ -120,6 +120,15 @@ $ ni hdfst:///path/to/file              # == hadoop fs -text /path/to/file
 ni can also run Hadoop Streaming jobs with itself nondestructively installed on
 worker nodes.
 
+### `ni` is [`git ls-tree` etc](doc/git.md)
+```sh
+$ ni git://.                            # show all branches/tags
+$ ni githistory://.:develop             # full history of develop branch
+$ ni gittree://.:develop                # file listing for develop branch
+$ ni gitblob://.:18891afd4              # file contents
+$ ni gitpdiff://.:develop               # processed diff
+```
+
 ### `ni` is [`unzip` and `tar -x/-t`, but better](doc/ni_by_example_3.md#compressed-archive-input)
 ```sh
 $ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz (requires tar)
@@ -143,7 +152,7 @@ $ find /usr -type f \
 ```
 
 ### `ni` is [`ssh`](doc/ni_by_example_4.md#ssh-containers-and-horizontal-scaling)
-...and self-installs on remote hosts.
+...and nondestructively self-installs on remote hosts.
 
 ```sh
 $ ni shost[ /etc/hostname ]             # == ssh host ni /etc/hostname | ni
