@@ -2725,7 +2725,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-314 core/stream/ops.pl
+331 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2947,6 +2947,23 @@ defoperator file_prepend_name_read => q{
 };
 
 defshort '/W<', pmap q{file_prepend_name_read_op $_}, popt generic_code;
+
+defoperator file_prepend_name_number_read => q{
+  my $file;
+  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
+                                : sub {shift};
+  while (defined($file = <STDIN>))
+  {
+    chomp $file;
+    my $line = 0;
+    my $fh = soproc {scat &$transform($file)};
+    ++$line, print "$file\t$line\t$_" while <$fh>;
+    close $fh;
+    $fh->await;
+  }
+};
+
+defshort '/Wn<', pmap q{file_prepend_name_number_read_op $_}, popt generic_code;
 
 defoperator file_prepend_name_write => q{
   my ($lambda) = @_;
@@ -20502,7 +20519,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-548 doc/stream.md
+570 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -20912,6 +20929,28 @@ FOO
 BAR
 $ cat file2.txt2
 BIF
+```
+
+Similarly, `W\<` accepts an optional perl code expression suffix that describes
+how it transforms input rows (`$_`) into readable filenames. This allows you to
+use the original inputs as the named prefixes in the output.
+
+```bash
+$ ni n2 W\<'"file$_"'
+1	foo
+1	bar
+2	bif
+```
+
+ni also provides a variant to include line numbers: `Wn\<`, which is identical
+to `W\<` except that it prepends two columns to the input, one for the filename
+and another for the line number within that file.
+
+```bash
+$ ni n2 Wn\<'"file$_"'
+1	1	foo
+1	2	bar
+2	1	bif
 ```
 
 ## Compression

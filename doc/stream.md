@@ -409,6 +409,28 @@ $ cat file2.txt2
 BIF
 ```
 
+Similarly, `W\<` accepts an optional perl code expression suffix that describes
+how it transforms input rows (`$_`) into readable filenames. This allows you to
+use the original inputs as the named prefixes in the output.
+
+```bash
+$ ni n2 W\<'"file$_"'
+1	foo
+1	bar
+2	bif
+```
+
+ni also provides a variant to include line numbers: `Wn\<`, which is identical
+to `W\<` except that it prepends two columns to the input, one for the filename
+and another for the line number within that file.
+
+```bash
+$ ni n2 Wn\<'"file$_"'
+1	1	foo
+1	2	bar
+2	1	bif
+```
+
 ## Compression
 If you want to write a compressed file, you can use the `z` operator:
 

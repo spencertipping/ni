@@ -220,6 +220,23 @@ defoperator file_prepend_name_read => q{
 
 defshort '/W<', pmap q{file_prepend_name_read_op $_}, popt generic_code;
 
+defoperator file_prepend_name_number_read => q{
+  my $file;
+  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
+                                : sub {shift};
+  while (defined($file = <STDIN>))
+  {
+    chomp $file;
+    my $line = 0;
+    my $fh = soproc {scat &$transform($file)};
+    ++$line, print "$file\t$line\t$_" while <$fh>;
+    close $fh;
+    $fh->await;
+  }
+};
+
+defshort '/Wn<', pmap q{file_prepend_name_number_read_op $_}, popt generic_code;
+
 defoperator file_prepend_name_write => q{
   my ($lambda) = @_;
   my $file     = undef;

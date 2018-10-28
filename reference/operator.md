@@ -395,6 +395,23 @@
 	  sio;
 	  sforward resource_read(closure_data $_[0]), \*STDOUT;
 
+# OPERATOR file_prepend_name_number_read
+
+## IMPLEMENTATION
+	
+	  my $file;
+	  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
+	                                : sub {shift};
+	  while (defined($file = <STDIN>))
+	  {
+	    chomp $file;
+	    my $line = 0;
+	    my $fh = soproc {scat &$transform($file)};
+	    ++$line, print "$file\t$line\t$_" while <$fh>;
+	    close $fh;
+	    $fh->await;
+	  }
+
 # OPERATOR file_prepend_name_read
 
 ## IMPLEMENTATION

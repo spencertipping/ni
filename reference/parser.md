@@ -690,6 +690,7 @@
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'W<' <generic_code>? -> {file_prepend_name_read_op $_}
 	| 'W>' </qfn>? -> {file_prepend_name_write_op $_}
+	| 'Wn<' <generic_code>? -> {file_prepend_name_number_read_op $_}
 	| 'X' <colspec1>? -> {sparse_to_dense_op $_}
 	| 'XP' '' -> {pivot_table_op}
 	| 'Y' <colspec1>? -> {dense_to_sparse_op $_}

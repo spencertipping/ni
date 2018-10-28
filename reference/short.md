@@ -1941,6 +1941,11 @@
 ## SYNTAX
 	</qfn>? -> {file_prepend_name_write_op $_}
 
+# SHORT OPERATOR /Wn<
+
+## SYNTAX
+	<generic_code>? -> {file_prepend_name_number_read_op $_}
+
 # SHORT OPERATOR /X
 
 ## SYNTAX
