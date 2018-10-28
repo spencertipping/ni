@@ -7048,7 +7048,7 @@ defresource 'gitsnap',
     my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
                                    '-r', '--name-only',
                                    $ref, defined $file ? ('--', $file) : ();
-    soproc { print "gitblob://$outpath:$ref::$_" for `$enum_command` };
+    soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
   };
 4 core/archive/lib
 zip.pl
