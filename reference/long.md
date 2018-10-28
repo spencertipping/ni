@@ -21,6 +21,7 @@
 	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
 	| ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
 	| ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
+	| ''gitsnap://' /.*/ -> {resource_quote_op "gitsnap://$_"}
 	| ''gittree://' /.*/ -> {resource_quote_op "gittree://$_"}
 	| ''hdfs://' /.*/ -> {resource_quote_op "hdfs://$_"}
 	| ''hdfsc://' /.*/ -> {resource_quote_op "hdfsc://$_"}
@@ -55,6 +56,7 @@
 	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
 	| 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
 	| 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}
+	| 'gitsnap://' /.*/ -> {resource_append_op "gitsnap://$_"}
 	| 'gittree://' /.*/ -> {resource_append_op "gittree://$_"}
 	| 'hdfs://' /.*/ -> {resource_append_op "hdfs://$_"}
 	| 'hdfsc://' /.*/ -> {resource_append_op "hdfsc://$_"}

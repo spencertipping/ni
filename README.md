@@ -127,6 +127,7 @@ $ ni githistory://.:develop             # full history of develop branch
 $ ni githistory://.:develop::a/file     # full history of a file on develop
 $ ni gittree://.:develop                # file listing for develop branch
 $ ni gittree://.:develop::folder        # directory listing at develop revision
+$ ni gitsnap://.:master^                # all blobs one commit before master
 $ ni gitblob://.:18891afd4              # file contents
 $ ni gitblob://.:develop::ni            # file contents of 'ni' on develop
 $ ni gitdiff://.:master..develop        # regular diff

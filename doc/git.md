@@ -112,6 +112,38 @@ ni      600:604:+                                                pn 1, pstr"\$",
 ...
 ```
 
+## Snapshots
+`gitsnap://<repo>:<revision>[::<path>]` will give you a recursive listing of all
+`gitblob://` entries at that revision. You can use this with `\<` or `W\<` to
+read the full state of the tree at that moment.
+
+```sh
+$ ni gitsnap://.:master::core r10
+gitblob://.:master::core/archive/7z.pl
+gitblob://.:master::core/archive/lib
+gitblob://.:master::core/archive/tar.pl
+gitblob://.:master::core/archive/xlsx.pl
+gitblob://.:master::core/archive/zip.pl
+gitblob://.:master::core/assert/assert.pl
+gitblob://.:master::core/assert/lib
+gitblob://.:master::core/binary/binary.pl
+gitblob://.:master::core/binary/bytestream.pm
+gitblob://.:master::core/binary/bytewriter.pm
+
+# count lines in each file
+$ ni gitsnap://.:master::core r10 W\< fAc
+40      gitblob://.:master::core/archive/7z.pl
+4       gitblob://.:master::core/archive/lib
+36      gitblob://.:master::core/archive/tar.pl
+69      gitblob://.:master::core/archive/xlsx.pl
+30      gitblob://.:master::core/archive/zip.pl
+6       gitblob://.:master::core/assert/assert.pl
+1       gitblob://.:master::core/assert/lib
+53      gitblob://.:master::core/binary/binary.pl
+29      gitblob://.:master::core/binary/bytestream.pm
+7       gitblob://.:master::core/binary/bytewriter.pm
+```
+
 ## Commit trees
 You can browse these using object IDs or `::<path>` suffixes.
 

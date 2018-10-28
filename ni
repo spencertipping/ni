@@ -6894,7 +6894,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-135 core/git/git.pl
+155 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6926,7 +6926,7 @@ defresource 'gitcommit',
     soproc {
       print join("\t", map "$_://$pathref",
                  qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
-                     gitnmhistory /), "\n";
+                     gitnmhistory gitsnap /), "\n";
     };
   };
 
@@ -7012,12 +7012,16 @@ defresource 'gitpdiff',
 defresource 'gittree',
   read => q{
     my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
-    my $file_opt = defined $file ? "-- '$file/'" : "";
+    my $enum_command = shell_quote
+      git => "--git-dir=$path", 'ls-tree', $ref,
+             defined $file ? ('--', $file) : ();
     soproc {
-      for (`git --git-dir='$path' ls-tree '$ref' $file_opt`)
+      for (`$enum_command`)
       {
         chomp(my ($mode, $type, $id, $name) = split /\h/, $_, 4);
-        print "git$type://$outpath:$id\t$mode\t$name\n";
+        print $type ne 'commit'
+          ? "git$type://$outpath:$id\t$mode\t$name\n"
+          : "git$type://$outpath/$name:$id\t$mode\t$name\n";
       }
     };
   };
@@ -7029,6 +7033,22 @@ defresource 'gitblob',
       defined $file
         ? sh shell_quote git => "--git-dir=$path", 'show', "$ref:$file"
         : sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
+  };
+
+# gitsnap: a full listing of all gitblob:// entries that make up a commit at a
+# given ref. This is a snapshot of the repository at some moment in time. You
+# could then use W\< to read the repo contents.
+#
+# Blobs are specified using logical paths; so you'll see
+# gitblob://path:ref/filename instead of gitblob://path:blobhash.
+
+defresource 'gitsnap',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
+                                   '-r', '--name-only',
+                                   $ref, defined $file ? ('--', $file) : ();
+    soproc { print "gitblob://$outpath:$ref::$_" for `$enum_command` };
   };
 4 core/archive/lib
 zip.pl
@@ -18260,7 +18280,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-164 doc/git.md
+196 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18373,6 +18393,38 @@ ni      599:603:-       BEGIN {defparseralias filename   => palt prx 'file://(.+
 ni      600:603:+       BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
 ni      600:604:+                                                pn 1, pstr"\$", prx '.*'}
 ...
+```
+
+## Snapshots
+`gitsnap://<repo>:<revision>[::<path>]` will give you a recursive listing of all
+`gitblob://` entries at that revision. You can use this with `\<` or `W\<` to
+read the full state of the tree at that moment.
+
+```sh
+$ ni gitsnap://.:master::core r10
+gitblob://.:master::core/archive/7z.pl
+gitblob://.:master::core/archive/lib
+gitblob://.:master::core/archive/tar.pl
+gitblob://.:master::core/archive/xlsx.pl
+gitblob://.:master::core/archive/zip.pl
+gitblob://.:master::core/assert/assert.pl
+gitblob://.:master::core/assert/lib
+gitblob://.:master::core/binary/binary.pl
+gitblob://.:master::core/binary/bytestream.pm
+gitblob://.:master::core/binary/bytewriter.pm
+
+# count lines in each file
+$ ni gitsnap://.:master::core r10 W\< fAc
+40      gitblob://.:master::core/archive/7z.pl
+4       gitblob://.:master::core/archive/lib
+36      gitblob://.:master::core/archive/tar.pl
+69      gitblob://.:master::core/archive/xlsx.pl
+30      gitblob://.:master::core/archive/zip.pl
+6       gitblob://.:master::core/assert/assert.pl
+1       gitblob://.:master::core/assert/lib
+53      gitblob://.:master::core/binary/binary.pl
+29      gitblob://.:master::core/binary/bytestream.pm
+7       gitblob://.:master::core/binary/bytewriter.pm
 ```
 
 ## Commit trees

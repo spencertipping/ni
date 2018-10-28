@@ -29,7 +29,7 @@ defresource 'gitcommit',
     soproc {
       print join("\t", map "$_://$pathref",
                  qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
-                     gitnmhistory /), "\n";
+                     gitnmhistory gitsnap /), "\n";
     };
   };
 
@@ -115,12 +115,16 @@ defresource 'gitpdiff',
 defresource 'gittree',
   read => q{
     my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
-    my $file_opt = defined $file ? "-- '$file/'" : "";
+    my $enum_command = shell_quote
+      git => "--git-dir=$path", 'ls-tree', $ref,
+             defined $file ? ('--', $file) : ();
     soproc {
-      for (`git --git-dir='$path' ls-tree '$ref' $file_opt`)
+      for (`$enum_command`)
       {
         chomp(my ($mode, $type, $id, $name) = split /\h/, $_, 4);
-        print "git$type://$outpath:$id\t$mode\t$name\n";
+        print $type ne 'commit'
+          ? "git$type://$outpath:$id\t$mode\t$name\n"
+          : "git$type://$outpath/$name:$id\t$mode\t$name\n";
       }
     };
   };
@@ -132,4 +136,20 @@ defresource 'gitblob',
       defined $file
         ? sh shell_quote git => "--git-dir=$path", 'show', "$ref:$file"
         : sh shell_quote git => "--git-dir=$path", 'cat-file', 'blob', $ref};
+  };
+
+# gitsnap: a full listing of all gitblob:// entries that make up a commit at a
+# given ref. This is a snapshot of the repository at some moment in time. You
+# could then use W\< to read the repo contents.
+#
+# Blobs are specified using logical paths; so you'll see
+# gitblob://path:ref/filename instead of gitblob://path:blobhash.
+
+defresource 'gitsnap',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
+                                   '-r', '--name-only',
+                                   $ref, defined $file ? ('--', $file) : ();
+    soproc { print "gitblob://$outpath:$ref::$_" for `$enum_command` };
   };
