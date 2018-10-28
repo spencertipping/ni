@@ -212,7 +212,7 @@ defoperator file_prepend_name_read => q{
   {
     chomp $file;
     my $fh = soproc {scat &$transform($file)};
-    print "$file\t$_" while <$fh>;
+    chomp, print "$file\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
   }
@@ -229,7 +229,7 @@ defoperator file_prepend_name_number_read => q{
     chomp $file;
     my $line = 0;
     my $fh = soproc {scat &$transform($file)};
-    ++$line, print "$file\t$line\t$_" while <$fh>;
+    ++$line, chomp, print "$file\t$line\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
   }
