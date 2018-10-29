@@ -6911,7 +6911,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-155 core/git/git.pl
+167 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -6943,7 +6943,7 @@ defresource 'gitcommit',
     soproc {
       print join("\t", map "$_://$pathref",
                  qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
-                     gitnmhistory gitsnap /), "\n";
+                     gitnmhistory gitsnap gitdelta /), "\n";
     };
   };
 
@@ -7066,6 +7066,18 @@ defresource 'gitsnap',
                                    '-r', '--name-only',
                                    $ref, defined $file ? ('--', $file) : ();
     soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
+  };
+
+# gitdelta: a listing of all files changed by a specific revision, listed as
+# gitpdiff:// URIs.
+
+defresource 'gitdelta',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
+                                   '-r', '--no-commit-id', '--name-only',
+                                   $ref, defined $file ? ('--', $file) : ();
+    soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
   };
 4 core/archive/lib
 zip.pl

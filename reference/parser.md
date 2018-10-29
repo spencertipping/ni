@@ -26,6 +26,7 @@
 	  | ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
 	  | ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
 	  | ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
+	  | ''gitdelta://' /.*/ -> {resource_quote_op "gitdelta://$_"}
 	  | ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	  | ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
 	  | ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
@@ -61,6 +62,7 @@
 	  | 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
 	  | 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
 	  | 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
+	  | 'gitdelta://' /.*/ -> {resource_append_op "gitdelta://$_"}
 	  | 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	  | 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
 	  | 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
@@ -1473,6 +1475,7 @@
 	| ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
 	| ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
+	| ''gitdelta://' /.*/ -> {resource_quote_op "gitdelta://$_"}
 	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
 	| ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
@@ -1508,6 +1511,7 @@
 	| 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
 	| 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
+	| 'gitdelta://' /.*/ -> {resource_append_op "gitdelta://$_"}
 	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
 	| 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
