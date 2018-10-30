@@ -45,7 +45,7 @@ defresource 'githistory',
     my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
-             "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref,
+             "--format=gitcommit://$outpath:%H\t%an:%ae\t%at\t%s", $ref,
              (defined $file ? ("--", $file) : ())};
   };
 
