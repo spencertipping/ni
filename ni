@@ -9267,7 +9267,7 @@ $(caterwaul(':all')(function ($) {
 
         default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 S8p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
                                       + "S8,qABCD0.01 p'r a, - c, b, d'",
-                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 1, sa: 0.03, axes: n[4] -seq}},
+                                  v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 10, sa: 0.01, axes: n[4] -seq}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
         resize_canvases()      = overlay.add(screen) /~attr/ {width: lw, height: lh} -then- update_screen(),

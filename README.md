@@ -2,7 +2,7 @@
 <br>
 <a href="https://github.com/spencertipping/ni"><img src="http://spencertipping.com/ni-logo.png" alt="ni"></a>
 <br>
-ni is two-fisted data science. <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
+ni says "ni" to your data. <a href='https://travis-ci.org/spencertipping/ni'><img src='https://travis-ci.org/spencertipping/ni.svg?branch=develop' alt='Travis CI'></a>
 <br>
 <br>
 <br>
