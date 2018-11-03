@@ -1,5 +1,26 @@
 # Hash utilities
 
+# prando($n, %hash): return $n probabilistically selected random elements from
+# %hash, where keys are elements and values are probabilities. Probabilities
+# don't have to sum to one.
+sub prando($%)
+{
+  my $n = shift;
+  my ($i, $p, @p) = (0, 0);
+  $_&1 and push @p, $p += $_[$_] for 0..$#_;
+
+  # TODO: can this be optimized using a Poisson process?
+  map {
+    my ($x, $l, $u) = (rand $p, 0, @_ >> 1);
+    while ($u > $l + 1)
+    {
+      my $m = $l + $u >> 1;
+      ($x > $_[$m << 1 | 1] ? $l : $u) = $m;
+    }
+    $_[$l << 1];
+  } 1..$n;
+}
+
 # Key-By-Value ascending and descending
 sub kbv_dsc { my %h = @_; sort { $h{$b} <=> $h{$a} } keys %h }
 sub kbv_asc { my %h = @_; sort { $h{$a} <=> $h{$b} } keys %h }
