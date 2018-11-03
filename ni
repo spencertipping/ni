@@ -9268,7 +9268,7 @@ caterwaul(':all')(function ($) {
         tau             = Math.PI * 2],
 
   using[caterwaul.merge(caterwaul.vector(2, 'v2'), caterwaul.vector(3, 'v3'), caterwaul.vector(4, 'v4'))]})(jQuery);
-159 core/jsplot/interface.waul
+173 core/jsplot/interface.waul
 // Page driver.
 
 $(caterwaul(':all')(function ($) {
@@ -9337,10 +9337,24 @@ $(caterwaul(':all')(function ($) {
                                                                    where [x = e.pageX, y = e.pageY], when.mx]
                                                /~mouseup/ given.e [mx = null, update_screen(), when.mx]
                                                /~keydown/ given.e [e.which === 9 ? toggle_object_mode() -then- false
-                                                                 : e.which === 16 ? controls /~addClass/    'shift' : true]
+                                                                 : e.which === 16 ? controls /~addClass/ 'shift' : true]
+                                              /~keypress/ given.e [$('input:focus, textarea:focus').length ||
+                                                                   (e.key === 'v' ? controls /~toggleClass/ 'pinned' -then- false
+                                                                  : e.key === 'p' ? preview  /~toggleClass/ 'pinned' -then- false
+                                                                  : e.key === 'm' ? controls /~addClass/ 'pinned' -then- $('.axis-mapping input').focus() -then- false
+                                                                  : e.key === 'b' ? controls /~addClass/ 'pinned' -then- $('.brightness input').focus() -then- false
+                                                                  : e.key === 'd' ? controls /~addClass/ 'pinned' -then- $('.distance input').focus() -then- false
+                                                                  : e.key === 't' ? controls /~addClass/ 'pinned' -then- $('.translation input').eq(0).focus() -then- false
+                                                                  : e.key === 's' ? controls /~addClass/ 'pinned' -then- $('.scale input').eq(0).focus() -then- false
+                                                                  : e.key === 'r' ? controls /~addClass/ 'pinned' -then- $('.rotate input').eq(0).focus() -then- false
+                                                                  : true)]
                                                  /~keyup/ given.e [e.which === 16 ? controls /~removeClass/ 'shift' : true]
                           -then- w /~resize/ handle_resizes
                           -then- controls /~append/ camera().change(update_screen_fast)
+                          -then- $('.vector input') /~keypress/ given.e [e.key === 'x' ? $(this).parent().children().eq(0).focus() -then- false
+                                                                       : e.key === 'y' ? $(this).parent().children().eq(1).focus() -then- false
+                                                                       : e.key === 'z' ? $(this).parent().children().eq(2).focus() -then- false
+                                                                       : true] /given.nothing /-setTimeout/ 10
                           -then- $('#object-mode, #camera-mode') /~click/ toggle_object_mode
                           -then- $('canvas').attr('unselectable', 'on').css('user-select', 'none').on('selectstart', false)
                           -then- $('.autohide') /~click/ "$(this) /~toggleClass/ 'pinned'".qf
