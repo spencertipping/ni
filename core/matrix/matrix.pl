@@ -173,22 +173,20 @@ defoperator numpy_dense => q{
     push @q, $_ if defined;
 
     $cols = max map length() / 8, @m;
-    safewrite $i, pack NN => $rows, $cols;
-    safewrite $i, length() < $cols * 8 ? $_ . $zero x ($cols - length() / 8)
-                                       : $_
+    safewrite_exactly $i, pack NN => $rows, $cols;
+    safewrite_exactly $i, length() < $cols * 8
+                            ? $_ . $zero x ($cols - length() / 8)
+                            : $_
       for @m;
 
-    saferead $o, $_, 8;
-    ($rows, $cols) = unpack "NN", $_;
-
     $_ = '';
-    saferead $o, $_, $rows*$cols*8 - length(), length
-      until length == $rows*$cols*8;
-
-    # TODO: optimize this. Right now it's horrifically slow and for no purpose
-    # (everything's getting read into memory either way).
-    for my $r (0..$rows-1) {
-      print join("\t", $col ? ($k) : (), unpack "F$cols", substr $_, $r*$cols*8), "\n";
+    saferead_exactly $o, $_, 8;
+    ($rows, $cols) = unpack "NN", $_;
+    for my $r (1..$rows)
+    {
+      $_ = '';
+      saferead_exactly $o, $_, $cols*8;
+      print join("\t", $col ? ($k) : (), unpack "F$cols", $_), "\n";
     }
   }
 
