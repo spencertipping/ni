@@ -23,10 +23,13 @@ sub FM()   {$#F}
 sub FR($)  {$_[0] > 0 ? @F[$_[0]..$#F] : @F[($#F + $_[0] + 1)..$#F]}
 sub FT($)  {$_[0] > 0 ? @F[0..($_[0] - 1)] : @F[0..($#F + $_[0])]}
 sub r(@)   {(my $l = join "\t", @_) =~ s/\n//g; print $l, "\n"; ()}
+
+sub dor($$) { defined $_[0] ? $_[0] : $_[1] }
+
 BEGIN {ceval sprintf 'sub %s():lvalue {$ni::pl::F[%d]}', $_, ord($_) - 97 for 'a'..'l';
        ceval sprintf 'sub %s_ {local $_;
                                die "coercing %s_() to a scalar is a mistake" unless wantarray;
-                               map((split /\t/)[%d] || "", map split(/\n/), @_)}',
+                               map(dor((split /\t/)[%d], ""), map split(/\n/), @_)}',
                      $_, $_, ord($_) - 97 for 'a'..'l'}
 BEGIN {ceval sprintf 'sub %s__ {my @r;
                                 die "coercing %s__() to a scalar is a mistake" unless wantarray;
