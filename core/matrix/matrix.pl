@@ -160,21 +160,23 @@ defoperator numpy_dense => q{
 
   my @q;
   my ($rows, $cols);
+  my $zero = pack F => 0;
   while (defined($_ = @q ? shift @q : <STDIN>)) {
     chomp;
     my @r = split /\t/;
     my $k = $col ? join("\t", @r[0..$col-1]) : '';
     $rows = 1;
-    my @m = [@r[$col..$#r]];
+    my @m = pack "F*", @r[$col..$#r];
     my $kr = qr/\Q$k\E/;
-    ++$rows, push @m, [split /\t/, $col ? substr $_, length $1 : $_]
+    ++$rows, push @m, pack "F*", split /\t/, $col ? substr $_, length $1 : $_
       while defined($_ = <STDIN>) and !$col || /^($kr\t)/;
     push @q, $_ if defined;
 
-    $cols = max map scalar(@$_), @m;
-    safewrite $i, pack "NNF*", $rows, $cols,
-      map $_ || 0,
-      map {(@$_, (0) x ($cols - @$_))} @m;
+    $cols = max map length() / 8, @m;
+    safewrite $i, pack NN => $rows, $cols;
+    safewrite $i, length() < $cols * 8 ? $_ . $zero x ($cols - length() / 8)
+                                       : $_
+      for @m;
 
     saferead $o, $_, 8;
     ($rows, $cols) = unpack "NN", $_;
