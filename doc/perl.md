@@ -368,8 +368,22 @@ want to pull the left before the right.
 
 ```bash
 $ ni 1p'my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
-        my %vals     = map +($_ => rand()), 1..500;
+        my %vals     = map +($_ => sin($_)), 1..500;
         my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
+        %$maxqueue = %vals;
+        my @dequeued;
+        push @dequeued, $maxqueue->pull while $maxqueue->size;
+        r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()' \
+     rp'b != c'
+```
+
+You can also update the priority of an element within a queue:
+
+```bash
+$ ni 1p'my $maxqueue = pqueue->new;
+        %$maxqueue = my %vals = map +($_ => sin($_)), 1..100;
+        @$maxqueue{50..100} = @vals{50..100} = map cos($_), 50..100;
+        my @ordering = sort { $vals{$a} <=> $vals{$b} } keys %vals;
         my @dequeued;
         push @dequeued, $maxqueue->pull while $maxqueue->size;
         r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()' \
