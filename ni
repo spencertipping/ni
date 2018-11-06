@@ -5599,7 +5599,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-148 core/pl/pqueue.pm
+144 core/pl/pqueue.pm
 =head1 Priority queue
 A hash-based object that supports efficient query and removal of the minimum
 element. You can use arbitrary values and a custom comparator if you want to.
@@ -5690,8 +5690,6 @@ package pqueue
       my $k = shift;
       my $v = shift;
 
-      print STDERR "inserting $k -> $v\n";
-
       # Append, then heapify up
       $$kv{$k} = $v;
       my $i = $$ki{$k} = push(@$h, $k) - 1;
@@ -5714,8 +5712,6 @@ package pqueue
     my $kv = $$$self{vals};
     my $fn = $$$self{comp};
 
-    print STDERR "size is $#$h; deleting $k\n";
-
     my $v = delete $$kv{$k};
     my $i = delete $$ki{$k};
 
@@ -5736,7 +5732,7 @@ package pqueue
         # Swap the two elements
         my $topk = $$h[$top];
         @$h[$i, $top] = @$h[$top, $i];
-        @$ki{$k, $topk} = @$ki{$topk, $k};
+        @$ki{$k, $topk} = ($top, $i);
         $i = $top;
       }
     }
