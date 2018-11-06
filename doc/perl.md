@@ -350,7 +350,7 @@ $ ni 1p'my $q = pqueue->new;
         r $q->size, $q->top; $q->pull;
         $$q{bork} = 0;
         r $q->pull;
-        $$q{bifaz} = 4.5;
+        $$q{bifaz} = 3.5;
         r $q->pull;
         r $q->pull;
         r $q->pull'

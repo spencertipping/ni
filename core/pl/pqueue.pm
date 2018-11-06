@@ -71,7 +71,7 @@ package pqueue
     my $h  = $$$self{heap};
     my $ki = $$$self{index};
     my $kv = $$$self{vals};
-    my $fn = $$$self{compfn};
+    my $fn = $$$self{comp};
 
     # TODO: optimize bulk insert
     while (@_)
@@ -100,7 +100,7 @@ package pqueue
     my $h  = $$$self{heap};
     my $ki = $$$self{index};
     my $kv = $$$self{vals};
-    my $fn = $$$self{compfn};
+    my $fn = $$$self{comp};
 
     delete $$kv{$k};
 
@@ -122,8 +122,9 @@ package pqueue
         last if $top == $i;
 
         # Swap the two elements
+        my $topk = $$h[$top];
         @$h[$i, $top] = @$h[$top, $i];
-        @$ki{$k, $$h[$top]} = @$ki{$$h[$top], $k};
+        @$ki{$k, $topk} = @$ki{$topk, $k};
         $i = $top;
       }
     }

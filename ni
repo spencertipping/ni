@@ -5599,7 +5599,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-138 core/pl/pqueue.pm
+139 core/pl/pqueue.pm
 =head1 Priority queue
 A hash-based object that supports efficient query and removal of the minimum
 element. You can use arbitrary values and a custom comparator if you want to.
@@ -5673,7 +5673,7 @@ package pqueue
     my $h  = $$$self{heap};
     my $ki = $$$self{index};
     my $kv = $$$self{vals};
-    my $fn = $$$self{compfn};
+    my $fn = $$$self{comp};
 
     # TODO: optimize bulk insert
     while (@_)
@@ -5702,7 +5702,7 @@ package pqueue
     my $h  = $$$self{heap};
     my $ki = $$$self{index};
     my $kv = $$$self{vals};
-    my $fn = $$$self{compfn};
+    my $fn = $$$self{comp};
 
     delete $$kv{$k};
 
@@ -5724,8 +5724,9 @@ package pqueue
         last if $top == $i;
 
         # Swap the two elements
+        my $topk = $$h[$top];
         @$h[$i, $top] = @$h[$top, $i];
-        @$ki{$k, $$h[$top]} = @$ki{$$h[$top], $k};
+        @$ki{$k, $topk} = @$ki{$topk, $k};
         $i = $top;
       }
     }
@@ -19561,7 +19562,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-506 doc/perl.md
+530 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -19900,6 +19901,30 @@ $ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
 2	2	b
 2	3	a
 2	3	b
+```
+
+## Priority queues
+Perl doesn't come with a heap-backed priority queue, so ni defines one for you.
+It behaves like a hash reference but supports the `->top` and `->pull`
+operators, which address the heap and refer to the minimum element.
+
+```bash
+$ ni 1p'my $q = pqueue->new;
+        @$q{qw/foo bar bif baz/} = 1..4;
+        r $q->size, $q->top; $q->pull;
+        r $q->size, $q->top; $q->pull;
+        $$q{bork} = 0;
+        r $q->pull;
+        $$q{bifaz} = 3.5;
+        r $q->pull;
+        r $q->pull;
+        r $q->pull'
+4	foo
+3	bar
+bork
+bif
+bifaz
+baz
 ```
 
 ## Streaming lookahead

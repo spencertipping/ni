@@ -3999,13 +3999,33 @@ lazytest_case 'ni n1p'\''cart [1,2], [1,2,3], ["a","b"]'\''
 2	3	b
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=357
+lazytest_line=347
+lazytest_case 'ni 1p'\''my $q = pqueue->new;
+        @$q{qw/foo bar bif baz/} = 1..4;
+        r $q->size, $q->top; $q->pull;
+        r $q->size, $q->top; $q->pull;
+        $$q{bork} = 0;
+        r $q->pull;
+        $$q{bifaz} = 3.5;
+        r $q->pull;
+        r $q->pull;
+        r $q->pull'\''
+' 3<<'LAZYTEST_EOF'
+4	foo
+3	bar
+bork
+bif
+bifaz
+baz
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=381
 lazytest_case 'ni n10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=375
+lazytest_line=399
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -4014,7 +4034,7 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sync	,sync
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=396
+lazytest_line=420
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -4023,13 +4043,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=406
+lazytest_line=430
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=434
+lazytest_line=458
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
@@ -4059,7 +4079,7 @@ x	23
 y	12
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=482
+lazytest_line=506
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/gcx
 ' 3<<'LAZYTEST_EOF'
 a	39
