@@ -5599,7 +5599,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-139 core/pl/pqueue.pm
+148 core/pl/pqueue.pm
 =head1 Priority queue
 A hash-based object that supports efficient query and removal of the minimum
 element. You can use arbitrary values and a custom comparator if you want to.
@@ -5667,6 +5667,15 @@ package pqueue
     $top;
   }
 
+  sub clear
+  {
+    my $self = shift;
+    @{$$$self{heap}}  = (undef);
+    %{$$$self{index}} = ();
+    %{$$$self{vals}}  = ();
+    $self;
+  }
+
   sub insert
   {
     my $self = shift;
@@ -5681,10 +5690,11 @@ package pqueue
       my $k = shift;
       my $v = shift;
 
+      print STDERR "inserting $k -> $v\n";
+
       # Append, then heapify up
-      push @$h, $k;
       $$kv{$k} = $v;
-      my $i = $$ki{$k} = $#$h;
+      my $i = $$ki{$k} = push(@$h, $k) - 1;
       while ($i > 1 && &$fn($v, $$kv{$$h[$i >> 1]}))
       {
         @$ki{$k, $$h[$i >> 1]} = @$ki{$$h[$i >> 1], $k};
@@ -5704,13 +5714,13 @@ package pqueue
     my $kv = $$$self{vals};
     my $fn = $$$self{comp};
 
-    delete $$kv{$k};
+    print STDERR "size is $#$h; deleting $k\n";
 
-    # Do we have an element to replace the one we're deleting? (The first
-    # element is a filler, so we need three in total.)
-    if (@$h > 2)
+    my $v = delete $$kv{$k};
+    my $i = delete $$ki{$k};
+
+    if ($i < $#$h)
     {
-      my $i = delete $$ki{$k};
       $$ki{$$h[$i] = pop @$h} = $i;
 
       while (1)
@@ -5733,10 +5743,9 @@ package pqueue
     else
     {
       pop @$h;
-      delete $$ki{$k};
     }
 
-    $self;
+    $v;
   }
 }
 89 core/pl/wkt.pl
