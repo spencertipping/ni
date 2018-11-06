@@ -348,15 +348,16 @@ $ ni 1p'my $q = pqueue->new;
         @$q{qw/foo bar bif baz/} = 1..4;
         r $q->size, $q->top; $q->pull;
         r $q->size, $q->top; $q->pull;
-        $$q{bork} = 0;
+        $$q{baz} = 0;
         r $q->pull;
+        $$q{baz} = 4;
         $$q{bifaz} = 3.5;
         r $q->pull;
         r $q->pull;
         r $q->pull'
 4	foo
 3	bar
-bork
+baz
 bif
 bifaz
 baz
@@ -382,7 +383,7 @@ You can also update the priority of an element within a queue:
 ```bash
 $ ni 1p'my $maxqueue = pqueue->new;
         %$maxqueue = my %vals = map +($_ => sin($_)), 1..100;
-        @$maxqueue{50..100} = @vals{50..100} = map cos($_), 50..100;
+        @$maxqueue{50..100} = @vals{50..100} = map sin($_)**2, 50..100;
         my @ordering = sort { $vals{$a} <=> $vals{$b} } keys %vals;
         my @dequeued;
         push @dequeued, $maxqueue->pull while $maxqueue->size;

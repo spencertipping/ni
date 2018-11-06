@@ -5599,7 +5599,7 @@ sub rc {
 # \&sea, ...`.
 
 BEGIN {ceval sprintf 'sub rc%s {rc \&se%s, @_}', $_, $_ for 'a'..'q'}
-144 core/pl/pqueue.pm
+163 core/pl/pqueue.pm
 =head1 Priority queue
 A hash-based object that supports efficient query and removal of the minimum
 element. You can use arbitrary values and a custom comparator if you want to.
@@ -5621,7 +5621,6 @@ package pqueue
     sub STORE
     {
       my ($pqueue_ref, $k, $v) = @_;
-      $$pqueue_ref->delete($k) if exists $$$$pqueue_ref{index}{$k};
       $$pqueue_ref->insert($k, $v);
     }
 
@@ -5690,12 +5689,15 @@ package pqueue
       my $k = shift;
       my $v = shift;
 
-      # Append, then heapify up
+      $self->delete($k) if exists $$ki{$k};
+
       $$kv{$k} = $v;
-      my $i = $$ki{$k} = push(@$h, $k) - 1;
+      push @$h, $k;
+      my $i = $$ki{$k} = $#$h;
+
       while ($i > 1 && &$fn($v, $$kv{$$h[$i >> 1]}))
       {
-        @$ki{$k, $$h[$i >> 1]} = @$ki{$$h[$i >> 1], $k};
+        @$ki{$k, $$h[$i >> 1]} = ($i >> 1, $i);
         @$h[$i, $i >> 1] = @$h[$i >> 1, $i];
         $i >>= 1;
       }
@@ -5714,31 +5716,48 @@ package pqueue
 
     my $v = delete $$kv{$k};
     my $i = delete $$ki{$k};
+    $k = pop @$h;
 
-    if ($i < $#$h)
+    # First order of business: the rest of the heap is fine if we've just
+    # legitimately removed the last element.
+    if ($i < @$h)
     {
-      $$ki{$$h[$i] = pop @$h} = $i;
+      # OK, we need to update an element somewhere in the heap -- which means
+      # first heapifying up, then down. Heapify up is required because the last
+      # element and the one we're replacing may come from different subtrees, so
+      # we don't know their relative ordering.
+      $$ki{$$h[$i] = $k} = $i;
+      $v = $$kv{$k};
+
+      while ($i > 1 && &$fn($v, $$kv{$$h[$i >> 1]}))
+      {
+        @$ki{$k, $$h[$i >> 1]} = ($i >> 1, $i);
+        @$h[$i, $i >> 1] = @$h[$i >> 1, $i];
+        $i >>= 1;
+      }
 
       while (1)
       {
+        # From the set of (i, leftchild, rightchild), select the topmost element
+        # and swap i with it (or, if it's i, then we're done).
         my $top = $i;
-        $top = $i << 1     if $i << 1 < @$h
-                           && &$fn($$kv{$$h[$i << 1]},     $$kv{$$h[$top]});
-        $top = $i << 1 | 1 if ($i << 1 | 1) < @$h
-                           && &$fn($$kv{$$h[$i << 1 | 1]}, $$kv{$$h[$top]});
+
+        $top = $i << 1
+          if $i << 1 < @$h
+          && &$fn($$kv{$$h[$i << 1]}, $$kv{$$h[$top]});
+
+        $top = $i << 1 | 1
+          if ($i << 1 | 1) < @$h
+          && &$fn($$kv{$$h[$i << 1 | 1]}, $$kv{$$h[$top]});
 
         last if $top == $i;
 
-        # Swap the two elements
-        my $topk = $$h[$top];
+        # Swap element positions within @$h, and update %$ki to reflect the new
+        # positions. $k can remain the same because $i becomes $top.
+        @$ki{$k, $$h[$top]} = ($top, $i);
         @$h[$i, $top] = @$h[$top, $i];
-        @$ki{$k, $topk} = ($top, $i);
         $i = $top;
       }
-    }
-    else
-    {
-      pop @$h;
     }
 
     $v;
@@ -19567,7 +19586,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-558 doc/perl.md
+559 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -19918,15 +19937,16 @@ $ ni 1p'my $q = pqueue->new;
         @$q{qw/foo bar bif baz/} = 1..4;
         r $q->size, $q->top; $q->pull;
         r $q->size, $q->top; $q->pull;
-        $$q{bork} = 0;
+        $$q{baz} = 0;
         r $q->pull;
+        $$q{baz} = 4;
         $$q{bifaz} = 3.5;
         r $q->pull;
         r $q->pull;
         r $q->pull'
 4	foo
 3	bar
-bork
+baz
 bif
 bifaz
 baz
@@ -19952,7 +19972,7 @@ You can also update the priority of an element within a queue:
 ```bash
 $ ni 1p'my $maxqueue = pqueue->new;
         %$maxqueue = my %vals = map +($_ => sin($_)), 1..100;
-        @$maxqueue{50..100} = @vals{50..100} = map cos($_), 50..100;
+        @$maxqueue{50..100} = @vals{50..100} = map sin($_)**2, 50..100;
         my @ordering = sort { $vals{$a} <=> $vals{$b} } keys %vals;
         my @dequeued;
         push @dequeued, $maxqueue->pull while $maxqueue->size;

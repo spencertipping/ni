@@ -19,7 +19,6 @@ package pqueue
     sub STORE
     {
       my ($pqueue_ref, $k, $v) = @_;
-      $$pqueue_ref->delete($k) if exists $$$$pqueue_ref{index}{$k};
       $$pqueue_ref->insert($k, $v);
     }
 
@@ -88,12 +87,15 @@ package pqueue
       my $k = shift;
       my $v = shift;
 
-      # Append, then heapify up
+      $self->delete($k) if exists $$ki{$k};
+
       $$kv{$k} = $v;
-      my $i = $$ki{$k} = push(@$h, $k) - 1;
+      push @$h, $k;
+      my $i = $$ki{$k} = $#$h;
+
       while ($i > 1 && &$fn($v, $$kv{$$h[$i >> 1]}))
       {
-        @$ki{$k, $$h[$i >> 1]} = @$ki{$$h[$i >> 1], $k};
+        @$ki{$k, $$h[$i >> 1]} = ($i >> 1, $i);
         @$h[$i, $i >> 1] = @$h[$i >> 1, $i];
         $i >>= 1;
       }
@@ -112,31 +114,48 @@ package pqueue
 
     my $v = delete $$kv{$k};
     my $i = delete $$ki{$k};
+    $k = pop @$h;
 
-    if ($i < $#$h)
+    # First order of business: the rest of the heap is fine if we've just
+    # legitimately removed the last element.
+    if ($i < @$h)
     {
-      $$ki{$$h[$i] = pop @$h} = $i;
+      # OK, we need to update an element somewhere in the heap -- which means
+      # first heapifying up, then down. Heapify up is required because the last
+      # element and the one we're replacing may come from different subtrees, so
+      # we don't know their relative ordering.
+      $$ki{$$h[$i] = $k} = $i;
+      $v = $$kv{$k};
+
+      while ($i > 1 && &$fn($v, $$kv{$$h[$i >> 1]}))
+      {
+        @$ki{$k, $$h[$i >> 1]} = ($i >> 1, $i);
+        @$h[$i, $i >> 1] = @$h[$i >> 1, $i];
+        $i >>= 1;
+      }
 
       while (1)
       {
+        # From the set of (i, leftchild, rightchild), select the topmost element
+        # and swap i with it (or, if it's i, then we're done).
         my $top = $i;
-        $top = $i << 1     if $i << 1 < @$h
-                           && &$fn($$kv{$$h[$i << 1]},     $$kv{$$h[$top]});
-        $top = $i << 1 | 1 if ($i << 1 | 1) < @$h
-                           && &$fn($$kv{$$h[$i << 1 | 1]}, $$kv{$$h[$top]});
+
+        $top = $i << 1
+          if $i << 1 < @$h
+          && &$fn($$kv{$$h[$i << 1]}, $$kv{$$h[$top]});
+
+        $top = $i << 1 | 1
+          if ($i << 1 | 1) < @$h
+          && &$fn($$kv{$$h[$i << 1 | 1]}, $$kv{$$h[$top]});
 
         last if $top == $i;
 
-        # Swap the two elements
-        my $topk = $$h[$top];
+        # Swap element positions within @$h, and update %$ki to reflect the new
+        # positions. $k can remain the same because $i becomes $top.
+        @$ki{$k, $$h[$top]} = ($top, $i);
         @$h[$i, $top] = @$h[$top, $i];
-        @$ki{$k, $topk} = ($top, $i);
         $i = $top;
       }
-    }
-    else
-    {
-      pop @$h;
     }
 
     $v;
