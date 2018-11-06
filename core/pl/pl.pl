@@ -98,6 +98,7 @@ our @perl_prefix_keys = qw| core/pl/util.pm
                             core/pl/hash.pm
                             core/pl/math.pm
                             core/pl/stream.pm
+                            core/pl/pqueue.pm
                             core/pl/wkt.pl
                             core/pl/geohash.pl
                             core/pl/time.pl

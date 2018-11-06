@@ -8,6 +8,7 @@ hadoop.pm
 math.pm
 stream.pm
 reducers.pm
+pqueue.pm
 wkt.pl
 time.pl
 geohash.pl

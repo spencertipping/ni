@@ -338,6 +338,30 @@ $ ni n1p'cart [1,2], [1,2,3], ["a","b"]'
 2	3	b
 ```
 
+## Priority queues
+Perl doesn't come with a heap-backed priority queue, so ni defines one for you.
+It behaves like a hash reference but supports the `->top` and `->pull`
+operators, which address the heap and refer to the minimum element.
+
+```bash
+$ ni 1p'my $q = pqueue->new;
+        @$q{qw/foo bar bif baz/} = 1..4;
+        r $q->size, $q->top; $q->pull;
+        r $q->size, $q->top; $q->pull;
+        $$q{bork} = 0;
+        r $q->pull;
+        $$q{bifaz} = 4.5;
+        r $q->pull;
+        r $q->pull;
+        r $q->pull'
+4	foo
+3	bar
+bork
+bif
+bifaz
+baz
+```
+
 ## Streaming lookahead
 This is implemented in terms of reducers, and gives you the ability to reduce
 arbitrarily many rows in constant space. There are two parts to this. First,
