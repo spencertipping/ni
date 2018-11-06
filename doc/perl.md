@@ -371,7 +371,12 @@ want to pull the left before the right.
 $ ni 1p'my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
         my %vals     = map +($_ => sin($_)), 1..500;
         my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
-        %$maxqueue = %vals;
+
+        # NB: on some perl v5.14 builds, the vectorized %$maxqueue = %vals
+        # assignment loses some (but not all!) floating point values. This
+        # scalar assignment preserves them. I have no idea why this happens.
+        $$maxqueue{$_} = $vals{$_} for keys %vals;
+
         my @dequeued;
         push @dequeued, $maxqueue->pull while $maxqueue->size;
         r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()' \

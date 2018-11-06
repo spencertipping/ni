@@ -4024,7 +4024,12 @@ lazytest_line=371
 lazytest_case 'ni 1p'\''my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
         my %vals     = map +($_ => sin($_)), 1..500;
         my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
-        %$maxqueue = %vals;
+
+        # NB: on some perl v5.14 builds, the vectorized %$maxqueue = %vals
+        # assignment loses some (but not all!) floating point values. This
+        # scalar assignment preserves them. I have no idea why this happens.
+        $$maxqueue{$_} = $vals{$_} for keys %vals;
+
         my @dequeued;
         push @dequeued, $maxqueue->pull while $maxqueue->size;
         r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()'\'' \
@@ -4032,7 +4037,7 @@ lazytest_case 'ni 1p'\''my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=384
+lazytest_line=389
 lazytest_case 'ni 1p'\''my $maxqueue = pqueue->new;
         %$maxqueue = my %vals = map +($_ => sin($_)), 1..100;
         @$maxqueue{50..100} = @vals{50..100} = map sin($_)**2, 50..100;
@@ -4044,13 +4049,13 @@ lazytest_case 'ni 1p'\''my $maxqueue = pqueue->new;
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=410
+lazytest_line=415
 lazytest_case 'ni n10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=428
+lazytest_line=433
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -4059,7 +4064,7 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sync	,sync
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=449
+lazytest_line=454
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -4068,13 +4073,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=459
+lazytest_line=464
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=487
+lazytest_line=492
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
@@ -4104,7 +4109,7 @@ x	23
 y	12
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=535
+lazytest_line=540
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/gcx
 ' 3<<'LAZYTEST_EOF'
 a	39
