@@ -4019,13 +4019,24 @@ bifaz
 baz
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=381
+lazytest_line=370
+lazytest_case 'ni 1p'\''my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
+        my %vals     = map +($_ => rand()), 1..500;
+        my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
+        my @dequeued;
+        push @dequeued, $maxqueue->pull while $maxqueue->size;
+        r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()'\'' \
+     rp'\''b != c'\''
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/perl.md'
+lazytest_line=395
 lazytest_case 'ni n10000p'\''sr {$_[0] + a} 0'\''
 ' 3<<'LAZYTEST_EOF'
 50005000
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=399
+lazytest_line=413
 lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 ' 3<<'LAZYTEST_EOF'
 /bin/bash	,root
@@ -4034,7 +4045,7 @@ lazytest_case 'ni /etc/passwd F::gGp'\''r g, se {"$_[0]," . a} \&g, ""'\''
 /bin/sync	,sync
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=420
+lazytest_line=434
 lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
                                             min($_[2], a), max($_[2], a)}
                                            0, 0, a, a;
@@ -4043,13 +4054,13 @@ lazytest_case 'ni n100p'\''my ($sum, $n, $min, $max) = sr {$_[0] + a, $_[1] + 1,
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=430
+lazytest_line=444
 lazytest_case 'ni n100p'\''r rc \&sr, rsum "a", rmean "a", rmin "a", rmax "a"'\''
 ' 3<<'LAZYTEST_EOF'
 5050	50.5	1	100
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=458
+lazytest_line=472
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/ \
      p'\''my %freqs = %{rc \&sr, rfn q{ ++${%1}{a()} && %1 }, {}};
        map r($_, $freqs{$_}), sort keys %freqs'\''
@@ -4079,7 +4090,7 @@ x	23
 y	12
 LAZYTEST_EOF
 lazytest_file='doc/perl.md'
-lazytest_line=506
+lazytest_line=520
 lazytest_case 'ni /etc/passwd FWpsplit// r/[a-z]/gcx
 ' 3<<'LAZYTEST_EOF'
 a	39

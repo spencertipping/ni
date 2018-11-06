@@ -19567,7 +19567,7 @@ Operator | Status | Example | Description
 `h`      | T      | `,z`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
 `z`      | T      | `,h`    | Turns each unique value into an integer.
-530 doc/perl.md
+544 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the
 internal libraries you use to extend ni. For the latter, see
@@ -19930,6 +19930,20 @@ bork
 bif
 bifaz
 baz
+```
+
+The default comparator is `<`, but you can change it by passing a function to
+the constructor. The function should take two arguments and return true if you
+want to pull the left before the right.
+
+```bash
+$ ni 1p'my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
+        my %vals     = map +($_ => rand()), 1..500;
+        my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
+        my @dequeued;
+        push @dequeued, $maxqueue->pull while $maxqueue->size;
+        r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()' \
+     rp'b != c'
 ```
 
 ## Streaming lookahead

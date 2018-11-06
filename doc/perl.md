@@ -362,6 +362,20 @@ bifaz
 baz
 ```
 
+The default comparator is `<`, but you can change it by passing a function to
+the constructor. The function should take two arguments and return true if you
+want to pull the left before the right.
+
+```bash
+$ ni 1p'my $maxqueue = pqueue->new(sub { $_[0] > $_[1] });
+        my %vals     = map +($_ => rand()), 1..500;
+        my @ordering = sort { $vals{$b} <=> $vals{$a} } keys %vals;
+        my @dequeued;
+        push @dequeued, $maxqueue->pull while $maxqueue->size;
+        r $_, $ordering[$_], $dequeued[$_] for 0..$#ordering; ()' \
+     rp'b != c'
+```
+
 ## Streaming lookahead
 This is implemented in terms of reducers, and gives you the ability to reduce
 arbitrarily many rows in constant space. There are two parts to this. First,
