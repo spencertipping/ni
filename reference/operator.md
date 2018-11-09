@@ -1530,7 +1530,10 @@
 # OPERATOR split_regex
 
 ## IMPLEMENTATION
-	my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\t/g"
+	
+	  (my $quoted = shift) =~ s/([\$\@])/\$1/g;
+	  my $r = qr/$quoted/;
+	  exec 'perl', '-lnpe', "s/$r/\$1\t/g";
 
 # OPERATOR sql_preview
 

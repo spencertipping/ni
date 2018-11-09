@@ -3887,7 +3887,7 @@ defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
-200 core/col/col.pl
+205 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -3954,8 +3954,13 @@ defshort '/x', pmap q{ref $_ ? colswap_op @$_ : colswap_op 2, 1}, popt colspec;
 # add custom split operators.
 
 defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#" : "y/$_[0]/\\t/"};
-defoperator split_regex => q{my $r = qr/$_[0]/; exec 'perl', '-lnpe', "s/$r/\$1\\t/g"};
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
+
+defoperator split_regex => q{
+  (my $quoted = shift) =~ s/([\$\@])/\\$1/g;
+  my $r = qr/$quoted/;
+  exec 'perl', '-lnpe', "s/$r/\$1\\t/g";
+};
 
 defoperator split_proper_csv => q{
   while (<STDIN>)
