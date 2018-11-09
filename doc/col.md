@@ -171,7 +171,13 @@ $ ni ./pathological.csv FV p'r map je($_), F_'
 1	2	3	4
 ```
 
-### Examples
+`F//` quotes Perl variable-interpolation metacharacters, so sequences like `$.`
+will be interpreted literally rather than as Perl's `$.` line-number variable.
+
+```bash
+$ ni i'foo$bar' F/[.$]/
+foo	bar
+```
 
 
 ## Vertical operator application

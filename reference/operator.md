@@ -1531,7 +1531,7 @@
 
 ## IMPLEMENTATION
 	
-	  (my $quoted = shift) =~ s/([\$\@])/\$1/g;
+	  (my $quoted = shift) =~ s/([\$\@])/\\$1/g;
 	  my $r = qr/$quoted/;
 	  exec 'perl', '-lnpe', "s/$r/\$1\t/g";
 

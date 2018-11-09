@@ -67,7 +67,7 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
 defoperator split_regex => q{
-  (my $quoted = shift) =~ s/([\$\@])/\\$1/g;
+  (my $quoted = shift) =~ s/([\$\@])/\\\\$1/g;
   my $r = qr/$quoted/;
   exec 'perl', '-lnpe', "s/$r/\$1\\t/g";
 };

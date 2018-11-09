@@ -3957,7 +3957,7 @@ defoperator split_chr   => q{exec 'perl', '-lnpe', $_[0] =~ /\// ? "y#$_[0]#\\t#
 defoperator scan_regex  => q{exec 'perl', '-lne',  'print join "\t", /' . "$_[0]/g"};
 
 defoperator split_regex => q{
-  (my $quoted = shift) =~ s/([\$\@])/\\$1/g;
+  (my $quoted = shift) =~ s/([\$\@])/\\\\$1/g;
   my $r = qr/$quoted/;
   exec 'perl', '-lnpe', "s/$r/\$1\\t/g";
 };
@@ -17821,7 +17821,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-235 doc/col.md
+241 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -17995,7 +17995,13 @@ $ ni ./pathological.csv FV p'r map je($_), F_'
 1	2	3	4
 ```
 
-### Examples
+`F//` quotes Perl variable-interpolation metacharacters, so sequences like `$.`
+will be interpreted literally rather than as Perl's `$.` line-number variable.
+
+```bash
+$ ni i'foo$bar' F/[.$]/
+foo	bar
+```
 
 
 ## Vertical operator application

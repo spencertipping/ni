@@ -682,21 +682,27 @@ lazytest_case 'ni ./pathological.csv FV p'\''r map je($_), F_'\''
 1	2	3	4
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=183
+lazytest_line=178
+lazytest_case 'ni i'\''foo$bar'\'' F/[.$]/
+' 3<<'LAZYTEST_EOF'
+foo	bar
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=189
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] p'\''r FT 2, uc(c), FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=191
+lazytest_line=197
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] vCpuc
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=202
+lazytest_line=208
 lazytest_case 'ni i[who let the dogs out] Z1
 ' 3<<'LAZYTEST_EOF'
 who
@@ -706,7 +712,7 @@ dogs
 out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=211
+lazytest_line=217
 lazytest_case 'ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 who	1
@@ -716,7 +722,7 @@ dogs	4
 out	5
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=220
+lazytest_line=226
 lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 1	who
@@ -726,7 +732,7 @@ lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 5	out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=231
+lazytest_line=237
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004
