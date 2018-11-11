@@ -15,6 +15,9 @@
 #
 # We write our current state, closures and all, to a tempfile so the xargs
 # indirection doesn't lose anything.
+#
+# NB: ni doesn't set --process-slot-var because it isn't portable, e.g. to OSX.
+# I need to find another way to get this functionality.
 
 defconfenv 'xargs/arg', NI_XARGS_ARG => '{}';
 

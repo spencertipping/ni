@@ -4603,7 +4603,7 @@ q{
 
 defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
                pseq popt colspec1, popt integer, _qfn;
-44 core/row/xargs.pl
+47 core/row/xargs.pl
 # Row-based process scaling, powered by xargs.
 # Similar to S8, but SX8 will use xargs -P8. xargs has every process write to
 # the same output fd, so we have to redirect each output into a file in order to
@@ -4621,6 +4621,9 @@ defshort '/J', pmap q{memory_join_op $$_[0] || 0, $$_[1] || 1, $$_[2]},
 #
 # We write our current state, closures and all, to a tempfile so the xargs
 # indirection doesn't lose anything.
+#
+# NB: ni doesn't set --process-slot-var because it isn't portable, e.g. to OSX.
+# I need to find another way to get this functionality.
 
 defconfenv 'xargs/arg', NI_XARGS_ARG => '{}';
 
