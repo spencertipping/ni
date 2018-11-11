@@ -2023,6 +2023,27 @@
 	  ']'
 	) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 
+# SHORT OPERATOR /fx
+
+## SYNTAX
+	(
+	  <empty>?
+	  (
+	    <integer>
+	    <empty>?
+	  ) -> {$$_[0]}
+	  (
+	    '['
+	    <empty>?
+	  ) -> {$$_[0]}
+	  <fn_bindings>
+	  </series>
+	  (
+	    ']'
+	    <empty>?
+	  ) -> {$$_[0]}
+	) -> {[@$_[1,3,4]]} -> {xargs_fn_op @$_}
+
 # SHORT OPERATOR /g
 
 ## SYNTAX

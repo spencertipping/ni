@@ -104,3 +104,16 @@
 	  my ($interval) = @$args;
 	  [map {;$$left[$_], stderr_monitor_op($_, json_encode $$left[$_], $interval)}
 	        0..$#{$left}];
+
+# META OPERATOR xargs_fn
+
+## IMPLEMENTATION
+	
+	  my ($args, $left, $right) = @_;
+	  my ($n, $bindings, $fnbody) = @$args;
+	  my $xargs_arg = noise_str 32;
+	  conf_set 'xargs/arg' => $xargs_arg;
+	
+	  my $xargs_op = row_xargs_scale_op $n, "i$xargs_arg", ":",
+	                                    [op_fn_op $bindings, $fnbody];
+	  ($left, [$xargs_op, @$right]);

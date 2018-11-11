@@ -4093,11 +4093,12 @@ defoperator vertical_apply => q{
 };
 
 defshort '/v', pmap q{vertical_apply_op @$_}, pseq colspec_fixed, _qfn;
-4 core/row/lib
+5 core/row/lib
 row.pl
 scale.pl
 join.pl
 xargs.pl
+pfn.pl
 219 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
@@ -4651,6 +4652,29 @@ defoperator row_xargs_scale => q{
 defscalealt pmap q{row_xargs_scale_op @$_},
             pn 1, pstr"X",
                   pseq pc integer, pc shell_arg, pc shell_arg, _qfn;
+22 core/row/pfn.pl
+# Parallel function interface (using xargs under the hood)
+#
+# ni ... fx24[ %var1 %var2 : lambda ]
+#
+# Does the same thing as f[], but in parallel using xargs. This is functionally
+# equivalent to SX..., but is more ni-idiomatic.
+
+defmetaoperator xargs_fn => q{
+  my ($args, $left, $right) = @_;
+  my ($n, $bindings, $fnbody) = @$args;
+  my $xargs_arg = noise_str 32;
+  conf_set 'xargs/arg' => $xargs_arg;
+
+  my $xargs_op = row_xargs_scale_op $n, "i$xargs_arg", ":",
+                                    [op_fn_op $bindings, $fnbody];
+  ($left, [$xargs_op, @$right]);
+};
+
+defshort '/fx', pmap q{xargs_fn_op @$_},
+                     pn [1, 3, 4], popt pempty,
+                     pc integer, pc pstr '[', fn_bindings, '/series',
+                                 pc pstr ']';
 16 core/pl/lib
 util.pm
 string.pm
