@@ -9569,7 +9569,7 @@ $(caterwaul(':all')(function ($) {
                           -then- w /~val/ $.extend(default_settings(), document.location.hash.substr(1) /!decodeURIComponent /!JSON.parse -rescue- {})
                           -then- tr.val() /!visualize,
 
-        reset_data_state()   = data_state = {frame: new dataframe(128 * 1048576), preview_done: false, bytes: 0, last_render: 0} -se- preview /~text/ '',
+        reset_data_state()   = data_state = {frame: new dataframe(512 * 1048576), preview_done: false, bytes: 0, last_render: 0} -se- preview /~text/ '',
         data_state           = null -se- reset_data_state(),
 
         data_was_revised(ls) = update_screen() /when[+new Date - data_state.last_render > data_state.frame.axes[0].end() / 100]
