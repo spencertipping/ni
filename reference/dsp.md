@@ -136,6 +136,7 @@
 	| ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
 	| ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
+	| ''gitddelta://' /.*/ -> {resource_quote_op "gitddelta://$_"}
 	| ''gitdelta://' /.*/ -> {resource_quote_op "gitdelta://$_"}
 	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
 	| ''gitdsnap://' /.*/ -> {resource_quote_op "gitdsnap://$_"}
@@ -173,6 +174,7 @@
 	| 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
 	| 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
+	| 'gitddelta://' /.*/ -> {resource_append_op "gitddelta://$_"}
 	| 'gitdelta://' /.*/ -> {resource_append_op "gitdelta://$_"}
 	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
 	| 'gitdsnap://' /.*/ -> {resource_append_op "gitdsnap://$_"}

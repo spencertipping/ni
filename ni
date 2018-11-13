@@ -7132,7 +7132,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-184 core/git/git.pl
+198 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7316,6 +7316,20 @@ defresource 'gitdelta',
                                    '-r', '--no-commit-id', '--name-only',
                                    $ref, defined $file ? ('--', $file) : ();
     soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
+  };
+
+# gitddelta: the gitdsnap:// version of gitdelta: object IDs with a path
+# afterwards. These are gitpdiff:// URIs that include both object IDs; i.e.
+# gitpdiff://<repo>:<objid1>..<objid2>.
+
+defresource 'gitddelta',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
+                                   '-r', '--no-commit-id',
+                                   $ref, defined $file ? ('--', $file) : ();
+    soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
+             && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
   };
 4 core/archive/lib
 zip.pl
@@ -18567,7 +18581,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-240 doc/git.md
+263 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18680,6 +18694,29 @@ ni      599:603:-       BEGIN {defparseralias filename   => palt prx 'file://(.+
 ni      600:603:+       BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
 ni      600:604:+                                                pn 1, pstr"\$", prx '.*'}
 ...
+```
+
+## Deltas
+You can ask about changed files using `gitdelta://` and `gitddelta://`. These
+give you the set of diffs for a given commit, optionally restricted to a
+specified path:
+
+```sh
+$ ni gitdelta://.:master
+gitpdiff://.:master::core/git/git.pl
+gitpdiff://.:master::doc/git.md
+gitpdiff://.:master::ni
+gitpdiff://.:master::reference/dsp.md
+gitpdiff://.:master::reference/long.md
+gitpdiff://.:master::reference/parser.md
+
+$ ni gitddelta://.:master
+gitpdiff://.:7ce170886f745c3c869b5ccb5334be116e9daf3a..1a1e5b9fc8089acea33c5df75f609ddf78696659 core/git/git.pl
+gitpdiff://.:3a7061241397a772d5f4fd2b90ed6d69dcceaa3e..21ce71fc058a5da64cee4ad05e74c4f8350b8908 doc/git.md
+gitpdiff://.:53e1e3e67bb3c5fce80162d6bcdd8532b0f383a8..92205a10ff73713ba4506245b65662cd400822b9 ni
+gitpdiff://.:4f15db74b0c1aad2f5d10fcbfb2e037959543376..484d63dbd0801884e2fd6992611816f4b1bd5ef0 reference/dsp.md
+gitpdiff://.:bbc46434b0807af60d97f15c069c60c8be48888e..8788ebdcde2cd016b390b3d1efde7b98085d3f4b reference/long.md
+gitpdiff://.:258ababd3e4b86fb5d71c8ed38f6fb4fa393486c..2b415c4ecdc38f73f87e5900877000f012cce5a0 reference/parser.md
 ```
 
 ## Snapshots

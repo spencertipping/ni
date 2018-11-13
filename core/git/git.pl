@@ -182,3 +182,17 @@ defresource 'gitdelta',
                                    $ref, defined $file ? ('--', $file) : ();
     soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
   };
+
+# gitddelta: the gitdsnap:// version of gitdelta: object IDs with a path
+# afterwards. These are gitpdiff:// URIs that include both object IDs; i.e.
+# gitpdiff://<repo>:<objid1>..<objid2>.
+
+defresource 'gitddelta',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
+                                   '-r', '--no-commit-id',
+                                   $ref, defined $file ? ('--', $file) : ();
+    soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
+             && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
+  };
