@@ -28,6 +28,7 @@
 	  | ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	  | ''gitdelta://' /.*/ -> {resource_quote_op "gitdelta://$_"}
 	  | ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
+	  | ''gitdsnap://' /.*/ -> {resource_quote_op "gitdsnap://$_"}
 	  | ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
 	  | ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
 	  | ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
@@ -64,6 +65,7 @@
 	  | 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	  | 'gitdelta://' /.*/ -> {resource_append_op "gitdelta://$_"}
 	  | 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
+	  | 'gitdsnap://' /.*/ -> {resource_append_op "gitdsnap://$_"}
 	  | 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
 	  | 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
 	  | 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}
@@ -1494,6 +1496,7 @@
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	| ''gitdelta://' /.*/ -> {resource_quote_op "gitdelta://$_"}
 	| ''gitdiff://' /.*/ -> {resource_quote_op "gitdiff://$_"}
+	| ''gitdsnap://' /.*/ -> {resource_quote_op "gitdsnap://$_"}
 	| ''githistory://' /.*/ -> {resource_quote_op "githistory://$_"}
 	| ''gitnmhistory://' /.*/ -> {resource_quote_op "gitnmhistory://$_"}
 	| ''gitpdiff://' /.*/ -> {resource_quote_op "gitpdiff://$_"}
@@ -1530,6 +1533,7 @@
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	| 'gitdelta://' /.*/ -> {resource_append_op "gitdelta://$_"}
 	| 'gitdiff://' /.*/ -> {resource_append_op "gitdiff://$_"}
+	| 'gitdsnap://' /.*/ -> {resource_append_op "gitdsnap://$_"}
 	| 'githistory://' /.*/ -> {resource_append_op "githistory://$_"}
 	| 'gitnmhistory://' /.*/ -> {resource_append_op "gitnmhistory://$_"}
 	| 'gitpdiff://' /.*/ -> {resource_append_op "gitpdiff://$_"}

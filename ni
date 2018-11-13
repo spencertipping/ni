@@ -7132,7 +7132,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-167 core/git/git.pl
+184 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7278,7 +7278,7 @@ defresource 'gitblob',
 # could then use W\< to read the repo contents.
 #
 # Blobs are specified using logical paths; so you'll see
-# gitblob://path:ref/filename instead of gitblob://path:blobhash.
+# gitblob://path:ref::filename instead of gitblob://path:blobhash.
 
 defresource 'gitsnap',
   read => q{
@@ -7289,8 +7289,25 @@ defresource 'gitsnap',
     soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
   };
 
+# gitdsnap: just like gitsnap, but returns direct object IDs instead of
+# gitblob://repo:ref::path. Because object IDs track content, this gives you a
+# simple way to know whether an object has been changed.
+#
+# gitdsnap:// has two columns of output: the object IDs and the logical
+# filenames they map to.
+
+defresource 'gitdsnap',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
+                                   '-r', $ref,
+                                   defined $file ? ('--', $file) : ();
+    soproc { /^\S+ \S+ ([0-9a-fA-F]+)\t(.*)/
+             && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
+  };
+
 # gitdelta: a listing of all files changed by a specific revision, listed as
-# gitpdiff:// URIs.
+# gitpdiff:// URIs with path components.
 
 defresource 'gitdelta',
   read => q{
@@ -18550,7 +18567,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-196 doc/git.md
+240 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18695,6 +18712,50 @@ $ ni gitsnap://.:master::core r10 W\< fAc
 53      gitblob://.:master::core/binary/binary.pl
 29      gitblob://.:master::core/binary/bytestream.pm
 7       gitblob://.:master::core/binary/bytewriter.pm
+```
+
+`gitdsnap://<repo>:<revision>[::<path>]` is identical to `gitsnap://`, except
+that it resolves each blob directly to an object ID and provides the object's
+path in a separate column:
+
+```sh
+$ ni gitdsnap://.:develop::core r10
+gitblob://.:1cf22488c96c6659f5340c35e04a64080a15ccb3    core/archive/7z.pl
+gitblob://.:d8b31ab1df24f45c538a5ef40990276eaf89b91e    core/archive/lib
+gitblob://.:4f68ea5bc47097f2d178092d0c5e5fb3cc7833cc    core/archive/tar.pl
+gitblob://.:bd1e4474301515a950aa45b7957bd01a2ea422b8    core/archive/xlsx.pl
+gitblob://.:3a9556fc41145f3854a471ddf844b53355645463    core/archive/zip.pl
+gitblob://.:b9905bc73446ab35a5bf6409d26de9a29928f9b5    core/assert/assert.pl
+gitblob://.:10fc2bed290348cd050e49f5cd2c7cf640a10721    core/assert/lib
+gitblob://.:deb7b8f2c18981abd5596cb29c2f37b904a91db6    core/binary/binary.pl
+gitblob://.:e5e35b6d6a95c0d48e43eda342506b784bedce14    core/binary/bytestream.pm
+gitblob://.:8796e5ca26d1d6869ddd79fd981b400fa9f7c9aa    core/binary/bytewriter.pm
+
+# count lines in each file
+$ ni gitdsnap://.:develop::core r10 fA W\< fAc
+40      gitblob://.:1cf22488c96c6659f5340c35e04a64080a15ccb3
+4       gitblob://.:d8b31ab1df24f45c538a5ef40990276eaf89b91e
+36      gitblob://.:4f68ea5bc47097f2d178092d0c5e5fb3cc7833cc
+69      gitblob://.:bd1e4474301515a950aa45b7957bd01a2ea422b8
+30      gitblob://.:3a9556fc41145f3854a471ddf844b53355645463
+6       gitblob://.:b9905bc73446ab35a5bf6409d26de9a29928f9b5
+1       gitblob://.:10fc2bed290348cd050e49f5cd2c7cf640a10721
+53      gitblob://.:deb7b8f2c18981abd5596cb29c2f37b904a91db6
+29      gitblob://.:e5e35b6d6a95c0d48e43eda342506b784bedce14
+7       gitblob://.:8796e5ca26d1d6869ddd79fd981b400fa9f7c9aa
+
+# count lines in each file, keeping the file path
+$ ni gitdsnap://.:develop::core r10 W\<'(split /\t/)[0]' fABc
+40      gitblob://.:1cf22488c96c6659f5340c35e04a64080a15ccb3    core/archive/7z.pl
+4       gitblob://.:d8b31ab1df24f45c538a5ef40990276eaf89b91e    core/archive/lib
+36      gitblob://.:4f68ea5bc47097f2d178092d0c5e5fb3cc7833cc    core/archive/tar.pl
+69      gitblob://.:bd1e4474301515a950aa45b7957bd01a2ea422b8    core/archive/xlsx.pl
+30      gitblob://.:3a9556fc41145f3854a471ddf844b53355645463    core/archive/zip.pl
+6       gitblob://.:b9905bc73446ab35a5bf6409d26de9a29928f9b5    core/assert/assert.pl
+1       gitblob://.:10fc2bed290348cd050e49f5cd2c7cf640a10721    core/assert/lib
+53      gitblob://.:deb7b8f2c18981abd5596cb29c2f37b904a91db6    core/binary/binary.pl
+29      gitblob://.:e5e35b6d6a95c0d48e43eda342506b784bedce14    core/binary/bytestream.pm
+7       gitblob://.:8796e5ca26d1d6869ddd79fd981b400fa9f7c9aa    core/binary/bytewriter.pm
 ```
 
 ## Commit trees

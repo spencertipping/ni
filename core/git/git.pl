@@ -143,7 +143,7 @@ defresource 'gitblob',
 # could then use W\< to read the repo contents.
 #
 # Blobs are specified using logical paths; so you'll see
-# gitblob://path:ref/filename instead of gitblob://path:blobhash.
+# gitblob://path:ref::filename instead of gitblob://path:blobhash.
 
 defresource 'gitsnap',
   read => q{
@@ -154,8 +154,25 @@ defresource 'gitsnap',
     soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
   };
 
+# gitdsnap: just like gitsnap, but returns direct object IDs instead of
+# gitblob://repo:ref::path. Because object IDs track content, this gives you a
+# simple way to know whether an object has been changed.
+#
+# gitdsnap:// has two columns of output: the object IDs and the logical
+# filenames they map to.
+
+defresource 'gitdsnap',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
+                                   '-r', $ref,
+                                   defined $file ? ('--', $file) : ();
+    soproc { /^\S+ \S+ ([0-9a-fA-F]+)\t(.*)/
+             && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
+  };
+
 # gitdelta: a listing of all files changed by a specific revision, listed as
-# gitpdiff:// URIs.
+# gitpdiff:// URIs with path components.
 
 defresource 'gitdelta',
   read => q{
