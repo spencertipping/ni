@@ -251,6 +251,7 @@ defoperator file_prepend_name_write => q{
     if (!defined $file or $fname ne $file)
     {
       close $fh, $fh->can('await') && $fh->await if defined $fh;
+      print "$file\n" if defined $file;
       $file = $fname;
 
       # NB: swfile has much lower startup overhead than exec_ni(), so use that
@@ -263,6 +264,7 @@ defoperator file_prepend_name_write => q{
   }
 
   close $fh, $fh->can('await') && $fh->await if defined $fh;
+  print "$file\n" if defined $file;
 };
 
 defshort '/W>', pmap q{file_prepend_name_write_op $_}, popt _qfn;

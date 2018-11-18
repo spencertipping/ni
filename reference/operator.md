@@ -445,6 +445,7 @@
 	    if (!defined $file or $fname ne $file)
 	    {
 	      close $fh, $fh->can('await') && $fh->await if defined $fh;
+	      print "$file\n" if defined $file;
 	      $file = $fname;
 	
 	      # NB: swfile has much lower startup overhead than exec_ni(), so use that
@@ -457,6 +458,7 @@
 	  }
 	
 	  close $fh, $fh->can('await') && $fh->await if defined $fh;
+	  print "$file\n" if defined $file;
 
 # OPERATOR file_read
 
