@@ -2985,7 +2985,7 @@ defoperator file_prepend_name_write => q{
       # NB: swfile has much lower startup overhead than exec_ni(), so use that
       # unless we have a lambda that requires slower operation.
       $fh = defined $lambda
-        ? siproc {exec_ni(@$lambda, file_write_op $file)}
+        ? siproc {exec_ni(@$lambda, file_write_op($file), sink_null_op)}
         : swfile $file;
     }
     print $fh $l;
