@@ -242,6 +242,8 @@ defoperator file_prepend_name_write => q{
   my $file     = undef;
   my $fh       = undef;
 
+  $lambda = undef if ref $lambda && !@$lambda;
+
   while (<STDIN>)
   {
     my ($fname, $l) = /^([^\t\n]*)\t([\s\S]*)/;
