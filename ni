@@ -2725,7 +2725,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-333 core/stream/ops.pl
+334 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2974,7 +2974,8 @@ defoperator file_prepend_name_write => q{
 
   while (<STDIN>)
   {
-    my ($fname, $l) = /^([^\t\n]*)\t([\s\S]*)/;
+    my ($fname, $l) = /^([^\t\n]+)\t([\s\S]*)/;
+    ($fname, $l) = ($file, "\n") unless defined $fname;
     if (!defined $file or $fname ne $file)
     {
       close $fh, $fh->can('await') && $fh->await if defined $fh;
