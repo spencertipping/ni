@@ -119,4 +119,5 @@ BEGIN {ceval sprintf 'sub se%s(&$@) {
                         se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 65 for 'A'..'Z'}
 
-sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
+sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined;
+            wantarray ? @xs : $xs[0]}

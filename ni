@@ -5445,7 +5445,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-122 core/pl/stream.pm
+123 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -5567,7 +5567,8 @@ BEGIN {ceval sprintf 'sub se%s(&$@) {
                         se {&$f(@_)} sub {join "\t", @ni::pl::F[0..%d]}, @xs;
                       }', $_, ord($_) - 65 for 'A'..'Z'}
 
-sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined; @xs}
+sub sr(&@) {my ($f, @xs) = @_; @xs = &$f(@xs), rl while defined;
+            wantarray ? @xs : $xs[0]}
 67 core/pl/reducers.pm
 # Compound reductions.
 # Suppose you want to calculate, in parallel, the sum of one column and the mean
