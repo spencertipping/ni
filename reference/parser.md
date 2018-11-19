@@ -24,6 +24,7 @@
 	  | ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	  | ''git://' /.*/ -> {resource_quote_op "git://$_"}
 	  | ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
+	  | ''gitclosure://' /.*/ -> {resource_quote_op "gitclosure://$_"}
 	  | ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
 	  | ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	  | ''gitddelta://' /.*/ -> {resource_quote_op "gitddelta://$_"}
@@ -62,6 +63,7 @@
 	  | 'file://' /.*/ -> {resource_append_op "file://$_"}
 	  | 'git://' /.*/ -> {resource_append_op "git://$_"}
 	  | 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
+	  | 'gitclosure://' /.*/ -> {resource_append_op "gitclosure://$_"}
 	  | 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
 	  | 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	  | 'gitddelta://' /.*/ -> {resource_append_op "gitddelta://$_"}
@@ -1494,6 +1496,7 @@
 	| ''file://' /.*/ -> {resource_quote_op "file://$_"}
 	| ''git://' /.*/ -> {resource_quote_op "git://$_"}
 	| ''gitblob://' /.*/ -> {resource_quote_op "gitblob://$_"}
+	| ''gitclosure://' /.*/ -> {resource_quote_op "gitclosure://$_"}
 	| ''gitcommit://' /.*/ -> {resource_quote_op "gitcommit://$_"}
 	| ''gitcommitmeta://' /.*/ -> {resource_quote_op "gitcommitmeta://$_"}
 	| ''gitddelta://' /.*/ -> {resource_quote_op "gitddelta://$_"}
@@ -1532,6 +1535,7 @@
 	| 'file://' /.*/ -> {resource_append_op "file://$_"}
 	| 'git://' /.*/ -> {resource_append_op "git://$_"}
 	| 'gitblob://' /.*/ -> {resource_append_op "gitblob://$_"}
+	| 'gitclosure://' /.*/ -> {resource_append_op "gitclosure://$_"}
 	| 'gitcommit://' /.*/ -> {resource_append_op "gitcommit://$_"}
 	| 'gitcommitmeta://' /.*/ -> {resource_append_op "gitcommitmeta://$_"}
 	| 'gitddelta://' /.*/ -> {resource_append_op "gitddelta://$_"}

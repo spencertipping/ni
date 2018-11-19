@@ -7137,7 +7137,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-198 core/git/git.pl
+224 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7169,7 +7169,7 @@ defresource 'gitcommit',
     soproc {
       print join("\t", map "$_://$pathref",
                  qw/ gitcommitmeta githistory gitdiff gittree gitpdiff
-                     gitnmhistory gitsnap gitdelta /), "\n";
+                     gitnmhistory gitsnap gitdelta gitclosure /), "\n";
     };
   };
 
@@ -7335,6 +7335,32 @@ defresource 'gitddelta',
                                    $ref, defined $file ? ('--', $file) : ();
     soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
              && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
+  };
+
+# gitclosure://<repo>:<ref>[::<path>]: returns the full set of direct-encoded
+# gitcommit://, gittree://, and gitblob:// URLs that constitute the ref.
+
+defresource 'gitclosure',
+  read => q{
+    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my $revlist_cmd = shell_quote git => "--git-dir=$path", 'rev-list',
+                                  '--objects', $ref,
+                                  defined $file ? ('--', $file) : ();
+    my %object_paths;
+    my @object_order;
+    my $revlist_fh = soproc { sh $revlist_cmd };
+    /^(\S+)(?:\s+(.*))?/ and push(@object_order, $1)
+                         and $object_paths{$1} = dor $2, "" while <$revlist_fh>;
+    close $revlist_fh;
+    $revlist_fh->await;
+
+    my $batchcheck = shell_quote git => "--git-dir=$path", 'cat-file',
+                                 '--batch-check';
+    soproc {
+      my $fh = soproc { my $pipe = siproc { sh $batchcheck };
+                        print $pipe "$_\n" for @object_order };
+      /^(\S+)\s+(\w+)/ && print "git$2://$outpath:$1\t$object_paths{$1}\n"
+        while <$fh> };
   };
 4 core/archive/lib
 zip.pl
@@ -18586,7 +18612,7 @@ $ ni nE4p'my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 180);
 B32 OK
 BIN OK
 ```
-263 doc/git.md
+300 doc/git.md
 # Git interop
 **TODO:** convert these to unit tests
 
@@ -18652,6 +18678,43 @@ You can also see history for a specific path by adding a `::<file>` suffix:
 
 ```sh
 $ ni githistory://.:master::reference     # history for reference/ only
+```
+
+## Branch closures
+`gitclosure://` will give you the full set of commits, trees, and blobs for a
+specified branch or ref. This includes all revisions of objects referenced by
+the ref. Trees and blobs will be listed along with their associated paths. For
+example:
+
+```sh
+$ ni gitclosure://.:be11c41526130f57df80f55740ded2b60b0168e5
+gitcommit://.:be11c41526130f57df80f55740ded2b60b0168e5  
+gitcommit://.:32238db9c29acbfba369e622494b0038c110042d  
+gitcommit://.:59f724743b17180cf3f36932af7871d09d74964e  
+gitcommit://.:4069ca087deca5134a92c9948eab53a41436e3bc  
+gittree://.:bf0364682366298e9633f82eb7756471c2c95d3e    
+gitblob://.:a57239fade655e61c5971b14d4af711507e57ad5    README.md
+gittree://.:919906da85e16631b4d7230c774c1bd7a86947ea    src
+gitblob://.:4dddb5596b95a086e7bd796e92afd15dd7974085    src/core.pl
+gitblob://.:ae50c4769fe32eb79f02b2135e771d5c1ef1eb67    src/fn.pl
+gitblob://.:5e44bb420527ab3a1af656af82f94e1ae0983d1a    src/io.pl
+gitblob://.:27c79b2dd0224a4753529dcfbe2cf5af05172e3c    src/iotypes.pl
+gitblob://.:a236e75df5ec1f27420035638a14b66fc2777a10    src/main.pl
+gittree://.:1d4cb2b2df4d1186266cd0fddb8791180ccaecbd    
+gittree://.:16bd114827bd5d1ec27856a08f086d342747da3e    src
+gitblob://.:b508c52cc65cd70d2fd2d541d553a55a43679239    src/io.pl
+gitblob://.:ca02ce5874917c419f73449fa90a9754cad046cb    src/iotypes.pl
+gitblob://.:bc4df9d65276a621569e4573510b9e3bae491c65    src/main.pl
+gittree://.:23bd63d3784f56caddaae832bd4dab9f422b0b53    
+gittree://.:d5aab0dfe1aa40c29980cd914ca3c66230a05745    src
+gitblob://.:1a4c9b2c145698102e1a4d353c06aa8576d270ba    src/core.pl
+gitblob://.:1f715fafeb46f683ccb87c29290f14c3feb27b0d    src/fn.pl
+gitblob://.:a85303b16a71eae77d75eda2adced0a100e546dc    src/io.pl
+gitblob://.:549ed656a5695db89d3bf95a0f0db03757994de0    src/iotypes.pl
+gitblob://.:7b784d339cabf8168d08282aae37d730b9656f91    src/main.pl
+gittree://.:1a6b63aeb8a069140b5efb66b5de8a116413b5ba    
+gittree://.:74fedf257e67283820cb72e486521153fca59e1a    src
+gitblob://.:787e498a16099e6c66e568721beff62f59cb28cb    src/main.pl
 ```
 
 ## Commit diffs
