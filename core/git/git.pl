@@ -5,7 +5,9 @@ sub git_dir($) { -d "$_[0]/.git" ? "$_[0]/.git" : $_[0] }
 
 sub git_parse_pathref($)
 {
-  my ($path, $ref, $extra) = shift =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/;
+  my ($path, $ref, $extra) = $_[0] =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/
+    or die "git syntax $_[0] is invalid; expected <gitpath>:<ref>[::<path>]\n"
+         . "(for instance, $_[0]:master)";
   $path = git_dir $path;
   (my $outpath = $path) =~ s/\/.git$//;
   ($outpath, $path, $ref, $extra);

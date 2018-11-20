@@ -7138,7 +7138,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-224 core/git/git.pl
+226 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7146,7 +7146,9 @@ sub git_dir($) { -d "$_[0]/.git" ? "$_[0]/.git" : $_[0] }
 
 sub git_parse_pathref($)
 {
-  my ($path, $ref, $extra) = shift =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/;
+  my ($path, $ref, $extra) = $_[0] =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/
+    or die "git syntax $_[0] is invalid; expected <gitpath>:<ref>[::<path>]\n"
+         . "(for instance, $_[0]:master)";
   $path = git_dir $path;
   (my $outpath = $path) =~ s/\/.git$//;
   ($outpath, $path, $ref, $extra);
