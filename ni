@@ -7146,7 +7146,7 @@ sub git_dir($) { -d "$_[0]/.git" ? "$_[0]/.git" : $_[0] }
 
 sub git_parse_pathref($)
 {
-  my ($path, $ref, $extra) = $_[0] =~ /^(.*[^:]):([^:]+)(?:::(.*))?$/
+  my ($path, $ref, $extra) = $_[0] =~ /^(.*[^\t:]):([^\t:]+)(?:::(.*)$)?/
     or die "git syntax $_[0] is invalid; expected <gitpath>:<ref>[::<path>]\n"
          . "(for instance, $_[0]:master)";
   $path = git_dir $path;
