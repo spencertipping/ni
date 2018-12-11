@@ -1934,7 +1934,10 @@
 # SHORT OPERATOR /W<
 
 ## SYNTAX
-	<generic_code>? -> {file_prepend_name_read_op $_}
+	(
+	  <colspec1>?
+	  <generic_code>?
+	) -> {file_prepend_name_read_op @$_}
 
 # SHORT OPERATOR /W>
 
@@ -1944,7 +1947,10 @@
 # SHORT OPERATOR /Wn<
 
 ## SYNTAX
-	<generic_code>? -> {file_prepend_name_number_read_op $_}
+	(
+	  <colspec1>?
+	  <generic_code>?
+	) -> {file_prepend_name_number_read_op @$_}
 
 # SHORT OPERATOR /X
 

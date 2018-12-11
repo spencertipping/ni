@@ -205,37 +205,49 @@ defshort '/>', pmap q{file_write_op $_}, popt nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
 
 defoperator file_prepend_name_read => q{
+  my ($colspec, $transform) = @_;
+  $colspec   = [1, 0] unless defined $colspec;
+  $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
+                                  : sub {shift};
+
+  my ($maxcol, $coli) = @$colspec;
   my $file;
-  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
-                                : sub {shift};
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    my $fh = soproc {scat &$transform($file)};
+    my $fname = (split /\t/, $file, $maxcol)[$coli];
+    my $fh    = soproc {scat &$transform($fname)};
     chomp, print "$file\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
   }
 };
 
-defshort '/W<', pmap q{file_prepend_name_read_op $_}, popt generic_code;
+defshort '/W<', pmap q{file_prepend_name_read_op @$_},
+                pseq popt colspec1, popt generic_code;
 
 defoperator file_prepend_name_number_read => q{
+  my ($colspec, $transform) = @_;
+  $colspec   = [1, 0] unless defined $colspec;
+  $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
+                                  : sub {shift};
+
+  my ($maxcol, $coli) = @$colspec;
   my $file;
-  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
-                                : sub {shift};
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    my $line = 0;
-    my $fh = soproc {scat &$transform($file)};
+    my $line  = 0;
+    my $fname = (split /\t/, $file, $maxcol)[$coli];
+    my $fh    = soproc {scat &$transform($fname)};
     ++$line, chomp, print "$file\t$line\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
   }
 };
 
-defshort '/Wn<', pmap q{file_prepend_name_number_read_op $_}, popt generic_code;
+defshort '/Wn<', pmap q{file_prepend_name_number_read_op @$_},
+                 pseq popt colspec1, popt generic_code;
 
 defoperator file_prepend_name_write => q{
   my ($lambda) = @_;

@@ -399,14 +399,19 @@
 
 ## IMPLEMENTATION
 	
+	  my ($colspec, $transform) = @_;
+	  $colspec   = [1, 0] unless defined $colspec;
+	  $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
+	                                  : sub {shift};
+	
+	  my ($maxcol, $coli) = @$colspec;
 	  my $file;
-	  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
-	                                : sub {shift};
 	  while (defined($file = <STDIN>))
 	  {
 	    chomp $file;
-	    my $line = 0;
-	    my $fh = soproc {scat &$transform($file)};
+	    my $line  = 0;
+	    my $fname = (split /\t/, $file, $maxcol)[$coli];
+	    my $fh    = soproc {scat &$transform($fname)};
 	    ++$line, chomp, print "$file\t$line\t$_\n" while <$fh>;
 	    close $fh;
 	    $fh->await;
@@ -416,13 +421,18 @@
 
 ## IMPLEMENTATION
 	
+	  my ($colspec, $transform) = @_;
+	  $colspec   = [1, 0] unless defined $colspec;
+	  $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
+	                                  : sub {shift};
+	
+	  my ($maxcol, $coli) = @$colspec;
 	  my $file;
-	  my $transform = defined $_[0] ? eval "sub {local \$_ = shift; $_[0]}"
-	                                : sub {shift};
 	  while (defined($file = <STDIN>))
 	  {
 	    chomp $file;
-	    my $fh = soproc {scat &$transform($file)};
+	    my $fname = (split /\t/, $file, $maxcol)[$coli];
+	    my $fh    = soproc {scat &$transform($fname)};
 	    chomp, print "$file\t$_\n" while <$fh>;
 	    close $fh;
 	    $fh->await;
