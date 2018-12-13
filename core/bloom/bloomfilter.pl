@@ -1,7 +1,7 @@
 # Bloom filter library.
 # A simple pure-Perl implementation of Bloom filters.
 
-eval {require Digest::MD5; Digest::MD5->import('md5', 'md5_hex')};
+eval {require Digest::MD5; Digest::MD5->import(qw/md5 md5_hex md5_base64/)};
 
 # Swiped from https://hur.st/bloomfilter
 sub bloom_args($$) {
