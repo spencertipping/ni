@@ -41,16 +41,19 @@ use overload '%{}' => \&to_h;
 sub new
 {
   my ($class, $compfn) = @_;
-  my $self = bless \{ index => {},      # key -> heap position
-                      vals  => {},      # key -> value
-                      heap  => [undef], # heap of keys
-                      comp  => defined $compfn ? $compfn
-                                               : sub { $_[0] < $_[1] }},
+  my $self = bless \{ index  => {},       # key -> heap position
+                      vals   => {},       # key -> value
+                      heap   => [undef],  # heap of keys
+                      strict => 0,
+                      comp   => defined $compfn ? $compfn
+                                                : sub { $_[0] < $_[1] }},
                    $class;
 
   tie %{$$$self{magic_hash} = {}}, 'pqueue::hashtie', $self;
   $self;
 }
+
+sub strict { my $self = shift; $$self{strict} = 1; $self }
 
 sub to_h { ${+shift}->{magic_hash} }
 
@@ -114,6 +117,14 @@ sub delete
 
   my $v = delete $$kv{$k};
   my $i = delete $$ki{$k};
+
+  if (!defined $i)
+  {
+    die "ni pqueue: attempting to remove nonexistent element $k"
+      if $$self{strict};
+    return $v;
+  }
+
   $k = pop @$h;
 
   # First order of business: the rest of the heap is fine if we've just
