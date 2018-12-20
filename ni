@@ -5718,7 +5718,7 @@ sub new
   $self;
 }
 
-sub strict { my $self = shift; $$self{strict} = 1; $self }
+sub strict { my $self = shift; $$$self{strict} = 1; $self }
 
 sub to_h { ${+shift}->{magic_hash} }
 
@@ -5749,7 +5749,7 @@ sub insert
   my $kv = $$$self{vals};
   my $fn = $$$self{comp};
 
-  # TODO: optimize bulk insert
+  # TODO: optimize bulk insert on an empty queue
   while (@_)
   {
     my $k = shift;
