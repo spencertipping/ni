@@ -398,6 +398,8 @@
 	| '$mapbox/key' '' -> {conf_get_op 'mapbox/key'}
 	| '$mapbox/tileset' '' -> {conf_get_op 'mapbox/tileset'}
 	| '$monitor' '' -> {conf_get_op 'monitor'}
+	| '$monitor/interval' '' -> {conf_get_op 'monitor/interval'}
+	| '$monitor/start' '' -> {conf_get_op 'monitor/start'}
 	| '$pager' '' -> {conf_get_op 'pager'}
 	| '$row/seed' '' -> {conf_get_op 'row/seed'}
 	| '$row/sort-buffer' '' -> {conf_get_op 'row/sort-buffer'}

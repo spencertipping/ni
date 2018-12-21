@@ -1578,6 +1578,8 @@
 	  my $factor_log  = 0;
 	  my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
 	
+	  my $monitor_start = conf 'monitor/start';
+	
 	  while (1) {
 	    my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
 	                   last unless $n;
@@ -1596,7 +1598,7 @@
 	      $start_time = $t2;
 	    }
 	
-	    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+	    if ($t3 - $last_update > $update_rate && $t3 - $start_time > $monitor_start) {
 	      $last_update = $t3;
 	      $runtime = $t3 - $start_time || 1;
 	      if ($t3 & 3 && /\n(.*)\n/) {
@@ -1621,14 +1623,17 @@
 	  }
 	
 	  # Indicate EOF by dropping = into whitespaces.
-	  safewrite \*STDERR,
-	    sprintf "\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s=% 3d=%s\n",
-	      $monitor_id + 1,
-	      int($last_update),
-	      unit_bytes $bytes,
-	      unit_bytes $bytes / $runtime,
-	      $factor_log * 10,
-	      substr $monitor_name, 0, $width - 20;
+	  if (time() - $start_time > $monitor_start)
+	  {
+	    safewrite \*STDERR,
+	      sprintf "\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s% 4d=%s\n",
+	        $monitor_id + 1,
+	        int($last_update),
+	        unit_bytes $bytes,
+	        unit_bytes $bytes / $runtime,
+	        $factor_log * 10,
+	        substr $monitor_name, 0, $width - 20;
+	  }
 
 # OPERATOR stream_to_gnuplot
 

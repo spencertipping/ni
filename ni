@@ -3269,7 +3269,7 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl
-92 core/monitor/monitor.pl
+100 core/monitor/monitor.pl
 # Pipeline monitoring.
 # nfu provided a simple throughput/data count for each pipeline stage. ni can do
 # much more, for instance determining the cause of a bottleneck and previewing
@@ -3283,7 +3283,9 @@ sub unit_bytes($) {
   return $_[0] >> 50, "P";
 }
 
-defconfenv 'monitor', NI_MONITOR => 'yes';
+defconfenv 'monitor',          NI_MONITOR          => 'yes';
+defconfenv 'monitor/start',    NI_MONITOR_START    => 2;
+defconfenv 'monitor/interval', NI_MONITOR_INTERVAL => 0.1;
 
 defmetaoperator stderr_monitor_transform => q{
   my ($args, $left) = @_;
@@ -3304,6 +3306,8 @@ defoperator stderr_monitor => q{
   my $factor_log  = 0;
   my ($stdin, $stdout) = (\*STDIN, \*STDOUT);
 
+  my $monitor_start = conf 'monitor/start';
+
   while (1) {
     my $t1 = time; $bytes += my $n = saferead $stdin, $_, 65536;
                    last unless $n;
@@ -3322,7 +3326,7 @@ defoperator stderr_monitor => q{
       $start_time = $t2;
     }
 
-    if ($t3 - $last_update > $update_rate && $t3 - $start_time > 2) {
+    if ($t3 - $last_update > $update_rate && $t3 - $start_time > $monitor_start) {
       $last_update = $t3;
       $runtime = $t3 - $start_time || 1;
       if ($t3 & 3 && /\n(.*)\n/) {
@@ -3347,20 +3351,24 @@ defoperator stderr_monitor => q{
   }
 
   # Indicate EOF by dropping = into whitespaces.
-  safewrite \*STDERR,
-    sprintf "\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s=% 3d=%s\n",
-      $monitor_id + 1,
-      int($last_update),
-      unit_bytes $bytes,
-      unit_bytes $bytes / $runtime,
-      $factor_log * 10,
-      substr $monitor_name, 0, $width - 20;
+  if (time() - $start_time > $monitor_start)
+  {
+    safewrite \*STDERR,
+      sprintf "\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s% 4d=%s\n",
+        $monitor_id + 1,
+        int($last_update),
+        unit_bytes $bytes,
+        unit_bytes $bytes / $runtime,
+        $factor_log * 10,
+        substr $monitor_name, 0, $width - 20;
+  }
 };
 
 my $original_main_operator = $ni::main_operator;
 $ni::main_operator = sub {
   return &$original_main_operator(@_) if conf 'monitor' ne 'yes';
-  &$original_main_operator(@_, stderr_monitor_transform_op(0.1));
+  &$original_main_operator(@_,
+    stderr_monitor_transform_op(conf 'monitor/interval'));
 };
 1 core/uri/lib
 uri.pl

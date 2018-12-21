@@ -1356,6 +1356,16 @@
 ## SYNTAX
 	'' -> {conf_get_op 'monitor'}
 
+# SHORT OPERATOR /$monitor/interval
+
+## SYNTAX
+	'' -> {conf_get_op 'monitor/interval'}
+
+# SHORT OPERATOR /$monitor/start
+
+## SYNTAX
+	'' -> {conf_get_op 'monitor/start'}
+
 # SHORT OPERATOR /$pager
 
 ## SYNTAX
