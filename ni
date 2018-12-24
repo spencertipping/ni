@@ -7421,7 +7421,7 @@ defresource 'gitclosure',
   };
 1 core/solr/lib
 solr.pl
-52 core/solr/solr.pl
+53 core/solr/solr.pl
 # solr-via-HTTP URI integration
 # Example usage:
 #
@@ -7455,6 +7455,7 @@ sub solr_corelist
 sub solr_query
 {
   my ($host, $port, $core, $args) = @_;
+  $args //= "*:*";
   sh shell_quote curl => "-Ss",
     "http://$host:$port/solr/$core/select?wt=csv&csv.separator=%09&q.op=AND&rows=1000000000&q=$args";
 }
@@ -7470,7 +7471,7 @@ defresource 'solr',
     my ($host, $port, $core) = solr_parse_url $_[1];
     siproc {
       sh shell_quote(curl =>
-        "-Ss", "-H", "Content-Type: application/csv", "--data-binary", "\@-",
+        "-Ss", "-H", "Content-Type: application/csv", "-T", "-",
         "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
         . " >&2" };
   };
