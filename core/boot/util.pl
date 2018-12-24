@@ -11,8 +11,11 @@ sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
 sub sum {local $_; my $x = 0; $x += $_ for @_; $x}
 
-sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
-sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub srfile($) { open my $fh, "< $_[0]" or die "srfile $_[0]: $!"; $fh }
+sub swfile($) { open my $fh, "> $_[0]" or die "swfile $_[0]: $!"; $fh }
+
+sub rf  {my $fh = srfile shift; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {my $fh = srfile shift; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
 
 sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
@@ -22,11 +25,12 @@ sub dirname($)  {(dirbase $_[0])[0]}
 sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
-  mkdir_p dirname $_[0];
-  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
-  print $fh $_[1];
+  my $f = shift;
+  mkdir_p dirname $f;
+  my $fh = swfile $f;
+  print $fh @_;
   close $fh;
-  $_[0];
+  $f;
 }
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}

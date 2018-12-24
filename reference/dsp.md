@@ -157,6 +157,7 @@
 	| ''https://' /.*/ -> {resource_quote_op "https://$_"}
 	| ''s3cmd://' /.*/ -> {resource_quote_op "s3cmd://$_"}
 	| ''sftp://' /.*/ -> {resource_quote_op "sftp://$_"}
+	| ''solr://' /.*/ -> {resource_quote_op "solr://$_"}
 	| ''sqlite://' /.*/ -> {resource_quote_op "sqlite://$_"}
 	| ''sqliteq://' /.*/ -> {resource_quote_op "sqliteq://$_"}
 	| ''sqlites://' /.*/ -> {resource_quote_op "sqlites://$_"}
@@ -196,6 +197,7 @@
 	| 'https://' /.*/ -> {resource_append_op "https://$_"}
 	| 's3cmd://' /.*/ -> {resource_append_op "s3cmd://$_"}
 	| 'sftp://' /.*/ -> {resource_append_op "sftp://$_"}
+	| 'solr://' /.*/ -> {resource_append_op "solr://$_"}
 	| 'sqlite://' /.*/ -> {resource_append_op "sqlite://$_"}
 	| 'sqliteq://' /.*/ -> {resource_append_op "sqliteq://$_"}
 	| 'sqlites://' /.*/ -> {resource_append_op "sqlites://$_"}

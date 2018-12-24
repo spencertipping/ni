@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-58 core/boot/ni.map
+59 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -93,6 +93,7 @@ lib core/bloom
 lib core/cell
 lib core/c
 lib core/git
+lib core/solr
 lib core/archive
 lib core/sqlite
 lib core/rb
@@ -112,7 +113,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib doc
-105 core/boot/util.pl
+109 core/boot/util.pl
 # Utility functions.
 # Generally useful stuff, some of which makes up for the old versions of Perl we
 # need to support.
@@ -126,8 +127,11 @@ sub dor($$)  {defined $_[0] ? $_[0] : $_[1]}
 
 sub sum {local $_; my $x = 0; $x += $_ for @_; $x}
 
-sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
-sub rl  {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub srfile($) { open my $fh, "< $_[0]" or die "srfile $_[0]: $!"; $fh }
+sub swfile($) { open my $fh, "> $_[0]" or die "swfile $_[0]: $!"; $fh }
+
+sub rf  {my $fh = srfile shift; my $r = join '', <$fh>; close $fh; $r}
+sub rl  {my $fh = srfile shift; my @r =          <$fh>; close $fh; @r}
 sub rfc {chomp(my $r = rf @_); $r}
 
 sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
@@ -137,11 +141,12 @@ sub dirname($)  {(dirbase $_[0])[0]}
 sub mkdir_p {-d $_[0] or !length $_[0] or mkdir_p(dirname $_[0]) && mkdir $_[0]}
 
 sub wf {
-  mkdir_p dirname $_[0];
-  open my $fh, "> $_[0]" or die "wf $_[0]: $!";
-  print $fh $_[1];
+  my $f = shift;
+  mkdir_p dirname $f;
+  my $fh = swfile $f;
+  print $fh @_;
   close $fh;
-  $_[0];
+  $f;
 }
 
 sub max    {local $_; my $m = pop @_; $m = $m >  $_ ? $m : $_ for @_; $m}
@@ -7408,6 +7413,60 @@ defresource 'gitclosure',
                         print $pipe "$_\n" for @object_order };
       /^(\S+)\s+(\w+)/ && print "git$2://$outpath:$1\t$object_paths{$1}\n"
         while <$fh> };
+  };
+1 core/solr/lib
+solr.pl
+51 core/solr/solr.pl
+# solr-via-HTTP URI integration
+# Example usage:
+#
+#   ni i[hostname model os] i[iniidae x250 linux] \>solr://localhost/collection
+#   ni solr://localhost/collection/model=x250
+
+sub solr_parse_url($)
+{
+  my ($host, $port, $core, $query) =
+    $_[0] =~ /^([^\/:]+)(?::(\d+))?(?:\/([^\/]+)(?:\/(.*))?)?/;
+  die "ni: invalid solr:// URI: $_[0]" unless defined $host;
+  $port //= 8983;
+  ($host, $port, $core, $query);
+}
+
+# solr:// does a few things depending on syntax.
+#
+# solr://host[:port]/ expands to a list of cores followed by some JSON metadata
+# for each one.
+#
+# solr://host[:port]/core/query queries the core and returns results.
+
+sub solr_corelist
+{
+  my ($host, $port) = @_;
+  my $r = json_decode rf "http://$host:$port/solr/admin/cores?action=STATUS";
+  print "solr://$host:$port/$_\t" . json_encode($$r{status}{$_}) . "\n"
+    for sort keys %{$$r{status}};
+}
+
+sub solr_query
+{
+  my ($host, $port, $core, $args) = @_;
+  sh shell_quote curl => "-Ss",
+    "http://$host:$port/solr/$core/select?wt=csv&csv.separator=%09&q=$args";
+}
+
+defresource 'solr',
+  read => q{
+    my ($host, $port, $core, $stuff) = solr_parse_url $_[1];
+    soproc { defined $core
+      ? solr_query    $host, $port, $core, $stuff
+      : solr_corelist $host, $port };
+  },
+  write => q{
+    my ($host, $port, $core) = solr_parse_url $_[1];
+    siproc {
+      sh shell_quote(curl =>
+        "-Ss", "-H", "Content-Type: application/csv", "--data-binary", "\@-",
+        "http://$host:$port/solr/$core/update/csv?separator=%09&commit=true") };
   };
 4 core/archive/lib
 zip.pl
