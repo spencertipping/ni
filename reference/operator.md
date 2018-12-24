@@ -481,7 +481,10 @@
 	
 	  my ($file) = @_;
 	  $file = resource_tmp('file://') unless defined $file;
-	  sforward \*STDIN, swfile $file;
+	  my $fh = swfile $file;
+	  sforward \*STDIN, $fh;
+	  close $fh;
+	  $fh->await if $fh->can('await');
 	  print "$file\n";
 
 # OPERATOR geohash_decode

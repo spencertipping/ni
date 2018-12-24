@@ -31,6 +31,7 @@ sub solr_corelist
 sub solr_query
 {
   my ($host, $port, $core, $args) = @_;
+  $args //= "*:*";
   sh shell_quote curl => "-Ss",
     "http://$host:$port/solr/$core/select?wt=csv&csv.separator=%09&q.op=AND&rows=1000000000&q=$args";
 }
@@ -47,5 +48,6 @@ defresource 'solr',
     siproc {
       sh shell_quote(curl =>
         "-Ss", "-H", "Content-Type: application/csv", "--data-binary", "\@-",
-        "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true") };
+        "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
+        . " >&2" };
   };

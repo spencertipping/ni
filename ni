@@ -2730,7 +2730,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-348 core/stream/ops.pl
+351 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2930,7 +2930,10 @@ defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
   $file = resource_tmp('file://') unless defined $file;
-  sforward \*STDIN, swfile $file;
+  my $fh = swfile $file;
+  sforward \*STDIN, $fh;
+  close $fh;
+  $fh->await if $fh->can('await');
   print "$file\n";
 };
 
@@ -7418,7 +7421,7 @@ defresource 'gitclosure',
   };
 1 core/solr/lib
 solr.pl
-51 core/solr/solr.pl
+52 core/solr/solr.pl
 # solr-via-HTTP URI integration
 # Example usage:
 #
@@ -7468,7 +7471,8 @@ defresource 'solr',
     siproc {
       sh shell_quote(curl =>
         "-Ss", "-H", "Content-Type: application/csv", "--data-binary", "\@-",
-        "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true") };
+        "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
+        . " >&2" };
   };
 4 core/archive/lib
 zip.pl
