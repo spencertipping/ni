@@ -47,7 +47,7 @@ defresource 'solr',
     my ($host, $port, $core) = solr_parse_url $_[1];
     siproc {
       sh shell_quote(curl =>
-        "-Ss", "-H", "Content-Type: application/csv", "-T", "-",
+        "-Ss", "-H", "Content-Type: application/csv", "-T", "-", "-X", "POST",
         "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
         . " >&2" };
   };
