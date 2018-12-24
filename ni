@@ -3714,7 +3714,7 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl
-55 core/destructure/destructure.pl
+56 core/destructure/destructure.pl
 # Targeted extraction.
 # Most data extraction workflows don't use every key of a rich data object like
 # JSON or XML. ni allows you to avoid the overhead of fully decoding these
@@ -3727,12 +3727,13 @@ destructure.pl
 # TODO: replace all of this
 
 our %json_partial_unescapes =
-  ("/" => "/", "\"" => "\"", b => "\b", r => "\r", t => "        ", n => "\r");
+  ("/" => "/", "\"" => "\"", b => "\b", f => "\f", r => "\r",
+   t => "        ", n => "\r");
 
 sub json_partial_unescape_one($) {$json_partial_unescapes{$_[0]} || chr hex substr $_[0], 1}
 sub json_partial_unescape($) {
   my $x = substr $_[0], 1, -1;
-  $x =~ s/\\(["\/bfnt]|u[0-9a-fA-F]{4})/json_partial_unescape_one $1/eg;
+  $x =~ s/\\(["\/bfnrt]|u[0-9a-fA-F]{4})/json_partial_unescape_one $1/eg;
   $x;
 }
 
@@ -3740,8 +3741,8 @@ use constant json_si_gen => gen q#
   (/"%k"\s*:\s*/g ? /\G("[^\\\\"]*")/            ? json_partial_unescape $1
                   : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_partial_unescape $1
                   : /\G([^][{},]+)/              ? "" . $1
-                  : undef
-                  : undef) #;
+                  : ""
+                  : "") #;
 
 sub json_extractor($) {
   my @pieces = split /\s*,\s*/, $_[0];

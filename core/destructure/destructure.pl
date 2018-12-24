@@ -10,12 +10,13 @@
 # TODO: replace all of this
 
 our %json_partial_unescapes =
-  ("/" => "/", "\"" => "\"", b => "\b", r => "\r", t => "        ", n => "\r");
+  ("/" => "/", "\"" => "\"", b => "\b", f => "\f", r => "\r",
+   t => "        ", n => "\r");
 
 sub json_partial_unescape_one($) {$json_partial_unescapes{$_[0]} || chr hex substr $_[0], 1}
 sub json_partial_unescape($) {
   my $x = substr $_[0], 1, -1;
-  $x =~ s/\\(["\/bfnt]|u[0-9a-fA-F]{4})/json_partial_unescape_one $1/eg;
+  $x =~ s/\\(["\/bfnrt]|u[0-9a-fA-F]{4})/json_partial_unescape_one $1/eg;
   $x;
 }
 
@@ -23,8 +24,8 @@ use constant json_si_gen => gen q#
   (/"%k"\s*:\s*/g ? /\G("[^\\\\"]*")/            ? json_partial_unescape $1
                   : /\G("(?:[^\\\\"]+|\\\\.)*")/ ? json_partial_unescape $1
                   : /\G([^][{},]+)/              ? "" . $1
-                  : undef
-                  : undef) #;
+                  : ""
+                  : "") #;
 
 sub json_extractor($) {
   my @pieces = split /\s*,\s*/, $_[0];
