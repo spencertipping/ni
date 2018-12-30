@@ -335,6 +335,16 @@ defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
 our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 
+# Detect parallel variants: pigz for gzip, and pbzip2 for bzip2.
+# NB: pigz is not, in fact, faster than gzip from what I can tell. It's a little
+# slower, possibly due to the 32KB dictionary preloading overhead.
+#
+# pbzip2, however, is pretty decisive: at least 2x faster (which makes sense:
+# bzip2 uses independently compressed input blocks).
+
+# $compressors{g} = 'pigz'   unless system "which pigz   > /dev/null";
+$compressors{b} = 'pbzip2' unless system "which pbzip2 > /dev/null";
+
 BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
   defparseralias compressor_spec =>
