@@ -68,7 +68,7 @@ defoperator stderr_monitor => q{
       $factor_log = log(($otime || 1) / ($itime || 1)) / log 2;
 
       safewrite \*STDERR,
-        sprintf "\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n",
+        sprintf "\033[s\033[%d;1H%d \r\033[K%5d%s %5d%s/s% 4d %s\n\033[u",
           $monitor_id + 1,
           int($t3),
           unit_bytes $bytes,
@@ -82,7 +82,7 @@ defoperator stderr_monitor => q{
   if (time() - $start_time > $monitor_start)
   {
     safewrite \*STDERR,
-      sprintf "\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s% 4d=%s\n",
+      sprintf "\033[s\033[%d;1H%d=\r\033[K%5d%s=%5d%s/s% 4d=%s\n\033[u",
         $monitor_id + 1,
         int($last_update),
         unit_bytes $bytes,
