@@ -193,7 +193,7 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? "gzip -dc || cat"
+  my $decoder = /^\x1f\x8b/             ? "pigz -dc || gzip -dc || cat"
               : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
               : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
