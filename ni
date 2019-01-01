@@ -3283,13 +3283,14 @@ defoperator meta_short_availability => q{
 defshort '///ni/map/short', pmap q{meta_short_availability_op}, pnone;
 1 core/monitor/lib
 monitor.pl
-100 core/monitor/monitor.pl
+101 core/monitor/monitor.pl
 # Pipeline monitoring.
 # nfu provided a simple throughput/data count for each pipeline stage. ni can do
 # much more, for instance determining the cause of a bottleneck and previewing
 # data.
 
 sub unit_bytes($) {
+  return $_[0],       "B" if $_[0]       <= 99999;
   return $_[0] >> 10, "K" if $_[0] >> 10 <= 99999;
   return $_[0] >> 20, "M" if $_[0] >> 20 <= 99999;
   return $_[0] >> 30, "G" if $_[0] >> 30 <= 99999;
