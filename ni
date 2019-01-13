@@ -7199,27 +7199,47 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-226 core/git/git.pl
+246 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
-sub git_dir($) { -d "$_[0]/.git" ? "$_[0]/.git" : $_[0] }
+use Cwd qw/abs_path/;
+
+sub git_dir_parents
+{
+  my ($sub, $abs) = @_;
+  return ($sub, "$abs/.git") if -d "$abs/.git";
+  die "ni git_dir: no git directory in parent chain" if $abs =~ /^\/?$/;
+  $abs =~ s/\/([^\/]+)$//;
+  $sub = "$1/$sub";
+  git_dir_parents($sub, $abs);
+}
+
+# Returns (subdir, gitdir), where subdir is undef if the gitdir directly
+# contains .git. If we're operating from a relative-path subdir, then use that
+# subdir as the implied path for git operations if one wasn't specified
+# manually.
+sub git_dir($)
+{
+  my $d = shift;
+  -d "$d/.git" ? (undef, "$d/.git") : git_dir_parents "", abs_path $d;
+}
 
 sub git_parse_pathref($)
 {
   my ($path, $ref, $extra) = $_[0] =~ /^(.*[^\t:]):([^\t:]+)(?:::(.*)$)?/
     or die "git syntax $_[0] is invalid; expected <gitpath>:<ref>[::<path>]\n"
          . "(for instance, $_[0]:master)";
-  $path = git_dir $path;
-  (my $outpath = $path) =~ s/\/.git$//;
-  ($outpath, $path, $ref, $extra);
+  my ($gitsub, $gitpath) = git_dir $path;
+  (my $outpath = $gitpath) =~ s/\/.git$//;
+  ($outpath, $gitpath, $ref, dor dor($extra, $gitsub), "");
 }
 
 # Main entry point: repo -> branches/tags
 # git:///path/to/repo
 defresource 'git',
   read => q{
-    my $path = git_dir $_[1];
+    my (undef, $path) = git_dir $_[1];
     (my $outpath = $path) =~ s/\/\.git$//;
     soproc {
       my $format = "--format=gitcommit://$outpath:%(refname)\t%(objectname)";
