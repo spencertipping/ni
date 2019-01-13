@@ -7199,7 +7199,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-246 core/git/git.pl
+276 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7225,14 +7225,43 @@ sub git_dir($)
   -d "$d/.git" ? (undef, "$d/.git") : git_dir_parents "", abs_path $d;
 }
 
+# Returns ($logical_root, $gitdir, $ref, $path//undef, $subdir//undef).
+# $path is if you use :: to explicitly specify a sub-path.
+# $subdir is similar, but it's inferred from the git:// URI base. It's mostly of
+# use when you say something like git://.:master from a subdirectory of the repo
+# root; your intent is probably to refer to that subdirectory (although not
+# always; gitblob:// is an exception).
 sub git_parse_pathref($)
 {
-  my ($path, $ref, $extra) = $_[0] =~ /^(.*[^\t:]):([^\t:]+)(?:::(.*)$)?/
-    or die "git syntax $_[0] is invalid; expected <gitpath>:<ref>[::<path>]\n"
-         . "(for instance, $_[0]:master)";
+  my ($path, $ref, $extra) = $_[0] =~ /^([^\t:]*)(?::([^\t:]+))?(?:::(.*)$)?/;
   my ($gitsub, $gitpath) = git_dir $path;
+  $ref = git_infer_ref($gitpath) unless defined $ref;
   (my $outpath = $gitpath) =~ s/\/.git$//;
-  ($outpath, $gitpath, $ref, dor dor($extra, $gitsub), "");
+  ($outpath, $gitpath, $ref, $extra, $gitsub);
+}
+
+sub git_dashed_path($$)
+{
+  my ($file, $subdir) = @_;
+
+  # Always interpret $file as being relative to $subdir, unless it begins with
+  # "/".
+  return ("--", $file) if $file =~ s/^\///;
+  return ("--", "$subdir/$file") if defined $subdir and defined $file;
+  return ("--", $file)   if defined $file;
+  return ("--", $subdir) if defined $subdir;
+  return ();
+}
+
+sub git_infer_ref($)
+{
+  my $git_dir = shift;
+  die "ni git_infer_ref: no ref can be inferred from headless repo (or HEAD"
+    . " is unreadable). You'll need to specify the ref manually, e.g."
+    . " gittree://repopath:master instead of just gittree://repopath."
+    unless -r "$git_dir/HEAD";
+  my ($ref) = rfc("$git_dir/HEAD") =~ /(\S+)$/;
+  $ref;
 }
 
 # Main entry point: repo -> branches/tags
@@ -7259,32 +7288,32 @@ defresource 'gitcommit',
 
 defresource 'gitcommitmeta',
   read => q{
-    my (undef, $path, $ref, undef) = git_parse_pathref $_[1];
+    my (undef, $path, $ref) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "cat-file", "commit", $ref};
   };
 
 defresource 'githistory',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "log",
              "--format=gitcommit://$outpath:%H\t%an:%ae\t%at\t%s", $ref,
-             (defined $file ? ("--", $file) : ())};
+             git_dashed_path $file, $subdir};
   };
 
 defresource 'gitnmhistory',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     soproc {sh shell_quote
       git => "--git-dir=$path", "log", "--no-merges",
              "--format=gitcommit://$outpath:%H\t%ae\t%at\t%s", $ref,
-             (defined $file ? ("--", $file) : ())};
+             git_dashed_path $file, $subdir};
   };
 
 defresource 'gitdiff',
   read => q{
-    my (undef, $path, $refs, $file) = git_parse_pathref $_[1];
+    my (undef, $path, $refs, $file, $subdir) = git_parse_pathref $_[1];
     my @refs = split /\.\./, $refs, 2;
     if (@refs < 2)
     {
@@ -7295,12 +7324,12 @@ defresource 'gitdiff',
       unshift @refs, $parents[0];
     }
     soproc {sh shell_quote git => "--git-dir=$path", "diff", @refs,
-                                  (defined $file ? ("--", $file) : ())};
+                                  git_dashed_path $file, $subdir};
   };
 
 defresource 'gitpdiff',
   read => q{
-    my (undef, $path, $refs, $file) = git_parse_pathref $_[1];
+    my (undef, $path, $refs, $file, $subdir) = git_parse_pathref $_[1];
     my @refs = split /\.\./, $refs, 2;
     if (@refs < 2)
     {
@@ -7314,7 +7343,7 @@ defresource 'gitpdiff',
     {
       my $gd = soproc {sh
         shell_quote git => "--git-dir=$path", "diff", "-U0", @refs,
-                           (defined $file ? ("--", $file) : ())};
+                           git_dashed_path $file, $subdir};
       my ($file, $lline, $rline) = (undef, 0, 0);
       while (<$gd>)
       {
@@ -7338,10 +7367,10 @@ defresource 'gitpdiff',
 # Tree/blob objects: behave just like directories/files normally
 defresource 'gittree',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote
       git => "--git-dir=$path", 'ls-tree', $ref,
-             defined $file ? ('--', $file) : ();
+             git_dashed_path $file, $subdir;
     soproc {
       for (`$enum_command`)
       {
@@ -7355,7 +7384,8 @@ defresource 'gittree',
 
 defresource 'gitblob',
   read => q{
-    my (undef, $path, $ref, $file) = git_parse_pathref $_[1];
+    my (undef, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
+    $file = "$subdir/$file" if defined $subdir and defined $file;
     soproc {
       defined $file
         ? sh shell_quote git => "--git-dir=$path", 'show', "$ref:$file"
@@ -7371,10 +7401,10 @@ defresource 'gitblob',
 
 defresource 'gitsnap',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
                                    '-r', '--name-only',
-                                   $ref, defined $file ? ('--', $file) : ();
+                                   $ref, git_dashed_path $file, $subdir;
     soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
   };
 
@@ -7387,10 +7417,10 @@ defresource 'gitsnap',
 
 defresource 'gitdsnap',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
                                    '-r', $ref,
-                                   defined $file ? ('--', $file) : ();
+                                   git_dashed_path $file, $subdir;
     soproc { /^\S+ \S+ ([0-9a-fA-F]+)\t(.*)/
              && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
   };
@@ -7400,10 +7430,10 @@ defresource 'gitdsnap',
 
 defresource 'gitdelta',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
                                    '-r', '--no-commit-id', '--name-only',
-                                   $ref, defined $file ? ('--', $file) : ();
+                                   $ref, git_dashed_path $file, $subdir;
     soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
   };
 
@@ -7413,10 +7443,10 @@ defresource 'gitdelta',
 
 defresource 'gitddelta',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
                                    '-r', '--no-commit-id',
-                                   $ref, defined $file ? ('--', $file) : ();
+                                   $ref, git_dashed_path $file, $subdir;
     soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
              && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
   };
@@ -7426,10 +7456,10 @@ defresource 'gitddelta',
 
 defresource 'gitclosure',
   read => q{
-    my ($outpath, $path, $ref, $file) = git_parse_pathref $_[1];
+    my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $revlist_cmd = shell_quote git => "--git-dir=$path", 'rev-list',
                                   '--objects', $ref,
-                                  defined $file ? ('--', $file) : ();
+                                  git_dashed_path $file, $subdir;
     my %object_paths;
     my @object_order;
     my $revlist_fh = soproc { sh $revlist_cmd };
