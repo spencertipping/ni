@@ -7199,7 +7199,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-276 core/git/git.pl
+281 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7453,6 +7453,9 @@ defresource 'gitddelta',
 
 # gitclosure://<repo>:<ref>[::<path>]: returns the full set of direct-encoded
 # gitcommit://, gittree://, and gitblob:// URLs that constitute the ref.
+#
+# Some blobs/trees will have multiple paths; if they do, those paths are
+# right-joined as multiple columns.
 
 defresource 'gitclosure',
   read => q{
@@ -7464,7 +7467,8 @@ defresource 'gitclosure',
     my @object_order;
     my $revlist_fh = soproc { sh $revlist_cmd };
     /^(\S+)(?:\s+(.*))?/ and push(@object_order, $1)
-                         and $object_paths{$1} = dor $2, "" while <$revlist_fh>;
+                         and push @{$object_paths{$1}}, dor $2, ""
+      while <$revlist_fh>;
     close $revlist_fh;
     $revlist_fh->await;
 
@@ -7473,7 +7477,8 @@ defresource 'gitclosure',
     soproc {
       my $fh = soproc { my $pipe = siproc { sh $batchcheck };
                         print $pipe "$_\n" for @object_order };
-      /^(\S+)\s+(\w+)/ && print "git$2://$outpath:$1\t$object_paths{$1}\n"
+      /^(\S+)\s+(\w+)/
+      && print "git$2://$outpath:$1\t" . join("\t", @{$object_paths{$1}}) . "\n"
         while <$fh> };
   };
 1 core/solr/lib
