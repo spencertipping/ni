@@ -265,7 +265,7 @@ defresource 'gitclosure',
     my @object_order;
     my $revlist_fh = soproc { sh $revlist_cmd };
     /^(\S+)(?:\s+(.*))?/ and push(@object_order, $1)
-                         and push @{$object_paths{$1} ||= []}, dor $2, ""
+                         and push @{$object_paths{$1}}, dor $2, ""
       while <$revlist_fh>;
     close $revlist_fh;
     $revlist_fh->await;
