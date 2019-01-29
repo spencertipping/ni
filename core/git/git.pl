@@ -3,10 +3,20 @@
 
 use Cwd qw/abs_path/;
 
+sub is_git_dir
+{
+  my $d = shift;
+  return "$d/.git" if -d "$d/.git";
+  return $d if -f "$d/HEAD" && -f "$d/config"
+            && -d "$d/objects" && -d "$d/refs";
+  undef;
+}
+
 sub git_dir_parents
 {
   my ($sub, $abs) = @_;
-  return ($sub, "$abs/.git") if -d "$abs/.git";
+  my $gitdir = is_git_dir $abs;
+  return ($sub, $gitdir) if defined $gitdir;
   die "ni git_dir: no git directory in parent chain" if $abs =~ /^\/?$/;
   $abs =~ s/\/([^\/]+)$//;
   $sub = "$1/$sub";
@@ -20,7 +30,8 @@ sub git_dir_parents
 sub git_dir($)
 {
   my $d = shift;
-  -d "$d/.git" ? (undef, "$d/.git") : git_dir_parents "", abs_path $d;
+  my $gitdir = is_git_dir $d;
+  defined $gitdir ? (undef, $gitdir) : git_dir_parents "", abs_path $d;
 }
 
 # Returns ($logical_root, $gitdir, $ref, $path//undef, $subdir//undef).
