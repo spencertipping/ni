@@ -56,6 +56,13 @@ Describes the operators produced from the specified command line, after
 evaluating all meta-operators. Each operator in the output corresponds to a
 forked process in the pipeline.
 
+Usage: ni --extend lib1 lib2 ... libN
+Modifies the ni image in-place to include the specified libraries.
+See ni //help/libraries for more information.
+
+You may also want to use ni --lib libdir, which will run ni with a library but
+won't modify it on disk.
+
 Usage: ni --inspect [port=9200]
 Runs a web interface that allows you to inspect ni's internal attributes,
 defined operators, and grammar.

@@ -2,7 +2,8 @@
 # Builds the ni image, first by assembling the self-modifying parts (./boot),
 # and then by telling it to add modules.
 
-cd $(dirname $0)
+set -euo pipefail
+cd "$(dirname "$0")"
 
 ./boot
 

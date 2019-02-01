@@ -55,10 +55,24 @@ _
 defclispecial '--internal/lib', q{
   extend_self 'lib', $_ for @_;
   modify_self;
+  0;
 }, <<'_';
 Usage: ni --internal/lib lib1 lib2 ... libN
 Modifies the ni image in-place to include the specified libraries. See ni
 //help/libraries for more information.
+_
+
+defclispecial '--extend', q{
+  extend_self 'lib', $_ for @_;
+  modify_self;
+  0;
+}, <<'_';
+Usage: ni --extend lib1 lib2 ... libN
+Modifies the ni image in-place to include the specified libraries.
+See ni //help/libraries for more information.
+
+You may also want to use ni --lib libdir, which will run ni with a library but
+won't modify it on disk.
 _
 
 defclispecial '--lib', q{intern_lib shift; goto \&main}, <<'_';
