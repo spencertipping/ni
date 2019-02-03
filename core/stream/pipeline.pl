@@ -184,10 +184,16 @@ sub swfile($) {mkdir_p dirname $_[0];
 #   lzo:   89 4c 5a 4f
 #   lz4:   04 22 4d 18
 #   xz:    fd 37 7a 58 5a
+#   zlib:  78 {01|5e|9c|da}
 
 # Decoding works by reading enough to decode the magic, then forwarding data
 # into the appropriate decoding process (or doing nothing if we don't know what
 # the data is).
+
+use constant perl_zlib_decoder =>
+  shell_quote perl =>
+    -e => 'use IO::Uncompress::Inflate qw/inflate $InflateError/;'
+        . 'inflate(\*STDIN, \*STDOUT) or die $InflateError';
 
 sub sdecode(;$) {
   local $_;
@@ -197,7 +203,9 @@ sub sdecode(;$) {
               : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
               : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
               : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat" : undef;
+              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat"
+              : /^\x78[\x01\x9c\xda]/   ? perl_zlib_decoder . " || cat"
+              : undef;
 
   if (defined $decoder) {
     my $o = siproc {exec $decoder};
