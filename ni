@@ -6460,7 +6460,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-204 core/pl/pl.pl
+207 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6576,7 +6576,10 @@ our @perl_prefix_keys = qw| core/pl/util.pm
 defoperator perl_prefix => q{ sio; print join"\n", @ni::perl_prefix_keys };
 defshort '///ni/perl_prefix' => pmap q{perl_prefix_op}, pnone;
 
-sub defperlprefix($) {push @perl_prefix_keys, $_[0]}
+sub defperlprefix($)
+{ warn "defperlprefix(\"$_[0]\") refers to an undefined attribute"
+    unless exists $ni::self{$_[0]};
+  push @perl_prefix_keys, $_[0] }
 
 sub perl_prefix() { join "\n", map "BEGIN{\n# line 1 \"//ni/$_\"\n$ni::self{$_}\n}",
                                    @perl_prefix_keys }
