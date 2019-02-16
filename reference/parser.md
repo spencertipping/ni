@@ -766,6 +766,10 @@
 	    <colspec1>
 	    <sortspec>
 	  ) -> {row_grouped_sort_op @$_}
+	| 'git<' (
+	    <filename>
+	    <empty>?
+	  ) -> {$$_[0]}? -> {git_cat_objects_op $_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
 	    <colspec>?
@@ -1631,7 +1635,7 @@
 # PARSER float
 
 ## DEFINITION
-	/-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?/ such that {length} -> {0 + $_}
+	/-?(?:[\d_]+(?:\.[\d_]*)?|[\d_]*\.[\d_]+)(?:[eE][-+]?[\d_]+)?/ such that {length} -> {0 + $_}
 
 # PARSER fn_bindings
 
@@ -1743,10 +1747,10 @@
 ## DEFINITION
 	(
 	| <neval> -> {int}
-	| /E(-?\d+)/ -> {10 ** $_}
-	| /B(\d+)/ -> {1 << $_}
-	| /x[0-9a-fA-F]+/ -> {0 + "0$_"}
-	| /-?[1-9]\d*(?:[eE]\d+)?/ -> {0 + $_}
+	| /E(-?[\d_]+)/ -> {10 ** $_}
+	| /B([\d_]+)/ -> {1 << $_}
+	| /x[_0-9a-fA-F]+/ -> {0 + "0$_"}
+	| /-?[1-9][\d_]*(?:[eE][\d_]+)?/ -> {0 + $_}
 	| '0'
 	)
 

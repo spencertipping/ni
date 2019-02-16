@@ -562,14 +562,14 @@ defparser 'generic_code', '',
 
 BEGIN {defparseralias neval => pmap q{eval}, prx '=([^]=]+)'}
 BEGIN {defparseralias integer => palt pmap(q{int},       neval),
-                                      pmap(q{10 ** $_},  prx 'E(-?\d+)'),
-                                      pmap(q{1 << $_},   prx 'B(\d+)'),
-                                      pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                                      pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
+                                      pmap(q{10 ** $_},  prx 'E(-?[\d_]+)'),
+                                      pmap(q{1 << $_},   prx 'B([\d_]+)'),
+                                      pmap(q{0 + "0$_"}, prx 'x[_0-9a-fA-F]+'),
+                                      pmap(q{0 + $_},    prx '-?[1-9][\d_]*(?:[eE][\d_]+)?'),
                                                          pstr '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
                                pcond q{length},
-                               prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
+                               prx '-?(?:[\d_]+(?:\.[\d_]*)?|[\d_]*\.[\d_]+)(?:[eE][-+]?[\d_]+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
 BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
@@ -7224,7 +7224,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-287 core/git/git.pl
+308 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7299,6 +7299,27 @@ sub git_infer_ref($)
   my ($ref) = rfc("$git_dir/HEAD") =~ /(\S+)$/;
   $ref;
 }
+
+
+# Auxiliary operators:
+# cat blob-ids | ni git\</path/to/repo == cat blob-ids | git cat-file --batch
+defoperator git_cat_objects =>
+q{
+  my (undef, $gitdir) = git_dir dor shift, ".";
+  my $gitproc = siproc {
+    sh shell_quote git => "--git-dir=$gitdir", "cat-file", "--batch"};
+
+  while (<STDIN>)
+  {
+    chomp;
+    my ($id) = /^[^\t]*([0-9a-fA-F]{40})(?:\t|$)/
+      or die "git<: line $_ does not contain a git object ID";
+    print $gitproc "$id\n";
+  }
+};
+
+defshort '/git<', pmap q{git_cat_objects_op $_}, popt pc filename;
+
 
 # Main entry point: repo -> branches/tags
 # git:///path/to/repo

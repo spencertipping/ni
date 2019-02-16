@@ -2084,6 +2084,14 @@
 	  <sortspec>
 	) -> {row_grouped_sort_op @$_}
 
+# SHORT OPERATOR /git<
+
+## SYNTAX
+	(
+	  <filename>
+	  <empty>?
+	) -> {$$_[0]}? -> {git_cat_objects_op $_}
+
 # SHORT OPERATOR /i
 	Identity: append literal text
 

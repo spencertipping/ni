@@ -513,6 +513,22 @@
 	                            props => json_encode($props)), "\n";
 	  }
 
+# OPERATOR git_cat_objects
+
+## IMPLEMENTATION
+	
+	  my (undef, $gitdir) = git_dir dor shift, ".";
+	  my $gitproc = siproc {
+	    sh shell_quote git => "--git-dir=$gitdir", "cat-file", "--batch"};
+	
+	  while (<STDIN>)
+	  {
+	    chomp;
+	    my ($id) = /^[^\t]*([0-9a-fA-F]{40})(?:\t|$)/
+	      or die "git<: line $_ does not contain a git object ID";
+	    print $gitproc "$id\n";
+	  }
+
 # OPERATOR gnuplot_all
 
 ## IMPLEMENTATION

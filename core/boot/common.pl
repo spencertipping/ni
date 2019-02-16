@@ -34,14 +34,14 @@ defparser 'generic_code', '',
 
 BEGIN {defparseralias neval => pmap q{eval}, prx '=([^]=]+)'}
 BEGIN {defparseralias integer => palt pmap(q{int},       neval),
-                                      pmap(q{10 ** $_},  prx 'E(-?\d+)'),
-                                      pmap(q{1 << $_},   prx 'B(\d+)'),
-                                      pmap(q{0 + "0$_"}, prx 'x[0-9a-fA-F]+'),
-                                      pmap(q{0 + $_},    prx '-?[1-9]\d*(?:[eE]\d+)?'),
+                                      pmap(q{10 ** $_},  prx 'E(-?[\d_]+)'),
+                                      pmap(q{1 << $_},   prx 'B([\d_]+)'),
+                                      pmap(q{0 + "0$_"}, prx 'x[_0-9a-fA-F]+'),
+                                      pmap(q{0 + $_},    prx '-?[1-9][\d_]*(?:[eE][\d_]+)?'),
                                                          pstr '0'}
 BEGIN {defparseralias float => pmap q{0 + $_},
                                pcond q{length},
-                               prx '-?(?:\d+(?:\.\d*)?|\d*\.\d+)(?:[eE][-+]?\d+)?'}
+                               prx '-?(?:[\d_]+(?:\.[\d_]*)?|[\d_]*\.[\d_]+)(?:[eE][-+]?[\d_]+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
 BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
