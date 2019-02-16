@@ -517,9 +517,10 @@
 
 ## IMPLEMENTATION
 	
-	  my (undef, $gitdir) = git_dir dor shift, ".";
+	  my $batch_option = shift;
+	  my (undef, $gitdir)  = git_dir dor shift, ".";
 	  my $gitproc = siproc {
-	    sh shell_quote git => "--git-dir=$gitdir", "cat-file", "--batch"};
+	    sh shell_quote git => "--git-dir=$gitdir", "cat-file", $batch_option};
 	
 	  while (<STDIN>)
 	  {

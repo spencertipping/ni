@@ -769,7 +769,11 @@
 	| 'git<' (
 	    <filename>
 	    <empty>?
-	  ) -> {$$_[0]}? -> {git_cat_objects_op $_}
+	  ) -> {$$_[0]}? -> {git_cat_objects_op "--batch", $_}
+	| 'gitm<' (
+	    <filename>
+	    <empty>?
+	  ) -> {$$_[0]}? -> {git_cat_objects_op "--batch-check", $_}
 	| 'i' <id_text> -> {echo_op $_}
 	| 'j' (
 	    <colspec>?

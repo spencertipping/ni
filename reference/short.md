@@ -2090,7 +2090,15 @@
 	(
 	  <filename>
 	  <empty>?
-	) -> {$$_[0]}? -> {git_cat_objects_op $_}
+	) -> {$$_[0]}? -> {git_cat_objects_op "--batch", $_}
+
+# SHORT OPERATOR /gitm<
+
+## SYNTAX
+	(
+	  <filename>
+	  <empty>?
+	) -> {$$_[0]}? -> {git_cat_objects_op "--batch-check", $_}
 
 # SHORT OPERATOR /i
 	Identity: append literal text

@@ -76,11 +76,14 @@ sub git_infer_ref($)
 
 # Auxiliary operators:
 # cat blob-ids | ni git\</path/to/repo == cat blob-ids | git cat-file --batch
+# cat blob-ids | ni gitm\</path/to/repo == ... | git cat-file --batch-check
+
 defoperator git_cat_objects =>
 q{
-  my (undef, $gitdir) = git_dir dor shift, ".";
+  my $batch_option = shift;
+  my (undef, $gitdir)  = git_dir dor shift, ".";
   my $gitproc = siproc {
-    sh shell_quote git => "--git-dir=$gitdir", "cat-file", "--batch"};
+    sh shell_quote git => "--git-dir=$gitdir", "cat-file", $batch_option};
 
   while (<STDIN>)
   {
@@ -91,7 +94,8 @@ q{
   }
 };
 
-defshort '/git<', pmap q{git_cat_objects_op $_}, popt pc filename;
+defshort '/git<',  pmap q{git_cat_objects_op "--batch", $_}, popt pc filename;
+defshort '/gitm<', pmap q{git_cat_objects_op "--batch-check", $_}, popt pc filename;
 
 
 # Main entry point: repo -> branches/tags
