@@ -1,0 +1,31 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use v5.14;
+
+use File::Find;
+
+our $current_md  = "";
+our $any_missing = 0;
+
+sub missing
+{
+  $any_missing = 1;
+  printf "%s:%d: missing link to %s\n", "$File::Find::dir/$current_md", $., $_;
+}
+
+sub each
+{
+  return 1 unless /\.md$/i;
+  my $fenced = 0;
+  open my $fh, "<", $current_md = $_ or die "failed to open markdown $_: $!";
+  while (<$fh>)
+  {
+    $fenced &&= !/\`\`\`/;
+    next if $fenced ||= /\`\`\`/;
+    -e or /^#/ or /^\w+:\/\// or missing for /\]\(([^)]+)\)/g;
+  }
+};
+
+find \&each, ".";
+exit $any_missing;

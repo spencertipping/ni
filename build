@@ -5,6 +5,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+./markcheck
+
 ./boot
 
 export NI_NO_HOME=yes           # IMPORTANT

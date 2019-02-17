@@ -1,5 +1,5 @@
 # JSON library internals/design
-Source in [core/json/json.pl.sdoc](../core/json/json.pl.sdoc).
+Source in [core/json/json.pl.sdoc](../core/json/json.pl).
 
 The library has two purposes. One is to act as a tolerably-fast compatibility
 fix for Perl environments that have no JSON support. It provides two functions,
