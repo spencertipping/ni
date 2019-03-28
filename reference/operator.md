@@ -827,13 +827,11 @@
 
 ## IMPLEMENTATION
 	
-	  my @lines;
-	  chomp, push @lines, $_ while <STDIN>;
-	  my $n_field_seps = $lines[0] =~ tr/\t//;
-	  my $n_fields = $n_field_seps + 1;
-	  my @output_lines = map {"|$_|"} map {local $_ = $_; $_ =~ s/\t/\|/g; $_} @lines;
-	  splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
-	  print join "\n", @output_lines;
+	  chomp(my $header = <STDIN>);
+	  my $cols = $header =~ y/\t/|/;
+	  print "|$header|\n";
+	  print "|:----:|" . ":----:|" x $cols . "\n";
+	  chomp, y/\t/|/, print "|$_|\n" while <STDIN>;
 
 # OPERATOR memory_closure_append
 
@@ -1776,6 +1774,11 @@
 	
 	  close $o;
 	  $o->await;
+
+# OPERATOR wc_l
+
+## IMPLEMENTATION
+	sh 'wc -l'
 
 # OPERATOR with_left
 

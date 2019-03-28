@@ -2277,6 +2277,11 @@
 ## SYNTAX
 	</qfn> -> {with_right_op @$_}
 
+# SHORT OPERATOR /wcl
+
+## SYNTAX
+	'' -> {wc_l_op}
+
 # SHORT OPERATOR /x
 
 ## SYNTAX

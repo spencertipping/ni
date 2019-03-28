@@ -203,17 +203,18 @@ defoperator unordered_count => q{
 
 defshort '/U', pmap q{unordered_count_op}, pnone;
 
+defoperator wc_l => q{sh 'wc -l'};
+defshort '/wcl', pmap q{wc_l_op}, pnone;
+
 defoperator cleandos => q{exec shell_quote 'perl', '-npe', 's/\r\n/\n/g'};
-defshort '/cleandos', pmap q{cleandos_op}, pnone; 
+defshort '/cleandos', pmap q{cleandos_op}, pnone;
 
 defoperator mdtable => q{
-  my @lines;
-  chomp, push @lines, $_ while <STDIN>;
-  my $n_field_seps = $lines[0] =~ tr/\t//;
-  my $n_fields = $n_field_seps + 1;
-  my @output_lines = map {"|$_|"} map {local $_ = $_; $_ =~ s/\t/\|/g; $_} @lines;
-  splice @output_lines, 1, 0, "|" . ":----:|" x $n_fields;
-  print join "\n", @output_lines;
+  chomp(my $header = <STDIN>);
+  my $cols = $header =~ y/\t/|/;
+  print "|$header|\n";
+  print "|:----:|" . ":----:|" x $cols . "\n";
+  chomp, y/\t/|/, print "|$_|\n" while <STDIN>;
 };
 
 defshort '/mdtable', pmap q{mdtable_op}, pnone;

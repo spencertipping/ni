@@ -880,6 +880,7 @@
 	    </qfn>
 	  ) -> {vertical_apply_op @$_}
 	| 'w' </qfn> -> {with_right_op @$_}
+	| 'wcl' '' -> {wc_l_op}
 	| 'x' <colspec>? -> {ref $_ ? colswap_op @$_ : colswap_op 2, 1}
 	| 'z' <compressor_spec>
 	| 'zB' (
