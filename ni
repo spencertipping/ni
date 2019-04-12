@@ -3093,8 +3093,8 @@ our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 # Detect parallel compressors: pigz for gzip, and pbzip2 for bzip2. Each of
 # these is much faster than its serial variant if multiple processors are
 # available.
-$compressors{g} = 'pigz'   unless system "which pigz   > /dev/null";
-$compressors{b} = 'pbzip2' unless system "which pbzip2 > /dev/null";
+$compressors{g} = 'pigz'   unless system "which pigz   > /dev/null 2>&1";
+$compressors{b} = 'pbzip2' unless system "which pbzip2 > /dev/null 2>&1";
 
 BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
 BEGIN {
