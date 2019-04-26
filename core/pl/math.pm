@@ -24,6 +24,21 @@ sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[in
 sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
 
+# Distributive functions
+sub hsum
+{
+  my %r = %{+shift};
+  for my $h (@_) { $r{$_} += $$h{$_} for keys %$h }
+  %r;
+}
+
+sub asum
+{
+  my @r = @{+shift};
+  for my $a (@_) { $r[$_] += $$a[$_] for 0..$#$a }
+  @r;
+}
+
 # Logarithmic
 sub log2($) {LOG2R * log $_[0]}
 sub log10($) {LOG10R * log $_[0]}

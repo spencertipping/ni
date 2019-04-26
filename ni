@@ -5359,7 +5359,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-158 core/pl/math.pm
+173 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5385,6 +5385,21 @@ sub mean {scalar @_ && sum(@_) / @_;}
 sub median {my $length = scalar @_; my @sorted = sort {$a <=> $b} @_; $sorted[int($length/2)];}
 sub gmean {exp mean map {log $_} @_;}
 sub hmean {scalar @_ && @_/sum(map {1/$_} @_) or 1;}
+
+# Distributive functions
+sub hsum
+{
+  my %r = %{+shift};
+  for my $h (@_) { $r{$_} += $$h{$_} for keys %$h }
+  %r;
+}
+
+sub asum
+{
+  my @r = @{+shift};
+  for my $a (@_) { $r[$_] += $$a[$_] for 0..$#$a }
+  @r;
+}
 
 # Logarithmic
 sub log2($) {LOG2R * log $_[0]}
