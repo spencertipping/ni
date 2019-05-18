@@ -1472,11 +1472,11 @@
 
 ## IMPLEMENTATION
 	
-	  my ($lib, $cmd) = @_;
+	  my ($lib, $cmd, @args) = @_;
 	  my $tmpdir = export_lib_to_path $lib;
 	  my $runner = siproc {
 	    chdir $tmpdir;
-	    sh $cmd;
+	    sh @args ? shell_quote $cmd, @args : $cmd;
 	  };
 	  sforward \*STDIN, $runner;
 	  close $runner;
