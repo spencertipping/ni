@@ -3917,7 +3917,7 @@ defshort '/B',
     n => pmap q{buffer_null_op}, pnone;
 1 core/script/lib
 script.pl
-35 core/script/script.pl
+37 core/script/script.pl
 # Scripting support.
 # This lets you define a library of scripts or other random utilities (possibly
 # with dependent files) and gives you a way to invoke those scripts from a custom
@@ -3943,10 +3943,12 @@ sub rm_rf($) {
 
 defoperator script => q{
   my ($lib, $cmd, @args) = @_;
+  $cmd = shell_quote $cmd, @args if @args;
+
   my $tmpdir = export_lib_to_path $lib;
   my $runner = siproc {
     chdir $tmpdir;
-    sh @args ? shell_quote $cmd, @args : $cmd;
+    sh $cmd;
   };
   sforward \*STDIN, $runner;
   close $runner;

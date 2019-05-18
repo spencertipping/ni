@@ -1473,10 +1473,12 @@
 ## IMPLEMENTATION
 	
 	  my ($lib, $cmd, @args) = @_;
+	  $cmd = shell_quote $cmd, @args if @args;
+	
 	  my $tmpdir = export_lib_to_path $lib;
 	  my $runner = siproc {
 	    chdir $tmpdir;
-	    sh @args ? shell_quote $cmd, @args : $cmd;
+	    sh $cmd;
 	  };
 	  sforward \*STDIN, $runner;
 	  close $runner;
