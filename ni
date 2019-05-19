@@ -827,7 +827,7 @@ sub defoperator($$) {
 sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
-  $0 = "ni[$name @args]";
+  $0 = "ni" . json_encode([$name, @args]);
   $operators{$name}->(@args);
 }
 67 core/boot/self.pl
