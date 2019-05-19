@@ -747,7 +747,7 @@ sub defdsp($$%) {
   defparseralias "dsp/$name" => $r;
   $r;
 }
-81 core/boot/op.pl
+82 core/boot/op.pl
 # Operator definition.
 # Like ni's parser combinators, operators are indirected using names. This
 # provides an intermediate representation that can be inspected and serialized.
@@ -827,6 +827,7 @@ sub defoperator($$) {
 sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
+  $0 = "ni[$name @args]";
   $operators{$name}->(@args);
 }
 67 core/boot/self.pl
@@ -6478,7 +6479,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-207 core/pl/pl.pl
+210 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6614,7 +6615,10 @@ sub stdin_to_perl($) {
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
     . "    this usually means you're running in a context with no STDIN"
   if $@;
-  safewrite siproc {exec 'perl', '-'}, $_[0];
+  my $fh = siproc {exec 'perl', '-'};
+  safewrite $fh, $_[0];
+  close $fh;
+  $fh->await;
 }
 
 sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,

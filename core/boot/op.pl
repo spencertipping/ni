@@ -77,5 +77,6 @@ sub defoperator($$) {
 sub operate {
   my ($name, @args) = @_;
   die "ni operate: undefined operator: $name" unless exists $operators{$name};
+  $0 = "ni[$name @args]";
   $operators{$name}->(@args);
 }

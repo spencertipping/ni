@@ -133,7 +133,10 @@ sub stdin_to_perl($) {
   die "ni: perl driver failed to move FD 0 to 3 ($!)\n"
     . "    this usually means you're running in a context with no STDIN"
   if $@;
-  safewrite siproc {exec 'perl', '-'}, $_[0];
+  my $fh = siproc {exec 'perl', '-'};
+  safewrite $fh, $_[0];
+  close $fh;
+  $fh->await;
 }
 
 sub perl_code($$) {perl_mapgen->(prefix   => perl_prefix,
