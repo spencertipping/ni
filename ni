@@ -2753,7 +2753,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-357 core/stream/ops.pl
+359 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3054,11 +3054,13 @@ defoperator sharded_write => q{
 
   while (<STDIN>)
   {
-    my ($file, $l) = /^([^\t\n]*)\t([\s\S]*)/;
-    my $fh = $fhs{$file} //= defined $lambda
+    my $i    = index $_, "\t";
+    next if $i == -1;
+    my $file = substr $_, 0, $i;
+    my $fh   = $fhs{$file} //= defined $lambda
       ? siproc {exec_ni(@$lambda, file_write_op $file)}
       : swfile $file;
-    print $fh $l;
+    print $fh substr $_, $i + 1;
   }
 
   close $_ for values %fhs;
