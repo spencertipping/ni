@@ -5994,7 +5994,7 @@ sub in_poly
   }
   $hits & 1;
 }
-222 core/pl/time.pl
+235 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -6130,15 +6130,28 @@ sub gh_localtime($$) {
 # The added or subtracted amount at the end corresponds to the
 # local timezone.
 
-sub iso_8601_epoch
-{
-  my $t   = shift;
-  my $utc = time_pieces_epoch
-    $t =~ /^(\d{4})-?(\d{2})-?(\d{2})[\sT](\d{2}):?(\d{2})
-            (?::(\d{2})(?:\.(\d+))?)Z?/cgx;
+sub iso_8601_epoch {
+  my $iso_time = $_[0];
+  my ($date_part, $time_part) = split /[\sT]/, $iso_time;
+  my ($y, $m, $d);
+  if ($date_part !~ /^\d{4}-/) {
+    ($y, $m, $d) = /^(\d{4})(\d{2})(\d{2})/;
+  } else {
+    ($y, $m, $d) = split /-/, $date_part;
+  }
 
-  $utc += "$1$2" * 3600 + "$1$3" * 60 if $t =~ /\G([-+])(\d+):(\d+)/;
-  $utc;
+  return time_pieces_epoch($y, $m, $d) unless $time_part;
+
+  my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
+  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
+  return $raw_ts unless defined $tz_part;
+  return $raw_ts if $tz_part eq "Z";
+
+  my ($offset_type, $offset_hr, $offset_min) = ($tz_part =~ /([+-])(\d{2}):?(\d{2})?/);
+
+  my $offset_amt = $offset_type eq "-" ? 1 : -1; 
+  my $offset = $offset_amt * (3600 * $offset_hr + 60 * $offset_min); 
+  $raw_ts + $offset;
 }
 
 # Converts an epoch timestamp to the corresponding 
