@@ -6130,7 +6130,7 @@ sub gh_localtime($$) {
 # The added or subtracted amount at the end corresponds to the
 # local timezone.
 
-sub iso_8601_epoch {
+sub iso_8601_epoch($) {
   my $iso_time = $_[0];
   my ($date_part, $time_part) = split /[\sT]/, $iso_time;
   my ($y, $m, $d);
