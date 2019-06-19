@@ -7248,7 +7248,7 @@ sub c_rmi
 }
 1 core/git/lib
 git.pl
-312 core/git/git.pl
+313 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -7258,6 +7258,7 @@ sub is_git_dir
 {
   my $d = shift;
   return "$d/.git" if -d "$d/.git";
+  return "$d/$1"   if -f "$d/.git" && rf("$d/.git") =~ /gitdir: (.*)/;
   return $d if -f "$d/HEAD" && -f "$d/config"
             && -d "$d/objects" && -d "$d/refs";
   undef;

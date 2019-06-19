@@ -7,6 +7,7 @@ sub is_git_dir
 {
   my $d = shift;
   return "$d/.git" if -d "$d/.git";
+  return "$d/$1"   if -f "$d/.git" && rf("$d/.git") =~ /gitdir: (.*)/;
   return $d if -f "$d/HEAD" && -f "$d/config"
             && -d "$d/objects" && -d "$d/refs";
   undef;
