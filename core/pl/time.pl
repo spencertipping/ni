@@ -21,6 +21,12 @@ sub time_epoch_pieces($;$) {
   no warnings;
   local $_;
   my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+
+  # Accept nanos, micros, or millis; using year 3000 as an upper limit
+  $t /= 1_000_000_000 if $t > 32503683601_000_000;
+  $t /= 1_000_000     if $t > 32503683601_000;
+  $t /= 1_000         if $t > 32503683601;
+
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
   $pieces[5] += 1900;
@@ -146,7 +152,7 @@ sub iso_8601_epoch($) {
   return time_pieces_epoch($y, $m, $d) unless $time_part;
 
   my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
-  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
+  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s) + $s - int $s;
   return $raw_ts unless defined $tz_part;
   return $raw_ts if $tz_part eq "Z";
 

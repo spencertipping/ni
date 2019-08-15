@@ -6034,7 +6034,7 @@ sub in_poly
   }
   $hits & 1;
 }
-235 core/pl/time.pl
+241 core/pl/time.pl
 # Time conversion functions.
 # Dependency-free functions that do various time-conversion tasks for you in a
 # standardized way. They include:
@@ -6058,6 +6058,12 @@ sub time_epoch_pieces($;$) {
   no warnings;
   local $_;
   my ($es, $t) = $_[0] =~ /^[SMHdmYwjDN]+$/ ? @_ : ('YmdHMS', @_);
+
+  # Accept nanos, micros, or millis; using year 3000 as an upper limit
+  $t /= 1_000_000_000 if $t > 32503683601_000_000;
+  $t /= 1_000_000     if $t > 32503683601_000;
+  $t /= 1_000         if $t > 32503683601;
+
   my @pieces = gmtime $t;
   push @pieces, int(1_000_000_000 * ($t - int $t));
   $pieces[5] += 1900;
@@ -6183,7 +6189,7 @@ sub iso_8601_epoch($) {
   return time_pieces_epoch($y, $m, $d) unless $time_part;
 
   my ($h, $min, $s, $tz_part) = ($time_part =~ /^(\d{2}):?(\d{2}):?([0-9.]{2,})([Z+-].*)?$/);
-  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s);
+  my $raw_ts = time_pieces_epoch($y, $m, $d, $h, $min, $s) + $s - int $s;
   return $raw_ts unless defined $tz_part;
   return $raw_ts if $tz_part eq "Z";
 
@@ -10107,7 +10113,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-94 core/jsplot/jsplot.pl
+93 core/jsplot/jsplot.pl
 # JSPlot interop.
 # JSPlot is served over HTTP as a portable web interface. It requests data via
 # AJAX, and may request the same data multiple times to save browser memory. The
@@ -10180,8 +10186,7 @@ sub jsplot_stream($$@) {
     }
   }
   jsplot_log "done transferring data\n";
-  $ni_pipe->await;
-  jsplot_log "worker exited with %d\n";
+  jsplot_log "worker exited with %d\n", $ni_pipe->await;
 }
 
 sub jsplot_server {

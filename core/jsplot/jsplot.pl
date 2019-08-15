@@ -70,8 +70,7 @@ sub jsplot_stream($$@) {
     }
   }
   jsplot_log "done transferring data\n";
-  $ni_pipe->await;
-  jsplot_log "worker exited with %d\n";
+  jsplot_log "worker exited with %d\n", $ni_pipe->await;
 }
 
 sub jsplot_server {
