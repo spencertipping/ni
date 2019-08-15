@@ -487,6 +487,30 @@
 	  $fh->await if $fh->can('await');
 	  print "$file\n";
 
+# OPERATOR flatten_tabs
+
+## IMPLEMENTATION
+	
+	  my ($gapsize) = @_;
+	  my $eof = 0;
+	  $gapsize //= 2;
+	
+	  until ($eof)
+	  {
+	    my @lines;
+	    my @widths = ();
+	    while (@lines < 1024 && !($eof ||= !defined($_ = <STDIN>)))
+	    {
+	      chomp;
+	      my @fs = split /\t/;
+	      push @lines, \@fs;
+	      $widths[$_] = max $widths[$_] // 0, length $fs[$_] // 0 for 0..$#fs;
+	    }
+	
+	    my $printf = join("", map "%-$_\s", map $_ + $gapsize, @widths) . "\n";
+	    printf $printf, @$_ for @lines;
+	  }
+
 # OPERATOR geohash_decode
 
 ## IMPLEMENTATION

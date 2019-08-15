@@ -1998,6 +1998,11 @@
 	  </qfn>
 	) -> {configure_op @$_}
 
+# SHORT OPERATOR /_
+
+## SYNTAX
+	<integer>? -> {flatten_tabs_op $_}
+
 # SHORT OPERATOR /b
 
 ## SYNTAX

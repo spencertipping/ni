@@ -130,6 +130,41 @@ defoperator with_left => q{
 defshort '/w', pmap q{with_right_op @$_}, _qfn;
 defshort '/W', pmap q{with_left_op  @$_}, _qfn;
 
+
+# Tab flattening.
+# You often won't care about tabs when you're viewing results. This operator
+# buffers the output, calculates field sizes, and flattens tabs to spaces in a
+# way that aligns each column vertically.
+#
+# At most 1024 lines will be loaded at a time. If you have more, each 1024-line
+# block will be aligned independently.
+
+defoperator flatten_tabs =>
+q{
+  my ($gapsize) = @_;
+  my $eof = 0;
+  $gapsize //= 2;
+
+  until ($eof)
+  {
+    my @lines;
+    my @widths = ();
+    while (@lines < 1024 && !($eof ||= !defined($_ = <STDIN>)))
+    {
+      chomp;
+      my @fs = split /\t/;
+      push @lines, \@fs;
+      $widths[$_] = max $widths[$_] // 0, length $fs[$_] // 0 for 0..$#fs;
+    }
+
+    my $printf = join("", map "%-$_\s", map $_ + $gapsize, @widths) . "\n";
+    printf $printf, @$_ for @lines;
+  }
+};
+
+defshort '/_' => pmap q{flatten_tabs_op $_}, popt integer;
+
+
 # Vertical transformation.
 # This is useful when you want to apply a streaming transformation to a specific
 # set of columns. For example, if you have five columns and want to lowercase the
