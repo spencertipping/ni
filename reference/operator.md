@@ -507,8 +507,13 @@
 	      $widths[$_] = max $widths[$_] // 0, length $fs[$_] // 0 for 0..$#fs;
 	    }
 	
-	    my $printf = join("", map "%-$_\s", map $_ + $gapsize, @widths) . "\n";
-	    printf $printf, @$_ for @lines;
+	    # The final width is never necessary because nothing after it needs to be
+	    # aligned. If we tried to align it, we'd append a bunch of trailing spaces
+	    # to each line.
+	    pop @widths;
+	
+	    my $format = join("", map "%-" . ($_ + $gapsize) . "s", @widths) . "%s\n";
+	    printf $format, @$_ for @lines;
 	  }
 
 # OPERATOR geohash_decode
