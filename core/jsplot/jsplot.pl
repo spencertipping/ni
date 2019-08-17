@@ -61,7 +61,7 @@ sub jsplot_stream($$@) {
     {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x88/) {
-        jsplot_log "SIGTERM to worker\n";
+        jsplot_log "browser closed socket; SIGTERM to worker\n";
         $ni_pipe->kill('TERM');
         jsplot_log "awaiting worker exit\n";
         jsplot_log "worker exited with %d\n", $ni_pipe->await;
@@ -71,6 +71,7 @@ sub jsplot_stream($$@) {
   }
   jsplot_log "done transferring data\n";
   jsplot_log "worker exited with %d\n", $ni_pipe->await;
+  safewrite $reply, "\x88\x80";
 }
 
 sub jsplot_server {

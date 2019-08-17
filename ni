@@ -9643,7 +9643,7 @@ caterwaul(':all')(function () {
                                  transformer_form(d, a=this) = qse[given[x, y, z] in _a*x + _b*y + _c*z + _d]
                                                                /~replace/ {_a: '#{a[d<<2|0]}', _b: '#{a[d<<2|1]}', _c: '#{a[d<<2|2]}', _d: '#{a[d<<2|3]}'},
                                  transformer     (d, a=this) = this.transformer_form(d) /!caterwaul.compile]]})();
-16 core/jsplot/socket.waul
+12 core/jsplot/socket.waul
 // Web socket interface.
 // Manages downloads from the server, tracks state, invokes a callback for each batch of new data.
 
@@ -9651,15 +9651,11 @@ caterwaul(':all')(function () {
   ni_ws(cmd, cb) = cancel_existing() -then- ws_connect(cmd, cb),
 
   where[existing_connection         = null,
-        cancel_existing()           = existing_connection.close() -when.existing_connection,
+        cancel_existing()           = existing_connection.close() -when.existing_connection -then- existing_connection /eq[null],
         ni_url(cmd)                 = "#{document.location.href.replace(/^http:/, 'ws:').replace(/#.*/, '')}ni/#{cmd /!encodeURIComponent}",
         ws_connect(cmd, f)          = existing_connection = new WebSocket(cmd /!ni_url, 'data') -se [it.onmessage = f /!message_wrapper],
         message_wrapper(f, k='')(e) = e.data.constructor === Blob ? f() -then- cancel_existing()
-                                                                  : k -eq[lines.pop()] -then- f(lines)
-                                                                                       -then- setTimeout("existing_connection /~send/ '' -rescue- null".qf, dt * 4 || 1)
-                                                                                       -where[tstart = +new Date,
-                                                                                              m      = k + e.data, lines = m.split(/\n/),
-                                                                                              dt     = +new Date - tstart]]})();
+                                                                  : k -eq[lines.pop()] -then- f(lines) -where[m = k + e.data, lines = m.split(/\n/)]]})();
 113 core/jsplot/render.waul
 // Rendering support.
 // Rendering is treated like an asynchronous operation against the axis buffers. It ends up being re-entrant so we don't lock the browser thread, but those
@@ -10113,7 +10109,7 @@ body {margin:0; color:#eee; background:black; font-size:10pt; font-family:monosp
 </div>
 </body>
 </html>
-93 core/jsplot/jsplot.pl
+94 core/jsplot/jsplot.pl
 # JSPlot interop.
 # JSPlot is served over HTTP as a portable web interface. It requests data via
 # AJAX, and may request the same data multiple times to save browser memory. The
@@ -10177,7 +10173,7 @@ sub jsplot_stream($$@) {
     {
       saferead $reply, $incoming, 8192;
       if ($incoming =~ /^\x88/) {
-        jsplot_log "SIGTERM to worker\n";
+        jsplot_log "browser closed socket; SIGTERM to worker\n";
         $ni_pipe->kill('TERM');
         jsplot_log "awaiting worker exit\n";
         jsplot_log "worker exited with %d\n", $ni_pipe->await;
@@ -10187,6 +10183,7 @@ sub jsplot_stream($$@) {
   }
   jsplot_log "done transferring data\n";
   jsplot_log "worker exited with %d\n", $ni_pipe->await;
+  safewrite $reply, "\x88\x80";
 }
 
 sub jsplot_server {
