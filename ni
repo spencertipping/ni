@@ -3203,7 +3203,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl
 map.pl
-77 core/meta/meta.pl
+78 core/meta/meta.pl
 # Image-related data sources.
 # Long options to access ni's internal state. Also the ability to instantiate ni
 # within a shell process.
@@ -3220,6 +3220,7 @@ defoperator meta_help => q{
 
 defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
+defshort '///你',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
 
 defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};

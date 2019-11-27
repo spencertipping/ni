@@ -1580,6 +1580,11 @@
 ## SYNTAX
 	'' -> {perl_prefix_op}
 
+# SHORT OPERATOR ///你
+
+## SYNTAX
+	'' -> {meta_image_op}
+
 # SHORT OPERATOR /1
 	Alias for 'n1'
 
