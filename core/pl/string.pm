@@ -32,24 +32,31 @@ sub restrict_hdfs_path ($$) {
 BEGIN
 {
   my %short_separators =
-    ("c" => ",",
-     "C" => ":",
-     "n" => "\n",
-     "p" => "|",
-     "t" => "\t",
-     "u" => "_",
-     "w" => " ");
+    ("b" => "\\"  # b => backslash
+     "c" => ",",  # c => comma
+     "C" => ":",  # C => colon
+     "d" => ".",  # d => dot
+     "D" => "-",  # D => dash
+     "n" => "\n", # n => newline
+     "p" => "|",  # p => pipe
+     "q" => "'",  # q => single quote
+     "Q" => '"',  # Q => double quote
+     "S" => "/",  # S => slash (uppercase to avoid the subroutine named ssss = split m|//|, $_)
+     "t" => "\t", # t => tab
+     "u" => "_",  # u => underscore
+     "w" => " "   # w => whitespace
+    );
 
    for my $abbrev (keys %short_separators)
    {
      my $sep = $short_separators{$abbrev};
-     ceval sprintf 'sub jj%s      {join "%s",      @_;}',
+     ceval sprintf 'sub jj%s      {join q(%s),      @_;}',
        $abbrev, $sep;
-     ceval sprintf 'sub jj%s%s    {join "%s%s",    @_;}',
+     ceval sprintf 'sub jj%s%s    {join q(%s%s),    @_;}',
        $abbrev, $abbrev, $sep, $sep;
-     ceval sprintf 'sub ss%s($)   {split /\Q%s\E/,   $_[0]}',
+     ceval sprintf 'sub ss%s($)   {split m$\Q%s\E$,   $_[0]}',
        $abbrev, $sep;
-     ceval sprintf 'sub ss%s%s($) {split /\Q%s%s\E/, $_[0]}',
+     ceval sprintf 'sub ss%s%s($) {split m$\Q%s%s\E$, $_[0]}',
        $abbrev, $abbrev, $sep, $sep;
     }
 }
