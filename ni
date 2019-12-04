@@ -4883,12 +4883,12 @@ BEGIN
     ("c" => ",",  # c => comma
      "C" => ":",  # C => colon
      "d" => ".",  # d => dot
-     "D" => "-",  # D => dash
+     "f" => "/",  # f => forward slash
+     "h" => "-",  # h => hyphen
      "n" => "\n", # n => newline
      "p" => "|",  # p => pipe
      "q" => "'",  # q => single quote
      "Q" => '"',  # Q => double quote
-     "S" => "/",  # S => slash (uppercase to avoid the subroutine named ssss = split m|//|, $_)
      "t" => "\t", # t => tab
      "u" => "_",  # u => underscore
      "w" => " "   # w => whitespace
@@ -14247,7 +14247,7 @@ Perl is much-maligned for its syntax; much of that malignancy comes from people 
 
 
 
-1071 doc/ni_by_example_3.md
+1088 doc/ni_by_example_3.md
 # `ni` by Example, Chapter 3 (beta release)
 
 ## Introduction
@@ -15123,7 +15123,7 @@ how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
 
 
-### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; pipe; underscore; whitespace
 
 
 ```bash
@@ -15135,7 +15135,7 @@ how	are	you
 ```
 
 
-### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+### `sscc`, `sspp`, `ssuu`, `ssww` : split on _two_ commas; pipes; underscores; whitespaces
 
 
 ```bash
@@ -15144,6 +15144,23 @@ how	are	you
 how	are	you
 how	are	you
 how	are	you
+```
+
+### Other splits and joins
+
+`ss` and `jj` methods are also implemented for:
+- forward slash: `ssf`, `ssff`, `jjf`, `jjff`
+- single quote: `ssq`, e.g.
+- double quote: `ssQ`, e.g.
+- tab: `sst`, e.g.
+- newline: `ssn` e.g.
+- colon: `ssC`, e.g.
+- dot (i.e. period: `'.'`): `ssd`
+- hyphen (i.e. en-dash: `'-'`): `ssh`
+
+```bash
+ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
+how::are::you how//are//you how..are..you how--are--you
 ```
 
 ### `startswith` and `endswith`

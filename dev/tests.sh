@@ -3289,16 +3289,18 @@ how	are	you
 how	are	you
 how	are	you
 how	are	you
+ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
+how::are::you how//are//you how..are..you how--are--you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=902
+lazytest_line=919
 lazytest_case 'ni ifoobar p'\''r startswith a, "fo"; r endswith a, "obar";'\''
 ' 3<<'LAZYTEST_EOF'
 1
 1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=911
+lazytest_line=928
 lazytest_case 'ni ihdfst:///user/bilow/tmp/test_ni_job/part-* \
      ihdfst:///user/bilow/tmp/test_ni_job p'\''r restrict_hdfs_path a, 100'\''
 ' 3<<'LAZYTEST_EOF'
@@ -3306,19 +3308,19 @@ hdfst:///user/bilow/tmp/test_ni_job/part-00*
 hdfst:///user/bilow/tmp/test_ni_job/part-00*
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=961
+lazytest_line=978
 lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' D:foo,:c,:a
 ' 3<<'LAZYTEST_EOF'
 bar	3.14159	1
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=970
+lazytest_line=987
 lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' p'\''my $h = json_decode a; r $h->{"a"}, $h->{"foo"}, $h->{"c"};'\''
 ' 3<<'LAZYTEST_EOF'
 1	bar	3.14159
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
-lazytest_line=980
+lazytest_line=997
 lazytest_case 'ni i'\''{"a": 1, "foo":"bar", "c":3.14159}'\'' D:foo,:c,:a p'\''json_encode {foo => a, c => b, a => c, treasure=>"trove"}'\''
 ' 3<<'LAZYTEST_EOF'
 {"a":1,"c":3.14159,"foo":"bar","treasure":"trove"}

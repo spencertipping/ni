@@ -32,16 +32,15 @@ sub restrict_hdfs_path ($$) {
 BEGIN
 {
   my %short_separators =
-    ("b" => "\\"  # b => backslash
-     "c" => ",",  # c => comma
+    ("c" => ",",  # c => comma
      "C" => ":",  # C => colon
      "d" => ".",  # d => dot
-     "D" => "-",  # D => dash
+     "f" => "/",  # f => forward slash
+     "h" => "-",  # h => hyphen
      "n" => "\n", # n => newline
      "p" => "|",  # p => pipe
      "q" => "'",  # q => single quote
      "Q" => '"',  # Q => double quote
-     "S" => "/",  # S => slash (uppercase to avoid the subroutine named ssss = split m|//|, $_)
      "t" => "\t", # t => tab
      "u" => "_",  # u => underscore
      "w" => " "   # w => whitespace
