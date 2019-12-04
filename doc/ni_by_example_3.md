@@ -909,8 +909,8 @@ how	are	you
 - hyphen (i.e. en-dash: `'-'`): `ssh`
 
 ```bash
-ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
-how::are::you how//are//you how..are..you how--are--you
+$ ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
+how::are::you	how//are//you	how..are..you	how--are--you
 ```
 
 ### `startswith` and `endswith`

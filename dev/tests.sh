@@ -3289,8 +3289,12 @@ how	are	you
 how	are	you
 how	are	you
 how	are	you
-ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
-how::are::you how//are//you how..are..you how--are--you
+LAZYTEST_EOF
+lazytest_file='doc/ni_by_example_3.md'
+lazytest_line=912
+lazytest_case 'ni i[how are you] p'\''r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'\''
+' 3<<'LAZYTEST_EOF'
+how::are::you	how//are//you	how..are..you	how--are--you
 LAZYTEST_EOF
 lazytest_file='doc/ni_by_example_3.md'
 lazytest_line=919
