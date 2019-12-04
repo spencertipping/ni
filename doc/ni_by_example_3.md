@@ -873,7 +873,7 @@ how,,are,,you	how||are||you	how__are__you	how  are  you
 ```
 
 
-### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; hyphen; pipe; forward slash; underscore; whitespace
+### `ssc`, `ssp` `ssu`, `ssw` : split on _one_ comma; pipe; underscore; whitespace
 
 
 ```bash
@@ -885,7 +885,7 @@ how	are	you
 ```
 
 
-### `scc`, `shh`, `spp` `sss`, `suu`, `sww` : split on _two_ commas; hyphens; pipes; forward slashes; underscores; whitespaces
+### `sscc`, `sspp`, `ssuu`, `ssww` : split on _two_ commas; pipes; underscores; whitespaces
 
 
 ```bash
@@ -894,6 +894,23 @@ how	are	you
 how	are	you
 how	are	you
 how	are	you
+```
+
+### Other splits and joins
+
+`ss` and `jj` methods are also implemented for:
+- forward slash: `ssf`, `ssff`, `jjf`, `jjff`
+- single quote: `ssq`, e.g.
+- double quote: `ssQ`, e.g.
+- tab: `sst`, e.g.
+- newline: `ssn` e.g.
+- colon: `ssC`, e.g.
+- dot (i.e. period: `'.'`): `ssd`
+- hyphen (i.e. en-dash: `'-'`): `ssh`
+
+```bash
+$ ni i[how are you] p'r jjCC(F_), jjff(F_), jjdd(F_), jjhh(F_)'
+how::are::you	how//are//you	how..are..you	how--are--you
 ```
 
 ### `startswith` and `endswith`
