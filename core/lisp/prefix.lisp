@@ -4,6 +4,14 @@
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
 
+;;; abort rather than interactively debug any errors
+(defun abort-debug (condition h)
+  (declare (ignore h))
+  (format t "Lisp error: ~A~%" condition)
+  (abort))
+
+(setf *debugger-hook* #'abort-debug)
+
 ;;; utility functions from wu-sugar
 
 (defun str (&rest values)
@@ -58,10 +66,10 @@
 (defun read-col (text)
   (when text
     (let* ((*read-eval* nil)
-           (r (read-from-string text)))
-      (etypecase r
-        (symbol text)
-        (number r)))))
+           (parsed (ignore-errors (read-from-string text))))
+      (if (numberp parsed)
+          parsed
+          text))))
 
 (defun %r (&rest values)
   (apply #'join #\Tab values))
