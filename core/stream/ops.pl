@@ -331,11 +331,18 @@ defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
 # Compression and decoding.
 # Sometimes you want to emit compressed data, which you can do with the `Z`
-# operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
-# by adding a suffix. You can decode a stream in any of these formats using `ZD`
-# (though in most cases ni will automatically decode compressed formats).
+# operator. It defaults to gzip, but you can also specify xz, lzo, lz4, zstd, or
+# bzip2 by adding a suffix. You can decode a stream in any of these formats
+# using `zd` (though in most cases ni will automatically decode compressed
+# formats).
 
-our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
+our %compressors = qw/
+  g gzip
+  z zstd
+  x xz
+  o lzop
+  4 lz4
+  b bzip2 /;
 
 # Detect parallel compressors: pigz for gzip, and pbzip2 for bzip2. Each of
 # these is much faster than its serial variant if multiple processors are
@@ -343,7 +350,7 @@ our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 $compressors{g} = 'pigz'   unless system "which pigz   > /dev/null 2>&1";
 $compressors{b} = 'pbzip2' unless system "which pbzip2 > /dev/null 2>&1";
 
-BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
+BEGIN {defparseralias compressor_name => prx '[gzxo4b]'}
 BEGIN {
   defparseralias compressor_spec =>
     pmap q{my ($c, $level) = @$_;

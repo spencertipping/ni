@@ -2755,7 +2755,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-359 core/stream/ops.pl
+366 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3089,11 +3089,18 @@ defshort '/>\'R', pmap q{encode_resource_stream_op}, pnone;
 
 # Compression and decoding.
 # Sometimes you want to emit compressed data, which you can do with the `Z`
-# operator. It defaults to gzip, but you can also specify xz, lzo, lz4, or bzip2
-# by adding a suffix. You can decode a stream in any of these formats using `ZD`
-# (though in most cases ni will automatically decode compressed formats).
+# operator. It defaults to gzip, but you can also specify xz, lzo, lz4, zstd, or
+# bzip2 by adding a suffix. You can decode a stream in any of these formats
+# using `zd` (though in most cases ni will automatically decode compressed
+# formats).
 
-our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
+our %compressors = qw/
+  g gzip
+  z zstd
+  x xz
+  o lzop
+  4 lz4
+  b bzip2 /;
 
 # Detect parallel compressors: pigz for gzip, and pbzip2 for bzip2. Each of
 # these is much faster than its serial variant if multiple processors are
@@ -3101,7 +3108,7 @@ our %compressors = qw/ g gzip  x xz  o lzop  4 lz4  b bzip2 /;
 $compressors{g} = 'pigz'   unless system "which pigz   > /dev/null 2>&1";
 $compressors{b} = 'pbzip2' unless system "which pbzip2 > /dev/null 2>&1";
 
-BEGIN {defparseralias compressor_name => prx '[gxo4b]'}
+BEGIN {defparseralias compressor_name => prx '[gzxo4b]'}
 BEGIN {
   defparseralias compressor_spec =>
     pmap q{my ($c, $level) = @$_;
@@ -21324,7 +21331,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-570 doc/stream.md
+577 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -21787,15 +21794,22 @@ bzip2
 ```
 
 ```sh
-# this one isn't a unit test because not all test docker images have a
-# straightforward LZ4 install (some are too old)
+# these aren't unit tests because not all test docker images have a
+# straightforward LZ4 or zstd install (some are too old)
 $ ni ilz4 z4 | lz4 -dc
 lz4
+$ ni izstd zz | zstd -dc
+zstd
 ```
 
 ni also provides a universal decompression operator `zd`, though you'll rarely
 need it because any external data will be decoded automatically. `zd` has no
-effect if the data isn't compressed.
+effect if the data isn't compressed in a way that it recognizes, or if the
+relevant decompressor isn't installed on the system.
+
+Note that ni can also decode zip and tar archives (assuming you have `tar` and
+`unzip` installed), athough this is done using a different syntax that allows
+you to refer to specific entries.
 
 ```bash
 $ ni n4 z zd

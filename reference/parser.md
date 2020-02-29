@@ -1336,7 +1336,7 @@
 # PARSER compressor_name
 
 ## DEFINITION
-	/[gxo4b]/
+	/[gzxo4b]/
 
 # PARSER compressor_spec
 
