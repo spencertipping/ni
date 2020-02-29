@@ -2407,7 +2407,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-243 core/stream/pipeline.pl
+245 core/stream/pipeline.pl
 # Pipeline construction.
 # A way to build a shell pipeline in-process by consing a transformation onto
 # this process's standard input. This will cause a fork to happen, and the forked
@@ -2595,6 +2595,7 @@ sub swfile($) {mkdir_p dirname $_[0];
 #   lz4:   04 22 4d 18
 #   xz:    fd 37 7a 58 5a
 #   zlib:  78 {01|5e|9c|da}
+#   zstd:  2[78] b5 2f fd
 
 # Decoding works by reading enough to decode the magic, then forwarding data
 # into the appropriate decoding process (or doing nothing if we don't know what
@@ -2609,12 +2610,13 @@ sub sdecode(;$) {
   local $_;
   return unless saferead \*STDIN, $_, 8192;
 
-  my $decoder = /^\x1f\x8b/             ? "pigz -dc || gzip -dc || cat"
-              : /^BZh[1-9\0]/           ? "pbzip2 -dc || bzip2 -dc || cat"
-              : /^\x89\x4c\x5a\x4f/     ? "lzop -dc || cat"
-              : /^\x04\x22\x4d\x18/     ? "lz4 -dc || cat"
-              : /^\xfd\x37\x7a\x58\x5a/ ? "xz -dc || cat"
-              : /^\x78[\x01\x9c\xda]/   ? perl_zlib_decoder . " || cat"
+  my $decoder = /^\x1f\x8b/               ? "pigz -dc || gzip -dc || cat"
+              : /^BZh[1-9\0]/             ? "pbzip2 -dc || bzip2 -dc || cat"
+              : /^\x89\x4c\x5a\x4f/       ? "lzop -dc || cat"
+              : /^\x04\x22\x4d\x18/       ? "lz4 -dc || cat"
+              : /^\xfd\x37\x7a\x58\x5a/   ? "xz -dc || cat"
+              : /^[\x27\x28]\xb5\x2f\xfd/ ? "zstd -dc || cat"
+              : /^\x78[\x01\x9c\xda]/     ? perl_zlib_decoder . " || cat"
               : undef;
 
   if (defined $decoder) {
