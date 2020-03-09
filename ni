@@ -7001,7 +7001,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-264 core/cell/cell.pl
+283 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -7037,6 +7037,25 @@ sub cell_eval($@) {
   my ($h, @args) = @_;
   fn(cell_op_gen->(%$h))->(@args);
 }
+
+
+# Data cleaning.
+# Remove characters that fall outside of specified classes; e.g. non-numerics,
+# non-word, non-alpha-or-space.
+
+defoperator cell_clean_regex => q{
+  cell_eval {args  => '$qre',
+             begin => '',
+             each  => '$xs[$_] =~ s/$qre//g'}, @_;
+};
+
+defshort 'cell/C',
+  defdsp 'cleanalt', 'dispatch table for cell/C clean operator',
+    d => pmap(q{cell_clean_regex_op $_, qr/\D/},           cellspec_fixed),
+    f => pmap(q{cell_clean_regex_op $_, qr/[^-+eE.0-9]/},  cellspec_fixed),
+    w => pmap(q{cell_clean_regex_op $_, qr/\W/},           cellspec_fixed),
+    x => pmap(q{cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}, cellspec_fixed);
+
 
 # Intification.
 # Strategies to turn each distinct entry into a number. Particularly useful in a
@@ -8092,12 +8111,20 @@ defrowalt pmap q{ruby_grepper_op $_}, pn 1, pstr 'm', rbcode;
 2 core/lisp/lib
 prefix.lisp
 lisp.pl
-166 core/lisp/prefix.lisp
+174 core/lisp/prefix.lisp
 ;;;;;;;;
 ;; NB: don't delete the line of semicolons above; SBCL throws away the first few
 ;; bytes on CentOS.
 (declaim (optimize (speed 3) (safety 0)))
 (setf *read-default-float-format* 'double-float)
+
+;;; abort rather than interactively debug any errors
+(defun abort-debug (condition h)
+  (declare (ignore h))
+  (format t "Lisp error: ~A~%" condition)
+  (abort))
+
+(setf *debugger-hook* #'abort-debug)
 
 ;;; utility functions from wu-sugar
 
@@ -8153,10 +8180,10 @@ lisp.pl
 (defun read-col (text)
   (when text
     (let* ((*read-eval* nil)
-           (r (read-from-string text)))
-      (etypecase r
-        (symbol text)
-        (number r)))))
+           (parsed (ignore-errors (read-from-string text))))
+      (if (numberp parsed)
+          parsed
+          text))))
 
 (defun %r (&rest values)
   (apply #'join #\Tab values))

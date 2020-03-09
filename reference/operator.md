@@ -104,6 +104,14 @@
 ## IMPLEMENTATION
 	sio; scat $_ for @_
 
+# OPERATOR cell_clean_regex
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$qre',
+	             begin => '',
+	             each  => '$xs[$_] =~ s/$qre//g'}, @_;
+
 # OPERATOR cell_exp
 
 ## IMPLEMENTATION

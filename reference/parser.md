@@ -1183,6 +1183,12 @@
 	    <bloom_size_spec>
 	    <bloom_fp_spec>
 	  ) -> {bloom_prehash_op @$_}
+	| 'C' (
+	  | 'd' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\D/}
+	  | 'f' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^-+eE.0-9]/}
+	  | 'w' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\W/}
+	  | 'x' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}
+	  )
 	| 'G' (
 	    <cellspec_fixed>
 	    <integer>?
@@ -1409,6 +1415,16 @@
 ## DEFINITION
 	(
 	| 'n' '' -> {buffer_null_op}
+	)
+
+# PARSER dsp/cleanalt
+
+## DEFINITION
+	(
+	| 'd' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\D/}
+	| 'f' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^-+eE.0-9]/}
+	| 'w' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\W/}
+	| 'x' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}
 	)
 
 # PARSER dsp/combinealt

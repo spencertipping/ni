@@ -2353,6 +2353,16 @@
 	  <bloom_fp_spec>
 	) -> {bloom_prehash_op @$_}
 
+# SHORT OPERATOR cell/C
+
+## SYNTAX
+	(
+	| 'd' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\D/}
+	| 'f' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^-+eE.0-9]/}
+	| 'w' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\W/}
+	| 'x' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}
+	)
+
 # SHORT OPERATOR cell/G
 
 ## SYNTAX

@@ -34,6 +34,25 @@ sub cell_eval($@) {
   fn(cell_op_gen->(%$h))->(@args);
 }
 
+
+# Data cleaning.
+# Remove characters that fall outside of specified classes; e.g. non-numerics,
+# non-word, non-alpha-or-space.
+
+defoperator cell_clean_regex => q{
+  cell_eval {args  => '$qre',
+             begin => '',
+             each  => '$xs[$_] =~ s/$qre//g'}, @_;
+};
+
+defshort 'cell/C',
+  defdsp 'cleanalt', 'dispatch table for cell/C clean operator',
+    d => pmap(q{cell_clean_regex_op $_, qr/\D/},           cellspec_fixed),
+    f => pmap(q{cell_clean_regex_op $_, qr/[^-+eE.0-9]/},  cellspec_fixed),
+    w => pmap(q{cell_clean_regex_op $_, qr/\W/},           cellspec_fixed),
+    x => pmap(q{cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}, cellspec_fixed);
+
+
 # Intification.
 # Strategies to turn each distinct entry into a number. Particularly useful in a
 # plotting context.

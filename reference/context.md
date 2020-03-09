@@ -7,6 +7,7 @@
 ## SHORT OPERATORS (ni --doc/short X)
 	cell/A
 	cell/BP
+	cell/C
 	cell/G
 	cell/H
 	cell/J

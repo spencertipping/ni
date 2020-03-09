@@ -24,6 +24,17 @@
 	| 'n' '' -> {buffer_null_op}
 	)
 
+# EXTENSIBLE DISPATCH TABLE cleanalt
+	dispatch table for cell/C clean operator
+
+## OPTIONS
+	(
+	| 'd' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\D/}
+	| 'f' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^-+eE.0-9]/}
+	| 'w' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/\W/}
+	| 'x' <cellspec_fixed> -> {cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}
+	)
+
 # EXTENSIBLE DISPATCH TABLE combinealt
 	dispatch table for /F^ combine operator
 
