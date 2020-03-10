@@ -47,10 +47,10 @@ defoperator cell_clean_regex => q{
 
 defshort 'cell/C',
   defdsp 'cleanalt', 'dispatch table for cell/C clean operator',
-    d => pmap(q{cell_clean_regex_op $_, qr/\D/},           cellspec_fixed),
-    f => pmap(q{cell_clean_regex_op $_, qr/[^-+eE.0-9]/},  cellspec_fixed),
-    w => pmap(q{cell_clean_regex_op $_, qr/\W/},           cellspec_fixed),
-    x => pmap(q{cell_clean_regex_op $_, qr/[^0-9a-fA-F]/}, cellspec_fixed);
+    d => pmap(q{cell_clean_regex_op $_, qr/[^-0-9]/},       cellspec_fixed),
+    f => pmap(q{cell_clean_regex_op $_, qr/[^-+eE.0-9]/},   cellspec_fixed),
+    w => pmap(q{cell_clean_regex_op $_, qr/\W/},            cellspec_fixed),
+    x => pmap(q{cell_clean_regex_op $_, qr/[^-0-9a-fA-F]/}, cellspec_fixed);
 
 
 # Intification.
