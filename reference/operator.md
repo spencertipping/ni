@@ -1456,9 +1456,9 @@
 ## IMPLEMENTATION
 	
 	  srand conf 'row/seed';
-	  $. = 0;
+	  my $first_line = 0;
 	  while (<STDIN>) {
-	    print, $. -= -log(1 - rand()) / $_[0] if $. >= 0;
+	    print, if rand() < $_[0] || (++$first_line == 1);
 	  }
 
 # OPERATOR row_sort
