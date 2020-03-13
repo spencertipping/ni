@@ -51,9 +51,7 @@ $ ni n10000rx4000               # take the 1st of every 4000 rows
 8001
 $ ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 1
-6823
-8921
-9509
+9539
 ```
 
 It's worth noting that uniform sampling, though random, is also deterministic;

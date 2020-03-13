@@ -333,11 +333,9 @@ Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) ps
 ```bash
 $ ni n20 r.15
 1
-9
-11
-12
+3
+5
 14
-15
 ```
 
 These last examples show the value of `r` in development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to view smaller samples of large datasets.
