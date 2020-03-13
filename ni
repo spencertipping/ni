@@ -12132,7 +12132,7 @@ tutorial.md
 visual.md
 warnings.md
 wkt.md
-879 doc/ni_by_example_1.md
+877 doc/ni_by_example_1.md
 # `ni` by Example, Chapter 1 (beta release)
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
@@ -12468,11 +12468,9 @@ Adding a number between 0 and 1 will lead to `ni` selecting a (deterministic) ps
 ```bash
 $ ni n20 r.15
 1
-9
-11
-12
+3
+5
 14
-15
 ```
 
 These last examples show the value of `r` in development; for example, if you are working with a large file or stream, you can check the correctness of your output using `r10`, `rx100`, `r.001` etc. to view smaller samples of large datasets.
@@ -20745,7 +20743,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-350 doc/row.md
+348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -20799,9 +20797,7 @@ $ ni n10000rx4000               # take the 1st of every 4000 rows
 8001
 $ ni n10000r.0002               # sample uniformly, P(row) = 0.0002
 1
-6823
-8921
-9509
+9539
 ```
 
 It's worth noting that uniform sampling, though random, is also deterministic;
