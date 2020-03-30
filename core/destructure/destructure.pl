@@ -42,7 +42,7 @@ sub json_extractor($) {
 
 defoperator destructure => q{
   ni::eval gen(q{
-    no warnings qw/uninitialized non_unicode/;
+    no warnings 'uninitialized';
     eval {binmode STDOUT, ":encoding(utf8)"};
     print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
     while (<STDIN>) {
