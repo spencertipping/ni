@@ -293,8 +293,8 @@
 ## IMPLEMENTATION
 	
 	  ni::eval gen(q{
-	    no warnings 'uninitialized';
-	    eval {binmode STDOUT, ":encoding(utf-8)"};
+	    no warnings qw/uninitialized non_unicode/;
+	    eval {binmode STDOUT, ":encoding(utf8)"};
 	    print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
 	    while (<STDIN>) {
 	      %e;

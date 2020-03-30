@@ -5,8 +5,6 @@
 # return just the values you need. Depending on what you're extracting, this can
 # be up to 20-30x faster than doing a full decode.
 
-
-
 # TODO: replace all of this
 
 our %json_partial_unescapes =
@@ -44,8 +42,8 @@ sub json_extractor($) {
 
 defoperator destructure => q{
   ni::eval gen(q{
-    no warnings 'uninitialized';
-    eval {binmode STDOUT, ":encoding(utf-8)"};
+    no warnings qw/uninitialized non_unicode/;
+    eval {binmode STDOUT, ":encoding(utf8)"};
     print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
     while (<STDIN>) {
       %e;

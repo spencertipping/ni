@@ -3759,15 +3759,13 @@ defshort '/:@',  pmap q{file_data_closure_op @$_},
                  pseq pc closure_name, _qfn;
 1 core/destructure/lib
 destructure.pl
-56 core/destructure/destructure.pl
+54 core/destructure/destructure.pl
 # Targeted extraction.
 # Most data extraction workflows don't use every key of a rich data object like
 # JSON or XML. ni allows you to avoid the overhead of fully decoding these
 # objects by using targeted extraction, which compiles an optimized function to
 # return just the values you need. Depending on what you're extracting, this can
 # be up to 20-30x faster than doing a full decode.
-
-
 
 # TODO: replace all of this
 
@@ -3806,8 +3804,8 @@ sub json_extractor($) {
 
 defoperator destructure => q{
   ni::eval gen(q{
-    no warnings 'uninitialized';
-    eval {binmode STDOUT, ":encoding(utf-8)"};
+    no warnings qw/uninitialized non_unicode/;
+    eval {binmode STDOUT, ":encoding(utf8)"};
     print STDERR "ni: warning: your perl might not handle utf-8 correctly\n" if $@;
     while (<STDIN>) {
       %e;
