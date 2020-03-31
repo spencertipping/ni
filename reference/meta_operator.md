@@ -114,6 +114,10 @@
 	  my $xargs_arg = noise_str 32;
 	  conf_set 'xargs/arg' => $xargs_arg;
 	
-	  my $xargs_op = row_xargs_scale_op $n, "i$xargs_arg", ":",
-	                                    [op_fn_op $bindings, $fnbody];
-	  ($left, [$xargs_op, @$right]);
+	  my $xargs_op = row_xargs_scale_op
+	    $n, "1p'pack \"H*\", \"$xargs_arg\"'", ":",
+	    [op_fn_op $bindings, $fnbody];
+	
+	  my $safe_op = perl_mapper_op('unpack "H*"');
+	
+	  ($left, [$safe_op, $xargs_op, @$right]);
