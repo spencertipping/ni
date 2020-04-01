@@ -5435,7 +5435,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-173 core/pl/math.pm
+184 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5588,6 +5588,17 @@ sub entropy {
   $t += $_ / $sum * ($_ > 0 ? -log2($_ / $sum) : 0) for @_;
   $t;
 }
+
+
+# Statistical distributions
+sub gaussian_pdf
+{
+  my ($x, $mu, $sigma) = @_;
+  $mu    ||= 0;
+  $sigma ||= 1;
+  exp(-0.5 * (($x - $mu) / $sigma)**2) / ($sigma * sqrt tau);
+}
+
 
 # Random
 sub randint {my ($low, $high) = @_; 

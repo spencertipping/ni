@@ -151,6 +151,17 @@ sub entropy {
   $t;
 }
 
+
+# Statistical distributions
+sub gaussian_pdf
+{
+  my ($x, $mu, $sigma) = @_;
+  $mu    ||= 0;
+  $sigma ||= 1;
+  exp(-0.5 * (($x - $mu) / $sigma)**2) / ($sigma * sqrt tau);
+}
+
+
 # Random
 sub randint {my ($low, $high) = @_; 
              ($high, $low) = $high ? ($high, $low) : ($low, 0);  
