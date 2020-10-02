@@ -62,10 +62,13 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # for ffmpeg to follow `-f image2pipe -i -`.
 #
 # GF^ inverts GF, outputting PNG images from a video specified on stdin.
+#
+# NOTE: these options are deprecated in favor of IV (images-to-video) and VI
+# (video-to-images).
 
-defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, popt shell_command;
 defshort '/GF^', pmap q{sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"},
-                      shell_command;
+                      popt shell_command;
 
 # Auto-multiplotting
 # If you have a TSV containing multiple columns, we can put them all into a

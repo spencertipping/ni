@@ -16,6 +16,16 @@
 	  cell_eval {args => 'undef',
 	             each => "\$xs[\$_] *= (1 - $rand_code)"}, $cs;
 
+# OPERATOR audio_extract
+
+## IMPLEMENTATION
+	
+	  my ($format, $codec, $bitrate) = @_;
+	  exec conf('ffmpeg'), '-i', '-', '-vn',
+	       '-f', $format,
+	       defined($codec) ? ('-c:a', $codec) : (),
+	       defined($bitrate) ? ('-b:a', $bitrate) : (), '-'
+
 # OPERATOR binary_fixed
 
 ## IMPLEMENTATION
@@ -694,6 +704,17 @@
 
 ## IMPLEMENTATION
 	sio
+
+# OPERATOR imagepipe_to_video
+
+## IMPLEMENTATION
+	
+	  my ($format, $codec, $bitrate) = @_;
+	  sh conf('ffmpeg') . " -f image2pipe -i - "
+	     . shell_quote '-f', $format,
+	                   defined($codec) ? ('-c:v', $codec) : (),
+	                   defined($bitrate) ? ('-b:v', $bitrate) : (),
+	                   '-'
 
 # OPERATOR interleave
 
@@ -1815,6 +1836,14 @@
 	
 	  close $o;
 	  $o->await;
+
+# OPERATOR video_to_imagepipe
+
+## IMPLEMENTATION
+	
+	  my ($codec) = @_;
+	  $codec = 'png' unless defined $codec;
+	  sh conf('ffmpeg') . " -i - -f image2pipe -c:v $codec -"
 
 # OPERATOR wc_l
 

@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-60 core/boot/ni.map
+61 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -113,6 +113,7 @@ lib core/docker
 lib core/hadoop
 lib core/pyspark
 lib core/wiki
+lib core/ffmpeg
 lib doc
 109 core/boot/util.pl
 # Utility functions.
@@ -8878,7 +8879,7 @@ defoperator numpy_dense => q{
 defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
 1 core/gnuplot/lib
 gnuplot.pl
-121 core/gnuplot/gnuplot.pl
+124 core/gnuplot/gnuplot.pl
 # Gnuplot interop.
 # An operator that sends output to a gnuplot process.
 
@@ -8943,10 +8944,13 @@ defgnuplot_code_prefixalt '%u' => pmap q{"using $_"},   generic_code;
 # for ffmpeg to follow `-f image2pipe -i -`.
 #
 # GF^ inverts GF, outputting PNG images from a video specified on stdin.
+#
+# NOTE: these options are deprecated in favor of IV (images-to-video) and VI
+# (video-to-images).
 
-defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, shell_command;
+defshort '/GF',  pmap q{sh_op "ffmpeg -f image2pipe -i - $_"}, popt shell_command;
 defshort '/GF^', pmap q{sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"},
-                      shell_command;
+                      popt shell_command;
 
 # Auto-multiplotting
 # If you have a TSV containing multiple columns, we can put them all into a
@@ -12169,6 +12173,54 @@ for my $wp (qw/
   # ${wp}wt: Wikipedia Text
   defresource "${wp}wt", read => wiki_source->(wp => $wp);
 }
+3 core/ffmpeg/lib
+ffmpeg.pl
+audio.pl
+video.pl
+9 core/ffmpeg/ffmpeg.pl
+# NOTE: on some systems you may want to use 'avconv' instead
+defconfenv 'ffmpeg', FFMPEG => 'ffmpeg';
+
+BEGIN {
+  defparseralias media_format_spec =>
+    pseq prx '\w+',
+         popt pn(1, prx"/", prx '\w+'),
+         popt pn(1, prx"/", prx '\w+');
+}
+10 core/ffmpeg/audio.pl
+# Audio processing
+
+defoperator audio_extract => q{
+  my ($format, $codec, $bitrate) = @_;
+  exec conf('ffmpeg'), '-i', '-', '-vn',
+       '-f', $format,
+       defined($codec) ? ('-c:a', $codec) : (),
+       defined($bitrate) ? ('-b:a', $bitrate) : (), '-'};
+
+defshort '/AE', pmap q{audio_extract_op @$_}, media_format_spec;
+22 core/ffmpeg/video.pl
+# Video access and transcoding
+
+# youtube-dl: use youtube video data as URL streams, e.g. yt://dQw4w9WgXcQ
+defconfenv 'ytdl', YOUTUBE_DL => 'youtube-dl';
+defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"};
+
+# Video<->image conversion
+defoperator video_to_imagepipe => q{
+  my ($codec) = @_;
+  $codec = 'png' unless defined $codec;
+  sh conf('ffmpeg') . " -i - -f image2pipe -c:v $codec -"};
+
+defoperator imagepipe_to_video => q{
+  my ($format, $codec, $bitrate) = @_;
+  sh conf('ffmpeg') . " -f image2pipe -i - "
+     . shell_quote '-f', $format,
+                   defined($codec) ? ('-c:v', $codec) : (),
+                   defined($bitrate) ? ('-b:v', $bitrate) : (),
+                   '-'};
+
+defshort '/VI', pmap q{video_to_imagepipe_op $_}, popt prx '\w+';
+defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
 38 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md

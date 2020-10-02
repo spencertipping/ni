@@ -1316,6 +1316,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'col/disallow-cut'}
 
+# SHORT OPERATOR /$ffmpeg
+
+## SYNTAX
+	'' -> {conf_get_op 'ffmpeg'}
+
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX
@@ -1415,6 +1420,11 @@
 
 ## SYNTAX
 	'' -> {conf_get_op 'xargs/arg'}
+
+# SHORT OPERATOR /$ytdl
+
+## SYNTAX
+	'' -> {conf_get_op 'ytdl'}
 
 # SHORT OPERATOR /%
 
@@ -1645,6 +1655,11 @@
 ## SYNTAX
 	'' -> {encode_resource_stream_op}
 
+# SHORT OPERATOR /AE
+
+## SYNTAX
+	<media_format_spec> -> {audio_extract_op @$_}
+
 # SHORT OPERATOR /B
 
 ## SYNTAX
@@ -1751,12 +1766,12 @@
 # SHORT OPERATOR /GF
 
 ## SYNTAX
-	<shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
+	<shell_command>? -> {sh_op "ffmpeg -f image2pipe -i - $_"}
 
 # SHORT OPERATOR /GF^
 
 ## SYNTAX
-	<shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
+	<shell_command>? -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
 
 # SHORT OPERATOR /H
 
@@ -1859,6 +1874,11 @@
 ## SYNTAX
 	'' -> {each_image_op [sh_op "convert - jpg:-"]}
 
+# SHORT OPERATOR /IV
+
+## SYNTAX
+	<media_format_spec> -> {imagepipe_to_video_op @$_}
+
 # SHORT OPERATOR /J
 
 ## SYNTAX
@@ -1940,6 +1960,11 @@
 
 ## SYNTAX
 	'' -> {unordered_count_op}
+
+# SHORT OPERATOR /VI
+
+## SYNTAX
+	/\w+/? -> {video_to_imagepipe_op $_}
 
 # SHORT OPERATOR /W
 

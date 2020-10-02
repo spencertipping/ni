@@ -61,6 +61,7 @@ export NI_NO_HOME=yes           # IMPORTANT
   core/hadoop \
   core/pyspark \
   core/wiki \
+  core/ffmpeg \
   \
   doc
 

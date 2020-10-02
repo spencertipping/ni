@@ -790,6 +790,7 @@
 	| ''yiwt://' /.*/ -> {resource_quote_op "yiwt://$_"}
 	| ''yows://' /.*/ -> {resource_quote_op "yows://$_"}
 	| ''yowt://' /.*/ -> {resource_quote_op "yowt://$_"}
+	| ''yt://' /.*/ -> {resource_quote_op "yt://$_"}
 	| ''zaws://' /.*/ -> {resource_quote_op "zaws://$_"}
 	| ''zawt://' /.*/ -> {resource_quote_op "zawt://$_"}
 	| ''zeaws://' /.*/ -> {resource_quote_op "zeaws://$_"}
@@ -1457,6 +1458,7 @@
 	| 'yiwt://' /.*/ -> {resource_append_op "yiwt://$_"}
 	| 'yows://' /.*/ -> {resource_append_op "yows://$_"}
 	| 'yowt://' /.*/ -> {resource_append_op "yowt://$_"}
+	| 'yt://' /.*/ -> {resource_append_op "yt://$_"}
 	| 'zaws://' /.*/ -> {resource_append_op "zaws://$_"}
 	| 'zawt://' /.*/ -> {resource_append_op "zawt://$_"}
 	| 'zeaws://' /.*/ -> {resource_append_op "zeaws://$_"}

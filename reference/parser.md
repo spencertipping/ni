@@ -669,6 +669,7 @@
 	  | ''yiwt://' /.*/ -> {resource_quote_op "yiwt://$_"}
 	  | ''yows://' /.*/ -> {resource_quote_op "yows://$_"}
 	  | ''yowt://' /.*/ -> {resource_quote_op "yowt://$_"}
+	  | ''yt://' /.*/ -> {resource_quote_op "yt://$_"}
 	  | ''zaws://' /.*/ -> {resource_quote_op "zaws://$_"}
 	  | ''zawt://' /.*/ -> {resource_quote_op "zawt://$_"}
 	  | ''zeaws://' /.*/ -> {resource_quote_op "zeaws://$_"}
@@ -1336,6 +1337,7 @@
 	  | 'yiwt://' /.*/ -> {resource_append_op "yiwt://$_"}
 	  | 'yows://' /.*/ -> {resource_append_op "yows://$_"}
 	  | 'yowt://' /.*/ -> {resource_append_op "yowt://$_"}
+	  | 'yt://' /.*/ -> {resource_append_op "yt://$_"}
 	  | 'zaws://' /.*/ -> {resource_append_op "zaws://$_"}
 	  | 'zawt://' /.*/ -> {resource_append_op "zawt://$_"}
 	  | 'zeaws://' /.*/ -> {resource_append_op "zeaws://$_"}
@@ -1646,6 +1648,7 @@
 	| '$cc' '' -> {conf_get_op 'cc'}
 	| '$cc_opts' '' -> {conf_get_op 'cc_opts'}
 	| '$col/disallow-cut' '' -> {conf_get_op 'col/disallow-cut'}
+	| '$ffmpeg' '' -> {conf_get_op 'ffmpeg'}
 	| '$hadoop/jobconf' '' -> {conf_get_op 'hadoop/jobconf'}
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
@@ -1666,6 +1669,7 @@
 	| '$sqlite' '' -> {conf_get_op 'sqlite'}
 	| '$tmpdir' '' -> {conf_get_op 'tmpdir'}
 	| '$xargs/arg' '' -> {conf_get_op 'xargs/arg'}
+	| '$ytdl' '' -> {conf_get_op 'ytdl'}
 	| '%' (
 	    <number>?
 	    </qfn>
@@ -1754,6 +1758,7 @@
 	| '=' </qfn> -> {divert_op    @$_}
 	| '>' <nefilename>? -> {file_write_op $_}
 	| '>'R' '' -> {encode_resource_stream_op}
+	| 'AE' <media_format_spec> -> {audio_extract_op @$_}
 	| 'B' (
 	  | 'n' '' -> {buffer_null_op}
 	  )
@@ -1825,8 +1830,8 @@
 	    <gnuplot_code>
 	  ) -> {stream_to_gnuplot_op @$_}
 	| 'G*' <gnuplot_code> -> {gnuplot_all_op $_}
-	| 'GF' <shell_command> -> {sh_op "ffmpeg -f image2pipe -i - $_"}
-	| 'GF^' <shell_command> -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
+	| 'GF' <shell_command>? -> {sh_op "ffmpeg -f image2pipe -i - $_"}
+	| 'GF^' <shell_command>? -> {sh_op "ffmpeg -i - $_ -f image2pipe -c:v png -"}
 	| 'H' (
 	  | '#' '' -> {hadoop_make_nukeable_op}
 	  | 'DS' (
@@ -1908,6 +1913,7 @@
 	    ) -> {$$_[0]}
 	  ) -> {composite_images_op @$_}
 	| 'IJ' '' -> {each_image_op [sh_op "convert - jpg:-"]}
+	| 'IV' <media_format_spec> -> {imagepipe_to_video_op @$_}
 	| 'J' (
 	    <colspec1>?
 	    <integer>?
@@ -1954,6 +1960,7 @@
 	  )
 	| 'S>' </qfn>? -> {sharded_write_op $_}
 	| 'U' '' -> {unordered_count_op}
+	| 'VI' /\w+/? -> {video_to_imagepipe_op $_}
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'W<' (
 	    <colspec1>?
@@ -3432,6 +3439,7 @@
 	| ''yiwt://' /.*/ -> {resource_quote_op "yiwt://$_"}
 	| ''yows://' /.*/ -> {resource_quote_op "yows://$_"}
 	| ''yowt://' /.*/ -> {resource_quote_op "yowt://$_"}
+	| ''yt://' /.*/ -> {resource_quote_op "yt://$_"}
 	| ''zaws://' /.*/ -> {resource_quote_op "zaws://$_"}
 	| ''zawt://' /.*/ -> {resource_quote_op "zawt://$_"}
 	| ''zeaws://' /.*/ -> {resource_quote_op "zeaws://$_"}
@@ -4099,6 +4107,7 @@
 	| 'yiwt://' /.*/ -> {resource_append_op "yiwt://$_"}
 	| 'yows://' /.*/ -> {resource_append_op "yows://$_"}
 	| 'yowt://' /.*/ -> {resource_append_op "yowt://$_"}
+	| 'yt://' /.*/ -> {resource_append_op "yt://$_"}
 	| 'zaws://' /.*/ -> {resource_append_op "zaws://$_"}
 	| 'zawt://' /.*/ -> {resource_append_op "zawt://$_"}
 	| 'zeaws://' /.*/ -> {resource_append_op "zeaws://$_"}
@@ -4333,6 +4342,21 @@
 
 ## DEFINITION
 	<number>? -> {$_ || exp 1}
+
+# PARSER media_format_spec
+
+## DEFINITION
+	(
+	  /\w+/
+	  (
+	    ///
+	    /\w+/
+	  ) -> {$$_[1]}?
+	  (
+	    ///
+	    /\w+/
+	  ) -> {$$_[1]}?
+	)
 
 # PARSER multiword
 	A bracketed list of arguments to exec(), interpreted verbatim (i.e. shell
