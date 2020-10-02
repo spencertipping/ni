@@ -95,6 +95,15 @@ $ ni http://wikipedia.org http://github.com
 ```
 
 
+### `ni` is a Wikipedia reader
+```sh
+$ ni wiki://JPEG      # English-language, download MediaWiki source
+$ ni enws://JPEG      # same thing
+$ ni enwt://JPEG      # English-language, download as text
+$ ni simplewt://JPEG  # Simple Wikipedia, download as text
+```
+
+
 ### `ni` is [`seq`](doc/ni_by_example_1.md#n-integer-stream)
 ```sh
 $ ni n100
