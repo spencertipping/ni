@@ -4,6 +4,10 @@
 defconfenv 'ytdl', YOUTUBE_DL => 'youtube-dl';
 defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"};
 
+# ffplay alias for brevity
+defoperator video_play => q{sh conf('ffplay') . " -"};
+defshort '/VP', pmap q{video_play_op}, pnone;
+
 # Video<->image conversion
 defoperator video_to_imagepipe => q{
   my ($codec) = @_;

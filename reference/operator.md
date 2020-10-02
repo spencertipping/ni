@@ -1837,6 +1837,11 @@
 	  close $o;
 	  $o->await;
 
+# OPERATOR video_play
+
+## IMPLEMENTATION
+	sh conf('ffplay') . " -"
+
 # OPERATOR video_to_imagepipe
 
 ## IMPLEMENTATION

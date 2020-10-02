@@ -95,15 +95,6 @@ $ ni http://wikipedia.org http://github.com
 ```
 
 
-### `ni` is a Wikipedia reader
-```sh
-$ ni wiki://JPEG      # English-language, download MediaWiki source
-$ ni enws://JPEG      # same thing
-$ ni enwt://JPEG      # English-language, download as text
-$ ni simplewt://JPEG  # Simple Wikipedia, download as text
-```
-
-
 ### `ni` is [`seq`](doc/ni_by_example_1.md#n-integer-stream)
 ```sh
 $ ni n100
@@ -180,6 +171,31 @@ $ ni sqliteq:///path/to/file.db:'sql'   # output SQL results as TSV
 ```
 
 
+### `ni` is a Wikipedia reader
+```sh
+$ ni wiki://JPEG      # English-language, download MediaWiki source
+$ ni enws://JPEG      # same thing
+$ ni enwt://JPEG      # English-language, download as text
+$ ni simplewt://JPEG  # Simple Wikipedia, download as text
+```
+
+
+### `ni` plays streaming audio and video (using `ffplay`)
+```sh
+$ ni video.mp4 VP
+$ ni https://website.com/some-music.ogg VP
+```
+
+
+### `ni` wraps `ffmpeg` and `youtube-dl`
+```sh
+$ ni yt://dQw4w9WgXcQ VP                # watch a youtube video browserless
+$ ni yt://dQw4w9WgXcQ AEogg/libvorbis/224k > audio.ogg
+$ ni yt://dQw4w9WgXcQ VIpng > pngstream # concatenated PNG frames of video
+$ ni yt://dQw4w9WgXcQ VImjpeg IVavi VP  # vid->jpg then jpg->avi
+```
+
+
 ### `ni` is [`unzip` and `tar -x/-t`, but better](doc/ni_by_example_3.md#compressed-archive-input)
 ```sh
 $ ni tar://myfile.tgz                   # == tar -tzf myfile.tgz (requires tar)
@@ -191,7 +207,7 @@ $ ni 7zentry://myfile.7z:foo.txt        # contents of specific 7zip entry
 ```
 
 
-### `ni` reads `xlsx`
+### `ni` reads `xlsx` (sometimes)
 ```sh
 $ ni xlsx://spreadsheet.xlsx            # list of sheets
 $ ni xlsxsheet://spreadsheet.xlsx:1     # contents of sheet 1 as TSV

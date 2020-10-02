@@ -1321,6 +1321,11 @@
 ## SYNTAX
 	'' -> {conf_get_op 'ffmpeg'}
 
+# SHORT OPERATOR /$ffplay
+
+## SYNTAX
+	'' -> {conf_get_op 'ffplay'}
+
 # SHORT OPERATOR /$hadoop/jobconf
 
 ## SYNTAX
@@ -1965,6 +1970,11 @@
 
 ## SYNTAX
 	/\w+/? -> {video_to_imagepipe_op $_}
+
+# SHORT OPERATOR /VP
+
+## SYNTAX
+	'' -> {video_play_op}
 
 # SHORT OPERATOR /W
 

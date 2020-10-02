@@ -12177,9 +12177,10 @@ for my $wp (qw/
 ffmpeg.pl
 audio.pl
 video.pl
-9 core/ffmpeg/ffmpeg.pl
+10 core/ffmpeg/ffmpeg.pl
 # NOTE: on some systems you may want to use 'avconv' instead
 defconfenv 'ffmpeg', FFMPEG => 'ffmpeg';
+defconfenv 'ffplay', FFPLAY => 'ffplay';
 
 BEGIN {
   defparseralias media_format_spec =>
@@ -12198,12 +12199,16 @@ defoperator audio_extract => q{
        defined($bitrate) ? ('-b:a', $bitrate) : (), '-'};
 
 defshort '/AE', pmap q{audio_extract_op @$_}, media_format_spec;
-22 core/ffmpeg/video.pl
+26 core/ffmpeg/video.pl
 # Video access and transcoding
 
 # youtube-dl: use youtube video data as URL streams, e.g. yt://dQw4w9WgXcQ
 defconfenv 'ytdl', YOUTUBE_DL => 'youtube-dl';
 defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"};
+
+# ffplay alias for brevity
+defoperator video_play => q{sh conf('ffplay') . " -"};
+defshort '/VP', pmap q{video_play_op}, pnone;
 
 # Video<->image conversion
 defoperator video_to_imagepipe => q{

@@ -1649,6 +1649,7 @@
 	| '$cc_opts' '' -> {conf_get_op 'cc_opts'}
 	| '$col/disallow-cut' '' -> {conf_get_op 'col/disallow-cut'}
 	| '$ffmpeg' '' -> {conf_get_op 'ffmpeg'}
+	| '$ffplay' '' -> {conf_get_op 'ffplay'}
 	| '$hadoop/jobconf' '' -> {conf_get_op 'hadoop/jobconf'}
 	| '$hadoop/name' '' -> {conf_get_op 'hadoop/name'}
 	| '$hadoop/streaming-jar' '' -> {conf_get_op 'hadoop/streaming-jar'}
@@ -1961,6 +1962,7 @@
 	| 'S>' </qfn>? -> {sharded_write_op $_}
 	| 'U' '' -> {unordered_count_op}
 	| 'VI' /\w+/? -> {video_to_imagepipe_op $_}
+	| 'VP' '' -> {video_play_op}
 	| 'W' </qfn> -> {with_left_op  @$_}
 	| 'W<' (
 	    <colspec1>?
