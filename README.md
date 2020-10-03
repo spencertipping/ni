@@ -184,6 +184,9 @@ $ ni simplewt://JPEG  # Simple Wikipedia, download as text
 ```sh
 $ ni video.mp4 VP
 $ ni https://website.com/some-music.ogg VP
+$ ni m3u://file.m3u VP                            # stream from m3u file
+$ ni m3u://https://website/m3u
+$ ni m3u+webm://https://website/m3u > video.webm  # specify container format
 ```
 
 
