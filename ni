@@ -12231,12 +12231,16 @@ defoperator audio_extract => q{
        defined($bitrate) ? ('-b:a', $bitrate) : (), '-'};
 
 defshort '/AE', pmap q{audio_extract_op @$_}, media_format_spec;
-26 core/ffmpeg/video.pl
+30 core/ffmpeg/video.pl
 # Video access and transcoding
 
 # youtube-dl: use youtube video data as URL streams, e.g. yt://dQw4w9WgXcQ
 defconfenv 'ytdl', YOUTUBE_DL => 'youtube-dl';
 defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"};
+
+# v4l2 source: use local cameras as URL streams, e.g. v4l2:///dev/video0
+defresource 'v4l2', read => q{
+  sh conf('ffmpeg') . " -f v4l2 -i " . shell_quote($_[1]) . " -c:v copy -f avi -"};
 
 # ffplay alias for brevity
 defoperator video_play => q{sh conf('ffplay') . " -"};

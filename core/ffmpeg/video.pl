@@ -4,6 +4,10 @@
 defconfenv 'ytdl', YOUTUBE_DL => 'youtube-dl';
 defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"};
 
+# v4l2 source: use local cameras as URL streams, e.g. v4l2:///dev/video0
+defresource 'v4l2', read => q{
+  sh conf('ffmpeg') . " -f v4l2 -i " . shell_quote($_[1]) . " -c:v copy -f avi -"};
+
 # ffplay alias for brevity
 defoperator video_play => q{sh conf('ffplay') . " -"};
 defshort '/VP', pmap q{video_play_op}, pnone;

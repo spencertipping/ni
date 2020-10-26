@@ -812,6 +812,7 @@
 	  | ''urwt://' /.*/ -> {resource_quote_op "urwt://$_"}
 	  | ''uzws://' /.*/ -> {resource_quote_op "uzws://$_"}
 	  | ''uzwt://' /.*/ -> {resource_quote_op "uzwt://$_"}
+	  | ''v4l2://' /.*/ -> {resource_quote_op "v4l2://$_"}
 	  | ''vecws://' /.*/ -> {resource_quote_op "vecws://$_"}
 	  | ''vecwt://' /.*/ -> {resource_quote_op "vecwt://$_"}
 	  | ''vepws://' /.*/ -> {resource_quote_op "vepws://$_"}
@@ -1656,6 +1657,7 @@
 	  | 'urwt://' /.*/ -> {resource_append_op "urwt://$_"}
 	  | 'uzws://' /.*/ -> {resource_append_op "uzws://$_"}
 	  | 'uzwt://' /.*/ -> {resource_append_op "uzwt://$_"}
+	  | 'v4l2://' /.*/ -> {resource_append_op "v4l2://$_"}
 	  | 'vecws://' /.*/ -> {resource_append_op "vecws://$_"}
 	  | 'vecwt://' /.*/ -> {resource_append_op "vecwt://$_"}
 	  | 'vepws://' /.*/ -> {resource_append_op "vepws://$_"}
@@ -3936,6 +3938,7 @@
 	| ''urwt://' /.*/ -> {resource_quote_op "urwt://$_"}
 	| ''uzws://' /.*/ -> {resource_quote_op "uzws://$_"}
 	| ''uzwt://' /.*/ -> {resource_quote_op "uzwt://$_"}
+	| ''v4l2://' /.*/ -> {resource_quote_op "v4l2://$_"}
 	| ''vecws://' /.*/ -> {resource_quote_op "vecws://$_"}
 	| ''vecwt://' /.*/ -> {resource_quote_op "vecwt://$_"}
 	| ''vepws://' /.*/ -> {resource_quote_op "vepws://$_"}
@@ -4780,6 +4783,7 @@
 	| 'urwt://' /.*/ -> {resource_append_op "urwt://$_"}
 	| 'uzws://' /.*/ -> {resource_append_op "uzws://$_"}
 	| 'uzwt://' /.*/ -> {resource_append_op "uzwt://$_"}
+	| 'v4l2://' /.*/ -> {resource_append_op "v4l2://$_"}
 	| 'vecws://' /.*/ -> {resource_append_op "vecws://$_"}
 	| 'vecwt://' /.*/ -> {resource_append_op "vecwt://$_"}
 	| 'vepws://' /.*/ -> {resource_append_op "vepws://$_"}
