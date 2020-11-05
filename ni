@@ -613,7 +613,7 @@ BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
 BEGIN {defparseralias filename   => palt computed,
                                          prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
-                                         pcond q{-e}, prx '[^][]+'}
+                                         pcond q{-e and length > 1}, prx '[^][]+'}
 BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
 
 docparser filename   => q{The name of an existing file};

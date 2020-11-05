@@ -4879,7 +4879,7 @@
 	| <computed>
 	| /file://(.+)/
 	| /\.?/(?:[^/]|$)[^]]*/
-	| /[^][]+/ such that {-e}
+	| /[^][]+/ such that {-e and length > 1}
 	)
 
 # PARSER float
