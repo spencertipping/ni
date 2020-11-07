@@ -78,7 +78,7 @@ docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 # There are cases where it's useful to compute the name of a file. If a filename
 # begins with $, we evaluate the rest of it with perl to calculate its name.
 
-BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
+BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})"},
                                          pn 1, pstr"\$", prx '.*'}
 BEGIN {defparseralias filename   => palt computed,
                                          prx 'file://(.+)',

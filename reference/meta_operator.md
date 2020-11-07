@@ -5,6 +5,7 @@
 	
 	  my ($args, $left, $right) = @_;
 	  my ($f) = @$args;
+	  $f = $f->() if ref $f eq 'CODE';
 	  my $i = -1;
 	  ++$i while $i+1 < @$right && $$right[$i+1][0] eq 'cat';
 	  ($left, [cat_multi_op($f, $i > -1 ? map $$_[1], @$right[0..$i] : ()),

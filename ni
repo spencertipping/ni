@@ -608,7 +608,7 @@ docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 # There are cases where it's useful to compute the name of a file. If a filename
 # begins with $, we evaluate the rest of it with perl to calculate its name.
 
-BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})->()"},
+BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})"},
                                          pn 1, pstr"\$", prx '.*'}
 BEGIN {defparseralias filename   => palt computed,
                                          prx 'file://(.+)',
@@ -2757,7 +2757,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-366 core/stream/ops.pl
+368 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2811,6 +2811,7 @@ defoperator cat_multi => q{sio; scat $_ for @_};
 defmetaoperator cat => q{
   my ($args, $left, $right) = @_;
   my ($f) = @$args;
+  $f = $f->() if ref $f eq 'CODE';
   my $i = -1;
   ++$i while $i+1 < @$right && $$right[$i+1][0] eq 'cat';
   ($left, [cat_multi_op($f, $i > -1 ? map $$_[1], @$right[0..$i] : ()),
@@ -2957,6 +2958,7 @@ defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
   $file = resource_tmp('file://') unless defined $file;
+  $file = $file->() if ref $file eq 'CODE';
   my $fh = swfile $file;
   sforward \*STDIN, $fh;
   close $fh;

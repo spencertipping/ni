@@ -51,6 +51,7 @@ defoperator cat_multi => q{sio; scat $_ for @_};
 defmetaoperator cat => q{
   my ($args, $left, $right) = @_;
   my ($f) = @$args;
+  $f = $f->() if ref $f eq 'CODE';
   my $i = -1;
   ++$i while $i+1 < @$right && $$right[$i+1][0] eq 'cat';
   ($left, [cat_multi_op($f, $i > -1 ? map $$_[1], @$right[0..$i] : ()),
@@ -197,6 +198,7 @@ defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
   my ($file) = @_;
   $file = resource_tmp('file://') unless defined $file;
+  $file = $file->() if ref $file eq 'CODE';
   my $fh = swfile $file;
   sforward \*STDIN, $fh;
   close $fh;
