@@ -527,7 +527,7 @@ defparserebnf pnx => fn q{
   my ($self, $r) = @{$_[0]};
   "!/$r/";
 };
-90 core/boot/common.pl
+89 core/boot/common.pl
 # Regex parsing.
 # Sometimes we'll have an operator that takes a regex, which is subject to the
 # CLI reader problem the same way code arguments are. Rather than try to infer
@@ -608,8 +608,7 @@ docparser colspec => q{A set of columns, possibly including '.' ("the rest")};
 # There are cases where it's useful to compute the name of a file. If a filename
 # begins with $, we evaluate the rest of it with perl to calculate its name.
 
-BEGIN {defparseralias computed   => pmap q{eval "(sub {$_})"},
-                                         pn 1, pstr"\$", prx '.*'}
+BEGIN {defparseralias computed   => prx '^\$.*'}
 BEGIN {defparseralias filename   => palt computed,
                                          prx 'file://(.+)',
                                          prx '\.?/(?:[^/]|$)[^]]*',
@@ -2757,10 +2756,31 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-368 core/stream/ops.pl
+388 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
+
+
+sub eval_filename($) { eval "(sub{$_[0]})->()" }
+
+sub filename_read($)
+{
+  # Return the logical filename for the specified thing.
+  my $f = shift;
+  return eval_filename $1 if $f =~ /^\$(.*)/;
+  $f;
+}
+
+sub filename_write($)
+{
+  # Process a filename whose purpose is to be written into. This is like
+  # reading, but we have a special case for undef, which becomes a new anonymous
+  # tempfile.
+  defined $_[0]
+    ? filename_read $_[0]
+    : resource_tmp('file://');
+}
 
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
@@ -2775,6 +2795,7 @@ BEGIN {
     $1 eq $superness ? (\@r, @xs) : ();
   };
 }
+
 BEGIN {
   defparseralias shell_command => palt pmap(q{shell_quote @$_}, super_brackets),
                                        pmap(q{shell_quote @$_}, multiword_ws),
@@ -2956,9 +2977,7 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
-  my ($file) = @_;
-  $file = resource_tmp('file://') unless defined $file;
-  $file = $file->() if ref $file eq 'CODE';
+  my $file = filename_write(shift);
   my $fh = swfile $file;
   sforward \*STDIN, $fh;
   close $fh;

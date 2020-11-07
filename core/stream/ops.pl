@@ -2,6 +2,27 @@
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
 
+
+sub eval_filename($) { eval "(sub{$_[0]})->()" }
+
+sub filename_read($)
+{
+  # Return the logical filename for the specified thing.
+  my $f = shift;
+  return eval_filename $1 if $f =~ /^\$(.*)/;
+  $f;
+}
+
+sub filename_write($)
+{
+  # Process a filename whose purpose is to be written into. This is like
+  # reading, but we have a special case for undef, which becomes a new anonymous
+  # tempfile.
+  defined $_[0]
+    ? filename_read $_[0]
+    : resource_tmp('file://');
+}
+
 BEGIN {
   defparseralias multiword    => pn 1, prx '\[',  prep(prc '[\s\S]*[^]]', 1), prx '\]';
   defparseralias multiword_ws => pn 1, prc '\[$', prep(pnx '\]$',         1), prx '\]$';
@@ -15,6 +36,7 @@ BEGIN {
     $1 eq $superness ? (\@r, @xs) : ();
   };
 }
+
 BEGIN {
   defparseralias shell_command => palt pmap(q{shell_quote @$_}, super_brackets),
                                        pmap(q{shell_quote @$_}, multiword_ws),
@@ -196,9 +218,7 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_write => q{
-  my ($file) = @_;
-  $file = resource_tmp('file://') unless defined $file;
-  $file = $file->() if ref $file eq 'CODE';
+  my $file = filename_write(shift);
   my $fh = swfile $file;
   sforward \*STDIN, $fh;
   close $fh;

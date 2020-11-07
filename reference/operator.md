@@ -497,9 +497,7 @@
 
 ## IMPLEMENTATION
 	
-	  my ($file) = @_;
-	  $file = resource_tmp('file://') unless defined $file;
-	  $file = $file->() if ref $file eq 'CODE';
+	  my $file = filename_write(shift);
 	  my $fh = swfile $file;
 	  sforward \*STDIN, $fh;
 	  close $fh;

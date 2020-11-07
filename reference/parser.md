@@ -2974,10 +2974,7 @@
 # PARSER computed
 
 ## DEFINITION
-	(
-	  '$'
-	  /.*/
-	) -> {$$_[1]} -> {eval "(sub {$_})"}
+	/^\$.*/
 
 # PARSER config_map_key
 
