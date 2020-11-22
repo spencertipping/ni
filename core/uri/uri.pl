@@ -2,9 +2,9 @@
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
 
-# | ni http://google.com          # prints contents of google.com
-#   ni \'http://google.com        # prints "http://google.com"
-#   ni ihttp://google.com         # prints "http://google.com"
+# ni http://google.com          # prints contents of google.com
+# ni \'http://google.com        # prints "http://google.com"
+# ni ihttp://google.com         # prints "http://google.com"
 
 # If you've got a lot of resources, you can use `\'` with a lambda to quote all
 # of them:
@@ -29,6 +29,26 @@ BEGIN {
       &$f($r, uri_path $r);
     };
   }
+
+  # Multiread is used when there's a vectorized strategy that can be used on
+  # multiple resources with the same scheme. For example, curl can accept
+  # multiple URLs at once and that's more efficient than running multiple curls.
+  sub resource_multiread
+  {
+    my ($r) = @_;
+    my $scheme = uri_scheme $r;
+    for (@_)
+    {
+      my $s = uri_scheme $_;
+      die "ni resource_multiread: inconsistent URI scheme $s for $_ "
+        . "(expected $scheme); this is a ni operator defect"
+      unless $s eq $scheme;
+    }
+
+    my $f = ${"ni::resource_multiread"}{$scheme}
+         or sub {resource_read $_ for @_};
+    &$f(@_);
+  }
 }
 
 our %nuke_on_exit;
@@ -37,6 +57,7 @@ sub nuke_on_exit($) {$nuke_on_exit{$_[0]} = $$}
 END {$nuke_on_exit{$_} eq $$ and resource_nuke $_ for keys %nuke_on_exit}
 
 our %resource_read;
+our %resource_multiread;
 our %resource_write;
 our %resource_exists;
 our %resource_tmp;

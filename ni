@@ -3445,14 +3445,14 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl
-111 core/uri/uri.pl
+132 core/uri/uri.pl
 # Resources identified by URI.
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
 
-# | ni http://google.com          # prints contents of google.com
-#   ni \'http://google.com        # prints "http://google.com"
-#   ni ihttp://google.com         # prints "http://google.com"
+# ni http://google.com          # prints contents of google.com
+# ni \'http://google.com        # prints "http://google.com"
+# ni ihttp://google.com         # prints "http://google.com"
 
 # If you've got a lot of resources, you can use `\'` with a lambda to quote all
 # of them:
@@ -3477,6 +3477,26 @@ BEGIN {
       &$f($r, uri_path $r);
     };
   }
+
+  # Multiread is used when there's a vectorized strategy that can be used on
+  # multiple resources with the same scheme. For example, curl can accept
+  # multiple URLs at once and that's more efficient than running multiple curls.
+  sub resource_multiread
+  {
+    my ($r) = @_;
+    my $scheme = uri_scheme $r;
+    for (@_)
+    {
+      my $s = uri_scheme $_;
+      die "ni resource_multiread: inconsistent URI scheme $s for $_ "
+        . "(expected $scheme); this is a ni operator defect"
+      unless $s eq $scheme;
+    }
+
+    my $f = ${"ni::resource_multiread"}{$scheme}
+         or sub {resource_read $_ for @_};
+    &$f(@_);
+  }
 }
 
 our %nuke_on_exit;
@@ -3485,6 +3505,7 @@ sub nuke_on_exit($) {$nuke_on_exit{$_[0]} = $$}
 END {$nuke_on_exit{$_} eq $$ and resource_nuke $_ for keys %nuke_on_exit}
 
 our %resource_read;
+our %resource_multiread;
 our %resource_write;
 our %resource_exists;
 our %resource_tmp;
@@ -3887,9 +3908,10 @@ BEGIN
 defshort '/:', pmap q{$_ ? inline_checkpoint_op @$_
                          : identity_op},
                popt pseq pc nefilename, popt nefilelist;
-1 core/net/lib
+2 core/net/lib
 net.pl
-42 core/net/net.pl
+http.pl
+25 core/net/net.pl
 # Networking stuff.
 # SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
 # not need to be installed on the remote system, nor does its filesystem need to
@@ -3907,13 +3929,26 @@ defoperator ssh => q{
 
 defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host_full, _qfn;
 
-# Network resources.
+# Port forwarding
+defoperator port_forward =>
+q{
+  my ($host, $port) = @_;
+  exec 'ssh', '-L', "$port:localhost:$port", '-N', @$host;
+};
 
-defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
-                    write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
+20 core/net/http.pl
+# Web resources that you can access with URI syntax.
 
-defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
-                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+defresource 'http',
+  read      => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+  multiread => q{soproc {exec 'curl', '-sS', @_} @_},
+  write     => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
+
+defresource 'https',
+  read      => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+  multiread => q{soproc {exec 'curl', '-sS', @_} @_},
+  write     => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
 defresource 'sftp',
   read   => q{my ($host, $path) = $_[1] =~ m|^([^:/]+):?(.*)|;
@@ -3923,15 +3958,6 @@ defresource 's3cmd',
   read   => q{soproc {exec 's3cmd', '--no-progress', '--stop-on-error', 'get', "s3://$_[1]", '-'} @_},
   write  => q{siproc {exec 's3cmd', 'put', '-', "s3://$_[1]"} @_};
   # TODO
-
-# Port forwarding
-defoperator port_forward =>
-q{
-  my ($host, $port) = @_;
-  exec 'ssh', '-L', "$port:localhost:$port", '-N', @$host;
-};
-
-defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
 1 core/buffer/lib
 buffer.pl
 14 core/buffer/buffer.pl
