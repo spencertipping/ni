@@ -59,6 +59,7 @@ defshort '/x', pmap q{ref $_ ? colswap_op @$_ : colswap_op 2, 1}, popt colspec;
 #   pipes:        P
 #   whitespace:   S
 #   non-words:    W
+#   non English words: EW (this allows apostrophes and hyphens)
 
 # You can also field-split on arbitrary regexes, or extend the splitalt dsp to
 # add custom split operators.
@@ -86,15 +87,16 @@ defoperator split_proper_csv => q{
 
 defshort '/F',
   defdsp 'splitalt', 'dispatch table for /F split operator',
-    'C' => pmap(q{split_chr_op   ','},               pnone),
-    'D' => pmap(q{split_chr_op   '\/'},              pnone),
-    'V' => pmap(q{split_proper_csv_op},              pnone),
-    'P' => pmap(q{split_chr_op   '|'},               pnone),
-    'S' => pmap(q{split_regex_op '\s+'},             pnone),
-    'W' => pmap(q{split_regex_op '[^\w\n]+'},        pnone),
-    '/' => pmap(q{split_regex_op $_},                regex),
-    ':' => pmap(q{split_chr_op   $_},                prx '.'),
-    'm' => pn(1, pstr '/', pmap q{scan_regex_op $_}, regex);
+    'C'  => pmap(q{split_chr_op   ','},                pnone),
+    'D'  => pmap(q{split_chr_op   '\/'},               pnone),
+    'V'  => pmap(q{split_proper_csv_op},               pnone),
+    'P'  => pmap(q{split_chr_op   '|'},                pnone),
+    'S'  => pmap(q{split_regex_op '\s+'},              pnone),
+    'W'  => pmap(q{split_regex_op '[^\w\n]+'},         pnone),
+    'EW' => pmap(q{split_regex_op "[^-'\\\\w\\\\n]+"}, pnone),
+    '/'  => pmap(q{split_regex_op $_},                 regex),
+    ':'  => pmap(q{split_chr_op   $_},                 prx '.'),
+    'm'  => pn(1, pstr '/', pmap q{scan_regex_op $_},  regex);
 
 # Combining
 defshort '/F^',
