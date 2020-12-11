@@ -4,7 +4,7 @@
 
 ## OPTIONS
 	(
-	| <colspec> -> {cols_op @$_}
+	| <colspec>? -> {cols_op @{$_ || [1, 0]}}
 	)
 
 # EXTENSIBLE LIST dockeralt

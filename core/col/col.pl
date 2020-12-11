@@ -29,7 +29,7 @@ defoperator cols => q{
 
 defshort '/f',
   defalt 'colalt', 'list of alternatives for /f field-select operator',
-    pmap q{cols_op @$_}, colspec;
+    pmap q{cols_op @{$_ || [1, 0]}}, popt colspec;
 
 # Column swapping.
 # This is such a common thing to do that it gets its own operator `x`. The idea

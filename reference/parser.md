@@ -2349,7 +2349,7 @@
 	| 'cleandos' '' -> {cleandos_op}
 	| 'e' <shell_command> -> {sh_op $_}
 	| 'f' (
-	  | <colspec> -> {cols_op @$_}
+	  | <colspec>? -> {cols_op @{$_ || [1, 0]}}
 	  )
 	| 'f[' (
 	    <empty>?
@@ -2529,7 +2529,7 @@
 
 ## DEFINITION
 	(
-	| <colspec> -> {cols_op @$_}
+	| <colspec>? -> {cols_op @{$_ || [1, 0]}}
 	)
 
 # PARSER alt/dockeralt
