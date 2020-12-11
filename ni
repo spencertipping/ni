@@ -4956,7 +4956,7 @@ BEGIN
        $abbrev, $abbrev, $sep, $sep;
     }
 }
-39 core/pl/file.pm
+48 core/pl/file.pm
 # File Readers
 sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
 sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
@@ -4996,6 +4996,15 @@ sub af {
   $f;
 }
 
+# el = invoke this sub on $_ and @_ = split/\t/ for each line in the specified
+# file
+sub el(&$)
+{
+  local $_;
+  my ($fn, $f) = @_;
+  open my $fh, $f or die "el $f: $!";
+  while (<$fh>) { chomp; &$fn(split /\t/) }
+}
 145 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}

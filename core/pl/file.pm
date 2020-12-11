@@ -37,4 +37,12 @@ sub af {
   $f;
 }
 
-
+# el = invoke this sub on $_ and @_ = split/\t/ for each line in the specified
+# file
+sub el(&$)
+{
+  local $_;
+  my ($fn, $f) = @_;
+  open my $fh, $f or die "el $f: $!";
+  while (<$fh>) { chomp; &$fn(split /\t/) }
+}
