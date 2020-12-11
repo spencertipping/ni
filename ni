@@ -4455,7 +4455,7 @@ defshort '/u', pmap q{uniq_op},  pnone;
 defoperator unordered_count => q{
   my %h;
   chomp, ++$h{$_} while <STDIN>;
-  print "$h{$_}\t$_\n" for sort keys %h;
+  while (my ($v, $c) = each %h) {print "$c\t$v\n"}
 };
 
 defshort '/U', pmap q{unordered_count_op}, pnone;

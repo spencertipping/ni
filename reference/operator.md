@@ -1773,7 +1773,7 @@
 	
 	  my %h;
 	  chomp, ++$h{$_} while <STDIN>;
-	  print "$h{$_}\t$_\n" for sort keys %h;
+	  while (my ($v, $c) = each %h) {print "$c\t$v\n"}
 
 # OPERATOR vertical_apply
 
