@@ -2830,6 +2830,10 @@
 	  ) -> { my ($cellspec, $quantum) = @$_;
 	            [quantize_op($cellspec, $quantum),
 	             jitter_uniform_op($cellspec, $quantum * 0.9)] }
+	| 'Z' (
+	    <cellspec_fixed>
+	    <integer>?
+	  ) -> {count_changes_op @$_}
 	| 'a' <cellspec_fixed> -> {col_average_op $_}
 	| 'ag' <colspec1> -> {
 	      my $col  = $_;

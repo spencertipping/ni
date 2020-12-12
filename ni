@@ -7182,7 +7182,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-283 core/cell/cell.pl
+307 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -7208,7 +7208,9 @@ use constant cell_op_gen => gen q{
     chomp;
     my @xs = split /\t/, $_, $limit;
     %each_line
-    %each for @cols;
+    for (@cols) {
+      %each
+    }
     print join("\t", @xs) . "\n";
   }
   %end
@@ -7280,6 +7282,28 @@ defoperator bloom_prehash => q{
 
 defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
   pseq cellspec_fixed, bloom_size_spec, bloom_fp_spec;
+
+# Count-changes.
+# A constant-space way to get a new integer for each new value within a column.
+# You can specify an optional modulus to get cycling values suitable for input
+# to S\> or similar.
+
+defoperator count_changes => q{
+  cell_eval {args  => '$mod',
+             begin => 'my (@n, @last) = ()',
+             each  => 'no warnings "uninitialized";
+                       if ($xs[$_] ne $last[$_]) {
+                         $last[$_] = $xs[$_];
+                         ++$n[$_];
+                         $n[$_] %= $mod if defined $mod;
+                         $xs[$_] = $n[$_];
+                       } else {
+                         $xs[$_] = $n[$_];
+                       }'}, @_;
+};
+
+defshort 'cell/Z', pmap q{count_changes_op @$_},
+                   pseq cellspec_fixed, popt integer;
 
 # Numerical transformations.
 # Trivial stuff that applies to each cell individually.

@@ -360,6 +360,22 @@
 	  }
 	  print "$n\t$last" if defined $last;
 
+# OPERATOR count_changes
+
+## IMPLEMENTATION
+	
+	  cell_eval {args  => '$mod',
+	             begin => 'my (@n, @last) = ()',
+	             each  => 'no warnings "uninitialized";
+	                       if ($xs[$_] ne $last[$_]) {
+	                         $last[$_] = $xs[$_];
+	                         ++$n[$_];
+	                         $n[$_] %= $mod if defined $mod;
+	                         $xs[$_] = $n[$_];
+	                       } else {
+	                         $xs[$_] = $n[$_];
+	                       }'}, @_;
+
 # OPERATOR decode
 
 ## IMPLEMENTATION

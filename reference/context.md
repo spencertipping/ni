@@ -13,6 +13,7 @@
 	cell/J
 	cell/L
 	cell/Q
+	cell/Z
 	cell/a
 	cell/ag
 	cell/d

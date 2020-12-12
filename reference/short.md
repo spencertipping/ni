@@ -2442,6 +2442,14 @@
 	          [quantize_op($cellspec, $quantum),
 	           jitter_uniform_op($cellspec, $quantum * 0.9)] }
 
+# SHORT OPERATOR cell/Z
+
+## SYNTAX
+	(
+	  <cellspec_fixed>
+	  <integer>?
+	) -> {count_changes_op @$_}
+
 # SHORT OPERATOR cell/a
 
 ## SYNTAX
