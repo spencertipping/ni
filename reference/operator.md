@@ -126,8 +126,8 @@
 	  # them, but the upside is that there's no chance we'll leave a file lying
 	  # around if anything goes wrong.
 	  my $f = substr resource_tmp('file://'), 7;
-	  open my $fw, '+>', $f or die "buffer_disk $bytes +> $f: $!";
-	  open my $fr, '<',  $f or die "buffer_disk $bytes  < $f: $!";
+	  open my $fw, '>', $f or die "buffer_disk $bytes > $f: $!";
+	  open my $fr, '<', $f or die "buffer_disk $bytes < $f: $!";
 	  unlink $f;
 	
 	  my ($r, $w) = (0, 0);
