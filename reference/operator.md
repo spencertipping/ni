@@ -126,7 +126,8 @@
 	  # them, but the upside is that there's no chance we'll leave a file lying
 	  # around if anything goes wrong.
 	  my $f = substr resource_tmp('file://'), 7;
-	  open my $fh, '+>', $f or die "buffer_disk $bytes in $f: $!";
+	  open my $fw, '+>', $f or die "buffer_disk $bytes +> $f: $!";
+	  open my $fr, '<',  $f or die "buffer_disk $bytes  < $f: $!";
 	  unlink $f;
 	
 	  my ($r, $w) = (0, 0);
@@ -158,16 +159,16 @@
 	      my $o = safewrite \*STDOUT, $buf;
 	      if ($o < $i)
 	      {
-	        sysseek $fh, $wmark, SEEK_SET;
-	        $w += safewrite_exactly $fh, substr $buf, $o if $o < $i;
+	        sysseek $fw, $wmark, SEEK_SET;
+	        $w += safewrite_exactly $fw, substr $buf, $o if $o < $i;
 	      }
 	    }
 	    else
 	    {
 	      if ($readable and vec $wout, 1, 1)
 	      {
-	        sysseek $fh, $rmark, SEEK_SET;
-	        saferead $fh, $buf, min $readable, membuf;
+	        sysseek $fr, $rmark, SEEK_SET;
+	        saferead $fr, $buf, min $readable, membuf;
 	
 	        # We don't know how much of the data is going to be written to nonblocking
 	        # STDOUT, so advance the buffer-read pointer only by as much as we
@@ -178,8 +179,8 @@
 	      if ($writable and vec $rout, 0, 1)
 	      {
 	        last unless saferead \*STDIN, $buf, min $writable, membuf;
-	        sysseek $fh, $wmark, SEEK_SET;
-	        $w += safewrite_exactly $fh, $buf;
+	        sysseek $fw, $wmark, SEEK_SET;
+	        $w += safewrite_exactly $fw, $buf;
 	      }
 	    }
 	  }
@@ -193,8 +194,8 @@
 	    my $wmark = $w % $bytes;
 	    my $readable = ($rmark <= $wmark ? $wmark : $bytes) - $rmark;
 	
-	    sysseek $fh, $rmark, SEEK_SET;
-	    $r += saferead $fh, $buf, min membuf, $readable;
+	    sysseek $fr, $rmark, SEEK_SET;
+	    $r += saferead $fr, $buf, min membuf, $readable;
 	    safewrite_exactly \*STDOUT, $buf;
 	  }
 
