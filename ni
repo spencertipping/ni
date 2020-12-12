@@ -3952,7 +3952,7 @@ q{
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
 1 core/buffer/lib
 buffer.pl
-114 core/buffer/buffer.pl
+112 core/buffer/buffer.pl
 # Buffering operators.
 # Buffering a stream causes it to be forced in its entirety. Buffering does not
 # imply, however, that the stream will be consumed at any particular rate; some
@@ -4023,7 +4023,6 @@ q{
     {
       # Cut-through case: read-side and write-side are both free, so skip the
       # disk unless STDOUT backs up partway through the write.
-      $buf = '';
       my $i = saferead \*STDIN, $buf, min membuf, $writable;
       last unless $i;
 
@@ -4036,7 +4035,6 @@ q{
     }
     elsif ($readable and vec $wout, 1, 1)
     {
-      $buf = '';
       sysseek $fh, $rmark, SEEK_SET;
       saferead $fh, $buf, min $readable, membuf;
 

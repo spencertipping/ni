@@ -152,7 +152,6 @@
 	    {
 	      # Cut-through case: read-side and write-side are both free, so skip the
 	      # disk unless STDOUT backs up partway through the write.
-	      $buf = '';
 	      my $i = saferead \*STDIN, $buf, min membuf, $writable;
 	      last unless $i;
 	
@@ -165,7 +164,6 @@
 	    }
 	    elsif ($readable and vec $wout, 1, 1)
 	    {
-	      $buf = '';
 	      sysseek $fh, $rmark, SEEK_SET;
 	      saferead $fh, $buf, min $readable, membuf;
 	
