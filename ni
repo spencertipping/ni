@@ -3952,7 +3952,7 @@ q{
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
 1 core/buffer/lib
 buffer.pl
-112 core/buffer/buffer.pl
+116 core/buffer/buffer.pl
 # Buffering operators.
 # Buffering a stream causes it to be forced in its entirety. Buffering does not
 # imply, however, that the stream will be consumed at any particular rate; some
@@ -4033,21 +4033,25 @@ q{
         $w += safewrite_exactly $fh, substr $buf, $o if $o < $i;
       }
     }
-    elsif ($readable and vec $wout, 1, 1)
+    else
     {
-      sysseek $fh, $rmark, SEEK_SET;
-      saferead $fh, $buf, min $readable, membuf;
+      if ($readable and vec $wout, 1, 1)
+      {
+        sysseek $fh, $rmark, SEEK_SET;
+        saferead $fh, $buf, min $readable, membuf;
 
-      # We don't know how much of the data is going to be written to nonblocking
-      # STDOUT, so advance the buffer-read pointer only by as much as we
-      # successfully write.
-      $r += safewrite \*STDOUT, $buf;
-    }
-    elsif ($writable and vec $rout, 0, 1)
-    {
-      last unless saferead \*STDIN, $buf, min $writable, membuf;
-      sysseek $fh, $wmark, SEEK_SET;
-      $w += safewrite_exactly $fh, $buf;
+        # We don't know how much of the data is going to be written to nonblocking
+        # STDOUT, so advance the buffer-read pointer only by as much as we
+        # successfully write.
+        $r += safewrite \*STDOUT, $buf;
+      }
+
+      if ($writable and vec $rout, 0, 1)
+      {
+        last unless saferead \*STDIN, $buf, min $writable, membuf;
+        sysseek $fh, $wmark, SEEK_SET;
+        $w += safewrite_exactly $fh, $buf;
+      }
     }
   }
 

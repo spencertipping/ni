@@ -78,21 +78,25 @@ q{
         $w += safewrite_exactly $fh, substr $buf, $o if $o < $i;
       }
     }
-    elsif ($readable and vec $wout, 1, 1)
+    else
     {
-      sysseek $fh, $rmark, SEEK_SET;
-      saferead $fh, $buf, min $readable, membuf;
+      if ($readable and vec $wout, 1, 1)
+      {
+        sysseek $fh, $rmark, SEEK_SET;
+        saferead $fh, $buf, min $readable, membuf;
 
-      # We don't know how much of the data is going to be written to nonblocking
-      # STDOUT, so advance the buffer-read pointer only by as much as we
-      # successfully write.
-      $r += safewrite \*STDOUT, $buf;
-    }
-    elsif ($writable and vec $rout, 0, 1)
-    {
-      last unless saferead \*STDIN, $buf, min $writable, membuf;
-      sysseek $fh, $wmark, SEEK_SET;
-      $w += safewrite_exactly $fh, $buf;
+        # We don't know how much of the data is going to be written to nonblocking
+        # STDOUT, so advance the buffer-read pointer only by as much as we
+        # successfully write.
+        $r += safewrite \*STDOUT, $buf;
+      }
+
+      if ($writable and vec $rout, 0, 1)
+      {
+        last unless saferead \*STDIN, $buf, min $writable, membuf;
+        sysseek $fh, $wmark, SEEK_SET;
+        $w += safewrite_exactly $fh, $buf;
+      }
     }
   }
 
