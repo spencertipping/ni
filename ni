@@ -527,7 +527,7 @@ defparserebnf pnx => fn q{
   my ($self, $r) = @{$_[0]};
   "!/$r/";
 };
-89 core/boot/common.pl
+101 core/boot/common.pl
 # Regex parsing.
 # Sometimes we'll have an operator that takes a regex, which is subject to the
 # CLI reader problem the same way code arguments are. Rather than try to infer
@@ -617,6 +617,18 @@ BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
 
 docparser filename   => q{The name of an existing file};
 docparser nefilename => q{The name of a possibly-nonexisting file};
+
+# Data sizes, in general. Can be written with or without a trailing B.
+BEGIN {defparseralias size_unit => pdsp '' => pk 1,
+                                        K  => pk 1_024,
+                                        M  => pk 1_048_576,
+                                        G  => pk 1_048_576 * 1024,
+                                        T  => pk 1_048_576 * 1_048_576,
+                                        P  => pk 1_048_576 * 1_048_576 * 1024}
+
+BEGIN {defparseralias size_suffix => pn 0, size_unit, popt prx"B"}
+BEGIN {defparseralias datasize =>
+                      pmap q{$$_[0] * $$_[1]}, pseq integer, size_suffix}
 130 core/boot/cli.pl
 # CLI grammar.
 # ni's command line grammar uses some patterns on top of the parser combinator
@@ -2299,7 +2311,7 @@ pipeline.pl
 self.pl
 ops.pl
 main.pl
-9 core/stream/fh.pl
+15 core/stream/fh.pl
 # Filehandle functions.
 
 use Fcntl qw/:DEFAULT/;
@@ -2308,6 +2320,12 @@ sub fh_nonblock($) {
   my ($fh) = @_;
   my $flags = fcntl $fh, F_GETFL, 0       or die "ni: fcntl get $fh: $!";
   fcntl $fh, F_SETFL, $flags | O_NONBLOCK or die "ni: fcntl set $fh: $!";
+}
+
+sub fh_block($) {
+  my ($fh) = @_;
+  my $flags = fcntl $fh, F_GETFL, 0        or die "ni: fcntl get $fh: $!";
+  fcntl $fh, F_SETFL, $flags & ~O_NONBLOCK or die "ni: fcntl set $fh: $!";
 }
 98 core/stream/procfh.pl
 # Process + filehandle combination.
@@ -3934,21 +3952,121 @@ q{
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
 1 core/buffer/lib
 buffer.pl
-14 core/buffer/buffer.pl
+114 core/buffer/buffer.pl
 # Buffering operators.
 # Buffering a stream causes it to be forced in its entirety. Buffering does not
 # imply, however, that the stream will be consumed at any particular rate; some
 # buffers may be size-limited, at which point writes will block until there's
 # space available.
 
+defshort '/B',
+  defdsp 'bufferalt', 'dispatch table for /B buffer operator',
+    n => pmap(q{buffer_null_op}, pnone),
+    d => pmap(q{buffer_disk_op $_}, datasize);
+
+
 # Null buffer.
 # Forwards data 1:1, but ignores pipe signals on its output.
 
 defoperator buffer_null => q{local $SIG{PIPE} = 'IGNORE'; sio};
 
-defshort '/B',
-  defdsp 'bufferalt', 'dispatch table for /B buffer operator',
-    n => pmap q{buffer_null_op}, pnone;
+
+# Disk buffer.
+# A circular file-backed data buffer that cuts through if both sides are
+# available. If the sink-side is blocked, then up to the specified number of
+# bytes will be buffered into the file to be asynchronously forwarded as the
+# sink becomes available.
+
+defoperator buffer_disk =>
+q{
+  use bytes;
+  use Fcntl 'SEEK_SET';
+  use constant membuf => 1048576;
+
+  my ($bytes) = @_;
+  my ($rmask, $wmask, $emask) = ('', '', '');
+  vec($rmask, 0, 1) = 1;
+  vec($wmask, 1, 1) = 1;
+  $emask = $rmask | $wmask;
+
+  fh_nonblock \*STDOUT;
+
+  # Create and immediately unlink the file so the OS can reclaim the disk blocks
+  # if we exit early -- e.g. due to SIGPIPE. The downside of this approach is
+  # that we'll be using disk blocks without the user having a name to track
+  # them, but the upside is that there's no chance we'll leave a file lying
+  # around if anything goes wrong.
+  my $f = substr resource_tmp('file://'), 7;
+  open my $fh, '+>', $f or die "buffer_disk $bytes in $f: $!";
+  unlink $f;
+
+  my ($r, $w) = (0, 0);
+  my $buf = '';
+  while (1)
+  {
+    # $r and $w are the canonical unwrapped read/write position markers. Data is
+    # readable iff $r < $w.
+    my $rmark = $r % $bytes;
+    my $wmark = $w % $bytes;
+    my $readable = $r < $w          && ($rmark <  $wmark ? $wmark : $bytes) - $rmark;
+    my $writable = $w - $r < $bytes && ($rmark <= $wmark ? $bytes : $rmark) - $wmark;
+
+    vec($rmask, 0, 1) = $writable > 0;
+    vec($wmask, 1, 1) = $readable > 0;
+
+    select(my $rout = $rmask, my $wout = $wmask, my $eout = $emask, undef);
+
+    # EOF or broken pipe: either means we cut over to the finalization loop.
+    last if vec $eout, 0, 1 or vec $eout, 1, 1;
+
+    if (!$readable and vec $rout, 0, 1 and vec $wout, 1, 1)
+    {
+      # Cut-through case: read-side and write-side are both free, so skip the
+      # disk unless STDOUT backs up partway through the write.
+      $buf = '';
+      my $i = saferead \*STDIN, $buf, min membuf, $writable;
+      last unless $i;
+
+      my $o = safewrite \*STDOUT, $buf;
+      if ($o < $i)
+      {
+        sysseek $fh, $wmark, SEEK_SET;
+        $w += safewrite_exactly $fh, substr $buf, $o if $o < $i;
+      }
+    }
+    elsif ($readable and vec $wout, 1, 1)
+    {
+      $buf = '';
+      sysseek $fh, $rmark, SEEK_SET;
+      saferead $fh, $buf, min $readable, membuf;
+
+      # We don't know how much of the data is going to be written to nonblocking
+      # STDOUT, so advance the buffer-read pointer only by as much as we
+      # successfully write.
+      $r += safewrite \*STDOUT, $buf;
+    }
+    elsif ($writable and vec $rout, 0, 1)
+    {
+      last unless saferead \*STDIN, $buf, min $writable, membuf;
+      sysseek $fh, $wmark, SEEK_SET;
+      $w += safewrite_exactly $fh, $buf;
+    }
+  }
+
+  fh_block \*STDOUT;
+
+  # Write any remaining disk-buffer contents
+  while ($r < $w)
+  {
+    my $rmark = $r % $bytes;
+    my $wmark = $w % $bytes;
+    my $readable = ($rmark <= $wmark ? $wmark : $bytes) - $rmark;
+
+    sysseek $fh, $rmark, SEEK_SET;
+    $r += saferead $fh, $buf, min membuf, $readable;
+    safewrite_exactly \*STDOUT, $buf;
+  }
+};
 1 core/script/lib
 script.pl
 37 core/script/script.pl
@@ -16236,7 +16354,7 @@ If you've never had the opportunity to write the word count MapReduce program in
 * [Perl](http://www.perlmonks.org/?node_id=859535)
 
 Compare the `ni` solution to Java. The `ni` spell can be written in 5 seconds, and explained in 30.  It's easily tested, readable, and concise, and beautiful. You should be excited about the possibilities just over the horizon.
-493 doc/ni_by_example_5.md
+529 doc/ni_by_example_5.md
 # `ni` by Example Chapter 5 (alpha release)
 Welcome to Chapter 4. At this point you have enough skills to read the other `ni` documentation on your own. As a result, this chapter should read a little briefer because it is focused on introducing you to the possibilities of each operator.
 
@@ -16345,7 +16463,43 @@ If you need to do something like this, you may be better off writing two `ni` sp
 
 ### `B<op>`: Buffer operation
 
-Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
+Likely the most important buffering operation is `Bn`, which buffers data to
+null. This is especially useful in developing Hadoop Streaming jobs. Hadoop
+streaming jobs require you to read the entire piece of data in the partfile;
+this will error out if you try to run `r1000` to get a smaller chunk.
+
+A similar operator is `Bd<size>`, which creates a bounded, disk-backed FIFO
+buffer to add elasticity to a data pipeline. `Bd` doesn't modify the data at
+all, but it may improve concurrency when you have two pipeline segments that
+produce and consume data with different load patterns. `Bd` accepts size
+specifications ending in nothing, `K`, `M`, `G`, `T`, or `P`, and optionally
+followed by `B` after the unit. For example:
+
+```bash
+$ ni n100 ,sr+1         # n100 directly into ,sr+1
+5050
+$ ni n100 Bd64K ,sr+1   # n100 via 64KB of disk into ,sr+1
+5050
+```
+
+This can be especially useful when sorting data, as `sort` intermittently blocks
+the pipe to merge intermediate files.
+
+```bash
+$ ni nE6 ,sr+1
+500000500000
+$ ni nE6 Bd4MB ,sr+1
+500000500000
+```
+
+FIFO buffer data is written verbatim; i.e. without compression. If you want the
+buffer data to be compressed, you can surround it with `z` operators:
+
+```bash
+$ ni nE6 z Bd128K zd ,sr+1
+500000500000
+```
+
 
 ## Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.
@@ -20251,7 +20405,7 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni i[who let the dogs out who who who] shost1[shost2[gc]] r10
 ```
-98 doc/options.md
+99 doc/options.md
 # Complete ni operator listing
 Implementation status:
 - T: implemented and automatically tested
@@ -20316,7 +20470,8 @@ Operator | Status | Example      | Description
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
 `A`      |        |              |
-`B`      | T      | `Bn`         | Buffer a stream
+`B`      | T      | `Bn`         | Buffer a stream into `/dev/null`
+`B`      | T      | `Bd64M`      | Buffer a stream using disk-backed bounded FIFO
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
@@ -20347,9 +20502,9 @@ Operator | Status | Example      | Description
 ## Cell operators
 Operator | Status | Example | Description
 ---------|--------|---------|------------
-`h`      | T      | `,z`    | Turns each unique value into a hash.
+`h`      | T      | `,h`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
-`z`      | T      | `,h`    | Turns each unique value into an integer.
+`z`      | T      | `,z`    | Turns each unique value into an integer.
 564 doc/perl.md
 # Perl interface
 **NOTE:** This documentation covers ni's Perl data transformer, not the

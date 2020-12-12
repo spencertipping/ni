@@ -21,6 +21,7 @@
 
 ## OPTIONS
 	(
+	| 'd' <datasize> -> {buffer_disk_op $_}
 	| 'n' '' -> {buffer_null_op}
 	)
 

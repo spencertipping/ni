@@ -106,7 +106,43 @@ If you need to do something like this, you may be better off writing two `ni` sp
 
 ### `B<op>`: Buffer operation
 
-Likely the most important buffering operation is `Bn`, which buffers data to null. This is especially useful in developing Hadoop Streaming jobs. Hadoop streaming jobs require you to read the entire piece of data in the partfile; this will error out if you try to run `r1000` to get a smaller chunk. 
+Likely the most important buffering operation is `Bn`, which buffers data to
+null. This is especially useful in developing Hadoop Streaming jobs. Hadoop
+streaming jobs require you to read the entire piece of data in the partfile;
+this will error out if you try to run `r1000` to get a smaller chunk.
+
+A similar operator is `Bd<size>`, which creates a bounded, disk-backed FIFO
+buffer to add elasticity to a data pipeline. `Bd` doesn't modify the data at
+all, but it may improve concurrency when you have two pipeline segments that
+produce and consume data with different load patterns. `Bd` accepts size
+specifications ending in nothing, `K`, `M`, `G`, `T`, or `P`, and optionally
+followed by `B` after the unit. For example:
+
+```bash
+$ ni n100 ,sr+1         # n100 directly into ,sr+1
+5050
+$ ni n100 Bd64K ,sr+1   # n100 via 64KB of disk into ,sr+1
+5050
+```
+
+This can be especially useful when sorting data, as `sort` intermittently blocks
+the pipe to merge intermediate files.
+
+```bash
+$ ni nE6 ,sr+1
+500000500000
+$ ni nE6 Bd4MB ,sr+1
+500000500000
+```
+
+FIFO buffer data is written verbatim; i.e. without compression. If you want the
+buffer data to be compressed, you can surround it with `z` operators:
+
+```bash
+$ ni nE6 z Bd128K zd ,sr+1
+500000500000
+```
+
 
 ## Intermediate Column Operations
 These operations are used to add columns vertically to to a stream, either by merging or with a separate computation.

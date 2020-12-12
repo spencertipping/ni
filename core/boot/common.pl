@@ -87,3 +87,15 @@ BEGIN {defparseralias nefilename => palt filename, prx '[^][]+'}
 
 docparser filename   => q{The name of an existing file};
 docparser nefilename => q{The name of a possibly-nonexisting file};
+
+# Data sizes, in general. Can be written with or without a trailing B.
+BEGIN {defparseralias size_unit => pdsp '' => pk 1,
+                                        K  => pk 1_024,
+                                        M  => pk 1_048_576,
+                                        G  => pk 1_048_576 * 1024,
+                                        T  => pk 1_048_576 * 1_048_576,
+                                        P  => pk 1_048_576 * 1_048_576 * 1024}
+
+BEGIN {defparseralias size_suffix => pn 0, size_unit, popt prx"B"}
+BEGIN {defparseralias datasize =>
+                      pmap q{$$_[0] * $$_[1]}, pseq integer, size_suffix}

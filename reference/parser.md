@@ -2115,6 +2115,7 @@
 	| '>'R' '' -> {encode_resource_stream_op}
 	| 'AE' <media_format_spec> -> {audio_extract_op @$_}
 	| 'B' (
+	  | 'd' <datasize> -> {buffer_disk_op $_}
 	  | 'n' '' -> {buffer_null_op}
 	  )
 	| 'C' (
@@ -3010,6 +3011,14 @@
 	  ) -> {$$_[0]}
 	) -> {$$_[0]} -> {my %h; $h{$$_[0]} = $$_[1] for @{$_[0]}; \%h}
 
+# PARSER datasize
+
+## DEFINITION
+	(
+	  <integer>
+	  <size_suffix>
+	) -> {$$_[0] * $$_[1]}
+
 # PARSER dsp/assertdsp
 
 ## DEFINITION
@@ -3029,6 +3038,7 @@
 
 ## DEFINITION
 	(
+	| 'd' <datasize> -> {buffer_disk_op $_}
 	| 'n' '' -> {buffer_null_op}
 	)
 
@@ -5447,6 +5457,26 @@
 	| <multiword_ws> -> {shell_quote @$_}
 	| <multiword> -> {shell_quote @$_}
 	| /[^][]+/
+	)
+
+# PARSER size_suffix
+
+## DEFINITION
+	(
+	  <size_unit>
+	  /B/?
+	) -> {$$_[0]}
+
+# PARSER size_unit
+
+## DEFINITION
+	(
+	| '' <'', evaluate as 1>
+	| 'G' <'', evaluate as 1073741824>
+	| 'K' <'', evaluate as 1024>
+	| 'M' <'', evaluate as 1048576>
+	| 'P' <'', evaluate as 1125899906842624>
+	| 'T' <'', evaluate as 1099511627776>
 	)
 
 # PARSER sortspec

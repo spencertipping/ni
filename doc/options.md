@@ -62,7 +62,8 @@ Operator | Status | Example      | Description
 `y`      |        |              |
 `z`      | T      | `z4`         | Compress or decompress
 `A`      |        |              |
-`B`      | T      | `Bn`         | Buffer a stream
+`B`      | T      | `Bn`         | Buffer a stream into `/dev/null`
+`B`      | T      | `Bd64M`      | Buffer a stream using disk-backed bounded FIFO
 `C`      | T      | `Cubuntu[g]` | Containerize a pipeline with Docker
 `D`      | PT     | `D:foo`      | Destructure structured text data (JSON/XML)
 `E`      | T      | `Efoo[g]`    | Execute a pipeline in an existing Docker
@@ -93,6 +94,6 @@ Operator | Status | Example      | Description
 ## Cell operators
 Operator | Status | Example | Description
 ---------|--------|---------|------------
-`h`      | T      | `,z`    | Turns each unique value into a hash.
+`h`      | T      | `,h`    | Turns each unique value into a hash.
 `H`      | T      | `,HAB`  | Turns each unique value into a unique number between 0 and 1.
-`z`      | T      | `,h`    | Turns each unique value into an integer.
+`z`      | T      | `,z`    | Turns each unique value into an integer.
