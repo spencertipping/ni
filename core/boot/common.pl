@@ -44,19 +44,17 @@ BEGIN {defparseralias float => pmap q{0 + $_},
                                prx '-?(?:[\d_]+(?:\.[\d_]*)?|[\d_]*\.[\d_]+)(?:[eE][-+]?[\d_]+)?'}
 BEGIN {defparseralias number => palt neval, float, integer}
 
-BEGIN {defparseralias colspec1      => palt pn(1, pstr '#', integer),
+BEGIN {defparseralias colspec1      => palt pn(1, prx ',?#', integer),
                                             pmap q{ord() - 65}, prx '[A-Z]';
        defparseralias colspec_rest  => pmap q{-1}, pstr '.'}
 BEGIN {defparseralias colspec_range => pmap q{[$$_[0] .. $$_[2]]},
                                        pseq colspec1, pstr '-', colspec1}
 BEGIN {defparseralias colspec_fixed => pmap q{[max(@$_) + 1, @$_]},
                                        pmap q{[map ref() ? @$_ : $_, @$_]},
-                                       prep pn(1, popt pstr ',',
-                                                  palt(colspec_range, colspec1)), 1}
+                                       prep palt(colspec_range, colspec1), 1}
 BEGIN {defparseralias colspec => pmap q{[max(@$_) + 1, @$_]},
                                  pmap q{[map ref() ? @$_ : $_, @$_]},
-                                 prep pn(1, popt pstr ',',
-                                            palt(colspec_range, colspec1, colspec_rest)), 1}
+                                 prep palt(colspec_range, colspec1, colspec_rest), 1}
 
 docparser neval => q{An expression evaluated by Perl; e.g. =3+4 for 7};
 docparser colspec1 => q{A way to identify a single column; either A-Z or #N};
