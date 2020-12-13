@@ -101,20 +101,44 @@ defshort 'cell/BP', pmap q{bloom_prehash_op @$_},
 # Count-changes.
 # A constant-space way to get a new integer for each new value within a column.
 # You can specify an optional modulus to get cycling values suitable for input
-# to S\> or similar.
+# to S\> or \*[].
 
 defoperator count_changes => q{
-  cell_eval {args  => '$mod',
-             begin => 'my (@n, @last) = ()',
-             each  => 'no warnings "uninitialized";
-                       if ($xs[$_] ne $last[$_]) {
-                         $last[$_] = $xs[$_];
-                         ++$n[$_];
-                         $n[$_] %= $mod if defined $mod;
-                         $xs[$_] = $n[$_];
-                       } else {
-                         $xs[$_] = $n[$_];
-                       }'}, @_;
+  my ($colspec, $mod) = @_;
+
+  if ("1,0" eq join",", @$colspec)
+  {
+    # Optimize the common case by bypassing most of the cell machinery.
+    my $last = undef;
+    my $n = 0;
+    while (<STDIN>)
+    {
+      my $i = index $_, "\t";
+      $i = length if $i < 0;
+      my $k = substr $_, 0, $i;
+      if ($k ne $last)
+      {
+        $last = $k;
+        ++$n;
+        $n %= $mod if defined $mod;
+      }
+      print "$n\t", substr $_, $i + 1;
+    }
+  }
+  else
+  {
+    cell_eval {args  => '$mod',
+               begin => 'my (@n, @last) = ()',
+               each  => 'no warnings "uninitialized";
+                         if ($xs[$_] ne $last[$_]) {
+                           $last[$_] = $xs[$_];
+                           ++$n[$_];
+                           $n[$_] %= $mod if defined $mod;
+                           $xs[$_] = $n[$_];
+                         } else {
+                           $xs[$_] = $n[$_];
+                         }'}, @_;
+  }
 };
 
 defshort 'cell/Z', pmap q{count_changes_op @$_},
