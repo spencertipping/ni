@@ -2774,7 +2774,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-388 core/stream/ops.pl
+409 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3100,7 +3100,7 @@ defoperator sharded_write => q{
     my $i    = index $_, "\t";
     next if $i == -1;
     my $file = substr $_, 0, $i;
-    my $fh   = $fhs{$file} //= defined $lambda
+    my $fh   = $fhs{$file} ||= defined $lambda
       ? siproc {exec_ni(@$lambda, file_write_op $file)}
       : swfile $file;
     print $fh substr $_, $i + 1;
@@ -3111,6 +3111,27 @@ defoperator sharded_write => q{
 };
 
 defshort '/S>', pmap q{sharded_write_op $_}, popt _qfn;
+
+# Deterministic stream multiply.
+# Just like S\>, but relies on the streams to write things. It's highly
+# recommended that you drop to files and then combine to avoid data corruption;
+# e.g. ni ... \*[... z\>] \<z\>combined. (This operator doesn't line-merge like
+# horizontal scaling.)
+
+defoperator sharded_fork => q{
+  my ($lambda) = @_;
+  my %fhs;
+  while (<STDIN>)
+  {
+    my $i     = index $_, "\t";
+    next if $i == -1;
+    my $shard = substr $_, 0, $i;
+    my $fh    = $fhs{$shard} ||= siproc {exec_ni(@$lambda)};
+    print $fh substr $_, $i + 1;
+  }
+};
+
+defshort '/*', pmap q{sharded_fork_op $_}, _qfn;
 
 # Resource stream encoding.
 # This makes it possible to serialize a directory structure into a single stream.

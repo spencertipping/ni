@@ -69,10 +69,6 @@ export NI_NO_HOME=yes           # IMPORTANT
 
 ./test --update
 
-for t in $(ni --doc); do
-  ./ni $t $(./ni $t) > reference/${t#--doc/}.md
-done
-
 if [[ `./ni //ni` != "$(< ni)" ]]; then
   echo "ni is unstable under replication" >&2
   exit 1
