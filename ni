@@ -4121,7 +4121,7 @@ defshort '/!',
   defdsp 'assertdsp', 'dispatch table for the ! assertion operator';
 1 core/col/lib
 col.pl
-247 core/col/col.pl
+249 core/col/col.pl
 # Column manipulation operators.
 # In root context, ni interprets columns as being tab-delimited.
 
@@ -4154,6 +4154,8 @@ defoperator cols => q{
 defshort '/f',
   defalt 'colalt', 'list of alternatives for /f field-select operator',
     pmap q{cols_op @{$_ || [1, 0]}}, popt colspec;
+
+defshort '/f^', pmap q{my $c = $_ || 0; cols_op $c+1, $c, 0..$_, -1}, popt colspec1;
 
 # Column swapping.
 # This is such a common thing to do that it gets its own operator `x`. The idea
@@ -18652,7 +18654,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```lazytest
 fi                      # $SKIP_DOCKER
 ```
-241 doc/col.md
+286 doc/col.md
 # Column operations
 ni models incoming data as a tab-delimited spreadsheet and provides some
 operators that allow you to manipulate the columns in a stream accordingly. The
@@ -18683,6 +18685,21 @@ columns accordingly.
 
 ```bash
 $ ni n8p'r map a*$_, 1..8' fA      # the first column
+1
+2
+3
+4
+5
+6
+7
+8
+```
+
+Because `fA` is a common operation, you can also just write `f` to do the same
+thing:
+
+```bash
+$ ni n8p'r map a*$_, 1..8' f       # the first column, but shorter to write
 1
 2
 3
@@ -18767,6 +18784,36 @@ $ ni n8p'r map a*$_, 1..8' x       # even easier (see below)
 12	6	18	24	30	36	42	48
 14	7	21	28	35	42	49	56
 16	8	24	32	40	48	56	64
+```
+
+## Copying to front
+`ni` provides the `f^` shorthand to copy a column to the front of each row. For
+example, `f^A` is exactly equivalent to `fAA.`, `f^C` to `fCABC.`, etc:
+
+```bash
+$ ni n8p'r map a*$_, 1..8' f^B
+2	1	2	3	4	5	6	7	8
+4	2	4	6	8	10	12	14	16
+6	3	6	9	12	15	18	21	24
+8	4	8	12	16	20	24	28	32
+10	5	10	15	20	25	30	35	40
+12	6	12	18	24	30	36	42	48
+14	7	14	21	28	35	42	49	56
+16	8	16	24	32	40	48	56	64
+```
+
+You can omit the column to copy `A`:
+
+```bash
+$ ni n8p'r map a*$_, 1..8' f^
+1	1	2	3	4	5	6	7	8
+2	2	4	6	8	10	12	14	16
+3	3	6	9	12	15	18	21	24
+4	4	8	12	16	20	24	28	32
+5	5	10	15	20	25	30	35	40
+6	6	12	18	24	30	36	42	48
+7	7	14	21	28	35	42	49	56
+8	8	16	24	32	40	48	56	64
 ```
 
 ## Exchanging

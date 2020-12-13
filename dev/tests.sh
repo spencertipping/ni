@@ -560,7 +560,20 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fA      # the first column
 8
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=42
+lazytest_line=45
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' f       # the first column, but shorter to write
+' 3<<'LAZYTEST_EOF'
+1
+2
+3
+4
+5
+6
+7
+8
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=57
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDC     # fourth, then third column
 ' 3<<'LAZYTEST_EOF'
 4	3
@@ -573,7 +586,7 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDC     # fourth, then third colum
 32	24
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=54
+lazytest_line=69
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fAA     # first column, duplicated
 ' 3<<'LAZYTEST_EOF'
 1	1
@@ -586,7 +599,7 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fAA     # first column, duplicated
 8	8
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=66
+lazytest_line=81
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fA-D    # first four columns
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4
@@ -599,7 +612,7 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fA-D    # first four columns
 8	16	24	32
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=82
+lazytest_line=97
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDA.    # fourth, first, "and the rest (i.e. 5-8)"
 ' 3<<'LAZYTEST_EOF'
 4	1	5	6	7	8
@@ -612,7 +625,7 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fDA.    # fourth, first, "and the 
 32	8	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=94
+lazytest_line=109
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fBA.    # an easy way to swap first two columns
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
@@ -625,7 +638,7 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' fBA.    # an easy way to swap firs
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=106
+lazytest_line=121
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' x       # even easier (see below)
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
@@ -638,28 +651,54 @@ lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' x       # even easier (see below)
 16	8	24	32	40	48	56	64
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=121
+lazytest_line=137
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' f^B
+' 3<<'LAZYTEST_EOF'
+2	1	2	3	4	5	6	7	8
+4	2	4	6	8	10	12	14	16
+6	3	6	9	12	15	18	21	24
+8	4	8	12	16	20	24	28	32
+10	5	10	15	20	25	30	35	40
+12	6	12	18	24	30	36	42	48
+14	7	14	21	28	35	42	49	56
+16	8	16	24	32	40	48	56	64
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=151
+lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' f^
+' 3<<'LAZYTEST_EOF'
+1	1	2	3	4	5	6	7	8
+2	2	4	6	8	10	12	14	16
+3	3	6	9	12	15	18	21	24
+4	4	8	12	16	20	24	28	32
+5	5	10	15	20	25	30	35	40
+6	6	12	18	24	30	36	42	48
+7	7	14	21	28	35	42	49	56
+8	8	16	24	32	40	48	56	64
+LAZYTEST_EOF
+lazytest_file='doc/col.md'
+lazytest_line=166
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xC r2   # swap third column into first position
 ' 3<<'LAZYTEST_EOF'
 3	2	1	4	5	6	7	8
 6	4	2	8	10	12	14	16
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=127
+lazytest_line=172
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xGHr2   # swap seventh, eighth columns into first two
 ' 3<<'LAZYTEST_EOF'
 7	8	3	4	5	6	1	2
 14	16	6	8	10	12	2	4
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=133
+lazytest_line=178
 lazytest_case 'ni n8p'\''r map a*$_, 1..8'\'' xr2     # swap first two columns
 ' 3<<'LAZYTEST_EOF'
 2	1	3	4	5	6	7	8
 4	2	6	8	10	12	14	16
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=157
+lazytest_line=202
 lazytest_case 'cat > pathological.csv <<'\''EOF'\''
 "foo
 	bar",bif,"baz ""bok""
@@ -672,7 +711,7 @@ EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=166
+lazytest_line=211
 lazytest_case 'ni ./pathological.csv FV p'\''r map je($_), F_'\''
 ' 3<<'LAZYTEST_EOF'
 "foo\r        bar"	"bif"	"baz \"bok\"\rbiffski"
@@ -682,27 +721,27 @@ lazytest_case 'ni ./pathological.csv FV p'\''r map je($_), F_'\''
 1	2	3	4
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=178
+lazytest_line=223
 lazytest_case 'ni i'\''foo$bar'\'' F/[.$]/
 ' 3<<'LAZYTEST_EOF'
 foo	bar
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=189
+lazytest_line=234
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] p'\''r FT 2, uc(c), FR 3'\''
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=197
+lazytest_line=242
 lazytest_case 'ni i[who let the dogs out] i[who? who?? who???] vCpuc
 ' 3<<'LAZYTEST_EOF'
 who	let	THE	dogs	out
 who?	who??	WHO???
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=208
+lazytest_line=253
 lazytest_case 'ni i[who let the dogs out] Z1
 ' 3<<'LAZYTEST_EOF'
 who
@@ -712,7 +751,7 @@ dogs
 out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=217
+lazytest_line=262
 lazytest_case 'ni i[who let the dogs out] Z1 wn   # right-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 who	1
@@ -722,7 +761,7 @@ dogs	4
 out	5
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=226
+lazytest_line=271
 lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 ' 3<<'LAZYTEST_EOF'
 1	who
@@ -732,7 +771,7 @@ lazytest_case 'ni i[who let the dogs out] Z1 Wn   # left-juxtapose numbers
 5	out
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
-lazytest_line=237
+lazytest_line=282
 lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 ' 3<<'LAZYTEST_EOF'
 99998	9999600004

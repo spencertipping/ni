@@ -2086,6 +2086,11 @@
 	  ']'
 	) -> {[@$_[1,2]]} -> {op_fn_op @$_}
 
+# SHORT OPERATOR /f^
+
+## SYNTAX
+	<colspec1>? -> {my $c = $_ || 0; cols_op $c+1, $c, 0..$_, -1}
+
 # SHORT OPERATOR /fx
 
 ## SYNTAX

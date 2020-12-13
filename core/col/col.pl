@@ -31,6 +31,8 @@ defshort '/f',
   defalt 'colalt', 'list of alternatives for /f field-select operator',
     pmap q{cols_op @{$_ || [1, 0]}}, popt colspec;
 
+defshort '/f^', pmap q{my $c = $_ || 0; cols_op $c+1, $c, 0..$_, -1}, popt colspec1;
+
 # Column swapping.
 # This is such a common thing to do that it gets its own operator `x`. The idea
 # is that you're swapping the specified column(s) into the first N position(s).
