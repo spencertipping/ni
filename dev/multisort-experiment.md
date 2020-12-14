@@ -99,3 +99,38 @@ sys     3m30.392s
 
 Welp, time to figure out why the SHA's differ. I'll do this offline and update
 the writeup.
+
+```sh
+$ time lz4 -dc -m {0..15} | sort --buffer-size=72g --parallel=16 > bigsort-out
+
+real    81m24.111s
+user    332m1.740s
+sys     24m22.340s
+
+$ time sort -m <(lz4 -dc 0 | sort --buffer-size=4500m) \
+               <(lz4 -dc 1 | sort --buffer-size=4500m) \
+               <(lz4 -dc 2 | sort --buffer-size=4500m) \
+               <(lz4 -dc 3 | sort --buffer-size=4500m) \
+               <(lz4 -dc 4 | sort --buffer-size=4500m) \
+               <(lz4 -dc 5 | sort --buffer-size=4500m) \
+               <(lz4 -dc 6 | sort --buffer-size=4500m) \
+               <(lz4 -dc 7 | sort --buffer-size=4500m) \
+               <(lz4 -dc 8 | sort --buffer-size=4500m) \
+               <(lz4 -dc 9 | sort --buffer-size=4500m) \
+               <(lz4 -dc 10 | sort --buffer-size=4500m) \
+               <(lz4 -dc 11 | sort --buffer-size=4500m) \
+               <(lz4 -dc 12 | sort --buffer-size=4500m) \
+               <(lz4 -dc 13 | sort --buffer-size=4500m) \
+               <(lz4 -dc 14 | sort --buffer-size=4500m) \
+               <(lz4 -dc 15 | sort --buffer-size=4500m) > smallsort-out
+real    82m54.431s
+user    320m0.284s
+sys     21m38.076s
+
+$ ls -l bigsort-out smallsort-out
+-rw-r--r-- 1 spencertipping spencertipping 80721790647 Dec 14 17:02 bigsort-out
+-rw-r--r-- 1 spencertipping spencertipping 80721790648 Dec 14 19:06 smallsort-out
+```
+
+I think I'm willing to chalk that up to a newline difference; the head and tail
+look the same.
