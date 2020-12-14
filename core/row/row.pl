@@ -111,9 +111,13 @@ sub sort_extra_args(@) {
   @r;
 }
 
-defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => '';
-defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '64M';
-defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => '4';
+my $n_cpus = -e "/proc/cpuinfo"
+  ? grep(/^processor\s*:/, rl '/proc/cpuinfo')
+  : 4;
+
+defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
+defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '1024M';
+defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => $n_cpus;
 
 defoperator row_sort => q{
   exec 'sort', sort_extra_args(
