@@ -2772,7 +2772,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-409 core/stream/ops.pl
+418 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2888,6 +2888,15 @@ docoperator n => q{Append consecutive integers within a range};
 
 defshort '/n',  pmap q{n_op 1, defined $_ ? $_ + 1 : -1}, popt number;
 defshort '/n0', pmap q{n_op 0, defined $_ ? $_ : -1}, popt number;
+
+defoperator nmod => q{
+  my ($mod) = @_;
+  sio;
+  for (my $i = 0; ; $i = ($i + 1) % $mod) {print "$i\n"}
+};
+
+defshort '/n%', pmap q{nmod_op $_}, integer;
+
 defshort '/i',  pmap q{echo_op $_}, id_text;
 
 defshort '/1', pmap q{n_op 1, 2}, pnone;
