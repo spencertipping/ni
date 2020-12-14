@@ -90,4 +90,12 @@ $ time sort -m <(lz4 -dc 0 | sort --buffer-size=4500m) \
                <(lz4 -dc 13 | sort --buffer-size=4500m) \
                <(lz4 -dc 14 | sort --buffer-size=4500m) \
                <(lz4 -dc 15 | sort --buffer-size=4500m) | sha512sum
+442931f68d87c6beff344b4aa3ec5796e3dbe92f56ae4d4b74665e0e207c39839594c4caa210d6b6492042fb8eeaa4e062761fa3ccb84674d5ec6c081cf66247  -
+
+real    79m41.520s
+user    50m6.508s
+sys     3m30.392s
 ```
+
+Welp, time to figure out why the SHA's differ. I'll do this offline and update
+the writeup.
