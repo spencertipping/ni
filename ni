@@ -2303,17 +2303,21 @@ BEGIN {defparseralias config_option_map
             pn 0, prep(config_map_kv), prc '}'}
 
 defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
-11 core/conf/dangermode.pl
+15 core/conf/dangermode.pl
 defconfenv 'ni/dangermode', NI_DANGER_MODE => 0;
+defconfenv 'ni/yolomode',   NI_YOLO_MODE   => 0;
+
 
 sub requires_dangermode($)
 {
-  unless (conf('ni/dangermode'))
+  my ($operator) = @_;
+  unless (conf('ni/dangermode') or conf('ni/yolomode'))
   {
-    my ($operator) = @_;
     die "$operator has the potential to destroy your data if misused. "
       . "To enable it, export NI_DANGER_MODE=1 or use ^{ni/dangermode=1}.";
   }
+
+  print "ni: using $operator in YOLO MODE!!!!\n" if conf('ni/yolomode')
 }
 6 core/stream/lib
 fh.pl
@@ -2785,7 +2789,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-449 core/stream/ops.pl
+451 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3015,7 +3019,6 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 defoperator file_read => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_read_and_nuke => q{
-  requires_dangermode('file_read_and_nuke (written \\<#)');
   while (<STDIN>)
   {
     chomp;
@@ -3024,7 +3027,10 @@ defoperator file_read_and_nuke => q{
   }
 };
 
-defshort '/<#' => pmap q{file_read_and_nuke_op}, pnone;
+defshort '/<#' => pmap q{
+  requires_dangermode('file_read_and_nuke (written \\<#)');
+  file_read_and_nuke_op;
+}, pnone;
 
 defoperator file_write => q{
   my $file = filename_write(shift);
