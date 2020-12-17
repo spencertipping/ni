@@ -266,6 +266,8 @@ defoperator pipe_write => q{
   {
     open my $fh, '>', $fname or die "ni pipe_write: open(>$fname) failed: $!";
     sforward \*STDIN, $fh;
+    close $fh;
+    unlink $fname if -p $fname;
   }
 };
 

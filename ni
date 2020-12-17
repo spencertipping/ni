@@ -2789,7 +2789,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-451 core/stream/ops.pl
+453 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3058,6 +3058,8 @@ defoperator pipe_write => q{
   {
     open my $fh, '>', $fname or die "ni pipe_write: open(>$fname) failed: $!";
     sforward \*STDIN, $fh;
+    close $fh;
+    unlink $fname if -p $fname;
   }
 };
 
