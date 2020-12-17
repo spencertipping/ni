@@ -2241,8 +2241,9 @@ sub load {
 }
 
 1;
-1 core/conf/lib
+2 core/conf/lib
 conf.pl
+dangermode.pl
 58 core/conf/conf.pl
 # Configuration variables.
 # These can be specified as environment vars or overridden locally for specific
@@ -2302,6 +2303,18 @@ BEGIN {defparseralias config_option_map
             pn 0, prep(config_map_kv), prc '}'}
 
 defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
+11 core/conf/dangermode.pl
+defconfenv 'ni/dangermode', NI_DANGER_MODE => 0;
+
+sub requires_dangermode($)
+{
+  unless (conf('ni/dangermode'))
+  {
+    my ($operator) = @_;
+    die "$operator has the potential to destroy your data if misused. "
+      . "To enable it, export NI_DANGER_MODE=1 or use ^{ni/dangermode=1}.";
+  }
+}
 6 core/stream/lib
 fh.pl
 procfh.pl
@@ -2772,7 +2785,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-448 core/stream/ops.pl
+449 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3002,6 +3015,7 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 defoperator file_read => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_read_and_nuke => q{
+  requires_dangermode('file_read_and_nuke (written \\<#)');
   while (<STDIN>)
   {
     chomp;
@@ -3635,7 +3649,7 @@ defresource 'file',
   nuke   => q{unlink $_[1]};
 
 defresource 'pipe',
-  read   => q{my $fh = srfile $_[1]; unlink $_[1]; $fh},
+  read   => q{my $fh = srfile $_[1]; unlink $_[1] if -p $_[1]; $fh},
   write  => q{use POSIX qw/mkfifo/;
               mkdir_p dirname $_[1] or die "ni >$_[0]: failed to mkdir: $!";
               mkfifo $_[1], 0700 or die "ni >$_[0]: failed to mkfifo: $!";

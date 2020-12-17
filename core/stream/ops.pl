@@ -227,6 +227,7 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 
 defoperator file_read => q{chomp, weval q{scat $_} while <STDIN>};
 defoperator file_read_and_nuke => q{
+  requires_dangermode('file_read_and_nuke (written \\<#)');
   while (<STDIN>)
   {
     chomp;

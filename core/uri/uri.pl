@@ -111,7 +111,7 @@ defresource 'file',
   nuke   => q{unlink $_[1]};
 
 defresource 'pipe',
-  read   => q{my $fh = srfile $_[1]; unlink $_[1]; $fh},
+  read   => q{my $fh = srfile $_[1]; unlink $_[1] if -p $_[1]; $fh},
   write  => q{use POSIX qw/mkfifo/;
               mkdir_p dirname $_[1] or die "ni >$_[0]: failed to mkdir: $!";
               mkfifo $_[1], 0700 or die "ni >$_[0]: failed to mkfifo: $!";
