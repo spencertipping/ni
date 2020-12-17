@@ -2772,7 +2772,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-418 core/stream/ops.pl
+448 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -3000,7 +3000,18 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 # between this and the shell's > operator is that \> outputs the filename; this
 # lets you invert the operation with the nullary \< operator.
 
-defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
+defoperator file_read => q{chomp, weval q{scat $_} while <STDIN>};
+defoperator file_read_and_nuke => q{
+  while (<STDIN>)
+  {
+    chomp;
+    weval q{scat $_};
+    resource_nuke($_);
+  }
+};
+
+defshort '/<#' => pmap q{file_read_and_nuke_op}, pnone;
+
 defoperator file_write => q{
   my $file = filename_write(shift);
   my $fh = swfile $file;
@@ -3012,6 +3023,25 @@ defoperator file_write => q{
 
 defshort '/>', pmap q{file_write_op $_}, popt nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
+
+defoperator pipe_write => q{
+  use POSIX qw/mkfifo/;
+  my ($fname) = @_;
+  $fname = substr resource_tmp('pipe://'), 7 unless defined $fname;
+  mkfifo $fname, 0700 or die "ni pipe_write: mkfifo($fname) failed: $!";
+
+  $|++;
+  print "pipe://$fname\n";
+  POSIX::close(fileno STDOUT);
+
+  unless (cfork)
+  {
+    open my $fh, '>', $fname or die "ni pipe_write: open(>$fname) failed: $!";
+    sforward \*STDIN, $fh;
+  }
+};
+
+defshort '/|', pmap q{pipe_write_op $_}, popt nefilename;
 
 defoperator file_prepend_name_read => q{
   my ($colspec, $transform) = @_;
@@ -3491,7 +3521,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl
-111 core/uri/uri.pl
+121 core/uri/uri.pl
 # Resources identified by URI.
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
@@ -3602,6 +3632,16 @@ defresource 'file',
   write  => q{swfile $_[1]},
   exists => q{-e $_[1]},
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{unlink $_[1]};
+
+defresource 'pipe',
+  read   => q{my $fh = srfile $_[1]; unlink $_[1]; $fh},
+  write  => q{use POSIX qw/mkfifo/;
+              mkdir_p dirname $_[1] or die "ni >$_[0]: failed to mkdir: $!";
+              mkfifo $_[1], 0700 or die "ni >$_[0]: failed to mkfifo: $!";
+              swfile $_[1]},
+  exists => q{-e $_[1]},
+  tmp    => q{"pipe://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 2 core/fn/lib
 fn.pl
@@ -4405,7 +4445,7 @@ scale.pl
 join.pl
 xargs.pl
 pfn.pl
-224 core/row/row.pl
+240 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -4527,12 +4567,26 @@ defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
 defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '1024M';
 defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => $n_cpus;
 
+defconfenv 'row/mergesort-max-inputs', NI_ROW_MERGESORT_MAX_INPUTS => 1024;
+
 defoperator row_sort => q{
   exec 'sort', sort_extra_args(
     length(conf 'row/sort-compress')
       ? ('--compress-program=' . conf 'row/sort-compress') : (),
     '--buffer-size=' . conf 'row/sort-buffer',
     '--parallel='    . conf 'row/sort-parallel'), @_};
+
+defoperator row_mergesort => q{
+  my @files;
+  while (<STDIN>)
+  {
+    chomp;
+    push @files, is_uri $_ ? uri_path $_ : $_;
+    die "ni row_mergesort: too many inputs"
+      if @files > conf('row/mergesort-max-inputs');
+  }
+  exec 'sort', '-m', @_, @files;
+};
 
 defoperator partial_sort => q{
   my $sort_size = shift;
@@ -4550,7 +4604,9 @@ defoperator partial_sort => q{
 defshort '/g',
   defalt 'sortalt', 'alternatives for the /g row operator',
     pmap(q{partial_sort_op               $_}, pn 1, prx '_', integer),
+    pmap(q{row_mergesort_op   sort_args @$_}, pn 1, prx 'M', sortspec),
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
+
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 

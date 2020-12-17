@@ -109,3 +109,13 @@ defresource 'file',
   exists => q{-e $_[1]},
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
+
+defresource 'pipe',
+  read   => q{my $fh = srfile $_[1]; unlink $_[1]; $fh},
+  write  => q{use POSIX qw/mkfifo/;
+              mkdir_p dirname $_[1] or die "ni >$_[0]: failed to mkdir: $!";
+              mkfifo $_[1], 0700 or die "ni >$_[0]: failed to mkfifo: $!";
+              swfile $_[1]},
+  exists => q{-e $_[1]},
+  tmp    => q{"pipe://" . conf('tmpdir') . "/" . uri_temp_noise},
+  nuke   => q{unlink $_[1]};

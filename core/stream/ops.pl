@@ -225,7 +225,18 @@ defshort '/%', pmap q{interleave_op @$_}, pseq popt number, _qfn;
 # between this and the shell's > operator is that \> outputs the filename; this
 # lets you invert the operation with the nullary \< operator.
 
-defoperator file_read  => q{chomp, weval q{scat $_} while <STDIN>};
+defoperator file_read => q{chomp, weval q{scat $_} while <STDIN>};
+defoperator file_read_and_nuke => q{
+  while (<STDIN>)
+  {
+    chomp;
+    weval q{scat $_};
+    resource_nuke($_);
+  }
+};
+
+defshort '/<#' => pmap q{file_read_and_nuke_op}, pnone;
+
 defoperator file_write => q{
   my $file = filename_write(shift);
   my $fh = swfile $file;
@@ -237,6 +248,25 @@ defoperator file_write => q{
 
 defshort '/>', pmap q{file_write_op $_}, popt nefilename;
 defshort '/<', pmap q{file_read_op},     pnone;
+
+defoperator pipe_write => q{
+  use POSIX qw/mkfifo/;
+  my ($fname) = @_;
+  $fname = substr resource_tmp('pipe://'), 7 unless defined $fname;
+  mkfifo $fname, 0700 or die "ni pipe_write: mkfifo($fname) failed: $!";
+
+  $|++;
+  print "pipe://$fname\n";
+  POSIX::close(fileno STDOUT);
+
+  unless (cfork)
+  {
+    open my $fh, '>', $fname or die "ni pipe_write: open(>$fname) failed: $!";
+    sforward \*STDIN, $fh;
+  }
+};
+
+defshort '/|', pmap q{pipe_write_op $_}, popt nefilename;
 
 defoperator file_prepend_name_read => q{
   my ($colspec, $transform) = @_;

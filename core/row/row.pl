@@ -119,12 +119,26 @@ defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
 defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '1024M';
 defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => $n_cpus;
 
+defconfenv 'row/mergesort-max-inputs', NI_ROW_MERGESORT_MAX_INPUTS => 1024;
+
 defoperator row_sort => q{
   exec 'sort', sort_extra_args(
     length(conf 'row/sort-compress')
       ? ('--compress-program=' . conf 'row/sort-compress') : (),
     '--buffer-size=' . conf 'row/sort-buffer',
     '--parallel='    . conf 'row/sort-parallel'), @_};
+
+defoperator row_mergesort => q{
+  my @files;
+  while (<STDIN>)
+  {
+    chomp;
+    push @files, is_uri $_ ? uri_path $_ : $_;
+    die "ni row_mergesort: too many inputs"
+      if @files > conf('row/mergesort-max-inputs');
+  }
+  exec 'sort', '-m', @_, @files;
+};
 
 defoperator partial_sort => q{
   my $sort_size = shift;
@@ -142,7 +156,9 @@ defoperator partial_sort => q{
 defshort '/g',
   defalt 'sortalt', 'alternatives for the /g row operator',
     pmap(q{partial_sort_op               $_}, pn 1, prx '_', integer),
+    pmap(q{row_mergesort_op   sort_args @$_}, pn 1, prx 'M', sortspec),
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
+
 defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
