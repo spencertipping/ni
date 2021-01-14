@@ -3,12 +3,15 @@ USAGE
     ni --explain [commands...]    Explain a data pipeline
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
-    ni --upgrade [branch]         Upgrade to latest version (default = develop)
+    ni --upgrade                  Upgrade to latest version
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 
     ni outputs progress while it's running; see ni //help/monitor for details,
     or export NI_MONITOR=no to disable.
+
+    ADVANCED
+    ni --upgrade develop          Specify branch for upgrade (default is master)
 
 
 SYNTAX (ni //help/stream)

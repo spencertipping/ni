@@ -910,7 +910,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-216 core/boot/main.pl
+228 core/boot/main.pl
 # CLI entry point.
 # Some custom toplevel option handlers and the main function that ni uses to
 # parse CLI options and execute the data pipeline.
@@ -1007,7 +1007,11 @@ _
 
 # Updating to latest git image
 defclispecial '--upgrade', q{
-  my $branch = @_ ? $_[0] : 'develop';
+  use Cwd 'abs_path';
+  my $branch = @_ ? $_[0] : 'master';
+  my $self = abs_path $0;
+  sub fail($) { print "$_[0]\n"; exit 1 }
+
   chomp(my $version = $ni::self{'core/boot/version'});
   chomp(my $online_version = `curl -sSL https://raw.githubusercontent.com/spencertipping/ni/$branch/core/boot/version`);
   if ($version eq $online_version)
@@ -1016,16 +1020,24 @@ defclispecial '--upgrade', q{
     exit 0;
   }
 
-  die 'ni is not installed on this machine' unless -r $0;
-  die 'ni is not modifiable' unless -w $0;
+  fail "$branch has no versioned ni release"
+    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}$/;
+
+  fail 'ni is not installed on this machine' unless -r $self;
+  fail 'ni is not modifiable' unless -w $self;
   print "upgrading $version to $online_version from branch $branch...\n";
-  wf "$0.upgrade",
-     `curl -sSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
-  chmod +(stat $0)[2], "$0.upgrade";
-  die 'new image is corrupt; aborting upgrade'
-    unless `$0.upgrade //ni r+2` =~ /^__END__$/m;
-  rename "$0.upgrade", "$0" or
-    die "failed to replace ni image at $0 with $0.upgraded; aborting upgrade";
+
+  my $image = `curl -fsSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
+  fail 'new image is corrupt; aborting upgrade'
+    unless $image =~ /^#!\/usr\/bin\/env perl\n/;
+
+  wf "$self.upgrade", $image;
+  chmod +(stat $self)[2], "$self.upgrade";
+  fail 'new image is corrupt; aborting upgrade'
+    unless `$self.upgrade //ni r+2` =~ /^__END__$/m;
+
+  rename "$self.upgrade", $self or
+    fail "failed to replace ni image at $self with $self.upgrade: $!; aborting upgrade";
   print "ni has been upgraded to version $online_version\n";
 }, <<'_';
 Usage: ni --upgrade [branch]
@@ -1128,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0114.1545
+2021.0114.1604
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -23002,18 +23014,21 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-396 doc/usage
+399 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
-    ni --upgrade [branch]         Upgrade to latest version (default = develop)
+    ni --upgrade                  Upgrade to latest version
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 
     ni outputs progress while it's running; see ni //help/monitor for details,
     or export NI_MONITOR=no to disable.
+
+    ADVANCED
+    ni --upgrade develop          Specify branch for upgrade (default is master)
 
 
 SYNTAX (ni //help/stream)

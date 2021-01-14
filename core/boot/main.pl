@@ -94,7 +94,11 @@ _
 
 # Updating to latest git image
 defclispecial '--upgrade', q{
-  my $branch = @_ ? $_[0] : 'develop';
+  use Cwd 'abs_path';
+  my $branch = @_ ? $_[0] : 'master';
+  my $self = abs_path $0;
+  sub fail($) { print "$_[0]\n"; exit 1 }
+
   chomp(my $version = $ni::self{'core/boot/version'});
   chomp(my $online_version = `curl -sSL https://raw.githubusercontent.com/spencertipping/ni/$branch/core/boot/version`);
   if ($version eq $online_version)
@@ -103,16 +107,24 @@ defclispecial '--upgrade', q{
     exit 0;
   }
 
-  die 'ni is not installed on this machine' unless -r $0;
-  die 'ni is not modifiable' unless -w $0;
+  fail "$branch has no versioned ni release"
+    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}$/;
+
+  fail 'ni is not installed on this machine' unless -r $self;
+  fail 'ni is not modifiable' unless -w $self;
   print "upgrading $version to $online_version from branch $branch...\n";
-  wf "$0.upgrade",
-     `curl -sSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
-  chmod +(stat $0)[2], "$0.upgrade";
-  die 'new image is corrupt; aborting upgrade'
-    unless `$0.upgrade //ni r+2` =~ /^__END__$/m;
-  rename "$0.upgrade", "$0" or
-    die "failed to replace ni image at $0 with $0.upgraded; aborting upgrade";
+
+  my $image = `curl -fsSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
+  fail 'new image is corrupt; aborting upgrade'
+    unless $image =~ /^#!\/usr\/bin\/env perl\n/;
+
+  wf "$self.upgrade", $image;
+  chmod +(stat $self)[2], "$self.upgrade";
+  fail 'new image is corrupt; aborting upgrade'
+    unless `$self.upgrade //ni r+2` =~ /^__END__$/m;
+
+  rename "$self.upgrade", $self or
+    fail "failed to replace ni image at $self with $self.upgrade: $!; aborting upgrade";
   print "ni has been upgraded to version $online_version\n";
 }, <<'_';
 Usage: ni --upgrade [branch]
