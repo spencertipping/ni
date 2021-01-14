@@ -110,10 +110,10 @@ defclispecial '--upgrade', q{
      `curl -sSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
   chmod +(stat $0)[2], "$0.upgrade";
   die 'new image is corrupt; aborting upgrade'
-    unless `$0.upgrade //ni r+1` =~ /^__END__$/m;
+    unless `$0.upgrade //ni r+2` =~ /^__END__$/m;
   rename "$0.upgrade", "$0" or
     die "failed to replace ni image at $0 with $0.upgraded; aborting upgrade";
-  print "ni has been upgraded to version $online_version";
+  print "ni has been upgraded to version $online_version\n";
 }, <<'_';
 Usage: ni --upgrade [branch]
 Upgrades to the latest ni version on the develop branch, or whichever branch is
