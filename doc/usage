@@ -3,6 +3,7 @@ USAGE
     ni --explain [commands...]    Explain a data pipeline
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
+    ni --upgrade [branch]         Upgrade to latest version (default = develop)
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 

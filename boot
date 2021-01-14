@@ -1,6 +1,6 @@
 #!/bin/bash
 # Builds the core ni image from the files in core/boot.
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 # Resource format is "<nlines> <filename>\n<data...>", e.g.
 #
@@ -19,8 +19,8 @@ bootcode() { cat core/boot/ni; }
 
 resource() {
   for r; do
-    wc -l $r
-    cat $r
+    wc -l "$r"
+    cat "$r"
   done
 }
 

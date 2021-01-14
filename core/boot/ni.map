@@ -14,3 +14,4 @@ resource core/boot/cli.pl
 resource core/boot/op.pl
 resource core/boot/self.pl
 resource core/boot/main.pl
+resource core/boot/version

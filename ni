@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-61 core/boot/ni.map
+62 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -70,6 +70,7 @@ resource core/boot/cli.pl
 resource core/boot/op.pl
 resource core/boot/self.pl
 resource core/boot/main.pl
+resource core/boot/version
 lib core/gen
 lib core/json
 lib core/deps
@@ -909,7 +910,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-179 core/boot/main.pl
+215 core/boot/main.pl
 # CLI entry point.
 # Some custom toplevel option handlers and the main function that ni uses to
 # parse CLI options and execute the data pipeline.
@@ -1003,6 +1004,42 @@ Usage: ni --run 'perl code' normal-ni-options...
 Runs code before running normally.
 _
 
+
+# Updating to latest git image
+defclispecial '--upgrade', q{
+  my $branch = @_ ? $_[0] : 'develop';
+  chomp(my $version = $ni::self{'core/boot/version'});
+  chomp(my $online_version = `curl -sSL https://raw.githubusercontent.com/spencertipping/ni/$branch/core/boot/version`);
+  if ($version eq $online_version)
+  {
+    print "ni is already at version $online_version\n";
+    exit 0;
+  }
+
+  die 'ni is not installed on this machine' unless -r $0;
+  die 'ni is not modifiable' unless -w $0;
+  print "upgrading $version to $online_version from branch $branch...\n";
+  wf "$0.upgrade",
+     `curl -sSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
+  chmod +(stat $0)[2], "$0.upgrade";
+  die 'new image is corrupt; aborting upgrade'
+    unless `$0.upgrade //ni r+1` =~ /^__END__$/m;
+  rename "$0.upgrade", "$0";
+  print "ni has been upgraded to version `$0 --version`";
+}, <<'_';
+Usage: ni --upgrade [branch]
+Upgrades to the latest ni version on the develop branch, or whichever branch is
+specified.
+_
+
+defclispecial '--version', q{
+  print "$ni::self{'core/boot/version'}\n";
+}, <<'_';
+Usage: ni --version
+Outputs the version of your ni image.
+_
+
+
 # Documentation.
 
 defclispecial '--explain', q{
@@ -1089,6 +1126,8 @@ sub main {
   print STDERR "or file:// to qualify it.\n";
   exit 1;
 }
+1 core/boot/version
+2021.0114.1541
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -22962,12 +23001,13 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-395 doc/usage
+396 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
+    ni --upgrade [branch]         Upgrade to latest version (default = develop)
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 

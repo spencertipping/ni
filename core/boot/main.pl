@@ -91,6 +91,43 @@ Usage: ni --run 'perl code' normal-ni-options...
 Runs code before running normally.
 _
 
+
+# Updating to latest git image
+defclispecial '--upgrade', q{
+  my $branch = @_ ? $_[0] : 'develop';
+  chomp(my $version = $ni::self{'core/boot/version'});
+  chomp(my $online_version = `curl -sSL https://raw.githubusercontent.com/spencertipping/ni/$branch/core/boot/version`);
+  if ($version eq $online_version)
+  {
+    print "ni is already at version $online_version\n";
+    exit 0;
+  }
+
+  die 'ni is not installed on this machine' unless -r $0;
+  die 'ni is not modifiable' unless -w $0;
+  print "upgrading $version to $online_version from branch $branch...\n";
+  wf "$0.upgrade",
+     `curl -sSL https://github.com/spencertipping/ni/blob/$branch/ni?raw=true`;
+  chmod +(stat $0)[2], "$0.upgrade";
+  die 'new image is corrupt; aborting upgrade'
+    unless `$0.upgrade //ni r+1` =~ /^__END__$/m;
+  rename "$0.upgrade", "$0" or
+    die "failed to replace ni image at $0 with $0.upgraded; aborting upgrade";
+  print "ni has been upgraded to version $online_version";
+}, <<'_';
+Usage: ni --upgrade [branch]
+Upgrades to the latest ni version on the develop branch, or whichever branch is
+specified.
+_
+
+defclispecial '--version', q{
+  print "$ni::self{'core/boot/version'}\n";
+}, <<'_';
+Usage: ni --version
+Outputs the version of your ni image.
+_
+
+
 # Documentation.
 
 defclispecial '--explain', q{
