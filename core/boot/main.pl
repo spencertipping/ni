@@ -154,7 +154,7 @@ sub main {
   my ($cmd, @args) = @_;
   $ni::is_toplevel = 1;
 
-  @_ = ('//help', @_[1..$#_])
+  @_ = ('//help/usage', @_[1..$#_])
     if -t STDIN and -t STDOUT and !@_ || $_[0] =~ /^-h$|^-\?$|^--help$/;
 
   if (exists $ENV{HOME} && !exists $ENV{NI_NO_HOME} && -d "$ENV{HOME}/.ni") {

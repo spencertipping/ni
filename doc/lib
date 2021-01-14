@@ -8,6 +8,7 @@ ni_fu.md
 cheatsheet_op.md
 cheatsheet_perl.md
 binary.md
+cell.md
 closure.md
 col.md
 container.md
@@ -36,3 +37,5 @@ tutorial.md
 visual.md
 warnings.md
 wkt.md
+
+usage

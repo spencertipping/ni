@@ -1,5 +1,6 @@
 # ni tutorial
-You can access this tutorial by running `ni //help` or `ni //help/tutorial`.
+You can access this tutorial by running `ni //help` or `ni //help/tutorial`. See
+also `ni //usage`, or run `ni` without options.
 
 ni parses its command arguments to build and run a data pipeline. You can get
 started by using it like a version of `less` that knows how to decompress

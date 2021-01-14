@@ -9,7 +9,7 @@ defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
-  sio; print $ni::self{"doc/$topic.md"}, "\n";
+  sio; print dor($ni::self{"doc/$topic.md"}, $ni::self{"doc/$topic"}), "\n";
 };
 
 defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';

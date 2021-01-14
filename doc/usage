@@ -1,0 +1,365 @@
+USAGE
+    ni [commands...]              Run a data pipeline
+    ni --explain [commands...]    Explain a data pipeline
+    ni --inspect                  Interactive documentation and literate source
+    ni --js                       Interactive 3D visualization
+
+    This documentation is not exhaustive; see 'ni --inspect' for everything.
+
+    ni outputs progress while it's running; see ni //help/monitor for details,
+    or export NI_MONITOR=no to disable.
+
+
+SYNTAX (ni //help/stream)
+    ni chains commands (operators) with shell pipes, which means these two
+    commands are equivalent:
+
+    $ ni //help r5
+    $ ni //help | ni r5
+
+    Operators that write data usually append to existing streams:
+
+    $ ni //help //help
+    $ ni n10 //help
+
+    You can omit whitespace and brackets unless the omission makes the pipeline
+    ambiguous:
+
+    $ ni //help FW g c O r5
+    $ ni //help FWgcOr5
+
+    Numbers can be written several ways:
+
+    $ ni n100
+    $ ni nE2
+    $ ni n='10 * 10'
+
+
+DOCUMENTATION (ni //help)
+    //help
+    //help/ni_by_example_1
+    //help/ni_by_example_2
+    ...
+    //help/ni_by_example_6
+    //help/ni_fu
+
+    Advanced:
+
+    //ni/keys r/^doc/   All documentation pages
+    //ni/doc/net.md     Open a documentation page by reading from ni's 
+    //help/net          Shorthand to open doc/net.md
+
+    //ni                Output ni's source code
+    //ni/keys           Output ni's internal data state
+
+    Note that //ni and //ni/keys will differ if you bind data closures or
+    runtime libraries.
+
+    --explain [commands...]      Explain a data pipeline before meta-expansion
+    --explain-meta [commands...] Explain a data pipeline after meta-expansion
+
+    --doc               Show categories of machine-generated documentation
+    --doc/short         List all short operators
+    --doc/short /r      Show documentation and syntax for "r" short operator
+
+
+GENERATING DATA (ni //help/stream)
+    filename        Write the contents of a file, decompressing if necessary
+    dirname         Write a list of directory contents
+    http[s]://url   Write HTTP GET stream using curl
+    i'text'         Write 'text' as output
+    i[x y z]        Write 'x y z' as a tab-delimited output line
+
+    n100            Write 1..100 to output, each on its own line
+    n='3 + 4 * 5'   Write 1..23
+    n0500           Write 0..499
+    n               Write 1.. as an infinite list of integers
+    n0              Write 0.. as an infinite list of integers
+    n%7             Write 0..6,0..6,... as an infinite list of integers
+
+    It's common to end a stream with '_', which vertically aligns multi-column
+    data.
+
+    ADVANCED
+    zip://file.zip      List contents of zip archive (each is a ni URL)
+    tar://file.tar      List contents of tar archive (also handles tgz etc)
+    7z://file.7z        List contents of 7z archive
+    git://dir           List git sub-URLs for git-managed dir
+
+    sqlite://file.db    List tables in database (each is a ni URL)
+
+    wiki://JPEG         Read English-wikipedia JPEG article as source
+    enws://JPEG         Read EN Wikipedia article as Source
+    simplews://JPEG     Read Simple Wikipedia article as Source
+    zhws://北京市       Read ZH-language article on Beijing
+
+
+COLUMNS AND FIELDS (ni //help/col)
+    fA  or  f       Select first TSV column (columns are A..Z)
+    fBA             Swap first two columns, discard others
+    fBA.            Swap first two columns, followed by everything else
+    fAA             Duplicate first column, discard others
+    fA-D            Select first four columns
+    f^D             Copy fourth column to front (== ni fDABCD.)
+    x               Swap first two columns, keep others (== ni fBA.)
+
+    Columns can also be specified numerically: f#0,#1,#2 == fABC.
+
+    F:/             Use '/' as a field delimiter; i.e. split on '/'
+    F/foo/          Split on text matched by /foo/
+    Fm/foo/         Scan each row for /foo/, emitting each as a field
+    FC              Split on commas (== ni F:,)
+    FD              Split on '/' (== ni F:/)
+    FV              Split CSV, except fields that contain newlines
+    FS              Split on horizontal whitespace
+    FW              Split on non-word characters
+    FP              Split on pipe symbols
+
+    F^S             Join fields with space characters (inverts FS)
+    F^C             Join fields with commas
+    F^:%            Join fields with '%'
+
+    ADVANCED
+    w[...]          Zip each line with a line from 'ni ...', joined on the right
+    W[...]          Zip each line with a line from 'ni ...', joined on the left
+    W[n]  or  Wn    Common idiom: prepend line numbers
+
+
+ROWS (ni //help/row)
+    r10             Take first 10 rows: head -n10
+    rs10            Print first 10 rows but consume all input
+    r+10            Take last 10 rows: tail -n10
+    r-10            Drop first 10 rows
+    rx10            Take every 10th row, evenly spaced
+    r.1             Take 10% of rows, sampled randomly but deterministically
+    r/foo/          Take rows matching the Perl regex /foo/
+    r'/foo b*/'     Take rows matching /foo b*/
+    rp'length > 5'  Take rows for which the Perl expression 'length > 5' is true
+                    (see ni //help/perl)
+
+    ADVANCED
+    JA[...]         Outer join unsorted stream with 'ni ...' on column A value
+    jB[...]         Outer join sorted stream with 'ni ...' on columns A and B
+
+    riA[...]        Take rows whose A field is included in 'ni ...'
+    rIB[...]        Take rows whose B field is excluded from 'ni ...'
+    rbC[...]        Take rows whose C field is in the bloom filter generated by
+                    'ni ...' (see zB operator to create bloom filters)
+    r^bC[...]       Take rows whose C field is _not_ in the bloom filter
+                    generated by 'ni ...'
+
+    rm'...'         Take rows for which the Ruby expression '...' is true
+                    (see ni //help/ruby)
+
+    rl'...'         Take rows for which the Lisp expression '...' is true
+                    (see ni //help/lisp)
+
+
+CELLS (ni //help/cell)
+    ,Cd             Clean cells in column A as integer (remove [^-0-9])
+    ,CfD            Clean cells in column D as float
+    ,Cw             Clean non-word characters
+    ,Cx             Clean non-hex characters
+
+    ,s              Calculate running sum of cells in column A
+    ,sAC            Calculate running sums of columns A and C
+    ,d              Calculate delta of first column
+    ,a              Calculate running average of first column
+    ,q              Quantize cell values (round to nearest integer)
+    ,qAB.05         Quantize cells in columns A and B to nearest 0.05
+    ,l              Log-transform values in column A
+    ,lC2            Calculate base-2 log of values in column C
+    ,e              Exp-transform values in column A
+    ,eB2            Calculate 2^x for values in column B
+    ,L              Log transformation for signed data
+
+    ,agA            Group rows with the same A-column, then calculate the
+                    average B-value for each group (output is A, mean(B))
+
+    ,sgC            Group rows with the same A, B, and C columns, then calculate
+                    the sum of D-values for each group
+                    (output is A, B, C, sum(D))
+
+    ,z              Dictionary-compress each distinct cell value to an integer
+    ,Z              Count changes in the cell value
+    ,h              Murmurhash each cell value
+    ,H              Murmurhash each cell value, adjusted to unit interval
+    ,m              MD5 each cell value
+
+    ,t              Convert UNIX epochs to ISO-formatted timestamps
+    ,g              Encode geohashes from "lat,lng" strings
+    ,g5             Encode geohashes at precision 5
+    ,G              Decode geohashes into "lat,lng" strings
+
+    Consecutive cell operators can share the initial comma: ,ls == ,l,s
+
+
+IO AND COMPRESSION (ni //help/stream)
+    \>foo           Write stream to file, then output the filename when done
+    \>              Identical to \>, but generates a tempfile name for you
+    \<              Read stream from filename (inverts \>)
+    :foo            Save data checkpoint in file 'foo', reusing it if it exists
+
+    z4              Compress with LZ4 (with lz4)
+    zo              Compress with LZO (with lzop)
+    z  or  zg       Compress as gzip
+    zb              Compress with bzip2
+    zx              Compress with xz
+    zz              Compress with zstd
+    zn              Redirect to /dev/null (lossy compression)
+
+    zd              Decompress stream contents, autodetecting type (includes
+                    bare zlib/deflate streams)
+
+    z9              Compress with gzip -9
+    zz19            Compress with zstd -19
+    z42             Compress with lz4 -2
+
+    ADVANCED
+    zB42            Produce a bloom filter for 10000 items with 0.01 FP rate
+
+    \|              Lazily write stream to FIFO, output fifo name immediately
+    \<#             Like \<, but unlink after reading (requires NI_DANGER_MODE)
+
+    W\<             Like \<, but prepend the input filename to each line of data
+    W\>             Write each line to filename in column A (column-A values
+                    should be contiguous)
+    W\>[...]        Write each line to filename in column A, preprocessing each
+                    stream with 'ni ...' (column-A values should be contiguous)
+    S\>[...]        Like W\>, but keeps files open so column A doesn't have to
+                    be contiguous (if you have too many distinct values, this
+                    will fail with "too many open files")
+    \*[...]         Like S\>, but keep outputs instead of writing files -- note
+                    that lines are not merged (for structured merging, use the
+                    S[...] operator in //help/scale)
+
+
+SORTING AND COUNTING (ni //help/row)
+    g               Sort the whole stream using constant memory
+    o               Like 'g', but numeric sort
+    O               Descending numeric sort
+    c               Count and merge adjacent identical rows (uniq -c)
+    u               uniq
+    U               uniq -c across all rows, done in memory (output rows are
+                    randomly shuffled)
+    wcl             Shorthand for wc -l
+
+    gBA             Sort using columns B and A to determine order
+    gBnA-           Sort using B numeric, A reverse lexical to determine order
+    gCg             Sort on C numerically, parsing scientific notation (not all
+                    'sort' programs support this)
+
+    ggAB            Group rows with the same A-column value, and sort each group
+                    by value in column B
+    ggABnCn-        Sort A-groups ordered by B numeric and C descending numeric
+
+    Advanced configuration:
+
+    $ ni //ni/conf r/^row/ _
+                    Show current sort parameters, including compression,
+                    parallelism, and buffer size (used only with GNU coreutils
+                    sort)
+
+    $ export NI_ROW_SORT_BUFFER=64M
+                    Set maximum allowed memory for a sort operation: anything
+                    larger will be compressed and mergesorted on disk, which
+                    creates IO overhead
+
+
+DATA CLOSURES (ni //help/closure)
+    ::foo[...]      Store the output of 'ni ...' into "foo" memory dataclosure
+    :@foo[...]      Store the output of 'ni ...' into "foo" file dataclosure
+    //:foo          Output contents of "foo" memory dataclosure
+    //@foo          Output contents of "foo" file dataclosure
+
+    Data closures move across SSH and Hadoop boundaries, although you may
+    overflow memory if you store large values. Data closure contents are also
+    accessible to stream transformation code, e.g. p'foo()'.
+
+    Example:
+
+    $ ni ::words[ /usr/share/dict/words ] //help FW Z1 riA[ //:words ] g c O
+    $ ni ::words /usr/share/dict/words //help FWZ1riA//:words gcO
+
+
+STREAM TRANSFORMATION (ni //help/stream)
+    +[...]          Append lines from 'ni ...'
+    ^[...]          Prepend lines from 'ni ...'
+    %[...]          Interleave lines with 'ni ...', as data is available
+    %4[...]         Interleave four lines for every one from 'ni ...'
+    %-4[...]        Interleave one line for every four from 'ni ...'
+    =[...]          Duplicate stream into 'ni ... > /dev/null'
+
+    :               Copy data verbatim
+    e'...'          Filter stream with '...' shell command
+    e[grep -v foo]  Filter stream with 'grep -v foo' shell command
+
+    S4[...]         Run four copies of pipeline section '...', shard data across
+                    them, and merge outputs -- note that this reorders your data
+
+    ADVANCED
+    p'...'          Run Perl code '...' on each input line (see ni //help/perl)
+    m'...'          Run Ruby code '...' on each input line (see ni //help/ruby)
+    l'...'          Run Lisp code '...' on each input line (see ni //help/lisp)
+    Bd64M           Copy stream through a 64M disk-backed FIFO
+
+    shost[...]      Run pipeline section '...' on 'host' via SSH (ni will
+                    self-install in memory, and data closures are forwarded)
+
+    See also //help/binary to parse non-text streams.
+
+
+MATRIX TRANSFORMATION (ni //help/matrix)
+    Y               Dense to sparse (each cell becomes row, col, val)
+    X               Sparse to dense
+    Z4              Reflow cells to be 4-wide on each row
+
+    N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as Python
+                    code to transform matrix, write resulting matrix to stream
+
+    NA'x = abs(fft.fft(x))'
+                    Read groups of rows having the same column-A value; for each
+                    group, read into a numpy matrix, transform with specified
+                    code, and write to stream -- keeping the column-A prefix
+
+    Note that you can write multiline Python code; ni will infer the correct
+    indentation and adjust accordingly.
+
+
+GNUPLOT
+    G<cols><term><cmd>  Use gnuplot to visualize data
+    G:<term><cmd>       Plot verbatim data (no column transformation)
+    G:W%l               Plot one or two-column data with lines, interactively
+    G*W                 Plot all columns of data, keyed by col A on the X axis
+
+    term can be:
+      X  (x11)
+      Q  (Qt)
+      W  (Wx)
+      J  (jpeg)
+      PC (pngcairo)
+      P  (png)
+
+    cmd is a verbatim gnuplot command, with these shorthands:
+      %l        plot "-" with lines
+      %d        plot "-" with dots
+      %i        plot "-" with impulses
+      %v        plot "-" with vectors
+      %t'...'   title "..."
+      %u'...'   using ...
+
+    Image formats can be used with video encoders; see IV operator below.
+
+
+MEDIA
+    yt://oHg5SJYRHA0      Stream video from youtube using youtube-dl
+    v4l2:///dev/video0    Stream video from /dev/video0 v4l2 device
+    m3u://https://...     Stream video from M3U playlist using ffmpeg
+
+    VP                    Play video stream using ffplay
+    AEogg/libvorbis/224k  Use ffmpeg to discard video, extract audio encoded
+                          as 224k vorbis
+    VIpng                 Convert video to concatenated stream of PNG images
+    VImjpeg               Convert video to concatenated stream of JPGs
+    IVavi                 Convert concatenated images to AVI video (requires
+                          JPEG due to bug in ffmpeg)
