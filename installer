@@ -1,0 +1,31 @@
+#!/bin/bash
+# Installs ni into your ~/bin directory.
+set -euo pipefail
+
+if [[ -e ~/bin/ni ]]; then
+  echo 'ni appears to already be installed in ~/bin. If you want to reinstall,'
+  echo 'you can either run "ni --upgrade" to download the latest or you can'
+  echo 'remove your existing ni and rerun this script.'
+  exit 1
+fi
+
+read -p 'install ni into ~/bin? [Yn]> ' -u 2 yn
+if [[ -n $yn ]] && [[ $yn != y ]] && [[ $yn != Y ]]; then
+  echo 'installation canceled'
+  exit
+fi
+
+mkdir -p ~/bin
+curl -sSL https://github.com/spencertipping/ni/blob/master/ni?raw=true > ~/bin/ni
+chmod +x ~/bin/ni
+
+if !(( $(~/bin/ni 1p'$ENV{PATH}' F:: pF_ riA[ i"${HOME%/}/bin" ] wcl) )); then
+  # ~/bin isn't on our path; let's append a line to ~/.profile
+  echo 'export PATH="$PATH:$HOME/bin"' >> ~/.profile
+
+  echo "ni is now installed from branch master, version `~/bin/ni --version`."
+  echo "~/bin was added to your path by adding an export to ~/.profile, so"
+  echo "you'll need to start a new shell before you can run ni."
+else
+  echo "ni is now installed from branch master, version `~/bin/ni --version`."
+fi

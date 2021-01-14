@@ -4,6 +4,7 @@ USAGE
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
     ni --upgrade                  Upgrade to latest version
+    ni --version
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 
@@ -12,6 +13,8 @@ USAGE
 
     ADVANCED
     ni --upgrade develop          Specify branch for upgrade (default is master)
+                                  Note that this may downgrade ni; this allows
+                                  you to use --upgrade to switch branches.
 
 
 SYNTAX (ni //help/stream)

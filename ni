@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0114.1604
+2021.0114.1638
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -23014,13 +23014,14 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-399 doc/usage
+402 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
     ni --inspect                  Interactive documentation and literate source
     ni --js                       Interactive 3D visualization
     ni --upgrade                  Upgrade to latest version
+    ni --version
 
     This documentation is not exhaustive; see 'ni --inspect' for everything.
 
@@ -23029,6 +23030,8 @@ USAGE
 
     ADVANCED
     ni --upgrade develop          Specify branch for upgrade (default is master)
+                                  Note that this may downgrade ni; this allows
+                                  you to use --upgrade to switch branches.
 
 
 SYNTAX (ni //help/stream)
