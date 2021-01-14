@@ -255,8 +255,9 @@ sub inspect_explain
   my ($reply, $command) = @_;
   my ($ops, @rest) = eval {cli shell_unquote $command};
   http_reply $reply, 200,
-    json_encode {ops      => inspect_linkify(json_encode $ops),
-                 unparsed => [@rest]};
+    json_encode {
+      ops      => join("<br/>", map inspect_linkify(json_encode $_), @$ops),
+      unparsed => [@rest]};
 }
 
 sub inspect_doc

@@ -11068,7 +11068,7 @@ $(function () {
   $('#explain').on('keyup change', reload_explanation);
   reload_explanation();
 });
-389 core/inspect/inspect.pl
+390 core/inspect/inspect.pl
 # Inspect ni's internal state
 
 use constant inspect_gen => gen $ni::self{'core/inspect/html'};
@@ -11326,8 +11326,9 @@ sub inspect_explain
   my ($reply, $command) = @_;
   my ($ops, @rest) = eval {cli shell_unquote $command};
   http_reply $reply, 200,
-    json_encode {ops      => inspect_linkify(json_encode $ops),
-                 unparsed => [@rest]};
+    json_encode {
+      ops      => join("<br/>", map inspect_linkify(json_encode $_), @$ops),
+      unparsed => [@rest]};
 }
 
 sub inspect_doc
@@ -22961,7 +22962,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-365 doc/usage
+395 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23007,8 +23008,7 @@ DOCUMENTATION (ni //help)
     //help/ni_by_example_6
     //help/ni_fu
 
-    Advanced:
-
+    ADVANCED
     //ni/keys r/^doc/   All documentation pages
     //ni/doc/net.md     Open a documentation page by reading from ni's 
     //help/net          Shorthand to open doc/net.md
@@ -23100,6 +23100,8 @@ ROWS (ni //help/row)
     r'/foo b*/'     Take rows matching /foo b*/
     rp'length > 5'  Take rows for which the Perl expression 'length > 5' is true
                     (see ni //help/perl)
+    rA              Take rows for which column A is non-blank
+    rpa             Take rows for which column A is non-blank and nonzero
 
     ADVANCED
     JA[...]         Outer join unsorted stream with 'ni ...' on column A value
@@ -23217,8 +23219,7 @@ SORTING AND COUNTING (ni //help/row)
                     by value in column B
     ggABnCn-        Sort A-groups ordered by B numeric and C descending numeric
 
-    Advanced configuration:
-
+    ADVANCED
     $ ni //ni/conf r/^row/ _
                     Show current sort parameters, including compression,
                     parallelism, and buffer size (used only with GNU coreutils
@@ -23273,13 +23274,43 @@ STREAM TRANSFORMATION (ni //help/stream)
     See also //help/binary to parse non-text streams.
 
 
+PERL STREAM CODE (ni //help/perl)
+    Used both by p'...' and rp'...'.
+
+    p'a + b'            Add the first two columns of data
+    p'r "foo", a, 5'    For each input row, write (foo, a, 5) as output
+    p'length $_'        Return the length of each input line
+    p'r a + 1, FR 1'    Add 1 to column A, return all other columns unmodified
+
+    p'my @ls = rea;     Read all lines whose A-column value is the same...
+      sum(b_(@ls))'     ...and print the sum of that group's B column
+
+    p'r rw{/^a/}'       Read all lines While /^a/ matches, then output them on a
+                        single row
+    p'r ru{/^a/}'       Read all lines Until /^a/ matches
+    p'r rw{1}'          Read all lines in the entire stream
+    p'a > 5 ? r a : ()' Write cell A for rows for which it's larger than 5
+
+    p'r F_(4, 5)'       Write fields 4 and 5 on a row -- same as p'r e, f'
+    p'F_(4, 5)'         Write fields 4 and 5 on separate lines
+    pF_                 Idiom to flatten each row vertically
+
+    ::dict[...] \       Store a stream into the ::dict data closure...
+    p'^{%d = ab_ dict}  ...within a BEGIN block (^{}), parse cols A and B from
+                           ::dict into a hash
+      r a, $d{+a}'      ...for each row, write cell A and its hash association
+
+    Many more examples in //help/ni_by_example_1 .. //help/ni_by_example_6.
+
+
 MATRIX TRANSFORMATION (ni //help/matrix)
     Y               Dense to sparse (each cell becomes row, col, val)
     X               Sparse to dense
     Z4              Reflow cells to be 4-wide on each row
 
-    N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as Python
-                    code to transform matrix, write resulting matrix to stream
+    N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as
+                    Python code to transform matrix, write resulting matrix to
+                    stream
 
     NA'x = abs(fft.fft(x))'
                     Read groups of rows having the same column-A value; for each
