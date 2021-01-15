@@ -7,7 +7,7 @@
 
 ## Installing `ni`
 ```sh
-$ curl -sSL https://spencertipping.com/install-ni | bash
+curl -sSL https://spencertipping.com/install-ni | bash
 ```
 
 `ni` has no dependencies except for your system's `perl`; the above installation
