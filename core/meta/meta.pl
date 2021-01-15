@@ -9,6 +9,7 @@ defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
+  $topic =~ s/^ex(\d+)$/ni_by_example_$1.md/;
   sio; print dor($ni::self{"doc/$topic.md"}, $ni::self{"doc/$topic"}), "\n";
 };
 

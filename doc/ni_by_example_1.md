@@ -2,7 +2,7 @@
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-`ni` and Perl both suffer from their sharp differences from . This tutorial is structured in 6 parts:
+`ni` and Perl both suffer from their sharp differences from other tools. This tutorial is structured in 6 parts:
 
 1. Intro to `ni`
 2. Perl for `ni`
@@ -31,6 +31,9 @@ Welcome! This is a "rich" tutorial that covers all of the basics of this cantank
 `ni` works on any Unix-based OS. You should use a bash prompt when calling `ni`.
 
 ```
+curl -sSL https://spencertipping.com/install-ni | bash
+
+# Alternatively, to install from source:
 git clone git@github.com:spencertipping/ni.git
 cd ni
 ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
@@ -64,7 +67,7 @@ $ ni n03
 2
 ```
 
-To generate a large  number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
+To generate a large number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
 
 
 ### `i`: Literal text 

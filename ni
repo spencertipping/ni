@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0114.1638
+2021.0115.0641
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -3385,7 +3385,7 @@ $SIG{INT} = sub {
 2 core/meta/lib
 meta.pl
 map.pl
-78 core/meta/meta.pl
+79 core/meta/meta.pl
 # Image-related data sources.
 # Long options to access ni's internal state. Also the ability to instantiate ni
 # within a shell process.
@@ -3397,6 +3397,7 @@ defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
+  $topic =~ s/^ex(\d+)$/ni_by_example_$1.md/;
   sio; print dor($ni::self{"doc/$topic.md"}, $ni::self{"doc/$topic"}), "\n";
 };
 
@@ -12628,7 +12629,7 @@ defoperator imagepipe_to_video => q{
 
 defshort '/VI', pmap q{video_to_imagepipe_op $_}, popt prx '\w+';
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
-41 doc/lib
+42 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
 ni_by_example_3.md
@@ -12643,6 +12644,7 @@ cell.md
 closure.md
 col.md
 container.md
+cookbook.md
 examples.md
 extend.md
 fn.md
@@ -12670,12 +12672,12 @@ warnings.md
 wkt.md
 
 usage
-877 doc/ni_by_example_1.md
+880 doc/ni_by_example_1.md
 # `ni` by Example, Chapter 1 (beta release)
 
 Welcome! This is a "rich" tutorial that covers all of the basics of this cantankerous, odd, and ultimately, incredibly fast, joyful, and productive tool called `ni`. We have tried to assume as little knowledge as possible in this tutorial, but if you find anything confusing, please contact [the developers](http://github.com/spencertipping) or [the author](http://github.com/michaelbilow).
 
-`ni` and Perl both suffer from their sharp differences from . This tutorial is structured in 6 parts:
+`ni` and Perl both suffer from their sharp differences from other tools. This tutorial is structured in 6 parts:
 
 1. Intro to `ni`
 2. Perl for `ni`
@@ -12704,6 +12706,9 @@ Welcome! This is a "rich" tutorial that covers all of the basics of this cantank
 `ni` works on any Unix-based OS. You should use a bash prompt when calling `ni`.
 
 ```
+curl -sSL https://spencertipping.com/install-ni | bash
+
+# Alternatively, to install from source:
 git clone git@github.com:spencertipping/ni.git
 cd ni
 ln -s $PWD/ni ~/bin/ni  # or whatever to add it to your path
@@ -12737,7 +12742,7 @@ $ ni n03
 2
 ```
 
-To generate a large  number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
+To generate a large number of integers, you can use scientific notation with `n`. `ni n3.2E5` will give you 320,000 consecutive integers, starting from 1.
 
 
 ### `i`: Literal text 
@@ -19439,6 +19444,99 @@ $ docker rm -f ni-test-container >/dev/null
 ```lazytest
 fi                      # $SKIP_DOCKER (lazytest condition)
 ```
+92 doc/cookbook.md
+# `ni` cookbook
+An ongoing collection of real-world tasks I use `ni` to solve.
+
+
+## System administration
+I've used `ni` for a lot of miscellaneous sysadmin tasks, especially things
+involving bulk file renames, analysis, or log processing. For destructive
+actions I'll start by staging everything as data, then finalizing the stream
+with a simple mapper that applies the transformation. For example:
+
+```sh
+$ ni ...                  # produces "oldname newname" rows as data
+$ ni ... p'rename a, b'   # consumes those rows and applies the side effect
+```
+
+**NOTE:** be sure to use `G` to seek to the bottom of your pager if you use a
+Perl mapper to cause a side effect. If you don't, it's possible the mapping
+process will be blocked before emitting all output. You can alternatively append
+`zn` or `wcl` to consume all data without streaming it into a pager, especially
+if you don't care about individual operation return codes:
+
+```sh
+$ ni ... p'rename a, b' zn
+```
+
+
+### Where's my disk usage?
+```sh
+$ ni edu O                # disk usage from here
+$ ni e[du -x /] O         # disk usage on /, don't descend into mountpoints
+
+$ du | sort -rn | less    # equivalent longhand
+```
+
+Without arguments, `du` outputs lines of the form `size path`, where `size` is a
+consistent unit like blocks or KB. Paths are explored recursively. Using `O` to
+reverse-sort numerically yields a top-down list of largest directories.
+
+Since `du` can take a while sometimes, I'll often run it overnight and save the
+results for later:
+
+```sh
+$ ni edu O z\>du-results
+$ ni du-results ...
+```
+
+
+### Remove awkward characters from filenames
+```sh
+$ ni . p'r a, a =~ s/\W+/-/gr' p'rename a, b' zn
+```
+
+This is an operation where previewing and iteration are especially important.
+You usually want to make sure that (1) your resulting filenames look reasonable,
+and (2) none of them collide. Here's my usual strategy, starting with a stream
+of filenames:
+
+```sh
+$ ni .                    # 'ni' on directories == ls -a
+$ ni e[find -type f]      # on linux
+$ ni e[find . -type f]    # OSX requires '.' for find
+```
+
+This produces a stream with the original filename on each line. We want a stream
+of `oldname newname`, so we use a Perl mapper to transform it:
+
+```sh
+$ ni ... p'r a, a =~ s/\W+/-/gr'                      # clobber extensions
+$ ni ... p'r a, a =~ s/\W+/-/gr =~ s/-(\w+)$/\.$1/r'  # keep extensions
+
+# this is what I often use:
+$ ni ... p'r a, lc(a) =~ s/\W+/-/gr =~ s/(.)-(\w+)$/$1.$2/r =~ s/^-//r'
+```
+
+My version above isn't perfect; if I have extensionless files with hyphenated
+names, it will turn the last part into an extension. In cases like that it can
+help to pre-filter rows so we don't worry about filenames that are already in
+good shape:
+
+```sh
+$ ni ... r'/[^-\w\/\.]/'
+```
+
+I mentioned checking for duplicate destinations; here's a simple way to do that:
+
+```sh
+$ ni ... fBgcrp'a > 1'
+```
+
++ `fB` selects just the destinations (column `B`)
++ `gc` sorts and then counts, just like `sort | uniq -c`
++ `rp'a > 1'` returns rows whose count is greater than 1, i.e. it isn't unique
 241 doc/examples.md
 # Examples of ni misuse
 All of these use `ni --js` (see [visual.md](visual.md) for a brief overview).
@@ -23014,7 +23112,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-402 doc/usage
+485 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23060,12 +23158,12 @@ SYNTAX (ni //help/stream)
 
 
 DOCUMENTATION (ni //help)
-    //help
-    //help/ni_by_example_1
-    //help/ni_by_example_2
+    //help/ni_by_example_1  or  //help/ex1
+    //help/ni_by_example_2  or  //help/ex2
     ...
-    //help/ni_by_example_6
+    //help/ni_by_example_6  or  //help/ex6
     //help/ni_fu
+    //help/cookbook
 
     ADVANCED
     //ni/keys r/^doc/   All documentation pages
@@ -23279,6 +23377,12 @@ SORTING AND COUNTING (ni //help/row)
     ggABnCn-        Sort A-groups ordered by B numeric and C descending numeric
 
     ADVANCED
+    g_100           Split input into 100-line chunks, sort each individually
+    gM              Use 'sort -m' to merge sorted streams, each specified as a
+                    filename
+    gMB-            Merge sorted streams on column B descending (streams must be
+                    sorted this way too)
+
     $ ni //ni/conf r/^row/ _
                     Show current sort parameters, including compression,
                     parallelism, and buffer size (used only with GNU coreutils
@@ -23322,9 +23426,11 @@ STREAM TRANSFORMATION (ni //help/stream)
                     them, and merge outputs -- note that this reorders your data
 
     ADVANCED
-    p'...'          Run Perl code '...' on each input line (see ni //help/perl)
-    m'...'          Run Ruby code '...' on each input line (see ni //help/ruby)
-    l'...'          Run Lisp code '...' on each input line (see ni //help/lisp)
+    p'...'          Run Perl code '...' on each input line (see //help/perl)
+    pR[...]         Preload Perl code generated by 'ni ...' (see //help/perl)
+
+    m'...'          Run Ruby code '...' on each input line (see //help/ruby)
+    l'...'          Run Lisp code '...' on each input line (see //help/lisp)
     Bd64M           Copy stream through a 64M disk-backed FIFO
 
     shost[...]      Run pipeline section '...' on 'host' via SSH (ni will
@@ -23336,30 +23442,105 @@ STREAM TRANSFORMATION (ni //help/stream)
 PERL STREAM CODE (ni //help/perl)
     Used both by p'...' and rp'...'.
 
-    p'a + b'            Add the first two columns of data
-    p'r "foo", a, 5'    For each input row, write (foo, a, 5) as output
-    p'length $_'        Return the length of each input line
-    p'r a + 1, FR 1'    Add 1 to column A, return all other columns unmodified
+    Perl stream processors run in a loop that invokes your code once per input
+    line. You can use BEGIN and END blocks for cross-row state, or use multiline
+    functions to read blocks of lines.
 
-    p'my @ls = rea;     Read all lines whose A-column value is the same...
-      sum(b_(@ls))'     ...and print the sum of that group's B column
+    FUNCTIONS
+        a() .. l()          Values in columns A-L on current row
+        F_(@indexes)        Values in indexed columns, or all if @indexes == ()
+        $_                  Current line, with trailing newline
+        FR($i)              All fields inclusive-rightwards from column $i
+        FT($i)              All fields exclusive-until column $i
+        FM()                Index of rightmost column on this line
 
-    p'r rw{/^a/}'       Read all lines While /^a/ matches, then output them on a
-                        single row
-    p'r ru{/^a/}'       Read all lines Until /^a/ matches
-    p'r rw{1}'          Read all lines in the entire stream
-    p'a > 5 ? r a : ()' Write cell A for rows for which it's larger than 5
+        r(@values)          Write an output row of TSV @values, return ()
 
-    p'r F_(4, 5)'       Write fields 4 and 5 on a row -- same as p'r e, f'
-    p'F_(4, 5)'         Write fields 4 and 5 on separate lines
-    pF_                 Idiom to flatten each row vertically
+    MULTILINE FUNCTIONS
+        Note that these move the current-line context forward, so a() .. l()
+        will reflect the last-read line -- not the one you started with. It's
+        common to say 'my $x = a; ...' when reading ahead.
 
-    ::dict[...] \       Store a stream into the ::dict data closure...
-    p'^{%d = ab_ dict}  ...within a BEGIN block (^{}), parse cols A and B from
-                           ::dict into a hash
-      r a, $d{+a}'      ...for each row, write cell A and its hash association
+        reA() .. reL()      Read while Equivalent along A .. (A-L) -- returns a
+                            list of lines
+        a_(@ls) .. l_(@ls)  Extract one column of data from a list of lines
+        ab_(@ls) .. kl_()   Extract two columns of data with values interleaved
 
-    Many more examples in //help/ni_by_example_1 .. //help/ni_by_example_6.
+        rw{/foo/}           Read and return list of lines that satisfy /foo/
+        ru{/foo/}           Read and return list of lines until the next one
+                            satisfies /foo/
+
+        rl($n = 1)          Advance and return $n lines ahead of the current one
+        pl($n)              Peek and return $n lines ahead of the current one
+                            (does not update a() .. l())
+
+    UTILITY FUNCTIONS
+        Below is an incomplete list; use 'ni --inspect' and explore the
+        'core/pl' library for source definitions.
+
+        rf($filename)       Read file into string, return it
+        rfl($filename)      Read file into list of lines, return them
+        ri(my $var, "< $f") Read file $f into $var
+        ri(my $var, "ls |") Read output of "ls" into $var
+        wf($f, $contents)   Write string $contents into file $f
+        af($f, $contents)   Append string $contents to file $f
+
+        je($thing)          JSON-encode a value ($thing can be a ref)
+        jd($str)            JSON-decode a value into a Perl scalar
+
+        tpe($ts =~ /\d+/g)  Time pieces to epoch (YmdHMS ordering)
+        tep($e)             Time epoch to pieces (YmdHMS)
+        tef($e)             Time epoch to formatted
+
+        max(@values)        Returns maximum value under numeric comparison
+        min(@values)
+        maxstr(@values)     Returns maximum value under string comparison
+        minstr(@values)
+
+        any($f, @xs)        True iff $f->($x) for any $x in @xs
+        all($f, @xs)        True iff $f->($x) for all $x in @xs
+
+        argmax($f, @xs)     Returns $x from @xs maximizing $f->($x)
+        argmin($f, @xs)
+        indmax($f, @xs)     Returns $i from 0..$#xs maximizing $f->($xs[$i])
+        indmin($f, @xs)
+
+        sum(@values)        Math utils; see core/pl/math.pm in 'ni --inspect'
+        prod(@values)       for more definitions
+        mean(@values)
+        median(@values)
+        uniq(@values)
+        var(@values)        Variance
+        std(@values)        sqrt(var(@values))
+        clip($l, $u, @xs)   Returns @xs, but clips all values to range [$l, $u]
+
+    EXAMPLES
+        Many more examples in //help/ex2 .. //help/ex6.
+
+        p'a + b'            Add the first two columns of data
+        p'r "foo", a, 5'    For each input row, write (foo, a, 5) as output
+        p'length $_'        Return the length of each input line
+        p'r a + 1, FR 1'    Add 1 to column A, return all other columns
+                            unmodified
+
+        p'my @ls = rea;     Read all lines whose A-column value is the same...
+          sum(b_(@ls))'     ...and print the sum of that group's B column
+
+        p'r rw{/^a/}'       Read all lines While /^a/ matches, then output them
+                            on a single row
+        p'r ru{/^a/}'       Read all lines Until /^a/ matches
+        p'r rw{1}'          Read all lines in the entire stream
+        p'a > 5 ? r a : ()' Write cell A for rows for which it's larger than 5
+
+        p'r F_(4, 5)'       Write fields 4 and 5 on a row -- same as p'r e, f'
+        p'F_(4, 5)'         Write fields 4 and 5 on separate lines
+        pF_                 Idiom to flatten each row vertically
+
+        ::dict[...] \       Store a stream into the ::dict data closure...
+        p'^{%d = ab_ dict}  ...within a BEGIN block (^{}), parse cols A and B
+                               from ::dict into a hash
+          r a, $d{+a}'      ...for each row, write cell A and its hash
+                               association
 
 
 MATRIX TRANSFORMATION (ni //help/matrix)
