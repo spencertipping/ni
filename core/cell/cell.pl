@@ -271,6 +271,20 @@ defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
 
 
+defoperator col_windowed_average => q{
+  cell_eval {args  => '$wsize',
+             begin => 'my @ws = map [], @cols;
+                       my @t = map 0, @cols',
+             each  => 'push @{$ws[$_]}, $xs[$_];
+                       $t[$_] += $xs[$_];
+                       $t[$_] -= shift @{$ws[$_]} if @{$ws[$_]} > $wsize;
+                       $xs[$_] = $t[$_] / @{$ws[$_]}'}, @_;
+};
+
+defshort 'cell/aw', pmap q{col_windowed_average_op @$_},
+                         pseq cellspec_fixed, integer;
+
+
 # Grouped sum/average.
 # This is to save you the indignity of writing something like
 # "p'r a, sum b_ rea'", which is a common and keystroke-heavy thing to do.

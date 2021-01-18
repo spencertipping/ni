@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0117.1417
+2021.0118.2138
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -7347,7 +7347,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-331 core/cell/cell.pl
+345 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -7619,6 +7619,20 @@ defoperator col_average => q{
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
 defshort 'cell/s', pmap q{col_sum_op     $_}, cellspec_fixed;
 defshort 'cell/d', pmap q{col_delta_op   $_}, cellspec_fixed;
+
+
+defoperator col_windowed_average => q{
+  cell_eval {args  => '$wsize',
+             begin => 'my @ws = map [], @cols;
+                       my @t = map 0, @cols',
+             each  => 'push @{$ws[$_]}, $xs[$_];
+                       $t[$_] += $xs[$_];
+                       $t[$_] -= shift @{$ws[$_]} if @{$ws[$_]} > $wsize;
+                       $xs[$_] = $t[$_] / @{$ws[$_]}'}, @_;
+};
+
+defshort 'cell/aw', pmap q{col_windowed_average_op @$_},
+                         pseq cellspec_fixed, integer;
 
 
 # Grouped sum/average.
@@ -23112,7 +23126,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-485 doc/usage
+486 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23288,6 +23302,7 @@ CELLS (ni //help/cell)
     ,sAC            Calculate running sums of columns A and C
     ,d              Calculate delta of first column
     ,a              Calculate running average of first column
+    ,aw5            Calculate running 5-windowed average of first column
     ,q              Quantize cell values (round to nearest integer)
     ,qAB.05         Quantize cells in columns A and B to nearest 0.05
     ,l              Log-transform values in column A

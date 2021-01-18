@@ -275,6 +275,7 @@ CELLS (ni //help/cell)
     ,sAC            Calculate running sums of columns A and C
     ,d              Calculate delta of first column
     ,a              Calculate running average of first column
+    ,aw5            Calculate running 5-windowed average of first column
     ,q              Quantize cell values (round to nearest integer)
     ,qAB.05         Quantize cells in columns A and B to nearest 0.05
     ,l              Log-transform values in column A
