@@ -210,6 +210,7 @@ COLUMNS AND FIELDS (ni //help/col)
     fA-D            Select first four columns
     f^D             Copy fourth column to front (== ni fDABCD.)
     x               Swap first two columns, keep others (== ni fBA.)
+    xE              Swap first and fifth columns (== ni fEBCDA.)
 
     Columns can also be specified numerically: f#0,#1,#2 == fABC.
 
@@ -290,6 +291,10 @@ CELLS (ni //help/cell)
     ,sgC            Group rows with the same A, B, and C columns, then calculate
                     the sum of D-values for each group
                     (output is A, B, C, sum(D))
+
+    ,qgB4           Calculate quantiles for C values within each (A,B) group;
+                    "4" means you'll have min, 25%, 50%, 75%, max -- i.e.
+                    quartiles with bounds
 
     ,z              Dictionary-compress each distinct cell value to an integer
     ,Z              Count changes in the cell value
@@ -501,6 +506,8 @@ PERL STREAM CODE (ni //help/perl)
         var(@values)        Variance
         std(@values)        sqrt(var(@values))
         clip($l, $u, @xs)   Returns @xs, but clips all values to range [$l, $u]
+        linspace(a, b, n)   Returns N evenly spaced values spanning [a, b]
+
 
     EXAMPLES
         Many more examples in //help/ex2 .. //help/ex6.
@@ -535,6 +542,7 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     Y               Dense to sparse (each cell becomes row, col, val)
     X               Sparse to dense
     Z4              Reflow cells to be 4-wide on each row
+    ZB              Flatten (a, b, c, d, e) into (a,b,c), (a,b,d), (a,b,e)
 
     N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as
                     Python code to transform matrix, write resulting matrix to

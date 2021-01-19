@@ -143,4 +143,11 @@ sub clip {
             : min $upper, max $lower, $xs[0];
 }
 
-
+# Array element fetch, with interpolation for non-integer indexes
+sub aget_interp(\@$)
+{
+  my ($xs, $i) = @_;
+  $i = clip(0, $#$xs, $i);
+  my $l = clip(0, $#$xs - 1, int $i);
+  interp($i - $l, $$xs[$l], $$xs[$l + 1]);
+}

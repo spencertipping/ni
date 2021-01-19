@@ -94,7 +94,6 @@ sub distance_to_line($$$) {
   my ($a, $l, $p) = @_;
   my @n = vec_diff($a, $l);
   my @d = vec_diff($a, $p);
-  
   l2norm orth(\@d, \@n);
 }
 

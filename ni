@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0118.2138
+2021.0119.1347
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -5291,7 +5291,7 @@ sub el(&$)
   open my $fh, $f or die "el $f: $!";
   while (<$fh>) { chomp; &$fn(split /\t/) }
 }
-145 core/pl/array.pm
+153 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -5437,6 +5437,14 @@ sub clip {
             : min $upper, max $lower, $xs[0];
 }
 
+# Array element fetch, with interpolation for non-integer indexes
+sub aget_interp(\@$)
+{
+  my ($xs, $i) = @_;
+  $i = clip(0, $#$xs, $i);
+  my $l = clip(0, $#$xs - 1, int $i);
+  interp($i - $l, $$xs[$l], $$xs[$l + 1]);
+}
 56 core/pl/json.pm
 # JSON utils 
 
@@ -5755,7 +5763,7 @@ BEGIN {
   *hdmv = \&hdfs_mv;
   *yak = \&yarn_application_kill;
 }
-184 core/pl/math.pm
+183 core/pl/math.pm
 # Math utility functions.
 # Mostly geometric and statistical stuff.
 
@@ -5852,7 +5860,6 @@ sub distance_to_line($$$) {
   my ($a, $l, $p) = @_;
   my @n = vec_diff($a, $l);
   my @d = vec_diff($a, $p);
-  
   l2norm orth(\@d, \@n);
 }
 
@@ -7347,7 +7354,7 @@ sub murmurhash3($;$) {
   $h  = ($h ^ $h >> 13) * 0xc2b2ae35 & 0xffffffff;
   return $h ^ $h >> 16;
 }
-345 core/cell/cell.pl
+372 core/cell/cell.pl
 # Cell-level operators.
 # Cell-specific transformations that are often much shorter than the equivalent
 # Perl code. They're also optimized for performance.
@@ -7645,6 +7652,13 @@ defshort 'cell/aw', pmap q{col_windowed_average_op @$_},
 # which you would never use immediately after a non-colspec ,s or ,a -- so this
 # will never collide in practice.
 
+# TODO: these should really be their own thing, not cell operators.
+# We should define a "group reduction context" or something where we can say
+# things like "within groups of AB, average C, sum D, and compute quantiles for
+# C and E."
+
+# (minor) FIXME: these will fail starting with ,agL and ,sgL because perl
+# contexts don't define m() as a field accessor.
 defshort 'cell/ag', pmap
   q{
     my $col  = $_;
@@ -7665,6 +7679,26 @@ defshort 'cell/sg', pmap
     my $next = ("a".."z")[$col + 1];
     perl_mapper_op "r F_($fs), $se { \$_[0] + $next } 0";
   }, colspec1;
+
+
+# Group quantiles.
+# Takes the numbers within each group and reduces them to the specified number
+# of quantiles. For example, ,qgB4 would produce min + three quartiles + max for
+# the C column of (a, b)-delimited groups.
+#
+# Quantiles are linearly interpolated if the group isn't evenly divisible.
+
+defshort 'cell/qg', pmap
+  q{
+    my ($col, $n) = @$_;
+    my $fs        = "0..$col";
+    my $re        = "re" . ("A".."Z")[$col];
+    my $f         = ("a".."z")[$col + 1];
+    perl_mapper_op "
+      my \@fs = F_($fs);
+      my \@xs = sort { \$a <=> \$b } ${f}_($re);
+      r \@fs, map aget_interp(\@xs, \$_), linspace(0, \$#xs, $n + 1)";
+  }, pseq colspec1, integer;
 
 
 # Time conversions.
@@ -23126,7 +23160,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-486 doc/usage
+494 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23237,6 +23271,7 @@ COLUMNS AND FIELDS (ni //help/col)
     fA-D            Select first four columns
     f^D             Copy fourth column to front (== ni fDABCD.)
     x               Swap first two columns, keep others (== ni fBA.)
+    xE              Swap first and fifth columns (== ni fEBCDA.)
 
     Columns can also be specified numerically: f#0,#1,#2 == fABC.
 
@@ -23317,6 +23352,10 @@ CELLS (ni //help/cell)
     ,sgC            Group rows with the same A, B, and C columns, then calculate
                     the sum of D-values for each group
                     (output is A, B, C, sum(D))
+
+    ,qgB4           Calculate quantiles for C values within each (A,B) group;
+                    "4" means you'll have min, 25%, 50%, 75%, max -- i.e.
+                    quartiles with bounds
 
     ,z              Dictionary-compress each distinct cell value to an integer
     ,Z              Count changes in the cell value
@@ -23528,6 +23567,8 @@ PERL STREAM CODE (ni //help/perl)
         var(@values)        Variance
         std(@values)        sqrt(var(@values))
         clip($l, $u, @xs)   Returns @xs, but clips all values to range [$l, $u]
+        linspace(a, b, n)   Returns N evenly spaced values spanning [a, b]
+
 
     EXAMPLES
         Many more examples in //help/ex2 .. //help/ex6.
@@ -23562,6 +23603,7 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     Y               Dense to sparse (each cell becomes row, col, val)
     X               Sparse to dense
     Z4              Reflow cells to be 4-wide on each row
+    ZB              Flatten (a, b, c, d, e) into (a,b,c), (a,b,d), (a,b,e)
 
     N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as
                     Python code to transform matrix, write resulting matrix to
