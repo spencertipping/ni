@@ -173,6 +173,7 @@ CELLS (ni //help/cell)
     ,s              Calculate running sum of cells in column A
     ,sAC            Calculate running sums of columns A and C
     ,d              Calculate delta of first column
+    ,0              Column -= first value (offset to set first value to zero)
     ,a              Calculate running average of first column
     ,aw5            Calculate running 5-windowed average of first column
     ,q              Quantize cell values (round to nearest integer)

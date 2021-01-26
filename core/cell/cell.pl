@@ -285,6 +285,16 @@ defshort 'cell/aw', pmap q{col_windowed_average_op @$_},
                          pseq cellspec_fixed, integer;
 
 
+defoperator start_at_zero => q{
+  cell_eval {args  => 'undef',
+             begin => 'my $x0 = undef',
+             each  =>
+               'defined($x0) ? $xs[$_] -= $x0 : ($xs[$_] -= ($x0 = $xs[$_]))'}, @_;
+};
+
+defshort 'cell/0', pmap q{start_at_zero_op $_}, cellspec_fixed;
+
+
 # Grouped sum/average.
 # This is to save you the indignity of writing something like
 # "p'r a, sum b_ rea'", which is a common and keystroke-heavy thing to do.
