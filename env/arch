@@ -1,10 +1,8 @@
 FROM archlinux/base
 RUN pacman -Sy
 RUN pacman -S --noconfirm \
-      sqlite sbcl lzop grep ruby python3 python-numpy openbsd-netcat gcc
+      sqlite sbcl lzop grep ruby python3 python-numpy openbsd-netcat gcc docker
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite
-ENV SKIP_DOCKER=yes
-ENV NI_COL_DISALLOW_CUT=1
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data

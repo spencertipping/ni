@@ -33,7 +33,7 @@ A common use case is for something like NumPy:
 $ docker build -q -t ni-test/numpy - <<EOF > /dev/null
 FROM ubuntu
 RUN apt-get update
-RUN apt-get install -y python-numpy
+RUN apt-get install -y python3-numpy
 CMD /bin/bash
 EOF
 $ ni n100 Cni-test/numpy[N'x = x + 1'] r4
@@ -50,12 +50,12 @@ first place. To get around this, ni lets you define image generators and
 includes predefined ones for Ubuntu and Alpine:
 
 ```bash
-$ ni n100 CU+python-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
+$ ni n100 CU+python3-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
 3
 4
 5
 6
-$ ni n100 CA+py-numpy@community+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
+$ ni n100 CA+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 3
 4
 5

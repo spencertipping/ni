@@ -10,12 +10,8 @@ centos-8:
   image: spencertipping/ni-env-dev-centos-8
   script:
     - ./test --ci
-debian-wheezy:
-  image: spencertipping/ni-env-dev-debian-wheezy
-  script:
-    - ./test --ci
-ubuntu-12.04:
-  image: spencertipping/ni-env-dev-ubuntu-12.04
+debian-stretch:
+  image: spencertipping/ni-env-dev-debian-stretch
   script:
     - ./test --ci
 ubuntu-14.04:

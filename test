@@ -4,8 +4,7 @@ cd $(dirname $0)
 envs=( arch
        alpine
        centos-8
-       debian-wheezy
-       ubuntu-12.04
+       debian-stretch
        ubuntu-14.04
        ubuntu-16.04
        ubuntu-18.04
@@ -79,7 +78,7 @@ case $c in
     echo
     echo "BUILDING $e"
     echo
-    docker build -f env/$e -t spencertipping/ni-env-dev-$e .
+    docker build -f env/$e -t spencertipping/ni-env-dev-$e . || exit $?
     docker push spencertipping/ni-env-dev-$e
   done
   ;;
@@ -133,7 +132,7 @@ case $c in
     echo
     echo "TESTING $e"
     echo
-    tests | docker run $docker_opts --name ni-test $(image $e) /bin/bash
+    docker run $docker_opts --name ni-test $(image $e) /data/test --ci
     echo
   done 2>test.log
   ;;

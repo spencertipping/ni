@@ -4284,7 +4284,7 @@ bin	x	2	2	bin	/bin	/bin/sh
 LAZYTEST_EOF
 lazytest_file='doc/python.md'
 lazytest_line=57
-lazytest_case 'ni /etc/passwd F::r3y'\''F[0:3]'\''
+lazytest_case 'ni /etc/passwd F::r3y'\''F[0:4]'\''
 ' 3<<'LAZYTEST_EOF'
 root	x	0	0
 daemon	x	1	1
@@ -4292,7 +4292,7 @@ bin	x	2	2
 LAZYTEST_EOF
 lazytest_file='doc/python.md'
 lazytest_line=61
-lazytest_case 'ni /etc/passwd F::r3y'\''F[1:3]'\''
+lazytest_case 'ni /etc/passwd F::r3y'\''F[1:4]'\''
 ' 3<<'LAZYTEST_EOF'
 x	0	0
 x	1	1
