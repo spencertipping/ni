@@ -6,20 +6,20 @@ notifications:
 before_install:
 - docker pull spencertipping/ni-env-dev-arch
 - docker pull spencertipping/ni-env-dev-alpine
-- docker pull spencertipping/ni-env-dev-centos-6
+- docker pull spencertipping/ni-env-dev-centos-8
 - docker pull spencertipping/ni-env-dev-debian-wheezy
 - docker pull spencertipping/ni-env-dev-ubuntu-12.04
 - docker pull spencertipping/ni-env-dev-ubuntu-14.04
 - docker pull spencertipping/ni-env-dev-ubuntu-16.04
-- docker pull spencertipping/ni-env-dev-ubuntu-16.04-p3
 - docker pull spencertipping/ni-env-dev-ubuntu-18.04
+- docker pull spencertipping/ni-env-dev-ubuntu-20.04
 script:
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-arch ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-alpine ./test --travis
-- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-centos-6 ./test --travis
+- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-centos-8 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-debian-wheezy ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-12.04 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-14.04 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-16.04 ./test --travis
-- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-16.04-p3 ./test --travis
 - docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-18.04 ./test --travis
+- docker run --rm -it -v $PWD:/data -v /var/run/docker.sock:/var/run/docker.sock spencertipping/ni-env-dev-ubuntu-20.04 ./test --travis

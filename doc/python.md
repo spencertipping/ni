@@ -54,15 +54,15 @@ $ ni /etc/passwd F::r3
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 bin	x	2	2	bin	/bin	/bin/sh
-$ ni /etc/passwd F::r3y'r *F[0:3]'
+$ ni /etc/passwd F::r3y'F[0:4]'
 root	x	0	0
 daemon	x	1	1
 bin	x	2	2
-$ ni /etc/passwd F::r3y'r *F[1:3]'
+$ ni /etc/passwd F::r3y'F[1:4]'
 x	0	0
 x	1	1
 x	2	2
-$ ni /etc/passwd F::r3y'r len(F)'       # number of fields
+$ ni /etc/passwd F::r3y'len(F)'         # number of fields
 7
 7
 7

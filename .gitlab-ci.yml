@@ -6,8 +6,8 @@ alpine:
   image: spencertipping/ni-env-dev-alpine
   script:
     - ./test --ci
-centos-6:
-  image: spencertipping/ni-env-dev-centos-6
+centos-8:
+  image: spencertipping/ni-env-dev-centos-8
   script:
     - ./test --ci
 debian-wheezy:
@@ -26,11 +26,11 @@ ubuntu-16.04:
   image: spencertipping/ni-env-dev-ubuntu-16.04
   script:
     - ./test --ci
-ubuntu-16.04-p3:
-  image: spencertipping/ni-env-dev-ubuntu-16.04-p3
-  script:
-    - ./test --ci
 ubuntu-18.04:
   image: spencertipping/ni-env-dev-ubuntu-18.04
+  script:
+    - ./test --ci
+ubuntu-20.04:
+  image: spencertipping/ni-env-dev-ubuntu-20.04
   script:
     - ./test --ci

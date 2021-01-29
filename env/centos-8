@@ -1,7 +1,7 @@
-FROM centos:6
+FROM centos:8
 RUN yum install -y sqlite perl curl bzip2 xz epel-release-6-8 gcc
 RUN yum install -y sbcl lzop lz4 strace ruby
-RUN yum install -y numpy
+RUN yum install -y python3-numpy
 RUN yum install -y nc
 RUN yum install -y lxc-docker
 RUN ln /usr/bin/sqlite3 /usr/bin/sqlite

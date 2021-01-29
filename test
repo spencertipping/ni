@@ -3,13 +3,13 @@ cd $(dirname $0)
 
 envs=( arch
        alpine
-       centos-6
+       centos-8
        debian-wheezy
        ubuntu-12.04
        ubuntu-14.04
        ubuntu-16.04
-       ubuntu-16.04-p3
-       ubuntu-18.04 )
+       ubuntu-18.04
+       ubuntu-20.04 )
 
 markdowns=( $(ls doc | sed 's/.md$//' ) )
 
@@ -65,7 +65,7 @@ build_ni_stuff() {
 tests() { rm -f .test-cancel; echo 'cp /data/ni /usr/bin/; bash /data/dev/tests.sh'; }
 image() { echo spencertipping/ni-env-dev-$1; }
 
-default_image=ubuntu-16.04
+default_image=ubuntu-20.04
 
 docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
@@ -111,18 +111,7 @@ case $c in
   docker rm -f ni-test ni-test-hadoop
   ;;
 
---travis)
-  cp dev/tests.sh /tmp/
-  cp ni /usr/bin/
-
-  /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
-                     ni::modify_self' > /dev/null
-
-  export SKIP_DOCKER=yes                # FIXME when possible
-  bash /tmp/tests.sh || exit 1
-  ;;
-
---ci)
+--travis|--ci)
   cp dev/tests.sh /tmp/
   cp ni /usr/bin/
 

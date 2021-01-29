@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0129.1647
+2021.0129.1842
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9281,7 +9281,7 @@ defshort '/b',
     p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl
-198 core/matrix/matrix.pl
+207 core/matrix/matrix.pl
 # Matrix conversions.
 # Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 # dense inverts that. You can specify where the matrix data begins using a column
@@ -9435,11 +9435,19 @@ use constant numpy_gen => gen pydent q{
     stdout.write(x.astype("d").tostring())
     stdout.flush()};
 
+sub numpy_python_code($) { numpy_gen->(body => indent shift, 2) }
+
+BEGIN
+{
+  defparseralias python_numpy_code => pycode \&numpy_python_code;
+}
+
+# TODO: convert this to use returnify convention (see core/python)
 defoperator numpy_dense => q{
   my ($col, $f) = @_;
   $col ||= 0;
   my ($i, $o) = sioproc {
-    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+    exec conf('python3'), '-c', numpy_python_code $f
       or die "ni: failed to execute python: $!"};
 
   my @q;
@@ -9479,7 +9487,8 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode_identity;
+defshort '/N', pmap q{numpy_dense_op @$_},
+               pseq popt colspec1, python_numpy_code;
 1 core/gnuplot/lib
 gnuplot.pl
 124 core/gnuplot/gnuplot.pl
@@ -21978,15 +21987,15 @@ $ ni /etc/passwd F::r3
 root	x	0	0	root	/root	/bin/bash
 daemon	x	1	1	daemon	/usr/sbin	/bin/sh
 bin	x	2	2	bin	/bin	/bin/sh
-$ ni /etc/passwd F::r3y'r *F[0:3]'
+$ ni /etc/passwd F::r3y'F[0:3]'
 root	x	0	0
 daemon	x	1	1
 bin	x	2	2
-$ ni /etc/passwd F::r3y'r *F[1:3]'
+$ ni /etc/passwd F::r3y'F[1:3]'
 x	0	0
 x	1	1
 x	2	2
-$ ni /etc/passwd F::r3y'r len(F)'       # number of fields
+$ ni /etc/passwd F::r3y'len(F)'         # number of fields
 7
 7
 7

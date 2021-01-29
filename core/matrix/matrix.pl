@@ -151,11 +151,19 @@ use constant numpy_gen => gen pydent q{
     stdout.write(x.astype("d").tostring())
     stdout.flush()};
 
+sub numpy_python_code($) { numpy_gen->(body => indent shift, 2) }
+
+BEGIN
+{
+  defparseralias python_numpy_code => pycode \&numpy_python_code;
+}
+
+# TODO: convert this to use returnify convention (see core/python)
 defoperator numpy_dense => q{
   my ($col, $f) = @_;
   $col ||= 0;
   my ($i, $o) = sioproc {
-    exec 'python', '-c', numpy_gen->(body => indent $f, 2)
+    exec conf('python3'), '-c', numpy_python_code $f
       or die "ni: failed to execute python: $!"};
 
   my @q;
@@ -195,4 +203,5 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode_identity;
+defshort '/N', pmap q{numpy_dense_op @$_},
+               pseq popt colspec1, python_numpy_code;
