@@ -113,8 +113,18 @@ use constant py_mapgen => gen pydent q{
   stdin = os.fdopen(3, 'r')
   %prefix
   %closures
-  def row():
+  class py_mapper:
+    def __init__(self):
+      self.first = True
+    def is_first(self):
+      if self.first:
+        self.first = False
+        return True
+      else:
+        return False
+    def row(self):
   %body
+  each = py_mapper()
   while rl() is not None:
   %each
 };
@@ -133,14 +143,16 @@ sub defpythonprefix($)
 
 sub python_prefix() { join "\n", @ni::self{@python_prefix_keys} }
 
+sub python_expand_begin($) { sr $_[0], qr/^\s*\^:/, 'if self.is_first():' }
+
 sub python_code($$) {py_mapgen->(prefix   => python_prefix,
                                  closures => '# TODO: dataclosures',
-                                 body     => indent($_[0], 2),
+                                 body     => indent($_[0], 4),
                                  each     => indent($_[1], 2))}
 
 sub python_mapper($)
-{ python_code $_[0], pydent
-  q{row_out = row()
+{ python_code python_expand_begin $_[0], pydent
+  q{row_out = each.row()
     if type(row_out) is list:
       print("\t".join((str(s) for s in row_out)))
     elif row_out is not None:
@@ -148,8 +160,8 @@ sub python_mapper($)
     } }
 
 sub python_grepper($)
-{ python_code $_[0], pydent
-  q{if row():
+{ python_code python_expand_begin $_[0], pydent
+  q{if each.row():
       print(_)
     } }
 

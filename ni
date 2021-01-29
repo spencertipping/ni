@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0129.1440
+2021.0129.1647
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8933,7 +8933,7 @@ defshort '/Q',
 2 core/python/lib
 stream.py
 python.pl
-27 core/python/stream.py
+30 core/python/stream.py
 # ni python stream driver.
 # See core/pl/stream.pm for definitions.
 
@@ -8943,25 +8943,28 @@ a, b, c, d, e, f, g, h, i, j, k, l = (None,) * 12
 F = []
 FM = -1
 _ = None
+line = 0
 
 def r(*fs):
   print('\t'.join([re.sub('\n', '', str(s)) for s in fs]))
 
 def rl():
   # TODO: add multiline support
-  global a, b, c, d, e, f, g, h, i, j, k, l, _, F, FM
+  global a, b, c, d, e, f, g, h, i, j, k, l, _, F, FM, line
   try:
     _ = next(stdin)
     if _[-1] == '\n':
       _ = _[0:-1]
+    line += 1
   except StopIteration:
     _ = None
+    line = None
 
   F = re.split('\t', _ or '')
   a, b, c, d, e, f, g, h, i, j, k, l, *_F = F + [None] * max(0, 12 - len(F))
   FM = len(F) - 1
   return _
-170 core/python/python.pl
+182 core/python/python.pl
 # Python stuff.
 # A context for processing stuff in Python, as well as various functions to
 # handle the peculiarities of Python code.
@@ -9077,8 +9080,18 @@ use constant py_mapgen => gen pydent q{
   stdin = os.fdopen(3, 'r')
   %prefix
   %closures
-  def row():
+  class py_mapper:
+    def __init__(self):
+      self.first = True
+    def is_first(self):
+      if self.first:
+        self.first = False
+        return True
+      else:
+        return False
+    def row(self):
   %body
+  each = py_mapper()
   while rl() is not None:
   %each
 };
@@ -9097,14 +9110,16 @@ sub defpythonprefix($)
 
 sub python_prefix() { join "\n", @ni::self{@python_prefix_keys} }
 
+sub python_expand_begin($) { sr $_[0], qr/^\s*\^:/, 'if self.is_first():' }
+
 sub python_code($$) {py_mapgen->(prefix   => python_prefix,
                                  closures => '# TODO: dataclosures',
-                                 body     => indent($_[0], 2),
+                                 body     => indent($_[0], 4),
                                  each     => indent($_[1], 2))}
 
 sub python_mapper($)
-{ python_code $_[0], pydent
-  q{row_out = row()
+{ python_code python_expand_begin $_[0], pydent
+  q{row_out = each.row()
     if type(row_out) is list:
       print("\t".join((str(s) for s in row_out)))
     elif row_out is not None:
@@ -9112,8 +9127,8 @@ sub python_mapper($)
     } }
 
 sub python_grepper($)
-{ python_code $_[0], pydent
-  q{if row():
+{ python_code python_expand_begin $_[0], pydent
+  q{if each.row():
       print(_)
     } }
 
@@ -21906,7 +21921,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
-90 doc/python.md
+108 doc/python.md
 # Python interface
 ni provides the `y` operator to execute a Python line processor on the current
 data stream. For example:
@@ -21997,6 +22012,24 @@ $ ni n3 y'for i in range(int(a)):
 1
 2
 ```
+
+
+## `^:`: setup blocks
+You can designate some code to be run once before the first input line, as
+opposed to for every input line in the stream. This is a setup block, written
+at the beginning of a Python code argument as `^:`:
+
+```bash
+$ ni n3y'^:
+           self.x = 10
+         self.x += 1
+         r(self.x)'
+11
+12
+13
+```
+
+Note that variables must be stored on `self` to live beyond a single iteration.
 348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which

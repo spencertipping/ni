@@ -70,6 +70,10 @@ export NI_NO_HOME=yes           # IMPORTANT
 
 # ./ni --dev/doc-check
 
+./ni README.md rp'1../^##.*help\/usage/' \
+     +[i'```' doc/usage i'```'] > README.md.gen
+mv README.md.gen README.md
+
 ./test --update
 
 if [[ `./ni //ni` != "$(< ni)" ]]; then

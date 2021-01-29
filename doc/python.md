@@ -88,3 +88,21 @@ $ ni n3 y'for i in range(int(a)):
 1
 2
 ```
+
+
+## `^:`: setup blocks
+You can designate some code to be run once before the first input line, as
+opposed to for every input line in the stream. This is a setup block, written
+at the beginning of a Python code argument as `^:`:
+
+```bash
+$ ni n3y'^:
+           self.x = 10
+         self.x += 1
+         r(self.x)'
+11
+12
+13
+```
+
+Note that variables must be stored on `self` to live beyond a single iteration.

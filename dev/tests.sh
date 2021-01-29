@@ -4327,6 +4327,17 @@ lazytest_case 'ni n3 y'\''for i in range(int(a)):
 1
 2
 LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=99
+lazytest_case 'ni n3y'\''^:
+           self.x = 10
+         self.x += 1
+         r(self.x)'\''
+' 3<<'LAZYTEST_EOF'
+11
+12
+13
+LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=19
 lazytest_case 'ni n10r3                      # take first 3
