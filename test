@@ -1,5 +1,5 @@
 #!/bin/bash
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
 envs=( arch
        alpine
@@ -39,9 +39,6 @@ generate_travis_ci() {
   done
 }
 
-generate_gitlab_ci > .gitlab-ci.yml
-generate_travis_ci > .travis.yml
-
 if [[ $1 == '-o' ]] || [[ $1 == '--only' ]]; then
   test_set=$2
   shift 2
@@ -61,14 +58,22 @@ build_ni_stuff() {
   build_tests
 }
 
-tests() { rm -f .test-cancel; echo 'cp /data/ni /usr/bin/; bash /data/dev/tests.sh'; }
 image() { echo spencertipping/ni-env-dev-$1; }
+
+test_in_docker() {
+  cp /data/ni /usr/bin/
+  cp dev/tests.sh /tmp/
+  /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
+                     ni::modify_self' >/dev/null
+  cd /tmp
+  bash /tmp/tests.sh
+}
 
 default_image=ubuntu-20.04
 
 docker_dind="-v /var/run/docker.sock:/var/run/docker.sock --privileged"
 docker_magic="--security-opt=seccomp=unconfined"
-docker_opts="$docker_magic $docker_dind -i -m 256M --rm -v $PWD:/data:ro"
+docker_opts="$docker_magic $docker_dind -m 256M --rm -v $PWD:/data:ro"
 
 c=$1
 shift
@@ -92,7 +97,9 @@ case $c in
 -q|--quick)
   echo "NOTE: standard error is redirected into test.log"
   build_ni_stuff
-  tests | docker run $docker_opts --name ni-test $(image ${1:-$default_image}) /bin/bash 2>test.log
+  rm -f .test-cancel
+  docker run $docker_opts --name ni-test $(image ${1:-$default_image}) \
+         /data/test --ci 2>test.log
   ;;
 
 -r|--repl)
@@ -111,19 +118,14 @@ case $c in
   ;;
 
 --travis|--ci)
-  cp dev/tests.sh /tmp/
-  cp ni /usr/bin/
-
-  /usr/bin/ni --run '$ni::self{license} = ni::rfc "dev/license-for-testing";
-                     ni::modify_self' > /dev/null
-
-  export SKIP_DOCKER=yes                # FIXME when possible
-  bash /tmp/tests.sh || exit 1
+  test_in_docker || exit $?
   ;;
 
 --full)
   echo "NOTE: standard error is redirected into test.log"
   build_ni_stuff
+  rm -f .test-cancel
+
   for e in ${envs[@]}; do
     if [[ -e .test-cancel ]]; then
       rm .test-cancel
@@ -139,5 +141,7 @@ case $c in
 
 --update|*)
   build_tests
+  generate_gitlab_ci > .gitlab-ci.yml
+  generate_travis_ci > .travis.yml
   ;;
 esac

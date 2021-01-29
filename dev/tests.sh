@@ -797,7 +797,7 @@ lazytest_line=33
 lazytest_case 'docker build -q -t ni-test/numpy - <<EOF > /dev/null
 FROM ubuntu
 RUN apt-get update
-RUN apt-get install -y python-numpy
+RUN apt-get install -y python3-numpy
 CMD /bin/bash
 EOF
 ' 3<<'LAZYTEST_EOF'
@@ -813,7 +813,7 @@ lazytest_case 'ni n100 Cni-test/numpy[N'\''x = x + 1'\''] r4
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
 lazytest_line=53
-lazytest_case 'ni n100 CU+python-numpy+sbcl[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
+lazytest_case 'ni n100 CU+python3-numpy+sbcl[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
 ' 3<<'LAZYTEST_EOF'
 3
 4
@@ -822,7 +822,7 @@ lazytest_case 'ni n100 CU+python-numpy+sbcl[N'\''x = x + 1'\'' l'\''(1+ a)'\''] 
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
 lazytest_line=58
-lazytest_case 'ni n100 CA+py-numpy@community+sbcl@testing[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
+lazytest_case 'ni n100 CA+py3-numpy+sbcl@testing[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
 ' 3<<'LAZYTEST_EOF'
 3
 4
