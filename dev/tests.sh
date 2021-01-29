@@ -4237,6 +4237,96 @@ LAZYTEST_EOF
 fi              # $SKIP_DOCKER
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=6
+lazytest_case 'ni n5y'\''int(a) * int(a)'\''                 # square some numbers
+' 3<<'LAZYTEST_EOF'
+1
+4
+9
+16
+25
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=18
+lazytest_case 'ni ::pyfoo[n4p'\''int(a)*int(a)'\''] //:pyfoo
+' 3<<'LAZYTEST_EOF'
+1
+4
+9
+16
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=32
+lazytest_case 'ni n4y'\''r(a, int(a) + 1)'\''                        # generate two columns
+' 3<<'LAZYTEST_EOF'
+1	2
+2	3
+3	4
+4	5
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=37
+lazytest_case 'ni n4y'\''r(a, int(a) + 1)'\'' y'\''r(int(a) + int(b))'\''  # ... and sum them
+' 3<<'LAZYTEST_EOF'
+3
+5
+7
+9
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=53
+lazytest_case 'ni /etc/passwd F::r3
+' 3<<'LAZYTEST_EOF'
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+bin	x	2	2	bin	/bin	/bin/sh
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=57
+lazytest_case 'ni /etc/passwd F::r3y'\''r *F[0:3]'\''
+' 3<<'LAZYTEST_EOF'
+root	x	0	0
+daemon	x	1	1
+bin	x	2	2
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=61
+lazytest_case 'ni /etc/passwd F::r3y'\''r *F[1:3]'\''
+' 3<<'LAZYTEST_EOF'
+x	0	0
+x	1	1
+x	2	2
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=65
+lazytest_case 'ni /etc/passwd F::r3y'\''r len(F)'\''       # number of fields
+' 3<<'LAZYTEST_EOF'
+7
+7
+7
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=77
+lazytest_case 'ni n3 y'\''x = int(a)
+          r(x, x + 1)'\''
+' 3<<'LAZYTEST_EOF'
+1	2
+2	3
+3	4
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=82
+lazytest_case 'ni n3 y'\''for i in range(int(a)):
+            r(i)'\''
+' 3<<'LAZYTEST_EOF'
+0
+0
+1
+0
+1
+2
+LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=19
 lazytest_case 'ni n10r3                      # take first 3

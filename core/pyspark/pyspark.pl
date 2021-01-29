@@ -19,7 +19,7 @@ sub pyspark_create_lambda($) {$_[0]}
 
 BEGIN {defcontext 'pyspark', q{PySpark compilation context}}
 BEGIN {
-  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode_identity;
   defparseralias pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
 }
 

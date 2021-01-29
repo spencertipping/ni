@@ -195,4 +195,4 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
+defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode_identity;

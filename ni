@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0126.1549
+2021.0129.1440
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -5951,9 +5951,9 @@ if (eval {require Math::Trig}) {
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
-# | $ ni n10p'a + a'             # emit single value
-#   $ ni n10p'a, a * a'          # emit multiple values vertically
-#   $ ni n10p'r a, a * a'        # emit multiple values horizontally
+# $ ni n10p'a + a'             # emit single value
+# $ ni n10p'a, a * a'          # emit multiple values vertically
+# $ ni n10p'r a, a * a'        # emit multiple values horizontally
 
 # Lowercase letters followed by underscores are field-extractors that can take an
 # array of lines and return an array of field values. These are useful in
@@ -6896,7 +6896,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-210 core/pl/pl.pl
+216 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -6966,6 +6966,12 @@ EOF
 # Defines the `p` operator, which can be modified in a few different ways to do
 # different things. By default it functions as a one-in, many-out row
 # transformer.
+#
+# If you're wondering what's up with FD 3, the deal is that we send the code
+# into perl on stdin to avoid argv length limitations in the presence of large
+# dataclosures. Although perl allows us to use __DATA__ to mix code and data in
+# the same stream, that prevents us from reading anything within a BEGIN block.
+# So we send data in on fd 3.
 
 use constant perl_mapgen => gen q{
   package ni::pl;
@@ -8924,9 +8930,38 @@ defoperator sql_preview => q{sio; print "$_[0]\n"};
 defshort '/Q',
   defdsp 'sqlprofile', 'dispatch for SQL profiles',
     'dev/compile' => pmap q{sql_preview_op($_[0])}, sql_query;
-1 core/python/lib
+2 core/python/lib
+stream.py
 python.pl
-41 core/python/python.pl
+27 core/python/stream.py
+# ni python stream driver.
+# See core/pl/stream.pm for definitions.
+
+import re
+
+a, b, c, d, e, f, g, h, i, j, k, l = (None,) * 12
+F = []
+FM = -1
+_ = None
+
+def r(*fs):
+  print('\t'.join([re.sub('\n', '', str(s)) for s in fs]))
+
+def rl():
+  # TODO: add multiline support
+  global a, b, c, d, e, f, g, h, i, j, k, l, _, F, FM
+  try:
+    _ = next(stdin)
+    if _[-1] == '\n':
+      _ = _[0:-1]
+  except StopIteration:
+    _ = None
+
+  F = re.split('\t', _ or '')
+  a, b, c, d, e, f, g, h, i, j, k, l, *_F = F + [None] * max(0, 12 - len(F))
+  FM = len(F) - 1
+  return _
+170 core/python/python.pl
 # Python stuff.
 # A context for processing stuff in Python, as well as various functions to
 # handle the peculiarities of Python code.
@@ -8936,16 +8971,23 @@ python.pl
 # you've got a multiline quotation and the first line appears outdented because
 # the quote opener has taken up space:
 
-# | my $python_code = q{import numpy as np
-#                       print np};
-#   # -----------------| <- this indentation is misleading
+# my $python_code = q{import numpy as np
+#                     print np};
+# # -----------------| <- this indentation is misleading
 
 # In this case, we want to have the second line indented at zero, not at the
 # apparent indentation. The pydent function does this transformation for you, and
 # correctly handles Python block constructs:
 
-# | my $python_code = pydent q{if True:
-#                                print "well that's good"};
+# my $python_code = pydent q{if True:
+#                              print "well that's good"};
+
+use POSIX ();
+
+BEGIN
+{
+  defconfenv 'python3', NI_PYTHON3 => 'python3';
+}
 
 sub pydent($) {
   my @lines   = split /\n/, $_[0];
@@ -8962,12 +9004,134 @@ sub pydent($) {
 
 sub pyquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
 
-# Python code parse element.
-# Counts brackets, excluding those inside quoted strings. This is more efficient
-# and less accurate than Ruby/Perl, but the upside is that errors are not
-# particularly common.
 
-defparseralias pycode => pmap q{pydent $_}, generic_code;
+sub stdin_to_python($)
+{
+  eval {cdup2 0, 3; POSIX::close 0};
+  die "ni: python driver failed to move FD 0 to 3 ($!)\n"
+    . "    this usually means you're running in a context with no STDIN"
+  if $@;
+  my $fh = siproc {exec conf('python3'), '-'};
+  safewrite $fh, $_[0];
+  close $fh;
+  $fh->await;
+}
+
+
+# Python code parse element.
+# Uses the same logic that the perl driver does to ask the python interpreter
+# about brackets.
+#
+# We also detect expressions and replace them with return statements if this is
+# syntactically valid; that is, if 'x' can be replaced with 'return (x)'.
+
+use constant py_check =>
+  conf('python3') . q{ -c 'import ast; import sys; ast.parse(sys.stdin.read())'};
+
+sub py_returnify($$)
+{
+  my ($transform, $code) = @_;
+
+  # TODO: we need a way to bypass this check
+
+  my $returned = "return ($code)";
+  syntax_check(py_check, &$transform($returned)) ? $code : $returned;
+}
+
+BEGIN
+{
+defparser 'pycode', '$', q{
+  my ($self, $code, @xs) = @_;
+  return py_returnify($$self[1], $_[1]), '', @_[2..$#_] unless $code =~ /\]$/;
+
+  my $codegen = $$self[1];
+  my $status  = 0;
+  my $x       = '';
+
+  $x .= ']' while $status = syntax_check py_check, &$codegen($code)
+                  and $code =~ s/\]$//;
+
+  die <<EOF if $status;
+ni: failed to get closing bracket count for python code "$code$x".
+    Because python doesn't use compile-time metaprogramming, this most likely
+    means that your code is being checked by a different version of python
+    than the one your operation is targeting. You can bypass this problem by
+    ending the shell argument containing your python code with a space:
+
+    y'[[some code]]'              # ni checks syntax (problem case)
+    y'[[some code]] '             # bypass syntax check
+    [y'[some code] ' ]            # bypass syntax check within a lambda
+EOF
+
+  (py_returnify($codegen, $code), $x, @xs);
+};
+}
+
+defparseralias pycode_identity => pycode sub { $_[1], '', @_[2..$#_] };
+
+# Python line processor.
+use constant py_mapgen => gen pydent q{
+  import os
+  import sys
+  sys.stdin.close()
+  stdin = os.fdopen(3, 'r')
+  %prefix
+  %closures
+  def row():
+  %body
+  while rl() is not None:
+  %each
+};
+
+our @python_prefix_keys = qw| core/python/stream.py |;
+
+defoperator python_prefix => q{ sio; print join"\n", @ni::python_prefix_keys };
+defshort '///ni/python_prefix' => pmap q{python_prefix_op}, pnone;
+
+sub defpythonprefix($)
+{
+  warn "defpythonprefix(\"$_[0]\") refers to an undefined attribute"
+    unless exists $ni::self{$_[0]};
+  push @python_prefix_keys, $_[0];
+}
+
+sub python_prefix() { join "\n", @ni::self{@python_prefix_keys} }
+
+sub python_code($$) {py_mapgen->(prefix   => python_prefix,
+                                 closures => '# TODO: dataclosures',
+                                 body     => indent($_[0], 2),
+                                 each     => indent($_[1], 2))}
+
+sub python_mapper($)
+{ python_code $_[0], pydent
+  q{row_out = row()
+    if type(row_out) is list:
+      print("\t".join((str(s) for s in row_out)))
+    elif row_out is not None:
+      print(str(row_out))
+    } }
+
+sub python_grepper($)
+{ python_code $_[0], pydent
+  q{if row():
+      print(_)
+    } }
+
+defoperator python_mapper  => q{stdin_to_python python_mapper  pydent $_[0]};
+defoperator python_grepper => q{stdin_to_python python_grepper pydent $_[0]};
+
+BEGIN
+{
+  defparseralias python_mapper_code  => pycode \&python_mapper;
+  defparseralias python_grepper_code => pycode \&python_grepper;
+}
+
+defshort '/y',
+  defalt 'pyalt', 'alternatives for /y python operator',
+    pmap q{python_mapper_op $_}, python_mapper_code;
+
+defrowalt pmap q{python_grepper_op $_},
+          pn 1, pstr 'y', python_grepper_code;
 4 core/binary/lib
 bytestream.pm
 bytewriter.pm
@@ -9300,7 +9464,7 @@ defoperator numpy_dense => q{
   $o->await;
 };
 
-defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode;
+defshort '/N', pmap q{numpy_dense_op @$_}, pseq popt colspec1, pycode_identity;
 1 core/gnuplot/lib
 gnuplot.pl
 124 core/gnuplot/gnuplot.pl
@@ -12479,7 +12643,7 @@ sub pyspark_create_lambda($) {$_[0]}
 
 BEGIN {defcontext 'pyspark', q{PySpark compilation context}}
 BEGIN {
-  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode;
+  defparseralias pyspark_fn  => pmap q{pyspark_create_lambda $_}, pycode_identity;
   defparseralias pyspark_rdd => pmap q{pyspark_compile 'input', @$_}, pyspark_qfn;
 }
 
@@ -12687,7 +12851,7 @@ defoperator imagepipe_to_video => q{
 
 defshort '/VI', pmap q{video_to_imagepipe_op $_}, popt prx '\w+';
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
-42 doc/lib
+43 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
 ni_by_example_3.md
@@ -12718,6 +12882,7 @@ net.md
 options.md
 perl.md
 pyspark.md
+python.md
 row.md
 ruby.md
 scale.md
@@ -21741,6 +21906,97 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # $SKIP_DOCKER
 ```
+90 doc/python.md
+# Python interface
+ni provides the `y` operator to execute a Python line processor on the current
+data stream. For example:
+
+```bash
+$ ni n5y'int(a) * int(a)'                 # square some numbers
+1
+4
+9
+16
+25
+```
+
+`y` does a decent job of figuring out where a chunk of code ends where lambdas
+are concerned:
+
+```bash
+$ ni ::pyfoo[n4p'int(a)*int(a)'] //:pyfoo
+1
+4
+9
+16
+```
+
+
+## Basic stuff
+`a` to `l` are one-letter variables that return the first 12 tab-delimited
+values from the current line. `r(*xs)` is a function that takes a list of values
+and prints a tab-delimited row. For example:
+
+```bash
+$ ni n4y'r(a, int(a) + 1)'                        # generate two columns
+1	2
+2	3
+3	4
+4	5
+$ ni n4y'r(a, int(a) + 1)' y'r(int(a) + int(b))'  # ... and sum them
+3
+5
+7
+9
+```
+
+Note that whitespace is required after every `y'code'` operator; otherwise ni
+will assume that everything following your quoted code is also Python.
+
+
+### `F`: the array of fields
+The Python code given to `y` is invoked on each line of input, which is stored
+in `_`. `F` is a list of fields split on tabs:
+
+```bash
+$ ni /etc/passwd F::r3
+root	x	0	0	root	/root	/bin/bash
+daemon	x	1	1	daemon	/usr/sbin	/bin/sh
+bin	x	2	2	bin	/bin	/bin/sh
+$ ni /etc/passwd F::r3y'r *F[0:3]'
+root	x	0	0
+daemon	x	1	1
+bin	x	2	2
+$ ni /etc/passwd F::r3y'r *F[1:3]'
+x	0	0
+x	1	1
+x	2	2
+$ ni /etc/passwd F::r3y'r len(F)'       # number of fields
+7
+7
+7
+```
+
+
+## Multiline Python code
+ni will figure out how to indent your code if you span multiple lines. For
+example:
+
+```bash
+$ ni n3 y'x = int(a)
+          r(x, x + 1)'
+1	2
+2	3
+3	4
+$ ni n3 y'for i in range(int(a)):
+            r(i)'
+0
+0
+1
+0
+1
+2
+```
 348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
@@ -23170,7 +23426,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-495 doc/usage
+497 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23223,6 +23479,8 @@ DOCUMENTATION (ni //help)
     //help/ni_fu
     //help/cookbook
 
+    ni --inspect        Webserver with interactive docs and source explorer
+
     ADVANCED
     //ni/keys r/^doc/   All documentation pages
     //ni/doc/net.md     Open a documentation page by reading from ni's 
@@ -23236,10 +23494,6 @@ DOCUMENTATION (ni //help)
 
     --explain [commands...]      Explain a data pipeline before meta-expansion
     --explain-meta [commands...] Explain a data pipeline after meta-expansion
-
-    --doc               Show categories of machine-generated documentation
-    --doc/short         List all short operators
-    --doc/short /r      Show documentation and syntax for "r" short operator
 
 
 GENERATING DATA (ni //help/stream)
@@ -23329,6 +23583,9 @@ ROWS (ni //help/row)
                     'ni ...' (see zB operator to create bloom filters)
     r^bC[...]       Take rows whose C field is _not_ in the bloom filter
                     generated by 'ni ...'
+
+    ry'...'         Take rows for which the Python expression '...' is true
+                    (see ni //help/python)
 
     rm'...'         Take rows for which the Ruby expression '...' is true
                     (see ni //help/ruby)
@@ -23494,6 +23751,7 @@ STREAM TRANSFORMATION (ni //help/stream)
     p'...'          Run Perl code '...' on each input line (see //help/perl)
     pR[...]         Preload Perl code generated by 'ni ...' (see //help/perl)
 
+    y'...'          Run Python code '...' on each input line (see //help/python)
     m'...'          Run Ruby code '...' on each input line (see //help/ruby)
     l'...'          Run Lisp code '...' on each input line (see //help/lisp)
     Bd64M           Copy stream through a 64M disk-backed FIFO

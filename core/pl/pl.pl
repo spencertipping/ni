@@ -67,6 +67,12 @@ EOF
 # Defines the `p` operator, which can be modified in a few different ways to do
 # different things. By default it functions as a one-in, many-out row
 # transformer.
+#
+# If you're wondering what's up with FD 3, the deal is that we send the code
+# into perl on stdin to avoid argv length limitations in the presence of large
+# dataclosures. Although perl allows us to use __DATA__ to mix code and data in
+# the same stream, that prevents us from reading anything within a BEGIN block.
+# So we send data in on fd 3.
 
 use constant perl_mapgen => gen q{
   package ni::pl;
