@@ -1,17 +1,14 @@
 # Misc invariants
-```lazytest
-# Some of these tests require Docker, so skip if we don't have it
-if ! [[ -e /nodocker ]]; then
-```
 
 ## Murmurhash probabilistic invariant
+The murmurhash32 function should produce good distribution over its output
+range, even if we consider just a subset of its output bits.
+
 ```bash
-$ ni n4E7 ,hA Cubuntu[o] uc
-39814375
-```
-
-The murmurhash function should have just under 1 percent error.
-
-```lazytest
-fi
+$ ni nE5 ,h U wcl
+99999
+$ ni nE5 ,h p'a & 0xffff' U wcl     # low 16 bits
+51295
+$ ni nE5 ,h p'a >> 16' U wcl        # high 16 bits
+51278
 ```

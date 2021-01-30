@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0130.1351
+2021.0130.1418
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -22083,7 +22083,7 @@ $ ni yRpy-library.py n4y'foo(a)'
 5
 ```
 
-`ni` provides `yi` to write multiline code verbatim while fixing indentation.
+`ni` provides `yI` to write multiline code verbatim while fixing indentation.
 For example:
 
 ```bash

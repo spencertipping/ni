@@ -1093,18 +1093,23 @@ fi                      # -e /nodocker (lazytest condition)
 fi                      # if false (lazytest condition)
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
-# Some of these tests require Docker, so skip if we don't have it
-if ! [[ -e /nodocker ]]; then
-cat <<'LAZYTEST_EOF'
+lazytest_file='doc/invariants.md'
+lazytest_line=8
+lazytest_case 'ni nE5 ,h U wcl
+' 3<<'LAZYTEST_EOF'
+99999
 LAZYTEST_EOF
 lazytest_file='doc/invariants.md'
-lazytest_line=9
-lazytest_case 'ni n4E7 ,hA Cubuntu[o] uc
+lazytest_line=10
+lazytest_case 'ni nE5 ,h p'\''a & 0xffff'\'' U wcl     # low 16 bits
 ' 3<<'LAZYTEST_EOF'
-39814375
+51295
 LAZYTEST_EOF
-fi
-cat <<'LAZYTEST_EOF'
+lazytest_file='doc/invariants.md'
+lazytest_line=12
+lazytest_case 'ni nE5 ,h p'\''a >> 16'\'' U wcl        # high 16 bits
+' 3<<'LAZYTEST_EOF'
+51278
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=19
