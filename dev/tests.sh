@@ -4350,6 +4350,23 @@ lazytest_case 'ni n3y'\''^:
 12
 13
 LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=115
+lazytest_case 'cat >py-library.py <<'\''EOF'\''
+def foo(x):
+  print(int(x) + 1)
+EOF
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/python.md'
+lazytest_line=119
+lazytest_case 'ni yRpy-library.py n4y'\''foo(a)'\''
+' 3<<'LAZYTEST_EOF'
+2
+3
+4
+5
+LAZYTEST_EOF
 lazytest_file='doc/row.md'
 lazytest_line=19
 lazytest_case 'ni n10r3                      # take first 3

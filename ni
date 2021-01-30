@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0130.0157
+2021.0130.1337
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8965,7 +8965,7 @@ def rl():
   a, b, c, d, e, f, g, h, i, j, k, l, *_F = F + [None] * max(0, 12 - len(F))
   FM = len(F) - 1
   return _
-182 core/python/python.pl
+196 core/python/python.pl
 # Python stuff.
 # A context for processing stuff in Python, as well as various functions to
 # handle the peculiarities of Python code.
@@ -9136,6 +9136,18 @@ sub python_grepper($)
 defoperator python_mapper  => q{stdin_to_python python_mapper  pydent $_[0]};
 defoperator python_grepper => q{stdin_to_python python_grepper pydent $_[0]};
 
+defmetaoperator python_require => q{
+  my ($args, $left, $right) = @_;
+  my $code_fh = sni @$args;
+  my $code    = join '', <$code_fh>;
+  my $key     = "core/python/require/" . gensym;
+  self_append_resource $key, $code;
+  self_append_resource "$key-prepend.pl",
+    qq{ push \@ni::python_prefix_keys, q{$key} };
+  push @ni::python_prefix_keys, $key;
+  ($left, $right);
+};
+
 BEGIN
 {
   defparseralias python_mapper_code  => pycode \&python_mapper;
@@ -9145,6 +9157,8 @@ BEGIN
 defshort '/y',
   defalt 'pyalt', 'alternatives for /y python operator',
     pmap q{python_mapper_op $_}, python_mapper_code;
+
+defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
           pn 1, pstr 'y', python_grepper_code;
@@ -21941,7 +21955,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```lazytest
 fi              # -e /nodocker
 ```
-108 doc/python.md
+124 doc/python.md
 # Python interface
 ni provides the `y` operator to execute a Python line processor on the current
 data stream. For example:
@@ -22050,6 +22064,22 @@ $ ni n3y'^:
 ```
 
 Note that variables must be stored on `self` to live beyond a single iteration.
+
+
+## `yR`: require externally-defined python code
+This is very similar to the `pR` operator for Perl.
+
+```bash
+$ cat >py-library.py <<'EOF'
+def foo(x):
+  print(int(x) + 1)
+EOF
+$ ni yRpy-library.py n4y'foo(a)'
+2
+3
+4
+5
+```
 348 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which

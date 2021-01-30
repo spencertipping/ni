@@ -168,6 +168,18 @@ sub python_grepper($)
 defoperator python_mapper  => q{stdin_to_python python_mapper  pydent $_[0]};
 defoperator python_grepper => q{stdin_to_python python_grepper pydent $_[0]};
 
+defmetaoperator python_require => q{
+  my ($args, $left, $right) = @_;
+  my $code_fh = sni @$args;
+  my $code    = join '', <$code_fh>;
+  my $key     = "core/python/require/" . gensym;
+  self_append_resource $key, $code;
+  self_append_resource "$key-prepend.pl",
+    qq{ push \@ni::python_prefix_keys, q{$key} };
+  push @ni::python_prefix_keys, $key;
+  ($left, $right);
+};
+
 BEGIN
 {
   defparseralias python_mapper_code  => pycode \&python_mapper;
@@ -177,6 +189,8 @@ BEGIN
 defshort '/y',
   defalt 'pyalt', 'alternatives for /y python operator',
     pmap q{python_mapper_op $_}, python_mapper_code;
+
+defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
           pn 1, pstr 'y', python_grepper_code;

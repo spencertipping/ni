@@ -106,3 +106,19 @@ $ ni n3y'^:
 ```
 
 Note that variables must be stored on `self` to live beyond a single iteration.
+
+
+## `yR`: require externally-defined python code
+This is very similar to the `pR` operator for Perl.
+
+```bash
+$ cat >py-library.py <<'EOF'
+def foo(x):
+  print(int(x) + 1)
+EOF
+$ ni yRpy-library.py n4y'foo(a)'
+2
+3
+4
+5
+```
