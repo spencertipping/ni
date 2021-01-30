@@ -1,7 +1,7 @@
 # PySpark interop
 ```lazytest
 # All of these tests require Docker, so skip if we don't have it
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ni's `P` operator compiles a series of stream operators into PySpark. It takes
@@ -24,5 +24,5 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```
 
 ```lazytest
-fi              # $SKIP_DOCKER
+fi              # -e /nodocker
 ```

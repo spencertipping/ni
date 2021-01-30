@@ -1,7 +1,7 @@
 # Misc invariants
 ```lazytest
 # Some of these tests require Docker, so skip if we don't have it
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ## Murmurhash probabilistic invariant

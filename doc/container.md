@@ -2,7 +2,7 @@
 ```lazytest
 # These tests only get run in environments where docker is installed
 # (centos 5 uses i386 libraries and doesn't support docker, for example).
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 Some ni operators depend on tools you may not want to install on your machine.
@@ -81,5 +81,5 @@ $ docker rm -f ni-test-container >/dev/null
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 ```

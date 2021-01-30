@@ -35,7 +35,7 @@ The operative feature of closures is that they travel with ni, for instance
 into a docker container:
 
 ```lazytest
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ```bash
@@ -50,7 +50,7 @@ $ ni ::foo[n5] Cubuntu[n1p'r split /\n/, foo']
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 ```
 
 Disk-backed closures have almost exactly the same semantics, and are
@@ -87,7 +87,7 @@ They also travel with ni into tempfiles on remote systems, and ni maps the
 names accordingly:
 
 ```lazytest
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ```bash
@@ -108,5 +108,5 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 ```

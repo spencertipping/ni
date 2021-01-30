@@ -50,7 +50,7 @@ $ docker run --detach -i -m 2G --name ni-test-hadoop \
 
 ```lazytest
 # unit test setup; you won't have to run this
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 Let's start up a container and use `HS` to run a Streaming job. `H` is a
@@ -167,7 +167,7 @@ $ ni i'who let the dogs out who who who' \
 ```lazytest
 docker rm -f ni-test-hadoop >&2
 
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 
 fi                      # if false (lazytest condition)
 ```

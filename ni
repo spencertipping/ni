@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0130.0023
+2021.0130.0031
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -19243,7 +19243,7 @@ The operative feature of closures is that they travel with ni, for instance
 into a docker container:
 
 ```lazytest
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ```bash
@@ -19258,7 +19258,7 @@ $ ni ::foo[n5] Cubuntu[n1p'r split /\n/, foo']
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 ```
 
 Disk-backed closures have almost exactly the same semantics, and are
@@ -19295,7 +19295,7 @@ They also travel with ni into tempfiles on remote systems, and ni maps the
 names accordingly:
 
 ```lazytest
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ```bash
@@ -19316,7 +19316,7 @@ $ ni :@foo[nE6] Cubuntu[ \
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 ```
 286 doc/col.md
 # Column operations
@@ -19610,7 +19610,7 @@ $ ni nE5p'a*a' Wn r~3
 ```lazytest
 # These tests only get run in environments where docker is installed
 # (centos 5 uses i386 libraries and doesn't support docker, for example).
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 Some ni operators depend on tools you may not want to install on your machine.
@@ -19689,7 +19689,7 @@ $ docker rm -f ni-test-container >/dev/null
 ```
 
 ```lazytest
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 ```
 92 doc/cookbook.md
 # `ni` cookbook
@@ -20512,7 +20512,7 @@ $ docker run --detach -i -m 2G --name ni-test-hadoop \
 
 ```lazytest
 # unit test setup; you won't have to run this
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 Let's start up a container and use `HS` to run a Streaming job. `H` is a
@@ -20629,7 +20629,7 @@ $ ni i'who let the dogs out who who who' \
 ```lazytest
 docker rm -f ni-test-hadoop >&2
 
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 
 fi                      # if false (lazytest condition)
 ```
@@ -20743,7 +20743,7 @@ If you don't have SBCL installed locally, you can use the `C` (containerize)
 operator to run a Docker image:
 
 ```lazytest
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ```bash
@@ -20761,7 +20761,7 @@ $ ni Cni-test/sbcl[n4l'(+ a 2)']
 ```
 
 ```lazytest
-fi                      # $HAVE_DOCKER
+fi                      # -e /nodocker
 ```
 
 ## Basic stuff
@@ -21915,7 +21915,7 @@ y	12
 # PySpark interop
 ```lazytest
 # All of these tests require Docker, so skip if we don't have it
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 ```
 
 ni's `P` operator compiles a series of stream operators into PySpark. It takes
@@ -21938,7 +21938,7 @@ $ ni Cgettyimages/spark[PL[n10] \<o]
 ```
 
 ```lazytest
-fi              # $SKIP_DOCKER
+fi              # -e /nodocker
 ```
 108 doc/python.md
 # Python interface

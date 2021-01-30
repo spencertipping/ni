@@ -444,7 +444,7 @@ lazytest_line=16
 lazytest_case 'ni ::foo[n5]                  # ...in a memory-resident closure
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/closure.md'
@@ -463,7 +463,7 @@ lazytest_case 'ni ::foo[n5] Cubuntu[n1p'\''r split /\n/, foo'\'']
 ' 3<<'LAZYTEST_EOF'
 1	2	3	4	5
 LAZYTEST_EOF
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/closure.md'
@@ -505,7 +505,7 @@ lazytest_case 'ni :@foo[nE6] \
 ' 3<<'LAZYTEST_EOF'
 6888896
 LAZYTEST_EOF
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/closure.md'
@@ -530,7 +530,7 @@ lazytest_case 'ni :@foo[nE6] Cubuntu[ \
 ' 3<<'LAZYTEST_EOF'
 6888896
 LAZYTEST_EOF
-fi                      # $SKIP_DOCKER
+fi                      # -e /nodocker
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/col.md'
@@ -780,7 +780,7 @@ lazytest_case 'ni nE5p'\''a*a'\'' Wn r~3
 LAZYTEST_EOF
 # These tests only get run in environments where docker is installed
 # (centos 5 uses i386 libraries and doesn't support docker, for example).
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
@@ -860,7 +860,7 @@ lazytest_line=80
 lazytest_case 'docker rm -f ni-test-container >/dev/null
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/extend.md'
@@ -1007,7 +1007,7 @@ if false; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 # unit test setup; you won't have to run this
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 # more unit test setup
@@ -1088,13 +1088,13 @@ lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
 LAZYTEST_EOF
 docker rm -f ni-test-hadoop >&2
 
-fi                      # $SKIP_DOCKER (lazytest condition)
+fi                      # -e /nodocker (lazytest condition)
 
 fi                      # if false (lazytest condition)
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 # Some of these tests require Docker, so skip if we don't have it
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/invariants.md'
@@ -1156,7 +1156,7 @@ lazytest_case 'ni n4l'\''(+ a 2)'\''
 5
 6
 LAZYTEST_EOF
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/lisp.md'
@@ -1178,7 +1178,7 @@ lazytest_case 'ni Cni-test/sbcl[n4l'\''(+ a 2)'\'']
 5
 6
 LAZYTEST_EOF
-fi                      # $HAVE_DOCKER
+fi                      # -e /nodocker
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/lisp.md'
@@ -4228,7 +4228,7 @@ x	23
 y	12
 LAZYTEST_EOF
 # All of these tests require Docker, so skip if we don't have it
-if ! [[ $SKIP_DOCKER ]]; then
+if ! [[ -e /nodocker ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/pyspark.md'
@@ -4246,7 +4246,7 @@ lazytest_case 'ni Cgettyimages/spark[PL[n10] \<o]
 9
 10
 LAZYTEST_EOF
-fi              # $SKIP_DOCKER
+fi              # -e /nodocker
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/python.md'
