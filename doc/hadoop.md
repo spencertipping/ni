@@ -1,4 +1,12 @@
 # Hadoop operator
+```lazytest
+# TODO: sequenceiq/hadoop is no longer active; I need to find a new image and
+# probably update the hadoop streaming driver code to reflect any CLI changes
+#
+# This if condition is for lazytest; these tests are currently disabled.
+if false; then
+```
+
 The `H` operator runs a Hadoop job. Here's what it looks like to use Hadoop
 Streaming:
 
@@ -114,9 +122,9 @@ reducers, you'll see the shard boundaries):
 
 ```bash
 $ ni i'who let the dogs out who who who' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      hadoop/jobconf='mapred.map.tasks=10
-      					  mapred.reduce.tasks=4'} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       hadoop/jobconf='mapred.map.tasks=10
+       mapred.reduce.tasks=4'} \
      Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
@@ -145,8 +153,8 @@ Use the abbreviations in the first column in your configuration; for example, to
 
 ```bash
 $ ni i'who let the dogs out who who who' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      Hrmm=4096 Hmmm=3072} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       Hrmm=4096 Hmmm=3072} \
      Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
@@ -160,4 +168,6 @@ $ ni i'who let the dogs out who who who' \
 docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
+
+fi                      # if false (lazytest condition)
 ```

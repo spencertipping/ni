@@ -822,7 +822,7 @@ lazytest_case 'ni n100 CU+python3-numpy+sbcl[N'\''x = x + 1'\'' l'\''(1+ a)'\'']
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
 lazytest_line=58
-lazytest_case 'ni n100 CA+py3-numpy+sbcl@testing[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
+lazytest_case 'ni n100 CA+python3+py3-numpy+sbcl@testing[N'\''x = x + 1'\'' l'\''(1+ a)'\''] r4
 ' 3<<'LAZYTEST_EOF'
 3
 4
@@ -999,6 +999,13 @@ lazytest_case 'ni nE4p'\''my ($lat, $lng) = (rand() * 180 - 90, rand() * 360 - 1
 B32 OK
 BIN OK
 LAZYTEST_EOF
+# TODO: sequenceiq/hadoop is no longer active; I need to find a new image and
+# probably update the hadoop streaming driver code to reflect any CLI changes
+#
+# This if condition is for lazytest; these tests are currently disabled.
+if false; then
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 # unit test setup; you won't have to run this
 if ! [[ $SKIP_DOCKER ]]; then
 cat <<'LAZYTEST_EOF'
@@ -1018,7 +1025,7 @@ done
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=88
+lazytest_line=96
 lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
   ni n5 Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ _ \<]
 ' 3<<'LAZYTEST_EOF'
@@ -1029,7 +1036,7 @@ lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 5	25
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=100
+lazytest_line=108
 lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
           Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
@@ -1040,11 +1047,11 @@ lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=116
+lazytest_line=124
 lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      hadoop/jobconf='\''mapred.map.tasks=10
-      					  mapred.reduce.tasks=4'\''} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       hadoop/jobconf='\''mapred.map.tasks=10
+       mapred.reduce.tasks=4'\''} \
      Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -1054,7 +1061,7 @@ lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=133
+lazytest_line=141
 lazytest_case 'ni 1p'\''%mr_generics'\'' Z2 e'\''grep memory'\'' gA
 ' 3<<'LAZYTEST_EOF'
 Hcmm	mapreduce.cluster.mapmemory.mb
@@ -1067,10 +1074,10 @@ Hrmt	mapreduce.reduce.memory.totalbytes
 Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=147
+lazytest_line=155
 lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      Hrmm=4096 Hmmm=3072} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       Hrmm=4096 Hmmm=3072} \
      Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
 1	2
@@ -1082,17 +1089,22 @@ LAZYTEST_EOF
 docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
+
+fi                      # if false (lazytest condition)
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
-Some of these tests require Docker, so skip if we don't have it
+# Some of these tests require Docker, so skip if we don't have it
 if ! [[ $SKIP_DOCKER ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/invariants.md'
-lazytest_line=8
+lazytest_line=9
 lazytest_case 'ni n4E7 ,hA Cubuntu[o] uc
 ' 3<<'LAZYTEST_EOF'
 39814375
+LAZYTEST_EOF
+fi
+cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=19
@@ -1409,7 +1421,7 @@ lazytest_file='doc/matrix.md'
 lazytest_line=206
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'\''x *= 2'\'' YB,qD.01XB r10
+     NB'\''x = x * 2'\'' YB,qD.01XB r10
 ' 3<<'LAZYTEST_EOF'
 a	0	4	0	0	0	0	0
 a	0	0	2	0	0	0	0
@@ -1426,8 +1438,8 @@ lazytest_file='doc/matrix.md'
 lazytest_line=224
 lazytest_case 'ni //license plc FWpF_ p'\''r split//'\'' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'\''x *= 2
-        x += 1'\'' r10
+     NB'\''x = x * 2
+        x = x + 1'\'' r10
 ' 3<<'LAZYTEST_EOF'
 a	1	5	1	1	1	1	1
 a	1	1	3	1	1	1	1

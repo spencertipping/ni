@@ -1140,7 +1140,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0129.2358
+2021.0130.0023
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9421,21 +9421,21 @@ use constant numpy_gen => gen pydent q{
     pass
   while True:
     try:
-      dimensions = fromstring(stdin.read(8), dtype=">u4", count=2)
+      dimensions = frombuffer(stdin.read(8), dtype=">u4", count=2)
     except:
       exit()
-    x = fromstring(stdin.read(8*dimensions[0]*dimensions[1]),
+    x = frombuffer(stdin.read(8*dimensions[0]*dimensions[1]),
                    dtype="d",
                    count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
   %body
     if type(x) != ndarray: x = array(x)
     if len(x.shape) != 2: x = reshape(x, (-1, 1))
-    stdout.write(array(x.shape).astype(">u4").tostring())
-    stdout.write(x.astype("d").tostring())
+    stdout.write(array(x.shape).astype(">u4").tobytes())
+    stdout.write(x.astype("d").tobytes())
     stdout.flush()};
 
-sub numpy_python_code($) { numpy_gen->(body => indent shift, 2) }
+sub numpy_python_code($) { numpy_gen->(body => indent pydent(shift), 2) }
 
 BEGIN
 {
@@ -19663,7 +19663,7 @@ $ ni n100 CU+python3-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
 4
 5
 6
-$ ni n100 CA+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
+$ ni n100 CA+python3+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 3
 4
 5
@@ -20459,8 +20459,16 @@ $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 Copyright (c) 2016-2018 Spencer Tipping | MIT license
 ```
-163 doc/hadoop.md
+173 doc/hadoop.md
 # Hadoop operator
+```lazytest
+# TODO: sequenceiq/hadoop is no longer active; I need to find a new image and
+# probably update the hadoop streaming driver code to reflect any CLI changes
+#
+# This if condition is for lazytest; these tests are currently disabled.
+if false; then
+```
+
 The `H` operator runs a Hadoop job. Here's what it looks like to use Hadoop
 Streaming:
 
@@ -20576,9 +20584,9 @@ reducers, you'll see the shard boundaries):
 
 ```bash
 $ ni i'who let the dogs out who who who' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      hadoop/jobconf='mapred.map.tasks=10
-      					  mapred.reduce.tasks=4'} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       hadoop/jobconf='mapred.map.tasks=10
+       mapred.reduce.tasks=4'} \
      Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
@@ -20607,8 +20615,8 @@ Use the abbreviations in the first column in your configuration; for example, to
 
 ```bash
 $ ni i'who let the dogs out who who who' \
-	 ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
-      Hrmm=4096 Hmmm=3072} \
+     ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
+       Hrmm=4096 Hmmm=3072} \
      Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
@@ -20622,6 +20630,8 @@ $ ni i'who let the dogs out who who who' \
 docker rm -f ni-test-hadoop >&2
 
 fi                      # $SKIP_DOCKER (lazytest condition)
+
+fi                      # if false (lazytest condition)
 ```
 63 doc/json.md
 # JSON operators
@@ -21038,7 +21048,7 @@ Now the matrix is in a form that NumPy can process. The `N` operator automatical
 ```bash
 $ ni //license plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'x *= 2' YB,qD.01XB r10
+     NB'x = x * 2' YB,qD.01XB r10
 a	0	4	0	0	0	0	0
 a	0	0	2	0	0	0	0
 a	0	0	0	2	0	0	0
@@ -21056,8 +21066,8 @@ You can use multiline code with Python and ni will fix the indentation so everyt
 ```bash
 $ ni //license plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'x *= 2
-        x += 1' r10
+     NB'x = x * 2
+        x = x + 1' r10
 a	1	5	1	1	1	1	1
 a	1	1	3	1	1	1	1
 a	1	1	1	3	1	1	1

@@ -109,7 +109,7 @@ case $c in
   echo "  $ bash /data/dev/tests.sh"
   echo
   build_ni_stuff
-  docker run $docker_opts -t --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
+  docker run $docker_opts -it --name ni-test-repl $(image ${1:-$default_image}) /bin/bash
   ;;
 
 -c|--cancel)

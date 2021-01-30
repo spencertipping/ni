@@ -205,7 +205,7 @@ Now the matrix is in a form that NumPy can process. The `N` operator automatical
 ```bash
 $ ni //license plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'x *= 2' YB,qD.01XB r10
+     NB'x = x * 2' YB,qD.01XB r10
 a	0	4	0	0	0	0	0
 a	0	0	2	0	0	0	0
 a	0	0	0	2	0	0	0
@@ -223,8 +223,8 @@ You can use multiline code with Python and ni will fix the indentation so everyt
 ```bash
 $ ni //license plc FWpF_ p'r split//' \
      gYBfABDgcfBCDA,zCo XB \
-     NB'x *= 2
-        x += 1' r10
+     NB'x = x * 2
+        x = x + 1' r10
 a	1	5	1	1	1	1	1
 a	1	1	3	1	1	1	1
 a	1	1	1	3	1	1	1

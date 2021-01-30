@@ -55,7 +55,7 @@ $ ni n100 CU+python3-numpy+sbcl[N'x = x + 1' l'(1+ a)'] r4
 4
 5
 6
-$ ni n100 CA+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
+$ ni n100 CA+python3+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 3
 4
 5

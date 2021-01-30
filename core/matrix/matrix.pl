@@ -137,21 +137,21 @@ use constant numpy_gen => gen pydent q{
     pass
   while True:
     try:
-      dimensions = fromstring(stdin.read(8), dtype=">u4", count=2)
+      dimensions = frombuffer(stdin.read(8), dtype=">u4", count=2)
     except:
       exit()
-    x = fromstring(stdin.read(8*dimensions[0]*dimensions[1]),
+    x = frombuffer(stdin.read(8*dimensions[0]*dimensions[1]),
                    dtype="d",
                    count=dimensions[0]*dimensions[1]) \
         .reshape(dimensions)
   %body
     if type(x) != ndarray: x = array(x)
     if len(x.shape) != 2: x = reshape(x, (-1, 1))
-    stdout.write(array(x.shape).astype(">u4").tostring())
-    stdout.write(x.astype("d").tostring())
+    stdout.write(array(x.shape).astype(">u4").tobytes())
+    stdout.write(x.astype("d").tobytes())
     stdout.flush()};
 
-sub numpy_python_code($) { numpy_gen->(body => indent shift, 2) }
+sub numpy_python_code($) { numpy_gen->(body => indent pydent(shift), 2) }
 
 BEGIN
 {
