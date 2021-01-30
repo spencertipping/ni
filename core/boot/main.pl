@@ -126,6 +126,7 @@ defclispecial '--upgrade', q{
   rename "$self.upgrade", $self or
     fail "failed to replace ni image at $self with $self.upgrade: $!; aborting upgrade";
   print "ni has been upgraded to version $online_version\n";
+  exit 0;
 }, <<'_';
 Usage: ni --upgrade [branch]
 Upgrades to the latest ni version on the develop branch, or whichever branch is

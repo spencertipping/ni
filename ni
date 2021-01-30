@@ -910,7 +910,7 @@ sub image_with(%) {
   %self = %old_self;
   $i;
 }
-228 core/boot/main.pl
+229 core/boot/main.pl
 # CLI entry point.
 # Some custom toplevel option handlers and the main function that ni uses to
 # parse CLI options and execute the data pipeline.
@@ -1039,6 +1039,7 @@ defclispecial '--upgrade', q{
   rename "$self.upgrade", $self or
     fail "failed to replace ni image at $self with $self.upgrade: $!; aborting upgrade";
   print "ni has been upgraded to version $online_version\n";
+  exit 0;
 }, <<'_';
 Usage: ni --upgrade [branch]
 Upgrades to the latest ni version on the develop branch, or whichever branch is
@@ -1140,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0130.0031
+2021.0130.0041
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
