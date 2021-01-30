@@ -1,4 +1,8 @@
 FROM ubuntu:20.04
+
+ADD env/etc-keyboard /etc/default/keyboard
+ENV DEBIAN_FRONTEND noninteractive
+
 RUN apt-get update
 RUN apt-get install -y perl
 RUN apt-get install -y sbcl sqlite curl gcc
