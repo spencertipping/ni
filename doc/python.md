@@ -122,3 +122,14 @@ $ ni yRpy-library.py n4y'foo(a)'
 4
 5
 ```
+
+`ni` provides `yI` to write multiline code verbatim while fixing indentation.
+For example:
+
+```bash
+$ ni yRyI'def foo(x):
+            print(int(x) + 1)' n3y'foo(a)'
+2
+3
+4
+```

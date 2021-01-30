@@ -30,7 +30,7 @@ sub pydent($) {
   my @indents = map length(sr $_, qr/\S.*$/, ''), @lines;
   my $indent  = @lines > 1 ? $indents[1] - $indents[0] : 0;
 
-  $indent = min $indent - 1, @indents[2..$#indents]
+  $indent = min $indent - 2, @indents[2..$#indents]
     if $lines[0] =~ /:\s*(#.*)?$/ && @lines >= 2;
 
   my $spaces = ' ' x $indent;
@@ -182,14 +182,16 @@ defmetaoperator python_require => q{
 
 BEGIN
 {
-  defparseralias python_mapper_code  => pycode \&python_mapper;
-  defparseralias python_grepper_code => pycode \&python_grepper;
+  defparseralias python_identity_code => pycode sub {pydent shift};
+  defparseralias python_mapper_code   => pycode \&python_mapper;
+  defparseralias python_grepper_code  => pycode \&python_grepper;
 }
 
 defshort '/y',
   defalt 'pyalt', 'alternatives for /y python operator',
     pmap q{python_mapper_op $_}, python_mapper_code;
 
+defshort '/yI', pmap q{echo_op pydent $_}, python_identity_code;
 defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
