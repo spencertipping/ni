@@ -5,7 +5,7 @@ RUN apt-get install -y sbcl sqlite curl gcc
 RUN apt-get install -y bzip2 lzop liblz4-tool xz-utils strace ruby
 RUN apt-get install -y python3-numpy
 RUN apt-get install -y netcat-openbsd
-RUN apt-get install -y docker
+RUN apt-get install -y docker.io
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 VOLUME /data
