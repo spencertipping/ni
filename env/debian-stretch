@@ -10,7 +10,7 @@ RUN apt-get install -y perl docker
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 
-ENV SKIP_DOCKER=yes
+RUN touch /nodocker
 
 VOLUME /data
 WORKDIR /data
