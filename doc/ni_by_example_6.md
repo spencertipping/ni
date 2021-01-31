@@ -458,7 +458,10 @@ To examine the contents
 
 Let's take a look at this with `--explain`:
 
-```bash
+```sh
+# note: 'z' will explain as ["sh","pigz"] if you have pigz installed
+# (pigz = parallel gzip); ni will autodetect and use faster variants when
+# present
 $ ni --explain n10 =[\>ten.txt] z\>ten.gz
 ["n",1,11]
 ["divert",["file_write","ten.txt"]]
@@ -488,7 +491,7 @@ For simple operations, the square brackets are unnecessary; we could have equiva
 This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
 
 
-##Custom Compound Reduce
+## Custom Compound Reduce
 #### `rfn`: Custom compound reduce
 
 **TODO: Understand this**
@@ -517,9 +520,8 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 ### Array Functions
   * `clip`
   * `within`
-  
 
-   
+
 ## Writing Your Own `ni` Extensions
 **TODO** Understand how this works
 
@@ -542,7 +544,7 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 ## Perl Operations
 `ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
 
-In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
+In addition to Perl, `ni` offers direct interfaces to Python, Ruby, and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
 
 We'll start with the following `ni` spell.
 

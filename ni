@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0130.1856
+2021.0131.1408
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -17372,7 +17372,7 @@ Look, if you're a damn Lisp programmer, you're smart enough to learn Perl. Just 
   
 ## Conclusion
 You've reached the end of chapter 5 of `ni` by Example, which coincides comfortably with the end of my current understanding of the language. Check back for more chapters to come, and more old ideas made fresh, useful, and fast.
-576 doc/ni_by_example_6.md
+578 doc/ni_by_example_6.md
 # Future Chapter 6 Below
 
 
@@ -17833,7 +17833,10 @@ To examine the contents
 
 Let's take a look at this with `--explain`:
 
-```bash
+```sh
+# note: 'z' will explain as ["sh","pigz"] if you have pigz installed
+# (pigz = parallel gzip); ni will autodetect and use faster variants when
+# present
 $ ni --explain n10 =[\>ten.txt] z\>ten.gz
 ["n",1,11]
 ["divert",["file_write","ten.txt"]]
@@ -17863,7 +17866,7 @@ For simple operations, the square brackets are unnecessary; we could have equiva
 This more aesthetically-pleasing statement is the preferred `ni` style. The lack of whitespace between `=` and the file write is critical.
 
 
-##Custom Compound Reduce
+## Custom Compound Reduce
 #### `rfn`: Custom compound reduce
 
 **TODO: Understand this**
@@ -17892,9 +17895,8 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 ### Array Functions
   * `clip`
   * `within`
-  
 
-   
+
 ## Writing Your Own `ni` Extensions
 **TODO** Understand how this works
 
@@ -17917,7 +17919,7 @@ In theory, this can save you a lot of space. But I haven't used this in practice
 ## Perl Operations
 `ni` and Perl go well together philosophically. Both have deeply flawed lexicons and both are highly efficient in terms of developer time and processing time. `ni` and Perl scripts are both difficult to read to the uninitiated. They demand a much higher baseline level of expertise to understand what's going on than, for example, a Python script. 
 
-In addition to Perl, `ni` offers direct interfaces to Ruby and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
+In addition to Perl, `ni` offers direct interfaces to Python, Ruby, and Lisp. While all three of the languages are useful and actively maintained, `ni` is written in Perl, and it is by far the most useful of the three. If you haven't learned Perl yet, but you're familiar with another scripting language, like Python or Ruby, I found [this course](https://www.udemy.com/perltutorial/learn/v4/) on Udemy useful for learning Perl's odd syntax.
 
 We'll start with the following `ni` spell.
 
@@ -20857,7 +20859,7 @@ $ ni /etc/passwd F::gG l"(r g (se (partial #'join #\,) a g))"
 /bin/sh	backup,bin,daemon,games,gnats,irc,libuuid,list,lp,mail,man,news,nobody,proxy,sys,uucp,www-data
 /bin/sync	sync
 ```
-250 doc/matrix.md
+259 doc/matrix.md
 # Matrix operations
 
 ## Sparse and Dense Matrix Operations (`X` and `Y`)
@@ -20939,6 +20941,11 @@ c	d
 
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code is evaluated in an imperative context and side-effectfully transforms the input matrix, which is called `x`.
+
+```lazytest
+# LazyTest automation: not all environments have compatible versions of numpy
+if ! [[ -e /nonumpy ]]; then
+```
 
 ```bash
 $ ni n10p'r map a*$_, 1..10'
@@ -21107,6 +21114,10 @@ $ ni //license plc FWpF_ p'r split//' \
 a	1	3	1	1	1	1	1
 a	1	1	2	1	1	1	1
 a	1	1	1	2	1	1	1
+```
+
+```lazytest
+fi                    # -e /nonumpy
 ```
 107 doc/monitor.md
 # Monitors
@@ -22704,7 +22715,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-577 doc/stream.md
+578 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -22896,6 +22907,7 @@ operators like sorting.
 when you use shell metacharacters:
 
 ```bash
+$ cd /tmp
 $ mkdir test-dir
 $ touch test-dir/{a,b,c}
 $ ni e'ls test-dir/*'                   # e'' sends its command through sh -c

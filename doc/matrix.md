@@ -80,6 +80,11 @@ c	d
 ## NumPy interop
 You can transform dense matrices with NumPy using the `N` operator. Your code is evaluated in an imperative context and side-effectfully transforms the input matrix, which is called `x`.
 
+```lazytest
+# LazyTest automation: not all environments have compatible versions of numpy
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni n10p'r map a*$_, 1..10'
 1	2	3	4	5	6	7	8	9	10
@@ -247,4 +252,8 @@ $ ni //license plc FWpF_ p'r split//' \
 a	1	3	1	1	1	1	1
 a	1	1	2	1	1	1	1
 a	1	1	1	2	1	1	1
+```
+
+```lazytest
+fi                    # -e /nonumpy
 ```
