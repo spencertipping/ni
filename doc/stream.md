@@ -189,8 +189,7 @@ operators like sorting.
 when you use shell metacharacters:
 
 ```bash
-$ cd /tmp
-$ mkdir test-dir
+$ rm -rf test-dir; mkdir test-dir
 $ touch test-dir/{a,b,c}
 $ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
 test-dir/a

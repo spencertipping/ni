@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0131.1408
+2021.0131.1550
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -22715,7 +22715,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-578 doc/stream.md
+577 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -22907,8 +22907,7 @@ operators like sorting.
 when you use shell metacharacters:
 
 ```bash
-$ cd /tmp
-$ mkdir test-dir
+$ rm -rf test-dir; mkdir test-dir
 $ touch test-dir/{a,b,c}
 $ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
 test-dir/a
