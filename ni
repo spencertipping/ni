@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0202.0919
+2021.0202.1048
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -22725,7 +22725,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-589 doc/stream.md
+560 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -22911,35 +22911,6 @@ can't parse something, though.
 
 See [row.md](row.md) (`ni //help/row`) for details about row-reordering
 operators like sorting.
-
-### Important note about `e`
-`e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
-when you use shell metacharacters:
-
-```lazytest
-# LazyTest automation: this section fails in the arch test environment for
-# reasons that are beyond me. I have never seen these operators fail in normal
-# usage.
-if ! [[ -e /notestdir ]]; then
-```
-
-```bash
-$ mkdir test-dir
-$ touch test-dir/{a,b,c}
-$ ni e'ls test-dir/*'                   # e'' sends its command through sh -c
-test-dir/a
-test-dir/b
-test-dir/c
-$ ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
-$ ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
-test-dir/a
-test-dir/b
-test-dir/c
-```
-
-```lazytest
-fi                      # -e /notestdir
-```
 
 
 ## Stream combiners
