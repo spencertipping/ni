@@ -411,6 +411,12 @@ The values streamed out of `N'...'` are the values of `x`, so all operations tha
 However, the gains in power are quickly manifested:
 
 
+```lazytest
+# LazyTest: numpy isn't supported in all environments, as its API introduced
+# breaking changes for binary loading around 2015
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni n3p'r map a*$_, 1..3' N'x = x + 1'
 2	3	4
@@ -437,6 +443,10 @@ $ ni n1N'x = random.normal(size=(4,3))'
 $ ni i[1 0] i[1 1] N'x = dot(x, x.T)'
 1	1
 1	2
+```
+
+```lazytest
+fi              # -e /nonumpy
 ```
 
 
