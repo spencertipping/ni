@@ -291,6 +291,13 @@ $ ni n2 +e'seq 3 5'                  # append output of shell command "seq 4"
 `e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
 when you use shell metacharacters:
 
+```lazytest
+# LazyTest automation: dockerized arch linux has strange errors running the
+# examples below. I've never had any issues in production, so I think it's
+# test-specific.
+if ! [[ -e /notestdir ]]; then
+```
+
 ```bash
 $ mkdir test-dir
 $ touch test-dir/{a,b,c}
@@ -304,6 +311,11 @@ test-dir/a
 test-dir/b
 test-dir/c
 ```
+```lazytest
+fi          # -e /notestdir
+```
+
+
 
 ## Writing files
 You can write a file in two ways. One is, of course, using shell redirection:

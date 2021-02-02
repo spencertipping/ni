@@ -67,6 +67,11 @@ $ ni test.wav bf'ss' r-15r10
 If we wanted to find the dominant frequencies, for example (the `,qB.01`
 quantizes the magnitudes so the test case doesn't depend on float rounding):
 
+```lazytest
+# LazyTest automation: not all test environments provide numpy
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
      Wn rp'a <= 22050' OB r5,qB.01
@@ -75,6 +80,10 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 7341	745.63
 8461	667.75
 12181	620.78
+```
+
+```lazytest
+fi              # -e /nonumpy
 ```
 
 ### Packed searching/lookup

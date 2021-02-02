@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0202.1048
+2021.0202.1158
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -18885,7 +18885,7 @@ Perl functions are often written with a signature that allows them to be written
   * `@q` persists between fresh lines, and allows past lines to be stored. It is used by `rl` and `pl` to store lines, as well as for the buffered readahead functions `re`, `ru`, `rw`
   * Like `@F`, many functions rely on `@q`; you should not edit or access it directly, and instead use the functions that interact with it.
   * If you want to to store your own array of lines that persists through fresh lines, use a BEGIN block, for example`p'^{@x;} ...; push @x, $data; ...`
-126 doc/binary.md
+135 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
@@ -18955,6 +18955,11 @@ $ ni test.wav bf'ss' r-15r10
 If we wanted to find the dominant frequencies, for example (the `,qB.01`
 quantizes the magnitudes so the test case doesn't depend on float rounding):
 
+```lazytest
+# LazyTest automation: not all test environments provide numpy
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
      Wn rp'a <= 22050' OB r5,qB.01
@@ -18963,6 +18968,10 @@ $ ni test.wav bp'bi?r rp "ss":rb 44' fA N'x = fft.fft(x, axis=0).real' \
 7341	745.63
 8461	667.75
 12181	620.78
+```
+
+```lazytest
+fi              # -e /nonumpy
 ```
 
 ### Packed searching/lookup
@@ -22725,7 +22734,7 @@ $ ni --lib sqlite-profile QStest.db foo Ox
 3	4
 1	2
 ```
-560 doc/stream.md
+572 doc/stream.md
 # Stream operations
 ## Files
 ni accepts file names and opens their contents in less.
@@ -23019,6 +23028,13 @@ $ ni n2 +e'seq 3 5'                  # append output of shell command "seq 4"
 `e'sort -r'` and `e[sort -r]` are not quite identical; the difference comes in
 when you use shell metacharacters:
 
+```lazytest
+# LazyTest automation: dockerized arch linux has strange errors running the
+# examples below. I've never had any issues in production, so I think it's
+# test-specific.
+if ! [[ -e /notestdir ]]; then
+```
+
 ```bash
 $ mkdir test-dir
 $ touch test-dir/{a,b,c}
@@ -23032,6 +23048,11 @@ test-dir/a
 test-dir/b
 test-dir/c
 ```
+```lazytest
+fi          # -e /notestdir
+```
+
+
 
 ## Writing files
 You can write a file in two ways. One is, of course, using shell redirection:

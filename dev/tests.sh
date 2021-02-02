@@ -89,8 +89,12 @@ lazytest_case 'ni test.wav bf'\''ss'\'' r-15r10
 23844	23844
 25205	25205
 LAZYTEST_EOF
+# LazyTest automation: not all test environments provide numpy
+if ! [[ -e /nonumpy ]]; then
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=71
+lazytest_line=76
 lazytest_case 'ni test.wav bp'\''bi?r rp "ss":rb 44'\'' fA N'\''x = fft.fft(x, axis=0).real'\'' \
      Wn rp'\''a <= 22050'\'' OB r5,qB.01
 ' 3<<'LAZYTEST_EOF'
@@ -100,13 +104,16 @@ lazytest_case 'ni test.wav bp'\''bi?r rp "ss":rb 44'\'' fA N'\''x = fft.fft(x, a
 8461	667.75
 12181	620.78
 LAZYTEST_EOF
+fi              # -e /nonumpy
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=98
+lazytest_line=107
 lazytest_case 'ni nE4 op'\''wp"Nd", a, sin(a)'\'' > binary-lookup
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=118
+lazytest_line=127
 lazytest_case 'ni nE4 eshuf p'\''^{ri $table, "<binary-lookup"}
                  r a, sin(a), bsflookup $table, "N", 12, a, "x4d"'\'' \
                rp'\''b ne c'\'' e'\''wc -l'\''      # any records have a failed lookup?
@@ -5187,18 +5194,24 @@ lazytest_case 'ni n3e[sort -r]
 2
 1
 LAZYTEST_EOF
+# LazyTest automation: dockerized arch linux has strange errors running the
+# examples below. I've never had any issues in production, so I think it's
+# test-specific.
+if ! [[ -e /notestdir ]]; then
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=295
+lazytest_line=302
 lazytest_case 'mkdir test-dir
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=296
+lazytest_line=303
 lazytest_case 'touch test-dir/{a,b,c}
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=297
+lazytest_line=304
 lazytest_case 'ni e'\''ls test-dir/*'\''                   # e'\'''\'' sends its command through sh -c
 ' 3<<'LAZYTEST_EOF'
 test-dir/a
@@ -5206,25 +5219,28 @@ test-dir/b
 test-dir/c
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=301
+lazytest_line=308
 lazytest_case 'ni e[ls test-dir/*] 2>/dev/null || :  # e[] uses exec() directly; no wildcard expansion
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=302
+lazytest_line=309
 lazytest_case 'ni e[ ls test-dir/* ]                 # using whitespace avoids this problem
 ' 3<<'LAZYTEST_EOF'
 test-dir/a
 test-dir/b
 test-dir/c
 LAZYTEST_EOF
+fi          # -e /notestdir
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=312
+lazytest_line=324
 lazytest_case 'ni n3 >file                   # nothing goes to the terminal
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=313
+lazytest_line=325
 lazytest_case 'ni file
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5232,13 +5248,13 @@ lazytest_case 'ni file
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=322
+lazytest_line=334
 lazytest_case 'ni n3 \>file2                 # writes the filename to the terminal
 ' 3<<'LAZYTEST_EOF'
 file2
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=324
+lazytest_line=336
 lazytest_case 'ni file2
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5246,7 +5262,7 @@ lazytest_case 'ni file2
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=328
+lazytest_line=340
 lazytest_case 'ni n3 =\>file3                # eats the filename because \> happens inside =
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5254,7 +5270,7 @@ lazytest_case 'ni n3 =\>file3                # eats the filename because \> happ
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=332
+lazytest_line=344
 lazytest_case 'ni file3
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5262,7 +5278,7 @@ lazytest_case 'ni file3
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=342
+lazytest_line=354
 lazytest_case 'ni n4 \>file3 \<
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5271,17 +5287,17 @@ lazytest_case 'ni n4 \>file3 \<
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=356
+lazytest_line=368
 lazytest_case '{ echo foo; echo bar; } > file1
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=357
+lazytest_line=369
 lazytest_case 'echo bif > file2
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=358
+lazytest_line=370
 lazytest_case 'ni ifile1 ifile2 \<       # regular file-read on multiple files
 ' 3<<'LAZYTEST_EOF'
 foo
@@ -5289,7 +5305,7 @@ bar
 bif
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=362
+lazytest_line=374
 lazytest_case 'ni ifile1 ifile2 W\<      # prepend-file read on multiple files
 ' 3<<'LAZYTEST_EOF'
 file1	foo
@@ -5297,47 +5313,47 @@ file1	bar
 file2	bif
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=372
+lazytest_line=384
 lazytest_case 'ni ifile1 ifile2 W\< p'\''r a.".txt", b'\'' W\>
 ' 3<<'LAZYTEST_EOF'
 file1.txt
 file2.txt
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=375
+lazytest_line=387
 lazytest_case 'cat file1.txt
 ' 3<<'LAZYTEST_EOF'
 foo
 bar
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=378
+lazytest_line=390
 lazytest_case 'cat file2.txt
 ' 3<<'LAZYTEST_EOF'
 bif
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=385
+lazytest_line=397
 lazytest_case 'ni ifile1 ifile2 W\< p'\''r a.".txt2", b'\'' W\>p'\''uc'\''
 ' 3<<'LAZYTEST_EOF'
 file1.txt2
 file2.txt2
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=388
+lazytest_line=400
 lazytest_case 'cat file1.txt2
 ' 3<<'LAZYTEST_EOF'
 FOO
 BAR
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=391
+lazytest_line=403
 lazytest_case 'cat file2.txt2
 ' 3<<'LAZYTEST_EOF'
 BIF
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=400
+lazytest_line=412
 lazytest_case 'ni n2 W\<'\''"file$_"'\''
 ' 3<<'LAZYTEST_EOF'
 1	foo
@@ -5345,7 +5361,7 @@ lazytest_case 'ni n2 W\<'\''"file$_"'\''
 2	bif
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=411
+lazytest_line=423
 lazytest_case 'ni n2 Wn\<'\''"file$_"'\''
 ' 3<<'LAZYTEST_EOF'
 1	1	foo
@@ -5353,12 +5369,12 @@ lazytest_case 'ni n2 Wn\<'\''"file$_"'\''
 2	1	bif
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=421
+lazytest_line=433
 lazytest_case 'ni n3z >file3.gz
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=422
+lazytest_line=434
 lazytest_case 'zcat file3.gz
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5366,43 +5382,43 @@ lazytest_case 'zcat file3.gz
 3
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=431
+lazytest_line=443
 lazytest_case 'ni igzip z | gzip -dc                 # gzip by default
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=433
+lazytest_line=445
 lazytest_case 'ni igzip zg | gzip -dc                # explicitly specify
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=435
+lazytest_line=447
 lazytest_case 'ni igzip zg9 | gzip -dc               # specify compression level
 ' 3<<'LAZYTEST_EOF'
 gzip
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=437
+lazytest_line=449
 lazytest_case 'ni ixz zx | xz -dc
 ' 3<<'LAZYTEST_EOF'
 xz
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=439
+lazytest_line=451
 lazytest_case 'ni ilzo zo | lzop -dc
 ' 3<<'LAZYTEST_EOF'
 lzo
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=441
+lazytest_line=453
 lazytest_case 'ni ibzip2 zb | bzip2 -dc
 ' 3<<'LAZYTEST_EOF'
 bzip2
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=464
+lazytest_line=476
 lazytest_case 'ni n4 z zd
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5411,7 +5427,7 @@ lazytest_case 'ni n4 z zd
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=469
+lazytest_line=481
 lazytest_case 'ni n4 zd
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5420,13 +5436,13 @@ lazytest_case 'ni n4 zd
 4
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=480
+lazytest_line=492
 lazytest_case 'ni n4 zn | wc -c
 ' 3<<'LAZYTEST_EOF'
 0
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=489
+lazytest_line=501
 lazytest_case 'ni n1000000gr4
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5435,7 +5451,7 @@ lazytest_case 'ni n1000000gr4
 1000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=500
+lazytest_line=512
 lazytest_case 'ni n1000000gr4 :numbers
 ' 3<<'LAZYTEST_EOF'
 1
@@ -5444,7 +5460,7 @@ lazytest_case 'ni n1000000gr4 :numbers
 1000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=510
+lazytest_line=522
 lazytest_case 'ni n1000000gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 1000
@@ -5453,18 +5469,18 @@ lazytest_case 'ni n1000000gr4 :numbers O
 1
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=521
+lazytest_line=533
 lazytest_case 'echo '\''checkpointed'\'' > numbers
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=522
+lazytest_line=534
 lazytest_case 'ni n1000000gr4 :numbers O
 ' 3<<'LAZYTEST_EOF'
 checkpointed
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=530
+lazytest_line=542
 lazytest_case 'ni n100000z :biglist r+5
 ' 3<<'LAZYTEST_EOF'
 99996
@@ -5474,7 +5490,7 @@ lazytest_case 'ni n100000z :biglist r+5
 100000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=536
+lazytest_line=548
 lazytest_case 'ni n100000z :biglist r+5
 ' 3<<'LAZYTEST_EOF'
 99996
@@ -5484,35 +5500,35 @@ lazytest_case 'ni n100000z :biglist r+5
 100000
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=550
+lazytest_line=562
 lazytest_case 'rm -f numbers sum
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=551
+lazytest_line=563
 lazytest_case 'ni n100 :numbers ,s r+1 :sum          # generate numbers and sum
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=553
+lazytest_line=565
 lazytest_case 'sleep 2
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=554
+lazytest_line=566
 lazytest_case 'ni n50 \>numbers
 ' 3<<'LAZYTEST_EOF'
 numbers
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=556
+lazytest_line=568
 lazytest_case 'ni numbers ,s r+1 :sum                # no recalculation here
 ' 3<<'LAZYTEST_EOF'
 5050
 LAZYTEST_EOF
 lazytest_file='doc/stream.md'
-lazytest_line=558
+lazytest_line=570
 lazytest_case 'ni numbers ,s r+1 :sum[numbers]       # now we recalculate
 ' 3<<'LAZYTEST_EOF'
 1275
