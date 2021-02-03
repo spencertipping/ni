@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0202.1158
+2021.0203.1456
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -18128,7 +18128,7 @@ You can enter ni formulas into the top bar (without the explicit `ni` call).
 Set the second x component to 0 to flatten the image's depth dimension; then
 set the first R component to 0 and the second R component to 90 to show a
 front-facing view of your plot.
-340 doc/cheatsheet_op.md
+351 doc/cheatsheet_op.md
 # `ni` Operator Cheatsheet (alpha release)
 
 ## Preface
@@ -18429,6 +18429,11 @@ a	b	2	1	bar
 
 Reduces over the columns before `<col>`, and then does the standard `N` operation.
 
+```lazytest
+# LazyTest automation: not all environments have numpy installed
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
      i[c d 1 0] i[c d 1 1] \
@@ -18437,6 +18442,10 @@ a	b	10101	50205
 a	b	50205	250425
 c	d	2	1
 c	d	1	1
+```
+
+```lazytest
+fi              # -e /nonumpy
 ```
 
 * `X<col>`: Sparse-To-Dense Transform of Partitioned Data
@@ -18456,9 +18465,11 @@ a	b	foo	bar
 Don't use things other than Perl. Here are other things:
 
 *  `m'<...>'`: Ruby
-   * applies the Ruby snippet `<...>` to each row of the stream 
+   * applies the Ruby snippet `<...>` to each row of the stream
 *  `l'<...>'`: Lisp
-   * applies the Lisp snippet `<...>` to each row of the stream 
+   * applies the Lisp snippet `<...>` to each row of the stream
+*  `y'<...>'`: Python
+   * applies the Python snippet `<...>` to each row of the stream
 
 I have only ever used the Ruby extension, and only to us a library not written in `ni`.
 

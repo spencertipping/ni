@@ -298,6 +298,11 @@ a	b	2	1	bar
 
 Reduces over the columns before `<col>`, and then does the standard `N` operation.
 
+```lazytest
+# LazyTest automation: not all environments have numpy installed
+if ! [[ -e /nonumpy ]]; then
+```
+
 ```bash
 $ ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
      i[c d 1 0] i[c d 1 1] \
@@ -306,6 +311,10 @@ a	b	10101	50205
 a	b	50205	250425
 c	d	2	1
 c	d	1	1
+```
+
+```lazytest
+fi              # -e /nonumpy
 ```
 
 * `X<col>`: Sparse-To-Dense Transform of Partitioned Data
@@ -325,9 +334,11 @@ a	b	foo	bar
 Don't use things other than Perl. Here are other things:
 
 *  `m'<...>'`: Ruby
-   * applies the Ruby snippet `<...>` to each row of the stream 
+   * applies the Ruby snippet `<...>` to each row of the stream
 *  `l'<...>'`: Lisp
-   * applies the Lisp snippet `<...>` to each row of the stream 
+   * applies the Lisp snippet `<...>` to each row of the stream
+*  `y'<...>'`: Python
+   * applies the Python snippet `<...>` to each row of the stream
 
 I have only ever used the Ruby extension, and only to us a library not written in `ni`.
 

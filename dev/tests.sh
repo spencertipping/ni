@@ -417,8 +417,12 @@ a	b	1	1	y
 a	b	2	0	foo
 a	b	2	1	bar
 LAZYTEST_EOF
+# LazyTest automation: not all environments have numpy installed
+if ! [[ -e /nonumpy ]]; then
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/cheatsheet_op.md'
-lazytest_line=302
+lazytest_line=307
 lazytest_case 'ni i[a b 1 5] i[a b 100 500] i[a b -10 -20] \
      i[c d 1 0] i[c d 1 1] \
       NC'\''x = dot(x.T, x)'\''
@@ -428,8 +432,11 @@ a	b	50205	250425
 c	d	2	1
 c	d	1	1
 LAZYTEST_EOF
+fi              # -e /nonumpy
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
 lazytest_file='doc/cheatsheet_op.md'
-lazytest_line=316
+lazytest_line=325
 lazytest_case 'ni i[a b c d] i[a b x y] i[a b foo bar] YC XC
 ' 3<<'LAZYTEST_EOF'
 a	b	c	d
