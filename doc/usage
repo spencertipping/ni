@@ -463,6 +463,13 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     indentation and adjust accordingly.
 
 
+BINARY PACKING (ni //help/binary)
+    bf<template>        Read fixed-length rows with pack() <template>
+    bf^<template>       Read TSV and emit fixed-length rows with pack()
+
+    bp'...'             Run '...' Perl code over binary data
+
+
 GNUPLOT
     G<cols><term><cmd>  Use gnuplot to visualize data
     G:<term><cmd>       Plot verbatim data (no column transformation)

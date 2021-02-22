@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0203.1456
+2021.0222.2346
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9242,7 +9242,7 @@ sub bsflookup
   my $key    = unpack $_[1], $record;
   $key == $_[3] ? unpack $_[4], $record : undef;
 }
-53 core/binary/binary.pl
+63 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -9292,10 +9292,20 @@ defoperator binary_fixed => q{
   }
 };
 
-defshort '/b',
-  defdsp 'binaryalt', 'dispatch table for the /b binary operator',
-    f => pmap(q{binary_fixed_op $_}, generic_code),
-    p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
+defoperator binary_invert_fixed => q{
+  use bytes;
+  my ($pack_template) = @_;
+  while (<STDIN>)
+  {
+    chomp;
+    print pack($pack_template, split /\t/);
+  }
+};
+
+defshort '/bf',  pmap q{binary_fixed_op $_},        generic_code;
+defshort '/bf^', pmap q{binary_invert_fixed_op $_}, generic_code;
+
+defshort '/bp', pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
 1 core/matrix/lib
 matrix.pl
 207 core/matrix/matrix.pl
@@ -23558,7 +23568,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-502 doc/usage
+509 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24022,6 +24032,13 @@ MATRIX TRANSFORMATION (ni //help/matrix)
 
     Note that you can write multiline Python code; ni will infer the correct
     indentation and adjust accordingly.
+
+
+BINARY PACKING (ni //help/binary)
+    bf<template>        Read fixed-length rows with pack() <template>
+    bf^<template>       Read TSV and emit fixed-length rows with pack()
+
+    bp'...'             Run '...' Perl code over binary data
 
 
 GNUPLOT

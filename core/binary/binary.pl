@@ -47,7 +47,17 @@ defoperator binary_fixed => q{
   }
 };
 
-defshort '/b',
-  defdsp 'binaryalt', 'dispatch table for the /b binary operator',
-    f => pmap(q{binary_fixed_op $_}, generic_code),
-    p => pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
+defoperator binary_invert_fixed => q{
+  use bytes;
+  my ($pack_template) = @_;
+  while (<STDIN>)
+  {
+    chomp;
+    print pack($pack_template, split /\t/);
+  }
+};
+
+defshort '/bf',  pmap q{binary_fixed_op $_},        generic_code;
+defshort '/bf^', pmap q{binary_invert_fixed_op $_}, generic_code;
+
+defshort '/bp', pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
