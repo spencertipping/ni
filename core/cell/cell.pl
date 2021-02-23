@@ -247,23 +247,27 @@ defshort 'cell/A',
 # Sum, delta, average, variance, entropy, etc. Arguably these are column operators and
 # not cell operators, but in practice you tend to use them in the same context as
 # things like log scaling.
+#
+# Non-numeric values are ignored and left alone. If we did anything else, we'd
+# propagate NaN, Inf, or other things into the running operations and corrupt
+# everything downstream.
 
 defoperator col_sum => q{
   cell_eval {args  => 'undef',
              begin => 'my @ns = map 0, @cols',
-             each  => '$xs[$_] = $ns[$_] += $xs[$_]'}, @_;
+             each  => '$xs[$_] = $ns[$_] += $xs[$_] if $xs[$_] =~ /\d/'}, @_;
 };
 
 defoperator col_delta => q{
   cell_eval {args  => 'undef',
              begin => 'my @ns = map 0, @cols',
-             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_]'}, @_;
+             each  => '$xs[$_] -= $ns[$_], $ns[$_] += $xs[$_] if $xs[$_] =~ /\d/'}, @_;
 };
 
 defoperator col_average => q{
   cell_eval {args  => 'undef',
              begin => 'my @ns = map 0, @cols; $. = 0',
-             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $.'}, @_;
+             each  => '$xs[$_] = ($ns[$_] += $xs[$_]) / $. if $xs[$_] =~ /\d/'}, @_;
 };
 
 defshort 'cell/a', pmap q{col_average_op $_}, cellspec_fixed;
@@ -275,10 +279,12 @@ defoperator col_windowed_average => q{
   cell_eval {args  => '$wsize',
              begin => 'my @ws = map [], @cols;
                        my @t = map 0, @cols',
-             each  => 'push @{$ws[$_]}, $xs[$_];
-                       $t[$_] += $xs[$_];
-                       $t[$_] -= shift @{$ws[$_]} if @{$ws[$_]} > $wsize;
-                       $xs[$_] = $t[$_] / @{$ws[$_]}'}, @_;
+             each  => 'if ($xs[$_] =~ /\d/) {
+                         push @{$ws[$_]}, $xs[$_];
+                         $t[$_] += $xs[$_];
+                         $t[$_] -= shift @{$ws[$_]} if @{$ws[$_]} > $wsize;
+                         $xs[$_] = $t[$_] / @{$ws[$_]};
+                       }'}, @_;
 };
 
 defshort 'cell/aw', pmap q{col_windowed_average_op @$_},
