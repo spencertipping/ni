@@ -76,7 +76,7 @@ q{
       if ($o < $i)
       {
         sysseek $fw, $wmark, SEEK_SET;
-        $w += safewrite_exactly $fw, substr $buf, $o if $o < $i;
+        $w += safewrite_exactly $fw, substr $buf, $o;
       }
     }
     else

@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0223.2153
+2021.0224.1348
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4175,7 +4175,7 @@ q{
       if ($o < $i)
       {
         sysseek $fw, $wmark, SEEK_SET;
-        $w += safewrite_exactly $fw, substr $buf, $o if $o < $i;
+        $w += safewrite_exactly $fw, substr $buf, $o;
       }
     }
     else
