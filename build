@@ -6,7 +6,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 # Add version tagging to ni releases
-date -u +%Y.%m%d.%H%M.%S > core/boot/version
+date -u +%Y.%m%d.%H%M > core/boot/version
 
 ./markcheck
 
