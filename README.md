@@ -8,6 +8,9 @@
 ## Installing `ni`
 ```sh
 curl -sSL https://spencertipping.com/install-ni | bash
+
+ni --upgrade            # update from master (stable)
+ni --upgrade develop    # update from develop (less stable)
 ```
 
 `ni` has no dependencies except for your system's `perl`; the above installation
@@ -16,9 +19,9 @@ you don't have one yet.
 
 Once `ni` is installed, you can run `ni --upgrade` to keep it up to date.
 
-You only need to install `ni` on the machine you're using. `ni` will install
-itself in memory on machines you point it at, e.g. by using `ssh` or Hadoop to
-move sections of pipelines.
+You only need to install `ni` on the machine you're using. `ni` will
+nondestructively install itself on machines you point it at, e.g. by using `ssh`
+or Hadoop to move sections of pipelines.
 
 
 ## What is `ni`?
