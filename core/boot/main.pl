@@ -108,7 +108,7 @@ defclispecial '--upgrade', q{
   }
 
   fail "$branch has no versioned ni release"
-    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}$/;
+    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}(?:\.\d+)?$/;
 
   fail 'ni is not installed on this machine' unless -r $self;
   fail 'ni is not modifiable' unless -w $self;

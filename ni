@@ -1021,7 +1021,7 @@ defclispecial '--upgrade', q{
   }
 
   fail "$branch has no versioned ni release"
-    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}$/;
+    unless $online_version =~ /^\d{4}\.\d{4}\.\d{4}(?:\.\d+)?$/;
 
   fail 'ni is not installed on this machine' unless -r $self;
   fail 'ni is not modifiable' unless -w $self;
@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.1434
+2021.0225.1436.45
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
