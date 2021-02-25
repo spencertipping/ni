@@ -148,14 +148,23 @@ defoperator row_split_str => q{
 
 defshort '/R=' => pmap q{row_split_str_op $_}, prc '.*';
 
+
+defconfenv 'row/regex-bufsize',     NI_ROW_REGEX_BUFSIZE     => 1048576;
+defconfenv 'row/regex-contextsize', NI_ROW_REGEX_CONTEXTSIZE => 8192;
+
 defoperator row_regex => q{
   my ($re) = @_;
   my $buf = '';
   my $r = qr/$re/;
 
-  while (saferead \*STDIN, $buf, 65536, length $buf)
+  my $bufsize     = conf('row/regex-bufsize');
+  my $contextsize = conf('row/regex-contextsize');
+
+  while (saferead \*STDIN, $buf, $bufsize, length $buf)
   {
-    my $last = 0;
+    next if length $buf < $contextsize;
+
+    my $last = max 0, length $buf - $contextsize;
     while ($buf =~ /($r)/g)
     {
       $last = $+[0];
