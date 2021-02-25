@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.1415
+2021.0225.1418
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4521,7 +4521,7 @@ scale.pl
 join.pl
 xargs.pl
 pfn.pl
-341 core/row/row.pl
+346 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -4642,7 +4642,7 @@ defshort '/R,' => pmap q{$_ ? unrow_sized_op "\t", $_ : unrow_tabs_op},
 
 defoperator row_split_str => q{
   my ($str) = @_;
-  my $read_size = max 8192, 4 * length $str;
+  my $read_size = max 65536, 4 * length $str;
   my $buf = '';
   my $last = 0;
 
@@ -4677,10 +4677,15 @@ defoperator row_regex => q{
   my $buf = '';
   my $r = qr/$re/;
 
-  while (saferead \*STDIN, $buf, 8192, length $buf)
+  while (saferead \*STDIN, $buf, 65536, length $buf)
   {
-    print $1, "\n" while $buf =~ /($r)/g;
-    $buf = substr $buf, $+[0];
+    my $last = 0;
+    while ($buf =~ /($r)/g)
+    {
+      $last = $+[0];
+      print $1, "\n";
+    }
+    $buf = substr $buf, $last;
   }
 
   print $1, "\n" while $buf =~ /($r)/g;
