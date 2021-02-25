@@ -151,7 +151,10 @@ defoperator prepend => q{
 };
 docoperator prepend => q{Prepend a ni stream to this one};
 
-defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+defoperator sink_null => q{
+  my $s = conf('pipeline/io-size');
+  1 while saferead \*STDIN, $_, $s;
+};
 docoperator sink_null => q{Consume stream and produce nothing};
 
 defoperator divert => q{

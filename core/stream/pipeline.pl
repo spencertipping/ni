@@ -6,6 +6,8 @@
 # I define some system functions with a `c` prefix: these are checked system
 # calls that will die with a helpful message if anything fails.
 
+defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 65536;
+
 no warnings 'io';
 
 use Errno qw/EINTR/;
@@ -164,9 +166,20 @@ sub socons(&@) {
 # concatenate the second `ls` output (despite the fact that technically it's a
 # shell pipe).
 
-sub sforward($$) {local $_; safewrite_exactly $_[1], $_ while saferead $_[0], $_, 8192}
-sub stee($$$)    {local $_; safewrite_exactly($_[1], $_), safewrite_exactly($_[2], $_) while saferead $_[0], $_, 8192}
-sub sio()        {sforward \*STDIN, \*STDOUT}
+sub sforward($$) {
+  my $s = conf('pipeline/io-size');
+  local $_;
+  safewrite_exactly $_[1], $_ while saferead $_[0], $_, $s;
+}
+
+sub stee($$$) {
+  my $s = conf('pipeline/io-size');
+  local $_;
+  safewrite_exactly($_[1], $_),
+  safewrite_exactly($_[2], $_) while saferead $_[0], $_, $s;
+}
+
+sub sio() {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {mkdir_p dirname $_[0];
@@ -198,7 +211,7 @@ use constant perl_zlib_decoder =>
 
 sub sdecode(;$) {
   local $_;
-  return unless saferead \*STDIN, $_, 8192;
+  return unless saferead \*STDIN, $_, conf('pipeline/io-size');
 
   my $decoder = /^\x1f\x8b/               ? "pigz -dc || gzip -dc || cat"
               : /^BZh[1-9\0]/             ? "pbzip2 -dc || bzip2 -dc || cat"

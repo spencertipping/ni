@@ -81,7 +81,7 @@ defoperator unrow_sized => q{
   use bytes;
   my ($join, $len) = @_;
   my $buf = '';
-  my $read_size = max 8192, $len;
+  my $read_size = max conf('pipeline/io-size'), $len;
 
   while (1)
   {

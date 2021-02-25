@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.1438
+2021.0225.1503
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -2494,7 +2494,7 @@ sub child_exited($$) {
   $$self{status} = $status;
   delete $child_owners{$$self{pid}};
 }
-245 core/stream/pipeline.pl
+258 core/stream/pipeline.pl
 # Pipeline construction.
 # A way to build a shell pipeline in-process by consing a transformation onto
 # this process's standard input. This will cause a fork to happen, and the forked
@@ -2502,6 +2502,8 @@ sub child_exited($$) {
 
 # I define some system functions with a `c` prefix: these are checked system
 # calls that will die with a helpful message if anything fails.
+
+defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 65536;
 
 no warnings 'io';
 
@@ -2661,9 +2663,20 @@ sub socons(&@) {
 # concatenate the second `ls` output (despite the fact that technically it's a
 # shell pipe).
 
-sub sforward($$) {local $_; safewrite_exactly $_[1], $_ while saferead $_[0], $_, 8192}
-sub stee($$$)    {local $_; safewrite_exactly($_[1], $_), safewrite_exactly($_[2], $_) while saferead $_[0], $_, 8192}
-sub sio()        {sforward \*STDIN, \*STDOUT}
+sub sforward($$) {
+  my $s = conf('pipeline/io-size');
+  local $_;
+  safewrite_exactly $_[1], $_ while saferead $_[0], $_, $s;
+}
+
+sub stee($$$) {
+  my $s = conf('pipeline/io-size');
+  local $_;
+  safewrite_exactly($_[1], $_),
+  safewrite_exactly($_[2], $_) while saferead $_[0], $_, $s;
+}
+
+sub sio() {sforward \*STDIN, \*STDOUT}
 
 sub srfile($) {open my $fh, '<', $_[0] or die "ni: srfile $_[0]: $!"; $fh}
 sub swfile($) {mkdir_p dirname $_[0];
@@ -2695,7 +2708,7 @@ use constant perl_zlib_decoder =>
 
 sub sdecode(;$) {
   local $_;
-  return unless saferead \*STDIN, $_, 8192;
+  return unless saferead \*STDIN, $_, conf('pipeline/io-size');
 
   my $decoder = /^\x1f\x8b/               ? "pigz -dc || gzip -dc || cat"
               : /^BZh[1-9\0]/             ? "pbzip2 -dc || bzip2 -dc || cat"
@@ -2842,7 +2855,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-453 core/stream/ops.pl
+456 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2996,7 +3009,10 @@ defoperator prepend => q{
 };
 docoperator prepend => q{Prepend a ni stream to this one};
 
-defoperator sink_null => q{1 while saferead \*STDIN, $_, 8192};
+defoperator sink_null => q{
+  my $s = conf('pipeline/io-size');
+  1 while saferead \*STDIN, $_, $s;
+};
 docoperator sink_null => q{Consume stream and produce nothing};
 
 defoperator divert => q{
@@ -3866,7 +3882,7 @@ defshort '/f[' => pmap q{op_fn_op @$_},
 2 core/closure/lib
 closure.pl
 file.pl
-31 core/closure/closure.pl
+32 core/closure/closure.pl
 # Data closures.
 # Data closures are a way to ship data along with a process, for example over
 # hadoop or SSH. The idea is to make your data as portable as ni is.
@@ -3884,7 +3900,8 @@ defmetaoperator memory_data_closure => q{
   my ($name, $f) = @{$_[0]};
   my $data;
   my $fh = sni @$f;
-  1 while saferead $fh, $data, 8192, length $data;
+  my $iosize = conf('pipeline/io-size');
+  1 while saferead $fh, $data, $iosize, length $data;
   close $fh;
   $fh->await;
   add_closure_key $name, $data;
@@ -4605,7 +4622,7 @@ defoperator unrow_sized => q{
   use bytes;
   my ($join, $len) = @_;
   my $buf = '';
-  my $read_size = max 8192, $len;
+  my $read_size = max conf('pipeline/io-size'), $len;
 
   while (1)
   {
