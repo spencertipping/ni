@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.1410
+2021.0225.1415
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4680,7 +4680,7 @@ defoperator row_regex => q{
   while (saferead \*STDIN, $buf, 8192, length $buf)
   {
     print $1, "\n" while $buf =~ /($r)/g;
-    $buf = substr $buf, pos $buf;
+    $buf = substr $buf, $+[0];
   }
 
   print $1, "\n" while $buf =~ /($r)/g;

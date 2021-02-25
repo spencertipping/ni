@@ -156,7 +156,7 @@ defoperator row_regex => q{
   while (saferead \*STDIN, $buf, 8192, length $buf)
   {
     print $1, "\n" while $buf =~ /($r)/g;
-    $buf = substr $buf, pos $buf;
+    $buf = substr $buf, $+[0];
   }
 
   print $1, "\n" while $buf =~ /($r)/g;
