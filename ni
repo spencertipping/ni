@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.1432
+2021.0225.1434
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4688,7 +4688,7 @@ defoperator row_regex => q{
   {
     next if length $buf < $contextsize;
 
-    my $last = max 0, length $buf - $contextsize;
+    my $last = max 0, length($buf) - $contextsize;
     while ($buf =~ /($r)/g)
     {
       $last = $+[0];

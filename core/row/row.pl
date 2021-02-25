@@ -164,7 +164,7 @@ defoperator row_regex => q{
   {
     next if length $buf < $contextsize;
 
-    my $last = max 0, length $buf - $contextsize;
+    my $last = max 0, length($buf) - $contextsize;
     while ($buf =~ /($r)/g)
     {
       $last = $+[0];
