@@ -43,6 +43,7 @@ $ ni n10 rs3
 3
 ```
 
+
 ## Sampling
 ```bash
 $ ni n10000rx4000               # take the 1st of every 4000 rows
@@ -69,8 +70,39 @@ $ ni /path/to/large/data S8rx100        # ~800MB/s
 
 See [scale.md](scale.md) for details about horizontal scaling.
 
-## Row matching
 
+## Row splitting and joining
+You may be working with data whose line boundaries aren't ideal; XML documents
+are a common case. You can modify line boundaries using variants of the `R`
+operator:
+
++ `R^[<size>]`: turn `\n` into `\r`, optionally guided by `<size>`
++ `R,[<size>]`: turn `\n` into `\t`, optionally guided by `<size>`
++ `R='string'`: replace `string` with `\n`
++ `R'/<x>.*?<\/x>/'`: emit every match of `<x>.*?</x>` on its own row
+
+These operators are designed to be very fast, suitable for preprocessing the
+input to `S[]`.
+
+**TODO:** examples/tests
+
+Note that when sizes are specified, they are _lower_ bounds on the resulting
+row lengths. Also note that `R//` won't remove newlines from matched regions,
+nor will `.*` match across a line boundary. If you're matching a multiline
+region, you'll either need to use `[\s\S]` to include it, or remove newlines
+with `R^` or `R,` before using `R//`.
+
+```bash
+$ ni n10 R,
+1	2	3	4	5	6	7	8	9	10	
+$ ni n10 R,8
+1	2	3	4	5
+6	7	8	9	10
+
+```
+
+
+## Row matching
 There are several ways you can keep only rows matching a certain criterion.
 
 The simplest way is to use a regex:
@@ -105,6 +137,7 @@ The expression has access to column accessors and everything else described in
 Note that whitespace is always required after quoted code.
 
 **TODO:** other languages
+
 
 ## Column assertion
 In real-world data pipelines it's common to have cases where you have missing
@@ -149,6 +182,7 @@ $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
 10
 ```
 
+
 ### Set membership
 You can also assert that a column's value is one of a set of things. If you
 want to do this for a very large set, you should consider using [bloom
@@ -172,6 +206,7 @@ $ ni n10 rIAn5
 9
 10
 ```
+
 
 ## Sorting
 ni has four operators that shell out to the UNIX sort command. Two are
@@ -206,6 +241,7 @@ $ ni n100Or3                    # O = 'reverse order'
 99
 98
 ```
+
 
 ### Specifying sort columns
 When used without options, the sort operators sort by a whole row; but you can
@@ -251,6 +287,7 @@ $ ni data oB g r4               # 'g' is a sorting operator
 100	-0.506365641109759	4.60517018598809
 11	-0.999990206550703	2.39789527279837
 ```
+
 
 ### Grouped sort
 The `gg` operator sorts key-grouped bundles of rows; this is a piecewise sort.
@@ -319,9 +356,10 @@ $ ni i[who let the dogs out who who who] Z1 gcO # by descending count
 1	dogs
 ```
 
-## Joining
 
-You can use the `j` operator to inner-join two streams. 
+## Joining
+You can use the `j` operator to inner-join two streams.
+
 ```bash
 $ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
      j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
@@ -332,7 +370,9 @@ this	yes	OK
 this	yes	yipes
 ```
 
-Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
+Without any options, `j` will join on the first tab-delimited column of both
+streams, however, `j` can join on multiple columns by referencing the columns by
+letter:
 
 ```bash
 $ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
@@ -342,7 +382,10 @@ M	N	bar	hi
 X	Y	cat	bye
 ```
 
+In general, the streams you are joining should be pre-sorted (though `j` will
+not fail if the streams aren't sorted).
 
-In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
-
-The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
+The join here is slightly *asymmetric*; the left side of the join is streamed,
+while the right side is buffered into memory. This is useful to keep in mind for
+joins in a Hadoop Streaming context; the **left** side of the join should be
+larger (i.e. have more records) than the right side.

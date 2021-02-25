@@ -64,6 +64,107 @@ defshort '/r',
     pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
 
+
+# Re-splitting rows.
+# The R operator is similar to F for fields: it's a fast way to change row
+# boundaries. This can be useful in conjunction with S[].
+#
+# These operators must be fast. The typical use case is to rearrange line
+# boundaries before entering a S[] block to parallelize a computation -- so we
+# get only one thread to do whatever we need to do. This means where possible,
+# we skip Perl-level line processing and anything else that would slow us down.
+
+defoperator unrow_cr   => q{ exec 'tr', "\n", "\r" };
+defoperator unrow_tabs => q{ exec 'tr', "\n", "\t" };
+
+defoperator unrow_sized => q{
+  use bytes;
+  my ($join, $len) = @_;
+  my $buf = '';
+  my $read_size = max 8192, $len;
+
+  while (1)
+  {
+    saferead \*STDIN, $buf, $read_size, length $buf or goto end
+      until length $buf >= $len;
+
+    # Now we can start searching for a line boundary.
+    my $n = -1;
+    for (my $i = $len; ($n = index $buf, "\n", $i) == -1;)
+    {
+      $i = length $buf;
+      saferead \*STDIN, $buf, $read_size, length $buf or goto end;
+    }
+
+    # We have a line boundary. Replace newlines in everything to its left, then
+    # emit it.
+    (my $row = substr $buf, 0, $n) =~ s/\n/$join/g;
+    print $row, "\n";
+    $buf = substr $buf, $n + 1;
+  }
+
+end:
+  # Replace all newlines in $buf and terminate with a newline.
+  chomp $buf;
+  $buf =~ s/\n/$join/g;
+  print $buf, "\n";
+};
+
+defshort '/R^' => pmap q{$_ ? unrow_sized_op "\r", $_ : unrow_cr_op},
+                       popt datasize;
+
+defshort '/R,' => pmap q{$_ ? unrow_sized_op "\t", $_ : unrow_tabs_op},
+                       popt datasize;
+
+defoperator row_split_str => q{
+  my ($str) = @_;
+  my $read_size = max 8192, 4 * length $str;
+  my $buf = '';
+  my $last = 0;
+
+  while (saferead \*STDIN, $buf, $read_size, length $buf)
+  {
+    my $i;
+    if (($i = index $buf, $str, $last) == -1)
+    {
+      # Nothing found yet, but the next character we read might do it. Set $last
+      # accordingly.
+      $last = length $buf - length $str + 1;
+    }
+    else
+    {
+      $buf =~ s/\Q$str\E/\n/g;
+      $last = 1 + rindex $buf, "\n";
+      print substr $buf, 0, $last;
+      $buf = substr $buf, $last;
+      $last = 0;
+    }
+  }
+
+  # If we have anything left, do the search/replace and print it.
+  $buf =~ s/\Q$str\E/\n/g;
+  print $buf;
+};
+
+defshort '/R=' => pmap q{row_split_str_op $_}, prc '.*';
+
+defoperator row_regex => q{
+  my ($re) = @_;
+  my $buf = '';
+  my $r = qr/$re/;
+
+  while (saferead \*STDIN, $buf, 8192, length $buf)
+  {
+    print $1, "\n" while $buf =~ /($r)/g;
+    $buf = substr $buf, pos $buf;
+  }
+
+  print $1, "\n" while $buf =~ /($r)/g;
+};
+
+defshort '/R/' => pmap q{row_regex_op $_}, regex;
+
+
 # Sorting.
 # ni has four sorting operators, each of which can take modifiers:
 

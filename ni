@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0224.1348
+2021.0225.1410
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4521,7 +4521,7 @@ scale.pl
 join.pl
 xargs.pl
 pfn.pl
-240 core/row/row.pl
+341 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -4587,6 +4587,107 @@ defshort '/r',
     pmap(q{row_include_or_exclude_exact_op 1, @$_}, pn [1, 2], pstr 'i', colspec1, _qfn),
     pmap(q{row_include_or_exclude_exact_op 0, @$_}, pn [1, 2], pstr 'I', colspec1, _qfn),
     pmap(q{row_cols_defined_op @$_},     colspec_fixed);
+
+
+# Re-splitting rows.
+# The R operator is similar to F for fields: it's a fast way to change row
+# boundaries. This can be useful in conjunction with S[].
+#
+# These operators must be fast. The typical use case is to rearrange line
+# boundaries before entering a S[] block to parallelize a computation -- so we
+# get only one thread to do whatever we need to do. This means where possible,
+# we skip Perl-level line processing and anything else that would slow us down.
+
+defoperator unrow_cr   => q{ exec 'tr', "\n", "\r" };
+defoperator unrow_tabs => q{ exec 'tr', "\n", "\t" };
+
+defoperator unrow_sized => q{
+  use bytes;
+  my ($join, $len) = @_;
+  my $buf = '';
+  my $read_size = max 8192, $len;
+
+  while (1)
+  {
+    saferead \*STDIN, $buf, $read_size, length $buf or goto end
+      until length $buf >= $len;
+
+    # Now we can start searching for a line boundary.
+    my $n = -1;
+    for (my $i = $len; ($n = index $buf, "\n", $i) == -1;)
+    {
+      $i = length $buf;
+      saferead \*STDIN, $buf, $read_size, length $buf or goto end;
+    }
+
+    # We have a line boundary. Replace newlines in everything to its left, then
+    # emit it.
+    (my $row = substr $buf, 0, $n) =~ s/\n/$join/g;
+    print $row, "\n";
+    $buf = substr $buf, $n + 1;
+  }
+
+end:
+  # Replace all newlines in $buf and terminate with a newline.
+  chomp $buf;
+  $buf =~ s/\n/$join/g;
+  print $buf, "\n";
+};
+
+defshort '/R^' => pmap q{$_ ? unrow_sized_op "\r", $_ : unrow_cr_op},
+                       popt datasize;
+
+defshort '/R,' => pmap q{$_ ? unrow_sized_op "\t", $_ : unrow_tabs_op},
+                       popt datasize;
+
+defoperator row_split_str => q{
+  my ($str) = @_;
+  my $read_size = max 8192, 4 * length $str;
+  my $buf = '';
+  my $last = 0;
+
+  while (saferead \*STDIN, $buf, $read_size, length $buf)
+  {
+    my $i;
+    if (($i = index $buf, $str, $last) == -1)
+    {
+      # Nothing found yet, but the next character we read might do it. Set $last
+      # accordingly.
+      $last = length $buf - length $str + 1;
+    }
+    else
+    {
+      $buf =~ s/\Q$str\E/\n/g;
+      $last = 1 + rindex $buf, "\n";
+      print substr $buf, 0, $last;
+      $buf = substr $buf, $last;
+      $last = 0;
+    }
+  }
+
+  # If we have anything left, do the search/replace and print it.
+  $buf =~ s/\Q$str\E/\n/g;
+  print $buf;
+};
+
+defshort '/R=' => pmap q{row_split_str_op $_}, prc '.*';
+
+defoperator row_regex => q{
+  my ($re) = @_;
+  my $buf = '';
+  my $r = qr/$re/;
+
+  while (saferead \*STDIN, $buf, 8192, length $buf)
+  {
+    print $1, "\n" while $buf =~ /($r)/g;
+    $buf = substr $buf, pos $buf;
+  }
+
+  print $1, "\n" while $buf =~ /($r)/g;
+};
+
+defshort '/R/' => pmap q{row_regex_op $_}, regex;
+
 
 # Sorting.
 # ni has four sorting operators, each of which can take modifiers:
@@ -22150,7 +22251,7 @@ $ ni yRyI'def foo(x):
 3
 4
 ```
-348 doc/row.md
+391 doc/row.md
 # Row operations
 These are fairly well-optimized operations that operate on rows as units, which
 basically means that ni can just scan for newlines and doesn't have to parse
@@ -22196,6 +22297,7 @@ $ ni n10 rs3
 3
 ```
 
+
 ## Sampling
 ```bash
 $ ni n10000rx4000               # take the 1st of every 4000 rows
@@ -22222,8 +22324,39 @@ $ ni /path/to/large/data S8rx100        # ~800MB/s
 
 See [scale.md](scale.md) for details about horizontal scaling.
 
-## Row matching
 
+## Row splitting and joining
+You may be working with data whose line boundaries aren't ideal; XML documents
+are a common case. You can modify line boundaries using variants of the `R`
+operator:
+
++ `R^[<size>]`: turn `\n` into `\r`, optionally guided by `<size>`
++ `R,[<size>]`: turn `\n` into `\t`, optionally guided by `<size>`
++ `R='string'`: replace `string` with `\n`
++ `R'/<x>.*?<\/x>/'`: emit every match of `<x>.*?</x>` on its own row
+
+These operators are designed to be very fast, suitable for preprocessing the
+input to `S[]`.
+
+**TODO:** examples/tests
+
+Note that when sizes are specified, they are _lower_ bounds on the resulting
+row lengths. Also note that `R//` won't remove newlines from matched regions,
+nor will `.*` match across a line boundary. If you're matching a multiline
+region, you'll either need to use `[\s\S]` to include it, or remove newlines
+with `R^` or `R,` before using `R//`.
+
+```bash
+$ ni n10 R,
+1	2	3	4	5	6	7	8	9	10	
+$ ni n10 R,8
+1	2	3	4	5
+6	7	8	9	10
+
+```
+
+
+## Row matching
 There are several ways you can keep only rows matching a certain criterion.
 
 The simplest way is to use a regex:
@@ -22258,6 +22391,7 @@ The expression has access to column accessors and everything else described in
 Note that whitespace is always required after quoted code.
 
 **TODO:** other languages
+
 
 ## Column assertion
 In real-world data pipelines it's common to have cases where you have missing
@@ -22302,6 +22436,7 @@ $ ni n10p'r a; ""' rA | wc -l   # remove blank lines
 10
 ```
 
+
 ### Set membership
 You can also assert that a column's value is one of a set of things. If you
 want to do this for a very large set, you should consider using [bloom
@@ -22325,6 +22460,7 @@ $ ni n10 rIAn5
 9
 10
 ```
+
 
 ## Sorting
 ni has four operators that shell out to the UNIX sort command. Two are
@@ -22359,6 +22495,7 @@ $ ni n100Or3                    # O = 'reverse order'
 99
 98
 ```
+
 
 ### Specifying sort columns
 When used without options, the sort operators sort by a whole row; but you can
@@ -22404,6 +22541,7 @@ $ ni data oB g r4               # 'g' is a sorting operator
 100	-0.506365641109759	4.60517018598809
 11	-0.999990206550703	2.39789527279837
 ```
+
 
 ### Grouped sort
 The `gg` operator sorts key-grouped bundles of rows; this is a piecewise sort.
@@ -22472,9 +22610,10 @@ $ ni i[who let the dogs out who who who] Z1 gcO # by descending count
 1	dogs
 ```
 
-## Joining
 
-You can use the `j` operator to inner-join two streams. 
+## Joining
+You can use the `j` operator to inner-join two streams.
+
 ```bash
 $ ni i[foo bar] i[foo car] i[foo dar] i[that no] i[this yes] \
      j[ i[foo mine] i[not here] i[this OK] i[this yipes] ]
@@ -22485,7 +22624,9 @@ this	yes	OK
 this	yes	yipes
 ```
 
-Without any options, `j` will join on the first tab-delimited column of both streams, however, `j` can join on multiple columns by referencing the columns by letter:
+Without any options, `j` will join on the first tab-delimited column of both
+streams, however, `j` can join on multiple columns by referencing the columns by
+letter:
 
 ```bash
 $ ni i[M N foo] i[M N bar] i[M O qux] i[X Y cat] i[X Z dog] \
@@ -22495,10 +22636,13 @@ M	N	bar	hi
 X	Y	cat	bye
 ```
 
+In general, the streams you are joining should be pre-sorted (though `j` will
+not fail if the streams aren't sorted).
 
-In general, the streams you are joining should be pre-sorted (though `j` will not fail if the streams aren't sorted).
-
-The join here is slightly *asymmetric*; the left side of the join is streamed, while the right side is buffered into memory. This is useful to keep in mind for joins in a Hadoop Streaming context; the **left** side of the join should be larger (i.e. have more records) than the right side.
+The join here is slightly *asymmetric*; the left side of the join is streamed,
+while the right side is buffered into memory. This is useful to keep in mind for
+joins in a Hadoop Streaming context; the **left** side of the join should be
+larger (i.e. have more records) than the right side.
 143 doc/ruby.md
 # Ruby interface
 The `m` operator (for "map") lets you use a Ruby line processor to transform
@@ -23574,7 +23718,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-509 doc/usage
+516 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23720,6 +23864,13 @@ ROWS (ni //help/row)
                     (see ni //help/perl)
     rA              Take rows for which column A is non-blank
     rpa             Take rows for which column A is non-blank and nonzero
+
+    R^              Collapse lines by replacing \n with \r
+    R^4K            Collapse lines with \r until they're at least 4KiB long
+    R,              Fold lines by replacing \n with \t
+    R,128           Fold lines with \t until they're at least 128 bytes long
+    R=foo           Replace 'foo' with \n within collapsed stream
+    R/foo.*?bar/    Emit each match of /foo.*?bar/ on its own line
 
     ADVANCED
     JA[...]         Outer join unsorted stream with 'ni ...' on column A value

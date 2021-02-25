@@ -144,6 +144,13 @@ ROWS (ni //help/row)
     rA              Take rows for which column A is non-blank
     rpa             Take rows for which column A is non-blank and nonzero
 
+    R^              Collapse lines by replacing \n with \r
+    R^4K            Collapse lines with \r until they're at least 4KiB long
+    R,              Fold lines by replacing \n with \t
+    R,128           Fold lines with \t until they're at least 128 bytes long
+    R=foo           Replace 'foo' with \n within collapsed stream
+    R/foo.*?bar/    Emit each match of /foo.*?bar/ on its own line
+
     ADVANCED
     JA[...]         Outer join unsorted stream with 'ni ...' on column A value
     jB[...]         Outer join sorted stream with 'ni ...' on columns A and B
