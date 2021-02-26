@@ -345,6 +345,34 @@ STREAM TRANSFORMATION (ni //help/stream)
     See also //help/binary to parse non-text streams.
 
 
+FUNCTIONS AND LET-BINDINGS (ni //help/fn)
+    f[%x %y : ...]          For each line of input, bind %x and %y as TSV and
+                            run 'ni ...' with values substituted for %x and %y
+    l[%x=5 %y=10 : ...]     Replace %x with 5 and %y with 10 in 'ni ...'
+    fx8[%x : ...]           Use 'xargs -P8' to run 8 parallel 'ni ...'
+                            processes, each a single f[] from the input
+
+    EXAMPLES
+    f[%f : i%f \<wcl]       Filenames -> line counts
+    fx8[%f : i%f \<wcl]     Same, but read 8x at a time
+
+    Note that you can call your arguments pretty much whatever you want to. The
+    % prefix is optional; it just prevents your args from colliding with ni
+    operators.
+
+    Also note that ni parses the function body only once. This means your
+    function arguments need to occur in positions where they don't change how
+    your function is parsed; for example '%f' as a filename needs to be written
+    as 'i%f \<' rather than directly.
+
+    ni --explain       ->  explain without let-expansion
+    ni --explain-meta  ->  explain after let-expansion (and other expansions)
+
+    Also also note that because of xargs, fxN[] is subject to write corruption
+    for large outputs. It's safer to have fxN[] output filenames and read them
+    with \< or \<# -- for example, 'fx4[%f : ... \>] \<#'.
+
+
 PERL STREAM CODE (ni //help/perl)
     Used both by p'...' and rp'...'.
 
@@ -475,6 +503,13 @@ BINARY PACKING (ni //help/binary)
     bf^<template>       Read TSV and emit fixed-length rows with pack()
 
     bp'...'             Run '...' Perl code over binary data
+
+    Use 'perldoc -f pack' for a full list of template elements. Note that bf
+    handles only fixed-length templates: 'n/a' won't work, for example. If you
+    need to unpack variable-length records, use the 'rp' (read-packed) function
+    in bp'...':
+
+    $ ni n10 bf^n/a bp'r rp"n/a"'
 
 
 GNUPLOT

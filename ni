@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0226.1355
+2021.0226.1542
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9336,7 +9336,7 @@ sub rb($) {
   $r;
 }
 
-sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
+sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], pb 8192}
 7 core/binary/bytewriter.pm
 # Byte writer.
 # Convenience functions that make it easier to write binary data to standard out.
@@ -21452,8 +21452,11 @@ You can, of course, nest SSH operators:
 ```sh
 $ ni i[who let the dogs out who who who] shost1[shost2[gc]] r10
 ```
-99 doc/options.md
-# Complete ni operator listing
+102 doc/options.md
+# Incomplete ni operator listing
+**NOTE:** this page is out of date. You should use `ni --inspect` for a
+dynamically-generated list.
+
 Implementation status:
 - T: implemented and automatically tested
 - M: implemented and manually tested (so it might be broken)
@@ -23749,7 +23752,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-516 doc/usage
+551 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24097,6 +24100,34 @@ STREAM TRANSFORMATION (ni //help/stream)
     See also //help/binary to parse non-text streams.
 
 
+FUNCTIONS AND LET-BINDINGS (ni //help/fn)
+    f[%x %y : ...]          For each line of input, bind %x and %y as TSV and
+                            run 'ni ...' with values substituted for %x and %y
+    l[%x=5 %y=10 : ...]     Replace %x with 5 and %y with 10 in 'ni ...'
+    fx8[%x : ...]           Use 'xargs -P8' to run 8 parallel 'ni ...'
+                            processes, each a single f[] from the input
+
+    EXAMPLES
+    f[%f : i%f \<wcl]       Filenames -> line counts
+    fx8[%f : i%f \<wcl]     Same, but read 8x at a time
+
+    Note that you can call your arguments pretty much whatever you want to. The
+    % prefix is optional; it just prevents your args from colliding with ni
+    operators.
+
+    Also note that ni parses the function body only once. This means your
+    function arguments need to occur in positions where they don't change how
+    your function is parsed; for example '%f' as a filename needs to be written
+    as 'i%f \<' rather than directly.
+
+    ni --explain       ->  explain without let-expansion
+    ni --explain-meta  ->  explain after let-expansion (and other expansions)
+
+    Also also note that because of xargs, fxN[] is subject to write corruption
+    for large outputs. It's safer to have fxN[] output filenames and read them
+    with \< or \<# -- for example, 'fx4[%f : ... \>] \<#'.
+
+
 PERL STREAM CODE (ni //help/perl)
     Used both by p'...' and rp'...'.
 
@@ -24227,6 +24258,13 @@ BINARY PACKING (ni //help/binary)
     bf^<template>       Read TSV and emit fixed-length rows with pack()
 
     bp'...'             Run '...' Perl code over binary data
+
+    Use 'perldoc -f pack' for a full list of template elements. Note that bf
+    handles only fixed-length templates: 'n/a' won't work, for example. If you
+    need to unpack variable-length records, use the 'rp' (read-packed) function
+    in bp'...':
+
+    $ ni n10 bf^n/a bp'r rp"n/a"'
 
 
 GNUPLOT

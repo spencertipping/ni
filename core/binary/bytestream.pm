@@ -26,4 +26,4 @@ sub rb($) {
   $r;
 }
 
-sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], $binary}
+sub rp($) {unpack $_[0], rb length pack $_[0], unpack $_[0], pb 8192}

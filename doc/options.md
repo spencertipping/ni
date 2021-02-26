@@ -1,4 +1,7 @@
-# Complete ni operator listing
+# Incomplete ni operator listing
+**NOTE:** this page is out of date. You should use `ni --inspect` for a
+dynamically-generated list.
+
 Implementation status:
 - T: implemented and automatically tested
 - M: implemented and manually tested (so it might be broken)
