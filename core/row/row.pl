@@ -146,7 +146,7 @@ defoperator row_split_str => q{
   print $buf;
 };
 
-defshort '/R=' => pmap q{row_split_str_op $_}, prc '.*';
+defshort '/R=' => pmap q{row_split_str_op $_}, prx '.*';
 
 
 defconfenv 'row/regex-bufsize',     NI_ROW_REGEX_BUFSIZE     => 1048576;

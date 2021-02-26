@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0225.2240
+2021.0226.1355
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4687,7 +4687,7 @@ defoperator row_split_str => q{
   print $buf;
 };
 
-defshort '/R=' => pmap q{row_split_str_op $_}, prc '.*';
+defshort '/R=' => pmap q{row_split_str_op $_}, prx '.*';
 
 
 defconfenv 'row/regex-bufsize',     NI_ROW_REGEX_BUFSIZE     => 1048576;
