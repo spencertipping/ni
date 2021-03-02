@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0302.1252
+2021.0302.1328
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -23754,7 +23754,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-585 doc/usage
+608 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24330,6 +24330,12 @@ MEDIA
     IV<mediaspec>         Convert concatenated images to video (some older
                           ffmpegs fail if you use PNGs as input)
 
+    I[...]                Split a stream of concatenated PNG or BMP images,
+                          transform each with 'ni ...'
+
+    IC[init][fold][emit]  Left-fold a stream of concatenated PNG or BMP images
+                          using ImageMagick 'convert'
+
     <mediaspec> describes the container format, codec, and bitrate. The
     following are valid:
 
@@ -24340,4 +24346,21 @@ MEDIA
 
     m3u:// defaults to FLV, but you can specify the target media container, e.g.
     m3u+gif://URL. This may be required if the codec doesn't work with FLV.
+
+    IC[][][] is a disk-intensive way to mix data between images within a
+    sequence. It works like this:
+
+      image 0 | convert $init > reduced.png
+      while (more images)
+        next image | convert reduced.png $fold > reduced.png
+
+    Each time reduced.png is written, 'convert reduced.png $emit png:-' is run
+    to emit a transformed version of it to stdout. This becomes the output image
+    stream.
+
+    IC's [] blocks are all 'convert' command-line argument lists. [init] can be
+    written as : to specify no transformation. For example, to blur/fade:
+
+      IC: [-blur 1x1 - -compose blend -define compose:args=100,98 -composite] \
+          [-resize 1920x1080]
 __END__
