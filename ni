@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0226.1542
+2021.0302.1252
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -2855,7 +2855,7 @@ sub exec_ni(@) {
 }
 
 sub sni(@) {soproc {nuke_stdin; exec_ni @_} @_}
-456 core/stream/ops.pl
+458 core/stream/ops.pl
 # Streaming data sources.
 # Common ways to read data, most notably from files and directories. Also
 # included are numeric generators, shell commands, etc.
@@ -2912,8 +2912,9 @@ BEGIN {
                                  prx '[^][]+';
 }
 
-defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
-defoperator sh   => q{my ($c) = @_; sh $c};
+defoperator constant => q{my ($x) = @_; sio; print "$x\n" while 1};
+defoperator echo     => q{my ($x) = @_; sio; print "$x\n"};
+defoperator sh       => q{my ($c) = @_; sh $c};
 
 defshort '/e', pmap q{sh_op $_}, shell_command;
 
@@ -2980,7 +2981,8 @@ defoperator nmod => q{
 
 defshort '/n%', pmap q{nmod_op $_}, integer;
 
-defshort '/i',  pmap q{echo_op $_}, id_text;
+defshort '/i',  pmap q{echo_op $_},     id_text;
+defshort '/k',  pmap q{constant_op $_}, id_text;
 
 defshort '/1', pmap q{n_op 1, 2}, pnone;
 
@@ -23752,7 +23754,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-551 doc/usage
+585 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23828,6 +23830,8 @@ GENERATING DATA (ni //help/stream)
     http[s]://url   Write HTTP GET stream using curl
     i'text'         Write 'text' as output
     i[x y z]        Write 'x y z' as a tab-delimited output line
+    k'text'         Write 'text' forever
+    k[x y z]        Write 'x y z' as tab-delimited output forever
 
     n100            Write 1..100 to output, each on its own line
     n='3 + 4 * 5'   Write 1..23
@@ -23835,6 +23839,8 @@ GENERATING DATA (ni //help/stream)
     n               Write 1.. as an infinite list of integers
     n0              Write 0.. as an infinite list of integers
     n%7             Write 0..6,0..6,... as an infinite list of integers
+
+    _               Vertically align line contents within 1024-large groups
 
     It's common to end a stream with '_', which vertically aligns multi-column
     data.
@@ -23882,7 +23888,10 @@ COLUMNS AND FIELDS (ni //help/col)
     ADVANCED
     w[...]          Zip each line with a line from 'ni ...', joined on the right
     W[...]          Zip each line with a line from 'ni ...', joined on the left
-    W[n]  or  Wn    Common idiom: prepend line numbers
+
+    W[n]       or  Wn       Common idiom: prepend line numbers
+    W[kfoo]    or  Wkfoo    Prepend each line with 'foo'
+    w[k[x y]]  or  wk[x y]  Append 'x y' to each line (as TSV)
 
 
 ROWS (ni //help/row)
@@ -24268,10 +24277,10 @@ BINARY PACKING (ni //help/binary)
 
 
 GNUPLOT
-    G<cols><term><cmd>  Use gnuplot to visualize data
-    G:<term><cmd>       Plot verbatim data (no column transformation)
-    G:W%l               Plot one or two-column data with lines, interactively
-    G*W                 Plot all columns of data, keyed by col A on the X axis
+    G<col><term><cmd>  Use gnuplot to visualize data
+    G:<term><cmd>      Plot data in a single group
+    G:W%l              Plot one or two-column data with lines, interactively
+    G*W                Plot all columns of data, keyed by col A on the X axis
 
     term can be:
       X  (x11)
@@ -24289,7 +24298,23 @@ GNUPLOT
       %t'...'   title "..."
       %u'...'   using ...
 
-    Image formats can be used with video encoders; see IV operator below.
+    G<col>, e.g. GA, causes gnuplot to be run multiple times -- one per group of
+    rows for which column A is the same. This is useful when animating data.
+
+    jpeg and png terminals will create image outputs on stdout, concatenated if
+    gnuplot is run multiple times. ffmpeg can accept these concatenated image
+    streams as input for video assembly. For example, to create an animated
+    plot:
+
+    $ ni n100,L p'r a, sin(a*$_/100) for 0..1000' GAP%l IVavi \>animated.avi
+
+    If you're looping gnuplot with a column spec, ni sets a gnuplot variable
+    called KEY that contains the current group value. You can use this by
+    writing gnuplot code longhand:
+
+    $ ni n100,L p'r a, sin(a*$_/100) for 0..1000' \
+         GAP'set title "coefficient = " . KEY;
+             plot "-" with lines' IVavi \>animated-title.avi
 
 
 MEDIA
@@ -24298,10 +24323,21 @@ MEDIA
     m3u://https://...     Stream video from M3U playlist using ffmpeg
 
     VP                    Play video stream using ffplay
-    AEogg/libvorbis/224k  Use ffmpeg to discard video, extract audio encoded
-                          as 224k vorbis
     VIpng                 Convert video to concatenated stream of PNG images
     VImjpeg               Convert video to concatenated stream of JPGs
-    IVavi                 Convert concatenated images to AVI video (requires
-                          JPEG due to bug in ffmpeg)
+
+    AE<mediaspec>         Use ffmpeg to discard video, emit audio as <mediaspec>
+    IV<mediaspec>         Convert concatenated images to video (some older
+                          ffmpegs fail if you use PNGs as input)
+
+    <mediaspec> describes the container format, codec, and bitrate. The
+    following are valid:
+
+      IVavi                   AVI container format, default codec + bitrate
+      IVgif                   GIF animated image
+      IVmatroska/libvpx       Matroska with VPX codec, default bitrate
+      AEogg/libvorbis/224k    Ogg container, vorbis audio codec, 224k bitrate
+
+    m3u:// defaults to FLV, but you can specify the target media container, e.g.
+    m3u+gif://URL. This may be required if the codec doesn't work with FLV.
 __END__

@@ -54,8 +54,9 @@ BEGIN {
                                  prx '[^][]+';
 }
 
-defoperator echo => q{my ($x) = @_; sio; print "$x\n"};
-defoperator sh   => q{my ($c) = @_; sh $c};
+defoperator constant => q{my ($x) = @_; sio; print "$x\n" while 1};
+defoperator echo     => q{my ($x) = @_; sio; print "$x\n"};
+defoperator sh       => q{my ($c) = @_; sh $c};
 
 defshort '/e', pmap q{sh_op $_}, shell_command;
 
@@ -122,7 +123,8 @@ defoperator nmod => q{
 
 defshort '/n%', pmap q{nmod_op $_}, integer;
 
-defshort '/i',  pmap q{echo_op $_}, id_text;
+defshort '/i',  pmap q{echo_op $_},     id_text;
+defshort '/k',  pmap q{constant_op $_}, id_text;
 
 defshort '/1', pmap q{n_op 1, 2}, pnone;
 
