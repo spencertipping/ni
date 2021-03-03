@@ -6,6 +6,11 @@ defoperator meta_image => q{sio; print image, "\n"};
 defoperator meta_keys  => q{sio; print "$_\n" for sort keys %ni::self};
 defoperator meta_key   => q{my @ks = @_; sio; print "$_\n" for @ni::self{@ks}};
 
+defoperator meta_du => q{
+  sio;
+  print length($ni::self{$_}) . "\t$_\n" for sort keys %ni::self;
+};
+
 defoperator meta_help => q{
   my ($topic) = @_;
   $topic = 'tutorial' unless length $topic;
@@ -17,6 +22,7 @@ defshort '///ni/',     pmap q{meta_key_op $_}, prc '[^][]+$';
 defshort '///ni',      pmap q{meta_image_op},  pnone;
 defshort '///你',      pmap q{meta_image_op},  pnone;
 defshort '///ni/keys', pmap q{meta_keys_op},   pnone;
+defshort '///ni/du',   pmap q{meta_du_op},     pnone;
 
 defoperator meta_eval_number => q{sio; print $ni::evals{$_[0] - 1}, "\n"};
 defshort '///ni/eval/', pmap q{meta_eval_number_op $_}, integer;

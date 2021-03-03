@@ -19,8 +19,13 @@ bootcode() { cat core/boot/ni; }
 
 resource() {
   for r; do
-    wc -l "$r"
-    cat "$r"
+    perl -e 'use IO::Compress::Gzip qw/gzip/;
+             open my $fh, "<'$r'" or die $!;
+             my $x = join"", <$fh>;
+             gzip \$x => \(my $v);
+             $v = pack "u*", $v;
+             my $wcl = my @xs = split /\n/, "$v ";
+             printf "%d %s\n%s\n", $wcl, "'$r'", $v'
   done
 }
 

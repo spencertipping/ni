@@ -2,6 +2,8 @@
 # ni needs to be able to reconstruct itself from a map. These functions implement
 # the map commands required to do this.
 
+use IO::Compress::Gzip qw/gzip/;
+
 our %self;
 
 our $ni_map = 'core/boot/ni.map';
@@ -18,8 +20,18 @@ sub lib_entries($$) {
   map "$name/$_", grep {s/#.*//; length} split /\n/, $text;
 }
 
-sub quote_resource {my @xs; map sprintf("%d %s\n%s", scalar(@xs = split /\n/, "$self{$_} "), $_, $self{$_}), @_}
-sub quote_library  {map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_}
+sub quote_single_key
+{
+  my ($k) = @_;
+  gzip \$ni::self{$k} => \(my $v);
+  $v = pack "u*", $v;
+  sprintf "%d %s\n%s", scalar(my @xs = split /\n/, "$v "), $k, $v;
+}
+
+sub quote_resource { map quote_single_key($_), @_ }
+sub quote_library {
+  map quote_resource("$_/lib", lib_entries $_, $self{"$_/lib"}), @_;
+}
 
 sub read_map {join '', map "$_\n",
                        (map {my ($c, @a) = split /\s+/;

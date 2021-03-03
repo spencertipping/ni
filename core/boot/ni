@@ -24,6 +24,7 @@ SOFTWARE.
 _
 eval($ni::self{ni} = <<'_');
 use strict;
+use IO::Uncompress::Gunzip qw/gunzip/;
 $ni::data = \*DATA;
 
 sub ni::boot_header
@@ -36,18 +37,24 @@ sub ni::boot_header
              "__DATA__" }
 
 sub ni::eval($;$)
-{ @ni::evals{eval('__FILE__') =~ /\(eval (\d+)\)/} = ($_[1] || "anon {$_[0]}");
-  my @r = eval "package ni;$_[0]";
-  $@ =~ s/\(eval (\d+)\)/$ni::evals{$1 - 1}/eg, die $@ if $@;
-  @r }
+{ (my $k = @_ > 1 ? $_[1] : "anonymous ni::eval") =~ s/["\n]//g;
+  eval "package ni;\n#line 1 \"$k\"\n$_[0]" }
 
 sub ni::set
 { my $k = $_[0];
   chomp($ni::self{$k} = $_[1]);
   ni::eval $_[1], $k if $k =~ /\.pl$/ }
 
-ni::set $2, join '', map $_ = <DATA>, 1..$1
-while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
+while (defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/)
+{
+  my ($ls, $k) = ($1, $2);
+  my $v = unpack 'u*', join '', map $_ = <DATA>, 1..$ls;
+  gunzip \$v => \(my $u);
+  ni::set $k, $u;
+}
+
+#ni::set $2, join '', map $_ = <DATA>, 1..$1
+#while defined($_ = <DATA>) && /^\s*(\d+)\s+(.*)$/;
 ni::eval 'exit main @ARGV', 'main' unless $ni::is_lib;
 _
 die $@ if $@;

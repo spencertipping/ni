@@ -76,11 +76,14 @@ mv README.md.gen README.md
 
 ./test --update
 
-if [[ `./ni //ni` != "$(< ni)" ]]; then
-  echo "ni is unstable under replication" >&2
-  exit 1
-fi
+#if [[ `./ni //ni | perl - //ni/du` != "$(./ni //ni/du)" ]]; then
+#  echo "ni is unstable under replication" >&2
+#  exit 1
+#fi
 
 unset NI_NO_HOME
 
 wc -c ni
+
+# Measure boot time
+time ./ni 1 > /dev/null
