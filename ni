@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0302.1328
+2021.0403.1545
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -6082,7 +6082,7 @@ if (eval {require Math::Trig}) {
   }
 }
 }
-123 core/pl/stream.pm
+126 core/pl/stream.pm
 # Perl stream-related functions.
 # Utilities to parse and emit streams of data. Handles the following use cases:
 
@@ -6122,6 +6122,9 @@ BEGIN {ceval sprintf 'sub %s__ {my @r;
                                 { my @line_arr = split /\t/, $line; 
                                   my @short = @line_arr[%d..$#line_arr];
                                   push @r, @short } @r }', $_, $_, ord($_) - 97 for 'a'..'l'}
+
+sub FRA() {@F}
+BEGIN {ceval sprintf 'sub FR%s() {FR %d}', $_, ord($_) - 65 for 'B'..'Z'}
 
 sub cols(@) {
   local $_;

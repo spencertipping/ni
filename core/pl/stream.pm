@@ -38,6 +38,9 @@ BEGIN {ceval sprintf 'sub %s__ {my @r;
                                   my @short = @line_arr[%d..$#line_arr];
                                   push @r, @short } @r }', $_, $_, ord($_) - 97 for 'a'..'l'}
 
+sub FRA() {@F}
+BEGIN {ceval sprintf 'sub FR%s() {FR %d}', $_, ord($_) - 65 for 'B'..'Z'}
+
 sub cols(@) {
   local $_;
   for my $i (0..min map $#{$_}, @_) {
