@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0403.1545
+2021.0405.1136
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8172,9 +8172,9 @@ defresource 'gitsnap',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
     my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
-                                   '-r', '--name-only',
-                                   $ref, git_dashed_path $file, $subdir;
-    soproc { print "gitblob://$outpath:$ref\::$_" for `$enum_command` };
+                                   '-r', $ref, git_dashed_path $file, $subdir;
+    soproc { /^\d+ blob \S+\t(.*)/ and print "gitblob://$outpath:$ref\::$1\n"
+             for `$enum_command` };
   };
 
 # gitdsnap: just like gitsnap, but returns direct object IDs instead of
@@ -8190,7 +8190,7 @@ defresource 'gitdsnap',
     my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
                                    '-r', $ref,
                                    git_dashed_path $file, $subdir;
-    soproc { /^\S+ \S+ ([0-9a-fA-F]+)\t(.*)/
+    soproc { /^\S+ blob ([0-9a-fA-F]+)\t(.*)/
              && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
   };
 
