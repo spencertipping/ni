@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0521.1828
+2021.0521.1954
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9414,7 +9414,7 @@ use constant binary_pythongen => gen pydent q{
     try:
       go()
     except EOFError:
-      os.exit(0)
+      sys.exit(0)
 };
 
 defperlprefix 'core/binary/bytewriter.pm';

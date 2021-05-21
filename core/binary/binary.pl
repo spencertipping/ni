@@ -26,7 +26,7 @@ use constant binary_pythongen => gen pydent q{
     try:
       go()
     except EOFError:
-      os.exit(0)
+      sys.exit(0)
 };
 
 defperlprefix 'core/binary/bytewriter.pm';
