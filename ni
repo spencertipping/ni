@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0405.1136
+2021.0521.1828
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9385,10 +9385,13 @@ sub bsflookup
   my $key    = unpack $_[1], $record;
   $key == $_[3] ? unpack $_[4], $record : undef;
 }
-63 core/binary/binary.pl
+91 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
+#
+# For Python, we just make the entirety of stdin available. This is useful when
+# you're doing NumPy stuff that addresses
 
 use constant binary_perlgen => gen q{
   %prefix
@@ -9399,20 +9402,44 @@ use constant binary_perlgen => gen q{
   }
 };
 
+use constant binary_pythongen => gen pydent q{
+  import os
+  import sys
+  sys.stdin.close()
+  stdin = os.fdopen(3, 'r')
+  %prefix
+  def go():
+  %body
+  while len(stdin.buffer.peek(1)):
+    try:
+      go()
+    except EOFError:
+      os.exit(0)
+};
+
 defperlprefix 'core/binary/bytewriter.pm';
 defperlprefix 'core/binary/search.pm';
 
 our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
+our @binary_python_prefix_keys = ();
 
 sub binary_perl_prefix() {join "\n", perl_prefix,
                                      @ni::self{@binary_perl_prefix_keys}}
 
-sub defbinaryperlprefix($) {push @binary_perl_prefix_keys, $_[0]}
+sub binary_python_prefix() {join "\n", python_prefix,
+                                 @ni::self{@binary_python_prefix_keys}}
+
+sub defbinaryperlprefix($)   {push @binary_perl_prefix_keys,   $_[0]}
+sub defbinarypythonprefix($) {push @binary_python_prefix_keys, $_[0]}
 
 sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
                                             body   => perl_expand_begin $_[0])}
 
-defoperator binary_perl => q{stdin_to_perl binary_perl_mapper $_[0]};
+sub binary_python_mapper($) {binary_pythongen->(prefix => binary_python_prefix,
+                                                body   => indent(pydent $_[0], 2))}
+
+defoperator binary_perl   => q{stdin_to_perl   binary_perl_mapper   $_[0]};
+defoperator binary_python => q{stdin_to_python binary_python_mapper $_[0]};
 
 defoperator binary_fixed => q{
   use bytes;
@@ -9448,7 +9475,8 @@ defoperator binary_invert_fixed => q{
 defshort '/bf',  pmap q{binary_fixed_op $_},        generic_code;
 defshort '/bf^', pmap q{binary_invert_fixed_op $_}, generic_code;
 
-defshort '/bp', pmap q{binary_perl_op $_}, plcode \&binary_perl_mapper;
+defshort '/bp', pmap q{binary_perl_op $_},   plcode \&binary_perl_mapper;
+defshort '/by', pmap q{binary_python_op $_}, pycode \&binary_python_mapper;
 1 core/matrix/lib
 matrix.pl
 207 core/matrix/matrix.pl
