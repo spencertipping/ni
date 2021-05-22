@@ -3,7 +3,14 @@
 # in a Perl context with functions that manage a queue of data in `$_`.
 #
 # For Python, we just make the entirety of stdin available. This is useful when
-# you're doing NumPy stuff that addresses
+# you're doing NumPy stuff that addresses TO BE CONTINUED! (this is an inside
+# joke from a derp moment during code review, for anyone who finds it later)
+#
+# PREVIOUSLY, IN BINARY.PL... addresses... but addresses what??? Large blocks
+# of memory at a time, of course, e.g. outputs from
+# ffmpeg -f image2pipe -c:v ppm, perhaps then piped through a PPM header
+# trimmer like
+# bp'rb length("P6\n$width $height\n225\n"); ws rb $width*$height*3'
 
 use constant binary_perlgen => gen q{
   %prefix

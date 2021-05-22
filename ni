@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0521.1954
+2021.0522.0205
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9385,13 +9385,20 @@ sub bsflookup
   my $key    = unpack $_[1], $record;
   $key == $_[3] ? unpack $_[4], $record : undef;
 }
-91 core/binary/binary.pl
+98 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
 #
 # For Python, we just make the entirety of stdin available. This is useful when
-# you're doing NumPy stuff that addresses
+# you're doing NumPy stuff that addresses TO BE CONTINUED! (this is an inside
+# joke from a derp moment during code review, for anyone who finds it later)
+#
+# PREVIOUSLY, IN BINARY.PL... addresses... but addresses what??? Large blocks
+# of memory at a time, of course, e.g. outputs from
+# ffmpeg -f image2pipe -c:v ppm, perhaps then piped through a PPM header
+# trimmer like
+# bp'rb length("P6\n$width $height\n225\n"); ws rb $width*$height*3'
 
 use constant binary_perlgen => gen q{
   %prefix
