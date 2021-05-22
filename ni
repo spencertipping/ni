@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.1953
+2021.0522.2109
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9413,7 +9413,7 @@ sub rppm()
     return ($nbytes, $magic, $width, $height, $level);
   }
 }
-102 core/binary/binary.pl
+103 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -9433,6 +9433,7 @@ use constant binary_perlgen => gen q{
   close STDIN;
   open STDIN, '<&=3';
   while (available) {
+#line 1 "binary perl code context"
     %body
   }
 };

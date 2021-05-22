@@ -17,6 +17,7 @@ use constant binary_perlgen => gen q{
   close STDIN;
   open STDIN, '<&=3';
   while (available) {
+#line 1 "binary perl code context"
     %body
   }
 };
