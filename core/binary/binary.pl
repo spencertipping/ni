@@ -25,13 +25,13 @@ use constant binary_pythongen => gen pydent q{
   import os
   import sys
   sys.stdin.close()
-  stdin = os.fdopen(3, 'r')
+  sys.stdin = os.fdopen(3, 'r')
   %prefix
   class runner:
     def go(self):
   %body
   r = runner()
-  while len(stdin.buffer.peek(1)):
+  while len(sys.stdin.buffer.peek(1)):
     try:
       r.go()
     except EOFError:

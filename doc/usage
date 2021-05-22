@@ -522,10 +522,14 @@ BINARY PACKING (ni //help/binary)
 
     $ ni n10 bf^n/a bp'r rp"n/a"'
 
-    Note that by'' doesn't preload NumPy the way N'' does. Also note that within
-    by'', 'stdin' is accessed bare (since it's redirected), whereas you say
-    'sys.stdout' and 'sys.stderr' to access the other IO streams. by'' is a work
-    in progress.
+    Note that by'' doesn't preload NumPy the way N'' does; its only imports are
+    "os" and "sys".
+
+    Also note that you _must_ use sys.stdin.buffer when reading binary data; if
+    you use sys.stdin.read() directly, its own buffering will cause premature
+    EOF, potentially causing your code not to see the last N bytes of data.
+
+    by'' is a work in progress.
 
     BINARY PERL FUNCTIONS
         bi()              Return current stream offset in bytes

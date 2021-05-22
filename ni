@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.1837
+2021.0522.1953
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9096,7 +9096,7 @@ def rl():
   # TODO: add multiline support
   global a, b, c, d, e, f, g, h, i, j, k, l, _, F, FM, line
   try:
-    _ = next(stdin)
+    _ = next(sys.stdin)
     if _[-1] == '\n':
       _ = _[0:-1]
     line += 1
@@ -9221,7 +9221,7 @@ use constant py_mapgen => gen pydent q{
   import os
   import sys
   sys.stdin.close()
-  stdin = os.fdopen(3, 'r')
+  sys.stdin = os.fdopen(3, 'r')
   %prefix
   %closures
   class py_mapper:
@@ -9441,13 +9441,13 @@ use constant binary_pythongen => gen pydent q{
   import os
   import sys
   sys.stdin.close()
-  stdin = os.fdopen(3, 'r')
+  sys.stdin = os.fdopen(3, 'r')
   %prefix
   class runner:
     def go(self):
   %body
   r = runner()
-  while len(stdin.buffer.peek(1)):
+  while len(sys.stdin.buffer.peek(1)):
     try:
       r.go()
     except EOFError:
@@ -23847,7 +23847,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-634 doc/usage
+638 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24372,10 +24372,14 @@ BINARY PACKING (ni //help/binary)
 
     $ ni n10 bf^n/a bp'r rp"n/a"'
 
-    Note that by'' doesn't preload NumPy the way N'' does. Also note that within
-    by'', 'stdin' is accessed bare (since it's redirected), whereas you say
-    'sys.stdout' and 'sys.stderr' to access the other IO streams. by'' is a work
-    in progress.
+    Note that by'' doesn't preload NumPy the way N'' does; its only imports are
+    "os" and "sys".
+
+    Also note that you _must_ use sys.stdin.buffer when reading binary data; if
+    you use sys.stdin.read() directly, its own buffering will cause premature
+    EOF, potentially causing your code not to see the last N bytes of data.
+
+    by'' is a work in progress.
 
     BINARY PERL FUNCTIONS
         bi()              Return current stream offset in bytes

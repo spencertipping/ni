@@ -16,7 +16,7 @@ def rl():
   # TODO: add multiline support
   global a, b, c, d, e, f, g, h, i, j, k, l, _, F, FM, line
   try:
-    _ = next(stdin)
+    _ = next(sys.stdin)
     if _[-1] == '\n':
       _ = _[0:-1]
     line += 1

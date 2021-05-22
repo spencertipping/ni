@@ -110,7 +110,7 @@ use constant py_mapgen => gen pydent q{
   import os
   import sys
   sys.stdin.close()
-  stdin = os.fdopen(3, 'r')
+  sys.stdin = os.fdopen(3, 'r')
   %prefix
   %closures
   class py_mapper:
