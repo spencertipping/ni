@@ -56,6 +56,22 @@ sub simage_bmp {
   $into->await;
 }
 
+sub simage_ppm6 {
+  my ($into) = @_;
+  saferead_exactly \*STDIN, $_, 16;
+  safewrite_exactly $into, $_;
+  my ($w, $h, $level, $data) = /^\n(\d+)\s+(\d+)\n(\d+)\n(.*)/s;
+  my $bytes_left = ($level <= 255 ? 1 : 2) * 3 * $w * $h - length $data;
+
+  my $iosize = conf('pipeline/io-size');
+  while ($bytes_left > 0) {
+    saferead_exactly \*STDIN, $_, min $iosize, $bytes_left;
+    $bytes_left -= safewrite_exactly $into, $_;
+  }
+  close $into;
+  $into->await;
+}
+
 sub simage_jfif {
   die "ni simage jfif: TODO: this is complicated and unimplemented at the moment";
 }
@@ -71,6 +87,7 @@ sub simage_into(&) {
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {&$fn};
   safewrite_exactly $into, $_;
+  return simage_ppm6 $into if /^P6/;
   return simage_png  $into if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   return simage_bmp  $into if /^BM$/;

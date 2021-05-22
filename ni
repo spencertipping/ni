@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.1405
+2021.0522.1435
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9853,7 +9853,7 @@ q{
 defshort '/G*', pmap q{gnuplot_all_op $_}, gnuplot_code;
 1 core/image/lib
 image.pl
-129 core/image/image.pl
+146 core/image/image.pl
 # Image compositing and processing
 # Operators that loop over concatenated PNG images within a stream. This is
 # useful for compositing workflows in a streaming context, e.g. between a
@@ -9912,6 +9912,22 @@ sub simage_bmp {
   $into->await;
 }
 
+sub simage_ppm6 {
+  my ($into) = @_;
+  saferead_exactly \*STDIN, $_, 16;
+  safewrite_exactly $into, $_;
+  my ($w, $h, $level, $data) = /^\n(\d+)\s+(\d+)\n(\d+)\n(.*)/s;
+  my $bytes_left = ($level <= 255 ? 1 : 2) * 3 * $w * $h - length $data;
+
+  my $iosize = conf('pipeline/io-size');
+  while ($bytes_left > 0) {
+    saferead_exactly \*STDIN, $_, min $iosize, $bytes_left;
+    $bytes_left -= safewrite_exactly $into, $_;
+  }
+  close $into;
+  $into->await;
+}
+
 sub simage_jfif {
   die "ni simage jfif: TODO: this is complicated and unimplemented at the moment";
 }
@@ -9927,6 +9943,7 @@ sub simage_into(&) {
   return undef unless $n = saferead_exactly \*STDIN, $_, 2;
   my $into = siproc {&$fn};
   safewrite_exactly $into, $_;
+  return simage_ppm6 $into if /^P6/;
   return simage_png  $into if /^\x89P$/;
   return simage_jfif $into if /^\xff\xd8$/;
   return simage_bmp  $into if /^BM$/;
@@ -23828,7 +23845,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-608 doc/usage
+634 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24335,19 +24352,40 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     Note that you can write multiline Python code; ni will infer the correct
     indentation and adjust accordingly.
 
+    If you're working with large binary matrices, by'' is likely to be more
+    efficient than N''.
+
 
 BINARY PACKING (ni //help/binary)
     bf<template>        Read fixed-length rows with pack() <template>
     bf^<template>       Read TSV and emit fixed-length rows with pack()
 
     bp'...'             Run '...' Perl code over binary data
+    by'...'             Run '...' Python code over binary data
 
     Use 'perldoc -f pack' for a full list of template elements. Note that bf
     handles only fixed-length templates: 'n/a' won't work, for example. If you
     need to unpack variable-length records, use the 'rp' (read-packed) function
-    in bp'...':
+    in bp'...', which uses buffered readahead:
 
     $ ni n10 bf^n/a bp'r rp"n/a"'
+
+    Note that by'' doesn't preload NumPy the way N'' does. Also note that within
+    by'', 'stdin' is accessed bare (since it's redirected), whereas you say
+    'sys.stdout' and 'sys.stderr' to access the other IO streams. by'' is a work
+    in progress.
+
+    BINARY PERL FUNCTIONS
+        bi()              Return current stream offset in bytes
+        available()       True if stream is not at EOF
+        rp($packstring)   Read packed values, returning a list
+        rb($nbytes)       Read exactly $nbytes bytes into a string
+        pb($nbytes)       Peek (but don't consume) exactly $nbytes bytes
+        wp($pack, @xs)    Pack @xs using $pack template, then write binary
+        ws($data)         Write $data as binary, return ()
+
+    FORMAT-SPECIFIC FUNCTIONS
+        rppm()            Read PPM binary header: ($bytes, $magic, $w, $h, $max)
 
 
 GNUPLOT
@@ -24390,13 +24428,18 @@ GNUPLOT
          GAP'set title "coefficient = " . KEY;
              plot "-" with lines' IVavi \>animated-title.avi
 
+    NOTE: older versions of ffmpeg had a bug in the PNG image2pipe reader;
+    version 4.2.4 (and possibly earlier) works correctly.
+
 
 MEDIA
     yt://oHg5SJYRHA0      Stream video from youtube using youtube-dl
     v4l2:///dev/video0    Stream video from /dev/video0 v4l2 device
+    x11grab://:0@640x480  Stream video from :0, clipped at 640x480
     m3u://https://...     Stream video from M3U playlist using ffmpeg
 
     VP                    Play video stream using ffplay
+    VIppm                 Convert video to concatenated stream of PPM images
     VIpng                 Convert video to concatenated stream of PNG images
     VImjpeg               Convert video to concatenated stream of JPGs
 
@@ -24411,7 +24454,7 @@ MEDIA
                           using ImageMagick 'convert'
 
     <mediaspec> describes the container format, codec, and bitrate. The
-    following are valid:
+    following examples are valid:
 
       IVavi                   AVI container format, default codec + bitrate
       IVgif                   GIF animated image

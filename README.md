@@ -609,19 +609,40 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     Note that you can write multiline Python code; ni will infer the correct
     indentation and adjust accordingly.
 
+    If you're working with large binary matrices, by'' is likely to be more
+    efficient than N''.
+
 
 BINARY PACKING (ni //help/binary)
     bf<template>        Read fixed-length rows with pack() <template>
     bf^<template>       Read TSV and emit fixed-length rows with pack()
 
     bp'...'             Run '...' Perl code over binary data
+    by'...'             Run '...' Python code over binary data
 
     Use 'perldoc -f pack' for a full list of template elements. Note that bf
     handles only fixed-length templates: 'n/a' won't work, for example. If you
     need to unpack variable-length records, use the 'rp' (read-packed) function
-    in bp'...':
+    in bp'...', which uses buffered readahead:
 
     $ ni n10 bf^n/a bp'r rp"n/a"'
+
+    Note that by'' doesn't preload NumPy the way N'' does. Also note that within
+    by'', 'stdin' is accessed bare (since it's redirected), whereas you say
+    'sys.stdout' and 'sys.stderr' to access the other IO streams. by'' is a work
+    in progress.
+
+    BINARY PERL FUNCTIONS
+        bi()              Return current stream offset in bytes
+        available()       True if stream is not at EOF
+        rp($packstring)   Read packed values, returning a list
+        rb($nbytes)       Read exactly $nbytes bytes into a string
+        pb($nbytes)       Peek (but don't consume) exactly $nbytes bytes
+        wp($pack, @xs)    Pack @xs using $pack template, then write binary
+        ws($data)         Write $data as binary, return ()
+
+    FORMAT-SPECIFIC FUNCTIONS
+        rppm()            Read PPM binary header: ($bytes, $magic, $w, $h, $max)
 
 
 GNUPLOT
@@ -664,13 +685,18 @@ GNUPLOT
          GAP'set title "coefficient = " . KEY;
              plot "-" with lines' IVavi \>animated-title.avi
 
+    NOTE: older versions of ffmpeg had a bug in the PNG image2pipe reader;
+    version 4.2.4 (and possibly earlier) works correctly.
+
 
 MEDIA
     yt://oHg5SJYRHA0      Stream video from youtube using youtube-dl
     v4l2:///dev/video0    Stream video from /dev/video0 v4l2 device
+    x11grab://:0@640x480  Stream video from :0, clipped at 640x480
     m3u://https://...     Stream video from M3U playlist using ffmpeg
 
     VP                    Play video stream using ffplay
+    VIppm                 Convert video to concatenated stream of PPM images
     VIpng                 Convert video to concatenated stream of PNG images
     VImjpeg               Convert video to concatenated stream of JPGs
 
@@ -685,7 +711,7 @@ MEDIA
                           using ImageMagick 'convert'
 
     <mediaspec> describes the container format, codec, and bitrate. The
-    following are valid:
+    following examples are valid:
 
       IVavi                   AVI container format, default codec + bitrate
       IVgif                   GIF animated image
