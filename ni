@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.0205
+2021.0522.1405
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9307,10 +9307,11 @@ defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
           pn 1, pstr 'y', python_grepper_code;
-4 core/binary/lib
+5 core/binary/lib
 bytestream.pm
 bytewriter.pm
 search.pm
+formats.pm
 binary.pl
 29 core/binary/bytestream.pm
 # Binary byte stream driver.
@@ -9385,7 +9386,34 @@ sub bsflookup
   my $key    = unpack $_[1], $record;
   $key == $_[3] ? unpack $_[4], $record : undef;
 }
-98 core/binary/binary.pl
+26 core/binary/formats.pm
+# Some utilities to work with common formats.
+
+sub rppm()
+{
+  # Reads a binary PPM header from the stream, returning a list of descriptors:
+  # ($nbytes, $magic, $width, $height, $level).
+
+  my ($magic, $wh, $level) = split/\n/, pb 256;
+  die "not a binary PPM magic number: $magic" unless $magic =~ /^P[456]/;
+
+  my ($width, $height) = split/\s+/, $wh;
+  if ($magic eq "P4")
+  {
+    # No level, and one bit per pixel
+    my $nbytes = $width * $height + 7 >> 3;
+    rb(length($magic) + length($wh) + 2);
+    return ($nbytes, $magic, $width, $height, 1);
+  }
+  else
+  {
+    my $bytes_per_pixel = ($level <= 255 ? 1 : 2) * ($magic eq "P5" ? 1 : 3);
+    my $nbytes          = $bytes_per_pixel * $width * $height;
+    rb(length($magic) + length($wh) + length($level) + 3);
+    return ($nbytes, $magic, $width, $height, $level);
+  }
+}
+100 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -9427,7 +9455,9 @@ use constant binary_pythongen => gen pydent q{
 defperlprefix 'core/binary/bytewriter.pm';
 defperlprefix 'core/binary/search.pm';
 
-our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
+our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm
+                                   core/binary/formats.pm |;
+
 our @binary_python_prefix_keys = ();
 
 sub binary_perl_prefix() {join "\n", perl_prefix,
@@ -13049,7 +13079,7 @@ defoperator audio_extract => q{
        defined($bitrate) ? ('-b:a', $bitrate) : (), '-'};
 
 defshort '/AE', pmap q{audio_extract_op @$_}, media_format_spec;
-30 core/ffmpeg/video.pl
+36 core/ffmpeg/video.pl
 # Video access and transcoding
 
 # youtube-dl: use youtube video data as URL streams, e.g. yt://dQw4w9WgXcQ
@@ -13059,6 +13089,12 @@ defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"
 # v4l2 source: use local cameras as URL streams, e.g. v4l2:///dev/video0
 defresource 'v4l2', read => q{
   sh conf('ffmpeg') . " -f v4l2 -i " . shell_quote($_[1]) . " -c:v copy -f avi -"};
+
+# x11grab source: screencast to lossless video, e.g. x11grab://:0.0@3840x2160
+defresource 'x11grab', read => q{
+  my ($display, $w, $h) = $_[1] =~ /(:\d+(?:\.\d+)?)(?:@(\d+)x(\d+))?/;
+  my $size = defined $w ? "-s ${w}x${h}" : "";
+  sh conf('ffmpeg') . " -f x11grab $size -i " . shell_quote($display) . " -f avi -c:v huffyuv -"};
 
 # ffplay alias for brevity
 defoperator video_play => q{sh conf('ffplay') . " -"};

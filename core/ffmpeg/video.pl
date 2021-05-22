@@ -8,6 +8,12 @@ defresource 'yt', read => q{sh conf('ytdl') . " " . shell_quote $_[1], "-o", "-"
 defresource 'v4l2', read => q{
   sh conf('ffmpeg') . " -f v4l2 -i " . shell_quote($_[1]) . " -c:v copy -f avi -"};
 
+# x11grab source: screencast to lossless video, e.g. x11grab://:0.0@3840x2160
+defresource 'x11grab', read => q{
+  my ($display, $w, $h) = $_[1] =~ /(:\d+(?:\.\d+)?)(?:@(\d+)x(\d+))?/;
+  my $size = defined $w ? "-s ${w}x${h}" : "";
+  sh conf('ffmpeg') . " -f x11grab $size -i " . shell_quote($display) . " -f avi -c:v huffyuv -"};
+
 # ffplay alias for brevity
 defoperator video_play => q{sh conf('ffplay') . " -"};
 defshort '/VP', pmap q{video_play_op}, pnone;

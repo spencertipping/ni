@@ -39,7 +39,9 @@ use constant binary_pythongen => gen pydent q{
 defperlprefix 'core/binary/bytewriter.pm';
 defperlprefix 'core/binary/search.pm';
 
-our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm |;
+our @binary_perl_prefix_keys = qw| core/binary/bytestream.pm
+                                   core/binary/formats.pm |;
+
 our @binary_python_prefix_keys = ();
 
 sub binary_perl_prefix() {join "\n", perl_prefix,

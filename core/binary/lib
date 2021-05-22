@@ -1,4 +1,5 @@
 bytestream.pm
 bytewriter.pm
 search.pm
+formats.pm
 binary.pl
