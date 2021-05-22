@@ -27,11 +27,13 @@ use constant binary_pythongen => gen pydent q{
   sys.stdin.close()
   stdin = os.fdopen(3, 'r')
   %prefix
-  def go():
+  class runner:
+    def go(self):
   %body
+  r = runner()
   while len(stdin.buffer.peek(1)):
     try:
-      go()
+      r.go()
     except EOFError:
       sys.exit(0)
 };
@@ -57,7 +59,7 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
                                             body   => perl_expand_begin $_[0])}
 
 sub binary_python_mapper($) {binary_pythongen->(prefix => binary_python_prefix,
-                                                body   => indent(pydent $_[0], 2))}
+                                                body   => indent(pydent $_[0], 4))}
 
 defoperator binary_perl   => q{stdin_to_perl   binary_perl_mapper   $_[0]};
 defoperator binary_python => q{stdin_to_python binary_python_mapper $_[0]};

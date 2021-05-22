@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.1435
+2021.0522.1837
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9413,7 +9413,7 @@ sub rppm()
     return ($nbytes, $magic, $width, $height, $level);
   }
 }
-100 core/binary/binary.pl
+102 core/binary/binary.pl
 # Binary import operator.
 # An operator that reads data in terms of bytes rather than lines. This is done
 # in a Perl context with functions that manage a queue of data in `$_`.
@@ -9443,11 +9443,13 @@ use constant binary_pythongen => gen pydent q{
   sys.stdin.close()
   stdin = os.fdopen(3, 'r')
   %prefix
-  def go():
+  class runner:
+    def go(self):
   %body
+  r = runner()
   while len(stdin.buffer.peek(1)):
     try:
-      go()
+      r.go()
     except EOFError:
       sys.exit(0)
 };
@@ -9473,7 +9475,7 @@ sub binary_perl_mapper($) {binary_perlgen->(prefix => binary_perl_prefix,
                                             body   => perl_expand_begin $_[0])}
 
 sub binary_python_mapper($) {binary_pythongen->(prefix => binary_python_prefix,
-                                                body   => indent(pydent $_[0], 2))}
+                                                body   => indent(pydent $_[0], 4))}
 
 defoperator binary_perl   => q{stdin_to_perl   binary_perl_mapper   $_[0]};
 defoperator binary_python => q{stdin_to_python binary_python_mapper $_[0]};
