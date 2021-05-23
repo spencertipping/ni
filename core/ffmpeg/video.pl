@@ -20,9 +20,10 @@ defshort '/VP', pmap q{video_play_op}, pnone;
 
 # Video<->image conversion
 defoperator video_to_imagepipe => q{
-  my ($codec) = @_;
+  my ($codec, $scale) = @_;
   $codec = 'png' unless defined $codec;
-  sh conf('ffmpeg') . " -i - -f image2pipe -c:v $codec -"};
+  $scale = defined($scale) ? "-s $scale" : '';
+  sh conf('ffmpeg') . " -i - -f image2pipe $scale -c:v $codec -"};
 
 defoperator imagepipe_to_video => q{
   my ($format, $codec, $bitrate) = @_;
@@ -32,5 +33,6 @@ defoperator imagepipe_to_video => q{
                    defined($bitrate) ? ('-b:v', $bitrate) : (),
                    '-'};
 
-defshort '/VI', pmap q{video_to_imagepipe_op $_}, popt prx '\w+';
+defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
+                                                        popt(prx '@(\d+x\d+)');
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;

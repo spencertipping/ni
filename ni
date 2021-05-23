@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0522.2109
+2021.0523.1429
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -13099,7 +13099,7 @@ defoperator audio_extract => q{
        defined($bitrate) ? ('-b:a', $bitrate) : (), '-'};
 
 defshort '/AE', pmap q{audio_extract_op @$_}, media_format_spec;
-36 core/ffmpeg/video.pl
+38 core/ffmpeg/video.pl
 # Video access and transcoding
 
 # youtube-dl: use youtube video data as URL streams, e.g. yt://dQw4w9WgXcQ
@@ -13122,9 +13122,10 @@ defshort '/VP', pmap q{video_play_op}, pnone;
 
 # Video<->image conversion
 defoperator video_to_imagepipe => q{
-  my ($codec) = @_;
+  my ($codec, $scale) = @_;
   $codec = 'png' unless defined $codec;
-  sh conf('ffmpeg') . " -i - -f image2pipe -c:v $codec -"};
+  $scale = defined($scale) ? "-s $scale" : '';
+  sh conf('ffmpeg') . " -i - -f image2pipe $scale -c:v $codec -"};
 
 defoperator imagepipe_to_video => q{
   my ($format, $codec, $bitrate) = @_;
@@ -13134,7 +13135,8 @@ defoperator imagepipe_to_video => q{
                    defined($bitrate) ? ('-b:v', $bitrate) : (),
                    '-'};
 
-defshort '/VI', pmap q{video_to_imagepipe_op $_}, popt prx '\w+';
+defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
+                                                        popt(prx '@(\d+x\d+)');
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
 43 doc/lib
 ni_by_example_1.md
@@ -24442,23 +24444,23 @@ GNUPLOT
 MEDIA
     yt://oHg5SJYRHA0      Stream video from youtube using youtube-dl
     v4l2:///dev/video0    Stream video from /dev/video0 v4l2 device
-    x11grab://:0@640x480  Stream video from :0, clipped at 640x480
+    x11grab://:0@640x480  Stream video from X11 display :0, clipped at 640x480
     m3u://https://...     Stream video from M3U playlist using ffmpeg
 
     VP                    Play video stream using ffplay
     VIppm                 Convert video to concatenated stream of PPM images
-    VIpng                 Convert video to concatenated stream of PNG images
     VImjpeg               Convert video to concatenated stream of JPGs
+    VIpng@1920x1080       Convert video and downsample to 1920x1080 resolution
 
     AE<mediaspec>         Use ffmpeg to discard video, emit audio as <mediaspec>
     IV<mediaspec>         Convert concatenated images to video (some older
                           ffmpegs fail if you use PNGs as input)
 
-    I[...]                Split a stream of concatenated PNG or BMP images,
-                          transform each with 'ni ...'
+    I[...]                Split a stream of concatenated PNG, BMP, or PPM
+                          images, transform each with 'ni ...'
 
-    IC[init][fold][emit]  Left-fold a stream of concatenated PNG or BMP images
-                          using ImageMagick 'convert'
+    IC[init][fold][emit]  Left-fold a stream of concatenated PNG, BMP, or PPM
+                          images using ImageMagick 'convert' (see below)
 
     <mediaspec> describes the container format, codec, and bitrate. The
     following examples are valid:

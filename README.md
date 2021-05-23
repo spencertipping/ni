@@ -696,23 +696,23 @@ GNUPLOT
 MEDIA
     yt://oHg5SJYRHA0      Stream video from youtube using youtube-dl
     v4l2:///dev/video0    Stream video from /dev/video0 v4l2 device
-    x11grab://:0@640x480  Stream video from :0, clipped at 640x480
+    x11grab://:0@640x480  Stream video from X11 display :0, clipped at 640x480
     m3u://https://...     Stream video from M3U playlist using ffmpeg
 
     VP                    Play video stream using ffplay
     VIppm                 Convert video to concatenated stream of PPM images
-    VIpng                 Convert video to concatenated stream of PNG images
     VImjpeg               Convert video to concatenated stream of JPGs
+    VIpng@1920x1080       Convert video and downsample to 1920x1080 resolution
 
     AE<mediaspec>         Use ffmpeg to discard video, emit audio as <mediaspec>
     IV<mediaspec>         Convert concatenated images to video (some older
                           ffmpegs fail if you use PNGs as input)
 
-    I[...]                Split a stream of concatenated PNG or BMP images,
-                          transform each with 'ni ...'
+    I[...]                Split a stream of concatenated PNG, BMP, or PPM
+                          images, transform each with 'ni ...'
 
-    IC[init][fold][emit]  Left-fold a stream of concatenated PNG or BMP images
-                          using ImageMagick 'convert'
+    IC[init][fold][emit]  Left-fold a stream of concatenated PNG, BMP, or PPM
+                          images using ImageMagick 'convert' (see below)
 
     <mediaspec> describes the container format, codec, and bitrate. The
     following examples are valid:
