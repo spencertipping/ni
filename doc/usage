@@ -71,6 +71,7 @@ GENERATING DATA (ni //help/stream)
     filename        Write the contents of a file, decompressing if necessary
     dirname         Write a list of directory contents
     http[s]://url   Write HTTP GET stream using curl
+    file:///path    Write contents of a file, decompressing if necessary
     i'text'         Write 'text' as output
     i[x y z]        Write 'x y z' as a tab-delimited output line
     k'text'         Write 'text' forever
@@ -83,16 +84,25 @@ GENERATING DATA (ni //help/stream)
     n0              Write 0.. as an infinite list of integers
     n%7             Write 0..6,0..6,... as an infinite list of integers
 
-    _               Vertically align line contents within 1024-large groups
+    _               Vertically align line contents within 1024-row groups
 
     It's common to end a stream with '_', which vertically aligns multi-column
     data.
 
     ADVANCED
+    filepart://64:foo   Contents of file 'foo' beginning at byte 64
     zip://file.zip      List contents of zip archive (each is a ni URL)
     tar://file.tar      List contents of tar archive (also handles tgz etc)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
+
+    s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
+    s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
+    s3r://bucket/path   Same, but with --request-payer (requires NI_DANGER_MODE)
+
+    s3lsu://path        'aws s3 ls --recursive --no-sign-request'
+    s3ls://path         'aws s3 ls --recursive'
+    s3lsr://path        'aws s3 ls --recursive --request-payer' (NI_DANGER_MODE)
 
     sqlite://file.db    List tables in database (each is a ni URL)
 

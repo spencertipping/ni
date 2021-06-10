@@ -119,3 +119,10 @@ defresource 'pipe',
   exists => q{-e $_[1]},
   tmp    => q{"pipe://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
+
+defresource 'fileseek',
+  read   => q{my ($start, $path) = $_[1] =~ /^(\d+):(.*)/;
+              my $fh = srfile $path;
+              seek $fh, $start, 0;
+              $fh},
+  exists => q{my ($path) = $_[1] =~ /^\d+:(.*)/; -e $path};

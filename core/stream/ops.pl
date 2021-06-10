@@ -168,9 +168,9 @@ defoperator divert => q{
 };
 docoperator divert => q{Duplicate this stream into a ni pipeline, discarding that pipeline's output};
 
-defshort '/+', pmap q{append_op    @$_}, _qfn;
-defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/=', pmap q{divert_op    @$_}, _qfn;
+defshort '/+', pmap q{append_op  @$_}, _qfn;
+defshort '/^', pmap q{prepend_op @$_}, _qfn;
+defshort '/=', pmap q{divert_op  @$_}, _qfn;
 
 # Interleaving.
 # Append/prepend will block one of the two data sources until the other

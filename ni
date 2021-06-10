@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0523.1429
+2021.0610.2035
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -2356,7 +2356,7 @@ BEGIN {defparseralias config_option_map
             pn 0, prep(config_map_kv), prc '}'}
 
 defshort '/^{', pmap q{configure_op @$_}, pseq config_option_map, _qfn;
-15 core/conf/dangermode.pl
+16 core/conf/dangermode.pl
 defconfenv 'ni/dangermode', NI_DANGER_MODE => 0;
 defconfenv 'ni/yolomode',   NI_YOLO_MODE   => 0;
 
@@ -2366,11 +2366,12 @@ sub requires_dangermode($)
   my ($operator) = @_;
   unless (conf('ni/dangermode') or conf('ni/yolomode'))
   {
-    die "$operator has the potential to destroy your data if misused. "
-      . "To enable it, export NI_DANGER_MODE=1 or use ^{ni/dangermode=1}.";
+    die "$operator has the potential to destroy your data or cost money "
+      . "if misused. To enable it, export NI_DANGER_MODE=1 or use "
+      . "^{ni/dangermode=1}.";
   }
 
-  print "ni: using $operator in YOLO MODE!!!!\n" if conf('ni/yolomode')
+  print "ni: using $operator in YOLO MODE!!!!\n" if conf('ni/yolomode');
 }
 6 core/stream/lib
 fh.pl
@@ -3026,9 +3027,9 @@ defoperator divert => q{
 };
 docoperator divert => q{Duplicate this stream into a ni pipeline, discarding that pipeline's output};
 
-defshort '/+', pmap q{append_op    @$_}, _qfn;
-defshort '/^', pmap q{prepend_op   @$_}, _qfn;
-defshort '/=', pmap q{divert_op    @$_}, _qfn;
+defshort '/+', pmap q{append_op  @$_}, _qfn;
+defshort '/^', pmap q{prepend_op @$_}, _qfn;
+defshort '/=', pmap q{divert_op  @$_}, _qfn;
 
 # Interleaving.
 # Append/prepend will block one of the two data sources until the other
@@ -3615,7 +3616,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl
-121 core/uri/uri.pl
+128 core/uri/uri.pl
 # Resources identified by URI.
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
@@ -3737,6 +3738,13 @@ defresource 'pipe',
   exists => q{-e $_[1]},
   tmp    => q{"pipe://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
+
+defresource 'fileseek',
+  read   => q{my ($start, $path) = $_[1] =~ /^(\d+):(.*)/;
+              my $fh = srfile $path;
+              seek $fh, $start, 0;
+              $fh},
+  exists => q{my ($path) = $_[1] =~ /^\d+:(.*)/; -e $path};
 2 core/fn/lib
 fn.pl
 op-rewrite.pl
@@ -4068,8 +4076,9 @@ BEGIN
 defshort '/:', pmap q{$_ ? inline_checkpoint_op @$_
                          : identity_op},
                popt pseq pc nefilename, popt nefilelist;
-1 core/net/lib
+2 core/net/lib
 net.pl
+awscli.pl
 42 core/net/net.pl
 # Networking stuff.
 # SSH tunneling to other hosts. Allows you to run a ni lambda elsewhere. ni does
@@ -4113,6 +4122,46 @@ q{
 };
 
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
+39 core/net/awscli.pl
+# AWS CLI tools
+
+defresource 's3u',
+  read  => q{soproc {exec 'aws', 's3', 'cp', "s3://$_[1]", '-', '--no-sign-request'} @_},
+  write => q{siproc {exec 'aws', 's3', 'cp', '-', "s3://$_[1]", '--no-sign-request'} @_};
+
+defresource 's3',
+  read  => q{soproc {exec 'aws', 's3', 'cp', "s3://$_[1]", '-'} @_},
+  write => q{siproc {exec 'aws', 's3', 'cp', '-', "s3://$_[1]"} @_};
+
+defresource 's3r',
+  read  => q{requires_dangermode("s3r://");
+             soproc {exec 'aws', 's3', 'cp', "s3://$_[1]", '-', '--request-payer'} @_},
+  write => q{requires_dangermode("s3r://");
+             siproc {exec 'aws', 's3', 'cp', '-', "s3://$_[1]", '--request-payer'} @_};
+
+
+sub awscli_ls_format($$)
+{
+  my ($prefix, $fh) = @_;
+
+  # Convert from ls or lsu (listing) to s3 or s3u (download)
+  $prefix =~ s/^s3ls/s3/;
+  while (<$fh>)
+  {
+    my ($date, $time, $size, $path) = /^(\S+)\s+(\S+)\s+(\d+)\s+[^\/]+\/(.*)/;
+    printf "%s/%s\t%d\t%sT%sZ\n", $prefix, $path, $size, $date, $time;
+  }
+}
+
+defresource 's3lsu',
+  read => q{awscli_ls_format $_[0], soproc {exec 'aws', 's3', 'ls', "s3://$_[1]", '--recursive', '--no-sign-request'} @_};
+
+defresource 's3ls',
+  read => q{awscli_ls_format $_[0], soproc {exec 'aws', 's3', 'ls', "s3://$_[1]", '--recursive'} @_};
+
+defresource 's3lsr',
+  read => q{requires_dangermode("s3lsr://");
+            awscli_ls_format $_[0], soproc {exec 'aws', 's3', 'ls', "s3://$_[1]", '--recursive', '--request-payer'} @_};
 1 core/buffer/lib
 buffer.pl
 117 core/buffer/buffer.pl
@@ -23850,7 +23899,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-638 doc/usage
+648 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23924,6 +23973,7 @@ GENERATING DATA (ni //help/stream)
     filename        Write the contents of a file, decompressing if necessary
     dirname         Write a list of directory contents
     http[s]://url   Write HTTP GET stream using curl
+    file:///path    Write contents of a file, decompressing if necessary
     i'text'         Write 'text' as output
     i[x y z]        Write 'x y z' as a tab-delimited output line
     k'text'         Write 'text' forever
@@ -23936,16 +23986,25 @@ GENERATING DATA (ni //help/stream)
     n0              Write 0.. as an infinite list of integers
     n%7             Write 0..6,0..6,... as an infinite list of integers
 
-    _               Vertically align line contents within 1024-large groups
+    _               Vertically align line contents within 1024-row groups
 
     It's common to end a stream with '_', which vertically aligns multi-column
     data.
 
     ADVANCED
+    filepart://64:foo   Contents of file 'foo' beginning at byte 64
     zip://file.zip      List contents of zip archive (each is a ni URL)
     tar://file.tar      List contents of tar archive (also handles tgz etc)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
+
+    s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
+    s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
+    s3r://bucket/path   Same, but with --request-payer (requires NI_DANGER_MODE)
+
+    s3lsu://path        'aws s3 ls --recursive --no-sign-request'
+    s3ls://path         'aws s3 ls --recursive'
+    s3lsr://path        'aws s3 ls --recursive --request-payer' (NI_DANGER_MODE)
 
     sqlite://file.db    List tables in database (each is a ni URL)
 
