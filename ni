@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0611.1917
+2021.0611.2006
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8548,7 +8548,7 @@ defresource 'xlsxsheet',
   };
 1 core/sqlite/lib
 sqlite.pl
-46 core/sqlite/sqlite.pl
+52 core/sqlite/sqlite.pl
 # SQLite support via URI schemas
 
 defconfenv sqlite => NI_SQLITE => 'sqlite3';
@@ -8560,6 +8560,7 @@ sub sqlite_tsv
                             @sqlite_opts, $db, $sql),
                 shell_quote("perl", "-e", $ni::operators{split_proper_csv});
 }
+
 
 # sqlite:///path/to/file.db
 # List all tables as sqlitet:// entries
@@ -8588,6 +8589,11 @@ defresource 'sqlitet',
     soproc { sqlite_tsv "file:$db?immutable=1",
                         "select * from $table",
                         "-header" };
+  },
+  write => q{
+    my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
+    siproc { exec conf"sqlite", "-separator", "\t",
+                      $db, ".import /dev/stdin $table" };
   };
 
 defresource 'sqliteq',

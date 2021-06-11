@@ -10,6 +10,7 @@ sub sqlite_tsv
                 shell_quote("perl", "-e", $ni::operators{split_proper_csv});
 }
 
+
 # sqlite:///path/to/file.db
 # List all tables as sqlitet:// entries
 defresource 'sqlite',
@@ -37,6 +38,11 @@ defresource 'sqlitet',
     soproc { sqlite_tsv "file:$db?immutable=1",
                         "select * from $table",
                         "-header" };
+  },
+  write => q{
+    my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
+    siproc { exec conf"sqlite", "-separator", "\t",
+                      $db, ".import /dev/stdin $table" };
   };
 
 defresource 'sqliteq',
