@@ -32,7 +32,7 @@ $ni::main_operator = sub {
   }
 
   my @ops = apply_meta_operators @_;
-  @$_ and push @children, sicons {operate @$_} for @ops;
+  @$_ and push @children, sicons {srand(srand() ^ $$); operate @$_} for @ops;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec conf 'pager' or

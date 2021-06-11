@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0611.2006
+2021.0611.2033
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -3350,7 +3350,7 @@ $ni::main_operator = sub {
   }
 
   my @ops = apply_meta_operators @_;
-  @$_ and push @children, sicons {operate @$_} for @ops;
+  @$_ and push @children, sicons {srand(srand() ^ $$); operate @$_} for @ops;
 
   if (-t STDOUT) {
     $pager_fh = siproc {exec conf 'pager' or
