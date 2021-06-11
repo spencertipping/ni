@@ -126,3 +126,15 @@ defresource 'fileseek',
               seek $fh, $start, 0;
               $fh},
   exists => q{my ($path) = $_[1] =~ /^\d+:(.*)/; -e $path};
+
+defresource 'filepart',
+  read   => q{my ($start, $len, $path) = $_[1] =~ /^(\d+):(\d+):(.*)/;
+              my $fh = srfile $path;
+              seek $fh, $start, 0;
+              soproc { my $iosize = conf('pipeline/io-size');
+                       my $n = 1;
+                       while ($len && $n)
+                       { $n = saferead $fh, $_, min($len, $iosize);
+                         $len -= $n;
+                         safewrite_exactly \*STDOUT, $_ }}},
+  exists => q{my ($path) = $_[1] =~ /^\d+:\d+:(.*)/; -e $path};

@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0611.0136
+2021.0611.1917
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -3616,7 +3616,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl
-128 core/uri/uri.pl
+140 core/uri/uri.pl
 # Resources identified by URI.
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
@@ -3745,6 +3745,18 @@ defresource 'fileseek',
               seek $fh, $start, 0;
               $fh},
   exists => q{my ($path) = $_[1] =~ /^\d+:(.*)/; -e $path};
+
+defresource 'filepart',
+  read   => q{my ($start, $len, $path) = $_[1] =~ /^(\d+):(\d+):(.*)/;
+              my $fh = srfile $path;
+              seek $fh, $start, 0;
+              soproc { my $iosize = conf('pipeline/io-size');
+                       my $n = 1;
+                       while ($len && $n)
+                       { $n = saferead $fh, $_, min($len, $iosize);
+                         $len -= $n;
+                         safewrite_exactly \*STDOUT, $_ }}},
+  exists => q{my ($path) = $_[1] =~ /^\d+:\d+:(.*)/; -e $path};
 2 core/fn/lib
 fn.pl
 op-rewrite.pl
@@ -23903,7 +23915,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-648 doc/usage
+649 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -23996,7 +24008,8 @@ GENERATING DATA (ni //help/stream)
     data.
 
     ADVANCED
-    filepart://64:foo   Contents of file 'foo' beginning at byte 64
+    fileseek://64:foo   Contents of file 'foo' beginning at byte 64
+    filepart://5:2:foo  Two bytes of file 'foo' starting at byte 5
     zip://file.zip      List contents of zip archive (each is a ni URL)
     tar://file.tar      List contents of tar archive (also handles tgz etc)
     7z://file.7z        List contents of 7z archive

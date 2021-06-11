@@ -195,7 +195,8 @@ GENERATING DATA (ni //help/stream)
     data.
 
     ADVANCED
-    filepart://64:foo   Contents of file 'foo' beginning at byte 64
+    fileseek://64:foo   Contents of file 'foo' beginning at byte 64
+    filepart://5:2:foo  Two bytes of file 'foo' starting at byte 5
     zip://file.zip      List contents of zip archive (each is a ni URL)
     tar://file.tar      List contents of tar archive (also handles tgz etc)
     7z://file.7z        List contents of 7z archive
