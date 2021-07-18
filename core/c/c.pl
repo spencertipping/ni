@@ -37,3 +37,10 @@ sub c_rmi
 {
   # TODO
 }
+
+defoperator c99 => q{
+  my ($c_code) = @_;
+  exec_c99 $c_code;
+};
+
+defshort '/c99', pmap q{c99_op pydent $_}, generic_code;

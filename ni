@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0611.2033
+2021.0718.1737
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -7950,7 +7950,7 @@ defshort 'cell/g', pmap q{geohash_encode_op @$_}, pseq cellspec_fixed, palt inte
 defshort 'cell/G', pmap q{geohash_decode_op @$_}, pseq cellspec_fixed, popt integer;
 1 core/c/lib
 c.pl
-39 core/c/c.pl
+46 core/c/c.pl
 # C language interfacing
 # This allows you to use C99 as a compilation target, rather than executing all
 # operators in perl.
@@ -7990,6 +7990,13 @@ sub c_rmi
 {
   # TODO
 }
+
+defoperator c99 => q{
+  my ($c_code) = @_;
+  exec_c99 $c_code;
+};
+
+defshort '/c99', pmap q{c99_op pydent $_}, generic_code;
 1 core/git/lib
 git.pl
 313 core/git/git.pl
