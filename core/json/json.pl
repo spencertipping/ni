@@ -9,8 +9,8 @@
 use Scalar::Util qw/looks_like_number/;
 
 our %json_unescapes =
-  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
-   t => "\t");
+  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", f => "\f",
+   n => "\n", r => "\r", t => "\t");
 
 sub json_unescape_one($) {$json_unescapes{$_[0]} || chr hex substr $_[0], 1}
 sub json_unescape($) {

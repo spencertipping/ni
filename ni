@@ -1141,7 +1141,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0718.1737
+2021.0719.1250
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -1193,8 +1193,8 @@ json.pl
 use Scalar::Util qw/looks_like_number/;
 
 our %json_unescapes =
-  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", n => "\n", r => "\r",
-   t => "\t");
+  ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", f => "\f",
+   n => "\n", r => "\r", t => "\t");
 
 sub json_unescape_one($) {$json_unescapes{$_[0]} || chr hex substr $_[0], 1}
 sub json_unescape($) {
