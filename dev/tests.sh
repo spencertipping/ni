@@ -184,6 +184,38 @@ lazytest_case 'ni --lib wcl.pl n10 wcl
 ' 3<<'LAZYTEST_EOF'
 10
 LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=63
+lazytest_case 'ni n100 c99'\''#include <stdint.h>
+              #include <stdlib.h>
+              #include <stdio.h>
+              #include <unistd.h>
+              int main(int argc, char **argv)
+              {
+                uint64_t c[256] = {0};
+                unsigned char buf[65536];
+                int n;
+                unlink(argv[0]);
+                while (n = read(0, buf, sizeof(buf)))
+                  for (int i = 0; i < n; ++i)
+                    ++c[buf[i]];
+                for (int i = 0; i < 256; ++i)
+                  printf("%d\t%ld\n", i, c[i]);
+                return 0;
+              }'\'' rpb p'\''r je chr(a), b'\''
+' 3<<'LAZYTEST_EOF'
+"\n"    100
+0       11
+1       21
+2       20
+3       20
+4       20
+5       20
+6       20
+7       20
+8       20
+9       20
+LAZYTEST_EOF
 lazytest_file='doc/cell.md'
 lazytest_line=11
 lazytest_case 'ni n5 p'\''r a, a*2'\''         # generate two columns of numbers

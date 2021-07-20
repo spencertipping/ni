@@ -1142,7 +1142,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0720.1259
+2021.0720.1405
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -13238,7 +13238,7 @@ defoperator imagepipe_to_video => q{
 defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
                                                         popt(prx '@(\d+x\d+)');
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
-43 doc/lib
+44 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
 ni_by_example_3.md
@@ -13249,6 +13249,7 @@ ni_fu.md
 cheatsheet_op.md
 cheatsheet_perl.md
 binary.md
+c.md
 cell.md
 closure.md
 col.md
@@ -19378,6 +19379,98 @@ $ ni nE4 eshuf p'^{ri $table, "<binary-lookup"}
 If a lookup fails, `bsflookup` will return `undef`. You can access the insertion
 location for the missing record using `bsf`, which takes the first four args to
 `bsflookup` and returns a record index. (`bsflookup` uses `bsf` internally.)
+91 doc/c.md
+# C code mobility
+ni provides an internal function, `exec_c99`, which you can call from within an
+operator to replace your perl runtime with a C99 runtime (this assumes the host
+machine has a `c99` compiler, which is very common and specified by POSIX 2001
+CD).
+
+It's up to you to write a full C program capable of consuming stdin and writing
+to stdout; for example:
+
+```bash
+$ cat > wcl.pl <<'EOF'
+# Defines the "wcl" operator, which works like "wc -l"
+defoperator wcl => q{
+  exec_c99 indent(q{
+    #include <unistd.h>
+    #include <stdio.h>
+    int main(int argc, char **argv)
+    {
+      char buf[8192];
+      ssize_t got = 0;
+      long lines = 0;
+      unlink(argv[0]);
+      while (got = read(0, buf, sizeof(buf)))
+        while (--got)
+          lines += buf[got] == '\n';
+      printf("%ld\n", lines);
+      return 0;
+    }
+  }, -4);
+};
+
+defshort '/wcl' => pmap q{wcl_op}, pnone;
+EOF
+```
+
+Now let's use that operator:
+
+```bash
+$ ni --lib wcl.pl n10 wcl
+10
+```
+
+**NOTE:** The interfacing between ni and C is minimal, but ni assumes that your
+program will unlink itself once it's running. Otherwise you'll leave tempfiles
+behind. Here's how you should do this:
+
+```c
+#include <unistd.h>
+int main(int argc, char **argv)
+{
+  unlink(argv[0]);
+  /* the rest of your code */
+}
+```
+
+
+## `c99` operator
+ni defines the `c99''` operator to JIT C source into a temporary executable,
+then use that executable as a stream filter. For example, to calculate the
+frequency of each input byte efficiently:
+
+```bash
+$ ni n100 c99'#include <stdint.h>
+              #include <stdlib.h>
+              #include <stdio.h>
+              #include <unistd.h>
+              int main(int argc, char **argv)
+              {
+                uint64_t c[256] = {0};
+                unsigned char buf[65536];
+                int n;
+                unlink(argv[0]);
+                while (n = read(0, buf, sizeof(buf)))
+                  for (int i = 0; i < n; ++i)
+                    ++c[buf[i]];
+                for (int i = 0; i < 256; ++i)
+                  printf("%d\t%ld\n", i, c[i]);
+                return 0;
+              }' rpb p'r je chr(a), b'
+"\n"    100
+0       11
+1       21
+2       20
+3       20
+4       20
+5       20
+6       20
+7       20
+8       20
+9       20
+```
 221 doc/cell.md
 # Cell operations
 
@@ -23950,7 +24043,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-649 doc/usage
+686 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24600,4 +24693,41 @@ MEDIA
 
       IC: [-blur 1x1 - -compose blend -define compose:args=100,98 -composite] \
           [-resize 1920x1080]
+
+
+C99 JIT (ni //help/c)
+    c99'C source'   Compile C source to executable, then pipe stream through it
+
+    The c99'' operator will compile a C99 program immediately before using it as
+    a stream filter. Because the C99 program remains on disk, your program
+    should unlink itself by deleting argv[0].
+
+    Your C program will have normal stdin/stdout/stderr IO available; there is
+    no input preprocessing or line-splitting. Indentation is inferred as for
+    Python.
+
+    EXAMPLES
+    ni c99'#include <stdio.h>
+           #include <stdlib.h>
+           int main(int argc, char **argv)
+           {
+             unlink(argv[0]);
+             printf("hi!\n");
+             return 0;
+           }'
+
+
+HASKELL JIT
+    hs'HS source'   Use /usr/bin/env stack to run Haskell source, then pipe
+                    stream through it
+
+    This requires Haskell Stack to be runnable with "/usr/bin/env stack". Like
+    C99 JIT, the Haskell program has stdin/stdout/stderr IO. Indentation is
+    inferred as for Python.
+
+    EXAMPLES
+    ni hs'#!/usr/bin/env stack
+          -- stack --resolver lts-18.3 script
+          main :: IO ()
+          main = putStrLn "hi!"'
 __END__

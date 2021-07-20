@@ -647,3 +647,40 @@ MEDIA
 
       IC: [-blur 1x1 - -compose blend -define compose:args=100,98 -composite] \
           [-resize 1920x1080]
+
+
+C99 JIT (ni //help/c)
+    c99'C source'   Compile C source to executable, then pipe stream through it
+
+    The c99'' operator will compile a C99 program immediately before using it as
+    a stream filter. Because the C99 program remains on disk, your program
+    should unlink itself by deleting argv[0].
+
+    Your C program will have normal stdin/stdout/stderr IO available; there is
+    no input preprocessing or line-splitting. Indentation is inferred as for
+    Python.
+
+    EXAMPLES
+    ni c99'#include <stdio.h>
+           #include <stdlib.h>
+           int main(int argc, char **argv)
+           {
+             unlink(argv[0]);
+             printf("hi!\n");
+             return 0;
+           }'
+
+
+HASKELL JIT
+    hs'HS source'   Use /usr/bin/env stack to run Haskell source, then pipe
+                    stream through it
+
+    This requires Haskell Stack to be runnable with "/usr/bin/env stack". Like
+    C99 JIT, the Haskell program has stdin/stdout/stderr IO. Indentation is
+    inferred as for Python.
+
+    EXAMPLES
+    ni hs'#!/usr/bin/env stack
+          -- stack --resolver lts-18.3 script
+          main :: IO ()
+          main = putStrLn "hi!"'
