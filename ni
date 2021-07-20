@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-62 core/boot/ni.map
+63 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -101,6 +101,7 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
+lib core/haskell
 lib core/binary
 lib core/matrix
 lib core/gnuplot
@@ -1141,7 +1142,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0719.1250
+2021.0720.1259
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9381,6 +9382,27 @@ defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
           pn 1, pstr 'y', python_grepper_code;
+2 core/haskell/lib
+lib
+stack.pl
+2 core/haskell/lib
+lib
+stack.pl
+14 core/haskell/stack.pl
+# ni support for Haskell programs run via Stack
+
+defoperator haskell_stack => q{
+  my ($hs_source) = @_;
+  my $filename = uri_path resource_tmp 'file://';
+  my $proc = siproc { wf $filename, $hs_source;
+                      exec '/usr/bin/env', 'stack', $filename };
+  sforward \*STDIN, $proc;
+  close $proc;
+  $proc->await;
+  unlink $filename;
+};
+
+defshort '/hs', pmap q{haskell_stack_op pydent $_}, generic_code;
 5 core/binary/lib
 bytestream.pm
 bytewriter.pm
