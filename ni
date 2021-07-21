@@ -1142,7 +1142,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0720.1405
+2021.0721.1237
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8000,7 +8000,7 @@ defoperator c99 => q{
 defshort '/c99', pmap q{c99_op pydent $_}, generic_code;
 1 core/git/lib
 git.pl
-313 core/git/git.pl
+316 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -8206,11 +8206,11 @@ defresource 'gitpdiff',
 defresource 'gittree',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote
-      git => "--git-dir=$path", 'ls-tree', $ref,
-             git_dashed_path $file, $subdir;
+    my $enum = soproc {
+      sh shell_quote git => "--git-dir=$path", 'ls-tree', $ref,
+                            git_dashed_path $file, $subdir };
     soproc {
-      for (`$enum_command`)
+      while (<$enum>)
       {
         chomp(my ($mode, $type, $id, $name) = split /\h/, $_, 4);
         print $type ne 'commit'
@@ -8240,10 +8240,11 @@ defresource 'gitblob',
 defresource 'gitsnap',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
-                                   '-r', $ref, git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'ls-tree',
+             '-r', $ref, git_dashed_path $file, $subdir };
     soproc { /^\d+ blob \S+\t(.*)/ and print "gitblob://$outpath:$ref\::$1\n"
-             for `$enum_command` };
+             while <$enum> };
   };
 
 # gitdsnap: just like gitsnap, but returns direct object IDs instead of
@@ -8256,11 +8257,11 @@ defresource 'gitsnap',
 defresource 'gitdsnap',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
-                                   '-r', $ref,
-                                   git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'ls-tree',
+             '-r', $ref, git_dashed_path $file, $subdir };
     soproc { /^\S+ blob ([0-9a-fA-F]+)\t(.*)/
-             && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
+             && print "gitblob://$outpath:$1\t$2\n" while <$enum> };
   };
 
 # gitdelta: a listing of all files changed by a specific revision, listed as
@@ -8269,10 +8270,11 @@ defresource 'gitdsnap',
 defresource 'gitdelta',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
-                                   '-r', '--no-commit-id', '--name-only',
-                                   $ref, git_dashed_path $file, $subdir;
-    soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'diff-tree',
+             '-r', '--no-commit-id', '--name-only',
+             $ref, git_dashed_path $file, $subdir };
+    soproc { print "gitpdiff://$outpath:$ref\::$_" while <$enum> };
   };
 
 # gitddelta: the gitdsnap:// version of gitdelta: object IDs with a path
@@ -8282,11 +8284,12 @@ defresource 'gitdelta',
 defresource 'gitddelta',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
-                                   '-r', '--no-commit-id',
-                                   $ref, git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'diff-tree',
+             '-r', '--no-commit-id',
+             $ref, git_dashed_path $file, $subdir };
     soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
-             && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
+             && print "gitpdiff://$outpath:$1..$2\t$3\n" while <$enum> };
   };
 
 # gitclosure://<repo>:<ref>[::<path>]: returns the full set of direct-encoded

@@ -203,11 +203,11 @@ defresource 'gitpdiff',
 defresource 'gittree',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote
-      git => "--git-dir=$path", 'ls-tree', $ref,
-             git_dashed_path $file, $subdir;
+    my $enum = soproc {
+      sh shell_quote git => "--git-dir=$path", 'ls-tree', $ref,
+                            git_dashed_path $file, $subdir };
     soproc {
-      for (`$enum_command`)
+      while (<$enum>)
       {
         chomp(my ($mode, $type, $id, $name) = split /\h/, $_, 4);
         print $type ne 'commit'
@@ -237,10 +237,11 @@ defresource 'gitblob',
 defresource 'gitsnap',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
-                                   '-r', $ref, git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'ls-tree',
+             '-r', $ref, git_dashed_path $file, $subdir };
     soproc { /^\d+ blob \S+\t(.*)/ and print "gitblob://$outpath:$ref\::$1\n"
-             for `$enum_command` };
+             while <$enum> };
   };
 
 # gitdsnap: just like gitsnap, but returns direct object IDs instead of
@@ -253,11 +254,11 @@ defresource 'gitsnap',
 defresource 'gitdsnap',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'ls-tree',
-                                   '-r', $ref,
-                                   git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'ls-tree',
+             '-r', $ref, git_dashed_path $file, $subdir };
     soproc { /^\S+ blob ([0-9a-fA-F]+)\t(.*)/
-             && print "gitblob://$outpath:$1\t$2\n" for `$enum_command` };
+             && print "gitblob://$outpath:$1\t$2\n" while <$enum> };
   };
 
 # gitdelta: a listing of all files changed by a specific revision, listed as
@@ -266,10 +267,11 @@ defresource 'gitdsnap',
 defresource 'gitdelta',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
-                                   '-r', '--no-commit-id', '--name-only',
-                                   $ref, git_dashed_path $file, $subdir;
-    soproc { print "gitpdiff://$outpath:$ref\::$_" for `$enum_command` };
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'diff-tree',
+             '-r', '--no-commit-id', '--name-only',
+             $ref, git_dashed_path $file, $subdir };
+    soproc { print "gitpdiff://$outpath:$ref\::$_" while <$enum> };
   };
 
 # gitddelta: the gitdsnap:// version of gitdelta: object IDs with a path
@@ -279,11 +281,12 @@ defresource 'gitdelta',
 defresource 'gitddelta',
   read => q{
     my ($outpath, $path, $ref, $file, $subdir) = git_parse_pathref $_[1];
-    my $enum_command = shell_quote git => "--git-dir=$path", 'diff-tree',
-                                   '-r', '--no-commit-id',
-                                   $ref, git_dashed_path $file, $subdir;
+    my $enum = soproc {sh shell_quote
+      git => "--git-dir=$path", 'diff-tree',
+             '-r', '--no-commit-id',
+             $ref, git_dashed_path $file, $subdir };
     soproc { /^\S+\s\S+\s(\S+)\s(\S+)\s\S+\s(.*)/
-             && print "gitpdiff://$outpath:$1..$2\t$3\n" for `$enum_command` };
+             && print "gitpdiff://$outpath:$1..$2\t$3\n" while <$enum> };
   };
 
 # gitclosure://<repo>:<ref>[::<path>]: returns the full set of direct-encoded
