@@ -69,7 +69,7 @@ defshort '/e', pmap q{sh_op $_}, shell_command;
 # We get around this by making `cat` a meta-operator that merges adjacent cat
 # operations into a single `cat_multi`.
 
-defoperator cat_multi => q{sio; scat $_ for @_};
+defoperator cat_multi => q{sio; weval q{scat $_} for @_};
 
 defmetaoperator cat => q{
   my ($args, $left, $right) = @_;
@@ -289,8 +289,8 @@ defoperator file_prepend_name_read => q{
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    my $fname = (split /\t/, $file, $maxcol)[$coli];
-    my $fh    = soproc {scat &$transform($fname)};
+    $_     = &$transform((split /\t/, $file, $maxcol)[$coli]);
+    my $fh = soproc {weval q{scat $_}};
     chomp, print "$file\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
@@ -311,9 +311,9 @@ defoperator file_prepend_name_number_read => q{
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    my $line  = 0;
-    my $fname = (split /\t/, $file, $maxcol)[$coli];
-    my $fh    = soproc {scat &$transform($fname)};
+    $_       = &$transform((split /\t/, $file, $maxcol)[$coli]);
+    my $fh   = soproc {weval q{scat $_}};
+    my $line = 0;
     ++$line, chomp, print "$file\t$line\t$_\n" while <$fh>;
     close $fh;
     $fh->await;
