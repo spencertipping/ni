@@ -1142,7 +1142,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0725.1923
+2021.0820.1628
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4883,9 +4883,9 @@ defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
 defoperator row_grouped_sort => q{
-  my ($key_col, $sort_cols) = @_;
-  my $key_expr = $key_col
-    ? qq{(split /\\t/)[$key_col]}
+  my ($key_cols, $sort_cols) = @_;
+  my $key_expr = $key_cols
+    ? qq{/^(} . "[^\\t\\n]*[\t\n]" x ($key_cols + 1) . qq{)/}
     : qq{/^([^\\t\\n]*)/};
 
   my $sort_expr = join ' || ',

@@ -278,9 +278,9 @@ defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
 defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
 
 defoperator row_grouped_sort => q{
-  my ($key_col, $sort_cols) = @_;
-  my $key_expr = $key_col
-    ? qq{(split /\\t/)[$key_col]}
+  my ($key_cols, $sort_cols) = @_;
+  my $key_expr = $key_cols
+    ? qq{/^(} . "[^\\t\\n]*[\t\n]" x ($key_cols + 1) . qq{)/}
     : qq{/^([^\\t\\n]*)/};
 
   my $sort_expr = join ' || ',
