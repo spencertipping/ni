@@ -72,13 +72,12 @@ defparseralias jscode_identity => jscode sub { $_[1], '', @_[2..$#_] };
 use constant js_mapgen => gen q{
 %prefix
 %closures
-
 fs.closeSync(0);
 
 let is_first = true;
 function row(_)
 {
-%body
+  %body
 }
 
 function go(_)
@@ -117,26 +116,18 @@ sub js_mapper($)
 { js_code js_expand_begin $_[0],
   q{let row_out = row(_);
     if (row_out != null)
-    {
-      while (true)
-      {
-        try
-        {
-          // TODO: replace writeSync with something that can buffer for
+    { while (true)
+      { try
+        { // TODO: replace writeSync with something that can buffer for
           // performance
           if (row_out instanceof Array)
             fs.writeSync(1, row_out.join("\t") + "\n");
           else
             fs.writeSync(1, `${row_out}\n`);
-          return;
-        }
+          return }
         catch (err)
-        {
-          if (err.message.indexOf('EAGAIN') < 0)
-            throw err;
-        }
-      }
-    }} }
+        { if (err.message.indexOf('EAGAIN') < 0)
+            throw err }}}} }
 
 sub js_grepper($)
 { js_code js_expand_begin $_[0], q{if (row(_)) fs.writeSync(1, _);} }
