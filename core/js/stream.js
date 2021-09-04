@@ -1,4 +1,10 @@
 let fs = require('fs');
+let process = require('process');
+
+process.on('uncaughtException', err => {
+  console.log(err, 'uncaught exception');
+  process.exit(1);
+});
 
 let ibufs = [];
 let inls  = [];

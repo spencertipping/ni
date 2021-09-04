@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0904.2335
+2021.0904.2347
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9393,8 +9393,14 @@ defrowalt pmap q{python_grepper_op $_},
 2 core/js/lib
 stream.js
 js.pl
-124 core/js/stream.js
+130 core/js/stream.js
 let fs = require('fs');
+let process = require('process');
+
+process.on('uncaughtException', err => {
+  console.log(err, 'uncaught exception');
+  process.exit(1);
+});
 
 let ibufs = [];
 let inls  = [];
