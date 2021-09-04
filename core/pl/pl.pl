@@ -7,6 +7,8 @@
 
 use POSIX ();
 
+defconfenv 'pl_ignore_trb', NI_PL_IGNORE_TRB => 0;
+
 sub syntax_check($$) {
   my ($check_cmd, $code) = @_;
   my $fh = siproc {sh "$check_cmd >/dev/null 2>&1"};
@@ -24,17 +26,19 @@ sub syntax_check($$) {
 BEGIN {
 defparser 'plcode', '$', q{
   my ($self, $code, @xs) = @_;
-  die <<EOF if $code =~ /\\\r?\n/;
+  die <<EOF if !conf('pl_ignore_trb') && $code =~ /\\\r?\n/;
 ni: you have a trailing backslash in the perl code "$code", which perl will
     interpret as a reference operator and things will go horribly wrong. If,
     for some reason, you really do want a trailing backslash, you can bypass
-    this error by putting a space or a comment after it.
+    this error by putting a space or a comment after it, or by setting the
+    pl_ignore_trb conf option to 1. (example: export NI_IGNORE_TRB=1)
 
-    # this is why you're seeing this message (you don't want the backslash):
+    # this is why you're seeing this message (you probably don't want the
+    # backslash):
     p'foo \\\\
       bar'
 
-    # this is the correct way to write it:
+    # this is usually the correct way to write it:
     p'foo
       bar'
 EOF

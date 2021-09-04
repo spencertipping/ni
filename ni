@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-63 core/boot/ni.map
+64 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -101,6 +101,7 @@ lib core/rb
 lib core/lisp
 lib core/sql
 lib core/python
+lib core/js
 lib core/haskell
 lib core/binary
 lib core/matrix
@@ -1142,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0820.1628
+2021.0904.1821
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -7096,7 +7097,7 @@ BEGIN
   *gh_dist_a = \&gh_dist_approx;
   *gh_dist = \&gh_dist_exact;
 }
-216 core/pl/pl.pl
+220 core/pl/pl.pl
 # Perl parse element.
 # A way to figure out where some Perl code ends, in most cases. This works
 # because appending closing brackets to valid Perl code will always make it
@@ -7105,6 +7106,8 @@ BEGIN
 # of some row mapping code.
 
 use POSIX ();
+
+defconfenv 'pl_ignore_trb', NI_PL_IGNORE_TRB => 0;
 
 sub syntax_check($$) {
   my ($check_cmd, $code) = @_;
@@ -7123,17 +7126,19 @@ sub syntax_check($$) {
 BEGIN {
 defparser 'plcode', '$', q{
   my ($self, $code, @xs) = @_;
-  die <<EOF if $code =~ /\\\r?\n/;
+  die <<EOF if !conf('pl_ignore_trb') && $code =~ /\\\r?\n/;
 ni: you have a trailing backslash in the perl code "$code", which perl will
     interpret as a reference operator and things will go horribly wrong. If,
     for some reason, you really do want a trailing backslash, you can bypass
-    this error by putting a space or a comment after it.
+    this error by putting a space or a comment after it, or by setting the
+    pl_ignore_trb conf option to 1. (example: export NI_IGNORE_TRB=1)
 
-    # this is why you're seeing this message (you don't want the backslash):
+    # this is why you're seeing this message (you probably don't want the
+    # backslash):
     p'foo \\\\
       bar'
 
-    # this is the correct way to write it:
+    # this is usually the correct way to write it:
     p'foo
       bar'
 EOF
@@ -9385,6 +9390,244 @@ defshort '/yR', pmap q{python_require_op @$_}, _qfn;
 
 defrowalt pmap q{python_grepper_op $_},
           pn 1, pstr 'y', python_grepper_code;
+2 core/js/lib
+stream.js
+js.pl
+61 core/js/stream.js
+let fs = require('fs');
+
+let ibufs = [];
+let inls  = [];
+let stdin_eof = false;
+
+// NOTE: this code is all written async-style even though it should use sync
+// methods. We have to do this because readSync() is bugged in a number of
+// nodeJS releases. See https://github.com/jxmot/nodejs-readSync-bug.
+
+const read_another_buf = (f) =>
+  fs.read(3, Buffer.allocUnsafe(65536), 0, 65536, null, (err, n, b) => {
+    if (err || n <= 0) return f(false);
+
+    b = b.slice(0, n);
+    ibufs.push(b);
+    inls.push(b.indexOf(10));
+    return f(true);
+  });
+
+// Read a line with buffered ops.
+const rl = (f, next) => {
+  while (true)
+  {
+    if (stdin_eof) return f(null);
+
+    let i = 0;
+    while (i < inls.length && inls[i] === -1) ++i;
+    if (i >= inls.length)
+      return read_another_buf(b => {
+        if (!b)
+        {
+          stdin_eof = true;
+          f(Buffer.concat(ibufs));
+          ibufs = inls = null;
+          return next();
+        }
+        else
+          return next();
+      });
+
+    if (i === 0)
+    {
+      // Optimized common case: don't build a prefix
+      let r = ibufs[0].slice(0, inls[0] + 1);
+      ibufs[0] = ibufs[0].slice(inls[0] + 1);
+      inls[0] = ibufs[0].indexOf(10);
+      f(r);
+    }
+    else
+    {
+      let b = ibufs[i].slice(0, inls[i] + 1);
+      ibufs[i] = ibufs[i].slice(inls[i] + 1);
+      inls[i] = ibufs[i].indexOf(10);
+      let bs = ibufs.splice(0, i);
+      inls.splice(0, i);
+      bs.push(b);
+      f(Buffer.concat(bs));
+    }
+  }
+};
+172 core/js/js.pl
+# NodeJS stuff.
+# A context for nodeJS mappers and filters.
+
+use POSIX ();
+
+BEGIN
+{
+  defconfenv 'js', NI_JS => 'nodejs';
+}
+
+
+# FIXME: this needs to handle various escapes; '' in JS is soft-quote
+sub jsquote($) {"'" . sgr(sgr($_[0], qr/\\/, '\\\\'), qr/'/, '\\\'') . "'"}
+
+
+sub stdin_to_js($)
+{
+  eval {cdup2 0, 3; POSIX::close 0};
+  die "ni: nodeJS driver failed to move FD 0 to 3 ($!)\n"
+    . "    this usually means you're running in a context with no STDIN"
+  if $@;
+  my $fh = siproc {exec conf('js'), '-'};
+  safewrite $fh, $_[0];
+  close $fh;
+  $fh->await;
+}
+
+use constant js_check => conf('js') . q{ -c -};
+
+sub js_returnify($$)
+{
+  my ($transform, $code) = @_;
+
+  # TODO: we need a way to bypass this check
+
+  my $returned = "return ($code)";
+  syntax_check(js_check, &$transform($returned)) ? $code : $returned;
+}
+
+BEGIN
+{
+defparser 'jscode', '$', q{
+  my ($self, $code, @xs) = @_;
+  return js_returnify($$self[1], $_[1]), '', @_[2..$#_] unless $code =~ /\]$/;
+
+  my $codegen = $$self[1];
+  my $status  = 0;
+  my $x       = '';
+
+  $x .= ']' while $status = syntax_check js_check, &$codegen($code)
+                  and $code =~ s/\]$//;
+
+  die <<EOF if $status;
+ni: failed to get closing bracket count for nodeJS code "$code$x".
+    Because nodeJS doesn't use compile-time metaprogramming, this most likely
+    means that your code is being checked by a different version of nodeJS
+    than the one your operation is targeting. You can bypass this problem by
+    ending the shell argument containing your nodeJS code with a space:
+
+    js'[[some code]]'             # ni checks syntax (problem case)
+    js'[[some code]] '            # bypass syntax check
+    [js'[some code] ' ]           # bypass syntax check within a lambda
+EOF
+
+  (js_returnify($codegen, $code), $x, @xs);
+};
+}
+
+defparseralias jscode_identity => jscode sub { $_[1], '', @_[2..$#_] };
+
+# NodeJS line processor.
+use constant js_mapgen => gen q{
+%prefix
+%closures
+
+fs.closeSync(0);
+
+let is_first = true;
+function row(_)
+{
+%body
+}
+
+function go(_)
+{
+  if (_ == null) return;
+  %each
+}
+
+function next_block() { rl(go, next_block) }
+next_block();
+};
+
+our @js_prefix_keys = qw| core/js/stream.js |;
+
+defoperator js_prefix => q{ sio; print join"\n", @ni::js_prefix_keys };
+defshort '///ni/js_prefix' => pmap q{js_prefix_op}, pnone;
+
+sub defjsprefix($)
+{
+  warn "defjsprefix(\"$_[0]\") refers to an undefined attribute"
+    unless exists $ni::self{$_[0]};
+  push @js_prefix_keys, $_[0];
+}
+
+sub js_prefix() { join "\n", @ni::self{@js_prefix_keys} }
+
+sub js_expand_begin($)
+{ sr $_[0], qr/^\s*\^\{/, 'if (is_first) { is_first = false; '}
+
+sub js_code($$) {js_mapgen->(prefix   => js_prefix,
+                             closures => '// TODO: dataclosures',
+                             body     => $_[0],
+                             each     => $_[1])}
+
+sub js_mapper($)
+{ js_code js_expand_begin $_[0],
+  q{let row_out = row(_);
+    if (row_out != null)
+    {
+      while (true)
+      {
+        try
+        {
+          // TODO: replace writeSync with something that can buffer for
+          // performance
+          if (row_out instanceof Array)
+            fs.writeSync(1, row_out.join("\t") + "\n");
+          else
+            fs.writeSync(1, `${row_out}\n`);
+          return;
+        }
+        catch (err)
+        {
+          if (err.message.indexOf('EAGAIN') < 0)
+            throw err;
+        }
+      }
+    }} }
+
+sub js_grepper($)
+{ js_code js_expand_begin $_[0], q{if (row(_)) fs.writeSync(1, _);} }
+
+defoperator js_mapper  => q{stdin_to_js js_mapper  $_[0]};
+defoperator js_grepper => q{stdin_to_js js_grepper $_[0]};
+
+defmetaoperator js_require => q{
+  my ($args, $left, $right) = @_;
+  my $code_fh = sni @$args;
+  my $code    = join '', <$code_fh>;
+  my $key     = "core/js/require/" . gensym;
+  self_append_resource $key, $code;
+  self_append_resource "$key-prepend.pl",
+    qq{ push \@ni::js_prefix_keys, q{$key} };
+  push @ni::js_prefix_keys, $key;
+  ($left, $right);
+};
+
+BEGIN
+{
+  defparseralias js_mapper_code   => jscode \&js_mapper;
+  defparseralias js_grepper_code  => jscode \&js_grepper;
+}
+
+defshort '/js',
+  defalt 'jsalt', 'alternatives for /js JS operator',
+    pmap q{js_mapper_op $_}, js_mapper_code;
+
+defshort '/jsR', pmap q{js_require_op @$_}, _qfn;
+
+defrowalt pmap q{js_grepper_op $_},
+          pn 1, pstr 'js', js_grepper_code;
 2 core/haskell/lib
 lib
 stack.pl
