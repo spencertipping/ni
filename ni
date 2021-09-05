@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0905.0057
+2021.0905.1047
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -5489,7 +5489,7 @@ sub el(&$)
   open my $fh, $f or die "el $f: $!";
   while (<$fh>) { chomp; &$fn(split /\t/) }
 }
-153 core/pl/array.pm
+169 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -5504,6 +5504,22 @@ sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
 
 sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
+
+sub union
+{
+  local $_;
+  my (@r, %seen);
+  for (@_) { $seen{$_}++ or push @r, $_ for @$_ }
+  @r;
+}
+
+sub intersect($$)
+{
+  local $_;
+  my %left;
+  ++$left{$_} for @{+shift};
+  grep exists $left{$_}, @{+shift};
+}
 
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
 sub reductions(&$@) {

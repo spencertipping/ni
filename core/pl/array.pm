@@ -13,6 +13,22 @@ sub all(&@) {local $_; my ($f, @xs) = @_; &$f($_) || return 0 for @xs; 1}
 sub uniq  {local $_; my(%seen, @xs); $seen{$_}++ or push @xs, $_ for @_; @xs}
 sub freqs {local $_; my %fs; ++$fs{$_} for @_; \%fs}
 
+sub union
+{
+  local $_;
+  my (@r, %seen);
+  for (@_) { $seen{$_}++ or push @r, $_ for @$_ }
+  @r;
+}
+
+sub intersect($$)
+{
+  local $_;
+  my %left;
+  ++$left{$_} for @{+shift};
+  grep exists $left{$_}, @{+shift};
+}
+
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
 sub reductions(&$@) {
   local $_;
