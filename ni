@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0904.2347
+2021.0905.0004
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9426,7 +9426,11 @@ const read_another_buf = (f) =>
 const rl = (f, next) => {
   while (true)
   {
-    if (stdin_eof) return f(null);
+    if (stdin_eof)
+    {
+      F_ = null;
+      return f(L_ = null);
+    }
 
     let i = 0;
     while (i < inls.length && inls[i] === -1) ++i;
@@ -9489,17 +9493,13 @@ function F(i)
   if (F_ == null)
   {
     F_ = [];
-    let t = L_.indexOf(9);
-    if (t !== -1)
+    let t = -1;
+    do
     {
       let n = L_.indexOf(9, t + 1);
-      F_.push(L_.slice(t + 1, n === -1 ? L_.length : n - 1));
+      F_.push(L_.slice(t + 1, n === -1 ? L_.length : n));
       t = n;
-    }
-    else
-    {
-      F_.push(L_);
-    }
+    } while (t !== -1);
   }
 
   if (arguments.length === 1) return F_[i];
