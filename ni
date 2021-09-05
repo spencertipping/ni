@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0905.0004
+2021.0905.0057
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -24349,7 +24349,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-686 doc/usage
+692 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24541,6 +24541,8 @@ ROWS (ni //help/row)
     rl'...'         Take rows for which the Lisp expression '...' is true
                     (see ni //help/lisp)
 
+    rjs'...'        Take rows for which the NodeJS expression '...' is true
+
 
 CELLS (ni //help/cell)
     ,Cd             Clean cells in column A as integer (remove [^-0-9])
@@ -24707,6 +24709,10 @@ STREAM TRANSFORMATION (ni //help/stream)
 
     m'...'          Run Ruby code '...' on each input line (see //help/ruby)
     l'...'          Run Lisp code '...' on each input line (see //help/lisp)
+    js'...'         Run NodeJS code '...' on each input line (documentation TBD)
+    c99'...'        Compile '...' as C99 and run the result on entire stream
+                    (see //help/c)
+
     Bd64M           Copy stream through a 64M disk-backed FIFO
 
     shost[...]      Run pipeline section '...' on 'host' via SSH (ni will
@@ -24883,7 +24889,7 @@ BINARY PACKING (ni //help/binary)
     need to unpack variable-length records, use the 'rp' (read-packed) function
     in bp'...', which uses buffered readahead:
 
-    $ ni n10 bf^n/a bp'r rp"n/a"'
+    $ ni n10 bf^n/a bp'r rp"n/a"'     # NB: bf^ allows n/a; bf does not
 
     Note that by'' doesn't preload NumPy the way N'' does; its only imports are
     "os" and "sys".
