@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0906.1955
+2021.0906.1322
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9550,7 +9550,7 @@ function i() { return F(8) }
 function j() { return F(9) }
 function k() { return F(10) }
 function l() { return F(11) }
-165 core/js/js.pl
+163 core/js/js.pl
 # NodeJS stuff.
 # A context for nodeJS mappers and filters.
 
@@ -9627,8 +9627,6 @@ use constant js_mapgen => gen q{
 %closures
 fs.closeSync(0);
 
-self = {};
-
 let is_first = true;
 function row(_)
 {
@@ -9669,7 +9667,7 @@ sub js_code($$) {js_mapgen->(prefix   => js_prefix,
 
 sub js_mapper($)
 { js_code js_expand_begin $_[0],
-  q{let row_out = row.call(self, _);
+  q{let row_out = row(_);
     if (row_out != null)
     { while (true)
       { try
@@ -9685,7 +9683,7 @@ sub js_mapper($)
             throw err }}}} }
 
 sub js_grepper($)
-{ js_code js_expand_begin $_[0], q{if (row.call(self, _)) fs.writeSync(1, _);} }
+{ js_code js_expand_begin $_[0], q{if (row(_)) fs.writeSync(1, _);} }
 
 defoperator js_mapper  => q{stdin_to_js js_mapper  $_[0]};
 defoperator js_grepper => q{stdin_to_js js_grepper $_[0]};
