@@ -84,6 +84,11 @@ case $c in
     echo "BUILDING $e"
     echo
     docker build -f env/$e -t spencertipping/ni-env-dev-$e . || exit $?
+  done
+  ;;
+
+--push)
+  for e in ${envs[@]}; do
     docker push spencertipping/ni-env-dev-$e
   done
   ;;
