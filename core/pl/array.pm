@@ -125,6 +125,13 @@ sub most_common(@)
   grep $freqs{$_} == $most, keys %freqs;
 }
 
+# powerset(1, 2, 3) = ([], [1], [2], [3], [1, 2], [1, 3], [2, 3], [1, 2, 3])
+# (though not necessarily in that order)
+sub powerset
+{
+  map {my $m = $_; [@_[grep $m & 1 << $_, 0..$#_]]} 0 .. (1 << @_) - 1;
+}
+
 sub zip {
   my @rs = @_;
   my $min_length = min map {$#{$_}} @rs;

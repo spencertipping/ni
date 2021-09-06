@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0905.1047
+2021.0906.1203
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -5489,7 +5489,7 @@ sub el(&$)
   open my $fh, $f or die "el $f: $!";
   while (<$fh>) { chomp; &$fn(split /\t/) }
 }
-169 core/pl/array.pm
+176 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -5615,6 +5615,13 @@ sub most_common(@)
   ++$freqs{$_} for @_;
   my $most = max values %freqs;
   grep $freqs{$_} == $most, keys %freqs;
+}
+
+# powerset(1, 2, 3) = ([], [1], [2], [3], [1, 2], [1, 3], [2, 3], [1, 2, 3])
+# (though not necessarily in that order)
+sub powerset
+{
+  map {my $m = $_; [@_[grep $m & 1 << $_, 0..$#_]]} 0 .. (1 << @_) - 1;
 }
 
 sub zip {
