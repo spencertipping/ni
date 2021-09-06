@@ -4,11 +4,18 @@ RUN apt-get install -y sbcl sqlite curl gcc
 RUN apt-get install -y bzip2 lzop liblz4-tool xz-utils strace ruby
 RUN apt-get install -y python3-numpy
 RUN apt-get install -y netcat-openbsd
-RUN apt-get install -y docker.io
+
+# This docker is so old that it doesn't work with modern daemons, so any inner
+# docker tests will fail. ni still works properly on this distro, you'd just
+# need to be using the daemon from 14.04 instead of the current one.
+#
+# RUN apt-get install -y docker.io
+
 ADD ni /usr/bin/
 ADD dev/test-data/etc-passwd /etc/passwd
 
 RUN touch /nonumpy
+RUN touch /nodocker
 
 VOLUME /data
 WORKDIR /data
