@@ -1,4 +1,4 @@
-FROM archlinux/base
+FROM archlinux:base
 RUN pacman -Sy
 RUN pacman -S --noconfirm \
       sqlite sbcl lzop grep ruby python3 python-numpy openbsd-netcat gcc \
