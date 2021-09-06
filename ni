@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0906.1235
+2021.0906.1322
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -19791,17 +19791,17 @@ $ ni n100 c99'#include <stdint.h>
                   printf("%d\t%ld\n", i, c[i]);
                 return 0;
               }' rpb p'r je chr(a), b'
-"\n"    100
-0       11
-1       21
-2       20
-3       20
-4       20
-5       20
-6       20
-7       20
-8       20
-9       20
+"\n"	100
+0	11
+1	21
+2	20
+3	20
+4	20
+5	20
+6	20
+7	20
+8	20
+9	20
 ```
 221 doc/cell.md
 # Cell operations
