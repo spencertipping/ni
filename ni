@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0906.1203
+2021.0906.1235
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -5489,7 +5489,7 @@ sub el(&$)
   open my $fh, $f or die "el $f: $!";
   while (<$fh>) { chomp; &$fn(split /\t/) }
 }
-176 core/pl/array.pm
+179 core/pl/array.pm
 # Array processors
 sub first  {$_[0]}
 sub final  {$_[$#_]}   # `last` is reserved for breaking out of a loop
@@ -5513,12 +5513,15 @@ sub union
   @r;
 }
 
-sub intersect($$)
+sub intersect
 {
   local $_;
-  my %left;
-  ++$left{$_} for @{+shift};
-  grep exists $left{$_}, @{+shift};
+  my @r = @{+shift};
+  while (@_ && @r)
+  { my %left;
+    @left{@r} = @r;
+    @r = grep defined, @left{@{+shift}} }
+  @r;
 }
 
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}

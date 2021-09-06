@@ -21,12 +21,15 @@ sub union
   @r;
 }
 
-sub intersect($$)
+sub intersect
 {
   local $_;
-  my %left;
-  ++$left{$_} for @{+shift};
-  grep exists $left{$_}, @{+shift};
+  my @r = @{+shift};
+  while (@_ && @r)
+  { my %left;
+    @left{@r} = @r;
+    @r = grep defined, @left{@{+shift}} }
+  @r;
 }
 
 sub reduce(&$@) {local $_; my ($f, $x, @xs) = @_; $x = &$f($x, $_) for @xs; $x}
