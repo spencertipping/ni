@@ -613,6 +613,7 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     X               Sparse to dense
     Z4              Reflow cells to be 4-wide on each row
     ZB              Flatten (a, b, c, d, e) into (a,b,c), (a,b,d), (a,b,e)
+    Z^B             Invert ZB: collect (a,b,c), (a,b,d), (a,b,e) -> (a,b,c,d,e)
 
     N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as
                     Python code to transform matrix, write resulting matrix to

@@ -117,12 +117,36 @@ q{
   }
 };
 
+defoperator partial_transpose_inv =>
+q{
+  my ($col) = @_;
+  my $re = "(" . "[^\\t]*\t" x $col . ")(.*)";
+  $re = qr/$re/;
+  my $last = undef;
+  my @xs;
+  while (<STDIN>)
+  {
+    chomp;
+    /$re/;
+    if ($1 eq $last) { push @xs, $2 }
+    else
+    {
+      print $last . join("\t", @xs) . "\n" if defined $last;
+      $last = $1;
+      @xs = ($2);
+    }
+  }
+  print $last . join("\t", @xs) . "\n" if defined $last;
+};
+
 defshort '/X',  pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/XP', pmap q{pivot_table_op}, pnone;
 
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
 defshort '/Z', palt pmap(q{unflatten_op 0 + $_}, integer),
-                    pmap(q{partial_transpose_op $_}, colspec1);
+                    pmap(q{partial_transpose_op $_}, colspec1),
+                    pmap(q{partial_transpose_inv_op $_},
+                         pn 1, prx"\\^", colspec1);
 
 # NumPy interop.
 # Partitioned by the first row value and sent in as dense matrices.

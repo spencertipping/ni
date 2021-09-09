@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0906.1959
+2021.0909.0041
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9947,7 +9947,7 @@ defshort '/bp', pmap q{binary_perl_op $_},   plcode \&binary_perl_mapper;
 defshort '/by', pmap q{binary_python_op $_}, pycode \&binary_python_mapper;
 1 core/matrix/lib
 matrix.pl
-207 core/matrix/matrix.pl
+231 core/matrix/matrix.pl
 # Matrix conversions.
 # Dense to sparse creates a (row, column, value) stream from your data. Sparse to
 # dense inverts that. You can specify where the matrix data begins using a column
@@ -10067,12 +10067,36 @@ q{
   }
 };
 
+defoperator partial_transpose_inv =>
+q{
+  my ($col) = @_;
+  my $re = "(" . "[^\\t]*\t" x $col . ")(.*)";
+  $re = qr/$re/;
+  my $last = undef;
+  my @xs;
+  while (<STDIN>)
+  {
+    chomp;
+    /$re/;
+    if ($1 eq $last) { push @xs, $2 }
+    else
+    {
+      print $last . join("\t", @xs) . "\n" if defined $last;
+      $last = $1;
+      @xs = ($2);
+    }
+  }
+  print $last . join("\t", @xs) . "\n" if defined $last;
+};
+
 defshort '/X',  pmap q{sparse_to_dense_op $_}, popt colspec1;
 defshort '/XP', pmap q{pivot_table_op}, pnone;
 
 defshort '/Y', pmap q{dense_to_sparse_op $_}, popt colspec1;
 defshort '/Z', palt pmap(q{unflatten_op 0 + $_}, integer),
-                    pmap(q{partial_transpose_op $_}, colspec1);
+                    pmap(q{partial_transpose_op $_}, colspec1),
+                    pmap(q{partial_transpose_inv_op $_},
+                         pn 1, prx"\\^", colspec1);
 
 # NumPy interop.
 # Partitioned by the first row value and sent in as dense matrices.
@@ -24375,7 +24399,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-692 doc/usage
+693 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24886,6 +24910,7 @@ MATRIX TRANSFORMATION (ni //help/matrix)
     X               Sparse to dense
     Z4              Reflow cells to be 4-wide on each row
     ZB              Flatten (a, b, c, d, e) into (a,b,c), (a,b,d), (a,b,e)
+    Z^B             Invert ZB: collect (a,b,c), (a,b,d), (a,b,e) -> (a,b,c,d,e)
 
     N'x = x + 1'    Read whole stream into numpy matrix, use 'x = x + 1' as
                     Python code to transform matrix, write resulting matrix to
