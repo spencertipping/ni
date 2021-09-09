@@ -120,7 +120,7 @@ q{
 defoperator partial_transpose_inv =>
 q{
   my ($col) = @_;
-  my $re = "(" . "[^\\t]*\t" x $col . ")(.*)";
+  my $re = "([^\\t]*" . "\t[^\\t]*" x $col . "\t)(.*)";
   $re = qr/$re/;
   my $last = undef;
   my @xs;

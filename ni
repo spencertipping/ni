@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0909.0041
+2021.0909.0045
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -10070,7 +10070,7 @@ q{
 defoperator partial_transpose_inv =>
 q{
   my ($col) = @_;
-  my $re = "(" . "[^\\t]*\t" x $col . ")(.*)";
+  my $re = "([^\\t]*" . "\t[^\\t]*" x $col . "\t)(.*)";
   $re = qr/$re/;
   my $last = undef;
   my @xs;
