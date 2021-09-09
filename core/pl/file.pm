@@ -1,10 +1,10 @@
 # File Readers
-sub rf  {open my $fh, "< $_[0]" or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
-sub rfl {open my $fh, "< $_[0]" or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
-sub rfc {chomp(my $r = rf @_); $r}
+sub rf($)  {my $fh; open $fh, "< $_[0]" or open $fh, $_[0] or die "rf $_[0]: $!"; my $r = join '', <$fh>; close $fh; $r}
+sub rfl($) {my $fh; open $fh, "< $_[0]" or open $fh, $_[0] or die "rl $_[0]: $!"; my @r =          <$fh>; close $fh; @r}
+sub rfc($) {chomp(my $r = rf shift); $r}
 
 # ri(my $var, "< file"): read entire contents into
-sub ri  {open my $fh, $_[1] or die "ri $_[1]: $!"; 1 while read $fh, $_[0], 65536, length $_[0]}
+sub ri  {my $fh; open $fh, "< $_[1]" or open $fh, $_[1] or die "ri $_[1]: $!"; 1 while read $fh, $_[0], 65536, length $_[0]}
 
 sub dirbase($)  {my @xs = $_[0] =~ /^(.*)\/+([^\/]+)\/*$/; @xs ? @xs : ('', $_[0])}
 sub basename($) {(dirbase $_[0])[1]}
@@ -16,7 +16,7 @@ sub wf {
   local $_;
   my $f = shift;
   my $fh;
-  if ($f =~ /^\|/) {
+  if ($f =~ /^[\|>]/) {
     open $fh, $f or die "wf $f: $!";
   } else {
     mkdir_p dirname $f;
@@ -43,6 +43,7 @@ sub el(&$)
 {
   local $_;
   my ($fn, $f) = @_;
-  open my $fh, $f or die "el $f: $!";
+  my $fh;
+  open $fh, "< $f" or open $fh, $f or die "el $f: $!";
   while (<$fh>) { chomp; &$fn(split /\t/) }
 }
