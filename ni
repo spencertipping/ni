@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0910.1310
+2021.0910.1429
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -19657,11 +19657,37 @@ Perl functions are often written with a signature that allows them to be written
   * `@q` persists between fresh lines, and allows past lines to be stored. It is used by `rl` and `pl` to store lines, as well as for the buffered readahead functions `re`, `ru`, `rw`
   * Like `@F`, many functions rely on `@q`; you should not edit or access it directly, and instead use the functions that interact with it.
   * If you want to to store your own array of lines that persists through fresh lines, use a BEGIN block, for example`p'^{@x;} ...; push @x, $data; ...`
-135 doc/binary.md
+162 doc/binary.md
 # Binary decoding
 ni's row transform operators won't work on binary data because they seek to the
 nearest newline. If you want to parse binary data you should use the `b`
 operator, which does block reads and provides a byte cursor.
+
+
+## `bf` and `bf^`: fast fixed-width binary coding
+If your data is straightforward -- that is, it's a series of binary objects that
+are all the same size -- then `bf` will decode it using a `pack` template (see
+`perldoc -f pack`). `bf^` is the opposite: it encodes TSV records as binary. For
+example:
+
+```bash
+$ ni n010 pa+65 bf^C
+ABCDEFGHIJ
+$ ni n010 pa+65 bf^C bfC5
+65	66	67	68	69
+70	71	72	73	74
+```
+
+`bf` is often a bottleneck since binary data sources tend to be fast. Because of
+this, it measures two different strategies and then commits to one of them once
+each has handled 8MB of input data. This means you'll usually see it get faster
+around the 16-20MB mark if you run a command like this:
+
+```bash
+$ ni nE7 bf^Q bfQ Wn rp'a != b' wcl   # make sure bf inverts bf^
+0
+```
+
 
 ## Generating binary data
 You can't use `r()` to emit binary unless you want newlines, but you can print
@@ -19679,6 +19705,7 @@ $ ni n1p'wp "A4VA8VvvVVvvA4V",
 Note that normally you'd specify the endian-ness of `s` by saying `s<` instead.
 However, old versions of Perl don't support endian modifiers so I have to leave
 it out of the examples here.
+
 
 ## Perl decoder
 The decoding interface consists of four functions:

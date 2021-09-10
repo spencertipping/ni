@@ -50,7 +50,26 @@ b	1
 c	3
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=12
+lazytest_line=14
+lazytest_case 'ni n010 pa+65 bf^C
+' 3<<'LAZYTEST_EOF'
+ABCDEFGHIJ
+LAZYTEST_EOF
+lazytest_file='doc/binary.md'
+lazytest_line=16
+lazytest_case 'ni n010 pa+65 bf^C bfC5
+' 3<<'LAZYTEST_EOF'
+65	66	67	68	69
+70	71	72	73	74
+LAZYTEST_EOF
+lazytest_file='doc/binary.md'
+lazytest_line=27
+lazytest_case 'ni nE7 bf^Q bfQ Wn rp'\''a != b'\'' wcl   # make sure bf inverts bf^
+' 3<<'LAZYTEST_EOF'
+0
+LAZYTEST_EOF
+lazytest_file='doc/binary.md'
+lazytest_line=38
 lazytest_case 'ni n1p'\''wp "A4VA8VvvVVvvA4V",
          qw|RIFF 176436 WAVEfmt 16 1 2 44100 176400 4 16 data 176400|'\'' \
      +n44100p'\''my $v = 32767 * sin a*440*tau/44100;
@@ -59,7 +78,7 @@ lazytest_case 'ni n1p'\''wp "A4VA8VvvVVvvA4V",
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=35
+lazytest_line=62
 lazytest_case 'ni test.wav bp'\''rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip the header
                  r rp"ss"'\'' r10
 ' 3<<'LAZYTEST_EOF'
@@ -75,7 +94,7 @@ lazytest_case 'ni test.wav bp'\''rp "A4VA8VvvVVvvA4V" if bi == 0;       # skip t
 19222	19222
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=54
+lazytest_line=81
 lazytest_case 'ni test.wav bf'\''ss'\'' r-15r10
 ' 3<<'LAZYTEST_EOF'
 10103	10103
@@ -94,7 +113,7 @@ if ! [[ -e /nonumpy ]]; then
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=76
+lazytest_line=103
 lazytest_case 'ni test.wav bp'\''bi?r rp "ss":rb 44'\'' fA N'\''x = fft.fft(x, axis=0).real'\'' \
      Wn rp'\''a <= 22050'\'' OB r5,qB.01
 ' 3<<'LAZYTEST_EOF'
@@ -108,12 +127,12 @@ fi              # -e /nonumpy
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=107
+lazytest_line=134
 lazytest_case 'ni nE4 op'\''wp"Nd", a, sin(a)'\'' > binary-lookup
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/binary.md'
-lazytest_line=127
+lazytest_line=154
 lazytest_case 'ni nE4 eshuf p'\''^{ri $table, "<binary-lookup"}
                  r a, sin(a), bsflookup $table, "N", 12, a, "x4d"'\'' \
                rp'\''b ne c'\'' e'\''wc -l'\''      # any records have a failed lookup?
