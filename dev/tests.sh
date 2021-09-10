@@ -895,13 +895,13 @@ lazytest_case 'ni n100 CA+python3+py3-numpy+sbcl@testing[N'\''x = x + 1'\'' l'\'
 6
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
-lazytest_line=70
-lazytest_case 'docker run --detach -i --name ni-test-container ubuntu >/dev/null
+lazytest_line=73
+lazytest_case 'docker run --detach -i --name ni-test-container$ENV_SUFFIX ubuntu >/dev/null
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
-lazytest_line=71
-lazytest_case 'ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
+lazytest_line=74
+lazytest_case 'ni Eni-test-container$ENV_SUFFIX[n100g =\>/tmp/in-container Bn] r4
 ' 3<<'LAZYTEST_EOF'
 1
 10
@@ -909,20 +909,20 @@ lazytest_case 'ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
 11
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
-lazytest_line=76
+lazytest_line=79
 lazytest_case '[[ -e /tmp/in-container ]] || echo '\''file not in host (good)'\''
 ' 3<<'LAZYTEST_EOF'
 file not in host (good)
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
-lazytest_line=78
-lazytest_case 'ni Eni-test-container[/tmp/in-container] | wc -l
+lazytest_line=81
+lazytest_case 'ni Eni-test-container$ENV_SUFFIX[/tmp/in-container] | wc -l
 ' 3<<'LAZYTEST_EOF'
 100
 LAZYTEST_EOF
 lazytest_file='doc/container.md'
-lazytest_line=80
-lazytest_case 'docker rm -f ni-test-container >/dev/null
+lazytest_line=83
+lazytest_case 'docker rm -f ni-test-container$ENV_SUFFIX >/dev/null
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 fi                      # -e /nodocker (lazytest condition)
@@ -1081,7 +1081,7 @@ until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
   if (( $(date +%s) - start_time > 60 )); then
     docker rm -f ni-test-hadoop >&2
-    docker run --detach -i -m 2G --name ni-test-hadoop \
+    docker run --detach -i -m 2G --name ni-test-hadoop$ENV_SUFFIX \
       sequenceiq/hadoop-docker \
       /etc/bootstrap.sh -bash >&2
     start_time=$(date +%s)
@@ -1090,9 +1090,9 @@ done
 cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=96
+lazytest_line=99
 lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni n5 Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ _ \<]
+  ni n5 Eni-test-hadoop$ENV_SUFFIX [HS[p'\''r a, a*a'\''] _ _ \<]
 ' 3<<'LAZYTEST_EOF'
 1	1
 2	4
@@ -1101,9 +1101,9 @@ lazytest_case 'NI_HADOOP=/usr/local/hadoop/bin/hadoop \
 5	25
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=108
+lazytest_line=111
 lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-          Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
+          Eni-test-hadoop$ENV_SUFFIX [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
 1	2
 2	5
@@ -1112,12 +1112,12 @@ lazytest_case 'ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=124
+lazytest_line=127
 lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        hadoop/jobconf='\''mapred.map.tasks=10
        mapred.reduce.tasks=4'\''} \
-     Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
 1	2
 2	5
@@ -1126,7 +1126,7 @@ lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
 5	26
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=141
+lazytest_line=144
 lazytest_case 'ni 1p'\''%mr_generics'\'' Z2 e'\''grep memory'\'' gA
 ' 3<<'LAZYTEST_EOF'
 Hcmm	mapreduce.cluster.mapmemory.mb
@@ -1139,11 +1139,11 @@ Hrmt	mapreduce.reduce.memory.totalbytes
 Htttm	mapreduce.tasktracker.taskmemorymanager.monitoringinterval
 LAZYTEST_EOF
 lazytest_file='doc/hadoop.md'
-lazytest_line=155
+lazytest_line=158
 lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        Hrmm=4096 Hmmm=3072} \
-     Eni-test-hadoop [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'\''r a, a*a'\''] _ [p'\''r a, b+1'\''] \<] o
 ' 3<<'LAZYTEST_EOF'
 1	2
 2	5
@@ -1151,7 +1151,7 @@ lazytest_case 'ni i'\''who let the dogs out who who who'\'' \
 4	17
 5	26
 LAZYTEST_EOF
-docker rm -f ni-test-hadoop >&2
+docker rm -f ni-test-hadoop$ENV_SUFFIX >&2
 
 fi                      # -e /nodocker (lazytest condition)
 

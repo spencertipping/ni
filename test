@@ -120,10 +120,27 @@ case $c in
 -c|--cancel)
   touch .test-cancel
   docker rm -f ni-test ni-test-hadoop
+
+  for e in ${envs[@]}; do
+    docker rm -f ni-test-$e ni-test-hadoop-$e
+  done
   ;;
 
 --travis|--ci)
   test_in_docker || exit $?
+  ;;
+
+--parallel)
+  echo 'NOTE: standard error is redirected into test-*.log'
+  build_ni_stuff
+
+  for e in ${envs[@]}; do
+    docker run $docker_opts \
+        -e ENV_SUFFIX=-$e \
+        --name ni-test-$e $(image $e) /data/test --ci \
+      2>test-$e.log &
+  done
+  wait
   ;;
 
 --full)

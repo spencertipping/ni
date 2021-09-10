@@ -66,18 +66,21 @@ $ ni n100 CA+python3+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 ni can run `docker exec` and do the same interop it does when it creates a new
 container.
 
+**NOTE:** `$ENV_SUFFIX` is just for parallel test automation. You can pretend it
+doesn't exist.
+
 ```bash
-$ docker run --detach -i --name ni-test-container ubuntu >/dev/null
-$ ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
+$ docker run --detach -i --name ni-test-container$ENV_SUFFIX ubuntu >/dev/null
+$ ni Eni-test-container$ENV_SUFFIX[n100g =\>/tmp/in-container Bn] r4
 1
 10
 100
 11
 $ [[ -e /tmp/in-container ]] || echo 'file not in host (good)'
 file not in host (good)
-$ ni Eni-test-container[/tmp/in-container] | wc -l
+$ ni Eni-test-container$ENV_SUFFIX[/tmp/in-container] | wc -l
 100
-$ docker rm -f ni-test-container >/dev/null
+$ docker rm -f ni-test-container$ENV_SUFFIX >/dev/null
 ```
 
 ```lazytest

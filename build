@@ -12,7 +12,14 @@ date -u +%Y.%m%d.%H%M > core/boot/version
 
 ./boot
 
-export NI_NO_HOME=yes           # IMPORTANT
+# IMPORTANT
+# Set this so if you're building ni locally, you don't inadvertently bake in
+# local settings from your home directory. Otherwise the ni image may contain
+# some mixture of your settings and the stock ones (which is by design in
+# production, since that's how those settings would persist across networked
+# installs). But for this ./build process you wouldn't want that to happen.
+export NI_NO_HOME=yes
+
 ./ni --internal/lib \
   core/gen \
   core/json \

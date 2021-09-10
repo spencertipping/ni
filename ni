@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0910.1432
+2021.0910.1459
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -20534,7 +20534,7 @@ $ ni nE5p'a*a' Wn r~3
 99999	9999800001
 100000	10000000000
 ```
-85 doc/container.md
+88 doc/container.md
 # Containerized pipelines
 ```lazytest
 # These tests only get run in environments where docker is installed
@@ -20603,18 +20603,21 @@ $ ni n100 CA+python3+py3-numpy+sbcl@testing[N'x = x + 1' l'(1+ a)'] r4
 ni can run `docker exec` and do the same interop it does when it creates a new
 container.
 
+**NOTE:** `$ENV_SUFFIX` is just for parallel test automation. You can pretend it
+doesn't exist.
+
 ```bash
-$ docker run --detach -i --name ni-test-container ubuntu >/dev/null
-$ ni Eni-test-container[n100g =\>/tmp/in-container Bn] r4
+$ docker run --detach -i --name ni-test-container$ENV_SUFFIX ubuntu >/dev/null
+$ ni Eni-test-container$ENV_SUFFIX[n100g =\>/tmp/in-container Bn] r4
 1
 10
 100
 11
 $ [[ -e /tmp/in-container ]] || echo 'file not in host (good)'
 file not in host (good)
-$ ni Eni-test-container[/tmp/in-container] | wc -l
+$ ni Eni-test-container$ENV_SUFFIX[/tmp/in-container] | wc -l
 100
-$ docker rm -f ni-test-container >/dev/null
+$ docker rm -f ni-test-container$ENV_SUFFIX >/dev/null
 ```
 
 ```lazytest
@@ -21388,7 +21391,7 @@ $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
 Copyright (c) 2016-2018 Spencer Tipping | MIT license
 ```
-173 doc/hadoop.md
+176 doc/hadoop.md
 # Hadoop operator
 ```lazytest
 # TODO: sequenceiq/hadoop is no longer active; I need to find a new image and
@@ -21454,6 +21457,9 @@ bad state and doesn't become available, in which case we nuke it and start
 over. This is all just for unit testing; you won't have to worry about this
 stuff if you're using ni to run hadoop jobs.)
 
+**NOTE:** all of the `$ENV_SUFFIX` stuff is just automation for parallel
+testing. You can pretend `$ENV_SUFFIX` isn't there.
+
 ```lazytest
 # more unit test setup
 start_time=0;
@@ -21461,7 +21467,7 @@ until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
   if (( $(date +%s) - start_time > 60 )); then
     docker rm -f ni-test-hadoop >&2
-    docker run --detach -i -m 2G --name ni-test-hadoop \
+    docker run --detach -i -m 2G --name ni-test-hadoop$ENV_SUFFIX \
       sequenceiq/hadoop-docker \
       /etc/bootstrap.sh -bash >&2
     start_time=$(date +%s)
@@ -21485,7 +21491,7 @@ the output data -- so if we want the data we need to read it.
 
 ```bash
 $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ _ \<]
+  ni n5 Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ _ \<]
 1	1
 2	4
 3	9
@@ -21497,7 +21503,7 @@ With a reducer:
 
 ```bash
 $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-          Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+          Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -21516,7 +21522,7 @@ $ ni i'who let the dogs out who who who' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        hadoop/jobconf='mapred.map.tasks=10
        mapred.reduce.tasks=4'} \
-     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -21546,7 +21552,7 @@ Use the abbreviations in the first column in your configuration; for example, to
 $ ni i'who let the dogs out who who who' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        Hrmm=4096 Hmmm=3072} \
-     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -21556,7 +21562,7 @@ $ ni i'who let the dogs out who who who' \
 
 
 ```lazytest
-docker rm -f ni-test-hadoop >&2
+docker rm -f ni-test-hadoop$ENV_SUFFIX >&2
 
 fi                      # -e /nodocker (lazytest condition)
 

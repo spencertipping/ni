@@ -63,6 +63,9 @@ bad state and doesn't become available, in which case we nuke it and start
 over. This is all just for unit testing; you won't have to worry about this
 stuff if you're using ni to run hadoop jobs.)
 
+**NOTE:** all of the `$ENV_SUFFIX` stuff is just automation for parallel
+testing. You can pretend `$ENV_SUFFIX` isn't there.
+
 ```lazytest
 # more unit test setup
 start_time=0;
@@ -70,7 +73,7 @@ until docker exec -i ni-test-hadoop \
       /usr/local/hadoop/bin/hadoop fs -mkdir /test-dir; do
   if (( $(date +%s) - start_time > 60 )); then
     docker rm -f ni-test-hadoop >&2
-    docker run --detach -i -m 2G --name ni-test-hadoop \
+    docker run --detach -i -m 2G --name ni-test-hadoop$ENV_SUFFIX \
       sequenceiq/hadoop-docker \
       /etc/bootstrap.sh -bash >&2
     start_time=$(date +%s)
@@ -94,7 +97,7 @@ the output data -- so if we want the data we need to read it.
 
 ```bash
 $ NI_HADOOP=/usr/local/hadoop/bin/hadoop \
-  ni n5 Eni-test-hadoop [HS[p'r a, a*a'] _ _ \<]
+  ni n5 Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ _ \<]
 1	1
 2	4
 3	9
@@ -106,7 +109,7 @@ With a reducer:
 
 ```bash
 $ ni n5 ^{hadoop/name=/usr/local/hadoop/bin/hadoop} \
-          Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+          Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -125,7 +128,7 @@ $ ni i'who let the dogs out who who who' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        hadoop/jobconf='mapred.map.tasks=10
        mapred.reduce.tasks=4'} \
-     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -155,7 +158,7 @@ Use the abbreviations in the first column in your configuration; for example, to
 $ ni i'who let the dogs out who who who' \
      ^{hadoop/name=/usr/local/hadoop/bin/hadoop \
        Hrmm=4096 Hmmm=3072} \
-     Eni-test-hadoop [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
+     Eni-test-hadoop$ENV_SUFFIX [HS[p'r a, a*a'] _ [p'r a, b+1'] \<] o
 1	2
 2	5
 3	10
@@ -165,7 +168,7 @@ $ ni i'who let the dogs out who who who' \
 
 
 ```lazytest
-docker rm -f ni-test-hadoop >&2
+docker rm -f ni-test-hadoop$ENV_SUFFIX >&2
 
 fi                      # -e /nodocker (lazytest condition)
 
