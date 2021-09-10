@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0909.1514
+2021.0910.1103
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -24400,7 +24400,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-693 doc/usage
+695 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24453,15 +24453,17 @@ DOCUMENTATION (ni //help)
     //help/ni_fu
     //help/cookbook
 
-    ni --inspect        Webserver with interactive docs and source explorer
+    ni --inspect            Webserver with interactive docs and source explorer
 
     ADVANCED
-    //ni/keys r/^doc/   All documentation pages
-    //ni/doc/net.md     Open a documentation page by reading from ni's 
-    //help/net          Shorthand to open doc/net.md
+    //ni/keys r/^doc/       All documentation pages
+    //ni/doc/net.md         Open a documentation page by addressing ni's state
+    //help/net              Shorthand to open doc/net.md
 
-    //ni                Output ni's source code
-    //ni/keys           Output ni's internal data state
+    //ni                    Output ni's source code
+    //ni/keys               Output ni's internal data state
+
+    $ ni //ni/keys r/^doc/  List all builtin documentation pages
 
     Note that //ni and //ni/keys will differ if you bind data closures or
     runtime libraries.
