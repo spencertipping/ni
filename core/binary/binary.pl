@@ -65,24 +65,81 @@ sub binary_python_mapper($) {binary_pythongen->(prefix => binary_python_prefix,
 defoperator binary_perl   => q{stdin_to_perl   binary_perl_mapper   $_[0]};
 defoperator binary_python => q{stdin_to_python binary_python_mapper $_[0]};
 
+defconfenv 'binary/fixed-buffer', NI_BINARY_FIXED_BUFFER => 65536;
+
 defoperator binary_fixed => q{
   use bytes;
+  my $fixed_buffer = conf('binary/fixed-buffer');
+
   my ($pack_template) = @_;
-  my $length = length pack $pack_template, unpack $pack_template, "\0" x 65536;
-  die "ni: binary_fixed template consumes no data" unless $length;
-  my $bufsize = $length;
-  $bufsize <<= 1 until $bufsize >= 65536;
+  my $pack_count = scalar(() = unpack $pack_template, "\0" x $fixed_buffer);
+  my $pack_length = length pack $pack_template,
+                           unpack $pack_template, "\0" x $fixed_buffer;
+  die "ni: binary_fixed template consumes no data" unless $pack_length;
+
+  my $bufsize = $pack_length;
+  $bufsize <<= 1 until $bufsize >= $fixed_buffer;
   my $buf = '';
+
+  # There are two strategies we can take to unpacking fixed-width binary data.
+  # One involves handing unpack() a big string and saying "unpack all of this;
+  # I'll sort it out later"; the other is to make a bunch of calls to unpack()
+  # and substr() so we don't build a large array.
+  #
+  # It seems like the first option should be faster, but it often isn't. I
+  # suspect it depends on the data and the pack pattern though. Because it's
+  # unknown and possibly data-dependent, we measure each until it's seen 8MB of
+  # data and then commit to the faster one.
+
+  my $decision = 0;
+  my $next_branch = 0;
+  my ($t1, $n1) = (0, 0);
+  my ($t2, $n2) = (0, 0);
+
+  my @xs;
+
   while (1)
   {
     read STDIN, $buf, $bufsize - length($buf), length($buf) or return
-      until length($buf) >= $length;
-    my $o = 0;
-    for (; $o + $length <= length($buf); $o += $length)
+      until length($buf) >= $pack_length;
+
+    unless ($decision)
     {
-      print join("\t", unpack $pack_template, substr $buf, $o, $length), "\n";
+      # Important: randomize so we don't mis-measure due to some type of
+      # periodicity in output impedance (it's unlikely, but you never know).
+      $next_branch = rand() < 0.5;
+      $decision = $t1 / $n1 < $t2 / $n2 ? 1 : 2
+        if $n1 >= 8 << 20 and $n2 >= 8 << 20;
     }
-    $buf = substr $buf, $o;
+
+    if ($decision == 1 or !$decision && $next_branch == 0)
+    {
+      my $bl = length $buf;
+      unless ($decision) { $t1 -= time; $n1 += $bl }
+      my $n = int($bl / $pack_length);
+      my $r = $bl % $pack_length;
+
+      @xs  = unpack "($pack_template)$n a$r", $buf;
+      $buf = pop @xs;
+
+      if ($pack_count == 1) { print join("\n", @xs), "\n" }
+      else
+      { print join("\t", @xs[$_*$pack_count .. ($_+1)*$pack_count-1]), "\n"
+          for 0..$n-1 }
+
+      unless ($decision) { $n1 -= length $buf; $t1 += time }
+    }
+    else
+    {
+      unless ($decision) { $t2 -= time; $n2 += length $buf }
+      my $o = 0;
+      for (; $o + $pack_length <= length($buf); $o += $pack_length)
+      {
+        print join("\t", unpack $pack_template, substr $buf, $o, $pack_length), "\n";
+      }
+      $buf = substr $buf, $o;
+      unless ($decision) { $n2 -= length $buf; $t2 += time }
+    }
   }
 };
 
