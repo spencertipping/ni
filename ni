@@ -2,7 +2,7 @@
 $ni::is_lib = caller();
 $ni::self{license} = <<'_';
 ni: https://github.com/spencertipping/ni
-Copyright (c) 2016-2018 Spencer Tipping | MIT license
+Copyright (c) 2016-2021 Spencer Tipping | MIT license
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0910.1429
+2021.0910.1432
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl

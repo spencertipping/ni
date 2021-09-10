@@ -72,7 +72,7 @@ An excellent guide by [Michael Bilow](https://github.com/michaelbilow):
 
 **MIT license**
 
-Copyright (c) 2016-2020 Spencer Tipping
+Copyright (c) 2016-2021 Spencer Tipping
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
