@@ -171,11 +171,11 @@ lazytest_case 'ni ::bloom[i100 i101 i102 zB45] nE4 p'\''r a, a + 1'\'' rp'\''blo
 102	103
 LAZYTEST_EOF
 lazytest_file='doc/c.md'
-lazytest_line=11
+lazytest_line=15
 lazytest_case 'cat > wcl.pl <<'\''EOF'\''
 # Defines the "wcl" operator, which works like "wc -l"
 defoperator wcl => q{
-  exec_c99 indent(q{
+  exec_c '\''c99'\'', '\'''\'', '\''.c'\'', indent(q{
     #include <unistd.h>
     #include <stdio.h>
     int main(int argc, char **argv)
@@ -183,7 +183,7 @@ defoperator wcl => q{
       char buf[8192];
       ssize_t got = 0;
       long lines = 0;
-      unlink(argv[0]);
+      unlink(argv[0]);      // otherwise the binary will hang around
       while (got = read(0, buf, sizeof(buf)))
         while (--got)
           lines += buf[got] == '\''\n'\'';
@@ -198,13 +198,13 @@ EOF
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/c.md'
-lazytest_line=39
+lazytest_line=43
 lazytest_case 'ni --lib wcl.pl n10 wcl
 ' 3<<'LAZYTEST_EOF'
 10
 LAZYTEST_EOF
 lazytest_file='doc/c.md'
-lazytest_line=63
+lazytest_line=67
 lazytest_case 'ni n100 c99'\''#include <stdint.h>
               #include <stdlib.h>
               #include <stdio.h>
@@ -234,6 +234,18 @@ lazytest_case 'ni n100 c99'\''#include <stdint.h>
 7	20
 8	20
 9	20
+LAZYTEST_EOF
+if which c++ >/dev/null; then
+cat <<'LAZYTEST_EOF'
+LAZYTEST_EOF
+lazytest_file='doc/c.md'
+lazytest_line=106
+lazytest_case 'ni c++'\''#include <iostream>
+         int main() { std::cout << "hi there" << std::endl; }'\''
+' 3<<'LAZYTEST_EOF'
+LAZYTEST_EOF
+fi        # which c++
+cat <<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
 lazytest_line=11

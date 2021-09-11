@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0911.0239
+2021.0911.1127
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -19824,12 +19824,16 @@ $ ni nE4 eshuf p'^{ri $table, "<binary-lookup"}
 If a lookup fails, `bsflookup` will return `undef`. You can access the insertion
 location for the missing record using `bsf`, which takes the first four args to
 `bsflookup` and returns a record index. (`bsflookup` uses `bsf` internally.)
-91 doc/c.md
+112 doc/c.md
 # C code mobility
-ni provides an internal function, `exec_c99`, which you can call from within an
+ni provides an internal function, `exec_c`, which you can call from within an
 operator to replace your perl runtime with a C99 runtime (this assumes the host
 machine has a `c99` compiler, which is very common and specified by POSIX 2001
-CD).
+CD). It has this signature:
+
+```perl
+exec_c($compiler, $compiler_opts, $file_extension, $source, @argv)
+```
 
 It's up to you to write a full C program capable of consuming stdin and writing
 to stdout; for example:
@@ -19838,7 +19842,7 @@ to stdout; for example:
 $ cat > wcl.pl <<'EOF'
 # Defines the "wcl" operator, which works like "wc -l"
 defoperator wcl => q{
-  exec_c99 indent(q{
+  exec_c 'c99', '', '.c', indent(q{
     #include <unistd.h>
     #include <stdio.h>
     int main(int argc, char **argv)
@@ -19846,7 +19850,7 @@ defoperator wcl => q{
       char buf[8192];
       ssize_t got = 0;
       long lines = 0;
-      unlink(argv[0]);
+      unlink(argv[0]);      // otherwise the binary will hang around
       while (got = read(0, buf, sizeof(buf)))
         while (--got)
           lines += buf[got] == '\n';
@@ -19915,6 +19919,23 @@ $ ni n100 c99'#include <stdint.h>
 7	20
 8	20
 9	20
+```
+
+
+## `c++` operator
+Same deal, but for full C++ if you have a compiler available.
+
+```lazytest
+if which c++ >/dev/null; then
+```
+
+```bash
+$ ni c++'#include <iostream>
+         int main() { std::cout << "hi there" << std::endl; }'
+```
+
+```lazytest
+fi        # which c++
 ```
 221 doc/cell.md
 # Cell operations
