@@ -9,8 +9,8 @@
 ```sh
 curl -sSL https://spencertipping.com/install-ni | bash
 
-ni --upgrade            # update from master (stable)
-ni --upgrade develop    # update from develop (less stable)
+ni --upgrade            # update from master (stable mode)
+ni --upgrade develop    # update from develop (fun mode)
 ```
 
 `ni` has no dependencies except for your system's `perl`; the above installation

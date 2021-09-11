@@ -7,17 +7,10 @@ at it. (And I'm not even sure that will work; need to research it more.)
 
 ### Scaling operator improvements
 #### Autoscale
-#### Mergesort when combining streams (thanks @cflaming!)
-This is an important one because it means you can scale a pipeline and preserve
-data ordering. Mergesorting will be a bottleneck in some cases, but parallelism
-could still speed things up considerably.
 
 ### Do we want to implement our own sorting function?
 There's some possibility it would be faster, and it preemptively avoids issues
 around `LC_ALL`.
-
-### Document (+test!) cell operators
-@joycetipping is on it
 
 ### Monitors should handle various distribution cases (no clue how)
 For example, suppose we have a scale-by-single-row or scale-by-key operator
@@ -43,9 +36,6 @@ Like `S`, but auto-configure buffer sizes and #children to maximize throughput.
 Should apply to JSON, XML, headed CSV/TSV, SQL-as-text, possibly other formats
 too. Also should optimize for the consistent-schema case and predict field
 positions. Support assertions (?)
-
-### Autofilled directories
-e.g. `/mc9drc24` for `/mnt/cache/t9/data/reddit-comments-2015.lz4`
 
 ### JSPlot
 #### Refactor renderer to support arbitrary operations
