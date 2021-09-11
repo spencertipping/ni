@@ -362,6 +362,8 @@ STREAM TRANSFORMATION (ni //help/stream)
     js'...'         Run NodeJS code '...' on each input line (documentation TBD)
     c99'...'        Compile '...' as C99 and run the result on entire stream
                     (see //help/c)
+    c++'...'        Compile '...' as C++ and run the result on entire stream
+                    (requires 'c++' compiler; see //help/c)
 
     Bd64M           Copy stream through a 64M disk-backed FIFO
 

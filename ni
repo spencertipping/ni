@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0911.0232
+2021.0911.0239
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -24494,7 +24494,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-695 doc/usage
+697 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24859,6 +24859,8 @@ STREAM TRANSFORMATION (ni //help/stream)
     js'...'         Run NodeJS code '...' on each input line (documentation TBD)
     c99'...'        Compile '...' as C99 and run the result on entire stream
                     (see //help/c)
+    c++'...'        Compile '...' as C++ and run the result on entire stream
+                    (requires 'c++' compiler; see //help/c)
 
     Bd64M           Copy stream through a 64M disk-backed FIFO
 
