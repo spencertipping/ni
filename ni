@@ -1143,7 +1143,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0913.1526
+2021.0921.0058
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8409,8 +8409,9 @@ defresource 'solr',
         "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
         . " >&2" };
   };
-4 core/archive/lib
+5 core/archive/lib
 zip.pl
+ar.pl
 7z.pl
 tar.pl
 xlsx.pl
@@ -8444,6 +8445,36 @@ defresource 'zipentry',
   read => q{
     my ($zipfile, $fname) = split /:/, $_[1], 2;
     zip_file_fh $zipfile, $fname;
+  };
+29 core/archive/ar.pl
+# Ar archive support (requires the "ar" command-line tool)
+
+sub ar_listing_fh($)
+{
+  my $f = shift;
+  soproc { sh shell_quote(ar => '-t', $f) };
+}
+
+sub ar_file_fh($$)
+{
+  my ($arf, $entry) = @_;
+  soproc { sh shell_quote(ar => '-p', $arf, $entry) };
+}
+
+# Ar file listing: ar:///path/to/file.a
+defresource 'ar',
+  read => q{
+    my $filename = $_[1];
+    soproc {
+      my $fh = ar_listing_fh $filename;
+      print "arentry://$filename:$_" while <$fh> };
+  };
+
+# Single-entry unpacking: arentry:///path/to/file.a:subfilename
+defresource 'arentry',
+  read => q{
+    my ($arfile, $fname) = split /:/, $_[1], 2;
+    ar_file_fh $arfile, $fname;
   };
 40 core/archive/7z.pl
 # 7zip archive support (requires the "7z" tool or one of its variants)
