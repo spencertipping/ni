@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-64 core/boot/ni.map
+65 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -112,6 +112,7 @@ lib core/caterwaul
 lib core/jsplot
 lib core/mapomatic
 lib core/inspect
+lib core/kafka
 lib core/docker
 lib core/hadoop
 lib core/pyspark
@@ -1143,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0921.0058
+2021.0928.1200
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -12558,6 +12559,27 @@ Usage: ni --inspect [port=9200]
 Runs a web interface that allows you to inspect ni's internal attributes,
 defined operators, and grammar.
 _
+1 core/kafka/lib
+kafka.pl
+18 core/kafka/kafka.pl
+# Kafka via kafkacat
+
+defconfenv 'kafkacat', NI_KAFKACAT => 'kafkacat';
+
+
+# kafka://broker:port: produce or consume messages across all topics
+defresource 'kafka',
+  read  => q{soproc {exec conf('kafkacat'), '-b', $_[1], '-C'}},
+  write => q{siproc {exec conf('kafkacat'), '-b', $_[1], '-P'}};
+
+
+# kafkat://broker:9092/topic: produce or consume messages within a specific
+# topic
+defresource 'kafkat',
+  read  => q{my ($broker, $topic) = $_[1] =~ /([^\/]+)\/(.*)/;
+             soproc {exec conf('kafkacat'), '-b', $broker, '-C', '-t', $topic}},
+  write => q{my ($broker, $topic) = $_[1] =~ /([^\/]+)\/(.*)/;
+             siproc {exec conf('kafkacat'), '-b', $broker, '-P', '-t', $topic}};
 1 core/docker/lib
 docker.pl
 88 core/docker/docker.pl

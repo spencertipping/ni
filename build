@@ -69,6 +69,7 @@ export NI_NO_HOME=yes
   core/mapomatic \
   core/inspect \
   \
+  core/kafka \
   core/docker \
   core/hadoop \
   core/pyspark \
