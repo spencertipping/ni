@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0929.0705
+2021.0929.1934
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4137,7 +4137,7 @@ q{
 };
 
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
-39 core/net/awscli.pl
+41 core/net/awscli.pl
 # AWS CLI tools
 
 defresource 's3u',
@@ -4161,10 +4161,12 @@ sub awscli_ls_format($$)
 
   # Convert from ls or lsu (listing) to s3 or s3u (download)
   $prefix =~ s/^s3ls/s3/;
+
+  my ($bucket_prefix) = $prefix =~ /^(\w+:\/\/[^\/]+)/;
   while (<$fh>)
   {
-    my ($date, $time, $size, $path) = /^(\S+)\s+(\S+)\s+(\d+)\s+[^\/]+\/(.*)/;
-    printf "%s/%s\t%d\t%sT%sZ\n", $prefix, $path, $size, $date, $time;
+    my ($date, $time, $size, $path) = /^(\S+)\s+(\S+)\s+(\d+)\s+([^\/]+\/.*)/;
+    printf "%s/%s\t%d\t%sT%sZ\n", $bucket_prefix, $path, $size, $date, $time;
   }
 }
 
@@ -4889,8 +4891,8 @@ defshort '/g',
     pmap(q{row_mergesort_op   sort_args @$_}, pn 1, prx 'M', sortspec),
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
 
-defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
-defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+defshort '/o', pmap q{row_sort_op '-g',  sort_args @$_}, sortspec;
+defshort '/O', pmap q{row_sort_op '-rg', sort_args @$_}, sortspec;
 
 defoperator row_grouped_sort => q{
   my ($key_cols, $sort_cols) = @_;

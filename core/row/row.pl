@@ -274,8 +274,8 @@ defshort '/g',
     pmap(q{row_mergesort_op   sort_args @$_}, pn 1, prx 'M', sortspec),
     pmap(q{row_sort_op        sort_args @$_}, sortspec);
 
-defshort '/o', pmap q{row_sort_op '-n',  sort_args @$_}, sortspec;
-defshort '/O', pmap q{row_sort_op '-rn', sort_args @$_}, sortspec;
+defshort '/o', pmap q{row_sort_op '-g',  sort_args @$_}, sortspec;
+defshort '/O', pmap q{row_sort_op '-rg', sort_args @$_}, sortspec;
 
 defoperator row_grouped_sort => q{
   my ($key_cols, $sort_cols) = @_;

@@ -21,10 +21,12 @@ sub awscli_ls_format($$)
 
   # Convert from ls or lsu (listing) to s3 or s3u (download)
   $prefix =~ s/^s3ls/s3/;
+
+  my ($bucket_prefix) = $prefix =~ /^(\w+:\/\/[^\/]+)/;
   while (<$fh>)
   {
-    my ($date, $time, $size, $path) = /^(\S+)\s+(\S+)\s+(\d+)\s+[^\/]+\/(.*)/;
-    printf "%s/%s\t%d\t%sT%sZ\n", $prefix, $path, $size, $date, $time;
+    my ($date, $time, $size, $path) = /^(\S+)\s+(\S+)\s+(\d+)\s+([^\/]+\/.*)/;
+    printf "%s/%s\t%d\t%sT%sZ\n", $bucket_prefix, $path, $size, $date, $time;
   }
 }
 
