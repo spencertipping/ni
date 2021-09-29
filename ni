@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0928.1200
+2021.0929.0705
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8410,12 +8410,13 @@ defresource 'solr',
         "http://$host:$port/solr/$core/update/csv?separator=%09&keepEmpty=true&encapsulator=%00&commit=true")
         . " >&2" };
   };
-5 core/archive/lib
+6 core/archive/lib
 zip.pl
 ar.pl
 7z.pl
 tar.pl
 xlsx.pl
+rar.pl
 30 core/archive/zip.pl
 # Zip archive support (requires the "unzip" command-line tool)
 
@@ -8624,6 +8625,39 @@ defresource 'xlsxsheet',
           $row[$i] = $is_shared ? $ss[$1] : $1;
         }
       } };
+  };
+32 core/archive/rar.pl
+# Rar archive support (requires the "unrar" command-line tool, specifically
+# the non-free variant)
+
+sub rar_listing_fh($)
+{
+  my $f = shift;
+  soproc { sh shell_quote(unrar => 'l', $f)
+            . q{ | perl -ne 'print if /^    \S/' | cut -c42- } };
+}
+
+sub rar_file_fh($$)
+{
+  my ($rarf, $entry) = @_;
+  soproc { sh shell_quote(unrar => 'p', $rarf, $entry)
+            . q{ | tail -n+9 | head -n-2 } };
+}
+
+# Rar file listing: rar:///path/to/zipfile
+defresource 'rar',
+  read => q{
+    my $filename = $_[1];
+    soproc {
+      my $fh = rar_listing_fh $filename;
+      print "rarentry://$filename:$_" while <$fh> };
+  };
+
+# Single-entry unpacking: rarentry:///path/to/file.rar:subfilename
+defresource 'rarentry',
+  read => q{
+    my ($rarfile, $fname) = split /:/, $_[1], 2;
+    rar_file_fh $rarfile, $fname;
   };
 1 core/sqlite/lib
 sqlite.pl
