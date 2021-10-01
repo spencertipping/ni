@@ -39,3 +39,11 @@ defresource 's3ls',
 defresource 's3lsr',
   read => q{requires_dangermode("s3lsr://");
             awscli_ls_format $_[0], soproc {exec 'aws', 's3', 'ls', "s3://$_[1]", '--recursive', '--request-payer'} @_};
+
+
+{
+  no strict 'refs';
+  defresource 's3.ls.u', read => ${"ni::resource_read"}{s3lsu};
+  defresource 's3.ls.r', read => ${"ni::resource_read"}{s3lsr};
+  defresource 's3.ls',   read => ${"ni::resource_read"}{s3ls};
+}

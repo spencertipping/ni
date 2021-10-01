@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.0929.1934
+2021.1001.0053
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4137,7 +4137,7 @@ q{
 };
 
 defshort '/sF', pmap q{port_forward_op @$_}, pseq ssh_host_full, integer;
-41 core/net/awscli.pl
+49 core/net/awscli.pl
 # AWS CLI tools
 
 defresource 's3u',
@@ -4179,6 +4179,14 @@ defresource 's3ls',
 defresource 's3lsr',
   read => q{requires_dangermode("s3lsr://");
             awscli_ls_format $_[0], soproc {exec 'aws', 's3', 'ls', "s3://$_[1]", '--recursive', '--request-payer'} @_};
+
+
+{
+  no strict 'refs';
+  defresource 's3.ls.u', read => ${"ni::resource_read"}{s3lsu};
+  defresource 's3.ls.r', read => ${"ni::resource_read"}{s3lsr};
+  defresource 's3.ls',   read => ${"ni::resource_read"}{s3ls};
+}
 1 core/buffer/lib
 buffer.pl
 117 core/buffer/buffer.pl
