@@ -16,7 +16,7 @@ $(caterwaul(':all')(function ($) {
         w        = $(window).modus('composite', {ni: tr, v: controls}),
 
         default_settings()     = {ni: "//ni bfC3 S4[,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
-                                                 + ",qABCD0.01 p'r a / 5, 10 - c/5, b / 5, d']",
+                                                 + ",qABCD0.01 p'r a / 5, 50 - c, b / 5, d']",
                                   v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 10, sa: 0.01, axes: n[4] -seq}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
