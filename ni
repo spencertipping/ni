@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1001.0053
+2021.1004.1749
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -11377,8 +11377,8 @@ $(caterwaul(':all')(function ($) {
         controls = $('#controls').modus('proxy', '.camera') /~addClass/ 'camera-mode noshift',
         w        = $(window).modus('composite', {ni: tr, v: controls}),
 
-        default_settings()     = {ni: "//ni psplit// pord p'r pl 3' ,jABC.5 S8p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
-                                      + "S8,qABCD0.01 p'r a, - c, b, d'",
+        default_settings()     = {ni: "//ni bfC3 S4[,jABC.5 p'r prec(a+50, c*3.5+a*a/500), b, sin(a/100) + sin(b/100)' "
+                                                 + ",qABCD0.01 p'r a / 5, 10 - c/5, b / 5, d']",
                                   v: {cr: [0, 0], os: [1, 1, 1], ot: [0, 0, 0], cd: 100, br: 10, sa: 0.01, axes: n[4] -seq}},
 
         size_changed()         = (lw !== cw || lh !== ch) -se [lw = cw, lh = ch] -where [cw = w.width(), ch = w.height()],
