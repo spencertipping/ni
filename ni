@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1004.1751
+2021.1024.1406
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -3324,7 +3324,7 @@ use POSIX ();
 our $pager_fh;
 our $handling_pipe;
 
-defconfenv 'pager', NI_PAGER => 'less -u';
+defconfenv 'pager', NI_PAGER => 'less -F -u';
 
 sub child_status_ok($) {
   $_[0] == 0                    # ok exit status
