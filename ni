@@ -1144,7 +1144,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1024.1406
+2021.1029.1433
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8434,7 +8434,7 @@ sub zip_listing_fh($)
 {
   my $f = shift;
   soproc { sh shell_quote(unzip => '-l', '-qq', $f)
-            . " | cut -c31- " };
+            . " | cut -c31- | perl -npe 's/^\\s+//'" };
 }
 
 sub zip_file_fh($$)

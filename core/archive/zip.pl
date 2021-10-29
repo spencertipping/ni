@@ -4,7 +4,7 @@ sub zip_listing_fh($)
 {
   my $f = shift;
   soproc { sh shell_quote(unzip => '-l', '-qq', $f)
-            . " | cut -c31- " };
+            . " | cut -c31- | perl -npe 's/^\\s+//'" };
 }
 
 sub zip_file_fh($$)
