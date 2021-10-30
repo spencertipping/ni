@@ -33,6 +33,7 @@ export NI_NO_HOME=yes
   core/fn \
   core/closure \
   core/destructure \
+  core/comment \
   \
   core/checkpoint \
   core/net \

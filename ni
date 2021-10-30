@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-65 core/boot/ni.map
+66 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -82,6 +82,7 @@ lib core/uri
 lib core/fn
 lib core/closure
 lib core/destructure
+lib core/comment
 lib core/checkpoint
 lib core/net
 lib core/buffer
@@ -1144,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1029.1433
+2021.1030.1516
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4041,6 +4042,20 @@ defoperator destructure => q{
 };
 
 defshort '/D', pmap q{destructure_op $_}, generic_code;
+1 core/comment/lib
+comment.pl
+11 core/comment/comment.pl
+# Block comments: \#[ ... ]
+# Word comments: \#' ... '
+
+# NOTE: don't confuse this with \<\#, which is read-and-delete
+
+defmetaoperator comment => q{
+  my ($args, $left, $right) = @_;
+  return ($left, $right);
+};
+
+defshort '/#', pmap q{comment_op $_}, id_text;
 1 core/checkpoint/lib
 checkpoint.pl
 47 core/checkpoint/checkpoint.pl
