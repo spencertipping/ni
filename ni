@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1030.1516
+2021.1031.1722
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9971,10 +9971,10 @@ use constant binary_pythongen => gen pydent q{
   class runner:
     def go(self):
   %body
-  r = runner()
+  each = runner()
   while len(sys.stdin.buffer.peek(1)):
     try:
-      r.go()
+      each.go()
     except EOFError:
       sys.exit(0)
 };
