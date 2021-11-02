@@ -9,12 +9,6 @@ if [[ -e ~/bin/ni ]]; then
   exit 1
 fi
 
-read -p 'install ni into ~/bin? [Yn]> ' -u 2 yn
-if [[ -n $yn ]] && [[ $yn != y ]] && [[ $yn != Y ]]; then
-  echo 'installation canceled'
-  exit
-fi
-
 mkdir -p ~/bin
 curl -sSL https://github.com/spencertipping/ni/blob/master/ni?raw=true > ~/bin/ni
 chmod +x ~/bin/ni
