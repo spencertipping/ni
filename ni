@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1031.1722
+2021.1121.1315
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -9313,7 +9313,7 @@ def rl():
   a, b, c, d, e, f, g, h, i, j, k, l, *_F = F + [None] * max(0, 12 - len(F))
   FM = len(F) - 1
   return _
-198 core/python/python.pl
+201 core/python/python.pl
 # Python stuff.
 # A context for processing stuff in Python, as well as various functions to
 # handle the peculiarities of Python code.
@@ -9432,6 +9432,8 @@ use constant py_mapgen => gen pydent q{
   class py_mapper:
     def __init__(self):
       self.first = True
+      self.end_fns = []
+    def on_end(self, fn): self.end_fns.append(fn)
     def is_first(self):
       if self.first:
         self.first = False
@@ -9443,6 +9445,7 @@ use constant py_mapgen => gen pydent q{
   each = py_mapper()
   while rl() is not None:
   %each
+  for f in each.end_fns: f()
 };
 
 our @python_prefix_keys = qw| core/python/stream.py |;

@@ -116,6 +116,8 @@ use constant py_mapgen => gen pydent q{
   class py_mapper:
     def __init__(self):
       self.first = True
+      self.end_fns = []
+    def on_end(self, fn): self.end_fns.append(fn)
     def is_first(self):
       if self.first:
         self.first = False
@@ -127,6 +129,7 @@ use constant py_mapgen => gen pydent q{
   each = py_mapper()
   while rl() is not None:
   %each
+  for f in each.end_fns: f()
 };
 
 our @python_prefix_keys = qw| core/python/stream.py |;
