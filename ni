@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1121.1315
+2021.1208.1357
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -1185,7 +1185,7 @@ sub gen($) {
 }
 1 core/json/lib
 json.pl
-78 core/json/json.pl
+81 core/json/json.pl
 # JSON parser/generator.
 # Perl has native JSON libraries available in CPAN, but we can't assume those are
 # installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -1193,8 +1193,6 @@ json.pl
 # address this. Note that this library doesn't parse all valid JSON, but it does
 # come close -- and I've never seen a real-world use case of JSON that it would
 # fail to parse.
-
-use Scalar::Util qw/looks_like_number/;
 
 our %json_unescapes =
   ("\\" => "\\", "/" => "/", "\"" => "\"", b => "\b", f => "\f",
@@ -1248,6 +1246,11 @@ sub json_escape($) {
   "\"$x\"";
 }
 
+sub looks_like_json_number($)
+{
+  $_[0] =~ /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$/;
+}
+
 sub json_encode($);
 sub json_encode($) {
   local $_;
@@ -1256,7 +1259,7 @@ sub json_encode($) {
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq CORE::ref $v;
   return json_escape $$v if 'SCALAR' eq CORE::ref $v;   # force string
-  looks_like_number $v ? $v : defined $v ? json_escape $v : 'null';
+  looks_like_json_number $v ? $v : defined $v ? json_escape $v : 'null';
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
