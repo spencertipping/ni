@@ -71,7 +71,8 @@ sub json_encode($) {
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq CORE::ref $v;
   return json_escape $$v if 'SCALAR' eq CORE::ref $v;   # force string
-  looks_like_json_number $v ? $v : defined $v ? json_escape $v : 'null';
+  return 'null' unless defined $v;
+  looks_like_json_number $v ? $v : json_escape $v;
 }
 
 if (__PACKAGE__ eq 'ni::pl') {

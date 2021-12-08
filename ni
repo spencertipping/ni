@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1208.1357
+2021.1208.1410
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -1185,7 +1185,7 @@ sub gen($) {
 }
 1 core/json/lib
 json.pl
-81 core/json/json.pl
+82 core/json/json.pl
 # JSON parser/generator.
 # Perl has native JSON libraries available in CPAN, but we can't assume those are
 # installed locally. The pure-perl library is unusably slow, and even it isn't
@@ -1259,7 +1259,8 @@ sub json_encode($) {
   return "{" . join(',', map json_escape($_) . ":" . json_encode($$v{$_}),
                              sort keys %$v) . "}" if 'HASH' eq CORE::ref $v;
   return json_escape $$v if 'SCALAR' eq CORE::ref $v;   # force string
-  looks_like_json_number $v ? $v : defined $v ? json_escape $v : 'null';
+  return 'null' unless defined $v;
+  looks_like_json_number $v ? $v : json_escape $v;
 }
 
 if (__PACKAGE__ eq 'ni::pl') {
