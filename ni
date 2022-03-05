@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2021.1208.1410
+2022.0305.1820
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -2724,7 +2724,7 @@ sub sdecode(;$) {
               : /^\x89\x4c\x5a\x4f/       ? "lzop -dc || cat"
               : /^\x04\x22\x4d\x18/       ? "lz4 -dc || cat"
               : /^\xfd\x37\x7a\x58\x5a/   ? "xz -dc || cat"
-              : /^[\x27\x28]\xb5\x2f\xfd/ ? "zstd -dc || cat"
+              : /^[\x27\x28]\xb5\x2f\xfd/ ? "zstd -dc --long=31 || cat"
               : /^\x78[\x01\x9c\xda]/     ? perl_zlib_decoder . " || cat"
               : undef;
 
