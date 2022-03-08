@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0305.1820
+2022.0308.1708
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4641,7 +4641,7 @@ scale.pl
 join.pl
 xargs.pl
 pfn.pl
-355 core/row/row.pl
+357 core/row/row.pl
 # Row-level operations.
 # These reorder/drop/create entire rows without really looking at fields.
 
@@ -4874,7 +4874,9 @@ my $n_cpus = -e "/proc/cpuinfo"
   ? grep(/^processor\s*:/, rl '/proc/cpuinfo')
   : 4;
 
-defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => 'gzip';
+my $compressor = (grep -x "/usr/bin/$_", qw/ zstd lz4 lzop gzip /)[0];
+
+defconfenv 'row/sort-compress', NI_ROW_SORT_COMPRESS => $compressor;
 defconfenv 'row/sort-buffer',   NI_ROW_SORT_BUFFER   => '1024M';
 defconfenv 'row/sort-parallel', NI_ROW_SORT_PARALLEL => $n_cpus;
 
