@@ -110,6 +110,13 @@ defresource 'file',
   tmp    => q{"file://" . conf('tmpdir') . "/" . uri_temp_noise},
   nuke   => q{unlink $_[1]};
 
+defresource 'dir',
+  read   => q{opendir my $d, $_[1] or die "failed to opendir $_[1]: $!";
+              /^\.\.?$/ ? ()
+                : -d "$_[1]/$_" ? print("dir://$_[1]/$_\n")
+                :                 print("file://$_[1]/$_\n") while readdir $d;
+              closedir $d};
+
 defresource 'pipe',
   read   => q{my $fh = srfile $_[1]; unlink $_[1] if -p $_[1]; $fh},
   write  => q{use POSIX qw/mkfifo/;
