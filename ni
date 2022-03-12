@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0311.0022
+2022.0312.1545
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -3624,7 +3624,7 @@ $ni::main_operator = sub {
 };
 1 core/uri/lib
 uri.pl
-147 core/uri/uri.pl
+152 core/uri/uri.pl
 # Resources identified by URI.
 # A way for ni to interface with URIs. URIs are self-appending like files; to
 # quote them you should use the `\'` prefix or the `i` operator:
@@ -3742,6 +3742,11 @@ defresource 'dir',
               /^\.\.?$/ ? ()
                 : -d "$_[1]/$_" ? print("dir://$_[1]/$_\n")
                 :                 print("file://$_[1]/$_\n") while readdir $d;
+              closedir $d};
+
+defresource 'ls',
+  read   => q{opendir my $d, $_[1] or die "failed to opendir $_[1]: $!";
+              /^\.\.?$/ ? () : print("$_[1]/$_\n") while readdir $d;
               closedir $d};
 
 defresource 'pipe',
