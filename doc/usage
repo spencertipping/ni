@@ -99,6 +99,9 @@ GENERATING DATA (ni //help/stream)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
 
+    dir:///path         List URI-form filenames in a path, unsorted
+    ls:///path          List plain-text filenames in a path, unsorted (fastest)
+
     s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
     s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
     s3r://bucket/path   Same, but with --request-payer (requires NI_DANGER_MODE)

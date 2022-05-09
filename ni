@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0312.1545
+2022.0509.1855
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -24648,7 +24648,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://spencertipping.com/nimap2.png)
-697 doc/usage
+700 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24749,6 +24749,9 @@ GENERATING DATA (ni //help/stream)
     tar://file.tar      List contents of tar archive (also handles tgz etc)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
+
+    dir:///path         List URI-form filenames in a path, unsorted
+    ls:///path          List plain-text filenames in a path, unsorted (fastest)
 
     s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
     s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
