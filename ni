@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0529.1831
+2022.0906.2321
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -2512,7 +2512,7 @@ sub child_exited($$) {
 # I define some system functions with a `c` prefix: these are checked system
 # calls that will die with a helpful message if anything fails.
 
-defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 65536;
+defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 262144;
 
 no warnings 'io';
 

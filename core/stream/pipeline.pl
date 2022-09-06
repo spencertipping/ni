@@ -6,7 +6,7 @@
 # I define some system functions with a `c` prefix: these are checked system
 # calls that will die with a helpful message if anything fails.
 
-defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 65536;
+defconfenv 'pipeline/io-size', NI_PIPELINE_IO_SIZE => 262144;
 
 no warnings 'io';
 
