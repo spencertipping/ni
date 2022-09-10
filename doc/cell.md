@@ -52,7 +52,9 @@ $ ni tide.csv ,z
 4
 ```
 
-The intify hash operator, `h`, does the same thing using hashes.
+The intify hash operator, `h`, does the same thing using hashes. You can
+optionally append a number to `h` if you want hashes within a certain range. By
+default you'll get unsigned 32-bit integers.
 
 ```bash
 $ echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
@@ -63,13 +65,20 @@ rises
 the
 tide
 falls
-$ ni tide.csv ,h
-3967641545
-2614616249
-3746350261
-865469908
-2614616249
-1943727641
+$ ni tide.csv ,h  # full range
+2758823891
+2547787852
+2176613447
+2411998317
+2547787852
+2163539415
+$ ni tide.csv ,h100  # hash to 0..99
+91
+52
+47
+17
+52
+15
 ```
 
 A variant, `H`, also hashes, but then scales each entry to fall into the unit

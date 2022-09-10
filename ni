@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0910.1341
+2022.0910.1410
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -7714,8 +7714,8 @@ defoperator intify_compact => q{
 
 defoperator intify_hash => q{
   cell_eval {args  => '$wrap',
-             begin => '$wrap ||= 0x7fffffff',
-             each  => '$xs[$_] = (unpack "N", md5 $xs[$_])[0] % $wrap'}, @_;
+             begin => '$wrap ||= 0',
+             each  => '$xs[$_] = $wrap ? (unpack N => md5 $xs[$_])[0] % $wrap : (unpack N => md5 $xs[$_])[0]'}, @_;
 };
 
 defoperator real_hash => q{
@@ -20070,7 +20070,7 @@ $ ni c++'#include <iostream>
 ```lazytest
 fi        # which c++
 ```
-221 doc/cell.md
+230 doc/cell.md
 # Cell operations
 
 Cell operators transform the contents of one cell at a time. To access them, you
@@ -20125,7 +20125,9 @@ $ ni tide.csv ,z
 4
 ```
 
-The intify hash operator, `h`, does the same thing using hashes.
+The intify hash operator, `h`, does the same thing using hashes. You can
+optionally append a number to `h` if you want hashes within a certain range. By
+default you'll get unsigned 32-bit integers.
 
 ```bash
 $ echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
@@ -20136,13 +20138,20 @@ rises
 the
 tide
 falls
-$ ni tide.csv ,h
-3967641545
-2614616249
-3746350261
-865469908
-2614616249
-1943727641
+$ ni tide.csv ,h  # full range
+2758823891
+2547787852
+2176613447
+2411998317
+2547787852
+2163539415
+$ ni tide.csv ,h100  # hash to 0..99
+91
+52
+47
+17
+52
+15
 ```
 
 A variant, `H`, also hashes, but then scales each entry to fall into the unit

@@ -67,8 +67,8 @@ defoperator intify_compact => q{
 
 defoperator intify_hash => q{
   cell_eval {args  => '$wrap',
-             begin => '$wrap ||= 0x7fffffff',
-             each  => '$xs[$_] = (unpack "N", md5 $xs[$_])[0] % $wrap'}, @_;
+             begin => '$wrap ||= 0',
+             each  => '$xs[$_] = $wrap ? (unpack N => md5 $xs[$_])[0] % $wrap : (unpack N => md5 $xs[$_])[0]'}, @_;
 };
 
 defoperator real_hash => q{

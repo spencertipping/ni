@@ -305,12 +305,12 @@ lazytest_case 'ni tide.csv ,z
 4
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=58
+lazytest_line=60
 lazytest_case 'echo -e "The\ntide\nrises\nthe\ntide\nfalls" > tide.csv
 ' 3<<'LAZYTEST_EOF'
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=59
+lazytest_line=61
 lazytest_case 'cat tide.csv
 ' 3<<'LAZYTEST_EOF'
 The
@@ -321,18 +321,29 @@ tide
 falls
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=66
-lazytest_case 'ni tide.csv ,h
+lazytest_line=68
+lazytest_case 'ni tide.csv ,h  # full range
 ' 3<<'LAZYTEST_EOF'
-3967641545
-2614616249
-3746350261
-865469908
-2614616249
-1943727641
+2758823891
+2547787852
+2176613447
+2411998317
+2547787852
+2163539415
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=79
+lazytest_line=75
+lazytest_case 'ni tide.csv ,h100  # hash to 0..99
+' 3<<'LAZYTEST_EOF'
+91
+52
+47
+17
+52
+15
+LAZYTEST_EOF
+lazytest_file='doc/cell.md'
+lazytest_line=88
 lazytest_case 'ni tide.csv ,H
 ' 3<<'LAZYTEST_EOF'
 0.923788534710184
@@ -343,7 +354,7 @@ lazytest_case 'ni tide.csv ,H
 0.452559357741848
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=95
+lazytest_line=104
 lazytest_case 'ni n4 ,l
 ' 3<<'LAZYTEST_EOF'
 0
@@ -352,7 +363,7 @@ lazytest_case 'ni n4 ,l
 1.38629436111989
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=100
+lazytest_line=109
 lazytest_case 'ni n4 ,e
 ' 3<<'LAZYTEST_EOF'
 2.71828182845905
@@ -361,7 +372,7 @@ lazytest_case 'ni n4 ,e
 54.5981500331442
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=110
+lazytest_line=119
 lazytest_case 'ni n4 ,l2
 ' 3<<'LAZYTEST_EOF'
 0
@@ -370,7 +381,7 @@ lazytest_case 'ni n4 ,l2
 2
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=115
+lazytest_line=124
 lazytest_case 'ni n4 ,e2
 ' 3<<'LAZYTEST_EOF'
 2
@@ -379,7 +390,7 @@ lazytest_case 'ni n4 ,e2
 16
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=152
+lazytest_line=161
 lazytest_case 'ni n5 p'\''a*0.3'\''         # generate some non-integer numbers
 ' 3<<'LAZYTEST_EOF'
 0.3
@@ -389,7 +400,7 @@ lazytest_case 'ni n5 p'\''a*0.3'\''         # generate some non-integer numbers
 1.5
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=158
+lazytest_line=167
 lazytest_case 'ni n5 p'\''a*0.3'\'' ,q      # round to the nearest integer
 ' 3<<'LAZYTEST_EOF'
 0
@@ -399,7 +410,7 @@ lazytest_case 'ni n5 p'\''a*0.3'\'' ,q      # round to the nearest integer
 2
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=164
+lazytest_line=173
 lazytest_case 'ni n5 p'\''a*0.3'\'' ,q.5    # round to the nearest 0.5
 ' 3<<'LAZYTEST_EOF'
 0.5
@@ -409,7 +420,7 @@ lazytest_case 'ni n5 p'\''a*0.3'\'' ,q.5    # round to the nearest 0.5
 1.5
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=170
+lazytest_line=179
 lazytest_case 'ni n6 ,q2              # round to the nearest multiple of 2
 ' 3<<'LAZYTEST_EOF'
 2
@@ -420,7 +431,7 @@ lazytest_case 'ni n6 ,q2              # round to the nearest multiple of 2
 6
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=183
+lazytest_line=192
 lazytest_case 'ni n05
 ' 3<<'LAZYTEST_EOF'
 0
@@ -430,7 +441,7 @@ lazytest_case 'ni n05
 4
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=189
+lazytest_line=198
 lazytest_case 'ni n05 ,q4
 ' 3<<'LAZYTEST_EOF'
 0
@@ -440,7 +451,7 @@ lazytest_case 'ni n05 ,q4
 4
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=203
+lazytest_line=212
 lazytest_case 'ni n5 ,s    # running sum
 ' 3<<'LAZYTEST_EOF'
 1
@@ -450,7 +461,7 @@ lazytest_case 'ni n5 ,s    # running sum
 15
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=209
+lazytest_line=218
 lazytest_case 'ni n5 ,d    # running difference
 ' 3<<'LAZYTEST_EOF'
 1
@@ -460,7 +471,7 @@ lazytest_case 'ni n5 ,d    # running difference
 1
 LAZYTEST_EOF
 lazytest_file='doc/cell.md'
-lazytest_line=215
+lazytest_line=224
 lazytest_case 'ni n5 ,a    # running average
 ' 3<<'LAZYTEST_EOF'
 1
@@ -1180,13 +1191,13 @@ lazytest_file='doc/invariants.md'
 lazytest_line=10
 lazytest_case 'ni nE5 ,h p'\''a & 0xffff'\'' U wcl     # low 16 bits
 ' 3<<'LAZYTEST_EOF'
-51295
+51345
 LAZYTEST_EOF
 lazytest_file='doc/invariants.md'
 lazytest_line=12
 lazytest_case 'ni nE5 ,h p'\''a >> 16'\'' U wcl        # high 16 bits
 ' 3<<'LAZYTEST_EOF'
-51278
+51344
 LAZYTEST_EOF
 lazytest_file='doc/json.md'
 lazytest_line=19
