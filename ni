@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0906.2321
+2022.0910.1341
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -7713,9 +7713,9 @@ defoperator intify_compact => q{
 };
 
 defoperator intify_hash => q{
-  cell_eval {args  => '$seed',
-             begin => '$seed ||= 0',
-             each  => '$xs[$_] = unpack "N", md5 $xs[$_] . $seed'}, @_;
+  cell_eval {args  => '$wrap',
+             begin => '$wrap ||= 0x7fffffff',
+             each  => '$xs[$_] = (unpack "N", md5 $xs[$_])[0] % $wrap'}, @_;
 };
 
 defoperator real_hash => q{
