@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.0910.1410
+2022.1218.2142
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8103,7 +8103,7 @@ sub git_dir_parents
   return ($sub, $gitdir) if defined $gitdir;
   die "ni git_dir: no git directory in parent chain" if $abs =~ /^\/?$/;
   $abs =~ s/\/([^\/]+)$//;
-  $sub = "$1/$sub";
+  $sub = length $sub ? "$1/$sub" : $1;
   git_dir_parents($sub, $abs);
 }
 

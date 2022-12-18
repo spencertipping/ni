@@ -20,7 +20,7 @@ sub git_dir_parents
   return ($sub, $gitdir) if defined $gitdir;
   die "ni git_dir: no git directory in parent chain" if $abs =~ /^\/?$/;
   $abs =~ s/\/([^\/]+)$//;
-  $sub = "$1/$sub";
+  $sub = length $sub ? "$1/$sub" : $1;
   git_dir_parents($sub, $abs);
 }
 
