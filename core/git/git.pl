@@ -110,6 +110,16 @@ defresource 'git',
       sh shell_quote(git => "--git-dir=$path", "for-each-ref", $format)};
   };
 
+defresource 'gitall',
+  read => q{
+    my (undef, $path) = git_dir $_[1];
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {
+      my $format = "gitcommit://$outpath:%H\t%an:%ae\t%at\t%s";
+      sh shell_quote(git => "--git-dir=$path",
+                     "log", "--all", "--format=$format")};
+  };
+
 # Commits: emit options
 defresource 'gitcommit',
   read => q{
