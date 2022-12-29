@@ -120,6 +120,16 @@ defresource 'gitall',
                      "log", "--all", "--format=$format")};
   };
 
+defresource 'gitnmall',
+  read => q{
+    my (undef, $path) = git_dir $_[1];
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {
+      my $format = "gitcommit://$outpath:%H\t%an:%ae\t%at\t%s";
+      sh shell_quote(git => "--git-dir=$path",
+                     "log", "--no-merges", "--all", "--format=$format")};
+  };
+
 # Commits: emit options
 defresource 'gitcommit',
   read => q{

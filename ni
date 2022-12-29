@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.1227.1933
+2022.1229.2219
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8080,7 +8080,7 @@ defshort '/c99', pmap q{c99_op pydent $_}, generic_code;
 defshort '/c++', pmap q{cpp_op pydent $_}, generic_code;
 1 core/git/lib
 git.pl
-326 core/git/git.pl
+336 core/git/git.pl
 # Git interop
 # Allows you to use git repositories as data sources for ni
 
@@ -8201,6 +8201,16 @@ defresource 'gitall',
       my $format = "gitcommit://$outpath:%H\t%an:%ae\t%at\t%s";
       sh shell_quote(git => "--git-dir=$path",
                      "log", "--all", "--format=$format")};
+  };
+
+defresource 'gitnmall',
+  read => q{
+    my (undef, $path) = git_dir $_[1];
+    (my $outpath = $path) =~ s/\/\.git$//;
+    soproc {
+      my $format = "gitcommit://$outpath:%H\t%an:%ae\t%at\t%s";
+      sh shell_quote(git => "--git-dir=$path",
+                     "log", "--no-merges", "--all", "--format=$format")};
   };
 
 # Commits: emit options
