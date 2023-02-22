@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2022.1229.2219
+2023.0222.1922
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8768,8 +8768,8 @@ defresource 'sqlitet',
   },
   write => q{
     my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
-    siproc { exec conf"sqlite", "-separator", "\t",
-                      $db, ".import /dev/stdin $table" };
+    siproc { exec conf"sqlite",
+      $db, ".mode ascii\n.separator \"\\t\" \"\\n\"\n.import /dev/stdin $table" };
   };
 
 defresource 'sqliteq',
