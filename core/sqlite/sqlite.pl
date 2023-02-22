@@ -41,8 +41,9 @@ defresource 'sqlitet',
   },
   write => q{
     my ($db, $table) = $_[1] =~ /(.*):([^:]+)$/;
-    siproc { exec conf"sqlite",
-      $db, ".mode ascii\n.separator \"\\t\" \"\\n\"\n.import /dev/stdin $table" };
+    siproc { exec conf"sqlite", $db, ".mode ascii",
+                                    q{.separator "\t" "\n"},
+                                     ".import /dev/stdin $table" };
   };
 
 defresource 'sqliteq',
