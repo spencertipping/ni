@@ -44,6 +44,9 @@ defgnuplot_code_prefixalt J  => pmap q{"set terminal jpeg $_;"}, gnuplot_termina
 defgnuplot_code_prefixalt PC => pmap q{"set terminal pngcairo $_;"}, gnuplot_terminal_size;
 defgnuplot_code_prefixalt P  => pmap q{"set terminal png $_;"}, gnuplot_terminal_size;
 
+defgnuplot_code_prefixalt T => pmap q{"set xdata time; set timefmt \"%Y-%m-%dT%H:%M:%S\";"}, pnone;
+defgnuplot_code_prefixalt E => pmap q{"set xdata time; set timefmt \"%s\";"}, pnone;
+
 defgnuplot_code_prefixalt X => pmap q{"set terminal x11 persist;"}, popt pstr 'P';
 defgnuplot_code_prefixalt Q => pmap q{"set terminal qt persist;"}, popt pstr 'P';
 defgnuplot_code_prefixalt W => pmap q{"set terminal wx persist;"}, popt pstr 'P';

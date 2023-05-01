@@ -1145,7 +1145,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2023.0222.1930
+2023.0501.0315
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -10376,7 +10376,7 @@ defshort '/N', pmap q{numpy_dense_op @$_},
                pseq popt colspec1, python_numpy_code;
 1 core/gnuplot/lib
 gnuplot.pl
-124 core/gnuplot/gnuplot.pl
+127 core/gnuplot/gnuplot.pl
 # Gnuplot interop.
 # An operator that sends output to a gnuplot process.
 
@@ -10422,6 +10422,9 @@ BEGIN {defparseralias gnuplot_terminal_size =>
 defgnuplot_code_prefixalt J  => pmap q{"set terminal jpeg $_;"}, gnuplot_terminal_size;
 defgnuplot_code_prefixalt PC => pmap q{"set terminal pngcairo $_;"}, gnuplot_terminal_size;
 defgnuplot_code_prefixalt P  => pmap q{"set terminal png $_;"}, gnuplot_terminal_size;
+
+defgnuplot_code_prefixalt T => pmap q{"set xdata time; set timefmt \"%Y-%m-%dT%H:%M:%S\";"}, pnone;
+defgnuplot_code_prefixalt E => pmap q{"set xdata time; set timefmt \"%s\";"}, pnone;
 
 defgnuplot_code_prefixalt X => pmap q{"set terminal x11 persist;"}, popt pstr 'P';
 defgnuplot_code_prefixalt Q => pmap q{"set terminal qt persist;"}, popt pstr 'P';
