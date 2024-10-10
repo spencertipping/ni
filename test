@@ -3,12 +3,12 @@ cd "$(dirname "$0")"
 
 envs=( arch
        alpine
-       centos-8
-       debian-stretch
        ubuntu-14.04
        ubuntu-16.04
        ubuntu-18.04
-       ubuntu-20.04 )
+       ubuntu-20.04
+       ubuntu-22.04
+       ubuntu-24.04 )
 
 markdowns=( $(ls doc | sed 's/.md$//' ) )
 
@@ -25,8 +25,6 @@ generate_travis_ci() {
   echo "sudo: required"
   echo "services:"
   echo "- docker"
-  echo "notifications:"
-  echo "  webhooks: https://dev.spencertipping.com/hooks/8TSfdovkfELZ9mP8d/Wui8arE5N9EnKvykNoo7ieCxQbxz9p7MDXLPuqSZeuJnTgbK"
 
   echo "before_install:"
   for e in ${envs[@]}; do

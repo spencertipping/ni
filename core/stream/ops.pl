@@ -279,17 +279,16 @@ defoperator pipe_write => q{
 defshort '/|', pmap q{pipe_write_op $_}, popt nefilename;
 
 defoperator file_prepend_name_read => q{
-  my ($colspec, $transform) = @_;
-  $colspec   = [1, 0] unless defined $colspec;
+  my ($col, $transform) = @_;
+  $col       = 0 unless defined $col;
   $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
                                   : sub {shift};
 
-  my ($maxcol, $coli) = @$colspec;
   my $file;
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    $_     = &$transform((split /\t/, $file, $maxcol)[$coli]);
+    $_     = &$transform((split /\t/, $file)[$col]);
     my $fh = soproc {weval q{scat $_}};
     chomp, print "$file\t$_\n" while <$fh>;
     close $fh;
@@ -301,17 +300,16 @@ defshort '/W<', pmap q{file_prepend_name_read_op @$_},
                 pseq popt colspec1, popt generic_code;
 
 defoperator file_prepend_name_number_read => q{
-  my ($colspec, $transform) = @_;
-  $colspec   = [1, 0] unless defined $colspec;
+  my ($col, $transform) = @_;
+  $col       = 0 unless defined $col;
   $transform = defined $transform ? eval "sub {local \$_ = shift; $transform}"
                                   : sub {shift};
 
-  my ($maxcol, $coli) = @$colspec;
   my $file;
   while (defined($file = <STDIN>))
   {
     chomp $file;
-    $_       = &$transform((split /\t/, $file, $maxcol)[$coli]);
+    $_       = &$transform((split /\t/, $file)[$col]);
     my $fh   = soproc {weval q{scat $_}};
     my $line = 0;
     ++$line, chomp, print "$file\t$line\t$_\n" while <$fh>;

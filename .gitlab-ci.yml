@@ -6,14 +6,6 @@ alpine:
   image: spencertipping/ni-env-dev-alpine
   script:
     - ./test --ci
-centos-8:
-  image: spencertipping/ni-env-dev-centos-8
-  script:
-    - ./test --ci
-debian-stretch:
-  image: spencertipping/ni-env-dev-debian-stretch
-  script:
-    - ./test --ci
 ubuntu-14.04:
   image: spencertipping/ni-env-dev-ubuntu-14.04
   script:
@@ -28,5 +20,13 @@ ubuntu-18.04:
     - ./test --ci
 ubuntu-20.04:
   image: spencertipping/ni-env-dev-ubuntu-20.04
+  script:
+    - ./test --ci
+ubuntu-22.04:
+  image: spencertipping/ni-env-dev-ubuntu-22.04
+  script:
+    - ./test --ci
+ubuntu-24.04:
+  image: spencertipping/ni-env-dev-ubuntu-24.04
   script:
     - ./test --ci
