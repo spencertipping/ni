@@ -4991,7 +4991,7 @@ lazytest_line=8
 lazytest_case 'cat > sqlite-profile/sqlite.pl <<'\''EOF'\''
 defoperator sqlite => q{
   my ($db, $query) = @_;
-  exec '\''sqlite'\'', '\''-separator'\'', "\t", $db, $query;
+  exec '\''sqlite'\'',  '\''-separator'\'', "\t", $db, $query;
 };
 defsqlprofile S => pmap q{sqlite_op $$_[0], $$_[1]},
                         pseq pc filename, sql_query;
