@@ -1,7 +1,7 @@
 # Things to look out for
-![img](http://spencertipping.com/ni.png)
+![img](http://tipping.haus/ni.png)
 
-![img](http://spencertipping.com/ni2.png)
+![img](http://tipping.haus/ni2.png)
 
 ## `r` and pipe signals
 Internally, commands like `r10` will read ten rows and then break the input

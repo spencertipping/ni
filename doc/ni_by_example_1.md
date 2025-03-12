@@ -31,7 +31,7 @@ Welcome! This is a "rich" tutorial that covers all of the basics of this cantank
 `ni` works on any Unix-based OS. You should use a bash prompt when calling `ni`.
 
 ```
-curl -sSL https://spencertipping.com/install-ni | bash
+curl -sSL https://tipping.haus/install-ni | bash
 
 # Alternatively, to install from source:
 git clone git@github.com:spencertipping/ni.git

@@ -1,13 +1,13 @@
 <h1 align="center">
 <br>
-<a href="https://github.com/spencertipping/ni"><img src="https://spencertipping.com/ni-logo.png" alt="ni"></a>
+<a href="https://github.com/spencertipping/ni"><img src="https://tipping.haus/ni-logo.png" alt="ni"></a>
 <br>
 </h1>
 
 
 ## Installing `ni`
 ```sh
-curl -sSL https://spencertipping.com/install-ni | bash
+curl -sSL https://tipping.haus/install-ni | bash
 
 ni --upgrade            # update from master (stable mode)
 ni --upgrade develop    # update from develop (fun mode)
@@ -30,11 +30,11 @@ brevity, low latency, high throughput, portability, and ease of iteration.
 Here's an example workflow to look at attempted SSH logins in
 `/var/log/auth.log`:
 
-![ni basics](https://spencertipping.com/ni-basics.gif)
+![ni basics](https://tipping.haus/ni-basics.gif)
 
 
 <h2 align='center'>
-<img alt='ni explain' src='https://spencertipping.com/ni-explain.png'>
+<img alt='ni explain' src='https://tipping.haus/ni-explain.png'>
 </h2>
 
 
@@ -44,12 +44,6 @@ options (also included at the bottom of this README).
 
 `ni --inspect` provides interactive documentation and a literate source
 explorer.
-
-
-## RocketChat support forums
-- ni usage: [#ni](https://dev.spencertipping.com/channel/ni)
-- general data science: [#datascience](https://dev.spencertipping.com/channel/datascience)
-- ni development: [#ni-dev](https://dev.spencertipping.com/channel/ni-dev)
 
 
 ## Ni By Example
@@ -67,7 +61,7 @@ An excellent guide by [Michael Bilow](https://github.com/michaelbilow):
 
 
 <h2 align='center'>
-<img alt='ni license' src='https://spencertipping.com/ni-license.png'>
+<img alt='ni license' src='https://tipping.haus/ni-license.png'>
 </h2>
 
 **MIT license**
