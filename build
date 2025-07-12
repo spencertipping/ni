@@ -77,6 +77,8 @@ export NI_NO_HOME=yes
   core/wiki \
   core/ffmpeg \
   \
+  core/duckdb \
+  \
   doc
 
 # ./ni --dev/doc-check

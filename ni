@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-66 core/boot/ni.map
+67 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -119,6 +119,7 @@ lib core/hadoop
 lib core/pyspark
 lib core/wiki
 lib core/ffmpeg
+lib core/duckdb
 lib doc
 109 core/boot/util.pl
 # Utility functions.
@@ -1145,7 +1146,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2025.0312.1932
+2025.0712.1430
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -13811,6 +13812,56 @@ defoperator imagepipe_to_video => q{
 defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
                                                         popt(prx '@(\d+x\d+)');
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
+1 core/duckdb/lib
+duckdb.pl
+47 core/duckdb/duckdb.pl
+# DuckDB tools
+
+
+sub which_duckdb()
+{
+  # DuckDB is in a fixed location if the installer created it
+  my $ipath = "$ENV{HOME}/.duckdb/cli/latest/duckdb";
+  -x $ipath and return $ipath;
+
+  return $_ for split/\n/, qx{which duckdb};
+
+  # If none of those, install first and then return its location
+  return $ipath
+    unless system "curl -sSL https://install.duckdb.org | sh >&2";
+
+  die "DuckDB installation failed";
+}
+
+
+# Use DuckDB to handle Parquet files
+defresource 'parquetjson',
+  read => q{
+    my ($url, $path) = @_;
+    return soproc{
+      exec which_duckdb, '-json', '-c', qq{
+        copy (select * from read_parquet('$path'))
+        to stdout with (format json); }} },
+  write => q{
+    my ($url, $path) = @_;
+    return siproc{
+      exec which_duckdb, '-c', qq{
+        copy (select * from read_json_auto('/dev/stdin'))
+        to '$path' with (format 'parquet', compression 'zstd'); }} };
+
+defresource 'parquet',
+  read => q{
+    my ($url, $path) = @_;
+    return soproc{
+      exec which_duckdb, '-c', qq{
+        copy (select * from read_parquet('$path'))
+        to stdout with (format csv, delimiter E'\t', header true); }} },
+  write => q{
+    my ($url, $path) = @_;
+    return siproc{
+      exec which_duckdb, '-c', qq{
+        copy (select * from read_csv_auto('/dev/stdin', delim=E'\\t', header=true))
+        to '$path' (format 'parquet', compression 'zstd') }} };
 44 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
