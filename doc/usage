@@ -119,6 +119,7 @@ GENERATING DATA (ni //help/stream)
 
     parquet://path      Read/write Parquet file as TSV rows (with header)
     parquetjson://path  Read/write Parquet file as JSON rows
+    parquetmeta://path  Read Parquet schema
 
 
 COLUMNS AND FIELDS (ni //help/col)

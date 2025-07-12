@@ -1146,7 +1146,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2025.0712.1430
+2025.0712.1446
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -13814,7 +13814,7 @@ defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
 1 core/duckdb/lib
 duckdb.pl
-47 core/duckdb/duckdb.pl
+53 core/duckdb/duckdb.pl
 # DuckDB tools
 
 
@@ -13862,6 +13862,12 @@ defresource 'parquet',
       exec which_duckdb, '-c', qq{
         copy (select * from read_csv_auto('/dev/stdin', delim=E'\\t', header=true))
         to '$path' (format 'parquet', compression 'zstd') }} };
+
+defresource 'parquetmeta',
+  read => q{
+    my ($url, $path) = @_;
+    return soproc{
+      exec which_duckdb, '-c', qq{ describe select * from read_parquet('$path')}} };
 44 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
@@ -24730,7 +24736,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://tipping.haus/nimap2.png)
-700 doc/usage
+704 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24832,8 +24838,8 @@ GENERATING DATA (ni //help/stream)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
 
-    dir:///path         List URI-form filenames in a path, unsorted
-    ls:///path          List plain-text filenames in a path, unsorted (fastest)
+    dir://path          List URI-form filenames in a path, unsorted
+    ls://path           List plain-text filenames in a path, unsorted (fastest)
 
     s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
     s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
@@ -24849,6 +24855,10 @@ GENERATING DATA (ni //help/stream)
     enws://JPEG         Read EN Wikipedia article as Source
     simplews://JPEG     Read Simple Wikipedia article as Source
     zhws://北京市       Read ZH-language article on Beijing
+
+    parquet://path      Read/write Parquet file as TSV rows (with header)
+    parquetjson://path  Read/write Parquet file as JSON rows
+    parquetmeta://path  Read Parquet schema
 
 
 COLUMNS AND FIELDS (ni //help/col)

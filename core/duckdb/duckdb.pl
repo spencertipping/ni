@@ -45,3 +45,9 @@ defresource 'parquet',
       exec which_duckdb, '-c', qq{
         copy (select * from read_csv_auto('/dev/stdin', delim=E'\\t', header=true))
         to '$path' (format 'parquet', compression 'zstd') }} };
+
+defresource 'parquetmeta',
+  read => q{
+    my ($url, $path) = @_;
+    return soproc{
+      exec which_duckdb, '-c', qq{ describe select * from read_parquet('$path')}} };

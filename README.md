@@ -198,8 +198,8 @@ GENERATING DATA (ni //help/stream)
     7z://file.7z        List contents of 7z archive
     git://dir           List git sub-URLs for git-managed dir
 
-    dir:///path         List URI-form filenames in a path, unsorted
-    ls:///path          List plain-text filenames in a path, unsorted (fastest)
+    dir://path          List URI-form filenames in a path, unsorted
+    ls://path           List plain-text filenames in a path, unsorted (fastest)
 
     s3u://bucket/path   Contents of 'aws s3 cp s3://bucket/path -', unsigned
     s3://bucket/path    Contents of 'aws s3 cp s3://bucket/path -', signed
@@ -215,6 +215,10 @@ GENERATING DATA (ni //help/stream)
     enws://JPEG         Read EN Wikipedia article as Source
     simplews://JPEG     Read Simple Wikipedia article as Source
     zhws://北京市       Read ZH-language article on Beijing
+
+    parquet://path      Read/write Parquet file as TSV rows (with header)
+    parquetjson://path  Read/write Parquet file as JSON rows
+    parquetmeta://path  Read Parquet schema
 
 
 COLUMNS AND FIELDS (ni //help/col)
