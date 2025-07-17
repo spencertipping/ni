@@ -470,6 +470,8 @@ STREAM TRANSFORMATION (ni //help/stream)
                     (see //help/c)
     c++'...'        Compile '...' as C++ and run the result on entire stream
                     (requires 'c++' compiler; see //help/c)
+    zig'...'        Run '...' as Zig, running on the entire stream (requires
+                    Zig compiler)
 
     Bd64M           Copy stream through a 64M disk-backed FIFO
 

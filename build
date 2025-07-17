@@ -47,6 +47,7 @@ export NI_NO_HOME=yes
   core/bloom \
   core/cell \
   core/c \
+  core/zig \
   core/git \
   core/solr \
   core/archive \

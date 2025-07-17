@@ -53,7 +53,7 @@ _
 die $@ if $@;
 1;
 __DATA__
-67 core/boot/ni.map
+68 core/boot/ni.map
 # Resource layout map.
 # ni is assembled by following the instructions here. This script is also
 # included in the ni image itself so it can rebuild accordingly.
@@ -94,6 +94,7 @@ lib core/pl
 lib core/bloom
 lib core/cell
 lib core/c
+lib core/zig
 lib core/git
 lib core/solr
 lib core/archive
@@ -1146,7 +1147,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2025.0712.1446
+2025.0717.0252
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -8077,6 +8078,39 @@ defoperator cpp => q{exec_c conf('cpp'), conf('cpp_opts'), '.cc', shift};
 
 defshort '/c99', pmap q{c99_op pydent $_}, generic_code;
 defshort '/c++', pmap q{cpp_op pydent $_}, generic_code;
+1 core/zig/lib
+zig.pl
+30 core/zig/zig.pl
+# Zig language interfacing
+# Allows you to stream data through a Zig program.
+
+defconfenv zig => 'ZIG', 'zig';
+
+
+# exec_zig($zig_binary, $zig_source, @argv...) -> doesn't return
+sub exec_zig
+{
+  my $zig_binary = shift;
+  local $SIG{CHLD} = 'DEFAULT';
+
+  # First write a tempfile for the zig compiler. It's important that we put
+  # this into a directory that already exists, since all the program should do
+  # is unlink its source (which will be in argv[1]).
+  my $source_tmp = conf('tmpdir') . "/ni-$ENV{USER}-" . noise_str(16) . ".zig";
+  {
+    open my $source, '>', $source_tmp or die "ni exec_zig: can't write source: $!";
+    print $source shift;
+    close $source;
+  }
+
+  exec $zig_binary, 'run', $source_tmp, '--', $source_tmp, @_;
+  die "ni exec_zig: failed to run: $!";
+}
+
+
+defoperator zig => q{exec_zig conf('zig'), shift};
+
+defshort '/zig', pmap q{zig_op pydent $_}, generic_code;
 1 core/git/lib
 git.pl
 336 core/git/git.pl
@@ -24736,7 +24770,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://tipping.haus/nimap2.png)
-704 doc/usage
+706 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -25110,6 +25144,8 @@ STREAM TRANSFORMATION (ni //help/stream)
                     (see //help/c)
     c++'...'        Compile '...' as C++ and run the result on entire stream
                     (requires 'c++' compiler; see //help/c)
+    zig'...'        Run '...' as Zig, running on the entire stream (requires
+                    Zig compiler)
 
     Bd64M           Copy stream through a 64M disk-backed FIFO
 
