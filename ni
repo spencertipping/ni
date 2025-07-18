@@ -1147,7 +1147,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2025.0717.0252
+2025.0718.0224
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -13848,7 +13848,7 @@ defshort '/VI', pmap q{video_to_imagepipe_op @$_}, pseq popt(prx '\w+'),
 defshort '/IV', pmap q{imagepipe_to_video_op @$_}, media_format_spec;
 1 core/duckdb/lib
 duckdb.pl
-53 core/duckdb/duckdb.pl
+72 core/duckdb/duckdb.pl
 # DuckDB tools
 
 
@@ -13871,10 +13871,12 @@ sub which_duckdb()
 # Use DuckDB to handle Parquet files
 defresource 'parquetjson',
   read => q{
-    my ($url, $path) = @_;
+    my ($url, $pq) = @_;
+    my ($path, $query) = split/:/, $pq, 2;
+    $query //= '*';
     return soproc{
       exec which_duckdb, '-json', '-c', qq{
-        copy (select * from read_parquet('$path'))
+        copy (select $query from read_parquet('$path'))
         to stdout with (format json); }} },
   write => q{
     my ($url, $path) = @_;
@@ -13885,10 +13887,12 @@ defresource 'parquetjson',
 
 defresource 'parquet',
   read => q{
-    my ($url, $path) = @_;
+    my ($url, $pq) = @_;
+    my ($path, $query) = split/:/, $pq, 2;
+    $query //= '*';
     return soproc{
       exec which_duckdb, '-c', qq{
-        copy (select * from read_parquet('$path'))
+        copy (select $query from read_parquet('$path'))
         to stdout with (format csv, delimiter E'\t', header true); }} },
   write => q{
     my ($url, $path) = @_;
@@ -13902,6 +13906,21 @@ defresource 'parquetmeta',
     my ($url, $path) = @_;
     return soproc{
       exec which_duckdb, '-c', qq{ describe select * from read_parquet('$path')}} };
+
+
+defresource 'duckjson',
+  read => q{
+    my ($url, $query) = @_;
+    return soproc{
+      exec which_duckdb, '-json', '-c', qq{
+        copy ($query) to stdout with (format json); }} };
+
+defresource 'duck',
+  read => q{
+    my ($url, $query) = @_;
+    return soproc{
+      exec which_duckdb, '-json', '-c', qq{
+        copy ($query) to stdout with (format csv, delimiter E'\t', header true); }} };
 44 doc/lib
 ni_by_example_1.md
 ni_by_example_2.md
@@ -24770,7 +24789,7 @@ $ ni i[9whp 9whp '#fa4'] \
 ```
 
 ![image](http://tipping.haus/nimap2.png)
-706 doc/usage
+712 doc/usage
 USAGE
     ni [commands...]              Run a data pipeline
     ni --explain [commands...]    Explain a data pipeline
@@ -24893,6 +24912,12 @@ GENERATING DATA (ni //help/stream)
     parquet://path      Read/write Parquet file as TSV rows (with header)
     parquetjson://path  Read/write Parquet file as JSON rows
     parquetmeta://path  Read Parquet schema
+
+    parquet://path:'query'       Select 'query' from parquet at path
+    parquetjson://path:'query'   Select 'query' from parquet at path
+
+    duckjson://'select * from read_parquet(...)'
+    duck://'select * from read_parquet(...)'
 
 
 COLUMNS AND FIELDS (ni //help/col)

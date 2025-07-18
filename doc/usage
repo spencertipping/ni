@@ -121,6 +121,12 @@ GENERATING DATA (ni //help/stream)
     parquetjson://path  Read/write Parquet file as JSON rows
     parquetmeta://path  Read Parquet schema
 
+    parquet://path:'query'       Select 'query' from parquet at path
+    parquetjson://path:'query'   Select 'query' from parquet at path
+
+    duckjson://'select * from read_parquet(...)'
+    duck://'select * from read_parquet(...)'
+
 
 COLUMNS AND FIELDS (ni //help/col)
     fA  or  f       Select first TSV column (columns are A..Z)

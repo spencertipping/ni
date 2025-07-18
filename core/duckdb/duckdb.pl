@@ -20,10 +20,12 @@ sub which_duckdb()
 # Use DuckDB to handle Parquet files
 defresource 'parquetjson',
   read => q{
-    my ($url, $path) = @_;
+    my ($url, $pq) = @_;
+    my ($path, $query) = split/:/, $pq, 2;
+    $query //= '*';
     return soproc{
       exec which_duckdb, '-json', '-c', qq{
-        copy (select * from read_parquet('$path'))
+        copy (select $query from read_parquet('$path'))
         to stdout with (format json); }} },
   write => q{
     my ($url, $path) = @_;
@@ -34,10 +36,12 @@ defresource 'parquetjson',
 
 defresource 'parquet',
   read => q{
-    my ($url, $path) = @_;
+    my ($url, $pq) = @_;
+    my ($path, $query) = split/:/, $pq, 2;
+    $query //= '*';
     return soproc{
       exec which_duckdb, '-c', qq{
-        copy (select * from read_parquet('$path'))
+        copy (select $query from read_parquet('$path'))
         to stdout with (format csv, delimiter E'\t', header true); }} },
   write => q{
     my ($url, $path) = @_;
@@ -51,3 +55,18 @@ defresource 'parquetmeta',
     my ($url, $path) = @_;
     return soproc{
       exec which_duckdb, '-c', qq{ describe select * from read_parquet('$path')}} };
+
+
+defresource 'duckjson',
+  read => q{
+    my ($url, $query) = @_;
+    return soproc{
+      exec which_duckdb, '-json', '-c', qq{
+        copy ($query) to stdout with (format json); }} };
+
+defresource 'duck',
+  read => q{
+    my ($url, $query) = @_;
+    return soproc{
+      exec which_duckdb, '-json', '-c', qq{
+        copy ($query) to stdout with (format csv, delimiter E'\t', header true); }} };
