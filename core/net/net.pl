@@ -17,10 +17,10 @@ defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host_full, _qfn;
 
 # Network resources.
 
-defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+defresource 'http', read  => q{soproc {exec 'curl', '-sSL', $_[0]} @_},
                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
-defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+defresource 'https', read  => q{soproc {exec 'curl', '-sSL', $_[0]} @_},
                      write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
 defresource 'sftp',

@@ -1147,7 +1147,7 @@ sub main {
   exit 1;
 }
 1 core/boot/version
-2025.0718.0224
+2025.1122.1659
 1 core/gen/lib
 gen.pl
 34 core/gen/gen.pl
@@ -4145,10 +4145,10 @@ defshort '/s', pmap q{ssh_op @$_}, pseq ssh_host_full, _qfn;
 
 # Network resources.
 
-defresource 'http', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+defresource 'http', read  => q{soproc {exec 'curl', '-sSL', $_[0]} @_},
                     write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
-defresource 'https', read  => q{soproc {exec 'curl', '-sS', $_[0]} @_},
+defresource 'https', read  => q{soproc {exec 'curl', '-sSL', $_[0]} @_},
                      write => q{siproc {exec 'curl', '-sSd', '-', $_[0]} @_};
 
 defresource 'sftp',
